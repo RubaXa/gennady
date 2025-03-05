@@ -1,0 +1,24 @@
+{
+  "name": "gennady",
+  "version": "0.1.0",
+  "author": "Konstantin Lebedev <ibnrubaxa@gmail.com>",
+  "description": "Gennady — Generate Next-level Automated Description Intelligence",
+  "keywords": [
+    "git",
+    "ai",
+    "llm",
+    "commit",
+    "generator"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/rubaxa/commit-gen",
+  "type": "module",
+  "bin": {
+    "gennady": "./cli/gennady.js",
+    "gennadi": "./cli/gennady.js"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
