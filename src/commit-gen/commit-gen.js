@@ -1,4 +1,5 @@
 import { execSync as nodeExecSync } from 'node:child_process';
+import { style } from '../utils/style.js';
 
 export class CommitGen {
 	constructor(init) {
@@ -50,10 +51,6 @@ export class CommitGen {
 	getDiff() {
 		if (this.init.targetBranch) {
 			return this.execSync(`git diff ${this.init.targetBranch}`);
-		}
-
-		if (this.getCommitCount() > 0) {
-			return this.execSync('git diff HEAD~1');
 		}
 
 		return this.execSync('git diff --cached');
@@ -161,20 +158,23 @@ export class CommitGen {
 
 	async generate() {
 		const commitCount = this.getCommitCount();
+		const diffStr = this.getDiff();
+		const parsedFiles = this.parseDiff(diffStr);
+		const categories = this.categorizeFiles(parsedFiles);
 		const mode =
 			this.init.mode === 'auto'
 				? this.init.targetBranch
 					? 'detailed'
-					: commitCount > 1
+					: commitCount > 1 && categories.changedFiles.length < 5
 					? 'oneline'
 					: 'detailed'
 				: this.init.mode;
 
-		const diffStr = this.getDiff();
-		const parsedFiles = this.parseDiff(diffStr);
-		const categories = this.categorizeFiles(parsedFiles);
+		this.logger.info(`Generating commit message (mode: ${mode}, commits: ${commitCount}):`);
 
-		this.logger.info(`Generating commit message (mode: ${mode}):`, categories);
+		Object.entries(categories).forEach(([key, value]) => {
+			this.logger.info(`- ${style.bold(key)}:`, style.cyan(value.length + ''));
+		});
 
 		const diffText = this.generateDiffText(categories.changedFiles);
 

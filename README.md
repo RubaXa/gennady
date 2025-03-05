@@ -1,5 +1,5 @@
-🤖 Gennady 🗯️
-------------
+🤖 Gennadyᵇᵉᵗᵃ 🗯️
+-----------------
 **Gen**erate **N**ext-level **A**utomated **D**escription **Y**ntelligence.
 
 ```bash
