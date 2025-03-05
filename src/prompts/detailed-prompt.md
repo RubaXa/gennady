@@ -17,8 +17,8 @@ You are a JavaScript/TypeScript expert tasked with writing a commit message for 
 
 **Output Format:**  
 <message>subject emoji
-description item 1
-description item 2</message>
+- description item 1
+- description item 2</message>
 
 
 **Important:**  
