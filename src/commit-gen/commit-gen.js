@@ -85,13 +85,15 @@ export class CommitGen {
 		const maxTokens = codeChanged[codeChanged.length - 1].tokens;
 		const languages = [...new Set(codeChanged.map(f => f.programmingLanguage).filter(Boolean))].join(', ');
 		const mode =
-			this.init.mode === 'auto'
-				? this.init.targetBranch
-					? 'detailed'
-					: commitCount > 1 && codeChanged.length < 5
-					? 'oneline'
-					: 'detailed'
-				: this.init.mode;
+			this.init.oneline
+			? 'oneline'
+			: this.init.mode === 'auto'
+			? this.init.targetBranch
+			? 'detailed'
+			: commitCount > 1 && codeChanged.length < 5
+			? 'oneline'
+			: 'detailed'
+			: this.init.mode;
 
 		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
 		this.logger.info(`- Languages: ${style.yellow(languages)}`);
@@ -139,7 +141,7 @@ export class CommitGen {
 
 		const startFormatTime = performance.now();
 		const formatted = await this.toFormat(
-			mode === 'detailed' && !this.init.oneline ? this.init.formatDetailedPromptTemplate : this.init.formatOnelinePromptTemplate,
+			mode === 'detailed' ? this.init.formatDetailedPromptTemplate : this.init.formatOnelinePromptTemplate,
 			results.join('\n\n'),
 		);
 		this.logger.info(`- Formatting time: ${style.blueBright(((performance.now() - startFormatTime) / 1000).toFixed(2))}s`);
