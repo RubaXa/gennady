@@ -1,19 +1,23 @@
-import { execSync as nodeExecSync } from 'node:child_process';
+import { getGitCommitCount, getGitDiff } from '../git/git-cmd.js';
+import { parseGitDiff } from '../git/git-diff.js';
 import { style } from '../utils/style.js';
 
 export class CommitGen {
 	constructor(init) {
 		this.init = {
 			mode: 'auto',
+			oneline: false,
 			reviewerModel: 'llama3:8b',
 			targetBranch: undefined,
-			onelinePromptTemplate: 'Oneline commit: {diff}',
-			detailedPromptTemplate: 'Detailed commit: {diff}',
-			composerPromptTemplate: 'Compose final commit message from parts: {messages}',
 
-			maxInputTokens: init.maxInputTokens || 5000,
+			maxInputTokens: init.maxInputTokens || 4000,
 			ollamaUrl: init.ollamaUrl || 'http://127.0.0.1:11434/api/generate',
 			logger: console,
+
+			basePromptTemplate: undefined,
+			formatOnelinePromptTemplate: undefined,
+			formatDetailedPromptTemplate: undefined,
+			translatePromptTemplate: undefined,
 
 			...init,
 		};
@@ -35,112 +39,22 @@ export class CommitGen {
 		return this.init.targetBranch;
 	}
 
-	execSync(cmd) {
-		try {
-			return nodeExecSync(cmd, { encoding: 'utf-8'});
-		} catch (e) {
-			return '';
-		}
-	}
-
-	getCommitCount() {
-		const output = this.execSync('git rev-list --count HEAD 2>/dev/null');
-		return parseInt(output, 10) || 0;
-	}
-
-	getDiff() {
-		if (this.init.targetBranch) {
-			return this.execSync(`git diff ${this.init.targetBranch}`);
-		}
-
-		return this.execSync('git diff --cached');
-	}
-
-	parseDiff(diffStr) {
-		const lines = diffStr.split('\n');
-		const files = [];
-		let currentFile = null;
-		
-		lines.forEach((line) => {
-			if (line.startsWith('diff --git')) {
-				if (currentFile) files.push(currentFile);
-				const parts = line.split(' ');
-				const bFile = parts[3] ? parts[3].replace('b/', '') : parts[2].replace('a/', '');
-				currentFile = { filename: bFile, diff: [line] };
-			} else if (currentFile) {
-				currentFile.diff.push(line);
-			}
-		});
-
-		if (currentFile) files.push(currentFile);
-
-		return files;
-	}
-
-	categorizeFiles(files) {
-		const lockFiles = [];
-		const dotFiles = [];
-		const docFiles = [];
-		const renamedFiles = [];
-		const deletedFiles = [];
-		const changedFiles = [];
-		
-		files.forEach((file) => {
-			const isRenamed = file.diff.some(
-				(line) => line.includes('rename from') || line.includes('rename to')
-			);
-			const isDeleted = file.diff.some((line) => line.includes('deleted file mode'));
-			
-			if (/\.md$/.test(file.filename)) {
-				docFiles.push(file);
-			} else if (/^\./.test(file.filename)) {
-				dotFiles.push(file);
-			} else if (/(\.lock|-lock\.json)$/.test(file.filename)) {
-				lockFiles.push(file);
-			} else if (isRenamed) {
-				renamedFiles.push(file);
-			} else if (isDeleted) {
-				deletedFiles.push(file);
-			} else {
-				changedFiles.push(file);
-			}
-		});
-
-		return { dotFiles, docFiles, lockFiles, renamedFiles, deletedFiles, changedFiles };
-	}
-
 	generateDiffText(files) {
 		return files
 			.map((file) => `File: ${file.filename}\n${file.diff.join('\n')}`)
 			.join('\n\n');
 	}
 
-	tokenCount(text) {
-		return text.split(/\s+/).length;
-	}
-
-	splitDiffByTokens(diffText, template, maxTokens) {
-		const templateTokens = this.tokenCount(template.replace('{diff}', ''));
-		const availableTokens = maxTokens - templateTokens;
-		const words = diffText.split(/\s+/);
-		const chunks = [];
-		
-		for (let i = 0; i < words.length; i += availableTokens) {
-			chunks.push(words.slice(i, i + availableTokens).join(' '));
-		}
-
-		return chunks;
-	}
-
-	async generateFromOllama(prompt) {
+	async fetchPrompt(prompt, context) {
 		try {
 			const req = await fetch(this.init.ollamaUrl, {
 				method: 'POST',
 				headers: {'Content-Type': 'application/json'},
 				body: JSON.stringify({
-					prompt,
 					model: this.init.reviewerModel,
 					stream: false,
+					prompt,
+					context,
 				}),
 			});
 			const data = await req.json();
@@ -150,71 +64,99 @@ export class CommitGen {
 			return '';
 		}
 	}
-
-	async generateMessage(prompt) {
-		const msg =  await this.generateFromOllama(prompt);
-		return msg.replace(/(^[\s\S]*<message>|<\/message>[\s\S]*)/g, '').replace(/\n\s*- /, '\n\n- ')
+	async generateCommitMessage(prompt) {
+		const text = await this.fetchPrompt(prompt);
+		return text;
 	}
 
 	async generate() {
-		const commitCount = this.getCommitCount();
-		const diffStr = this.getDiff();
-		const parsedFiles = this.parseDiff(diffStr);
-		const categories = this.categorizeFiles(parsedFiles);
+		const {maxInputTokens} = this.init
+		const commitCount = getGitCommitCount();
+		const diffStr = getGitDiff(this.init.targetBranch);
+		const parsedDiff = parseGitDiff(diffStr).sort((a, b) => a.tokens - b.tokens);
+		const codeChanged = parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && f.programmingLanguage);
+		
+		if (codeChanged.length === 0) {
+			this.logger.warn(`No changes detected, skipping commit message generation.`);
+			return;
+		}
+
+		const tokens = codeChanged.reduce((sum, file) => sum + file.tokens, 0);
+		const maxTokens = codeChanged[codeChanged.length - 1].tokens;
+		const languages = [...new Set(codeChanged.map(f => f.programmingLanguage).filter(Boolean))].join(', ');
 		const mode =
 			this.init.mode === 'auto'
 				? this.init.targetBranch
 					? 'detailed'
-					: commitCount > 1 && categories.changedFiles.length < 5
+					: commitCount > 1 && codeChanged.length < 5
 					? 'oneline'
 					: 'detailed'
 				: this.init.mode;
 
-		this.logger.info(`Generating commit message (mode: ${mode}, commits: ${commitCount}):`);
+		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
+		this.logger.info(`- Languages: ${style.yellow(languages)}`);
+		this.logger.info(`- Tokens: ${style.bold.cyanBright(tokens)} ${style.gray(`(max per file: ${maxTokens})`)}`);
 
-		Object.entries(categories).forEach(([key, value]) => {
-			this.logger.info(`- ${style.bold(key)}:`, style.cyan(value.length + ''));
-		});
-
-		const diffText = this.generateDiffText(categories.changedFiles);
-
-		// this.logger.info(`Diff:`, diffText);
-
-		const promptTemplate = (mode === 'oneline'
-			? this.init.onelinePromptTemplate
-			: this.init.detailedPromptTemplate).trim();
-
-		const fullPrompt = promptTemplate.replace('{diff}', diffText);
-		const totalTokens = this.tokenCount(fullPrompt);
-		let finalMessage = '';
-
-		this.logger.info(`Total tokens: ${totalTokens}`);
-		
-		if (totalTokens < this.init.maxInputTokens) {
-			finalMessage = await this.generateMessage(fullPrompt);
-		} else {
-			const diffChunks = this.splitDiffByTokens(
-				diffText,
-				promptTemplate,
-				this.init.maxInputTokens,
-			);
-			const partialMessages = [];
-			
-			for (const chunk of diffChunks) {
-				const partPrompt = promptTemplate.replace('{diff}', chunk);
-				const msg = await this.generateMessage(partPrompt);
-
-				partialMessages.push(msg);
-			}
-			
-			const composerPrompt = this.init.composerPromptTemplate.replace(
-				'{messages}',
-				partialMessages.join('\n'),
-			);
-			
-			finalMessage = await this.generateMessage(composerPrompt);
+		if (maxTokens > maxInputTokens) {
+			this.logger.error(`TODO: Diff is too large, skipping commit message generation.`);
+			process.exit(1);
 		}
 
-		return finalMessage;
+		const batches = codeChanged.reduce((acc, file) => {
+			if (!acc[0] || acc[0].tokens + file.tokens > maxInputTokens) {
+				if (acc[0]) {
+					acc[0].languages = [...new Set(acc[0].languages)];
+				}
+
+				acc.unshift({tokens: 0, diff: '', languages: []});
+			}
+
+			acc[0].tokens += file.tokens;
+			acc[0].diff += `File: ${file.filename}\n${file.diff.hunks.flatMap(h => h.changes).join('\n')}\n\n`;
+			acc[0].languages.push(file.programmingLanguage);
+
+			return acc;
+		}, []);
+
+		this.logger.info(`- Queue: ${style.bold.cyan(batches.length)}`);
+		this.logger.info(`-`.repeat(40));
+
+		const startGenTime = performance.now();
+		const results = await Promise.all(batches.map(async (batch) => {
+			console.info(`- Task:`, batch.tokens, batch.languages);
+
+			const prompt = this.init.basePromptTemplate
+				.replaceAll('{languages}', batch.languages.join('/'))
+				.replaceAll('{input}', batch.diff);
+
+			const msg = await this.generateCommitMessage(prompt);
+
+			return msg
+		}));
+
+		this.logger.info(`-`.repeat(30));
+		this.logger.info(`- Generation time: ${style.blueBright(((performance.now() - startGenTime) / 1000).toFixed(2))}s`);
+
+		const startFormatTime = performance.now();
+		const formatted = await this.toFormat(
+			mode === 'detailed' && !this.init.oneline ? this.init.formatDetailedPromptTemplate : this.init.formatOnelinePromptTemplate,
+			results.join('\n\n'),
+		);
+		this.logger.info(`- Formatting time: ${style.blueBright(((performance.now() - startFormatTime) / 1000).toFixed(2))}s`);
+
+		return formatted.trim();
+	}
+
+	async toFormat(format, text) {
+		const result = await this.fetchPrompt(format.replaceAll('{input}', text));
+		return result.replace(/(^[\s\S]*<message>|<\/message>[\s\S]*$)/g, '').replace(`\n-`, `\n\n-`);
+	}
+
+	async translate(input, lang) {
+		const result =  await this.fetchPrompt(this.init.translatePromptTemplate
+			.replaceAll('{input}', input)
+			.replaceAll('{lang}', lang));
+
+		return result.replace(/(^[\s\S]*<message>|<\/message>[\s\S]*)/g, '');
 	}
 }
