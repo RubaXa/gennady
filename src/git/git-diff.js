@@ -13,6 +13,7 @@ const getCategory = (filename, metadata) => {
 	const categories = {
 		bin: /^(exe|dll|so|bin)\b$/i,
 		lock: /^(package-lock\.json|yarn\.lock|npm-shrinkwrap\.json|composer\.lock|podfile\.lock|go\.sum|gemfile\.lock)$/i,
+		json: /\.json$/i,
 		doc: /\.(md|markdown|txt|rst)$/i,
 		cfg: /^(\..+|.*\.(yml|yaml|rc|ini|conf))$/i,
 		img: /\.(png|jpe?g|gif|svg|bmp|tiff|ico)$/i,
