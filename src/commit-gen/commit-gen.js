@@ -106,16 +106,15 @@ export class CommitGen {
 
 		const batches = codeChanged.reduce((acc, file) => {
 			if (!acc[0] || acc[0].tokens + file.tokens > maxInputTokens) {
-				if (acc[0]) {
-					acc[0].languages = [...new Set(acc[0].languages)];
-				}
-
 				acc.unshift({tokens: 0, diff: '', languages: []});
 			}
 
 			acc[0].tokens += file.tokens;
 			acc[0].diff += `File: ${file.filename}\n${file.diff.hunks.flatMap(h => h.changes).join('\n')}\n\n`;
-			acc[0].languages.push(file.programmingLanguage);
+			
+			if (!acc[0].languages.includes(file.programmingLanguage)) {
+				acc[0].languages.push(file.programmingLanguage);
+			}
 
 			return acc;
 		}, []);

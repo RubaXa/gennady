@@ -1,17 +1,19 @@
 {
   "name": "gennady",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": "Konstantin Lebedev <ibnrubaxa@gmail.com>",
-  "description": "Gennady — Generate Next-level Automated Description Intelligence",
+  "description": "Gennady — Generate Next-level Automated Description Yntelligence",
   "keywords": [
     "git",
     "ai",
     "llm",
+    "local",
     "commit",
-    "generator"
+    "generator",
+    "gennady"
   ],
   "license": "MIT",
-  "repository": "https://github.com/rubaxa/commit-gen",
+  "repository": "https://github.com/rubaxa/gennady",
   "type": "module",
   "bin": "./cli/gennady.js",
   "main": "index.js",
