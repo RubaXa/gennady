@@ -1,6 +1,6 @@
 🤖 Gennadyᵇᵉᵗᵃ 🗯️
 -----------------
-**Gen**erate **N**ext-level **A**utomated **D**escription **Y**ntelligence.
+**GEN**erate **N**ext-level **A**utomated **D**escription **Y**ntelligence.
 
 ```bash
 npx gennady
@@ -8,12 +8,30 @@ npx gennady
 
 ---
 
-### Setup Local LLM
+## Setup LLM
+
+### Local
 
 ```sh
 brew install ollama
 ollama pull llama3:8b
 ollama serve
+```
+
+---
+
+### External
+
+Create `~/.gennadyrc` file:
+
+```json
+[
+    {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "key": "...",
+        "model": "gpt-4o"
+    }
+]
 ```
 
 ---

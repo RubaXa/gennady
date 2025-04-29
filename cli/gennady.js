@@ -16,8 +16,9 @@ const PROMPTS_DIR = join(
 const params = parseArgs(process.argv, {
 	mode: ['mode', 'm'],
 	oneline: ['short', 'one', 'o'],
-	reviewerModel: ['model'],
+	model: ['model'],
 	targetBranch: ['branch', 'b'],
+	apiUrl: ['api', 'apiUrl'],
 });
 
 const commit = new CommitGen({
@@ -28,7 +29,9 @@ const commit = new CommitGen({
 	translatePromptTemplate: readFileSync(join(PROMPTS_DIR, 'translate-prompt.md')).toString(),
 });
 
-console.info(`🤖`, style.whiteBright.bold(`GENNADY`), `(${style.cyan(commit.reviewerModel)} → ${style.yellow(commit.mode)})`, `🗯️`);
+console.info(`🤖`, style.whiteBright.bold(`GENNADY`), `(${style.cyan(commit.model)} → ${style.yellow(commit.mode)})`, `🗯️`);
+console.info(style.gray(`-`.repeat(30)));
+console.info(`- url: ${style.blue(commit.apiUrl)}`);
 console.info(style.gray(`-`.repeat(30)));
 
 const msg = await commit.generate();

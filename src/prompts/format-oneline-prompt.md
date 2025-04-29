@@ -9,3 +9,4 @@ You are a {languages} expert tasked with writing a git commit subject and descri
 **Extremely important:**  
 - The output must contain only commit message inside `<message>` and  `</message>`.
 - Do not add unnecessary words and markup, strictly follow the output format.
+- The commit message of changes should be no more than 20 tokens.

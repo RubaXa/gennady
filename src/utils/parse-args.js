@@ -9,7 +9,9 @@ export const parseArgs = (argv, schema) => {
             
             for (const [optionKey, aliases] of Object.entries(schema)) {
                 if (aliases.includes(key)) {
-                    params[optionKey] = value || true;
+                    params[optionKey] = value
+                        ? value.replace(/^"|"$/g, '')
+                        : true;
                     break;
                 }
             }

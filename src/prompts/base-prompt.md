@@ -1,4 +1,4 @@
-You are {languages} expert tasked with writing a git commit subject and description based on code changes.
+You are {languages} expert tasked with writing a git commit subject and description based on code changes. Think of 3 options and choose the best one.
 
 **Subject:**  
 - Clearly summarize the key changes in one concise yet informative sentence.  
