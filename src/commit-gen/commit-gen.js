@@ -90,9 +90,9 @@ export class CommitGen {
 			for (const api of this.apiList) {
 				try {
 					const resp = await fetch(api.url, {method: 'HEAD', timeout: 1000});
-					if (resp.ok) {
+					if (resp.status >= 200) {
 						this.api = api;
-						break;
+						return api;
 					}
 				} catch {}
 			}
@@ -103,8 +103,7 @@ export class CommitGen {
 
 	async fetchPrompt(prompt, context) {
 		try {
-			const api = this.getApi();
-
+			const api = await this.getApi();
 			if (api.url.includes('completions')) {
 				return await this.callCompletionsApi(api, prompt, context);
 			}
