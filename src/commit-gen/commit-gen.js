@@ -87,10 +87,13 @@ export class CommitGen {
 
 	async getApi() {
 		if (!this.api) {
+			// By default
+			this.api = {url: DEFAULT_API_URL, model: DEFAULT_MODEL};
+
 			for (const api of this.apiList) {
 				try {
 					const resp = await fetch(api.url, {method: 'HEAD', timeout: 1000});
-					if (resp.status >= 200) {
+					if (resp.status >= 200 && resp.status < 500) {
 						this.api = api;
 						return api;
 					}
