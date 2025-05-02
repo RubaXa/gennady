@@ -1,0 +1,219 @@
+{
+	"Global": {
+		"description": "Function Properties of the Global Object",
+		"properties": {
+			"localStorage": {
+				"description": "Provides access to a Storage object for the document's origin, saved across browser sessions. Data has no expiration time (except in private browsing modes).",
+				"type": "Storage",
+				"readOnly": true,
+				"exceptions": [
+					{
+					"type": "SecurityError",
+					"description": "Thrown upon access if the origin is invalid (e.g., file:, data:) or if storage access is disallowed by policy/user settings (e.g., blocking cookies)."
+					}
+				]
+			},
+			"sessionStorage": {
+				"description": "Provides access to a Storage object for the document's origin, cleared when the page session ends (e.g., when the browser tab is closed).",
+				"type": "Storage",
+				"readOnly": true,
+				"exceptions": [
+					{
+					"type": "SecurityError",
+					"description": "Thrown upon access if the origin is invalid (e.g., file:, data:) or if storage access is disallowed by policy/user settings (e.g., blocking cookies)."
+					}
+				]
+			},
+			"JSON": {
+				"type": "JSON"
+			}
+		},
+		"methods": {
+			"isFinite": {
+				"description": "Determines whether the passed value is a finite number.",
+				"arguments": [
+					{
+						"name": "number",
+						"required": true,
+						"description": "The value to be tested for finiteness."
+					}
+				],
+				"returns": {
+					"type": "Boolean",
+					"description": "`false` if the argument coerces to `NaN`, positive `Infinity`, or negative `Infinity`; otherwise, `true`."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `number` argument cannot be converted to a Number (e.g., it's a Symbol or an object with faulty conversion methods)."
+					}
+				]
+			},
+			"isNaN": {
+				"description": "Determines whether the passed value is NaN.",
+				"arguments": [
+					{
+						"name": "number",
+						"required": true,
+						"description": "The value to be tested for NaN."
+					}
+				],
+				"returns": {
+					"type": "Boolean",
+					"description": "`true` if the given value coerces to `NaN`; otherwise, `false`."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `number` argument cannot be converted to a Number (e.g., it's a Symbol or an object with faulty conversion methods)."
+					}
+				]
+			},
+			"parseFloat": {
+				"description": "Parses a string argument and returns a floating-point number.",
+				"arguments": [
+					{
+						"name": "string",
+						"required": true,
+						"description": "The string to parse."
+					}
+				],
+				"returns": {
+					"type": "Number",
+					"description": "A floating-point number parsed from the given string. If the first character cannot be converted to a number, `NaN` is returned."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `string` argument cannot be converted to a String (e.g., it's a Symbol or an object with faulty conversion methods)."
+					}
+				]
+			},
+			"parseInt": {
+				"description": "Parses a string argument and returns an integer of the specified radix (the base in mathematical numeral systems).",
+				"arguments": [
+					{
+						"name": "string",
+						"required": true,
+						"description": "The string to parse."
+					},
+					{
+						"name": "radix",
+						"required": false,
+						"description": "An integer between 2 and 36 that represents the radix (the base in mathematical numeral systems) of the string. If omitted or 0, it is assumed to be 10, except when the number begins with the code unit pairs '0x' or '0X', in which case a radix of 16 is assumed."
+					}
+				],
+				"returns": {
+					"type": "Number",
+					"description": "An integer parsed from the given string. If the radix is smaller than 2 or bigger than 36, or the first non-whitespace character cannot be converted to a number, `NaN` is returned."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `string` argument cannot be converted to a String."
+					},
+					{
+						"type": "TypeError",
+						"description": "If the `radix` argument cannot be converted to a Number (when performing ToInt32)."
+					}
+				]
+			},
+			"decodeURI": {
+				"description": "Computes a new version of a URI by replacing UTF-8 escape sequences created by encodeURI with the characters they represent. Escape sequences that could not have been introduced by encodeURI are not replaced.",
+				"arguments": [
+					{
+						"name": "encodedURI",
+						"required": true,
+						"description": "A String representing an encoded URI."
+					}
+				],
+				"returns": {
+					"type": "String",
+					"description": "A new string representing the decoded URI."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "The `encodedURI` argument cannot be converted to a String."
+					},
+					{
+						"type": "URIError",
+						"description": "The `encodedURI` contains a malformed percent-encoded sequence or an invalid UTF-8 sequence."
+					}
+				]
+			},
+			"decodeURIComponent": {
+				"description": "Computes a new version of a URI component by replacing UTF-8 escape sequences created by encodeURIComponent with the characters they represent.",
+				"arguments": [
+					{
+						"name": "encodedURIComponent",
+						"required": true,
+						"description": "A String representing an encoded URI component."
+					}
+				],
+				"returns": {
+					"type": "String",
+					"description": "A new string representing the decoded URI component."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "The `encodedURIComponent` argument cannot be converted to a String."
+					},
+					{
+						"type": "URIError",
+						"description": "The `encodedURIComponent` contains a malformed percent-encoded sequence or an invalid UTF-8 sequence."
+					}
+				]
+			},
+			"encodeURI": {
+				"description": "Computes a new version of a URI by replacing instances of certain characters with their UTF-8 escape sequences. Assumes the input is a complete URI, so reserved characters (';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#') are not encoded.",
+				"arguments": [
+					{
+						"name": "uri",
+						"required": true,
+						"description": "A String representing a complete URI."
+					}
+				],
+				"returns": {
+					"type": "String",
+					"description": "A new string representing the encoded URI."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "The `uri` argument cannot be converted to a String."
+					},
+					{
+						"type": "URIError",
+						"description": "The `uri` contains an unpaired surrogate code point."
+					}
+				]
+			},
+			"encodeURIComponent": {
+				"description": "Computes a new version of a URI component by replacing instances of certain characters with their UTF-8 escape sequences. Assumes the input is a component of a URI, so characters reserved in URIs (';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#') are encoded.",
+				"arguments": [
+					{
+						"name": "uriComponent",
+						"required": true,
+						"description": "A String representing a URI component."
+					}
+				],
+				"returns": {
+					"type": "String",
+					"description": "A new string representing the encoded URI component."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "The `uriComponent` argument cannot be converted to a String."
+					},
+					{
+						"type": "URIError",
+						"description": "The `uriComponent` contains an unpaired surrogate code point."
+					}
+				]
+			}
+		}
+	}
+}

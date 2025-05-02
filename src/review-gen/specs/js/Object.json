@@ -1,0 +1,626 @@
+{
+	"Object": {
+	  "description": "The Object constructor creates object wrappers and provides static methods for object manipulation.",
+	  "properties": {
+		"prototype": {
+		  "value": "Object.prototype",
+		  "attributes": {
+			"writable": false,
+			"enumerable": false,
+			"configurable": false
+		  },
+		  "description": "The prototype object for Object instances. Objects created using object literals or `new Object()` inherit from this object."
+		}
+	  },
+	  "methods": {
+		"assign": {
+		  "description": "Copies the values of all enumerable own properties from one or more source objects to a target object.",
+		  "arguments": [
+			{
+			  "name": "target",
+			  "required": true,
+			  "description": "The target object — what to apply the sources' properties to, which is returned after it is modified."
+			},
+			{
+			  "name": "sources",
+			  "required": true,
+			  "variadic": true,
+			  "description": "The source object(s) — objects containing the properties you want to apply."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The modified target object."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `target` is null or undefined."
+			},
+			{
+			  "type": "UserCodeError",
+			  "description": "An error occurred while accessing a property via getter on a source object."
+			},
+			 {
+			  "type": "UserCodeError",
+			  "description": "An error occurred while setting a property via setter on the target object."
+			}
+		  ]
+		},
+		"create": {
+		  "description": "Creates a new object with the specified prototype object and properties.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object which should be the prototype of the newly-created object. Can be `null`."
+			},
+			{
+			  "name": "Properties",
+			  "required": false,
+			  "description": "An optional object whose enumerable own properties specify property descriptors to be added to the newly-created object."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "A new object with the specified prototype and properties."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `O` argument is neither an Object nor `null`."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If `Properties` is provided and is not coercible to an Object."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If `Properties` contains an invalid property descriptor (via `ToPropertyDescriptor`)."
+			},
+			 {
+			  "type": "RangeError",
+			  "description": "If `Properties` contains an invalid property descriptor attribute value (via `ToPropertyDescriptor`)."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If defining a property from `Properties` fails (e.g., on a non-extensible object, or redefining non-configurable property - via `DefinePropertyOrThrow`)."
+			},
+			{
+			  "type": "UserCodeError",
+			  "description": "An error occurred while accessing a property descriptor via getter on the `Properties` object."
+			}
+		  ]
+		},
+		"defineProperties": {
+		  "description": "Defines new or modifies existing own properties directly on an object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object on which to define or modify properties."
+			},
+			{
+			  "name": "Properties",
+			  "required": true,
+			  "description": "An object whose own enumerable properties constitute the descriptors for the properties to be defined or modified."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The object that was passed to the function."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not an Object."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "The `Properties` argument is not coercible to an Object."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If `Properties` contains an invalid property descriptor (via `ToPropertyDescriptor`)."
+			},
+			 {
+			  "type": "RangeError",
+			  "description": "If `Properties` contains an invalid property descriptor attribute value (via `ToPropertyDescriptor`)."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If defining a property from `Properties` fails (e.g., redefining a non-configurable property - via `DefinePropertyOrThrow`)."
+			},
+			 {
+			  "type": "UserCodeError",
+			  "description": "An error occurred while accessing a property descriptor via getter on the `Properties` object."
+			}
+		  ]
+		},
+		"defineProperty": {
+		  "description": "Defines a new own property or modifies an existing own property on an object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object on which to define or modify the property."
+			},
+			{
+			  "name": "P",
+			  "required": true,
+			  "description": "The property key (String or Symbol) to define or modify."
+			},
+			{
+			  "name": "Attributes",
+			  "required": true,
+			  "description": "The descriptor for the property being defined or modified."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The object that was passed to the function."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `O` argument is not an Object."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "The `P` argument cannot be converted to a property key."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "The `Attributes` argument is not a valid property descriptor (via `ToPropertyDescriptor`)."
+			},
+			 {
+			  "type": "RangeError",
+			  "description": "The `Attributes` argument contains an invalid property descriptor attribute value (via `ToPropertyDescriptor`)."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "If defining the property `P` fails (e.g., redefining a non-configurable property - via `DefinePropertyOrThrow`)."
+			}
+		  ]
+		},
+		"entries": {
+		  "description": "Returns an array of a given object's own enumerable string-keyed property [key, value] pairs.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose enumerable own property [key, value] pairs are to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Array",
+			"description": "An array of the given object's own enumerable string-keyed property [key, value] pairs."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			},
+			{
+			  "type": "UserCodeError",
+			  "description": "An error occurred while retrieving a property value via getter during enumeration."
+			}
+		  ]
+		},
+		"freeze": {
+		  "description": "Freezes an object. A frozen object can no longer be changed.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to freeze."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The object that was passed to the function (or the input value if not an object)."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "Thrown if setting the integrity level to 'frozen' fails (e.g., trying to make a non-configurable property non-writable)."
+			}
+		  ]
+		},
+		"fromEntries": {
+		  "description": "Transforms a list of [key, value] pairs into an object.",
+		  "arguments": [
+			{
+			  "name": "iterable",
+			  "required": true,
+			  "description": "An iterable object (like Array, Map) that produces [key, value] pairs."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "A new object whose properties are given by the entries of the iterable."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `iterable` argument is null or undefined."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "The `iterable` argument is not actually iterable or the iterator does not return objects."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "An element yielded by the iterator cannot be converted to a property key."
+			},
+			 {
+			  "type": "UserCodeError",
+			  "description": "An error occurred during iteration (e.g., in iterator's `next` method)."
+			}
+		  ]
+		},
+		"getOwnPropertyDescriptor": {
+		  "description": "Returns a property descriptor for an own property (that is, one directly present on an object and not in the object's prototype chain) of a given object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object in which to look for the property."
+			},
+			{
+			  "name": "P",
+			  "required": true,
+			  "description": "The property key (String or Symbol) of the property whose description is to be retrieved."
+			}
+		  ],
+		  "returns": {
+			"type": "Object | undefined",
+			"description": "A property descriptor of the given property if it exists on the object, `undefined` otherwise."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "The `P` argument cannot be converted to a property key."
+			}
+		  ]
+		},
+		"getOwnPropertyDescriptors": {
+		  "description": "Returns an object containing all own property descriptors for an object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object for which to get all own property descriptors."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "An object containing all own property descriptors of the given object."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			}
+		  ]
+		},
+		"getOwnPropertyNames": {
+		  "description": "Returns an array of all own String-keyed property names found directly upon a given object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose own String property names are to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Array",
+			"description": "An array of strings that correspond to the own String property names of the given object."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			}
+		  ]
+		},
+		 "getOwnPropertySymbols": {
+		  "description": "Returns an array of all own Symbol-keyed property names found directly upon a given object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose own Symbol property names are to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Array",
+			"description": "An array of symbols that correspond to the own Symbol property names of the given object."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			}
+		  ]
+		},
+		"getPrototypeOf": {
+		  "description": "Returns the prototype (i.e., the value of the internal [[Prototype]] property) of the specified object.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose prototype is to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Object | null",
+			"description": "The prototype of the given object. If there are no inherited properties, `null` is returned."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			}
+		  ]
+		},
+		 "groupBy": {
+		  "description": "Groups the elements of a given iterable according to the string values returned by a provided callback function. The returned object has properties for each group, containing arrays with the elements in the group.",
+		  "arguments": [
+			{
+			  "name": "items",
+			  "required": true,
+			  "description": "An iterable (such as an Array) whose elements will be grouped."
+			},
+			{
+			  "name": "callback",
+			  "required": true,
+			  "description": "A function to execute for each element in the iterable. It should return a value that can be coerced into a property key (string or symbol)."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "A null-prototype object with properties for each group. Each property value is an array containing the elements of the group."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `items` argument is not iterable."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "The `callback` argument is not a function."
+			},
+			{
+			  "type": "UserCodeError",
+			  "description": "An error was thrown by the `callback` function."
+			},
+			{
+			   "type": "TypeError",
+			   "description": "The value returned by `callback` cannot be converted to a property key."
+			},
+			 {
+			  "type": "UserCodeError",
+			  "description": "An error occurred during iteration of `items`."
+			}
+		  ]
+		},
+		 "hasOwn": {
+		  "description": "Returns true if the specified object has the indicated property as its own property. If the property is inherited, or does not exist, the method returns false.",
+		  "arguments": [
+			{
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to test."
+			},
+			 {
+			  "name": "P",
+			  "required": true,
+			  "description": "The property key (String or Symbol) to test for."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "`true` if the object has the specified property as own property; `false` otherwise."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "The `P` argument cannot be converted to a property key."
+			}
+		  ]
+		},
+		"is": {
+		  "description": "Compares if two values are the same value. Equates all NaN values (which differs from both Abstract Equality Comparison and Strict Equality Comparison) and distinguishes between +0 and -0.",
+		  "arguments": [
+			{
+			  "name": "value1",
+			  "required": true,
+			  "description": "The first value to compare."
+			},
+			 {
+			  "name": "value2",
+			  "required": true,
+			  "description": "The second value to compare."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "A Boolean indicating whether or not the two arguments are the same value."
+		  },
+		  "exceptions": []
+		},
+		"isExtensible": {
+		  "description": "Determines if an object is extensible (whether it can have new properties added to it).",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to check."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "A Boolean indicating whether or not the given object is extensible."
+		  },
+		  "exceptions": []
+		},
+		 "isFrozen": {
+		  "description": "Determines if an object is frozen.",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to check."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "A Boolean indicating whether or not the given object is frozen."
+		  },
+		  "exceptions": []
+		},
+		"isSealed": {
+		  "description": "Determines if an object is sealed.",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to check."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "A Boolean indicating whether or not the given object is sealed."
+		  },
+		  "exceptions": []
+		},
+		"keys": {
+		  "description": "Returns an array of a given object's own enumerable string-keyed property names.",
+		   "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose enumerable own property names are to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Array",
+			"description": "An array of strings representing all the enumerable own properties of the given object."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			}
+		  ]
+		},
+		"preventExtensions": {
+		  "description": "Prevents new properties from ever being added to an object (i.e. prevents future extensions to the object).",
+		   "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object which should be made non-extensible."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The object being made non-extensible (or the input value if not an object)."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If preventing extensions fails internally (e.g., on certain Proxy objects)."
+			}
+		  ]
+		},
+		 "seal": {
+		  "description": "Seals an object, preventing new properties from being added to it and marking all existing properties as non-configurable. Values of present properties can still be changed as long as they are writable.",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object to seal."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The object being sealed (or the input value if not an object)."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "Thrown if setting the integrity level to 'sealed' fails (e.g., trying to make a non-configurable property non-configurable again - although this specific case usually succeeds)."
+			}
+		  ]
+		},
+		 "setPrototypeOf": {
+		  "description": "Sets the prototype (i.e., the internal [[Prototype]] property) of a specified object to another object or null.",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object which is to have its prototype set."
+			},
+			{
+			  "name": "proto",
+			  "required": true,
+			  "description": "The object's new prototype (an object or null)."
+			}
+		  ],
+		  "returns": {
+			"type": "Object",
+			"description": "The specified object `O` (or the input if not coercible to object)."
+		  },
+		  "exceptions": [
+			{
+			  "type": "TypeError",
+			  "description": "The `O` argument is null or undefined."
+			},
+			{
+			  "type": "TypeError",
+			  "description": "The `proto` argument is neither an Object nor `null`."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "The operation fails internally (e.g. `O` is non-extensible, or a prototype chain cycle would be created)."
+			}
+		  ]
+		},
+		 "values": {
+		  "description": "Returns an array of a given object's own enumerable property values.",
+		  "arguments": [
+			 {
+			  "name": "O",
+			  "required": true,
+			  "description": "The object whose enumerable own property values are to be returned."
+			}
+		  ],
+		  "returns": {
+			"type": "Array",
+			"description": "An array containing the object's own enumerable property values."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "The `O` argument is not coercible to an Object."
+			},
+			 {
+			  "type": "UserCodeError",
+			  "description": "An error occurred while retrieving a property value via getter during enumeration."
+			}
+		  ]
+		}
+	  }
+	}
+  }
+  

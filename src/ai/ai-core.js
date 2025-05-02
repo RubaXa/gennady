@@ -38,8 +38,8 @@ export class AiCore {
 		
 		// Default API
 		this.apiList[this.init.apiUrl ? 'unshift' : 'push']({
-			url: this.init.apiUrl || DEFAULT_API_URL,
-			key: this.init.apiKey,
+			url: this.init.url || DEFAULT_API_URL,
+			key: this.init.key,
 			model: this.init.model || DEFAULT_MODEL,
 		});
 	}

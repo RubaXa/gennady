@@ -1,0 +1,85 @@
+{
+  "JSON": {
+    "description": "The JSON object provides methods to parse JSON strings and convert values to JSON strings.",
+    "methods": {
+      "parse": {
+        "description": "Parses a JSON string, constructing the JavaScript value or object described by the string.",
+        "arguments": [
+          {
+            "name": "text",
+            "required": true,
+            "description": "A String containing the JSON-formatted text."
+          },
+          {
+            "name": "reviver",
+            "required": false,
+            "description": "A function that can filter and transform the results."
+          }
+        ],
+        "returns": {
+          "type": "any",
+          "description": "The ECMAScript value corresponding to the JSON text (Object, Array, String, Number, Boolean, or null)."
+        },
+        "exceptions": [
+          {
+            "type": "SyntaxError",
+            "description": "The input string `text` is not valid JSON text."
+          },
+          {
+            "type": "TypeError",
+            "description": "The `text` argument cannot be converted to a String."
+          },
+          {
+            "type": "UserCodeError",
+            "description": "An error was thrown by the `reviver` function."
+          }
+        ],
+        "hint": [
+          "When you identify an unsafe `JSON.parse` call in the code review, your generated `suggestion` should follow the pattern shown in this reference example: wrap the call in `try...catch`, log the error and then return `null`."
+        ]
+      },
+      "stringify": {
+        "description": "Converts a JavaScript value to a JSON string, optionally replacing values or including only specified properties.",
+        "arguments": [
+          {
+            "name": "value",
+            "required": true,
+            "description": "The JavaScript value to convert to a JSON string."
+          },
+          {
+            "name": "replacer",
+            "required": false,
+            "description": "A function that alters the stringification process, or an array of Strings/Numbers used as an inclusion list for properties."
+          },
+          {
+            "name": "space",
+            "required": false,
+            "description": "A String or Number used to insert white space into the output JSON string for readability."
+          }
+        ],
+        "returns": {
+          "type": "String | undefined",
+          "description": "A JSON string representing the given value, or `undefined` if the value (or the value returned by `replacer` or `toJSON`) is `undefined`, a `Function`, or a `Symbol`."
+        },
+        "exceptions": [
+          {
+            "type": "TypeError",
+            "description": "A cyclic structure was found in the `value`."
+          },
+          {
+            "type": "TypeError",
+            "description": "Attempted to serialize a BigInt value."
+          },
+          {
+            "type": "UserCodeError",
+            "description": "An error was thrown by the `toJSON` method of an object."
+          },
+          {
+            "type": "UserCodeError",
+            "description": "An error was thrown by the `replacer` function."
+          }
+        ]
+      }
+    }
+  }
+}

@@ -2,9 +2,6 @@
 
 #### Diff
 ```diff
-diff --git a/src/utils/logger.ts b/src/utils/logger.ts
-new file mode 100644
-index 00000000..f5b0a57b
 --- /dev/null
 +++ b/src/utils/logger.ts
 @@ -0,0 +1,3 @@
@@ -14,37 +11,70 @@ index 00000000..f5b0a57b
 ```
 
 #### Expected
-```
-OK
-```
+- OK
 
 ----
 
-### Suggest adding `void` return type
+### Sensitivity data (token)
 
 #### Diff
 ```diff
-diff --git a/src/utils/logger.ts b/src/utils/logger.ts
-new file mode 100644
-index 00000000..f5b0a57b
---- /dev/null
+--- a/src/utils/logger.ts
 +++ b/src/utils/logger.ts
+@@ -1,3 +1,3 @@
+-function logUserAction(userId: string, action: string) {
+-       console.info(`User ${userId} performed ${action}`);
++function logUserAction(userId: string, action: string, token: string) {
++       console.info(`User ${userId} performed ${action} (token: ${token})`);
+ }
+```
+
+#### Expected
+- !(console.+token)
+
+----
+
+### JSON.parse
+
+#### Diff
+```diff
+--- /dev/null
++++ b/src/utils/parser.js
 @@ -0,0 +1,3 @@
-+function logUserAction(userId: string, action: string) {
-+       console.info(`User ${userId} performed ${action}`);
++function parseUserData(raw) {
++  return JSON.parse(raw);
 +}
 ```
 
 #### Expected
-```
-### Issues
-**src/utils/logger.ts#L1**
-1. Missing explicit return type for function.
-   - Hint: Add `void` as the return type.
+- try
+- catch
+- console
 
-### Suggestions
-**src/utils/logger.ts#L1**
-```suggestion
-function logUserAction(userId: string, action: string): void {
+----
+
+### Sensitivity data after JSON.parse
+
+#### Diff
+```diff
+--- /dev/null
++++ b/src/parser.js
+@@ -0,0 +1,9 @@
++function parseUser(raw) {
++  try {
++    const user = JSON.parse(raw);
++    console.log(`User data: id=${user.id}, token=${user.token}`);
++    return user;
++  } catch (e) {
++    // TODO: Log parsing error
++    return null;
++  }
++}
 ```
-```
+
+#### Expected
+- try
+- catch
+- console
+
+----

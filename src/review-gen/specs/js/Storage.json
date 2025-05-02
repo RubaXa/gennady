@@ -1,0 +1,97 @@
+{
+	"Storage": {
+		"description": "Provides access to a particular domain's session or local storage. Allows data to be stored persistently (localStorage) or for the duration of a session (sessionStorage). Keys and values are stored as UTF-16 strings.",
+		"properties": {
+			"length": {
+				"description": "Returns the number of key/value pairs currently stored in the Storage object.",
+				"readOnly": true,
+				"returns": {
+					"type": "Number",
+					"description": "An integer representing the number of data items stored."
+				},
+				"exceptions": []
+			}
+		},
+		"methods": {
+			"key": {
+				"description": "Returns the name of the key at the specified numerical index. The order of keys is user-agent defined and not guaranteed.",
+				"arguments": [
+					{
+						"name": "index",
+						"required": true,
+						"description": "An integer representing the zero-based index of the key name to retrieve."
+					}
+				],
+				"returns": {
+					"type": "String | null",
+					"description": "The name of the key at the given index, or `null` if the index is out of bounds."
+				},
+				"exceptions": []
+			},
+			"getItem": {
+				"description": "Retrieves the current value associated with the given key.",
+				"arguments": [
+					{
+						"name": "keyName",
+						"required": true,
+						"description": "A string containing the name of the key whose value you want to retrieve."
+					}
+				],
+				"returns": {
+					"type": "String | null",
+					"description": "The string value associated with the key, or `null` if the key does not exist."
+				},
+				"exceptions": []
+			},
+			"setItem": {
+				"description": "Adds or updates a key/value pair in the Storage object.",
+				"arguments": [
+					{
+						"name": "keyName",
+						"required": true,
+						"description": "A string containing the name of the key to create/update."
+					},
+					{
+						"name": "keyValue",
+						"required": true,
+						"description": "A string containing the value to store for the key."
+					}
+				],
+				"returns": {
+					"type": "undefined",
+					"description": "This method does not return a value."
+				},
+				"exceptions": [
+					{
+						"type": "QuotaExceededError",
+						"description": "The storage limit has been exceeded, or the user denied permission for storage."
+					}
+				]
+			},
+			"removeItem": {
+				"description": "Removes the key/value pair with the specified key name, if it exists.",
+				"arguments": [
+					{
+						"name": "keyName",
+						"required": true,
+						"description": "A string containing the name of the key to remove."
+					}
+				],
+				"returns": {
+					"type": "undefined",
+					"description": "This method does not return a value."
+				},
+				"exceptions": []
+			},
+			"clear": {
+				"description": "Removes all key/value pairs from the Storage object.",
+				"arguments": [],
+				"returns": {
+					"type": "undefined",
+					"description": "This method does not return a value."
+				},
+				"exceptions": []
+			}
+		}
+	}
+}
