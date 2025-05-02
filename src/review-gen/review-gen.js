@@ -23,8 +23,6 @@ export class ReviewGen {
 		this.ai = new AiCore({
 			logger: this.logger,
 			timeout: this.init.timeout,
-			url: 'https://api.copilot.vk.team/chat/completions',
-			model: 'deepseek-v2-lite',
 		});
 	}
 
