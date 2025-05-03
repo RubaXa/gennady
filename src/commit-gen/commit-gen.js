@@ -1,6 +1,5 @@
 import { AiCore } from '../ai/ai-core.js';
-import { getGitCommitCount, getGitDiff } from '../git/git-cmd.js';
-import { parseGitDiff } from '../git/git-diff.js';
+import { getGitDiffInfo } from '../git/git-core.js';
 import { prompts } from '../prompts/index.js';
 import { style } from '../utils/style.js';
 
@@ -50,14 +49,9 @@ export class CommitGen {
 		return this.init.targetBranch;
 	}
 
-	generateDiffText(files) {
-		return files
-			.map((file) => `File: ${file.filename}\n${file.diff.join('\n')}`)
-			.join('\n\n');
-	}
-
-	async fetchPrompt(text) {
-		return this.ai.generate(text);
+	async fetchPrompt(input) {
+		const output = await this.ai.generate(input);
+		return output;
 	}
 
 	async generateCommitMessage(prompt) {
@@ -67,26 +61,23 @@ export class CommitGen {
 
 	async generate() {
 		const {maxInputTokens} = this.init
-		const commitCount = getGitCommitCount();
-		const diffStr = getGitDiff(this.init.targetBranch);
-		const parsedDiff = parseGitDiff(diffStr).sort((a, b) => a.tokens - b.tokens);
-		const codeChanged = parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && f.programmingLanguage);
+		const {commitCount, parsedCodeDiff} = getGitDiffInfo(this.init.targetBranch);
 		
-		if (codeChanged.length === 0) {
+		if (parsedCodeDiff.length === 0) {
 			this.logger.warn(`No changes detected, skipping commit message generation.`);
 			return;
 		}
 
-		const tokens = codeChanged.reduce((sum, file) => sum + file.tokens, 0);
-		const maxTokens = codeChanged[codeChanged.length - 1].tokens;
-		const languages = [...new Set(codeChanged.map(f => f.programmingLanguage).filter(Boolean))].join(', ');
+		const tokens = parsedCodeDiff.reduce((sum, file) => sum + file.tokens, 0);
+		const maxTokens = parsedCodeDiff[parsedCodeDiff.length - 1].tokens;
+		const languages = [...new Set(parsedCodeDiff.map(f => f.programmingLanguage).filter(Boolean))].join(', ');
 		const mode =
 			this.init.oneline
 			? 'oneline'
 			: this.init.mode === 'auto'
 			? this.init.targetBranch
 			? 'detailed'
-			: commitCount > 1 && codeChanged.length < 5
+			: commitCount > 1 && parsedCodeDiff.length < 5
 			? 'oneline'
 			: 'detailed'
 			: this.init.mode;
@@ -100,16 +91,19 @@ export class CommitGen {
 			process.exit(1);
 		}
 
-		const batches = codeChanged.reduce((acc, file) => {
+		const batches = parsedCodeDiff.reduce((acc, file) => {
 			if (!acc[0] || acc[0].tokens + file.tokens > maxInputTokens) {
 				acc.unshift({tokens: 0, diff: '', languages: []});
 			}
 
-			acc[0].tokens += file.tokens;
-			acc[0].diff += `File: ${file.filename}\n${file.diff.hunks.flatMap(h => h.changes).join('\n')}\n\n`;
-			
-			if (!acc[0].languages.includes(file.programmingLanguage)) {
-				acc[0].languages.push(file.programmingLanguage);
+			const fileDiff = file.diff.hunks.flatMap(h => h.changes).join('\n').trim();
+			if (fileDiff) {
+				acc[0].tokens += file.tokens;
+				acc[0].diff += `File: ${file.filename}\n${fileDiff}\n\n`;
+				
+				if (!acc[0].languages.includes(file.programmingLanguage)) {
+					acc[0].languages.push(file.programmingLanguage);
+				}
 			}
 
 			return acc;
@@ -139,6 +133,7 @@ export class CommitGen {
 			mode === 'detailed' ? this.init.formatDetailedPromptTemplate : this.init.formatOnelinePromptTemplate,
 			results.join('\n\n'),
 		);
+
 		this.logger.info(`- Formatting time: ${style.blueBright(((performance.now() - startFormatTime) / 1000).toFixed(2))}s`);
 
 		return formatted.trim();

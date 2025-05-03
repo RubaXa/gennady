@@ -7,12 +7,17 @@ import { getSysLang } from '../src/utils/language.js';
 
 if (process.argv[2] === 'cat') {	
 	//
-	// COMMAND: CAT-GEN
+	// 🐱 CAT-GEN
 	//
 	import('./cat.js');
+} else if (process.argv[2] === 'review') {
+	//
+	// 📝 REVIEW-GEN
+	//
+	import('./review.js');
 } else {
 	//
-	// MAIN
+	// 🤖 COMMIT-GEN 💬
 	//
 	const params = parseArgs(process.argv, {
 		mode: ['mode', 'm'],
