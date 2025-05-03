@@ -10,7 +10,9 @@
     "local",
     "commit",
     "generator",
-    "gennady"
+    "gennady",
+    "review",
+    "code-review"
   ],
   "license": "MIT",
   "repository": "https://github.com/rubaxa/gennady",
