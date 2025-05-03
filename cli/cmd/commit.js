@@ -15,7 +15,13 @@ const params = parseArgs(process.argv, {
 
 const commit = new CommitGen(params);
 
-console.info(`🤖`, style.whiteBright.bold(`GENNADY`), `(${style.cyan(commit.model)} → ${style.yellow(commit.mode)})`, `🗯️`);
+console.info(
+	`🤖`,
+	style.whiteBright.bold(`GENNADY`),
+	`(${style.cyan(commit.model)} → ${style.yellow(commit.mode)})`,
+	`🗯️`,
+);
+
 console.info(style.gray(`-`.repeat(30)));
 console.info(`- url: ${style.blue(commit.apiUrl)}`);
 console.info(style.gray(`-`.repeat(30)));

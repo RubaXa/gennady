@@ -12,8 +12,9 @@ export class AiCore {
 
 	constructor(init) {
 		this.init = {
-			timeout: 120,
 			logger: console,
+			timeout: 120,
+			maxInputTokens: init.maxInputTokens || 4000,
 			...init,
 		};
 
@@ -52,7 +53,54 @@ export class AiCore {
 		return this.api?.url || this.apiList[0].url;
 	}
 
-	async getApi() {
+	get maxInputTokens() {
+		return this.init.maxInputTokens;
+	}
+
+	createPromptsBatchesByDiff(parseDiff) {
+		const maxChunkTokens = parseDiff.at(-1)?.tokens || 0
+
+		if (maxChunkTokens > this.maxInputTokens) {
+			this.logger.error(`TODO: Diff is too large`);
+			process.exit(1);
+		}
+
+		const batches = parseDiff.reduce((acc, file) => {
+			if (!acc[0] || acc[0].tokens + file.tokens > this.maxInputTokens) {
+				acc.unshift({tokens: 0, diff: '', languages: []});
+			}
+
+			const fileDiff = file.diff.hunks.flatMap(h => h.changes).join('\n');
+			if (fileDiff.trim()) {
+				acc[0].tokens += file.tokens;
+				acc[0].diff += `### File **${file.filename}**:\n${fileDiff}\n\n`;
+				
+				if (!acc[0].languages.includes(file.programmingLanguage)) {
+					acc[0].languages.push(file.programmingLanguage);
+				}
+			}
+
+			return acc;
+		}, []);
+
+		return batches;
+	}
+
+	async generate(prompt, context) {
+		try {
+			const api = await this._getApi();
+			if (api.url.includes('completions')) {
+				return await this._callCompletionsApi(api, prompt, context);
+			}
+
+			return await this._callGenerateApi(api, prompt, context);
+		} catch (e) {
+			this.logger.error(`Failed to generate LLM response:`, e);
+			return '';
+		}
+	}
+
+	async _getApi() {
 		if (!this.api) {
 			// By default
 			this.api = {url: DEFAULT_API_URL, model: DEFAULT_MODEL};
@@ -70,22 +118,8 @@ export class AiCore {
 
 		return this.api;
 	}
-
-	async generate(prompt, context) {
-		try {
-			const api = await this.getApi();
-			if (api.url.includes('completions')) {
-				return await this.callCompletionsApi(api, prompt, context);
-			}
-
-			return await this.callGenerateApi(api, prompt, context);
-		} catch (e) {
-			this.logger.error(`Failed to generate LLM response:`, e);
-			return '';
-		}
-	}
 	
-	async callGenerateApi(api, prompt, context) {
+	async _callGenerateApi(api, prompt, context) {
 		const req = await fetch(api.url, {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
@@ -100,7 +134,7 @@ export class AiCore {
 		return data.response || '';
 	}
 
-	async callCompletionsApi(api, prompt, context) {
+	async _callCompletionsApi(api, prompt, context) {
 		const messages = [];
 		
 		if (context) {

@@ -1,3 +1,33 @@
+### parsedCodeMaxTokens rename to parsedCodeChunkMaxTokens (OK) 
+
+#### Diff
+```diff
+### File **src/git/git-core.js**:
+@@ -39,7 +39,7 @@ export const getGitDiffInfo = (branch = undefined) => {
+ 	const commitCount = getGitCommitCount();
+
+ 	const parsedCodeTokens = parsedCodeDiff.reduce((sum, file) => sum + file.tokens, 0);
+-	const parsedCodeMaxTokens = parsedCodeDiff.at(-1)?.tokens || 0;
++	const parsedCodeChunkMaxTokens = parsedCodeDiff.at(-1)?.tokens || 0;
+ 	const programmingLanguages = [...new Set(parsedCodeDiff.map(f => f.programmingLanguage).filter(Boolean))];
+
+ 	return {
+@@ -47,7 +47,7 @@ export const getGitDiffInfo = (branch = undefined) => {
+ 		parsedDiff,
+ 		parsedCodeDiff,
+ 		parsedCodeTokens,
+-		parsedCodeMaxTokens,
++		parsedCodeChunkMaxTokens,
+ 		programmingLanguages,
+ 		commitCount,
+ 	};
+```
+
+#### Expected
+- GOOD
+
+----
+
 ### Добавление функции (no issues и suggestions)
 
 #### Diff
@@ -11,7 +41,7 @@
 ```
 
 #### Expected
-- OK
+- GOOD
 
 ----
 

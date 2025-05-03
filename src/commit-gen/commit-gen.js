@@ -11,7 +11,6 @@ export class CommitGen {
 			targetBranch: undefined,
 
 			logger: console,
-			maxInputTokens: init.maxInputTokens || 4000,
 
 			basePromptTemplate: prompts.commit('base'),
 			formatOnelinePromptTemplate: prompts.commit('format-oneline'),
@@ -54,23 +53,18 @@ export class CommitGen {
 		return output;
 	}
 
-	async generateCommitMessage(prompt) {
-		const text = await this.fetchPrompt(prompt);
-		return text;
-	}
-
 	async generate() {
-		const {maxInputTokens} = this.init
 		const {
 			commitCount,
 			parsedCodeDiff,
 			parsedCodeTokens,
-			parsedCodeMaxTokens,
+			parsedCodeChunkMaxTokens,
 			programmingLanguages,
 		} = getGitDiffInfo(this.init.targetBranch);
 		
 		if (parsedCodeDiff.length === 0) {
 			this.logger.warn(`No changes detected, skipping commit message generation.`);
+			this.logger.info(style.italic.gray(`Hint: git add`));
 			return;
 		}
 
@@ -87,30 +81,9 @@ export class CommitGen {
 
 		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
 		this.logger.info(`- Languages: ${style.yellow(programmingLanguages)}`);
-		this.logger.info(`- Tokens: ${style.bold.cyanBright(parsedCodeTokens)} ${style.gray(`(max per file: ${parsedCodeMaxTokens})`)}`);
+		this.logger.info(`- Tokens: ${style.bold.cyanBright(parsedCodeTokens)} ${style.gray(`(max per file: ${parsedCodeChunkMaxTokens})`)}`);
 
-		if (parsedCodeMaxTokens > maxInputTokens) {
-			this.logger.error(`TODO: Diff is too large, skipping commit message generation.`);
-			process.exit(1);
-		}
-
-		const batches = parsedCodeDiff.reduce((acc, file) => {
-			if (!acc[0] || acc[0].tokens + file.tokens > maxInputTokens) {
-				acc.unshift({tokens: 0, diff: '', languages: []});
-			}
-
-			const fileDiff = file.diff.hunks.flatMap(h => h.changes).join('\n').trim();
-			if (fileDiff) {
-				acc[0].tokens += file.tokens;
-				acc[0].diff += `File: ${file.filename}\n${fileDiff}\n\n`;
-				
-				if (!acc[0].languages.includes(file.programmingLanguage)) {
-					acc[0].languages.push(file.programmingLanguage);
-				}
-			}
-
-			return acc;
-		}, []);
+		const batches = this.ai.createPromptsBatchesByDiff(parsedCodeDiff);
 
 		this.logger.info(`- Queue: ${style.bold.cyan(batches.length)}`);
 		this.logger.info(`-`.repeat(40));
@@ -123,7 +96,7 @@ export class CommitGen {
 				.replaceAll('{languages}', batch.languages.join('/'))
 				.replaceAll('{input}', batch.diff);
 
-			const msg = await this.generateCommitMessage(prompt);
+			const msg = await this.fetchPrompt(prompt);
 
 			return msg
 		}));

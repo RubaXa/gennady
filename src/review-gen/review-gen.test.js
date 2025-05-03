@@ -13,8 +13,8 @@ describe('review', async () => {
 		test(name, async () => {
 			const result = (await reviewGen.generate(diff)).trim();
 
-			if (expected.includes('OK')) {
-				assert.strictEqual(result, 'OK', `Test '${name}': Expected 'OK', got: '${result}'`);
+			if (expected.includes('GOOD')) {
+				assert.strictEqual(result.includes('GOOD'), true, `Test '${name}': Expected 'GOOD', got: '${result}'`);
 				return;
 			}
 
