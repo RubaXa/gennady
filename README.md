@@ -58,7 +58,7 @@ npx gennady --branch=develop
 
 #### What Happens?
 - Gennady analyzes your staged changes.
-- It generates a commit message using AI.
+- It generates a commit message.
 - If your system language isn't English, it translates the message for you.
 
 
@@ -81,7 +81,7 @@ npx gennady cat ./src/
 
 ## 📝 review
 
-Review your staged git changes for critical issues using AI.
+Review your staged git changes for critical issues.
 
 ```sh
 npx gennady review
@@ -91,7 +91,7 @@ npx gennady review --branch=develop
 ```
 
 #### What Happens?
-- Gennady analyzes your staged changes using an AI code review bot.
+- Gennady analyzes your staged changes.
 - It checks only the lines added or modified in your diff for critical issues (logic, runtime, and security errors).
 - If no critical issues are found, it outputs `GOOD`.
 - If issues are found, they are listed in a clear, structured format.
