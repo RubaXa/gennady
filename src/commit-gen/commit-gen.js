@@ -61,16 +61,19 @@ export class CommitGen {
 
 	async generate() {
 		const {maxInputTokens} = this.init
-		const {commitCount, parsedCodeDiff} = getGitDiffInfo(this.init.targetBranch);
+		const {
+			commitCount,
+			parsedCodeDiff,
+			parsedCodeTokens,
+			parsedCodeMaxTokens,
+			programmingLanguages,
+		} = getGitDiffInfo(this.init.targetBranch);
 		
 		if (parsedCodeDiff.length === 0) {
 			this.logger.warn(`No changes detected, skipping commit message generation.`);
 			return;
 		}
 
-		const tokens = parsedCodeDiff.reduce((sum, file) => sum + file.tokens, 0);
-		const maxTokens = parsedCodeDiff[parsedCodeDiff.length - 1].tokens;
-		const languages = [...new Set(parsedCodeDiff.map(f => f.programmingLanguage).filter(Boolean))].join(', ');
 		const mode =
 			this.init.oneline
 			? 'oneline'
@@ -83,10 +86,10 @@ export class CommitGen {
 			: this.init.mode;
 
 		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
-		this.logger.info(`- Languages: ${style.yellow(languages)}`);
-		this.logger.info(`- Tokens: ${style.bold.cyanBright(tokens)} ${style.gray(`(max per file: ${maxTokens})`)}`);
+		this.logger.info(`- Languages: ${style.yellow(programmingLanguages)}`);
+		this.logger.info(`- Tokens: ${style.bold.cyanBright(parsedCodeTokens)} ${style.gray(`(max per file: ${parsedCodeMaxTokens})`)}`);
 
-		if (maxTokens > maxInputTokens) {
+		if (parsedCodeMaxTokens > maxInputTokens) {
 			this.logger.error(`TODO: Diff is too large, skipping commit message generation.`);
 			process.exit(1);
 		}
