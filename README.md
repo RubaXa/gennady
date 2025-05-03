@@ -18,8 +18,8 @@ npx gennady review
 ### ✨ Features
 
 - 🤖 [**Commit Message**](#-commit-messages): Automatically generate clear, descriptive git commit messages from your staged changes.
-- 🐱 [**cat**](#-cat): Quickly display the contents of files or directories, filtered by allowed extensions.
 - 📝 [**review**](#-review): Instantly review your staged git changes for critical issues (logic, runtime, security).
+- 🐱 [**cat**](#-cat): Quickly display the contents of files or directories, filtered by allowed extensions.
 
 ---
 
@@ -61,21 +61,6 @@ npx gennady --branch=develop
 - It generates a commit message.
 - If your system language isn't English, it translates the message for you.
 
-
----
-
-## 🐱 cat
-
-Display the contents of files or directories (with filtering for allowed extensions).
-
-```sh
-npx gennady cat ./src/
-```
-
-#### Output
-- Shows file contents with headers per file.
-- Hints for copying output without color codes.
-
 ---
 
 
@@ -95,6 +80,20 @@ npx gennady review --branch=develop
 - It checks only the lines added or modified in your diff for critical issues (logic, runtime, and security errors).
 - If no critical issues are found, it outputs `GOOD`.
 - If issues are found, they are listed in a clear, structured format.
+
+---
+
+## 🐱 cat
+
+Display the contents of files or directories (with filtering for allowed extensions).
+
+```sh
+npx gennady cat ./src/
+```
+
+#### Output
+- Shows file contents with headers per file.
+- Hints for copying output without color codes.
 
 ---
 
