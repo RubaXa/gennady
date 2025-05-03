@@ -6,11 +6,11 @@
 # Commit message
 npx gennady
 
-# Quickly display the contents
-npx gennady cat <path>
-
 # Code review for critical issues
 npx gennady review
+
+# Quickly display the contents
+npx gennady cat <path>
 ```
 
 ---
