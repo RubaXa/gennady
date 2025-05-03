@@ -63,7 +63,7 @@ npx gennady --branch=develop
 Display the contents of files or directories (with filtering for allowed extensions).
 
 ```sh
-npx gennady cat src/
+npx gennady cat ./src/
 ```
 
 #### Output

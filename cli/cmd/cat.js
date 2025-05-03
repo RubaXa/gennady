@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'path';
-import { catGen } from '../src/cat-gen/cat-gen.js';
-import { style } from '../src/utils/style.js';
+import { catGen } from '../../src/cat-gen/cat-gen.js';
+import { style } from '../../src/utils/style.js';
 
 //
 // MAIN

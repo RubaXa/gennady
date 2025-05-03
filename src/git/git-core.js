@@ -39,7 +39,7 @@ export const getGitDiffInfo = (branch = undefined) => {
 	const commitCount = getGitCommitCount();
 
 	const parsedCodeTokens = parsedCodeDiff.reduce((sum, file) => sum + file.tokens, 0);
-	const parsedCodeMaxTokens = parsedCodeDiff[parsedCodeDiff.length - 1].tokens;
+	const parsedCodeMaxTokens = parsedCodeDiff[parsedCodeDiff.length - 1]?.tokens || 0;
 	const programmingLanguages = [...new Set(parsedCodeDiff.map(f => f.programmingLanguage).filter(Boolean))];
 
 	return {
