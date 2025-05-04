@@ -10,7 +10,7 @@ npx gennady
 npx gennady review
 
 # Quickly display the contents
-npx gennady cat <path>
+npx gennady cat <path1> <path2> ...
 ```
 
 ---
@@ -19,7 +19,7 @@ npx gennady cat <path>
 
 - 🤖 [**Commit Message**](#-commit-messages): Automatically generate clear, descriptive git commit messages from your staged changes.
 - 📝 [**review**](#-review): Instantly review your staged git changes for critical issues (logic, runtime, security).
-- 🐱 [**cat**](#-cat): Quickly display the contents of files or directories, filtered by allowed extensions.
+- 🐱 [**cat**](#-cat): Quickly display the contents of multiple files or directories at once, filtered by allowed extensions (default: .js, .ts, .tsx).
 
 ---
 
@@ -27,7 +27,7 @@ npx gennady cat <path>
 
 Gennady provides several main CLI commands:
 - `npx gennady` — Generate commit messages from your staged git changes.
-- `npx gennady cat <path>` — Display the contents of files or directories, filtered by allowed extensions.
+- `npx gennady cat <path1> <path2> ...` — Display the contents of one or more files or directories, filtered by allowed extensions.
 - `npx gennady review` — Review your staged git changes for critical issues.
 
 ---

@@ -7,17 +7,14 @@ import { style } from '../../src/utils/style.js';
 //
 // 🐱 CAT-GEN
 //
-const INPUT_PATH = process.argv[3] || process.argv[2];
+const INPUT_PATHS = process.argv.slice(2);
 
-if (!INPUT_PATH) {
-	console.error(style.yellow(`Usage: npx gennady cat <path/to/directory_or_file>`));
+if (INPUT_PATHS.length === 0) {
+	console.error(style.yellow('Usage: npx gennady cat <path1> <path2> ...'));
 	process.exit(1);
 }
 
-console.log(style.green(`--- ${style.bold(INPUT_PATH)} ---`));
-console.log('');
-
-catGen(INPUT_PATH).forEach(({ relativePath, content }) => {
+catGen(INPUT_PATHS).forEach(({ relativePath, content }) => {
 	console.log(`#### ${relativePath}`);
 	console.log(content);
 	console.log('');
