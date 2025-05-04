@@ -1,3 +1,8 @@
+const NO_COLOR = (
+	process.argv.includes('--plain') ||
+	process.argv.includes('--no-color')
+);
+
 const ansiCodes = {
 	// Modifiers
 	reset: '\x1b[0m',
@@ -51,11 +56,13 @@ function createStyler(appliedStyles = []) {
 	return new Proxy(() => {}, {
 		get(_target, prop) {
 			if (prop === 'toString') {
-				return () => appliedStyles.join('') + '%s' + ansiCodes.reset;
+				return () => NO_COLOR
+					? '%s'
+					: appliedStyles.join('') + '%s' + ansiCodes.reset;
 			}
 
 			if (prop in ansiCodes) {
-				return createStyler([...appliedStyles, ansiCodes[prop]]);
+				return createStyler(NO_COLOR ? [] : [...appliedStyles, ansiCodes[prop]]);
 			}
 
 			return undefined;
@@ -63,7 +70,9 @@ function createStyler(appliedStyles = []) {
 
 		apply(_target, _thisArg, args) {
 			const text = args[0] || '';
-			return appliedStyles.join('') + text + ansiCodes.reset;
+			return NO_COLOR
+				? text
+				: appliedStyles.join('') + text + ansiCodes.reset;
 		}
 	});
 }
