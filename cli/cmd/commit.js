@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { CommitGen } from '../../src/commit-gen/commit-gen.js';
 import { parseArgs } from '../../src/utils/parse-args.js';
 import { style } from '../../src/utils/style.js';
@@ -9,36 +13,73 @@ import { getSysLang } from '../../src/utils/language.js';
 // 🤖 COMMIT-GEN 💬
 //
 
+const CACHE_PATH = path.join(os.homedir(), '.gennady_commit_cache.json');
+const PROJECT_KEY = process.cwd();
+const COMMIT_CACHE = readCache();
+
 const params = parseArgs(process.argv, {
+	apply: ['apply'],
 	mode: ['mode', 'm'],
 	oneline: ['short', 'one', 'o'],
 	model: ['model'],
 	targetBranch: ['branch', 'b'],
 	apiUrl: ['api', 'apiUrl'],
 });
+let commitMessage = COMMIT_CACHE[PROJECT_KEY];
 
-const commit = new CommitGen(params);
+const commitGen = new CommitGen(params);
 
 console.info(
-	`🤖`,
-	style.whiteBright.bold(`GENNADY`),
-	`(${style.cyan(commit.model)} → ${style.yellow(commit.mode)})`,
-	`🗯️`,
+	'🤖',
+	style.whiteBright.bold('GENNADY'),
+	`(${style.cyan(commitGen.model)} → ${style.yellow(commitGen.mode)})`,
+	'🗯️',
 );
 
-console.info(style.gray(`-`.repeat(30)));
-console.info(`- url: ${style.blue(commit.apiUrl)}`);
-console.info(style.gray(`-`.repeat(30)));
+console.info(style.gray('-'.repeat(40)));
+console.info(`- url: ${style.blue(commitGen.apiUrl)}`);
+console.info(style.gray('-'.repeat(40)));
 
-const msg = await commit.generate();
-if (msg) {
-	console.info(`-`.repeat(40), '\n');
-	console.info(style.whiteBright(msg), '\n');
-	console.info(`^`.repeat(40), '\n');
+if (params.apply) {
+	// APPLY COMMIT
+	commitMessage ||= await commitGen.generate();
+	execSync(
+		`git commit -am "${commitMessage.replace(/"/g, '\"')}"`,
+		{stdio: 'inherit'},
+	);
+	saveCache({ [PROJECT_KEY]: undefined });
+} else {
+	// GENERATE COMMIT
+	commitMessage = await commitGen.generate();
+	if (!commitMessage) {
+		process.exit(0)
+	}
+
+	console.info('-'.repeat(40), '\n');
+	console.info(style.whiteBright(commitMessage), '\n');
+	console.info('^'.repeat(40), '\n');
 
 	const lang = getSysLang();
 	if (lang !== 'en') {
-		console.info(await commit.translate(msg, lang), '\n');
-		console.info(`^`.repeat(40), '\n');
+		console.info(await commitGen.translate(commitMessage, lang), '\n');
+		console.info('^'.repeat(40), '\n');
 	}
+
+	console.log(style.italic.gray(`Hint: npx gennady ${process.argv.slice(3).join(' ')} --apply`));
+	console.log('');
+
+	saveCache({ [PROJECT_KEY]: commitMessage });
+}
+
+function readCache() {
+	try {
+		return JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+	} catch {
+		return {};
+	}
+}
+
+function saveCache(patch) {
+	const next = { ...COMMIT_CACHE, ...patch };
+	fs.writeFileSync(CACHE_PATH, JSON.stringify(next, null, 2));
 }
