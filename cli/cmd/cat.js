@@ -1,16 +1,16 @@
 #!/usr/bin/env node
+
 import path from 'path';
 import { catGen } from '../../src/cat-gen/cat-gen.js';
 import { style } from '../../src/utils/style.js';
 
 //
-// MAIN
+// 🐱 CAT-GEN
 //
 const INPUT_PATH = process.argv[3] || process.argv[2];
-const SCRIPT_NAME = path.basename(process.argv[1] || 'script.mjs');
 
 if (!INPUT_PATH) {
-	console.error(style.yellow(`Usage: node ${SCRIPT_NAME} <path/to/directory_or_file>`));
+	console.error(style.yellow(`Usage: npx gennady cat <path/to/directory_or_file>`));
 	process.exit(1);
 }
 

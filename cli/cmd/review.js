@@ -5,6 +5,10 @@ import { ReviewGen } from '../../src/review-gen/review-gen.js';
 import { parseArgs } from '../../src/utils/parse-args.js';
 import { style } from '../../src/utils/style.js';
 
+//
+// 📝 REVIEW-GEN
+//
+
 const params = parseArgs(process.argv, {
 	branch: ['branch', 'b'],
 });

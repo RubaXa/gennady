@@ -5,6 +5,10 @@ import { parseArgs } from '../../src/utils/parse-args.js';
 import { style } from '../../src/utils/style.js';
 import { getSysLang } from '../../src/utils/language.js';
 
+//
+// 🤖 COMMIT-GEN 💬
+//
+
 const params = parseArgs(process.argv, {
 	mode: ['mode', 'm'],
 	oneline: ['short', 'one', 'o'],
