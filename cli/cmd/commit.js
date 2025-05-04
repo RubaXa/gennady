@@ -25,7 +25,6 @@ const params = parseArgs(process.argv, {
 	targetBranch: ['branch', 'b'],
 	apiUrl: ['api', 'apiUrl'],
 });
-let commitMessage = COMMIT_CACHE[PROJECT_KEY];
 
 const commitGen = new CommitGen(params);
 
@@ -40,9 +39,13 @@ console.info(style.gray('-'.repeat(40)));
 console.info(`- url: ${style.blue(commitGen.apiUrl)}`);
 console.info(style.gray('-'.repeat(40)));
 
+const commitMessage = params.apply && COMMIT_CACHE[PROJECT_KEY] || await commitGen.generate();
+if (!commitMessage) {
+	process.exit(0);
+}
+
 if (params.apply) {
 	// APPLY COMMIT
-	commitMessage ||= await commitGen.generate();
 	execSync(
 		`git commit -am "${commitMessage.replace(/"/g, '\"')}"`,
 		{stdio: 'inherit'},
@@ -50,11 +53,6 @@ if (params.apply) {
 	saveCache({ [PROJECT_KEY]: undefined });
 } else {
 	// GENERATE COMMIT
-	commitMessage = await commitGen.generate();
-	if (!commitMessage) {
-		process.exit(0)
-	}
-
 	console.info('-'.repeat(40), '\n');
 	console.info(style.whiteBright(commitMessage), '\n');
 	console.info('^'.repeat(40), '\n');

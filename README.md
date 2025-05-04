@@ -55,6 +55,8 @@ npx gennady --branch=develop
 | `--oneline`       | `--short`, `-o`  | Generate a one-line commit message           |
 | `--model`         |                  | Specify the AI model                         |
 | `--branch`        | `-b`             | Target branch for diff                       |
+| `--apply`         |                  | Immediately apply the generated commit message to git |
+
 
 #### What Happens?
 - Gennady analyzes your staged changes.
