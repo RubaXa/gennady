@@ -1,5 +1,5 @@
-export const parseArgs = (argv, schema) => {
-    const params = {};
+export const parseArgs = (argv, schema = {}) => {
+    const params = { _: [] };
     const argsList = argv.slice(2);
     
     argsList.forEach(arg => {
@@ -15,6 +15,8 @@ export const parseArgs = (argv, schema) => {
                     break;
                 }
             }
+        } else {
+            params._.push(arg);
         }
     });
     

@@ -9,7 +9,10 @@ export const catGen = (paths, extensions = DEFAULT_EXTENSIONS) => {
 
 	const process = (inputPath) => {
 		const absoluteInputPath = path.resolve(inputPath);
-		if (!fs.existsSync(absoluteInputPath)) return;
+		if (!fs.existsSync(absoluteInputPath)) {
+			return;
+		}
+		
 		const initialStats = fs.statSync(absoluteInputPath);
 		const basePath = initialStats.isDirectory()
 			? absoluteInputPath
@@ -17,10 +20,12 @@ export const catGen = (paths, extensions = DEFAULT_EXTENSIONS) => {
 
 		const walk = (currentPath) => {
 			const stats = fs.statSync(currentPath);
+			
 			if (stats.isFile()) {
 				const ext = path.extname(currentPath).toLowerCase();
 				if (extSet.has(ext)) {
 					const relativePath = path.relative(basePath, currentPath);
+					
 					const content = fs.readFileSync(currentPath, 'utf8');
 					results.push({
 						basePath,
