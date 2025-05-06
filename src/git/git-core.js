@@ -43,7 +43,7 @@ export const getGitDiffInfo = (branch = undefined) => {
 	// Если ничего нет, то подмешиваем документацию
 	if (!parsedCodeDiff.length) {
 		parsedCodeDiff.push(
-			...parsedCodeDiff.filter(f => !f.isDeleted && !f.isRenamed && f.category === 'doc')
+			...parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && f.category === 'doc')
 		);
 	}
 
