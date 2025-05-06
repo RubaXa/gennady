@@ -35,11 +35,21 @@ export const getGitDiff = (targetBranch = undefined) => {
 export const getGitDiffInfo = (branch = undefined) => {
 	const diff = getGitDiff(branch);
 	const parsedDiff = parseGitDiff(diff).sort((a, b) => a.tokens - b.tokens);
-	const parsedCodeDiff = parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && f.programmingLanguage);
-	const commitCount = getGitCommitCount();
+	const parsedCodeDiff = parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && (
+		f.category === 'config' ||
+		f.programmingLanguage
+	));
+	
+	// Если ничего нет, то подмешиваем документацию
+	if (!parsedDiff.length) {
+		parsedDiff.push(
+			...parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && f.category === 'doc')
+		);
+	}
 
 	const parsedCodeTokens = parsedCodeDiff.reduce((sum, file) => sum + file.tokens, 0);
 	const parsedCodeChunkMaxTokens = parsedCodeDiff.at(-1)?.tokens || 0;
+
 	const programmingLanguages = [...new Set(parsedCodeDiff.map(f => f.programmingLanguage).filter(Boolean))];
 
 	return {
@@ -49,6 +59,6 @@ export const getGitDiffInfo = (branch = undefined) => {
 		parsedCodeTokens,
 		parsedCodeChunkMaxTokens,
 		programmingLanguages,
-		commitCount,
+		commitCount: getGitCommitCount(),
 	};
 }

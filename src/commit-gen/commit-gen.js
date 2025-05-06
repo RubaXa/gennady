@@ -64,7 +64,7 @@ export class CommitGen {
 		
 		if (parsedCodeDiff.length === 0) {
 			this.logger.warn(`No changes detected, skipping commit message generation.`);
-			this.logger.info(style.italic.gray(`Hint: git add`));
+			this.logger.info(style.italic.gray(`Hint: git add .`));
 			return;
 		}
 

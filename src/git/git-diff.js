@@ -1,6 +1,41 @@
 import { getProgrammingLanguage } from "../utils/language.js";
 import { countTokens } from "../utils/tokens.js";
 
+const CONFIG_FILE_PATTERNS = [
+	'^package\\.json',
+	'^tsconfig\\.json',
+	'^babel\\.config\\.json',
+	'^\\.pnpmfile\\.cjs',
+	'^\\.yarnrc(?:\\.(?:yml|yaml))?',
+	'^go\\.(?:mod|sum)',
+	'^\\.env(?:\\.[\\w]+)?',
+	'^\\..+',
+	'.*\\.(?:yml|yaml|rc|ini|conf)'
+];
+
+const LOCKFILE_PATTERNS = [
+	'^package-lock\\.json',
+	'^npm-shrinkwrap\\.json',
+	'^yarn(?:-lock)?\\.(?:yaml|yml|toml)',
+	'^pnpm-lock\\.yaml',
+	'^composer\\.lock',
+	'^podfile\\.lock',
+	'^go\\.sum',
+	'^gemfile\\.lock'
+];
+
+const FILE_CATEGORY_REGEX = {
+	doc: /\.(md|markdown|txt|rst)$/i,
+	cfg: new RegExp(CONFIG_FILE_PATTERNS.join('|'), 'i'),
+	img: /\.(png|jpe?g|gif|svg|bmp|tiff|ico)$/i,
+	css: /\.(css|less|scss|sass|styl)$/i,
+	html: /\.(html?)$/i,
+	code: /\.(js|jsx|ts|tsx|java|py|c|cpp|cs|rb|php|go|swift|m|mm|kt)$/i,
+	bin: /^(exe|dll|so|bin)\b/i,
+	lock: new RegExp(LOCKFILE_PATTERNS.join('|'), 'i'),
+	json: /\.json$/i
+};
+
 const getCategory = (filename, metadata) => {
 	if (metadata && metadata.extra && Array.isArray(metadata.extra)) {
 		for (let line of metadata.extra) {
@@ -10,19 +45,7 @@ const getCategory = (filename, metadata) => {
 		}
 	}
 
-	const categories = {
-		bin: /^(exe|dll|so|bin)\b$/i,
-		lock: /^(package-lock\.json|yarn\.lock|npm-shrinkwrap\.json|composer\.lock|podfile\.lock|go\.sum|gemfile\.lock)$/i,
-		json: /\.json$/i,
-		doc: /\.(md|markdown|txt|rst)$/i,
-		cfg: /^(\..+|.*\.(yml|yaml|rc|ini|conf))$/i,
-		img: /\.(png|jpe?g|gif|svg|bmp|tiff|ico)$/i,
-		css: /\.(css|less|scss|sass|styl)$/i,
-		html: /\.(html?)$/i,
-		code: /\.(js|jsx|ts|tsx|java|py|c|cpp|cs|rb|php|go|swift|m|mm|kt)$/i,
-	};
-
-	const category = Object.entries(categories).find(
+	const category = Object.entries(FILE_CATEGORY_REGEX).find(
 		([, regexp]) => regexp.test(filename)
 	)?.[0] || 'other';
 
