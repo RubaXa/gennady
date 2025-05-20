@@ -29,15 +29,20 @@ export const getGitDiff = (targetBranch = undefined) => {
 		return execSync(`git diff ${targetBranch}`);
 	}
 
-	return execSync('git diff --cached');
+	return execSync('git diff HEAD');
 }
 
 export const getGitDiffInfo = (branch = undefined) => {
 	const diff = getGitDiff(branch);
 	const parsedDiff = parseGitDiff(diff).sort((a, b) => a.tokens - b.tokens);
-	const parsedCodeDiff = parsedDiff.filter(f => !f.isDeleted && !f.isRenamed && (
-		f.category === 'config' ||
-		f.programmingLanguage
+	const parsedCodeDiff = parsedDiff.filter(f => (
+		!f.isDeleted &&
+		!f.isRenamed &&
+		!/\.(test|spec)s?\./.test(f.filename) &&
+		(
+			f.category === 'config' ||
+			f.programmingLanguage
+		)
 	));
 	
 	// Если ничего нет, то подмешиваем документацию

@@ -35,9 +35,10 @@ export class ReviewGen {
 			.replaceAll('\n{EXTRA_RULES}\n', this._getExtraRulesPrompt(langs, code))
 			.replaceAll('{INPUT}', code);
 
+		// console.debug(`<input>${input}</input>`);
+
 		const output = await this.ai.generate(input);
 		
-		// console.debug(`<input>${input}</input>`);
 		// console.info(`<output>${output}</output>`);
 
 		return output;

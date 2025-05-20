@@ -47,6 +47,7 @@ export const catGen = (paths, extensions = DEFAULT_EXTENSIONS) => {
 	};
 
 	(paths || []).forEach(process);
+	
 	return results;
 };
 	

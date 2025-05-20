@@ -57,6 +57,10 @@ export class AiCore {
 		return this.init.maxInputTokens;
 	}
 
+	get logger() {
+		return this.init.logger;
+	}
+
 	createPromptsBatchesByDiff(parseDiff) {
 		const maxChunkTokens = parseDiff.at(-1)?.tokens || 0
 
@@ -107,7 +111,11 @@ export class AiCore {
 
 			for (const api of this.apiList) {
 				try {
-					const resp = await fetch(api.url, {method: 'HEAD', timeout: 1000});
+					const ctrl = new AbortController();
+
+					setTimeout(() => ctrl.abort(new Error('Module timeout')), 500);
+
+					const resp = await fetch(api.url, {method: 'HEAD', signal: ctrl.signal});
 					if (resp.status >= 200 && resp.status < 500) {
 						this.api = api;
 						return api;
