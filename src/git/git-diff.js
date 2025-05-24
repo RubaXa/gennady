@@ -52,6 +52,12 @@ const getCategory = (filename, metadata) => {
 	return category;
 };
 
+/**
+ * Parse git diff
+ * @anchor GIT_DIFF_PARSE
+ * @param {string} diffText - Git diff text
+ * @returns {Object[]} Parsed git diff
+ */
 export const parseGitDiff = (diffText) => {
 	const lines = diffText.split('\n');
 	const result = [];

@@ -1,14 +1,20 @@
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { AiModel } from './ai-model.js';
+import { GennadyRc } from '../rc/rc-config.js';
+import { unguardOrThrow } from '../utils/unguard.js';
 
-const DEFAULT_MODEL = 'llama3:8b';
-const DEFAULT_API_URL = 'http://127.0.0.1:11434/api/generate';
-
-const GENNADY_RC_FILENAME = '.gennadyrc';
-
+/** @deprecated */
 export class AiCore {
-	api = undefined;
-	apiList = [];
+	/**
+	 * List of AI Models
+	 * @type {AiModel[]} array of #AI_MODEL_CLASS
+	 */
+	#models = [];
+
+	/**
+	 * Active AI Model
+	 * @type {AiModel|null}
+	 */
+	#activeModel = null;
 
 	constructor(init) {
 		this.init = {
@@ -18,39 +24,23 @@ export class AiCore {
 			...init,
 		};
 
-		// Try parse rc files
-		[
-			join(process.cwd(), GENNADY_RC_FILENAME),
-			join(process.env.HOME, GENNADY_RC_FILENAME),
-		].find((file) => {
-			try {
-				if (existsSync(file)) {
-					const items = JSON.parse(readFileSync(file).toString());
-					if (Array.isArray(items)) {
-						this.apiList.push(...items);
-					} else {
-						this.logger.warn(`Invalid "${file}" config:`, items);
-					}
-				}
-			} catch (err) {
-				this.logger.error(`Parse "${file}" error:`, err);
+		GennadyRc.getDefaults().forEach((rc) => {
+			if (rc.isValid()) {
+				this.#models.push(...rc.getModels().map(model => new AiModel(model)));
 			}
 		});
-		
-		// Default API
-		this.apiList[this.init.apiUrl ? 'unshift' : 'push']({
-			url: this.init.url || DEFAULT_API_URL,
-			key: this.init.key,
-			model: this.init.model || DEFAULT_MODEL,
-		});
+
+		if (!this.#models.length) {
+			this.#models.push(AiModel.getDefault());
+		}
 	}
 
 	get model() {
-		return this.api?.model || this.apiList[0].model;
+		return this.#models[0]?.name;
 	}
 
 	get apiUrl() {
-		return this.api?.url || this.apiList[0].url;
+		return this.#models[0]?.url
 	}
 
 	get maxInputTokens() {
@@ -92,96 +82,35 @@ export class AiCore {
 
 	async generate(prompt, context) {
 		try {
-			const api = await this._getApi();
-			if (api.url.includes('completions')) {
-				return await this._callCompletionsApi(api, prompt, context);
-			}
-
-			return await this._callGenerateApi(api, prompt, context);
-		} catch (e) {
-			this.logger.error(`Failed to generate LLM response:`, e);
+			const model = await unguardOrThrow(this.#choiceModel());
+			const result = await unguardOrThrow(model.generate(prompt, context));
+			return result;
+		} catch (error) {
+			this.logger.error(`[AI_CORE_ERROR_GENERATE] Failed to generate LLM response:`, error);
 			return '';
 		}
 	}
 
-	async _getApi() {
-		if (!this.api) {
-			// By default
-			this.api = {url: DEFAULT_API_URL, model: DEFAULT_MODEL};
+	/**
+	 * Choose active model
+	 * @anchor AI_CORE_CHOICE_MODEL
+	 * @returns {Promise<[AiModel, null] | [null, Error]>}
+	 */
+	async #choiceModel() {
+		if (this.#activeModel) {
+			return [this.#activeModel, null];
+		}
 
-			for (const api of this.apiList) {
-				try {
-					const ctrl = new AbortController();
-
-					setTimeout(() => ctrl.abort(new Error('Module timeout')), 500);
-
-					const resp = await fetch(api.url, {method: 'HEAD', signal: ctrl.signal});
-					if (resp.status >= 200 && resp.status < 500) {
-						this.api = api;
-						return api;
-					}
-				} catch {}
+		for (const model of this.#models) {
+			const [ok, error] = await model.ping();
+			if (ok) {
+				this.#activeModel = model;
+				return [model, null];
+			} else {
+				this.logger.warn(`[AI_CORE_ERROR_PING_MODEL_FAIL] [${model.name}] Ping failed:`, error);
 			}
 		}
 
-		return this.api;
-	}
-	
-	async _callGenerateApi(api, prompt, context) {
-		const req = await fetch(api.url, {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify({
-				model: api.model,
-				stream: false,
-				prompt,
-				context,
-			}),
-		});
-		const data = await req.json();
-		return data.response || '';
-	}
-
-	async _callCompletionsApi(api, prompt, context) {
-		const messages = [];
-		
-		if (context) {
-			messages.push({ role: 'system', content: context });
-		}
-
-		messages.push({ role: 'user', content: prompt });
-
-		const req = await fetch(api.url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${api.key}`,
-			},
-			body: JSON.stringify({
-				model: api.model,
-				messages: messages,
-				temperature: 0.1,
-				stream: false,
-				timeout: this.init.timeout,
-			}),
-		});
-
-		if (!req.ok) {
-			let errorBody = '';
-			try {
-				errorBody = await req.text();
-			} catch (e) { /* ignore */ }
-
-			throw new Error(`LLM completions request failed with status ${req.status}: ${errorBody}`);
-		}
-
-		const data = await req.json();
-		
-		if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-			return data.choices[0].message.content || '';
-		} else {
-			this.logger.warn(style.yellow('LLM completions response structure unexpected:'), data);
-			return '';
-		}
+		return [null, new Error(`[AI_CORE_ERROR_PING_FAIL] No available models`)];
 	}
 }
