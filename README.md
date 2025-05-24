@@ -20,6 +20,7 @@ npx gennady cat <path1> <path2> ...
 - 🤖 [**Commit Message**](#-commit-messages): Automatically generate clear, descriptive git commit messages from your staged changes.
 - 📝 [**review**](#-review): Instantly review your staged git changes for critical issues (logic, runtime, security).
 - 🐱 [**cat**](#-cat): Quickly display the contents of multiple files or directories at once, filtered by allowed extensions (default: .js, .ts, .tsx).
+- 🛠️ **TypeScript Support**: Full TypeScript type definitions for seamless integration into TypeScript projects.
 
 ---
 
@@ -116,16 +117,68 @@ ollama serve
 Create `~/.gennadyrc` configuration file:
 
 ```json
-[
-    {
-        "url": "https://api.openai.com/v1/chat/completions",
-        "key": "...",
-        "model": "gpt-3.5-turbo-0125"
-    }
-]
+{
+    "models": [
+        {
+            "model": "gpt-3.5-turbo-0125",
+            "url": "https://api.openai.com/v1/chat/completions",
+            "key": "...",
+        },
+        {
+            "model": "llama3:8b",
+            "url": "http://127.0.0.1:11434/api/generate",
+        }
+    ]
+}
 ```
 
 ---
+
+## 🔌 API
+
+Gennady provides a powerful JavaScript/TypeScript API for programmatic usage in your projects.
+
+### Installation
+
+```bash
+npm install gennady
+```
+
+### Basic Usage
+
+```typescript
+import { GennadyRc } from 'gennady/src/rc/rc-config';
+import { AiModel } from 'gennady/src/ai/ai-model';
+
+// Load configuration
+const rc = new GennadyRc();
+
+// Get available AI models
+const models = rc.getModels();
+
+// Create AI model instance
+const aiModel = new AiModel(models[0]);
+
+// Generate text
+const [response, error] = await aiModel.generate('Hello, world!', {
+    temperature: 0.7,
+    timeout: 10000
+});
+
+if (error) {
+    console.error('Error:', error);
+} else {
+    console.log('Response:', response);
+}
+```
+
+### Available Modules
+
+- `AiModel`: Core AI model interaction
+- `GennadyRc`: Configuration management
+- `unguard`: Utility functions for error handling
+
+For complete API documentation, check the source code with detailed JSDoc comments.
 
 ## 🎉 Happy Coding with Gennady!
 

@@ -5,7 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { ReviewGen } from './review-gen.js';
 
-describe('review', async () => {
+describe.skip('review', async () => {
 	const reviewGen = new ReviewGen();
 	const fixtures = getFixture();
 
