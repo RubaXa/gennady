@@ -62,8 +62,6 @@
 
 ---
 
----
-
 <Module_ID id="MOD_01_LEXICAL_PRIMING_2026" />
 
 ## Модуль 1. Семантическая активация (Lexical Priming)
@@ -138,19 +136,6 @@
 #### Опасности (Что может пойти не так):
 *   **Semantic Overload (Семантический перегруз):** Слишком много «тяжелых» терминов могут запутать модель, создав противоречивые векторы.
 *   **Hallucination Tunneling:** Модель может начать выдумывать термины, чтобы соответствовать заданному «высокому» стилю, если она не знает ответа.
-
----
-
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Semantic_Priming_Library>`**:
-
-```xml
-<Semantic_Priming_Library id="PRIME_LEGAL_EXPERT">
-  <Anchor_Tokens>диспозитивность, каузальность, прецедент, деликт</Anchor_Tokens>
-  <Constraint>Использовать терминологию из словаря Black's Law Dictionary.</Constraint>
-</Semantic_Priming_Library>
-```
 
 ---
 
@@ -232,25 +217,6 @@
 
 ---
 
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Structural_Resonance_Template>`**:
-
-```xml
-<Structural_Resonance_Template id="TEMPLATE_LOGIC_STEPPER">
-  <Format_Mode>Pseudocode_Functional</Format_Mode>
-  <Structure>
-    INPUT: {{data}}
-    PROCESS:
-      - Step_1: Validate
-      - Step_2: Transform
-    OUTPUT: Result_Object
-  </Structure>
-</Structural_Resonance_Template>
-```
-
----
-
 <Module_ID id="MOD_03_COGNITIVE_ALIGNMENT_2026" />
 
 ## Модуль 3. Когнитивный прайминг (Belief & Persona Alignment)
@@ -329,20 +295,6 @@
 
 ---
 
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Belief_State>`**:
-
-```xml
-<Belief_State id="CORE_SOCRATIC_TUTOR">
-  <Axiom id="B1">Direct answers are strictly forbidden.</Axiom>
-  <Axiom id="B2">Success = Student's "Aha!" moment via questioning.</Axiom>
-  <Axiom id="B3">Complexity must scale with student's demonstrated logic.</Axiom>
-</Belief_State>
-```
-
----
-
 <Module_ID id="MOD_03_COGNITIVE_ALIGNMENT_2026" />
 
 ## Модуль 3. Когнитивный прайминг (Belief & Persona Alignment)
@@ -418,20 +370,6 @@
 #### Опасности (Что может пойти не так):
 *   **Moralizing Hallucinations:** Модель может начать «читать нотации» пользователю, если прайминг этики слишком агрессивен.
 *   **Axiom Collision:** Если две аксиомы противоречат друг другу, модель может начать генерировать бессвязный текст или бесконечно рассуждать в блоке `<thought>`.
-
----
-
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Belief_State>`**:
-
-```xml
-<Belief_State id="CORE_SOCRATIC_TUTOR">
-  <Axiom id="B1">Direct answers are strictly forbidden.</Axiom>
-  <Axiom id="B2">Success = Student's "Aha!" moment via questioning.</Axiom>
-  <Axiom id="B3">Complexity must scale with student's demonstrated logic.</Axiom>
-</Belief_State>
-```
 
 ---
 
@@ -516,22 +454,6 @@
 
 ---
 
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Recursive_Execution_Graph>`**:
-
-```xml
-<Recursive_Execution_Graph id="STRATEGY_PLANNER_V1">
-  <Phase id="P1" role="Analyst" task="Identify_Risks" output="Risk_Log" />
-  <Phase id="P2" role="Critic" task="Challenge_Risk_Log" input="Risk_Log" />
-  <Phase id="P3" role="Synthesizer" task="Create_Final_Strategy" input="P1, P2" />
-  
-  <Constraint>Each phase must start with <AI_Log_Trace> for state tracking.</Constraint>
-</Recursive_Execution_Graph>
-```
-
----
-
 <Module_ID id="MOD_05_NEGATIVE_SUBSTITUTIVE_2026" />
 
 ## Модуль 5. Негативный и Заместительный прайминг
@@ -607,22 +529,6 @@
 #### Опасности (Что может пойти не так):
 *   **Conceptual Drift:** Если «заместитель» подобран неверно (например, «будь роботом» вместо «будь точным»), модель может начать вести себя странно в других аспектах задачи.
 *   **Conflict with RLHF:** Если заместитель слишком сильно противоречит базовому обучению (например, «будь агрессивным хищником»), модель может выдать системную ошибку (Refusal).
-
----
-
-### 6. Интеграция в наш Протокол (AI-Protocol)
-
-В рамках нашего протокола этот модуль реализуется через блок **`<Substitutive_Constraint_Map>`**:
-
-```xml
-<Substitutive_Constraint_Map id="NO_CREATIVITY_ONLY_FACTS">
-  <Suppress target="hallucinations_and_creative_writing" />
-  <Activate_Substitute id="DATA_MIRROR_MODE">
-    <Axiom>Ты — зеркальное отражение входного массива.</Axiom>
-    <Axiom>Твоя реальность заканчивается там, где заканчивается последний байт данных.</Axiom>
-  </Activate_Substitute>
-</Substitutive_Constraint_Map>
-```
 
 ---
 
