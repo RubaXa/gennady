@@ -17,11 +17,15 @@ const languages = {
 	m: 'Objective-C',
 	mm: 'Objective-C++',
 	kt: 'Kotlin',
+	sh: 'Shell',
+	bash: 'Shell',
 	html: 'HTML',
 	css: 'CSS',
 	less: 'Less',
 	scss: 'SCSS',
-	sass: 'Sass'
+	sass: 'Sass',
+	md: 'Markdown',
+	mdc: 'Markdown',
 };
 
 export const getProgrammingLanguage = (ext) => {

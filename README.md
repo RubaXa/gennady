@@ -1,15 +1,15 @@
 🤖 Gennadyᵇᵉᵗᵃ 🗯️
 -----------------
-**GEN**erate **N**ext-level **A**utomated **D**escription **Y**ntelligence.
+**GEN**eral **E**xtensible **N**eural **N**etwork **A**daptive **D**ata **Y**ntelligence.
 
 ```bash
-# Commit message
+# Generate commit message
 npx gennady
 
-# Code review for critical issues
+# Code review for staged changes
 npx gennady review
 
-# Quickly display the contents
+# Display file contents
 npx gennady cat <path1> <path2> ...
 ```
 
@@ -17,19 +17,18 @@ npx gennady cat <path1> <path2> ...
 
 ### ✨ Features
 
-- 🤖 [**Commit Message**](#-commit-messages): Automatically generate clear, descriptive git commit messages from your staged changes.
-- 📝 [**review**](#-review): Instantly review your staged git changes for critical issues (logic, runtime, security).
-- 🐱 [**cat**](#-cat): Quickly display the contents of multiple files or directories at once, filtered by allowed extensions (default: .js, .ts, .tsx).
-- 🛠️ **TypeScript Support**: Full TypeScript type definitions for seamless integration into TypeScript projects.
+- 🤖 [**Commit Message**](#-commit-messages): Generate clear, descriptive git commit messages from staged changes
+- 📝 [**Code Review**](#-code-review): Review staged changes for critical issues (logic, runtime, security)
+- 🐱 [**cat**](#-cat): Display file contents with markdown/XML formatting
 
 ---
 
 ## 🔖 Usage Overview
 
-Gennady provides several main CLI commands:
-- `npx gennady` — Generate commit messages from your staged git changes.
-- `npx gennady cat <path1> <path2> ...` — Display the contents of one or more files or directories, filtered by allowed extensions.
-- `npx gennady review` — Review your staged git changes for critical issues.
+Gennady provides three main CLI commands:
+- `npx gennady` — Generate commit messages from staged git changes
+- `npx gennady review` — Review staged changes for critical issues
+- `npx gennady cat <path1> <path2> ...` — Display file contents
 
 ---
 
@@ -67,36 +66,53 @@ npx gennady --branch=develop
 ---
 
 
-## 📝 review
+## 📝 Code Review
 
-Review your staged git changes for critical issues.
+Review staged changes for critical issues.
 
 ```sh
 npx gennady review
 
-# Review changes relative to a specific branch
+# Review relative to a specific branch
 npx gennady review --branch=develop
 ```
 
+#### Options
+| Option     | Alias(es)  | Description              |
+|-----------|-----------|--------------------------|
+| `--branch` | `-b`      | Target branch for diff   |
+
 #### What Happens?
-- Gennady analyzes your staged changes.
-- It checks only the lines added or modified in your diff for critical issues (logic, runtime, and security errors).
-- If no critical issues are found, it outputs `GOOD`.
-- If issues are found, they are listed in a clear, structured format.
+- Analyzes staged changes
+- Checks for critical issues in added/modified lines (logic, runtime, security)
+- Outputs `GOOD` if no issues found, or structured issue list
 
 ---
 
 ## 🐱 cat
 
-Display the contents of files or directories (with filtering for allowed extensions).
+Display file contents with optional markdown or XML formatting.
 
 ```sh
 npx gennady cat ./src/
+
+# Output as markdown
+npx gennady cat ./src/ --output=md
+
+# Output as XML
+npx gennady cat ./src/ --output=xml
+
+# Copy without color codes
+npx gennady cat ./src/ --plain | pbcopy
 ```
 
-#### Output
-- Shows file contents with headers per file.
-- Hints for copying output without color codes.
+#### Options
+| Option        | Alias(es)     | Description              |
+|---------------|---------------|--------------------------|
+| `--output`    | `-o`          | Format: `md` or `xml`    |
+| `--plain`     |               | Output without colors    |
+| `--exclude`   | `-e`          | Patterns to exclude      |
+| `--ext`       |               | File extensions to include |
 
 ---
 
@@ -136,7 +152,7 @@ Create `~/.gennadyrc` configuration file:
 
 ## 🔌 API
 
-Gennady provides a powerful JavaScript/TypeScript API for programmatic usage in your projects.
+Gennady provides a JavaScript/TypeScript API for programmatic use.
 
 ### Installation
 
@@ -144,41 +160,13 @@ Gennady provides a powerful JavaScript/TypeScript API for programmatic usage in 
 npm install gennady
 ```
 
-### Basic Usage
+### Exports
 
-```typescript
-import { GennadyRc } from 'gennady/src/rc/rc-config';
-import { AiModel } from 'gennady/src/ai/ai-model';
-
-// Load configuration
-const rc = new GennadyRc();
-
-// Get available AI models
-const models = rc.getModels();
-
-// Create AI model instance
-const aiModel = new AiModel(models[0]);
-
-// Generate text
-const [response, error] = await aiModel.generate('Hello, world!', {
-    temperature: 0.7,
-    timeout: 10000
-});
-
-if (error) {
-    console.error('Error:', error);
-} else {
-    console.log('Response:', response);
-}
-```
-
-### Available Modules
-
-- `AiModel`: Core AI model interaction
+- `AiModel`: Core AI model interface
 - `GennadyRc`: Configuration management
-- `unguard`: Utility functions for error handling
+- `unguard`: Error handling utilities
 
-For complete API documentation, check the source code with detailed JSDoc comments.
+See source code for detailed JSDoc documentation.
 
 ## 🎉 Happy Coding with Gennady!
 

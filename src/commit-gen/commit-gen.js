@@ -2,6 +2,7 @@ import { AiCore } from '../ai/ai-core.js';
 import { getGitDiffInfo } from '../git/git-core.js';
 import { prompts } from '../prompts/index.js';
 import { style } from '../utils/style.js';
+import { xmlCommitMessageToJson } from '../utils/xml.js';
 
 export class CommitGen {
 	constructor(init) {
@@ -9,13 +10,12 @@ export class CommitGen {
 			mode: 'auto',
 			oneline: false,
 			targetBranch: undefined,
+			task: undefined,
 
 			logger: console,
 
-			basePromptTemplate: prompts.commit('base'),
-			formatOnelinePromptTemplate: prompts.commit('format-oneline'),
-			formatDetailedPromptTemplate: prompts.commit('format-detailed'),
-			translatePromptTemplate: prompts.commit('translate'),
+			promptCommitMessage: prompts.commit('message'),
+			promptCommitChangeset: prompts.commit('changeset'),
 
 			timeout: 120,
 
@@ -48,8 +48,12 @@ export class CommitGen {
 		return this.init.targetBranch;
 	}
 
+	get task() {
+		return this.init.task;
+	}
+
 	async fetchPrompt(input) {
-		const output = await this.ai.generate(input);
+		const output = await this.ai.generate(`/no_think ${input} /no_think`);
 		return output;
 	}
 
@@ -80,7 +84,7 @@ export class CommitGen {
 			: this.init.mode;
 
 		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
-		this.logger.info(`- Languages: ${style.yellow(programmingLanguages)}`);
+		this.logger.info(`- Languages: ${style.yellow(programmingLanguages.join(', '))}`);
 		this.logger.info(`- Tokens: ${style.bold.cyanBright(parsedCodeTokens)} ${style.gray(`(max per file: ${parsedCodeChunkMaxTokens})`)}`);
 
 		const batches = this.ai.createPromptsBatchesByDiff(parsedCodeDiff);
@@ -89,10 +93,10 @@ export class CommitGen {
 		this.logger.info(`-`.repeat(40));
 
 		const startGenTime = performance.now();
-		const results = await Promise.all(batches.map(async (batch) => {
+		const changesetList = await Promise.all(batches.map(async (batch) => {
 			console.info(`- Task:`, batch.tokens, batch.languages);
 
-			const prompt = this.init.basePromptTemplate
+			const prompt = this.init.promptCommitChangeset
 				.replaceAll('{languages}', batch.languages.join('/'))
 				.replaceAll('{input}', batch.diff);
 
@@ -102,29 +106,36 @@ export class CommitGen {
 		}));
 
 		this.logger.info(`-`.repeat(30));
-		this.logger.info(`- Generation time: ${style.blueBright(((performance.now() - startGenTime) / 1000).toFixed(2))}s`);
+		this.logger.info(`- Changeset: ${style.blueBright(((performance.now() - startGenTime) / 1000).toFixed(2))}s`);
 
-		const startFormatTime = performance.now();
-		const formatted = await this.toFormat(
-			mode === 'detailed' ? this.init.formatDetailedPromptTemplate : this.init.formatOnelinePromptTemplate,
-			results.join('\n\n'),
+		const startMsgTime = performance.now();
+		const changeset = `<changeset>\n  ${changesetList.flatMap((text) => {
+				const changeset = text.match(/<changeset>([\s\S]*?)<\/changeset>/)?.[1];
+				const changes = changeset?.match(/<change.*?>.*?<\/change>/g);
+				return changes || [];
+			}).join('\n  ')}\n</changeset>`;
+
+		const result = await this.fetchPrompt(
+			this.init.promptCommitMessage.replaceAll('{input}', changeset),
 		);
 
-		this.logger.info(`- Formatting time: ${style.blueBright(((performance.now() - startFormatTime) / 1000).toFixed(2))}s`);
+		this.logger.info(`- Commit message: ${style.blueBright(((performance.now() - startMsgTime) / 1000).toFixed(2))}s`);
 
-		return formatted.trim();
-	}
+		const message = xmlCommitMessageToJson(result);
 
-	async toFormat(format, text) {
-		const result = await this.fetchPrompt(format.replaceAll('{input}', text));
-		return result.replace(/(^[\s\S]*<message>|<\/message>[\s\S]*$)/g, '').replace(`\n-`, `\n\n-`);
-	}
+		// AI: TASK_FORMATTING_START
+		let subject = message.subject;
+		if (this.task) {
+			const taskId = this.task.toString();
+			const formattedTaskId = /^\d+$/.test(taskId) ? `#${taskId}` : taskId;
+			subject = `${subject} (${formattedTaskId})`;
+		}
+		// AI: TASK_FORMATTING_END
 
-	async translate(input, lang) {
-		const result =  await this.fetchPrompt(this.init.translatePromptTemplate
-			.replaceAll('{input}', input)
-			.replaceAll('{lang}', lang));
+		if (mode === 'oneline') {
+			return `${message.type}: ${subject} ${message.icon}`;
+		}
 
-		return result.replace(/(^[\s\S]*<message>|<\/message>[\s\S]*)/g, '');
+		return `${message.type}: ${subject} ${message.icon}\n\n${message.description}`;
 	}
 }

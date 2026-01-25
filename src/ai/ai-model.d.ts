@@ -29,7 +29,7 @@ export class AiModel {
     generate(
         prompt: string,
         init?: {
-            context?: string;
+            system?: string;
             temperature?: number;
             timeout?: number;
         }

@@ -30,7 +30,7 @@ const FILE_CATEGORY_REGEX = {
 	img: /\.(png|jpe?g|gif|svg|bmp|tiff|ico)$/i,
 	css: /\.(css|less|scss|sass|styl)$/i,
 	html: /\.(html?)$/i,
-	code: /\.(js|jsx|ts|tsx|java|py|c|cpp|cs|rb|php|go|swift|m|mm|kt)$/i,
+	code: /\.(js|jsx|ts|tsx|java|py|c|cpp|cs|rb|php|go|swift|m|mm|kt|sh|bash)$/i,
 	bin: /^(exe|dll|so|bin)\b/i,
 	lock: new RegExp(LOCKFILE_PATTERNS.join('|'), 'i'),
 	json: /\.json$/i

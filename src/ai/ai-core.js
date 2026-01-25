@@ -55,8 +55,8 @@ export class AiCore {
 		const maxChunkTokens = parseDiff.at(-1)?.tokens || 0
 
 		if (maxChunkTokens > this.maxInputTokens) {
-			this.logger.error(`TODO: Diff is too large`);
-			process.exit(1);
+			this.logger.error(`Diff is too large: ${maxChunkTokens} > ${this.maxInputTokens}`);
+			parseDiff = parseDiff.slice(0, this.maxInputTokens);
 		}
 
 		const batches = parseDiff.reduce((acc, file) => {
@@ -80,10 +80,19 @@ export class AiCore {
 		return batches;
 	}
 
-	async generate(prompt, context) {
+	async generate(prompt, systemPrompt) {
 		try {
+			// this.logger.debug(`[AI_CORE_ERROR_GENERATE] Failed to generate LLM response:`, {
+			// 	prompt,
+			// 	systemPrompt,
+			// });
+
+			// console.debug('------------------------');
+			// console.debug(prompt)
+			// console.debug('^^^^^^^^^^^^^^^^^^^^^^^^^');
+
 			const model = await unguardOrThrow(this.#choiceModel());
-			const result = await unguardOrThrow(model.generate(prompt, context));
+			const result = await unguardOrThrow(model.generate(prompt, systemPrompt));
 			return result;
 		} catch (error) {
 			this.logger.error(`[AI_CORE_ERROR_GENERATE] Failed to generate LLM response:`, error);
@@ -106,7 +115,7 @@ export class AiCore {
 			if (ok) {
 				this.#activeModel = model;
 				return [model, null];
-			} else {
+			} else if (error) {
 				this.logger.warn(`[AI_CORE_ERROR_PING_MODEL_FAIL] [${model.name}] Ping failed:`, error);
 			}
 		}

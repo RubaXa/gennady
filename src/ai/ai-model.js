@@ -1,8 +1,8 @@
 import { unguardOrThrow } from "../utils/unguard.js";
+import { removeThink } from "../utils/think.js";
 
 /**
  * AI Model (LLM) init params
- * @SUPER_TOKEN AI_MODEL_INIT
  * @typedef {Object} AiModelInit
  * @property {string} model  - Model identifier/name
  * @property {string} url - API endpoint URL
@@ -11,25 +11,25 @@ import { unguardOrThrow } from "../utils/unguard.js";
 
 /**
  * AI Model (LLM)
- * @SUPER_TOKEN AI_MODEL_CLASS
+ * @class AiModel
  */
 export class AiModel {
 	/**
 	 * Default AI Model
-	 * @anchor AI_MODEL_DEFAULT
-	 * @returns {AiModel} #AI_MODEL_CLASS
+	 * @name AiModel.getDefault
+	 * @returns {AiModel}
 	 */
 	static getDefault() {
 		return new AiModel({
-			model: 'llama3:8b',
+			model: 'llama3.1:8b',
 			url: 'http://127.0.0.1:11434/api/generate',
 		});
 	}
 
 	/**
-	 * Constructor
-	 * @anchor AI_MODEL_CONSTRUCTOR
-	 * @param {AiModelInit} init - Configuration object (#AI_MODEL_INIT)
+	 * AiModel Constructor
+	 * @name AiModel#constructor
+	 * @param {AiModelInit} init - Configuration object
 	 */
 	constructor(init) {
 		this.#init = {
@@ -40,13 +40,21 @@ export class AiModel {
 
 	/**
 	 * Configuration object
-	 * @type {AiModelInit} #AI_MODEL_INIT
+	 * @name AiModel#init
+	 * @type {AiModelInit}
 	 */
 	#init = {};
 
 	/**
+	 * Ping promise resolve
+	 * @name AiModel#pingPromise
+	 * @type {Promise<[boolean, null] | [null, Error]>}
+	 */
+	#pingPromise;
+
+	/**
 	 * Model identifier/name
-	 * @anchor AI_MODEL_MODEL_NAME
+	 * @name AiModel#name
 	 * @returns {string}
 	 */
 	get name() {
@@ -55,7 +63,7 @@ export class AiModel {
 
 	/**
 	 * API endpoint URL
-	 * @anchor AI_MODEL_URL
+	 * @name AiModel#url
 	 * @returns {string}
 	 */
 	get url() {
@@ -64,7 +72,7 @@ export class AiModel {
 
 	/**
 	 * API authentication key
-	 * @anchor AI_MODEL_KEY
+	 * @name AiModel#key
 	 * @returns {string}
 	 */
 	get key() {
@@ -72,44 +80,115 @@ export class AiModel {
 	}
 
 	/**
-	 * Ping AI Model
-	 * @anchor AI_MODEL_PING
-	 * @param {number} [timeout] - Optional ping request timeout
-	 * @returns {Promise<[boolean, null] | [null, Error]>} True if ping successful
+	 * @contract AiModel#ping
+	 *
+	 * @purpose Проверить работоспособность и доступность AI модели через однократный,
+	 * кешируемый успешный тестовый запрос `Say one token "OK"`.
+	 *
+	 * @description Метод гарантирует, что проверка сетевой доступности и базовой логики
+	 * модели будет выполнена только при первом вызове. Все последующие вызовы
+	 * для того же экземпляра мгновенно возвращают закешированный результат,
+	 * избегая лишних сетевых запросов.
+	 *
+	 * @input
+	 *   PARAMS: `timeout` (number, optional, default: 10000ms) - Максимальное время
+	 *           ожидания ответа при первоначальной проверке.
+	 *
+	 * @output
+	 *   DATA: Promise, разрешаемый в кортеж (tuple) `[result, error]`.
+	 *         - `[true, null]`: Успех. Модель доступна и прошла валидацию.
+	 *         - `[false, null]`: Ответ получен, но валидация не пройдена.
+	 *         - `[null, Error]`: Неудача. Произошла сетевая ошибка или таймаут.
+	 *   EFFECTS:
+	 *     - Внутреннее состояние: Метод является идемпотентным по результату,
+	 *       но не по операции. Он изменяет внутреннее состояние объекта при первом
+	 *       вызове для сохранения результата успешной проверки.
+	 *     - Логирование: В случае неудачи (ошибки), информация о ней
+	 *       записывается в `console.error`.
+	 *
+	 * @conditions
+	 *   PRE: Экземпляр `AiModel` корректно инстанциирован.
+	 *   POST: После первого успешного вызова, результат последующих вызовов `ping`
+	 *         для этого экземпляра будет идентичен первому и возвращаться мгновенно.
+	 *   INVARIANTS: Метод никогда не выбрасывает (throws) исключение.
+	 *
+	 * @keywords health-check, ping, probe, status, availability, cache, idempotent
 	 */
-	async ping(timeout = 5e3) {
-		try {
-			const answer = await unguardOrThrow(this.generate('Say one token "OK"', {timeout}));
-			return [`${answer}`.toUpperCase() === 'OK', null];
-		} catch (cause) {
-			return [null, new Error(`[AI_MODEL_ERROR_PING] [${this.name}] Ping failed`, {cause})];
-		}
+	async ping(timeout = 10e3) {
+		this.#pingPromise ||= (async () => {
+			try {
+				const startTime = performance.now()
+				const answer = await unguardOrThrow(this.generate(
+					'/no_think Answer only one token "OK" /no_think',
+					{timeout},
+				));
+				const checked = `${answer}`.toUpperCase().trim() === 'OK';
+
+				console.debug(`[AiModel#ping] [${this.name}] validation`, {
+					answer,
+					checked,
+					time: performance.now() - startTime,
+				});
+
+				return [checked, null];
+			} catch (cause) {
+				const error = new Error(`[AiModel#ping] [${this.name}] Ping failed`, {cause});
+				console.error(error);
+				this.#pingPromise = null;
+				return [null, error];
+			}
+		})();
+
+		return this.#pingPromise;
 	}
 
 	/**
 	 * Generate LLM response
-	 * @anchor AI_MODEL_GENERATE
+	 * @name AiModel#generate
 	 * @param {string} prompt - Prompt text
 	 * @param {Object} [init] - Optional configuration object
-	 * @property {string} [init.context] - Optional context text
+	 * @property {string} [init.system] - Optional system prompt
 	 * @property {string} [init.temperature] - Optional temperature generation
 	 * @property {string} [init.timeout] - Optional request timeout
+	 * @property {object} [init.replacements] - Optional replacements object
 	 * @returns {Promise<[string, null] | [null, Error]>} Generated LLM response
 	 */
 	async generate(prompt, init = {}) {
 		try {
+			const substitute = (text) => {
+				if (!init.replacements) {
+					return text;
+				}
+
+				return text.replace(/__([A-Z_]+)__/g, (orig, key) => {
+					const value = init.replacements[key] ??
+						init.replacements[key.toLowerCase()] ??
+						init.replacements[key.toUpperCase()] ??
+						null;
+
+					return value == null ? orig : value;
+				});
+			};
+
 			// Prepare fetch params
 			const params = this.url.includes('completions')
 				? {
 					temperature: init.temperature ?? 0.2,
 					messages: [].concat(
-						init.context ? { role: 'system', content: init.context } : [],
-						{ role: 'user', content: prompt },
+						!init.system ? [] : {
+							role: 'system',
+							content: substitute(init.system),
+						},
+						{
+							role: 'user',
+							content: substitute(prompt),
+						},
 					),
 				}
 				: {
-					context: init.context,
-					prompt,
+					system: substitute(init.system),
+					prompt: substitute(prompt),
+					temperature: init.temperature,
 				}
 			;
 
@@ -118,12 +197,12 @@ export class AiModel {
 
 			// Generate API Response
 			if (data && 'response' in data) {
-				return [data.response || '', null];
+				return [removeThink(data.response) || '', null];
 			}
 
 			// Completions API Response
 			if (data && data.choices && data.choices.length > 0 && data.choices[0].message) {
-				return [data.choices[0].message.content || '', null];
+				return [removeThink(data.choices[0].message.content), null];
 			}
 
 			throw new TypeError(
@@ -132,7 +211,7 @@ export class AiModel {
 			);
 		} catch (cause) {
 			return [null, new Error(
-				`[AI_MODEL_ERROR_GENERATE] [${this.name}] Generate failed`,
+				`[AI_MODEL_ERROR_GENERATE] [${this.name}] ${cause}`,
 				{cause},
 			)];
 		}
@@ -161,6 +240,7 @@ export class AiModel {
 					...params,
 					model: this.name,
 					stream: false,
+					...this.#init.extra,
 				}),
 			});
 
@@ -178,7 +258,7 @@ export class AiModel {
 
 			return [await req.json(), null];
 		} catch (cause) {
-			return [null, new Error(`[AI_MODEL_ERROR_FETCH] [${this.name}] Fetch failed`, {cause})];
+			return [null, new Error(`[AI_MODEL_ERROR_FETCH] [${this.name}] Fetch failed "${cause}"`, {cause})];
 		} finally {
 			clearTimeout(timeoutId);
 		}

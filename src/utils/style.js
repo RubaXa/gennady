@@ -1,7 +1,11 @@
-const NO_COLOR = (
-	process.argv.includes('--plain') ||
-	process.argv.includes('--no-color')
-);
+const NO_COLOR = [
+	'plain',
+	'nocolor',
+	'noColor',
+	'no-color',
+	'color=no',
+	'color=never',
+].some((arg) => process.argv.includes(`-${arg}`) || process.argv.includes(`--${arg}`));
 
 const ansiCodes = {
 	// Modifiers

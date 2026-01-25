@@ -2,7 +2,7 @@
   "name": "gennady",
   "version": "0.5.1-next.1",
   "author": "Konstantin Lebedev <ibnrubaxa@gmail.com>",
-  "description": "Gennady — Generate Next-level Automated Description Yntelligence",
+  "description": "Gennady — General Extensible Neural Network Adaptive Data Yntelligence",
   "keywords": [
     "git",
     "ai",
@@ -21,6 +21,17 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "test": "node --test"
+    "type-check": "tsc --noEmit",
+    "test": "node --test",
+    "test:watch": "tsx --test-loader src/**/*.test.ts",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3"
   }
 }

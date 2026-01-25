@@ -9,9 +9,17 @@ export const parseArgs = (argv, schema = {}) => {
             
             for (const [optionKey, aliases] of Object.entries(schema)) {
                 if (aliases.includes(key)) {
-                    params[optionKey] = value
-                        ? value.replace(/^"|"$/g, '')
-                        : true;
+                    const normValue = value ? value.replace(/^"|"$/g, '') : true;
+
+                    if (optionKey in params) {
+                        if (!Array.isArray(params[optionKey])) {
+                            params[optionKey] = [params[optionKey]];
+                        }
+                        
+                        params[optionKey].push(normValue);
+                    } else {
+                        params[optionKey] = normValue;
+                    }
                     break;
                 }
             }

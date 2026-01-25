@@ -7,7 +7,6 @@ import { execSync } from 'node:child_process';
 import { CommitGen } from '../../src/commit-gen/commit-gen.js';
 import { parseArgs } from '../../src/utils/parse-args.js';
 import { style } from '../../src/utils/style.js';
-import { getSysLang } from '../../src/utils/language.js';
 
 //
 // 🤖 COMMIT-GEN 💬
@@ -24,6 +23,7 @@ const params = parseArgs(process.argv, {
 	model: ['model'],
 	targetBranch: ['branch', 'b'],
 	apiUrl: ['api', 'apiUrl'],
+	task: ['task', 't'],
 });
 
 const commitGen = new CommitGen(params);
@@ -47,7 +47,7 @@ if (!commitMessage) {
 if (params.apply) {
 	// APPLY COMMIT
 	execSync(
-		`git commit -am "${commitMessage.replace(/"/g, '\"')}"`,
+		`git commit -am "${commitMessage.replace(/(["`])/g, '\\$1')}"`,
 		{stdio: 'inherit'},
 	);
 	saveCache({ [PROJECT_KEY]: undefined });
@@ -56,12 +56,6 @@ if (params.apply) {
 	console.info('-'.repeat(40), '\n');
 	console.info(style.whiteBright(commitMessage), '\n');
 	console.info('^'.repeat(40), '\n');
-
-	const lang = getSysLang();
-	if (lang !== 'en') {
-		console.info(await commitGen.translate(commitMessage, lang), '\n');
-		console.info('^'.repeat(40), '\n');
-	}
 
 	console.log(style.italic.gray(`Hint: npx gennady ${process.argv.slice(3).join(' ')} --apply`));
 	console.log('');

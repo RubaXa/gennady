@@ -13,7 +13,7 @@
  *                 - Throws a generic `Error` if `resultTuple` is not a valid 2-element array.
  */
 
-const unguard = (result) => {
+export const unguard = (result) => {
     if (Array.isArray(result) && result.length === 2) {
         const error = result[1];
         
@@ -31,8 +31,7 @@ const unguard = (result) => {
 }
 
 /**
- * Asynchronously unwraps a result, which can be either a direct tuple `[result, error]`
- * or a Promise resolving to such a tuple (typically from `guardedCall`).
+ * Unwraps a result, which can be either a direct tuple `[result, error]` or a Promise<[result, error]>.
  * If the outcome indicates an error (either directly or after the Promise resolves),
  * this function throws that error. Otherwise, it returns the successful result.
  * 

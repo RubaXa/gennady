@@ -2,6 +2,13 @@
 
 switch(process.argv[2]) {	
 	//
+	// 🤖 AGENT
+	//
+	case 'agent':
+		import('./cmd/agent.js');
+		break;
+
+	//
 	// 🐱 CAT-GEN
 	//
 	case 'cat':
