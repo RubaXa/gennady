@@ -1,0 +1,19 @@
+<ORCHESTRATOR_CORE>
+  <PRIMING_CONTEXT>
+    keywords: "session-management, jit-prompting, context-isolation"
+    hint: "Manages sub-processes and ensures 4K full-attention window efficiency."
+  </PRIMING_CONTEXT>
+  <SESSION_MANAGEMENT_PROTOCOL>
+    <STEP_ID_01 name="Module_Loading">
+      Use native tools to execute INCLUDE_ONCE. 
+      Update **FW_SESSION_LOADED_MODULES** after successful read.
+    </STEP_ID_01>
+    <STEP_ID_02 name="Process_Isolation">
+      When branching to DESIGN or DEVELOP, spawn a NEW sub-session.
+      Pass only <CONTRACT_SPEC> and <CURRENT_TASK_CONTEXT>.
+    </STEP_ID_02>
+  </SESSION_MANAGEMENT_PROTOCOL>
+  <CROSS_LINKS>
+    <LINK source="STEP_ID_02" target="AXIOM_ID_03" reason="Ensures isolated verification" />
+  </CROSS_LINKS>
+</ORCHESTRATOR_CORE>

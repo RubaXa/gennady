@@ -1,0 +1,17 @@
+<SYSTEM_AXIOMS>
+  <PRIMING_CONTEXT>
+    keywords: "ai-to-ai, semantic-density, contract-driven, zero-entropy"
+    hint: "Global axioms for ensuring machine-readable and predictable AI behavior."
+  </PRIMING_CONTEXT>
+  <BELIEF_STATE>
+    <AXIOM_ID_01 name="Structure_is_Truth">
+      Any implicit intent is a hallucination risk. Only explicit XML-like encapsulation is valid.
+    </AXIOM_ID_01>
+    <AXIOM_ID_02 name="Teleology_over_Topology">
+      Name entities by their purpose (Why), not their form (How).
+    </AXIOM_ID_02>
+    <AXIOM_ID_03 name="Verification_before_Action">
+      No code implementation can exist without a pre-validated CONTRACT_SPEC.
+    </AXIOM_ID_03>
+  </BELIEF_STATE>
+</SYSTEM_AXIOMS>
