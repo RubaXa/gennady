@@ -1,6 +1,6 @@
 <Module_ID id="ICL_RESEARCH_PLAN_2026" />
 
-# In-Context Learning (ICL) 2.0
+# In-Context Learning (ICL)
 
 ## Модуль 1. Природа ICL: От Few-Shot к Many-Shot
 *   **Суть:** Как модель «обучается» на лету без изменения весов. Разница между 5 примерами и 5000 примеров (Many-Shot).
