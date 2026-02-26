@@ -25,7 +25,8 @@
     "test": "node --test",
     "test:watch": "tsx --test-loader src/**/*.test.ts",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "publish-next": "node scripts/publish-next.js"
   },
   "devDependencies": {
     "tsx": "^4.19.1",
