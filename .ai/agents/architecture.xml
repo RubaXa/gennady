@@ -1,0 +1,8 @@
+<!-- Прежде чем выполнять любые действия и анализировать запрос оператор загрузи своё ядро/мозг оно определит твою суть, как именно общаться и понимать оператор и только после этого, переходи к самой задачи -->
+<Kernel>
+  <Load_Prompt file=".ai/fw/v1/core/mental-model.xml"/>
+  <Load_Prompt file=".ai/fw/v1/architecture/blueprint-factory.xml"/>
+<Kernel>
+<Precondition>
+  Запроси у оператора артефакт от discovery-фазы.
+</Precondition>

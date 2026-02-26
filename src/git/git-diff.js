@@ -53,10 +53,10 @@ const getCategory = (filename, metadata) => {
 };
 
 /**
- * Parse git diff
- * @anchor GIT_DIFF_PARSE
- * @param {string} diffText - Git diff text
- * @returns {Object[]} Parsed git diff
+ * @purpose Разобрать текстовый вывод git diff в нормализованный список файлов с метаданными и токенами.
+ * @pre Входная строка должна соответствовать формату `git diff` (unified diff).
+ * @param diffText Полный текстовый diff для парсинга.
+ * @returns Массив объектов файлов с признаками (isNew/isDeleted/isRenamed), категориями, языком, хунками и суммой токенов.
  */
 export const parseGitDiff = (diffText) => {
 	const lines = diffText.split('\n');

@@ -1,0 +1,198 @@
+<JSDOC_AS_CONTACTS hint="Правила оформления контактов в коде через JSDoc">
+  <Tag_Order>Строгий порядок в JSDoc: @purpose → @consumer → @invariant → @pre → @param → @throws → @returns → @post → @sideEffect</Tag_Order>
+  <TypeScript_Rules>
+    <Rule id="type_vs_interface">Для структур данных (объекты, DTO, ответы API, нормализованные модели) использовать type. interface — только для сущностей, которые наследуют или расширяют (несколько классов реализуют один контракт). Классы ошибок (extends Error) остаются class.</Rule>
+    <Rule id="naming_domain">Типы, относящиеся к внешней системе или домену (API, сервис), должны иметь префикс в имени (напр. ApiResource, ExternalServiceDto, VendorOrder). Внутренние утилитные типы без внешнего домена — без префикса.</Rule>
+  </TypeScript_Rules>
+  <Tag_Dictionary hint="Полный реестр допустимых JSDoc-тегов для контрактов">
+    <Tag name="@purpose" type="mandatory">
+      <Definition>Телеологическое назначение. Зачем эта сущность существует в бизнес-логике?</Definition>
+      <Condition_Use>ВСЕГДА для любых экспортируемых (export) сущностей (классы, методы, типы, интерфейсы, константы).</Condition_Use>
+      <Format>@purpose {Глагол} {Объект} {Контекст}.</Format>
+    </Tag>
+    <Tag name="@consumer" type="contextual">
+      <Definition>Кто является клиентом этого API? (Другие модули, UI, внешние системы).</Definition>
+      <Condition_Use>Для корневых сущностей (классы, модули) и публичных методов API.</Condition_Use>
+      <Condition_Skip>Для внутренних утилитных типов или методов.</Condition_Skip>
+      <Format>@consumer {ModuleName}, {SystemName}</Format>
+    </Tag>
+    <Tag name="@param" type="functional">
+      <Definition>Описание входящего аргумента: одно связное описание бизнес-роли и границ валидности. Для параметров-объектов описывается их общая роль, без дублирования описания внутренних полей.</Definition>
+      <Condition_Use>ВСЕГДА, если у функции есть аргументы.</Condition_Use>
+      <Condition_Skip>Если функция не принимает аргументов.</Condition_Skip>
+      <Format mode="required">@param {name} {Одно связное описание: что это и допустимые границы}.</Format>
+      <Format mode="optional">@param [{name}] {Одно связное описание}.</Format>
+    </Tag>
+    <Tag name="@returns" type="functional">
+      <Definition>Бизнес-цель результата: зачем вызывающему нужен результат. Для асинхронных функций описывает значение, которым успешно разрешается Promise.</Definition>
+      <Condition_Use>ВСЕГДА, если функция возвращает значение (не void/never).</Condition_Use>
+      <Condition_Skip>Если функция возвращает void.</Condition_Skip>
+      <Format>@returns {Цель результата для вызывающего}.</Format>
+    </Tag>
+    <Tag name="@pre" type="logic">
+      <Definition>Предпословие. Состояние системы или окружения (не связанное с простой валидацией аргументов), которое ДОЛЖНО быть истинным ДО вызова.</Definition>
+      <Condition_Use>Если есть скрытые требования к окружению или состоянию системы, не дублирующие @param.</Condition_Use>
+      <Condition_Skip>Если дублирует @param или требования только из типов TypeScript.</Condition_Skip>
+      <Format>@pre {Состояние системы/окружения}.</Format>
+    </Tag>
+    <Tag name="@post" type="logic">
+      <Definition>Постусловие. Гарантированное состояние системы ПОСЛЕ успешного выполнения.</Definition>
+      <Condition_Use>Если метод меняет стейт или даёт гарантию, не выраженную в @returns (напр. неизменность аргумента, порядок элементов).</Condition_Use>
+      <Condition_Skip>Если дублирует @returns или @param; для чистых функций без дополнительных гарантий.</Condition_Skip>
+      <Format>@post {Факт об изменении состояния или гарантия}.</Format>
+    </Tag>
+    <Tag name="@invariant" type="logic">
+      <Definition>Условие, которое всегда остается истинным для жизни сущности. Для внешних сервисов описывает SLA, политику обработки ошибок (Error Policy) и стратегию повторных запросов (Retry Policy).</Definition>
+      <Condition_Use>Для Классов/Интерфейсов с состоянием или клиентов внешних систем.</Condition_Use>
+      <Condition_Skip>Для функций-утилит (stateless).</Condition_Skip>
+      <Format>@invariant {Условие целостности или Политика}.</Format>
+    </Tag>
+    <Tag name="@sideEffect" type="critical">
+      <Definition>Любое взаимодействие с внешним миром (IO, Network, Logs, Events).</Definition>
+      <Condition_Use>ВСЕГДА, если метод не является чистой функцией.</Condition_Use>
+      <Condition_Skip>Если метод только вычисляет и возвращает данные.</Condition_Skip>
+      <Format>@sideEffect {Тип действия}: {Описание}.</Format>
+    </Tag>
+    <Tag name="@throws" type="critical">
+      <Definition>Описание исключительной ситуации. Для асинхронных функций описывает причину отклонения (reject) Promise.</Definition>
+      <Condition_Use>Если метод может выбросить ошибку (throw) или вернуть Rejected Promise.</Condition_Use>
+      <Condition_Skip>Если метод гарантированно безопасен (never throws).</Condition_Skip>
+      <Format>@throws {ErrorType | RejectedPromiseReason} {Условие возникновения}.</Format>
+    </Tag>
+    <Tag name="@see" type="linking">
+      <Definition>Ссылка на определение контракта (Interface/Spec/Type), который реализует этот код.</Definition>
+      <Condition_Use>При реализации интерфейса или наследовании, чтобы не дублировать описание.</Condition_Use>
+      <Condition_Skip>Если это первичное определение контракта.</Condition_Skip>
+      <Format>@see {TypeName#method} in path/from/project/root</Format>
+    </Tag>
+    <Tag name="@example" type="optional">
+      <Definition>Пример использования кода.</Definition>
+      <Condition_Use>Если логика вызова неочевидна или требует сложной подготовки данных.</Condition_Use>
+      <Condition_Skip>Для тривиальных методов (get/set).</Condition_Skip>
+      <Format>@example {Code block}</Format>
+    </Tag>
+    <Tag name="@deprecated" type="lifecycle">
+      <Definition>Маркер устаревшего кода.</Definition>
+      <Condition_Use>Если метод планируется к удалению. Обязательно указать альтернативу.</Condition_Use>
+      <Condition_Skip>Для актуального кода.</Condition_Skip>
+      <Format>@deprecated Используй {NewMethod} вместо этого.</Format>
+    </Tag>
+  </Tag_Dictionary>
+
+  <Usage_Patterns hint="Как применять теги к разным сущностям">
+    
+    <Pattern id="PATTERN_SPECIFICATION_TYPE" appliesTo="type, interface (data)">
+      <Context>Определение типа данных (type) или контракта данных (interface).</Context>
+      <Rule>Данные: type с @purpose; при принадлежности к домену/API — префикс в имени. Логика: pre/post только если не дублируют param/returns.</Rule>
+      <Example>
+        /**
+         * @purpose Описывает элемент каталога внешнего сервиса — идентификатор и дочерние элементы.
+         * @consumer catalog-service, export-module.
+         */
+        export type ApiCatalogItem = { id: string; children: ApiCatalogItem[]; };
+      </Example>
+    </Pattern>
+
+    <Pattern id="PATTERN_SYSTEM_INTERFACE" appliesTo="interface (service), class (client)">
+      <Context>Интерфейс или Клиент к внешней системе (API, DB, IO). Ненадежная среда.</Context>
+      <Rule>Обязательно: 1. Иерархия ошибок (Base -> Network/Auth/Domain). 2. @invariant с описанием Resilience Policy (Retry, Rate Limits, Timeout).</Rule>
+      <Example>
+        /**
+         * @purpose Клиент для работы с платежным шлюзом.
+         * @consumer billing-service
+         * @invariant Error Policy: Все сетевые ошибки оборачиваются в PaymentNetworkError.
+         * @invariant Retry Policy: Идемпотентные методы (GET) повторяются 3 раза с экспоненциальной задержкой.
+         * @invariant Rate Limit: Не более 100 rps (контролируется клиентом).
+         */
+        export interface PaymentGateway { ... }
+      </Example>
+    </Pattern>
+
+    <Pattern id="PATTERN_IMPLEMENTATION_LINK" appliesTo="const, class, method">
+      <Context>Реализация сущности, которая уже описана во внешнем контракте (implements Interface).</Context>
+      <Rule>Не дублируй логику. Используй @purpose (кратко), @consumer и @see.</Rule>
+      <Example>
+        /**
+         * @purpose Реализация трансформации для мобильных устройств.
+         * @consumer MobileApp
+         * @see {UserTransformer} in features/users/contracts.ts
+         */
+        export const mobileUserTransformer: UserTransformer = (u) => { ... };
+      </Example>
+    </Pattern>
+
+    <Pattern id="PATTERN_CLASS_METHOD" appliesTo="method">
+      <Context>Метод класса. Если реализует интерфейс — @see. Иначе — полный контракт.</Context>
+      <Example>
+        /**
+         * @purpose Списание средств.
+         * @pre Система должна быть в режиме read-write (не maintenance).
+         * @param amount Сумма к списанию (положительное число).
+         * @throws {NoFundsError} Если баланс недостаточен.
+         */
+        public pay(amount: number): void { ... }
+      </Example>
+    </Pattern>
+    <Pattern id="PATTERN_FUNCTION_PARAM_RETURNS" appliesTo="function">
+      <Context>Стандартная функция. @param не дублирует поля типа.</Context>
+      <Example good="@param id Идентификатор сущности (непустая строка или положительное число). @returns Данные для отображения в UI или передачи в следующий слой."/>
+      <Example bad="@param id Смысл: идентификатор. Валидность: непустая строка. @returns UserDto с заполненными полями."/>
+    </Pattern>
+
+    <Pattern id="PATTERN_EXPORTED_CONSTANT" appliesTo="const">
+      <Context>Публичные константы, особенно объекты конфигурации.</Context>
+      <Rule>Опиши @purpose (зачем этот конфиг) и @invariant (ограничения значений).</Rule>
+      <Example>
+        /**
+         * @purpose Глобальные настройки ретраев для HTTP.
+         * @invariant maxRetries должно быть меньше 5.
+         */
+        export const RETRY_CONFIG = { ... };
+      </Example>
+    </Pattern>
+    
+    <Pattern id="PATTERN_ASYNC_FUNCTION" appliesTo="function, method">
+      <Context>Асинхронная функция, возвращающая Promise.</Context>
+      <Rule>@returns описывает значение при успешном resolve. @throws описывает причину (Error) при reject.</Rule>
+      <Example>
+        /**
+         * @purpose Загружает данные пользователя с сервера.
+         * @param userId ID пользователя для загрузки (UUIDv4).
+         * @throws {UserNotFoundError} Если пользователь с таким ID не найден.
+         * @returns {Promise<ApiUser>} Данные пользователя для внутреннего использования в системе.
+         * @sideEffect Network: GET-запрос к /api/users/{userId}
+         */
+        export async function fetchUser(userId: string): Promise<ApiUser> { ... }
+      </Example>
+    </Pattern>
+
+    <Pattern id="PATTERN_GENERIC_FUNCTION" appliesTo="function, method">
+      <Context>Обобщенная (generic) функция с параметризованными типами.</Context>
+      <Rule>В @param и @returns следует описать роль обобщенного типа T.</Rule>
+      <Example>
+        /**
+         * @purpose Оборачивает любые входные данные в стандартизированный объект ответа.
+         * @param data Данные любого типа {T}, которые будут помещены в поле `payload`.
+         * @returns {ApiResponse<T>} Стандартизированный объект ответа, содержащий исходные данные.
+         */
+        export function wrapInApiResponse<T>(data: T): ApiResponse<T> { ... }
+      </Example>
+    </Pattern>
+
+  </Usage_Patterns>
+
+  <Validation_Checklist hint="Критерии качества контракта">
+    <Check>Экспортируемая сущность: есть @purpose; для корневых типов и публичного API — @consumer при необходимости.</Check>
+    <Check>Класс/модуль с состоянием: есть @invariant.</Check>
+    <Check>Внешний сервис (Client/Interface): определен @invariant с иерархией ошибок и Retry Policy.</Check>
+    <Check>@param — одно связное описание. Для объектов описание полей не дублируется из типа.</Check>
+    <Check>@returns — бизнес-цель результата для вызывающего, а не перечисление типа.</Check>
+    <Check>Порядок тегов соблюдён: purpose → consumer → invariant → pre → param → throws → returns → post → sideEffect.</Check>
+    <Check>@pre и @post не дублируют @param/@returns; только если добавляют новую информацию.</Check>
+    <Check>Метод с побочными эффектами: есть @post или @sideEffect.</Check>
+    <Check>Реализация внешнего типа: есть @see с путем от корня.</Check>
+    <Check>Структуры данных объявлены через type; interface только при наследовании/реализации.</Check>
+    <Check>Типы внешнего домена/API имеют префикс в имени.</Check>
+    <Check>Асинхронность: @returns описывает успех, @throws — ошибку (reject).</Check>
+  </Validation_Checklist>
+</JSDOC_AS_CONTACTS>

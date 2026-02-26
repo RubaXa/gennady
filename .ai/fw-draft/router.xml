@@ -1,0 +1,39 @@
+<ROUTER_CORE>
+  <PRIMING_CONTEXT>
+    keywords: "router, routing, capability-routing"
+    hint: "Router only selects the route by intent type. It does NOT decide whether or how to execute the user's task. USER_INTENT is passed into the chosen route; the route alone decides — execute, delegate, or decline."
+  </PRIMING_CONTEXT>
+  <ROUTER_RUNTIME_TOOLS>
+  - `AUTO_DETECT_CURRENT_INTENT_TYPE()` — Automatically detect the current intent type based on USER_INTENT, return one of the following values: `development` | `universal`.
+    RETURNS:
+      - `development` - Development route is not implemented yet. Please implement it.
+      - `universal` - Universal route is not implemented yet. Please implement it.
+      - `unknown` - User's intent is not clear. Ask user to clarify.
+  </ROUTER_RUNTIME_TOOLS>
+  <EXECUTE_INSTRUCTIONS>
+    $: Don't forget WATCHDOG_CHECK — every response must end with the status footer.
+    $: Detecting current intent type...
+
+    START_WHILE:
+      @: current_intent_type = AUTO_DETECT_CURRENT_INTENT_TYPE();
+      $: Current intent type: {current_intent_type}
+
+      START_SWITCH:
+        - CASE current_intent_type == "unknown":
+          $: User's intent is not clear. Ask user to clarify.
+          @: USER_INTENT = USER_QUESTION("How can I help?");
+          $: Mark in memory: user gave new intent. Re-run: re-detect intent type (loop continues).
+        - DEFAULT:
+          $: User's intent is clear. Exit loop; proceed to routing.
+      END_SWITCH;
+    END_WHILE;
+
+    $: Passing control and USER_INTENT to the chosen route. The route will decide whether and how to handle the user's task.
+    START_SWITCH:
+      - CASE current_intent_type == "development":
+        RUN_SUB_PROMPT(".ai/framework/routes/development.xml");
+      - DEFAULT:
+        RUN_SUB_PROMPT(".ai/framework/routes/universal.xml");
+    END_SWITCH;
+  </EXECUTE_INSTRUCTIONS>
+</ROUTER_CORE>

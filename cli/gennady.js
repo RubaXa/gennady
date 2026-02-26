@@ -21,6 +21,12 @@ switch(process.argv[2]) {
 	case 'review':
 		import('./cmd/review.js');
 		break;
+	case 'vcs-reply':
+		import('./cmd/vcs-reply/vcs-reply.cmd.js');
+		break;
+	case 'review-verify':
+		import('./cmd/review-verify/review-verify.cmd.js');
+		break;
 
 	//
 	// 🤖 COMMIT-GEN 💬

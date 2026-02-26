@@ -1,0 +1,12 @@
+<PROVIDER name="default">
+  <OVERRIDE_RUNTIME_TOOLS>
+    - `RUN_AGENT_TASK("{plan_file_path}")` — Override. Read plan from plan_file_path; the plan contains a role instruction; load that role and execute with plan content; return result.
+  </OVERRIDE_RUNTIME_TOOLS>
+  <AGENT_TOOLS>
+    - `read_file` - Чтение содержимого файла с диска.
+    - `write_file` - Запись данных в файл (создание или перезапись).
+    - `list_files` - Получение списка файлов в текущей директории.
+    - `execute_command` - Выполнение системной команды в оболочке ОС.
+    - `ask_user` - Запрос дополнительной информации или подтверждения у пользователя.
+  </AGENT_TOOLS>
+</PROVIDER>
