@@ -100,6 +100,45 @@ function tagExists(tag) {
   return result.status === 0;
 }
 
+function getNpmAuthUser() {
+  const startedAt = Date.now();
+  logger.debug(`[getNpmAuthUser] [idle -> starting] Checking npm auth with 'whoami'`);
+
+  const result = spawnSync('npm', ['whoami', '--registry', 'https://registry.npmjs.org/'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  if (result.status !== 0) {
+    logger.error(`[getNpmAuthUser] [starting -> failed] Npm auth check failed`, {
+      exitCode: result.status,
+      stderr: (result.stderr || '').trim(),
+      time: Date.now() - startedAt
+    });
+
+    throw new Error(`[getNpmAuthUser] Npm auth check failed`, {
+      cause: {
+        exitCode: result.status,
+        stderr: (result.stderr || '').trim()
+      }
+    });
+  }
+
+  const npmUser = (result.stdout || '').trim();
+
+  logger.debug(`[getNpmAuthUser] [starting -> completed] Npm auth check completed`, {
+    npmUser,
+    time: Date.now() - startedAt
+  });
+
+  if (!npmUser) {
+    throw new Error(`[getNpmAuthUser] Empty npm username from 'whoami'.`);
+  }
+
+  return npmUser;
+}
+
 function main() {
   const args = parseArgs(process.argv, {
     dryRun: ['dry-run', 'dryRun'],
@@ -141,7 +180,15 @@ function main() {
     });
   }
 
-  logger.debug(`[main] [checkingGitState -> calculatingVersion] Calculating next version`);
+  if (!isDryRun) {
+    logger.debug(`[main] [checkingGitState -> checkingNpmAuth] Checking npm authorization`);
+    const npmUser = getNpmAuthUser();
+    logger.info(`[main] [checkingNpmAuth -> npmAuthVerified] Npm authorization verified`, { npmUser });
+    logger.debug(`[main] [npmAuthVerified -> calculatingVersion] Calculating next version`);
+  } else {
+    logger.debug(`[main] [checkingGitState -> calculatingVersion] Calculating next version`);
+  }
+
   const newVersion = parseAndBumpNextVersion(packageJson.version);
   const tag = `v${newVersion}`;
 
