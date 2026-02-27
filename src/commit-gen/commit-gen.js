@@ -1,9 +1,15 @@
 import { AiCore } from '../ai/ai-core.js';
 import { getGitDiffInfo } from '../git/git-core.js';
 import { prompts } from '../prompts/index.js';
+import { logger } from '../utils/logger.js';
 import { style } from '../utils/style.js';
 import { xmlCommitMessageToJson } from '../utils/xml.js';
 
+/**
+ * @purpose Генерировать commit-сообщение из staged diff через LLM.
+ * @consumer CLI (cmd/commit)
+ * @invariant Использует AiCore и getGitDiffInfo; при пустом diff возвращает undefined.
+ */
 export class CommitGen {
 	constructor(init) {
 		this.init = {
@@ -12,7 +18,7 @@ export class CommitGen {
 			targetBranch: undefined,
 			task: undefined,
 
-			logger: console,
+			logger,
 
 			promptCommitMessage: prompts.commit('message'),
 			promptCommitChangeset: prompts.commit('changeset'),
@@ -52,12 +58,25 @@ export class CommitGen {
 		return this.init.task;
 	}
 
+	/**
+	 * @purpose Вызвать LLM для одного промпта (внутренний хелпер).
+	 * @param input Текст промпта.
+	 * @returns Ответ модели.
+	 * @sideEffect Network: запрос к LLM.
+	 */
 	async fetchPrompt(input) {
-		const output = await this.ai.generate(`/no_think ${input} /no_think`);
-		return output;
+		return this.ai.generate(`/no_think ${input} /no_think`);
 	}
 
+	/**
+	 * @purpose Сгенерировать commit-сообщение по staged diff.
+	 * @returns Строка сообщения (oneline или с телом) или undefined при пустом diff.
+	 * @sideEffect Network: запросы к LLM; Logs: этапы и метрики.
+	 */
 	async generate() {
+		const startedAt = performance.now();
+		this.logger.info(`[CommitGen#generate] [idle -> loading] targetBranch=${this.init.targetBranch ?? 'HEAD'}`);
+
 		const {
 			commitCount,
 			parsedCodeDiff,
@@ -65,9 +84,9 @@ export class CommitGen {
 			parsedCodeChunkMaxTokens,
 			programmingLanguages,
 		} = getGitDiffInfo(this.init.targetBranch);
-		
+
 		if (parsedCodeDiff.length === 0) {
-			this.logger.warn(`No changes detected, skipping commit message generation.`);
+			this.logger.warn(`[CommitGen#generate] [loading -> skipped] No staged changes`);
 			this.logger.info(style.italic.gray(`Hint: git add .`));
 			return;
 		}
@@ -83,30 +102,24 @@ export class CommitGen {
 			: 'detailed'
 			: this.init.mode;
 
-		this.logger.info(`- Mode: ${style.bold.magentaBright(mode)}`);
-		this.logger.info(`- Languages: ${style.yellow(programmingLanguages.join(', '))}`);
-		this.logger.info(`- Tokens: ${style.bold.cyanBright(parsedCodeTokens)} ${style.gray(`(max per file: ${parsedCodeChunkMaxTokens})`)}`);
+		this.logger.info(`[CommitGen#generate] [loading -> batching] mode=${style.bold.magentaBright(mode)} languages=${programmingLanguages.join(', ')} tokens=${parsedCodeTokens} (max per file: ${parsedCodeChunkMaxTokens})`);
 
 		const batches = this.ai.createPromptsBatchesByDiff(parsedCodeDiff);
-
-		this.logger.info(`- Queue: ${style.bold.cyan(batches.length)}`);
-		this.logger.info(`-`.repeat(40));
+		this.logger.debug(`[CommitGen#generate] [batching -> ready] queue=${batches.length}`);
 
 		const startGenTime = performance.now();
 		const changesetList = await Promise.all(batches.map(async (batch) => {
-			console.info(`- Task:`, batch.tokens, batch.languages);
+			this.logger.debug(`[CommitGen#generate] [batching -> task] ${batch.tokens} tokens, ${batch.languages?.join('/')}`);
 
 			const prompt = this.init.promptCommitChangeset
 				.replaceAll('{languages}', batch.languages.join('/'))
 				.replaceAll('{input}', batch.diff);
 
-			const msg = await this.fetchPrompt(prompt);
-
-			return msg
+			return this.fetchPrompt(prompt);
 		}));
 
-		this.logger.info(`-`.repeat(30));
-		this.logger.info(`- Changeset: ${style.blueBright(((performance.now() - startGenTime) / 1000).toFixed(2))}s`);
+		const changesetTime = performance.now() - startGenTime;
+		this.logger.info(`[CommitGen#generate] [batching -> changeset] (${(changesetTime / 1000).toFixed(2)}s)`);
 
 		const startMsgTime = performance.now();
 		const changeset = `<changeset>\n  ${changesetList.flatMap((text) => {
@@ -119,18 +132,20 @@ export class CommitGen {
 			this.init.promptCommitMessage.replaceAll('{input}', changeset),
 		);
 
-		this.logger.info(`- Commit message: ${style.blueBright(((performance.now() - startMsgTime) / 1000).toFixed(2))}s`);
+		const msgTime = performance.now() - startMsgTime;
+		this.logger.info(`[CommitGen#generate] [changeset -> message] (${(msgTime / 1000).toFixed(2)}s)`);
 
 		const message = xmlCommitMessageToJson(result);
 
-		// AI: TASK_FORMATTING_START
 		let subject = message.subject;
 		if (this.task) {
 			const taskId = this.task.toString();
 			const formattedTaskId = /^\d+$/.test(taskId) ? `#${taskId}` : taskId;
 			subject = `${subject} (${formattedTaskId})`;
 		}
-		// AI: TASK_FORMATTING_END
+
+		const totalTime = performance.now() - startedAt;
+		this.logger.info(`[CommitGen#generate] [message -> completed] (${(totalTime / 1000).toFixed(2)}ms)`);
 
 		if (mode === 'oneline') {
 			return `${message.type}: ${subject} ${message.icon}`;

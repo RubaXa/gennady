@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import { style } from '../../src/utils/style.js';
-import { AiModel } from '../../src/ai/ai-model.js';
+import { style } from '../../../src/utils/style.js';
+import { AiModel } from '../../../src/ai/ai-model.js';
+import { prompts } from '../../../src/prompts/index.js';
 
 //
 // 🤖 AGENT

@@ -1,5 +1,6 @@
 import { AiModel } from './ai-model.js';
 import { GennadyRc } from '../rc/rc-config.js';
+import { logger } from '../utils/logger.js';
 import { unguardOrThrow } from '../utils/unguard.js';
 
 /** @deprecated */
@@ -18,7 +19,7 @@ export class AiCore {
 
 	constructor(init) {
 		this.init = {
-			logger: console,
+			logger,
 			timeout: 120,
 			maxInputTokens: init.maxInputTokens || 4000,
 			...init,

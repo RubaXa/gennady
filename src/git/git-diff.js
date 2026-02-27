@@ -54,6 +54,7 @@ const getCategory = (filename, metadata) => {
 
 /**
  * @purpose Разобрать текстовый вывод git diff в нормализованный список файлов с метаданными и токенами.
+ * @consumer git/git-core, commit-gen, review-gen
  * @pre Входная строка должна соответствовать формату `git diff` (unified diff).
  * @param diffText Полный текстовый diff для парсинга.
  * @returns Массив объектов файлов с признаками (isNew/isDeleted/isRenamed), категориями, языком, хунками и суммой токенов.

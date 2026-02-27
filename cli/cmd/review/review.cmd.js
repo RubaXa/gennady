@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { getGitDiffInfo } from '../../src/git/git-core.js';
-import { ReviewGen } from '../../src/review-gen/review-gen.js';
-import { parseArgs } from '../../src/utils/parse-args.js';
-import { style } from '../../src/utils/style.js';
+import { getGitDiffInfo } from '../../../src/git/git-core.js';
+import { ReviewGen } from '../../../src/review-gen/review-gen.js';
+import { parseArgs } from '../../../src/utils/parse-args.js';
+import { style } from '../../../src/utils/style.js';
 
 //
 // 📝 REVIEW-GEN

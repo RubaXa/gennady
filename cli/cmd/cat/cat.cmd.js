@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { catGen } from '../../src/cat-gen/cat-gen.js';
-import { style } from '../../src/utils/style.js';
-import { parseArgs } from '../../src/utils/parse-args.js';
+import { catGen } from '../../../src/cat-gen/cat-gen.js';
+import { style } from '../../../src/utils/style.js';
+import { parseArgs } from '../../../src/utils/parse-args.js';
 
 //
 // 🐱 CAT-GEN
@@ -39,7 +39,7 @@ const renderXml = (files) => {
 			`${style.yellow('type')}=${style.green(`"file"`)}`,
 			`${style.yellow('path')}=${style.green(`"${relativePath}"`)}`
 		].join(' ');
-		
+
 		console.log(`  ${style.blue('<Source')} ${attrs}${style.blue('>')}`);
 		// Print content without extra indentation to preserve its original formatting.
 		console.log(contents);

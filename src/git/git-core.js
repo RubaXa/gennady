@@ -1,10 +1,13 @@
 import { parseGitDiff } from './git-diff.js';
 import { execSyncSafe } from '../utils/exec.js';
 import { isTestFile } from '../utils/files.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * @purpose Определить базовую ветку репозитория (main или master) для анализа diff.
+ * @consumer git-core (getGitDiffInfo, getGitCommitCount)
  * @returns Имя базовой ветки для сравнений (main|master), либо 'master' по умолчанию.
+ * @sideEffect Process: выполнение git branch.
  */
 export const detectGitBaseBranch = () => {
 	const branchesOutput = execSyncSafe('git branch --list 2>/dev/null');
@@ -14,7 +17,9 @@ export const detectGitBaseBranch = () => {
 
 /**
  * @purpose Получить имя текущей ветки Git.
+ * @consumer CLI (review-verify, vcs-reply), commit-gen
  * @returns Имя текущей ветки; 'HEAD' при отсоединённой голове или ошибке.
+ * @sideEffect Process: выполнение git rev-parse.
  */
 export const getGitCurrentBranch = () => {
 	const branch = execSyncSafe('git rev-parse --abbrev-ref HEAD 2>/dev/null').trim();
@@ -23,7 +28,9 @@ export const getGitCurrentBranch = () => {
 
 /**
  * @purpose Получить сведения об удалённом репозитории origin.
+ * @consumer CLI (review-verify, vcs-reply)
  * @returns {host, project, scheme} или null, если origin не настроен/не распознан.
+ * @sideEffect Process: выполнение git config / git remote.
  */
 export const getGitRemote = () => {
 	const remote =
@@ -41,7 +48,9 @@ export const getGitRemote = () => {
 			const project = (u.pathname || '').replace(/^\/+/, '').replace(/\.git$/i, '');
 			if (!host || !project) return null;
 			return { host, project, scheme };
-		} catch { /* ignore */ }
+		} catch (cause) {
+			logger.debug(`[getGitRemote] [parsing -> skip] URL parse failed`, { cause });
+		}
 	}
 
 	const scp = url.match(/^[\w.-]+@([^:\/]+)[:\/](.+)$/);
@@ -58,21 +67,26 @@ export const getGitRemote = () => {
 
 /**
  * @purpose Посчитать количество коммитов поверх базовой ветки.
+ * @consumer git-core (getGitDiffInfo)
  * @returns Ненулевое целое число коммитов поверх базовой ветки; 0 при ошибке/отсутствии данных.
+ * @sideEffect Process: выполнение git rev-list.
  */
 export const getGitCommitCount = () => {
 	try {
 		const output = execSyncSafe(`git rev-list --count HEAD ^${detectGitBaseBranch()} 2>/dev/null`);
 		return parseInt(output, 10) || 0;
-	} catch {
+	} catch (cause) {
+		logger.debug(`[getGitCommitCount] [counting -> fallback] Using 0`, { cause });
 		return 0;
 	}
 }
 
 /**
  * @purpose Получить текстовый diff текущего состояния относительно цели.
+ * @consumer git-core (getGitDiffInfo)
  * @param [targetBranch] Ветка или ревизия, относительно которой строится diff; если не указана — используется HEAD.
  * @returns Строка с текстовым представлением diff из git.
+ * @sideEffect Process: выполнение git diff.
  */
 export const getGitDiff = (targetBranch = undefined) => {
 	if (targetBranch) {
@@ -84,8 +98,10 @@ export const getGitDiff = (targetBranch = undefined) => {
 
 /**
  * @purpose Построить агрегированную информацию по diff для дальнейшего анализа/ранжирования.
+ * @consumer commit-gen, review-gen
  * @param [branch] Целевая ветка/ревизия для сравнения; если не указана — сравнение с HEAD.
  * @returns Объект с исходным diff, разобранными файлами и метриками (языки, токены, коммиты).
+ * @sideEffect Process: вызовы getGitDiff и getGitCommitCount (git команды).
  */
 export const getGitDiffInfo = (branch = undefined) => {
 	const diff = getGitDiff(branch);

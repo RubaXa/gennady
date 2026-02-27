@@ -25,37 +25,22 @@ if (helpFlags.has(command)) {
 }
 
 switch(command) {
-	//
-	// 🤖 AGENT
-	//
 	case 'agent':
-		import('./cmd/agent.js');
+		import('./cmd/agent/index.js');
 		break;
-
-	//
-	// 🐱 CAT-GEN
-	//
 	case 'cat':
-		import('./cmd/cat.js');
+		import('./cmd/cat/index.js');
 		break;
-
-	//
-	// 📝 REVIEW-GEN
-	//
 	case 'review':
-		import('./cmd/review.js');
+		import('./cmd/review/index.js');
 		break;
 	case 'vcs-reply':
-		import('./cmd/vcs-reply/vcs-reply.cmd.js');
+		import('./cmd/vcs-reply/index.js');
 		break;
 	case 'review-verify':
-		import('./cmd/review-verify/review-verify.cmd.js');
+		import('./cmd/review-verify/index.js');
 		break;
-
-	//
-	// 🤖 COMMIT-GEN 💬
-	//
 	default:
-		import('./cmd/commit.js');
+		import('./cmd/commit/index.js');
 		break;
 }

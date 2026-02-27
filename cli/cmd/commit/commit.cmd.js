@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { CommitGen } from '../../src/commit-gen/commit-gen.js';
-import { parseArgs } from '../../src/utils/parse-args.js';
-import { style } from '../../src/utils/style.js';
+import { CommitGen } from '../../../src/commit-gen/commit-gen.js';
+import { parseArgs } from '../../../src/utils/parse-args.js';
+import { style } from '../../../src/utils/style.js';
 
 //
 // 🤖 COMMIT-GEN 💬
