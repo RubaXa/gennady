@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseArgs } from '../src/utils/parse-args.js';
+import { parseArgs } from '../shared/common/parse-args.js';
 
 const logger = console;
 
@@ -39,24 +39,24 @@ function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: rootDir,
     stdio: 'inherit',
-    ...options
+    ...options,
   });
 
   if (result.status !== 0) {
     logger.error(`[run] [starting -> failed] Command '${command}' execution failed`, {
       args,
       exitCode: result.status,
-      time: Date.now() - startedAt
+      time: Date.now() - startedAt,
     });
 
     throw new Error(`[run] Command '${command}' failed`, {
-      cause: result.error ?? { exitCode: result.status }
+      cause: result.error ?? { exitCode: result.status },
     });
   }
 
   logger.debug(`[run] [starting -> completed] Command '${command}' execution completed`, {
     args,
-    time: Date.now() - startedAt
+    time: Date.now() - startedAt,
   });
 }
 
@@ -67,7 +67,7 @@ function runCapture(command, args) {
   const result = spawnSync(command, args, {
     cwd: rootDir,
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   if (result.status !== 0) {
@@ -75,18 +75,18 @@ function runCapture(command, args) {
       args,
       exitCode: result.status,
       stderr: result.stderr || '',
-      time: Date.now() - startedAt
+      time: Date.now() - startedAt,
     });
 
     const stderrText = (result.stderr || '').trim();
     throw new Error(`[runCapture] Command '${command}' failed`, {
-      cause: result.error ?? (stderrText || { exitCode: result.status })
+      cause: result.error ?? (stderrText || { exitCode: result.status }),
     });
   }
 
   logger.debug(`[runCapture] [starting -> completed] Capture command '${command}' completed`, {
     args,
-    time: Date.now() - startedAt
+    time: Date.now() - startedAt,
   });
 
   return (result.stdout || '').trim();
@@ -95,7 +95,7 @@ function runCapture(command, args) {
 function tagExists(tag) {
   const result = spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], {
     cwd: rootDir,
-    stdio: 'ignore'
+    stdio: 'ignore',
   });
   return result.status === 0;
 }
@@ -107,21 +107,21 @@ function getNpmAuthUser() {
   const result = spawnSync('npm', ['whoami', '--registry', 'https://registry.npmjs.org/'], {
     cwd: rootDir,
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   if (result.status !== 0) {
     logger.error(`[getNpmAuthUser] [starting -> failed] Npm auth check failed`, {
       exitCode: result.status,
       stderr: (result.stderr || '').trim(),
-      time: Date.now() - startedAt
+      time: Date.now() - startedAt,
     });
 
     throw new Error(`[getNpmAuthUser] Npm auth check failed`, {
       cause: {
         exitCode: result.status,
-        stderr: (result.stderr || '').trim()
-      }
+        stderr: (result.stderr || '').trim(),
+      },
     });
   }
 
@@ -129,7 +129,7 @@ function getNpmAuthUser() {
 
   logger.debug(`[getNpmAuthUser] [starting -> completed] Npm auth check completed`, {
     npmUser,
-    time: Date.now() - startedAt
+    time: Date.now() - startedAt,
   });
 
   if (!npmUser) {
@@ -142,7 +142,7 @@ function getNpmAuthUser() {
 function main() {
   const args = parseArgs(process.argv, {
     dryRun: ['dry-run', 'dryRun'],
-    allowDirty: ['allow-dirty', 'allowDirty']
+    allowDirty: ['allow-dirty', 'allowDirty'],
   });
   const isDryRun = Boolean(args.dryRun);
   const allowDirty = Boolean(args.allowDirty);
@@ -171,19 +171,23 @@ function main() {
   const changedFiles = runCapture('git', ['status', '--porcelain']);
 
   if (changedFiles.length > 0 && !allowDirty) {
-    throw new Error('[main] Working tree is not clean. Commit or stash your changes before publish-next.');
+    throw new Error(
+      '[main] Working tree is not clean. Commit or stash your changes before publish-next.'
+    );
   }
 
   if (changedFiles.length > 0 && allowDirty) {
     logger.warn(`[main] [checkingGitState -> checkingGitState] Dirty tree allowed by flag`, {
-      changedFilesCount: changedFiles.split('\n').filter(Boolean).length
+      changedFilesCount: changedFiles.split('\n').filter(Boolean).length,
     });
   }
 
   if (!isDryRun) {
     logger.debug(`[main] [checkingGitState -> checkingNpmAuth] Checking npm authorization`);
     const npmUser = getNpmAuthUser();
-    logger.info(`[main] [checkingNpmAuth -> npmAuthVerified] Npm authorization verified`, { npmUser });
+    logger.info(`[main] [checkingNpmAuth -> npmAuthVerified] Npm authorization verified`, {
+      npmUser,
+    });
     logger.debug(`[main] [npmAuthVerified -> calculatingVersion] Calculating next version`);
   } else {
     logger.debug(`[main] [checkingGitState -> calculatingVersion] Calculating next version`);
@@ -197,12 +201,17 @@ function main() {
   }
 
   if (isDryRun) {
-    logger.info(`[main] [calculatingVersion -> dryRunCompleted] Dry run completed`, { newVersion, tag });
+    logger.info(`[main] [calculatingVersion -> dryRunCompleted] Dry run completed`, {
+      newVersion,
+      tag,
+    });
     logger.info(`[main] [dryRunCompleted -> done] Next publish flow finished`);
     return;
   }
 
-  logger.info(`[main] [calculatingVersion -> updatingPackageFiles] Updating package files`, { newVersion });
+  logger.info(`[main] [calculatingVersion -> updatingPackageFiles] Updating package files`, {
+    newVersion,
+  });
   packageJson.version = newVersion;
   packageLock.version = newVersion;
   if (packageLock.packages?.['']) {
@@ -216,10 +225,14 @@ function main() {
     throw new Error('[main] Failed to write package manifests', { cause: error });
   }
 
-  logger.info(`[main] [updatingPackageFiles -> packageFilesUpdated] Package versions updated`, { newVersion });
+  logger.info(`[main] [updatingPackageFiles -> packageFilesUpdated] Package versions updated`, {
+    newVersion,
+  });
 
   try {
-    logger.info(`[main] [packageFilesUpdated -> gitCommitTagging] Creating git commit and tag`, { tag });
+    logger.info(`[main] [packageFilesUpdated -> gitCommitTagging] Creating git commit and tag`, {
+      tag,
+    });
     run('git', ['add', 'package.json', 'package-lock.json']);
     run('git', ['commit', '-m', `chore(release): v${newVersion}`]);
     run('git', ['tag', tag]);
@@ -234,7 +247,7 @@ function main() {
     logger.info(`[main] [npmPublishing -> done] Next publish flow finished`, { newVersion, tag });
   } catch (error) {
     throw new Error('[main] Release stopped. You may need to rollback commit/tag manually.', {
-      cause: error
+      cause: error,
     });
   }
 }
@@ -244,7 +257,7 @@ try {
 } catch (error) {
   logger.error(`[main] [starting -> failed] publish-next failed`, {
     errorMessage: error.message || String(error),
-    cause: error.cause
+    cause: error.cause,
   });
   process.exit(1);
 }

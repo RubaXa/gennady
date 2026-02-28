@@ -3,6 +3,7 @@
 Use this flow when the agent is **throwing, rethrowing, or formatting errors**.
 
 ## Error construction
+
 - Error messages must include anchor:
   - `new Error("[Class#method] Message", { cause })`
   - `new Error("[functionName] Message", { cause })`
@@ -10,6 +11,7 @@ Use this flow when the agent is **throwing, rethrowing, or formatting errors**.
 - Preserve original context when rethrowing.
 
 ## In catch blocks
+
 1. Log with `logger.error` (see [logging.md](./logging.md)).
 2. Then throw with anchor and `{ cause }` as above.
 

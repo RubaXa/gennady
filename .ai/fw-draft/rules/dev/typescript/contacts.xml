@@ -4,6 +4,12 @@
     <Rule id="type_vs_interface">Для структур данных (объекты, DTO, ответы API, нормализованные модели) использовать type. interface — только для сущностей, которые наследуют или расширяют (несколько классов реализуют один контракт). Классы ошибок (extends Error) остаются class.</Rule>
     <Rule id="naming_domain">Типы, относящиеся к внешней системе или домену (API, сервис), должны иметь префикс в имени (напр. ApiResource, ExternalServiceDto, VendorOrder). Внутренние утилитные типы без внешнего домена — без префикса.</Rule>
   </TypeScript_Rules>
+  <TypeScript_Conventions hint="Node 22+, совместимость с декораторами">
+    <Convention id="no_enum">Не использовать enum. Вместо: const + as const или union type.</Convention>
+    <Convention id="no_constructor_modifiers">Не использовать модификаторы в конструкторе (public, private). Явное объявление полей в теле класса.</Convention>
+    <Convention id="no_private">Не использовать private / #private field. Вместо: protected _field с префиксом _.</Convention>
+    <Convention id="no_readonly_param">readonly — в объявлении поля, не в параметре конструктора.</Convention>
+  </TypeScript_Conventions>
   <Tag_Dictionary hint="Полный реестр допустимых JSDoc-тегов для контрактов">
     <Tag name="@purpose" type="mandatory">
       <Definition>Телеологическое назначение. Зачем эта сущность существует в бизнес-логике?</Definition>

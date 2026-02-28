@@ -1,0 +1,337 @@
+{
+	"Object.prototype": {
+	  "description": "The prototype object for all objects created by `new Object()` or object literals. It provides common methods inherited by all objects.",
+	  "properties": {
+		"constructor": {
+		  "value": "Object",
+		  "attributes": {
+			"writable": true,
+			"enumerable": false,
+			"configurable": true
+		  },
+		  "description": "Specifies the function that creates an object's prototype. The initial value is the Object constructor."
+		},
+		"__proto__": {
+		  "description": "[Legacy, Optional] An accessor property that exposes the internal [[Prototype]] of an object.",
+		  "legacy": true,
+		  "optional": true,
+		  "attributes": {
+			"enumerable": false,
+			"configurable": true
+		  },
+		  "get": {
+			"description": "Returns the prototype of the object.",
+			"arguments": [],
+			"returns": {
+			  "type": "Object | null",
+			  "description": "The prototype object or null."
+			},
+			"exceptions": [
+			  {
+				"type": "TypeError",
+				"description": "If the `this value` is not coercible to an Object (null or undefined)."
+			  },
+			   {
+				"type": "TypeError",
+				"description": "If retrieving the prototype fails internally (e.g., on certain Proxy objects)."
+			  }
+			]
+		  },
+		  "set": {
+			 "description": "Sets the prototype of the object.",
+			 "arguments": [
+			   {
+				 "name": "proto",
+				 "required": true,
+				 "description": "The new prototype (an object or null)."
+			   }
+			 ],
+			 "returns": {
+			   "type": "undefined",
+			   "description": "Always returns undefined."
+			 },
+			 "exceptions": [
+				{
+				 "type": "TypeError",
+				 "description": "If the `this value` is null or undefined."
+			   },
+				{
+				 "type": "TypeError",
+				 "description": "If the operation fails (e.g. `this value` is non-extensible, `this value` is not an object, or a prototype chain cycle would be created)."
+			   }
+			 ]
+		  }
+		}
+	  },
+	  "methods": {
+		"hasOwnProperty": {
+		  "description": "Returns a boolean indicating whether the object has the specified property as its own property (as opposed to inheriting it).",
+		  "arguments": [
+			{
+			  "name": "V",
+			  "required": true,
+			  "description": "The property key (String or Symbol) to test."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "`true` if the object has the specified property as own property; `false` otherwise."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If the `V` argument cannot be converted to a property key."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "If the `this value` is not coercible to an Object (null or undefined)."
+			}
+		  ]
+		},
+		"isPrototypeOf": {
+		  "description": "Checks if an object exists in another object's prototype chain.",
+		  "arguments": [
+			{
+			  "name": "V",
+			  "required": true,
+			  "description": "The object whose prototype chain will be searched."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "`true` if the calling object lies in the prototype chain of `V`; `false` otherwise."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If the `this value` is not coercible to an Object (null or undefined)."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "If retrieving the prototype of `V` or any object in its chain fails internally (e.g., on certain Proxy objects)."
+			}
+		  ]
+		},
+		"propertyIsEnumerable": {
+		  "description": "Returns a Boolean indicating whether the specified property is the object's own enumerable property.",
+		   "arguments": [
+			{
+			  "name": "V",
+			  "required": true,
+			  "description": "The property key (String or Symbol) to test."
+			}
+		  ],
+		  "returns": {
+			"type": "Boolean",
+			"description": "`true` if the specified property is an own enumerable property; `false` otherwise."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If the `V` argument cannot be converted to a property key."
+			},
+			 {
+			  "type": "TypeError",
+			  "description": "If the `this value` is not coercible to an Object (null or undefined)."
+			}
+		  ]
+		},
+		"toLocaleString": {
+		  "description": "Returns a string representing the object. This method is meant to be overridden by derived objects for locale-specific purposes.",
+		  "arguments": [
+			 {
+			   "name": "reserved1",
+			   "required": false,
+			   "description": "Reserved for future use (intended for ECMA-402 Intl options)."
+			 },
+			 {
+			   "name": "reserved2",
+			   "required": false,
+			   "description": "Reserved for future use (intended for ECMA-402 Intl options)."
+			 }
+		  ],
+		  "returns": {
+			"type": "String",
+			"description": "A string representation of the object. By default, calls `this.toString()`."
+		  },
+		  "exceptions": [
+			 {
+			   "comment": "Inherits exceptions from the call to this.toString()",
+			   "type": "TypeError",
+			   "description": "If `this.toString` cannot be called or throws."
+			 }
+		  ]
+		},
+		"toString": {
+		  "description": "Returns a string representing the object, typically in the format \"[object Type]\".",
+		  "arguments": [],
+		  "returns": {
+			"type": "String",
+			"description": "A string representation of the object."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If retrieving the value of `Symbol.toStringTag` throws an error (e.g., from a getter)."
+			 },
+			  {
+			  "type": "TypeError",
+			  "description": "If checking `IsArray` throws an error (e.g., on certain Proxy objects)."
+			 }
+		  ]
+		},
+		"valueOf": {
+		  "description": "Returns the primitive value of the specified object.",
+		  "arguments": [],
+		  "returns": {
+			"type": "Object",
+			"description": "The primitive value of the object (usually the object itself for plain objects)."
+		  },
+		  "exceptions": [
+			 {
+			  "type": "TypeError",
+			  "description": "If the `this value` is not coercible to an Object (null or undefined)."
+			}
+		  ]
+		},
+		"__defineGetter__": {
+		   "description": "[Legacy, Optional] Binds an object's property to a function to be called when that property is looked up.",
+		   "legacy": true,
+		   "optional": true,
+		   "arguments": [
+			 {
+			   "name": "P",
+			   "required": true,
+			   "description": "The property key (String or Symbol) for which to bind the getter."
+			 },
+			 {
+			   "name": "getter",
+			   "required": true,
+			   "description": "The function to use as the getter."
+			 }
+		   ],
+		   "returns": {
+			 "type": "undefined",
+			 "description": "Always returns undefined."
+		   },
+		   "exceptions": [
+			 {
+			   "type": "TypeError",
+			   "description": "If the `this value` is not coercible to an Object."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If the `getter` argument is not callable."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If the `P` argument cannot be converted to a property key."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If defining the property fails (e.g., the property is non-configurable)."
+			 }
+		   ]
+		 },
+		 "__defineSetter__": {
+		   "description": "[Legacy, Optional] Binds an object's property to a function to be called when an attempt is made to set that property.",
+		   "legacy": true,
+		   "optional": true,
+		   "arguments": [
+			 {
+			   "name": "P",
+			   "required": true,
+			   "description": "The property key (String or Symbol) for which to bind the setter."
+			 },
+			 {
+			   "name": "setter",
+			   "required": true,
+			   "description": "The function to use as the setter."
+			 }
+		   ],
+		   "returns": {
+			 "type": "undefined",
+			 "description": "Always returns undefined."
+		   },
+		   "exceptions": [
+			  {
+			   "type": "TypeError",
+			   "description": "If the `this value` is not coercible to an Object."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If the `setter` argument is not callable."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If the `P` argument cannot be converted to a property key."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If defining the property fails (e.g., the property is non-configurable)."
+			 }
+		   ]
+		 },
+		 "__lookupGetter__": {
+		   "description": "[Legacy, Optional] Returns the function bound as a getter to the specified property, searching the prototype chain.",
+		   "legacy": true,
+		   "optional": true,
+		   "arguments": [
+			 {
+			   "name": "P",
+			   "required": true,
+			   "description": "The property key (String or Symbol) whose getter should be looked up."
+			 }
+		   ],
+		   "returns": {
+			 "type": "Function | undefined",
+			 "description": "The getter function for the property, or `undefined` if none is found."
+		   },
+		   "exceptions": [
+			   {
+			   "type": "TypeError",
+			   "description": "If the `this value` is not coercible to an Object."
+			 },
+			  {
+			   "type": "TypeError",
+			   "description": "If the `P` argument cannot be converted to a property key."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If retrieving the prototype or property descriptor fails internally during the chain walk."
+			 }
+		   ]
+		 },
+		 "__lookupSetter__": {
+		   "description": "[Legacy, Optional] Returns the function bound as a setter to the specified property, searching the prototype chain.",
+		   "legacy": true,
+		   "optional": true,
+		   "arguments": [
+			 {
+			   "name": "P",
+			   "required": true,
+			   "description": "The property key (String or Symbol) whose setter should be looked up."
+			 }
+		   ],
+		   "returns": {
+			 "type": "Function | undefined",
+			 "description": "The setter function for the property, or `undefined` if none is found."
+		   },
+		   "exceptions": [
+			  {
+			   "type": "TypeError",
+			   "description": "If the `this value` is not coercible to an Object."
+			 },
+			  {
+			   "type": "TypeError",
+			   "description": "If the `P` argument cannot be converted to a property key."
+			 },
+			 {
+			   "type": "TypeError",
+			   "description": "If retrieving the prototype or property descriptor fails internally during the chain walk."
+			 }
+		   ]
+		 }
+	  }
+	}
+  }

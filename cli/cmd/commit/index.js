@@ -1,1 +1,0 @@
-import './commit.cmd.js';

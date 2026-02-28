@@ -1,0 +1,162 @@
+{
+	"Function.prototype": {
+		"description": "The prototype object for all Function objects. It is itself a built-in function object but cannot be used as a constructor.",
+		"properties": {
+			"constructor": {
+				"value": "Function",
+				"attributes": {
+					"writable": true,
+					"enumerable": false,
+					"configurable": true
+				},
+				"description": "The constructor function that created the instance object. For Function instances, this is the Function constructor."
+			},
+			"length": {
+				"value": 0,
+				"attributes": {
+					"writable": false,
+					"enumerable": false,
+					"configurable": true
+				},
+				"description": "The number of formal parameters expected by the Function.prototype function itself, which is 0."
+			},
+			"name": {
+				"value": "\"\"",
+				"attributes": {
+					"writable": false,
+					"enumerable": false,
+					"configurable": true
+				},
+				"description": "The name of the Function.prototype function itself, which is the empty string."
+			}
+		},
+		"methods": {
+			"apply": {
+				"description": "Calls the function with a given `this` value and arguments provided as an array (or an array-like object).",
+				"arguments": [
+					{
+						"name": "thisArg",
+						"required": false,
+						"description": "The value to be passed as the `this` parameter to the target function. If the function is non-strict, `null` or `undefined` will be replaced with the global object, and primitive values will be boxed."
+					},
+					{
+						"name": "argArray",
+						"required": false,
+						"description": "An array-like object, specifying the arguments with which the function should be called, or `null` or `undefined` if no arguments are provided."
+					}
+				],
+				"returns": {
+					"type": "any",
+					"description": "The result of calling the function with the specified `this` value and arguments."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `this` value (the function being called) is not callable."
+					},
+					{
+						"type": "TypeError",
+						"description": "If `argArray` is provided but cannot be converted to a list (e.g., is not array-like or throws during iteration)."
+					}
+				]
+			},
+			"bind": {
+				"description": "Creates a new function that, when called, has its `this` keyword set to the provided value, with a given sequence of arguments preceding any provided when the new function is called.",
+				"arguments": [
+					{
+						"name": "thisArg",
+						"required": true,
+						"description": "The value to be passed as the `this` parameter to the target function when the bound function is called. Ignored if the target function is an arrow function or already bound."
+					},
+					{
+						"name": "args",
+						"required": false,
+						"variadic": true,
+						"description": "Arguments to prepend to arguments provided to the bound function when invoking the target function."
+					}
+				],
+				"returns": {
+					"type": "Function",
+					"description": "A new bound function object with the specified `this` value and initial arguments."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `this` value (the target function) is not callable."
+					},
+					{
+						"type": "TypeError",
+						"description": "If reading the 'length' or 'name' property of the target function throws an error (potential UserCodeError)."
+					}
+				]
+			},
+			"call": {
+				"description": "Calls the function with a given `this` value and arguments provided individually.",
+				"arguments": [
+					{
+						"name": "thisArg",
+						"required": false,
+						"description": "The value to be passed as the `this` parameter to the target function. If the function is non-strict, `null` or `undefined` will be replaced with the global object, and primitive values will be boxed."
+					},
+					{
+						"name": "args",
+						"required": false,
+						"variadic": true,
+						"description": "Arguments for the function."
+					}
+				],
+				"returns": {
+					"type": "any",
+					"description": "The result of calling the function with the specified `this` value and arguments."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `this` value (the function being called) is not callable."
+					}
+				]
+			},
+			"toString": {
+				"description": "Returns a string representing the source code of the function.",
+				"arguments": [],
+				"returns": {
+					"type": "String",
+					"description": "A string containing the source code representation of the function. For built-in functions or bound functions, the format is implementation-defined but should resemble 'function name() { [native code] }'."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `this` value is not a callable Object or if its source text is unavailable and it's not a recognized function type."
+					}
+				]
+			}
+		},
+		"symbols": {
+			"[Symbol.hasInstance]": {
+				"description": "Used by the `instanceof` operator. Determines if a constructor function recognizes an object as its instance.",
+				"attributes": {
+					"writable": false,
+					"enumerable": false,
+					"configurable": false
+				},
+				"arguments": [
+					{
+						"name": "V",
+						"required": true,
+						"description": "The value to check."
+					}
+				],
+				"returns": {
+					"type": "Boolean",
+					"description": "`true` if `V` is considered an instance of the function; `false` otherwise. Based on prototype chain checks by default."
+				},
+				"exceptions": [
+					{
+						"type": "TypeError",
+						"description": "If the `this` value (the function) is not an object, or if checking the prototype chain fails (e.g., accessing prototype throws)."
+					}
+				]
+			}
+		}
+	}
+}

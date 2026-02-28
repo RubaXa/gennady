@@ -17,22 +17,26 @@
   "license": "MIT",
   "repository": "https://github.com/rubaxa/gennady",
   "type": "module",
-  "bin": "./cli/gennady.js",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "bin": "./dist/gennady.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
     "test": "node --test",
-    "test:watch": "tsx --test-loader src/**/*.test.ts",
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "publish-next": "node scripts/publish-next.js"
+    "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
+    "dev": "tsx cli/gennady.ts",
+    "build": "vite build",
+    "prepublishOnly": "npm run build",
+    "publish-next": "tsx scripts/publish-next.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@types/node": "^25.3.2",
+    "fast-glob": "^3.3.3",
     "tsx": "^4.19.1",
-    "typescript": "^5.7.2"
-  },
-  "dependencies": {
-    "fast-glob": "^3.3.3"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "prettier": "^3.4.2"
   }
 }

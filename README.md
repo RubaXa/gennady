@@ -1,5 +1,5 @@
-🤖 Gennadyᵇᵉᵗᵃ 🗯️
------------------
+## 🤖 Gennadyᵇᵉᵗᵃ 🗯️
+
 **GEN**eral **E**xtensible **N**eural **N**etwork **A**daptive **D**ata **Y**ntelligence.
 
 ```bash
@@ -26,6 +26,7 @@ npx gennady cat <path1> <path2> ...
 ## 🔖 Usage Overview
 
 Gennady provides three main CLI commands:
+
 - `npx gennady` — Generate commit messages from staged git changes
 - `npx gennady review` — Review staged changes for critical issues
 - `npx gennady cat <path1> <path2> ...` — Display file contents
@@ -49,22 +50,22 @@ npx gennady --branch=develop
 ```
 
 ### Options
-| Option            | Alias(es)        | Description                                  |
-|-------------------|------------------|----------------------------------------------|
-| `--mode`          | `-m`             | Set the mode (`auto`, `oneline`, `detailed`) |
-| `--oneline`       | `--short`, `-o`  | Generate a one-line commit message           |
-| `--model`         |                  | Specify the AI model                         |
-| `--branch`        | `-b`             | Target branch for diff                       |
-| `--apply`         |                  | Immediately apply the generated commit message to git |
 
+| Option      | Alias(es)       | Description                                           |
+| ----------- | --------------- | ----------------------------------------------------- |
+| `--mode`    | `-m`            | Set the mode (`auto`, `oneline`, `detailed`)          |
+| `--oneline` | `--short`, `-o` | Generate a one-line commit message                    |
+| `--model`   |                 | Specify the AI model                                  |
+| `--branch`  | `-b`            | Target branch for diff                                |
+| `--apply`   |                 | Immediately apply the generated commit message to git |
 
 #### What Happens?
+
 - Gennady analyzes your staged changes.
 - It generates a commit message.
 - If your system language isn't English, it translates the message for you.
 
 ---
-
 
 ## 📝 Code Review
 
@@ -78,11 +79,13 @@ npx gennady review --branch=develop
 ```
 
 #### Options
-| Option     | Alias(es)  | Description              |
-|-----------|-----------|--------------------------|
-| `--branch` | `-b`      | Target branch for diff   |
+
+| Option     | Alias(es) | Description            |
+| ---------- | --------- | ---------------------- |
+| `--branch` | `-b`      | Target branch for diff |
 
 #### What Happens?
+
 - Analyzes staged changes
 - Checks for critical issues in added/modified lines (logic, runtime, security)
 - Outputs `GOOD` if no issues found, or structured issue list
@@ -107,12 +110,13 @@ npx gennady cat ./src/ --plain | pbcopy
 ```
 
 #### Options
-| Option        | Alias(es)     | Description              |
-|---------------|---------------|--------------------------|
-| `--output`    | `-o`          | Format: `md` or `xml`    |
-| `--plain`     |               | Output without colors    |
-| `--exclude`   | `-e`          | Patterns to exclude      |
-| `--ext`       |               | File extensions to include |
+
+| Option      | Alias(es) | Description                |
+| ----------- | --------- | -------------------------- |
+| `--output`  | `-o`      | Format: `md` or `xml`      |
+| `--plain`   |           | Output without colors      |
+| `--exclude` | `-e`      | Patterns to exclude        |
+| `--ext`     |           | File extensions to include |
 
 ---
 
@@ -134,17 +138,17 @@ Create `~/.gennadyrc` configuration file:
 
 ```json
 {
-    "models": [
-        {
-            "model": "gpt-3.5-turbo-0125",
-            "url": "https://api.openai.com/v1/chat/completions",
-            "key": "...",
-        },
-        {
-            "model": "llama3:8b",
-            "url": "http://127.0.0.1:11434/api/generate",
-        }
-    ]
+  "models": [
+    {
+      "model": "gpt-3.5-turbo-0125",
+      "url": "https://api.openai.com/v1/chat/completions",
+      "key": "..."
+    },
+    {
+      "model": "llama3:8b",
+      "url": "http://127.0.0.1:11434/api/generate"
+    }
+  ]
 }
 ```
 
