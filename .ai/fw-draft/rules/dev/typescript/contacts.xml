@@ -54,7 +54,7 @@
       <Format>@invariant {Условие целостности или Политика}.</Format>
     </Tag>
     <Tag name="@sideEffect" type="critical">
-      <Definition>Любое взаимодействие с внешним миром (IO, Network, Logs, Events).</Definition>
+      <Definition>Любое взаимодействие с внешним миром (IO, Network, Logs, Events , etc).</Definition>
       <Condition_Use>ВСЕГДА, если метод не является чистой функцией.</Condition_Use>
       <Condition_Skip>Если метод только вычисляет и возвращает данные.</Condition_Skip>
       <Format>@sideEffect {Тип действия}: {Описание}.</Format>
