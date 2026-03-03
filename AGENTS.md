@@ -47,7 +47,6 @@ AGENTS.md (ты здесь)
 - **shared/** — общее: `common/` (logger, exec, files, style, xml, parse-args, language, tokens, think, unguard), `backend/` (git, rc).
 - **services/** — сервисы (vcs-client).
 - **cli/** — команды: `gennady.ts`, `cmd/*`, `utils/*` (commit-gen, review-gen, cat-gen, prompts, ai-legacy).
-- **assistant/** — новая точка входа (пока пустая).
 
 **Точки входа**: `cli/gennady.ts` + `cli/cmd/*`. CLI вызывает `cli/utils/*`, `shared/*`, `services/*`. Старт: [shared/AGENTS.md](shared/AGENTS.md), [cli/AGENTS.md](cli/AGENTS.md).
 

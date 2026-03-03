@@ -84,9 +84,7 @@
       <Format>@deprecated Используй {NewMethod} вместо этого.</Format>
     </Tag>
   </Tag_Dictionary>
-
   <Usage_Patterns hint="Как применять теги к разным сущностям">
-    
     <Pattern id="PATTERN_SPECIFICATION_TYPE" appliesTo="type, interface (data)">
       <Context>Определение типа данных (type) или контракта данных (interface).</Context>
       <Rule>Данные: type с @purpose; при принадлежности к домену/API — префикс в имени. Логика: pre/post только если не дублируют param/returns.</Rule>
@@ -98,7 +96,6 @@
         export type ApiCatalogItem = { id: string; children: ApiCatalogItem[]; };
       </Example>
     </Pattern>
-
     <Pattern id="PATTERN_SYSTEM_INTERFACE" appliesTo="interface (service), class (client)">
       <Context>Интерфейс или Клиент к внешней системе (API, DB, IO). Ненадежная среда.</Context>
       <Rule>Обязательно: 1. Иерархия ошибок (Base -> Network/Auth/Domain). 2. @invariant с описанием Resilience Policy (Retry, Rate Limits, Timeout).</Rule>
@@ -113,7 +110,6 @@
         export interface PaymentGateway { ... }
       </Example>
     </Pattern>
-
     <Pattern id="PATTERN_IMPLEMENTATION_LINK" appliesTo="const, class, method">
       <Context>Реализация сущности, которая уже описана во внешнем контракте (implements Interface).</Context>
       <Rule>Не дублируй логику. Используй @purpose (кратко), @consumer и @see.</Rule>
@@ -126,7 +122,6 @@
         export const mobileUserTransformer: UserTransformer = (u) => { ... };
       </Example>
     </Pattern>
-
     <Pattern id="PATTERN_CLASS_METHOD" appliesTo="method">
       <Context>Метод класса. Если реализует интерфейс — @see. Иначе — полный контракт.</Context>
       <Example>
@@ -144,7 +139,6 @@
       <Example good="@param id Идентификатор сущности (непустая строка или положительное число). @returns Данные для отображения в UI или передачи в следующий слой."/>
       <Example bad="@param id Смысл: идентификатор. Валидность: непустая строка. @returns UserDto с заполненными полями."/>
     </Pattern>
-
     <Pattern id="PATTERN_EXPORTED_CONSTANT" appliesTo="const">
       <Context>Публичные константы, особенно объекты конфигурации.</Context>
       <Rule>Опиши @purpose (зачем этот конфиг) и @invariant (ограничения значений).</Rule>
@@ -156,7 +150,6 @@
         export const RETRY_CONFIG = { ... };
       </Example>
     </Pattern>
-    
     <Pattern id="PATTERN_ASYNC_FUNCTION" appliesTo="function, method">
       <Context>Асинхронная функция, возвращающая Promise.</Context>
       <Rule>@returns описывает значение при успешном resolve. @throws описывает причину (Error) при reject.</Rule>
@@ -171,7 +164,6 @@
         export async function fetchUser(userId: string): Promise<ApiUser> { ... }
       </Example>
     </Pattern>
-
     <Pattern id="PATTERN_GENERIC_FUNCTION" appliesTo="function, method">
       <Context>Обобщенная (generic) функция с параметризованными типами.</Context>
       <Rule>В @param и @returns следует описать роль обобщенного типа T.</Rule>
@@ -184,9 +176,7 @@
         export function wrapInApiResponse<T>(data: T): ApiResponse<T> { ... }
       </Example>
     </Pattern>
-
   </Usage_Patterns>
-
   <Validation_Checklist hint="Критерии качества контракта">
     <Check>Экспортируемая сущность: есть @purpose; для корневых типов и публичного API — @consumer при необходимости.</Check>
     <Check>Класс/модуль с состоянием: есть @invariant.</Check>

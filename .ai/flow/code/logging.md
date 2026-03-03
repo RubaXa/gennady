@@ -25,7 +25,7 @@ Use this flow when the agent is **writing or changing code that logs** (console,
 ## 4) Time in logs
 
 - Log elapsed time **only for long operations** (e.g. npm install, network, heavy IO).
-- Measure with `performance.now()` (from `node:perf_hooks`), not `Date.now()`.
+- Measure with `performance.now()` (from `node:perf_hooks` for nodejs), not `Date.now()`.
 - Format: `` `${time.toFixed(2)}ms` `` (two decimal places), not `Math.round(time)`.
 
 ## 5) Log levels
