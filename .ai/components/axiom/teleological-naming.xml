@@ -1,0 +1,9 @@
+<Axiom id="AXIOM_TELEOLOGICAL_NAMING">
+  <Rule reason="Intent over Pattern">
+    ✅ Имена должны отражать бизнес-цель (Teleology), а не паттерн (Topology).
+    ❌ ЗАПРЕЩЕН семантический шум: `Manager`, `Handler`, `Data`, `Info`, `Wrapper`, `do...`, `process...`.
+  </Rule>
+  <Rule reason="Verb Precision">Используй точные глаголы: `retrieve` (а не get), `verify` (а не check), `compose` (а не make).</Rule>
+  <Rule reason="Contractual Naming">Имя метода должно быть исчерпывающим контрактом (напр. `verifyRegistrationData`, а не просто `validate` в классе `UserValidator`).</Rule>
+  <Rule reason="Implementation Hiding">Публичные методы не должны выдавать детали реализации (запрещены слова `Db`, `Sql`, `Http`, кроме слоев-сериализаторов).</Rule>
+</Axiom>

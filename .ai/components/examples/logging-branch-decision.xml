@@ -1,0 +1,31 @@
+<Example id="EX_LOGGING_BRANCH_DECISION">
+  <Context>Ветвление: не повторяй state в описании; сообщай причину выбора ветви. Типизация и JSDoc.</Context>
+  <Code_Snippet>
+    ```typescript
+    import { logger } from '../utils/logger';
+
+    /** @purpose Конфигурация для выбора стратегии обработки. */
+    export type DecideStrategyConfig = {
+      /** @purpose Путь к целевому ресурсу (если отсутствует, используется fallback). */
+      path?: string;
+    };
+
+    /**
+     * @purpose Определяет стратегию обработки на основе наличия пути в конфигурации.
+     * @param config Параметры конфигурации.
+     * @returns Идентификатор выбранной стратегии.
+     */
+    export function decideStrategy(config: DecideStrategyConfig): string {
+      logger.debug('[decideStrategy] [ready → choosing]');
+      
+      if (!config?.path) {
+        logger.debug('[decideStrategy] [choosing → fallback] No config path provided');
+        return 'fallback';
+      }
+
+      logger.debug(`[decideStrategy] [choosing → primary] ${config.path}`);
+      return 'primary';
+    }
+    ```
+  </Code_Snippet>
+</Example>

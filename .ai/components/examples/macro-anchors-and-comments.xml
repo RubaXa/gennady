@@ -1,0 +1,32 @@
+<Example id="EX_MACRO_ANCHORS_AND_COMMENTS">
+  <Context>Симбиоз структурных якорей и передачи AI-намерений. Подавление атомарного шума.</Context>
+  <Code_Snippet>
+    ❌ INCORRECT: Атомарный мусор, комментарии "ЧТО", человеческий стиль
+    ```typescript
+        // START_VARS
+        const maxRetries = 3;
+        // END_VARS
+
+        // START_CHECK_RETRIES
+        // Check if retry limit exceeded
+        if (attempts > maxRetries) {
+            // START_ERROR
+            throw new Error("Limit");
+            // END_ERROR
+        }
+        // END_CHECK_RETRIES
+    ```
+
+    ✅ CORRECT: AI-first подход. Якоря только на макро-уровне, комментарий "ПОЧЕМУ"
+    ```typescript
+        const maxRetries = 3; // Атомарная операция. Якоря запрещены. Silence over noise.
+
+        // START_ENFORCE_RETRY_POLICY
+        // Circuit breaker logic: prevent cascading failures on the downstream payment provider
+        if (attempts > maxRetries) {
+            throw new PaymentError("[Checkout#charge][circuit-breaker:limit-exceeded] Upstream provider unresponsive");
+        }
+        // END_ENFORCE_RETRY_POLICY
+    ```
+  </Code_Snippet>
+</Example>

@@ -1,0 +1,20 @@
+<Axiom id="AXIOM_JSDOC_AS_CONTRACTS">
+  <Rule reason="Data Type Architecture">Для DTO, конфигураций, ответов API используй `type`. Ключевое слово `interface` используется ТОЛЬКО для абстракций с наследованием/реализацией (polymorphism).</Rule>
+  <Rule reason="Domain Prefixes">Типы внешних систем обязаны иметь префикс домена (напр. `ApiResource`, `VendorOrder`). Внутренние утилиты — без префикса.</Rule>
+  <Rule reason="Error Classes">Сущности, наследующие `Error`, объявляются через `class`. Не заменять на `type` или `interface`.</Rule>
+  <Rule reason="Strict JSDoc Tag Order">
+    Нарушение = Score 0.0.
+    Базовый контракт (ОБЯЗАТЕЛЕН для всех методов и полей, включая protected, get, set):
+    0. Используй ЛИБО `@purpose` (сжатая суть), ЛИБО `@see` (ссылка на интерфейс/родителя: `@see {Interface#member} in path`). Не дублируй их!
+
+    Опциональные JSDoc-теги (применять СТРОГО в указанном порядке):
+    1. `@consumer` (Кто клиент API? Для публичных интерфейсов/модулей)
+    2. `@invariant` (Ограничения, SLA, Retry/Error Policies)
+    3. `@pre` (Скрытые условия до вызова)
+    4. `@param` (Одно связное описание роли. Не дублируй структуру полей из типа!)
+    5. `@throws` (Причина throw или reject Promise)
+    6. `@returns` (Бизнес-цель успешного результата или resolve Promise)
+    7. `@post` (Гарантии состояния после вызова)
+    8. `@sideEffect` (I/O, Network, Logs)
+  </Rule>
+</Axiom>
