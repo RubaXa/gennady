@@ -13,6 +13,15 @@ export type MergeRequestsQuery = {
 };
 
 /**
+ * @purpose Параметры запроса Merge Request по IID.
+ * @consumer VcsGitlabMergeRequests
+ */
+export type MergeRequestByIidQuery = {
+  project: string;
+  iid: string | number;
+};
+
+/**
  * @purpose Доступ к Merge Requests в GitLab.
  * @consumer VcsGitlabClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
@@ -53,5 +62,25 @@ export class VcsGitlabMergeRequests {
   async getOne(query: MergeRequestsQuery): Promise<unknown | null> {
     const list = await this.getList({ ...query, perPage: 1 });
     return list.length > 0 ? list[0] : null;
+  }
+
+  /**
+   * @purpose Получить Merge Request по IID в рамках проекта.
+   * @param query Параметры: { project, iid }.
+   * @returns Объект Merge Request или null при 404.
+   * @sideEffect Network: GET /projects/:project/merge_requests/:iid
+   */
+  async getByIid(query: MergeRequestByIidQuery): Promise<unknown | null> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    try {
+      return await this._request(`/projects/${projectId}/merge_requests/${iid}`);
+    } catch (error) {
+      const message = (error as Error).message ?? '';
+      if (message.includes('404')) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

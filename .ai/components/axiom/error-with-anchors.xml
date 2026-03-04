@@ -1,6 +1,0 @@
-<Axiom id="AXIOM_ERROR_WITH_ANCHORS">
-  <Rule reason="Error Tracing">Каждое сообщение об ошибке содержит Trace-Prefix (см. DEF_TRACE_PREFIX).</Rule>
-  <Rule reason="Error Chaining">Создавай и перебрасывай ошибки с `{ cause }`, сохраняя исходный контекст: `new Error("[Trace-Prefix] ...", { cause })`. Не преобразуй тип `cause`, он может принимать любые значения.</Rule>
-  <Rule reason="Catch-Log-Throw Pattern">В catch-блоках: сначала логируй через `logger.error`, затем выбрасывай заново с Trace-Prefix и `{ cause }`.</Rule>
-  <Rule reason="Fail-Fast Validation">Валидируй входные аргументы синхронно в начале метода и бросай доменные ошибки с контекстом.</Rule>
-</Axiom>

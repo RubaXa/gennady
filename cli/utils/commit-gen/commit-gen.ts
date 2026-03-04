@@ -99,7 +99,7 @@ export class CommitGen {
   async generate(): Promise<string | undefined> {
     const startedAt = performance.now();
     this.init.logger.info(
-      `[CommitGen#generate] [idle -> loading] targetBranch=${this.init.targetBranch ?? 'HEAD'}`
+      `[CommitGen#generate] [idle → loading] targetBranch=${this.init.targetBranch ?? 'HEAD'}`
     );
 
     const {
@@ -111,7 +111,7 @@ export class CommitGen {
     } = getGitDiffInfo(this.init.targetBranch);
 
     if (parsedCodeDiff.length === 0) {
-      this.init.logger.warn(`[CommitGen#generate] [loading -> skipped] No staged changes`);
+      this.init.logger.warn(`[CommitGen#generate] [loading → skipped] No staged changes`);
       this.init.logger.info(style.italic.gray(`Hint: git add .`));
       return;
     }
@@ -127,17 +127,17 @@ export class CommitGen {
         : this.init.mode;
 
     this.init.logger.info(
-      `[CommitGen#generate] [loading -> batching] mode=${style.bold.magentaBright(mode)} languages=${programmingLanguages.join(', ')} tokens=${parsedCodeTokens} (max per file: ${parsedCodeChunkMaxTokens})`
+      `[CommitGen#generate] [loading → batching] mode=${style.bold.magentaBright(mode)} languages=${programmingLanguages.join(', ')} tokens=${parsedCodeTokens} (max per file: ${parsedCodeChunkMaxTokens})`
     );
 
     const batches = this.ai.createPromptsBatchesByDiff(parsedCodeDiff);
-    this.init.logger.debug(`[CommitGen#generate] [batching -> ready] queue=${batches.length}`);
+    this.init.logger.debug(`[CommitGen#generate] [batching → ready] queue=${batches.length}`);
 
     const startGenTime = performance.now();
     const changesetList = await Promise.all(
       batches.map(async (batch) => {
         this.init.logger.debug(
-          `[CommitGen#generate] [batching -> task] ${batch.tokens} tokens, ${batch.languages?.join('/')}`
+          `[CommitGen#generate] [batching → task] ${batch.tokens} tokens, ${batch.languages?.join('/')}`
         );
 
         const prompt = this.init.promptCommitChangeset
@@ -150,7 +150,7 @@ export class CommitGen {
 
     const changesetTime = performance.now() - startGenTime;
     this.init.logger.info(
-      `[CommitGen#generate] [batching -> changeset] (${(changesetTime / 1000).toFixed(2)}s)`
+      `[CommitGen#generate] [batching → changeset] (${(changesetTime / 1000).toFixed(2)}s)`
     );
 
     const startMsgTime = performance.now();
@@ -168,7 +168,7 @@ export class CommitGen {
 
     const msgTime = performance.now() - startMsgTime;
     this.init.logger.info(
-      `[CommitGen#generate] [changeset -> message] (${(msgTime / 1000).toFixed(2)}s)`
+      `[CommitGen#generate] [changeset → message] (${(msgTime / 1000).toFixed(2)}s)`
     );
 
     const message = xmlCommitMessageToJson(result);
@@ -183,7 +183,7 @@ export class CommitGen {
 
     const totalTime = performance.now() - startedAt;
     this.init.logger.info(
-      `[CommitGen#generate] [message -> completed] (${(totalTime / 1000).toFixed(2)}ms)`
+      `[CommitGen#generate] [message → completed] (${(totalTime / 1000).toFixed(2)}ms)`
     );
 
     if (mode === 'oneline') {

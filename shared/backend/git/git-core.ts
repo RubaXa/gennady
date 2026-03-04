@@ -70,7 +70,7 @@ export const getGitRemote = (): GitRemoteInfo | null => {
       if (!host || !project) return null;
       return { host, project, scheme };
     } catch (cause) {
-      logger.debug(`[getGitRemote] [parsing -> skip] URL parse failed`, { cause });
+      logger.debug(`[getGitRemote] [parsing → skip] URL parse failed`, { cause });
     }
   }
 
@@ -96,7 +96,7 @@ export const getGitCommitCount = (): number => {
     const output = execSyncSafe(`git rev-list --count HEAD ^${detectGitBaseBranch()} 2>/dev/null`);
     return parseInt(output, 10) || 0;
   } catch (cause) {
-    logger.debug(`[getGitCommitCount] [counting -> fallback] Using 0`, { cause });
+    logger.debug(`[getGitCommitCount] [counting → fallback] Using 0`, { cause });
     return 0;
   }
 };

@@ -5,7 +5,15 @@
 export type XmlNode = {
   tag: string;
   attrs?: Record<string, string>;
-  children?: XmlNode[] | string | string[];
+  children?: XmlNode[] | string | string[] | XmlCdataNode;
+};
+
+/**
+ * @purpose Представить текстовый XML-блок как CDATA-контент без escape спецсимволов.
+ * @consumer xml serializer
+ */
+export type XmlCdataNode = {
+  cdata: string;
 };
 
 /**
@@ -107,6 +115,9 @@ export function serializeXmlNode(node: XmlNode, level = 0): string {
     }
   } else if (typeof children === 'string') {
     content = escapeXml(children);
+  } else if ('cdata' in children) {
+    const safeCdata = String(children.cdata).replaceAll(']]>', ']]]]><![CDATA[>');
+    content = `<![CDATA[${safeCdata}]]>`;
   } else {
     content = '\n' + serializeXmlNode(children, level + 1) + '\n' + indent;
   }

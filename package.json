@@ -20,14 +20,21 @@
   "bin": "./dist/gennady.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
   "scripts": {
     "type-check": "tsc --noEmit",
+    "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
+    "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
     "test": "node --test",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
     "build": "vite build",
-    "prepublishOnly": "npm run build",
-    "publish-next": "tsx scripts/publish-next.js",
+    "prepublishOnly": "npm run build:publish",
+    "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
+    "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

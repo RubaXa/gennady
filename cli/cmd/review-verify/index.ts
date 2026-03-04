@@ -1,1 +1,1 @@
-import './review-verify.cmd.ts';
+import '../review/review-verify.cmd.ts';

@@ -16,6 +16,7 @@ if (helpFlags.has(command ?? '')) {
   console.info('  agent             Run AI agent request');
   console.info('  vcs-reply         Post replies to GitLab MR discussions from stdin');
   console.info('  review-verify     Build verification prompt from open GitLab MR');
+  console.info('  review-issues     Build XML issues artifact from GitLab MR discussions');
   console.info('');
   console.info('Examples:');
   console.info('  npx gennady');
@@ -39,6 +40,9 @@ switch (command) {
     break;
   case 'review-verify':
     await import('./cmd/review-verify/index.ts');
+    break;
+  case 'review-issues':
+    await import('./cmd/review-issues/index.ts');
     break;
   default:
     await import('./cmd/commit/index.ts');

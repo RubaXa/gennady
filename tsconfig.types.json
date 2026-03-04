@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["shared/**/*", "services/**/*", "cli/**/*", "index.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "assistant/**/*",
+    "vite.config.ts",
+    "scripts/**/*"
+  ]
+}

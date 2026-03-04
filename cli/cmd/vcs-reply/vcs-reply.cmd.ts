@@ -116,7 +116,12 @@ export async function main(opts: MainOpts = {}): Promise<{
     hostInfo = remote?.host ?? '';
   }
 
-  console.info('🤖', style.whiteBright.bold('GENNADY'), style.gray('→'), style.yellow('vcs-reply'));
+  console.info(
+    '🤖',
+    style.whiteBright.bold('GENNADY'),
+    style.gray(' → '),
+    style.yellow('vcs-reply')
+  );
   console.info(style.gray('-'.repeat(40)));
   console.info(`- project: ${style.cyan(project)}`);
   console.info(`- iid: ${style.cyan(String(iid))}`);

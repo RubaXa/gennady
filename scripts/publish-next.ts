@@ -3,23 +3,48 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseArgs } from '../shared/common/parse-args.js';
-
-const logger = console;
+import type { SpawnSyncOptions } from 'node:child_process';
+import { parseArgs } from '../shared/common/parse-args.ts';
+import { logger } from '../shared/common/logger.ts';
 
 const rootDir = process.cwd();
 const packageJsonPath = resolve(rootDir, 'package.json');
 const packageLockPath = resolve(rootDir, 'package-lock.json');
 
-function readJson(filePath) {
-  return JSON.parse(readFileSync(filePath, 'utf8'));
+type PackageJsonShape = {
+  version?: string;
+  [key: string]: unknown;
+};
+
+type PackageLockShape = {
+  version?: string;
+  packages?: {
+    ''?: {
+      version?: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-function writeJson(filePath, data) {
+function getErrorCause(error: unknown): unknown {
+  return error instanceof Error ? error.cause : undefined;
+}
+
+function readJson<T>(filePath: string): T {
+  return JSON.parse(readFileSync(filePath, 'utf8')) as T;
+}
+
+function writeJson(filePath: string, data: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
-function parseAndBumpNextVersion(version) {
+function parseAndBumpNextVersion(version: string): string {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:-next\.(\d+))?$/.exec(version);
   if (!match) {
     throw new Error(
@@ -32,9 +57,9 @@ function parseAndBumpNextVersion(version) {
   return `${major}.${minor}.${patch}-next.${nextBuild}`;
 }
 
-function run(command, args, options = {}) {
+function run(command: string, args: string[], options: SpawnSyncOptions = {}): void {
   const startedAt = Date.now();
-  logger.debug(`[run] [idle -> starting] Exec '${command}' command`, { args });
+  logger.debug(`[run] [idle → starting] Exec '${command}' command`, { args });
 
   const result = spawnSync(command, args, {
     cwd: rootDir,
@@ -43,7 +68,7 @@ function run(command, args, options = {}) {
   });
 
   if (result.status !== 0) {
-    logger.error(`[run] [starting -> failed] Command '${command}' execution failed`, {
+    logger.error(`[run] [starting → failed] Command '${command}' execution failed`, {
       args,
       exitCode: result.status,
       time: Date.now() - startedAt,
@@ -54,15 +79,15 @@ function run(command, args, options = {}) {
     });
   }
 
-  logger.debug(`[run] [starting -> completed] Command '${command}' execution completed`, {
+  logger.debug(`[run] [starting → completed] Command '${command}' execution completed`, {
     args,
     time: Date.now() - startedAt,
   });
 }
 
-function runCapture(command, args) {
+function runCapture(command: string, args: string[]): string {
   const startedAt = Date.now();
-  logger.debug(`[runCapture] [idle -> starting] Exec capture '${command}' command`, { args });
+  logger.debug(`[runCapture] [idle → starting] Exec capture '${command}' command`, { args });
 
   const result = spawnSync(command, args, {
     cwd: rootDir,
@@ -71,7 +96,7 @@ function runCapture(command, args) {
   });
 
   if (result.status !== 0) {
-    logger.error(`[runCapture] [starting -> failed] Capture command '${command}' failed`, {
+    logger.error(`[runCapture] [starting → failed] Capture command '${command}' failed`, {
       args,
       exitCode: result.status,
       stderr: result.stderr || '',
@@ -84,7 +109,7 @@ function runCapture(command, args) {
     });
   }
 
-  logger.debug(`[runCapture] [starting -> completed] Capture command '${command}' completed`, {
+  logger.debug(`[runCapture] [starting → completed] Capture command '${command}' completed`, {
     args,
     time: Date.now() - startedAt,
   });
@@ -92,7 +117,7 @@ function runCapture(command, args) {
   return (result.stdout || '').trim();
 }
 
-function tagExists(tag) {
+function tagExists(tag: string): boolean {
   const result = spawnSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], {
     cwd: rootDir,
     stdio: 'ignore',
@@ -100,9 +125,9 @@ function tagExists(tag) {
   return result.status === 0;
 }
 
-function getNpmAuthUser() {
+function getNpmAuthUser(): string {
   const startedAt = Date.now();
-  logger.debug(`[getNpmAuthUser] [idle -> starting] Checking npm auth with 'whoami'`);
+  logger.debug(`[getNpmAuthUser] [idle → starting] Checking npm auth with 'whoami'`);
 
   const result = spawnSync('npm', ['whoami', '--registry', 'https://registry.npmjs.org/'], {
     cwd: rootDir,
@@ -111,7 +136,7 @@ function getNpmAuthUser() {
   });
 
   if (result.status !== 0) {
-    logger.error(`[getNpmAuthUser] [starting -> failed] Npm auth check failed`, {
+    logger.error(`[getNpmAuthUser] [starting → failed] Npm auth check failed`, {
       exitCode: result.status,
       stderr: (result.stderr || '').trim(),
       time: Date.now() - startedAt,
@@ -127,7 +152,7 @@ function getNpmAuthUser() {
 
   const npmUser = (result.stdout || '').trim();
 
-  logger.debug(`[getNpmAuthUser] [starting -> completed] Npm auth check completed`, {
+  logger.debug(`[getNpmAuthUser] [starting → completed] Npm auth check completed`, {
     npmUser,
     time: Date.now() - startedAt,
   });
@@ -139,7 +164,7 @@ function getNpmAuthUser() {
   return npmUser;
 }
 
-function main() {
+function calculatingVersion(): void {
   const args = parseArgs(process.argv, {
     dryRun: ['dry-run', 'dryRun'],
     allowDirty: ['allow-dirty', 'allowDirty'],
@@ -147,14 +172,14 @@ function main() {
   const isDryRun = Boolean(args.dryRun);
   const allowDirty = Boolean(args.allowDirty);
 
-  logger.info(`[main] [idle -> starting] Next publish flow started`, { isDryRun, allowDirty });
-  logger.debug(`[main] [starting -> readingManifests] Reading package manifests`);
+  logger.info(`[main] [idle → starting] Next publish flow started`, { isDryRun, allowDirty });
+  logger.debug(`[main] [starting → readingManifests] Reading package manifests`);
 
-  let packageJson;
-  let packageLock;
+  let packageJson: PackageJsonShape;
+  let packageLock: PackageLockShape;
   try {
-    packageJson = readJson(packageJsonPath);
-    packageLock = readJson(packageLockPath);
+    packageJson = readJson<PackageJsonShape>(packageJsonPath);
+    packageLock = readJson<PackageLockShape>(packageLockPath);
   } catch (error) {
     throw new Error('[main] Failed to read package manifests', { cause: error });
   }
@@ -167,7 +192,7 @@ function main() {
     throw new Error('[main] package-lock.json does not contain a "version" field.');
   }
 
-  logger.debug(`[main] [readingManifests -> checkingGitState] Checking git working tree`);
+  logger.debug(`[main] [readingManifests → checkingGitState] Checking git working tree`);
   const changedFiles = runCapture('git', ['status', '--porcelain']);
 
   if (changedFiles.length > 0 && !allowDirty) {
@@ -177,20 +202,20 @@ function main() {
   }
 
   if (changedFiles.length > 0 && allowDirty) {
-    logger.warn(`[main] [checkingGitState -> checkingGitState] Dirty tree allowed by flag`, {
+    logger.warn(`[main] [checkingGitState → checkingGitState] Dirty tree allowed by flag`, {
       changedFilesCount: changedFiles.split('\n').filter(Boolean).length,
     });
   }
 
   if (!isDryRun) {
-    logger.debug(`[main] [checkingGitState -> checkingNpmAuth] Checking npm authorization`);
+    logger.debug(`[main] [checkingGitState → checkingNpmAuth] Checking npm authorization`);
     const npmUser = getNpmAuthUser();
-    logger.info(`[main] [checkingNpmAuth -> npmAuthVerified] Npm authorization verified`, {
+    logger.info(`[main] [checkingNpmAuth → npmAuthVerified] Npm authorization verified`, {
       npmUser,
     });
-    logger.debug(`[main] [npmAuthVerified -> calculatingVersion] Calculating next version`);
+    logger.debug(`[main] [npmAuthVerified → calculatingVersion] Calculating next version`);
   } else {
-    logger.debug(`[main] [checkingGitState -> calculatingVersion] Calculating next version`);
+    logger.debug(`[main] [checkingGitState → calculatingVersion] Calculating next version`);
   }
 
   const newVersion = parseAndBumpNextVersion(packageJson.version);
@@ -201,15 +226,15 @@ function main() {
   }
 
   if (isDryRun) {
-    logger.info(`[main] [calculatingVersion -> dryRunCompleted] Dry run completed`, {
+    logger.info(`[main] [calculatingVersion → dryRunCompleted] Dry run completed`, {
       newVersion,
       tag,
     });
-    logger.info(`[main] [dryRunCompleted -> done] Next publish flow finished`);
+    logger.info(`[main] [dryRunCompleted → done] Next publish flow finished`);
     return;
   }
 
-  logger.info(`[main] [calculatingVersion -> updatingPackageFiles] Updating package files`, {
+  logger.info(`[main] [calculatingVersion → updatingPackageFiles] Updating package files`, {
     newVersion,
   });
   packageJson.version = newVersion;
@@ -225,26 +250,26 @@ function main() {
     throw new Error('[main] Failed to write package manifests', { cause: error });
   }
 
-  logger.info(`[main] [updatingPackageFiles -> packageFilesUpdated] Package versions updated`, {
+  logger.info(`[main] [updatingPackageFiles → packageFilesUpdated] Package versions updated`, {
     newVersion,
   });
 
   try {
-    logger.info(`[main] [packageFilesUpdated -> gitCommitTagging] Creating git commit and tag`, {
+    logger.info(`[main] [packageFilesUpdated → gitCommitTagging] Creating git commit and tag`, {
       tag,
     });
     run('git', ['add', 'package.json', 'package-lock.json']);
     run('git', ['commit', '-m', `chore(release): v${newVersion}`]);
     run('git', ['tag', tag]);
 
-    logger.info(`[main] [gitCommitTagging -> gitPushing] Pushing commit and tags`);
+    logger.info(`[main] [gitCommitTagging → gitPushing] Pushing commit and tags`);
     run('git', ['push']);
     run('git', ['push', '--tags']);
 
-    logger.info(`[main] [gitPushing -> npmPublishing] Publishing package to npm with next tag`);
+    logger.info(`[main] [gitPushing → npmPublishing] Publishing package to npm with next tag`);
     run('npm', ['publish', '--tag', 'next']);
 
-    logger.info(`[main] [npmPublishing -> done] Next publish flow finished`, { newVersion, tag });
+    logger.info(`[main] [npmPublishing → done] Next publish flow finished`, { newVersion, tag });
   } catch (error) {
     throw new Error('[main] Release stopped. You may need to rollback commit/tag manually.', {
       cause: error,
@@ -253,11 +278,11 @@ function main() {
 }
 
 try {
-  main();
+  calculatingVersion();
 } catch (error) {
-  logger.error(`[main] [starting -> failed] publish-next failed`, {
-    errorMessage: error.message || String(error),
-    cause: error.cause,
+  logger.error(`[main] [starting → failed] publish-next failed`, {
+    errorMessage: getErrorMessage(error),
+    cause: getErrorCause(error),
   });
   process.exit(1);
 }

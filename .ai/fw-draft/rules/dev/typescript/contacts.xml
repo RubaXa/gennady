@@ -98,7 +98,7 @@
     </Pattern>
     <Pattern id="PATTERN_SYSTEM_INTERFACE" appliesTo="interface (service), class (client)">
       <Context>Интерфейс или Клиент к внешней системе (API, DB, IO). Ненадежная среда.</Context>
-      <Rule>Обязательно: 1. Иерархия ошибок (Base -> Network/Auth/Domain). 2. @invariant с описанием Resilience Policy (Retry, Rate Limits, Timeout).</Rule>
+      <Rule>Обязательно: 1. Иерархия ошибок (Base → Network/Auth/Domain). 2. @invariant с описанием Resilience Policy (Retry, Rate Limits, Timeout).</Rule>
       <Example>
         /**
          * @purpose Клиент для работы с платежным шлюзом.

@@ -12,9 +12,14 @@
     1. Zero-Noise: Отсутствие слов-паразитов (`Manager`, `Data`, `handles`) в именах и контрактах.
     2. Intent-Driven: Комментарии объясняют ТОЛЬКО "Почему", а код выражает "Что".
     3. Structural Precision: Якоря (START/END) обрамляют только макро-логику, не захламляя атомарные операции.
-    4. Contract Strictness: Идеально соблюден порядок тегов JSDoc, а `@purpose` сжат до сути.
+    4. Contract Strictness: Идеально соблюден порядок тегов JSDoc, а `@purpose` (или `@see`) использован корректно и сжат до сути.
 
-    ❌ Score 0.0 (Провал) назначается за: использование модификаторов `private`/`#`, использование `enum`, дублирование типов в комментариях, оборачивание `return` или `let` в структурные якоря, отсутствие обработки исключений в бизнес-логике.
+    ❌ Score 0.0 (Провал) назначается за любое из нарушений:
+    - Использование модификаторов private или #.
+    - Использование enum.
+    - Дублирование полей типа в JSDoc-комментариях.
+    - Оборачивание ИЗОЛИРОВАННЫХ атомарных операций (одиночный return вне макро-блока, одиночное объявление переменной) в структурные якоря.
+    - Отсутствие обработки исключений (try/catch) в бизнес-логике.
   </Reward_Criteria>
   <Definition id="DEF_TRACE_PREFIX">Формат: `[Class#method]` или `[functionName]`</Definition>
   <Execution_Axioms>
@@ -49,8 +54,8 @@
       <Rule reason="Fail-Fast Validation">Валидируй входные аргументы синхронно в начале метода и бросай доменные ошибки с контекстом.</Rule>
     </Axiom>
     <Axiom id="AXIOM_LOG_DRIVEN_DEVELOPMENT">
-      <Rule reason="Structured Logging">Сырой `console.*` запрещён. Используй общий логгер: `logger[level](message, detail?)` с уровнями `debug`/`info`/`warn`/`error` (от одного до двух аргументов: строго строка сообщения, и опционально объект деталей). Не создавай псевдологгеры (`const logger = console`). Импорт — общий, относительный к модулю.</Rule>
-      <Rule reason="Log Message Format">Формат сообщения: `[Trace-Prefix] [stateA → stateB] Description`. Trace-Prefix см. в DEF_TRACE_PREFIX. State обязателен на входе, ветвях, выходах и ошибках. Description добавляет новую информацию и не дублирует state.</Rule>
+      <Rule reason="Structured Logging">Сырой `console.*` запрещён. Используй общий логгер: `logger[level](message, detail?)` с уровнями `debug`/`info`/`warn`/`error` (от одного до двух аргументов: строго строка сообщения ПЕРВЫМ аргументом, и строго объект деталей ВТОРЫМ аргументом при необходимости; не вставляй сериализованные объекты в строку сообщения). Не создавай псевдологгеры (`const logger = console`). Импорт — общий, относительный к модулю.</Rule>
+      <Rule reason="Log Message Format">Формат сообщения: `[Trace-Prefix] [stateA → stateB] Description`. Trace-Prefix см. в DEF_TRACE_PREFIX. State обязателен на входе, ветвях, выходах и ошибках. Description добавляет новую информацию и не дублирует state. Description пишется на АНГЛИЙСКОМ языке, так как это часть кода.</Rule>
       <Rule reason="Message Purity">Message vs detail: примитивы (пути, коды, числа, время) — в строке сообщения; сложные объекты/ошибки — во втором аргументе `{ ... }` и только при необходимости.</Rule>
       <Rule reason="Performance Metrics">Время логируй только для длительных операций, измеряй `performance.now()`, форматируй как `${time.toFixed(2)}ms`.</Rule>
       <Rule reason="Logging Density">Размещение: точки входа (start), важные ветви, внешние I/O/мутации, циклы — суммарно; в `catch` всегда `logger.error` с Trace-Prefix и контекстом, затем `throw` (см. AXIOM_ERROR_WITH_ANCHORS).</Rule>
@@ -58,7 +63,7 @@
     <Axiom id="AXIOM_STRUCTURAL_ANCHORS">
       <Rule reason="Deterministic AI Parsing">Якоря (`// START_...` и `// END_...`) — это не комментарии для чтения, а хирургические границы для других ИИ-агентов и внешних скриптов. Они позволяют извлекать, чанковать и заменять (diff) логические блоки регулярными выражениями без построения AST. Формат: `[CONTEXT]_[SEMANTIC_INTENT]`.</Rule>
       <Rule reason="Macro-Level Scoping">Оборачивай якорем ТОЛЬКО ту логику, которую другой агент мог бы захотеть целиком ИЗВЛЕЧЬ или ЗАМЕНИТЬ как единый модуль: внешний API-вызов с его `try/catch`, транзакционный блок, тяжелый алгоритм.</Rule>
-      <Rule reason="Atomicity Prohibition">ПРАВИЛО АТОМАРНОСТИ: Не ставить якоря на неразделимые конструкции (объявления переменных, одиночные `return`, простые проверки или математику). Якорь должен содержать самодостаточную логическую операцию.</Rule>
+      <Rule reason="Atomicity Prohibition">Запрещено оборачивать якорями изолированные строки кода (одиночное объявление переменной, одиночный return). ОДНАКО, если return является логическим завершением макро-блока (например, возврат результата внутри try/catch API-вызова), он ДОЛЖЕН быть включен внутрь якоря этого макро-блока.</Rule>
       <Rule reason="Branch Teleology">Для ветвлений `if/else` оборачивай весь блок внешним якорем, описывающим ПРИЧИНУ ветвления (а не условие).</Rule>
     </Axiom>
     <Axiom id="AXIOM_AI_TO_AI_COMMENTS">
@@ -72,7 +77,8 @@
       <Rule reason="Data Type Architecture">Для DTO, конфигураций, ответов API используй `type`. Ключевое слово `interface` используется ТОЛЬКО для абстракций с наследованием/реализацией (polymorphism).</Rule>
       <Rule reason="Domain Prefixes">Типы внешних систем обязаны иметь префикс домена (напр. `ApiResource`, `VendorOrder`). Внутренние утилиты — без префикса.</Rule>
       <Rule reason="Error Classes">Сущности, наследующие `Error`, объявляются через `class`. Не заменять на `type` или `interface`.</Rule>
-      <Rule reason="Strict JSDoc Tag Order">
+      <Rule reason="Deterministic AST Parsing">
+        Строгий порядок тегов JSDoc критичен. Следующий ИИ-агент использует регулярные выражения для парсинга твоих контрактов. Нарушение порядка сломает пайплайн десериализации.
         Нарушение = Score 0.0.
         Базовый контракт (ОБЯЗАТЕЛЕН для всех методов и полей, включая protected, get, set):
         0. Используй ЛИБО `@purpose` (сжатая суть), ЛИБО `@see` (ссылка на интерфейс/родителя: `@see {Interface#member} in path`). Не дублируй их!
@@ -100,7 +106,7 @@
             // END_VARS
 
             // START_CHECK_RETRIES
-            // Check if retry limit exceeded
+            // Проверяем превышение лимита ретраев
             if (attempts > maxRetries) {
                 // START_ERROR
                 throw new Error("Limit");
@@ -114,7 +120,7 @@
             const maxRetries = 3; // Атомарная операция. Якоря запрещены. Silence over noise.
 
             // START_ENFORCE_RETRY_POLICY
-            // Circuit breaker logic: prevent cascading failures on the downstream payment provider
+            // Паттерн Circuit breaker: предотвращаем каскадное падение при отказе нижестоящего платежного шлюза
             if (attempts > maxRetries) {
                 throw new PaymentError("[Checkout#charge][circuit-breaker:limit-exceeded] Upstream provider unresponsive");
             }
@@ -184,7 +190,7 @@
                 this._logger.debug(`[HttpVendorGateway#reserveStock] [idle → reserving] ${idempotencyKey}`);
 
                 // START_VENDOR_API_CALL
-                // Vendor requires custom idempotency header format X-Idempotency-Ref
+                // API поставщика требует нестандартный формат заголовка идемпотентности X-Idempotency-Ref
                 try {
                     const response = await this._httpClient.post('/v2/reservations', {
                         headers: { 'X-Idempotency-Ref': idempotencyKey }
@@ -293,4 +299,19 @@
   <Ambiguity_Handling>
     <Rule reason="Handling Uncertainty">Если входящее ТЗ не позволяет написать код (неясна логика), генерируй интерфейсы с `throw new Error("[Trace-Prefix] TODO-сообщением")`, но не выдумывай бизнес-логику.</Rule>
   </Ambiguity_Handling>
+  <Execution_Protocol>
+    <Directive>Получив задачу, ты обязан действовать строго в 3 такта. Не начинай писать финальный код сразу.</Directive>
+    <Tact_1_Thinking_Process>
+      Сгенерируй блок Intent_Map СТРОГО внутри многострочного TypeScript-комментария (/* ... */) в самом начале файла. В нем кратко (списком) перечисли:
+      1. Какие макро-якоря (START/END) ты планируешь использовать (прайминг сжатием).
+      2. Какой бизнес-инвариант ты будешь защищать в комментариях "ПОЧЕМУ".
+      3. Проверь ТЗ на наличие атомарных операций, которые НЕЛЬЗЯ оборачивать якорями.
+    </Tact_1_Thinking_Process>
+    <Tact_2_Drafting>
+      Сгенерируй блок Self_Audit также внутри многострочного TypeScript-комментария (/* ... */) сразу после Intent_Map. В роли "AI-Аудитор (Score 0.0 Enforcer)" мысленно спланируй структуру и явно (текстом) проверь будущий код по чек-листу: нет ли одиночных return в якорях, слов-паразитов (Manager, Data), приватных полей (#/private). Если находишь риск — опиши, как избежишь его.
+    </Tact_2_Drafting>
+    <Tact_3_Execution>
+      Сразу после закрытия комментария (*/) выведи эталонный код. Файл должен быть 100% валидным JavaScript/TypeScript от первого до последнего символа: без markdown-разметки, префиксов и ограждений — только сырой код. Начинай сразу с ключевых слов языка (import, export, const). Убедись, что порядок тегов JSDoc соответствует AXIOM_JSDOC_AS_CONTRACTS.
+    </Tact_3_Execution>
+  </Execution_Protocol>
 </Agent_Configuration>

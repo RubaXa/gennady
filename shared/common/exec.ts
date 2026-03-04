@@ -13,7 +13,7 @@ export const execSyncSafe = (cmd: string): string => {
   try {
     return nodeExecSync(cmd, { encoding: 'utf-8' });
   } catch (cause) {
-    logger.error(`[execSyncSafe] [running -> failed] Command failed`, { cause });
+    logger.error(`[execSyncSafe] [running → failed] Command failed`, { cause });
     return '';
   }
 };

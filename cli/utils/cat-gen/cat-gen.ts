@@ -59,7 +59,7 @@ export const catGen = (paths: string | string[], options: CatGenOptions = {}): C
         return path.join(pattern, '**/*');
       }
     } catch (cause) {
-      logger.debug(`[catGen] [paths -> glob] Treating as glob: ${pattern}`, { cause });
+      logger.debug(`[catGen] [paths → glob] Treating as glob: ${pattern}`, { cause });
     }
     return pattern;
   });
@@ -86,7 +86,7 @@ export const catGen = (paths: string | string[], options: CatGenOptions = {}): C
         const relativePath = path.relative(process.cwd(), absPath);
         return { absPath, relativePath, contents };
       } catch (cause) {
-        logger.warn(`[catGen] [reading -> skip] ${absPath}`, { cause });
+        logger.warn(`[catGen] [reading → skip] ${absPath}`, { cause });
         return null;
       }
     })

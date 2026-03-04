@@ -1,7 +1,0 @@
-<Axiom id="AXIOM_LOG_DRIVEN_DEVELOPMENT">
-  <Rule reason="Structured Logging">Сырой `console.*` запрещён. Используй общий логгер: `logger[level](message, detail?)` с уровнями `debug`/`info`/`warn`/`error` (от одного до двух аргументов: строго строка сообщения, и опционально объект деталей). Не создавай псевдологгеры (`const logger = console`). Импорт — общий, относительный к модулю.</Rule>
-  <Rule reason="Log Message Format">Формат сообщения: `[Trace-Prefix] [stateA → stateB] Description`. Trace-Prefix см. в DEF_TRACE_PREFIX. State обязателен на входе, ветвях, выходах и ошибках. Description добавляет новую информацию и не дублирует state.</Rule>
-  <Rule reason="Message Purity">Message vs detail: примитивы (пути, коды, числа, время) — в строке сообщения; сложные объекты/ошибки — во втором аргументе `{ ... }` и только при необходимости.</Rule>
-  <Rule reason="Performance Metrics">Время логируй только для длительных операций, измеряй `performance.now()`, форматируй как `${time.toFixed(2)}ms`.</Rule>
-  <Rule reason="Logging Density">Размещение: точки входа (start), важные ветви, внешние I/O/мутации, циклы — суммарно; в `catch` всегда `logger.error` с Trace-Prefix и контекстом, затем `throw` (см. AXIOM_ERROR_WITH_ANCHORS).</Rule>
-</Axiom>
