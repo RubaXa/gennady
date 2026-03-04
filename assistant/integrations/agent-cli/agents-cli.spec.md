@@ -11,7 +11,7 @@
 integrations/
   └── agent-cli/
       ├── core/                                # [Contracts & DTOs]
-      │   ├── agent-cli-adapter.interface.ts   # IAgentCliAdapter
+      │   ├── agent-cli-adapter.type.ts        # IAgentCliAdapter
       │   ├── agent-cli-options.type.ts        # GenerateOptions
       │   ├── agent-cli-session.type.ts        # SessionContext
       │   └── agent-cli-event.type.ts          # AgentEvent, AgentEventType
@@ -410,3 +410,10 @@ integrations/
 
 4.  **Error Handling**:
     - Если проверка `detect()` одного из адаптеров падает с ошибкой (например, бинарник поврежден), это **не должно** ломать весь процесс Discovery. Реестр должен поймать ошибку, залогировать её и просто исключить этот адаптер из списка доступных (fail-safe).
+
+---
+
+## Критерии приёмки:
+- Код должен быть тестируемым с открытыми зависимостями.
+- Все публичные методы и интерфейсы должны быть покрыты JSDoc-контрактами.
+- Код должен иметь логирование и семантическую разметку.

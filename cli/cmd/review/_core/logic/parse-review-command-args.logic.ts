@@ -14,6 +14,7 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
     ref: ['ref'],
     project: ['project'],
     iid: ['iid'],
+    all: ['all'],
   });
 
   const positional = args._.filter((entry) => typeof entry === 'string') as string[];
@@ -32,5 +33,6 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
     ref: explicitRef ?? derivedRef,
     project: args.project as string | undefined,
     iid: args.iid as string | undefined,
+    all: args.all as boolean | undefined,
   };
 }

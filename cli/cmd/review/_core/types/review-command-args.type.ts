@@ -8,4 +8,5 @@ export type ReviewCommandArgs = {
   ref?: string;
   project?: string;
   iid?: string;
+  all?: boolean;
 };

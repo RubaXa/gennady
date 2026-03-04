@@ -87,7 +87,8 @@ export async function runReviewCommand(
 
     const reviewArtifactXml = buildReviewArtifactXml(
       reviewContextMr.mergeRequest,
-      reviewContextMr.discussions
+      reviewContextMr.discussions,
+      options.args.all
     );
 
     const output =

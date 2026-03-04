@@ -58,11 +58,13 @@ function parseHostFromWebUrl(webUrl?: string): string {
  * @consumer buildReviewArtifactXml
  * @param mergeRequest Объект MR (iid, author, web_url, source_branch, title и т.д.).
  * @param discussions Массив дискуссий с notes (body, author, position).
+ * @param showAll Флаг показа всех тредов, включая resolved.
  * @returns Корневой XmlNode (tag: MR_Audit_Context).
  */
 export function createReviewArtifactXmlNode(
   mergeRequest: ReviewContextMr,
-  discussions: ReviewContextMrDiscussion[]
+  discussions: ReviewContextMrDiscussion[],
+  showAll: boolean = false
 ): XmlNode {
   const reviewAuthorUsername = mergeRequest.author?.username;
   const projectPath = parseProjectPathFromWebUrl(mergeRequest.web_url);
@@ -72,6 +74,10 @@ export function createReviewArtifactXmlNode(
     .map((discussion) => {
       const firstNote = discussion.notes?.[0];
       if (!firstNote) {
+        return null;
+      }
+
+      if (!showAll && (discussion.resolved || firstNote.resolved)) {
         return null;
       }
 
@@ -89,8 +95,7 @@ export function createReviewArtifactXmlNode(
             attrs: {
               uid: note.author?.username ?? '',
             },
-            // В новом формате не используем CDATA — прямой текст.
-            children: note.body ?? '',
+            children: { cdata: note.body ?? '' },
           } as XmlNode;
         })
         .filter(Boolean) as XmlNode[];
@@ -102,9 +107,11 @@ export function createReviewArtifactXmlNode(
       return {
         tag: 'Thread',
         attrs: {
-          id: `T_${discussion.id.slice(0, 4)}`,
+          fullId: discussion.id,
+          shortId: discussion.id.slice(0, 4),
           file: filePath,
           line: lineNumber,
+          resolved: discussion.resolved ? 'true' : 'false',
         },
         children: messages,
       } as XmlNode;
@@ -114,7 +121,7 @@ export function createReviewArtifactXmlNode(
   const meta: XmlNode = {
     tag: 'Meta',
     children: [
-      { tag: 'Task_Objective', children: mergeRequest.title ?? '' },
+      { tag: 'Task_Objective', children: { cdata: mergeRequest.title ?? '' } },
       { tag: 'Author', children: reviewAuthorUsername ?? '' },
       { tag: 'Branch', children: mergeRequest.source_branch ?? '' },
       { tag: 'URL', children: mergeRequest.web_url ?? '' },
@@ -124,7 +131,7 @@ export function createReviewArtifactXmlNode(
   return {
     tag: 'MR_Audit_Context',
     attrs: {
-      id: `MR_${mergeRequest.iid}`,
+      iid: mergeRequest.iid + '',
       host,
       target_repo: projectPath,
     },
@@ -143,12 +150,14 @@ export function createReviewArtifactXmlNode(
  * @consumer run-review-command.logic
  * @param mergeRequest Объект MR.
  * @param discussions Массив дискуссий.
+ * @param showAll Флаг показа всех тредов, включая resolved.
  * @returns Строка XML (MR_Audit_Context).
  */
 export function buildReviewArtifactXml(
   mergeRequest: ReviewContextMr,
-  discussions: ReviewContextMrDiscussion[]
+  discussions: ReviewContextMrDiscussion[],
+  showAll: boolean = false
 ): string {
-  const rootNode = createReviewArtifactXmlNode(mergeRequest, discussions);
+  const rootNode = createReviewArtifactXmlNode(mergeRequest, discussions, showAll);
   return serializeXmlNode(rootNode);
 }

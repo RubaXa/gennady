@@ -9,6 +9,23 @@ _(Обновляется по мере развития проекта; аген
 
 ---
 
+## Структура и навигация
+
+- **shared/** — общее: `common/` (logger, exec, files, style, xml, parse-args, language, tokens, think, unguard), `backend/` (git, rc).
+- **services/** — сервисы (vcs-client).
+- **cli/** — команды: `gennady.ts`, `cmd/*`, `utils/*` (commit-gen, review-gen, cat-gen, prompts, ai-legacy) в [cli/AGENTS.md](cli/AGENTS.md).
+
+---
+
+## Naming rules (review core)
+
+- Для review-домена использовать именование сущностей и файлов в стиле `Review[(Context)?Name]`.
+- Примеры сущностей: `ReviewIntent`, `ReviewContextGit`, `ReviewContextMr`, `ReviewArtifact`, `ReviewCommandResult`.
+- Типы хранить только как отдельные файлы `*.type.ts` в `types/` (например: `review-intent.type.ts`, `review-context-git.type.ts`).
+- Не использовать агрегирующие `types.ts` для review core.
+
+---
+
 ## By trigger (quick lookup)
 
 Открывай нужный файл и следуй инструкциям в зависимости от твоей задачи.
@@ -35,27 +52,6 @@ _(Обновляется по мере развития проекта; аген
 | Logging branch decision example                                      | [.ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION](.ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION)       |
 | Expressive terseness example                                         | [.ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS](.ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS)             |
 | Trace prefix definition                                              | [.ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX](.ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX)                           |
-
----
-
-## Структура и навигация
-
-- **shared/** — общее: `common/` (logger, exec, files, style, xml, parse-args, language, tokens, think, unguard), `backend/` (git, rc).
-- **services/** — сервисы (vcs-client).
-- **cli/** — команды: `gennady.ts`, `cmd/*`, `utils/*` (commit-gen, review-gen, cat-gen, prompts, ai-legacy).
-
-**Точки входа**: `cli/gennady.ts` + `cli/cmd/*`. CLI вызывает `cli/utils/*`, `shared/*`, `services/*`. Старт: [shared/AGENTS.md](shared/AGENTS.md), [cli/AGENTS.md](cli/AGENTS.md).
-
-**Help и список команд**: при добавлении/удалении/переименовании команды обновить: (1) блок `Commands:` в `cli/gennady.ts`, (2) switch, (3) таблицу в [cli/AGENTS.md](cli/AGENTS.md).
-
-**review-verifier/review-issues**: команды в `cli/cmd/review/` (shared `_core`), входы CLI в `cli/cmd/review-verify/` и `cli/cmd/review-issues/`; архитектура в `cli/utils/review-verifier/README.arch.md`.
-
-## Naming rules (review core)
-
-- Для review-домена использовать именование сущностей и файлов в стиле `Review[(Context)?Name]`.
-- Примеры сущностей: `ReviewIntent`, `ReviewContextGit`, `ReviewContextMr`, `ReviewArtifact`, `ReviewCommandResult`.
-- Типы хранить только как отдельные файлы `*.type.ts` в `types/` (например: `review-intent.type.ts`, `review-context-git.type.ts`).
-- Не использовать агрегирующие `types.ts` для review core.
 
 ---
 

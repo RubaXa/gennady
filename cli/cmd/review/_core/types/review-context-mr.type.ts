@@ -27,6 +27,9 @@ export type ReviewContextMrNote = {
     old_line?: number;
     head_sha?: string;
   };
+  resolvable?: boolean;
+  resolved?: boolean;
+  resolved_by?: { username?: string } | null;
 };
 
 /**
@@ -36,4 +39,7 @@ export type ReviewContextMrNote = {
 export type ReviewContextMrDiscussion = {
   id: string;
   notes?: ReviewContextMrNote[];
+  resolvable?: boolean;
+  resolved?: boolean;
+  resolved_by?: { username?: string } | null;
 };
