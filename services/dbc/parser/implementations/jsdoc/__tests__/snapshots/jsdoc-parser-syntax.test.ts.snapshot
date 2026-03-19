@@ -1,0 +1,107 @@
+exports[`DbcJsDocParser > parse() > should parse classic JSDoc block with leading stars 1`] = `
+{
+  "entries": [
+    {
+      "type": "description",
+      "value": "A very important function.",
+      "issues": []
+    },
+    {
+      "type": "consumer",
+      "value": "MainApp",
+      "issues": []
+    },
+    {
+      "type": "invariant",
+      "value": "Must be called after initialization.",
+      "issues": []
+    },
+    {
+      "type": "param",
+      "value": "The ID of the user to process.",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    },
+    {
+      "type": "param",
+      "value": "Optional settings.\\nThese settings can span multiple lines.",
+      "issues": [],
+      "dataType": "object",
+      "optional": true,
+      "specifier": "options"
+    },
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    },
+    {
+      "type": "sideEffect",
+      "value": "Writes data to the database.",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse one-line JSDoc contract 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "Simple description",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse plain text contract without JSDoc framing 1`] = `
+{
+  "entries": [
+    {
+      "type": "description",
+      "value": "A very important function.",
+      "issues": []
+    },
+    {
+      "type": "consumer",
+      "value": "MainApp",
+      "issues": []
+    },
+    {
+      "type": "invariant",
+      "value": "Must be called after initialization.",
+      "issues": []
+    },
+    {
+      "type": "param",
+      "value": "The ID of the user to process.",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    },
+    {
+      "type": "param",
+      "value": "Optional settings.\\nThese settings can span multiple lines.",
+      "issues": [],
+      "dataType": "object",
+      "optional": true,
+      "specifier": "options"
+    },
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    },
+    {
+      "type": "sideEffect",
+      "value": "Writes data to the database.",
+      "issues": []
+    }
+  ]
+}
+`;

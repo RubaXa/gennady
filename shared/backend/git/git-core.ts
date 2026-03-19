@@ -1,4 +1,4 @@
-import { parseGitDiff } from './git-diff.ts';
+import { parseGitDiff, type ParsedDiffFile } from './git-diff.ts';
 import { execSyncSafe } from '../../common/exec.ts';
 import { isTestFile } from '../../common/files.ts';
 import { logger } from '../../common/logger.ts';
@@ -19,8 +19,8 @@ export type GitRemoteInfo = {
  */
 export type GitDiffInfo = {
   diff: string;
-  parsedDiff: import('./git-diff.ts').ParsedDiffFile[];
-  parsedCodeDiff: import('./git-diff.ts').ParsedDiffFile[];
+  parsedDiff: ParsedDiffFile[];
+  parsedCodeDiff: ParsedDiffFile[];
   parsedCodeTokens: number;
   parsedCodeChunkMaxTokens: number;
   programmingLanguages: (string | undefined)[];

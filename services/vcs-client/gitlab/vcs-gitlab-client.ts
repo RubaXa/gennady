@@ -1,5 +1,6 @@
-import { VcsGitlabMergeRequests } from './vcs-merge-requests.ts';
-import { VcsGitlabMergeDiscussions } from './vcs-merge-discussions.ts';
+import { VcsGitlabMergeRequests } from './vcs-gitlab-merge-requests.ts';
+import { VcsGitlabMergeDiscussions } from './vcs-gitlab-merge-discussions.ts';
+import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
  * @purpose Опции для создания клиента GitLab API: базовый URL и токен доступа.
@@ -16,11 +17,16 @@ export type VcsGitlabClientOptions = {
  * @invariant Error Policy: Любой ответ !2xx преобразуется в Error с подробностями статуса.
  * @invariant Retry Policy: Повторов нет; ответственность за ретраи на вызывающей стороне.
  */
-export class VcsGitlabClient {
-  MergeRequests: VcsGitlabMergeRequests;
-  MergeDiscussions: VcsGitlabMergeDiscussions;
+export class VcsGitlabClient extends VcsClient {
+  /** @see {VcsClient#MergeRequests} in services/vcs-client/abstract/vcs-client.ts */
+  readonly MergeRequests: VcsGitlabMergeRequests;
+
+  /** @see {VcsClient#MergeDiscussions} in services/vcs-client/abstract/vcs-client.ts */
+  readonly MergeDiscussions: VcsGitlabMergeDiscussions;
 
   constructor(options: VcsGitlabClientOptions) {
+    super();
+
     const request = async (path: string, init: RequestInit = {}): Promise<unknown> => {
       const response = await fetch(`${options.baseUrl}${path}`, {
         ...init,

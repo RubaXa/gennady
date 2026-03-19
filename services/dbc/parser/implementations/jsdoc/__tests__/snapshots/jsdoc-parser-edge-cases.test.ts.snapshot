@@ -1,0 +1,60 @@
+exports[`DbcJsDocParser > parse() > should ignore empty normalized lines inside jsdoc block 1`] = `
+{
+  "entries": [
+    {
+      "type": "consumer",
+      "value": "MainApp",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should keep unknown tags out of contract-specific issues 1`] = `
+{
+  "entries": [
+    {
+      "type": "version",
+      "value": "1.2.3",
+      "issues": []
+    },
+    {
+      "type": "deprecated",
+      "value": "Use v2",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse contract with extreme spaces and tabs 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "User identifier",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    },
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should return empty schema for empty input 1`] = `
+{
+  "entries": []
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should skip malformed empty tag line without creating orphan multiline value 1`] = `
+{
+  "entries": []
+}
+`;

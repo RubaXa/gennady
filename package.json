@@ -20,6 +20,9 @@
   "bin": "./dist/gennady.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "imports": {
+    "#snapshot-path-setup": "./snapshot-path.setup.ts"
+  },
   "files": [
     "dist/**/*",
     "README.md"
@@ -39,11 +42,19 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "@mtcute/dispatcher": "^0.29.0",
+    "@mtcute/node": "^0.28.2",
     "@types/node": "^25.3.2",
+    "@types/qrcode": "^1.5.6",
+    "ai": "^6.0.116",
     "fast-glob": "^3.3.3",
+    "open": "^11.0.0",
+    "prettier": "^3.4.2",
+    "qrcode": "^1.5.4",
     "tsx": "^4.19.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
-    "prettier": "^3.4.2"
+    "zod": "^4.3.6"
   }
 }

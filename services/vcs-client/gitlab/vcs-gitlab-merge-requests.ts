@@ -1,45 +1,29 @@
+import {
+  VcsClientMergeRequests,
+  type VcsMergeRequestByIidQuery,
+  type VcsMergeRequestsQuery,
+} from '../abstract/vcs-client-merge-requests.ts';
+
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
-
-/**
- * @purpose Параметры запроса списка Merge Requests: проект, ветка, состояние, пагинация.
- * @consumer VcsGitlabMergeRequests
- */
-export type MergeRequestsQuery = {
-  project: string;
-  sourceBranch?: string;
-  state?: string;
-  perPage?: number;
-  page?: number;
-};
-
-/**
- * @purpose Параметры запроса Merge Request по IID.
- * @consumer VcsGitlabMergeRequests
- */
-export type MergeRequestByIidQuery = {
-  project: string;
-  iid: string | number;
-};
 
 /**
  * @purpose Доступ к Merge Requests в GitLab.
  * @consumer VcsGitlabClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
  */
-export class VcsGitlabMergeRequests {
+export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   protected _request: RequestFn;
 
   constructor(request: RequestFn) {
+    super();
     this._request = request;
   }
 
   /**
-   * @purpose Получить список MR по проекту и фильтрам.
-   * @param query Объект запроса: { project, sourceBranch?, state?, perPage?, page? }.
-   * @returns Список Merge Request'ов по минимальным фильтрам.
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: GET /projects/:project/merge_requests
    */
-  async getList(query: MergeRequestsQuery): Promise<unknown[]> {
+  async getList(query: VcsMergeRequestsQuery): Promise<unknown[]> {
     const params = new URLSearchParams();
     const state = query?.state ?? 'opened';
     if (query?.sourceBranch) params.set('source_branch', query.sourceBranch);
@@ -54,23 +38,19 @@ export class VcsGitlabMergeRequests {
   }
 
   /**
-   * @purpose Получить первый MR, удовлетворяющий тем же фильтрам, что и getList.
-   * @param query Объект запроса: { project, sourceBranch?, state? }.
-   * @returns Первый найденный MR или null.
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: Делегирует в getList() с ограничением per_page=1.
    */
-  async getOne(query: MergeRequestsQuery): Promise<unknown | null> {
+  async getOne(query: VcsMergeRequestsQuery): Promise<unknown | null> {
     const list = await this.getList({ ...query, perPage: 1 });
     return list.length > 0 ? list[0] : null;
   }
 
   /**
-   * @purpose Получить Merge Request по IID в рамках проекта.
-   * @param query Параметры: { project, iid }.
-   * @returns Объект Merge Request или null при 404.
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid
    */
-  async getByIid(query: MergeRequestByIidQuery): Promise<unknown | null> {
+  async getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null> {
     const projectId = encodeURIComponent(query.project);
     const iid = encodeURIComponent(String(query.iid));
     try {

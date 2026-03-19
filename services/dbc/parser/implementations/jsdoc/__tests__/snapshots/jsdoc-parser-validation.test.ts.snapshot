@@ -1,0 +1,126 @@
+exports[`DbcJsDocParser > parse() > should match the invalid contract example from task spec 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "A short description.",
+      "issues": []
+    },
+    {
+      "type": "returns",
+      "dataType": "void",
+      "value": "",
+      "issues": []
+    },
+    {
+      "type": "see",
+      "value": "",
+      "issues": [
+        {
+          "code": "ERR_DBC_PURPOSE_CONFLICT",
+          "line": 3
+        }
+      ],
+      "specifier": "OtherClass#method"
+    },
+    {
+      "type": "param",
+      "value": "",
+      "issues": [
+        {
+          "code": "ERR_DBC_ORDER",
+          "line": 4
+        },
+        {
+          "code": "ERR_DBC_PARAM_NAME_MISSING",
+          "line": 4
+        }
+      ],
+      "dataType": "string"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should report contract order violation 1`] = `
+{
+  "entries": [
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    },
+    {
+      "type": "param",
+      "value": "User identifier.",
+      "issues": [
+        {
+          "code": "ERR_DBC_ORDER",
+          "line": 2
+        }
+      ],
+      "dataType": "string",
+      "specifier": "userId"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should report invalid see format 1`] = `
+{
+  "entries": [
+    {
+      "type": "see",
+      "value": "invalid-ref",
+      "issues": [
+        {
+          "code": "ERR_DBC_SEE_FORMAT_INVALID",
+          "line": 1
+        }
+      ]
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should report missing param name 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "",
+      "issues": [
+        {
+          "code": "ERR_DBC_PARAM_NAME_MISSING",
+          "line": 1
+        }
+      ],
+      "dataType": "string"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should report purpose and see conflict 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "Main behavior.",
+      "issues": []
+    },
+    {
+      "type": "see",
+      "value": "",
+      "issues": [
+        {
+          "code": "ERR_DBC_PURPOSE_CONFLICT",
+          "line": 2
+        }
+      ],
+      "specifier": "ExternalContract#run"
+    }
+  ]
+}
+`;

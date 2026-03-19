@@ -1,0 +1,66 @@
+exports[`DbcJsDocParser > parse() > should parse full param structure with datatype and specifier 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "User identifier",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse optional param with optional flag 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "User age",
+      "issues": [],
+      "dataType": "number",
+      "optional": true,
+      "specifier": "age"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse returns tag with datatype 1`] = `
+{
+  "entries": [
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse see tag with specifier and trailing value 1`] = `
+{
+  "entries": [
+    {
+      "type": "see",
+      "value": "in ./path",
+      "issues": [],
+      "specifier": "Interface#method"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse unknown tag by generic rule 1`] = `
+{
+  "entries": [
+    {
+      "type": "author",
+      "value": "John Doe",
+      "issues": []
+    }
+  ]
+}
+`;

@@ -23,4 +23,7 @@ coverage
 *.sln
 *.sw?
 
+.wisehub.app.js.map
+
 .gennadyrc
+.ai/drafts

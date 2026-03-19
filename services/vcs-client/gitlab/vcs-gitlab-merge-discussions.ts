@@ -1,46 +1,29 @@
+import {
+  VcsClientMergeDiscussions,
+  type VcsAddNoteQuery,
+  type VcsDiscussionsListQuery,
+} from '../abstract/vcs-client-merge-discussions.ts';
+
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
-
-/**
- * @purpose Параметры создания заметки в дискуссии MR: проект, IID MR, ID дискуссии, текст.
- * @consumer VcsGitlabMergeDiscussions
- */
-export type AddNoteQuery = {
-  project: string;
-  iid: string | number;
-  discussionId: string;
-  body: string;
-};
-
-/**
- * @purpose Параметры запроса списка дискуссий MR: проект, IID MR, пагинация.
- * @consumer VcsGitlabMergeDiscussions
- */
-export type DiscussionsListQuery = {
-  project: string;
-  iid: string | number;
-  perPage?: number;
-  page?: number;
-};
 
 /**
  * @purpose Доступ к Discussions для Merge Request в GitLab.
  * @consumer VcsGitlabClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
  */
-export class VcsGitlabMergeDiscussions {
+export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   protected _request: RequestFn;
 
   constructor(request: RequestFn) {
+    super();
     this._request = request;
   }
 
   /**
-   * @purpose Создать ответ (note) в существующей дискуссии Merge Request.
-   * @param query Параметры запроса.
-   * @returns Объект созданной заметки (JSON), как возвращает GitLab API.
+   * @see {VcsClientMergeDiscussions#addNote} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: POST /projects/:project/merge_requests/:iid/discussions/:discussion_id/notes
    */
-  async addNote(query: AddNoteQuery): Promise<unknown> {
+  async addNote(query: VcsAddNoteQuery): Promise<unknown> {
     const projectId = encodeURIComponent(query.project);
     const iid = encodeURIComponent(String(query.iid));
     const discussionId = encodeURIComponent(query.discussionId);
@@ -55,12 +38,10 @@ export class VcsGitlabMergeDiscussions {
   }
 
   /**
-   * @purpose Получить страницу дискуссий MR.
-   * @param query Параметры: { project, iid, perPage?, page? }.
-   * @returns Список дискуссий текущей страницы.
+   * @see {VcsClientMergeDiscussions#getList} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid/discussions
    */
-  async getList(query: DiscussionsListQuery): Promise<unknown[]> {
+  async getList(query: VcsDiscussionsListQuery): Promise<unknown[]> {
     const params = new URLSearchParams();
     if (query?.perPage) params.set('per_page', String(query.perPage));
     if (query?.page) params.set('page', String(query.page));
@@ -72,9 +53,7 @@ export class VcsGitlabMergeDiscussions {
   }
 
   /**
-   * @purpose Собрать все страницы дискуссий MR.
-   * @param query Параметры: { project, iid }.
-   * @returns Полный список дискуссий MR.
+   * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: Многократные GET для постраничной загрузки.
    */
   async getAll(query: { project: string; iid: string | number }): Promise<unknown[]> {

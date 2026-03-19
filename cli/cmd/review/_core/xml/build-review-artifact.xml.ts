@@ -9,11 +9,11 @@ import type {
 function getReviewActorRole(
   note: ReviewContextMrNote,
   reviewAuthorUsername?: string
-): 'Author' | 'Reviewer' | 'Skip' {
+): 'Author' | 'Reviewer' | 'AI_Agent' | 'Skip' {
   const username = note.author?.username ?? '';
 
   if (note.system) return 'Skip';
-  if (note.body?.includes('🤖')) return 'Skip';
+  if (note.body?.includes('🤖')) return 'AI_Agent';
   if (/group_|bot\d*/.test(username)) return 'Skip';
 
   if (username === reviewAuthorUsername) {

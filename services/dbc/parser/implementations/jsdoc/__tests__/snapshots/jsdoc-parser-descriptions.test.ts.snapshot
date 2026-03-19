@@ -1,0 +1,55 @@
+exports[`DbcJsDocParser > parse() > should append multiline content to param value 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "Optional settings.\\nThese settings can span multiple lines.",
+      "issues": [],
+      "dataType": "object",
+      "optional": true,
+      "specifier": "options"
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should append multiline value to the previous tag entry 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "Main behavior.\\nSecond line of behavior.\\nThird line of behavior.",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should collect text before first tag into description entry 1`] = `
+{
+  "entries": [
+    {
+      "type": "description",
+      "value": "First line of docs.\\nSecond line of docs.",
+      "issues": []
+    },
+    {
+      "type": "consumer",
+      "value": "MainApp",
+      "issues": []
+    }
+  ]
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse explicit description tag as description entry 1`] = `
+{
+  "entries": [
+    {
+      "type": "description",
+      "value": "My info",
+      "issues": []
+    }
+  ]
+}
+`;

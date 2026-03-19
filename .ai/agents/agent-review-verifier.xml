@@ -151,7 +151,7 @@
            ]
            ```
         2. Выполни команду отправки:
-           `echo '<JSON_ARRAY>' | npx gennady@next vcs-reply --host=<VCS_HOST> --project=<MR_PROJECT> --iid=<MR_IID>`
+           `echo '<JSON_ARRAY>' | npx --yes gennady@next vcs-reply --host=<VCS_HOST> --project=<MR_PROJECT> --iid=<MR_IID>`
         3. Заверши сессию.
       </Action>
     </Step>
