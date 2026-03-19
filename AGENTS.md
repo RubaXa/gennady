@@ -57,7 +57,7 @@ _(Обновляется по мере развития проекта; аген
 
 ## What exists (implementation pointers)
 
-- **Логирование и ошибки**: правила в flow. Логгер — `shared/common/logger.ts`.
+- **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `service/logger/logger.ts`).
 - **Контракты**: экспортируемые сущности по `.ai/fw-draft/rules/dev/typescript/contacts.xml`.
 - **Сборка**: `npm run build` (Vite) → `dist/` с чанками.
 - **Форматирование**: Prettier (2 пробела, singleQuote, trailingComma es5). `npm run format`, `npm run format:check`. Конфиг `.prettierrc.json`.

@@ -1,6 +1,6 @@
 import { AiLegacyModel } from './ai-legacy-model.ts';
 import { GennadyRc } from '../../../shared/backend/rc/rc-config.ts';
-import { logger } from '../../../shared/common/logger.ts';
+import { logger } from '#logger';
 import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 
 type AiLegacyCoreInit = {

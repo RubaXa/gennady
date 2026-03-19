@@ -60,7 +60,7 @@
       <Rule reason="Fail-Fast Validation">Validate input arguments synchronously at the start of the method and throw domain errors with context.</Rule>
     </Axiom>
     <Axiom id="AXIOM_LOG_DRIVEN_DEVELOPMENT">
-      <Rule reason="Structured Logging">Raw `console.*` is forbidden. Use a shared logger: `logger[level](message, detail?)` with levels `debug`/`info`/`warn`/`error` (one or two arguments: a string message as the FIRST argument, and an object detail as the SECOND argument when needed; never serialize objects into the message string). Do not create pseudo-loggers (`const logger = console`). Import the shared logger relatively to the module.</Rule>
+      <Rule reason="Structured Logging">Raw `console.*` is forbidden. Use a shared logger: `logger[level](message, detail?)` with levels `debug`/`info`/`warn`/`error` (one or two arguments: a string message as the FIRST argument, and an object detail as the SECOND argument when needed; never serialize objects into the message string). Do not create pseudo-loggers (`const logger = console`). Import the shared logger from `#logger`.</Rule>
       <Rule reason="Log Message Format">Message format: `[Trace-Prefix] [stateA → stateB] Description`. Trace-Prefix: see DEF_TRACE_PREFIX. State is mandatory on entry, branches, exit, and errors. Description adds new information and does not duplicate state.</Rule>
       <Rule reason="Message Purity">Message vs detail: primitives (paths, codes, numbers, time) go in the message string; complex objects/errors go into the second argument `{ ... }` and only when necessary.</Rule>
       <Rule reason="Performance Metrics">Log time only for long operations: measure via `performance.now()`, format as `${time.toFixed(2)}ms`.</Rule>
@@ -224,7 +224,7 @@
       <Code_Snippet>
         ```typescript
         import { performance } from 'node:perf_hooks';
-        import { logger } from '../utils/logger';
+        import { logger } from '#logger';
 
         /**
          * @purpose Performs an atomic action with performance measurement and state tracing.
@@ -258,7 +258,7 @@
       <Context>Branching: do not repeat state in description; communicate the reason for choosing a branch. Typing and JSDoc.</Context>
       <Code_Snippet>
         ```typescript
-        import { logger } from '../utils/logger';
+        import { logger } from '#logger';
 
         /** @purpose Configuration for choosing a processing strategy. */
         export type DecideStrategyConfig = {

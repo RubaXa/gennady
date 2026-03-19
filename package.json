@@ -21,7 +21,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "imports": {
-    "#snapshot-path-setup": "./snapshot-path.setup.ts"
+    "#snapshot-path-setup": "./snapshot-path.setup.ts",
+    "#logger": "./services/logger/loader.ts"
   },
   "files": [
     "dist/**/*",

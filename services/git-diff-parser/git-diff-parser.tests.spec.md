@@ -2,7 +2,7 @@
 
 ## Цель
 
-Проверить, что реализация `git-diff-parser` строго соответствует [основной task-спецификации](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md), а все сценарии парсинга, деградации, восстановления и source-mapping покрыты воспроизводимыми BDD-тестами.
+Проверить, что реализация `git-diff-parser` строго соответствует [основной task-спецификации](./services/git-diff-parser/git-diff-parser.task.spec.md), а все сценарии парсинга, деградации, восстановления и source-mapping покрыты воспроизводимыми BDD-тестами.
 
 Этот документ является обязательным дополнением к task-spec и фиксирует:
 
@@ -18,7 +18,7 @@
 Обязательные принципы:
 
 1. Каждый тест формулируется как один BDD-сценарий в терминах `Given / When / Then`.
-2. Expected behavior берётся из [task-спецификации](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md), а не из текущего поведения реализации.
+2. Expected behavior берётся из [task-спецификации](./services/git-diff-parser/git-diff-parser.task.spec.md), а не из текущего поведения реализации.
 3. Один тест покрывает один сценарий или одну чётко определённую ветку поведения.
 4. Для parser-результатов источником истины являются явные `expected.json`, а не snapshots.
 5. Snapshot-тесты не являются обязательным форматом для этого сервиса и не должны подменять явный проверяемый expected result.
@@ -233,7 +233,7 @@ Synthetic fixture допустим для:
 
 Для GitHub/GitLab сценариев:
 
-- `input.json` — массив нормализованных DTO, описанных в [task-спецификации](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md)
+- `input.json` — массив нормализованных DTO, описанных в [task-спецификации](./services/git-diff-parser/git-diff-parser.task.spec.md)
 - `expected.json` — ожидаемый `ParsedDiff`
 - `options.json` — опционально
 
@@ -352,7 +352,7 @@ Inline в тестах должны задаваться:
 
 - Given: импорт из `services/git-diff-parser/index.ts`
 - When: тест получает список экспортируемых runtime-symbols и type-level entrypoints
-- Then: наружу доступны только элементы, перечисленные в [task-спецификации](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md), и отсутствуют внутренние low-level модули
+- Then: наружу доступны только элементы, перечисленные в [task-спецификации](./services/git-diff-parser/git-diff-parser.task.spec.md), и отсутствуют внутренние low-level модули
 
 ### Кейс 0.2: `GitDiffParserStrictModeError` соответствует контракту
 
@@ -766,7 +766,7 @@ Inline в тестах должны задаваться:
 
 ## Матрица обязательного покрытия warning-кодов
 
-Каждый обязательный warning-код из [task-спецификации](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md) должен иметь минимум один dedicated test-case:
+Каждый обязательный warning-код из [task-спецификации](./services/git-diff-parser/git-diff-parser.task.spec.md) должен иметь минимум один dedicated test-case:
 
 1. `WARN_HUNK_TRUNCATED_UNEXPECTEDLY`
 2. `WARN_PATCH_OMITTED_BY_SOURCE`
@@ -791,4 +791,4 @@ Inline в тестах должны задаваться:
 - каждый mandatory warning-code покрыт минимум одним отдельным сценарием;
 - corrupted multi-file recovery проверен минимум одним dedicated тестом;
 - тесты не подменяют спецификацию snapshot-обновлением;
-- перед обновлением `expected.json` ожидаемое поведение сверяется с [task-спецификацией](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.task.spec.md).
+- перед обновлением `expected.json` ожидаемое поведение сверяется с [task-спецификацией](./services/git-diff-parser/git-diff-parser.task.spec.md).

@@ -26,8 +26,9 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
+      "#logger": ["./services/logger/logger.ts"],
       "@shared/*": ["shared/*"],
-      "@services/*": ["services/*"]
+      "@services/*": ["services/*"],
     }
   },
   "include": [

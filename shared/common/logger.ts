@@ -1,7 +1,7 @@
 /**
- * @purpose Предоставить общий логгер с единым контрактом для всего проекта.
- * @consumer core/utils, agents
- * @invariant Контракт: debug(message, detail?), info(message, detail?), warn(message, detail?), error(message, detail?).
- * @sideEffect Console: выводит логи в stdout/stderr.
+ * @purpose Backward-compatible logger entry for shared domain code.
+ * @invariant Exports the stable `logger` contract expected by imports like `@shared/common/logger.ts`.
  */
-export const logger = console;
+export { logger } from '../../services/logger/logger.ts';
+export type { SimpleLogger } from '../../services/logger/logger.ts';
+
