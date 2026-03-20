@@ -167,12 +167,7 @@ export type GitDiffWarningCode =
   | typeof WARN_UNTERMINATED_QUOTED_PATH
   | typeof WARN_INVALID_HUNK_HEADER;
 
-export type FileDiffChangeType =
-  | 'added'
-  | 'deleted'
-  | 'modified'
-  | 'renamed'
-  | 'unknown';
+export type FileDiffChangeType = 'added' | 'deleted' | 'modified' | 'renamed' | 'unknown';
 
 export type LineDiffChangeType = 'added' | 'deleted' | 'context';
 
@@ -250,19 +245,16 @@ export type FileDiff = Readonly<{
 
 export type ParsedDiff = readonly FileDiff[];
 
-export declare function parseGitDiff(
-  rawOutput: string,
-  options?: GitDiffParserOptions,
-): ParsedDiff;
+export declare function parseGitDiff(rawOutput: string, options?: GitDiffParserOptions): ParsedDiff;
 
 export declare function parseGitHubDiff(
   files: readonly GitHubDiffFileInput[],
-  options?: GitDiffParserOptions,
+  options?: GitDiffParserOptions
 ): ParsedDiff;
 
 export declare function parseGitLabDiff(
   files: readonly GitLabDiffFileInput[],
-  options?: GitDiffParserOptions,
+  options?: GitDiffParserOptions
 ): ParsedDiff;
 ```
 
@@ -567,16 +559,16 @@ parseGitLabDiff(
 
 Ниже перечислен минимальный обязательный набор warning-кодов и их смысл:
 
-| Код | Когда добавляется |
-| --- | ----------------- |
-| `WARN_HUNK_TRUNCATED_UNEXPECTEDLY` | Hunk оборвался раньше, чем сошлись счётчики старых и новых строк |
-| `WARN_PATCH_OMITTED_BY_SOURCE` | Источник не передал patch-текст, хотя метаданные файла есть |
-| `WARN_COMBINED_DIFF_SKIPPED` | Файл распознан как combined diff и был пропущен без разбора содержимого |
-| `WARN_UNSUPPORTED_FILE_FORMAT` | Для конкретного файла передан неподдерживаемый patch-формат |
-| `WARN_INVALID_INDEX_LINE` | Строка `index ...` синтаксически повреждена |
-| `WARN_MISSING_PATH_HEADERS` | Перед первым unified hunk отсутствуют обязательные `---` и `+++` |
-| `WARN_UNTERMINATED_QUOTED_PATH` | В path-строке обнаружена незакрытая quoted path |
-| `WARN_INVALID_HUNK_HEADER` | Строка выглядит как hunk header, но не соответствует unified syntax |
+| Код                                | Когда добавляется                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------- |
+| `WARN_HUNK_TRUNCATED_UNEXPECTEDLY` | Hunk оборвался раньше, чем сошлись счётчики старых и новых строк        |
+| `WARN_PATCH_OMITTED_BY_SOURCE`     | Источник не передал patch-текст, хотя метаданные файла есть             |
+| `WARN_COMBINED_DIFF_SKIPPED`       | Файл распознан как combined diff и был пропущен без разбора содержимого |
+| `WARN_UNSUPPORTED_FILE_FORMAT`     | Для конкретного файла передан неподдерживаемый patch-формат             |
+| `WARN_INVALID_INDEX_LINE`          | Строка `index ...` синтаксически повреждена                             |
+| `WARN_MISSING_PATH_HEADERS`        | Перед первым unified hunk отсутствуют обязательные `---` и `+++`        |
+| `WARN_UNTERMINATED_QUOTED_PATH`    | В path-строке обнаружена незакрытая quoted path                         |
+| `WARN_INVALID_HUNK_HEADER`         | Строка выглядит как hunk header, но не соответствует unified syntax     |
 
 ### 8.2. Что считается повреждением файла
 
@@ -788,7 +780,7 @@ index 1234567..89abcde 100644
     filename: 'src/large.ts',
     patch: null,
   },
-]
+];
 ```
 
 **Ожидаемый результат:**

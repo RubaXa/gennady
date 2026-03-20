@@ -4,4 +4,3 @@
  */
 export { logger } from '../../services/logger/logger.ts';
 export type { SimpleLogger } from '../../services/logger/logger.ts';
-
