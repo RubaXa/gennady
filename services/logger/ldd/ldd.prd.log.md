@@ -1,4 +1,5 @@
 # LDD-001: Execution Log
+
 Журнал реализации для `services/logger/ldd`.
 
 ---

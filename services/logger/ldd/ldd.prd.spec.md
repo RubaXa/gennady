@@ -1,4 +1,5 @@
 # LDD-001: LDD Contract Spec
+
 Этот PRD задаёт реализационно-независимую спецификацию `LDD` для `services/logger/ldd`.
 По этому документу другой агент должен суметь реализовать компонент без устных пояснений и без привязки к конкретному языку реализации, пока соблюдены public contracts, invariants и side effects.
 
@@ -12,14 +13,14 @@
 
 ## CONSUMERS
 
-| Consumer | Type | Relationship |
-| --- | --- | --- |
-| Сервисы приложения и CLI-команды | external | Используют `LDD` как public API для автоматического и ручного context-aware logging. |
-| AI-диагностический агент | external | Читает flat logs и structured payload, чтобы восстанавливать call chain, arguments, results, states и errors. |
-| Sink в `console/stdout` | external | Получает итоговую строку лога и structured `LddRecord` вторым аргументом. |
+| Consumer                                          | Type     | Relationship                                                                                                        |
+| ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| Сервисы приложения и CLI-команды                  | external | Используют `LDD` как public API для автоматического и ручного context-aware logging.                                |
+| AI-диагностический агент                          | external | Читает flat logs и structured payload, чтобы восстанавливать call chain, arguments, results, states и errors.       |
+| Sink в `console/stdout`                           | external | Получает итоговую строку лога и structured `LddRecord` вторым аргументом.                                           |
 | Decorators `@LDD.class`, `@LDD.method`, `@LDD.fn` | internal | Открывают и закрывают execution frame, автоматически эмитят lifecycle records и восстанавливают предыдущий context. |
-| `LddScopeLogger` | internal | Даёт bound logger object для ручных nested scope. |
-| `LDD` runtime context | internal | Хранит active frame, global config и emission policy. |
+| `LddScopeLogger`                                  | internal | Даёт bound logger object для ручных nested scope.                                                                   |
+| `LDD` runtime context                             | internal | Хранит active frame, global config и emission policy.                                                               |
 
 ---
 
@@ -37,6 +38,7 @@
 ### Component `services/logger/ldd/ldd.ts`
 
 Purpose:
+
 - экспортировать весь public API домена `LDD`;
 - содержать только public contracts, доступные прикладному коду;
 - не заставлять потребителей импортировать internal runtime или sink напрямую.
@@ -46,6 +48,7 @@ consumer: сервисы приложения и CLI-команды.
 #### Data Contracts
 
 `LddLevel`
+
 - Purpose:
   - перечисление logging levels.
 - Values:
@@ -58,6 +61,7 @@ consumer: сервисы приложения и CLI-команды.
   - global `level` запрещает emission для уровней ниже configured threshold.
 
 `LddConfig`
+
 - Purpose:
   - global runtime configuration.
 - Fields:
@@ -75,6 +79,7 @@ consumer: сервисы приложения и CLI-команды.
   - обновляет global runtime configuration.
 
 `LddContextFrame`
+
 - Purpose:
   - внутренняя и частично наблюдаемая модель одного active execution frame.
 - Fields:
@@ -94,6 +99,7 @@ consumer: сервисы приложения и CLI-команды.
   - synthetic frame может быть только root frame.
 
 `LddRecord`
+
 - Purpose:
   - единый structured payload одной log record.
 - Fields:
@@ -119,6 +125,7 @@ consumer: сервисы приложения и CLI-команды.
   - одна record описывает одно semantic event.
 
 `LddLogInput`
+
 - Purpose:
   - input contract для `debug` и `info`.
 - Fields:
@@ -127,15 +134,17 @@ consumer: сервисы приложения и CLI-команды.
   - если `state` задано, оно обязано быть непустой строкой.
 
 `LddWarnInput<TReturn>`
+
 - Purpose:
   - input contract для `warn`.
 - Fields:
   - `state?: string` — optional target state, которое будет зафиксировано в emitted record.
   - `returnValue: TReturn` — value, которое builder обязан вернуть после `.msg\`...\``.
 - Postconditions:
-  - после успешного вызова `.msg\`...\`` возвращается именно `returnValue`.
+  - после успешного вызова `.msg\`...\``возвращается именно`returnValue`.
 
 `LddErrorInput`
+
 - Purpose:
   - input contract для `error`.
 - Fields:
@@ -145,6 +154,7 @@ consumer: сервисы приложения и CLI-команды.
   - `error` обязан быть объектом ошибки.
 
 `LddWrapOptions`
+
 - Purpose:
   - local overrides для `@LDD.method` и `@LDD.fn`.
 - Fields:
@@ -157,6 +167,7 @@ consumer: сервисы приложения и CLI-команды.
 #### Public Class `LDD`
 
 Purpose:
+
 - быть единственной public entrypoint домена;
 - предоставлять global setup, ambient logging API, decorator factories и manual scopes.
 
@@ -233,6 +244,7 @@ consumer: сервисы приложения и CLI-команды.
   - при выбросе подготовленной ошибки `LddPreparedError` обязан эмитить terminal `error` record ровно один раз перед повторным выбросом исходной ошибки.
 
 ##### `LDD.debug(input?: LddLogInput): LddTextLogBuilder`
+
 ##### `LDD.info(input?: LddLogInput): LddTextLogBuilder`
 
 - Purpose:
@@ -262,8 +274,8 @@ consumer: сервисы приложения и CLI-команды.
 - Preconditions:
   - builder должен быть потреблён в том же expression, где нужен `return`.
 - Postconditions:
-  - `.msg\`...\`` эмитит ровно одну `warn` record;
-  - `.msg\`...\`` возвращает `returnValue`;
+  - `.msg\`...\``эмитит ровно одну`warn` record;
+  - `.msg\`...\``возвращает`returnValue`;
   - если для `warn` path включён global policy, он обязан быть выведен.
 - Invariants:
   - `returnValue` не модифицируется runtime.
@@ -280,11 +292,11 @@ consumer: сервисы приложения и CLI-команды.
   - `LddPreparedError` — throwable object, который может быть выброшен напрямую.
 - Preconditions:
   - прямой `throw LDD.error(...)` поддерживается только внутри LDD-managed boundary: `@LDD.method`, `@LDD.fn`, `LDD.scope(name, run)` или `log.run(fn)`;
-  - если нужен message, отличный от `error.message`, надо использовать `.msg\`...\`` до `throw`.
+  - если нужен message, отличный от `error.message`, надо использовать `.msg\`...\``до`throw`.
 - Postconditions:
   - сам вызов `LDD.error(...)` не обязан немедленно эмитить record;
   - при пересечении LDD-managed boundary ошибка должна быть эмитирована ровно один раз и повторно выброшена;
-  - `.msg\`...\`` переопределяет `message` записи и возвращает тот же throwable object для немедленного `throw`.
+  - `.msg\`...\``переопределяет`message`записи и возвращает тот же throwable object для немедленного`throw`.
 - Invariants:
   - исходный экземпляр ошибки не заменяется;
   - повторная emission одной и той же подготовленной ошибки запрещена.
@@ -348,12 +360,14 @@ consumer: сервисы приложения и CLI-команды.
 #### Public Class `LddScopeLogger`
 
 Purpose:
+
 - дать bound logger для manual nested scope;
 - позволить писать `scope -> scope -> scope` без обращения к global mutable state.
 
 consumer: сервисы приложения и CLI-команды.
 
 Observable Properties:
+
 - `tid: string` — identifier root call chain.
 - `frameId: string` — identifier current bound frame.
 - `parentFrameId?: string` — identifier caller frame.
@@ -362,6 +376,7 @@ Observable Properties:
 - `depth: number` — current nesting depth.
 
 Invariants:
+
 - экземпляр `LddScopeLogger` immutable;
 - чтение свойств не меняет runtime;
 - все logging methods на `LddScopeLogger` обязаны эмитить записи того же формата, что и static methods `LDD`.
@@ -393,8 +408,11 @@ Invariants:
   - временно переключает active frame.
 
 ##### `log.debug(input?: LddLogInput): LddTextLogBuilder`
+
 ##### `log.info(input?: LddLogInput): LddTextLogBuilder`
+
 ##### `log.warn<TReturn>(input: LddWarnInput<TReturn>): LddWarnBuilder<TReturn>`
+
 ##### `log.error(input: LddErrorInput): LddPreparedError`
 
 - Purpose:
@@ -417,7 +435,7 @@ Invariants:
 - Preconditions:
   - `msg` разрешён только как tagged-template entrypoint.
 - Postconditions:
-  - вызов `.msg\`...\`` собирает итоговый `message` и эмитит одну record.
+  - вызов `.msg\`...\``собирает итоговый`message` и эмитит одну record.
 - Invariants:
   - plain function-call вроде `builder.msg('x')` обязан бросать `TypeError`;
   - каждая `${...}` interpolation проходит через global `redactMsgArg`;
@@ -432,8 +450,8 @@ Invariants:
 - Public API:
   - `get msg(): (strings: TemplateStringsArray, ...values: unknown[]) => TReturn`
 - Postconditions:
-  - `.msg\`...\`` эмитит одну `warn` record;
-  - `.msg\`...\`` возвращает исходный `returnValue`.
+  - `.msg\`...\``эмитит одну`warn` record;
+  - `.msg\`...\``возвращает исходный`returnValue`.
 
 ##### `LddPreparedError`
 
@@ -443,7 +461,7 @@ Invariants:
   - `error: Error` — исходный error object, который должен остаться доступным для повторного throw.
   - `get msg(): (strings: TemplateStringsArray, ...values: unknown[]) => LddPreparedError`
 - Postconditions:
-  - `.msg\`...\`` сохраняет override message и возвращает тот же object для немедленного `throw`.
+  - `.msg\`...\``сохраняет override message и возвращает тот же object для немедленного`throw`.
 - Invariants:
   - объект можно выбросить напрямую;
   - исходный экземпляр ошибки сохраняется;
@@ -452,12 +470,14 @@ Invariants:
 ### Component `services/logger/ldd/ldd-runtime.ts`
 
 Purpose:
+
 - инкапсулировать хранение active frame и правила context switching;
 - быть единственным владельцем mutable runtime state.
 
 consumer: public class `LDD` и decorators.
 
 Required responsibilities:
+
 - хранить global config;
 - хранить active frame через async-safe propagation mechanism;
 - создавать root frame и child frame;
@@ -465,6 +485,7 @@ Required responsibilities:
 - обеспечивать single emission для `LddPreparedError`.
 
 Invariants:
+
 - active frame не хранится как mutable public object;
 - простая и взаимная recursion создают новый `frameId` на каждый вход;
 - при любом выходе из LDD-managed boundary previous frame восстанавливается.
@@ -472,11 +493,13 @@ Invariants:
 ### Component `services/logger/ldd/ldd-sink.ts`
 
 Purpose:
+
 - рендерить flat log line и передавать structured payload в sink.
 
 consumer: `LDD` runtime и конечный sink в `console/stdout`.
 
 Contract:
+
 - Inputs:
   - `record: LddRecord` — полностью собранная structured record.
 - Outputs:
@@ -492,11 +515,13 @@ Contract:
 ### Component `services/logger/ldd/index.ts`
 
 Purpose:
+
 - быть стабильной public import point для `#logger/ldd`.
 
 consumer: прикладной код.
 
 Contract:
+
 - exports public API домена `LDD`;
 - не exports internal runtime details, не предназначенные для прикладного использования.
 
@@ -515,12 +540,14 @@ Contract:
 **tests**: [t1-runtime-setup](ldd.tests.spec.md#t1-runtime-setup)
 
 ТЗ:
+
 - реализовать `LddConfig`, `LddContextFrame`, `LddRecord`, `LddLogInput`, `LddWarnInput`, `LddErrorInput`, `LddWrapOptions`;
 - выбрать async-safe механизм хранения active frame;
 - поддержать `currentState` внутри frame;
 - запретить различение `void` и `undefined` на runtime.
 
 Acceptance criteria:
+
 - synthetic context корректно маркируется;
 - `pathSegments.length === depth`;
 - `currentState` обновляется только runtime-ом;
@@ -537,11 +564,13 @@ Acceptance criteria:
 **tests**: [t2-scoped-logger](ldd.tests.spec.md#t2-scoped-logger)
 
 ТЗ:
+
 - реализовать `LDD.setup`, `LDD.active`, оба overload для `LDD.scope`, ambient logging methods;
 - реализовать `LddScopeLogger` как immutable bound logger;
 - исключить inheritance `LddScopeLogger` от `LDD`.
 
 Acceptance criteria:
+
 - static и bound methods дают один и тот же `LddRecord`;
 - `scope -> scope -> scope` работает без ambient-context leakage;
 - `LDD.active` read-only.
@@ -557,14 +586,16 @@ Acceptance criteria:
 **tests**: [t4-message-builder](ldd.tests.spec.md#t4-message-builder)
 
 ТЗ:
+
 - реализовать `LddTextLogBuilder`, `LddWarnBuilder`, `LddPreparedError`;
 - все `${...}` прогонять через `redactMsgArg`;
 - при падении `redactMsgArg` подставлять sentinel `'<ldd:redact-failed>'`;
 - plain function-call для `msg` запрещён.
 
 Acceptance criteria:
+
 - `debug/info` эмитят record через `.msg\`...\``;
-- `warn(...).msg\`...\`` возвращает `returnValue`;
+- `warn(...).msg\`...\``возвращает`returnValue`;
 - `error(...).msg\`...\`` возвращает тот же throw-compatible object;
 - повторная emission одной и той же prepared error невозможна.
 
@@ -579,6 +610,7 @@ Acceptance criteria:
 **tests**: [t3-decorators](ldd.tests.spec.md#t3-decorators)
 
 ТЗ:
+
 - реализовать `@LDD.class`, `@LDD.method`, `@LDD.fn`;
 - гарантировать `idle -> invoked` на входе;
 - гарантировать `returns` или `error` на выходе;
@@ -586,6 +618,7 @@ Acceptance criteria:
 - гарантировать корректную recursion через unique `frameId`.
 
 Acceptance criteria:
+
 - constructor логируется как `ClassName#constructor`;
 - `redactArgs` и `redactReturn` применяются только к своим целям;
 - прямой `throw LDD.error(...)` внутри LDD boundary эмитит одну terminal record.
@@ -601,11 +634,13 @@ Acceptance criteria:
 **tests**: [t5-recursion-and-errors](ldd.tests.spec.md#t5-recursion-and-errors)
 
 ТЗ:
+
 - реализовать standard sink и formatter;
 - стабилизировать import `#logger/ldd`;
 - проверить, что BDD покрывает manual scope, decorators, prepared error, recursion, synthetic context, message redaction и path emission.
 
 Acceptance criteria:
+
 - path рендерится только по `emitPathByLevel`;
 - `#logger/ldd` доступен как public entrypoint;
 - по test spec можно проверить все public contracts.
@@ -618,6 +653,6 @@ Acceptance criteria:
 - [ ] Public API `LDD` реализуем без скрытых допущений и без привязки к конкретному языку, кроме зафиксированных JS/TS semantics tagged template и decorator lifecycle.
 - [ ] Flat log содержит достаточно данных, чтобы AI-агент восстановил nested calls, manual scopes, recursion, results и errors.
 - [ ] `LDD.active`, `LDD.scope`, ambient methods и bound logger methods образуют один непротиворечивый contract.
-- [ ] `warn(...).msg\`...\`` сохраняет ergonomics `return`, а `throw LDD.error(...)` и `throw LDD.error(...).msg\`...\`` сохраняют ergonomics `throw` без duplicate emission.
+- [ ] `warn(...).msg\`...\``сохраняет ergonomics`return`, а `throw LDD.error(...)`и`throw LDD.error(...).msg\`...\``сохраняют ergonomics`throw` без duplicate emission.
 - [ ] Recursive calls различимы по `frameId` и `parentFrameId`, даже если `target` и `pathSegments` повторяются по именам.
 - [ ] Отсутствующий ambient context никогда не замалчивается: runtime создаёт synthetic frame и помечает его в `LddRecord`.
