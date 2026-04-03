@@ -59,7 +59,9 @@ export async function loadAgentTemplate(templateFilename: string): Promise<strin
     candidates.push(path.join(packageRoot, AGENTS_DIRNAME, templateFilename));
     candidates.push(path.join(packageRoot, 'dist', AGENTS_DIRNAME, templateFilename));
   } else {
-    candidates.push(path.join(__dirname, '../../../../../../dist', AGENTS_DIRNAME, templateFilename));
+    candidates.push(
+      path.join(__dirname, '../../../../../../dist', AGENTS_DIRNAME, templateFilename)
+    );
   }
 
   for (const candidatePath of candidates) {

@@ -63,21 +63,6 @@ npx gennady commit --apply
 
 ---
 
-### 🔍 `review`
-
-Проверка staged-изменений на критичные проблемы.
-
-```bash
-npx gennady review
-npx gennady review --branch=develop
-```
-
-**Опции:**
-
-- `--branch`, `-b`: ветка для сравнения
-
----
-
 ### 🐱 `cat`
 
 Вывод файлов в `XML` или `Markdown`.

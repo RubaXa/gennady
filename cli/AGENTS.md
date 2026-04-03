@@ -7,7 +7,6 @@
 | Команда           | Папка                                            | Назначение                                                         |
 | ----------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
 | commit            | [cmd/commit/](cmd/commit/)                       | Генерация commit из staged → cli/utils/commit-gen                  |
-| review            | [cmd/review/](cmd/review/)                       | Ревью staged → cli/utils/review-gen                                |
 | cat               | [cmd/cat/](cmd/cat/)                             | Вывод файлов XML/MD → cli/utils/cat-gen                            |
 | agent             | [cmd/agent/](cmd/agent/)                         | AI agent request → cli/utils/ai-legacy                             |
 | vcs-reply         | [cmd/vcs-reply/](cmd/vcs-reply/)                 | Постинг ответов в GitLab MR discussions                            |
