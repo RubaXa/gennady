@@ -22,7 +22,7 @@
   "types": "dist/index.d.ts",
   "imports": {
     "#snapshot-path-setup": "./snapshot-path.setup.ts",
-    "#logger": "./services/logger/loader.ts"
+    "#logger": "./services/logger/logger.ts"
   },
   "files": [
     "dist/**/*",
