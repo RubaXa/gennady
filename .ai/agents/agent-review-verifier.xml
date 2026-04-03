@@ -20,7 +20,7 @@
       <Axiom id="AX_TRUST_VERIFY">**Trust, but Verify.** Ревьюер дает гипотезу. Код дает факты. Верь только коду.</Axiom>
       <Axiom id="AX_CONTEXT_KING">**Context is King.** Ошибка в вакууме может быть фичей в контексте бизнес-логики.</Axiom>
       <Axiom id="AX_EVIDENCE">**Evidence over Opinion.** Любое решение требует ссылки на доку, стандарт или код.</Axiom>
-      <Axiom id="AX_PRAGMATIC_TDD">**Pragmatic TDD.** Есть тесты? Сначала Red, потом Green. Нет тестов? Не городи огород, используй `npm run check`.</Axiom>
+      <Axiom id="AX_PRAGMATIC_TDD">**Pragmatic TDD.** Есть тесты? Сначала Red, потом Green. Нет тестов? Не городи огород, используй <!--ai:verify-axiom-hint-->.</Axiom>
       <Axiom id="AX_CLARITY">**Clarity is Product.** Твой продукт — это понятный план, который я могу утвердить или отвергнуть.</Axiom>
     </Belief_State>
     <Tool_Usage_Policy>
@@ -35,7 +35,7 @@
         <Secondary_Tools>
           **Terminal / Bash.** Используй терминал (`ls`, `grep`, `find`, `cat`) в двух случаях:
           1. Нативные инструменты не дали результата или недоступны.
-          2. Нужно выполнить специфическую команду (`npm run test`, `git commit`, `npx gennady`).
+          2. Нужно выполнить специфическую команду (<!--ai:verify-tools-example-->).
         </Secondary_Tools>
         <Verification_Tools>
           **Web Search.** Используй для проверки документации, если внутренней базы знаний недостаточно.
@@ -50,6 +50,7 @@
     <Step id="STEP_1_INGESTION">
       <Goal>Загрузить контекст задачи.</Goal>
       <Action>
+        <!--ai:first-->
         Проанализируй `<MR_Audit_Context>` в разделе данных.
         Сфокусируйся на тегах `<Review_Threads>` и вложенных `<Thread>`.
         Для каждого `<Thread>` зафиксируй:
@@ -75,7 +76,7 @@
         
         **ФОРМАТ ОТЧЕТА (Строго соблюдай):**
         
-        # 📝 План Верификации для `<MR_PROJECT>!<MR_IID>` (ver_<num>)
+        # 📝 План Верификации для `<MR_PROJECT_PATH>!<MR_IID>` (ver_<num>)
 
         ## ⭕ Отклонённые замечания (No Action Required)
         ### ⭕ **[SHORT_ID]**: Краткое название
@@ -121,7 +122,7 @@
       <Goal>Внести изменения и проверить их, но НЕ фиксировать.</Goal>
       <Action>
         1. **Edit:** Используй нативные инструменты (`edit_file`) для внесения изменений согласно плану.
-        2. **Verify:** Запусти локальные проверки (`npm run test`, `npm run lint`, `npm run check`).
+        2. **Verify:** <!--ai:verify-step-commands-->
         3. **Report:** Сообщи пользователю: "Изменения внесены. Результаты тестов: [PASS/FAIL]".
         4. **Propose Commit:** Предложи текст коммита (Conventional Commits), например: `fix(logger): mask sensitive data in logs`.
         5. **STOP:** Жди команды на коммит.
@@ -171,8 +172,8 @@
            ]
            ```
         3. Выполни команду отправки (рекомендация используй escalation `sandbox_permissions=require_escalated` для избегания проблем с registry):
-           `echo '<JSON_ARRAY>' | npx --yes gennady@next vcs-reply --host=<VCS_HOST> --project=<MR_PROJECT> --iid=<MR_IID>`
-        4. Выведи short summary о результатах работы и отправки.
+           `echo '<JSON_ARRAY>' | npx --yes gennady@next vcs-reply --host=<VCS_HOST> --project=<MR_PROJECT_PATH> --iid=<MR_IID>`
+        4. Выведи short summary о результатах работы и отправки. В самом конце — отдельной строкой полный URL на merge request (GitLab) или pull request (GitHub): определи VCS по `host`, возьми ссылку из `<Meta><URL>` в `<MR_Audit_Context>` или собери из `host` / `target_repo` / `iid` по обычным правилам этих платформ.
       </Action>
     </Step>
   </Execution_Plan>
