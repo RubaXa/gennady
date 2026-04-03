@@ -1,6 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadAgentTemplate } from '../../../_shared/prompt/io/load-agent-template.io.ts';
 
 /**
  * @purpose Загрузить шаблон review-verify из проекта или fallback из библиотеки.
@@ -8,19 +6,5 @@ import { fileURLToPath } from 'node:url';
  * @returns Содержимое XML-шаблона.
  */
 export async function loadReviewVerifyTemplate(): Promise<string> {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    path.join(process.cwd(), '.ai/agents/agent-review-verifier.xml'),
-    path.join(__dirname, '../../../../../.ai/agents/agent-review-verifier.xml'),
-  ];
-
-  for (const candidatePath of candidates) {
-    if (fs.existsSync(candidatePath)) {
-      return fs.promises.readFile(candidatePath, 'utf-8');
-    }
-  }
-
-  throw new Error(`Не найден файл шаблона agent-review-verifier.xml в .ai/agents.`, {
-    cause: candidates,
-  });
+  return loadAgentTemplate('agent-review-verifier.xml');
 }

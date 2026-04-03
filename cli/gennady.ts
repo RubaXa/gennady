@@ -3,7 +3,7 @@
 const helpFlags = new Set(['help', '--help', '-h']);
 const command = process.argv[2];
 
-if (helpFlags.has(command ?? '') || command === 'help') {
+if (!command || helpFlags.has(command)) {
   await import('./cmd/help/help.cmd.ts');
   process.exit(0);
 }
@@ -29,8 +29,15 @@ switch (command) {
     await import('./cmd/review-issues/index.ts');
     break;
 
+  case 'resolve-conflicts':
+    await import('./cmd/resolve-conflicts/index.ts');
+    break;
+
   case 'commit':
-  default:
     await import('./cmd/commit/index.ts');
     break;
+
+  default:
+    await import('./cmd/help/help.cmd.ts');
+    process.exit(0);
 }
