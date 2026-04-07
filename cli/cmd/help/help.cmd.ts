@@ -15,6 +15,7 @@ console.info(
 console.info(
   '  resolve-conflicts Build confidence-aware merge-conflict resolution prompt from active git merge'
 );
+console.info('  remote-console    Mirror browser console output into local stdout');
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

@@ -14,6 +14,17 @@ Scenario: `setup` replaces global config without log emission
 - Then используется именно `configB`
 - And ни один вызов `setup` сам по себе не эмитит record
 
+Scenario: `setup` accepts `output` or `outputs`, but not both
+
+- Given создан `singleOutput` типа `LddOutput`
+- And создан список `manyOutputs` типа `LddOutput[]`
+- When вызывают `LDD.setup({ ..., output: singleOutput })`
+- Then конфигурация считается валидной
+- When вызывают `LDD.setup({ ..., outputs: manyOutputs })`
+- Then конфигурация считается валидной
+- When вызывают `LDD.setup({ ..., output: singleOutput, outputs: manyOutputs })`
+- Then конфигурация отклоняется как невалидная
+
 Scenario: ambient logging without active context creates synthetic root frame
 
 - Given active frame отсутствует
@@ -21,6 +32,16 @@ Scenario: ambient logging without active context creates synthetic root frame
 - Then эмитится ровно одна record
 - And запись содержит `contextStatus = 'synthetic'`
 - And `parentFrameId` отсутствует
+- And `depth = 1`
+
+Scenario: root and child depth follow the 1-based contract
+
+- Given `const root = LDD.scope('Import')`
+- And `const child = root.scope('Parse')`
+- Then `root.pathSegments = ['Import']`
+- And `root.depth = 1`
+- And `child.pathSegments = ['Import', 'Parse']`
+- And `child.depth = 2`
 
 Scenario: `undefined` remains the actual runtime result
 
@@ -64,7 +85,36 @@ Scenario: `LDD.active` is read-only
 - Then TypeScript отклоняет присваивание
 - And runtime не даёт public setter
 
-## t3-decorators
+## t3-output-factories
+
+### Feature: output factories and output routing
+
+Scenario: `fromStdout` creates output from stream-like target
+
+- Given есть `LikeStdout` target с методом `write(chunk)`
+- When вызывают `LDD.output.fromStdout(target)`
+- Then создаётся normalized `LddOutput`
+- And вызов `write(entry)` приводит к записи presentation text, сформированного из `entry.record`, в target
+
+Scenario: `fromConsole` routes entry by level
+
+- Given есть `LikeConsole` target с методами `info`, `warn`, `error`
+- When вызывают `LDD.output.fromConsole(target)`
+- And затем `write(entry)` для `entry.level = 'warn'`
+- Then используется `target.warn`
+- And первым аргументом передаётся presentation text, сформированный из `entry.record`
+- And `entry.record` передаётся как дополнительный аргумент
+
+Scenario: `fromFile` creates output from file-like target or file config
+
+- Given есть `LikeFile` target с методом `write(chunk)`
+- When вызывают `LDD.output.fromFile(target)`
+- Then создаётся normalized `LddOutput`
+- Given есть `FileOutputConfig` с `path`
+- When вызывают `LDD.output.fromFile(config)`
+- Then создаётся normalized `LddOutput` для file-backed target
+
+## t4-decorators
 
 ### Feature: automatic logging via decorators
 
@@ -98,7 +148,7 @@ Scenario: `redactArgs` and `redactReturn` apply only to their own data
 - And success record содержит redacted return value
 - And message interpolation всё равно использует global `redactMsgArg`
 
-## t4-message-builder
+## t5-message-builder
 
 ### Feature: message builders
 
@@ -107,6 +157,13 @@ Scenario: `debug/info` require tagged-template `msg`
 - Given `const builder = LDD.info({ state: 'transform' })`
 - When пытаются вызвать `builder.msg('plain string')`
 - Then бросается `TypeError`
+
+Scenario: `info` may emit without calling `.msg`
+
+- Given вызывают `LDD.info({ state: 'transform' })` без `.msg`
+- When runtime доходит до flush point конца текущего synchronous turn
+- Then эмитится ровно одна `info` record
+- And `message` отсутствует или пустой
 
 Scenario: every interpolation passes through `redactMsgArg`
 
@@ -122,6 +179,14 @@ Scenario: `warn(...).msg` returns `returnValue`
 - Then эмитится ровно одна `warn` record
 - And expression возвращает `'./'`
 
+Scenario: `warn(...)` may emit without `.msg`
+
+- Given вызван `const builder = LDD.warn({ state: 'fallback', returnValue: './' })`
+- When runtime доходит до flush point конца текущего synchronous turn без `.msg\`...\``
+- Then эмитится ровно одна `warn` record
+- And `message` отсутствует или пустой
+- And builder сам по себе не превращается в `'./'`
+
 Scenario: `redactMsgArg` may fail without breaking logging
 
 - Given `redactMsgArg` бросает ошибку для одного значения
@@ -129,7 +194,7 @@ Scenario: `redactMsgArg` may fail without breaking logging
 - Then message содержит `'<ldd:redact-failed>'`
 - And запись всё равно эмитится
 
-## t5-recursion-and-errors
+## t6-recursion-and-errors
 
 ### Feature: recursion and throw-compatible error
 
@@ -150,6 +215,12 @@ Scenario: `throw LDD.error(...)` inside LDD boundary emits once
 - And message по умолчанию берётся из `err.message`
 - And повторно выбрасывается тот же экземпляр ошибки
 
+Scenario: `LDD.error(...)` itself does not emit before crossing LDD boundary
+
+- Given создан `const prepared = LDD.error({ state: 'validate', error: err })`
+- When prepared object ещё не выброшен через LDD-managed boundary
+- Then `error` record не эмитится
+
 Scenario: `throw LDD.error(...).msg\`...\`` overrides message
 
 - Given method аннотирован `@LDD.method()`
@@ -157,3 +228,9 @@ Scenario: `throw LDD.error(...).msg\`...\`` overrides message
 - Then эмитится ровно одна `error` record
 - And итоговое message строится из tagged template
 - And выбрасывается тот же экземпляр ошибки
+
+Scenario: `LDD.error(...).msg\`...\`` overrides message but still does not emit immediately
+
+- Given создан `const prepared = LDD.error({ state: 'validate', error: err }).msg\`Invalid input ${payload}\``
+- When prepared object ещё не выброшен через LDD-managed boundary
+- Then `error` record не эмитится

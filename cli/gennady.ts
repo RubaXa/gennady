@@ -37,6 +37,10 @@ switch (command) {
     await import('./cmd/commit/index.ts');
     break;
 
+  case 'remote-console':
+    await import('./cmd/remote-console/index.ts');
+    break;
+
   default:
     await import('./cmd/help/help.cmd.ts');
     process.exit(0);
