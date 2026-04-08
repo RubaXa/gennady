@@ -4,6 +4,10 @@
 
 Руководство по **prompt architecture для программиста**: как собирать prompt из **goal, context, belief state, reward criteria, golden examples, verification loops и output contract**. Объясняет, что подтверждается исследованиями напрямую, что опирается на косвенную базу, а что остается инженерной эвристикой.
 
+### 🧱 [ai-prompt-formats.md](./ai-prompt-formats.md)
+
+Руководство по **форматам prompt engineering**: где работает **Markdown**, почему длинные протоколы лучше собирать как **XML-like layout**, почему **YAML** плох как default для prompt-control, и почему **JSON** нужно использовать прежде всего для **output-schema и state data**, а не как основной язык постановки задачи.
+
 ### 🎯 [ai-icl.md](./ai-icl.md)
 
 Исследование **In-Context Learning (ICL)**: от **Few-Shot к Many-Shot**, **архитектура примеров**, проблемы **порядка и смещения**, **синтетический и негативный ICL**. Описывает техники **обучения моделей на примерах в контексте без изменения весов**.
