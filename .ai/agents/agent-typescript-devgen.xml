@@ -70,7 +70,7 @@
       <Rule reason="Logging Density">Placement: entry points (start), important branches, external I/O/mutations, loops — aggregated; in `catch` always `logger.error` with Trace-Prefix and context, then `throw` (see AXIOM_ERROR_WITH_ANCHORS).</Rule>
     </Axiom>
     <Axiom id="AXIOM_STRUCTURAL_ANCHORS">
-      <Rule reason="Deterministic AI Parsing">Anchors (`// START_...` and `// END_...`) are structural markers for AI readers and patch tools. They enable extracting, chunking, and replacing logical blocks via regex without building an AST. Format: `START_&lt;CONTEXT&gt;_&lt;INTENT&gt;` / `END_&lt;CONTEXT&gt;_&lt;INTENT&gt;`, using uppercase high-signal tokens.</Rule>
+      <Rule reason="Deterministic AI Parsing">Anchors (`// START_...` and `// END_...`) are structural markers for AI readers and patch tools. They enable extracting, chunking, and replacing logical blocks via regex without building an AST. Format: `START_[CONTEXT]_[INTENT]` / `END_[CONTEXT]_[INTENT]`, using uppercase high-signal tokens.</Rule>
       <Rule reason="Scope Coverage for Non-Trivial Logic">In a complex function, wrap every nested control-flow block with independent intent, side effects, or refactor risk: `if` / `else`, `for` / `for...of`, `while`, `switch`, meaningful `case`, `try`, `catch`. Another agent must be able to jump from START to END and reason about the block as a unit.</Rule>
       <Rule reason="Trivial Scope Exception">Do NOT anchor a trivial guard clause or an obvious single-action branch when the block has no independent policy, no meaningful side effects, and no refactor hazard.</Rule>
       <Rule reason="Intentful Names">Anchor names describe WHY the block exists or what policy it enforces, not raw syntax or literal conditions. Prefer `START_APPLY_FALLBACK_STRATEGY`, not `START_IF_NO_PATH`.</Rule>
@@ -95,6 +95,7 @@
         0. Use EITHER `@purpose` (compressed essence) OR `@see` (reference to an interface/parent: `@see {Interface#member} in path`). Do not duplicate them.
         - Implementation rule: `@see` is allowed only for direct implementation/inheritance of an interface/parent member.
         - Override rule: on override/redefinition (behavior/contract change), write the full contract explicitly; do not rely only on `@see`.
+        - Clarification rule: if an implementation needs its own `@consumer`, `@invariant`, `@pre`, `@throws`, `@returns`, `@post`, or `@sideEffect` because the inherited contract is being tightened, specialized, or extended, treat it as an override and write the full explicit contract instead of mixing extra tags into a `@see`-only stub.
         - Single-line format: `/** @purpose Verb Object Context */` or `/** @see {InterfaceName#memberName} in ./path */`.
         - Multi-line format: use for complex entities with optional tags, while keeping strict order.
         - Order rule: if optional tags are used, their order MUST match the list below.
@@ -126,6 +127,7 @@
         - Implementations of an existing contract: keep the owner-level purpose on the class/constant, and use `@see` on the member only when behavior matches the inherited contract.
         - Async functions and methods: `@returns` describes the resolved value, `@throws` describes the rejected/throw path, `@sideEffect` documents the external action when present.
         - Exported config constants: add `@invariant` when value bounds or combinations must remain stable.
+        - Architecture-driven repositories may declare a stable path convention for `@see` and `@implements`. When such a convention exists, follow it consistently across the module; do not mix local-relative and project-root-relative styles inside one contract surface.
       </Rule>
       <Rule reason="Validation Checklist">
         Validate that every exported entity has `@purpose` or a valid `@see`, optional tags follow strict order, `@param` does not restate object structure, `@returns` does not restate the TS type, methods with meaningful external effects declare `@sideEffect` or `@post`, and type/interface/class choice matches the architectural rule of the entity.
