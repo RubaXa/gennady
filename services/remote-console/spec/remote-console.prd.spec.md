@@ -13,17 +13,17 @@
 
 ## CONSUMERS
 
-| Consumer | Type | Relationship |
-| --- | --- | --- |
-| Разработчик | external | Запускает `npx gennady remote-console`, при необходимости передаёт `--url`, открывает страницу и получает live console log в терминале без ручного копирования из devtools. |
-| AI-диагностический агент | external | Потребляет нормализованный `stdout` поток `"[console.<level>] ..."` для последующего анализа ошибок и расхождений. |
-| Browser page runtime | external | Вызывает `remoteConsoleClient.connect(console, {url, tabId?, branch?})`, чтобы дублировать logging calls в remote sink, не ломая локальный console UX. |
-| Browser lifecycle | external | Даёт lifecycle signal ухода со страницы; клиент обязан использовать его для auto-disconnect и unload-safe доставки финального shutdown signal. |
-| CLI-команда `remote-console` | internal | Парсит аргументы, стартует server core, печатает startup diagnostics и при `--url` открывает браузер с activation query flag. |
-| `RemoteConsoleClient` | internal | Monkey-patch logging methods, буферизует записи, сериализует аргументы, выполняет throttled HTTP flush и публикует `console.__remote__.disconnect()`. |
-| `RemoteConsoleHttpServer` | internal | Принимает единый HTTP endpoint с envelope-командами `logs` и `disconnect`, передаёт payload в stdout writer и shutdown controller. |
-| `RemoteConsoleStdoutWriter` | internal | Превращает входящие log items в flat строки `"[console.<level>] <...args>"` в детерминированном формате. |
-| `RemoteConsoleShutdownController` | internal | Координирует controlled shutdown server runtime после команды `disconnect`. |
+| Consumer                          | Type     | Relationship                                                                                                                                                                |
+| --------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Разработчик                       | external | Запускает `npx gennady remote-console`, при необходимости передаёт `--url`, открывает страницу и получает live console log в терминале без ручного копирования из devtools. |
+| AI-диагностический агент          | external | Потребляет нормализованный `stdout` поток `"[console.<level>] ..."` для последующего анализа ошибок и расхождений.                                                          |
+| Browser page runtime              | external | Вызывает `remoteConsoleClient.connect(console, {url, tabId?, branch?})`, чтобы дублировать logging calls в remote sink, не ломая локальный console UX.                      |
+| Browser lifecycle                 | external | Даёт lifecycle signal ухода со страницы; клиент обязан использовать его для auto-disconnect и unload-safe доставки финального shutdown signal.                              |
+| CLI-команда `remote-console`      | internal | Парсит аргументы, стартует server core, печатает startup diagnostics и при `--url` открывает браузер с activation query flag.                                               |
+| `RemoteConsoleClient`             | internal | Monkey-patch logging methods, буферизует записи, сериализует аргументы, выполняет throttled HTTP flush и публикует `console.__remote__.disconnect()`.                       |
+| `RemoteConsoleHttpServer`         | internal | Принимает единый HTTP endpoint с envelope-командами `logs` и `disconnect`, передаёт payload в stdout writer и shutdown controller.                                          |
+| `RemoteConsoleStdoutWriter`       | internal | Превращает входящие log items в flat строки `"[console.<level>] <...args>"` в детерминированном формате.                                                                    |
+| `RemoteConsoleShutdownController` | internal | Координирует controlled shutdown server runtime после команды `disconnect`.                                                                                                 |
 
 ---
 

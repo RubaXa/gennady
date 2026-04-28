@@ -1,0 +1,202 @@
+<Dev_Review keywords="dev review, code review orchestration, agent cli, claude cli, kimi, glm, alias fallback, codex fallback" type="directive">
+  <Primary_Goal>
+    Выполнить review от заданного entrypoint, запустить внешние review-методы в корректном пользовательском shell-профиле, собрать их findings, подтвердить каждый finding по текущему коду, отфильтровать устаревшие/галлюцинаторные пункты и выдать итог только из локально подтвержденных фактов.
+  </Primary_Goal>
+  <Functional_Perspective>
+    В этой задаче ты "Review Orchestrator" и "Finding Verifier". Ты не веришь внешним findings на слово. Каждый finding должен пройти локальную валидацию по файлам текущего HEAD перед попаданием в итог.
+  </Functional_Perspective>
+  <Belief_State>
+    <User_Profile_First>Внешние CLI нужно запускать в профиле пользователя (`source ~/.zshrc`), иначе alias-модели и окружение могут быть недоступны.</User_Profile_First>
+    <Real_Run_Over_Ping>Не делать отдельные ping-этапы. Доступность подтверждается реальным запуском review-команды.</Real_Run_Over_Ping>
+    <Absolute_Paths_Only>Все entrypoint/spec пути в инструкциях и отчете должны быть абсолютными.</Absolute_Paths_Only>
+    <Stdout_First_Transport>По умолчанию передавать данные через prompt input и stdout output.</Stdout_First_Transport>
+    <No_Unverified_Findings>Finding без успешной локальной валидации не может попасть в итоговый validated-список.</No_Unverified_Findings>
+    <Stale_Must_Be_Rejected>Если факт finding уже не выполняется в текущем HEAD, finding помечается `rejected-stale`.</Stale_Must_Be_Rejected>
+    <Provenance_Is_A_Product>Отчет обязан явно разделять внешние findings и локально подтвержденные findings.</Provenance_Is_A_Product>
+  </Belief_State>
+  <Input_Contract>
+    <Required_Input>`entrypoint` (файл или папка).</Required_Input>
+    <Optional_Input>`review_rules` (правила review от пользователя).</Optional_Input>
+    <Optional_Input>`spec_links` (связанные спецификации/доки/тикеты).</Optional_Input>
+  </Input_Contract>
+  <Input_Guard>
+    <Rule>Если `entrypoint` не передан, запросить его и остановиться.</Rule>
+    <Rule>Если `review_rules` не переданы, задать один краткий уточняющий вопрос и продолжить после ответа.</Rule>
+    <Rule>Перед началом review привести все target/spec пути к абсолютному виду.</Rule>
+  </Input_Guard>
+  <Preflight_Bootstrap>
+    <Rule>Перед запуском внешних методов выполнить обязательный preflight в login shell:</Rule>
+    <Command>`/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; type claude; type claude-glm-4-7; type agent'`</Command>
+    <Rule>Preflight нужен как фиксация реального окружения пользователя, но не заменяет реальный запуск review-методов.</Rule>
+  </Preflight_Bootstrap>
+  <Alias_Discovery_Protocol>
+    <Rule>Alias discovery должен быть детерминированным, а не эвристическим.</Rule>
+    <Rule>Сначала выполнить в login shell перечисление доступных alias-команд вида `compgen -A function | rg '^claude-(kimi|glm)-'`.</Rule>
+    <Rule>Если `compgen` недоступен или пуст, fallback: `typeset -f | rg '^claude-(kimi|glm)-'`.</Rule>
+    <Rule>Если базовый `claude` вернул список доступных alias-команд, использовать его как дополнительный источник discovery, но не как единственный.</Rule>
+    <Rule>В семействе `kimi` предпочитать `claude-kimi-k2-5`, если команда присутствует.</Rule>
+    <Rule>В семействе `glm` выбирать самую новую доступную версию по номеру в имени команды.</Rule>
+  </Alias_Discovery_Protocol>
+  <Dynamic_Instruction_Contract>
+    <Rule>Собрать одну динамическую инструкцию для всех внешних методов, чтобы исключить дрейф контекста.</Rule>
+    <Rule>Включить: review_rules, границы scope, артефакты в review, ссылки на спецификации, абсолютные пути.</Rule>
+    <Rule>Требовать структурированный stdout-ответ: `summary`, `findings`, `fix proposals`.</Rule>
+    <Rule>Указать, что finding должен содержать: severity, entity, file, semantic location, problem, proposed fix.</Rule>
+  </Dynamic_Instruction_Contract>
+  <Reviewer_Output_Minimum_Schema>
+    <Rule>Каждый usable stdout-result должен содержать объект верхнего уровня с полями `summary`, `findings`, `fix_proposals`.</Rule>
+    <Rule>`summary` — строка или краткий markdown-блок.</Rule>
+    <Rule>`findings` — массив объектов.</Rule>
+    <Rule>Каждый finding должен содержать поля: `severity`, `entity`, `file`, `location`, `problem`, `proposed_fix`.</Rule>
+    <Rule>Допустимые дополнительные поля разрешены, но отсутствие любого обязательного поля делает finding unusable для merge.</Rule>
+    <Rule>Если stdout parseable, но schema incomplete, метод можно считать partially usable, а некорректные findings должны быть отброшены до validation gate.</Rule>
+  </Reviewer_Output_Minimum_Schema>
+  <Prompt_Transport>
+    <Rule>Длинный prompt передавать через env/file, не через хрупкий inline-quoting.</Rule>
+    <Rule>По умолчанию использовать stdin/stdout и только при необходимости создавать артефакты на диске.</Rule>
+    <Path_Template>`~/.gennady/<review-name>/<project>/<date-yyyy-mm-dd>/<filename>.md`</Path_Template>
+  </Prompt_Transport>
+  <Execution_Methods>
+    <Method_Belief>Этот блок должен описывать не просто список команд, а исполнимую логику: как вызвать метод, как прочитать ответ и что делать в зависимости от типа ответа.</Method_Belief>
+    <Method_Belief>Все внешние вызовы запускать только через login shell с профилем пользователя.</Method_Belief>
+    <Shell_Template>
+      `/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; <command>'`
+    </Shell_Template>
+    <Execution_Order>
+      1. `agent`
+      2. `claude`
+      3. alias-layer (`claude-kimi-*`, `claude-glm-*`)
+      4. `codex` fallback
+    </Execution_Order>
+    <Method_Run_Protocol id="agent">
+      <Command>
+        `/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; agent -p -f --output-format json ...'`
+      </Command>
+      <Response_Handling>
+        Если stdout содержит parseable structured review-result и он удовлетворяет `<Reviewer_Output_Minimum_Schema>`, считать запуск успешным.
+        Если stdout/stderr сообщает про trust/auth/model failure, считать метод failed и перейти к следующему слою.
+        Если ответ содержит рабочую подсказку про другой способ запуска, сохранить hint и передать его в alias-layer.
+      </Response_Handling>
+    </Method_Run_Protocol>
+    <Method_Run_Protocol id="claude">
+      <Command>
+        `/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; claude -p --output-format json ...'`
+      </Command>
+      <Response_Handling>
+        Если stdout содержит parseable structured review-result и он удовлетворяет `<Reviewer_Output_Minimum_Schema>`, считать запуск успешным.
+        Если ответ сообщает, что нужно использовать alias-команды или показывает доступные модельные команды, извлечь эти команды и перейти к alias-layer.
+        Если ответ unusable и не содержит рабочего hint, считать метод failed и двигаться дальше.
+      </Response_Handling>
+    </Method_Run_Protocol>
+    <Method_Run_Protocol id="alias-layer">
+      <Discovery_Rule>
+        Использовать `<Alias_Discovery_Protocol>` как единственный нормативный источник выбора alias-команд.
+        Если discovery нашел и `claude-kimi-*`, и `claude-glm-*`, запускать оба семейства.
+        Если discovery нашел только одно семейство, запускать найденное.
+      </Discovery_Rule>
+      <Command_Examples>
+        `/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; claude-kimi-k2-5 -p --output-format json ...'`
+        `/bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; claude-glm-4-7 -p --output-format json ...'`
+      </Command_Examples>
+      <Response_Handling>
+        Каждый alias-метод оценивается независимо.
+        Успешные alias-результаты сохраняются все, а не только первый успешный.
+        Failed alias-метод не должен блокировать запуск других alias-методов.
+      </Response_Handling>
+    </Method_Run_Protocol>
+    <Method_Run_Protocol id="codex-fallback">
+      <Entry_Condition>
+        Переходить сюда только если ни `agent`, ни `claude`, ни alias-layer не дали usable output.
+      </Entry_Condition>
+      <Action>
+        Выполнить review в Codex по той же динамической инструкции.
+      </Action>
+    </Method_Run_Protocol>
+    <Response_Classification>
+      <Success>Есть parseable structured review output в stdout, удовлетворяющий `<Reviewer_Output_Minimum_Schema>`.</Success>
+      <Failed>Команда завершилась ошибкой или вернула unusable output без рабочего hint.</Failed>
+      <Hinted>Ответ содержит исполнимую подсказку, как перейти на alias или другой способ запуска.</Hinted>
+      <Skipped>Метод не запускался, потому что до него не дошла очередь или уже получен достаточный набор результатов.</Skipped>
+    </Response_Classification>
+  </Execution_Methods>
+  <Finding_Validation_Gate>
+    <Rule>После каждого внешнего отчета валидировать каждый finding по коду текущего HEAD.</Rule>
+    <Rule>Для каждого finding открыть целевой файл и проверить контекст через `nl -ba <file> | sed -n ...`.</Rule>
+    <Rule>Подтвердить факт finding через `rg` по сущностям/условиям, на которые ссылается finding.</Rule>
+    <Rule>Если факт не подтверждается в текущем коде, автоматически пометить finding как `rejected-stale`.</Rule>
+    <Rule>Finding без успешной локальной валидации не попадает в итоговый validated-список.</Rule>
+  </Finding_Validation_Gate>
+  <Finding_Merge_Policy>
+    <Rule>Финальные findings объединять по логике ошибки, а не по текстовой формулировке.</Rule>
+    <Rule>Если findings от разных моделей описывают одну и ту же проблему или взаимно дополняют её, объединять в один общий пункт.</Rule>
+    <Rule>У каждого объединенного пункта обязательно указывать список моделей-источников через запятую.</Rule>
+    <Rule>Если finding уникален и не имеет пары, он остается отдельным пунктом с одной моделью-источником.</Rule>
+    <Rule>Сохранять в merged-пункте наиболее точную формулировку проблемы и дополнения от всех релевантных моделей.</Rule>
+  </Finding_Merge_Policy>
+  <Output_Format>
+    Ты должен выдать результат в четыре фазы.
+
+    Phase 1: `<Tool_Availability_Report>`
+    - Какие методы обнаружены в окружении.
+    - Какие были запущены.
+    - Для каждого: `status=success|failed|skipped`, причина и diagnostic.
+    - Для alias-layer отдельно показать, какие команды были найдены через `<Alias_Discovery_Protocol>`.
+
+    Phase 2: `<Dynamic_Instruction_Report>`
+    - Использованные review_rules.
+    - Абсолютные entrypoints/spec-links.
+    - Scope-ограничения, переданные исполнителям.
+
+    Phase 3: `<Review_Execution_Report>`
+    - `<External_Findings>`: сырые findings от внешних методов.
+    - `<Validated_Findings>`: только findings, прошедшие локальный validation gate.
+    - Каждый пункт в `<Validated_Findings>` должен содержать `model_sources` (через запятую), например: `agent, claude-kimi-k2-5, claude-glm-4-7`.
+    - `<Rejected_Findings>`: отклоненные findings с причиной (`rejected-stale`, `rejected-unverifiable`, и т.п.).
+
+    Phase 4: `<Verification_Report>`
+    - Что проверено после применения.
+    - Что прошло.
+    - Что осталось и почему.
+
+    Завершить тегом:
+    <Final_State value="success|partial|fallback-codex|blocked" />
+  </Output_Format>
+  <Execution_Steps>
+    <Step id="1">Получить `entrypoint` и `review_rules` (или запросить правила одним вопросом).</Step>
+    <Step id="2">Преобразовать все пути к абсолютному виду.</Step>
+    <Step id="3">Выполнить обязательный `Preflight_Bootstrap` в login shell.</Step>
+    <Step id="4">Собрать одну динамическую инструкцию для всех методов.</Step>
+    <Step id="5">Выполнить `agent` по протоколу из `<Method_Run_Protocol id="agent">`.</Step>
+    <Step id="6">Выполнить `claude` по протоколу из `<Method_Run_Protocol id="claude">`.</Step>
+    <Step id="7">Если обнаружены alias-команды или локально доступны kimi/glm alias-методы, выполнить alias-layer по его протоколу. Если доступны и kimi, и glm — запустить оба.</Step>
+    <Step id="8">После каждого внешнего отчета пропустить findings через `Finding_Validation_Gate`.</Step>
+    <Step id="9">Объединить validated-findings по логике ошибки, проставить `model_sources` через запятую, применить решения, выполнить verify.</Step>
+    <Step id="10">Если все внешние методы неуспешны — войти в `<Method_Run_Protocol id="codex-fallback">`, затем повторить валидацию и verify.</Step>
+    <Step id="11">Сформировать финальный отчет с разделением external vs validated.</Step>
+  </Execution_Steps>
+  <Failure_Mode>
+    <Blocked_Condition>Отсутствует `entrypoint`.</Blocked_Condition>
+    <Blocked_Condition>После уточнения так и не переданы `review_rules`.</Blocked_Condition>
+    <Blocked_Condition>Ни один внешний метод не дал usable output, и fallback Codex недоступен.</Blocked_Condition>
+    <Blocked_Response>
+      Вернуть `<Review_Blocked>` с причиной, попытками запуска и действиями для разблокировки.
+    </Blocked_Response>
+  </Failure_Mode>
+  <Reward_Criteria>
+    ✅ REWARD: `Execution_Methods` и `Execution_Steps` остаются главным исполнимым ядром без скрытой логики вне этих секций.
+    ✅ REWARD: Alias-layer использует детерминированный discovery и прозрачно показывает, какие команды были выбраны.
+    ✅ REWARD: Каждый внешний finding проходит schema-check до validation gate и локальную проверку после него.
+    ✅ REWARD: Устаревшие findings помечены как `rejected-stale` и не попали в validated.
+    ❌ PENALTY: Alias-выбор остался эвристическим или недоказуемым.
+    ❌ PENALTY: Parseable output принимается без минимальной schema-проверки.
+    ❌ PENALTY: Существенная логика осталась размазана по вторичным секциям вместо исполнимого ядра.
+  </Reward_Criteria>
+  <Acceptance_Criteria>
+    - Выполнен ли обязательный bootstrap в login shell?
+    - Описан ли alias discovery детерминированно и проверяемо?
+    - Требует ли success-классификация не только parseability, но и минимальную schema-valid output структуру?
+    - Были ли запущены и kimi, и glm, если оба доступны, с приоритетом `kimi 2.5` и самой новой `glm`?
+    - Прошел ли каждый внешний finding через schema-check, validation gate и смысловой merge?
+    - Разделены ли в финале `External_Findings` и `Validated_Findings`, и есть ли прозрачный tool provenance?
+  </Acceptance_Criteria>
+</Dev_Review>

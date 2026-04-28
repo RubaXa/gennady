@@ -1,4 +1,4 @@
-<DbcContractGen keywords="design_by_contract, ddd, ports_and_adapters, language-agnostic, file-structure"  type="directive">
+<DbcContractGen keywords="design_by_contract, ddd, ports_and_adapters, language-agnostic, file-structure" type="directive" ver="1.0">
   <Directive_Context>
     <Mission>
       Превратить утвержденный DX-артефакт в строгие, language-agnostic контракты (Design by Contract) 
@@ -17,6 +17,11 @@
     </Axiom>
     <Axiom id="AX_CONSUMER_DRIVEN">
       **Нет потребителя — нет компонента (YAGNI).** Каждый описываемый компонент обязан иметь поле `Consumer`. Если потребитель внутренний, указывается путь к его будущему файлу. Если внешний — текстовое описание (CLI, External API).
+    </Axiom>
+    <Axiom id="AX_NO_PREMATURE_ABSTRACTIONS">
+      **Запрет на преждевременные абстракции.** Port/Adapter добавляется только при подтвержденной вариативности v1 или явном потребителе.
+      Если в v1 ожидается единственная реализация без подтвержденной развилки, не дроби модель на искусственные слои "про запас".
+      Любая предложенная абстракция должна иметь краткое justification: какой текущий риск/ограничение/consumer она закрывает.
     </Axiom>
     <Axiom id="AX_AGNOSTICISM">
       **Независимость от языка в контрактах.** В Секции 5 запрещено использовать синтаксис конкретных ЯП. Используй термины: Port, Adapter, Entity, Command, Query.
@@ -38,6 +43,25 @@
       - сущности: `<Platform><Name>*`
       Цель — чтобы `rg <name>` или `rg <platform>-<name>` находил весь связанный код и документацию.
     </Axiom>
+    <Axiom id="AX_SUPPORTING_ARTIFACT_CONSUMPTION">
+      **Supporting-артефакты должны быть привязаны к контрактам.** Если root spec ссылается на `*.source-of-truth.md` или `*.reference.md`,
+      `dbc-contract-gen` обязан протащить эти ссылки в те компоненты и слои, для которых они нормативны.
+      Нельзя оставлять platform-specific deep dive только на уровне README/tracker, если конкретный Adapter зависит от него.
+    </Axiom>
+    <Axiom id="AX_RUNTIME_FIDELITY_IN_CONTRACTS">
+      **Контракт обязан различать runtime integration и simulation seam.**
+      Для platform/runtime-specific компонентов агент обязан явно зафиксировать:
+      - `Verification Surface`: `contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`;
+      - `Deferred Runtime Scope`, если часть declared behavior пока не реализуется через реальные runtime hooks.
+      Это должно быть выражено в Sections 5-7, а не оставаться догадкой implementation-агента.
+    </Axiom>
+    <Axiom id="AX_NO_SILENT_OPTION_DROP">
+      **Нельзя тихо объявлять и забывать публичные опции.**
+      Если в DX/spec фигурируют include flags, transport settings или platform-specific options,
+      `dbc-contract-gen` обязан либо:
+      - связать их с конкретным Port/Adapter contract;
+      - либо явно пометить как `deferred/not consumed in v1`.
+    </Axiom>
   </Belief_State>
   <Context_Expectation>
     Агент ожидает получить на вход обязательный root DX-артефакт `<module-root>/spec/<root>.spec.md`
@@ -56,6 +80,12 @@
       Purpose: Абстракция для списания средств.
       Consumer: 
         - Internal: OrderProcessor (domain/order/order.processor.ts)
+      Supporting Artifacts:
+        - payment-gateway.provider.source-of-truth.md
+      Verification Surface:
+        - runtime-hook-required
+      Deferred Runtime Scope:
+        - None
       Contract (DbC):
         Preconditions:
           - amount должен быть > 0.
@@ -70,6 +100,10 @@
       Type: Adapter (Implementation)
       Purpose: Реализация PaymentGatewayPort через API Stripe.
       Implements: PaymentGatewayPort (ports/payment-gateway.port.ts)
+      Supporting Artifacts:
+        - payment-gateway.provider.source-of-truth.md
+      Verification Surface:
+        - runtime-hook-required
       Side Effects:
         - Выполняет внешний HTTP-запрос к api.stripe.com.
         - Логирует ID транзакции во внешнюю систему observability.
@@ -95,11 +129,19 @@
       <Goal>Извлечение сущностей, портов и адаптеров.</Goal>
       <Action>
         1. Проанализируй Vision, DX-сниппеты, High-Level Architecture и Section 4 (`Assumptions & Constraints`).
+        1a. Проанализируй все supporting-артефакты (`*.source-of-truth.md`, `*.reference.md`) и зафиксируй, какие компоненты зависят от каждого из них.
         2. Выдели абстракции (Ports) и их реализации (Adapters).
+           Для каждой абстракции проверь YAGNI: есть ли подтвержденный v1-consumer или ближайшая развилка реализации.
+           Если нет — упрощай до минимальной структуры без лишних контрактных уровней.
         3. Сформируй для каждого компонента строгий DbC-контракт, используя формат из `<Golden_Example>`. Обязательно укажи `Consumer`.
+           Для platform/runtime-specific компонентов дополнительно укажи:
+           - `Supporting Artifacts`
+           - `Verification Surface`
+           - `Deferred Runtime Scope` (если применимо)
         4. Используй Section 4 как источник для Preconditions, Invariants, Security checks, fallback semantics и trust boundaries.
         5. Приведи naming всех компонентов и файлов к единому namespace модуля согласно `AX_NAMESPACE_NAMING`.
-        6. Сохрани результат в памяти и переходи к STEP_2.
+        6. Если DX/spec декларирует публичные опции/flags/policies, явно свяжи их с contracts или пометь как `deferred/not consumed in v1`.
+        7. Сохрани результат в памяти и переходи к STEP_2.
       </Action>
     </Step>
     <Step id="STEP_2_FILE_STRUCTURE_DESIGN">
@@ -135,6 +177,11 @@
 
       ```markdown
       ## 5. Domain Contracts (DbC)[Список контрактов в markdown формате из Golden_Example. Жесткое разделение на Ports и Adapters. У каждого компонента должен быть Consumer. Контракты обязаны учитывать Section 4 из root DX-артефакта.]
+      [Для каждого Port/Adapter кратко фиксируется justification, почему абстракция нужна в v1 и не является overengineering.]
+      [Для platform/runtime-specific компонентов дополнительно обязательны:
+      - `Supporting Artifacts:` [ссылки на source-of-truth/reference файлы]
+      - `Verification Surface:` [`contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`]
+      - `Deferred Runtime Scope:` [что еще не закрыто реальными runtime hooks, если применимо]]
 
       ## 6. File Structure & Component Mapping[ASCII-дерево директорий. Явное разделение интерфейсов и реализаций.]
       [Все file names обязаны подчиняться единому namespace модуля. Для platform-specific файлов обязателен platform prefix.]
@@ -148,7 +195,11 @@
       1. Для классов-реализаций: `@implements {PortName} path/to/port.file`
       2. Для методов (чистая имплементация): `@see {PortName#methodName} path/to/port.file` (запрет на дублирование JSDoc).
       3. Для методов (override/изменение поведения): Полное описание нового контракта в JSDoc.
-      4. Все файлы, типы, интерфейсы, классы и константы обязаны содержать namespace модуля; platform-specific реализации обязаны иметь platform prefix.]
+      4. Все файлы, типы, интерфейсы, классы и константы обязаны содержать namespace модуля; platform-specific реализации обязаны иметь platform prefix.
+      5. Platform/runtime-specific implementations обязаны явно ссылаться на соответствующий supporting artifact (`source-of-truth` / `reference`) в class-level JSDoc или в ticket rules.
+      6. Если реализация дает только simulation/manual publish seam, это должно быть явно помечено в JSDoc/implementation notes; запрещено выдавать simulation-backed adapter за full runtime integration.
+      7. Если public option/flag/policy из spec не реализован в v1, это должно быть отражено как explicit deferred scope, а не просто проигнорировано.]
+      8. Любая новая абстракция (Port, выделенный service layer, extension point) допустима только с явным v1-обоснованием; "future-proofing" без подтвержденного consumer запрещен.]
       ```
     </Contract>
   </Output_Contracts>
@@ -158,6 +209,10 @@
     ✅ REWARD: Секция 7 содержит прагматичные правила `@see` и `@implements` с путями к файлам.
     ✅ REWARD: Preconditions/Invariants явно выведены из Section 4 (`Assumptions & Constraints`), а не только из DX-сниппетов.
     ✅ REWARD: Naming file/component mapping обеспечивает grepability через единый namespace модуля.
+    ✅ REWARD: Runtime-specific contracts явно разводят `simulation-backed` и `runtime-hook-required` поведение.
+    ✅ REWARD: Контракты сохраняют YAGNI-баланс: нет абстракций без подтвержденного v1-consumer или ближайшей вариативности.
     ❌ PENALTY: Описание бизнес-логики (Pre/Post conditions) внутри Адаптера вместо Порта.
+    ❌ PENALTY: Silent drop declared options/flags или потеря ссылки на обязательный platform-specific supporting artifact.
+    ❌ PENALTY: Добавление Port/Adapter-слоев "на вырост" без проверяемого обоснования в текущем scope.
   </Reward_Criteria>
 </DbcContractGen>

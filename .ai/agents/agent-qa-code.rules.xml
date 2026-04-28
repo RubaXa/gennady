@@ -35,6 +35,12 @@
       Use 1-3 short lines chosen from the same machine-first payload family used in code comments: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`, plus the test-specific fields `contract` and `observation focus` when they add precision.
     </Rule>
     <Rule>
+      Treat a case as non-trivial when it includes async behavior with setup, retries/fallbacks/errors, emitted events or external side effects, more than one meaningful observation, or nested control flow that another agent could misread at a glance.
+    </Rule>
+    <Rule>
+      MANDATORY MODE: if the `it` block is non-trivial, the opening learning brief is the default and should be omitted only when the title, visible phase structure, and direct assertion already expose the protected behavior without hidden policy or failure nuance.
+    </Rule>
+    <Rule>
       Skip the brief for trivial scalar tests where the test title, direct input, and single assertion already make the scenario self-evident.
     </Rule>
     <Example>
@@ -67,7 +73,10 @@
       For non-trivial tests, `TRIGGER` and `ASSERT` are mandatory. `SETUP`, `OBSERVE`, and `CLEANUP` appear only when they add clarity.
     </Rule>
     <Rule>
-      In non-trivial tests, wrap every present phase in paired AI anchors using `START_[CASE]_[PHASE]_[INTENT]` and the matching `END_[CASE]_[PHASE]_[INTENT]` anchor.
+      In non-trivial tests, wrap every present meaningful phase in paired AI anchors using `START_[CASE]_[PHASE]_[INTENT]` and the matching `END_[CASE]_[PHASE]_[INTENT]` anchor.
+    </Rule>
+    <Rule>
+      MANDATORY PROTOCOL: for every non-trivial case, explicitly decide which phases are present, then anchor every present meaningful phase. Do not silently collapse `SETUP`, `TRIGGER`, `OBSERVE`, or `ASSERT` when a phase contains its own setup policy, observation logic, or diagnostic boundary; equally, do not ritualize anchors around a single obvious statement with no extra intent.
     </Rule>
     <Rule>
       Case-level phase anchors do not replace normal structural anchors inside the phase body. If test logic itself contains non-trivial branching, loops, retries, or local fallback behavior, apply the same intentful inner anchor style used in production code.
@@ -85,6 +94,9 @@
     </Rule>
     <Rule>
       If the scenario has several related outputs or effects, first ask whether the returned result already exposes the contract shape. If yes, assert the result directly and keep orthogonal observations separate. Only then consider building aggregate objects for one richer diff.
+    </Rule>
+    <Rule>
+      DEFAULT PROTOCOL: start by asking whether a direct assertion on the real contract surface already gives the clearest failure. Introduce an `OBSERVE` phase or aggregated object only when it clearly improves readability, preserves the contract shape, or yields a better diff.
     </Rule>
     <Rule>
       For event-driven scenarios, prefer asserting the emitted event object or collected event sequence directly. Only build synthetic summaries when they improve the diagnostic diff without hiding the contract surface.

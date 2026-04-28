@@ -1,0 +1,102 @@
+<Rulebook id="rulebook_memory_gc" type="knowledge_base">
+  <Primary_Goal>
+    Предоставить Аудитору критерии для выявления утечек памяти (Memory Leaks) и избыточного давления на сборщик мусора (GC Pressure). Обеспечить строгие предохранители (Guardrails) при оптимизации аллокаций.
+  </Primary_Goal>
+  <Belief_State>
+    <Axiom id="AX_GC_PRESSURE">На устройствах с малым объемом RAM высокая скорость выделения памяти (Allocation Rate) заставляет GC работать непрерывно. Это блокирует главный поток (Main Thread) и вызывает лаги.</Axiom>
+    <Axiom id="AX_RETAINED_MEMORY">Данные, до которых можно добраться от глобального объекта (window/global) или активного замыкания (таймер/событие), никогда не будут удалены GC. Это прямая утечка памяти.</Axiom>
+    <Axiom id="AX_HOISTING_SAFETY">Вынос (hoisting) объектов или регулярных выражений из цикла безопасен только в том случае, если их состояние не мутируется и не сохраняется в массив/замыкание на каждой итерации.</Axiom>
+  </Belief_State>
+  <Rules_Registry>
+    <!-- ПРАВИЛО 1: Утечки в глобальных кэшах -->
+    <Rule id="MEM_UNBOUNDED_CACHE">
+      <Trigger_Signals>
+        - Объявление `const cache = new Map();` или `const cache = {};` на уровне модуля (глобально).
+        - Использование функции, которая постоянно делает `cache.set(key, value)`, но нигде не вызывает `cache.delete()` или не имеет лимита размера.
+      </Trigger_Signals>
+      <Performance_Mechanism>
+        Unbounded Cache (неограниченный кэш) бесконечно накапливает ключи и значения. В долгоживущих приложениях (SPA, Node.js серверы) это приводит к исчерпанию памяти (OOM - Out of Memory).
+      </Performance_Mechanism>
+      <Safety_Guardrails>
+        <Guardrail condition="FIXED_ENUM">Если объект используется как статический справочник (например, маппинг кодов ошибок на строки), размер которого фиксирован и известен заранее — игнорировать.</Guardrail>
+        <Guardrail condition="WEAK_COLLECTION">Если уже используется `WeakMap` или `WeakSet`, это безопасно (GC сам очистит память при удалении ключа).</Guardrail>
+      </Safety_Guardrails>
+      <Directive_Template>
+        "Обнаружен неограниченный кэш [ИМЯ_ПЕРЕМЕННОЙ], ведущий к утечке памяти. Оберни его в реализацию LRU-кэша (с ограничением `maxSize`), либо используй `WeakMap`, если ключами выступают объекты."
+      </Directive_Template>
+    </Rule>
+    <!-- ПРАВИЛО 2: Незавершенные таймеры и слушатели -->
+    <Rule id="MEM_TIMER_LISTENER_LEAK">
+      <Trigger_Signals>
+        - Вызов `setInterval(...)` или `window.addEventListener(...)` в компонентах/классах.
+        - Отсутствие вызовов `clearInterval` или `removeEventListener` в методах очистки (например, `componentWillUnmount`, `useEffect` cleanup).
+      </Trigger_Signals>
+      <Performance_Mechanism>
+        Таймеры и глобальные слушатели событий создают "GC Roots" (корни сборки мусора). Любые переменные, захваченные внутри их коллбэков (замыкания), будут жить в памяти вечно, даже если сам компонент или DOM-узел был удален.
+      </Performance_Mechanism>
+      <Safety_Guardrails>
+        <Guardrail condition="GLOBAL_APP_LIFECYCLE">Если таймер или слушатель должен жить всё время работы приложения (например, глобальный роутер или heartbeat веб-сокета), игнорировать.</Guardrail>
+      </Safety_Guardrails>
+      <Directive_Template>
+        "Утечка памяти:[ИМЯ_ТАЙМЕРА_ИЛИ_СОБЫТИЯ] не очищается. Сохрани возвращаемый ID таймера или ссылку на функцию-обработчик и добавь вызов очистки (`clearInterval` / `removeEventListener`) в фазу демонтирования/завершения."
+      </Directive_Template>
+    </Rule>
+    <!-- ПРАВИЛО 3: Дорогие инстанциации в циклах -->
+    <Rule id="MEM_EXPENSIVE_INSTANTIATION">
+      <Trigger_Signals>
+        - `new RegExp(pattern)` внутри циклов `for`, `.map()`, `.filter()`.
+        - `new Intl.DateTimeFormat(...)` или `new Intl.NumberFormat(...)` внутри циклов.
+      </Trigger_Signals>
+      <Performance_Mechanism>
+        Компиляция регулярного выражения или инициализация форматтеров `Intl.*` — крайне тяжелые операции для CPU и памяти. Выполнение их на каждой итерации цикла вызывает катастрофическое падение производительности.
+      </Performance_Mechanism>
+      <Safety_Guardrails>
+        <Guardrail condition="DYNAMIC_PATTERN">Если паттерн регулярки или настройки форматтера зависят от переменной цикла (меняются каждую итерацию), выносить их наружу нельзя. В таком случае предложить кэширование (memoization) инстансов.</Guardrail>
+      </Safety_Guardrails>
+      <Directive_Template>
+        "Дорогая инициализация [ОБЪЕКТ] внутри цикла. Вынеси инициализацию `new RegExp` / `Intl.*Format` за пределы цикла в константу и переиспользуй её внутри итераций."
+      </Directive_Template>
+    </Rule>
+    <!-- ПРАВИЛО 4: Аллокация промежуточных объектов/массивов в горячих путях -->
+    <Rule id="MEM_HOT_LOOP_ALLOCATION">
+      <Trigger_Signals>
+        - Использование spread оператора `...` (например, `acc = [...acc, item]`) внутри `reduce` или циклов.
+        - Вызовы `array.slice()`, `array.concat()` на каждой итерации.
+        - Создание новых объектов `const obj = { id: i }` в высокочастотных циклах (math, render loops).
+      </Trigger_Signals>
+      <Performance_Mechanism>
+        Синтаксис `[...acc, item]` на каждой итерации создает полностью новый массив, копируя все предыдущие элементы. Это дает алгоритмическую сложность O(n^2) по времени и памяти. Создание временных объектов в tight loops переполняет Nursery (младшее поколение кучи), провоцируя постоянные паузы GC.
+      </Performance_Mechanism>
+      <Safety_Guardrails>
+        <Guardrail condition="IMMUTABILITY_REQUIRED">Если архитектура (например, Redux reducer) жестко требует иммутабельности, замена на мутацию (`.push`) сломает стейт-менеджмент. Отклонить, если это чистая функция редюсера.</Guardrail>
+        <Guardrail condition="REFERENCE_CAPTURE">Если создаваемый в цикле объект сохраняется в массив (например, `arr.push(obj)`), НЕЛЬЗЯ выносить создание объекта за цикл и переиспользовать его. Иначе массив будет состоять из ссылок на один и тот же мутированный объект.</Guardrail>
+      </Safety_Guardrails>
+      <Directive_Template>
+        "Квадратичная аллокация памяти в цикле. Замени копирование `[...acc, item]` или `.concat()` на мутацию локальной переменной через `acc.push(item)`. Для объектов — если объект не сохраняется по ссылке, вынеси его декларацию за цикл и переиспользуй поля."
+      </Directive_Template>
+    </Rule>
+    <!-- ПРАВИЛО 5: Утечки отсоединенных DOM-узлов (Detached DOM) -->
+    <Rule id="MEM_DETACHED_DOM">
+      <Trigger_Signals>
+        - Сохранение ссылок на DOM-элементы (`document.getElementById(...)`) в JS-объекты или массивы.
+        - Удаление элемента из DOM (`node.remove()` или `innerHTML = ''`), но без `null` в JS-ссылке.
+      </Trigger_Signals>
+      <Performance_Mechanism>
+        Если DOM-узел удален из документа, но JS-переменная всё еще ссылается на него (Detached DOM), сборщик мусора не может удалить ни этот узел, ни всё его поддерево. Это тяжелая утечка памяти в браузерах.
+      </Performance_Mechanism>
+      <Safety_Guardrails>
+        <Guardrail condition="INTENTIONAL_CACHE">Если узел специально кэшируется для быстрого повторного добавления в DOM (например, virtual list/DOM recycling) — игнорировать.</Guardrail>
+      </Safety_Guardrails>
+      <Directive_Template>
+        "Возможна утечка Detached DOM. Переменная ссылается на удаленный узел. Добавь обнуление ссылки (`[ИМЯ] = null` или `delete obj[key]`) сразу после удаления узла из документа."
+      </Directive_Template>
+    </Rule>
+  </Rules_Registry>
+  <Verification_Protocol>
+    При получении сигнала от Оркестратора:
+    1. Найди соответствующее `<Rule>` по ID.
+    2. Проверь код по КАЖДОМУ `<Guardrail>` в секции `<Safety_Guardrails>`. Особое внимание обрати на REFERENCE_CAPTURE и IMMUTABILITY_REQUIRED.
+    3. Если хоть один Guardrail срабатывает — отбрасывай триггер (False Positive) и фиксируй это в `<Verification_Log>`.
+    4. Если проверки пройдены, используй `<Directive_Template>` для формулировки указания DevAgent'у.
+  </Verification_Protocol>
+</Rulebook>

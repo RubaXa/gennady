@@ -13,19 +13,19 @@
 
 ## CONSUMERS
 
-| Consumer                             | Type     | Relationship                                                                                                                         |
-| ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Разработчик                          | external | Запускает `gennady web-specter --url=...`, воспроизводит проблему и сразу получает читаемый browser log без ручного копирования.    |
-| AI-диагностический агент             | external | Потребляет live stdout log или file log, чтобы восстановить ход браузерного сценария и найти место расхождения.                    |
-| CLI-команда `web-specter`            | internal | Использует `WebSpecterService` как ядро, рендерит snapshot events в текст и доставляет их в stdout или файл.                        |
-| `WebSpecterService`                  | internal | Координирует browser resolution, managed profile, browser runtime, event projection, filter pipeline и lifecycle session.           |
-| `WebSpecterBrowserLocator`           | internal | Находит подходящий Chrome-family browser по fixed resolution policy или возвращает понятную startup error.                          |
-| `WebSpecterProfileStore`             | internal | Даёт сервису путь к одному managed debug profile и обеспечивает reuse auth-related state между сессиями.                            |
-| `WebSpecterBrowserRuntime`           | internal | Запускает Chrome, делает clean session start, отслеживает root tab и все session tabs, поставляет browser-originated events.       |
-| `WebSpecterEventProjector`           | internal | Превращает live browser payload в immutable snapshot events, пригодные для фильтрации, рендера и последующего сравнения.           |
-| `WebSpecterFilterPipeline`           | internal | Убирает шум из snapshot events до передачи потребителю.                                                                              |
-| `WebSpecterTextRenderer`             | internal | Преобразует snapshot event в flat log line с `[tab:<id>]`, пригодную для чтения человеком и AI-агентом.                            |
-| Stdout или file sink CLI-команды     | external | Получает итоговые строки лога в порядке наблюдения.                                                                                  |
+| Consumer                         | Type     | Relationship                                                                                                                     |
+| -------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Разработчик                      | external | Запускает `gennady web-specter --url=...`, воспроизводит проблему и сразу получает читаемый browser log без ручного копирования. |
+| AI-диагностический агент         | external | Потребляет live stdout log или file log, чтобы восстановить ход браузерного сценария и найти место расхождения.                  |
+| CLI-команда `web-specter`        | internal | Использует `WebSpecterService` как ядро, рендерит snapshot events в текст и доставляет их в stdout или файл.                     |
+| `WebSpecterService`              | internal | Координирует browser resolution, managed profile, browser runtime, event projection, filter pipeline и lifecycle session.        |
+| `WebSpecterBrowserLocator`       | internal | Находит подходящий Chrome-family browser по fixed resolution policy или возвращает понятную startup error.                       |
+| `WebSpecterProfileStore`         | internal | Даёт сервису путь к одному managed debug profile и обеспечивает reuse auth-related state между сессиями.                         |
+| `WebSpecterBrowserRuntime`       | internal | Запускает Chrome, делает clean session start, отслеживает root tab и все session tabs, поставляет browser-originated events.     |
+| `WebSpecterEventProjector`       | internal | Превращает live browser payload в immutable snapshot events, пригодные для фильтрации, рендера и последующего сравнения.         |
+| `WebSpecterFilterPipeline`       | internal | Убирает шум из snapshot events до передачи потребителю.                                                                          |
+| `WebSpecterTextRenderer`         | internal | Преобразует snapshot event в flat log line с `[tab:<id>]`, пригодную для чтения человеком и AI-агентом.                          |
+| Stdout или file sink CLI-команды | external | Получает итоговые строки лога в порядке наблюдения.                                                                              |
 
 ---
 
@@ -256,17 +256,17 @@ consumer: CLI-команда `web-specter` и другие будущие диа
 
 Все event kinds обязаны содержать common fields `kind`, `time`, `datetime`, `tabId`, `openerTabId`, `pageId`.
 
-| Kind             | Required fields beyond common     | Optional fields             | Purpose                                                                 |
-| ---------------- | --------------------------------- | --------------------------- | ----------------------------------------------------------------------- |
-| `console`        | `level`, `text`                   | `url`, `frameId`            | Передать browser console message в flat, читаемом для AI формате.       |
-| `request`        | `url`, `method`, `resourceType`   | `frameId`                   | Показать исходящий browser request.                                     |
-| `response`       | `url`, `status`, `resourceType`   | `frameId`                   | Показать результат request, достаточный для трассировки network flow.   |
-| `requestfailed`  | `url`, `resourceType`, `failureText` | `method`, `frameId`       | Показать сбой network request.                                          |
-| `frameattached`  | `frameId`                         | `parentFrameId`, `url`      | Показать появление нового frame.                                        |
-| `framenavigated` | `frameId`, `url`                  | `parentFrameId`             | Показать смену frame URL.                                               |
-| `framedetached`  | `frameId`                         | `parentFrameId`, `url`      | Показать удаление frame из дерева.                                      |
-| `popup`          | none                              | `url`                       | Показать создание нового session tab/window.                            |
-| `page.close`     | none                              | `url`                       | Показать закрытие tracked tab/window.                                   |
+| Kind             | Required fields beyond common        | Optional fields        | Purpose                                                               |
+| ---------------- | ------------------------------------ | ---------------------- | --------------------------------------------------------------------- |
+| `console`        | `level`, `text`                      | `url`, `frameId`       | Передать browser console message в flat, читаемом для AI формате.     |
+| `request`        | `url`, `method`, `resourceType`      | `frameId`              | Показать исходящий browser request.                                   |
+| `response`       | `url`, `status`, `resourceType`      | `frameId`              | Показать результат request, достаточный для трассировки network flow. |
+| `requestfailed`  | `url`, `resourceType`, `failureText` | `method`, `frameId`    | Показать сбой network request.                                        |
+| `frameattached`  | `frameId`                            | `parentFrameId`, `url` | Показать появление нового frame.                                      |
+| `framenavigated` | `frameId`, `url`                     | `parentFrameId`        | Показать смену frame URL.                                             |
+| `framedetached`  | `frameId`                            | `parentFrameId`, `url` | Показать удаление frame из дерева.                                    |
+| `popup`          | none                                 | `url`                  | Показать создание нового session tab/window.                          |
+| `page.close`     | none                                 | `url`                  | Показать закрытие tracked tab/window.                                 |
 
 #### Data Contract `WebSpecterSessionResult`
 

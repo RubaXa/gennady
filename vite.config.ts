@@ -1,25 +1,37 @@
 import { defineConfig } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { builtinModules } from 'node:module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const nodeBuiltins = [
-  'node:fs',
-  'node:path',
-  'node:os',
-  'node:child_process',
-  'node:url',
-  'node:perf_hooks',
-  'fs',
-  'path',
-  'os',
-  'child_process',
-  'url',
-  'stream',
-  'util',
-  'events',
-];
+const nodeBuiltins = (() => {
+  const entries = new Set<string>();
+
+  for (const name of builtinModules) {
+    entries.add(name);
+    if (name.startsWith('node:')) {
+      entries.add(name.slice('node:'.length));
+    } else {
+      entries.add(`node:${name}`);
+    }
+  }
+
+  const subpathBuiltins = [
+    'node:fs/promises',
+    'fs/promises',
+    'node:timers/promises',
+    'timers/promises',
+    'node:stream/promises',
+    'stream/promises',
+  ] as const;
+
+  for (const name of subpathBuiltins) {
+    entries.add(name);
+  }
+
+  return [...entries];
+})();
 
 export default defineConfig({
   build: {

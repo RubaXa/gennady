@@ -26,6 +26,11 @@
     <Step id="3">If non-trivial control-flow structure or anchor-comment coupling matters for the target code, also resolve `AXIOM_STRUCTURAL_ANCHORS`.</Step>
     <Step id="4">Only after these sources are loaded may you inspect the generated code and start the audit.</Step>
   </Mandatory_Load_Order>
+  <Mandatory_Audit_Protocols>
+    <Protocol id="IMPLEMENTATION_EDGE_SCAN">MANDATORY PROTOCOL: If a root declaration directly implements a named contract, audit both layers: the root JSDoc must satisfy the root implementation rule, and every direct public/protected implementation member must be checked for member-level `@see` or a full explicit override contract. Do not stop after class-level documentation or after one representative method.</Protocol>
+    <Protocol id="COMPLEXITY_GATE_ENFORCEMENT">MANDATORY PROTOCOL: If the target logic meets the live complexity trigger, audit intent-brief coverage and non-trivial anchor coverage even when the method is short enough to feel self-explanatory.</Protocol>
+    <Protocol id="HARD_GAP_CLASSIFICATION">MANDATORY MODE: When a direct implementation edge is semantically established from code, missing root `@implements`, missing member `@see`, or mixed implementation reference style is a contract-completeness failure, not a cosmetic style preference. Emit a finding when present.</Protocol>
+  </Mandatory_Audit_Protocols>
   <Anchor_Resolution_Protocol>
     <Rule>All normative judgments must be traceable to a live source anchor or section read during this run.</Rule>
     <Rule>Reference anchors by their stable ids such as `AXIOM_JSDOC_AS_CONTRACTS` and `AXIOM_AI_TO_AI_COMMENTS`.</Rule>
@@ -42,12 +47,13 @@
     <Include>JSDoc blocks attached to declarations and members.</Include>
     <Include>Machine-readable intent comments at complex-function entry and around anchored control-flow blocks.</Include>
     <Include>Type-kind choices when the contract source governs `type` vs `interface` vs `class`.</Include>
-    <Include>Contract-to-implementation references such as `@see` usage when the live source requires link-based documentation.</Include>
+    <Include>Contract-to-implementation references such as root-level `@implements` and member-level `@see` when the live source requires link-based documentation.</Include>
+    <Include>Implementation edges between exported runtime roots and their direct public/protected contract members.</Include>
     <Exclude>Pure style preferences not grounded in the declared source-of-truth artifacts.</Exclude>
   </Audit_Scope>
   <Audit_Dimensions>
-    <Dimension id="contract_completeness">Check whether required contract components exist for the entity category being audited.</Dimension>
-    <Dimension id="contract_reference_integrity">Check whether direct implementation or inheritance uses references correctly when the source contract allows or requires them.</Dimension>
+    <Dimension id="contract_completeness">Check whether required contract components exist for the entity category being audited, including implementation-root `@implements` and member-level `@see` coverage where the source requires them.</Dimension>
+    <Dimension id="contract_reference_integrity">Check whether direct implementation or inheritance uses root-level `@implements` and member-level `@see` correctly when the source contract allows or requires them.</Dimension>
     <Dimension id="tag_order_and_shape">Check whether the JSDoc structure follows the live source ordering and usage constraints.</Dimension>
     <Dimension id="capability_amplification">Check whether the present annotations actually increase a future agent's ability to recover intent, preserve invariants, and patch locally without semantic drift.</Dimension>
     <Dimension id="complexity_gated_intent_coverage">Check whether complex functions and methods contain a compact local intent brief, and whether simple logic stays quiet instead of accumulating noise.</Dimension>
@@ -59,6 +65,9 @@
   <Issue_Taxonomy>
     <Issue_Type id="missing_contract" />
     <Issue_Type id="invalid_contract_reference" />
+    <Issue_Type id="missing_class_implements_reference" />
+    <Issue_Type id="missing_member_see_reference" />
+    <Issue_Type id="mixed_implementation_reference_style" />
     <Issue_Type id="invalid_tag_order" />
     <Issue_Type id="wrong_tag_usage" />
     <Issue_Type id="semantic_duplication" />
@@ -123,8 +132,8 @@
   <Execution_Steps>
     <Step id="1">Load the primary source and resolve required anchors.</Step>
     <Step id="2">Read the target file or generated artifact in full, not only fragments.</Step>
-    <Step id="3">Map exported declarations, complex functions, decision points, and anchor-comment regions that fall within audit scope.</Step>
-    <Step id="4">Evaluate each scoped entity against the live source anchors and record only non-trivial violations.</Step>
+    <Step id="3">Map exported declarations, direct implementation edges (root contract owner -> implemented contract, public/protected member -> inherited contract member), complex functions, decision points, and anchor-comment regions that fall within audit scope.</Step>
+    <Step id="4">Evaluate each scoped entity against the live source anchors and record only non-trivial violations. For direct implementations, do not sample one method and extrapolate; check every covered member on the implementation surface.</Step>
     <Step id="5">Group related violations when one local fix addresses them together, but keep separate issues when patch ownership differs.</Step>
     <Step id="6">Write issues using semantic locations and repair-oriented instructions that are robust under line drift.</Step>
     <Step id="7">Order fixes to minimize patch conflicts and markup damage.</Step>
@@ -152,6 +161,8 @@
     - Does every finding cite a source reference instead of copying the standard?
     - Is every issue tied to a concrete entity and semantic location?
     - Does every finding explain what future-agent understanding or safe-local-edit capability is lost because of the violation?
+    - Does the audit distinguish between root-level `@implements` requirements and member-level `@see` requirements for direct implementations?
+    - Did the audit scan every direct implementation member instead of stopping at owner-level documentation or one sampled method?
     - Does the audit distinguish between complex logic that requires intent comments and simple logic that should stay quiet?
     - Can another agent apply each `minimal_fix` without repeating the audit from scratch?
     - Does the report avoid fragile positional instructions and markup-breaking guidance?

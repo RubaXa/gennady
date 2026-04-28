@@ -18,7 +18,7 @@
     1. High-Signal Readability: Names, comments, and anchors reduce ambiguity instead of adding narration or filler.
     2. Intent Completeness: Exported declarations expose contract via JSDoc, and complex logic exposes purpose, invariants, side effects, failure modes, or non-goals via local comments.
     3. Structural Precision: Anchors (START/END) bound every non-trivial control-flow block that another agent may need to inspect, patch, or move as a unit.
-    4. Contract Strictness: JSDoc tag order is perfectly followed, and `@purpose` (or `@see`) is used correctly and compressed to essence.
+    4. Contract Strictness: JSDoc tag order is perfectly followed, root contracts use `@purpose` / `@implements` correctly, and inherited implementation members use `@see` correctly and compressed to essence.
 
     ❌ Score 0.0 (Failure) is assigned for any violation:
     - Writing comments that restate syntax, names, or obvious control flow.
@@ -56,6 +56,12 @@
       <Rule reason="Contractual Naming">A method name must be a self-contained contract (e.g. `verifyRegistrationData`, not just `validate` inside `UserValidator`).</Rule>
       <Rule reason="Implementation Hiding">Public methods must not expose implementation details (forbidden words: `Db`, `Sql`, `Http`, except serializer layers).</Rule>
     </Axiom>
+    <Axiom id="AXIOM_YAGNI_MINIMALITY">
+      <Rule reason="Exact Scope">Deliver precisely what the task and contract explicitly demand. Reject all unrequested features, extension points, and optionality.</Rule>
+      <Rule reason="No Premature Abstractions">Never abstract logic that has only one consumer and one concrete realization.</Rule>
+      <Rule reason="Minimal Error Surface">Handle only reachable errors. Do not defend against states proven impossible by type system, preconditions, or invariants.</Rule>
+      <Rule reason="Principled Decomposition">Avoid both monolithic methods and artificial layering. Extract code only at true intent boundaries that meaningfully improve readability, testability, or isolation.</Rule>
+    </Axiom>
     <Axiom id="AXIOM_ERROR_WITH_ANCHORS">
       <Rule reason="Error Tracing">Every error message includes a Trace-Prefix (see DEF_TRACE_PREFIX).</Rule>
       <Rule reason="Error Chaining">Create and rethrow errors with `{ cause }`, preserving the original context: `new Error("[Trace-Prefix] ...", { cause })`. Never transform `cause`; it can be any value.</Rule>
@@ -72,6 +78,7 @@
     <Axiom id="AXIOM_STRUCTURAL_ANCHORS">
       <Rule reason="Deterministic AI Parsing">Anchors (`// START_...` and `// END_...`) are structural markers for AI readers and patch tools. They enable extracting, chunking, and replacing logical blocks via regex without building an AST. Format: `START_[CONTEXT]_[INTENT]` / `END_[CONTEXT]_[INTENT]`, using uppercase high-signal tokens.</Rule>
       <Rule reason="Scope Coverage for Non-Trivial Logic">In a complex function, wrap every nested control-flow block with independent intent, side effects, or refactor risk: `if` / `else`, `for` / `for...of`, `while`, `switch`, meaningful `case`, `try`, `catch`. Another agent must be able to jump from START to END and reason about the block as a unit.</Rule>
+      <Rule reason="MANDATORY MODE: Non-Trivial Block Anchoring">When the complexity trigger is met, qualifying anchors are mandatory. Do not skip them because the block looks short, locally readable, or easy to keep in working memory; if another agent may need to isolate, patch, move, or audit the block as a unit, the block must be anchor-bounded.</Rule>
       <Rule reason="Trivial Scope Exception">Do NOT anchor a trivial guard clause or an obvious single-action branch when the block has no independent policy, no meaningful side effects, and no refactor hazard.</Rule>
       <Rule reason="Intentful Names">Anchor names describe WHY the block exists or what policy it enforces, not raw syntax or literal conditions. Prefer `START_APPLY_FALLBACK_STRATEGY`, not `START_IF_NO_PATH`.</Rule>
       <Rule reason="Anchor-Comment Pairing">When an anchored block protects a non-obvious invariant, fallback policy, or failure boundary, place a single intent comment immediately after the opening `// START_...` anchor.</Rule>
@@ -82,7 +89,8 @@
       <Rule reason="Machine-First Semantics">All comments are agent-authored machine comments. A comment must supplement code with intent another agent cannot safely infer from syntax alone; comments do not explain syntax for humans.</Rule>
       <Rule reason="Allowed Payload">A useful comment expresses one or more of: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Use terse high-signal prose or `key: value` lines. Do not invent decorative prefixes.</Rule>
       <Rule reason="Forbidden Noise">Do not narrate loops, branches, assignments, or obvious names. Do not duplicate JSDoc, types, signatures, or log messages. Never write `temporary workaround` without the cause, the boundary of applicability, and what must remain unchanged.</Rule>
-      <Rule reason="Complex-Function Brief">At the start of every complex function or method body, place a compact intent brief before executable statements. Use 2-4 lines chosen from the allowed payload fields. Complexity trigger: any network/file/process I/O, shared-state mutation, retry/fallback/error translation, concurrency/locking/batching, OR any two of the following: multiple decision points, hidden pre/postconditions, nested control flow, non-local refactor hazard.</Rule>
+      <Rule reason="MANDATORY MODE: Complex-Function Intent">When a function or method matches the complexity trigger and carries hidden policy, invariants, side-effect coupling, failure translation, or refactor hazard that are not already recoverable from the signature, owner contract, and anchor names, the opening intent brief is mandatory. Do not omit it because names, types, logs, or nearby anchors seem descriptive enough.</Rule>
+      <Rule reason="Complex-Function Brief">At the start of every qualifying complex function or method body, place a compact intent brief before executable statements. Use 2-4 lines chosen from the allowed payload fields. Complexity trigger: any network/file/process I/O, shared-state mutation, retry/fallback/error translation, concurrency/locking/batching, OR any two of the following: multiple decision points, hidden pre/postconditions, nested control flow, non-local refactor hazard. Thin pass-through wrappers with no hidden policy, invariant, or failure boundary may stay without a brief.</Rule>
       <Rule reason="Local Block Comments">Inside a function, comment ONLY the blocks where removing the comment would hide a business rule, protected invariant, integration constraint, or refactor hazard. The default placement is immediately after `// START_...`.</Rule>
       <Rule reason="Silence Rule">Pure data reshaping, obvious getters/setters, trivial guard clauses, and straight-line pure computations stay uncommented.</Rule>
     </Axiom>
@@ -90,28 +98,32 @@
       <Rule reason="Data Type Architecture">For DTOs, configs, and API responses, use `type`. Use `interface` ONLY for abstractions with inheritance/implementation (polymorphism).</Rule>
       <Rule reason="Domain Prefixes">Types from external systems must have a domain prefix (e.g. `ApiResource`, `VendorOrder`). Internal utilities have no prefix.</Rule>
       <Rule reason="Error Classes">Entities extending `Error` must be declared via `class`. Do not replace with `type` or `interface`.</Rule>
+      <Rule reason="MANDATORY PROTOCOL: Direct Implementations">For every exported runtime root that directly implements a named contract: 1. keep root-level `@purpose`; 2. add `@implements {ContractName} in path` on the root; 3. add `@see {ContractName#memberName} in path` on every direct public/protected implementation member, unless that member is a true override with a full explicit contract. Do not stop at the TypeScript `implements` keyword, owner-level class JSDoc, or method obviousness. These links are mandatory contract edges, not optional decoration.</Rule>
       <Rule reason="Base Contract Shape">
         Base contract for all types, interfaces, methods, fields, properties, getters, setters, functions, including `protected`:
-        0. Use EITHER `@purpose` (compressed essence) OR `@see` (reference to an interface/parent: `@see {Interface#member} in path`). Do not duplicate them.
-        - Implementation rule: `@see` is allowed only for direct implementation/inheritance of an interface/parent member.
+        0. Default root contract uses `@purpose` (compressed essence). Do not replace a root definition or implementation owner with `@see`.
+        - Root implementation rule: exported class or exported const that directly implements an existing named contract keeps its own `@purpose` and adds `@implements {InterfaceName} in path`.
+        - Member implementation rule: `@see {InterfaceName#memberName} in path` is allowed only for a direct public/protected implementation or inheritance edge where behavior matches the inherited contract.
         - Override rule: on override/redefinition (behavior/contract change), write the full contract explicitly; do not rely only on `@see`.
         - Clarification rule: if an implementation needs its own `@consumer`, `@invariant`, `@pre`, `@throws`, `@returns`, `@post`, or `@sideEffect` because the inherited contract is being tightened, specialized, or extended, treat it as an override and write the full explicit contract instead of mixing extra tags into a `@see`-only stub.
         - Single-line format: `/** @purpose Verb Object Context */` or `/** @see {InterfaceName#memberName} in ./path */`.
-        - Multi-line format: use for complex entities with optional tags, while keeping strict order.
+        - Multi-line format: use for complex entities, exported implementation roots, or entities with optional tags, while keeping strict order.
         - Order rule: if optional tags are used, their order MUST match the list below.
 
         Optional JSDoc tags:
         1. `@consumer` (Who consumes the API? For public interfaces/modules)
-        2. `@invariant` (Constraints, SLA, Retry/Error Policies)
-        3. `@pre` (Hidden preconditions before the call)
-        4. `@param` (One coherent description of the role. Do not duplicate field structure from the type.)
-        5. `@throws` (Reason for throw or Promise rejection)
-        6. `@returns` (Business purpose of a successful result or Promise resolution)
-        7. `@post` (State guarantees after the call)
-        8. `@sideEffect` (I/O, Network, Logs, etc)
+        2. `@implements` (Contract root implemented by this class/const)
+        3. `@invariant` (Constraints, SLA, Retry/Error Policies)
+        4. `@pre` (Hidden preconditions before the call)
+        5. `@param` (One coherent description of the role. Do not duplicate field structure from the type.)
+        6. `@throws` (Reason for throw or Promise rejection)
+        7. `@returns` (Business purpose of a successful result or Promise resolution)
+        8. `@post` (State guarantees after the call)
+        9. `@sideEffect` (I/O, Network, Logs, etc)
       </Rule>
       <Rule reason="Tag Usage Matrix">
         - `@consumer`: use for exported roots, public APIs, and integration boundaries; skip for local helpers and leaf-private details.
+        - `@implements`: required on exported class/const roots that directly implement a named interface or contract; skip on data shapes, interfaces, and member declarations.
         - `@invariant`: use for stateful entities, resilience/error policy, ordering guarantees, or non-local assumptions that must survive refactoring; skip when there is no persistent rule to preserve.
         - `@pre`: use only for hidden environment or system-state preconditions not captured by the type signature.
         - `@param`: required when arguments exist; give one coherent role description and never enumerate object fields already present in the type.
@@ -119,18 +131,19 @@
         - `@returns`: required for non-void/non-never results; describe why the caller needs the value, not the TypeScript shape.
         - `@post`: use for post-state guarantees not already encoded by `@returns`, types, or obvious control flow.
         - `@sideEffect`: required for externally visible effects such as network, filesystem, process execution, shared-state mutation, or emitted events; routine debug logging alone does not justify the tag.
-        - `@see`: use only for direct implementation or inheritance of an existing contract; if behavior diverges, tightens, or adds hidden policy, write the full contract instead.
+        - `@see`: use only for direct member implementation or inheritance of an existing contract; do not use `@see` as the root class/const tag when the root owns runtime behavior. If behavior diverges, tightens, or adds hidden policy, write the full contract instead.
       </Rule>
       <Rule reason="Entity-Specific Minimums">
         - Exported data shapes: prefer `type` plus `@purpose`; add `@consumer` only when the export is a root-facing contract.
+        - Pure alias or shape-forwarding exports with no runtime behavior may use root-level `@see`, but runtime-bearing class/const implementations must not replace their owner contract with `@see`.
         - Service interfaces and external-system clients: declare `@invariant` for error policy, retry policy, ordering guarantees, rate limits, or other resilience constraints.
-        - Implementations of an existing contract: keep the owner-level purpose on the class/constant, and use `@see` on the member only when behavior matches the inherited contract.
+        - Implementations of an existing runtime contract: keep the owner-level `@purpose` on the class/const, add `@implements {ContractName} in path` on that root, and use `@see {ContractName#memberName} in path` on each public/protected member only when behavior matches the inherited contract.
         - Async functions and methods: `@returns` describes the resolved value, `@throws` describes the rejected/throw path, `@sideEffect` documents the external action when present.
         - Exported config constants: add `@invariant` when value bounds or combinations must remain stable.
-        - Architecture-driven repositories may declare a stable path convention for `@see` and `@implements`. When such a convention exists, follow it consistently across the module; do not mix local-relative and project-root-relative styles inside one contract surface.
+        - `@implements` and member-level `@see` inside one implementing surface must use the same path style and the same contract names; do not mix local-relative and project-root-relative references inside one module.
       </Rule>
       <Rule reason="Validation Checklist">
-        Validate that every exported entity has `@purpose` or a valid `@see`, optional tags follow strict order, `@param` does not restate object structure, `@returns` does not restate the TS type, methods with meaningful external effects declare `@sideEffect` or `@post`, and type/interface/class choice matches the architectural rule of the entity.
+        Validate that every exported entity has `@purpose`, a valid root-level `@see`, or a valid implementation-root `@purpose` + `@implements`; exported runtime implementations do not use class-level `@see`; every public/protected member that directly implements or inherits a documented contract has `@see {Interface#member}` or an explicit override contract; treat missing root `@implements`, missing member-level `@see`, or mixed implementation reference style as hard contract gaps rather than optional refinements; optional tags follow strict order; `@param` does not restate object structure; `@returns` does not restate the TS type; methods with meaningful external effects declare `@sideEffect` or `@post`; and type/interface/class choice matches the architectural rule of the entity.
       </Rule>
     </Axiom>
   </Execution_Axioms>
@@ -211,12 +224,13 @@
       </Code_Snippet>
     </Example>
     <Example id="EX_JSDOC_IMPLEMENTATION">
-      <Context>Implementation of a previously defined contract. Using @see instead of duplicating JSDoc. Enforcing logging and error-handling rules.</Context>
+      <Context>Implementation of a previously defined contract. The root keeps its own purpose plus `@implements`; inherited members use `@see` instead of duplicating JSDoc. Enforcing logging and error-handling rules.</Context>
       <Code_Snippet>
         ```typescript
         /**
          * @purpose HTTP adapter for interacting with a vendor API.
          * @consumer OrderFulfillmentPipeline
+         * @implements {VendorGateway} in src/domain/contracts/VendorGateway.ts
          */
         export class HttpVendorGateway implements VendorGateway {
             protected _httpClient: HttpClient;
