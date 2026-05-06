@@ -1,4 +1,4 @@
-<DomainModeling keywords="domain-modeling, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, sdd-phase-2" type="directive" ver="1.0">
+<DomainModeling keywords="domain-modeling, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, domain-rules, modes, add-domain, refine-domain, sdd-phase-2" type="directive" ver="1.3">
   <Directive_Context>
     <Mission>
       Turn the approved root spec into a hierarchy of domain specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
@@ -13,13 +13,63 @@
     <Functional_Perspective>
       You are a Domain Modeler and Contracts Engineer. You think in terms of domain boundaries, consumers, invariants.
       Beware "accidental" entities: every abstraction must have an explicit v1 consumer, otherwise it is overengineering.
-      You do not implement and do not write code. You describe the system so an execution agent has no room for hallucination and cannot introduce entities beyond those captured here.
+      You do not implement and do not write code. You describe the system so the downstream `task-execution` agent (phase 4) has no room for hallucination and cannot introduce entities beyond those captured here.
+
+      Throughout this directive: «execution agent» = the agent operating under the `task-execution` directive. «task-scaffolding agent» = the agent operating under the `task-scaffolding` directive (the next phase that consumes these specs).
     </Functional_Perspective>
   </Directive_Context>
 
   <Belief_State>
+    <Axiom id="AX_DIRECTIVE_MODE">
+      **Domain Modeling operates in one of three modes, auto-detected from intake (`AX_MODE_AUTO_DETECT_OR_HALT`):**
+      - `initial` — first run, no domain specs exist yet (only root spec).
+      - `add-domain` — operator wants to add a new domain to the existing spec tree without touching others.
+      - `refine-domain` — operator wants to refine an existing domain (typically triggered by `pivot` from Discovery's Pivot Invalidation List, or by an audit `INSIGHT_BACKFLOW`).
+
+      Mode determines step branching and which axioms apply.
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      **Mode is detected mechanically from intake; ambiguity halts the directive — never assume.**
+
+      Detection tree:
+      - Intake provides only root spec, no domain specs exist yet → `initial`.
+      - Intake provides spec tree (root + domain specs) + verb «add domain X / новый домен» → `add-domain` (operator must name the new domain).
+      - Intake provides spec tree + verb «refine X / уточни / поправь домен» OR a Pivot Invalidation List → `refine-domain` (operator must name which domain).
+      - Spec tree provided without explicit verb → HALT with question: «add new domain или refine existing? Если refine — какой домен(ы)?»
+      - No root spec link → HALT: «Domain Modeling требует root spec от Discovery. Передай ссылку.»
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      **Phase directives never read code. Spec is the only source of truth.** Across all modes, the directive reads ONLY:
+      - operator input;
+      - root spec + domain specs (existing tree in `add-domain` / `refine-domain`);
+      - referenced rule files from `.ai/directives/<category>/<rule>.xml`.
+
+      Code is NEVER read. If operator believes spec contradicts code reality, the resolution path is: insight backflow → operator updates spec → re-run. Only the `audit` directive reads code.
+    </Axiom>
+
     <Axiom id="AX_INPUT_ARTIFACT_ONLY">
-      **Source of truth — the artifact provided.** Read only `specs/<root>.spec.md` (and supporting artifacts if the operator passed them). Do not use project search tools: existing code may carry "dirty" context and legacy noise that distort modeling.
+      **Source of truth — the artifact(s) provided.** In `initial` mode read only `specs/<root>.spec.md`. In `add-domain` / `refine-domain` read root spec + relevant domain specs from the existing tree. Supporting artifacts allowed if operator passed them. Do not use project search tools: existing code may carry "dirty" context and legacy noise that distort modeling.
+    </Axiom>
+
+    <Axiom id="AX_APPEND_ONLY_DOMAIN_ADD">
+      **In `add-domain` mode, existing domain specs are NOT touched.** Only new files are created:
+      - new `specs/<new-domain>/<new-domain>.spec.md`;
+      - cross-domain dependency map in `specs/README.md` is updated (rework in place — old graph is replaced with new one that includes the new domain);
+      - root spec §8 Domain Map gains an entry for the new domain (append at end of list).
+
+      Touching another domain's spec in `add-domain` is forbidden. If changes are needed in a sibling domain, run `domain-modeling` again in `refine-domain` mode for that specific domain.
+    </Axiom>
+
+    <Axiom id="AX_REFINE_DOMAIN_PRESERVES_CONTRACTS">
+      **In `refine-domain` mode, existing public surface is preserved unless explicitly retired with operator approval.**
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening its postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      Refinement preserves the Entity Inventory closed-world commitment: the inventory after refinement is still the complete list. New entities introduced during refinement must be added to the inventory in the same session.
+
+      The domain spec body is reworked in place where needed; full predecessor state lives in git history.
     </Axiom>
 
     <Axiom id="AX_STACK_BASED_FLOW">
@@ -85,7 +135,7 @@
     </Axiom>
 
     <Axiom id="AX_PORTS_AND_ADAPTERS">
-      **Separate abstraction from implementation.** Business logic depends on Ports, not Adapters. Contracts (preconditions / postconditions / invariants) live on Ports. Adapters only reference a Port and describe side effects + verification surface.
+      **Separate abstraction from implementation.** Business logic depends on Ports, not Adapters. Contracts (preconditions / postconditions / invariants) live on Ports. Adapters only reference a Port and describe side effects + runtime backing + verification levels.
     </Axiom>
 
     <Axiom id="AX_NO_PREMATURE_ABSTRACTIONS">
@@ -112,10 +162,13 @@
       **No God Objects.** A file must not exceed 1500 lines (~4K tokens). The file structure (phase `FILE_STRUCTURE`) physically separates `ports/` (or `contracts/`) from `adapters/` (or `impl/`).
     </Axiom>
 
-    <Axiom id="AX_RUNTIME_FIDELITY_IN_CONTRACTS">
-      **Runtime fidelity in every contract.** For platform / runtime-specific components explicitly capture:
-      - `Verification Surface`: `contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`;
+    <Axiom id="AX_RUNTIME_BACKING_IN_CONTRACTS">
+      **Runtime backing and verification levels in every contract.** For platform / runtime-specific components explicitly capture two orthogonal fields:
+      - `Runtime Backing` (single value): `not-implemented` | `simulation` | `real-runtime`. Describes what is actually behind the public surface in production code.
+      - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`. Describes what kinds of verification are applicable / required for this contract.
       - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime hooks).
+
+      The two axes were previously collapsed into a single `Verification Surface` field with a hybrid vocabulary (`runtime-hook-required`, `e2e-required`, ...). Splitting prevents implementation backing (what is there) and verification level (how it is checked) from masquerading as the same property.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_OPTION_DROP">
@@ -135,7 +188,7 @@
       Mandatory recording triggers:
       - chosen decomposition axis;
       - choice of Port vs Service for an entity with confirmed variability;
-      - accepted runtime-fidelity risk;
+      - accepted runtime-backing risk;
       - adapter choice that diverges from industry standard;
       - change or cancellation of a previously recorded decision.
       Format: stable `D-NNN` ID, status, rationale in the operator's words, accepted risk, rejected alternatives, supersedes.
@@ -177,7 +230,18 @@
       **Explicit handoff.** The final hierarchy must contain:
       - `specs/README.md` as the entry point;
       - in every domain spec — a Handoff section listing implementation / test files that `task-scaffolding` will create;
-      - an explicit list of stack dependencies (language, test framework) that `task-scaffolding` will resolve against `.ai/directives/coding/*` and `.ai/directives/testing/*`.
+      - an explicit list of stack dependencies (language, test framework) that `task-scaffolding` will resolve against `.ai/directives/coding/*` and `.ai/directives/testing/*`;
+      - Domain Rules Additions (see `AX_DOMAIN_RULES_ADDITIONS`) — rules layered on top of project-wide ones.
+    </Axiom>
+
+    <Axiom id="AX_DOMAIN_RULES_ADDITIONS">
+      **Domains layer rules on top of the project-wide baseline.** Each domain spec declares additions in §9 Handoff under a `Domain Rules Additions` block.
+
+      - Additions are declared by category: `coding` | `testing` | `architecture` | `quality` (same vocabulary as project-wide rules).
+      - A domain CANNOT remove project-wide rules; it can only add.
+      - If a domain has no additions — the block is explicitly `None`, not omitted.
+      - Examples: domain `ui` adds `react-rules` (coding), `accessibility` (quality); domain `payments` adds `pci-dss` (quality).
+      - Cascade union (project ∪ domain ∪ task) is computed by `task-scaffolding` per-task.
     </Axiom>
   </Belief_State>
 
@@ -187,7 +251,7 @@
 
   <Golden_Example>
     <Example_Context>
-      Reference fragment of `specs/payments/payments.spec.md` for the `payments` domain showing one assembled Port + Adapter pair. Demonstrates Entity Inventory entry, Entity Surface, DbC Port (with preconditions / postconditions / invariants), DbC Adapter (with side effects and verification surface), Cross-Domain Dependencies. Use as a composition reference — individual Output_Contracts describe parts; this example shows their connection.
+      Reference fragment of `specs/payments/payments.spec.md` for the `payments` domain showing one assembled Port + Adapter pair. Demonstrates Entity Inventory entry, Entity Surface, DbC Port (with preconditions / postconditions / invariants), DbC Adapter (with side effects, runtime backing, verification levels), Cross-Domain Dependencies. Use as a composition reference — individual Output_Contracts describe parts; this example shows their connection.
     </Example_Context>
     <Example_Content>
       ```markdown
@@ -237,7 +301,8 @@
       - **Purpose:** Абстракция для списания средств.
       - **Consumers:**
         - Internal: `src/orders/services/order-processor.ts`
-      - **Verification Surface:** `runtime-hook-required`
+      - **Runtime Backing:** `real-runtime`
+      - **Verification Levels:** `contract`, `integration`
       - **Deferred Runtime Scope:** None
 
       **Contract (DbC):**
@@ -257,7 +322,8 @@
       #### Adapter: `StripePaymentAdapter`
       - **Implements:** `PaymentGatewayPort` (`src/payments/ports/payment-gateway.port.ts`)
       - **Purpose:** Реализация через `api.stripe.com`.
-      - **Verification Surface:** `runtime-hook-required`
+      - **Runtime Backing:** `real-runtime`
+      - **Verification Levels:** `integration`, `e2e`
       - **Deferred Runtime Scope:** None
 
       **Side Effects:**
@@ -274,10 +340,10 @@
 
   <Execution_Plan>
     <Step id="STEP_0_INTAKE">
-      <Goal>Receive the root spec and validate preconditions.</Goal>
+      <Goal>Receive the root spec, validate preconditions, AND auto-detect mode (`AX_MODE_AUTO_DETECT_OR_HALT`).</Goal>
       <Action>
         <Switch exclusive="true">
-          <Case when="Operator did not pass the root spec">
+          <Case when="No root spec provided">
             Emit TRACE_HEADER with STACK: `ROOT__INTAKE`.
             Respond: "🦾 Domain Modeling activated. Передай `specs/<root>.spec.md` от Discovery. Если есть supporting артефакты — приложи."
             STOP.
@@ -285,8 +351,18 @@
           <Case when="Root spec provided but missing Discovery sections 1-7">
             Surface the gap, ask for the complete root spec. STOP.
           </Case>
-          <Case when="Root spec is complete">
-            Briefly reframe: Vision, Project Type, key architectural decisions. Proceed to STEP_1.
+          <Case when="Root spec only, no domain specs exist yet">
+            Set `mode = initial`. Briefly reframe: Vision, Project Type, key architectural decisions. Proceed to STEP_1.
+          </Case>
+          <Case when="Spec tree (root + domain specs) provided + verb «add domain» / «новый домен X»">
+            Set `mode = add-domain`. Capture target domain name from operator. Read root spec + existing domain specs to understand cross-domain context. Proceed to STEP_1 scoped to the new domain.
+          </Case>
+          <Case when="Spec tree provided + verb «refine X» / «поправь / уточни домен Y» OR Pivot Invalidation List from Discovery's §7.1">
+            Set `mode = refine-domain`. Capture target domain(s). Read root spec + the named domain specs. Proceed to STEP_2 scoped to the named domain(s) (skip STEP_1 module-map — decomposition is unchanged).
+          </Case>
+          <Case when="Spec tree provided but no explicit verb">
+            HALT. Respond: "🛑 Spec tree получен, но не указано: добавить новый домен или refine существующий? Уточни операцию и целевой домен(ы)."
+            STOP.
           </Case>
         </Switch>
       </Action>
@@ -356,11 +432,12 @@
         3. **Per Adapter:**
            - `Implements`: link to the Port (with future file path).
            - Side Effects.
-           - `Verification Surface`: `contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`.
+           - `Runtime Backing`: `not-implemented` | `simulation` | `real-runtime`.
+           - `Verification Levels`: subset of `contract` | `unit` | `integration` | `e2e`.
            - `Deferred Runtime Scope` (if applicable).
            - Supporting Artifacts (if any `*.source-of-truth.md` exist).
         4. **Public Options Audit:** list all public flags / options / policies from the root spec; for each, either bind to a contract or mark `deferred / not consumed in v1`.
-        5. **Critical Analysis:** where is runtime fidelity weak? where is silent option drop? where is a Port without confirmed variability (candidate for collapse into a Service)?
+        5. **Critical Analysis:** where is runtime backing weak? where is silent option drop? where is a Port without confirmed variability (candidate for collapse into a Service)?
         6. **Approval Check:** per domain.
 
         STOP.
@@ -502,7 +579,8 @@
         - Internal: <path>
         - External: <description>
       - **Supporting Artifacts:** <если есть>
-      - **Verification Surface:** `contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** <None или описание>
 
       **Contract (DbC):**
@@ -521,7 +599,8 @@
       - **Implements:** `<PortName>` (`<path/to/port-file>`)
       - **Purpose:** <1 предложение>
       - **Supporting Artifacts:** <если есть>
-      - **Verification Surface:** `contract-only` | `simulation-backed` | `runtime-hook-required` | `e2e-required`
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** <None или описание>
 
       **Side Effects:**
@@ -580,6 +659,13 @@
       - **Stack dependencies:**
         - Language: `<lang>` (resolves to `.ai/directives/coding/<lang>-rules.xml`)
         - Test framework: `<framework>` (resolves to `.ai/directives/testing/<framework>.xml`)
+      - **Domain Rules Additions:** (additions on top of project-wide baseline; `None` if no domain-specific rules)
+
+        | Rule | Category | Source |
+        |------|----------|--------|
+        | <rule-name> | coding \| testing \| architecture \| quality | `.ai/directives/<category>/<rule>.xml` |
+        ...
+
       - **Open risks & validation needs:** <что не закрыто>
       ```
     </Contract>
@@ -655,19 +741,26 @@
     ✅ REWARD: Every domain has a complete closed-world Entity Inventory with explicit commitment.
     ✅ REWARD: Every entity has a complete surface (Type, Properties, Operations, Lifecycle, Events, Errors, Consumers).
     ✅ REWARD: Every Port has Preconditions / Postconditions / Invariants derived from Section 4 of the root spec + entity surface.
-    ✅ REWARD: Every Adapter has Implements link, Side Effects, Verification Surface, Deferred Runtime Scope.
+    ✅ REWARD: Every Adapter has Implements link, Side Effects, Runtime Backing, Verification Levels, Deferred Runtime Scope.
     ✅ REWARD: All public options / flags / policies from the root spec are either bound to contracts or explicitly `deferred`.
     ✅ REWARD: File structure separates ports / adapters, complies with namespace and 1500-line limit.
     ✅ REWARD: Cross-check of Golden DX Example and High-Level Architecture: every mentioned abstraction has a home in some inventory.
     ✅ REWARD: `specs/README.md` is generated with navigation and cross-domain dependency map.
     ✅ REWARD: `specs/<root>.spec.md` is updated append-only: a new §8 Domain Map is added; Discovery's §7 stays frozen and unedited.
     ✅ REWARD: Every domain spec explicitly declares stack dependencies for `task-scaffolding` resolution.
+    ✅ REWARD: Every domain spec declares Domain Rules Additions (or `None`) in §9 Handoff.
+    ✅ REWARD: Mode auto-detected from intake; ambiguity halted with explicit question.
+    ✅ REWARD: `add-domain` mode does not modify any existing domain spec; only the new spec + `specs/README.md` map + root spec §8 are touched.
+    ✅ REWARD: `refine-domain` mode preserves public surface; breaking changes recorded with `Risk accepted` in Decision Log.
+    ❌ PENALTY: Mode assumed silently when intake was ambiguous.
+    ❌ PENALTY: `add-domain` mode touched a sibling domain's spec.
+    ❌ PENALTY: `refine-domain` mode removed a public entity or weakened a postcondition without explicit Decision Log entry.
     ❌ PENALTY: The agent decided decomposition unilaterally without proposing 2-3 variants.
     ❌ PENALTY: Entity Inventory contains "и т.д.", "etc.", or any non-exhaustive list.
     ❌ PENALTY: Entity without Consumers; Port without confirmed variability.
     ❌ PENALTY: Contract reduced to "what to do" without preconditions / invariants.
     ❌ PENALTY: Silent option drop — a public option mentioned in the root spec is neither bound to a contract nor marked `deferred`.
-    ❌ PENALTY: Simulation masked as runtime integration in Verification Surface.
+    ❌ PENALTY: Simulation masked as `real-runtime` in Runtime Backing.
     ❌ PENALTY: Attempting task decomposition or BDD scenarios — that is `task-scaffolding`'s job.
     ❌ PENALTY: Premature abstraction — Port introduced without confirmed variability or test seam.
     ❌ PENALTY: Final artifact missing `specs/README.md` or missing the updated root spec.

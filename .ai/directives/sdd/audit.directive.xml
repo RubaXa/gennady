@@ -1,13 +1,14 @@
-<Audit keywords="audit, drift-detection, closed-world-fidelity, completeness, runtime-fidelity, rules-compliance, insight-backflow, sdd-phase-4" type="directive" ver="1.0">
+<Audit keywords="audit, drift-detection, closed-world-fidelity, completeness, runtime-backing, rules-cascade, rules-compliance, task-id-integrity, stale-after-pivot, insight-backflow, sdd-phase-5" type="directive" ver="1.3">
   <Directive_Context>
     <Mission>
       Verify alignment between spec, task ticket, and actual code after task execution.
 
-      Audit is the fourth SDD session, post-execution. Input:
-      - task ticket with a completed Execution Log;
+      Audit is the fifth SDD session, invoked after `task-execution` closes a round with `[x] DONE`. Input:
+      - task ticket with a completed Execution Log (latest round in `[x] DONE`);
       - domain spec (`specs/<domain>/<domain>.spec.md`) and root spec;
-      - linked `.ai/directives/coding/<lang>-rules.xml` and `.ai/directives/testing/<framework>.xml`;
-      - the code itself (implementation + tests) referenced by `Target Files` in the ticket.
+      - effective rules listed in the ticket's Effective Rules table (resolved across `.ai/directives/<category>/<rule>.xml`);
+      - the code itself (implementation + tests) referenced by `Target Files` in the ticket plus any files revealed by git diff;
+      - Cascade Table from `tasks/README.md` Stack Summary (for cascade verification).
 
       Output — `audits/<task-id>.audit.md` with findings, severity, remediation proposals, and proposals to update the spec / ticket.
 
@@ -16,7 +17,9 @@
     <Functional_Perspective>
       You are an Auditor and Code Reviewer. The goal is to catch drift between intent (spec), plan (ticket), and implementation (code) before the drift accumulates and becomes expensive.
       Do not pass judgment on the code overall. Focus on discrepancies: what was promised in spec/ticket, what is actually in the code, what differs, how critical it is, what you propose to do.
-      Also capture insights: things the execution agent discovered during execution that should flow back into the spec so future tasks account for them.
+      Also capture insights: things the `task-execution` agent (phase 4) discovered during execution that should flow back into the spec so future tasks account for them.
+
+      Throughout this directive: «execution agent» = the agent that operated under the `task-execution` directive on the round being audited. «scaffolding agent» = the agent that operated under the `task-scaffolding` directive when the ticket was generated. Cross-references to other directives' axioms use the form `AX_<NAME>` in `<directive-name>`.
     </Functional_Perspective>
   </Directive_Context>
 
@@ -48,11 +51,14 @@
       **Findings are classified by type.** Every finding has one of the types:
       - `CLOSED_WORLD_DRIFT` — entity present in code but absent from the domain spec's Entity Inventory.
       - `COMPLETENESS_GAP` — entity / contract / scenario promised in the spec but not implemented.
-      - `RUNTIME_FIDELITY_VIOLATION` — declared `runtime-hook-required` actually backed by a simulation seam without a deferred marker.
-      - `RULES_COMPLIANCE_VIOLATION` — code violates rules from the linked `coding/<lang>-rules.xml` or `testing/<framework>.xml`.
+      - `RUNTIME_BACKING_VIOLATION` — declared `Runtime Backing: real-runtime` actually backed by a simulation seam without a deferred marker; OR declared `Verification Level` not actually achievable in the test setup.
+      - `RULES_COMPLIANCE_VIOLATION` — code violates rules from any file in the ticket's Effective Rules table (any category: coding / testing / architecture / quality).
+      - `RULES_CASCADE_MISMATCH` — ticket's Effective Rules table does not match the recomputed union of project (Cascade Table in `tasks/README.md`) + domain additions (domain spec §9) + task-level additions.
+      - `TASK_ID_DRIFT` — `@tasks` ID in code references a non-existent ticket (orphan); OR a Task-ID is duplicated across multiple ticket files (collision); OR `@tasks` line lost prior IDs after append (regression of the append-only rule).
       - `BDD_COVERAGE_MISMATCH` — canonical case names in the ticket's Test Scenario Coverage do not match real test cases.
-      - `EXECUTION_LOG_INCOMPLETE` — mandatory Execution Log fields are not filled (verification commands, scenario coverage, or `Introduced` entries).
+      - `EXECUTION_LOG_INCOMPLETE` — mandatory Execution Log fields are not filled (verification commands, scenario coverage, or `Introduced` entries); OR a previous round was edited (round log is append-only).
       - `INSIGHT_BACKFLOW` — execution agent discovered something that changes the understanding of a contract / requirement and should flow back into the spec.
+      - `STALE_AFTER_PIVOT` — root spec was reworked in `pivot` mode (a Pivot Invalidation List exists in §7.1) but downstream artifacts named in the list have not been refined / reopened / updated. This finding catches operators forgetting to propagate a pivot through downstream phases.
     </Axiom>
 
     <Axiom id="AX_SEVERITY_TAGGING">
@@ -92,15 +98,66 @@
       Backward checks are prone to false positives (utility helpers, internal abstractions). Apply with judgment: explicit public surface is checked strictly; internal helpers are informational.
     </Axiom>
 
-    <Axiom id="AX_RUNTIME_FIDELITY_VERIFICATION">
-      **Verification Surface must match reality.**
-      - If the ticket declared `runtime-hook-required`, look in code for real runtime hooks (event listeners, lifecycle subscribers, OS bridge calls). If only manual publish / test seams exist — `RUNTIME_FIDELITY_VIOLATION`.
-      - `simulation-backed` is allowed only with an explicit `Deferred Runtime Scope` either in the ticket or in the updated spec.
-      - `contract-only` implies real runtime integration is still ahead (separate task).
+    <Axiom id="AX_RUNTIME_BACKING_VERIFICATION">
+      **Runtime Backing and Verification Levels must match reality.**
+      - If the ticket declared `Runtime Backing: real-runtime`, look in code for real runtime hooks (event listeners, lifecycle subscribers, OS bridge calls). If only manual publish / test seams exist — `RUNTIME_BACKING_VIOLATION`.
+      - `Runtime Backing: simulation` is allowed only with an explicit `Deferred Runtime Scope` either in the ticket or in the updated spec.
+      - `Runtime Backing: not-implemented` implies real implementation is still ahead (separate task); confirm only contract artifacts exist, no production logic snuck in.
+      - For each declared `Verification Level`, the corresponding test artifact must exist (e.g., `integration` requires an integration test; `e2e` requires an e2e test). Mismatch — `RUNTIME_BACKING_VIOLATION`.
     </Axiom>
 
     <Axiom id="AX_RULES_COMPLIANCE_AGAINST_LOADED_RULES">
-      **Compliance is checked only against the linked rules.** Do not invent "best practices" out of thin air. If the ticket linked `typescript-rules.xml` and `node-test.xml`, you check exactly those axioms. Findings appeal to specific `AX_*` IDs or sections of the rules.
+      **Compliance is checked only against the ticket's Effective Rules.** Do not invent "best practices" out of thin air. The Effective Rules table (project ∪ domain ∪ task) defines the exact set; findings appeal to specific `AX_*` IDs or sections within those rule files. Categories covered: `coding`, `testing`, `architecture`, `quality`.
+    </Axiom>
+
+    <Axiom id="AX_RULES_CASCADE_VERIFICATION">
+      **The ticket's Effective Rules must equal the recomputed cascade.** Audit recomputes `union(project ∪ domain ∪ task)` from sources of truth:
+      - Project: `tasks/README.md` Cascade Table (project row);
+      - Domain: `tasks/README.md` Cascade Table (matching domain row) + domain spec §9 Domain Rules Additions;
+      - Task: ticket Meta `Sources: ... task additions: <list>` block.
+
+      If the recomputed set does not match the ticket's Effective Rules table — `RULES_CASCADE_MISMATCH` (severity `MAJOR`, confidence HIGH if mechanically detectable). This catches stale tickets generated before a cascade change.
+    </Axiom>
+
+    <Axiom id="AX_TASK_ID_INTEGRITY">
+      **Task-IDs in code must resolve, and ticket files must not collide on IDs.**
+
+      Checks:
+      - Collect all `@tasks TSK-NN[, TSK-MM, ...]` references from in-scope files (per `AX_GIT_DIFF_SCAN`).
+      - For each ID, verify a corresponding `tasks/**/*.task-NN.md` file exists. Orphan reference → `TASK_ID_DRIFT` (`MAJOR`).
+      - Scan all ticket files; if two files declare the same Task-ID — `TASK_ID_DRIFT` (`BLOCKER`).
+      - Compare current `@tasks` lines against pre-task git ref. If prior IDs were removed during this round's edits — `TASK_ID_DRIFT` (`MAJOR`, regression of `AX_FILE_HEADER_APPEND_ONLY`).
+    </Axiom>
+
+    <Axiom id="AX_STALE_AFTER_PIVOT_VERIFICATION">
+      **When the root spec contains a Pivot Invalidation List (§7.1), audit verifies that every listed artifact has been addressed.**
+
+      Mechanism:
+      - Read root spec §7.1 Pivot Invalidation List, if present.
+      - For each listed item:
+        - Domain spec requiring `refine-domain` → check the spec's most recent Decision Log entry references the pivot D-NNN; if not → `STALE_AFTER_PIVOT` (`MAJOR`).
+        - Task requiring reopen → check the ticket's `Reopens` counter has been incremented since the pivot date; if not → `STALE_AFTER_PIVOT` (`MAJOR`).
+        - Rule to revisit → check the rule file modification time vs pivot date; if not updated → `STALE_AFTER_PIVOT` (`MINOR`, informational).
+      - In epic-mode audit (across many tasks), aggregate stale items into one summary finding rather than repeating per-ticket.
+
+      `STALE_AFTER_PIVOT` is only raised when a pivot list exists. In greenfield/extension projects without §7.1, this check is skipped silently.
+    </Axiom>
+
+    <Axiom id="AX_REOPEN_AUDIT_ROUNDS">
+      **Audit reports also use round structure, append-only.** When auditing a reopened ticket, the audit report file (`audits/<task-id>.audit.md`) is NOT overwritten; instead a new section is appended:
+
+      ```markdown
+      ## Round 2 audit — <date>
+      [findings for this round only — typically delta from Round 1]
+      Status: PASS | PASS_WITH_ACKNOWLEDGED_RISKS | FAIL
+      ```
+
+      Prior round audit sections are immutable. This preserves the trail of what was found and how it was resolved across reopen cycles.
+
+      For a freshly-DONE Round N, audit should examine:
+      1. The current round's diff and Execution Log.
+      2. Whether prior rounds' acknowledged risks (if any) are still acknowledged or have been addressed.
+      3. Whether Reopens metadata (count + last reason) matches the actual round count.
     </Axiom>
 
     <Axiom id="AX_BDD_COVERAGE_VERIFICATION">
@@ -223,6 +280,22 @@
       </Action>
     </Step>
 
+    <Step id="STEP_2_5_TASK_ID_INTEGRITY_CHECK">
+      <Goal>Verify Task-ID integrity in code references and across ticket files (`AX_TASK_ID_INTEGRITY`). Reuses the git-diff scope from STEP_2.</Goal>
+      <Action>
+        1. TRACE_HEADER with STACK `ROOT__TASK_ID_INTEGRITY_CHECK`.
+        2. Collect all `@tasks TSK-NN[, TSK-MM, ...]` references from in-scope files (the union scope built in STEP_2).
+        3. For each ID:
+           - verify a corresponding `tasks/**/*.task-NN.md` exists. Orphan reference → `TASK_ID_DRIFT` (`MAJOR`, confidence HIGH).
+        4. Scan all ticket files; if two files declare the same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`, confidence HIGH).
+        5. Compare current `@tasks` lines against pre-task git ref (`<task-start-ref>`):
+           - if prior IDs were removed during this round's edits → `TASK_ID_DRIFT` (`MAJOR`), regression of `AX_FILE_HEADER_APPEND_ONLY`.
+        6. Phase Progress: "Task-ID integrity: 0 orphans, 0 collisions, 0 lost prior IDs."
+
+        STOP.
+      </Action>
+    </Step>
+
     <Step id="STEP_3_COMPLETENESS_CHECK">
       <Goal>Verify that what was promised in spec/ticket is implemented.</Goal>
       <Action>
@@ -236,45 +309,74 @@
       </Action>
     </Step>
 
-    <Step id="STEP_4_RUNTIME_FIDELITY_CHECK">
-      <Goal>Verify that the ticket's Verification Surface reflects reality.</Goal>
+    <Step id="STEP_4_RUNTIME_BACKING_CHECK">
+      <Goal>Verify that the ticket's Runtime Backing and Verification Levels reflect reality.</Goal>
       <Action>
-        1. TRACE_HEADER with STACK `ROOT__RUNTIME_FIDELITY_CHECK`.
-        2. Read `Runtime Fidelity` from the ticket.
+        1. TRACE_HEADER with STACK `ROOT__RUNTIME_BACKING_CHECK`.
+        2. Read `Runtime Backing` and `Verification Levels` from the ticket.
         3. Scan adapter/implementation code:
-           - `runtime-hook-required` → are there real subscribers / listeners / lifecycle bindings?
-           - `simulation-backed` → is there an explicit test seam, and is it tagged `Deferred Runtime Scope` in the ticket or spec?
-        4. Mismatches — `RUNTIME_FIDELITY_VIOLATION` (`BLOCKER` if real runtime is promised but missing).
-        5. Phase Progress.
-
-        STOP.
-      </Action>
-    </Step>
-
-    <Step id="STEP_5_RULES_COMPLIANCE_CHECK">
-      <Goal>Verify compliance with the linked coding/testing rules.</Goal>
-      <Action>
-        1. TRACE_HEADER with STACK `ROOT__RULES_COMPLIANCE_CHECK`.
-        2. Load `coding/<lang>-rules.xml` and `testing/<framework>.xml` referenced in the ticket.
-        3. Walk through their axioms and golden patterns / anti-patterns.
-        4. Findings: `RULES_COMPLIANCE_VIOLATION` with a reference to the specific rule's `AX_*` ID.
-        5. Severity:
-           - `BLOCKER`: type-safety, security, contract violations.
-           - `MAJOR`: structural rules (file size, namespace).
-           - `MINOR`: stylistic.
+           - `real-runtime` → are there real subscribers / listeners / lifecycle bindings?
+           - `simulation` → is there an explicit test seam, and is it tagged `Deferred Runtime Scope` in the ticket or spec?
+           - `not-implemented` → confirm only contract artifacts exist; no production logic snuck in.
+        4. For each declared `Verification Level`, confirm the corresponding test artifact exists.
+        5. Mismatches — `RUNTIME_BACKING_VIOLATION` (`BLOCKER` if `real-runtime` is promised but missing).
         6. Phase Progress.
 
         STOP.
       </Action>
     </Step>
 
+    <Step id="STEP_5_RULES_CASCADE_AND_COMPLIANCE_CHECK">
+      <Goal>Recompute the rules cascade against ticket Meta, then enforce compliance against the effective rule-set.</Goal>
+      <Action>
+        1. TRACE_HEADER with STACK `ROOT__RULES_CASCADE_AND_COMPLIANCE_CHECK`.
+
+        2. **Cascade verification** (`AX_RULES_CASCADE_VERIFICATION`):
+           - Read project row of the Cascade Table from `tasks/README.md` Stack Summary.
+           - Read matching domain row from the same Cascade Table; cross-check with domain spec §9 Domain Rules Additions.
+           - Read task additions from ticket Meta `Sources: ... task additions: <list>`.
+           - Recompute effective set as union(project ∪ domain ∪ task).
+           - Compare against ticket Meta Effective Rules table.
+           - Mismatch (missing rule, extra rule, wrong source attribution) → `RULES_CASCADE_MISMATCH` (`MAJOR`, confidence HIGH).
+
+        3. **Rules compliance** (against the recomputed effective set, all categories — coding / testing / architecture / quality):
+           - Load every file from the ticket's Effective Rules table.
+           - Walk through each rule's axioms / golden patterns / anti-patterns.
+           - Findings: `RULES_COMPLIANCE_VIOLATION` with reference to the specific rule's `AX_*` ID.
+           - Severity:
+             - `BLOCKER`: type-safety, security, contract violations.
+             - `MAJOR`: structural rules (file size, namespace, architectural pattern violation).
+             - `MINOR`: stylistic.
+
+        4. Phase Progress: "Cascade: matched. Compliance: 1 BLOCKER, 2 MAJOR, 0 MINOR across 4 rule files."
+
+        STOP.
+      </Action>
+    </Step>
+
     <Step id="STEP_6_BDD_AND_LOG_CHECK">
-      <Goal>Verify BDD coverage and Execution Log completeness.</Goal>
+      <Goal>Verify BDD coverage, Execution Log completeness, and round-log immutability.</Goal>
       <Action>
         1. TRACE_HEADER with STACK `ROOT__BDD_AND_LOG_CHECK`.
-        2. BDD: canonical case names in `Test Scenario Coverage` ↔ actual test case names. Mismatch → `BDD_COVERAGE_MISMATCH`.
-        3. Execution Log: verify completeness of all mandatory lines. Any omission → `EXECUTION_LOG_INCOMPLETE` (`MAJOR` or `BLOCKER` depending on what is missing).
-        4. Phase Progress.
+        2. BDD: canonical case names in `Test Scenario Coverage` ↔ actual test case names in tests. Mismatch → `BDD_COVERAGE_MISMATCH`.
+        3. Execution Log: verify completeness of all mandatory lines in the **current round** (per project-wide template in `tasks/README.md`). Any omission → `EXECUTION_LOG_INCOMPLETE` (`MAJOR` or `BLOCKER` depending on what is missing).
+        4. Round immutability: compare prior round sections against pre-round git ref. If any prior round entries were edited / reordered / deleted → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`, regression of round append-only discipline).
+        5. Reopens metadata: Meta `Reopens: <count>` must equal (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
+        6. Phase Progress.
+
+        STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_5_PIVOT_STALENESS_CHECK">
+      <Goal>If root spec has a Pivot Invalidation List (§7.1), verify each listed artifact has been addressed.</Goal>
+      <Action>
+        1. TRACE_HEADER with STACK `ROOT__PIVOT_STALENESS_CHECK`.
+        2. Read root spec §7.1. If absent, log "No pivot list — check skipped" and STOP.
+        3. For each listed domain spec: check its most recent D-NNN entry references the pivot D-NNN; if not → `STALE_AFTER_PIVOT` (`MAJOR`).
+        4. For each listed task: check `Reopens` counter incremented since pivot date; if not → `STALE_AFTER_PIVOT` (`MAJOR`).
+        5. For each listed rule file: check mtime vs pivot date; if not updated → `STALE_AFTER_PIVOT` (`MINOR`).
+        6. Phase Progress: "Pivot staleness: 0 of 3 listed items addressed." or "No pivot list — skipped."
 
         STOP.
       </Action>
@@ -295,14 +397,25 @@
     </Step>
 
     <Step id="STEP_8_REPORT_GENERATION">
-      <Goal>Generate `audits/<task-id>.audit.md`.</Goal>
+      <Goal>Generate or append to `audits/<task-id>.audit.md` (round-structured, append-only per `AX_REOPEN_AUDIT_ROUNDS`).</Goal>
       <Action>
         TRACE_HEADER with STACK `ROOT__REPORT_GENERATION`.
-        Produce the report per `AUDIT_REPORT_STRUCTURE`. Include:
-        - Summary (counts by severity);
-        - Findings with stable `F-NNN` IDs;
+
+        <Switch exclusive="true">
+          <Case when="No prior audit file exists (first audit of this ticket)">
+            Generate fresh `audits/<task-id>.audit.md` per `AUDIT_REPORT_STRUCTURE`. First section is `## Round 1 audit — <date>`.
+          </Case>
+          <Case when="Audit file exists from prior round">
+            Append a new `## Round N audit — <date>` section. N = max prior round + 1. Do NOT modify earlier round sections.
+          </Case>
+        </Switch>
+
+        Each round audit section includes:
+        - Summary (counts by severity for this round);
+        - Findings with stable `F-NNN` IDs (numbering continues across rounds, never reused);
         - Proposed remediations;
-        - Operator action items by priority.
+        - Operator action items by priority;
+        - Status: PASS | PASS_WITH_ACKNOWLEDGED_RISKS | FAIL.
 
         Output in chat for review. Approval Check.
 
@@ -339,10 +452,11 @@
     <Contract id="FINDING_FORMAT">
       ```markdown
       ### F-NNN — <короткое название>
-      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_FIDELITY_VIOLATION | RULES_COMPLIANCE_VIOLATION | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | INSIGHT_BACKFLOW
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
       - **Severity:** BLOCKER | MAJOR | MINOR | INFO
       - **Confidence:** HIGH | MEDIUM | LOW
       - **Status:** open | operator-acknowledged | resolved
+      - **Round:** <N> (which round of this ticket the finding belongs to)
       - **Location:** `<path>:<line>` если применимо
       - **Detail:** <фактическое описание расхождения, без оценочных слов>
       - **Source-of-truth:** ссылка на spec section / ticket section / rule axiom, против которого проверяли
@@ -350,10 +464,11 @@
         - Type: `code-fix` | `spec-update` | `ticket-update`
         - Action: <конкретное предложение, по возможности с diff'ом>
       ```
+      F-NNN IDs are unique per ticket and continue numbering across rounds (never reused).
     </Contract>
 
     <Contract id="AUDIT_REPORT_STRUCTURE">
-      `audits/<task-id>.audit.md`:
+      `audits/<task-id>.audit.md` — round-structured, append-only per `AX_REOPEN_AUDIT_ROUNDS`.
 
       ```markdown
       # Audit: <Task-ID> — <Task Title>
@@ -365,13 +480,14 @@
       - **Spec References:**
         - [Domain spec](../specs/<domain>/<domain>.spec.md)
         - [Root spec](../specs/<root>.spec.md)
-      - **Loaded Rules:**
-        - [Coding](../.ai/directives/coding/<lang>-rules.xml)
-        - [Testing](../.ai/directives/testing/<framework>.xml)
-      - **Audit Date:** <date>
+      - **Effective Rules at audit time:** [<list copied from ticket Meta>]
+
+      <!-- Round audit sections appended below; prior rounds never edited. -->
+
+      ## Round 1 audit — <YYYY-MM-DD>
       - **Audit Session Anchor:** AU_R<N>
 
-      ## Summary
+      ### Summary
       | Severity | Count |
       |----------|-------|
       | BLOCKER | N |
@@ -379,49 +495,59 @@
       | MINOR | N |
       | INFO | N |
 
-      ## Findings
-      [По формату FINDING_FORMAT, упорядочены: BLOCKER → MAJOR → MINOR → INFO.]
+      ### Findings
+      [Per FINDING_FORMAT, ordered: BLOCKER → MAJOR → MINOR → INFO. F-NNN IDs unique within ticket, continue across rounds.]
 
-      ## Proposed Remediations Grouped
-      ### Code Fixes
+      ### Proposed Remediations Grouped
+      #### Code Fixes
       - F-NNN: <action>
 
-      ### Spec Updates
+      #### Spec Updates
       - F-NNN: <suggested diff for `specs/<domain>/<domain>.spec.md`>
 
-      ### Ticket Updates
+      #### Ticket Updates
       - F-NNN: <suggested update for ticket>
 
-      ## Operator Action Items (priority-ordered)
+      ### Operator Action Items (priority-ordered)
       1. [BLOCKER] F-NNN — <short action>
       2. [MAJOR] F-NNN — <short action>
-      ...
 
-      ## Status
+      ### Status
       - **Overall:** PASS | PASS_WITH_ACKNOWLEDGED_RISKS | FAIL
-      - PASS: нет BLOCKER findings, MAJOR findings либо resolved, либо operator-acknowledged.
-      - PASS_WITH_ACKNOWLEDGED_RISKS: BLOCKER/MAJOR findings помечены оператором как acknowledged с записью в Decision Log.
-      - FAIL: остаются open BLOCKER findings.
+      - PASS: no open BLOCKER; MAJORs either resolved or operator-acknowledged.
+      - PASS_WITH_ACKNOWLEDGED_RISKS: BLOCKER/MAJOR explicitly acknowledged with Decision Log entry.
+      - FAIL: open BLOCKERs remain.
+
+      ## Round 2 audit — <YYYY-MM-DD>
+      <!-- New section appended on next reopen + DONE cycle. Same internal structure as Round 1.
+           Earlier rounds remain immutable; this section may reference prior F-NNN findings to confirm resolution. -->
       ```
     </Contract>
   </Output_Contracts>
 
   <Reward_Criteria>
     ✅ REWARD: Every message contains an `AU_R<N>` trace anchor and Phase Progress for audit phases.
-    ✅ REWARD: Findings are classified per `AX_DRIFT_TAXONOMY`, with severity and confidence.
+    ✅ REWARD: Findings are classified per `AX_DRIFT_TAXONOMY`, with severity, confidence, and round number.
     ✅ REWARD: Closed-world drift is checked mechanically: inventory + logged-introductions vs actual code entities.
+    ✅ REWARD: Rules cascade is recomputed and compared to ticket Effective Rules; mismatches surfaced.
+    ✅ REWARD: Task-ID integrity verified: no orphans, no collisions, no removed prior IDs in `@tasks` lines.
     ✅ REWARD: BDD coverage is verified by canonical case names verbatim.
-    ✅ REWARD: Execution Log is verified for completeness on all mandatory fields.
+    ✅ REWARD: Execution Log verified for round completeness AND round immutability (prior rounds untouched).
+    ✅ REWARD: Reopens metadata count matches actual round headers.
+    ✅ REWARD: When root spec contains §7.1 Pivot Invalidation List, every listed item is verified; unaddressed items raised as `STALE_AFTER_PIVOT`.
     ✅ REWARD: Every finding has a proposed remediation with type (code-fix / spec-update / ticket-update).
     ✅ REWARD: Insight backflow is collected and proposed as spec-update findings.
-    ✅ REWARD: The report is saved at `audits/<task-id>.audit.md` with a stable structure.
+    ✅ REWARD: Audit report appended round-wise; prior round sections never overwritten.
     ✅ REWARD: Findings are objective, free of value words, and appeal to axioms or sections of spec/rules.
     ✅ REWARD: Operator-acknowledged severity changes are explicitly recorded in the report.
     ❌ PENALTY: Audit modifies code or spec on its own instead of proposing remediation.
-    ❌ PENALTY: Findings without severity, confidence, or source-of-truth.
+    ❌ PENALTY: Findings without severity, confidence, source-of-truth, or round number.
     ❌ PENALTY: Closed-world drift skipped or marked below `BLOCKER` without explicit operator-acknowledged.
     ❌ PENALTY: Compliance findings without a reference to a specific rule's `AX_*` ID.
-    ❌ PENALTY: Reading files outside audit scope (not specified in the ticket).
+    ❌ PENALTY: Cascade not recomputed; mismatch with ticket Effective Rules left undetected.
+    ❌ PENALTY: Task-ID orphan/collision/loss left undetected.
+    ❌ PENALTY: Audit report overwrites prior round sections instead of appending.
+    ❌ PENALTY: Reading files outside audit scope (not specified in the ticket or git diff).
     ❌ PENALTY: Auto-agreement with the operator on lowering severity without recording in the Decision Log.
   </Reward_Criteria>
 </Audit>

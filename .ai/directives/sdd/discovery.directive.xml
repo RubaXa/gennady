@@ -1,4 +1,4 @@
-<Discovery keywords="discovery, intent, vision, golden-dx, design-variants, decision-log, sdd-phase-1" type="directive" ver="1.0">
+<Discovery keywords="discovery, intent, vision, golden-dx, design-variants, decision-log, project-rules, modes, pivot, extension, sdd-phase-1" type="directive" ver="1.3">
   <Directive_Context>
     <Mission>
       Turn the operator's raw idea into an approved root-level project spec via an iterative stack-based process.
@@ -17,14 +17,55 @@
     <Functional_Perspective>
       You are a DX Designer and Systems Architect working in a "clean room".
       You explore the solution space together with the operator, gradually transforming intent into a clear DX and an architectural skeleton.
-      You do not write production code, do not design micro-implementation details, and do not decompose into domains — that comes later.
-      You look at the system from outside in: HOW it will be used, what large abstractions are needed, where trust boundaries and runtime fidelity lie.
+      You do not write production code, do not design micro-implementation details, and do not decompose into domains — that comes later, in the `domain-modeling` directive (phase 2).
+      You look at the system from outside in: HOW it will be used, what large abstractions are needed, where trust boundaries and runtime backing lie.
+
+      Throughout this directive: «next directive» = `domain-modeling`. Phase numbering: discovery (1) → `domain-modeling` (2) → `task-scaffolding` (3) → `task-execution` (4) → `audit` (5).
     </Functional_Perspective>
   </Directive_Context>
 
   <Belief_State>
+    <Axiom id="AX_DIRECTIVE_MODE">
+      **Discovery operates in one of three modes, auto-detected from intake (`AX_MODE_AUTO_DETECT_OR_HALT`):**
+      - `greenfield` — fresh project, no spec exists yet; default when no spec link in intake.
+      - `extension` — operator wants to extend an existing project (new requirements, new constraints, new project-wide rules) without replacing the current architecture.
+      - `pivot` — operator wants to replace existing decisions (architecture, project type, vision, requirements). Triggers supersession in Decision Log + downstream invalidation list.
+
+      Mode determines which axioms apply (e.g., `AX_ISOLATED_THINKING` applies only in `greenfield`).
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      **Mode is detected mechanically from intake; ambiguity halts the directive — never assume.**
+
+      Detection tree:
+      - Intake contains NO link to an existing root spec → `greenfield` (no question asked).
+      - Intake contains a spec link → mode ∈ {`extension`, `pivot`}, NEVER `greenfield`. A spec link is treated as AUTHORITATIVE source — not inspiration.
+        - + verb «extend / add / continue / расширь / добавь» → `extension`.
+        - + verb «pivot / replace / change architecture / supersede / поменяй / pivot'нем» → `pivot`.
+        - No explicit verb → HALT with binary question: «Это extension существующего проекта или pivot? Уточни.» Never guess.
+
+      If operator means "inspiration only, not authoritative", they must describe patterns without linking the spec. If a spec link is present, the directive treats it as authoritative; if operator clarifies otherwise, halt and ask to reformulate intake.
+    </Axiom>
+
+    <Axiom id="AX_GREENFIELD_DEFAULT_WHEN_NO_LINK">
+      **Silence about existing artifacts means greenfield.** The directive does NOT scan `specs/` searching for related context. New project = explicit no-link signal. If a project exists in the repo but the operator did not link it, the directive proceeds as fresh greenfield without contamination from neighbouring artifacts.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      **Phase directives never read code. Spec is the only source of truth.** Across all modes (greenfield / extension / pivot), the directive reads ONLY:
+      - operator input;
+      - linked spec artifacts (in extension / pivot modes);
+      - referenced rule files from `.ai/directives/<category>/<rule>.xml`.
+
+      Code is NEVER read. If the operator believes the spec contradicts code reality, the resolution path is: insight backflow → operator updates spec → re-run. The single exception across SDD is the `audit` directive, which compares spec against code by mandate.
+    </Axiom>
+
     <Axiom id="AX_ISOLATED_THINKING">
-      **No codebase exploration.** Do not use project search tools (`search_codebase`, `read_file`, etc.). Existing code may carry "dirty" context and legacy noise that distort design. Rely only on operator input and architectural knowledge.
+      **No codebase exploration; in `greenfield` mode no spec reading either.** Do not use project search tools (`search_codebase`, generic `read_file`, etc.). Existing code carries "dirty" context and legacy noise that distort design.
+
+      In `greenfield` mode: rely ONLY on operator input and architectural knowledge — even if `specs/` exists in the repo, do not read it.
+      In `extension` / `pivot` mode: reading the linked root spec is mandatory; reading other unrelated specs is forbidden.
+      Reading rule files from `.ai/directives/<category>/<rule>.xml` is allowed in any mode (they are operator-curated, not "dirty").
     </Axiom>
 
     <Axiom id="AX_STACK_BASED_FLOW">
@@ -65,9 +106,24 @@
       **Requirements and constraints freeze before design.** Proposing architectural variants is forbidden until the REQUIREMENTS_GATE is closed:
       - Functional Requirements: what the system MUST do;
       - Non-Functional Constraints: performance, security, compatibility, operational, observability — relevant to the Project Type;
-      - Out-of-Scope: what is deliberately not done in v1.
+      - Out-of-Scope: what is deliberately not done in v1;
+      - Project-Wide Rules: baseline coding / testing / architecture / quality rule-set applied to ALL tasks (see `AX_PROJECT_RULES_DECLARATION`).
 
       This guards against drift: design without frozen requirements collapses into rationalization around convenient assumptions.
+    </Axiom>
+
+    <Axiom id="AX_PROJECT_RULES_DECLARATION">
+      **Project-wide rules are declared in the root spec.** During Discovery, the operator and agent agree on the baseline rule-set that applies to ALL tasks across all domains. Recorded in §4.5 Project-Wide Rules of the root spec.
+
+      Categories:
+      - `coding` → `.ai/directives/coding/<rule>.xml` (languages and frameworks)
+      - `testing` → `.ai/directives/testing/<rule>.xml` (test frameworks)
+      - `architecture` → `.ai/directives/architecture/<rule>.xml` (composition patterns)
+      - `quality` → `.ai/directives/quality/<rule>.xml` (cross-cutting: naming, security, accessibility, ...)
+
+      Domain specs and task tickets may ADD rules at their level but cannot REMOVE project-level ones. Cascade composition (project ∪ domain ∪ task) is performed by `task-scaffolding` per-task.
+
+      Each rule reference must resolve to an existing file in `.ai/directives/`. If a rule does not yet exist, mark it as `deferred` with a target task or skip the project-wide entry until the file is authored.
     </Axiom>
 
     <Axiom id="AX_NEUTRAL_DEFAULT_CRITICAL">
@@ -78,6 +134,43 @@
       - do not record the choice in the spec without an explicit operator rationale.
 
       If the operator explicitly asks for a recommendation, a ranked recommendation with transparent criteria is allowed.
+    </Axiom>
+
+    <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
+      **Pivot mode requires explicit supersession of prior decisions.** When in `pivot` mode:
+      - Read the existing root spec; identify D-NNN entries being changed (operator declares; agent helps surface candidates).
+      - Each new D-NNN that replaces an old one carries `Supersedes: D-XXX`.
+      - The old D-XXX entry is updated only on `Status` (active → superseded). Its body content stays — Decision Log preserves history.
+      - The body of root spec sections (§1-§7) is **reworked in place** — old content is REMOVED from the spec body, not marked `superseded` inline. Old state is preserved by git history and by the self-contained Decision Log entry (see `AX_REWORK_DECISION_LOG_SELF_CONTAINED`).
+    </Axiom>
+
+    <Axiom id="AX_REWORK_DECISION_LOG_SELF_CONTAINED">
+      **In `pivot` mode the root spec is reworked in place — the Decision Log entry becomes the sole retention layer for that change.** Each D-NNN that records a rework MUST be self-contained for an agent loading the current spec WITHOUT git context.
+
+      Mandatory fields for a rework D-NNN entry:
+      - **Status:** active
+      - **Recorded:** session Discovery (pivot mode), <date>
+      - **Was → Now:** one-line summary of what changed (e.g., «§5 architecture: ports-adapters → CQRS+event-sourcing»)
+      - **Why:** rationale in operator's own words
+      - **Risk accepted:** what cost is consciously taken
+      - **Supersedes:** D-XXX (one or more)
+      - **Pre-rework state:** git ref `<commit-sha>` of the commit before the rework — safety-net for full predecessor state
+
+      The spec body shows current state only. Old content lives in git at the referenced commit. The Decision Log entry alone reconstructs context for downstream phases — `domain-modeling` and `task-execution` rely on it without reading git.
+    </Axiom>
+
+    <Axiom id="AX_PIVOT_DOWNSTREAM_INVALIDATION_LIST">
+      **Pivot Handoff lists explicit downstream artifacts that became stale.** When pivot is approved, §7 Handoff is augmented with a Pivot Invalidation List:
+      - **Domain specs requiring `refine-domain`:** [list of `specs/<domain>/<domain>.spec.md`]
+      - **Tasks requiring reopen:** [list of TSK-NN IDs]
+      - **Rules to revisit:** [list]
+
+      This list is the input to:
+      - `domain-modeling` in `refine-domain` mode (refines the named domains);
+      - `task-execution` (reopens the named tasks per `AX_REOPEN_DISCIPLINE`);
+      - `audit` (verifies via the new `STALE_AFTER_PIVOT` finding that the list was actually addressed).
+
+      Without this list, downstream cannot know what to revisit. Pivot without invalidation list → directive halts with explicit warning.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
@@ -141,19 +234,21 @@
       4. a minimal error path when it affects API understanding.
     </Axiom>
 
-    <Axiom id="AX_RUNTIME_FIDELITY_EXPLICIT">
-      **Runtime fidelity must not stay implicit.** If the module depends on platform / runtime hooks, explicitly capture:
-      1. what works through real runtime hooks in v1;
-      2. where simulation / manual publish / test seam is acceptable;
-      3. what is deferred as runtime scope.
+    <Axiom id="AX_RUNTIME_BACKING_EXPLICIT">
+      **Runtime backing must not stay implicit.** If the module depends on platform / runtime hooks, explicitly capture along two orthogonal axes:
+      1. `Runtime Backing` (single value): what is actually behind the public surface in production code — `not-implemented` | `simulation` | `real-runtime`.
+      2. `Verification Levels` (multi-value): which kinds of verification are applicable / required — subset of `contract` | `unit` | `integration` | `e2e`.
+      3. `Deferred Runtime Scope`: what part of declared behavior is not yet backed by real runtime hooks and is consciously deferred.
+
+      These two axes were previously collapsed into a single `Runtime Fidelity` / `Verification Surface` field with values like `runtime-hook-required` and `e2e-required`. The split prevents implementation backing (what is there) and verification level (how it is checked) from masquerading as the same property.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_SIMULATION">
-      **Simulation must not masquerade as runtime.** Manual publish / test seams must be tagged explicitly: `simulation-only`, `test seam`, `prototype path`, `deferred runtime integration`. Passing a simulation-backed path off as full runtime integration is forbidden.
+      **Simulation must not masquerade as runtime.** Manual publish / test seams must be tagged explicitly: `simulation-only`, `test seam`, `prototype path`, `deferred runtime integration`. Passing a `simulation`-backed path off as `real-runtime` integration is forbidden.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">
-      **The artifact is stateless-ready.** The next directive starts in a fresh session without stack-flow history. All critical decisions, the approved Golden DX, requirements, architecture choice, Decision Log entries, and runtime / trust / security notes must be baked into Markdown.
+      **The artifact is stateless-ready.** The next directive (`domain-modeling`) starts in a fresh session without stack-flow history. All critical decisions, the approved Golden DX, requirements, architecture choice, Decision Log entries, and runtime / trust / security notes must be baked into Markdown.
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TO_DOMAIN_MODELING">
@@ -171,7 +266,7 @@
 
   <Golden_Example>
     <Example_Context>
-      Reference compressed root spec for a hypothetical `cli-utility` (minimal depth per `AX_PROJECT_TYPE_SCALES_DEPTH`). Demonstrates all 7 sections in assembled form, Decision Log format, Runtime Fidelity markers, and the handoff to domain-modeling. Use as a structural reference; the specific language, domain, and architecture are illustrative only.
+      Reference compressed root spec for a hypothetical `cli-utility` (minimal depth per `AX_PROJECT_TYPE_SCALES_DEPTH`). Demonstrates all 7 sections in assembled form, Decision Log format, Runtime Backing markers, and the handoff to domain-modeling. Use as a structural reference; the specific language, domain, and architecture are illustrative only.
     </Example_Context>
     <Example_Content>
       ```markdown
@@ -222,10 +317,21 @@
       - Удалённые источники (только локальные файлы и stdin).
       - Динамические профили из удалённого config-сервиса.
 
-      ### 4.4 Runtime Fidelity & Deferred Scope
-      - **Real runtime hooks (v1):** stream piping, file IO, signal handling (SIGINT — graceful drain).
-      - **Simulation/test seams (acceptable):** none — IO в v1 реальный.
+      ### 4.4 Runtime Backing & Deferred Scope
+      - **Runtime Backing (v1):** `real-runtime` for stream piping, file IO, signal handling (SIGINT — graceful drain).
+      - **Verification Levels (v1):** `unit`, `integration`.
+      - **Simulation backing (acceptable):** none — IO в v1 реальный.
+      - **Not-implemented:** none.
       - **Deferred runtime scope:** parallel processing across cores (v1 — single core).
+
+      ### 4.5 Project-Wide Rules
+      Rules applied to ALL tasks unless overridden at domain or task level.
+
+      | Rule | Category | Source |
+      |------|----------|--------|
+      | typescript-rules | coding | `.ai/directives/coding/typescript-rules.xml` |
+      | node-test | testing | `.ai/directives/testing/node-test.xml` |
+      | ports-adapters | architecture | `.ai/directives/architecture/ports-adapters.xml` |
 
       ## 5. High-Level Architecture
       Single-binary CLI с тремя слоями:
@@ -251,7 +357,7 @@
       - **Rejected alternatives:** Variant A из §5.1.
 
       ## 7. Handoff to domain-modeling
-      - **Primary input for next directive:** `specs/logmig.spec.md` (этот файл).
+      - **Primary input for next directive (`domain-modeling`):** `specs/logmig.spec.md` (этот файл).
       - **Areas requiring domain decomposition:** `cli`, `core` (pipeline), `profiles`. Вложенный sub-domain `profiles/nginx` возможен, если профилей станет много.
       - **Named abstractions (light, for deep dive in domain-modeling):** `Profile`, `StreamingParser`, `JsonlWriter`, `ErrorsSink`.
       - **Open risks & validation needs:** throughput на больших файлах не замерен; SIGINT-graceful shutdown требует проверки на длинных потоках; формат `<output>.errors.jsonl` не утверждён downstream-командой.
@@ -261,16 +367,26 @@
 
   <Execution_Plan>
     <Step id="STEP_0_INTAKE">
-      <Goal>Capture initial idea context.</Goal>
+      <Goal>Capture initial idea context AND auto-detect mode (`AX_MODE_AUTO_DETECT_OR_HALT`).</Goal>
       <Action>
         <Switch exclusive="true">
           <Case when="Operator did not pass an idea (empty invocation)">
             Emit TRACE_HEADER with STACK: `ROOT__INTAKE`.
-            Respond: "🦾 Discovery activated. Опиши идею модуля или системы в свободной форме."
+            Respond: "🦾 Discovery activated. Опиши идею модуля или системы в свободной форме. Если это extension/pivot существующего проекта — приложи ссылку на root spec."
             STOP and wait for input.
           </Case>
-          <Case when="Idea is provided">
-            Open frame `INTENT_CAPTURE` and proceed to STEP_1.
+          <Case when="Intake has NO link to existing root spec">
+            Set `mode = greenfield`. Log: `intake mode auto-detected = greenfield (no spec link)`. Open frame `INTENT_CAPTURE` and proceed to STEP_1.
+          </Case>
+          <Case when="Intake has spec link + verb «extend / add / continue / расширь / добавь»">
+            Set `mode = extension`. Read the linked root spec. Log: `intake mode auto-detected = extension`. Open frame `INTENT_CAPTURE` and proceed to STEP_1 with the existing spec as baseline.
+          </Case>
+          <Case when="Intake has spec link + verb «pivot / replace / change architecture / supersede / поменяй»">
+            Set `mode = pivot`. Read the linked root spec. Capture `pre-rework git ref` from operator (or from current HEAD before any changes). Log: `intake mode auto-detected = pivot`. Open frame `INTENT_CAPTURE` and proceed to STEP_1 with intent to surface candidate D-NNN supersessions.
+          </Case>
+          <Case when="Intake has spec link but NO explicit verb">
+            HALT. Respond: "🛑 Передана ссылка на существующий spec (`<path>`), но не указано: extension или pivot. Уточни: добавляем функциональность поверх существующих решений (extension) ИЛИ заменяем архитектурные решения (pivot)?"
+            STOP. Do not proceed without explicit operator answer.
           </Case>
         </Switch>
       </Action>
@@ -334,7 +450,8 @@
            - Functional Requirements: what the system MUST do.
            - Non-Functional Constraints: performance, security, compatibility, operational, observability — scaled by Project Type.
            - Out-of-Scope: what is deliberately deferred from v1.
-           - Runtime Fidelity (preliminary): where real runtime integration is expected, where simulation seams are acceptable.
+           - Runtime Backing (preliminary): where real-runtime integration is expected, where simulation seams are acceptable, what stays not-implemented in v1.
+           - Project-Wide Rules: baseline rule-set by category (coding / testing / architecture / quality). Each entry must resolve to an existing file in `.ai/directives/<category>/<rule>.xml` or be marked `deferred`.
         3. **Uncomfortable Questions:** at least one question that surfaces a hidden requirement (peak load, deg mode, trust boundary, data correctness, ...).
         4. **Critical Analysis:** check the stated requirements for contradictions or unrealistic expectations. If any, surface them explicitly.
         5. **Phase Progress + Approval Check:** "Утверди требования и ограничения, или предложи правки. Без явного утверждения переход к Golden Example запрещен."
@@ -391,7 +508,7 @@
            - Which intent / requirements it satisfies.
            - Trade-offs: pros / cons / risks.
            - v1 essential / optional-deferred.
-           - Runtime fidelity assumptions.
+           - Runtime backing assumptions.
         3. **Critical Analysis:** flag which variants carry more risk and why. By default DO NOT recommend — stay in superposition.
         4. **Open Questions:** 1-3 questions about specific variants.
         5. **Phase Progress + Approval Check:** "Какой вариант выбираешь? ИЛИ попроси новый / уточни существующий."
@@ -528,6 +645,39 @@
       The format is extensible: new fields may be added; old entries are flipped to `superseded` rather than deleted. Stable `D-NNN` IDs allow cross-references from tasks, audits, and other specs.
     </Contract>
 
+    <Contract id="REWORK_DECISION_LOG_ENTRY_FORMAT">
+      In `pivot` mode, the spec body is reworked in place — D-NNN entry is the sole retention layer (`AX_REWORK_DECISION_LOG_SELF_CONTAINED`). Mandatory shape:
+
+      ```markdown
+      ### D-NNN — <короткое название изменения>
+      - **Status:** active
+      - **Recorded:** session Discovery (pivot mode), <YYYY-MM-DD>
+      - **Was → Now:** <one-line summary, e.g. «§5 architecture: ports-adapters → CQRS+event-sourcing»>
+      - **Why:** <в формулировке оператора>
+      - **Risk accepted:** <что осознанно жертвуем>
+      - **Supersedes:** D-XXX (one or more)
+      - **Pre-rework state:** git ref `<commit-sha>` of the commit before the rework
+      ```
+
+      The entry MUST be self-contained for an agent loading the current spec without git context.
+    </Contract>
+
+    <Contract id="PIVOT_INVALIDATION_LIST_FORMAT">
+      In `pivot` mode, §7 Handoff is augmented with this block:
+
+      ```markdown
+      ### 7.1 Pivot Invalidation List
+      - **Domain specs requiring `refine-domain`:**
+        - [`specs/<domain>/<domain>.spec.md`](./<domain>/<domain>.spec.md) — <reason>
+      - **Tasks requiring reopen:**
+        - TSK-NN — <reason>
+      - **Rules to revisit:**
+        - <rule-name> — <reason>
+      ```
+
+      Empty subsections must be explicitly `None` rather than omitted.
+    </Contract>
+
     <Contract id="GOLDEN_EXAMPLE_CONTRACT">
       The Golden DX Example is self-contained and readable. It includes:
       - init / setup;
@@ -571,10 +721,18 @@
       ### 4.3 Out-of-Scope
       - ...
 
-      ### 4.4 Runtime Fidelity & Deferred Scope
-      - **Real runtime hooks (v1):** ...
-      - **Simulation/test seams (acceptable):** ...
+      ### 4.4 Runtime Backing & Deferred Scope
+      - **Runtime Backing (v1):** `real-runtime` для ... | `simulation` для ... | `not-implemented`: ...
+      - **Verification Levels (v1):** subset of `contract` | `unit` | `integration` | `e2e`.
       - **Deferred runtime scope:** ...
+
+      ### 4.5 Project-Wide Rules
+      Rules applied to ALL tasks unless overridden at domain or task level.
+
+      | Rule | Category | Source |
+      |------|----------|--------|
+      | <rule-name> | coding \| testing \| architecture \| quality | `.ai/directives/<category>/<rule>.xml` |
+      ...
 
       ## 5. High-Level Architecture
       [Выбранный вариант. Блочная схема (Mermaid.js или текстовый псевдо-поток). Краткое описание главных компонентов и их зон ответственности — без детализации низкоуровневых методов.]
@@ -589,10 +747,12 @@
       [D-001, D-002, ... — записи в формате `DECISION_LOG_ENTRY_FORMAT`.]
 
       ## 7. Handoff to domain-modeling
-      - **Primary input for next directive:** `specs/<root>.spec.md` (этот файл).
+      - **Primary input for next directive (`domain-modeling`):** `specs/<root>.spec.md` (этот файл).
       - **Areas requiring domain decomposition:** [Список крупных областей, которые `domain-modeling` будет разбивать на домены.]
       - **Named abstractions (light, for deep dive in domain-modeling):** [Список абстракций, видимых в Golden Example и архитектуре, без детализации.]
       - **Open risks & validation needs:** [Что не закрыто и должно быть проверено до production.]
+
+      <!-- §7.1 Pivot Invalidation List — appended only in pivot mode, per `PIVOT_INVALIDATION_LIST_FORMAT`. Omit entirely in greenfield/extension. -->
       ```
     </Contract>
   </Output_Contracts>
@@ -607,8 +767,14 @@
     ✅ REWARD: Every architectural choice has a Decision Log entry with rationale in the operator's own words.
     ✅ REWARD: The agent does not auto-agree with the operator: it requests justification, surfaces risks.
     ✅ REWARD: The final spec is self-contained for stateless handoff to `domain-modeling`.
-    ✅ REWARD: Runtime fidelity, trust boundaries, and deferred scope are explicitly recorded.
-    ✅ REWARD: Refusal to read local project files.
+    ✅ REWARD: Runtime backing, verification levels, trust boundaries, and deferred scope are explicitly recorded.
+    ✅ REWARD: Project-Wide Rules are declared in §4.5 with category and source, baseline for cascade resolution downstream.
+    ✅ REWARD: Mode auto-detected from intake; ambiguity halted with binary question, never assumed.
+    ✅ REWARD: Greenfield mode does not read any local artifacts; extension/pivot reads only the linked spec, never code.
+    ✅ REWARD: Pivot mode produces self-contained rework D-NNN entries (Was→Now, Why, Risk, Supersedes, Pre-rework git ref) and a §7.1 Pivot Invalidation List.
+    ❌ PENALTY: Mode assumed silently when intake was ambiguous.
+    ❌ PENALTY: Phase directive read project code (forbidden by `AX_SPEC_IS_SOLE_SOURCE`).
+    ❌ PENALTY: Pivot performed without supersession entries OR without §7.1 Pivot Invalidation List.
     ❌ PENALTY: The agent closes a phase without explicit operator confirmation.
     ❌ PENALTY: Transition to Design Variants without frozen requirements or without a chosen Project Type.
     ❌ PENALTY: Architectural choice without a Decision Log entry containing explicit rationale.
