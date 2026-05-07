@@ -1,0 +1,606 @@
+<EslintRules keywords="eslint, binary_severity, error_or_off, no_warn_level, autofix_preferred, motivated_non_autofix, ai_friendly, lint_pipeline, mechanical_quality_gate, flat_config, prettier, unified_formatting, no_disable_comments, type_aware_delegation" type="quality-rules" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Define how ESLint is used in this project so that the lint stage is a binary, AI-friendly quality gate.
+      **Foundational principle (the traffic-law principle):** every rule is either `'error'` or `'off'`. There is no third state. A rule set to `'warn'` is a meaningless rule — nobody fixes warnings, they accumulate as a long tail of unresolved findings, and the build stays green while real problems rot. Like traffic laws: either you live by the rule, or you break it and pay the penalty. There is no "yellow lane".
+      **Quality preference for what is enabled:** prefer rules that ship a working `fix`. A rule without autofix is allowed only when it carries a written motivation explaining why this non-mechanical check is worth keeping (what class of bugs or invariant it protects). No motivation → the rule is off.
+      Goal: any execution-agent (and any human) runs ONE command and gets a deterministic verdict — clean tree, or hard stop with a finding that must be resolved before merge. There is never a "noisy but passing" lint.
+      Non-goal: this directive is NOT a curated rule list. It is meta-policy about which rules belong in the lint config and how the pipeline is structured. The concrete rule set lives in `eslint.config.ts` and is gated by the audit protocol below.
+    </Mission>
+    <Functional_Perspective>
+      You are an AI Quality Engineer keeping lint binary and AI-friendly. Every finding the lint produces is a build failure that must be fixed before merge — no warnings, no "consider this", no deferred lists. Within that binary contract, prefer rules that auto-fix; admit non-autofix rules only when they justify the cost.
+    </Functional_Perspective>
+  </Directive_Context>
+
+  <Belief_State>
+    <!-- ============================================================ -->
+    <!-- FOUNDATION: BINARY SEVERITY                                   -->
+    <!-- This is the first and primary rule. Everything else is        -->
+    <!-- secondary preference about what is enabled at 'error'.        -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_BINARY_SEVERITY">
+      **Every rule in `eslint.config.ts` has severity `'error'` (or numeric `2`), or it is `'off'`. There is no third state.**
+      Severity `'warn'` (`1`) and any informational level are forbidden — including after preset spreads. A rule set to `'warn'` is a meaningless rule: nobody fixes warnings, they accumulate, and the build stays green while real problems rot.
+      Forbidden forms anywhere in the resolved config:
+        - `rule: 'warn'`, `rule: ['warn', ...options]`, `rule: 1`, `rule: [1, ...options]`.
+        - Plugin presets that set rules to `'warn'` are normalized after the spread: every `'warn'` entry is overridden to either `'error'` or `'off'`.
+      **Why:** Like traffic laws — either you live by the rule, or you break it and pay the penalty. A "yellow lane" makes the system unusable: an AI agent running the lint sees green and ships; a human running the lint sees a long warning list and skims past it. If a check is worth running at all, its findings are worth fixing now. If they are not worth fixing now, the rule is wrong for this project and should be off. There is nothing in between.
+    </Axiom>
+
+    <!-- ============================================================ -->
+    <!-- WHAT IS ALLOWED AT 'error': AUTOFIX PREFERRED                 -->
+    <!-- A secondary preference for the quality of enabled rules.     -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_AUTOFIX_PREFERRED">
+      **A rule with a working `fix` is the preferred shape; it goes in at `'error'` without further justification.**
+      A rule WITHOUT a working `fix` (or with only `suggest` — see AX_SUGGEST_IS_NOT_FIX) goes in at `'error'` ONLY when an inline comment immediately above the rule entry explains why it is here: what class of bugs or invariant it catches, and why nothing else (tsc, review, another directive) covers that concern. The comment is plain prose — no rigid schema — but it must be specific enough that the next reader can decide whether the rule is still earning its place.
+      A rule whose `fix` is partial (auto-fixes some findings but not others) is treated as non-autofix and needs the same comment; if the partial coverage is unintentional, prefer reporting upstream and disabling locally.
+      **Why:**
+      - Autofix is the path of least friction for both AI agents and humans: green or a ready patch, no debate.
+      - A non-autofix rule is acceptable when it catches a class of bugs nothing else catches — but the cost (a finding an agent must reason about) is real and must be paid deliberately.
+      - The comment is the audit trail: it lets the next agent or operator decide whether to keep the rule, and it gives the agent that hits the finding a deterministic next step.
+    </Axiom>
+
+    <Axiom id="AX_SUGGEST_IS_NOT_FIX">
+      **An ESLint rule that exposes only `suggest` (alternatives the user must choose between) does NOT count as autofix.**
+      Such a rule falls under AX_AUTOFIX_PREFERRED's non-autofix branch: it is allowed only with the explanatory comment, and the project pipeline never auto-applies any of its suggestions.
+      Exception: if a rule offers BOTH `fix` and `suggest`, only the `fix` half is consumed by the pipeline; the `suggest` half is ignored. The rule is treated as autofix.
+      **Why:** A pipeline that picks a `suggest` option automatically is a non-deterministic rewrite with no audit trail. If the project wants one of those alternatives as the default, that belongs in the rule's options or in a custom rule with a real `fix`.
+    </Axiom>
+
+    <Axiom id="AX_LINT_RUN_IS_MECHANICAL">
+      **The lint pipeline is exactly one command: `eslint --fix .` (or the project's wrapper that calls it).**
+      A clean lint run is defined as: `eslint --fix .` exits with code 0. Because every rule is `'error'` (AX_BINARY_SEVERITY), exit 0 means the tree contains zero findings.
+      For autofix-capable rules `--fix` resolves the finding silently. For motivated non-autofix rules a remaining finding is a hard failure that the agent MUST resolve by editing the code (with the explanatory comment as guidance) — never by adding a disable comment (AX_NO_DISABLE_COMMENTS_BY_AGENT).
+      Forbidden as a normal workflow: running `eslint` without `--fix` and treating the report as a TODO list. The `--fix` form is the canonical entry point because it does the mechanical work the autofix rules promise to do.
+      **Why:** A binary mechanical gate is the only kind of gate an AI agent can be trusted to clear. A "near-clean lint" with manual leftovers becomes the entry point for fabricated quality.
+    </Axiom>
+
+    <Axiom id="AX_NON_AUTOFIX_PREFER_DELEGATION">
+      **Before enabling a non-autofix ESLint rule, check whether the same concern is already owned by another channel; prefer the channel over a new lint rule.**
+      Routing table — when these channels cover the concern, the lint rule is `'off'`:
+      - **Type-aware checks** (`no-unused-vars`, `no-undef`, `consistent-return`, `no-implicit-globals`, etc.) → `tsc --noEmit` under `strict` settings.
+      - **Structural / size / complexity** (`complexity`, `max-lines`, `max-lines-per-function`, `max-depth`, `max-params`) → architecture and testing directives (e.g., `AX_TEST_FILE_SIZE_BUDGET` in `testing/vitest-rules`).
+      - **Design / naming / domain conventions** (`no-magic-numbers`, `id-length`, `naming-convention`) → coding directive + code review by the operator.
+      - **Formatting** → the project's single formatter (see AX_PRETTIER_OWNS_FORMATTING).
+      - **Security / dependency vulnerabilities** → SCA tools (`npm audit`, dependabot, dedicated scanners).
+      A non-autofix lint rule is enabled only when its concern is genuinely NOT covered by any of the above channels — and the explanatory comment names that gap explicitly (AX_AUTOFIX_PREFERRED).
+      **Why:** Each channel has its own diagnostic model and its own remediation flow. Duplicating a check in lint produces two reports for the same problem with different exit codes — noise that erodes trust in the pipeline.
+    </Axiom>
+
+    <!-- ============================================================ -->
+    <!-- UNIFIED FORMATTING                                            -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_PRETTIER_OWNS_FORMATTING">
+      **Formatting (whitespace, quotes, semicolons, line width, trailing commas, JSX wrapping, import-statement layout when purely stylistic) is owned by ONE dedicated formatter — Prettier by default — and is NEVER enforced by ESLint stylistic rules.**
+      ESLint stylistic rules (`indent`, `quotes`, `semi`, `comma-dangle`, `max-len`, `space-*`, `arrow-spacing`, `keyword-spacing`, etc.) are explicitly disabled in `eslint.config.ts` via `eslint-config-prettier` (or its flat-config equivalent), which is appended LAST in the config array so it overrides any rule that drifted in from a preset.
+      The formatter pipeline runs BEFORE `eslint --fix` so ESLint sees already-formatted code: `prettier --write .` then `eslint --fix .`.
+      The choice of formatter is an architecture decision: Prettier is the recommended default; alternatives (Biome, dprint) are acceptable IF the project picks ONE and uses it consistently. What is NOT acceptable is two formatters, or formatting rules duplicated between ESLint and the formatter.
+      **Why:**
+      - One formatter = one mechanical contract. Two tools fighting over formatting is a classic source of CI flicker and wasted agent cycles.
+      - Pulling formatting out of ESLint frees the lint config to be small, focused, and easy to audit for AX_AUTOFIX_PREFERRED compliance.
+    </Axiom>
+
+    <Axiom id="AX_UNIFIED_FORMAT_PIPELINE">
+      **The full mechanical quality pass is a fixed two-step sequence: `prettier --write .` then `eslint --fix .`. Both must exit 0.**
+      The project exposes this sequence as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. Running the steps in the wrong order, or running only one of them, is not a supported workflow.
+      A pre-commit hook (or equivalent) runs the same script on staged files; CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
+      **Why:** A single named entry point makes the contract obvious: "this command leaves the tree clean and exits 0, or your code does not pass". Anything more elaborate invites partial runs and silent drift.
+    </Axiom>
+
+    <!-- ============================================================ -->
+    <!-- DELEGATION TO TYPESCRIPT                                       -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_TYPE_AWARE_PREFER_TS">
+      **Concerns that the TypeScript compiler already covers under `strict` settings are delegated to `tsc --noEmit`, not duplicated as ESLint rules.**
+      Disabled in lint (delegated to TS): `no-unused-vars`, `no-undef`, `no-redeclare`, `no-dupe-keys`, `no-dupe-args`, `consistent-return`, `no-this-before-super`, `getter-return`, `valid-typeof`, and any rule whose finding is also a TS error.
+      Allowed in lint: `@typescript-eslint/*` rules that go BEYOND what `tsc` reports (e.g., `consistent-type-imports`, `no-import-type-side-effects`, `prefer-as-const`). Autofix-capable variants are preferred; non-autofix variants are admitted under AX_AUTOFIX_PREFERRED.
+      **Why:** Two tools reporting the same problem with different messages is noise. The TS compiler has the authoritative type model; ESLint should not pretend to.
+    </Axiom>
+
+    <!-- ============================================================ -->
+    <!-- AGENT BEHAVIOR — DISABLE COMMENTS, RULE CHANGES                -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_NO_DISABLE_COMMENTS_BY_AGENT">
+      **An execution-agent MUST NOT add `eslint-disable`, `eslint-disable-next-line`, `eslint-disable-line`, or file-level disable directives to source code.**
+      If a rule fires on code the agent is producing, the failure mode is:
+        1. Default — fix the code. If the rule has autofix, `--fix` already did it; if it did not, the rule is non-autofix and the explanatory comment in the config tells the agent how to fix manually (AX_AUTOFIX_PREFERRED).
+        2. If the rule is genuinely wrong for this codebase — STOP, surface the finding to the operator, propose a config change, and wait for explicit confirmation (AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM).
+      Existing `eslint-disable` comments in the codebase are out of scope for the agent unless the operator explicitly asks them to be revisited; they are NOT an excuse to add new ones.
+      The ONLY allowed forms are:
+        - operator-authored disables paired with an inline `--` justification comment naming the rule and the reason (e.g., `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- vendor SDK type, see issue #1234`),
+        - file-level disables for generated files (typically excluded from the lint glob entirely; the disable is a belt-and-braces fallback).
+      **Why:** A `disable` comment turns a deterministic gate into a per-file negotiation. For an AI agent, it is the path of least resistance to make red turn green without solving anything.
+    </Axiom>
+
+    <Axiom id="AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM">
+      **Adding, removing, or relaxing a rule in `eslint.config.ts` is a gated action that REQUIRES explicit operator confirmation.**
+      The agent presents:
+        1. The rule name, source (core / plugin / custom), and a link to its docs.
+        2. Whether the rule has a real `fix` (autofix preferred) — see HOOK_AUDIT_NEW_RULE.
+        3. If non-autofix: the proposed explanatory comment and the channel-coverage check (AX_NON_AUTOFIX_PREFER_DELEGATION) showing nothing else owns this concern.
+        4. The intended severity (must be `'error'` per AX_BINARY_SEVERITY).
+        5. A dry-run impact: how many files `eslint --fix` will touch (for autofix rules) or how many findings it will produce (for non-autofix rules); the resulting diff summary.
+      The agent does NOT commit a config change autonomously, even if the dry-run looks clean.
+      **Why:** The lint config is a mechanical contract for the whole repo. Silent agent-driven config edits are the highest-leverage fabrication path: one toggle can mask hundreds of regressions or invent hundreds of churn-only diffs.
+    </Axiom>
+
+    <!-- ============================================================ -->
+    <!-- CONFIG SHAPE                                                  -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_FLAT_CONFIG">
+      **The project uses ESLint flat config (`eslint.config.ts` or `eslint.config.js`).** Legacy `.eslintrc*` files are not introduced and any pre-existing ones are scheduled for migration.
+      `eslint-config-prettier` (flat variant) is appended LAST in the config array so it disables stylistic rules that may have leaked in from earlier presets.
+      **Why:** Flat config is the current ESLint contract; mixing flat and legacy creates resolution surprises and makes audit scripts harder to write.
+    </Axiom>
+
+    <Axiom id="AX_PRESETS_PASSED_THROUGH_THE_GATE">
+      **Importing a third-party preset (e.g., `@typescript-eslint/recommended`, `unicorn/recommended`, framework-specific configs) does NOT bypass the meta-principles.**
+      A preset is treated as a list of rules. After the spread:
+        - Every rule set to `'warn'` by the preset is overridden to `'error'` (kept on, with motivation if non-autofix) or `'off'` (with one-line reason). No `'warn'` survives — AX_BINARY_SEVERITY.
+        - Every non-autofix rule the preset enables is either kept with an explicit explanatory comment, or turned off with a one-line reason citing the channel that owns the concern.
+      **Why:** Presets are a frequent backdoor for warnings and undocumented non-autofix rules to enter the config. Treating them as opaque blobs would defeat both meta-principles.
+    </Axiom>
+
+    <Axiom id="AX_CUSTOM_PLUGINS_OBEY_META_POLICY">
+      **Project-local ESLint plugins (custom rules) follow the same meta-policy:**
+        - Default shape: ship a working `fix` for every reported finding (AX_AUTOFIX_PREFERRED).
+        - Allowed alternative: ship without `fix` ONLY if the rule is enabled with a explanatory comment in `eslint.config.ts`, the same way a third-party non-autofix rule would be.
+        - Severity is always `'error'`.
+      A custom rule that ships only `suggest` is rejected at code review.
+      **Why:** The rules we write ourselves must hold to the same bar we apply to third-party rules.
+    </Axiom>
+
+    <Axiom id="AX_CONFIG_AUDITABLE_BY_AGENT">
+      **`eslint.config.ts` is structured so that an agent can audit it mechanically:**
+      - One config object (or an explicit array spread) per logical concern (language options, plugins, file overrides), commented with the concern name.
+      - Every rule with severity `'error'` is either trivially autofixable OR carries the explanatory comment defined in AX_AUTOFIX_PREFERRED.
+      - Every rule entry that is `'off'` after a preset spread carries a one-line reason.
+      - File globs use the project-wide convention; do not invent ad-hoc patterns inside `overrides`.
+      **Why:** The config itself is the source of truth for the lint contract. If an agent cannot read it without ambiguity, the meta-policy cannot be enforced by automation.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_AUTOFIXABLE_RULE">
+      A rule whose `meta.fixable` field is set (`'code'` or `'whitespace'`) AND whose `create` function reports findings exclusively via `context.report(...)` calls that include a `fix` function. Rules that ONLY provide `suggest` are NOT autofixable.
+    </Definition>
+    <Definition id="DEF_MOTIVATED_NON_AUTOFIX_RULE">
+      A non-autofix rule kept in the config at severity `'error'` with an inline plain-prose comment immediately above the rule entry. The comment names the class of bugs or invariant the rule catches and why nothing else (tsc, review, another directive) covers that concern. Format is free; specificity is required.
+    </Definition>
+    <Definition id="DEF_LINT_PIPELINE">
+      The mechanical sequence: `prettier --write .` then `eslint --fix .`. A clean run = both commands exit 0. Because every rule is `'error'`, exit 0 means zero findings.
+    </Definition>
+    <Definition id="DEF_OPERATOR_DISABLE">
+      An `eslint-disable*` comment authored by the operator (not by an agent), attached to a single line or a tightly scoped block, paired with an inline `--` justification comment naming the rule and the reason. The only acceptable form of in-source disable.
+    </Definition>
+  </Definitions>
+
+  <Config_Patterns>
+    <Pattern id="PT_LINT_CONFIG_SHAPE">
+      <Intent>A flat config where every enabled rule is either trivially autofixable or carries the AX_AUTOFIX_PREFERRED explanatory comment. Severity is always `'error'` — never `'warn'`. Stylistic rules are off-loaded to Prettier; type-aware rules are off-loaded to `tsc`. The shape is auditable by grep.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // eslint.config.ts
+        import tseslint from 'typescript-eslint';
+        import unicorn from 'eslint-plugin-unicorn';
+        import importPlugin from 'eslint-plugin-import';
+        import prettierConfig from 'eslint-config-prettier/flat';
+
+        export default tseslint.config(
+            // --- language options ---------------------------------------------------
+            {
+                files: ['**/*.{ts,tsx}'],
+                languageOptions: {
+                    parserOptions: {
+                        project: './tsconfig.json',
+                        tsconfigRootDir: import.meta.dirname,
+                    },
+                },
+            },
+
+            // --- preset: typescript-eslint -----------------------------------------
+            // Preset 'warn' entries normalized: every kept rule is 'error'; the rest are 'off'.
+            ...tseslint.configs.recommended,
+            {
+                rules: {
+                    // Off — duplicates tsc --strict.
+                    '@typescript-eslint/no-unused-vars': 'off',
+
+                    // Autofix; trivially kept:
+                    '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+                    '@typescript-eslint/no-import-type-side-effects': 'error',
+                    '@typescript-eslint/prefer-as-const': 'error',
+
+                    // No autofix. Catches `await` on non-Promise values, which silently resolves to itself
+                    // and is almost always a bug. tsc allows it because the type is legal.
+                    '@typescript-eslint/await-thenable': 'error',
+
+                    // No autofix. Catches floating promises that lose errors and break ordering.
+                    // tsc allows void-returning calls, so this gap is unique to the lint layer.
+                    '@typescript-eslint/no-floating-promises': 'error',
+                },
+            },
+
+            // --- preset: unicorn (autofix-capable subset only) ---------------------
+            unicorn.configs['flat/recommended'],
+            {
+                rules: {
+                    // Off — opinionated naming, owned by code review.
+                    'unicorn/filename-case': 'off',
+                    'unicorn/prevent-abbreviations': 'off',
+
+                    // Autofix; kept:
+                    'unicorn/prefer-node-protocol': 'error',
+                    'unicorn/prefer-string-starts-ends-with': 'error',
+                    'unicorn/prefer-array-some': 'error',
+                },
+            },
+
+            // --- import order (autofixable) ----------------------------------------
+            {
+                plugins: { import: importPlugin },
+                rules: {
+                    'import/order': ['error', {
+                        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+                        'newlines-between': 'always',
+                        alphabetize: { order: 'asc' },
+                    }],
+                },
+            },
+
+            // --- core ESLint rules -------------------------------------------------
+            {
+                rules: {
+                    // Autofix; kept:
+                    'prefer-const': 'error',
+                    'no-var': 'error',
+                    'object-shorthand': ['error', 'always'],
+                    'prefer-template': 'error',
+                    'arrow-body-style': ['error', 'as-needed'],
+
+                    // Off — duplicates tsc.
+                    'no-unused-vars': 'off',
+                    'no-undef': 'off',
+                    'consistent-return': 'off',
+
+                    // Off — structural/design concerns owned by review and other directives.
+                    'complexity': 'off',
+                    'max-lines': 'off',
+                    'max-lines-per-function': 'off',
+                    'no-magic-numbers': 'off',
+                },
+            },
+
+            // --- formatting boundary: must be LAST so it overrides any leaks -------
+            // Disables every stylistic rule that may have entered via presets.
+            // Formatting is owned by Prettier (npm run format).
+            prettierConfig,
+        );
+        ```
+      </Snippet>
+      <Why>Every rule is `'error'` or `'off'` — never `'warn'` (AX_BINARY_SEVERITY). Autofix rules are trivially `'error'`. Two non-autofix rules (`await-thenable`, `no-floating-promises`) earn their place via plain-prose comments that name the bug class and the channel-coverage gap (AX_AUTOFIX_PREFERRED). Type-aware concerns are delegated (AX_TYPE_AWARE_PREFER_TS); stylistic rules are universally disabled at the end via `eslint-config-prettier` (AX_PRETTIER_OWNS_FORMATTING).</Why>
+    </Pattern>
+
+    <Pattern id="PT_RULE_AUDIT_PROTOCOL">
+      <Intent>The protocol an agent follows BEFORE proposing a config change to the operator. Produces the evidence package that AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM mandates and decides whether the rule fits AX_AUTOFIX_PREFERRED's autofix or motivated-non-autofix branch.</Intent>
+      <Snippet language="bash">
+        ```bash
+        # 1. Inspect rule metadata: does it have a real fix?
+        node -e "
+            import('@typescript-eslint/eslint-plugin').then((m) => {
+                const rule = m.default.rules['no-floating-promises'];
+                console.log(JSON.stringify({
+                    fixable: rule.meta.fixable ?? null,
+                    hasSuggestions: !!rule.meta.hasSuggestions,
+                }));
+            });
+        "
+        # → { "fixable": null, "hasSuggestions": false }
+        # Decision: rule is non-autofix. Proceed to step 2 to justify keeping it.
+
+        # 2. Channel-coverage check (AX_NON_AUTOFIX_PREFER_DELEGATION):
+        # Does tsc --strict cover floating promises?  No (return type 'void' is legal).
+        # Does the testing directive cover it?         No (this is production code shape).
+        # Does code review reliably catch it?          Not at scale.
+        # → Justification: nothing else owns this concern. Comment drafted (plain prose):
+        #   "No autofix. Catches floating promises that lose errors and break ordering.
+        #    tsc allows void-returning calls, so this gap is unique to the lint layer."
+
+        # 3. Dry-run impact: how many findings the rule produces on the current tree.
+        npx eslint --rule '{"@typescript-eslint/no-floating-promises":"error"}' --format json . \
+            | jq '[.[] | .messages[]] | length'
+        # → e.g. 7 findings. Operator sees the count and the list before approving.
+
+        # 4. For autofix rules only — verify --fix actually closes every reported instance:
+        # (skipped here because the rule is non-autofix; for autofix rules, run:
+        #   npx eslint --rule '<rule>' --fix . && npx eslint --rule '<rule>' .
+        #  and expect the second call to exit 0 with no findings.)
+
+        # 5. Show the operator the resulting diff (autofix) or the finding list (non-autofix):
+        git diff --stat
+        ```
+      </Snippet>
+      <Why>The protocol routes the rule into one of two branches: autofix (verify 100% coverage) or motivated non-autofix (verify channel coverage gap, draft the explanatory comment, list findings the operator will own). Either branch ends with operator-visible evidence; AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM cannot be satisfied without it.</Why>
+    </Pattern>
+
+    <Pattern id="PT_NPM_SCRIPT_SHAPE">
+      <Intent>A single canonical script binds the unified format pipeline. Agents and humans run the same name; CI runs the same name; pre-commit runs the same name.</Intent>
+      <Snippet language="json">
+        ```json
+        {
+            "scripts": {
+                "format": "prettier --write .",
+                "lint": "eslint --fix .",
+                "lint:fix": "npm run format && npm run lint",
+                "lint:check": "prettier --check . && eslint .",
+                "typecheck": "tsc --noEmit"
+            }
+        }
+        ```
+      </Snippet>
+      <Why>`lint:fix` is the agent's default (mechanical, mutating); `lint:check` is CI's default (read-only, fails on any drift). `typecheck` is its own script because type-aware concerns are routed to TS, not lint (AX_TYPE_AWARE_PREFER_TS).</Why>
+    </Pattern>
+  </Config_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_WARN_LEVEL_USAGE">
+      <Bad language="typescript">
+        ```typescript
+        // eslint.config.ts (excerpt)
+        rules: {
+            '@typescript-eslint/no-explicit-any': 'warn',
+            'no-console': 'warn',
+            '@typescript-eslint/no-floating-promises': ['warn'],
+            'prefer-const': ['error', { destructuring: 'all' }],
+        }
+        ```
+      </Bad>
+      <Why_Bad>
+        - Three rules use `'warn'` — forbidden by AX_BINARY_SEVERITY. A warning is a finding nobody owns: CI is green, the agent moves on, the warning rots.
+        - `no-floating-promises` as a warning is especially dangerous: a class of bugs (lost errors, broken ordering) is being discovered and ignored on every CI run.
+        - There is no path back from a `'warn'` to a real fix that an agent will take on its own — the build is green, so `--fix` exits 0 even with findings present.
+      </Why_Bad>
+      <Good language="typescript">
+        ```typescript
+        rules: {
+            // Off — design concern, owned by code review.
+            '@typescript-eslint/no-explicit-any': 'off',
+
+            // Off — production logging is policy, not a lint concern; debug `console.*` is caught by review.
+            'no-console': 'off',
+
+            // No autofix. Catches floating promises that lose errors and break ordering.
+            // tsc allows void-returning calls, so this gap is unique to the lint layer.
+            '@typescript-eslint/no-floating-promises': 'error',
+
+            'prefer-const': ['error', { destructuring: 'all' }],
+        }
+        ```
+      </Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_UNMOTIVATED_NON_AUTOFIX_RULE">
+      <Bad language="typescript">
+        ```typescript
+        // eslint.config.ts (excerpt) — non-autofix rules turned on without motivation
+        rules: {
+            'complexity': ['error', 10],
+            'max-lines': ['error', 500],
+            'no-magic-numbers': ['error', { ignore: [0, 1, -1] }],
+            '@typescript-eslint/no-explicit-any': 'error',
+            '@typescript-eslint/no-floating-promises': 'error', // no comment — why is this on?
+        }
+        ```
+      </Bad>
+      <Why_Bad>
+        - None of these rules ship a `fix`. Each adds findings the agent cannot resolve mechanically.
+        - None carry the explanatory comment required by AX_AUTOFIX_PREFERRED. A future reader has no signal whether the rule is intentionally on or drifted in via a preset.
+        - `complexity`, `max-lines`, `no-magic-numbers` are concerns owned by other channels (review, testing/architecture directives) — they should be off here per AX_NON_AUTOFIX_PREFER_DELEGATION.
+        - `@typescript-eslint/no-explicit-any` is reasonable to flag, but without a `fix` and without a explanatory comment, the agent has no deterministic remediation path.
+        - `no-floating-promises` may be the right rule, but without the motivation it cannot be distinguished from accidentally-enabled rules during audit.
+      </Why_Bad>
+      <Good language="typescript">
+        ```typescript
+        rules: {
+            // Off — structural limits owned by testing/vitest-rules and code review.
+            'complexity': 'off',
+            'max-lines': 'off',
+            'no-magic-numbers': 'off',
+
+            // Off — design concern owned by code review (operator decides per-call-site).
+            '@typescript-eslint/no-explicit-any': 'off',
+
+            // No autofix. Catches floating promises that lose errors and break ordering.
+            // tsc allows void-returning calls, so this gap is unique to the lint layer.
+            '@typescript-eslint/no-floating-promises': 'error',
+        }
+        ```
+      </Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_AGENT_DISABLE_COMMENT">
+      <Bad language="typescript">
+        ```typescript
+        // src/legacy/adapter.ts — agent's commit
+        export function adapt(input: unknown) {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            void doWork(input);
+        }
+        ```
+      </Bad>
+      <Why_Bad>
+        - The disable comment was added by the agent to silence a finding instead of fixing it (AX_NO_DISABLE_COMMENTS_BY_AGENT).
+        - The explanatory comment for `no-floating-promises` in `eslint.config.ts` exists exactly to point the agent at the right fix (`await`, `.catch`, or an explicit logger). The agent skipped that and suppressed instead.
+        - No `--` justification accompanies the disable, so the form is also non-compliant (DEF_OPERATOR_DISABLE).
+      </Why_Bad>
+      <Good language="typescript">
+        ```typescript
+        // The agent fixes the floating promise per the rule's motivation:
+        export async function adapt(input: unknown) {
+            await doWork(input);
+        }
+        // OR, if the rule is genuinely wrong here, the agent stops and surfaces it
+        // to the operator for a config change. No source-level disable.
+        ```
+      </Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_FORMATTING_DUPLICATION">
+      <Bad language="typescript">
+        ```typescript
+        // eslint.config.ts (excerpt) — fights with the project's Prettier config
+        rules: {
+            'indent': ['error', 4],
+            'quotes': ['error', 'single'],
+            'semi': ['error', 'always'],
+            'comma-dangle': ['error', 'always-multiline'],
+            'max-len': ['error', { code: 100 }],
+        }
+        // .prettierrc.json says: tabWidth: 2, singleQuote: true, semi: true, trailingComma: 'all', printWidth: 80
+        // → ESLint rewrites what Prettier just wrote, then Prettier rewrites it back. CI flickers.
+        ```
+      </Bad>
+      <Why_Bad>
+        - ESLint stylistic rules are enabled while Prettier owns the same dimensions (AX_PRETTIER_OWNS_FORMATTING).
+        - The two tools disagree on `tabWidth` and `printWidth`, so each `--fix` undoes the other. CI bounces; agents waste cycles re-running the pipeline.
+        - The config also lacks `eslint-config-prettier` at the end (AX_FLAT_CONFIG).
+      </Why_Bad>
+      <Good language="typescript">
+        ```typescript
+        import prettierConfig from 'eslint-config-prettier/flat';
+        export default tseslint.config(
+            // ... preset(s) and project rules above ...
+            prettierConfig, // MUST be last — disables stylistic rules from any preset
+        );
+        ```
+      </Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_TYPE_AWARE_DUPLICATION">
+      <Bad language="typescript">
+        ```typescript
+        // tsconfig.json: { "strict": true, "noUnusedLocals": true, "noUnusedParameters": true }
+        // eslint.config.ts:
+        rules: {
+            'no-unused-vars': 'error',
+            '@typescript-eslint/no-unused-vars': 'error',
+            'no-undef': 'error',
+            'consistent-return': 'error',
+        }
+        ```
+      </Bad>
+      <Why_Bad>
+        - Every enabled rule duplicates a check `tsc --strict` already performs (AX_TYPE_AWARE_PREFER_TS).
+        - The same problem is reported twice with different messages and different exit codes; agents and humans waste effort reconciling.
+      </Why_Bad>
+      <Good language="typescript">
+        ```typescript
+        rules: {
+            'no-unused-vars': 'off',
+            '@typescript-eslint/no-unused-vars': 'off',
+            'no-undef': 'off',
+            'consistent-return': 'off',
+        }
+        // The npm "typecheck" script runs tsc --noEmit and is the authoritative gate for these.
+        ```
+      </Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Workflow_Outline>
+    <Step id="WF_1_RUN_THE_PIPELINE">
+      Default agent action when touching code: run `npm run lint:fix` (or the project's equivalent — `prettier --write .` then `eslint --fix .`). Exit 0 means the lint contract is satisfied (every rule is `'error'`, so 0 means zero findings).
+    </Step>
+    <Step id="WF_2_HANDLE_REMAINING_FINDINGS">
+      A non-zero exit means a finding remains after `--fix`. That finding belongs to a motivated non-autofix rule (AX_AUTOFIX_PREFERRED). The agent reads the rule's explanatory comment in `eslint.config.ts`, fixes the code accordingly, and re-runs the pipeline. Disable comments are NOT an option (AX_NO_DISABLE_COMMENTS_BY_AGENT).
+    </Step>
+    <Step id="WF_3_PROPOSE_RULE_CHANGES_VIA_AUDIT">
+      To add or remove a rule, run the audit protocol (PT_RULE_AUDIT_PROTOCOL): inspect `meta.fixable`, route the rule into autofix or motivated-non-autofix, draft the explanatory comment if needed, dry-run on the repo, present evidence + diff. Wait for explicit operator confirmation before committing the config change. Severity at registration is always `'error'` (AX_BINARY_SEVERITY).
+    </Step>
+    <Step id="WF_4_KEEP_THE_CONFIG_AUDITABLE">
+      When editing `eslint.config.ts`, preserve the one-block-per-concern shape (AX_CONFIG_AUDITABLE_BY_AGENT). Every `'error'` rule is either trivially autofixable or carries the explanatory comment; every `'off'` after a preset spread carries a one-line reason; no `'warn'` survives anywhere.
+    </Step>
+    <Step id="WF_5_VERIFY_AND_FINALIZE">
+      Before closing a task: `npm run lint:fix && npm run typecheck && npm test` must all be green AND `git diff` must show only the intended change. Any environment blocker that prevents one of these is declared EXPLICITLY in the ticket.
+    </Step>
+  </Workflow_Outline>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_LINT_FIX_GREEN">
+      <Purpose>The canonical green-gate check: the unified pipeline exits 0.</Purpose>
+      <Command>npm run lint:fix</Command>
+      <Expected>Exit code 0. Because every rule is `'error'` (AX_BINARY_SEVERITY), exit 0 means zero findings — including zero non-autofix findings.</Expected>
+    </Hook>
+    <Hook id="HOOK_LINT_NO_DRIFT">
+      <Purpose>The pipeline does not mutate the tree on subsequent runs (catches formatter ↔ ESLint conflicts and partial-autofix surprises).</Purpose>
+      <Command>npm run lint:fix &amp;&amp; git diff --quiet</Command>
+      <Expected>Both exit 0. Any non-zero from the second indicates the pipeline rewrites code on every run — investigate.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_WARN_LEVEL_IN_CONFIG">
+      <Purpose>Every enabled rule has severity `'error'` (AX_BINARY_SEVERITY). No `'warn'` / `1` survives, including after preset spreads.</Purpose>
+      <Command>npx eslint --print-config . | jq '.rules | to_entries | map(select(.value == "warn" or .value == 1 or (.value | type == "array" and (.[0] == "warn" or .[0] == 1)))) | length'</Command>
+      <Expected>Output is `0`. Any non-zero count is a violation — fix by overriding the offending rules to `'error'` (with motivation if non-autofix) or `'off'`.</Expected>
+    </Hook>
+    <Hook id="HOOK_NON_AUTOFIX_HAS_COMMENT">
+      <Purpose>Every non-autofix rule enabled at `'error'` carries an explanatory comment immediately above it (AX_AUTOFIX_PREFERRED).</Purpose>
+      <Command>rg --no-heading -n -B1 "^\s*'[^']+'\s*:\s*'error'" eslint.config.ts</Command>
+      <Expected>Manual review: for every `'error'` entry, the preceding line is either inert config syntax (and the rule is autofix per HOOK_AUDIT_NEW_RULE) or a comment line that names the bug class the rule catches and why nothing else covers it. Entries with no preceding comment AND no autofix are violations.</Expected>
+    </Hook>
+    <Hook id="HOOK_AUDIT_NEW_RULE">
+      <Purpose>Mechanical evidence input to AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM: does the rule have a real `fix`?</Purpose>
+      <Command>npx eslint --rule '{"<plugin>/<rule-name>":"error"}' --fix-dry-run --format json . | jq '.[] | select(.messages | length > 0) | {file: .filePath, fixed: (.output != null), messages: [.messages[] | {ruleId, fix: (.fix != null), suggestions: (.suggestions | length > 0)}]}'</Command>
+      <Expected>For every reported message: either `fix` is present (truthy) → autofix branch of AX_AUTOFIX_PREFERRED; or `fix` is null → motivated-non-autofix branch (must be paired with explanatory comment in config).</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_AGENT_DISABLE_COMMENTS">
+      <Purpose>Catch agent-introduced `eslint-disable*` comments in changed files (AX_NO_DISABLE_COMMENTS_BY_AGENT).</Purpose>
+      <Command>git diff --unified=0 | grep -E '^\+.*eslint-disable(-next-line|-line)?\b' | grep -vE '\-\-\s+\S'</Command>
+      <Expected>Empty. Any match is either a missing `--` justification (non-compliant form) or an agent-authored disable that must be removed.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_FORMATTING_DUPLICATION">
+      <Purpose>Detect ESLint stylistic rules that overlap with the formatter (AX_PRETTIER_OWNS_FORMATTING).</Purpose>
+      <Command>npx eslint --print-config . | jq '.rules | to_entries | map(select(.key | test("^(indent|quotes|semi|comma-dangle|max-len|space-|arrow-spacing|keyword-spacing|object-curly-spacing|no-multi-spaces|no-trailing-spaces|eol-last)"))) | map(select(.value != "off" and .value[0] != "off"))'</Command>
+      <Expected>Empty array. Any entry means a stylistic rule is enabled in ESLint while the formatter owns it — fix by appending `eslint-config-prettier` last, or by turning the rule off explicitly.</Expected>
+    </Hook>
+    <Hook id="HOOK_TYPECHECK">
+      <Purpose>Type-aware concerns are owned here, not by ESLint (AX_TYPE_AWARE_PREFER_TS).</Purpose>
+      <Command>npx tsc --noEmit</Command>
+      <Expected>Exit code 0; no TS errors.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ REWARD: Every enabled rule has severity `'error'` — and only `'error'`. No `'warn'` / `1` / informational levels anywhere in the resolved config, including after preset spreads (AX_BINARY_SEVERITY).
+    ✅ REWARD: Autofix rules are the default; non-autofix rules are kept ONLY with a plain-prose comment immediately above them naming the bug class and the channel-coverage gap (AX_AUTOFIX_PREFERRED).
+    ✅ REWARD: The full quality pass is one named script (`lint:fix`) that runs `prettier --write .` then `eslint --fix .` and exits 0 with `git diff` empty.
+    ✅ REWARD: Formatting concerns live entirely in the project's single formatter; `eslint-config-prettier` is appended last in flat config; ESLint stylistic rules are universally off.
+    ✅ REWARD: Type-aware concerns are delegated to `tsc --strict`; structural / size / design concerns live in dedicated directives or in code review (AX_NON_AUTOFIX_PREFER_DELEGATION).
+    ✅ REWARD: Third-party presets are passed through the gate — `'warn'` entries normalized to `'error'` or `'off'`; non-autofix entries either kept with an explanatory comment or turned off with a one-line reason (AX_PRESETS_PASSED_THROUGH_THE_GATE).
+    ✅ REWARD: `eslint.config.ts` uses flat config, structured one-block-per-concern, with inline comments explaining every `'off'` and every non-autofix `'error'` (AX_CONFIG_AUDITABLE_BY_AGENT).
+    ✅ REWARD: Custom plugins ship with `fix` by default; if non-autofix, they are enabled with an explanatory comment, never with only `suggest`.
+    ✅ REWARD: Agents never insert `eslint-disable*` comments; when a non-autofix finding fires, the agent fixes the code per the explanatory comment in the config (AX_NO_DISABLE_COMMENTS_BY_AGENT).
+    ✅ REWARD: Config changes go through operator-confirm with the full evidence package: `meta.fixable`, autofix-vs-non-autofix decision, explanatory comment if applicable, dry-run impact, post-fix diff (AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM).
+    ✅ REWARD: When type-check / lint / format cannot run, the blocker is declared EXPLICITLY rather than masked as success.
+
+    ❌ PENALTY: Any rule set to `'warn'` / `1` in the resolved config — including via a preset that was not normalized after the spread (AX_BINARY_SEVERITY).
+    ❌ PENALTY: A non-autofix rule enabled without an explanatory comment (AX_AUTOFIX_PREFERRED).
+    ❌ PENALTY: An explanatory comment that is generic ("good practice", "catches bugs") rather than naming the specific class of bugs and what nothing else covers.
+    ❌ PENALTY: Lint pipeline contains rules whose concern belongs to `tsc`, code review, or another directive AND no explanation in the config justifies why lint is the right home.
+    ❌ PENALTY: ESLint stylistic rules enabled while a formatter owns the same dimensions (formatting duplication, CI flicker).
+    ❌ PENALTY: Agent inserts `eslint-disable` / `eslint-disable-next-line` to silence findings.
+    ❌ PENALTY: Config change committed without operator confirm, or without the audit-protocol evidence.
+    ❌ PENALTY: Custom project rule reports findings without a `fix` AND without an explanatory comment in the config that enables it.
+    ❌ PENALTY: Auto-applying ESLint `suggest` alternatives in any pipeline (AX_SUGGEST_IS_NOT_FIX).
+    ❌ PENALTY: Legacy `.eslintrc*` files mixed with flat config; rule resolution becomes opaque.
+    ❌ PENALTY: `npm run lint:fix` mutates the tree on every run (formatter ↔ ESLint conflict, or generated files inside lint glob).
+    ❌ PENALTY: Type-aware rule duplicated between `tsc` and ESLint.
+    ❌ PENALTY: `eslint-config-prettier` (or equivalent) absent or not last in the flat-config array.
+    ❌ PENALTY: Any of `lint:fix` / `typecheck` / test pipeline fails silently without an EXPLICIT blocker statement.
+  </Reward_Criteria>
+</EslintRules>
