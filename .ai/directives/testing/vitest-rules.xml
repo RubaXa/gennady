@@ -1,4 +1,4 @@
-<VitestRules keywords="vitest, runner, assertions, ai_first_tests, contract_testing, unit_testing, mocks, vi_mock, factories, unified_context, file_size_budget, snapshots, bdd_mapping, case_flow, isolation, fake_timers, dependency_injection" type="testing-rules" ver="1.0">
+<VitestRules keywords="vitest, runner, assertions, ai_first_tests, contract_testing, unit_testing, mocks, vi_mock, factories, unified_context, file_size_budget, snapshots, bdd_mapping, case_flow, isolation, fake_timers, dependency_injection" type="testing-rules" ver="1.1">
   <Directive_Context>
     <Mission>
       Define canonical rules for writing tests on the Vitest runner (`vitest`) for every execution-agent in the project.
@@ -61,6 +61,33 @@
   </Inherited_Baseline>
 
   <Belief_State>
+    <!-- ============================================================ -->
+    <!-- AI-FIRST INVOCATION — ONE-SHOT BY DEFAULT                       -->
+    <!-- ============================================================ -->
+
+    <Axiom id="AX_VITEST_RUN_NOT_WATCH">
+      **Primary `test` script MUST invoke `vitest run` (one-shot), never bare `vitest` (which defaults to watch mode in TTY).**
+
+      Forbidden:
+      ```json
+      "test": "vitest"           // ❌ defaults to watch in TTY → agent hangs
+      "test": "vitest --watch"   // ❌ explicit watch
+      ```
+
+      Required:
+      ```json
+      "test": "vitest run",                    // ✅ one-shot, exits with code 0/1
+      "test:watch": "vitest",                  // ✅ explicit watch in separate script (human dev)
+      "test:coverage": "vitest run --coverage" // ✅ one-shot with coverage
+      ```
+
+      **Why:** AI agents and CI runners invoke `npm test` and wait for exit. Bare `vitest` in TTY enters interactive watch mode, streams forever, never exits. The agent's session hangs indefinitely with no way to distinguish "still running" from "ready, waiting for changes". This is a top cause of stuck infrastructure-setup tickets — see `nodejs-npm-rules.xml#AX_AI_FIRST_SCRIPTS_ONE_SHOT` for the general principle.
+
+      **Vitest specifics:** `vitest` autodetects TTY and switches to watch mode. `vitest run` forces one-shot regardless of TTY. There is no «default no-watch» config flag — the discipline is at the script-definition level.
+
+      **For interactive human dev:** developers run `npm run test:watch` explicitly. The split keeps `npm test` as the canonical AI/CI entry-point.
+    </Axiom>
+
     <!-- ============================================================ -->
     <!-- TEST DATA PREPARATION — UNIFIED CONTEXT DISCIPLINE             -->
     <!-- The strongest opinion of this directive. Combined with the     -->

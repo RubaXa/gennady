@@ -1,4 +1,4 @@
-<TaskExecution keywords="task-execution, rules-load, scope-discipline, live-log, reopen, round, blocker-escalation, sdd-phase-4" type="directive" ver="1.0">
+<TaskExecution keywords="task-execution, rules-load, scope-discipline, live-log, reopen, round, blocker-escalation, sdd-phase-4" type="directive" ver="1.11">
   <Directive_Context>
     <Mission>
       Turn one task ticket into code + tests + a fully filled Execution Log with traceable evidence — no drift, no scope creep, no silent improvisation.
@@ -21,8 +21,81 @@
   </Directive_Context>
 
   <Belief_State>
+    <Axiom id="AX_RECONNAISSANCE_BEFORE_ACTION">
+      **Before any Edit / Write / destructive Bash, run a fast recon of current state — bounded to 30-60 seconds. Repo reality, not ticket assumptions, is the source of truth for «what's already done».**
+
+      **The problem:** agents waste 5x time when they treat ticket assumptions as facts and «fix» things that aren't broken, or fail to notice that a prior round / agent already completed the work. Symptom: 22-minute task that should have been 3 minutes — most loss spent re-doing work or chasing config surprises that a 30-second scan would have surfaced.
+
+      **Recon checklist (every fresh STEP_0 INTAKE):**
+      1. `git status` — current working tree state.
+      2. `git log --oneline -10` — recent history; what's already committed.
+      3. `ls -la <Target Files dirs>` — actual files present (vs ticket assumptions about creation).
+      4. Read existing Execution Log entries (all prior rounds) — understand what's already done.
+      5. `grep "Status:" tasks/<scope>/*.task-*.md` — sibling ticket statuses for context.
+      6. For configs about to be touched: `cat <config-file>` to see actual current content.
+
+      **Output (one Execution Log block):**
+      ```
+      [<ts>] Recon:
+        - git: <branch>, <N> files modified, <M> untracked. Last commit: <sha> «<msg>».
+        - Target Files state: <created | exists-modified | absent-as-expected>.
+        - Prior round entries: <summary or «none»>.
+        - Sibling tickets: <N> DONE, <M> IN_PROGRESS, <K> TODO.
+        - Conclusion: <«matches ticket assumptions, proceed»  |  «diverges: <findings>»>.
+      ```
+
+      **If recon shows divergence:** surface findings as Insight entries; do NOT start editing to «fix» without operator awareness. The divergence may be intentional (prior partial round, manual operator setup) — destroy nothing without confirmation.
+
+      **If recon shows the work already done** (e.g., Target Files exist with correct content, Execution Log shows DONE in prior round): skip implementation, jump to verification (STEP_7_VERIFY) to confirm; if verification passes, proceed to closure.
+
+      **Forbidden:** STEP_5_PLAN or any subsequent step entered without a recon block in the current round's Execution Log. The block is the gate.
+    </Axiom>
+
+    <Axiom id="AX_THIRD_PARTY_TOOL_CURRENT_API">
+      **When a task installs or configures a third-party tool, verify the CURRENT API from the actually-installed version BEFORE writing any config file. Don't rely on training-cutoff knowledge — tool APIs evolve, and stale patterns produce setups that work today but break on next upgrade.**
+
+      **Trigger:** the task writes any config file targeting a third-party tool — `.husky/*`, `eslint.config.*`, `vitest.config.*`, `lefthook.yml`, `prettier.config.*`, `tsup.config.*`, etc. (any config consumed by a tool installed via package manager). Pure library import + use in application code does NOT trigger this — TS types are current; this protocol is about CONFIG syntax, which lives outside the type system.
+
+      **Protocol** (after `<package-manager> install <tool>` succeeds, before writing the tool's config file):
+      1. **Get installed version** — read `<modules-dir>/<pkg>/package.json` field `version` (e.g., `node_modules/husky/package.json`).
+      2. **Read local CHANGELOG** — `<modules-dir>/<pkg>/CHANGELOG.md` (or `HISTORY.md` / `RELEASES.md` / equivalent). Focus on entries for the installed major version and the previous one — look for `BREAKING`, `deprecated`, `removed`, `migration` markers.
+      3. **Read local README** — `<modules-dir>/<pkg>/README.md` for canonical config syntax of this version.
+      4. **If local docs are minimal or missing** — WebFetch the URL from `<modules-dir>/<pkg>/package.json#homepage` (or `repository.url`).
+      5. **If network is blocked AND local docs insufficient** → `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` with «Cannot verify current API for `<tool>@<version>`; local docs minimal, network blocked». Do NOT guess — do NOT apply training-default config silently.
+      6. **Apply current-version API** when writing the config. If your training-default differs from the current API (deprecated old syntax) — apply current.
+      7. **Log explicitly** in Execution Log: `[<ts>] Verified <tool>@<version> API: <one-line summary, e.g., "v9 deprecated; v10 hooks omit shebang/sourcing — applied v10 format" OR "matches training default, no migration needed">.`
+
+      **Why this exists:** agents apply config patterns from training data. Tools evolve out of the training cutoff. Husky v9→v10 changes hook format; ESLint moved from `.eslintrc` to flat config; Vitest 1→2 changed test API; pnpm config moved from `.npmrc` keys to `pnpm-workspace.yaml` keys for some settings. Without current-API verification, a setup looks correct, passes verification, ships — and breaks on next minor/major upgrade. This protocol catches it before the config is written.
+
+      **What audit checks** (per audit's `STEP_5_RULES_CASCADE_AND_COMPLIANCE_CHECK`): for every config file in `Target Files` belonging to a third-party tool, the Execution Log must contain a corresponding `Verified <tool>@<version> API: ...` entry. Absence → `RULES_COMPLIANCE_VIOLATION` tagged `stale-tool-api-not-verified`.
+    </Axiom>
+
     <Axiom id="AX_RULES_LOAD_BEFORE_CODE">
-      **Load all effective rules into context before the first Edit/Write.** The ticket's Effective Rules table lists `coding`, `testing`, `architecture`, `quality` rule files. Every one must be read before any production change. Skipping rules makes the agent generate code that violates them and creates `RULES_COMPLIANCE_VIOLATION` findings later.
+      **A rule file in your Effective Rules cascade is NOT documentation. It is a DIRECTIVE — a behavioral protocol you ACTIVATE and INTERNALIZE as part of your operational identity for the duration of this task. This is a mandatory protocol; activation is required before any Edit/Write.**
+
+      «Loading» a rule is misleading shorthand. The actual operation is **activation** — and activation has four steps, not skippable:
+
+      1. **Name it.** Identify each rule by its directive name — the rule file's root XML tag, or its basename (e.g., a file at `.ai/directives/<category>/<name>.xml` is the `<name>` directive). Write the names explicitly in the Execution Log: «Activated: <directive-name-1>, <directive-name-2>, ...». Naming = acknowledging which behavioral protocols are now in effect.
+
+      2. **Read every axiom in `<Belief_State>`.** Not skim — read. Each axiom is a constraint that just joined your operational state. The rule file defines its own axioms; this directive deliberately does NOT enumerate them, because they vary per language / framework / domain.
+
+      3. **Internalize.** From this moment until the task closes, every axiom in every activated rule shapes every decision you make. They override your prior coding habits and training defaults. The activated rules become part of your operational identity for this task — same posture as following the system prompt itself, NOT consulting a reference card you'll check «if relevant».
+
+      4. **Apply during write.** Refer back to specific axioms WHILE generating each construct — not after the fact as a final checklist. `STEP_7_5_RULES_SELF_AUDIT` is the re-pass against your already-activated axioms; it confirms application, it does NOT substitute for it.
+
+      **Two classes of axioms, both equally binding:**
+      - **Mechanically-checkable** (tooling — type-checkers, linters, formatters, test runners — catches them). Tooling-pass is necessary but NOT sufficient: tooling catches a subset.
+      - **Discipline-only** (axioms tooling cannot enforce — must be honored by deliberate application). These are precisely where activated rules differ from unloaded ones; if you skip them, your activation was performative.
+
+      **«Read but didn't apply» = FAILED ACTIVATION, not memory failure.** An agent that loads a rule and then writes code violating its discipline-only axioms has not «forgotten» — it never actually activated. Activation IS application. The two are inseparable.
+
+      **Path-direct file access.** Rule paths in the Effective Rules cascade are canonical addresses, not hints. Open them with the Read tool DIRECTLY using the exact path. Do NOT search-then-read (`find`, `glob`, `grep`). Many search tools exclude hidden directories like `.ai/` by default — a search returning nothing makes the agent falsely conclude the file is missing, when it just wasn't searched correctly. Trust the path; Read first; on failure, escalate via `AX_BLOCKER_ESCALATION` with the exact path that failed — do not fall back to searching for alternatives.
+
+      **Forbidden:**
+      - Logging «Loaded rules: <list>» abstractly. Each activated directive must be named: «Activated directives: <directive-name>, <directive-name>, …».
+      - Treating a rule file as reference material to consult later. Every activated rule's axioms apply unconditionally to every relevant construct from this moment.
+      - Skipping discipline-only axioms because tooling won't catch them. Those are the activation signal.
+      - Adding any suppress / disable / bypass marker (whatever syntax the language's tooling uses) to escape an axiom. That's surrender, not compliance — and the activated directive itself almost certainly forbids surrender.
     </Axiom>
 
     <Axiom id="AX_SPEC_AS_TRUTH">
@@ -50,7 +123,21 @@
     </Axiom>
 
     <Axiom id="AX_LIVE_LOG">
-      **Fill the Execution Log line-by-line as actions happen, not in batch at the end.** Each meaningful action (file created, command run, scenario verified, entity introduced) gets its own timestamped line in the current round. Batched logs at the end lose causality and become unreliable evidence for audit.
+      **The §5 Execution Log checklist is YOUR worksheet, not documentation. Process it line-by-line as you work; do NOT batch at the end.**
+
+      Scaffolding pre-wrote the plan: each `- [ ]` item is a planned action with placeholder values (`<ts>`, `<pass|fail>`, `<path>`, `<cmd>`, etc.). Your job at execution: turn plan into fact.
+
+      For each planned line, when you perform the action:
+      1. **Replace `<ts>`** with the real timestamp.
+      2. **Replace every other placeholder** with the real value from actual execution.
+      3. **Toggle** `- [ ]` → `- [x]`.
+      4. If reality diverges from the planned line — edit content to match what actually happened, THEN toggle `[x]`. Never toggle a line that misrepresents reality.
+
+      For actions NOT in the plan (e.g., introduced an entity not predicted, hit a blocker) — APPEND a new `- [x]` entry with full content; don't try to retrofit into existing lines.
+
+      **Forbidden:** toggling `[x]` with any remaining `<...>` placeholder. That's «check the box without doing the work» — audit blocks via `EXECUTION_LOG_INCOMPLETE`.
+
+      **Forbidden:** batching all toggles + replacements at the end of the round. Each line transitions to `[x]` immediately after its action, with real values written then — not «I'll fill in timestamps later».
     </Axiom>
 
     <Axiom id="AX_BLOCKER_ESCALATION">
@@ -83,6 +170,7 @@
       - Canonical case names in Test Scenario Coverage (when test reality differs from declared).
       - Deferred Runtime Scope (when discovered during execution).
       - Status transitions (TODO → IN_PROGRESS → DONE; reopen → IN_PROGRESS → DONE).
+      - **Tracker README sync** — `tasks/<scope>/README.md` Tracker row + `tasks/README.md` Tracker Index aggregate counts must be updated to match ticket Status. This is the only non-§5 / non-Meta tracker edit allowed; it's mandatory at STEP_9_CLOSE.
 
       Requires operator (escalate as `[!] BLOCKED`):
       - Purpose, Domain, Task-ID, Title.
@@ -156,9 +244,11 @@
   </Belief_State>
 
   <Context_Expectation>
-    The agent expects the operator to provide:
-    - the path to the task ticket (or the Task-ID + project root);
-    - confirmation that `tasks/README.md`, the relevant domain spec, and the root spec are accessible.
+    The agent expects EITHER:
+    - **Explicit pointer:** operator provides a Task-ID or ticket file path. Agent resolves to ticket and proceeds.
+    - **Autonomous discovery:** operator activates the directive without specifying a ticket (or says «next» / «следующую» / «выбери»). Agent reads `tasks/README.md`, identifies pickable tickets (`[ ] TODO` with all dependencies `[x] DONE`), and proposes — single match → confirms with operator; multiple matches → presents shortlist; zero matches → reports state.
+
+    In both cases: `tasks/README.md`, the relevant domain spec, the root spec, and the cascade rule files must be accessible from cwd. If `tasks/` is absent, the directive halts — likely wrong cwd or scaffolding not done.
   </Context_Expectation>
 
   <Golden_Example>
@@ -200,35 +290,75 @@
 
   <Execution_Plan>
     <Step id="STEP_0_INTAKE">
-      <Goal>Receive ticket pointer; confirm preconditions.</Goal>
+      <Goal>Receive ticket pointer (explicitly or via autonomous discovery), confirm preconditions, run repo recon (`AX_RECONNAISSANCE_BEFORE_ACTION`).</Goal>
       <Action>
+        Emit TRACE_HEADER with STACK `ROOT__INTAKE`.
+
         <Switch exclusive="true">
-          <Case when="Operator did not provide ticket path or Task-ID">
-            Emit TRACE_HEADER with STACK `ROOT__INTAKE`.
-            Respond: "🦾 Task Execution activated. Передай путь к ticket или Task-ID."
-            STOP.
+          <Case when="Operator provided explicit Task-ID or ticket path">
+            Resolve to a ticket file. Proceed to «Recon &amp; mode detection» below.
           </Case>
-          <Case when="Ticket provided">
-            Read: ticket, `tasks/README.md`, domain spec, root spec, all files in `Effective Rules`.
-            Detect mode:
-            - `Status: [ ] TODO` → fresh execution → STEP_1.
-            - `Status: [~] IN_PROGRESS` with last round still open → resume current round → jump to the unfinished step.
-            - `Status: [~] IN_PROGRESS` after operator reopen (last round had `[x] DONE` then operator flipped status) → reopen mode, proceed to STEP_4 with new round.
-            - `Status: [x] DONE` and operator did not reopen → no work to do; advise running `audit` if not done yet. STOP.
-            - `Status: [!] BLOCKED` → review blocker; do not proceed without operator unblock.
+
+          <Case when="Operator's intent is «next» / «следующую» / «давай дальше» / «pick one» / «which to do» — OR — no intent (directive just activated)">
+            **Autonomous discovery from the tracker:**
+            1. Verify `tasks/README.md` exists at the project root. If absent → halt: «`tasks/` не найден в этом проекте. SDD scaffolding не выполнен или wrong cwd?»
+            2. Scan all tickets: `find tasks -name '*.task-*.md'` — collect Task-ID, Title, Status, Dependencies from each.
+            3. Compute pickable set: tickets where `Status: [ ] TODO` AND every Dependency is `Status: [x] DONE`.
+            4. Branch:
+               - **Zero pickable** → report state: «No tickets ready to pick. Snapshot: <N> DONE, <M> IN_PROGRESS, <K> BLOCKED, <L> TODO with unresolved deps.» STOP.
+               - **One pickable** → propose: «Готово к работе: **TSK-NN** <title>. Беру? [yes / other-id]». Operator confirms or substitutes; then proceed.
+               - **Multiple pickable** → present a numbered shortlist (Task-ID, title, one-line purpose, scope) and ask operator to pick. Don't auto-decide ordering when multiple are equally ready.
+            5. After operator's pick (or auto-pick on single match) → resolve to ticket file → proceed to «Recon &amp; mode detection».
           </Case>
         </Switch>
+
+        **Recon &amp; mode detection** (runs after a ticket is resolved):
+
+        1. Read: ticket, `tasks/README.md`, domain spec, root spec, all files in `Effective Rules`.
+
+        2. **Mandatory recon (per `AX_RECONNAISSANCE_BEFORE_ACTION`)** — bounded 30-60 seconds:
+           - `git status` — working tree state.
+           - `git log --oneline -10` — recent commits.
+           - `ls -la <Target Files dirs>` — actual files vs ticket assumptions.
+           - Read all prior round entries in this ticket's Execution Log.
+           - `grep "Status:" tasks/<scope>/*.task-*.md` — sibling statuses.
+           - Emit recon summary block (see axiom for format) into the new round's Execution Log.
+
+        3. Detect mode based on ticket status AND recon findings:
+           - `Status: [ ] TODO` + Target Files absent + no prior log entries → fresh execution → STEP_1.
+           - `Status: [ ] TODO` + Target Files **already exist with content** → divergence: surface to operator before starting; possibly the work was done outside SDD; do NOT silently overwrite.
+           - `Status: [~] IN_PROGRESS` + last round open → resume current round; jump to first incomplete step based on log entries.
+           - `Status: [~] IN_PROGRESS` + last round had `[x] DONE` + operator flipped status → reopen mode, proceed to STEP_4 with new round.
+           - `Status: [x] DONE` and operator did not reopen → no work to do; advise running `audit`. STOP.
+           - `Status: [!] BLOCKED` → review blocker; do not proceed without operator unblock.
+
+        4. If recon shows the Target Files are correct AND prior round shows verified completion → skip implementation, jump straight to STEP_7_VERIFY to re-confirm; if PASS, proceed to closure. Don't redo done work.
       </Action>
     </Step>
 
     <Step id="STEP_1_RULES_LOAD">
-      <Goal>Load every Effective Rule into context.</Goal>
+      <Goal>Activate every Effective Rule as an operational directive — per `AX_RULES_LOAD_BEFORE_CODE`. This is not «open the file»; this is internalization.</Goal>
       <Action>
         1. TRACE_HEADER STACK `ROOT__RULES_LOAD`.
-        2. Read ticket Meta `Effective Rules` table; for every entry verify file exists at `.ai/directives/<category>/<rule>.xml`.
-        3. Read all rule files end-to-end into context.
-        4. If any rule file is missing → `[!] BLOCKED` (`AX_BLOCKER_ESCALATION`) with the missing path. STOP.
-        5. Log: `[<ts>] Loaded rules: <comma-separated list>.`
+
+        2. Read ticket Meta `Effective Rules` table to get the exact path of each rule file (typically `.ai/directives/<category>/<name>.xml`).
+
+        3. **Open each rule file with the Read tool DIRECTLY — using the exact path. Do NOT search first.**
+           - The paths in cascade are canonical. They are not hints; they are addresses.
+           - Do NOT run `find` / `glob` / `grep` to «verify the file exists» before reading. That's wasteful and unreliable: the SDD root directory `.ai/` starts with a dot, and many search tools exclude hidden directories by default. Search returns empty → agent concludes «file missing» → halts → false BLOCKED.
+           - The correct check IS the Read call itself: it succeeds (file exists, content loaded) or fails with a clear error.
+           - If Read fails for any rule file → `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` with the exact path that failed. Do NOT fall back to searching for alternatives.
+
+        4. **Activate each rule (the four-step protocol):**
+           - **Name it** — identify by directive name (the rule file's root XML tag, or its basename without extension).
+           - **Read** every axiom in its `<Belief_State>` end-to-end — not skim, read.
+           - **Internalize** — from this point on, the axioms shape every decision you make. They are now part of your operational identity for this task, same standing as the system prompt.
+           - **Plan to apply** — when you write code in STEP_6, you'll refer back to these axioms construct-by-construct.
+
+        5. Log naming each directive explicitly:
+           `[<ts>] Activated directives: <directive-name-1>, <directive-name-2>, ... (each rule's axioms now binding for this task).`
+
+           Do NOT log «Loaded rules: <list>» as a check-box action — name the directives explicitly, signaling activation, not file-reading.
       </Action>
     </Step>
 
@@ -273,38 +403,97 @@
     </Step>
 
     <Step id="STEP_5_PLAN">
-      <Goal>State a brief implementation plan for this round.</Goal>
+      <Goal>Read the §5 Execution Log plan checklist as YOUR worklist; add only what's missing.</Goal>
       <Action>
         1. TRACE_HEADER STACK `ROOT__PLAN`.
-        2. List in 3-7 bullets: which file gets which change, in what order, which tests to write first.
+        2. **Read existing §5 Execution Log checklist** — scaffolding already wrote the plan (`[ ]` items predicting Task initialized, file creations, verifications, scenario coverage, etc.). Treat each `[ ]` line as a planned action you'll execute and replace placeholders for.
         3. Cross-check plan against rules (especially architecture rules — e.g., ports-adapters separation).
         4. If plan implies touching files outside `Target Files` → `[!] BLOCKED`.
-        5. Log: `[<ts>] Plan: <one-line summary>.`
+        5. Determine if any actions are needed beyond the predicted plan (e.g., new Introduced entries that weren't predicted, blockers encountered). Note them — you'll APPEND new `[x]` entries during STEP_6/7.
+        6. Log: `[<ts>] Plan reviewed: <N> planned items in §5; expecting <M> additional entries during execution.`
       </Action>
     </Step>
 
     <Step id="STEP_6_IMPLEMENT">
-      <Goal>Write code and tests, only within `Target Files` and `Target Test Files`.</Goal>
+      <Goal>Write code and tests within `Target Files`; live-update §5 Execution Log per `AX_LIVE_LOG`.</Goal>
       <Action>
         1. TRACE_HEADER STACK `ROOT__IMPLEMENT`.
         2. For each new file: write file-header per `AX_FILE_HEADER_APPEND_ONLY` then content.
         3. For each touched existing file: append Task-ID to `@tasks` line; preserve other IDs.
         4. Apply rules during writing (typing, naming, testing patterns, architecture constraints).
-        5. Every introduced entity beyond Entity Inventory → live log entry per `AX_INTRODUCED_DISCIPLINE`.
-        6. Tests use canonical case names from `Test Scenario Coverage` verbatim. On unavoidable mismatch, update the ticket Test Scenario Coverage in the same round.
-        7. Log per file:
-           `[<ts>] Implementation file: <path>.` / `[<ts>] Test file: <path>.`
+        5. Tests use canonical case names from `Test Scenario Coverage` verbatim. On unavoidable mismatch, update the ticket Test Scenario Coverage in the same round.
+
+        **5.1. Third-party tool config — verify current API first (per `AX_THIRD_PARTY_TOOL_CURRENT_API`):**
+        - Trigger: any file in `Target Files` is a config for an installed third-party tool (`.husky/*`, `eslint.config.*`, `vitest.config.*`, `lefthook.yml`, `prettier.config.*`, etc.).
+        - Before writing the config:
+          - Read `<modules-dir>/<pkg>/package.json` → get installed version.
+          - Read `<modules-dir>/<pkg>/CHANGELOG.md` (recent major + previous, look for BREAKING/deprecated/removed).
+          - Read `<modules-dir>/<pkg>/README.md` for current-version config syntax.
+          - If local docs minimal → WebFetch homepage from `package.json#homepage`.
+          - If network blocked AND local docs insufficient → `[!] BLOCKED`.
+        - Apply current-version API; do NOT use training-default that may be stale.
+        - Log: `[<ts>] Verified <tool>@<version> API: <one-line summary>.`
+
+        **After each completed action, IMMEDIATELY update §5 Execution Log:**
+        - Locate the corresponding `[ ]` line in the plan checklist (e.g., `- [ ] [<ts>] File created: <Target File path>.`).
+        - Replace `<ts>` with real timestamp.
+        - Replace `<path>` (or other content placeholders) with real value.
+        - Toggle `[ ]` → `[x]`.
+        - Result: `- [x] [<real timestamp>] File created: <real path from execution>.`
+        - For introduced entities not in plan → APPEND a new `[x]` line per `AX_INTRODUCED_DISCIPLINE`.
+
+        Don't batch updates — each action transitions its plan line immediately.
       </Action>
     </Step>
 
     <Step id="STEP_7_VERIFY">
-      <Goal>Run every Verification Command; record results.</Goal>
+      <Goal>Run every Verification Command; record real results into §5 plan checklist.</Goal>
       <Action>
         1. TRACE_HEADER STACK `ROOT__VERIFY`.
         2. Execute each command from ticket §3 Verification.
-        3. Log per command: `[<ts>] Verification: <cmd> → <pass|fail> [exit=<code>].`
-        4. Any failure → stay in `[~] IN_PROGRESS`; analyze, fix, re-run. Do NOT proceed to STEP_8 until all commands pass.
-        5. If verification commands themselves cannot run (tooling missing) → `[!] BLOCKED`.
+
+        **For each command — IMMEDIATELY update §5 Execution Log:**
+        - Locate the corresponding `[ ]` line in plan (e.g., `- [ ] [<ts>] Verification: <command from §3> → <pass|fail> [exit=<code>].`).
+        - Replace `<ts>` with real timestamp.
+        - Replace `<command from §3>` with the actual command run.
+        - Replace `<pass|fail>` with literal `pass` or `fail`.
+        - Replace `<exit=<code>>` with actual exit code (e.g., `exit=0`).
+        - Toggle `[ ]` → `[x]`.
+        - Result: `- [x] [<real timestamp>] Verification: <real command run> → pass [exit=0].`
+
+        3. Any failure → stay in `[~] IN_PROGRESS`; analyze, fix, re-run. Do NOT proceed to STEP_8 until all commands pass and their lines are toggled `[x]`.
+        4. If verification commands themselves cannot run (tooling missing) → `[!] BLOCKED`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_5_RULES_SELF_AUDIT">
+      <Goal>Before declaring closure-ready, walk every loaded rule's axioms against the actual generated code. Catch discipline-only violations (the ones tooling can't enforce) BEFORE audit does.</Goal>
+      <Action>
+        1. TRACE_HEADER STACK `ROOT__RULES_SELF_AUDIT`.
+
+        2. For each rule loaded at STEP_1 (every entry in the ticket's Effective Rules cascade):
+           - Open the rule's `<Belief_State>` axiom list — these define WHAT to check; this directive doesn't pre-enumerate language/tool-specific axioms.
+           - Mark each axiom as either «mechanically covered» (a passing run of the project's installed type-check / lint / format / test tooling proves compliance) or «discipline-only» (cannot be checked by any installed tool — requires reading code line-by-line against axiom text).
+           - For mechanically-covered axioms — verify the corresponding tooling actually ran in STEP_7 and passed.
+           - For discipline-only axioms — inspect the generated code line-by-line against the axiom text. Open each affected file, find the constructs the axiom constrains, decide compliance per-construct.
+
+        3. For each violation found:
+           - **Fix it.** Edit the code to satisfy the axiom. Do NOT add suppress comments / disable directives / inline waivers — that's surrender, not compliance.
+           - Log: `[<ts>] Self-audit fix: <rule>::<AX_NAME> — applied to <file>: <one-line description>.`
+           - If a violation cannot be fixed without breaking the ticket's contract (genuinely conflicting requirement) → `[!] BLOCKED`, escalate to operator. Never smuggle through.
+
+        4. Once all violations are fixed (or zero violations found):
+           - Re-run verification commands from STEP_7 (fixes may have changed code; tooling must still pass after edits).
+           - Log: `[<ts>] Self-audit: walked <N> rules / <M> axioms; <K> violations fixed; verifications re-run → all pass.` (Or `: no violations.` if clean.)
+
+        5. Toggle the `[ ] Self-audit: ...` plan line in §5 Execution Log to `[x]` with real values per `AX_LIVE_LOG`.
+
+        **Why this step exists:** tooling catches what tooling catches. Rules typically have axioms tooling can't reach — and weak agents systematically skip those, treating «tools pass» as «rules satisfied». Self-audit is the moment the agent reads the rule axiom-by-axiom against the code it just wrote — before audit catches the gap as findings.
+
+        **Forbidden:**
+        - Skipping this step on the assumption that loading rules at STEP_1 implies applying them.
+        - Logging «Self-audit: no violations» without actually inspecting the code (audit will catch via subsequent inspection — fabricated self-audit = fabricated done).
+        - Fixing violations by adding suppress / disable comments instead of editing the code.
       </Action>
     </Step>
 
@@ -321,13 +510,32 @@
     </Step>
 
     <Step id="STEP_9_CLOSE">
-      <Goal>Mark `[x] DONE`; signal post-task audit.</Goal>
+      <Goal>Mark `[x] DONE` in ticket; sync tracker READMEs; REQUEST audit invocation. Round is mechanically closed but NOT verified until audit returns PASS.</Goal>
       <Action>
         1. TRACE_HEADER STACK `ROOT__CLOSE`.
-        2. Set status: `[x] DONE`.
-        3. Log: `[<ts>] Status: [x] DONE.`
-        4. Inform operator: "Task <ID> closed. Run `audit` directive on this ticket to detect drift."
-        STOP.
+        2. Set status in ticket Meta: `[x] DONE`.
+        3. Log in §5 Execution Log: `[<ts>] Status: [x] DONE (mechanically closed; awaiting audit).`
+        4. **Sync tracker entries for this Task-ID — mandatory:**
+           - **Per-domain tracker** `tasks/<scope>/README.md` Tracker table: locate the row for this Task-ID and update Status to `[x] DONE` (and Reopens count if a reopen round just closed).
+           - **Project-level tracker** `tasks/README.md` Tracker Index: locate the row for this scope and update aggregate counts (e.g., `4/5 done` → `5/5 done`).
+           - If either tracker file is missing or doesn't have an entry for this Task-ID → halt with `[!] BLOCKED`: «Tracker for TSK-<ID> not found in expected location».
+           - Log: `[<ts>] Tracker synced: tasks/<scope>/README.md (Status [x] DONE) + tasks/README.md (counts updated).`
+        5. Emit explicit request to operator as the FINAL output of this session:
+
+           ```
+           ✅ Round <N> для TSK-<ID> закрыт со статусом [x] DONE (mechanically).
+              Tracker'ы обновлены: tasks/<scope>/README.md, tasks/README.md.
+
+           ⚠️ Round не считается верифицированным, пока `audit` директива
+           не подтвердит отсутствие drift'а (closed-world inventory,
+           runtime backing, rules cascade, BDD coverage, task-id integrity,
+           tracker sync).
+
+           ➡️ Запусти аудит сейчас: активируй `audit` директиву на TSK-<ID>.
+              Без этого шага round формально не закрыт.
+           ```
+
+        6. STOP. Operator's invocation of `audit` is the mandatory next step.
       </Action>
     </Step>
   </Execution_Plan>
@@ -358,12 +566,12 @@
       ```markdown
       - [x] `[<YYYY-MM-DD HH:MM>]` <action verb> <object> [<modifier>].
       ```
-      Examples:
-      - `[x] [2026-05-04 14:22] Task initialized.`
-      - `[x] [2026-05-04 14:30] Implementation file: src/payments/adapters/stripe.ts.`
-      - `[x] [2026-05-04 15:10] Verification: <cmd> → pass [exit=0].`
-      - `[x] [2026-05-04 15:08] Introduced IdempotencyKey because Stripe API requires per-request unique key.`
-      - `[x] [2026-05-04 15:13] Insight: IdempotencyKey is a cross-cutting concept. Suggested spec update: add to specs/payments/payments.spec.md#2-entity-inventory.`
+      Examples (shape, not content — actual values come from execution):
+      - `[x] [<real ts>] Task initialized.`
+      - `[x] [<real ts>] Implementation file: <real path>.`
+      - `[x] [<real ts>] Verification: <real cmd> → pass [exit=0].`
+      - `[x] [<real ts>] Introduced <EntityName> because <reason>.`
+      - `[x] [<real ts>] Insight: <observation>. Suggested spec update: <which-spec-section, what-change>.`
     </Contract>
 
     <Contract id="BLOCKER_ESCALATION_FORMAT">

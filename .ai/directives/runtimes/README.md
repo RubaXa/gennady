@@ -6,19 +6,24 @@ Runtime environment setup and dependency management rules for different runtime 
 
 ## Currently available
 
-- `nodejs-rules.xml` — Node.js runtime: npm package management, `.nvmrc` alignment, module system consistency (ESM/CommonJS), project structure, and reproducible builds.
+- `nodejs-npm-rules.xml` — Node.js runtime with **npm** as package manager: `.nvmrc` alignment, module system consistency (ESM/CommonJS), project structure, reproducible builds via `package-lock.json`.
 
-## Planned
+## Planned (point-in-choice rule files per package manager)
 
-- `python-rules.xml` — Python runtime: venv/poetry, version pinning, dependency management.
-- `docker-rules.xml` — Container runtime: Dockerfile structure, layer optimization, base image selection.
+- `nodejs-pnpm-rules.xml` — same Node.js layer, but `pnpm` workspace + `pnpm-lock.yaml`.
+- `nodejs-bun-rules.xml` — same Node.js layer, but `bun` runtime + `bun.lockb`.
+- `python-uv-rules.xml` — Python with `uv`.
+- `docker-rules.xml` — Container runtime: Dockerfile structure, layers, base images.
+
+## Why per-package-manager files
+
+Rule files are **point-in-choice authoritative** — one file = one stack philosophy. `infra-discovery` picks the package manager (npm / pnpm / bun) and activates the matching rule file. This avoids conditional rules ("if npm: do X; if pnpm: do Y") that bloat reading and obscure intent.
 
 ## How they differ from coding rules
 
-**Coding rules** (e.g., `typescript-rules.xml`) — how to WRITE code in a language: naming, error handling, comment style, JSDoc structure.
+**Coding rules** (e.g., `typescript-rules.xml`) — how to WRITE code in a language: naming, error handling, comment style.
 
-**Runtime rules** (e.g., `nodejs-rules.xml`) — how to SET UP the runtime environment and manage its dependencies: version constraints, package manager discipline, reproducible installs.
+**Runtime rules** (e.g., `nodejs-npm-rules.xml`) — how to SET UP the runtime environment and manage dependencies: version constraints, package manager discipline, reproducible installs.
 
-Both are necessary:
-- A TypeScript project needs typescript-rules.xml (syntax, patterns)
-- AND nodejs-rules.xml (Node version, npm setup, module system)
+Both are necessary in tandem:
+- A TypeScript+npm project needs typescript-rules.xml (syntax, patterns) AND nodejs-npm-rules.xml (Node version, npm setup, module system).

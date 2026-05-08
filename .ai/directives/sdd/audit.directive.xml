@@ -1,4 +1,4 @@
-<Audit keywords="audit, drift-detection, closed-world-fidelity, completeness, runtime-backing, rules-cascade, rules-compliance, task-id-integrity, stale-after-pivot, insight-backflow, sdd-phase-5" type="directive" ver="1.3">
+<Audit keywords="audit, drift-detection, closed-world-fidelity, completeness, runtime-backing, rules-cascade, rule-activation-overrides, rules-compliance, task-id-integrity, stale-after-pivot, insight-backflow, sdd-phase-5" type="directive" ver="1.7">
   <Directive_Context>
     <Mission>
       Verify alignment between spec, task ticket, and actual code after task execution.
@@ -107,16 +107,23 @@
     </Axiom>
 
     <Axiom id="AX_RULES_COMPLIANCE_AGAINST_LOADED_RULES">
-      **Compliance is checked only against the ticket's Effective Rules.** Do not invent "best practices" out of thin air. The Effective Rules table (project ∪ domain ∪ task) defines the exact set; findings appeal to specific `AX_*` IDs or sections within those rule files. Categories covered: `coding`, `testing`, `architecture`, `quality`.
+      **Compliance is checked only against the ticket's Effective Rules, honoring operator overrides.** Do not invent "best practices" out of thin air. The Effective Rules table (`infra` ∪ `project` ∪ `domain` ∪ `task`, infra tier when present) defines the exact set; findings appeal to specific `AX_*` IDs or sections within those rule files. Categories covered: `coding`, `testing`, `architecture`, `quality`, `vcs`, `runtimes`.
+
+      **Decision Log overrides take precedence.** Before flagging a violation, audit checks whether the relevant axiom was adapted or overridden during activation (Decision Log entries with `Adapts:` or `Overrides:` references in root spec §6 / infra spec §6 / domain spec §7). If the operator explicitly accepted divergence, audit does NOT raise a finding for that axiom — it's expected behavior, not drift.
+
+      Adapted axioms: audit checks the ADAPTED form (e.g., if "binary severity" was adapted to "warn allowed during migration until 2026-06-01", audit treats `'warn'` as compliant before that date and flags after).
+
+      Overridden axioms: audit skips the axiom entirely for this project.
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      **The ticket's Effective Rules must equal the recomputed cascade.** Audit recomputes `union(project ∪ domain ∪ task)` from sources of truth:
-      - Project: `tasks/README.md` Cascade Table (project row);
-      - Domain: `tasks/README.md` Cascade Table (matching domain row) + domain spec §9 Domain Rules Additions;
+      **The ticket's Effective Rules must equal the recomputed cascade.** Audit recomputes `union(infra ∪ project ∪ domain ∪ task)` (infra tier only when infrastructure track present) from sources of truth:
+      - Infra: `tasks/README.md` Cascade Table (`infra` row) + `specs/_infrastructure/_infrastructure.spec.md` §5 Effective Rules.
+      - Project: `tasks/README.md` Cascade Table (`project` row) + application root spec §4.5.
+      - Domain: `tasks/README.md` Cascade Table (matching domain row) + domain spec §9 Domain Rules Additions.
       - Task: ticket Meta `Sources: ... task additions: <list>` block.
 
-      If the recomputed set does not match the ticket's Effective Rules table — `RULES_CASCADE_MISMATCH` (severity `MAJOR`, confidence HIGH if mechanically detectable). This catches stale tickets generated before a cascade change.
+      If the recomputed set does not match the ticket's Effective Rules table — `RULES_CASCADE_MISMATCH` (severity `MAJOR`, confidence HIGH if mechanically detectable). Catches stale tickets generated before a cascade change.
     </Axiom>
 
     <Axiom id="AX_TASK_ID_INTEGRITY">
@@ -332,10 +339,11 @@
         1. TRACE_HEADER with STACK `ROOT__RULES_CASCADE_AND_COMPLIANCE_CHECK`.
 
         2. **Cascade verification** (`AX_RULES_CASCADE_VERIFICATION`):
-           - Read project row of the Cascade Table from `tasks/README.md` Stack Summary.
+           - Read infra row (when infra track present) from the Cascade Table; cross-check with infra spec §5 Effective Rules.
+           - Read project row (when application track present) from the Cascade Table; cross-check with root spec §4.5.
            - Read matching domain row from the same Cascade Table; cross-check with domain spec §9 Domain Rules Additions.
            - Read task additions from ticket Meta `Sources: ... task additions: <list>`.
-           - Recompute effective set as union(project ∪ domain ∪ task).
+           - Recompute effective set as union of present tiers: union(infra ∪ project ∪ domain ∪ task).
            - Compare against ticket Meta Effective Rules table.
            - Mismatch (missing rule, extra rule, wrong source attribution) → `RULES_CASCADE_MISMATCH` (`MAJOR`, confidence HIGH).
 
@@ -348,21 +356,34 @@
              - `MAJOR`: structural rules (file size, namespace, architectural pattern violation).
              - `MINOR`: stylistic.
 
-        4. Phase Progress: "Cascade: matched. Compliance: 1 BLOCKER, 2 MAJOR, 0 MINOR across 4 rule files."
+        4. **Third-party tool API verification** (per `AX_THIRD_PARTY_TOOL_CURRENT_API` in `task-execution`):
+           - Identify config files in `Target Files` that target a third-party tool (any config consumed by an installed package — `.husky/*`, `eslint.config.*`, `vitest.config.*`, `lefthook.yml`, `prettier.config.*`, framework-specific configs, etc.).
+           - For each such file, scan the current round's Execution Log for a corresponding entry: `Verified <tool>@<version> API: <summary>`.
+           - **No matching entry** → `RULES_COMPLIANCE_VIOLATION` (`MAJOR`) tagged `stale-tool-api-not-verified`. The agent wrote a config without verifying current-version API; setup may use training-default patterns that are deprecated or broken on the installed version.
+           - **Best-effort sanity check on entry content**: if the entry's summary contradicts what `<modules-dir>/<pkg>/CHANGELOG.md` actually says (e.g., agent claims «matches default» but CHANGELOG shows recent BREAKING changes for the installed major) — flag as `MINOR` for operator review. Don't be aggressive — this is a sniff test, not strict enforcement.
+
+        5. Phase Progress: "Cascade: matched. Compliance: 1 BLOCKER, 2 MAJOR, 0 MINOR across 4 rule files. Tool-API verifications: 3 of 3 present."
 
         STOP.
       </Action>
     </Step>
 
     <Step id="STEP_6_BDD_AND_LOG_CHECK">
-      <Goal>Verify BDD coverage, Execution Log completeness, and round-log immutability.</Goal>
+      <Goal>Verify BDD coverage, Execution Log completeness, round-log immutability, placeholder-leftover detection, and tracker README sync.</Goal>
       <Action>
         1. TRACE_HEADER with STACK `ROOT__BDD_AND_LOG_CHECK`.
         2. BDD: canonical case names in `Test Scenario Coverage` ↔ actual test case names in tests. Mismatch → `BDD_COVERAGE_MISMATCH`.
         3. Execution Log: verify completeness of all mandatory lines in the **current round** (per project-wide template in `tasks/README.md`). Any omission → `EXECUTION_LOG_INCOMPLETE` (`MAJOR` or `BLOCKER` depending on what is missing).
-        4. Round immutability: compare prior round sections against pre-round git ref. If any prior round entries were edited / reordered / deleted → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`, regression of round append-only discipline).
-        5. Reopens metadata: Meta `Reopens: <count>` must equal (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
-        6. Phase Progress.
+        4. **Placeholder leftover scan (fabricated done detection per `AX_EXECUTION_LOG_PLAN_VS_FACT`):** for every line in the current round marked `[x]`, scan for residual placeholder syntax: `<ts>`, `<pass|fail>`, `<exit=<code>>`, `<path>`, `<cmd>`, `<command>`, `<scenario>`, `<test-file>`, `<case>`, `<EntityName>`, `<Entity>`, `<reason>`, `<rule-name>`, or any `<...>` literal. Any such match → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done: checkbox toggled without value substitution».
+        5. Round immutability: compare prior round sections against pre-round git ref. If any prior round entries were edited / reordered / deleted → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`, regression of round append-only discipline).
+        6. Reopens metadata: Meta `Reopens: <count>` must equal (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
+        7. **Tracker sync check:**
+           - Read ticket's current Status from Meta (e.g., `[x] DONE`).
+           - Read corresponding row in per-domain tracker `tasks/<scope>/README.md` Tracker table for this Task-ID. Status must match.
+           - Read aggregate counts in `tasks/README.md` Tracker Index for this scope. Counts must match the actual sum of ticket statuses in the scope.
+           - For reopened tickets: tracker `Reopens` column must equal ticket Meta `Reopens: <count>`.
+           - Mismatches → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «tracker desync». Include both observed and expected values in the finding.
+        8. Phase Progress.
 
         STOP.
       </Action>
@@ -535,6 +556,8 @@
     ✅ REWARD: Execution Log verified for round completeness AND round immutability (prior rounds untouched).
     ✅ REWARD: Reopens metadata count matches actual round headers.
     ✅ REWARD: When root spec contains §7.1 Pivot Invalidation List, every listed item is verified; unaddressed items raised as `STALE_AFTER_PIVOT`.
+    ✅ REWARD: Decision Log overrides honored — adapted/overridden axioms not flagged as compliance violations.
+    ❌ PENALTY: Compliance finding raised against an axiom that was explicitly adapted or overridden by operator in Decision Log.
     ✅ REWARD: Every finding has a proposed remediation with type (code-fix / spec-update / ticket-update).
     ✅ REWARD: Insight backflow is collected and proposed as spec-update findings.
     ✅ REWARD: Audit report appended round-wise; prior round sections never overwritten.

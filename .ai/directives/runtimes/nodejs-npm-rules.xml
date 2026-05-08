@@ -1,4 +1,4 @@
-<NodeJSRuntimeRules keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file" type="runtime-rules" ver="1.0">
+<NodeJSNpmRules keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="runtime-rules" ver="1.7">
   <Directive_Context>
     <Mission>
       Define canonical rules for the Node.js runtime environment: package manager discipline, version alignment, module system, and project layout.
@@ -73,6 +73,38 @@
       **`.npmrc` is committed.** Credentials (auth tokens) are NOT committed — they go into environment variables or per-user `~/.npmrc`.
     </Axiom>
 
+    <Axiom id="AX_NPM_AGENT_SANDBOX_REGISTRY">
+      **Sandboxed agents force npm to use the public registry (`https://registry.npmjs.org/`) via inline POSIX env-prefix on every invocation. This bypasses any corporate `~/.npmrc` config that the sandbox cannot reach.**
+
+      **The problem:** operator's `~/.npmrc` typically points at a corporate registry / proxy reachable only from inside the corp network. A sandboxed agent doesn't have access to corp network — `npm install` hangs on connection timeout or fails with `ENOTFOUND` / `EAI_AGAIN`. Falling back behavior depends on configuration; usually it just fails.
+
+      **Solution — force public registry per command:**
+      ```bash
+      npm_config_registry=https://registry.npmjs.org/ npm install
+      npm_config_registry=https://registry.npmjs.org/ npm view <pkg>
+      npm_config_registry=https://registry.npmjs.org/ npm ci
+      ```
+
+      **Why inline prefix:**
+      - Bypasses corp `~/.npmrc` without modifying it (operator's local setup intact).
+      - No persistent state in shell env — nothing leaks between commands.
+      - Self-documenting in logs — operator sees exactly which registry was used.
+      - Sandbox-friendly — no dependency on inherited env from launch context.
+
+      **The mechanism:** npm config priority — CLI flags > `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX `VAR=value command` makes the variable visible to the spawned process only.
+
+      **When corp registry IS required** (project legitimately depends on private corp packages):
+      - This is an explicit deviation, declared at infra-discovery time and recorded in Decision Log.
+      - Agent must halt with `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` and let the operator handle install in their full-network shell, OR get explicit network-access grant for the sandbox.
+      - Auth for corp registry is out of scope of this rule — it's an environment concern outside agent's responsibility.
+
+      **Forbidden:**
+      - Running `npm install` without the env-prefix (would route through corp `~/.npmrc`, hang from sandbox).
+      - Modifying operator's `~/.npmrc` to point at public registry — that breaks operator's other (non-sandboxed) work.
+      - Committing project `.npmrc` with corp registry URL.
+      - Silent failure / partial install when registry is unreachable — operator must see explicit error, not a half-installed tree.
+    </Axiom>
+
     <Axiom id="AX_PROJECT_LAYOUT">
       **Standard directory layout for a Node.js project:**
       - `src/` — source files (JS or TS)
@@ -89,6 +121,34 @@
       **Why:** Scripts that call tools not present in `devDependencies` fail silently in fresh checkouts. Scripts invented "for completeness" create false expectations.
       **Rule:** Before adding a script, verify the tool exists in `devDependencies`. Do not add a `type-check`, `lint`, or `format` script unless the corresponding tool is installed.
       **Conventional names (use when the tool exists):** `build`, `dev`, `test`, `lint`, `format`, `type-check`, `clean`.
+    </Axiom>
+
+    <Axiom id="AX_AI_FIRST_SCRIPTS_ONE_SHOT">
+      **Every primary npm script must be a one-shot command that returns control deterministically. Watch / persistent / REPL modes live in separate `:watch` / `:dev` scripts.**
+
+      **Why:** AI agents (and CI runners) invoke scripts and wait for exit. A script that defaults to watch mode (e.g., `vitest`, `tsc --watch`, `next dev`) hangs the agent's session — output streams forever, no exit code, no continuation. The agent has no way to distinguish "still working" from "ready, just waiting for changes". This is the most common cause of stuck infra-setup tasks.
+
+      **Conventional split:**
+      | Script | Behavior | Used by |
+      |---|---|---|
+      | `test` | one-shot run, exits | agents, CI, smoke tests |
+      | `test:watch` | watch mode, persistent | human dev |
+      | `lint` | one-shot, exits | agents, CI, pre-commit |
+      | `lint:watch` | watch mode (rare) | human dev |
+      | `build` | one-shot, exits | agents, CI |
+      | `dev` | long-running dev server | human dev only |
+      | `start` | long-running prod server | deployment runtime |
+      | `start:check` | boot, smoke-ping, exit | agents (smoke-test deployment) |
+
+      **Forbidden patterns in `package.json` scripts:**
+      - `"test": "vitest"` (defaults to watch in TTY) — must be `"vitest run"`.
+      - `"test": "jest --watch"` — watch by default; must be `"jest"` for one-shot.
+      - `"test": "node --test --watch"` — must be `"node --test"`.
+      - Any primary script that doesn't terminate without manual interrupt.
+
+      **For `dev` / `start`:** these are inherently long-running; agents must NOT invoke them directly during task-execution. If a smoke-test of a server is needed, declare a separate `:check` script that boots, pings, and exits within a timeout.
+
+      **Verification:** before declaring infra-setup DONE, agent runs each primary script and confirms it exits with a code (any code) within reasonable time. A script that hangs >2 minutes without progress is a violation.
     </Axiom>
 
     <Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
@@ -382,6 +442,8 @@
     ✅ REWARD: Dev-tool packages in `devDependencies` are exact-pinned (no `^`, `~`, or `x` wildcards).
     ✅ REWARD: `.npmrc` is committed and contains an explicit `registry=` line.
     ✅ REWARD: npm scripts call only tools that exist in `devDependencies`; no phantom scripts.
+    ✅ REWARD: Primary scripts (`test`, `lint`, `build`, `type-check`) are one-shot — they exit deterministically. Watch / persistent modes live in separate `:watch` / `:dev` scripts.
+    ❌ PENALTY: `"test": "vitest"` or any primary script that defaults to watch / persistent mode — agent invocations hang indefinitely.
     ✅ REWARD: Before adding a package, `engines` and module-system compatibility were verified.
 
     ❌ PENALTY: `.nvmrc` missing, contains a range (`22.x`), alias (`lts/iron`), or multiple lines.
@@ -394,5 +456,10 @@
     ❌ PENALTY: Dev-tool pinned to a range (`"vite": "^5.0.0"`).
     ❌ PENALTY: `.npmrc` absent or has no `registry=` line.
     ❌ PENALTY: npm script calls a tool not installed in `devDependencies`.
+    ✅ REWARD: Sandboxed agent forces public registry (`npm_config_registry=https://registry.npmjs.org/ npm <cmd>`) on every npm invocation — bypasses unreachable corp `~/.npmrc`, self-documenting in logs.
+    ✅ REWARD: When corp registry is genuinely required, agent halts with `[!] BLOCKED` and defers install to operator's full-network shell — never silently hangs on unreachable corp endpoint.
+    ❌ PENALTY: `npm install` without env-prefix when running in sandbox — would route through corp `~/.npmrc`, hang on connection timeout.
+    ❌ PENALTY: Modifying operator's `~/.npmrc` from the agent (breaks operator's other work).
+    ❌ PENALTY: Committing project `.npmrc` with corp registry URL.
   </Reward_Criteria>
-</NodeJSRuntimeRules>
+</NodeJSNpmRules>

@@ -33,7 +33,6 @@
       **Modern TS/JS is mandatory.** Use optional chaining (`?.`), nullish coalescing (`??`), logical assignment (`||=`, `&&=`, `??=`). Avoid verbose `if`-checks.
       **Why:** Semantic density reduces visual noise, shrinks the surface for nullable-check bugs, and makes the code recoverable by an agent in one pass.
     </Axiom>
-
     <Axiom id="AX_TELEOLOGICAL_NAMING">
       **A name reflects a goal (teleology), not a pattern (topology).** Forbidden semantic-noise names: `Manager`, `Handler`, `Data`, `Info`, `Wrapper`, `do...`, `process...`.
       **Why:** Pattern names tell the next agent nothing about business goal. `OrderFulfillmentPipeline` carries intent; `OrderManager` does not.

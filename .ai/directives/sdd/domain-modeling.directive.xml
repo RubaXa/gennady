@@ -1,4 +1,4 @@
-<DomainModeling keywords="domain-modeling, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, domain-rules, modes, add-domain, refine-domain, sdd-phase-2" type="directive" ver="1.3">
+<DomainModeling keywords="domain-modeling, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, domain-rules, rule-activation, modes, add-domain, refine-domain, sdd-phase-2" type="directive" ver="1.5">
   <Directive_Context>
     <Mission>
       Turn the approved root spec into a hierarchy of domain specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
@@ -51,6 +51,24 @@
 
     <Axiom id="AX_INPUT_ARTIFACT_ONLY">
       **Source of truth — the artifact(s) provided.** In `initial` mode read only `specs/<root>.spec.md`. In `add-domain` / `refine-domain` read root spec + relevant domain specs from the existing tree. Supporting artifacts allowed if operator passed them. Do not use project search tools: existing code may carry "dirty" context and legacy noise that distort modeling.
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION">
+      **Two-stage rule activation: first decide WHICH rules apply (with rationale), then walk operator through chosen rules' axioms. Never activate silently — always explain the reasoning.**
+
+      ### Stage A — Relevance assessment
+
+      Before walking any axioms, agent emits SHORTLIST of «рекомендую активировать» (with rationale per rule, scoped to the domain context) and SHORTLIST of «рассмотрел, но рекомендую пропустить» (with rationale). Operator: agree / expand / contract — deviations captured in Domain Decision Log.
+
+      ### Stage B — Per-rule axiom walk-through
+
+      For each surviving rule with `activation=now`:
+      1. Read only `Mission`, `Belief_State` axioms, `Reward_Criteria` from the rule file.
+      2. Surface each axiom with rationale; ask operator: «применимо к домену?»
+      3. Accept (default) / Adapt / Override per axiom; non-default outcomes recorded.
+      4. Don't badger on uncontroversial axioms.
+
+      Activation outcomes recorded in §7 Domain Decision Log of the relevant domain spec. Domain-level rule additions typically activate `now` for `architecture/*` and `quality/*`, `later` for `coding/*` and `testing/*`.
     </Axiom>
 
     <Axiom id="AX_APPEND_ONLY_DOMAIN_ADD">
@@ -241,7 +259,7 @@
       - A domain CANNOT remove project-wide rules; it can only add.
       - If a domain has no additions — the block is explicitly `None`, not omitted.
       - Examples: domain `ui` adds `react-rules` (coding), `accessibility` (quality); domain `payments` adds `pci-dss` (quality).
-      - Cascade union (project ∪ domain ∪ task) is computed by `task-scaffolding` per-task.
+      - Cascade union (`infra` ∪ `project` ∪ `domain` ∪ `task`, infra tier present only when infrastructure track exists) is computed by `task-scaffolding` per-task.
     </Axiom>
   </Belief_State>
 

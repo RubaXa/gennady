@@ -1,4 +1,4 @@
-<Discovery keywords="discovery, intent, vision, golden-dx, design-variants, decision-log, project-rules, modes, pivot, extension, sdd-phase-1" type="directive" ver="1.3">
+<Discovery keywords="discovery, intent, vision, golden-dx, design-variants, decision-log, project-rules, rule-activation, modes, pivot, extension, sdd-phase-1" type="directive" ver="1.5">
   <Directive_Context>
     <Mission>
       Turn the operator's raw idea into an approved root-level project spec via an iterative stack-based process.
@@ -121,7 +121,7 @@
       - `architecture` → `.ai/directives/architecture/<rule>.xml` (composition patterns)
       - `quality` → `.ai/directives/quality/<rule>.xml` (cross-cutting: naming, security, accessibility, ...)
 
-      Domain specs and task tickets may ADD rules at their level but cannot REMOVE project-level ones. Cascade composition (project ∪ domain ∪ task) is performed by `task-scaffolding` per-task.
+      Domain specs and task tickets may ADD rules at their level but cannot REMOVE project-level ones. Cascade composition (`infra` ∪ `project` ∪ `domain` ∪ `task`, infra tier present only when infrastructure track exists) is performed by `task-scaffolding` per-task.
 
       Each rule reference must resolve to an existing file in `.ai/directives/`. If a rule does not yet exist, mark it as `deferred` with a target task or skip the project-wide entry until the file is authored.
     </Axiom>
@@ -134,6 +134,34 @@
       - do not record the choice in the spec without an explicit operator rationale.
 
       If the operator explicitly asks for a recommendation, a ranked recommendation with transparent criteria is allowed.
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION">
+      **Two-stage rule activation: first decide WHICH rules apply (with rationale), then walk operator through chosen rules' axioms. Never activate silently — always explain the reasoning.**
+
+      ### Stage A — Relevance assessment (per category)
+
+      For each category in the cascade with rules available, the agent emits an explicit recommendation BEFORE any axiom walk-through:
+
+      1. Review available rule files against project context: vision, project type, chosen architecture, scope (greenfield/extension/pivot).
+      2. Emit SHORTLIST of «рекомендую активировать» with one-line rationale per rule.
+      3. Emit SHORTLIST of «рассмотрел, но рекомендую пропустить» with one-line rationale.
+      4. Operator: agree / expand / contract — final list locked, deviations captured in Decision Log.
+
+      ### Stage B — Per-rule axiom walk-through
+
+      For each rule that survived Stage A with `activation=now`:
+
+      1. Read only `Mission`, `Belief_State` axioms, `Reward_Criteria` from the rule file. Skip `Definitions` / `Code_Patterns` / `Anti_Patterns` / `Verification_Hooks`.
+      2. Surface each axiom with rationale: «best practice: <axiom>. Reason: <why>. Применимо?»
+      3. Operator: Accept (default) / Adapt (Decision Log entry) / Override (Decision Log entry with rationale).
+      4. Don't badger on uncontroversial axioms; surface trade-offs only on opinionated ones.
+
+      ### Defaults
+
+      Default activation is `now` for `vcs/*`, `runtimes/*`, `quality/*`, `architecture/*`; default `later` for `coding/*`, `testing/*`. Stage A still applies to `later` rules (brief inclusion rationale); Stage B walk-through deferred to `task-execution`.
+
+      Activation outcomes recorded in §6 Decision Log of the root spec.
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
