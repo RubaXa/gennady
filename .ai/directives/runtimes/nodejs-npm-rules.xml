@@ -1,82 +1,89 @@
-<NodeJSNpmRules keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="runtime-rules" ver="1.7">
-  <Directive_Context>
-    <Mission>
-      Define canonical rules for the Node.js runtime environment: package manager discipline, version alignment, module system, and project layout.
-      Goal: ensure every Node.js project has a reproducible, explicit runtime setup — correct version pinning, one package manager, one module system.
-      This directive covers ONLY the Node.js runtime layer. Language tooling (TypeScript, linters, formatters) and application architecture are NOT covered here; they live in separate directives layered on top.
-    </Mission>
-    <Functional_Perspective>
-      You are a runtime environment steward. Your responsibility is reproducibility: the same `npm ci` on the same `.nvmrc` must produce the same environment everywhere.
-      The highest value is explicit, auditable configuration — no silent fallbacks, no ambient version drift, no mixed module systems.
-      Base axiom: one package manager, one module system, one Node version per project. All three are committed as files, not assumed.
-    </Functional_Perspective>
-  </Directive_Context>
+<NodeJSNpmRules keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="runtime-rules" ver="2.0">
+  <Mission>
+    Canonical rules for the Node.js runtime environment: package manager discipline, version alignment, module system, project layout.
+
+    Goal: every Node.js project has a reproducible, explicit runtime setup — correct version pinning, one package manager, one module system. Same `npm ci` on the same `.nvmrc` produces the same environment everywhere.
+
+    Scope is the Node.js runtime layer ONLY. Language tooling (TypeScript, linters, formatters) and application architecture live in separate directives layered on top.
+
+    **Base axiom:** one package manager, one module system, one Node version per project. All three committed as files, not assumed.
+  </Mission>
 
   <Belief_State>
     <Axiom id="AX_SINGLE_PACKAGE_MANAGER">
-      **One package manager per project: npm only.** Forbidden alongside npm: yarn, pnpm, bun.
-      **Why:** Multiple managers produce conflicting lock files and non-deterministic installs. `package-lock.json` is the lock; all other lock files must be absent and gitignored.
-      **Enforcement:** If `yarn.lock`, `pnpm-lock.yaml`, or `bun.lockb` exist in the repo, remove them. Add them to `.gitignore`.
+      One package manager per project: **npm only**. Forbidden alongside npm: yarn, pnpm, bun. `package-lock.json` is the lock; all other lock files must be absent and gitignored.
+
+      Multiple managers produce conflicting lock files and non-deterministic installs. If `yarn.lock`, `pnpm-lock.yaml`, or `bun.lockb` exist in the repo → remove them; add to `.gitignore`.
     </Axiom>
 
     <Axiom id="AX_NVMRC_SINGLE_SOURCE_OF_TRUTH">
-      **`.nvmrc` is the single source of truth for the Node version.** One line, exact semver: `22.14.0`, not `22`, `22.x`, or `lts/iron`.
-      **Why:** `nvm use` and `asdf` read `.nvmrc` to set the runtime. A range or alias makes the resolved version unpredictable across machines and time.
-      **Requirement:** `.nvmrc` must be committed. It must contain exactly one line matching `/^\d+\.\d+\.\d+$/`.
+      `.nvmrc` is the single source of truth for the Node version. **One line, exact semver:** `22.14.0`, not `22`, `22.x`, or `lts/iron`.
+
+      `nvm use` and `asdf` read `.nvmrc` to set runtime. A range or alias makes the resolved version unpredictable across machines and time. `.nvmrc` MUST be committed and contain exactly one line matching `/^\d+\.\d+\.\d+$/`.
     </Axiom>
 
     <Axiom id="AX_ENGINES_ALIGNMENT">
-      **`package.json#engines.node` must be compatible with `.nvmrc`.** The engines field is a machine-readable constraint, not documentation.
-      **Why:** Misalignment is the root cause of "works locally, fails in CI." If `.nvmrc` is `22.14.0`, engines must accept `22.14.0` — neither reject it (`>=23`) nor over-permit it (`>=14`).
-      **Pattern:** `"engines": { "node": ">=22.0.0 <23.0.0" }` when `.nvmrc` is `22.14.0`.
-      **Verification:** Before adding a package, check its own `engines` field against `.nvmrc` via `npm view <pkg> engines`.
+      `package.json#engines.node` MUST be compatible with `.nvmrc`. The engines field is a machine-readable constraint, not documentation.
+
+      Misalignment is the root cause of «works locally, fails in CI». `.nvmrc` is `22.14.0` → engines must accept `22.14.0` (neither reject `>=23` nor over-permit `>=14`).
+
+      Pattern: `"engines": { "node": ">=22.0.0 <23.0.0" }` when `.nvmrc` is `22.14.0`.
+
+      Verification: before adding a package, check its `engines` against `.nvmrc` via `npm view <pkg> engines`.
     </Axiom>
 
     <Axiom id="AX_LOCK_FILE_DISCIPLINE">
-      **`package-lock.json` is always committed. `node_modules/` is never committed.**
-      **Why:** `package-lock.json` + `package.json` + `.nvmrc` are the reproducibility triad. Without the lock file, transitive dependencies re-resolve on every `npm install`, producing environment drift.
-      **Usage split:** `npm install` locally (may update lock when `package.json` changes); `npm ci` in any automated context (reads lock as law, never updates it).
-      **`.gitignore` must contain:** `node_modules/` and `dist/`.
+      `package-lock.json` always committed. `node_modules/` never committed.
+
+      `.nvmrc` + `package.json` + `package-lock.json` is the **reproducibility triad**. Without lock file, transitive deps re-resolve on every `npm install` → environment drift.
+
+      Usage split: `npm install` locally (may update lock when `package.json` changes); `npm ci` in any automated context (reads lock as law, never updates).
+
+      `.gitignore` MUST contain: `node_modules/`, `dist/`.
     </Axiom>
 
     <Axiom id="AX_EXACT_PINNING_FOR_TOOLING">
-      **Dev-tool packages must be pinned to exact versions.** Use `npm install --save-exact` for packages that affect the build pipeline.
-      **Why:** A patch update to a build tool (bundler, formatter, type checker) can silently change output. Exact pins guarantee that the same tool version runs everywhere.
-      **Rule:** Runtime dependencies (published alongside the package) may use semver ranges. Dev dependencies that affect build output must be exact.
-      **Pattern:** `"devDependencies": { "vite": "5.2.11" }`, not `"^5.2.0"` or `"~5.2"`.
+      Dev-tool packages MUST be pinned to exact versions. `npm install --save-exact` for packages affecting the build pipeline.
+
+      A patch update to a build tool can silently change output. Exact pins guarantee the same tool version runs everywhere.
+
+      Rule: runtime deps (published with the package) may use ranges. Dev deps affecting build output MUST be exact.
+
+      Pattern: `"devDependencies": { "vite": "5.2.11" }`, not `"^5.2.0"` or `"~5.2"`.
     </Axiom>
 
     <Axiom id="AX_MODULE_SYSTEM_EXPLICIT">
-      **The module system is declared once and never mixed.** A project is either ESM (`"type": "module"` in `package.json`) or CommonJS (absent or `"type": "commonjs"`).
-      **Why:** Mixing `import` and `require` in the same project causes non-deterministic module resolution, conditional-exports mismatches, and runtime errors that are hard to reproduce.
-      **ESM project rules:**
-      - All `.js` files are ESM; use `import`/`export` exclusively.
-      - Local imports require explicit extensions: `import { foo } from './foo.js'` (not `'./foo'`).
-      - Node built-ins use the `node:` prefix (see AX_NODE_BUILTINS_PREFIX).
-      **CJS project rules:**
-      - All `.js` files are CommonJS; use `require`/`module.exports` exclusively.
-      - Do not add `.mjs` files without an explicit dual-package strategy.
+      Module system declared once and never mixed. A project is either ESM (`"type": "module"` in `package.json`) or CommonJS (absent or `"type": "commonjs"`).
+
+      Mixing `import` and `require` in same project causes non-deterministic resolution, conditional-exports mismatches, runtime errors hard to reproduce.
+
+      **ESM:** all `.js` files are ESM; use `import`/`export` exclusively. Local imports require explicit extensions: `import { foo } from './foo.js'` (not `'./foo'`). Node built-ins use `node:` prefix.
+
+      **CJS:** all `.js` files are CommonJS; use `require`/`module.exports` exclusively. Do NOT add `.mjs` files without an explicit dual-package strategy.
     </Axiom>
 
     <Axiom id="AX_NODE_BUILTINS_PREFIX">
-      **All Node.js built-in module imports must use the `node:` prefix.**
-      **Why:** The `node:` prefix is unambiguous — it cannot be shadowed by an npm package with the same name. It also signals intent: "this is a Node built-in, not a third-party dependency."
-      **Pattern:** `import { readFile } from 'node:fs/promises'`, not `from 'fs/promises'`.
-      **Applies to:** all built-ins — `fs`, `path`, `http`, `crypto`, `events`, `stream`, `url`, `util`, `os`, `child_process`, `worker_threads`, `perf_hooks`, etc.
+      All Node.js built-in module imports use the `node:` prefix.
+
+      `node:` prefix is unambiguous — cannot be shadowed by an npm package with the same name. Also signals intent: «this is a Node built-in, not a third-party dependency».
+
+      Pattern: `import { readFile } from 'node:fs/promises'`, not `from 'fs/promises'`.
+
+      Applies to all built-ins: `fs`, `path`, `http`, `crypto`, `events`, `stream`, `url`, `util`, `os`, `child_process`, `worker_threads`, `perf_hooks`, etc.
     </Axiom>
 
     <Axiom id="AX_NPMRC_EXPLICIT_REGISTRY">
-      **`.npmrc` must exist and must explicitly declare the registry.**
-      Default: public npm registry (`registry=https://registry.npmjs.org/`).
-      **If a private/scoped registry is used:** configured in `.npmrc` at project init, sourced interactively from the user. Never infer a registry silently.
-      **Why:** An absent or implicit registry means every developer and CI runner may resolve packages from a different source. Explicit is auditable.
-      **`.npmrc` is committed.** Credentials (auth tokens) are NOT committed — they go into environment variables or per-user `~/.npmrc`.
+      `.npmrc` MUST exist and explicitly declare the registry. Default: public npm (`registry=https://registry.npmjs.org/`).
+
+      Private/scoped registry → configured in `.npmrc` at project init, sourced interactively from the user. Never infer a registry silently.
+
+      `.npmrc` is committed. **Credentials (auth tokens) NOT committed** — environment variables or per-user `~/.npmrc`.
     </Axiom>
 
     <Axiom id="AX_NPM_AGENT_SANDBOX_REGISTRY">
-      **Sandboxed agents force npm to use the public registry (`https://registry.npmjs.org/`) via inline POSIX env-prefix on every invocation. This bypasses any corporate `~/.npmrc` config that the sandbox cannot reach.**
+      **Sandboxed agents force npm to use the public registry via inline POSIX env-prefix on every invocation. This bypasses any corporate `~/.npmrc` config that the sandbox cannot reach.**
 
-      **The problem:** operator's `~/.npmrc` typically points at a corporate registry / proxy reachable only from inside the corp network. A sandboxed agent doesn't have access to corp network — `npm install` hangs on connection timeout or fails with `ENOTFOUND` / `EAI_AGAIN`. Falling back behavior depends on configuration; usually it just fails.
+      The problem: operator's `~/.npmrc` typically points at a corporate registry/proxy reachable only from inside corp network. A sandboxed agent doesn't have access → `npm install` hangs on `ENOTFOUND` / `EAI_AGAIN` or fails.
 
       **Solution — force public registry per command:**
       ```bash
@@ -85,91 +92,90 @@
       npm_config_registry=https://registry.npmjs.org/ npm ci
       ```
 
-      **Why inline prefix:**
+      Why inline prefix:
       - Bypasses corp `~/.npmrc` without modifying it (operator's local setup intact).
       - No persistent state in shell env — nothing leaks between commands.
       - Self-documenting in logs — operator sees exactly which registry was used.
       - Sandbox-friendly — no dependency on inherited env from launch context.
 
-      **The mechanism:** npm config priority — CLI flags > `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX `VAR=value command` makes the variable visible to the spawned process only.
+      Mechanism: npm config priority — CLI flags > `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX `VAR=value command` makes the variable visible to the spawned process only.
 
       **When corp registry IS required** (project legitimately depends on private corp packages):
-      - This is an explicit deviation, declared at infra-discovery time and recorded in Decision Log.
-      - Agent must halt with `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` and let the operator handle install in their full-network shell, OR get explicit network-access grant for the sandbox.
-      - Auth for corp registry is out of scope of this rule — it's an environment concern outside agent's responsibility.
+      - Explicit deviation, declared at infra-discovery time, recorded in Decision Log.
+      - Agent halts with `[!] BLOCKED` per `AX_BLOCKER_ESCALATION`; operator handles install in their full-network shell, OR explicit network-access grant for the sandbox.
+      - Auth for corp registry is out of scope — environment concern, not agent's responsibility.
 
-      **Forbidden:**
-      - Running `npm install` without the env-prefix (would route through corp `~/.npmrc`, hang from sandbox).
-      - Modifying operator's `~/.npmrc` to point at public registry — that breaks operator's other (non-sandboxed) work.
-      - Committing project `.npmrc` with corp registry URL.
-      - Silent failure / partial install when registry is unreachable — operator must see explicit error, not a half-installed tree.
+      **Forbidden:** `npm install` without env-prefix in sandbox (routes through corp `~/.npmrc`, hangs); modifying operator's `~/.npmrc` (breaks operator's other work); committing project `.npmrc` with corp registry URL; silent failure / partial install when registry unreachable (operator must see explicit error).
     </Axiom>
 
     <Axiom id="AX_PROJECT_LAYOUT">
-      **Standard directory layout for a Node.js project:**
-      - `src/` — source files (JS or TS)
-      - `dist/` — build output; generated, not committed
-      - `cli/` — CLI entry points, if the project exposes a CLI
-      - `scripts/` — internal dev/build scripts, not shipped
-      - `tests/` or co-located `*.test.*` — test files
-      **Why:** Predictable layout reduces onboarding cost and enables tooling to infer build steps without configuration.
-      **Flexibility:** A different layout is allowed only when documented explicitly. Do not introduce non-standard structure without a stated reason.
+      Standard layout:
+      - `src/` — source files (JS or TS).
+      - `dist/` — build output; generated, not committed.
+      - `cli/` — CLI entry points if project exposes a CLI.
+      - `scripts/` — internal dev/build scripts, not shipped.
+      - `tests/` or co-located `*.test.*` — test files.
+
+      Predictable layout reduces onboarding cost and enables tooling to infer build steps without configuration. Different layout allowed only when documented explicitly with stated reason.
     </Axiom>
 
     <Axiom id="AX_NPM_SCRIPTS_INTENTIONAL">
-      **npm scripts are discoverable, intentional, and grounded in what is actually installed.**
-      **Why:** Scripts that call tools not present in `devDependencies` fail silently in fresh checkouts. Scripts invented "for completeness" create false expectations.
-      **Rule:** Before adding a script, verify the tool exists in `devDependencies`. Do not add a `type-check`, `lint`, or `format` script unless the corresponding tool is installed.
-      **Conventional names (use when the tool exists):** `build`, `dev`, `test`, `lint`, `format`, `type-check`, `clean`.
+      npm scripts are discoverable, intentional, grounded in what is actually installed.
+
+      Scripts calling tools NOT in `devDependencies` fail silently in fresh checkouts. Scripts invented «for completeness» create false expectations.
+
+      Rule: before adding a script, verify the tool exists in `devDependencies`. Don't add `type-check`/`lint`/`format` unless the tool is installed.
+
+      Conventional names (use when tool exists): `build`, `dev`, `test`, `lint`, `format`, `type-check`, `clean`.
     </Axiom>
 
     <Axiom id="AX_AI_FIRST_SCRIPTS_ONE_SHOT">
-      **Every primary npm script must be a one-shot command that returns control deterministically. Watch / persistent / REPL modes live in separate `:watch` / `:dev` scripts.**
+      **Every primary npm script MUST be one-shot — returns control deterministically. Watch / persistent / REPL modes live in separate `:watch` / `:dev` scripts.**
 
-      **Why:** AI agents (and CI runners) invoke scripts and wait for exit. A script that defaults to watch mode (e.g., `vitest`, `tsc --watch`, `next dev`) hangs the agent's session — output streams forever, no exit code, no continuation. The agent has no way to distinguish "still working" from "ready, just waiting for changes". This is the most common cause of stuck infra-setup tasks.
+      AI agents (and CI runners) invoke scripts and wait for exit. A script defaulting to watch (e.g., `vitest`, `tsc --watch`, `next dev`) hangs the session — output streams forever, no exit code, no continuation. Agent has no way to distinguish «still working» from «ready, waiting for changes». Most common cause of stuck infra-setup tasks.
 
-      **Conventional split:**
       | Script | Behavior | Used by |
       |---|---|---|
-      | `test` | one-shot run, exits | agents, CI, smoke tests |
+      | `test` | one-shot, exits | agents, CI, smoke tests |
       | `test:watch` | watch mode, persistent | human dev |
       | `lint` | one-shot, exits | agents, CI, pre-commit |
-      | `lint:watch` | watch mode (rare) | human dev |
+      | `lint:watch` | watch (rare) | human dev |
       | `build` | one-shot, exits | agents, CI |
       | `dev` | long-running dev server | human dev only |
       | `start` | long-running prod server | deployment runtime |
       | `start:check` | boot, smoke-ping, exit | agents (smoke-test deployment) |
 
-      **Forbidden patterns in `package.json` scripts:**
+      **Forbidden in `package.json` scripts:**
       - `"test": "vitest"` (defaults to watch in TTY) — must be `"vitest run"`.
-      - `"test": "jest --watch"` — watch by default; must be `"jest"` for one-shot.
+      - `"test": "jest --watch"` — watch by default; must be `"jest"`.
       - `"test": "node --test --watch"` — must be `"node --test"`.
       - Any primary script that doesn't terminate without manual interrupt.
 
-      **For `dev` / `start`:** these are inherently long-running; agents must NOT invoke them directly during task-execution. If a smoke-test of a server is needed, declare a separate `:check` script that boots, pings, and exits within a timeout.
+      For `dev`/`start`: inherently long-running; agents MUST NOT invoke directly during task-execution. Need server smoke-test → declare separate `:check` script that boots, pings, exits within timeout.
 
-      **Verification:** before declaring infra-setup DONE, agent runs each primary script and confirms it exits with a code (any code) within reasonable time. A script that hangs >2 minutes without progress is a violation.
+      Verification: before declaring infra-setup DONE, run each primary script and confirm exit (any code) within reasonable time. Hang >2 minutes without progress = violation.
     </Axiom>
 
     <Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
-      **Before adding any dependency, verify three things:**
-      1. **Node compatibility:** `npm view <pkg> engines` — does it support the version in `.nvmrc`?
-      2. **Module system compatibility:** Is the package ESM-only, CJS-only, or dual? Does it match the project's `"type"` field?
-      3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range is acceptable.
-      **Why:** Skipping these checks introduces incompatibilities that surface as cryptic runtime errors, not install errors.
+      Before adding any dependency, verify three things:
+      1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
+      2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
+      3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
+
+      Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
     </Axiom>
   </Belief_State>
 
   <Definitions>
-    <Definition id="DEF_REPRODUCIBILITY_TRIAD">The three committed files that together guarantee a reproducible Node.js environment: `.nvmrc` (Node version), `package.json` (declared deps), `package-lock.json` (resolved dep tree). `npm ci` reads all three.</Definition>
+    <Definition id="DEF_REPRODUCIBILITY_TRIAD">Three committed files guaranteeing reproducible Node.js environment: `.nvmrc` (Node version), `package.json` (declared deps), `package-lock.json` (resolved dep tree). `npm ci` reads all three.</Definition>
     <Definition id="DEF_EXACT_PIN">A version string with no range operator: `5.2.11`, not `^5.2.0`, `~5.2`, or `5.x`.</Definition>
-    <Definition id="DEF_ESM">ECMAScript Modules. Activated by `"type": "module"` in `package.json`. Syntax: `import`/`export`. Local imports require explicit file extensions.</Definition>
+    <Definition id="DEF_ESM">ECMAScript Modules. Activated by `"type": "module"`. Syntax: `import`/`export`. Local imports require explicit extensions.</Definition>
     <Definition id="DEF_CJS">CommonJS. Default when `"type"` is absent or `"commonjs"`. Syntax: `require`/`module.exports`. Synchronous resolution.</Definition>
   </Definitions>
 
   <Code_Patterns>
     <Pattern id="PT_MINIMAL_PACKAGE_JSON">
-      <Intent>Minimal valid `package.json`: explicit module system, engines aligned to `.nvmrc`, exact dev-tool pins.</Intent>
+      <Intent>Minimal valid `package.json`: explicit module system, engines aligned, exact dev-tool pins.</Intent>
       <Snippet language="json">
         ```json
         {
@@ -181,24 +187,18 @@
             "build": "vite build",
             "test": "node --test"
           },
-          "dependencies": {
-            "some-lib": "^3.1.0"
-          },
-          "devDependencies": {
-            "vite": "5.2.11"
-          }
+          "dependencies": { "some-lib": "^3.1.0" },
+          "devDependencies": { "vite": "5.2.11" }
         }
         ```
       </Snippet>
-      <Why>`"type": "module"` makes ESM explicit. `engines` bounds the Node version. `vite` is pinned exactly (build tool). `some-lib` uses a range (runtime dep).</Why>
+      <Why>`"type": "module"` makes ESM explicit. `engines` bounds Node version. `vite` exact-pinned (build tool); `some-lib` uses range (runtime dep).</Why>
     </Pattern>
 
     <Pattern id="PT_NVMRC">
       <Intent>Correct `.nvmrc`: one line, exact semver.</Intent>
-      <Snippet language="plaintext">
-        22.14.0
-      </Snippet>
-      <Why>Single exact version. `nvm use` resolves it unambiguously. No range, no alias, no comment lines.</Why>
+      <Snippet language="plaintext">22.14.0</Snippet>
+      <Why>Single exact version. `nvm use` resolves unambiguously. No range, no alias, no comments.</Why>
     </Pattern>
 
     <Pattern id="PT_NPMRC">
@@ -208,7 +208,7 @@
         audit=true
         legacy-peer-deps=false
       </Snippet>
-      <Why>Registry is explicit. Audit enabled by default. No auth tokens in this file — those go in environment variables or per-user `~/.npmrc`.</Why>
+      <Why>Registry explicit. Audit on by default. No auth tokens — those go in env vars or per-user `~/.npmrc`.</Why>
     </Pattern>
 
     <Pattern id="PT_ESM_BUILTINS">
@@ -222,244 +222,138 @@
         import { parseConfig } from './config.js';   // explicit .js extension
         ```
       </Snippet>
-      <Why>`node:` prefix prevents shadowing by npm packages. Explicit `.js` extensions are required in ESM for Node to resolve local files correctly.</Why>
+      <Why>`node:` prefix prevents shadowing. Explicit `.js` extensions required in ESM for Node to resolve local files correctly.</Why>
     </Pattern>
 
     <Pattern id="PT_DEPENDENCY_ADDITION">
       <Intent>Correct workflow for adding a new package.</Intent>
       <Snippet language="bash">
         ```bash
-        # Step 1 — check Node compatibility
+        # 1 — Node compatibility
         npm view express engines
 
-        # Step 2 — check module system (look for "exports", "type" in package.json)
+        # 2 — module system (look for "exports", "type")
         npm view express main exports
 
-        # Step 3 — install with correct pinning
+        # 3 — install with correct pinning
         npm install express                          # runtime dep — range ok
         npm install --save-exact --save-dev vite     # build tool — exact pin
 
-        # Step 4 — commit both files
+        # 4 — commit both files
         git add package.json package-lock.json
         ```
       </Snippet>
-      <Why>Verification before install prevents silent incompatibilities. Committing package-lock.json together with package.json closes the reproducibility triad.</Why>
+      <Why>Verification before install prevents silent incompatibilities. Committing lock with package.json closes the reproducibility triad.</Why>
     </Pattern>
   </Code_Patterns>
 
   <Anti_Patterns>
     <Anti_Pattern id="AP_MULTIPLE_LOCK_FILES">
-      <Bad language="plaintext">
-        ```
-        package-lock.json   ✓
-        yarn.lock           ✓  ← conflict
-        pnpm-lock.yaml      ✓  ← conflict
-        ```
-      </Bad>
-      <Why_Bad>Each manager resolves transitive deps differently. `npm ci` reads `package-lock.json`; a developer running `yarn` writes `yarn.lock` with different versions. Builds diverge silently.</Why_Bad>
-      <Good language="plaintext">
-        ```
-        package-lock.json   ✓
-        yarn.lock           ✗ (deleted + added to .gitignore)
-        pnpm-lock.yaml      ✗ (deleted + added to .gitignore)
-        ```
-      </Good>
+      <Bad>Repo has both `package-lock.json` AND `yarn.lock` AND/OR `pnpm-lock.yaml`.</Bad>
+      <Why_Bad>Each manager resolves transitive deps differently. `npm ci` reads `package-lock.json`; developer running `yarn` writes `yarn.lock` with different versions. Builds diverge silently.</Why_Bad>
+      <Good>Only `package-lock.json` tracked. Foreign locks deleted + added to `.gitignore`.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_NVMRC_ENGINES_MISMATCH">
-      <Bad language="plaintext">
-        ```
-        # .nvmrc
-        22.14.0
-
-        # package.json
-        "engines": { "node": ">=18.0.0 <20.0.0" }
-        ```
-      </Bad>
-      <Why_Bad>`.nvmrc` installs Node 22; `engines` rejects Node 22. npm warns on install, CI may enforce the constraint and fail. Local dev and CI run on different Node versions.</Why_Bad>
-      <Good language="plaintext">
-        ```
-        # .nvmrc
-        22.14.0
-
-        # package.json
-        "engines": { "node": ">=22.0.0 <23.0.0" }
-        ```
-      </Good>
+      <Bad>`.nvmrc=22.14.0` + `"engines": { "node": ">=18.0.0 <20.0.0" }`.</Bad>
+      <Why_Bad>`.nvmrc` installs Node 22; `engines` rejects Node 22. npm warns; CI may enforce constraint and fail. Local dev and CI run on different Node versions.</Why_Bad>
+      <Good>`.nvmrc=22.14.0` + `"engines": { "node": ">=22.0.0 <23.0.0" }`.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_NVMRC_RANGE">
-      <Bad language="plaintext">
-        ```
-        # .nvmrc
-        22
-        ```
-      </Bad>
+      <Bad>`.nvmrc` contains `22` (range) or `lts/iron` (alias).</Bad>
       <Why_Bad>`nvm use 22` resolves to whatever the latest 22.x is at install time — different on different machines and at different moments.</Why_Bad>
-      <Good language="plaintext">
-        ```
-        # .nvmrc
-        22.14.0
-        ```
-      </Good>
+      <Good>`.nvmrc` contains `22.14.0` exact.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_NODE_MODULES_COMMITTED">
-      <Bad language="bash">
-        ```bash
-        git ls-files | grep '^node_modules/'
-        # node_modules/express/index.js   ← committed
-        ```
-      </Bad>
-      <Why_Bad>Commits bloat the repo by 10–500 MB. Platform-specific native binaries compiled on macOS will not run on Linux CI. Diff noise makes PRs unreadable.</Why_Bad>
-      <Good language="bash">
-        ```
-        # .gitignore
-        node_modules/
-        dist/
-        ```
-        ```bash
-        npm ci   # restore from package-lock.json deterministically
-        ```
-      </Good>
+      <Bad>`git ls-files | grep '^node_modules/'` returns hits.</Bad>
+      <Why_Bad>10–500 MB bloat. Platform-specific native binaries compiled on macOS won't run on Linux CI. PR diffs become unreadable.</Why_Bad>
+      <Good>`.gitignore` includes `node_modules/`, `dist/`. `npm ci` restores from `package-lock.json` deterministically.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_MIXED_MODULE_SYSTEM">
-      <Bad language="javascript">
-        ```js
-        // src/loader.js  (package.json has "type": "module")
-        const fs = require('fs');          // ← CJS in ESM project — ReferenceError at runtime
-        module.exports = { load };
-        ```
-      </Bad>
-      <Why_Bad>`"type": "module"` makes all `.js` files ESM. Using `require` in an ESM file throws `ReferenceError: require is not defined` at runtime.</Why_Bad>
-      <Good language="javascript">
-        ```js
-        // src/loader.js  (ESM project)
-        import { readFile } from 'node:fs/promises';
-        export { load };
-        ```
-      </Good>
+      <Bad>`package.json` has `"type": "module"`, but `src/loader.js` uses `const fs = require('fs'); module.exports = …`.</Bad>
+      <Why_Bad>`"type": "module"` makes all `.js` files ESM. Using `require` in ESM file throws `ReferenceError: require is not defined` at runtime.</Why_Bad>
+      <Good>ESM project: `import { readFile } from 'node:fs/promises'; export { load };`.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_BUILTIN_WITHOUT_PREFIX">
-      <Bad language="javascript">
-        ```js
-        import { readFile } from 'fs/promises';
-        import { join } from 'path';
-        ```
-      </Bad>
-      <Why_Bad>A third-party package named `fs` or `path` would shadow the built-in silently. The intent is ambiguous: is this a built-in or a dependency?</Why_Bad>
-      <Good language="javascript">
-        ```js
-        import { readFile } from 'node:fs/promises';
-        import { join } from 'node:path';
-        ```
-      </Good>
+      <Bad>`import { readFile } from 'fs/promises';` / `import { join } from 'path';`.</Bad>
+      <Why_Bad>A third-party package named `fs` or `path` would shadow the built-in silently. Intent ambiguous: built-in or dependency?</Why_Bad>
+      <Good>`import { readFile } from 'node:fs/promises';` / `import { join } from 'node:path';`.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_TOOL_RANGE_PIN">
-      <Bad language="json">
-        ```json
-        "devDependencies": {
-          "vite": "^5.2.0",
-          "prettier": "3.x"
-        }
-        ```
-      </Bad>
-      <Why_Bad>A semver-compatible update to a build tool can silently change output. CI installs 5.2.11 today, 5.2.12 next week — builds diverge.</Why_Bad>
-      <Good language="json">
-        ```json
-        "devDependencies": {
-          "vite": "5.2.11",
-          "prettier": "3.2.5"
-        }
-        ```
-      </Good>
+      <Bad>`"devDependencies": { "vite": "^5.2.0", "prettier": "3.x" }`.</Bad>
+      <Why_Bad>Semver-compatible update can silently change build output. CI installs 5.2.11 today, 5.2.12 next week — builds diverge.</Why_Bad>
+      <Good>`"devDependencies": { "vite": "5.2.11", "prettier": "3.2.5" }`.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_NPMRC_ABSENT">
-      <Bad language="plaintext">
-        ```
-        # No .npmrc in the repository
-        ```
-      </Bad>
-      <Why_Bad>Each developer and CI runner resolves packages from whatever registry their global `~/.npmrc` points to. Private registry users silently fall back to the public registry or fail with 404.</Why_Bad>
-      <Good language="plaintext">
-        ```
-        # .npmrc  (committed)
-        registry=https://registry.npmjs.org/
-        ```
-      </Good>
+      <Bad>No `.npmrc` in the repository.</Bad>
+      <Why_Bad>Each developer and CI runner resolves from whatever registry their global `~/.npmrc` points to. Private-registry users silently fall back to public or fail with 404.</Why_Bad>
+      <Good>Committed `.npmrc` with `registry=https://registry.npmjs.org/`.</Good>
     </Anti_Pattern>
   </Anti_Patterns>
 
   <Verification_Hooks>
     <Hook id="HOOK_NVMRC_EXACT">
-      <Purpose>Verify `.nvmrc` exists, has one line, and contains a semver-exact version.</Purpose>
+      <Purpose>`.nvmrc` exists, one line, semver-exact.</Purpose>
       <Command>test -f .nvmrc &amp;&amp; [ "$(wc -l &lt; .nvmrc)" -eq 1 ] &amp;&amp; grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc &amp;&amp; echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_ENGINES_PRESENT">
-      <Purpose>Verify `package.json` contains an `engines.node` field.</Purpose>
+      <Purpose>`package.json` contains `engines.node`.</Purpose>
       <Command>node -e "const p=require('./package.json'); if(!p.engines?.node) process.exit(1); console.log('engines.node:', p.engines.node)"</Command>
-      <Expected>Prints `engines.node: &lt;range&gt;`; exit 0.</Expected>
+      <Expected>Prints `engines.node: <range>`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_LOCK_FILE_EXISTS">
-      <Purpose>Verify `package-lock.json` is present.</Purpose>
+      <Purpose>`package-lock.json` present.</Purpose>
       <Command>test -f package-lock.json &amp;&amp; echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_NODE_MODULES_TRACKED">
-      <Purpose>Verify `node_modules/` is not tracked by git.</Purpose>
+      <Purpose>`node_modules/` not tracked by git.</Purpose>
       <Command>git ls-files node_modules | head -1 | grep -q . &amp;&amp; echo "FAIL: node_modules tracked" || echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_FOREIGN_LOCK_FILES">
-      <Purpose>Verify no foreign lock files exist.</Purpose>
+      <Purpose>No foreign lock files exist.</Purpose>
       <Command>for f in yarn.lock pnpm-lock.yaml bun.lockb; do test -f "$f" &amp;&amp; echo "FAIL: $f present"; done; echo "OK"</Command>
       <Expected>Prints only `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NPMRC_REGISTRY">
-      <Purpose>Verify `.npmrc` exists and declares a registry.</Purpose>
+      <Purpose>`.npmrc` exists and declares registry.</Purpose>
       <Command>test -f .npmrc &amp;&amp; grep -q 'registry=' .npmrc &amp;&amp; echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_MODULE_SYSTEM_DECLARED">
-      <Purpose>Report the declared module system so the reviewer can verify consistency.</Purpose>
+      <Purpose>Report declared module system.</Purpose>
       <Command>node -e "const p=require('./package.json'); console.log('module system:', p.type || 'commonjs (default)')"</Command>
       <Expected>Prints `module system: module` or `module system: commonjs (default)`.</Expected>
     </Hook>
   </Verification_Hooks>
 
   <Reward_Criteria>
-    ✅ REWARD: `.nvmrc` exists, one line, exact semver (e.g., `22.14.0`).
-    ✅ REWARD: `package.json#engines.node` is present and accepts the version in `.nvmrc`.
-    ✅ REWARD: Only `npm` is used; `package-lock.json` is committed; no foreign lock files.
-    ✅ REWARD: `node_modules/` is gitignored and not tracked.
-    ✅ REWARD: Module system is declared once (`"type": "module"` or absent); not mixed within the project.
-    ✅ REWARD: All Node built-in imports use the `node:` prefix.
-    ✅ REWARD: Dev-tool packages in `devDependencies` are exact-pinned (no `^`, `~`, or `x` wildcards).
-    ✅ REWARD: `.npmrc` is committed and contains an explicit `registry=` line.
-    ✅ REWARD: npm scripts call only tools that exist in `devDependencies`; no phantom scripts.
-    ✅ REWARD: Primary scripts (`test`, `lint`, `build`, `type-check`) are one-shot — they exit deterministically. Watch / persistent modes live in separate `:watch` / `:dev` scripts.
-    ❌ PENALTY: `"test": "vitest"` or any primary script that defaults to watch / persistent mode — agent invocations hang indefinitely.
-    ✅ REWARD: Before adding a package, `engines` and module-system compatibility were verified.
+    ✅ `.nvmrc` exists, one line, exact semver. `package.json#engines.node` accepts the version in `.nvmrc`.
+    ✅ Only `npm` used; `package-lock.json` committed; no foreign lock files. `node_modules/` gitignored.
+    ✅ Module system declared once; not mixed. All Node built-in imports use `node:` prefix.
+    ✅ Dev-tool packages exact-pinned. `.npmrc` committed with explicit `registry=` line.
+    ✅ npm scripts call only tools in `devDependencies`. Primary scripts (`test`, `lint`, `build`, `type-check`) one-shot.
+    ✅ Before adding a package: `engines` and module-system compatibility verified.
+    ✅ Sandboxed agent forces public registry via inline env-prefix on every npm invocation.
+    ✅ Corp registry required → agent halts `[!] BLOCKED`, defers to operator's full-network shell.
 
-    ❌ PENALTY: `.nvmrc` missing, contains a range (`22.x`), alias (`lts/iron`), or multiple lines.
-    ❌ PENALTY: `package.json#engines` absent or incompatible with `.nvmrc`.
-    ❌ PENALTY: Foreign lock files (`yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`) present.
-    ❌ PENALTY: `package-lock.json` missing or not committed.
-    ❌ PENALTY: `node_modules/` committed or not in `.gitignore`.
-    ❌ PENALTY: Module system mixed (`import` and `require` coexist in `.js` files).
-    ❌ PENALTY: Node built-in imported without `node:` prefix.
-    ❌ PENALTY: Dev-tool pinned to a range (`"vite": "^5.0.0"`).
-    ❌ PENALTY: `.npmrc` absent or has no `registry=` line.
-    ❌ PENALTY: npm script calls a tool not installed in `devDependencies`.
-    ✅ REWARD: Sandboxed agent forces public registry (`npm_config_registry=https://registry.npmjs.org/ npm <cmd>`) on every npm invocation — bypasses unreachable corp `~/.npmrc`, self-documenting in logs.
-    ✅ REWARD: When corp registry is genuinely required, agent halts with `[!] BLOCKED` and defers install to operator's full-network shell — never silently hangs on unreachable corp endpoint.
-    ❌ PENALTY: `npm install` without env-prefix when running in sandbox — would route through corp `~/.npmrc`, hang on connection timeout.
-    ❌ PENALTY: Modifying operator's `~/.npmrc` from the agent (breaks operator's other work).
-    ❌ PENALTY: Committing project `.npmrc` with corp registry URL.
+    ❌ `.nvmrc` missing / contains range / alias / multiple lines.
+    ❌ `package.json#engines` absent or incompatible with `.nvmrc`.
+    ❌ Foreign lock files present; `package-lock.json` missing or not committed.
+    ❌ `node_modules/` committed or not in `.gitignore`.
+    ❌ Module system mixed (`import` and `require` coexist in `.js`).
+    ❌ Node built-in imported without `node:` prefix.
+    ❌ Dev-tool pinned to range; `.npmrc` absent or no `registry=` line.
+    ❌ npm script calls a tool not in `devDependencies`.
+    ❌ `"test": "vitest"` or any primary script that defaults to watch / persistent mode — agent invocations hang indefinitely.
+    ❌ `npm install` without env-prefix in sandbox; modifying operator's `~/.npmrc`; committing project `.npmrc` with corp registry URL.
   </Reward_Criteria>
 </NodeJSNpmRules>

@@ -1,619 +1,386 @@
-<TaskScaffolding keywords="task-scaffolding, dependency-graph, bdd, execution-planning, mandatory-rules-linkage, rules-cascade, rule-activation, hierarchical-tasks, modes, extend-dag, infra-track, sdd-phase-3" type="directive" ver="1.11">
+<TaskScaffolding keywords="task-scaffolding, dependency-graph, bdd, execution-planning, mandatory-rules-linkage, rules-cascade, rule-activation, hierarchical-tasks, modes, extend-dag, infra-track, sdd-phase-3" type="directive" ver="2.0">
   <Directive_Context>
     <Mission>
       Decompose the spec tree into a DAG of compact task tickets ready for autonomous execution by `task-execution`.
 
-      Task Scaffolding is the convergence point of two orthogonal tracks:
-      - **Application track** — produces `specs/<root>.spec.md` (Discovery) + `specs/<domain>/<domain>.spec.md` (DomainModeling).
-      - **Infrastructure track** — produces `specs/_infrastructure/_infrastructure.spec.md` (InfraDiscovery).
+      Convergence point of two orthogonal tracks. Entry point: `specs/README.md` Specs Portal — canonical map of which tracks/modules exist (Knowledge Graph rows). From Portal locate:
+      - **Application track** — `specs/<root>.spec.md` + `specs/<module>/<module>.spec.md` (from Discovery + ModuleDecomposition).
+      - **Infrastructure track** — `specs/_infrastructure/_infrastructure.spec.md` (from InfraDiscovery).
 
-      Either or both tracks can be present:
-      - **Infra-only project (SANDBOX-style):** only infra spec exists. Tasks scaffolded for tool setup; no domain or application logic tasks.
-      - **Application-only:** rare, but allowed if operator declares pre-existing infrastructure outside SDD ownership.
-      - **Both:** full project. Infra tasks become natural DAG roots; application tasks depend on them.
+      Either or both tracks can be present. Infra-only (SANDBOX): no module logic. Application-only: rare; cascade `infra` tier absent. Both: infra tasks are DAG roots; app tasks depend on them.
 
-      Output (regardless of which tracks are present):
-      - `tasks/README.md` — project-level tracker with Cascade Table (4 tiers: infra / project / domain / task), Project-Wide Conventions, high-level DAG, Domain Tracker Index (when applicable);
-      - `tasks/_infrastructure/README.md` — infra tracker with setup-task list and intra-track DAG (when infra spec exists);
-      - `tasks/<domain>/README.md` — per-domain trackers (when application track is present);
-      - `tasks/<scope>/<scope>.task-NN.md` — compact tickets;
-      - cross-domain integration tickets under `tasks/_integration/`.
+      Outputs:
+      - `tasks/README.md` — project tracker (Cascade Table, Project-Wide Conventions, high-level DAG, Tracker Index).
+      - `tasks/_infrastructure/README.md` — infra tracker (when infra spec exists).
+      - `tasks/<module>/README.md` — per-module trackers (when application track present).
+      - `tasks/<scope>/<scope>.task-NN.md` — compact tickets.
+      - `tasks/_integration/` — inter-module integration tickets.
 
-      Per `AX_TICKET_DEDUPLICATION`, project-wide content lives ONCE in `tasks/README.md`. All rule references across infra / project / domain / task additions must resolve to existing files in `.ai/directives/<category>/<rule>.xml`. If anything is missing, the directive aborts.
+      Next phase: `task-execution` consumes one ticket at a time. After DONE → `audit`.
 
-      Next phase (`task-execution`) consumes one ticket at a time. After DONE, `audit` is invoked.
+      **Glossary.** Executor = agent under `task-execution`. Auditor = agent under `audit`. Track = application | infra. Tier = cascade level: infra | project | module | task.
     </Mission>
-    <Functional_Perspective>
-      You are a Task Planner and QA Automation Lead. The cognitive frame is Single Source of Truth and verifiability.
-      The downstream `task-execution` agent has narrow focus: it reads the ticket plus `tasks/README.md` plus referenced specs plus effective rule files. The ticket must be compact and unambiguous — project-wide conventions are read once from `tasks/README.md`, not repeated in each ticket.
-
-      Throughout this directive: «execution agent» = the agent operating under the `task-execution` directive (the next phase). «auditor» / «audit agent» = the agent operating under the `audit` directive (the phase after).
-    </Functional_Perspective>
   </Directive_Context>
 
   <Belief_State>
     <Axiom id="AX_DIRECTIVE_MODE">
-      **Task Scaffolding operates in one of two modes, auto-detected from intake (`AX_MODE_AUTO_DETECT_OR_HALT`):**
-      - `initial` — first run, no `tasks/` tree exists yet.
-      - `extend-dag` — operator wants to add tasks for a new or refined domain without regenerating existing tickets.
+      **Two modes, auto-detected from intake:**
+      - `initial` — first run, `tasks/` absent or empty.
+      - `extend-dag` — add tickets for new/refined module or pivot list, without regenerating existing.
     </Axiom>
 
     <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
-      **Mode is detected mechanically from intake; ambiguity halts the directive.**
-
-      Detection tree:
-      - No `tasks/` directory exists OR is empty → `initial`.
-      - `tasks/` exists with prior tickets + intake mentions a new domain (from `add-domain` upstream) OR refined domain (from `refine-domain` upstream) OR Pivot Invalidation List → `extend-dag`.
-      - `tasks/` exists but intake doesn't reference what to extend → HALT: «Существующий tasks/ найден. Что добавляем — задачи для нового домена / refinement существующего / cross-domain integration? Уточни."
+      | Condition | Mode |
+      |---|---|
+      | No `tasks/` OR empty | `initial` |
+      | `tasks/` present + intake names new/refined module OR Pivot Invalidation List | `extend-dag` |
+      | `tasks/` present + intake unclear | HALT, ask operator |
     </Axiom>
 
     <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
-      **Phase directives never read code. Spec is the only source of truth.** Across all modes, the directive reads ONLY:
-      - operator input;
-      - spec tree (root spec + domain specs + `specs/README.md`);
-      - in `extend-dag`: existing `tasks/` artifacts to determine the highest assigned Task-ID and current DAG;
-      - referenced rule files from `.ai/directives/<category>/<rule>.xml`.
-
-      Code is NEVER read. Resolution path for spec/code mismatch goes through `audit`.
-    </Axiom>
-
-    <Axiom id="AX_INPUT_SPEC_TREE">
-      **Source of truth — the provided spec tree.** Read `specs/README.md`, the root spec, all domain specs. In `extend-dag` also read existing `tasks/README.md`, per-domain READMEs, and existing ticket files for ID-uniqueness and DAG context. Do not use project search tools beyond these scoped reads.
-    </Axiom>
-
-    <Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
-      **In `extend-dag` mode, existing Task-IDs and ticket files are immutable.**
-
-      - New tasks get the next sequential `TSK-NN` ID after the highest existing.
-      - Existing tickets are NOT regenerated even if upstream specs changed (e.g., a domain was refined). That is a `task-execution` reopen scenario per `AX_REOPEN_DISCIPLINE`, not a regeneration here.
-      - If a new domain was added (`domain-modeling` `add-domain`), new tasks are scaffolded ONLY for that new domain.
-      - If a domain was refined (`domain-modeling` `refine-domain`), new tasks are scaffolded ONLY for the refined surface that introduces NEW work. Existing tickets covering the unchanged surface stay untouched.
-      - The Cascade Table may be updated if domain rules changed; existing tickets keep their old Effective Rules sets — when each is reopened, the executing agent re-resolves the cascade per `task-execution`.
-      - High-level DAG and per-domain DAGs are updated to include new tasks; old edges and old IDs preserved.
-    </Axiom>
-
-    <Axiom id="AX_SSOT_TRACEABILITY">
-      **Do not duplicate contract descriptions.** Use precise Markdown links (anchors) into domain spec sections. For negative scenarios and trust boundaries, link to `Requirements & Constraints` of the root spec or `Domain Decision Log` of the domain spec.
-    </Axiom>
-
-    <Axiom id="AX_DAG_EXECUTION">
-      **Topological ordering of implementation.** Tasks form a DAG. Abstract contracts (Ports) and base entities are implemented first. Adapters, composite services, and cross-domain integrations come later. No cycles in the graph.
-    </Axiom>
-
-    <Axiom id="AX_BDD_TRANSLATION">
-      **Contracts become tests.** Pre/Post conditions from DbC translate into strict BDD scenarios (Given/When/Then). This forms the Acceptance Criteria. BDD describes behavior, not language-specific syntax.
-    </Axiom>
-
-    <Axiom id="AX_CONTEXT_AWARE_BDD">
-      **BDD respects context and constraints.** Acceptance Criteria cannot be derived from a component name alone. Negative scenarios, fallback behavior, trust boundaries, and platform limits come from `Requirements & Constraints` of the root spec or the domain decision log.
-    </Axiom>
-
-    <Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
-      **All rules must resolve to existing files; missing rules abort the directive.** Across project-wide rules (root spec §4.5), domain additions (domain spec §9), and task additions (operator-supplied during scaffolding):
-      - every rule reference must resolve to an existing file under `.ai/directives/<category>/<rule>.xml`;
-      - if any rule is missing, the directive **aborts** with an explicit list: "Cannot scaffold tasks: missing rules `<list>`. Author them or remove from declaration."
-      Generating a ticket with a placeholder instead of a resolved rules link is forbidden.
-    </Axiom>
-
-    <Axiom id="AX_RULE_ACTIVATION_DEFAULTS">
-      **Each rule entry in the Cascade Table carries an `Activation` value: `now` or `later`.**
-
-      Defaults by category:
-      - `vcs/*`, `runtimes/*`, `quality/*`, `architecture/*` → `now` (rules with strong opinions; operator should walk through them at selection time per `AX_RULE_ACTIVATION` in `discovery` / `infra-discovery` / `domain-modeling`).
-      - `coding/*`, `testing/*` → `later` (usually accepted as-is; applied by `task-execution`).
-
-      Operator can override per rule via explicit intent. The `Activation` column appears on Cascade Table AND on each ticket's Effective Rules table for traceability.
-    </Axiom>
-
-    <Axiom id="AX_RULES_CASCADE_RESOLUTION">
-      **Effective rule-set per task is the union of four tiers, with later overriding earlier on collisions:**
-
-      Tier order (lowest → highest priority on collision):
-      1. **infra** — declared in `specs/_infrastructure/_infrastructure.spec.md` §5 Effective Rules (when infra track exists). These are rules implied by chosen tools — each tool selection in `infra-discovery` resolves to a corresponding rule file under `.ai/directives/<category>/`.
-      2. **project** — declared in application root spec §4.5 Project-Wide Rules (when application track exists). Additional rules beyond what tools imply.
-      3. **domain:<name>** — declared in domain spec §9 Handoff under Domain Rules Additions.
-      4. **task** — declared by the operator during ticket generation.
-
-      Effective set is materialized in the ticket Meta block as a markdown table: rule | category | source (`infra` | `project` | `domain:<name>` | `task`).
-
-      The Cascade itself (Scope × Categories matrix) is materialized once in `tasks/README.md` Stack Summary as a project-wide artifact, with rows per tier present.
-
-      Audit (`AX_RULES_CASCADE_VERIFICATION`) recomputes the effective set from sources and compares to the ticket Meta block.
-
-      For SANDBOX-style infra-only projects: only `infra` tier exists; cascade is single-tier. For application-only: `infra` tier is absent. For full projects: all four tiers active.
+      **Phase reads specs only, never code.** Allowed inputs: operator intake; spec tree (`specs/README.md`, root spec, module specs, `specs/_infrastructure/_infrastructure.spec.md`); in `extend-dag` — existing `tasks/` artifacts (for max Task-ID + current DAG); rule files at `.ai/directives/<category>/<rule>.xml`. No project-wide search (grep / find / ripgrep) outside the listed reads. Spec/code mismatch is resolved by `audit`.
     </Axiom>
 
     <Axiom id="AX_INFRA_TRACK_DETECTION">
-      **STEP_0 detects which tracks are present in the spec tree.** Before mode detection (`AX_DIRECTIVE_MODE`), the directive determines:
+      Detection is driven by `specs/README.md` Specs Portal Knowledge Graph (canonical map of which tracks/modules exist) — see `discovery`/`infra-discovery`/`module-decomposition` `AX_SPECS_PORTAL_COOWNERSHIP`. Portal absent → no specs → HALT (no spec input).
 
-      - Application track present: `specs/<root>.spec.md` exists AND non-empty (Discovery sections 1-7 filled).
-      - Infrastructure track present: `specs/_infrastructure/_infrastructure.spec.md` exists AND non-empty (InfraDiscovery sections 1-7 filled).
+      Track presence is read from Portal rows:
+      - Application track present iff Portal has a root-spec row (e.g., `[`<root>.spec.md`](...)`) AND `## Vision` section exists.
+      - Infrastructure track present iff Portal has `_infrastructure/` row pointing to a real spec file (not a placeholder).
 
-      Track combinations:
-      - **Both tracks present** → full project; infra tasks scaffolded as DAG roots, application tasks depend on them.
-      - **Only infra track** → infra-only project (SANDBOX-style); no domain trackers, no application tasks; high-level DAG has only infra tasks.
-      - **Only application track** → no infra setup ownership in SDD; warn operator («infrastructure track absent — assuming externally managed; cascade `infra` tier will be empty»). Proceed with caution.
-      - **Neither track present** → halt: no spec input.
+      | Application track | Infra track | Result |
+      |---|---|---|
+      | present | present | full project; infra tasks = DAG roots |
+      | absent | present | infra-only (SANDBOX); no module trackers |
+      | present | absent | warn: `infra` tier empty; proceed |
+      | absent | absent | HALT: no spec input |
     </Axiom>
 
-    <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
-      **Scaffolding writes a PLAN (checklist of expected actions with `[ ]` and placeholders). Execution turns plan into FACT (`[x]` + placeholders REPLACED with real values). Toggling `[x]` without replacing placeholders is fabricated done — forbidden.**
+    <Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
+      **In `extend-dag`, existing Task-IDs and ticket files are immutable.**
 
-      ### What scaffolding writes (PLAN state)
+      - New tasks get next sequential `TSK-NN` after max existing.
+      - Existing tickets are NOT regenerated even if upstream specs changed — that is Executor's reopen scenario, not regeneration.
+      - `add-module` upstream → scaffold only for the new module.
+      - `refine-module` upstream → scaffold only for the new surface; unchanged-surface tickets untouched.
+      - Cascade Table may update; existing tickets keep their old `Rule Activation Plan` — Executor re-derives on reopen.
+      - DAG edges/IDs preserved; new tasks appended.
+    </Axiom>
 
-      Pre-templated checklist of expected actions, with placeholders for values that only execution can know:
+    <Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
+      **All rule references must resolve; missing rule = abort.** Sources: project (root §4.5), module (`<module>.spec.md` §9), task (operator-supplied at STEP_4), infra (`_infrastructure.spec.md` §5). Each ref must exist as `.ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) in any cascade source = abort, never write a ticket against it.
+    </Axiom>
 
-      ```markdown
-      ### Round 1 — <YYYY-MM-DD>, initial
-      - [ ] `[<ts>]` Task initialized.
-      - [ ] `[<ts>]` File created: `<path>`.
-      - [ ] `[<ts>]` Verification: `<cmd>` → `<pass|fail>` [`exit=<code>`].
-      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
-      - [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
-      - [ ] `[<ts>]` Status: [x] DONE.
-      ```
+    <Axiom id="AX_RULES_CASCADE_RESOLUTION">
+      **Effective rule-set per task = union of 4 tiers; later tier overrides earlier on collision.**
 
-      The plan is task-specific — scaffolding can predict file paths from `Target Files`, verification commands from §3 Verification, scenario names from §4 Test Scenario Coverage. Predicted lines are guidance for the execution-agent.
+      Tier order (low → high):
+      1. **infra** — `_infrastructure.spec.md` §5 (when infra track present; rules implied by chosen tools).
+      2. **project** — root §4.5 (when application track present; additions beyond infra).
+      3. **module:<name>** — module spec §9 Handoff additions.
+      4. **task** — operator-supplied during ticket generation.
 
-      ### What execution writes (FACT state)
+      Materialization:
+      - **Cascade Table** (Scope × Categories) lives ONCE in `tasks/README.md` Stack Summary. Rows for present tiers only.
+      - **Per-ticket `Rule Activation Plan` table** (in Meta): always present, derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × Target Files / Target Test Files / Deferred Test Ownership. Replaces the legacy «Effective Rules + activation overrides» field.
+      - Auditor recomputes effective set from sources and compares with ticket Meta.
+    </Axiom>
 
-      For each plan item, when the action is performed, the execution-agent MUST atomically:
+    <Axiom id="AX_RULE_ACTIVATION_PLAN">
+      **Every ticket carries a `Rule Activation Plan` table in Meta — phase × rules to activate.** Phases (fixed order): PLAN → IMPL → TEST → AUDIT (+ optional COMMIT for tickets touching git config).
 
-      1. Toggle `- [ ]` → `- [x]`.
-      2. Replace `<ts>` with the real timestamp (e.g., `2026-05-07 14:22`).
-      3. Replace ALL other placeholders with real values from actual execution: `<path>`, `<cmd>`, `<pass|fail>` (literal `pass` or `fail`), `<exit=<code>>` (e.g., `exit=0`), `<scenario>`, `<test-file>::<case>`, `<Entity>`, `<reason>`.
-      4. If reality diverges from the plan (different path, different command, extra step) — replace the line content with what actually happened, OR append a new line and toggle the original to `[x]` only after substituting accurate content. Never leave a planned line that misrepresents reality.
+      Scaffolder fills the plan automatically:
+      - **PLAN** ← cascade `architecture/*`.
+      - **IMPL** ← cascade `coding/*`. Skip if Target Files contain only configs / no code.
+      - **TEST** ← cascade `testing/*`. Skip when `Deferred Test Ownership: <id>` set OR `Target Test Files = ∅`.
+      - **AUDIT** ← cascade `quality/*`.
+      - **COMMIT** ← cascade `vcs/*` only if Target Files include git config (`.gitignore`, hooks, attributes); else omit row.
+      - `runtimes/*` activated only on infra-setup tickets where Target Files contain runtime config; otherwise omit.
 
-      Result for a completed action (placeholders replaced with real values):
-      ```markdown
-      - [x] `[2026-05-07 14:22]` Task initialized.
-      - [x] `[2026-05-07 14:30]` File created: `<actual/path/from/execution>`.
-      - [x] `[2026-05-07 15:10]` Verification: `<actual command run>` → `pass` [`exit=0`].
-      ```
+      Activation Plan replaces the old «Effective Rules table + activation overrides» field. Discovery-time axiom walkthrough (operator-facing) is governed by per-rule defaults at rule-selection time (see `discovery` / `infra-discovery` `AX_RULE_ACTIVATION`); execution-time loading is plan-driven and orthogonal.
+    </Axiom>
 
-      ### Forbidden — fabricated done
+    <Axiom id="AX_DAG_EXECUTION">
+      **Topological order, no cycles.** Phase 1 = Ports + base Entities. Phase 2 = Adapters, Services, Commands, Queries. Phase 3 = inter-module integrations. If one area has both simulation seam and full runtime → split into separate tickets OR record `Deferred Runtime Scope`.
+    </Axiom>
 
-      A line with `[x]` checkbox AND any remaining placeholder literal (`<ts>`, `<pass|fail>`, `<exit=<code>>`, `<path>`, `<cmd>`, etc.) — this is the «check the box without doing the work» pattern. The agent toggled completion without recording reality.
+    <Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
+      **Ticket carries BDD scenarios mapped to concrete tests.**
 
-      Examples of forbidden states (placeholders left unreplaced after toggling `[x]`):
-      - `- [x] [<ts>] Task initialized.` ← `<ts>` not replaced
-      - `- [x] [2026-05-07 14:22] Verification: <cmd> → <pass|fail> [exit=<code>].` ← outcome placeholders not replaced
+      - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + `Requirements & Constraints` + Module Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
+      - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in §4 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
+      - `Target Test Files` is mandatory in Meta — populated with concrete paths OR a `Deferred Test Ownership` reference. Empty = forbidden.
+      - Canonical case names are normative: Executor uses verbatim or updates the ticket before DONE.
+      - BDD describes behavior, not language-specific syntax.
+    </Axiom>
 
-      ### Why predict at all (vs leaving log empty)
-
-      The plan checklist is **scaffolding's contribution** — it tells execution-agent what entries the round needs. Without it, weak agents forget to log an Introduced entry, skip scenario coverage, or close DONE without recording verification. The plan is the floor of «what to log», execution-agent only adds entries beyond the plan when reality requires (e.g., new Introduced entries, blocker entries).
-
-      ### Audit responsibility
-
-      `audit` STEP_6_BDD_AND_LOG_CHECK detects leftover placeholders in `[x]` lines and raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER) — this is the mechanical guard against fabricated done.
+    <Axiom id="AX_DONE_REQUIRES_EVIDENCE">
+      Executor cannot close `[x] DONE` until ALL of:
+      - verification commands executed; result + exit code recorded in Execution Log;
+      - every BDD scenario has `<file>::<case>` confirmed OR deferred owner recorded;
+      - every entity introduced beyond module Entity Inventory logged as `Introduced <Name> because <reason>`;
+      - `Runtime Backing` honestly recorded; `real-runtime` claim without real implementation requires explicit `Deferred Runtime Scope`.
     </Axiom>
 
     <Axiom id="AX_TICKET_DEDUPLICATION">
-      **Project-wide content lives in `tasks/README.md`, not in every ticket.**
-
-      The following blocks are declared once in the project tracker, NOT copied into each ticket:
-      - File-header convention (`@tasks` / `@purpose` rule and examples).
-      - Baseline Completion Rule (the boilerplate items every task must satisfy).
-      - Execution Log template (canonical checkbox structure).
-      - Post-task `audit` hint.
-      - Mandatory rules linkage (lives via cascade source pointers, not duplicate listing).
-      - **The Cascade Table itself.** A ticket without task-specific rule additions or activation overrides does NOT carry an Effective Rules table — it carries a one-line reference to the cascade in `tasks/README.md`. Only the **delta** (task additions, activation overrides) is shown per-ticket. Copying the full cascade into every ticket is drift waiting to happen — when cascade changes, all tickets desync silently.
-
-      A ticket contains ONLY:
-      - task-specific Meta (purpose, dependencies, target files, runtime backing, effective rules table, reopens counter);
-      - task-specific BDD scenarios;
-      - task-specific Test Scenario Coverage;
-      - task-specific Completion additions if they extend the baseline;
-      - the (initially empty) Execution Log instance to be filled by execution.
-
-      Conventions duplicated across tickets are technical debt that breaks single-source-of-truth on the next rule change.
+      **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint, full Cascade Table. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>
 
     <Axiom id="AX_TASK_ID_UNIQUENESS">
-      **Task IDs are project-wide unique and stable.** IDs are sequential `TSK-NN` across the entire project (not per-domain).
+      **`TSK-NN` is project-wide unique, sequential, immutable.**
 
-      - Before generating a new ticket, scaffolding agent scans `tasks/**/*.task-*.md` and any pre-existing IDs to ensure no collision.
-      - Once assigned, an ID never changes — even if the ticket file is moved between scopes (e.g., `tasks/payments/...task-04.md` → `tasks/billing/...task-04.md`).
-      - Code references via file-headers (`// @tasks TSK-04, TSK-12`) point to IDs, not paths, so cross-scope moves don't invalidate code.
-      - Audit (`AX_TASK_ID_INTEGRITY`) cross-checks code references against existing tickets.
-
-      Collision at generation time is a hard failure: directive aborts, operator resolves the ID conflict.
+      - Before generating a ticket, scan `tasks/**/*.task-*.md` for collisions.
+      - ID never changes — even if ticket file moves between scopes.
+      - Code references via file headers point to IDs, not paths.
+      - Auditor cross-checks via `AX_TASK_ID_INTEGRITY`.
+      - Collision = abort; operator resolves.
     </Axiom>
 
     <Axiom id="AX_REOPEN_TICKET_FORMAT">
-      **Reopen accumulates rounds in a single ticket, never spawns parallel bugfix tickets for the same scope.**
+      **Reopens accumulate as appended rounds in one ticket; never spawn parallel tickets for same scope.**
 
-      Format:
-      - Meta block has a `Reopens` field: count + last-round summary in parentheses on a single line.
-        Example: `**Reopens:** 2 (2026-05-12 — rules update: ts-rules v1.2 strict-null-checks)`
-        Field is omitted when count is 0.
-      - Status after reopen returns to `[~] IN_PROGRESS`. No separate `REOPENED` status.
-      - Execution Log is structured by rounds, append-only:
-        ```
-        ### Round 1 — 2026-05-04, initial
-        - [x] [<ts>] Task initialized.
-        - ...
-        - [x] [<ts>] Status: [x] DONE.
-
-        ### Round 2 — 2026-05-12, rules update: ts-rules v1.2 strict-null-checks
-        - [x] [<ts>] Task reopened. Reason: rules update.
-        - ...
-        - [x] [<ts>] Status: [x] DONE.
-        ```
-      - Old rounds are NEVER edited or deleted. The log is an append-only audit trail.
-      - Verification commands re-run in each round.
-      - When to reopen vs spawn a new task is governed by `task-execution`'s `AX_REOPEN_VS_NEW_TASK`.
+      - Meta `Reopens: <count> (<YYYY-MM-DD> — <last reason>)` on a single line; field omitted when 0.
+      - Status returns to `[~] IN_PROGRESS`; no separate `REOPENED`.
+      - Execution Log structured by `### Round N — <date>, <reason>`, append-only. Old rounds NEVER edited.
+      - Verification commands re-run each round.
+      - Reopen vs new task governed by Executor's `AX_REOPEN_VS_NEW_TASK`.
     </Axiom>
 
-    <Axiom id="AX_TESTS_AS_FIRST_CLASS_DELIVERABLE">
-      **Tests are part of the deliverable.** Every task must declare `Target Test Files` or `Deferred Test Ownership` with a link to the task-ID required to create the test later.
-    </Axiom>
+    <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
+      **Scaffolding writes PLAN; Executor turns plan into FACT.**
 
-    <Axiom id="AX_VERIFICATION_STRATEGY_REQUIRED">
-      **Every task has a verification strategy.** The `Verification Strategy` section is mandatory and contains: test levels (`unit`, `integration`, `contract`, `e2e`), expected verification commands, completion rules when coverage is deferred.
-    </Axiom>
-
-    <Axiom id="AX_BDD_TO_TEST_TRACEABILITY">
-      **BDD maps into concrete tests.** Every acceptance scenario has an entry in `Test Scenario Coverage`: test file path and the exact canonical case name. Or an explicit deferred ownership reference to the task-ID required to create the test.
-    </Axiom>
-
-    <Axiom id="AX_CANONICAL_CASE_NAME_DISCIPLINE">
-      **Case names in the ticket are normative.** The execution agent must either use these names verbatim or update the ticket before closing the task. Leaving canonical case names in the ticket that do not exist in the actual test file is forbidden.
-    </Axiom>
-
-    <Axiom id="AX_OBSERVABILITY_BUILTIN">
-      **Built-in observability.** Every task contains an `Execution Log` section where the execution agent records every meaningful action, especially:
-      - executed verification commands (with exit code and pass/fail);
-      - confirmed scenario-to-test pairs (file::case);
-      - **introduction of new entities**: the wording `Introduced <EntityName> because <reason>` is mandatory for every entity not listed in the corresponding domain's Entity Inventory. This feeds the subsequent audit.
-    </Axiom>
-
-    <Axiom id="AX_HARD_COMPLETION_GATE">
-      **`DONE` is a proven fact.** The Completion Rule in every ticket is worded so the execution agent cannot honestly close a task until:
-      - verification commands have been executed;
-      - scenario-to-test coverage has been confirmed;
-      - deferred scope (if any) has been recorded;
-      - all entities introduced outside inventory have been logged.
-    </Axiom>
-
-    <Axiom id="AX_VERIFICATION_EVIDENCE_REQUIRED">
-      **Verification leaves a verifiable trail.** The Execution Log must contain: the exact command, the result (pass/fail, exit code), test files and case names confirming the scenarios, deferred owner if applicable.
-    </Axiom>
-
-    <Axiom id="AX_RUNTIME_BACKING_PER_TASK">
-      **Runtime backing and verification levels in the ticket itself.** For platform / runtime-specific tasks, the ticket explicitly captures (inherited from the domain spec):
-      - `Runtime Backing`: `not-implemented` | `simulation` | `real-runtime`;
-      - `Verification Levels`: subset of `contract` | `unit` | `integration` | `e2e`;
-      - `Deferred Runtime Scope` if acceptance criteria exceed the current technical step.
-      Declaring `Runtime Backing: real-runtime` while the actual implementation is simulation-only without an explicit deferred marker is forbidden.
-    </Axiom>
-
-    <Axiom id="AX_NO_SCOPE_COLLAPSE">
-      **Do not mix `simulation` and `real-runtime` backing in one task without explicit marking.** If a feature has a separate simulation seam and a separate real-runtime integration, split them into different tasks or explicitly mark the real-runtime part as deferred coverage.
+      - **PLAN** = `[ ]` items + literal placeholders `<ts>`, `<path>`, `<cmd>`, `<pass|fail>`, `<exit=<code>>`, `<scenario>`, `<test-file>::<case>`, `<EntityName>`, `<reason>`. Predicted from §3 Verification, §4 Test Scenario Coverage, Target Files.
+      - **FACT** = `[x]` AND every placeholder replaced with real value from actual execution. If reality diverges from a planned line — edit content, then toggle.
+      - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done. Auditor scans for leftover placeholders in `[x]` lines (`EXECUTION_LOG_INCOMPLETE`, BLOCKER).
+      - Append-only by rounds.
     </Axiom>
 
     <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
-      **The link to tasks is preserved at the file level via Task-IDs.** When agents read a file top-down, the header tells them which task(s) shaped this file.
+      **Files carry Task-ID headers; IDs only, never paths; append-only.**
 
-      Format (one comma-separated line per file, plus a one-line purpose):
-      - `// @tasks TSK-04, TSK-12, TSK-25`
-      - `// @purpose <short English ai-to-ai purpose, 3-12 words>`
+      ```
+      // @tasks TSK-04, TSK-12, TSK-25
+      // @purpose <short ai-to-ai purpose, 3–12 words>
+      ```
 
-      Rules:
-      - IDs only — never paths. Cross-scope moves of the ticket file do not invalidate these references (`AX_TASK_ID_UNIQUENESS`).
-      - Multiple IDs are allowed and expected when more than one task touched the file. Append new IDs in chronological order; never remove old IDs.
-      - For `css/html` use equivalent comments (`/* */`, `<!-- -->`).
-      - Reopening the same task does NOT add a duplicate ID — it's already in the list.
-      - The rule does not apply to pre-existing files unless a ticket explicitly requires header migration.
+      Rules: comma-separated, chronological append; reopen does NOT add duplicate ID; CSS/HTML use `/* */`, `<!-- -->`; pre-existing files not migrated unless ticket requires it.
     </Axiom>
 
-    <Axiom id="AX_MULTI_SPEC_LINKAGE">
-      **The ticket links to domain specs, not to the root.** Contracts, consumers, invariants live in `specs/<domain>/<domain>.spec.md`. Links to the root only for cross-cutting constraints (Section 4).
-    </Axiom>
-
-    <Axiom id="AX_CROSS_DOMAIN_TASK_PLACEMENT">
-      **Cross-domain tasks have an explicit scope.** If a task touches multiple domains (for example, an integration), it lives under `tasks/_integration/`. Do not scatter pieces of one integration across multiple domain folders. The leading underscore distinguishes integration scope from domain folders alphabetically and visually.
+    <Axiom id="AX_CROSS_MODULE_TASK_PLACEMENT">
+      Multi-module tickets live under `tasks/_integration/`. Pieces of one integration are never scattered across module folders.
     </Axiom>
 
     <Axiom id="AX_AUDIT_HOOK">
-      **Audit invocation is the operator-side completion of the round, not optional follow-up.** Every task ticket's Completion Rule contains an explicit item: "After mechanical closure (`[x] DONE`), the operator MUST invoke the `audit` directive on this ticket to verify the round."
-
-      The mechanical close (`[x] DONE` in Execution Log) signals that the agent has finished its work; it does NOT signal that the round is verified. Verification is the audit's job. Until `audit` returns PASS, the round remains in a «closed-but-unverified» state — operator should not start a dependent task in that state, because drift may remain undetected.
-
-      The `task-execution` agent emits an explicit request for audit invocation as the last step of its session (per `STEP_9_CLOSE`); the operator is expected to act on that request before treating the ticket as fully done.
+      Round is complete only after `audit` returns PASS. `[x] DONE` is mechanical close, not verification. Every ticket's Completion Rule mandates: after `[x] DONE`, operator invokes `audit` on the ticket. Until PASS, dependents are blocked. Executor emits the audit request as last step of its session.
     </Axiom>
 
-    <Axiom id="AX_PHASE_AGREEMENT_STATE">
-      **The agent does NOT close a phase on its own.** Signals readiness via `STATUS=READY_TO_ADVANCE`. Closing only after explicit operator confirmation. Phase Progress every round with counters ("DAG: 18 tasks across 3 domains; 14 with rules resolved, 4 blocked on missing rules").
+    <Axiom id="AX_SSOT_TRACEABILITY">
+      **No contract duplication.** Tickets link to spec sections via Markdown anchors. Module spec for contracts/consumers/invariants; root §4 only for cross-cutting constraints.
     </Axiom>
 
-    <Axiom id="AX_NEUTRAL_DEFAULT_CRITICAL">
-      **Neutral by default + critical analysis.** If the operator asks to merge two tasks or skip a test — surface the risk, require justification. Do not auto-agree.
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      - **Phase agreement.** Agent never closes a phase autonomously. Signal `STATUS=READY_TO_ADVANCE`; operator confirms. Emit Phase Progress every round.
+      - **Neutral + critical.** Operator asks to merge tasks, skip a test, accept low coverage → surface the risk, demand justification. No auto-agreement.
+      - **Confidence explicit.** LOW / MEDIUM / HIGH stated. Under LOW: do not lock the DAG, do not close TASK_GENERATION.
+      - **Context budget.** Long dialogues: top-3 questions; compact Phase Progress; do not repeat full DAG when 1–2 edges changed.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
-      **Task-scaffolding-level decisions go into trackers.** If the operator deviates from default decomposition (e.g., merges 3 tasks into 1, or refuses deferred coverage) — record an entry in the `tasks/README.md` Decision Log with rationale.
+      Non-default scaffolding choices (operator merges 3 tasks into 1, refuses deferred coverage, overrides cascade activation) → `D-NNN` entry in `tasks/README.md` Decision Log with rationale.
     </Axiom>
 
-    <Axiom id="AX_CONFIDENCE_EXPLICIT">
-      **Confidence is explicit.** LOW/MEDIUM/HIGH with behavioral consequences. Under LOW do not lock the DAG, do not close TASK_GENERATION.
-    </Axiom>
-
-    <Axiom id="AX_CONTEXT_BUDGET_AWARE">
-      **Respect the context budget.** In long dialogues: top-3 questions, compact Phase Progress, do not repeat the full DAG if 1-2 edges changed.
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      Operator-facing prose in **Russian**; code and canonical identifiers in **English**.
+      - Russian: ticket body text (Purpose, Description, BDD scenario content after `Given`/`When`/`Then`, Decision Log `Why`/`Risk`), `tasks/README.md` and per-module README content (Decision Log entries, Notes, descriptions), halt messages, Phase Progress field content.
+      - English: code paths, file names, axiom IDs (`AX_*`), Trace anchors, IDs (`TSK-NN`/`D-NNN`/`H_*`), severity/status tokens (`TODO`/`IN_PROGRESS`/`DONE`/`BLOCKED`), BDD keywords (`Feature`/`Scenario`/`Given`/`When`/`Then`/`And`), verification-level tokens (`contract`/`unit`/`integration`/`e2e`), runtime-backing tokens (`real-runtime`/`simulation`/`not-implemented`), structural section headings, field labels.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">
-      **Artifacts are stateless-ready.** The audit session and execution sessions start without task-scaffolding history. All DAG decisions, links, BDD scenarios, completion rules — baked into Markdown.
+      All DAG decisions, links, BDD, completion rules baked into Markdown. Downstream sessions start with no scaffolding history.
     </Axiom>
   </Belief_State>
 
-  <Context_Expectation>
-    The agent expects the operator to provide the path to the `specs/` tree (with `README.md` and domain specs) generated by `domain-modeling`.
-  </Context_Expectation>
-
   <Golden_Example>
-    <Example_Context>Compact ticket format. Project-wide conventions live in `tasks/README.md`, not duplicated here. Header carries Task-IDs only (paths-free for cross-scope move stability).</Example_Context>
-    <Example_Content>
-      ```markdown
-      # Task: TSK-04 — Implement StripePaymentAdapter
+    Concrete ticket — `tasks/payments/payments.task-04.md`. Names of rules in the Activation Plan are project-specific (driven by cascade); the directive itself is language-agnostic.
 
-      ## 1. Meta & Traceability
-      - **Task-ID:** TSK-04
-      - **Purpose:** Реализовать `StripePaymentAdapter` против контракта `PaymentGatewayPort`.
-      - **Domain:** `payments`
-      - **Dependencies:** TSK-01, TSK-03
-      - **Spec References:**
-        - Contract: [`PaymentGatewayPort`](../../specs/payments/payments.spec.md#paymentgatewayport)
-        - Adapter: [`StripePaymentAdapter`](../../specs/payments/payments.spec.md#stripepaymentadapter)
-        - Consumer: [`OrderProcessor`](../../specs/orders/orders.spec.md#orderprocessor)
-      - **Rules:** cascade per [tasks/README.md#stack](../README.md#stack); task additions: **none**; activation overrides: **defaults**.
+    ```markdown
+    # Task: TSK-04 — Implement StripePaymentAdapter
 
-        <!-- This ticket has no task-specific rule additions and no activation overrides — so the one-line reference above is sufficient. The full cascade (typescript-rules, node-test, ports-adapters, pci-dss) lives in `tasks/README.md` Stack Summary; duplicating it per ticket would violate `AX_TICKET_DEDUPLICATION`. -->
+    ## 1. Meta & Traceability
+    - **Task-ID:** TSK-04
+    - **Purpose:** Реализовать `StripePaymentAdapter` против контракта `PaymentGatewayPort`.
+    - **Module:** `payments`
+    - **Dependencies:** TSK-01, TSK-03
+    - **Spec References:**
+      - Contract: [`PaymentGatewayPort`](../../specs/payments/payments.spec.md#paymentgatewayport)
+      - Adapter: [`StripePaymentAdapter`](../../specs/payments/payments.spec.md#stripepaymentadapter)
+      - Consumer: [`OrderProcessor`](../../specs/orders/orders.spec.md#orderprocessor)
+    - **Rule Activation Plan** (cascade sources at [tasks/README.md#stack](../README.md#stack)):
 
-        <!-- Counter-example — when this ticket WOULD show a delta table:
-        | Rule | Category | Source | Activation |
-        |------|----------|--------|------------|
-        | stripe-webhook-validator | quality | task | now |
-        — only the task-specific addition is shown; cascade is referenced, not duplicated. -->
+      | Phase  | Активировать          | Источник                |
+      |--------|-----------------------|-------------------------|
+      | PLAN   | ports-adapters        | architecture (project)  |
+      | IMPL   | typescript-rules      | coding (project)        |
+      | TEST   | node-test             | testing (module)        |
+      | AUDIT  | eslint-rules          | quality (infra)         |
 
-      - **Runtime Backing:** `real-runtime`
-      - **Verification Levels:** `unit`, `integration`
-      - **Deferred Runtime Scope:** None
-      - **Target Files:** `src/payments/adapters/stripe-payment-adapter.ts` (Create)
-      - **Target Test Files:** `src/payments/adapters/stripe-payment-adapter.test.ts` (Create)
+    - **Runtime Backing:** `real-runtime`
+    - **Verification Levels:** `unit`, `integration`
+    - **Deferred Runtime Scope:** None
+    - **Target Files:** `src/payments/adapters/stripe-payment-adapter.ts` (Create)
+    - **Target Test Files:** `src/payments/adapters/stripe-payment-adapter.test.ts` (Create)
 
-      ## 2. Acceptance Criteria (BDD)
-      Контракт см. по ссылке в Spec References.
+    ## 2. Acceptance Criteria (BDD)
+    **Feature:** Stripe payment processing
 
-      **Feature:** Stripe payment processing
+    **Scenario 1:** Successful charge [`integration`]
+    - **Given** валидный payment request с положительной суммой и поддерживаемой валютой
+    - **When** вызвана операция charge
+    - **Then** возвращён непустой transaction id
+    - **And** эмитится observability event `payment.charged`
 
-      **Scenario 1:** Successful charge [`integration`]
-      - **Given** valid payment request with positive amount and supported currency
-      - **When** charge operation is invoked
-      - **Then** transaction id is returned
-      - **And** observability event `payment.charged` is emitted
+    **Scenario 2:** Invalid amount rejected [`contract`]
+    - **Given** payment request с неположительной суммой
+    - **When** вызвана операция charge
+    - **Then** операция отклонена с `InvalidAmountError`
 
-      **Scenario 2:** Invalid amount rejected [`contract`]
-      - **Given** payment request with non-positive amount
-      - **When** charge operation is invoked
-      - **Then** operation is rejected with `InvalidAmountError`
+    ## 3. Verification
+    - **Commands:** `node --test src/payments/adapters/stripe-payment-adapter.test.ts`; `tsc --noEmit`
+    - **Task-specific Completion additions:** none beyond project baseline.
 
-      ## 3. Verification
-      - **Commands:**
-        - `node --test src/payments/adapters/stripe-payment-adapter.test.ts`
-        - `tsc --noEmit`
-      - **Task-specific Completion additions:** none beyond project baseline (see [tasks/README.md#completion-rule](../README.md#completion-rule)).
+    ## 4. Test Scenario Coverage
+    - Scenario 1 → `src/payments/adapters/stripe-payment-adapter.test.ts` :: `should return transaction id on successful charge`
+    - Scenario 2 → `src/payments/adapters/stripe-payment-adapter.test.ts` :: `should reject non-positive amount with InvalidAmountError`
 
-      ## 4. Test Scenario Coverage
-      - Scenario 1 → `src/payments/adapters/stripe-payment-adapter.test.ts` :: `should return transaction id on successful charge`
-      - Scenario 2 → `src/payments/adapters/stripe-payment-adapter.test.ts` :: `should reject non-positive amount with InvalidAmountError`
+    ## 5. Execution Log
+    ### Round 1 — 2026-05-06, initial
+    - [ ] `[<ts>]` Task initialized.
+    - [ ] `[<ts>]` File created: `src/payments/adapters/stripe-payment-adapter.ts`.
+    - [ ] `[<ts>]` File created: `src/payments/adapters/stripe-payment-adapter.test.ts`.
+    - [ ] `[<ts>]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → `<pass|fail>` [`exit=<code>`].
+    - [ ] `[<ts>]` Verification: `tsc --noEmit` → `<pass|fail>` [`exit=<code>`].
+    - [ ] `[<ts>]` Scenario coverage: `Successful charge` → `src/payments/adapters/stripe-payment-adapter.test.ts::should return transaction id on successful charge`.
+    - [ ] `[<ts>]` Scenario coverage: `Invalid amount rejected` → `src/payments/adapters/stripe-payment-adapter.test.ts::should reject non-positive amount with InvalidAmountError`.
+    - [ ] `[<ts>]` Self-audit: walked axioms of all rules activated this round against generated code. Violations: `<list or "none">`.
+    - [ ] `[<ts>]` Tracker synced: `tasks/payments/README.md` + `tasks/README.md`.
+    - [ ] `[<ts>]` Status: [x] DONE.
+    ```
 
-      ## 5. Execution Log
-      *(Plan-as-checklist. Processing protocol: see [tasks/README.md#execution-log-template](../README.md#execution-log-template). Per `AX_EXECUTION_LOG_PLAN_VS_FACT`.)*
+    Variant — same ticket with task-specific rule addition (extra row in Plan):
 
-      ### Round 1 — 2026-05-06, initial
-      - [ ] `[<ts>]` Task initialized.
-      - [ ] `[<ts>]` File created: `src/payments/adapters/stripe-payment-adapter.ts`.
-      - [ ] `[<ts>]` File created: `src/payments/adapters/stripe-payment-adapter.test.ts`.
-      - [ ] `[<ts>]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → `<pass|fail>` [`exit=<code>`].
-      - [ ] `[<ts>]` Verification: `tsc --noEmit` → `<pass|fail>` [`exit=<code>`].
-      - [ ] `[<ts>]` Scenario coverage: `Successful charge` → `src/payments/adapters/stripe-payment-adapter.test.ts::should return transaction id on successful charge`.
-      - [ ] `[<ts>]` Scenario coverage: `Invalid amount rejected` → `src/payments/adapters/stripe-payment-adapter.test.ts::should reject non-positive amount with InvalidAmountError`.
-      - [ ] `[<ts>]` Self-audit: walked typescript-rules + node-test + ports-adapters + pci-dss axioms against generated code. Violations: `<list or "none">`.
-      - [ ] `[<ts>]` Introduced (if any): `<EntityName>` because `<reason>`.
-      - [ ] `[<ts>]` Tracker synced: `tasks/payments/README.md` + `tasks/README.md`.
-      - [ ] `[<ts>]` Status: [x] DONE.
-      ```
-    </Example_Content>
+    ```markdown
+    | AUDIT  | eslint-rules, stripe-webhook-validator | quality (infra + task) |
+    ```
   </Golden_Example>
+
+  <Halt_Conditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_SPECS` | Neither track present |
+    | `H_AMBIGUOUS_MODE` | `tasks/` present + intake unclear |
+    | `H_INCOMPLETE_APP_TRACK` | Application track present but Discovery/ModuleDecomposition sections incomplete |
+    | `H_MISSING_RULES` | Any cascade source references a missing rule file |
+    | `H_ID_COLLISION` | Generated `TSK-NN` collides with existing |
+    | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
+    | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
+  </Halt_Conditions>
 
   <Execution_Plan>
     <Step id="STEP_0_INTAKE">
-      <Goal>Receive the spec tree, detect tracks (`AX_INFRA_TRACK_DETECTION`), validate completeness, AND auto-detect mode (`AX_MODE_AUTO_DETECT_OR_HALT`).</Goal>
+      <Goal>Read Specs Portal → detect tracks (`AX_INFRA_TRACK_DETECTION`) → detect mode (`AX_MODE_AUTO_DETECT_OR_HALT`).</Goal>
       <Action>
-        First — track detection:
-        - Check existence of `specs/_infrastructure/_infrastructure.spec.md` (infra track).
-        - Check existence of `specs/<root>.spec.md` + at least one domain spec (application track).
-        - At least one track must be present; otherwise halt.
-
-        Then mode detection:
-        <Switch exclusive="true">
-          <Case when="No specs at all">
-            Emit TRACE_HEADER with STACK: `ROOT__INTAKE`.
-            Respond: "🦾 Task Scaffolding activated. Передай путь к `specs/`. Ожидается хотя бы один track — infra (`specs/_infrastructure/_infrastructure.spec.md`) или application (`specs/<root>.spec.md` + domain specs)."
-            STOP.
-          </Case>
-          <Case when="Application track present but incomplete (missing README, missing domain specs, missing DbC sections)">
-            Surface the gap, ask to finish `domain-modeling`. STOP.
-          </Case>
-          <Case when="Tracks present + no `tasks/` directory exists OR `tasks/` is empty">
-            Set `mode = initial`. Briefly reframe: tracks present, number of domains (if app), common stack. Proceed to STEP_1.
-          </Case>
-          <Case when="Tracks present + `tasks/` exists with prior tickets + intake names what to extend">
-            Set `mode = extend-dag`. Read existing `tasks/README.md`, per-domain READMEs, infra README (if present), and ticket files to capture: highest TSK-NN, current DAG, current Cascade Table. Proceed to STEP_1 scoped to the new surface.
-          </Case>
-          <Case when="Tracks present + `tasks/` exists but intake unclear">
-            HALT. Respond: "🛑 Существующий `tasks/` найден. Что добавляем — setup-задачи для нового tool / задачи для нового домена / refinement / cross-domain integration / реакция на Pivot Invalidation List (infra или app)? Уточни."
-            STOP.
-          </Case>
-          <Case when="Application track absent, only infra track present">
-            Note: infra-only project. Set `mode = initial` or `extend-dag` per `tasks/` state. No domain trackers needed — only `tasks/_infrastructure/`. Proceed to STEP_1 with reduced scope.
-          </Case>
-        </Switch>
+        1. Emit TRACE_HEADER (STACK `ROOT__INTAKE`).
+        2. **Read `specs/README.md` Specs Portal as canonical entry point.** Portal absent → `H_NO_SPECS`. From Portal Knowledge Graph extract: root-spec path (if present), `_infrastructure/` path (if present), per-module spec paths.
+        3. Track detection per `AX_INFRA_TRACK_DETECTION`. Both absent → `H_NO_SPECS`. App track present but root spec missing Discovery sections → `H_INCOMPLETE_APP_TRACK`.
+        4. Mode detection per `AX_MODE_AUTO_DETECT_OR_HALT`. On `H_AMBIGUOUS_MODE` halt with operator question.
+        5. In `extend-dag`: read existing `tasks/README.md`, per-module READMEs, infra README, ticket files; capture max `TSK-NN` and current DAG.
+        6. Proceed to STEP_1.
       </Action>
     </Step>
 
     <Step id="STEP_1_STACK_RESOLUTION">
-      <Goal>Verify all referenced rule files exist across the cascade sources.</Goal>
+      <Goal>Verify all rule references resolve. Build Cascade Table. Operator approval.</Goal>
       <Action>
-        1. TRACE_HEADER with STACK `ROOT__STACK_RESOLUTION`.
-        2. Collect rule references from THREE sources:
-           - Project-Wide Rules (root spec §4.5).
-           - Domain Rules Additions (each domain spec §9).
-           - (Task-level additions are introduced in STEP_4 per-task; not part of this step.)
-        3. For each rule reference, verify file existence at `.ai/directives/<category>/<rule>.xml`.
-        4. **Phase Progress:** "Project rules: 3 resolved. Domain ui rules: +2 resolved. Domain todos rules: +0. Domain persistence rules: +0. All sources satisfied." OR "Missing: `quality/accessibility.xml`. Cannot proceed."
-        5. <Switch exclusive="true">
-             <Case when="All rules found">Proceed to STEP_1_5.</Case>
-             <Case when="At least one rule missing">
-               Abort: "Cannot scaffold tasks: missing rules `<list>`. Author them under `.ai/directives/<category>/<rule>.xml` or remove from declaration." STOP.
-             </Case>
-           </Switch>
+        1. TRACE_HEADER (STACK `ROOT__STACK_RESOLUTION`).
+        2. Collect rule refs from infra §5, project §4.5, each module §9. (Task-tier added in STEP_3.)
+        3. For each ref, verify file existence under `.ai/directives/<category>/<rule>.xml`. Any miss → `H_MISSING_RULES` (abort with explicit list).
+        4. Build Cascade Table (Scope × Categories matrix; tier rows for present tracks only).
+        5. Phase Progress + Approval Check. STOP.
       </Action>
     </Step>
 
-    <Step id="STEP_1_5_RULES_CASCADE_RESOLUTION">
-      <Goal>Materialize the project-wide Cascade artifact and lock it via operator approval.</Goal>
+    <Step id="STEP_2_DAG">
+      <Goal>Build acyclic task DAG in topological implementation order.</Goal>
       <Action>
-        1. TRACE_HEADER with STACK `ROOT__RULES_CASCADE_RESOLUTION`.
-        2. **Build Cascade Table** — a Scope × Categories matrix showing rule additions at each level (project, each domain). Format:
-
-           ```markdown
-           | Scope            | coding         | testing       | architecture     | quality          |
-           |------------------|----------------|---------------|------------------|------------------|
-           | project          | <rule>, <rule> | <rule>        | <rule>           |                  |
-           | domain <name-1>  |                |               |                  | <rule>           |
-           | domain <name-2>  | <rule>         |               |                  |                  |
-           ```
-           *(Each cell lists the rule names selected at that scope. Empty cells = nothing added at this scope. Rule names match the basenames of files under `.ai/directives/<category>/`.)*
-
-        3. Per-task additions are not in the Cascade Table — they are added to the ticket's effective rules in STEP_4.
-        4. **Phase Progress:** "Cascade built. 4 categories × 4 scopes. 6 rules total at non-task levels. Task-level additions deferred to STEP_4."
-        5. **Approval Check:** "Утверди Cascade Table или предложи правки. Без утверждения переход к DAG запрещён."
-
-        STOP.
-      </Action>
-    </Step>
-
-    <Step id="STEP_2_DEPENDENCY_ANALYSIS">
-      <Goal>Build the task DAG in topological implementation order.</Goal>
-      <Action>
-        1. TRACE_HEADER with STACK `ROOT__DEPENDENCY_ANALYSIS`.
-        2. Analyze each domain spec: Entity Inventory, Contracts, Cross-Domain Dependencies.
-        3. Form tasks:
-           - Phase 1 — Ports & base Entities (no external dependencies).
-           - Phase 2 — Adapters, Services, Commands, Queries.
-           - Phase 3 — cross-domain integrations.
-           - If one area has both a simulation seam and full runtime — split into separate tasks or explicitly record deferred runtime scope.
-        4. Assign a `Task-ID` (e.g. `TSK-01`, `TSK-02`...). Project-wide sequential numbering.
-        5. **Critical Analysis:** where are cycles? where is a task too large (>1 working day)? where is a missing prerequisite?
-        6. **Phase Progress + Approval Check:** show the DAG (Mermaid or text), ask for approval of order and granularity.
-
-        STOP. Without an approved DAG, transition to STEP_3 is forbidden.
+        1. TRACE_HEADER (STACK `ROOT__DAG`).
+        2. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec.
+        3. Form tasks per `AX_DAG_EXECUTION`. Assign sequential `TSK-NN` (project-wide).
+        4. Check: no cycles; no oversized tasks (>1 day); no missing prerequisites.
+        5. Phase Progress + Approval Check (Mermaid graph). STOP.
       </Action>
     </Step>
 
     <Step id="STEP_3_INDEX_GENERATION">
-      <Goal>Generate hierarchical tracker artifacts: project-level README + per-domain READMEs.</Goal>
+      <Goal>Write hierarchical trackers per `TASKS_README_STRUCTURE` + `MODULE_TASKS_README_STRUCTURE`.</Goal>
       <Action>
-        1. TRACE_HEADER with STACK `ROOT__INDEX_GENERATION`.
-        2. Generate `tasks/README.md` (project-level) per `TASKS_README_STRUCTURE`:
-           - Entry points (link to `specs/README.md`).
-           - **Stack Summary** with the Cascade Table from STEP_1_5.
-           - **Project-Wide Conventions** (file-header rule, baseline Completion Rule, canonical Execution Log template, post-task audit hint) — declared ONCE here per `AX_TICKET_DEDUPLICATION`.
-           - **High-level DAG** showing only inter-domain edges and cross-domain integration tasks.
-           - **Domain Tracker Index** — table linking to per-domain READMEs with aggregate status (e.g., `5/5 done`).
-           - Decision Log at task-scaffolding level (if the operator made non-default choices).
-        3. For each domain, generate `tasks/<domain>/README.md` per `DOMAIN_TASKS_README_STRUCTURE`:
-           - In-domain mini-DAG (intra-domain edges only).
-           - Detailed Tracker for tasks in this domain (Task-ID, Title, Dependencies, Status, Reopens).
-           - Domain Rules Additions reference (link to domain spec §9).
-        4. For cross-domain integration tasks — place under `tasks/_integration/` with its own README.
-        5. **Phase Progress:** "Project README generated. Domain READMEs: todos, persistence, ui (3/3). Integration scope: _integration with 1 task."
-        6. Approval Check.
-
-        STOP.
+        1. TRACE_HEADER (STACK `ROOT__INDEX_GENERATION`).
+        2. Write `tasks/README.md` per `TASKS_README_STRUCTURE`. Project-Wide Conventions declared ONCE here per `AX_TICKET_DEDUPLICATION`.
+        3. Per module: write `tasks/<module>/README.md` per `MODULE_TASKS_README_STRUCTURE`.
+        4. If infra track: write `tasks/_infrastructure/README.md`. If inter-module: write `tasks/_integration/README.md`.
+        5. Phase Progress + Approval Check. STOP.
       </Action>
     </Step>
 
     <Step id="STEP_4_TASK_GENERATION">
-      <Goal>Generate every task ticket in the compact format. Project-wide content is NOT duplicated into tickets (`AX_TICKET_DEDUPLICATION`).</Goal>
+      <Goal>Emit each ticket per `TASK_TICKET_STRUCTURE`. Project-wide content NOT duplicated.</Goal>
       <Action>
-        Iterate over tasks:
-        1. TRACE_HEADER with STACK `ROOT__TASK_GENERATION__<TASK_ID>`.
-        2. Verify Task-ID uniqueness (`AX_TASK_ID_UNIQUENESS`): scan `tasks/**/*.task-*.md` before assigning the next sequential ID. Collision = abort with explicit message.
-        3. Compute effective rules: union of project (Cascade Table §STEP_1_5) + domain (Cascade Table) + task-specific additions (operator-supplied this step). Materialize as a 3-column table in ticket Meta.
-        4. Produce `tasks/<scope>/<scope>.task-NN.md` strictly per `TASK_TICKET_STRUCTURE` from `<Output_Contracts>`.
-        5. The ticket MUST include (task-specific only):
-           - Meta: Purpose, Domain, Task-ID, Dependencies, Spec References, Effective Rules table, Runtime Backing + Verification Levels + Deferred Runtime Scope, Target Files + Target Test Files, Reopens (omit if 0).
-           - BDD scenarios with verification level marker (`contract` / `unit` / `integration` / `e2e`).
-           - Canonical case names in Test Scenario Coverage.
-           - Task-specific Completion additions ONLY if extending the project-wide baseline.
-           - **Plan-as-checklist** Execution Log (per `AX_EXECUTION_LOG_PLAN_VS_FACT`): pre-templated `[ ]` items predicting actions for this round, with placeholders for values execution will know (`<ts>`, `<pass|fail>`, `<exit=<code>>`, etc.). Plan items are derived from §3 Verification commands, §4 Test Scenario Coverage, and Target Files. Execution-agent toggles `[ ]`→`[x]` AND replaces every placeholder with real values during work.
-        6. The ticket MUST NOT duplicate (declared once in `tasks/README.md`):
-           - File-header convention.
-           - Baseline Completion Rule.
-           - Execution Log template body.
-           - Post-task audit hint.
-        7. **Phase Progress:** "TSK-04 generated. Effective rules: 6 (3 project, 2 domain, 1 task). 12/18 tasks complete."
-        8. Approval per batch (e.g., per domain).
-
-        STOP.
+        For each task:
+        1. TRACE_HEADER (STACK `ROOT__TASK_GENERATION__<TASK_ID>`).
+        2. Verify ID uniqueness per `AX_TASK_ID_UNIQUENESS`. Collision → `H_ID_COLLISION`.
+        3. Compute effective rules per `AX_RULES_CASCADE_RESOLUTION`; derive `Rule Activation Plan` per `AX_RULE_ACTIVATION_PLAN` (phase × rules from cascade × Target Files / Target Test Files / Deferred Test Ownership).
+        4. Write `tasks/<scope>/<scope>.task-NN.md` per `TASK_TICKET_STRUCTURE`.
+        5. Pre-fill §5 Execution Log as PLAN per `AX_EXECUTION_LOG_PLAN_VS_FACT` — derive lines from §3 Verification commands + §4 Test Scenario Coverage + Target Files.
+        6. Phase Progress per batch + Approval Check. STOP.
       </Action>
     </Step>
 
-    <Step id="STEP_5_REVIEW_LOOP">
-      <Goal>Final agreement on artifacts.</Goal>
+    <Step id="STEP_5_REVIEW">
+      <Goal>Final operator agreement.</Goal>
       <Action>
-        TRACE_HEADER with STACK `ROOT__REVIEW_LOOP`.
-        Show: list of created files (tracker + all task tickets) with their Traceability links.
-        Approval Check: "Граф зависимостей и трассируемость готовы для передачи execution-агентам?"
-
-        STOP. If the operator asks for changes — apply and output updated artifacts.
+        TRACE_HEADER (STACK `ROOT__REVIEW`). List created files with traceability links. Approval Check. STOP.
       </Action>
     </Step>
   </Execution_Plan>
 
   <Frame_Rules>
-    <Rule id="FRAME_PUSH_WHEN">Open a nested frame on disputes about granularity, order, BDD scenarios, deferred coverage, or per-task detail.</Rule>
-    <Rule id="FRAME_POP_WHEN">Close the frame on confirmed conclusion, deferred status, or when local discussion cannot advance.</Rule>
+    <Rule id="FRAME_PUSH_WHEN">Open nested frame on disputes about granularity, order, BDD scenarios, deferred coverage, per-task detail.</Rule>
+    <Rule id="FRAME_POP_WHEN">Close on confirmed conclusion, deferred status, or when local discussion cannot advance.</Rule>
     <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
   </Frame_Rules>
 
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      TS_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | STATUS: <...> | CONF: <LOW|MEDIUM|HIGH>
-      GOAL: <локальная цель>
-      EXIT: <условие выхода>
+      📋 TS_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      ## Phase Progress
-      Phase: <STEP_NAME>
-      Closed: <что согласовано>
-      Open: <что обсуждается>
-      Blocking: <если есть>
-      Suggested Next: <предложение>
-      Counters: <"DAG: 18 tasks across 3 domains", "14/18 tickets generated">
+      🎯 Phase Progress — <STEP_NAME>
+        ✅ Closed:    <agreed>
+        ⏳ Open:      <under discussion>
+        🛑 Blocking:  <if any, else —>
+        ▶️ Next:      <proposal>
+        📊 Counters:  <e.g. "DAG: 18 tasks across 3 modules; 14/18 tickets generated">
       ```
     </Contract>
 
     <Contract id="TASK_TICKET_STRUCTURE">
-      Compact format. Project-wide content (file-header rule, baseline completion rule, execution log template body, post-task audit hint) lives ONCE in `tasks/README.md` per `AX_TICKET_DEDUPLICATION` and is NOT duplicated here.
+      Project-wide content (file-header rule, baseline Completion Rule, Execution Log protocol, audit hint) lives in `tasks/README.md` per `AX_TICKET_DEDUPLICATION` — NOT duplicated here.
 
       ```markdown
       # Task: <Task-ID> — <Task Title>
@@ -621,23 +388,22 @@
       ## 1. Meta & Traceability
       - **Task-ID:** <TSK-NN>
       - **Purpose:** <semantic goal>
-      - **Domain:** <domain-name>
-      - **Dependencies:** <comma-separated Task-IDs или None>
-      - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when count is 0 -->
+      - **Module:** <module-name>
+      - **Dependencies:** <comma-separated Task-IDs or None>
+      - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
       - **Spec References:**
-        - Contract: [<ContractName>](<relative path to spec anchor>)
-        - Consumer: [<ConsumerName>](<relative path>)
-        - Constraints (if applicable): [<RootSpec Section 4>](<path>)
-      - **Rules:** cascade per [tasks/README.md#stack](../README.md#stack); task additions: <list или **none**>; activation overrides: <list или **defaults**>. Effective set = cascade ∪ task additions, computed at activation time.
+        - Contract: [<ContractName>](<spec anchor>)
+        - Consumer: [<ConsumerName>](<spec anchor>)
+        - Constraints (if applicable): [<RootSpec §4>](<path>)
+      - **Rule Activation Plan** (per `AX_RULE_ACTIVATION_PLAN`; cascade sources at [tasks/README.md#stack](../README.md#stack)):
 
-        <!-- Show the full Effective Rules table ONLY when this ticket has task-specific additions OR activation overrides — otherwise the one-line reference above is sufficient. The cascade itself lives in tasks/README.md per `AX_TICKET_DEDUPLICATION`; duplicating it per ticket creates drift and violates DRY. -->
-
-        <!-- Format when additions/overrides exist:
-        | Rule | Category | Source | Activation |
-        |------|----------|--------|------------|
-        | <task-specific-rule> | <category> | task | <now|later> |
-        | <overridden-rule> | <category> | <original-source> (overridden) | <new-activation> |
-        -->
+        | Phase  | Активировать                | Источник                |
+        |--------|-----------------------------|-------------------------|
+        | PLAN   | <list or skip>              | architecture (cascade)  |
+        | IMPL   | <list or skip — <reason>>   | coding (cascade)        |
+        | TEST   | <list or skip — <reason>>   | testing (cascade)       |
+        | AUDIT  | <list or skip>              | quality (cascade)       |
+        | COMMIT | <list or omit row>          | vcs (cascade)           |
 
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
@@ -646,7 +412,7 @@
       - **Target Test Files:** `<path>` (Create | Update), ...
 
       ## 2. Acceptance Criteria (BDD)
-      Контракт см. по ссылке в Spec References.
+      Contract: see Spec References.
 
       **Feature:** <component behavior>
 
@@ -657,100 +423,81 @@
       - **And** <side effect>
 
       ## 3. Verification
-      - **Commands:**
-        - `<command>`
+      - **Commands:** `<command>`
       - **Task-specific Completion additions:** <list or "none beyond project baseline">
 
       ## 4. Test Scenario Coverage
-      - Scenario <name> → `<test file>` :: `<canonical case name>`
+      - Scenario <name> → `<test-file>` :: `<canonical case name>`
 
       ## 5. Execution Log
-      *(Plan-as-checklist. Processing protocol: see [tasks/README.md#execution-log-template](../README.md#execution-log-template). Per `AX_EXECUTION_LOG_PLAN_VS_FACT`.)*
+      *(Plan-as-checklist per `AX_EXECUTION_LOG_PLAN_VS_FACT`; protocol in [tasks/README.md#execution-log-template](../README.md#execution-log-template).)*
 
       ### Round 1 — <YYYY-MM-DD>, initial
       - [ ] `[<ts>]` Task initialized.
-      - [ ] `[<ts>]` File created: `<Target File path>`. *(one line per Target File)*
-      - [ ] `[<ts>]` Verification: `<command from §3>` → `<pass|fail>` [`exit=<code>`]. *(one line per verification command)*
-      - [ ] `[<ts>]` Scenario coverage: `<scenario name>` → `<test-file>::<canonical case name>`. *(one line per BDD scenario from §4)*
-      - [ ] `[<ts>]` Self-audit: walked through each loaded rule's `<Belief_State>` axioms against generated code. Violations: `<list of fixes made or "none">`.
+      - [ ] `[<ts>]` File created: `<Target File>`.   <!-- one per Target File -->
+      - [ ] `[<ts>]` Verification: `<command from §3>` → `<pass|fail>` [`exit=<code>`].   <!-- one per command -->
+      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.   <!-- one per BDD scenario -->
+      - [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
       - [ ] `[<ts>]` Introduced (if any): `<EntityName>` because `<reason>`.
-      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` Status [x] DONE; `tasks/README.md` aggregate counts updated.
+      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
       - [ ] `[<ts>]` Status: [x] DONE.
-
-      <!-- Subsequent rounds appended on reopen, never editing prior rounds. Format:
-      ### Round N — <YYYY-MM-DD>, <reason>
-      -->
       ```
     </Contract>
 
     <Contract id="TASKS_README_STRUCTURE">
-      Project-level tracker. Domain-level details live in `tasks/<domain>/README.md` (`DOMAIN_TASKS_README_STRUCTURE`). High-level DAG here shows only inter-domain edges; intra-domain edges live in domain READMEs.
+      Project-level tracker. High-level DAG = inter-module edges only; intra-module edges live in module READMEs.
 
       ```markdown
       # Project Tasks
 
       ## Entry Points
-      - [Specs](../specs/README.md) · [Root spec](../specs/<root>.spec.md) · [Specs README](../specs/README.md)
-      - Pick up any task ONLY by activating the `task-execution` directive (`.ai/directives/sdd/task-execution.directive.xml`). After `[x] DONE`, run the `audit` directive (`.ai/directives/sdd/audit.directive.xml`) on the ticket.
+      - [Specs](../specs/README.md) · [Root spec](../specs/<root>.spec.md)
+      - Tickets are picked up ONLY via `task-execution` directive (`.ai/directives/sdd/task-execution.directive.xml`). After `[x] DONE`, run `audit` (`.ai/directives/sdd/audit.directive.xml`).
 
       ## Stack Summary
 
       ### Cascade Table
-      Effective rules per scope, with activation timing. Tier order (lowest → highest priority on collision): `infra` → `project` → `domain:<name>` → `task`. Activation defaults per `AX_RULE_ACTIVATION_DEFAULTS`; entries marked `now` are walked through with the operator during the directive that picked them.
+      Tier order (low → high priority on collision): `infra` → `project` → `module:<name>` → `task`. Per-ticket execution-time activation is plan-driven via `Rule Activation Plan` (`AX_RULE_ACTIVATION_PLAN`), not via this table.
 
-      | Scope               | coding (later)  | testing (later) | architecture (now) | quality (now) | vcs (now) | runtimes (now) |
-      |---------------------|-----------------|-----------------|--------------------|---------------|-----------|----------------|
-      | infra               | <rule>          | <rule>          |                    | <rule>        | <rule>    | <rule>         |
-      | project             |                 |                 | <rule>             |               |           |                |
-      | domain <name-1>     |                 |                 |                    |               |           |                |
-      | domain <name-2>     | <rule>          |                 |                    | <rule>        |           |                |
-
-      *(Each cell lists rules selected at that tier. Rule names are basenames of files under `.ai/directives/<category>/`. Empty cells = nothing added at this tier.)*
+      | Scope               | coding   | testing  | architecture | quality  | vcs    | runtimes |
+      |---------------------|----------|----------|--------------|----------|--------|----------|
+      | infra               | <rule>   | <rule>   |              | <rule>   | <rule> | <rule>   |
+      | project             |          |          | <rule>       |          |        |          |
+      | module <name-1>     |          |          |              |          |        |          |
+      | module <name-2>     | <rule>   |          |              | <rule>   |        |          |
 
       ### Rule Sources
-      - Infra: see [infrastructure spec §5](../specs/_infrastructure/_infrastructure.spec.md#5-effective-rules-for-cascade) (when infra track present)
-      - Project: see [root spec §4.5](../specs/<root>.spec.md#45-project-wide-rules) (when application track present)
-      - Domain: see each domain's §9 Handoff (e.g., [ui](../specs/ui/ui.spec.md#9-handoff-to-task-scaffolding))
-      - Files resolve under `.ai/directives/<category>/<rule>.xml`
+      - Infra: [_infrastructure spec §5](../specs/_infrastructure/_infrastructure.spec.md#5-effective-rules-for-cascade)
+      - Project: [root spec §4.5](../specs/<root>.spec.md#45-project-wide-rules)
+      - Module: each module's §9 Handoff
+      - Files: `.ai/directives/<category>/<rule>.xml`
 
       ## Project-Wide Conventions
 
       ### File-header Convention
-      Every new implementation/test file gets a top-of-file header. IDs only — never paths. Multiple `@tasks` allowed when more than one task touched the file (chronological, append-only).
+      Per `AX_FILE_HEADER_TASK_TRACEABILITY`. IDs only, comma-separated, append-only.
 
       ```ts
       // @tasks TSK-04, TSK-12
-      // @purpose <short English ai-to-ai purpose, 3-12 words>
+      // @purpose <short ai-to-ai purpose, 3–12 words>
       ```
 
-      For `css/html` use equivalent comments (`/* ... */`, `<!-- ... -->`). Pre-existing files are not migrated automatically.
+      CSS/HTML use equivalent comments. Pre-existing files not migrated automatically.
 
       ### Completion Rule (baseline)
-      A task cannot transition to `[x] DONE` until ALL of:
-      1. Every Acceptance Scenario has concrete test ownership in Test Scenario Coverage.
-      2. Verification commands have been executed; results recorded in the Execution Log with exit codes.
-      3. Canonical case names in the ticket match real test cases or the ticket has been updated.
-      4. Deferred Runtime Scope is explicitly recorded if part of declared behavior is not in this round.
-      5. Every entity introduced beyond the domain Entity Inventory is logged as `Introduced <Name> because <reason>`.
+      A task cannot transition to `[x] DONE` until ALL of (per `AX_DONE_REQUIRES_EVIDENCE`):
+      1. Every BDD scenario mapped to test ownership in §4 OR has `Deferred Test Ownership: <task-id>`.
+      2. Verification commands executed; results + exit codes recorded in Execution Log.
+      3. Canonical case names match real test cases or ticket updated.
+      4. `Deferred Runtime Scope` recorded if applicable.
+      5. Every introduced-beyond-Inventory entity logged as `Introduced <Name> because <reason>`.
 
-      Task-specific Completion additions live in each ticket's §3 Verification.
+      Task-specific additions live in each ticket's §3.
 
       ### Execution Log Template
+      Per `AX_EXECUTION_LOG_PLAN_VS_FACT` (this directive) + `AX_LIVE_LOG` in `task-execution` (Executor's fact-processing protocol). Each round = one open-to-DONE cycle; append-only; old rounds NEVER edited.
 
-      Each ticket's §5 Execution Log is a **plan-as-checklist**: scaffolding pre-fills `[ ]` items predicting the round's actions; execution-agent turns plan into fact.
-
-      **Processing protocol — execution-agent's responsibility for each `[ ]` line:**
-      1. **Replace `<ts>`** with the real timestamp (e.g., `2026-05-07 14:22`).
-      2. **Replace EVERY other placeholder** (`<pass|fail>`, `<exit=<code>>`, `<path>`, `<cmd>`, `<scenario>`, `<test-file>::<case>`, `<EntityName>`, `<reason>`) with real values from the actual action performed.
-      3. **Toggle** `- [ ]` → `- [x]`.
-      4. If reality diverges from the planned line — **edit the line content** to match what actually happened, THEN toggle `[x]`. Never toggle a line that misrepresents reality.
-      5. For actions NOT in the plan (new Introduced entries, blocker entries) — APPEND new `- [x]` lines with full real content.
-
-      ⛔ **Forbidden — fabricated done:** toggling `[x]` while leaving any `<...>` placeholder literal. Audit detects leftover placeholders in `[x]` lines and raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
-
-      **Append-only by rounds.** Each round = one open-to-DONE cycle. Old rounds are NEVER edited or reordered.
-
-      **Plan format (scaffolding writes):**
+      **Plan format (scaffolding pre-fills per ticket):**
       ```markdown
       ### Round 1 — <YYYY-MM-DD>, initial
       - [ ] `[<ts>]` Task initialized.
@@ -764,20 +511,7 @@
       - [ ] `[<ts>]` Status: [x] DONE.
       ```
 
-      **Fact format (after execution processes the plan; placeholders replaced with real values):**
-      ```markdown
-      ### Round 1 — <YYYY-MM-DD>, initial
-      - [x] `[<real ts>]` Task initialized.
-      - [x] `[<real ts>]` Implementation file: `<real/path/from/execution>`.
-      - [x] `[<real ts>]` Test file: `<real/path/from/execution>`.
-      - [x] `[<real ts>]` Verification: `<real cmd>` → `pass` [`exit=0`].
-      - [x] `[<real ts>]` Scenario coverage: `<scenario name>` → `<real test file>::<real test case>`.
-      - [x] `[<real ts>]` Self-audit: walked <activated directives> axioms; <N> violations fixed (<short list>); verifications re-run → pass.
-      - [x] `[<real ts>]` Tracker synced: `tasks/<scope>/README.md` Status `[x] DONE`; `tasks/README.md` aggregate counts updated.
-      - [x] `[<real ts>]` Status: [x] DONE.
-      ```
-
-      **Reopen rounds (appended on subsequent reopen, never editing prior):**
+      **Reopen rounds** (appended on subsequent rounds; prior rounds untouched):
       ```markdown
       ### Round N — <YYYY-MM-DD>, <reason>
       - [x] `[<ts>]` Task reopened. Reason: <reason>.
@@ -785,23 +519,23 @@
       - [x] `[<ts>]` Status: [x] DONE.
       ```
 
-      ### Post-task Hook (mandatory, not optional)
-      After mechanical `[x] DONE`, invoke the `audit` directive on the ticket. Until audit returns PASS, the round is closed but UNVERIFIED — drift (closed-world, runtime backing, rules cascade, BDD coverage, task-id integrity) may remain undetected. The `task-execution` agent emits an explicit request for audit at session close; the operator's role is to follow through. Per-task mode is the default (per `AX_AUDIT_MODES`).
+      ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done; Auditor raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+
+      ### Post-task Hook
+      Per `AX_AUDIT_HOOK`. After `[x] DONE`, invoke `audit` on the ticket. Until audit returns PASS, round is closed-but-unverified.
 
       ## High-Level DAG
-      Inter-domain edges + cross-domain integration tasks. Intra-domain edges in per-domain READMEs.
+      Inter-module edges + inter-module integration tickets only.
 
       ```mermaid
       graph TD
-        domain-todos --> domain-persistence
-        domain-persistence --> domain-ui
-        domain-todos --> domain-ui
-        TSK-13[Cross-domain integration] -.-> domain-ui
+        module-todos --> module-persistence
+        module-persistence --> module-ui
+        module-todos --> module-ui
+        TSK-13[Inter-module integration] -.-> module-ui
       ```
 
       ## Tracker Index
-      Includes infra tracker (when present), domain trackers (when present), and integration tracker (when present).
-
       | Scope | Tracker | Tasks | Done |
       |---|---|---|---|
       | _infrastructure | [README](_infrastructure/README.md) | 6 | 0/6 |
@@ -811,21 +545,19 @@
       | _integration | [README](_integration/README.md) | 1 | 0/1 |
 
       ## Decision Log (task-scaffolding-level)
-      [D-NNN entries when the operator made non-default choices on granularity, order, deferred coverage, or rule additions.]
+      [D-NNN entries when operator made non-default choices.]
       ```
     </Contract>
 
-    <Contract id="DOMAIN_TASKS_README_STRUCTURE">
-      Domain-level tracker. Detailed task list and intra-domain DAG.
-
+    <Contract id="MODULE_TASKS_README_STRUCTURE">
       ```markdown
-      # Tasks: <domain-name>
+      # Tasks: <module-name>
 
-      ## Domain Spec
-      - [Domain spec](../../specs/<domain>/<domain>.spec.md)
-      - [Domain Rules Additions](../../specs/<domain>/<domain>.spec.md#9-handoff-to-task-scaffolding)
+      ## Module Spec
+      - [Module spec](../../specs/<module>/<module>.spec.md)
+      - [Module Rules Additions](../../specs/<module>/<module>.spec.md#9-handoff-to-task-scaffolding)
 
-      ## Intra-Domain DAG
+      ## Intra-Module DAG
       ```mermaid
       graph TD
         TSK-04 --> TSK-05
@@ -836,49 +568,11 @@
       | Task-ID | Title | Dependencies | Status | Reopens |
       |---------|-------|--------------|--------|---------|
       | [TSK-04](payments.task-04.md) | Implement StripePaymentAdapter | TSK-01, TSK-03 | `[ ]` TODO | 0 |
-      | [TSK-05](payments.task-05.md) | OrderProcessor composition | TSK-04 | `[ ]` TODO | 0 |
 
       ## Notes
-      [Optional: domain-specific execution notes, deviations, deferred items.]
+      [Optional: module-specific execution notes, deviations, deferred items.]
       ```
     </Contract>
   </Output_Contracts>
 
-  <Reward_Criteria>
-    ✅ REWARD: Every message contains a compact `TS_R<N>` trace anchor and Phase Progress.
-    ✅ REWARD: All cascade rule sources resolve to existing files; directive explicitly aborts on missing rules.
-    ✅ REWARD: Cascade Table is materialized in `tasks/README.md` Stack Summary and approved by the operator before DAG generation.
-    ✅ REWARD: DAG has no cycles and is approved by the operator.
-    ✅ REWARD: Every ticket is compact: project-wide content lives in `tasks/README.md`, ticket carries only task-specific fields.
-    ✅ REWARD: Every ticket Meta has the Effective Rules table with resolved-at date and source attribution.
-    ✅ REWARD: Task-IDs are project-wide unique; collision aborts generation.
-    ✅ REWARD: File-header convention uses Task-IDs (not paths), comma-separated, append-only.
-    ✅ REWARD: Reopens field, when present, is a single-line summary (count + date + reason).
-    ✅ REWARD: Execution Log template uses round-structure with append-only discipline.
-    ✅ REWARD: Every BDD scenario has a canonical case name + concrete test ownership through `Target Test Files`.
-    ✅ REWARD: Cross-domain tasks have explicit scope under `tasks/_integration/`.
-    ✅ REWARD: Hierarchical READMEs: `tasks/README.md` for project-level, `tasks/<domain>/README.md` for domain-level.
-    ❌ PENALTY: Tickets generated without resolved Effective Rules table.
-    ❌ PENALTY: Project-wide content (file-header rule, completion rule baseline, execution log template, audit hint) duplicated into individual tickets.
-    ❌ PENALTY: Cycles in the DAG.
-    ❌ PENALTY: Contract duplicated inside the ticket instead of linking to a spec anchor.
-    ❌ PENALTY: Use of language-specific terms in BDD scenarios.
-    ❌ PENALTY: Canonical case names not materialized in test files and not updated in the ticket before closing.
-    ❌ PENALTY: Ticket declares `Runtime Backing: real-runtime` but verification is only a simulation seam without an explicit deferred marker.
-    ❌ PENALTY: Task-ID collision proceeded silently; file-header path used instead of Task-ID.
-    ❌ PENALTY: Reopens field expanded to multiple lines instead of compact one-liner.
-    ❌ PENALTY: Auto-agreement with the operator on merging tasks or skipping tests without surfacing risks.
-    ✅ REWARD: Mode auto-detected from intake; ambiguity halted with explicit question.
-    ✅ REWARD: `extend-dag` mode preserves all existing Task-IDs and ticket files; new tasks get next sequential IDs.
-    ✅ REWARD: `extend-dag` mode does NOT regenerate existing tickets even when upstream specs changed (reopen is `task-execution`'s job).
-    ❌ PENALTY: Mode assumed silently when intake was ambiguous.
-    ❌ PENALTY: `extend-dag` mode reused or modified an existing Task-ID.
-    ❌ PENALTY: `extend-dag` mode regenerated existing tickets instead of letting `task-execution` reopen them.
-    ✅ REWARD: Infra and application tracks detected independently from spec presence (`AX_INFRA_TRACK_DETECTION`); both, either, or neither handled correctly.
-    ✅ REWARD: Cascade Table includes `infra` tier when infra spec is present; tier rows for absent tracks omitted cleanly.
-    ✅ REWARD: Infra-only project (SANDBOX-style) produces only `tasks/_infrastructure/` artifacts; no domain trackers fabricated.
-    ✅ REWARD: Application-only project (no infra spec) emits a one-time warning; cascade `infra` tier marked absent.
-    ❌ PENALTY: Cascade Table contains `infra` tier when infra spec is absent (fabricated source attribution).
-    ❌ PENALTY: Infra-only project generated phantom domain trackers or application-style task tickets.
-  </Reward_Criteria>
 </TaskScaffolding>

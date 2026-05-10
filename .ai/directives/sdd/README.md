@@ -7,7 +7,7 @@ Spec-Driven Development. Two **orthogonal tracks** converge at task-scaffolding.
 ```
               Application track (what we build)
               ┌───────────────────────────────────────┐
-              │ discovery (1) → domain-modeling (2)   │──┐
+              │ discovery (1) → module-decomposition (2)   │──┐
               └───────────────────────────────────────┘  │
                                                          ├──> task-scaffolding ──> task-execution ──> audit
               Infrastructure track (how we work)         │
@@ -25,10 +25,10 @@ Both tracks converge at `task-scaffolding`, which detects which tracks are prese
 
 | Directive | Track | Input | Output |
 |-----------|-------|-------|--------|
-| `discovery.directive.xml` | application | raw operator idea | `specs/<root>.spec.md` (Vision, Project Type, Golden DX, Requirements incl. §4.5 Project-Wide Rules, Architecture, Decision Log, Handoff) |
-| `domain-modeling.directive.xml` | application | root spec | hierarchy of `specs/<domain>/<domain>.spec.md` with entity inventory, DbC contracts, Domain Rules Additions per domain |
-| `infra-discovery.directive.xml` | infrastructure | raw operator tooling intent | `specs/_infrastructure/_infrastructure.spec.md` (Vision, Tool Stack via Decision Log, Developer Workflow Example, File Structure, Effective Rules for cascade, Handoff) |
-| `task-scaffolding.directive.xml` | convergence | both spec trees (or one) | hierarchical `tasks/` (project README + `_infrastructure/` README + per-domain READMEs) with 4-tier Cascade Table, Project-Wide Conventions, DAG, compact tickets |
+| `discovery.directive.xml` | application | raw operator idea | `specs/<root>.spec.md` (Vision, Project Type, Golden DX, Requirements incl. §4.5 Project-Wide Rules, Architecture, Decision Log, Handoff) + own row in `specs/README.md` Portal |
+| `module-decomposition.directive.xml` | application | root spec | hierarchy of `specs/<module>/<module>.spec.md` with entity inventory, DbC contracts, Module Rules Additions per module + own rows in `specs/README.md` Portal Knowledge Graph |
+| `infra-discovery.directive.xml` | infrastructure | raw operator tooling intent | `specs/_infrastructure/_infrastructure.spec.md` (Vision, Tool Stack via Decision Log, Developer Workflow Example, File Structure, Effective Rules for cascade, Handoff) + own row in `specs/README.md` Portal |
+| `task-scaffolding.directive.xml` | convergence | both spec trees (or one) | hierarchical `tasks/` (project README + `_infrastructure/` README + per-module READMEs) with 4-tier Cascade Table, Project-Wide Conventions, DAG, compact tickets |
 | `task-execution.directive.xml` | execution | one ticket + cascade rules | filled Execution Log round + code/config changes; spec updates only proposed, never written |
 | `audit.directive.xml` | verification | DONE round + code | `audits/<task-id>.audit.md` (round-structured, append-only) with findings and remediation proposals |
 
@@ -38,8 +38,8 @@ Both tracks converge at `task-scaffolding`, which detects which tracks are prese
 - **Stateless artifacts.** Each session's final artifact is 100% self-contained. The next session reads only the artifact, not the conversation history.
 - **Closed-world fidelity.** Implementation must not introduce entities absent from the spec. Any deviation is an audit candidate.
 - **Decision Log.** Architectural decisions with risks or alternative choices are recorded with rationale **in the operator's own words**. Stable `D-NNN` IDs, extensible format, supersession without deletion of older entries.
-- **Rules cascade (4 tiers).** Rules are declared at four orthogonal levels: `infra` (infrastructure spec §5, derived from chosen tools — when infra track present), `project` (root spec §4.5 — when application track present), `domain:<name>` (domain spec §9), `task` (ticket additions). Effective set per task = union of all present tiers, with later tiers overriding earlier on collisions. Cascade Table is materialized once in `tasks/README.md`; per-task effective set is baked into each ticket. Categories: `coding`, `testing`, `architecture`, `quality`. Missing rule files abort the directive.
-- **Hierarchical tasks.** `tasks/` mirrors `specs/` hierarchy: project-level README at the root with high-level (inter-domain) DAG, per-domain READMEs with intra-domain DAG and detailed tracker, cross-domain integration tasks under `tasks/_integration/`. This scales beyond ~30 tasks where a flat tracker degrades.
+- **Rules cascade (4 tiers).** Rules are declared at four orthogonal levels: `infra` (infrastructure spec §5, derived from chosen tools — when infra track present), `project` (root spec §4.5 — when application track present), `module:<name>` (module spec §9), `task` (ticket additions). Effective set per task = union of all present tiers, with later tiers overriding earlier on collisions. Cascade Table is materialized once in `tasks/README.md`; per-task effective set is baked into each ticket. Categories: `coding`, `testing`, `architecture`, `quality`. Missing rule files abort the directive.
+- **Hierarchical tasks.** `tasks/` mirrors `specs/` hierarchy: project-level README at the root with high-level (inter-module) DAG, per-module READMEs with intra-module DAG and detailed tracker, inter-module integration tasks under `tasks/_integration/`. This scales beyond ~30 tasks where a flat tracker degrades.
 - **Compact tickets.** Project-wide content (file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint) lives once in `tasks/README.md`, not duplicated into every ticket. Tickets carry only task-specific Meta + BDD + Verification + Test Coverage + the round-structured Execution Log instance.
 - **Task-IDs are stable.** Project-wide unique sequential `TSK-NN`. Code references via `// @tasks TSK-04, TSK-12` (IDs only, never paths). Multiple IDs per file are expected when more than one task touched a file. Append-only — prior IDs are preserved.
 - **Append-only logs.** Execution Log structured by rounds; on reopen a new `### Round N` section is appended; prior rounds are immutable. Audit reports follow the same round-append discipline.
@@ -57,7 +57,7 @@ Directives govern agents. When directive prose mentions an «agent», «auditor�
 | Phrase in prose | Means | Activated by |
 |---|---|---|
 | «discovery agent» / «DX Designer» | agent under `discovery` | `discovery.directive.xml` |
-| «domain-modeler» | agent under `domain-modeling` | `domain-modeling.directive.xml` |
+| «module-decomposer» | agent under `module-decomposition` | `module-decomposition.directive.xml` |
 | «infra-discovery agent» / «DevOps engineer / tooling architect» | agent under `infra-discovery` | `infra-discovery.directive.xml` |
 | «scaffolding agent» / «task planner» | agent under `task-scaffolding` | `task-scaffolding.directive.xml` |
 | «execution agent» / «implementer» | agent under `task-execution` | `task-execution.directive.xml` |
@@ -68,22 +68,61 @@ When a directive says «activate the `<name>` directive» or «run the `<name>` 
 
 ## Modes per directive
 
-Each phase directive auto-detects its operating mode from the operator's intake. Ambiguity halts the directive with a binary clarifying question — modes are NEVER assumed silently.
+Each phase directive auto-detects its operating mode from the operator's intake **and from the presence of `specs/README.md`** (the Specs Portal — see «Specs Portal» section below). Ambiguity halts the directive with a binary clarifying question — modes are NEVER assumed silently.
 
 | Directive | Modes | Detection signal |
 |---|---|---|
-| `discovery` | `greenfield` / `extension` / `pivot` | No spec link → greenfield. Spec link + verb «extend / add» → extension. Spec link + verb «pivot / replace» → pivot. Spec link without verb → HALT, ask binary question. |
-| `domain-modeling` | `initial` / `add-domain` / `refine-domain` | No domain specs yet → initial. Spec tree + «add domain X» → add-domain. Spec tree + «refine X» OR Pivot Invalidation List → refine-domain. Ambiguous → HALT. |
-| `infra-discovery` | `greenfield` / `extension` / `pivot` | No infra spec link → greenfield. Spec link + verb «extend / add tool» → extension. Spec link + verb «pivot / replace» → pivot. Spec link without verb → HALT. |
-| `task-scaffolding` | `initial` / `extend-dag` | No `tasks/` → initial. `tasks/` exists + clear extension target → extend-dag. Also detects which tracks (infra / application / both) are present in spec tree. |
+| `discovery` | `greenfield` / `extension` / `pivot` | No `specs/README.md` AND no spec link → greenfield. `specs/README.md` exists OR spec link present → NOT greenfield; verb decides extension vs pivot; ambiguous → HALT. |
+| `module-decomposition` | `initial` / `add-module` / `refine-module` | No module rows in Portal Knowledge Graph → initial. Portal + «add module X» → add-module. Portal + «refine X» OR Pivot Invalidation List → refine-module. Ambiguous → HALT. |
+| `infra-discovery` | `greenfield` / `extension` / `pivot` | No `specs/README.md` AND no infra spec link → greenfield. Portal exists OR infra spec link present → NOT greenfield; verb decides extension vs pivot; ambiguous → HALT. |
+| `task-scaffolding` | `initial` / `extend-dag` | No `tasks/` → initial. `tasks/` exists + clear extension target → extend-dag. Reads `specs/README.md` first to detect which tracks (infra / application / both) are present. |
 | `task-execution` | (single mode — atomic per task) | — |
 | `audit` | `per-task` / `epic-level` (existing `AX_AUDIT_MODES`) | Operator passes one Task-ID → per-task. List of IDs or scope → epic-level. |
 
 **Key rules across all directives:**
 
-- **No spec link = greenfield default.** Silence about existing artifacts means new project from scratch. The directive does NOT scan `specs/` searching for context.
+- **`specs/README.md` is the authoritative greenfield detector.** Its presence means the project already exists; greenfield mode is forbidden. Its absence means clean field; greenfield is the only valid mode.
+- **No spec link + no Portal = greenfield.** Silence about existing artifacts AND no Portal file means new project from scratch.
 - **Spec link is authoritative.** Cannot be treated as inspiration. If operator means inspiration, they must describe patterns without linking; the directive halts otherwise.
 - **Code is never read by phase directives** (`AX_SPEC_IS_SOLE_SOURCE`). Spec is the only source of truth. The single exception is `audit`.
+
+## Specs Portal (`specs/README.md`)
+
+`specs/README.md` is the **single entry point** into the project for any future session — operator hands a fresh agent this one path and the agent has enough context to choose the right directive and continue work.
+
+Structure (flat, minimal):
+
+```markdown
+# <project-name> — Specs Portal
+
+## Vision
+[One-sentence project purpose. Owned by `discovery`. Absent in infra-only (SANDBOX) projects.]
+
+## Knowledge Graph
+- [`<root>.spec.md`](./<root>.spec.md) — root spec проекта (vision, requirements, architecture).
+- [`_infrastructure/`](./_infrastructure/_infrastructure.spec.md) — <one-line tool stack summary>.
+- [`<module-1>/`](./<module-1>/<module-1>.spec.md) — <one-line module purpose>.
+- [`<module-2>/`](./<module-2>/<module-2>.spec.md) — <one-line module purpose>.
+```
+
+### Co-ownership
+
+The Portal is co-owned by three directives. Each owns specific rows / sections; chosen directive **reads** other rows for context and **writes** only its own:
+
+| Section / Row | Owner | When written |
+|---|---|---|
+| `## Vision` | `discovery` | greenfield (creates), pivot (rewrites if Vision changed), extension (updates if Vision changed) |
+| `## Knowledge Graph` → root spec row | `discovery` | when root spec is created or replaced |
+| `## Knowledge Graph` → `_infrastructure/` row | `infra-discovery` | greenfield (creates), pivot/extension (updates one-line summary) |
+| `## Knowledge Graph` → per-module rows | `module-decomposition` | initial (adds rows for all modules), add-module (appends one row), refine-module (updates one row) |
+
+Editing a row owned by another directive is forbidden. If a directive needs to change another's row, escalate via a Decision Log entry; the operator runs the owner directive in extension/pivot mode.
+
+### Portal lifecycle
+
+- **First directive run on the project** (greenfield in `discovery` OR `infra-discovery`) creates the Portal with its own row + one-line note for the absent track (e.g. `_не описана — запусти infra-discovery._` placeholder line).
+- **Subsequent directives** read the Portal first; their mode auto-detects as NOT greenfield because the Portal exists; they update / append their own row.
+- **`task-scaffolding`** uses the Portal Knowledge Graph as the canonical map of which tracks and modules exist; from there it locates the actual spec files.
 
 ## Pivot mechanics
 
@@ -91,8 +130,8 @@ Pivot mode in `discovery` is the formal mechanism for evolving an existing proje
 
 - The root spec is **reworked in place** — old content is removed from spec body, not marked `superseded` inline.
 - Each rework gets a self-contained Decision Log entry: `Was → Now`, `Why`, `Risk`, `Supersedes`, `Pre-rework state` (git commit-sha for predecessor state).
-- §7.1 Pivot Invalidation List enumerates downstream artifacts that became stale: domain specs to refine, tasks to reopen, rules to revisit.
-- Downstream phases react: `domain-modeling` runs `refine-domain` for listed domains; `task-execution` reopens listed tasks (new round); `audit` raises `STALE_AFTER_PIVOT` findings for unaddressed items.
+- §7.1 Pivot Invalidation List enumerates downstream artifacts that became stale: module specs to refine, tasks to reopen, rules to revisit.
+- Downstream phases react: `module-decomposition` runs `refine-module` for listed modules; `task-execution` reopens listed tasks (new round); `audit` raises `STALE_AFTER_PIVOT` findings for unaddressed items.
 
 Git is the version control mechanism. Old spec states live in git history; the Decision Log entry alone is enough for downstream phases to reconstruct context without reading git.
 
@@ -102,10 +141,10 @@ Git is the version control mechanism. Old spec states live in git history; the D
 
 | Pair | Why forbidden |
 |---|---|
-| `discovery` + anything | `AX_ISOLATED_THINKING` forbids reading code/specs while drafting; later phases require reading them |
+| `discovery` + anything | `AX_SPEC_IS_SOLE_SOURCE` forbids reading code (and `specs/` in greenfield) while drafting; later phases require reading them |
 | `infra-discovery` + anything | same isolation principle as `discovery` — tooling decisions need a clean room |
 | `discovery` + `infra-discovery` | even though tracks are orthogonal, mixing application and infra dialogue in one session loses focus; run each in its own session |
-| `domain-modeling` + `task-scaffolding` | scaffolding reads specs; domain-modeling is still mutating them |
+| `module-decomposition` + `task-scaffolding` | scaffolding reads specs; module-decomposition is still mutating them |
 | `task-scaffolding` + `task-execution` | execution starts implementing while planning is unfinished — scope creep |
 | `task-execution` + `audit` | self-audit by the same agent is biased; audit needs a fresh-eyes context boundary |
 
@@ -133,10 +172,12 @@ Discipline:
 
 ## Output paths
 
+**Portal (co-owned across both tracks):**
+- `specs/README.md` — Specs Portal: project Vision + Knowledge Graph linking root, infra and module specs. Co-owned by `discovery`, `infra-discovery`, `module-decomposition` (see «Specs Portal» section above).
+
 **Application track:**
 - `specs/<root>.spec.md` — root project spec (output of `discovery`).
-- `specs/<domain>/<domain>.spec.md` — domain specs, cross-linked (output of `domain-modeling`).
-- `specs/README.md` — navigation across the spec tree (output of `domain-modeling`).
+- `specs/<module>/<module>.spec.md` — module specs, cross-linked (output of `module-decomposition`).
 
 **Infrastructure track:**
 - `specs/_infrastructure/_infrastructure.spec.md` — infrastructure spec with Tool Stack, Developer Workflow Example, Effective Rules (output of `infra-discovery`).
@@ -144,16 +185,16 @@ Discipline:
 **Tasks (convergence — both tracks contribute):**
 - `tasks/README.md` — project-level tracker: 4-tier Cascade Table, Project-Wide Conventions, high-level DAG, Tracker Index (output of `task-scaffolding`).
 - `tasks/_infrastructure/README.md` — infra tracker (when infra track is present).
-- `tasks/<domain>/README.md` — per-domain tracker: intra-domain DAG and detailed task list (when application track is present).
+- `tasks/<module>/README.md` — per-module tracker: intra-module DAG and detailed task list (when application track is present).
 - `tasks/<scope>/<scope>.task-NN.md` — task tickets (output of `task-scaffolding`; updated by `task-execution` per round).
-- `tasks/_integration/<scope>.task-NN.md` — cross-domain integration tickets.
+- `tasks/_integration/<scope>.task-NN.md` — inter-module integration tickets.
 
 **Audit:**
 - `audits/<task-id>.audit.md` — audit reports, round-structured (output of `audit`).
 
 ## Rule directories
 
-Each category has its own README listing currently-available and planned rule files. Categories cascade: `infra` (from `infra-discovery`) → `project` (from `discovery` §4.5) → `domain` (from `domain-modeling` §9) → `task` (per ticket).
+Each category has its own README listing currently-available and planned rule files. Categories cascade: `infra` (from `infra-discovery`) → `project` (from `discovery` §4.5) → `module` (from `module-decomposition` §9) → `task` (per ticket).
 
 | Category | Purpose | Currently available |
 |---|---|---|

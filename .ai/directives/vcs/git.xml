@@ -1,185 +1,160 @@
-<Git keywords="git, vcs, gitignore, branches, commits, hooks, history, tags, secrets, repo-bootstrap" type="vcs-rules" ver="1.1">
-  <Directive_Context>
-    <Mission>
-      Define foundational git policy for every project: gitignore baseline, branch strategy, commit convention, history hygiene, tag/release semantics, hooks integration, secrets discipline, and repo bootstrap.
+<Git keywords="git, vcs, gitignore, branches, commits, hooks, history, tags, secrets, repo-bootstrap" type="vcs-rules" ver="2.0">
+  <Mission>
+    Foundational git policy for every project: gitignore baseline, branch strategy, commit convention, history hygiene, tag/release semantics, hooks integration, secrets discipline, repo bootstrap.
 
-      Goal: a repo that is reproducible, auditable, and safe — no accidental secret leaks, no platform-specific binaries committed, no fabricated «green» status hiding broken history.
+    Goal: a repo that is reproducible, auditable, safe — no accidental secret leaks, no platform-specific binaries committed, no fabricated «green» status hiding broken history. The repo is the project's canonical record; every commit is part of the audit trail.
 
-      Scope is git itself. Tool choice for hooks runner (lefthook / husky / simple-git-hooks) is the `git-hooks` category in `infra-discovery`, distinct from this rule. CI provider configuration is the `ci` category, also distinct.
-    </Mission>
-    <Functional_Perspective>
-      You are a repository steward. Reproducibility, auditability, safety — in that order.
-      The repo is the project's canonical record; every commit becomes part of the audit trail. Lock-file commits and exact `.gitignore` rules are not pedantry — they are the contract that makes the project survive contributor turnover and CI/local environment drift.
-    </Functional_Perspective>
-  </Directive_Context>
+    Scope is git itself. Tool choice for hooks runner (lefthook / husky / simple-git-hooks) is the `git-hooks` category in `infra-discovery`. CI provider is the `ci` category. Both distinct from this rule.
+  </Mission>
 
   <Belief_State>
     <Axiom id="AX_GITIGNORE_BASELINE">
-      **`.gitignore` covers three layers: mandatory, tool-derived, environment.**
+      `.gitignore` covers three layers.
 
-      Mandatory (every project):
-      - `.claude/settings.local.json` — personal Claude Code overrides; team-shared `.claude/settings.json` IS tracked.
-      - `.env`, `.env.local`, `.env.*.local` — secrets; only `.env.example` (no real values) is tracked.
+      **Mandatory** (every project):
+      - `.claude/settings.local.json` (personal Claude Code overrides; team-shared `.claude/settings.json` IS tracked).
+      - `.env`, `.env.local`, `.env.*.local` (secrets; only `.env.example` with placeholders is tracked).
       - OS artifacts: `.DS_Store`, `Thumbs.db`, `desktop.ini`.
-      - Editor caches: `.idea/`, `*.swp`, `.vscode/` (or selectively, project-team decision).
-      - Coverage outputs: `coverage/`, `*.lcov`, `.nyc_output/`.
+      - Editor caches: `.idea/`, `*.swp`, `.vscode/` (or selectively).
+      - Coverage: `coverage/`, `*.lcov`, `.nyc_output/`.
       - Logs: `*.log`, `npm-debug.log*`, `yarn-error.log`, etc.
 
-      Tool-derived (per chosen stack — derived from `infra-discovery` choices):
-      - Node ecosystem: `node_modules/`, `dist/`, `.next/`, `.nuxt/`, `.cache/`.
+      **Tool-derived** (per chosen stack from `infra-discovery`):
+      - Node: `node_modules/`, `dist/`, `.next/`, `.nuxt/`, `.cache/`.
       - Python: `__pycache__/`, `*.pyc`, `.venv/`, `.pytest_cache/`, `.ruff_cache/`.
       - Go: `vendor/` (if not committed by policy), build artifacts.
       - Rust: `target/`.
 
-      Environment-specific (allow developer-local additions):
-      - Personal scripts under `scripts/local/` — developer-team decision.
+      **Environment-specific:** developer-team decision (e.g., `scripts/local/`).
 
-      **Why:** `.gitignore` is the first contract every contributor encounters. Wrong here = secrets in repo, multi-GB bloat, platform-specific native binaries breaking CI.
+      Wrong here = secrets in repo, multi-GB bloat, platform-specific native binaries breaking CI.
     </Axiom>
 
     <Axiom id="AX_BRANCH_STRATEGY">
-      **Pick one branch strategy at project init, document in README, enforce via remote branch protection.**
+      Pick one strategy at project init, document in README, enforce via remote branch protection.
 
-      Three accepted variants:
-      - **trunk-based** — short-lived branches off `main`, merged within a day. Default for small teams + strong CI. (Recommended default.)
-      - **github-flow** — long-lived feature branches, PR-driven, no `develop` branch.
-      - **git-flow** — `main` + `develop` + `release/*` + `hotfix/*`. For projects with planned release cadences.
+      | Strategy | When |
+      |---|---|
+      | `trunk-based` (recommended default) | small teams + strong CI; short-lived branches off `main`, merged within a day |
+      | `github-flow` | long-lived feature branches, PR-driven, no `develop` |
+      | `git-flow` | planned release cadences; `main` + `develop` + `release/*` + `hotfix/*` |
 
-      Default branch name: `main` (not `master`). Set both locally and on remote.
+      Default branch name: `main` (not `master`) — both locally and on remote.
 
-      Branch naming convention: `<type>/<short-description>`, where `type ∈ {feature, fix, chore, docs, refactor, test, perf}`. Lowercase, kebab-case.
+      Branch naming: `<type>/<short-description>`, where `type ∈ {feature, fix, chore, docs, refactor, test, perf}`. Lowercase, kebab-case.
 
-      **Why:** Mixing strategies within one team multiplies merge confusion. Pick one, document it, enforce it.
+      Mixing strategies within one team multiplies merge confusion.
     </Axiom>
 
     <Axiom id="AX_COMMIT_CONVENTION">
-      **Default: Conventional Commits format (`<type>(<scope>): <subject>`). Alternatives acceptable with documented rationale.**
+      Default: Conventional Commits format `<type>(<scope>): <subject>`. Alternatives acceptable with documented rationale.
 
-      Conventional Commits format:
+      Conventional Commits:
       - Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`, `style`, `revert`.
       - Subject: imperative mood, ≤72 chars, no trailing period.
       - Body (optional): wraps at 100 chars, blank line between subject and body.
-      - Footer: `BREAKING CHANGE: ...`, issue refs, sign-off.
+      - Footer: `BREAKING CHANGE: …`, issue refs, sign-off.
 
       Example: `feat(auth): add OAuth2 PKCE flow for native clients`.
 
-      Acceptable alternatives (operator choice with rationale in Decision Log):
-      - **plain** — no type prefix, just imperative subject. Lower ceremony, no semantic structure.
-      - **DCO sign-off** — `Signed-off-by: Name <email>` mandatory for licensing/legal. Compatible with conventional commits.
+      Acceptable alternatives (Decision Log entry required):
+      - **plain** — no type prefix, just imperative subject.
+      - **DCO sign-off** — `Signed-off-by: Name <email>` mandatory for licensing/legal; compatible with conventional commits.
 
-      **Why:** Conventional Commits enables auto-changelog, semantic-release, and machine-readable git history. The discipline cost is paid once; the visibility benefit accrues forever.
+      Conventional Commits enables auto-changelog, semantic-release, machine-readable history.
     </Axiom>
 
     <Axiom id="AX_HISTORY_POLICY">
-      **Linear history via rebase or squash-merge for PRs. Force-push forbidden on shared branches.**
+      Linear history via rebase or squash-merge for PRs. Force-push forbidden on shared branches.
 
-      Shared branches (force-push FORBIDDEN): `main`, `develop`, `release/*`, any branch with active PRs from others.
-      Personal branches (force-push allowed): your own `feature/*`, `fix/*` until merged.
+      - **Shared** (force-push FORBIDDEN): `main`, `develop`, `release/*`, any branch with active PRs from others.
+      - **Personal** (force-push allowed): your own `feature/*`, `fix/*` until merged.
 
-      Merge strategy options:
-      - **squash-merge** — feature branch becomes single commit on main. Simple history; loses commit granularity.
-      - **rebase-and-merge** — feature commits rebased onto main, no merge commit. Preserves granularity; requires clean local history.
-      - **merge commit** — discouraged unless you specifically want the branch shape preserved (e.g., release branches).
+      Merge strategies:
+      - `squash-merge` — feature branch becomes single commit on main. Simple history; loses commit granularity.
+      - `rebase-and-merge` — feature commits rebased onto main, no merge commit. Preserves granularity; requires clean local history.
+      - `merge commit` — discouraged unless branch shape must be preserved (e.g., release branches).
 
-      Hooks bypass: `--no-verify` is FORBIDDEN unless operator explicitly authorizes; if used, the bypass MUST be documented in the commit body.
+      Hooks bypass: `--no-verify` is FORBIDDEN unless operator explicitly authorizes; if used, the bypass MUST be documented in commit body.
 
-      **Why:** Shared-branch force-push silently rewrites history collaborators have already pulled. Recovery is manual and error-prone. Linear history makes `git bisect` and code archaeology possible.
+      Shared-branch force-push silently rewrites history collaborators have already pulled. Recovery is manual and error-prone.
     </Axiom>
 
     <Axiom id="AX_DESTRUCTIVE_COMMANDS_REQUIRE_AUTH">
-      **Destructive git commands risk silent data loss. They are NOT blanket forbidden — they're tools — but each invocation requires explicit operator authorization recorded in the Execution Log.**
+      Destructive git commands risk silent data loss. NOT blanket-forbidden — they're tools — but each invocation requires explicit operator authorization recorded in the Execution Log.
 
-      **Requires explicit auth (status `[!] BLOCKED` until operator confirms):**
+      **Requires explicit auth** (status `[!] BLOCKED` until operator confirms):
       - `git reset --hard <ref>` — discards working tree + index changes since `<ref>`.
       - `git restore .` (without specific path) — discards all uncommitted changes in working tree.
       - `git restore --staged --worktree <path>` with broad path — same risk.
       - `git clean -fd` / `-fdx` — deletes untracked files (and ignored-files with `-x`).
-      - `git checkout -- <path>` (or `git checkout HEAD -- <path>` with broad path) — discards uncommitted changes.
-      - `git push --force` / `--force-with-lease` on shared branches (`main`, `develop`, `release/*`).
+      - `git checkout -- <path>` (or `git checkout HEAD -- <path>`) with broad path — discards uncommitted changes.
+      - `git push --force` / `--force-with-lease` on shared branches.
       - `git branch -D <branch>` (force-delete unmerged) — distinct from `-d` (safe delete).
       - `git rebase -i` — interactive history rewrite.
       - `git reflog expire` / `git gc --prune=now` — drops recoverable history.
       - `git filter-repo` / `git filter-branch` — bulk history rewrite.
 
-      **Required protocol per invocation:**
-      1. State the intent in Execution Log: «Need to <reason>; proposing <command>.»
+      **Protocol per invocation:**
+      1. State intent in Execution Log: «Need to <reason>; proposing <command>.»
       2. Set status `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` (in `task-execution`).
       3. Wait for operator's explicit confirmation.
       4. Only then run.
 
-      **Recovery first, destruction second.** When something looks broken, the reflex «let me reset --hard and start over» is the failure mode this axiom exists to prevent. Recovery via:
-      - `git reflog` — find the lost commit/state.
+      **Recovery first, destruction second.** Reflex «let me reset --hard and start over» is the failure mode this axiom prevents. Recovery options:
+      - `git reflog` — find lost commit/state.
       - `git stash` — park uncommitted changes safely.
-      - `git revert` — create an inverse commit (preserves history).
+      - `git revert` — inverse commit (preserves history).
       - `git checkout <sha> -- <path>` — restore one file from a known-good commit.
 
-      Recovery preserves data; destruction loses it. Default to recovery.
-
-      **The operator-confirmed exception path:** if the operator explicitly says «yes, reset hard, that's exactly what I want» — fine. The auth record in Execution Log is the audit trail. The agent never assumes the answer is yes.
-
-      **Forbidden as habit:**
-      - «Let me just reset --hard and try again» — recovery is the operator's call.
-      - `git clean -fdx` to «free up disk» without listing what will be deleted.
-      - `--force-with-lease` on `main` because it «sounds safer than --force» — both are destructive on shared branches.
+      Forbidden as habit: «let me just reset --hard and try again»; `git clean -fdx` to «free disk» without listing what will be deleted; `--force-with-lease` on `main` because it «sounds safer than --force» (both destructive on shared branches).
     </Axiom>
 
     <Axiom id="AX_TAG_RELEASE">
-      **Semver tags: `vMAJOR.MINOR.PATCH`. Annotated tags only.**
+      Semver tags: `vMAJOR.MINOR.PATCH`. Annotated tags only.
 
       Format:
       - Stable: `v1.2.3`.
       - Pre-release: `v1.2.3-alpha.1`, `v1.2.3-beta.2`, `v1.2.3-rc.1`.
-      - Build metadata (optional): `v1.2.3+20260507` — discouraged; use only when build-system requires.
+      - Build metadata (optional, discouraged): `v1.2.3+20260507`.
 
       Always annotated:
       ```
       git tag -a v1.2.3 -m "Release 1.2.3 — <one-line summary>"
       ```
-      Lightweight tags (`git tag v1.2.3` without `-a`) are FORBIDDEN — they carry no metadata and look identical to branch refs.
+      Lightweight tags (`git tag v1.2.3` without `-a`) are FORBIDDEN — no metadata, look identical to branch refs.
 
-      Tags pushed explicitly: `git push origin v1.2.3` (or `--tags` after release).
-
-      **Why:** Annotated tags carry tagger identity, date, and message; they are first-class objects. Lightweight tags are mistakes waiting to surface.
+      Push explicitly: `git push origin v1.2.3` (or `--tags` after release).
     </Axiom>
 
     <Axiom id="AX_HOOKS_INTEGRATION">
-      **Hooks fire on every commit and push; use the runner chosen in `git-hooks` category.**
+      Hooks fire on every commit and push; use the runner chosen in `git-hooks` category.
 
-      Required hooks:
-      - **pre-commit** — lint changed files, format check, type-check (if applicable). Should complete in <5s for typical change. Failures BLOCK the commit.
-      - **commit-msg** — conventional-commits validator if `AX_COMMIT_CONVENTION = conventional`.
-      - **pre-push** — full test suite (unit + integration if fast). Failures BLOCK the push.
+      **Required:**
+      - `pre-commit` — lint changed files, format check, type-check (if applicable). Should complete in <5s for typical change. Failures BLOCK commit.
+      - `commit-msg` — conventional-commits validator if `AX_COMMIT_CONVENTION = conventional`.
+      - `pre-push` — full test suite (unit + integration if fast). Failures BLOCK push.
 
-      Optional hooks:
-      - **prepare-commit-msg** — auto-prepend issue ID from branch name.
-      - **post-merge** — run `npm install` / `pnpm install` if lock-file changed.
+      **Optional:**
+      - `prepare-commit-msg` — auto-prepend issue ID from branch name.
+      - `post-merge` — run `npm install` / `pnpm install` if lock-file changed.
 
-      Hooks are checked into the repo (via lefthook.yml / husky scripts / etc.); developer onboarding includes one command to register them (e.g., `pnpm exec lefthook install`).
-
-      **Why:** Hooks catch trivial mistakes locally before CI burns minutes. They also document team norms in code rather than wiki.
+      Hooks checked into the repo (lefthook.yml / husky scripts / etc.); developer onboarding includes one command to register them (e.g., `pnpm exec lefthook install`).
     </Axiom>
 
     <Axiom id="AX_LFS_SUBMODULES">
-      **LFS for large binaries. Submodules discouraged.**
+      LFS for large binaries. Submodules discouraged.
 
-      Git LFS:
-      - Required when tracking binary files >100MB (GitHub hard limit; other hosts vary).
-      - Configure `.gitattributes` to mark patterns: `*.psd filter=lfs diff=lfs merge=lfs -text`.
-      - LFS adds infrastructure cost (storage, bandwidth quota) — use only when binaries are necessary.
+      **Git LFS** — required when tracking binary files >100MB (GitHub hard limit; other hosts vary). Configure `.gitattributes`: `*.psd filter=lfs diff=lfs merge=lfs -text`. LFS adds infrastructure cost (storage, bandwidth quota) — use only when binaries are necessary.
 
-      Submodules:
-      - Discouraged in favor of monorepo structure or package dependencies.
-      - If unavoidable: pin to specific commit (not branch); document in README why submodule was chosen.
-      - Submodule update workflow is fragile: `git submodule update --init --recursive` after every checkout.
-
-      **Why:** LFS solves the «huge binary» problem without bloating the main repo. Submodules solve the «cross-repo dependency» problem but introduce checkout fragility — usually a package manager or monorepo handles this better.
+      **Submodules** — discouraged in favor of monorepo or package dependencies. If unavoidable: pin to specific commit (not branch); document in README why; expect fragile workflow (`git submodule update --init --recursive` after every checkout).
     </Axiom>
 
     <Axiom id="AX_REPO_BOOTSTRAP">
-      **First commit only after `.gitignore` is in place. Remote protection enforced before first push.**
+      First commit only after `.gitignore` is in place. Remote protection enforced before first push.
 
-      Bootstrap sequence:
-      1. `git init` (or `git init -b main` to set default branch immediately).
+      Sequence:
+      1. `git init` (or `git init -b main`).
       2. Author `.gitignore` with at minimum the mandatory layer from `AX_GITIGNORE_BASELINE`. Tool-derived ignores added as `infra-discovery` decisions resolve.
       3. First commit: foundational files only — `LICENSE`, `README.md`, `.gitignore`. Message: `chore: initial commit`.
       4. Add remote and first push only AFTER `.gitignore` is verified — protects against accidental secret commits.
@@ -188,24 +163,24 @@
          - Require status checks (CI green) before merge.
          - Disallow force-push.
 
-      **Why:** First push is the riskiest moment for secret leaks — `.env` files might exist locally and accidentally enter the index. `.gitignore` first prevents this class of mistake.
+      First push is the riskiest moment for secret leaks — `.env` files might exist locally and accidentally enter the index.
     </Axiom>
 
     <Axiom id="AX_SECRETS_DISCIPLINE">
-      **Secrets never committed. On leak: rotate first, rewrite history second.**
+      Secrets never committed. On leak: rotate first, rewrite history second.
 
-      Prevention:
+      **Prevention:**
       - `.env`, `.env.local`, `.env.*.local` always gitignored (`AX_GITIGNORE_BASELINE`).
       - `.env.example` tracked with placeholder values to document required keys.
-      - Pre-commit hook scans staged files for secret patterns (API keys, private keys, AWS access keys) — recommended tools: `gitleaks`, `detect-secrets`, `trufflehog`.
-      - Code review checks for hardcoded credentials in any file extension (not just `.env`).
+      - Pre-commit hook scans staged files for secret patterns (recommended: `gitleaks`, `detect-secrets`, `trufflehog`).
+      - Code review checks for hardcoded credentials in any file extension.
 
-      On leak detection:
+      **On leak detection:**
       1. **Rotate the leaked credential immediately** (revoke + reissue). The credential is compromised the moment it hits a remote, regardless of subsequent rewrite.
-      2. Document the incident: what leaked, when, who rotated, what notifications went out.
+      2. Document incident: what leaked, when, who rotated, what notifications went out.
       3. Optional: `git filter-repo` or BFG to scrub history, then force-push (coordinate with team).
 
-      **Why:** Git history is forever. Once a secret reaches the remote, assume it's harvested by scanners within minutes. Rotation is mandatory; history rewrite is hygiene, not security.
+      Git history is forever. Once a secret reaches the remote, assume it's harvested by scanners within minutes. Rotation is mandatory; history rewrite is hygiene, not security.
     </Axiom>
   </Belief_State>
 
@@ -224,19 +199,19 @@
 
     <Anti_Pattern id="AP_SECRET_IN_HISTORY">
       <Bad>Committed `.env` with real API key, then `git rm` in next commit.</Bad>
-      <Why_Bad>The secret is in the history. Anyone can `git log -p` and recover it. Public repos expose to scanners within seconds.</Why_Bad>
+      <Why_Bad>The secret is in history. Anyone can `git log -p` and recover it. Public repos expose to scanners within seconds.</Why_Bad>
       <Good>Rotate the credential immediately. Then rewrite history with `git filter-repo` and force-push (coordinate with team). Add `.env` to `.gitignore` BEFORE first push.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_NO_VERIFY_AS_HABIT">
       <Bad>`git commit --no-verify` because pre-commit hook is «too slow».</Bad>
-      <Why_Bad>Hooks exist to catch mistakes locally. Routinely bypassing them shifts those mistakes into CI (slower, more expensive) or main (worse). If hooks are too slow, fix the hooks — don't skip them.</Why_Bad>
-      <Good>Diagnose hook slowness (lint scope too wide? full test suite in pre-commit instead of pre-push?). Optimize the hook. `--no-verify` only with explicit operator authorization, documented in commit body.</Good>
+      <Why_Bad>Hooks exist to catch mistakes locally. Routinely bypassing shifts mistakes into CI (slower, more expensive) or main (worse). Slow hook = fix the hook, don't skip it.</Why_Bad>
+      <Good>Diagnose hook slowness (lint scope too wide? full test suite in pre-commit instead of pre-push?). Optimize. `--no-verify` only with explicit operator authorization, documented in commit body.</Good>
     </Anti_Pattern>
 
     <Anti_Pattern id="AP_LIGHTWEIGHT_TAG">
       <Bad>`git tag v1.2.3` (no `-a`).</Bad>
-      <Why_Bad>Lightweight tag has no tagger / date / message metadata. It looks identical to a branch ref in some tools. Release lineage is unrecoverable.</Why_Bad>
+      <Why_Bad>No tagger / date / message metadata. Looks identical to a branch ref in some tools. Release lineage unrecoverable.</Why_Bad>
       <Good>`git tag -a v1.2.3 -m "Release 1.2.3 — <summary>"`. Always annotated for release tags.</Good>
     </Anti_Pattern>
   </Anti_Patterns>
@@ -270,24 +245,18 @@
   </Verification_Hooks>
 
   <Reward_Criteria>
-    ✅ REWARD: `.gitignore` covers mandatory layer (`.claude/settings.local.json`, `.env*`, OS / editor / coverage / log artifacts); tool-derived layer matches chosen stack.
-    ✅ REWARD: Default branch is `main`; remote branch protection prevents direct push, requires PR + green checks.
-    ✅ REWARD: Branch strategy declared in README, consistently applied.
-    ✅ REWARD: Commit messages follow chosen convention (default Conventional Commits); subjects ≤72 chars, imperative mood.
-    ✅ REWARD: History on shared branches is linear (rebase or squash-merge); no force-push on `main` / `develop` / `release/*`.
-    ✅ REWARD: Release tags annotated, semver format `vMAJOR.MINOR.PATCH`.
-    ✅ REWARD: Hooks runner installed via single onboarding command; pre-commit + commit-msg + pre-push hooks present.
-    ✅ REWARD: No `.env*` (except `.env.example`) tracked; pre-commit secret scanner in place.
-    ✅ REWARD: First commit happens AFTER `.gitignore` is in place; first push happens AFTER remote branch protection is configured.
+    ✅ `.gitignore` covers mandatory + tool-derived layers; first commit only after `.gitignore` in place.
+    ✅ Default branch is `main`; remote branch protection prevents direct push, requires PR + green checks.
+    ✅ Commits follow chosen convention; subjects ≤72 chars, imperative mood.
+    ✅ Shared-branch history is linear; release tags annotated, semver format.
+    ✅ Hooks runner installed via single onboarding command; `--no-verify` only with operator auth.
+    ✅ No `.env*` (except `.env.example`) tracked; pre-commit secret scanner in place.
+    ✅ Destructive commands preceded by explicit operator authorization in Execution Log; recovery preferred over destruction.
 
-    ❌ PENALTY: Secrets in history (any `.env` with real values, hardcoded API keys, private keys).
-    ❌ PENALTY: `node_modules/` (or equivalent) committed.
-    ❌ PENALTY: Force-push to `main` / `develop` / shared release branches.
-    ❌ PENALTY: Lightweight tags (`git tag v1.2.3` without `-a`) used for releases.
-    ❌ PENALTY: `--no-verify` used routinely without operator authorization.
-    ✅ REWARD: Destructive commands (`reset --hard`, `restore .`, `clean -fd`, force-push, etc.) preceded by explicit operator authorization recorded in Execution Log; recovery preferred over destruction.
-    ❌ PENALTY: Destructive git command run as «let me just reset --hard and try again» reflex — without operator authorization or attempt at recovery via reflog/stash/revert.
-    ❌ PENALTY: Default branch named `master` in new project.
-    ❌ PENALTY: `.claude/settings.local.json` tracked (personal overrides leak).
+    ❌ Secrets in history; `node_modules/` (or equivalent) committed.
+    ❌ Force-push to shared branches; lightweight release tags.
+    ❌ `--no-verify` as habit; default branch named `master` in new project.
+    ❌ Destructive command run as «let me just reset --hard» reflex without operator authorization.
+    ❌ `.claude/settings.local.json` tracked.
   </Reward_Criteria>
 </Git>

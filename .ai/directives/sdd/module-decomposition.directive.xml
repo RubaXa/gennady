@@ -1,0 +1,639 @@
+<ModuleDecomposition keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, module-rules, rule-activation, modes, add-module, refine-module, sdd-phase-2" type="directive" ver="2.0">
+  <Directive_Context>
+    <Mission>
+      Turn the approved root spec into a hierarchy of module specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
+
+      Second SDD session. Input — `specs/<root>.spec.md` from Discovery + `specs/README.md` Specs Portal. Output:
+      - hierarchy of `specs/<module>/<module>.spec.md` (nesting allowed for nested modules);
+      - per-module rows added to `specs/README.md` Specs Portal Knowledge Graph (replacing the `_Modules: …_` placeholder line); inter-module dependency map appended as `## Inter-Module Dependency Map` section;
+      - updated `specs/<root>.spec.md`: **append-only** — new §8 Module Map; Discovery's §7 stays frozen.
+
+      Out of scope here: task tickets, BDD scenarios, execution plans, coding/testing rules linkage — those belong to `task-scaffolding`.
+
+      **Glossary.** Phase 2 of SDD. Executor = `task-execution` agent (phase 4). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs).
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_DIRECTIVE_MODE">
+      **Three modes, auto-detected from intake:**
+      - `initial` — first run, only root spec exists.
+      - `add-module` — add new module to existing tree without touching others.
+      - `refine-module` — refine an existing module (typically triggered by Discovery's Pivot Invalidation List or audit `INSIGHT_BACKFLOW`).
+
+      Mode controls step branching and which axioms apply.
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      Mode is mechanical; ambiguity halts.
+
+      | Intake | Verb | Mode |
+      |---|---|---|
+      | Root spec only, no module specs | — | `initial` |
+      | Spec tree | add module X / новый модуль | `add-module` (operator must name) |
+      | Spec tree | refine X / уточни / поправь | `refine-module` (operator must name) |
+      | Spec tree + Pivot Invalidation List | — | `refine-module` (target named in list) |
+      | Spec tree | none of the above | HALT, ask operator |
+      | No root spec link | — | HALT, require Discovery's spec |
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      **Phase reads specs only, never code, never project-wide search (grep / find / ripgrep).** Allowed inputs by mode:
+      - `initial` — root spec + rule files at `.ai/directives/<category>/<rule>.xml`.
+      - `add-module` / `refine-module` — root spec + relevant existing module specs + rule files. Optional supporting artifacts if operator passes them.
+
+      Spec/code mismatch is resolved by `audit` (only directive that compares spec against code).
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION">
+      **Two stages: pick rules, then walk through axioms. Never activate silently.**
+
+      - **Stage A — Relevance per category.** Shortlist «recommend activate» + «considered, recommend skip», each with one-line rationale scoped to module context. Operator agree / expand / contract → list locked; deviations → Module Decision Log.
+      - **Stage B — Per-rule axiom walk-through (rules with `activation=now` only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
+
+      **Activation defaults at module level.** `architecture/*`, `quality/*` → `now`. `coding/*`, `testing/*` → `later` (Stage A still applies; Stage B deferred to `task-execution`).
+
+      Activation outcomes recorded in §7 Module Decision Log of the relevant module spec.
+    </Axiom>
+
+    <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
+      In `add-module` mode existing module specs are NOT touched. Only:
+      - new `specs/<new-module>/<new-module>.spec.md`;
+      - `specs/README.md` Specs Portal Knowledge Graph: APPEND new module row; UPDATE `## Inter-Module Dependency Map` section (graph regenerated to include the new module). Foreign rows (root spec, infra) untouched.
+      - root spec §8 Module Map gains an entry (append at end).
+
+      Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run `module-decomposition` again in `refine-module` mode for that specific module.
+    </Axiom>
+
+    <Axiom id="AX_SPECS_PORTAL_COOWNERSHIP">
+      `specs/README.md` is the Specs Portal — single entry point for any future session — co-owned by `discovery`, `infra-discovery`, `module-decomposition`. Each directive owns specific rows / sections; reads other rows for context; writes only its own.
+
+      **`module-decomposition` owns:**
+      - `## Knowledge Graph` rows pointing to each module spec (`specs/<module>/<module>.spec.md`) with one-line module Purpose;
+      - `## Inter-Module Dependency Map` section (Mermaid graph of inter-module edges).
+
+      **`module-decomposition` reads (does not edit):**
+      - `## Vision` section (owned by `discovery`);
+      - `## Knowledge Graph` row pointing to root spec (owned by `discovery`);
+      - `## Knowledge Graph` row pointing to `_infrastructure/` (owned by `infra-discovery`).
+
+      Portal lifecycle in `module-decomposition`:
+      - **`initial`** — Portal exists (created by prior `discovery` and/or `infra-discovery`) with `_Modules: не выделены — запусти module-decomposition._` placeholder line. REPLACE the placeholder with one row per module. APPEND `## Inter-Module Dependency Map` section.
+      - **`add-module`** — APPEND a row for the new module; REGENERATE `## Inter-Module Dependency Map` to include the new node + edges.
+      - **`refine-module`** — UPDATE the target module's row description if Purpose changed; UPDATE `## Inter-Module Dependency Map` if dependencies changed.
+
+      Editing rows owned by other directives is forbidden (`H_PORTAL_FOREIGN_ROW_EDIT`). If the Portal does not exist (which should not happen because root spec exists by precondition), HALT (`H_PORTAL_MISSING`) — operator must run `discovery` first.
+    </Axiom>
+
+    <Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
+      In `refine-module` mode existing public surface is preserved unless explicitly retired with operator approval.
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
+
+      Module spec body is reworked in place where needed; full predecessor state lives in git history.
+    </Axiom>
+
+    <Axiom id="AX_STACK_BASED_FLOW">
+      Main path: `INTAKE → MODULE_MAP → ENTITY_INVENTORY → ENTITY_SURFACE → CONTRACTS_DBC → FILE_STRUCTURE → FINAL_HIERARCHY`. Per-module phases iterate: complete a phase across all modules before moving to the next.
+    </Axiom>
+
+    <Axiom id="AX_TRACE_ANCHORS">
+      Compact header on every message. Global: `DM_R001`, `DM_R002`, … Frame: `F_MM_R01` (module map), `F_EI_<MODULE>_R01` (entity inventory), `F_ES_<MODULE>_<ENTITY>_R01` (entity surface), `F_DBC_<MODULE>_R01`, `F_FS_<MODULE>_R01`, `F_FH_R01`. ASCII uppercase + digits + `_` only.
+    </Axiom>
+
+    <Axiom id="AX_FRAME_EXIT_DISCIPLINE">
+      Every frame has an exit condition. Status: OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED. Indefinite drilling without local result is forbidden. Sub-topic that does not block current phase → DEFERRED, return to parent.
+    </Axiom>
+
+    <Axiom id="AX_MODULE_BOUNDARY_BY_OPERATOR">
+      Module boundaries are decided by the operator. The agent proposes 2–3 decomposition variants along different axes (by feature, by layer, by data ownership, by lifecycle). No unilateral pick. Final decomposition recorded in root spec's Decision Log: which axis was chosen and why.
+    </Axiom>
+
+    <Axiom id="AX_HIERARCHICAL_SPECS">
+      Hierarchy, not flat list. Sub-modules → nested structure: `specs/<module>/<sub-module>/<sub-module>.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_NAVIGATION">
+      `specs/README.md` Specs Portal is the canonical navigation entry point. `module-decomposition` does NOT own the whole file — it owns only module rows in `## Knowledge Graph` + `## Inter-Module Dependency Map` section per `AX_SPECS_PORTAL_COOWNERSHIP`. Portal must include all module rows + dependency graph after `module-decomposition` completes.
+    </Axiom>
+
+    <Axiom id="AX_CLOSED_WORLD_INVENTORY">
+      Entity inventory is a closed world. For every module the agent lists ALL entities explicitly. Phrases like «и т.д.», «etc.», «and similar» are forbidden. Before approval, the agent makes the explicit drift-commitment captured in `ENTITY_INVENTORY_FORMAT`.
+
+      Cross-check trigger: walk through approved Golden DX Example and High-Level Architecture in root spec; ensure every abstraction mentioned there finds a home in some module inventory.
+    </Axiom>
+
+    <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
+      Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
+    </Axiom>
+
+    <Axiom id="AX_CONSUMER_DRIVEN">
+      No consumer — no component (YAGNI). Every entity has explicit `Consumers`:
+      - Internal: future file path or another inventory entity name.
+      - External: textual description (CLI, External API, Browser, OS Event Bus, …).
+
+      Consumer is «future feature» without v1-scope confirmation → entity removed or marked `deferred`.
+    </Axiom>
+
+    <Axiom id="AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE">
+      - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
+      - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
+      - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
+    </Axiom>
+
+    <Axiom id="AX_CONTEXT_TO_CONTRACT">
+      DbC is derived from context, not only from DX code. Root spec §4 Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+    </Axiom>
+
+    <Axiom id="AX_AGNOSTICISM">
+      Contracts are language-agnostic. No language-specific syntax in DbC. Vocabulary: Port, Adapter, Entity, Command, Query, Event. Concrete signatures belong to Executor.
+    </Axiom>
+
+    <Axiom id="AX_NAMESPACE_NAMING">
+      Single namespace for grepability. Module-wide: `<name>` / `<Name>`. Files: `<name>-*.<ext>`. Types/classes/constants: `<Name>*`. Platform-specific: `<platform>-<name>-*.<ext>`, `<Platform><Name>*`. Goal: `rg <name>` or `rg <platform>-<name>` finds all related code.
+    </Axiom>
+
+    <Axiom id="AX_MODULARITY_LIMITS">
+      No God Objects. File size ≤1500 lines. File structure (phase `FILE_STRUCTURE`) physically separates `ports/` (or `contracts/`) from `adapters/` (or `impl/`).
+    </Axiom>
+
+    <Axiom id="AX_RUNTIME_BACKING_IN_CONTRACTS">
+      Runtime backing and verification levels in every contract that depends on platform/runtime hooks. Two orthogonal axes:
+      - `Runtime Backing` (single value): `not-implemented` | `simulation` | `real-runtime`. What's actually behind the public surface in production code.
+      - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`.
+      - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime).
+
+      Simulation must not masquerade as runtime: declaring `real-runtime` while the implementation is simulation-only without explicit `Deferred Runtime Scope` is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_NO_SILENT_OPTION_DROP">
+      Public options cannot be silently forgotten. All include flags, transport settings, platform-specific options mentioned in root spec must either bind to a concrete Port/Adapter contract or be explicitly marked `deferred / not consumed in v1` with a pointer to the task or version that activates them.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Module-level decisions → module Decision Log. Cross-module or system-level → root spec's Decision Log.
+
+      Mandatory triggers: chosen decomposition axis; choice of Port vs Service for an entity with confirmed variability; accepted runtime-backing risk; adapter choice diverging from industry standard; change/cancellation of a prior decision.
+
+      Format: see `DECISION_LOG_ENTRY_FORMAT`.
+    </Axiom>
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses.
+      - Facts — directly in root spec.
+      - Assumptions — working assumptions needing confirmation.
+      - Hypotheses — conjectures requiring operator validation.
+    </Axiom>
+
+    <Axiom id="AX_Q_IDS">
+      Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
+    </Axiom>
+
+    <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
+      Hidden assumptions break the model. In every meaningful frame ask: canonical source of truth for this entity? degradation when dependency unavailable? where is runtime simulation? who validates input at this boundary? trust boundary between two modules?
+    </Axiom>
+
+    <Axiom id="AX_YAGNI_OVERENGINEERING_GUARD">
+      YAGNI. Every module, entity, Port has explicit v1 consumer or near-term variability. Future-proofing without a confirmed consumer is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      - Phase agreement: agent never closes a phase autonomously; signals `STATUS=READY_TO_ADVANCE`; operator confirms. Phase Progress every meaningful round with per-module / per-entity counters («5/12 entities approved in module X»).
+      - Neutral + critical: no auto-agree. Every operator proposal — check vs root spec + locked constraints; identify risks/trade-offs; demand justification on contradiction or risk acceptance; record only with explicit operator rationale.
+      - Confidence explicit (LOW / MEDIUM / HIGH). Under LOW: do not lock decomposition, do not move to next phase.
+      - No repeat questions: return only on new conflict or newly-introduced dependency.
+      - Context budget: long dialogues — top-3 questions; Working State as delta; compact Phase Progress; do not repeat full inventory if 1–2 entities changed.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      All entity inventories, contracts, file structures, decision-log entries baked into Markdown spec files. `task-scaffolding` starts in fresh session without modeling history.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      Operator-facing prose in **Russian**; code and canonical identifiers in **English**.
+      - Russian: spec body text (Module Vision, entity Purpose, contract DbC pre/post/invariants content, Decision Log `Why`/`Risk`, BDD-style descriptions in Spec References), README files, halt messages, Phase Progress field content.
+      - English: code, JSDoc, file paths, type/entity/method names, axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN`/`H_*`), severity/status tokens, structural section headings, field labels (`**Status:**`, `**Why:**`, `**Type:**`, `**Runtime Backing:**`).
+    </Axiom>
+
+    <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
+      Final hierarchy contains:
+      - `specs/README.md` as entry point;
+      - per-module spec §9 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `.ai/directives/coding/*`, `.ai/directives/testing/*`; **Module Rules Additions** layered on project-wide baseline.
+      - Modules layer rules ADD-only (cannot remove project-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (`infra` ∪ `project` ∪ `module` ∪ `task`, infra tier present only when infrastructure track exists) is computed by Scaffolder per-task.
+    </Axiom>
+  </Belief_State>
+
+  <Halt_Conditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_ROOT_SPEC` | No root spec link in intake |
+    | `H_PORTAL_MISSING` | `specs/README.md` Specs Portal absent — operator must run `discovery` first |
+    | `H_PORTAL_FOREIGN_ROW_EDIT` | Attempted to edit a Portal row owned by `discovery` or `infra-discovery` |
+    | `H_INCOMPLETE_ROOT_SPEC` | Root spec missing Discovery sections 1–7 |
+    | `H_AMBIGUOUS_MODE` | Spec tree provided + verb absent + no Pivot Invalidation List |
+    | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
+    | `H_INVENTORY_NOT_APPROVED` | Attempted STEP_3 without all-module inventories approved |
+    | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes public entity / weakens postcondition without Decision Log entry |
+    | `H_OPERATOR_REJECT` | Operator refuses decomposition, inventory, surface, contract, structure, or final hierarchy |
+    | `H_MISSING_RULE_FILE` | Module rule reference does not resolve to existing file (and not `deferred`) |
+  </Halt_Conditions>
+
+  <Golden_Example>
+    Reference fragment of `specs/payments/payments.spec.md` showing one assembled Port + Adapter pair with Inventory, Surfaces, DbC, Inter-Module Dependencies. Composition reference; individual Output_Contracts describe parts.
+
+    ```markdown
+    ## 2. Entity Inventory (Closed-World)
+
+    _Это полный список сущностей модуля `payments`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+
+    | Name | Type | Purpose |
+    |------|------|---------|
+    | `PaymentGatewayPort` | Port | Абстракция списания средств. |
+    | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe API. |
+    | `PaymentRequest` | Value Object | Намерение списать сумму в валюте по reference order. |
+    | `TransactionId` | Value Object | Идемпотентный идентификатор успешного списания. |
+
+    ## 3. Entity Surfaces
+
+    ### `PaymentGatewayPort`
+    - **Type:** Port
+    - **Purpose:** Абстракция списания средств; скрывает детали провайдера от order-флоу.
+    - **Public Operations:**
+      - `charge(request: PaymentRequest) -> TransactionId` — выполнить списание.
+      - `refund(transaction: TransactionId, amount: Money) -> void` — частичный или полный возврат.
+    - **Lifecycle:** singleton, инжектится в OrderProcessor при инициализации.
+    - **Errors & Degradation:** `InvalidAmountError`, `UnsupportedCurrencyError`, `GatewayUnavailableError`.
+    - **Consumers:** Internal `OrderProcessor` (`../orders/orders.spec.md#orderprocessor`); External — N/A.
+
+    ## 4. Module Contracts (DbC)
+
+    #### Port: `PaymentGatewayPort`
+    - **Runtime Backing:** `real-runtime`
+    - **Verification Levels:** `contract`, `integration`
+    - **Deferred Runtime Scope:** None
+
+    **Contract (DbC):**
+    - Preconditions:
+      - `request.amount > 0`.
+      - `request.currency` входит в supported set из root spec §4.
+      - `request.orderRef` уникален для каждого вызова `charge` (idempotency).
+    - Postconditions:
+      - При успехе возвращает непустой `TransactionId`.
+      - При неуспехе кидает один из module-errors; баланс не изменён.
+    - Invariants:
+      - Баланс пользователя не уходит в минус без подтверждённого кредитного лимита.
+      - Один и тот же `orderRef` не порождает два transaction'а.
+
+    #### Adapter: `StripePaymentAdapter`
+    - **Implements:** `PaymentGatewayPort`
+    - **Runtime Backing:** `real-runtime`
+    - **Verification Levels:** `integration`, `e2e`
+
+    **Side Effects:**
+    - HTTPS-запрос к `api.stripe.com/v1/charges`.
+    - Эмиссия `payment.charged` через ModuleEventBus.
+
+    ## 8. Inter-Module Dependencies
+    - **Depends on:** `observability` (`../observability/observability.spec.md`).
+    - **Provides to:** `orders` (`../orders/orders.spec.md`).
+    ```
+  </Golden_Example>
+
+  <Execution_Plan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Validate Portal + root spec; auto-detect mode; open `MODULE_MAP` or jump to refinement.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__INTAKE`).
+        2. **Portal detection.** Stat `specs/README.md`. Absent → `H_PORTAL_MISSING` (operator must run `discovery` first). Present → read it in full (Vision + Knowledge Graph) for context.
+        3. No root spec → `H_NO_ROOT_SPEC`.
+        4. Root spec missing Discovery §§1–7 → `H_INCOMPLETE_ROOT_SPEC`.
+        5. Apply mode detection table.
+        6. `add-module`: capture target module name from operator. `refine-module`: capture target module(s) from operator or Pivot Invalidation List; skip STEP_1 (decomposition unchanged) — proceed to STEP_2 scoped to named module(s).
+        7. Read root spec + relevant existing module specs. Briefly reframe: Vision, Project Type, key architectural decisions. Proceed to STEP_1 (or STEP_2 in `refine-module`).
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_MODULE_MAP">
+      <Goal>Agree on project decomposition into modules.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP`).
+        2. Decomposition Variants (per `AX_MODULE_BOUNDARY_BY_OPERATOR`): 2–3 variants by axis (feature / architectural layer / data ownership / lifecycle). Each: modules with one-sentence Purpose; pros/cons (cohesion, coupling, evolution); hierarchy depth (flat vs nested).
+        3. Critical Analysis: which variant scales worse, simpler for current team/scope, where artificial-boundary risk lurks.
+        4. Phase Progress + Approval Check.
+        5. After choice: Mandatory Rationale Pull («Why this variant? What's critical? What's consciously sacrificed?») → root spec Decision Log `D-NNN`.
+
+        STOP. Without approved decomposition + Decision Log entry, transition to STEP_2 forbidden.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_ENTITY_INVENTORY">
+      <Goal>Closed-world list of all entities for every module.</Goal>
+      <Action>
+        For each module:
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI_<MODULE>`).
+        2. Entity Inventory Draft: complete list. Each entity = `<Name>` + Type + 1-sentence Purpose.
+        3. Cross-check vs root spec: walk through Golden DX + High-Level Architecture; explicitly list which abstractions found a home. Gaps surfaced explicitly.
+        4. Closed-World Commitment per `AX_CLOSED_WORLD_INVENTORY`.
+        5. Phase Progress + Approval Check. STOP per module.
+
+        All inventories must be approved before STEP_3 → otherwise `H_INVENTORY_NOT_APPROVED`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_ENTITY_SURFACE">
+      <Goal>Public surface and consumers for every entity.</Goal>
+      <Action>
+        Iterate entities (or per-module batches if trivial):
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI__ES_<MODULE>_<ENTITY>`).
+        2. Surface Draft per `ENTITY_SURFACE_FORMAT`.
+        3. Consumers: Internal (file path or entity name), External (CLI/API/Browser/…). No consumer in v1 → mark candidate for removal or `deferred`.
+        4. ≥1 uncomfortable question per `AX_UNCOMFORTABLE_QUESTIONS`.
+        5. Phase Progress + Approval Check (per entity or batch). STOP.
+
+        All surfaces must be approved before STEP_4.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_CONTRACTS_DBC">
+      <Goal>Translate Ports and Adapters into strict DbC contracts.</Goal>
+      <Action>
+        For each module:
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__DBC_<MODULE>`).
+        2. Per Port: Preconditions / Postconditions / Invariants. Source = root spec §4 + entity surface.
+        3. Per Adapter: `Implements`; Side Effects; `Runtime Backing`; `Verification Levels`; `Deferred Runtime Scope`; Supporting Artifacts.
+        4. Public Options Audit: every public flag/option/policy from root spec → bind to contract OR mark `deferred / not consumed in v1`.
+        5. Critical Analysis: weak runtime backing? silent option drop? Port without confirmed variability (collapse candidate)?
+        6. Phase Progress + Approval Check (per module). STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_FILE_STRUCTURE">
+      <Goal>Design file structure for every module.</Goal>
+      <Action>
+        For each module:
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__FS_<MODULE>`).
+        2. Tree Draft: ASCII tree; explicit `ports/` (or `contracts/`) ↔ `adapters/` (or `impl/`) split.
+        3. File Mapping: which component lives where. ≤1500 lines per file (`AX_MODULARITY_LIMITS`).
+        4. Namespace Check per `AX_NAMESPACE_NAMING`.
+        5. Phase Progress + Approval Check (per module). STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_FINAL_HIERARCHY">
+      <Goal>Generate spec tree, update Specs Portal Knowledge Graph, append-only update root spec.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__FINAL_HIERARCHY`).
+        2. For each module — `specs/<module>/<module>.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
+        3. **Specs Portal update per `AX_SPECS_PORTAL_COOWNERSHIP` + `SPECS_PORTAL_MODULE_ROWS_FORMAT`:**
+           - `initial`: REPLACE `_Modules: …_` placeholder line in `## Knowledge Graph` with one row per module; APPEND `## Inter-Module Dependency Map` section.
+           - `add-module`: APPEND a row for the new module under `## Knowledge Graph`; REGENERATE `## Inter-Module Dependency Map` to include the new node + edges.
+           - `refine-module`: UPDATE the target module's row description if Purpose changed; UPDATE `## Inter-Module Dependency Map` if dependencies changed.
+           - Foreign rows (root spec, infra) MUST stay untouched.
+        4. Updated `specs/<root>.spec.md` per `ROOT_SPEC_MODULE_MAP_UPDATE` — append new §8; Discovery's §7 stays frozen, never edited.
+        5. Output for review. STOP.
+      </Action>
+    </Step>
+  </Execution_Plan>
+
+  <Frame_Rules>
+    <Rule id="FRAME_PUSH_WHEN">Push frame on: module boundary challenge; alternative entity or Port proposal; questions about contract/lifecycle/runtime hook/trust boundary; sub-topic that cannot close in one sentence.</Rule>
+    <Rule id="FRAME_POP_WHEN">Pop on: confirmed local conclusion; DEFERRED non-blocking topic; topic requires separate supporting artifact while main flow continues.</Rule>
+    <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
+    <Rule id="RETURN_SUMMARY_FORMAT">On pop: `Return Summary` with Confirmed / Changed / New Constraints / Open / Parent Next.</Rule>
+  </Frame_Rules>
+
+  <Output_Contracts>
+    <Contract id="TRACE_HEADER_FORMAT">
+      ```text
+      🧩 DM_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
+      ```
+    </Contract>
+
+    <Contract id="PHASE_PROGRESS_FORMAT">
+      ```markdown
+      🎯 Phase Progress — <STEP_NAME>
+        🧩 Module:    <CURRENT_MODULE> (or N/A)
+        ✅ Closed:    <agreed>
+        ⏳ Open:      <under discussion>
+        🛑 Blocking:  <if any, else —>
+        ▶️ Next:      <agent proposal; operator decides>
+        📊 Counters:  <e.g. "3/7 entities approved", "2/4 modules complete">
+      ```
+    </Contract>
+
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      ```markdown
+      ### D-NNN — <short title>
+      - **Status:** active | superseded | rejected | deferred
+      - **Recorded:** session ModuleDecomposition
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list with brief reasons>
+      - **Supersedes:** D-NNN (when superseding a prior decision)
+      ```
+    </Contract>
+
+    <Contract id="ENTITY_INVENTORY_FORMAT">
+      ```markdown
+      ## Entity Inventory (Closed-World)
+
+      _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+
+      | Name | Type | Purpose |
+      |------|------|---------|
+      | `OrderProcessor` | Service | Композитная обработка lifecycle заказа |
+      | `PaymentGatewayPort` | Port | Абстракция для списания средств |
+      | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe |
+      ```
+    </Contract>
+
+    <Contract id="ENTITY_SURFACE_FORMAT">
+      ```markdown
+      ### `<EntityName>`
+      - **Type:** Port | Adapter | Entity | Value Object | Service | Command | Query | Event
+      - **Purpose:** <1 sentence>
+      - **Public Properties:** <list or N/A>
+      - **Public Operations:** <intent-level list, no language signatures>
+      - **Lifecycle:** <who creates, who owns, when terminates>
+      - **Events Emitted:** <list or N/A>
+      - **Errors & Degradation:** <error behavior>
+      - **Consumers:**
+        - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
+        - External: <CLI / External API / Browser / OS Event Bus / ...>
+      ```
+    </Contract>
+
+    <Contract id="DBC_PORT_FORMAT">
+      ```markdown
+      #### Port: `<PortName>`
+      - **Purpose:** <1 sentence>
+      - **Consumers:**
+        - Internal: <path>
+        - External: <description>
+      - **Supporting Artifacts:** <if any>
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+      - **Deferred Runtime Scope:** <None or description>
+
+      **Contract (DbC):**
+      - Preconditions:
+        - <condition>
+      - Postconditions:
+        - <guarantee>
+      - Invariants:
+        - <invariant>
+      ```
+    </Contract>
+
+    <Contract id="DBC_ADAPTER_FORMAT">
+      ```markdown
+      #### Adapter: `<AdapterName>`
+      - **Implements:** `<PortName>` (`<path/to/port-file>`)
+      - **Purpose:** <1 sentence>
+      - **Supporting Artifacts:** <if any>
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+      - **Deferred Runtime Scope:** <None or description>
+
+      **Side Effects:**
+      - <external HTTP, IO, observability, mutation of shared state, ...>
+      ```
+    </Contract>
+
+    <Contract id="MODULE_SPEC_MARKDOWN_STRUCTURE">
+      Each `specs/<module>/<module>.spec.md`:
+
+      ```markdown
+      # Module: <ModuleName>
+
+      ## 1. Module Vision
+      [What this module owns. Link to root spec → `../<root>.spec.md`. Links to parent/child modules if any.]
+
+      ## 2. Entity Inventory (Closed-World)
+      [Per `ENTITY_INVENTORY_FORMAT`.]
+
+      ## 3. Entity Surfaces
+      [Each entity per `ENTITY_SURFACE_FORMAT`.]
+
+      ## 4. Module Contracts (DbC)
+      ### 4.1 Ports
+      [Per `DBC_PORT_FORMAT`.]
+
+      ### 4.2 Adapters
+      [Per `DBC_ADAPTER_FORMAT`.]
+
+      ## 5. Public Options & Policies
+      [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
+
+      ## 6. File Structure
+      ```
+      <module>/
+      ├── ports/
+      │   └── <name>-<port>.<ext>
+      ├── adapters/
+      │   └── <platform>-<name>-<adapter>.<ext>
+      └── ...
+      ```
+
+      **File Mapping:**
+      - `<path>`: <component>
+
+      ## 7. Module Decision Log
+      [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module → root spec.]
+
+      ## 8. Inter-Module Dependencies
+      - **Depends on:** <list of modules with links>
+      - **Provides to:** <list of modules>
+
+      ## 9. Handoff to task-scaffolding
+      - **Implementation files to be created:** <list from §6>
+      - **Test files to be created:** <list>
+      - **Stack dependencies:**
+        - Language: `<lang>` (resolves to `.ai/directives/coding/<lang>-rules.xml`)
+        - Test framework: `<framework>` (resolves to `.ai/directives/testing/<framework>.xml`)
+      - **Module Rules Additions:** (additions on top of project-wide baseline; `None` if no module-specific rules)
+
+        | Rule | Category | Source |
+        |------|----------|--------|
+        | <rule-name> | coding \| testing \| architecture \| quality | `.ai/directives/<category>/<rule>.xml` |
+
+      - **Open risks & validation needs:** <not-closed items>
+      ```
+    </Contract>
+
+    <Contract id="SPECS_PORTAL_MODULE_ROWS_FORMAT">
+      `module-decomposition` writes ONLY its own rows in the Specs Portal Knowledge Graph + the `## Inter-Module Dependency Map` section. Foreign rows (root spec — owned by `discovery`, `_infrastructure/` — owned by `infra-discovery`) MUST stay untouched.
+
+      Module row shape under `## Knowledge Graph` (one per module, hierarchy via nested bullets if sub-modules exist):
+      ```markdown
+      - [`<module-1>/`](./<module-1>/<module-1>.spec.md) — <1-sentence Purpose>.
+        - [`<sub-module-1a>/`](./<module-1>/<sub-module-1a>/<sub-module-1a>.spec.md) — <Purpose>.
+      - [`<module-2>/`](./<module-2>/<module-2>.spec.md) — <Purpose>.
+      ```
+
+      `## Inter-Module Dependency Map` section appended after `## Knowledge Graph`:
+      ```markdown
+      ## Inter-Module Dependency Map
+
+      ```mermaid
+      graph TD
+        module-1 --> module-2
+        module-1 --> module-3
+        module-2 --> module-3
+      ```
+      ```
+
+      Final Portal example after `discovery` + `infra-discovery` + `module-decomposition` all completed:
+      ```markdown
+      # messenger — Specs Portal
+
+      ## Vision
+      Кросс-платформенный мессенджер с end-to-end шифрованием и оффлайн-режимом.
+
+      ## Knowledge Graph
+      - [`messenger.spec.md`](./messenger.spec.md) — root spec проекта.
+      - [`_infrastructure/`](./_infrastructure/_infrastructure.spec.md) — TS + pnpm + vitest + biome + lefthook.
+      - [`auth/`](./auth/auth.spec.md) — регистрация, логин, refresh-токены.
+      - [`chat/`](./chat/chat.spec.md) — диалоги, группы, типизация сообщений.
+      - [`crypto/`](./crypto/crypto.spec.md) — E2E-ключи, ratchet, верификация.
+      - [`sync/`](./sync/sync.spec.md) — оффлайн-очередь, мульти-устройство.
+
+      ## Inter-Module Dependency Map
+
+      ```mermaid
+      graph TD
+        chat --> auth
+        chat --> crypto
+        sync --> chat
+      ```
+      ```
+    </Contract>
+
+    <Contract id="ROOT_SPEC_MODULE_MAP_UPDATE">
+      **Append-only.** Discovery's §7 stays frozen — do not edit, do not delete. Add new §8 below. Open Risks from §7 are aggregated into §8 as part of the consolidated list (for Scaffolder convenience), but original §7 stays unchanged.
+
+      ```markdown
+      ## 8. Module Map (post-ModuleDecomposition)
+
+      Spec hierarchy is materialized at `specs/`. See [specs/README.md](./README.md) for navigation.
+
+      ### 8.1 Modules
+      - [<module-1>](./<module-1>/<module-1>.spec.md) — <Purpose>
+      - [<module-2>](./<module-2>/<module-2>.spec.md) — <Purpose>
+
+      ### 8.2 Stack Dependencies
+      - Languages: <list>
+      - Test frameworks: <list>
+
+      ### 8.3 Handoff to task-scaffolding
+      - **Primary input:** spec tree under `specs/`, starting from this root.
+      - **Required directives:** all `.ai/directives/coding/<lang>-rules.xml` and `.ai/directives/testing/<framework>.xml` for the listed stack.
+      - **Open risks & validation needs:** <consolidated list across modules, including survived risks from §7 Discovery>
+      ```
+    </Contract>
+  </Output_Contracts>
+</ModuleDecomposition>

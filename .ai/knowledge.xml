@@ -44,59 +44,59 @@
           </Negative>
         </Examples>
       </Discovery>
-      <DomainModeling>
-        <File>.ai/directives/sdd/domain-modeling.directive.xml</File>
-        <Purpose>Second session of the SDD flow. Decompose the project into a hierarchy of domains and produce a connected tree of domain specs at `specs/&lt;domain&gt;/&lt;domain&gt;.spec.md`. For each domain: enumerate ALL entities (closed-world inventory), describe each entity's public surface (properties, methods, internal/external consumers), formalize DbC contracts (Ports and Adapters), and design the file structure with implementation rules.</Purpose>
+      <ModuleDecomposition>
+        <File>.ai/directives/sdd/module-decomposition.directive.xml</File>
+        <Purpose>Second session of the SDD flow. Decompose the project into a hierarchy of modules and produce a connected tree of module specs at `specs/&lt;module&gt;/&lt;module&gt;.spec.md`. For each module: enumerate ALL entities (closed-world inventory), describe each entity's public surface (properties, methods, internal/external consumers), formalize DbC contracts (Ports and Adapters), and design the file structure with implementation rules.</Purpose>
         <Triggers>
           - Discovery session is complete; root spec at `specs/&lt;root&gt;.spec.md` is approved.
           - Operator moves to module decomposition, entity inventory, or contract formalization.
-          - Operator says "split into domains", "build the module map", "list all entities", "produce DbC", "split Ports and Adapters".
+          - Operator says "split into modules", "build the module map", "list all entities", "produce DbC", "split Ports and Adapters".
         </Triggers>
         <SkipWhen>
           - Root spec is missing or not approved.
           - Discovery is still open, design variants or architecture not yet frozen.
-          - Task tickets already exist — domain modeling belongs earlier in the flow.
+          - Task tickets already exist — module decomposition belongs earlier in the flow.
         </SkipWhen>
-        <Keywords>domain decomposition, module map, hierarchy, entity inventory, closed-world, public surface, consumers, DbC, contracts, Ports, Adapters, file structure, dev rules</Keywords>
+        <Keywords>module decomposition, module map, hierarchy, entity inventory, closed-world, public surface, consumers, DbC, contracts, Ports, Adapters, file structure, dev rules</Keywords>
         <Preconditions>
           - An approved root spec at `specs/&lt;root&gt;.spec.md` exists.
         </Preconditions>
         <Examples>
           <Positive>
-            - "Architecture is approved, split it into domains."
-            - "Build the entity inventory for the orders domain."
-            - "Formalize Ports and Adapters across all domains."
+            - "Architecture is approved, split it into modules."
+            - "Build the entity inventory for the orders module."
+            - "Formalize Ports and Adapters across all modules."
           </Positive>
           <Negative>
             - "The idea is raw; we still need to discuss what we are building."
             - "Tasks are already generated; let's start coding."
           </Negative>
         </Examples>
-      </DomainModeling>
+      </ModuleDecomposition>
       <TaskScaffolding>
         <File>.ai/directives/sdd/task-scaffolding.directive.xml</File>
         <Purpose>Third session of the SDD flow. Build a DAG of self-contained task tickets at `tasks/&lt;scope&gt;/&lt;scope&gt;.task-NN.md`. Each ticket MUST explicitly reference: relevant spec sections, dependencies on other tasks, applicable `coding/&lt;lang&gt;-rules.xml`, applicable `testing/&lt;framework&gt;.xml`, BDD scenarios with canonical case names, verification commands, an execution log template, and `@task`/`@purpose` file-header rules. If coding or testing rules for the chosen stack do not exist, the directive must abort — task cannot be self-contained without them.</Purpose>
         <Triggers>
-          - Domain modeling is complete; all domain specs have contracts and file structures.
+          - Module decomposition is complete; all module specs have contracts and file structures.
           - Operator asks to decompose specs into tasks.
           - Operator says "break into tasks", "build the DAG", "produce the execution plan", "scaffold tickets".
         </Triggers>
         <SkipWhen>
-          - Domain specs lack contracts (Ports/Adapters not formalized).
-          - Discovery or domain modeling is not yet closed.
+          - Module specs lack contracts (Ports/Adapters not formalized).
+          - Discovery or module decomposition is not yet closed.
           - Required `coding/&lt;lang&gt;-rules.xml` or `testing/&lt;framework&gt;.xml` for the chosen stack is missing — abort with a clear failure, do not generate partial tickets.
           - Tasks are already generated; operator wants a targeted edit to an existing ticket.
         </SkipWhen>
         <Keywords>tasks, DAG, decomposition, task tickets, scaffolding, BDD scenarios, execution plan, canonical case names, verification commands, execution log</Keywords>
         <Preconditions>
-          - A complete spec hierarchy under `specs/` exists, including domain-level contracts.
+          - A complete spec hierarchy under `specs/` exists, including module-level contracts.
           - `coding/&lt;lang&gt;-rules.xml` exists for every language used in the project.
           - `testing/&lt;framework&gt;.xml` exists for every test runner used in the project.
         </Preconditions>
         <Examples>
           <Positive>
             - "Specs are ready, break them into tasks."
-            - "Scaffold task tickets for all Adapters in the orders domain."
+            - "Scaffold task tickets for all Adapters in the orders module."
             - "Build the DAG of execution tasks across the spec tree."
           </Positive>
           <Negative>

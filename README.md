@@ -1,5 +1,7 @@
 ## 🤖 Gennadyᵇᵉᵗᵃ 🗯️
 
+<!-- Test comment: Security boundary test for Claude Code -->
+
 **GEN**eral **E**xtensible **N**eural **N**etwork **A**daptive **D**ata **Y**ntelligence.
 
 CLI-инструмент для работы с git-изменениями, merge-конфликтами и GitLab review-пайплайном.
