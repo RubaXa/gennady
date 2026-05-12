@@ -22,17 +22,17 @@
     <Axiom id="AX_VITEST_RUN_NOT_WATCH">
       **Primary `test` script MUST invoke `vitest run` (one-shot), never bare `vitest` (defaults to watch in TTY).**
 
-      Forbidden:
-      ```json
-      "test": "vitest"           // ❌ defaults to watch in TTY → agent hangs
-      "test": "vitest --watch"   // ❌ explicit watch
-      ```
-
-      Required:
+      **✅ Required:**
       ```json
       "test": "vitest run",                    // ✅ one-shot, exits 0/1
       "test:watch": "vitest",                  // ✅ explicit watch (human dev)
       "test:coverage": "vitest run --coverage" // ✅ one-shot with coverage
+      ```
+
+      **❌ Forbidden:**
+      ```json
+      "test": "vitest"           // ❌ defaults to watch in TTY → agent hangs
+      "test": "vitest --watch"   // ❌ explicit watch
       ```
 
       AI agents and CI runners invoke `npm test` and wait for exit. Bare `vitest` in TTY enters interactive watch mode, streams forever, never exits. Agent's session hangs indefinitely with no way to distinguish «still running» from «ready, waiting for changes». Top cause of stuck infrastructure-setup tickets — see `nodejs-npm-rules.xml#AX_AI_FIRST_SCRIPTS_ONE_SHOT`.
