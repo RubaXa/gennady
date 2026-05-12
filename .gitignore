@@ -26,5 +26,5 @@ coverage
 .wisehub.app.js.map
 
 .gennadyrc
-.ai/drafts
+ai/drafts
 .claude/

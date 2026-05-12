@@ -1,0 +1,462 @@
+<SddTaskExecution keywords="task-execution, rules-load, scope-discipline, live-log, reopen, round, blocker-escalation, sdd-phase-4" type="directive" ver="2.1">
+  <Directive_Context>
+    <Mission>
+      Turn one task ticket into code + tests + a fully filled Execution Log with traceable evidence — no drift, no scope creep, no silent improvisation.
+
+      Fourth SDD session (between `task-scaffolding` and `audit`). Input:
+      - one task ticket at `tasks/<scope>/<scope>.task-NN.md` (scope-level) or `tasks/<scope>/<module>/<module>.task-NN.md` (module-level);
+      - `tasks/README.md` — project-wide conventions (file-header rule, completion baseline, execution log template, post-task audit hint);
+      - `tasks/<scope>/README.md` — per-scope Cascade Table;
+      - referenced spec anchors;
+      - rule files from `ai/directives/<category>/<rule>.xml` listed in the ticket's `Rule Activation Plan` (opened phase-by-phase per `AX_RULES_PHASED_ACTIVATION`).
+
+      Output — code/test changes + filled Execution Log round in the ticket. Specs are NOT modified by this directive; spec-update candidates are surfaced as proposals for `audit` to pick up.
+
+      **Glossary.** Phase 4 of SDD. Scaffolder = agent that produced this ticket under `task-scaffolding`. Auditor = agent that runs `audit` after this round closes. Operator = the human triggering directives.
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_RECONNAISSANCE_BEFORE_ACTION">
+      **Before any Edit / Write / destructive Bash, run a fast recon of current state — bounded 30–60 seconds. Repo reality, not ticket assumptions, is the source of truth for «what's already done».**
+
+      Recon checklist (every fresh STEP_0):
+      1. `git status` — working tree state.
+      2. `git log --oneline -10` — recent history.
+      3. `ls -la <Target Files dirs>` — actual files vs ticket assumptions.
+      4. Read all prior round entries in this ticket's Execution Log.
+      5. `grep "Status:" tasks/<scope>/*.task-*.md` — sibling statuses.
+      6. For configs about to be touched: `cat <config-file>` for actual current content.
+
+      Output (one Execution Log block):
+      ```
+      [<ts>] Recon:
+        - git: <branch>, <N> files modified, <M> untracked. Last commit: <sha> «<msg>».
+        - Target Files state: <created | exists-modified | absent-as-expected>.
+        - Prior round entries: <summary or «none»>.
+        - Sibling tickets: <N> DONE, <M> IN_PROGRESS, <K> TODO.
+        - Conclusion: <«matches ticket assumptions, proceed» | «diverges: <findings>»>.
+      ```
+
+      - **Divergence:** surface findings as Insight entries; do NOT edit to «fix» without operator awareness. Divergence may be intentional (prior partial round, manual setup).
+      - **Work already done** (Target Files exist + prior round shows DONE): skip implementation, jump to STEP_7_VERIFY; if pass → close.
+
+      Forbidden: STEP_5_PLAN or any later step entered without a recon block in the current round's Execution Log. The block is the gate.
+    </Axiom>
+
+    <Axiom id="AX_THIRD_PARTY_TOOL_CURRENT_API">
+      **When a task configures a third-party tool, verify the CURRENT API of the actually-installed version BEFORE writing any config file. Don't rely on training-cutoff knowledge — tool APIs evolve.**
+
+      Trigger: any file in `Target Files` is a config for an installed third-party tool (`.husky/*`, `eslint.config.*`, `vitest.config.*`, `lefthook.yml`, `prettier.config.*`, `tsup.config.*`, etc.). Pure library import + use in app code does NOT trigger (TS types catch staleness).
+
+      Protocol (after `<package-manager> install <tool>` succeeds, before writing the config):
+      1. Get installed version: read `<modules-dir>/<pkg>/package.json` field `version`.
+      2. Read local CHANGELOG (recent major + previous): look for `BREAKING`, `deprecated`, `removed`, `migration`.
+      3. Read local README for current-version config syntax.
+      4. Local docs minimal → WebFetch homepage from `package.json#homepage` / `repository.url`.
+      5. Network blocked AND local docs insufficient → `[!] BLOCKED` per `AX_BLOCKER_ESCALATION` («Cannot verify current API for `<tool>@<version>`»). Never guess; never apply training-default silently.
+      6. Apply current-version API.
+      7. Log: `[<ts>] Verified <tool>@<version> API: <one-line summary, e.g., "v9 deprecated; v10 hooks omit shebang/sourcing — applied v10 format" OR "matches training default, no migration needed">.`
+
+      Audit (`audit` STEP_5) checks: every config file in `Target Files` belonging to a third-party tool MUST have a corresponding `Verified <tool>@<version> API: …` entry. Absence → `RULES_COMPLIANCE_VIOLATION` tagged `stale-tool-api-not-verified`.
+    </Axiom>
+
+    <Axiom id="AX_RULES_PHASED_ACTIVATION">
+      Rules are activated phase-by-phase per ticket Meta `Rule Activation Plan` — never all at once. Phases: PLAN → IMPL → TEST → AUDIT (+ optional COMMIT for tickets touching git config). On phase entry: open ONLY that phase's rule files via Read with exact path, read end-to-end (`Mission` + `Belief_State` + `Reward_Criteria`), log `[<ts>] Activated <category>: <name-1>, <name-2>` (or `: skip — <reason>` if plan row is empty). Files of other categories not opened in this phase. Backtrack (e.g., TEST → IMPL bug-fix) → re-activate previous phase, log new `Re-activated <category>` entry.
+
+      Activation = internalization. Activated axioms bind every decision in their phase; tooling-pass is necessary, NOT sufficient — discipline-only axioms honored by deliberate application. Suppress / disable / bypass markers to escape an axiom forbidden — surrender, not compliance. Read failure on cascade path → `AX_BLOCKER_ESCALATION`; never search-then-read.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_AS_TRUTH">
+      Spec is the source of truth. When intuition or precedent contradicts the spec, follow the spec. Genuinely wrong spec → escalate via `AX_SPEC_UPDATE_VIA_PROPOSAL`; do not silently diverge.
+    </Axiom>
+
+    <Axiom id="AX_NO_SCOPE_CREEP">
+      Touch only `Target Files` and `Target Test Files`. Editing files outside the declared scope is forbidden. If a change in declared scope appears to require touching another file → `AX_BLOCKER_ESCALATION`. Operator either expands `Target Files` or spawns a new task.
+
+      Reading other files (specs, rules, related code) for context is allowed and expected. Writing is restricted.
+    </Axiom>
+
+    <Axiom id="AX_INTRODUCED_DISCIPLINE">
+      Every entity introduced beyond the module Entity Inventory MUST be logged: `Introduced <EntityName> because <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `Introduced` entry, the entity is closed-world drift and audit blocks the task.
+    </Axiom>
+
+    <Axiom id="AX_VERIFICATION_BEFORE_DONE">
+      No `[x] DONE` without passing verification. Each command in ticket §3 Verification must execute; results recorded with exit codes. Any failing command keeps the round in `[~] IN_PROGRESS` until resolved or escalated.
+    </Axiom>
+
+    <Axiom id="AX_BDD_NAME_DISCIPLINE">
+      Canonical case names in the ticket are normative. Tests use names from `Test Scenario Coverage` verbatim. Impractical name (conflict, typo, framework constraint) → update the ticket's Test Scenario Coverage in the same round. Silent mismatch is forbidden. (Source-of-truth in scaffolding: `AX_TICKET_HAS_BDD_AND_TESTS` in `task-scaffolding`.)
+    </Axiom>
+
+    <Axiom id="AX_LIVE_LOG">
+      **§5 Execution Log is your worksheet, not documentation. Process line-by-line as you work; never batch at the end.**
+
+      Scaffolding pre-wrote the plan: each `- [ ]` item is a planned action with placeholders (`<ts>`, `<pass|fail>`, `<path>`, `<cmd>`, etc.). At execution: turn plan into fact.
+
+      Per planned line:
+      1. Replace `<ts>` with real timestamp.
+      2. Replace every other placeholder with the real value from actual execution.
+      3. Toggle `[ ]` → `[x]`.
+      4. Reality diverges → edit content first to match what actually happened, then toggle.
+
+      Actions NOT in plan (introduced entity not predicted, blocker hit) → APPEND a new `[x]` entry with full content. Don't retrofit existing lines.
+
+      Forbidden:
+      - Toggling `[x]` with any unreplaced `<…>` literal — fabricated done; audit raises `EXECUTION_LOG_INCOMPLETE`.
+      - Batching all toggles + replacements at end of round.
+    </Axiom>
+
+    <Axiom id="AX_BLOCKER_ESCALATION">
+      When stuck, escalate — never improvise. Triggers:
+      - effective rule references missing file;
+      - dependency task is not `[x] DONE`;
+      - spec contradicts itself or the ticket;
+      - change in `Target Files` requires touching outside scope;
+      - declared `Runtime Backing` cannot be honored in this environment;
+      - verification command cannot execute (missing tooling, missing env).
+
+      Mechanics: status → `[!] BLOCKED`; log entry per `BLOCKER_ESCALATION_FORMAT` describing cause + proposed unblock. Stop. Operator decides next step.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_UPDATE_VIA_PROPOSAL">
+      Execution agent does NOT modify specs. Spec wrong / incomplete / stale → record `INSIGHT_BACKFLOW` candidate per `SPEC_UPDATE_PROPOSAL_FORMAT`:
+
+      ```
+      Insight: <observation>. Suggested spec update: <which-section-of-which-spec, what-change>.
+      ```
+
+      `audit` picks up these entries and proposes the spec change; operator approves and applies. Never edit `specs/**` directly.
+    </Axiom>
+
+    <Axiom id="AX_TICKET_UPDATE_SCOPE">
+      Agent may edit only specific ticket fields; everything else requires operator confirmation.
+
+      | Allowed without approval | Requires operator |
+      |---|---|
+      | Execution Log entries within current round | Purpose, Module, Task-ID, Title |
+      | Canonical case names in Test Scenario Coverage (when test reality differs) | Dependencies (DAG change) |
+      | Deferred Runtime Scope (when discovered during execution) | Spec References |
+      | Status transitions (TODO → IN_PROGRESS → DONE; reopen → IN_PROGRESS → DONE) | Rule Activation Plan or its cascade sources |
+      | Tracker README sync (mandatory at STEP_9): `tasks/<scope>/README.md` Tracker row + `tasks/README.md` Tracker Index aggregate counts | Runtime Backing |
+      |  | Verification Levels |
+      |  | Target Files / Target Test Files |
+      |  | Acceptance Criteria (BDD scenarios) |
+      |  | Verification Commands |
+      |  | Reopens metadata (only operator triggers reopen; agent only writes Round N entries) |
+
+      Anything in the right column → escalate as `[!] BLOCKED`.
+    </Axiom>
+
+    <Axiom id="AX_RUNTIME_BACKING_HONESTY">
+      Match declared backing exactly. Ticket says `Runtime Backing: real-runtime` → implementation uses real platform hooks. Cannot deliver real runtime in current environment (missing API, missing infra) → `[!] BLOCKED`. Never substitute simulation seam without an explicit `Deferred Runtime Scope` recorded in the round and acknowledged by operator.
+    </Axiom>
+
+    <Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a file in task scope → ensure the file-level header satisfies the execution contract and append your Task-ID to `@tasks`; never remove existing IDs.
+
+      - Required file-level fields (execution profile): `@file:`, `@consumers:`, `@tasks:`.
+      - New file: create header with all three fields; populate from ticket context. For `@consumers:` derive the entity name from the spec (per `AX_CONSUMERS_TAG_SEMANTICS` in `task-scaffolding`) — never a file path.
+      - Existing file with header: preserve `@file:` and `@consumers:`; append your Task-ID to `@tasks:`.
+      - Existing file without header: do NOT add one unless the ticket explicitly requires header migration.
+      - Reopening same task: do NOT add duplicate ID — already in the list.
+
+      Per `AX_FILE_HEADER_TASK_TRACEABILITY` in `task-scaffolding`: IDs only, never paths; `@tasks` is append-only.
+    </Axiom>
+
+    <Axiom id="AX_REOPEN_VS_NEW_TASK">
+      Reopen the same ticket when the contract holds; spawn a new task when it doesn't.
+
+      | Reopen | New task |
+      |---|---|
+      | BDD scenarios remain the contract | New scenarios needed |
+      | Target Files unchanged scope | Target Files expand beyond original |
+      | Cause internal: rules update, refinement, late-detected bug | Acceptance criteria change materially |
+
+      Execution agent does NOT decide reopen unilaterally. Operator triggers by setting status back to `[~] IN_PROGRESS`. Agent then starts a new round.
+    </Axiom>
+
+    <Axiom id="AX_REOPEN_DISCIPLINE">
+      Reopen starts a new round; old rounds are immutable.
+      - Read all prior rounds; note what was done and which findings triggered the reopen.
+      - Append `### Round N — <date>, <reason>` (N = previous round + 1).
+      - First entry: `[<ts>] Task reopened. Reason: <reason>.`
+      - Do not edit / reorder / delete prior rounds — append-only audit trail.
+      - Re-run all `Verification Commands`; old results don't carry over.
+      - Update Meta `Reopens`: increment count, refresh date and reason in parentheses.
+    </Axiom>
+
+    <Axiom id="AX_TRACE_ANCHORS">
+      Compact trace anchors. Global: `EX_R001`, `EX_R002`, … ASCII uppercase + digits + `_` only.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
+      **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
+      - Execution Log free-text fields (`Reason` on reopen, `Insight` text, `Introduced ... because <reason>` reason content, blocker `<one-line cause>` / `<proposed unblock>`).
+      - Halt messages emitted to the operator.
+
+      English regardless of context: all code (impl + tests), JSDoc, intent comments per `coding/typescript-rules`, file paths, tool commands, axiom IDs (`AX_*`), Trace anchors (`EX_R<N>`), IDs (`TSK-NN` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, verification-level tokens, structural Execution Log line shapes (e.g., `Verification: <cmd> → pass [exit=0]`).
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      - **Status transitions.** TODO → IN_PROGRESS happens at execution start (no confirmation). IN_PROGRESS → DONE only after Completion Rule passes mechanically (no confirmation). IN_PROGRESS → BLOCKED requires explicit reason and stops — operator must respond. DONE → IN_PROGRESS (reopen) is operator-only.
+      - **Neutral + critical.** Surface risks; no auto-comply with shortcuts. Ticket appears to skip a verification level rules require → raise discrepancy before proceeding. Operator pushes «just close it without re-running tests» → refuse politely, request justification, log as operator-acknowledged with rationale.
+      - **Context budget.** Open rule files only at phase entry per `AX_RULES_PHASED_ACTIVATION` — never pre-load. Read only spec sections referenced from the ticket. No adjacent specs/rules/code unless cited from the activated set. Avoid re-reading the same file twice in one round.
+    </Axiom>
+  </Belief_State>
+
+  <Halt_Conditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_TASKS_DIR` | `tasks/` absent — wrong cwd or scaffolding not done |
+    | `H_NO_PICKABLE_TICKETS` | Autonomous discovery: zero tickets where `[ ] TODO` AND all deps `[x] DONE` |
+    | `H_AMBIGUOUS_TICKET` | Multiple pickable; operator must choose |
+    | `H_RECON_DIVERGENCE` | Recon shows Target Files state inconsistent with ticket; operator awareness needed before edit |
+    | `H_RULE_FILE_MISSING` | Read on cascade rule file fails |
+    | `H_DEPS_NOT_DONE` | Any Dependency Task-ID not `[x] DONE` |
+    | `H_BROKEN_SPEC_ANCHOR` | Spec link in §1 Meta is empty or 404 |
+    | `H_OUTSIDE_TARGET_FILES` | Implementation requires touching file outside `Target Files` |
+    | `H_VERIFICATION_FAIL` | Any §3 command fails after fix attempts |
+    | `H_RUNTIME_BACKING_UNHONORABLE` | Declared `real-runtime` not deliverable in current environment |
+    | `H_TRACKER_MISSING` | `tasks/<scope>/README.md` or `tasks/README.md` missing entry for this Task-ID at close |
+    | `H_THIRD_PARTY_API_UNVERIFIABLE` | Cannot verify current API of installed tool (local docs minimal + network blocked) |
+  </Halt_Conditions>
+
+  <Context_Expectation>
+    Either explicit pointer (Task-ID or ticket file path) or autonomous discovery (operator says «next» / «следующую» / «выбери», or no pointer). In autonomous mode: read `tasks/README.md` Tracker Index, identify pickable tickets (`[ ] TODO` with deps `[x] DONE`), propose. Single match → confirm; multiple → shortlist; zero → report state.
+
+    `tasks/README.md`, `tasks/<scope>/README.md`, relevant module spec, scope spec, cascade rule files must be accessible from cwd. `tasks/` absent → `H_NO_TASKS_DIR`.
+  </Context_Expectation>
+
+  <Golden_Example>
+    Reference Execution Log of a freshly-implemented ticket and a subsequent reopen round triggered by a rules update. Demonstrates round structure, live log discipline, `Introduced` entries, canonical case name recovery, post-task audit hint.
+
+    ```markdown
+    ## 5. Execution Log
+
+    ### Round 1 — 2026-05-04, initial
+    - [x] `[2026-05-04 14:22]` Task initialized. Activated directives: typescript-rules, node-test, ports-adapters, pci-dss.
+    - [x] `[2026-05-04 14:25]` Deps gate: TSK-01, TSK-03 confirmed [x] DONE.
+    - [x] `[2026-05-04 14:30]` Implementation file created: `src/payments/adapters/stripe-payment-adapter.ts`. Header: `@file: stripe charge adapter`, `@consumers: PaymentOrchestrator`, `@tasks: TSK-04`.
+    - [x] `[2026-05-04 14:55]` Test file created: `src/payments/adapters/stripe-payment-adapter.test.ts`.
+    - [x] `[2026-05-04 15:08]` Introduced `IdempotencyKey` because Stripe API требует per-request уникальный ключ для безопасных повторов; ещё не в Entity Inventory.
+    - [x] `[2026-05-04 15:10]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass [`exit=0`].
+    - [x] `[2026-05-04 15:11]` Verification: `tsc --noEmit` → pass [`exit=0`].
+    - [x] `[2026-05-04 15:12]` Scenario coverage: Successful charge → :: `should return transaction id on successful charge`.
+    - [x] `[2026-05-04 15:12]` Scenario coverage: Invalid amount rejected → :: `should reject non-positive amount with InvalidAmountError`.
+    - [x] `[2026-05-04 15:13]` Insight: `IdempotencyKey` — стабильная cross-cutting концепция; предлагаю добавить в `specs/payments/payments.spec.md#2-entity-inventory`.
+    - [x] `[2026-05-04 15:15]` Status: [x] DONE.
+
+    ### Round 2 — 2026-05-12, rules update: ts-rules v1.2 added strict-null-checks
+    - [x] `[2026-05-12 10:00]` Task reopened. Reason: typescript-rules v1.2 требует strict-null-checks; в impl 3 nullable поля без явных guard'ов.
+    - [x] `[2026-05-12 10:05]` Re-activated directives: typescript-rules (v1.2), node-test, ports-adapters, pci-dss.
+    - [x] `[2026-05-12 10:30]` Updated impl: добавлены явные null-guard'ы для `request.metadata`, `response.balanceTransaction`, `error.decline_code`.
+    - [x] `[2026-05-12 11:00]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass [`exit=0`].
+    - [x] `[2026-05-12 11:01]` Verification: `tsc --noEmit` → pass [`exit=0`].
+    - [x] `[2026-05-12 11:05]` Status: [x] DONE.
+    ```
+
+    Meta block reflects the reopen:
+    ```markdown
+    - **Reopens:** 1 (2026-05-12 — обновление правил: ts-rules v1.2 strict-null-checks)
+    ```
+  </Golden_Example>
+
+  <Execution_Plan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve ticket; recon repo state; detect mode.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__INTAKE`).
+        2. Resolve ticket:
+           - Operator gave Task-ID or path → resolve to ticket file.
+           - Autonomous discovery («next» / no pointer): verify `tasks/README.md`; scan `find tasks -name '*.task-*.md'`; compute pickable set (`[ ] TODO` AND all deps `[x] DONE`). Zero → `H_NO_PICKABLE_TICKETS`. One → propose; operator confirms. Multiple → shortlist; operator picks (`H_AMBIGUOUS_TICKET` if no choice).
+        3. Read: ticket, `tasks/README.md`, module spec, root spec. Rule files are NOT opened here — see `STEP_1_RULES_INVENTORY`.
+        4. Mandatory recon per `AX_RECONNAISSANCE_BEFORE_ACTION`. Emit recon block into the new round's Execution Log.
+        5. Mode detection:
+           | Status | Files / Log | Mode |
+           |---|---|---|
+           | `[ ] TODO` | Target Files absent + no prior log | fresh → STEP_1 |
+           | `[ ] TODO` | Target Files exist with content | `H_RECON_DIVERGENCE` |
+           | `[~] IN_PROGRESS` | last round open | resume current round at first incomplete step |
+           | `[~] IN_PROGRESS` | last round had `[x] DONE` + operator flipped | reopen → STEP_4 with new round |
+           | `[x] DONE` | operator did not reopen | no work; advise `audit`. STOP. |
+           | `[!] BLOCKED` | — | review blocker; do not proceed without operator unblock |
+        6. Recon shows Target Files correct + prior round verified → skip implementation, jump to STEP_7_VERIFY; if PASS, proceed to closure.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_RULES_INVENTORY">
+      <Goal>Read ticket Rule Activation Plan; log phase map. Rule files NOT opened here.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__RULES_INVENTORY`).
+        2. Read ticket Meta `Rule Activation Plan` table; capture phase → rules mapping.
+        3. Log: `[<ts>] Activation plan: PLAN→<list|skip>; IMPL→<list|skip>; TEST→<list|skip>; AUDIT→<list|skip>; COMMIT→<list|skip>.`
+        4. Activation deferred to phase-entry steps (STEP_5, STEP_6, STEP_7_5, optional STEP_9). Per `AX_RULES_PHASED_ACTIVATION`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_DEPS_GATE">
+      <Goal>Confirm all Dependencies are `[x] DONE`.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__DEPS_GATE`).
+        2. For every Dependency Task-ID, read its ticket and check Status.
+        3. Any dep not `[x] DONE` → `H_DEPS_NOT_DONE`.
+        4. Log: `[<ts>] Deps gate: <list> confirmed [x] DONE.`
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_SPEC_CONTEXT">
+      <Goal>Read referenced spec anchors and contracts.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__SPEC_CONTEXT`).
+        2. For every link in ticket Meta `Spec References`, read the targeted section.
+        3. Build mental model: contract DbC, consumers, runtime backing constraints, deferred scope.
+        4. Broken or empty anchor → `H_BROKEN_SPEC_ANCHOR`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_ROUND_INIT">
+      <Goal>Open new round in Execution Log (or resume current).</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__ROUND_INIT`).
+        2. Fresh task → verify `### Round 1 — <YYYY-MM-DD>, initial` header present (add if missing). Status → `[~] IN_PROGRESS`. Log: `[<ts>] Task initialized.`
+        3. Reopen → read all prior rounds; identify reason (operator-supplied or audit finding); append `### Round N — <YYYY-MM-DD>, <reason>`; update Meta `Reopens` (increment count, refresh date/reason). Log: `[<ts>] Task reopened. Reason: <reason>.`
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_PLAN">
+      <Goal>Activate PLAN-phase rules; review §5 checklist.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__PLAN`).
+        2. Activate PLAN-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip — <reason>>.`
+        3. Read §5 plan checklist; cross-check against activated rules.
+        4. Plan touches files outside `Target Files` → `H_OUTSIDE_TARGET_FILES`.
+        5. Log: `[<ts>] Plan reviewed: <N> items.`
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_IMPLEMENT">
+      <Goal>Write impl + tests within `Target Files`; activate IMPL/TEST rules at each phase entry; live-update §5 per `AX_LIVE_LOG`.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__IMPLEMENT`).
+        2. Before first impl write → activate IMPL-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip — <reason>>.`
+        3. Before first test write → activate TEST-phase rules. Log analogously. (Skip when `Deferred Test Ownership` set or no `Target Test Files` — log skip with reason.)
+        4. New file → file-header per `AX_FILE_HEADER_APPEND_ONLY`. Existing file → append Task-ID, preserve other IDs.
+        5. Apply currently-activated rules during writing; tests use canonical case names verbatim per `AX_BDD_NAME_DISCIPLINE`.
+        6. Third-party tool config → `AX_THIRD_PARTY_TOOL_CURRENT_API` BEFORE writing.
+        7. Per action, IMMEDIATELY update §5: replace placeholders → toggle `[x]`. Don't batch. Introduced not in plan → APPEND per `AX_INTRODUCED_DISCIPLINE`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_VERIFY">
+      <Goal>Run every Verification Command; record real results.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__VERIFY`).
+        2. Execute each command from §3 Verification.
+        3. For each command IMMEDIATELY update §5: locate plan line → replace `<ts>`, `<command>`, `<pass|fail>`, `<exit=<code>>` with real values → toggle `[x]`.
+        4. Failure → stay `[~] IN_PROGRESS`; analyze, fix, re-run. Don't proceed to STEP_7_5 until all pass and all plan lines toggled.
+        5. Tooling itself missing → `H_VERIFICATION_FAIL`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_5_RULES_SELF_AUDIT">
+      <Goal>Activate AUDIT-phase rules; walk axioms of every rule activated this round against generated code.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__RULES_SELF_AUDIT`).
+        2. Activate AUDIT-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip>.`
+        3. For each rule activated in this round (across all phases): classify axioms as mechanically-covered (tooling-pass in STEP_7 proves compliance) vs discipline-only (inspect code line-by-line against axiom text).
+        4. Each violation: fix in code — no suppress/disable markers (surrender, not compliance). If fix breaks ticket contract → `[!] BLOCKED`. Re-run STEP_7 verifications after fixes.
+        5. Log: `[<ts>] Self-audit: <N> rules / <M> axioms walked; <K> violations fixed.` (Or `: no violations.`)
+        6. Toggle the `[ ] Self-audit` plan line per `AX_LIVE_LOG`.
+
+        Forbidden: skipping; logging «no violations» without inspection (audit catches fabricated self-audit); suppress/disable comments.
+      </Action>
+    </Step>
+
+    <Step id="STEP_8_LOG_FINALIZE">
+      <Goal>Close the round in the log; satisfy Completion Rule.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__LOG_FINALIZE`).
+        2. Confirm scenario coverage: each BDD scenario → real test case. Log each pair.
+        3. Confirm every introduced entity logged with `Introduced <X> because <Y>`.
+        4. Optional: `Insight: <observation>. Suggested spec update: <details>.` for `INSIGHT_BACKFLOW` candidates.
+        5. Recheck Completion Rule baseline (in `tasks/README.md`) + task-specific additions in §3. Failure → stay `[~] IN_PROGRESS`, fix, recheck.
+      </Action>
+    </Step>
+
+    <Step id="STEP_9_CLOSE">
+      <Goal>Mark `[x] DONE`; sync trackers; request audit invocation.</Goal>
+      <Action>
+        1. TRACE_HEADER (STACK `ROOT__CLOSE`).
+        2. Ticket Meta: status → `[x] DONE`. Log §5: `[<ts>] Status: [x] DONE (mechanically closed; awaiting audit).`
+        3. Sync trackers (mandatory):
+           - `tasks/<scope>/README.md` Tracker row: Status → `[x] DONE` (and Reopens count if reopen).
+           - `tasks/README.md` Tracker Index: aggregate counts for the scope (e.g., `4/5 done` → `5/5 done`).
+           - Either tracker missing entry → `H_TRACKER_MISSING`.
+           - Log: `[<ts>] Tracker synced: tasks/<scope>/README.md (Status [x] DONE) + tasks/README.md (counts updated).`
+        4. Emit final session output: round closed mechanically; trackers synced; audit pending — operator must invoke `audit` directive on this Task-ID, otherwise round is closed-but-unverified (drift may remain undetected: closed-world inventory, runtime backing, rules cascade, BDD coverage, task-id integrity, tracker sync).
+        5. STOP. Operator's invocation of `audit` is the mandatory next step.
+      </Action>
+    </Step>
+  </Execution_Plan>
+
+  <Frame_Rules>
+    <Rule id="FRAME_PUSH_WHEN">Push frame on non-trivial design choice within `Target Files`, unclear spec, disagreement about canonical case names.</Rule>
+    <Rule id="FRAME_POP_WHEN">Pop on confirmed local conclusion, operator decision after escalation, or DEFERRED to a separate task.</Rule>
+    <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
+  </Frame_Rules>
+
+  <Output_Contracts>
+    <Contract id="TRACE_HEADER_FORMAT">
+      ```text
+      🔧 EX_R<N> | STACK: ROOT__<STEP> | TASK: <Task-ID> | ROUND: <N> | <📂|🚧|↩️|⏭️|💤> <STATUS>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
+      ```
+    </Contract>
+
+    <Contract id="ROUND_HEADER_FORMAT">
+      ```markdown
+      ### Round <N> — <YYYY-MM-DD>, <reason>
+      ```
+      `<reason>` for Round 1 = `initial`. Subsequent rounds: `rules update: <details>` | `audit finding: F-NNN` | `late-detected bug: <area>` | etc.
+    </Contract>
+
+    <Contract id="LIVE_LOG_ENTRY_FORMAT">
+      ```markdown
+      - [x] `[<YYYY-MM-DD HH:MM>]` <action verb> <object> [<modifier>].
+      ```
+      Examples:
+      - `[x] [<real ts>] Task initialized.`
+      - `[x] [<real ts>] Implementation file: <real path>.`
+      - `[x] [<real ts>] Verification: <real cmd> → pass [exit=0].`
+      - `[x] [<real ts>] Introduced <EntityName> because <reason>.`
+      - `[x] [<real ts>] Insight: <observation>. Suggested spec update: <which-spec-section, what-change>.`
+    </Contract>
+
+    <Contract id="BLOCKER_ESCALATION_FORMAT">
+      ```markdown
+      - 🛑 `[<ts>]` BLOCKED: <one-line cause>.
+        - 🔗 Trigger axiom: `AX_<NAME>`.
+        - 💬 Proposed unblock: <concrete action by operator>.
+        - ⏸️ Awaiting: <decision needed>.
+      ```
+      After this entry: status → 🛑 BLOCKED. Stop. Do not proceed until operator responds.
+    </Contract>
+
+    <Contract id="INTRODUCED_ENTITY_FORMAT">
+      ```markdown
+      - ✅ `[<ts>]` 📌 Introduced `<EntityName>` because <reason>.
+      ```
+      Mandatory for every entity not present in the corresponding module Entity Inventory at the moment of introduction. Audit relies on these entries to distinguish accepted introductions from drift.
+    </Contract>
+
+    <Contract id="SPEC_UPDATE_PROPOSAL_FORMAT">
+      ```markdown
+      - ✅ `[<ts>]` 💬 Insight: <observation>. Suggested spec update: <which-section-of-which-spec, what-change>.
+      ```
+      Agent never edits `specs/**` directly. Audit converts these entries into `INSIGHT_BACKFLOW` findings; operator approves and applies.
+    </Contract>
+  </Output_Contracts>
+</SddTaskExecution>

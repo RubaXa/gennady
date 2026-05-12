@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const AGENTS_DIRNAME = '.ai/agents';
+const AGENTS_DIRNAME = 'ai/agents';
 
 /**
  * @purpose Прочитать XML-шаблон, если файл существует.
@@ -42,7 +42,7 @@ function resolvePackageRoot(startDir: string): string | null {
 /**
  * @purpose Загрузить agent-шаблон из проекта (override) или fallback из gennady.
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
- * @param templateFilename Имя XML-файла в `.ai/agents`.
+ * @param templateFilename Имя XML-файла в `ai/agents`.
  * @returns Содержимое XML-шаблона.
  */
 export async function loadAgentTemplate(templateFilename: string): Promise<string> {

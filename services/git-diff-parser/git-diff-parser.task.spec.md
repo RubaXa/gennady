@@ -2,7 +2,7 @@
 
 ## Правила кодирования
 
-- Строго следовать всем правилам, описанным в `.ai/agents/agent-typescript-devgen.xml`. Любое отклонение от этих правил и от публичного контракта этого документа считается ошибкой.
+- Строго следовать всем правилам, описанным в `ai/agents/agent-typescript-devgen.xml`. Любое отклонение от этих правил и от публичного контракта этого документа считается ошибкой.
 - Реализация должна быть написана на TypeScript.
 - Сначала фиксируется публичный API и граничные сценарии, затем внутренняя реализация.
 
@@ -630,7 +630,7 @@ parseGitLabDiff(
 
 Детальный BDD-план, правила организации тестовых файлов и требования к fixture-набору являются обязательными и задаются отдельным документом:
 
-- [services/git-diff-parser/git-diff-parser.tests.spec.md](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.tests.spec.md)
+- [services/git-diff-parser/git-diff-parser.tests.spec.md](services/git-diff-parser/git-diff-parser.tests.spec.md)
 
 Если между task-spec и tests-spec обнаружено расхождение, это считается дефектом документации. В таком случае нужно сначала синхронизировать документы, а не молча адаптировать тесты под текущую реализацию.
 
@@ -851,7 +851,7 @@ index 1f7391f,a7453f0..0000000
 - минимум по одному примеру использования для Git CLI, GitHub и GitLab;
 - ссылку на этот task-spec как источник истины;
 - ссылку на отдельный tests-spec:
-  - [services/git-diff-parser/git-diff-parser.tests.spec.md](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.tests.spec.md)
+  - [services/git-diff-parser/git-diff-parser.tests.spec.md](services/git-diff-parser/git-diff-parser.tests.spec.md)
 
 ## 13. Definition of Done
 
@@ -868,5 +868,5 @@ index 1f7391f,a7453f0..0000000
 9. Path parsing реализован через state machine, а не через RegExp.
 10. В runtime `dependencies` отсутствуют.
 11. Все тестовые сценарии из раздела 10 реализованы и проходят.
-12. Все обязательные BDD-сценарии и требования к фикстурам из [services/git-diff-parser/git-diff-parser.tests.spec.md](/Users/k.lebedev/Developer/gennady/services/git-diff-parser/git-diff-parser.tests.spec.md) реализованы и соблюдены.
+12. Все обязательные BDD-сценарии и требования к фикстурам из [services/git-diff-parser/git-diff-parser.tests.spec.md](services/git-diff-parser/git-diff-parser.tests.spec.md) реализованы и соблюдены.
 13. README описывает публичный API и соответствует фактическому поведению реализации.

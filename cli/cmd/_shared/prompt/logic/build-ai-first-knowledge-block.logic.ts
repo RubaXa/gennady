@@ -10,7 +10,7 @@ import path from 'node:path';
 export function buildAiFirstKnowledgeBlock(projectRoot: string): string {
   const projectKnowledgeFileCandidates: readonly string[] = [
     'ai.knowledge.md',
-    '.ai/ai.knowledge.md',
+    'ai/ai.knowledge.md',
   ];
 
   const found: string[] = [];

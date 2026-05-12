@@ -54,7 +54,7 @@ services/dbc/parser/
 
 ## API
 
-Источник типов: [services/dbc/parser/dbc-parser.types.ts](/Users/k.lebedev/Developer/gennady/services/dbc/parser/dbc-parser.types.ts)
+Источник типов: [services/dbc/parser/dbc-parser.types.ts](services/dbc/parser/dbc-parser.types.ts)
 
 ```ts
 export interface DbcParser {
@@ -135,7 +135,7 @@ Core определяет следующие коды ошибок:
 
 ### `jsdoc`
 
-Источник: [services/dbc/parser/implementations/jsdoc/README.md](/Users/k.lebedev/Developer/gennady/services/dbc/parser/implementations/jsdoc/README.md)
+Источник: [services/dbc/parser/implementations/jsdoc/README.md](services/dbc/parser/implementations/jsdoc/README.md)
 
 Первая реализация фреймворка. Разбирает JSDoc-подобные контракты и конвертирует их в универсальный `DbcSchema`.
 

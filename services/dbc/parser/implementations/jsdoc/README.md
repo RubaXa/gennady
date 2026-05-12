@@ -24,7 +24,7 @@ JSDoc-based parser implementation for `dbc/parser`.
 
 ## API
 
-Источник реализации: [services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts](/Users/k.lebedev/Developer/gennady/services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts)
+Источник реализации: [services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts](services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts)
 
 ```ts
 export class DbcJsDocParser implements DbcParser {

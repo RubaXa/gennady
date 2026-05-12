@@ -5,8 +5,8 @@
 
 ## Basic Rules
 
-- Строго следовать правилам тестирования из `/Users/k.lebedev/Developer/gennady/.ai/agents/agent-qa-code.rules.xml`.
-- Источником истины является `/Users/k.lebedev/Developer/gennady/services/remote-console/spec/remote-console.prd.spec.md`, а не случайное текущее поведение реализации.
+- Строго следовать правилам тестирования из `ai/agents/agent-qa-code.rules.xml`.
+- Источником истины является `services/remote-console/spec/remote-console.prd.spec.md`, а не случайное текущее поведение реализации.
 - Один тест покрывает один сценарий или одну ветку поведения.
 - Timer-driven batching, HTTP transport и process shutdown должны тестироваться через controllable doubles или local harness, а не через flaky wall-clock sleeps.
 - Snapshot assertions допустимы только как дополнение; они не заменяют явные проверки payload shape, flush cadence, line format и shutdown semantics.

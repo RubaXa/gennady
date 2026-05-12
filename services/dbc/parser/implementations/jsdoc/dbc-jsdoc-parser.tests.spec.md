@@ -2,11 +2,11 @@
 
 ## Цель
 
-Проверить, что `DbcJsDocParser` возвращает `DbcSchema`, строго соответствующую [task-спецификации](/Users/k.lebedev/Developer/gennady/services/dbc/parser/dbc-parser.task.spec.md), а snapshot фиксирует именно ожидаемый эталонный результат, а не случайный текущий вывод реализации.
+Проверить, что `DbcJsDocParser` возвращает `DbcSchema`, строго соответствующую [task-спецификации](services/dbc/parser/dbc-parser.task.spec.md), а snapshot фиксирует именно ожидаемый эталонный результат, а не случайный текущий вывод реализации.
 
 ## Базовый подход
 
-ВАЖНО: Строго следуй правилам написания тестов, указанным в `.ai/agents/agent-qa-code.rules.xml`
+ВАЖНО: Строго следуй правилам написания тестов, указанным в `ai/agents/agent-qa-code.rules.xml`
 
 ### Принцип тестирования: snapshot как эталон полной схемы
 
@@ -24,7 +24,7 @@ Snapshot в этом наборе тестов нужен не ради сокр
 
 ### Правила для QA-агента
 
-- snapshot должен соответствовать [спецификации парсера](/Users/k.lebedev/Developer/gennady/services/dbc/parser/dbc-parser.task.spec.md), а не просто текущему выводу реализации;
+- snapshot должен соответствовать [спецификации парсера](services/dbc/parser/dbc-parser.task.spec.md), а не просто текущему выводу реализации;
 - перед обновлением snapshot нужно вручную сверить ожидаемое поведение со спецификацией;
 - snapshot фиксирует уже проверенное ожидание и не заменяет анализ;
 - snapshot-файлы должны храниться только в отдельной папке `services/dbc/parser/implementations/jsdoc/__tests__/snapshots`;
@@ -194,7 +194,7 @@ Snapshot в этом наборе тестов нужен не ради сокр
 
 ### Кейс 4.5: Невалидный контракт из спецификации
 
-- Given: пример невалидного контракта из [task-спецификации](/Users/k.lebedev/Developer/gennady/services/dbc/parser/dbc-parser.task.spec.md)
+- Given: пример невалидного контракта из [task-спецификации](services/dbc/parser/dbc-parser.task.spec.md)
 - When: парсер обрабатывает этот текст
 - Then: итоговый snapshot должен соответствовать эталонной схеме из спецификации по `entries` и их локальным `issues`
 - Snapshot: используется как главный регрессионный тест на согласованность реализации и ТЗ

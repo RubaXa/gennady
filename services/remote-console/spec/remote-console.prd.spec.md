@@ -29,10 +29,10 @@
 
 ## DEV AGENT INSTRUCTIONS
 
-- `Coding rules`: `/Users/k.lebedev/Developer/gennady/.ai/agents/agent-typescript-devgen.xml`.
-- `QA code rules`: `/Users/k.lebedev/Developer/gennady/.ai/agents/agent-qa-code.rules.xml`.
-- `Execution log`: `/Users/k.lebedev/Developer/gennady/services/remote-console/remote-console.prd.log.md`.
-- `Test spec`: `/Users/k.lebedev/Developer/gennady/services/remote-console/remote-console.tests.spec.md`.
+- `Coding rules`: `ai/agents/agent-typescript-devgen.xml`.
+- `QA code rules`: `ai/agents/agent-qa-code.rules.xml`.
+- `Execution log`: `services/remote-console/remote-console.prd.log.md`.
+- `Test spec`: `services/remote-console/remote-console.tests.spec.md`.
 
 ---
 
@@ -501,5 +501,5 @@ consumer: разработчик.
 - [ ] Команда `disconnect` завершает server controlled path и приводит к `process.exit(exitCode)` без второго конкурентного shutdown path.
 - [ ] CLI-команда `remote-console` зарегистрирована в `cli/gennady.ts`, отражена в help и использует server core из `services/remote-console/server`, а не дублирует runtime logic.
 - [ ] При переданном `--url` CLI открывает browser через `open`, добавляя query flag `__remote_console__=1` без потери существующих query params и hash fragment.
-- [ ] Реализация соответствует `Coding rules` из `/Users/k.lebedev/Developer/gennady/.ai/agents/agent-typescript-devgen.xml`.
-- [ ] Тесты соответствуют `QA code rules` из `/Users/k.lebedev/Developer/gennady/.ai/agents/agent-qa-code.rules.xml` и покрывают не только happy path, но и duplicate connect, transport failure, invalid requests и shutdown semantics.
+- [ ] Реализация соответствует `Coding rules` из `ai/agents/agent-typescript-devgen.xml`.
+- [ ] Тесты соответствуют `QA code rules` из `ai/agents/agent-qa-code.rules.xml` и покрывают не только happy path, но и duplicate connect, transport failure, invalid requests и shutdown semantics.

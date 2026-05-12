@@ -5,7 +5,7 @@
 
 ## Basic Rules
 
-- Строго следовать правилам тестирования из `.ai/agents/agent-qa-code.rules.xml`.
+- Строго следовать правилам тестирования из `ai/agents/agent-qa-code.rules.xml`.
 - Источником истины является `services/web-specter/web-specter.prd.spec.md`, а не случайное текущее поведение реализации.
 - Один тест покрывает один сценарий или одну ветку поведения.
 - Browser runtime interactions должны быть изолированы через controllable adapter doubles или локально управляемый integration harness.

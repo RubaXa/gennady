@@ -1,0 +1,213 @@
+<SddSetup keywords="setup, project-init, portal, scope-graph, vision, infra-bootstrap, idempotent, sdd-project-setup" type="directive" ver="1.1">
+  <Directive_Context>
+    <Mission>
+      Primary owner of `specs/README.md` — Project Vision and Scope Graph. Idempotent: runs any number of times to refine vision, extend the scope graph, or bootstrap the first infra-base spec.
+
+      Input — operator intent (what we create / what we change at project level).
+      Output:
+      - `specs/README.md` with Vision + Scope Graph + Scopes table.
+      - Optional: a minimal `specs/infra-base/infra-base.spec.md` (first infra-scope bootstrap) if the operator declared tooling.
+
+      Out of scope: details of any individual scope (its vision, architecture, requirements, modules) — that is the job of `discovery`. `setup` writes only the project-level map.
+
+      **Glossary.** scope-type ∈ {infrastructure, contracts, library, product}. Scope Graph = directed graph; edge A→B = «scope A depends on scope B (consumes its rules / contracts)».
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_PORTAL_PRIMARY_OWNER">
+      `setup` is the primary owner of `specs/README.md`. Other directives MUST NOT rewrite this file. Reads are unrestricted.
+
+      Explicit, narrow exceptions (append-only edits permitted, no rewrites):
+      - `discovery` creating a brand-new scope MAY append a placeholder row to the Scopes table tagged `🚧 (awaiting setup sync)` so the new scope is visible in the Portal before the next `setup` run.
+      - `module-decomposition` MUST NOT touch this file; its Portal-level summaries are appended only to its scope spec.
+
+      Any other edit by another directive → audit finding `STALE_AFTER_PIVOT` or `EXECUTION_LOG_INCOMPLETE` depending on context. The next `setup` run reconciles placeholders into full rows.
+    </Axiom>
+
+    <Axiom id="AX_IDEMPOTENT_MODES">
+      `setup` has no hard modes (no greenfield / extension / pivot).
+      - Portal absent → create from scratch.
+      - Portal present → read and propose updates derived from intake; operator dictates what to change.
+
+      No silent assumptions: empty intake against an existing Portal → HALT `H_NO_INTENT` («what are we changing today?»).
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_GRAPH_DISCIPLINE">
+      Scope Graph is a directed dependency graph. Rules:
+      - Edge A→B means «scope A depends-on scope B»: A inherits B's effective rules in the cascade and may consume B's contracts.
+      - Cycle in the graph → `H_CYCLE_IN_GRAPH` (abort).
+      - scope-type constraints: `infrastructure` and `contracts` scopes are typically leaves (depend only on other infra / contracts). `product` and `library` scopes depend on infra + contracts.
+      - The graph is rendered as a Mermaid `graph TD` block inside the Portal.
+    </Axiom>
+
+    <Axiom id="AX_INFRA_BASE_BOOTSTRAP">
+      If the operator declares basic tooling (package manager, type-checker, linter) in intake, `setup` materializes a minimal `specs/infra-base/infra-base.spec.md` with scope-type=infrastructure: Vision (one sentence) + Tool Stack (table with tool names only, no Decision Log yet). The full Decision Log appears when the operator runs `discovery infra-base`.
+
+      The minimal bootstrap intentionally bypasses the full `discovery` flow — it only locks the tool choice without the Design Variants ritual.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_TABLE_FORMAT">
+      Scopes table in the Portal: each row = link to the scope spec + scope-type + status emoji + one-line description.
+      - ✅ — spec exists and is approved.
+      - 🚧 — spec being authored / `discovery` not yet run.
+      - Status is derived purely from the presence of `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`.
+    </Axiom>
+
+    <Axiom id="AX_VISION_ONLY_FOR_APPLICATION">
+      The `## Vision` section in the Portal is present only when the project contains at least one product or library scope. For tooling-only repos (sandboxes, infra repos) the Vision section is omitted.
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      - Neutrality: no auto-agree. Every proposed scope must pass the «scope vs module» test.
+      - If the operator labels as «scope» something that is obviously a module inside an existing scope, surface this and propose adding it as a module via `module-decomposition`.
+      - Phase agreement: agent signals `STATUS=READY_TO_ADVANCE`; operator confirms.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
+      **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
+      - Portal body text inside `specs/README.md` (Vision, Scope descriptions in the table, Notes).
+      - Minimal infra-base spec body (Vision sentence, table cell content beyond identifiers).
+      - Halt messages emitted to the operator.
+      - Phase Progress free-text fields.
+
+      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R&lt;N&gt;`), status tokens, scope-type tokens, section identifiers (`§Vision`), Mermaid graph IDs.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      `specs/README.md` is self-contained. The next session reads only that file, without conversation history.
+    </Axiom>
+  </Belief_State>
+
+  <Halt_Conditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTENT` | Operator invoked `setup` with an empty intake against an existing Portal |
+    | `H_CYCLE_IN_GRAPH` | Scope Graph contains a cycle |
+    | `H_SCOPE_VS_MODULE_AMBIGUITY` | Operator labels as «scope» something that resembles a module — clarification required |
+    | `H_OPERATOR_REJECT` | Operator rejected Vision, Scope Graph, or the final Portal |
+  </Halt_Conditions>
+
+  <Execution_Plan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Inspect Portal; determine today's change set.</Goal>
+      <Action>
+        1. Stat `specs/README.md`:
+           - Absent → init mode (build from scratch). Ask the operator: «Как называется проект? Опиши в одном предложении его vision и первые scope'ы (infra-base, backend, web — на черновую).»
+           - Present → read in full. Empty intake → `H_NO_INTENT`. Otherwise classify the change: vision / add scope / update graph / infra bootstrap.
+        2. Proceed to STEP_1.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_VISION">
+      <Goal>Lock the project-level Vision.</Goal>
+      <Action>
+        1. If the project has no product / library scopes → skip Vision (per `AX_VISION_ONLY_FOR_APPLICATION`).
+        2. Propose Vision (one sentence): what we build and which problem it solves.
+        3. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_SCOPE_GRAPH">
+      <Goal>Capture scopes and their dependency edges.</Goal>
+      <Action>
+        1. For each scope from the operator:
+           a. Propose scope-type with rationale.
+           b. Run the «scope vs module» test; surface mismatches.
+           c. Naming convention: `infra-*` / `design-system-*` / `api-contracts` / plain.
+        2. Capture `depends-on` edges.
+        3. Cycle check → `H_CYCLE_IN_GRAPH`.
+        4. Render the Mermaid graph.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_INFRA_BOOTSTRAP">
+      <Goal>If the operator declared tooling — materialize the minimal infra-base spec.</Goal>
+      <Action>
+        1. No tooling declared → skip.
+        2. Create `specs/infra-base/infra-base.spec.md` with:
+           - scope-type: infrastructure
+           - Vision: one sentence about dev experience.
+           - Tool Stack: table of tools (no Decision Log yet).
+           - Note: «Полный Decision Log — запусти `discovery infra-base`».
+        3. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_PORTAL_WRITE">
+      <Goal>Write / update `specs/README.md`.</Goal>
+      <Action>
+        1. Assemble Portal per `PORTAL_STRUCTURE_CONTRACT`.
+        2. For each scope: stat `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` → status ✅ or 🚧.
+        3. Reconcile any placeholder rows left by `discovery` (per `AX_PORTAL_PRIMARY_OWNER`) into full rows.
+        4. Write the file.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+  </Execution_Plan>
+
+  <Output_Contracts>
+    <Contract id="TRACE_HEADER_FORMAT">
+      ```text
+      🗺️ SU_R&lt;N&gt; | STACK: ROOT__&lt;STEP&gt; | &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
+      🎯 GOAL: &lt;local goal&gt;
+      ⏭️ EXIT: &lt;exit condition&gt;
+      ```
+    </Contract>
+
+    <Contract id="PORTAL_STRUCTURE_CONTRACT">
+      ```markdown
+      # &lt;project-name&gt;
+
+      ## Vision
+      &lt;Одно предложение. Опускается для infrastructure-only проектов.&gt;
+
+      ## Scope Graph
+
+      ```mermaid
+      graph TD
+        backend --> infra-base
+        backend --> api-contracts
+        web --> infra-base
+        web --> api-contracts
+        web --> design-system-core
+        mobile --> api-contracts
+      ```
+
+      ## Scopes
+
+      | Scope | Type | Spec | Description |
+      |---|---|---|---|
+      | [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅ | TS + pnpm + vitest + biome |
+      | [`api-contracts`](./api-contracts/api-contracts.spec.md) | contracts | 🚧 | REST API v1 |
+      | [`backend`](./backend/backend.spec.md) | product | ✅ | Node.js IMAP-сервис |
+      | [`web`](./web/web.spec.md) | product | 🚧 | React SPA |
+      ```
+    </Contract>
+
+    <Contract id="INFRA_BASE_MINIMAL_SPEC">
+      ```markdown
+      # &lt;scope-name&gt;: Infrastructure Specification
+
+      ## scope-type
+      infrastructure
+
+      ## 1. Vision
+      &lt;Одно предложение про dev-experience.&gt;
+
+      ## 2. Tool Stack (minimal bootstrap)
+      | Category | Tool |
+      |---|---|
+      | package-management | &lt;tool&gt; |
+      | type-check | &lt;tool&gt; |
+      | linting+formatting | &lt;tool&gt; |
+      | test-unit | &lt;tool&gt; |
+      | git-hooks | &lt;tool&gt; |
+
+      &gt; Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery &lt;scope-name&gt;`.
+      ```
+    </Contract>
+  </Output_Contracts>
+</SddSetup>

@@ -31,8 +31,8 @@
 
 ## DEV AGENT INSTRUCTIONS
 
-- `Coding rules`: `.ai/agents/agent-typescript-devgen.xml` (репозиторный default, так как оператор не переопределил путь при финализации).
-- `QA code rules`: `.ai/agents/agent-qa-code.rules.xml`.
+- `Coding rules`: `ai/agents/agent-typescript-devgen.xml` (репозиторный default, так как оператор не переопределил путь при финализации).
+- `QA code rules`: `ai/agents/agent-qa-code.rules.xml`.
 - `LDD rules`: `services/logger/ldd/ldd.prd.spec.md`.
 - `Execution log`: `services/web-specter/web-specter.prd.log.md`.
 - `Test spec`: `services/web-specter/web-specter.tests.spec.md`.

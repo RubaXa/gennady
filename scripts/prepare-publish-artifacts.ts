@@ -29,12 +29,12 @@ const copyPairs: PublishArtifactCopyPair[] = [
     target: path.join(projectRoot, 'dist/chunks/specs'),
   },
   {
-    source: path.join(projectRoot, '.ai/agents/agent-review-verifier.xml'),
-    target: path.join(projectRoot, 'dist/.ai/agents/agent-review-verifier.xml'),
+    source: path.join(projectRoot, 'ai/agents/agent-review-verifier.xml'),
+    target: path.join(projectRoot, 'dist/ai/agents/agent-review-verifier.xml'),
   },
   {
-    source: path.join(projectRoot, '.ai/agents/agent-resolve-conflicts.xml'),
-    target: path.join(projectRoot, 'dist/.ai/agents/agent-resolve-conflicts.xml'),
+    source: path.join(projectRoot, 'ai/agents/agent-resolve-conflicts.xml'),
+    target: path.join(projectRoot, 'dist/ai/agents/agent-resolve-conflicts.xml'),
   },
 ];
 

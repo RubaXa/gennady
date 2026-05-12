@@ -1,0 +1,248 @@
+<AiKnowledge ver="1.1">
+  <!--
+    Each directive is described by skill-selection-style signals:
+      - Purpose:        what the directive does.
+      - Triggers:       positive signals — when to select this directive.
+      - SkipWhen:       negative signals — when NOT to select, even if it looks similar.
+      - Keywords:       words and phrases in operator input that strongly indicate this directive.
+      - Preconditions:  project state required for the directive to make sense.
+      - Examples:       calibration examples, positive and negative operator inputs.
+    Selection algorithm: match operator input + project state against Triggers AND Preconditions,
+    then verify SkipWhen does not apply. If multiple candidates remain, pick the one with the most
+    matched signals and all Preconditions satisfied.
+  -->
+  <Directives>
+    <Sdd>
+      <SddSetup>
+        <File>ai/directives/sdd/setup.directive.xml</File>
+        <Purpose>Project-level setup. Creates or updates `specs/README.md` (Vision + Scope Graph). Sole owner of the Portal. Idempotent — run any number of times to refine vision, add scopes, or update the graph.</Purpose>
+        <Triggers>
+          - New project from scratch (no specs/README.md).
+          - Operator wants to add a scope to the project graph.
+          - Operator wants to change project-level Vision.
+          - After running discovery for a new scope, operator wants to register it in the Portal.
+        </Triggers>
+        <SkipWhen>
+          - Operator wants to design a specific scope (use discovery).
+          - Operator wants to decompose modules within a scope (use module-decomposition).
+        </SkipWhen>
+        <Keywords>setup, project init, portal, scope graph, vision, add scope, infra bootstrap</Keywords>
+        <Preconditions>
+          - None: this is the entry point of the SDD flow.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "Start a new project called Mail App."
+            - "Add a mobile scope to the project."
+            - "Update the project vision."
+          </Positive>
+          <Negative>
+            - "Design the backend scope."
+            - "Decompose the backend into modules."
+          </Negative>
+        </Examples>
+      </SddSetup>
+      <SddDiscovery>
+        <File>ai/directives/sdd/discovery.directive.xml</File>
+        <Purpose>Scope-level discovery session. Creates or evolves a scope spec at `specs/[scope]/[scope].spec.md`. Branches by scope-type: infrastructure (Tool Stack, Workflow, Effective Rules), contracts (Interfaces, Versioning Policy), library (Golden DX, Public API, DbC), product (full flow: Vision, Requirements Gate, Golden DX, Architecture). Living spec — no frozen sections.</Purpose>
+        <Triggers>
+          - Operator names a specific scope to design.
+          - Operator describes a raw idea for a scope: new feature, new service, SDK, CLI utility, or app.
+          - Operator asks to "design", "discuss the architecture", "think through how to build" for a scope.
+          - Operator wants to bootstrap infrastructure tooling (scope-type=infrastructure).
+          - scope-type is infrastructure / contracts / library / product.
+          - No scope spec exists for the discussed scope.
+          - Operator wants to refine or pivot an existing scope.
+        </Triggers>
+        <SkipWhen>
+          - An approved scope spec already exists and operator wants module decomposition.
+          - Request is a bug fix, performance fix, or local refactor inside an existing module.
+          - Operator asks for a targeted change in existing code without re-evaluating architecture.
+          - Operator wants project-level vision or scope graph changes (use setup).
+        </SkipWhen>
+        <Keywords>discovery, scope, intent, vision, golden DX example, design variants, project type, architecture choice, decision log, requirements gate, raw idea, infrastructure, tooling, contracts, library, scope-type</Keywords>
+        <Preconditions>
+          - None for greenfield scope. Portal (specs/README.md) recommended for context but not required.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "I want to design the backend scope."
+            - "Let's design an SDK for event analytics."
+            - "Bootstrap infra-base tooling with pnpm + TypeScript + vitest."
+            - "Design the api-contracts scope for REST v1."
+            - "Refine the web scope to add offline mode."
+          </Positive>
+          <Negative>
+            - "Fix a bug in the auth service."
+            - "Add a mobile scope to the project graph."
+            - "Decompose the backend into modules."
+          </Negative>
+        </Examples>
+      </SddDiscovery>
+      <SddModuleDecomposition>
+        <File>ai/directives/sdd/module-decomposition.directive.xml</File>
+        <Purpose>Second scope session. Decompose a product or library scope into module specs at `specs/[scope]/[module]/[module].spec.md`. For each module: enumerate ALL entities (closed-world inventory), describe each entity's public surface, formalize DbC contracts (Ports and Adapters), and design the file structure. Only applicable to scope-type=product and scope-type=library.</Purpose>
+        <Triggers>
+          - Discovery session is complete; scope spec at `specs/[scope]/[scope].spec.md` is approved.
+          - Operator moves to module decomposition, entity inventory, or contract formalization.
+          - Operator says "split into modules", "build the module map", "list all entities", "produce DbC", "split Ports and Adapters".
+          - scope-type is product or library.
+        </Triggers>
+        <SkipWhen>
+          - Scope spec is missing or not approved.
+          - Discovery is still open, design variants or architecture not yet frozen.
+          - Task tickets already exist — module decomposition belongs earlier in the flow.
+          - scope-type is infrastructure or contracts — those don't decompose into modules.
+          - Scope spec already approved and operator wants task scaffolding.
+        </SkipWhen>
+        <Keywords>module decomposition, module map, hierarchy, entity inventory, closed-world, public surface, consumers, DbC, contracts, Ports, Adapters, file structure, dev rules</Keywords>
+        <Preconditions>
+          - An approved scope spec at `specs/[scope]/[scope].spec.md` exists with scope-type=product or library.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "Backend scope is approved, split it into modules."
+            - "Build the entity inventory for the payments module of backend."
+            - "Formalize Ports and Adapters across all modules of the web scope."
+          </Positive>
+          <Negative>
+            - "The idea is raw; we still need to discuss what we are building."
+            - "Tasks are already generated; let's start coding."
+            - "Decompose the infra-base scope." (infrastructure — not applicable)
+          </Negative>
+        </Examples>
+      </SddModuleDecomposition>
+      <SddTaskScaffolding>
+        <File>ai/directives/sdd/task-scaffolding.directive.xml</File>
+        <Purpose>Third session of the SDD flow. Build a DAG of self-contained task tickets at `tasks/[scope]/[scope].task-NN.md`. Entry point is specs/README.md Scope Graph — canonical map of all scopes and their dependencies. Cascade Table derived from scope graph per-scope. Each ticket MUST explicitly reference relevant spec sections, dependencies, Rule Activation Plan (cascade-derived), BDD scenarios with canonical case names, verification commands, and execution log template.</Purpose>
+        <Triggers>
+          - All required scope specs and module specs have contracts and file structures.
+          - Operator asks to decompose specs into tasks.
+          - Operator says "break into tasks", "build the DAG", "produce the execution plan", "scaffold tickets".
+        </Triggers>
+        <SkipWhen>
+          - Module specs lack contracts (Ports/Adapters not formalized) for product/library scopes.
+          - Discovery or module decomposition is not yet closed.
+          - Required `coding/[lang]-rules.xml` or `testing/[framework].xml` for the chosen stack is missing.
+          - Tasks are already generated; operator wants a targeted edit to an existing ticket.
+        </SkipWhen>
+        <Keywords>tasks, DAG, decomposition, task tickets, scaffolding, BDD scenarios, execution plan, canonical case names, verification commands, execution log, scope graph, cascade table</Keywords>
+        <Preconditions>
+          - `specs/README.md` Scope Graph exists with at least one scope with ✅ status.
+          - `coding/[lang]-rules.xml` exists for every language used in the project.
+          - `testing/[framework].xml` exists for every test runner used in the project.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "All scope specs are ready, break them into tasks."
+            - "Scaffold task tickets for all Adapters in the payments module of backend."
+            - "Build the DAG of execution tasks across the scope graph."
+          </Positive>
+          <Negative>
+            - "Architecture is still under discussion."
+            - "There are no contracts yet."
+            - "We don't have coding rules for the target language yet."
+          </Negative>
+        </Examples>
+      </SddTaskScaffolding>
+      <SddAudit>
+        <File>ai/directives/sdd/audit.directive.xml</File>
+        <Purpose>Post-execution verification session. After a task (or an epic) is executed by an implementation agent, audit compares spec ↔ task ↔ actual code and detects: (1) closed-world drift; (2) completeness gaps; (3) runtime fidelity violations; (4) coding/testing rules compliance violations; (5) insights to backflow into specs. Output: ephemeral session-summary with findings and proposed actions routed to correct artifacts (spec edits, ticket reopens, Decision Log entries). No audit files created.</Purpose>
+        <Triggers>
+          - A task ticket has been executed and its `Execution Log` is filled in.
+          - Operator asks for "audit", "drift detection", "post-implementation review", "verify the implementation".
+          - End of an epic / batch of tasks, before merging or shipping.
+        </Triggers>
+        <SkipWhen>
+          - No executed tasks to audit (Execution Log is empty).
+          - Implementation is still in progress within the same task.
+          - No spec to compare against (audit requires spec ↔ task ↔ code triangulation).
+        </SkipWhen>
+        <Keywords>audit, post-execution review, drift detection, closed-world fidelity, completeness, runtime fidelity, code review, insight backflow, remediation</Keywords>
+        <Preconditions>
+          - The relevant spec(s) under `specs/` exist.
+          - The task ticket under `tasks/` exists with a non-empty `Execution Log`.
+          - The implementation code referenced by the ticket is committed and accessible.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "Task TSK-12 is done, run the audit."
+            - "Audit the payments epic for drift before we merge."
+            - "Verify that the implementation matches the spec for module X."
+          </Positive>
+          <Negative>
+            - "The task is still in progress."
+            - "There's no spec yet, just a prototype."
+          </Negative>
+        </Examples>
+      </SddAudit>
+    </Sdd>
+    <Coding>
+      <TypeScriptCodingRules>
+        <File>ai/directives/coding/typescript-rules.xml</File>
+        <Purpose>Canonical rules for writing TypeScript code in this project: typing, style, patterns, error handling, anti-patterns, verification hooks.</Purpose>
+        <Triggers>
+          - Execution agent is about to create or modify TypeScript code.
+          - Task ticket declares the implementation language as TypeScript.
+          - Files use `.ts`, `.tsx`, `.mts`, or `.cts` extensions.
+          - Project configuration includes `tsconfig.json` and the task touches compiled modules.
+        </Triggers>
+        <SkipWhen>
+          - Task does not modify TypeScript code (docs only, YAML configs only, shell scripts only).
+          - Target module's stack is a different language (Rust, Python, Go, Swift, Kotlin, etc.).
+        </SkipWhen>
+        <Keywords>TypeScript, TS, .ts, .tsx, .mts, .cts, interfaces, types, tsc, tsconfig, type narrowing, generics, enum, async/await</Keywords>
+        <Preconditions>
+          - Loaded into the executor's context BEFORE writing or editing TypeScript code.
+          - Task ticket must explicitly reference this file as a mandatory coding rules dependency.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "Implement the PaymentGateway interface in TypeScript."
+            - "Write the OrderProcessor class against the contract from the spec."
+            - "Fix typing in module X."
+          </Positive>
+          <Negative>
+            - "Rewrite the deploy script in bash."
+            - "Implement the module in Rust."
+            - "Update README.md."
+          </Negative>
+        </Examples>
+      </TypeScriptCodingRules>
+    </Coding>
+    <Testing>
+      <NodeTestRules>
+        <File>ai/directives/testing/node-test.xml</File>
+        <Purpose>Canonical rules for writing tests on the built-in `node:test` runner: file layout, naming, describe/test structure, assertions, mocking, coverage, mapping BDD scenarios to test cases.</Purpose>
+        <Triggers>
+          - Execution agent is about to create or modify tests on Node's built-in runner.
+          - Task ticket declares the test framework as `node:test`.
+          - Project's test command is `node --test` (no separate runner like Vitest or Jest).
+          - Test files follow `*.test.ts` / `*.test.js` convention under Node without third-party test runners.
+        </Triggers>
+        <SkipWhen>
+          - Tests target a different runner (Vitest, Jest, Mocha, Playwright, Cypress, etc.).
+          - Task does not include writing or modifying tests.
+          - Tests are end-to-end under a browser runner.
+        </SkipWhen>
+        <Keywords>node:test, node --test, test runner, assertions, describe, it, test cases, mock, BDD, canonical case names, coverage</Keywords>
+        <Preconditions>
+          - Loaded into the executor's context BEFORE writing tests.
+          - Task ticket must explicitly reference this file as a mandatory testing rules dependency.
+        </Preconditions>
+        <Examples>
+          <Positive>
+            - "Write `node:test` tests for the OrderProcessor module."
+            - "Cover the BDD scenarios from the ticket with tests on Node's built-in runner."
+            - "Add contract tests for PaymentGatewayPort using `node:test`."
+          </Positive>
+          <Negative>
+            - "Write tests using Vitest."
+            - "Build end-to-end tests with Playwright."
+            - "Cover the UI component with Jest snapshots."
+          </Negative>
+        </Examples>
+      </NodeTestRules>
+    </Testing>
+  </Directives>
+</AiKnowledge>
