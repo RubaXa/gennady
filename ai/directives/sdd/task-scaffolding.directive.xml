@@ -5,15 +5,15 @@
 
       Convergence point. Entry point: `specs/README.md` Scope Graph — canonical map of all scopes and their dependencies. From Portal extract:
       - All scopes with their scope-type and `depends-on` edges (Mermaid graph + Scopes table).
-      - Per scope: read `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` for rules, requirements, architecture.
-      - Per product/library scope: read `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md` if §8 Module Map exists.
+      - Per scope: read `specs/<scope>/<scope>.spec.md` for rules, requirements, architecture.
+      - Per product/library scope: read `specs/<scope>/<module>/<module>.spec.md` if §8 Module Map exists.
 
       Outputs:
       - `tasks/README.md` — project-level tracker (Entry Points, Tracker Index, High-Level cross-scope DAG, Decision Log). No global Cascade Table here — each scope has its own.
-      - `tasks/&lt;scope&gt;/README.md` — per-scope tracker: Cascade Table (derived from scope graph), intra-scope DAG, Tracker.
-      - `tasks/&lt;scope&gt;/&lt;scope&gt;.task-NN.md` — compact tickets for scope-level tasks.
-      - `tasks/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.task-NN.md` — module-level tickets (when modules exist in scope).
-      - `tasks/_integration/` — cross-scope integration tickets.
+      - `tasks/<scope>/README.md` — per-scope tracker: Cascade Table (derived from scope graph), intra-scope DAG, Tracker.
+      - `tasks/<scope>/<scope>.task-NN.md` — compact tickets for scope-level tasks.
+      - `tasks/<scope>/<module>/<module>.task-NN.md` — module-level tickets (when modules exist in scope).
+      - `tasks/integration/` — cross-scope integration tickets (optional; only when a dedicated `integration` scope is registered in Scope Graph).
 
       Next phase: `task-execution` consumes one ticket at a time. After DONE → `audit`.
 
@@ -37,7 +37,7 @@
     </Axiom>
 
     <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
-      **Phase reads specs only, never code.** Allowed inputs: operator intake; `specs/README.md`; per-scope spec files; per-module spec files; in `extend-dag` — existing `tasks/` artifacts (for max Task-ID + current DAG); rule files at `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`. No project-wide search (grep / find / ripgrep) outside the listed reads. Spec/code mismatch is resolved by `audit`.
+      **Phase reads specs only, never code.** Allowed inputs: operator intake; `specs/README.md`; per-scope spec files; per-module spec files; in `extend-dag` — existing `tasks/` artifacts (for max Task-ID + current DAG); rule files at `ai/directives/<category>/<rule>.xml`. No project-wide search (grep / find / ripgrep) outside the listed reads. Spec/code mismatch is resolved by `audit`.
     </Axiom>
 
     <Axiom id="AX_SCOPE_GRAPH_DETECTION">
@@ -46,7 +46,7 @@
       From Portal extract:
       - All scope names and their scope-types (from Scopes table).
       - Dependency edges A→B (from Mermaid graph or Scopes table `depends-on`).
-      - For each scope with ✅ status, read its spec file at `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`.
+      - For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
 
       Cascade computation requires full scope graph traversal:
       - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).
@@ -66,12 +66,12 @@
       - Existing tickets are NOT regenerated even if upstream specs changed — that is Executor's reopen scenario, not regeneration.
       - `add-scope` upstream → scaffold only for the new scope.
       - `add-module` or `refine-module` upstream → scaffold only for the new/changed surface; unchanged-surface tickets untouched.
-      - Per-scope Cascade Table may update; existing tickets keep their old `Rule Activation Plan` — Executor re-derives on reopen.
+      - Per-scope Cascade Table may update; existing tickets keep their old `§Effective Rules` — Executor re-derives on reopen.
       - DAG edges/IDs preserved; new tasks appended.
     </Axiom>
 
     <Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
-      **All rule references must resolve; missing rule = abort.** Sources: scope spec (§5 Effective Rules for infra; §4.5 Rules for product/library), module spec (§9 Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `&lt;rule&gt;`, "to be authored", any unresolved name) = abort, never write a ticket against it.
+      **All rule references must resolve; missing rule = abort.** Sources: scope spec (§5 Effective Rules for infra; §4.5 Rules for product/library), module spec (§9 Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_RESOLUTION">
@@ -80,25 +80,36 @@
       Tier order (low → high):
       1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
       2. **target-scope** — scope spec §5 Effective Rules (infra) or §4.5 Rules (product/library).
-      3. **module:&lt;name&gt;** — module spec §9 Handoff Module Rules Additions (when modules exist).
+      3. **module:<name>** — module spec §9 Handoff Module Rules Additions (when modules exist).
       4. **task** — operator-supplied during ticket generation.
 
       Materialization:
-      - **Cascade Table** (Scope × Categories) lives in `tasks/&lt;scope&gt;/README.md` per scope, NOT in `tasks/README.md`. Generated from scope graph automatically.
-      - **Per-ticket `Rule Activation Plan` table** (in Meta): always present, derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × Target Files / Target Test Files / Deferred Test Ownership.
+      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`. Generated from scope graph automatically.
+      - **Per-ticket `§Effective Rules` table** (in Meta): always present, derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × Target Files / Target Test Files / Deferred Test Ownership.
       - Auditor recomputes effective set from sources and compares with ticket Meta.
     </Axiom>
 
     <Axiom id="AX_RULE_ACTIVATION_PLAN">
-      **Every ticket carries a `Rule Activation Plan` table in Meta — phase × rules to activate.** Phases (fixed order): PLAN → IMPL → TEST → AUDIT (+ optional COMMIT for tickets touching git config).
+      When building each ticket's §Effective Rules:
 
-      Scaffolder fills the plan automatically:
-      - **PLAN** ← cascade `architecture/*`.
-      - **IMPL** ← cascade `coding/*`. Skip if Target Files contain only configs / no code.
-      - **TEST** ← cascade `testing/*`. Skip when `Deferred Test Ownership: &lt;id&gt;` set OR `Target Test Files = ∅`.
-      - **AUDIT** ← cascade `quality/*`.
-      - **COMMIT** ← cascade `vcs/*` only if Target Files include git config (`.gitignore`, hooks, attributes); else omit row.
-      - `runtimes/*` activated only on infra-setup tickets where Target Files contain runtime config; otherwise omit.
+      1. Read `ai/directives/knowledge.xml` — the canonical rule registry (`<Rules>` section, all categories).
+      2. From the scope's §Project-Wide Rules (spec), extract the candidate rule set for this scope.
+      3. For each candidate rule: evaluate its `<Triggers>` and `<SkipWhen>` against the ticket's Target Files, Target Test Files, and task intent. Include the rule only when `<Triggers>` match AND `<SkipWhen>` does not apply. The matching is purely signal-based — no language, tool, or file-extension knowledge is encoded here; it lives entirely in `knowledge.xml`.
+      4. For each included rule:
+         - `<File>` → file path in the "File" column (mandatory; never a bare name).
+         - `<ActivationHint>` → "When to load" column verbatim.
+         - `<RequiresVerification>` → collect command-name aliases for step 6.
+      5. Write ticket §Effective Rules table:
+         | Rule | File | When to load |
+      6. Collect all `<RequiresVerification>` aliases from included rules. Group rules by alias
+         (multiple rules may share the same alias, e.g. `check-command`). Resolve each unique
+         alias from infra-spec §Verification Commands (alias → actual invocation).
+         - Alias present in spec → use its invocation.
+         - Alias absent → halt: H_VERIFICATION_COMMAND_MISSING (alias, ticket ID).
+      7. Write ticket §Verification:
+         | Command | Required by |
+         One row per unique alias. "Required by" = comma-separated rule IDs that declared it.
+         Rules with empty `<RequiresVerification>` produce no row.
     </Axiom>
 
     <Axiom id="AX_DAG_EXECUTION">
@@ -112,7 +123,7 @@
 
       - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements &amp; Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
       - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
-      - Each scenario maps to `&lt;test-file&gt;::&lt;canonical case name&gt;` in §4 Test Scenario Coverage, OR explicit `Deferred Test Ownership: &lt;task-id&gt;`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in §4 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
       - `Target Test Files` is mandatory in Meta — populated with concrete paths OR a `Deferred Test Ownership` reference. Empty = forbidden.
       - Canonical case names are normative: Executor uses verbatim or updates the ticket before DONE.
       - BDD describes behavior, not language-specific syntax.
@@ -121,13 +132,13 @@
     <Axiom id="AX_DONE_REQUIRES_EVIDENCE">
       Executor cannot close `[x] DONE` until ALL of:
       - verification commands executed; result + exit code recorded in Execution Log;
-      - every BDD scenario has `&lt;file&gt;::&lt;case&gt;` confirmed OR deferred owner recorded;
-      - every entity introduced beyond module Entity Inventory logged as `Introduced &lt;Name&gt; because &lt;reason&gt;`;
+      - every BDD scenario has `<file>::<case>` confirmed OR deferred owner recorded;
+      - every entity introduced beyond module Entity Inventory logged as `Introduced <Name> because <reason>`;
       - `Runtime Backing` honestly recorded; `real-runtime` claim without real implementation requires explicit `Deferred Runtime Scope`.
     </Axiom>
 
     <Axiom id="AX_TICKET_DEDUPLICATION">
-      **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `tasks/&lt;scope&gt;/README.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
+      **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `tasks/<scope>/README.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
     </Axiom>
 
     <Axiom id="AX_TASK_ID_UNIQUENESS">
@@ -143,9 +154,9 @@
     <Axiom id="AX_REOPEN_TICKET_FORMAT">
       **Reopens accumulate as appended rounds in one ticket; never spawn parallel tickets for same scope.**
 
-      - Meta `Reopens: &lt;count&gt; (&lt;YYYY-MM-DD&gt; — &lt;last reason&gt;)` on a single line; field omitted when 0.
+      - Meta `Reopens: <count> (<YYYY-MM-DD> — <last reason>)` on a single line; field omitted when 0.
       - Status returns to `[~] IN_PROGRESS`; no separate `REOPENED`.
-      - Execution Log structured by `### Round N — &lt;date&gt;, &lt;reason&gt;`, append-only. Old rounds NEVER edited.
+      - Execution Log structured by `### Round N — <date>, <reason>`, append-only. Old rounds NEVER edited.
       - Verification commands re-run each round.
       - Reopen vs new task governed by Executor's `AX_REOPEN_VS_NEW_TASK`.
     </Axiom>
@@ -153,9 +164,9 @@
     <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
       **Scaffolding writes PLAN; Executor turns plan into FACT.**
 
-      - **PLAN** = `[ ]` items + literal placeholders `&lt;ts&gt;`, `&lt;path&gt;`, `&lt;cmd&gt;`, `&lt;pass|fail&gt;`, `&lt;exit=&lt;code&gt;&gt;`, `&lt;scenario&gt;`, `&lt;test-file&gt;::&lt;case&gt;`, `&lt;EntityName&gt;`, `&lt;reason&gt;`. Predicted from §3 Verification, §4 Test Scenario Coverage, Target Files.
+      - **PLAN** = `[ ]` items + literal placeholders `<ts>`, `<path>`, `<cmd>`, `<pass|fail>`, `<exit=<code>>`, `<scenario>`, `<test-file>::<case>`, `<EntityName>`, `<reason>`. Predicted from §3 Verification, §4 Test Scenario Coverage, Target Files.
       - **FACT** = `[x]` AND every placeholder replaced with real value from actual execution.
-      - **Forbidden**: `[x]` line containing any unreplaced `&lt;…&gt;` literal = fabricated done.
+      - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
       - Append-only by rounds.
     </Axiom>
 
@@ -169,8 +180,8 @@
 
       Canonical header shape:
       ```
-      // @file: &lt;what the file holds&gt;
-      // @consumers: &lt;consumer-1, consumer-2, ...&gt;
+      // @file: <what the file holds>
+      // @consumers: <consumer-1, consumer-2, ...>
       // @tasks: TSK-04, TSK-12
       ```
     </Axiom>
@@ -180,7 +191,7 @@
     </Axiom>
 
     <Axiom id="AX_CROSS_SCOPE_TASK_PLACEMENT">
-      Multi-scope tickets live under `tasks/_integration/`. Pieces of one integration are never scattered across scope folders.
+      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders. `tasks/_integration/` is deprecated — do not create it.
     </Axiom>
 
     <Axiom id="AX_AUDIT_HOOK">
@@ -234,14 +245,13 @@
       - Contract: [`PaymentGatewayPort`](../../../specs/backend/payments/payments.spec.md#paymentgatewayport)
       - Adapter: [`StripePaymentAdapter`](../../../specs/backend/payments/payments.spec.md#stripepaymentadapter)
       - Consumer: [`OrderProcessor`](../../../specs/backend/orders/orders.spec.md#orderprocessor)
-    - **Rule Activation Plan** (cascade sources at [tasks/backend/README.md#cascade](README.md#cascade)):
+    - **§Effective Rules** (cascade sources at [tasks/backend/README.md#cascade](README.md#cascade)):
 
-      | Phase  | Активировать          | Источник                |
-      |--------|-----------------------|-------------------------|
-      | PLAN   | ports-adapters        | architecture (infra-base)|
-      | IMPL   | typescript-rules      | coding (infra-base)     |
-      | TEST   | node-test             | testing (module)        |
-      | AUDIT  | eslint-rules          | quality (infra-base)    |
+      | Rule | File | When to load |
+      |------|------|--------------|
+      | typescript-rules | ai/directives/coding/typescript-rules.xml | Before editing or creating any .ts code file |
+      | node-test | ai/directives/testing/node-test.xml | Before writing or modifying test files |
+      | eslint-setup | ai/directives/infra/eslint-setup.xml | Before writing eslint.config.ts or modifying lint rules |
 
     - **Runtime Backing:** `real-runtime`
     - **Verification Levels:** `unit`, `integration`
@@ -261,6 +271,7 @@
     | `H_ID_COLLISION` | Generated `TSK-NN` collides with existing |
     | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
+    | `H_VERIFICATION_COMMAND_MISSING` | RequiresVerification alias not found in infra-spec §Verification Commands |
   </Halt_Conditions>
 
   <Execution_Plan>
@@ -269,7 +280,7 @@
       <Action>
         1. Emit TRACE_HEADER (STACK `ROOT__INTAKE`).
         2. **Read `specs/README.md` Scope Graph as canonical entry point.** Portal absent → `H_NO_SPECS`. From Portal extract: all scope names + types + depends-on edges (Mermaid graph + Scopes table).
-        3. For each scope with ✅ status, read `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`.
+        3. For each scope with ✅ status, read `specs/<scope>/<scope>.spec.md`.
         4. For each product/library scope with §8 Module Map, read module specs.
         5. Scope graph detection per `AX_SCOPE_GRAPH_DETECTION`. All absent → `H_NO_SPECS`.
         6. Mode detection per `AX_MODE_AUTO_DETECT_OR_HALT`. On `H_AMBIGUOUS_MODE` halt with operator question.
@@ -279,13 +290,14 @@
     </Step>
 
     <Step id="STEP_1_STACK_RESOLUTION">
-      <Goal>Verify all rule references resolve. Build per-scope Cascade Tables. Operator approval.</Goal>
+      <Goal>Load rule registry. Verify all rule references resolve. Build per-scope Cascade Tables. Operator approval.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__STACK_RESOLUTION`).
-        2. For each scope: traverse depends-on edges (transitive closure) to compute traversed-scopes. Collect rule refs from all traversed-scopes + target-scope + modules (task-tier added in STEP_3).
-        3. For each ref, verify file existence under `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`. Any miss → `H_MISSING_RULES` (abort with explicit list).
-        4. Build per-scope Cascade Tables (Scope × Categories matrix; tier rows from graph).
-        5. Phase Progress + Approval Check. STOP.
+        2. **Read `ai/directives/knowledge.xml` in full.** This is the canonical rule registry — contains `<Triggers>`, `<SkipWhen>`, `<ActivationHint>`, `<RequiresVerification>` for every rule. Required before verifying refs and before building §Effective Rules in STEP_4. Read it now — do not defer.
+        3. For each scope: traverse depends-on edges (transitive closure) to compute traversed-scopes. Collect rule refs from all traversed-scopes + target-scope + modules (task-tier added in STEP_3).
+        4. For each ref, verify file existence under `ai/directives/<category>/<rule>.xml`. Any miss → `H_MISSING_RULES` (abort with explicit list).
+        5. Build per-scope Cascade Tables (Scope × Categories matrix; tier rows from graph).
+        6. Phase Progress + Approval Check. STOP.
       </Action>
     </Step>
 
@@ -295,7 +307,7 @@
         1. TRACE_HEADER (STACK `ROOT__DAG`).
         2. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec. Cross-scope dependencies from scope graph edges.
         3. Form tasks per `AX_DAG_EXECUTION`. Assign sequential `TSK-NN` (project-wide).
-        4. Check: no cycles; no oversized tasks (&gt;1 day); no missing prerequisites.
+        4. Check: no cycles; no oversized tasks (>1 day); no missing prerequisites.
         5. Phase Progress + Approval Check (Mermaid graph). STOP.
       </Action>
     </Step>
@@ -305,8 +317,8 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INDEX_GENERATION`).
         2. Write `tasks/README.md` per `TASKS_README_STRUCTURE`. Project-Wide Conventions declared ONCE here per `AX_TICKET_DEDUPLICATION`. No Cascade Table here.
-        3. Per scope: write `tasks/&lt;scope&gt;/README.md` per `SCOPE_TASKS_README_STRUCTURE` with per-scope Cascade Table.
-        4. If cross-scope integrations: write `tasks/_integration/README.md`.
+        3. Per scope: write `tasks/<scope>/README.md` per `SCOPE_TASKS_README_STRUCTURE` with per-scope Cascade Table.
+        4. If cross-scope integrations exist: create a dedicated `integration` scope entry in `specs/README.md` and write `tasks/integration/README.md`.
         5. Phase Progress + Approval Check. STOP.
       </Action>
     </Step>
@@ -315,13 +327,13 @@
       <Goal>Emit each ticket per `TASK_TICKET_STRUCTURE`. Project-wide content NOT duplicated.</Goal>
       <Action>
         For each task:
-        1. TRACE_HEADER (STACK `ROOT__TASK_GENERATION__&lt;TASK_ID&gt;`).
+        1. TRACE_HEADER (STACK `ROOT__TASK_GENERATION__<TASK_ID>`).
         2. Verify ID uniqueness per `AX_TASK_ID_UNIQUENESS`. Collision → `H_ID_COLLISION`.
-        3. Compute effective rules per `AX_RULES_CASCADE_RESOLUTION`; derive `Rule Activation Plan` per `AX_RULE_ACTIVATION_PLAN`.
+        3. Compute effective rules per `AX_RULES_CASCADE_RESOLUTION`; derive `§Effective Rules` per `AX_RULE_ACTIVATION_PLAN`.
         4. Determine ticket path:
-           - Scope-level task: `tasks/&lt;scope&gt;/&lt;scope&gt;.task-NN.md`.
-           - Module-level task: `tasks/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.task-NN.md`.
-           - Cross-scope integration: `tasks/_integration/&lt;label&gt;.task-NN.md`.
+           - Scope-level task: `tasks/<scope>/<scope>.task-NN.md`.
+           - Module-level task: `tasks/<scope>/<module>/<module>.task-NN.md`.
+           - Cross-scope integration: `tasks/integration/<label>.task-NN.md`.
         5. Write ticket per `TASK_TICKET_STRUCTURE`.
         6. Pre-fill §5 Execution Log as PLAN per `AX_EXECUTION_LOG_PLAN_VS_FACT`.
         7. Phase Progress per batch + Approval Check. STOP.
@@ -345,20 +357,20 @@
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      📋 TS_R&lt;N&gt; | STACK: ROOT__&lt;FRAME&gt;__&lt;SUBFRAME&gt; | FRAME: F_&lt;KEY&gt;_R&lt;N&gt; | &lt;📂|🚧|↩️|⏭️|💤&gt; &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
-      🎯 GOAL: &lt;local goal&gt;
-      ⏭️ EXIT: &lt;exit condition&gt;
+      📋 TS_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — &lt;STEP_NAME&gt;
-        ✅ Closed:    &lt;agreed&gt;
-        ⏳ Open:      &lt;under discussion&gt;
-        🛑 Blocking:  &lt;if any, else —&gt;
-        ▶️ Next:      &lt;proposal&gt;
-        📊 Counters:  &lt;e.g. "DAG: 18 tasks across 3 scopes; 14/18 tickets generated"&gt;
+      🎯 Phase Progress — <STEP_NAME>
+        ✅ Closed:    <agreed>
+        ⏳ Open:      <under discussion>
+        🛑 Blocking:  <if any, else —>
+        ▶️ Next:      <proposal>
+        📊 Counters:  <e.g. "DAG: 18 tasks across 3 scopes; 14/18 tickets generated">
       ```
     </Contract>
 
@@ -366,65 +378,67 @@
       Project-wide content (file-header rule, baseline Completion Rule, Execution Log protocol, audit hint) lives in `tasks/README.md` per `AX_TICKET_DEDUPLICATION` — NOT duplicated here.
 
       ```markdown
-      # Task: &lt;Task-ID&gt; — &lt;Task Title&gt;
+      # Task: <Task-ID> — <Task Title>
 
       ## 1. Meta &amp; Traceability
-      - **Task-ID:** &lt;TSK-NN&gt;
-      - **Purpose:** &lt;semantic goal&gt;
-      - **Scope:** &lt;scope-name&gt;
-      - **Module:** &lt;module-name or N/A&gt;
-      - **Dependencies:** &lt;comma-separated Task-IDs or None&gt;
-      - **Reopens:** &lt;count&gt; (&lt;YYYY-MM-DD&gt; — &lt;last reason&gt;)   &lt;!-- omit when 0 --&gt;
+      - **Task-ID:** <TSK-NN>
+      - **Purpose:** <semantic goal>
+      - **Scope:** <scope-name>
+      - **Module:** <module-name or N/A>
+      - **Dependencies:** <comma-separated Task-IDs or None>
+      - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
       - **Spec References:**
-        - Contract: [&lt;ContractName&gt;](&lt;spec anchor&gt;)
-        - Consumer: [&lt;ConsumerName&gt;](&lt;spec anchor&gt;)
-        - Constraints (if applicable): [&lt;ScopeSpec §4&gt;](&lt;path&gt;)
-      - **Rule Activation Plan** (per `AX_RULE_ACTIVATION_PLAN`; cascade sources at [tasks/&lt;scope&gt;/README.md#cascade](../README.md#cascade)):
+        - Contract: [<ContractName>](<spec anchor>)
+        - Consumer: [<ConsumerName>](<spec anchor>)
+        - Constraints (if applicable): [<ScopeSpec §4>](<path>)
+      - **§Effective Rules** (per `AX_RULE_ACTIVATION_PLAN`; cascade sources at [tasks/<scope>/README.md#cascade](../README.md#cascade)):
 
-        | Phase  | Активировать                | Источник                |
-        |--------|-----------------------------|-------------------------|
-        | PLAN   | &lt;list or skip&gt;              | architecture (cascade)  |
-        | IMPL   | &lt;list or skip — &lt;reason&gt;&gt;   | coding (cascade)        |
-        | TEST   | &lt;list or skip — &lt;reason&gt;&gt;   | testing (cascade)       |
-        | AUDIT  | &lt;list or skip&gt;              | quality (cascade)       |
-        | COMMIT | &lt;list or omit row&gt;          | vcs (cascade)           |
+        | Rule | File | When to load |
+        |------|------|--------------|
+        | <rule-id> | <ai/directives/...> | <ActivationHint verbatim> |
 
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
-      - **Deferred Runtime Scope:** None | &lt;description&gt;
-      - **Target Files:** `&lt;path&gt;` (Create | Update), ...
-      - **Target Test Files:** `&lt;path&gt;` (Create | Update), ...
+      - **Deferred Runtime Scope:** None | <description>
+      - **Target Files:** `<path>` (Create | Update), ...
+      - **Target Test Files:** `<path>` (Create | Update), ...
 
       ## 2. Acceptance Criteria (BDD)
       Contract: see Spec References.
 
-      **Feature:** &lt;component behavior&gt;
+      **Feature:** <component behavior>
 
-      **Scenario:** &lt;name&gt; [`&lt;verification level&gt;`]
-      - **Given** &lt;precondition&gt;
-      - **When** &lt;command/query&gt;
-      - **Then** &lt;postcondition&gt;
-      - **And** &lt;side effect&gt;
+      **Scenario:** <name> [`<verification level>`]
+      - **Given** <precondition>
+      - **When** <command/query>
+      - **Then** <postcondition>
+      - **And** <side effect>
 
       ## 3. Verification
-      - **Commands:** `&lt;command&gt;`
-      - **Task-specific Completion additions:** &lt;list or "none beyond project baseline"&gt;
+      | Command | Required by |
+      |---------|-------------|
+      | <resolved invocation> | <rule-id>, <rule-id> |
+
+      <!-- One row per unique §Verification Commands alias. Multiple rules sharing check-command
+           produce a single row. Rules with empty RequiresVerification produce no row. -->
+
+      - **Task-specific Completion additions:** <list or "none beyond project baseline">
 
       ## 4. Test Scenario Coverage
-      - Scenario &lt;name&gt; → `&lt;test-file&gt;` :: `&lt;canonical case name&gt;`
+      - Scenario <name> → `<test-file>` :: `<canonical case name>`
 
       ## 5. Execution Log
       *(Plan-as-checklist per `AX_EXECUTION_LOG_PLAN_VS_FACT`; protocol in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
 
-      ### Round 1 — &lt;YYYY-MM-DD&gt;, initial
-      - [ ] `[&lt;ts&gt;]` Task initialized.
-      - [ ] `[&lt;ts&gt;]` File created: `&lt;Target File&gt;`.
-      - [ ] `[&lt;ts&gt;]` Verification: `&lt;command from §3&gt;` → `&lt;pass|fail&gt;` [`exit=&lt;code&gt;`].
-      - [ ] `[&lt;ts&gt;]` Scenario coverage: `&lt;scenario&gt;` → `&lt;test-file&gt;::&lt;case&gt;`.
-      - [ ] `[&lt;ts&gt;]` Self-audit: walked loaded rule axioms against generated code. Violations: `&lt;list or "none"&gt;`.
-      - [ ] `[&lt;ts&gt;]` Introduced (if any): `&lt;EntityName&gt;` because `&lt;reason&gt;`.
-      - [ ] `[&lt;ts&gt;]` Tracker synced: `tasks/&lt;scope&gt;/README.md` + `tasks/README.md`.
-      - [ ] `[&lt;ts&gt;]` Status: [x] DONE.
+      ### Round 1 — <YYYY-MM-DD>, initial
+      - [ ] `[<ts>]` Task initialized.
+      - [ ] `[<ts>]` File created: `<Target File>`.
+      - [ ] `[<ts>]` Verification: `<command from §3>` → `<pass|fail>` [`exit=<code>`].
+      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
+      - [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
+      - [ ] `[<ts>]` Introduced (if any): `<EntityName>` because `<reason>`.
+      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
+      - [ ] `[<ts>]` Status: [x] DONE.
       ```
     </Contract>
 
@@ -436,7 +450,7 @@
 
       ## Entry Points
       - [Specs Portal](../specs/README.md) — Scope Graph + all scope specs.
-      - Tickets are picked up ONLY via `&lt;SddTaskExecution&gt;`. After `[x] DONE`, run `&lt;SddAudit&gt;`.
+      - Tickets are picked up ONLY via `<SddTaskExecution>`. After `[x] DONE`, run `<SddAudit>`.
 
       ## Project-Wide Conventions
 
@@ -445,11 +459,11 @@
 
       ### Completion Rule (baseline)
       A task cannot transition to `[x] DONE` until ALL of (per `AX_DONE_REQUIRES_EVIDENCE`):
-      1. Every BDD scenario mapped to test ownership in §4 OR has `Deferred Test Ownership: &lt;task-id&gt;`.
+      1. Every BDD scenario mapped to test ownership in §4 OR has `Deferred Test Ownership: <task-id>`.
       2. Verification commands executed; results + exit codes recorded in Execution Log.
       3. Canonical case names match real test cases or ticket updated.
       4. `Deferred Runtime Scope` recorded if applicable.
-      5. Every introduced-beyond-Inventory entity logged as `Introduced &lt;Name&gt; because &lt;reason&gt;`.
+      5. Every introduced-beyond-Inventory entity logged as `Introduced <Name> because <reason>`.
 
       Task-specific additions live in each ticket's §3.
 
@@ -458,27 +472,27 @@
 
       **Plan format (scaffolding pre-fills per ticket):**
       ```markdown
-      ### Round 1 — &lt;YYYY-MM-DD&gt;, initial
-      - [ ] `[&lt;ts&gt;]` Task initialized.
-      - [ ] `[&lt;ts&gt;]` Implementation file: `&lt;path&gt;`.
-      - [ ] `[&lt;ts&gt;]` Test file: `&lt;path&gt;`.
-      - [ ] `[&lt;ts&gt;]` Verification: `&lt;command&gt;` → `&lt;pass|fail&gt;` [`exit=&lt;code&gt;`].
-      - [ ] `[&lt;ts&gt;]` Scenario coverage: `&lt;scenario&gt;` → `&lt;test-file&gt;::&lt;case&gt;`.
-      - [ ] `[&lt;ts&gt;]` Self-audit: walked loaded rule axioms against generated code. Violations: `&lt;list or "none"&gt;`.
-      - [ ] `[&lt;ts&gt;]` Introduced (if any): `&lt;Entity&gt;` because `&lt;reason&gt;`.
-      - [ ] `[&lt;ts&gt;]` Tracker synced: `tasks/&lt;scope&gt;/README.md` + `tasks/README.md`.
-      - [ ] `[&lt;ts&gt;]` Status: [x] DONE.
+      ### Round 1 — <YYYY-MM-DD>, initial
+      - [ ] `[<ts>]` Task initialized.
+      - [ ] `[<ts>]` Implementation file: `<path>`.
+      - [ ] `[<ts>]` Test file: `<path>`.
+      - [ ] `[<ts>]` Verification: `<command>` → `<pass|fail>` [`exit=<code>`].
+      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
+      - [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
+      - [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
+      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
+      - [ ] `[<ts>]` Status: [x] DONE.
       ```
 
       **Reopen rounds** (appended on subsequent rounds; prior rounds untouched):
       ```markdown
-      ### Round N — &lt;YYYY-MM-DD&gt;, &lt;reason&gt;
-      - [x] `[&lt;ts&gt;]` Task reopened. Reason: &lt;reason&gt;.
+      ### Round N — <YYYY-MM-DD>, <reason>
+      - [x] `[<ts>]` Task reopened. Reason: <reason>.
       - ...
-      - [x] `[&lt;ts&gt;]` Status: [x] DONE.
+      - [x] `[<ts>]` Status: [x] DONE.
       ```
 
-      ⛔ `[x]` line with any unreplaced `&lt;…&gt;` literal = fabricated done; Auditor raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+      ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done; Auditor raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
 
       ### Post-task Hook
       Per `AX_AUDIT_HOOK`. After `[x] DONE`, invoke `audit` on the ticket. Until audit returns PASS, round is closed-but-unverified.
@@ -501,7 +515,7 @@
       | api-contracts | contracts | [README](api-contracts/README.md) | 2 | 0/2 |
       | backend | product | [README](backend/README.md) | 12 | 0/12 |
       | web | product | [README](web/README.md) | 8 | 0/8 |
-      | _integration | — | [README](_integration/README.md) | 1 | 0/1 |
+      | integration | integration | [README](integration/README.md) | 1 | 0/1 |
 
       ## Decision Log (task-scaffolding-level)
       [D-NNN entries when operator made non-default choices.]
@@ -509,37 +523,37 @@
     </Contract>
 
     <Contract id="SCOPE_TASKS_README_STRUCTURE">
-      Per-scope tracker at `tasks/&lt;scope&gt;/README.md`. Contains Cascade Table (derived from scope graph) + intra-scope DAG + Tracker.
+      Per-scope tracker at `tasks/<scope>/README.md`. Contains Cascade Table (derived from scope graph) + intra-scope DAG + Tracker.
 
       ```markdown
-      # Tasks: &lt;scope-name&gt;
+      # Tasks: <scope-name>
 
       ## Scope Spec
-      - [Scope spec](../../specs/&lt;scope&gt;/&lt;scope&gt;.spec.md)
+      - [Scope spec](../../specs/<scope>/<scope>.spec.md)
 
       ## Cascade Table
       Effective rules for tasks in this scope. Derived from scope graph (depends-on transitive closure).
 
-      Tier order (low → high priority on collision): `traversed-scopes` → `target-scope` → `module:&lt;name&gt;` → `task`.
+      Tier order (low → high priority on collision): `traversed-scopes` → `target-scope` → `module:<name>` → `task`.
 
-      | Tier | coding | testing | architecture | quality | vcs | runtimes |
-      |------|--------|---------|--------------|---------|-----|----------|
-      | infra-base (traversed) | typescript-rules | vitest-rules | | eslint-rules | git | nodejs-npm-rules |
-      | api-contracts (traversed) | | | | | | |
-      | &lt;scope-name&gt; (target) | | | ports-adapters | | | |
-      | module:payments | | node-test | | | | |
+      | Tier | coding | testing | architecture | infra |
+      |------|--------|---------|--------------|-------|
+      | infra-base (traversed) | typescript-rules | vitest-rules | | eslint-setup, git-setup, nodejs-npm-setup |
+      | api-contracts (traversed) | | | | |
+      | <scope-name> (target) | | | ports-adapters | |
+      | module:payments | | node-test | | |
 
       ### Rule Sources
       - Traversed scopes: [scope graph](../../specs/README.md)
-      - Target scope: [&lt;scope&gt; spec §5/§4.5](../../specs/&lt;scope&gt;/&lt;scope&gt;.spec.md)
+      - Target scope: [<scope> spec §5/§4.5](../../specs/<scope>/<scope>.spec.md)
       - Module: each module's §9 Handoff
-      - Files: `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`
+      - Files: `ai/directives/<category>/<rule>.xml`
 
       ## Intra-Scope DAG
       ```mermaid
       graph TD
-        TSK-04 --&gt; TSK-05
-        TSK-06 --&gt; TSK-04
+        TSK-04 --> TSK-05
+        TSK-06 --> TSK-04
       ```
 
       ## Tracker

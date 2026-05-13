@@ -3,10 +3,10 @@
     <Mission>
       Turn the approved scope spec into a hierarchy of module specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
 
-      Second scope session. Input — `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` from Discovery. Only applicable to scope-type=product and scope-type=library. Output:
-      - hierarchy of `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md` (nesting allowed for nested modules);
+      Second scope session. Input — `specs/<scope>/<scope>.spec.md` from Discovery. Only applicable to scope-type=product and scope-type=library. Output:
+      - hierarchy of `specs/<scope>/<module>/<module>.spec.md` (nesting allowed for nested modules);
       - scope spec §8 Module Map updated (append-only per module row);
-      - module spec §1 links back to `../../&lt;scope&gt;.spec.md`.
+      - module spec §1 links back to `../../<scope>.spec.md`.
 
       Out of scope here: task tickets, BDD scenarios, execution plans, coding/testing rules linkage — those belong to `task-scaffolding`.
 
@@ -45,7 +45,7 @@
 
     <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
       **Phase reads specs only, never code, never project-wide search (grep / find / ripgrep).** Allowed inputs by mode:
-      - `initial` — scope spec (`specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`) + rule files at `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`.
+      - `initial` — scope spec (`specs/<scope>/<scope>.spec.md`) + rule files at `ai/directives/<category>/<rule>.xml`.
       - `add-module` / `refine-module` — scope spec + relevant existing module specs + rule files. Optional supporting artifacts if operator passes them.
 
       Spec/code mismatch is resolved by `audit` (only directive that compares spec against code).
@@ -55,23 +55,23 @@
       **Two stages: pick rules, then walk through axioms. Never activate silently.**
 
       - **Stage A — Relevance per category.** Shortlist «recommend activate» + «considered, recommend skip», each with one-line rationale scoped to module context. Operator agree / expand / contract → list locked; deviations → Module Decision Log.
-      - **Stage B — Per-rule axiom walk-through (rules with `activation=now` only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
+      - **Stage B — Per-rule axiom walk-through (infra rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
 
-      **Activation defaults at module level.** `architecture/*`, `quality/*` → `now`. `coding/*`, `testing/*` → `later` (Stage A still applies; Stage B deferred to `task-execution`).
+      **Loading defaults at module level.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred to `task-execution` (Stage A only at this phase).
 
       Activation outcomes recorded in §7 Module Decision Log of the relevant module spec.
     </Axiom>
 
     <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
       In `add-module` mode existing module specs are NOT touched. Only:
-      - new `specs/&lt;scope&gt;/&lt;new-module&gt;/&lt;new-module&gt;.spec.md`;
+      - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
       - scope spec §8 Module Map: APPEND new module row (append at end). Other rows untouched.
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run `module-decomposition` again in `refine-module` mode for that specific module.
     </Axiom>
 
     <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
-      `module-decomposition` owns §8 Module Map in the scope spec (`specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`). It appends rows per module. It does NOT own any other sections of the scope spec.
+      `module-decomposition` owns §8 Module Map in the scope spec (`specs/<scope>/<scope>.spec.md`). It appends rows per module. It does NOT own any other sections of the scope spec.
 
       Cross-scope module dependencies: a module references a contracts-type scope through `Scope Reference` in §8 Inter-Module Dependencies — NOT by referencing another product scope's modules directly.
 
@@ -93,7 +93,7 @@
     </Axiom>
 
     <Axiom id="AX_TRACE_ANCHORS">
-      Compact header on every message. Global: `DM_R001`, `DM_R002`, … Frame: `F_MM_R01` (module map), `F_EI_&lt;MODULE&gt;_R01` (entity inventory), `F_ES_&lt;MODULE&gt;_&lt;ENTITY&gt;_R01` (entity surface), `F_DBC_&lt;MODULE&gt;_R01`, `F_FS_&lt;MODULE&gt;_R01`, `F_FH_R01`. ASCII uppercase + digits + `_` only.
+      Compact header on every message. Global: `DM_R001`, `DM_R002`, … Frame: `F_MM_R01` (module map), `F_EI_<MODULE>_R01` (entity inventory), `F_ES_<MODULE>_<ENTITY>_R01` (entity surface), `F_DBC_<MODULE>_R01`, `F_FS_<MODULE>_R01`, `F_FH_R01`. ASCII uppercase + digits + `_` only.
     </Axiom>
 
     <Axiom id="AX_FRAME_EXIT_DISCIPLINE">
@@ -105,7 +105,7 @@
     </Axiom>
 
     <Axiom id="AX_HIERARCHICAL_SPECS">
-      Hierarchy, not flat list. Sub-modules → nested structure: `specs/&lt;scope&gt;/&lt;module&gt;/&lt;sub-module&gt;/&lt;sub-module&gt;.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
+      Hierarchy, not flat list. Sub-modules → nested structure: `specs/<scope>/<module>/<sub-module>/<sub-module>.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_INVENTORY">
@@ -141,7 +141,7 @@
     </Axiom>
 
     <Axiom id="AX_NAMESPACE_NAMING">
-      Single namespace for grepability. Module-wide: `&lt;name&gt;` / `&lt;Name&gt;`. Files: `&lt;name&gt;-*.&lt;ext&gt;`. Types/classes/constants: `&lt;Name&gt;*`. Platform-specific: `&lt;platform&gt;-&lt;name&gt;-*.&lt;ext&gt;`, `&lt;Platform&gt;&lt;Name&gt;*`. Goal: `rg &lt;name&gt;` or `rg &lt;platform&gt;-&lt;name&gt;` finds all related code.
+      Single namespace for grepability. Module-wide: `<name>` / `<Name>`. Files: `<name>-*.<ext>`. Types/classes/constants: `<Name>*`. Platform-specific: `<platform>-<name>-*.<ext>`, `<Platform><Name>*`. Goal: `rg <name>` or `rg <platform>-<name>` finds all related code.
     </Axiom>
 
     <Axiom id="AX_MODULARITY_LIMITS">
@@ -177,7 +177,7 @@
     </Axiom>
 
     <Axiom id="AX_Q_IDS">
-      Index questions with `Q_&lt;SEMANTIC_ID&gt;:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
+      Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
     </Axiom>
 
     <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
@@ -221,7 +221,7 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or contracts — module-decomposition is not applicable |
-    | `H_SCOPE_SPEC_MISSING` | `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` does not exist — run `discovery` first |
+    | `H_SCOPE_SPEC_MISSING` | `specs/<scope>/<scope>.spec.md` does not exist — run `discovery` first |
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec missing required sections (Vision, Architecture, Golden DX) |
     | `H_AMBIGUOUS_MODE` | Module specs exist + verb absent + no Pivot Invalidation List |
     | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
@@ -299,7 +299,7 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INTAKE`).
         2. Determine scope name from intake (or ask operator).
-        3. Read `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`. Absent → `H_SCOPE_SPEC_MISSING`.
+        3. Read `specs/<scope>/<scope>.spec.md`. Absent → `H_SCOPE_SPEC_MISSING`.
         4. Check scope-type in spec: infrastructure or contracts → `H_INVALID_SCOPE_TYPE`.
         5. Spec missing required sections (Vision, Architecture/Golden DX) → `H_INCOMPLETE_SCOPE_SPEC`.
         6. Apply mode detection table (`AX_MODE_AUTO_DETECT_OR_HALT`).
@@ -325,8 +325,8 @@
       <Goal>Closed-world list of all entities for every module.</Goal>
       <Action>
         For each module:
-        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI_&lt;MODULE&gt;`).
-        2. Entity Inventory Draft: complete list. Each entity = `&lt;Name&gt;` + Type + 1-sentence Purpose.
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI_<MODULE>`).
+        2. Entity Inventory Draft: complete list. Each entity = `<Name>` + Type + 1-sentence Purpose.
         3. Cross-check vs scope spec: walk through Golden DX + High-Level Architecture; explicitly list which abstractions found a home. Gaps surfaced explicitly.
         4. Closed-World Commitment per `AX_CLOSED_WORLD_INVENTORY`.
         5. Phase Progress + Approval Check. STOP per module.
@@ -339,7 +339,7 @@
       <Goal>Public surface and consumers for every entity.</Goal>
       <Action>
         Iterate entities (or per-module batches if trivial):
-        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI__ES_&lt;MODULE&gt;_&lt;ENTITY&gt;`).
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI__ES_<MODULE>_<ENTITY>`).
         2. Surface Draft per `ENTITY_SURFACE_FORMAT`.
         3. Consumers: Internal (file path or entity name), External (CLI/API/Browser/…). No consumer in v1 → mark candidate for removal or `deferred`.
         4. ≥1 uncomfortable question per `AX_UNCOMFORTABLE_QUESTIONS`.
@@ -353,7 +353,7 @@
       <Goal>Translate Ports and Adapters into strict DbC contracts.</Goal>
       <Action>
         For each module:
-        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__DBC_&lt;MODULE&gt;`).
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__DBC_<MODULE>`).
         2. Per Port: Preconditions / Postconditions / Invariants. Source = scope spec §4 + entity surface.
         3. Per Adapter: `Implements`; Side Effects; `Runtime Backing`; `Verification Levels`; `Deferred Runtime Scope`; Supporting Artifacts.
         4. Public Options Audit: every public flag/option/policy from scope spec → bind to contract OR mark `deferred / not consumed in v1`.
@@ -366,7 +366,7 @@
       <Goal>Design file structure for every module.</Goal>
       <Action>
         For each module:
-        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__FS_&lt;MODULE&gt;`).
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__FS_<MODULE>`).
         2. Tree Draft: ASCII tree; explicit `ports/` (or `contracts/`) ↔ `adapters/` (or `impl/`) split.
         3. File Mapping: which component lives where. ≤1500 lines per file (`AX_MODULARITY_LIMITS`).
         4. Namespace Check per `AX_NAMESPACE_NAMING`.
@@ -378,8 +378,8 @@
       <Goal>Generate spec tree; append-only update scope spec §8 Module Map.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__FINAL_HIERARCHY`).
-        2. For each module — `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
-           - Module spec §1 MUST link back to `../../&lt;scope&gt;.spec.md` (parent scope spec).
+        2. For each module — `specs/<scope>/<module>/<module>.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
+           - Module spec §1 MUST link back to `../../<scope>.spec.md` (parent scope spec).
         3. **Scope spec §8 Module Map update (append-only per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
            - `initial`: WRITE §8 Module Map with one row per module.
            - `add-module`: APPEND a row for the new module in §8 Module Map.
@@ -400,32 +400,32 @@
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      🧩 DM_R&lt;N&gt; | STACK: ROOT__&lt;FRAME&gt;__&lt;SUBFRAME&gt; | FRAME: F_&lt;KEY&gt;_R&lt;N&gt; | &lt;📂|🚧|↩️|⏭️|💤&gt; &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
-      🎯 GOAL: &lt;local goal&gt;
-      ⏭️ EXIT: &lt;exit condition&gt;
+      🧩 DM_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — &lt;STEP_NAME&gt;
-        🧩 Module:    &lt;CURRENT_MODULE&gt; (or N/A)
-        ✅ Closed:    &lt;agreed&gt;
-        ⏳ Open:      &lt;under discussion&gt;
-        🛑 Blocking:  &lt;if any, else —&gt;
-        ▶️ Next:      &lt;agent proposal; operator decides&gt;
-        📊 Counters:  &lt;e.g. "3/7 entities approved", "2/4 modules complete"&gt;
+      🎯 Phase Progress — <STEP_NAME>
+        🧩 Module:    <CURRENT_MODULE> (or N/A)
+        ✅ Closed:    <agreed>
+        ⏳ Open:      <under discussion>
+        🛑 Blocking:  <if any, else —>
+        ▶️ Next:      <agent proposal; operator decides>
+        📊 Counters:  <e.g. "3/7 entities approved", "2/4 modules complete">
       ```
     </Contract>
 
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
       ```markdown
-      ### D-NNN — &lt;short title&gt;
+      ### D-NNN — <short title>
       - **Status:** active | superseded | rejected | deferred
-      - **Recorded:** session ModuleDecomposition, &lt;scope-name&gt;
-      - **Why:** &lt;operator's own wording&gt;
-      - **Risk accepted:** &lt;if any&gt;
-      - **Rejected alternatives:** &lt;list with brief reasons&gt;
+      - **Recorded:** session ModuleDecomposition, <scope-name>
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list with brief reasons>
       - **Supersedes:** D-NNN (when superseding a prior decision)
       ```
     </Contract>
@@ -446,65 +446,65 @@
 
     <Contract id="ENTITY_SURFACE_FORMAT">
       ```markdown
-      ### `&lt;EntityName&gt;`
+      ### `<EntityName>`
       - **Type:** Port | Adapter | Entity | Value Object | Service | Command | Query | Event
-      - **Purpose:** &lt;1 sentence&gt;
-      - **Public Properties:** &lt;list or N/A&gt;
-      - **Public Operations:** &lt;intent-level list, no language signatures&gt;
-      - **Lifecycle:** &lt;who creates, who owns, when terminates&gt;
-      - **Events Emitted:** &lt;list or N/A&gt;
-      - **Errors &amp; Degradation:** &lt;error behavior&gt;
+      - **Purpose:** <1 sentence>
+      - **Public Properties:** <list or N/A>
+      - **Public Operations:** <intent-level list, no language signatures>
+      - **Lifecycle:** <who creates, who owns, when terminates>
+      - **Events Emitted:** <list or N/A>
+      - **Errors &amp; Degradation:** <error behavior>
       - **Consumers:**
-        - Internal: `&lt;path/to/file.ts&gt;` or `&lt;OtherEntityName&gt;`
-        - External: &lt;CLI / External API / Browser / OS Event Bus / ...&gt;
+        - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
+        - External: <CLI / External API / Browser / OS Event Bus / ...>
       ```
     </Contract>
 
     <Contract id="DBC_PORT_FORMAT">
       ```markdown
-      #### Port: `&lt;PortName&gt;`
-      - **Purpose:** &lt;1 sentence&gt;
+      #### Port: `<PortName>`
+      - **Purpose:** <1 sentence>
       - **Consumers:**
-        - Internal: &lt;path&gt;
-        - External: &lt;description&gt;
-      - **Supporting Artifacts:** &lt;if any&gt;
+        - Internal: <path>
+        - External: <description>
+      - **Supporting Artifacts:** <if any>
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
-      - **Deferred Runtime Scope:** &lt;None or description&gt;
+      - **Deferred Runtime Scope:** <None or description>
 
       **Contract (DbC):**
       - Preconditions:
-        - &lt;condition&gt;
+        - <condition>
       - Postconditions:
-        - &lt;guarantee&gt;
+        - <guarantee>
       - Invariants:
-        - &lt;invariant&gt;
+        - <invariant>
       ```
     </Contract>
 
     <Contract id="DBC_ADAPTER_FORMAT">
       ```markdown
-      #### Adapter: `&lt;AdapterName&gt;`
-      - **Implements:** `&lt;PortName&gt;` (`&lt;path/to/port-file&gt;`)
-      - **Purpose:** &lt;1 sentence&gt;
-      - **Supporting Artifacts:** &lt;if any&gt;
+      #### Adapter: `<AdapterName>`
+      - **Implements:** `<PortName>` (`<path/to/port-file>`)
+      - **Purpose:** <1 sentence>
+      - **Supporting Artifacts:** <if any>
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
-      - **Deferred Runtime Scope:** &lt;None or description&gt;
+      - **Deferred Runtime Scope:** <None or description>
 
       **Side Effects:**
-      - &lt;external HTTP, IO, observability, mutation of shared state, ...&gt;
+      - <external HTTP, IO, observability, mutation of shared state, ...>
       ```
     </Contract>
 
     <Contract id="MODULE_SPEC_MARKDOWN_STRUCTURE">
-      Each `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md`:
+      Each `specs/<scope>/<module>/<module>.spec.md`:
 
       ```markdown
-      # Module: &lt;ModuleName&gt;
+      # Module: <ModuleName>
 
       ## 1. Module Vision
-      [What this module owns. Link to parent scope spec → `../../&lt;scope&gt;.spec.md`. Links to parent/child modules if any.]
+      [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
 
       ## 2. Entity Inventory (Closed-World)
       [Per `ENTITY_INVENTORY_FORMAT`.]
@@ -524,46 +524,46 @@
 
       ## 6. File Structure
       ```
-      &lt;module&gt;/
+      <module>/
       ├── ports/
-      │   └── &lt;name&gt;-&lt;port&gt;.&lt;ext&gt;
+      │   └── <name>-<port>.<ext>
       ├── adapters/
-      │   └── &lt;platform&gt;-&lt;name&gt;-&lt;adapter&gt;.&lt;ext&gt;
+      │   └── <platform>-<name>-<adapter>.<ext>
       └── ...
       ```
 
       **File Mapping:**
-      - `&lt;path&gt;`: &lt;component&gt;
+      - `<path>`: <component>
 
       ## 7. Module Decision Log
       [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
 
       ## 8. Inter-Module Dependencies
-      - **Depends on:** &lt;list of modules within this scope with links&gt;
-      - **Scope Reference (cross-scope):** &lt;contracts-type scope with link if any&gt;
-      - **Provides to:** &lt;list of modules within this scope&gt;
+      - **Depends on:** <list of modules within this scope with links>
+      - **Scope Reference (cross-scope):** <contracts-type scope with link if any>
+      - **Provides to:** <list of modules within this scope>
 
       ```mermaid
       graph TD
-        &lt;this-module&gt; --> &lt;sibling-1&gt;
-        &lt;this-module&gt; --> &lt;sibling-2&gt;
-        &lt;this-module&gt; -. Scope Reference .-> &lt;contracts-scope&gt;
-        &lt;consumer&gt; --> &lt;this-module&gt;
+        <this-module> --> <sibling-1>
+        <this-module> --> <sibling-2>
+        <this-module> -. Scope Reference .-> <contracts-scope>
+        <consumer> --> <this-module>
       ```
 
       ## 9. Handoff to task-scaffolding
-      - **Implementation files to be created:** &lt;list from §6&gt;
-      - **Test files to be created:** &lt;list&gt;
+      - **Implementation files to be created:** <list from §6>
+      - **Test files to be created:** <list>
       - **Stack dependencies:**
-        - Language: `&lt;lang&gt;` (resolves to `ai/directives/coding/&lt;lang&gt;-rules.xml`)
-        - Test framework: `&lt;framework&gt;` (resolves to `ai/directives/testing/&lt;framework&gt;.xml`)
+        - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
+        - Test framework: `<framework>` (resolves to `ai/directives/testing/<framework>.xml`)
       - **Module Rules Additions:** (additions on top of scope-wide baseline; `None` if no module-specific rules)
 
         | Rule | Category | Source |
         |------|----------|--------|
-        | &lt;rule-name&gt; | coding \| testing \| architecture \| quality | `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml` |
+        | <rule-name> | coding \| testing \| architecture \| quality | `ai/directives/<category>/<rule>.xml` |
 
-      - **Open risks &amp; validation needs:** &lt;not-closed items&gt;
+      - **Open risks &amp; validation needs:** <not-closed items>
       ```
     </Contract>
 
@@ -573,11 +573,11 @@
       ```markdown
       ## 8. Module Map (post-ModuleDecomposition)
 
-      Spec hierarchy is materialized at `specs/&lt;scope&gt;/`. Module specs are at `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md`.
+      Spec hierarchy is materialized at `specs/<scope>/`. Module specs are at `specs/<scope>/<module>/<module>.spec.md`.
 
       ### 8.1 Modules
-      - [&lt;module-1&gt;](./&lt;module-1&gt;/&lt;module-1&gt;.spec.md) — &lt;Purpose&gt;
-      - [&lt;module-2&gt;](./&lt;module-2&gt;/&lt;module-2&gt;.spec.md) — &lt;Purpose&gt;
+      - [<module-1>](./<module-1>/<module-1>.spec.md) — <Purpose>
+      - [<module-2>](./<module-2>/<module-2>.spec.md) — <Purpose>
 
       ### 8.2 Inter-Module Dependency Map
       Per-scope module graph. Edge A→B = «module A depends on module B's public surface». Cross-scope edges (to `contracts`-type scopes) shown with `Scope Reference` label.
@@ -591,13 +591,13 @@
       ```
 
       ### 8.3 Stack Dependencies
-      - Languages: &lt;list&gt;
-      - Test frameworks: &lt;list&gt;
+      - Languages: <list>
+      - Test frameworks: <list>
 
       ### 8.4 Handoff to task-scaffolding
-      - **Primary input:** `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` (this file).
-      - **Required directives:** all `ai/directives/coding/&lt;lang&gt;-rules.xml` and `ai/directives/testing/&lt;framework&gt;.xml` for the listed stack.
-      - **Open risks &amp; validation needs:** &lt;consolidated list across modules&gt;
+      - **Primary input:** `specs/<scope>/<scope>.spec.md` (this file).
+      - **Required directives:** all `ai/directives/coding/<lang>-rules.xml` and `ai/directives/testing/<framework>.xml` for the listed stack.
+      - **Open risks &amp; validation needs:** <consolidated list across modules>
       ```
     </Contract>
   </Output_Contracts>

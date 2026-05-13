@@ -1,4 +1,4 @@
-<NodeJSNpmRules keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="runtime-rules" ver="2.0">
+<NodeJSNpmSetup keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="infra-rules" ver="2.0">
   <Mission>
     Canonical rules for the Node.js runtime environment: package manager discipline, version alignment, module system, project layout.
 
@@ -16,21 +16,6 @@
       Multiple managers produce conflicting lock files and non-deterministic installs. If `yarn.lock`, `pnpm-lock.yaml`, or `bun.lockb` exist in the repo → remove them; add to `.gitignore`.
     </Axiom>
 
-    <Axiom id="AX_NVMRC_SINGLE_SOURCE_OF_TRUTH">
-      `.nvmrc` is the single source of truth for the Node version. **One line, exact semver:** `22.14.0`, not `22`, `22.x`, or `lts/iron`.
-
-      `nvm use` and `asdf` read `.nvmrc` to set runtime. A range or alias makes the resolved version unpredictable across machines and time. `.nvmrc` MUST be committed and contain exactly one line matching `/^\d+\.\d+\.\d+$/`.
-    </Axiom>
-
-    <Axiom id="AX_ENGINES_ALIGNMENT">
-      `package.json#engines.node` MUST be compatible with `.nvmrc`. The engines field is a machine-readable constraint, not documentation.
-
-      Misalignment is the root cause of «works locally, fails in CI». `.nvmrc` is `22.14.0` → engines must accept `22.14.0` (neither reject `>=23` nor over-permit `>=14`).
-
-      Pattern: `"engines":{"node":">=22.0.0 <23.0.0"}` when `.nvmrc` is `22.14.0`.
-
-      Verification: before adding a package, check its `engines` against `.nvmrc` via `npm view <pkg> engines`.
-    </Axiom>
 
     <Axiom id="AX_LOCK_FILE_DISCIPLINE">
       `package-lock.json` always committed. `node_modules/` never committed.
@@ -53,13 +38,7 @@
     </Axiom>
 
     <Axiom id="AX_MODULE_SYSTEM_EXPLICIT">
-      Module system declared once and never mixed. A project is either ESM (`"type": "module"` in `package.json`) or CommonJS (absent or `"type": "commonjs"`).
-
-      Mixing `import` and `require` in same project causes non-deterministic resolution, conditional-exports mismatches, runtime errors hard to reproduce.
-
-      **ESM:** all `.js` files are ESM; use `import`/`export` exclusively. Local imports require explicit extensions: `import { foo } from './foo.js'` (not `'./foo'`). Node built-ins use `node:` prefix.
-
-      **CJS:** all `.js` files are CommonJS; use `require`/`module.exports` exclusively. Do NOT add `.mjs` files without an explicit dual-package strategy.
+      Module system declared once and never mixed. Mixing `import` and `require` in the same project causes non-deterministic resolution and conditional-exports mismatches. Choose at init; set `"type": "module"` (ESM) or omit/`"commonjs"` (CJS) in `package.json`. Do NOT add `.mjs`/`.cjs` files without an explicit dual-package strategy.
     </Axiom>
 
     <Axiom id="AX_NODE_BUILTINS_PREFIX">
@@ -70,14 +49,6 @@
       Pattern: `import { readFile } from 'node:fs/promises'`, not `from 'fs/promises'`.
 
       Applies to all built-ins: `fs`, `path`, `http`, `crypto`, `events`, `stream`, `url`, `util`, `os`, `child_process`, `worker_threads`, `perf_hooks`, etc.
-    </Axiom>
-
-    <Axiom id="AX_NPMRC_EXPLICIT_REGISTRY">
-      `.npmrc` MUST exist and explicitly declare the registry. Default: public npm (`registry=https://registry.npmjs.org/`).
-
-      Private/scoped registry → configured in `.npmrc` at project init, sourced interactively from the user. Never infer a registry silently.
-
-      `.npmrc` is committed. **Credentials (auth tokens) NOT committed** — environment variables or per-user `~/.npmrc`.
     </Axiom>
 
     <Axiom id="AX_NPM_AGENT_SANDBOX_REGISTRY">
@@ -119,16 +90,6 @@
       Predictable layout reduces onboarding cost and enables tooling to infer build steps without configuration. Different layout allowed only when documented explicitly with stated reason.
     </Axiom>
 
-    <Axiom id="AX_NPM_SCRIPTS_INTENTIONAL">
-      npm scripts are discoverable, intentional, grounded in what is actually installed.
-
-      Scripts calling tools NOT in `devDependencies` fail silently in fresh checkouts. Scripts invented «for completeness» create false expectations.
-
-      Rule: before adding a script, verify the tool exists in `devDependencies`. Don't add `type-check`/`lint`/`format` unless the tool is installed.
-
-      Conventional names (use when tool exists): `build`, `dev`, `test`, `lint`, `format`, `type-check`, `clean`.
-    </Axiom>
-
     <Axiom id="AX_AI_FIRST_SCRIPTS_ONE_SHOT">
       **Every primary npm script MUST be one-shot — returns control deterministically. Watch / persistent / REPL modes live in separate `:watch` / `:dev` scripts.**
 
@@ -165,6 +126,37 @@
       Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
     </Axiom>
   </Belief_State>
+
+  <Setup_Steps>
+    <!-- Ordered actions for initial Node.js/npm project configuration.
+         Axioms in Belief_State define the WHY and invariants; these steps define the HOW and sequence. -->
+    <Step id="STEP_1_CREATE_NVMRC">
+      Create `.nvmrc`. **One line, exact semver** — e.g. `22.14.0`. Not `22`, `22.x`, or `lts/iron`. Ranges and aliases produce unpredictable resolution across machines and time. Content must match `/^\d+\.\d+\.\d+$/`. Commit this file.
+    </Step>
+    <Step id="STEP_2_INIT_PACKAGE_JSON">
+      Create or update `package.json`. Required fields:
+      - `"type"`: `"module"` (ESM) or `"commonjs"` — choose one explicitly, never mix `import`/`require` within the project.
+      - `"engines": { "node": ">=X.0.0 <Y.0.0" }` — aligned with `.nvmrc` major. E.g. `.nvmrc=22.14.0` → `">=22.0.0 <23.0.0"`. Misalignment is the primary cause of «works locally, fails in CI».
+    </Step>
+    <Step id="STEP_3_CREATE_NPMRC">
+      Create `.npmrc`. **Required**: `registry=https://registry.npmjs.org/` (or operator-supplied registry URL — never infer silently; source from operator interactively if non-default). Commit this file. Auth tokens MUST NOT be committed — use environment variables or per-user `~/.npmrc`.
+    </Step>
+    <Step id="STEP_4_GITIGNORE_ENTRIES">
+      Ensure `.gitignore` contains: `node_modules/` and `dist/`. Without this `package-lock.json` becomes the only lock-file guarantee — `node_modules/` committed bloats the repo with platform binaries.
+    </Step>
+    <Step id="STEP_5_INSTALL_DEPENDENCIES">
+      Install dependencies. In a sandboxed agent environment prefix every `npm` invocation with inline env-prefix: `npm_config_registry=https://registry.npmjs.org/ npm install`. Dev tools that affect build output: `--save-exact`. Runtime deps: range acceptable. See AX_NPM_AGENT_SANDBOX_REGISTRY for full sandboxing rationale.
+    </Step>
+    <Step id="STEP_6_DECLARE_NPM_SCRIPTS">
+      Add primary scripts to `package.json`. Rules: (a) only add a script if the tool is in `devDependencies`; (b) every primary script MUST be one-shot — exits with code, no watch mode (see AX_AI_FIRST_SCRIPTS_ONE_SHOT). Watch variants live in separate `:watch`/`:dev` scripts. Conventional names: `build`, `test`, `lint`, `format`, `type-check`, `clean`.
+    </Step>
+    <Step id="STEP_7_COMPOSE_CHECK_SCRIPT">
+      Add `check` script to `package.json` — the single quality entry point called by all task tickets. Compose it from the `<CheckPhase>` values of every active rule in this scope, ordered by `CheckPhaseOrder` from `ai/directives/knowledge.xml` (typecheck → test → lint → format). Include only phases with at least one active rule. All sub-commands must be one-shot. Declare `check-command → npm run check` in infra-spec §Verification Commands.
+    </Step>
+    <Step id="STEP_8_VERIFY_REPRODUCIBILITY_TRIAD">
+      Confirm three files committed: `.nvmrc`, `package.json`, `package-lock.json` (`npm ci` reads all three). Run HOOK_NVMRC_EXACT and HOOK_NPMRC_REGISTRY. Run each primary script — must exit within 2 minutes; hang = watch-mode violation.
+    </Step>
+  </Setup_Steps>
 
   <Definitions>
     <Definition id="DEF_REPRODUCIBILITY_TRIAD">Three committed files guaranteeing reproducible Node.js environment: `.nvmrc` (Node version), `package.json` (declared deps), `package-lock.json` (resolved dep tree). `npm ci` reads all three.</Definition>
@@ -300,7 +292,7 @@
   <Verification_Hooks>
     <Hook id="HOOK_NVMRC_EXACT">
       <Purpose>`.nvmrc` exists, one line, semver-exact.</Purpose>
-      <Command>test -f .nvmrc &amp;&amp; [ "$(wc -l &lt; .nvmrc)" -eq 1 ] &amp;&amp; grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc &amp;&amp; echo "OK"</Command>
+      <Command>test -f .nvmrc &amp;&amp; [ "$(wc -l < .nvmrc)" -eq 1 ] &amp;&amp; grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc &amp;&amp; echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_ENGINES_PRESENT">
@@ -341,6 +333,7 @@
     ✅ Module system declared once; not mixed. All Node built-in imports use `node:` prefix.
     ✅ Dev-tool packages exact-pinned. `.npmrc` committed with explicit `registry=` line.
     ✅ npm scripts call only tools in `devDependencies`. Primary scripts (`test`, `lint`, `build`, `type-check`) one-shot.
+    ✅ `check` script exists in `package.json`. Composed of all active rule phases in `CheckPhaseOrder` (typecheck → test → lint → format). `check-command` declared in infra-spec §Verification Commands.
     ✅ Before adding a package: `engines` and module-system compatibility verified.
     ✅ Sandboxed agent forces public registry via inline env-prefix on every npm invocation.
     ✅ Corp registry required → agent halts `[!] BLOCKED`, defers to operator's full-network shell.
@@ -353,7 +346,9 @@
     ❌ Node built-in imported without `node:` prefix.
     ❌ Dev-tool pinned to range; `.npmrc` absent or no `registry=` line.
     ❌ npm script calls a tool not in `devDependencies`.
-    ❌ `"test": "vitest"` or any primary script that defaults to watch / persistent mode — agent invocations hang indefinitely.
+    ❌ `check` script missing from `package.json` when coding or testing rules are active in scope.
+    ❌ `check` script omits a phase covered by an active rule (e.g., lint active but not in `check`).
+    ❌ Any phase sub-command in `check` defaults to watch / persistent mode — agent invocations hang indefinitely.
     ❌ `npm install` without env-prefix in sandbox; modifying operator's `~/.npmrc`; committing project `.npmrc` with corp registry URL.
   </Reward_Criteria>
-</NodeJSNpmRules>
+</NodeJSNpmSetup>

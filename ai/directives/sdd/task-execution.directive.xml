@@ -8,7 +8,7 @@
       - `tasks/README.md` — project-wide conventions (file-header rule, completion baseline, execution log template, post-task audit hint);
       - `tasks/<scope>/README.md` — per-scope Cascade Table;
       - referenced spec anchors;
-      - rule files from `ai/directives/<category>/<rule>.xml` listed in the ticket's `Rule Activation Plan` (opened phase-by-phase per `AX_RULES_PHASED_ACTIVATION`).
+      - rule files from `ai/directives/<category>/<rule>.xml` listed in the ticket's `§Effective Rules` (opened phase-by-phase per `AX_RULES_PHASED_ACTIVATION`).
 
       Output — code/test changes + filled Execution Log round in the ticket. Specs are NOT modified by this directive; spec-update candidates are surfaced as proposals for `audit` to pick up.
 
@@ -62,7 +62,7 @@
     </Axiom>
 
     <Axiom id="AX_RULES_PHASED_ACTIVATION">
-      Rules are activated phase-by-phase per ticket Meta `Rule Activation Plan` — never all at once. Phases: PLAN → IMPL → TEST → AUDIT (+ optional COMMIT for tickets touching git config). On phase entry: open ONLY that phase's rule files via Read with exact path, read end-to-end (`Mission` + `Belief_State` + `Reward_Criteria`), log `[<ts>] Activated <category>: <name-1>, <name-2>` (or `: skip — <reason>` if plan row is empty). Files of other categories not opened in this phase. Backtrack (e.g., TEST → IMPL bug-fix) → re-activate previous phase, log new `Re-activated <category>` entry.
+      Rules are activated phase-by-phase per ticket Meta `§Effective Rules` — never all at once. Phases: PLAN → IMPL → TEST → AUDIT (+ optional COMMIT for tickets touching git config). On phase entry: open ONLY that phase's rule files via Read with exact path, read end-to-end (`Mission` + `Belief_State` + `Reward_Criteria`), log `[<ts>] Activated <category>: <name-1>, <name-2>` (or `: skip — <reason>` if plan row is empty). Files of other categories not opened in this phase. Backtrack (e.g., TEST → IMPL bug-fix) → re-activate previous phase, log new `Re-activated <category>` entry.
 
       Activation = internalization. Activated axioms bind every decision in their phase; tooling-pass is necessary, NOT sufficient — discipline-only axioms honored by deliberate application. Suppress / disable / bypass markers to escape an axiom forbidden — surrender, not compliance. Read failure on cascade path → `AX_BLOCKER_ESCALATION`; never search-then-read.
     </Axiom>
@@ -137,7 +137,7 @@
       | Execution Log entries within current round | Purpose, Module, Task-ID, Title |
       | Canonical case names in Test Scenario Coverage (when test reality differs) | Dependencies (DAG change) |
       | Deferred Runtime Scope (when discovered during execution) | Spec References |
-      | Status transitions (TODO → IN_PROGRESS → DONE; reopen → IN_PROGRESS → DONE) | Rule Activation Plan or its cascade sources |
+      | Status transitions (TODO → IN_PROGRESS → DONE; reopen → IN_PROGRESS → DONE) | §Effective Rules or its cascade sources |
       | Tracker README sync (mandatory at STEP_9): `tasks/<scope>/README.md` Tracker row + `tasks/README.md` Tracker Index aggregate counts | Runtime Backing |
       |  | Verification Levels |
       |  | Target Files / Target Test Files |
@@ -287,10 +287,10 @@
     </Step>
 
     <Step id="STEP_1_RULES_INVENTORY">
-      <Goal>Read ticket Rule Activation Plan; log phase map. Rule files NOT opened here.</Goal>
+      <Goal>Read ticket §Effective Rules; log phase map. Rule files NOT opened here.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__RULES_INVENTORY`).
-        2. Read ticket Meta `Rule Activation Plan` table; capture phase → rules mapping.
+        2. Read ticket Meta `§Effective Rules` table; capture phase → rules mapping.
         3. Log: `[<ts>] Activation plan: PLAN→<list|skip>; IMPL→<list|skip>; TEST→<list|skip>; AUDIT→<list|skip>; COMMIT→<list|skip>.`
         4. Activation deferred to phase-entry steps (STEP_5, STEP_6, STEP_7_5, optional STEP_9). Per `AX_RULES_PHASED_ACTIVATION`.
       </Action>

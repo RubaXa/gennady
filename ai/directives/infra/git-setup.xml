@@ -1,4 +1,4 @@
-<Git keywords="git, vcs, gitignore, branches, commits, hooks, history, tags, secrets, repo-bootstrap" type="vcs-rules" ver="2.0">
+<GitSetup keywords="git, vcs, gitignore, branches, commits, hooks, history, tags, secrets, repo-bootstrap" type="infra-rules" ver="2.0">
   <Mission>
     Foundational git policy for every project: gitignore baseline, branch strategy, commit convention, history hygiene, tag/release semantics, hooks integration, secrets discipline, repo bootstrap.
 
@@ -128,18 +128,7 @@
     </Axiom>
 
     <Axiom id="AX_HOOKS_INTEGRATION">
-      Hooks fire on every commit and push; use the runner chosen in `git-hooks` category.
-
-      **Required:**
-      - `pre-commit` — lint changed files, format check, type-check (if applicable). Should complete in <5s for typical change. Failures BLOCK commit.
-      - `commit-msg` — conventional-commits validator if `AX_COMMIT_CONVENTION = conventional`.
-      - `pre-push` — full test suite (unit + integration if fast). Failures BLOCK push.
-
-      **Optional:**
-      - `prepare-commit-msg` — auto-prepend issue ID from branch name.
-      - `post-merge` — run `npm install` / `pnpm install` if lock-file changed.
-
-      Hooks checked into the repo (lefthook.yml / husky scripts / etc.); developer onboarding includes one command to register them (e.g., `pnpm exec lefthook install`).
+      Hooks fire on every commit/push. Required hooks: `pre-commit` (lint + typecheck on staged, <5s), `commit-msg` (conventional-commits validator), `pre-push` (full test suite). Optional: `prepare-commit-msg` (prepend issue ID), `post-merge` (reinstall if lock changed). Hook config committed to repo; one onboarding command registers them (e.g. `lefthook install`).
     </Axiom>
 
     <Axiom id="AX_LFS_SUBMODULES">
@@ -148,22 +137,6 @@
       **Git LFS** — required when tracking binary files >100MB (GitHub hard limit; other hosts vary). Configure `.gitattributes`: `*.psd filter=lfs diff=lfs merge=lfs -text`. LFS adds infrastructure cost (storage, bandwidth quota) — use only when binaries are necessary.
 
       **Submodules** — discouraged in favor of monorepo or package dependencies. If unavoidable: pin to specific commit (not branch); document in README why; expect fragile workflow (`git submodule update --init --recursive` after every checkout).
-    </Axiom>
-
-    <Axiom id="AX_REPO_BOOTSTRAP">
-      First commit only after `.gitignore` is in place. Remote protection enforced before first push.
-
-      Sequence:
-      1. `git init` (or `git init -b main`).
-      2. Author `.gitignore` with at minimum the mandatory layer from `AX_GITIGNORE_BASELINE`. Tool-derived ignores added as infrastructure scope discovery decisions resolve.
-      3. First commit: foundational files only — `LICENSE`, `README.md`, `.gitignore`. Message: `chore: initial commit`.
-      4. Add remote and first push only AFTER `.gitignore` is verified — protects against accidental secret commits.
-      5. Configure remote branch protection on `main`:
-         - Require PR before merge (no direct push).
-         - Require status checks (CI green) before merge.
-         - Disallow force-push.
-
-      First push is the riskiest moment for secret leaks — `.env` files might exist locally and accidentally enter the index.
     </Axiom>
 
     <Axiom id="AX_SECRETS_DISCIPLINE">
@@ -183,6 +156,32 @@
       Git history is forever. Once a secret reaches the remote, assume it's harvested by scanners within minutes. Rotation is mandatory; history rewrite is hygiene, not security.
     </Axiom>
   </Belief_State>
+
+  <Setup_Steps>
+    <!-- Ordered actions for initial git repository configuration.
+         Axioms in Belief_State define the WHY and invariants; these steps define the HOW and sequence. -->
+    <Step id="STEP_1_INIT_REPO">
+      Run `git init -b main` (or `git init` + `git branch -m main`). Default branch is `main`, never `master`.
+    </Step>
+    <Step id="STEP_2_CREATE_GITIGNORE">
+      Author `.gitignore` **before staging any other file** — first push is the riskiest moment for leaks. Mandatory entries: `.claude/settings.local.json`, `.env`/`.env.local`/`.env.*.local`, `.DS_Store`, `Thumbs.db`, `.idea/`, `*.swp`, `coverage/`, `*.log`. Add tool-derived entries per chosen stack (see AX_GITIGNORE_BASELINE for full reference).
+    </Step>
+    <Step id="STEP_3_CHOOSE_BRANCH_STRATEGY">
+      Choose one strategy — trunk-based (default for small teams with strong CI), github-flow (PR-driven), or git-flow (planned release cadences). Document in README. Immutable after first collaborator push.
+    </Step>
+    <Step id="STEP_4_FIRST_COMMIT">
+      Stage and commit foundational files only: `LICENSE`, `README.md`, `.gitignore`. Message: `chore: initial commit`. Never include `.env`, generated artifacts, `node_modules/`, or credentials in this or any commit.
+    </Step>
+    <Step id="STEP_5_CONFIGURE_REMOTE_AND_PROTECTION">
+      Add remote and push only after `.gitignore` is committed and verified. Before first feature work, configure branch protection on `main`: require PR before merge, require CI status checks, disallow force-push.
+    </Step>
+    <Step id="STEP_6_INSTALL_HOOKS">
+      Install hooks runner per infrastructure scope decision (lefthook / husky / simple-git-hooks). Commit config file (e.g. `lefthook.yml`). Register with one onboarding command. Configure: `pre-commit` (lint + typecheck on staged, target <5s), `commit-msg` (conventional commits), `pre-push` (full test suite).
+    </Step>
+    <Step id="STEP_7_VERIFY">
+      Confirm: `git status` clean; `.gitignore` covers all tool-generated paths; hooks fire on test commit; remote branch protection active.
+    </Step>
+  </Setup_Steps>
 
   <Anti_Patterns>
     <Anti_Pattern id="AP_NODE_MODULES_COMMITTED">
@@ -229,12 +228,12 @@
     </Hook>
     <Hook id="HOOK_NO_NODE_MODULES_TRACKED">
       <Purpose>Verify `node_modules/` is not tracked.</Purpose>
-      <Command>git ls-files node_modules 2&gt;/dev/null | head -1 | grep -q . &amp;&amp; echo "FAIL: node_modules tracked" || echo "OK"</Command>
+      <Command>git ls-files node_modules 2>/dev/null | head -1 | grep -q . &amp;&amp; echo "FAIL: node_modules tracked" || echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_DEFAULT_BRANCH_MAIN">
       <Purpose>Verify default branch is `main`.</Purpose>
-      <Command>git symbolic-ref refs/remotes/origin/HEAD 2&gt;/dev/null | grep -q 'main$' &amp;&amp; echo "OK" || echo "FAIL: default branch not main"</Command>
+      <Command>git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | grep -q 'main$' &amp;&amp; echo "OK" || echo "FAIL: default branch not main"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_TAG_ANNOTATED">
@@ -259,4 +258,4 @@
     ❌ Destructive command run as «let me just reset --hard» reflex without operator authorization.
     ❌ `.claude/settings.local.json` tracked.
   </Reward_Criteria>
-</Git>
+</GitSetup>

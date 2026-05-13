@@ -51,7 +51,7 @@
       Scopes table in the Portal: each row = link to the scope spec + scope-type + status emoji + one-line description.
       - ✅ — spec exists and is approved.
       - 🚧 — spec being authored / `discovery` not yet run.
-      - Status is derived purely from the presence of `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`.
+      - Status is derived purely from the presence of `specs/<scope>/<scope>.spec.md`.
     </Axiom>
 
     <Axiom id="AX_VISION_ONLY_FOR_APPLICATION">
@@ -72,7 +72,7 @@
       - Halt messages emitted to the operator.
       - Phase Progress free-text fields.
 
-      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R&lt;N&gt;`), status tokens, scope-type tokens, section identifiers (`§Vision`), Mermaid graph IDs.
+      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R<N>`), status tokens, scope-type tokens, section identifiers (`§Vision`), Mermaid graph IDs.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">
@@ -140,7 +140,7 @@
       <Goal>Write / update `specs/README.md`.</Goal>
       <Action>
         1. Assemble Portal per `PORTAL_STRUCTURE_CONTRACT`.
-        2. For each scope: stat `specs/&lt;scope&gt;/&lt;scope&gt;.spec.md` → status ✅ or 🚧.
+        2. For each scope: stat `specs/<scope>/<scope>.spec.md` → status ✅ or 🚧.
         3. Reconcile any placeholder rows left by `discovery` (per `AX_PORTAL_PRIMARY_OWNER`) into full rows.
         4. Write the file.
         5. Approval Check. STOP.
@@ -151,18 +151,18 @@
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      🗺️ SU_R&lt;N&gt; | STACK: ROOT__&lt;STEP&gt; | &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
-      🎯 GOAL: &lt;local goal&gt;
-      ⏭️ EXIT: &lt;exit condition&gt;
+      🗺️ SU_R<N> | STACK: ROOT__<STEP> | <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="PORTAL_STRUCTURE_CONTRACT">
       ```markdown
-      # &lt;project-name&gt;
+      # <project-name>
 
       ## Vision
-      &lt;Одно предложение. Опускается для infrastructure-only проектов.&gt;
+      <Одно предложение. Опускается для infrastructure-only проектов.>
 
       ## Scope Graph
 
@@ -189,24 +189,24 @@
 
     <Contract id="INFRA_BASE_MINIMAL_SPEC">
       ```markdown
-      # &lt;scope-name&gt;: Infrastructure Specification
+      # <scope-name>: Infrastructure Specification
 
       ## scope-type
       infrastructure
 
       ## 1. Vision
-      &lt;Одно предложение про dev-experience.&gt;
+      <Одно предложение про dev-experience.>
 
       ## 2. Tool Stack (minimal bootstrap)
       | Category | Tool |
       |---|---|
-      | package-management | &lt;tool&gt; |
-      | type-check | &lt;tool&gt; |
-      | linting+formatting | &lt;tool&gt; |
-      | test-unit | &lt;tool&gt; |
-      | git-hooks | &lt;tool&gt; |
+      | package-management | <tool> |
+      | type-check | <tool> |
+      | linting+formatting | <tool> |
+      | test-unit | <tool> |
+      | git-hooks | <tool> |
 
-      &gt; Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery &lt;scope-name&gt;`.
+      > Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery <scope-name>`.
       ```
     </Contract>
   </Output_Contracts>

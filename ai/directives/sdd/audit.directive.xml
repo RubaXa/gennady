@@ -5,10 +5,10 @@
 
       Fifth SDD session, invoked after `task-execution` closes a round with `[x] DONE`. Input:
       - task ticket with completed Execution Log (latest round `[x] DONE`);
-      - module spec (`specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md`) and scope spec (`specs/&lt;scope&gt;/&lt;scope&gt;.spec.md`);
-      - rules listed in ticket `Rule Activation Plan` (across `ai/directives/&lt;category&gt;/&lt;rule&gt;.xml`); audit reads only those activated in the round per Execution Log;
+      - module spec (`specs/<scope>/<module>/<module>.spec.md`) and scope spec (`specs/<scope>/<scope>.spec.md`);
+      - rules listed in ticket `§Effective Rules` (across `ai/directives/<category>/<rule>.xml`); audit reads only those activated in the round per Execution Log;
       - the code itself (implementation + tests) referenced by `Target Files` plus any files revealed by git diff;
-      - Cascade Table from `tasks/&lt;scope&gt;/README.md` (for cascade verification).
+      - Cascade Table from `tasks/<scope>/README.md` (for cascade verification).
 
       Output:
       - Ephemeral session-summary in chat: findings counts by severity + list of proposed / applied changes.
@@ -27,7 +27,7 @@
       - implementation files from ticket `Target Files`;
       - test files from `Target Test Files`;
       - related ports/adapters/services in `Spec References`;
-      - files flagged in Execution Log `Introduced &lt;X&gt; because &lt;Y&gt;`;
+      - files flagged in Execution Log `Introduced <X> because <Y>`;
       - **all files modified during ticket execution** (see `AX_GIT_DIFF_SCAN`).
 
       Reading unrelated parts of the project is forbidden — derails focus, consumes context.
@@ -37,7 +37,7 @@
       Audit widens its read scope via git diff. `Target Files` alone is insufficient for reliable closed-world detection: Executor could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it. Without diff scan, audit relies on log honesty — contradicting audit's mission.
 
       Mechanics:
-      - `git diff &lt;task-start-ref&gt;..&lt;task-done-ref&gt;` (or `git diff` against last pre-task commit if refs unavailable);
+      - `git diff <task-start-ref>..<task-done-ref>` (or `git diff` against last pre-task commit if refs unavailable);
       - collect modified / added / deleted files;
       - in-scope set = union(`Target Files`, `Target Test Files`, diff files, `Introduced` log).
 
@@ -53,10 +53,10 @@
       | `COMPLETENESS_GAP` | entity / contract / scenario promised in spec but not implemented |
       | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
       | `RULES_COMPLIANCE_VIOLATION` | code violates rules activated in the round (any category); OR diff has artefact of category C while round logged `skip` for phase C (`improper-skip` tag) |
-      | `RULES_CASCADE_MISMATCH` | ticket `Rule Activation Plan` ≠ derivable from recomputed cascade × Target Files / Target Test Files / Deferred Test Ownership |
+      | `RULES_CASCADE_MISMATCH` | ticket `§Effective Rules` ≠ derivable from recomputed cascade × Target Files / Target Test Files / Deferred Test Ownership |
       | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |
       | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
-      | `EXECUTION_LOG_INCOMPLETE` | mandatory log fields not filled (verification, scenario coverage, `Introduced`); OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `&lt;…&gt;` placeholder (fabricated done) |
+      | `EXECUTION_LOG_INCOMPLETE` | mandatory log fields not filled (verification, scenario coverage, `Introduced`); OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
       | `INSIGHT_BACKFLOW` | Executor discovered something that changes contract / requirement understanding; should flow back into spec |
       | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (§Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
     </Axiom>
@@ -112,7 +112,7 @@
     <Axiom id="AX_REOPEN_ROUNDS_IN_TICKET">
       When an audit round triggers a ticket reopen, the round's audit summary is appended to the ticket file under a new `## Audit Rounds` section so the reopen history lives next to the Execution Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in the ticket are immutable.
 
-      Rationale: full ephemeral output loses reopen-causation between rounds; `audits/&lt;task-id&gt;.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
+      Rationale: full ephemeral output loses reopen-causation between rounds; `audits/<task-id>.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
 
       Per-task audits that PASS without triggering a reopen do not write to the ticket — they remain ephemeral.
 
@@ -127,9 +127,9 @@
       Closed-world drift is the priority check — main pain audit prevents.
 
       Comparison:
-      1. Entities from `specs/&lt;scope&gt;/&lt;module&gt;/&lt;module&gt;.spec.md` §2 Entity Inventory.
+      1. Entities from `specs/<scope>/<module>/<module>.spec.md` §2 Entity Inventory.
       2. Entities actually present in code (classes, interfaces, exported types/functions with public surface).
-      3. Entities flagged by Executor in Execution Log as `Introduced &lt;X&gt; because &lt;Y&gt;`.
+      3. Entities flagged by Executor in Execution Log as `Introduced <X> because <Y>`.
 
       Drift = (entities in code) ∖ (inventory ∪ logged-introductions). Each → `CLOSED_WORLD_DRIFT` (`BLOCKER`).
     </Axiom>
@@ -149,22 +149,22 @@
     </Axiom>
 
     <Axiom id="AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES">
-      Compliance is checked against rules ACTIVATED in the round (per `Activated &lt;category&gt;: …` entries in Execution Log), not against the full cascade. Phased activation per `task-execution` `AX_RULES_PHASED_ACTIVATION`.
+      Compliance is checked against rules ACTIVATED in the round (per `Activated <category>: …` entries in Execution Log), not against the full cascade. Phased activation per `task-execution` `AX_RULES_PHASED_ACTIVATION`.
       - Findings appeal to specific `AX_*` IDs or sections within the activated rule files.
       - **Decision Log overrides take precedence.** Before flagging, check whether the relevant axiom was adapted or overridden during activation. Operator-accepted divergence is expected behavior, not drift.
       - **Improper-skip detection.** If diff contains an artefact of category C but the round's Execution Log has `skip` for phase C → `RULES_COMPLIANCE_VIOLATION` tagged `improper-skip` (`MAJOR`).
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      Ticket `Rule Activation Plan` must equal what scaffolder would derive now from cascade × ticket Target Files / Target Test Files / Deferred Test Ownership.
+      Ticket `§Effective Rules` must equal what scaffolder would derive now from cascade × ticket Target Files / Target Test Files / Deferred Test Ownership.
 
       Cascade tiers (sources of truth):
 
       | Tier | Source |
       |---|---|
-      | traversed-scopes | Cascade Table in `tasks/&lt;scope&gt;/README.md` traversed-scope rows |
-      | target-scope | `tasks/&lt;scope&gt;/README.md` target-scope row + scope spec §5/§4.5 |
-      | module | `tasks/&lt;scope&gt;/README.md` module row + module spec §9 Module Rules Additions |
+      | traversed-scopes | Cascade Table in `tasks/<scope>/README.md` traversed-scope rows |
+      | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec §5/§4.5 |
+      | module | `tasks/<scope>/README.md` module row + module spec §9 Module Rules Additions |
       | task | additions appearing as extra entries in Activation Plan rows |
 
       Plan rows ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
@@ -209,10 +209,10 @@
       - test files;
       - executed verification command with pass/fail and exit code;
       - confirmed scenario→test pairs;
-      - all introduced entities via `Introduced &lt;X&gt; because &lt;Y&gt;`;
+      - all introduced entities via `Introduced <X> because <Y>`;
       - final `[x] DONE`.
 
-      Any omission → `EXECUTION_LOG_INCOMPLETE`. `[x]` line containing unreplaced `&lt;…&gt;` literal → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
+      Any omission → `EXECUTION_LOG_INCOMPLETE`. `[x]` line containing unreplaced `<…>` literal → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
     </Axiom>
 
     <Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
@@ -243,7 +243,7 @@
       - Phase Progress free-text fields.
       - Body text inside `## Audit Rounds` section appended to a ticket file (per `TICKET_AUDIT_ROUND_FORMAT`).
 
-      English regardless of context: file paths in `Location` (`&lt;path&gt;:&lt;line&gt;`), code / identifier references quoted from code, axiom / rule references (`AX_*`), Trace anchors (`AU_R&lt;N&gt;`), IDs (`F-NNN` / `H_*`), severity / status / type tokens, BDD keywords, structural section headings, field labels (`**Status:**`, `**Type:**`).
+      English regardless of context: file paths in `Location` (`<path>:<line>`), code / identifier references quoted from code, axiom / rule references (`AX_*`), Trace anchors (`AU_R<N>`), IDs (`F-NNN` / `H_*`), severity / status / type tokens, BDD keywords, structural section headings, field labels (`**Status:**`, `**Type:**`).
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
@@ -341,15 +341,15 @@
       <Goal>Recompute cascade against ticket Meta; enforce compliance against effective rule-set.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__RULES_CASCADE_AND_COMPLIANCE_CHECK`).
-        2. Cascade verification per `AX_RULES_CASCADE_VERIFICATION`. Read Cascade Table from `tasks/&lt;scope&gt;/README.md`. Plan ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
+        2. Cascade verification per `AX_RULES_CASCADE_VERIFICATION`. Read Cascade Table from `tasks/<scope>/README.md`. Plan ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
         3. Rules compliance per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`:
-           - read Execution Log for `Activated &lt;category&gt;: &lt;names&gt;` entries — this is the active set;
+           - read Execution Log for `Activated <category>: <names>` entries — this is the active set;
            - load each activated rule file; walk axioms / golden patterns / anti-patterns;
            - findings → `RULES_COMPLIANCE_VIOLATION` with reference to specific rule's `AX_*` ID.
            - Improper-skip check: for each `skip` row in Activation Plan, scan diff for artefacts of that category.
         4. Third-party tool API verification per `AX_THIRD_PARTY_TOOL_CURRENT_API` in `task-execution`:
            - identify config files in `Target Files` targeting a third-party tool;
-           - for each, scan current round Execution Log for `Verified &lt;tool&gt;@&lt;version&gt; API: &lt;summary&gt;` entry;
+           - for each, scan current round Execution Log for `Verified <tool>@<version> API: <summary>` entry;
            - missing entry → `RULES_COMPLIANCE_VIOLATION` (`MAJOR`) tagged `stale-tool-api-not-verified`.
         5. Phase Progress. STOP.
       </Action>
@@ -361,11 +361,11 @@
         1. TRACE_HEADER (STACK `ROOT__BDD_AND_LOG_CHECK`).
         2. BDD per `AX_BDD_COVERAGE_VERIFICATION`. Mismatch → `BDD_COVERAGE_MISMATCH`.
         3. Execution Log completeness per `AX_EXECUTION_LOG_VERIFICATION` (current round only). Omission → `EXECUTION_LOG_INCOMPLETE` (`MAJOR` or `BLOCKER`).
-        4. **Placeholder leftover scan** (fabricated done): for every `[x]` line in current round, scan for residual `&lt;...&gt;` literal. Any match → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
+        4. **Placeholder leftover scan** (fabricated done): for every `[x]` line in current round, scan for residual `<...>` literal. Any match → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
         5. Round immutability: prior round sections compared against pre-round git ref. Any edit/reorder/delete → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`).
-        6. Reopens metadata: Meta `Reopens: &lt;count&gt;` = (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
+        6. Reopens metadata: Meta `Reopens: <count>` = (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
         7. Tracker sync:
-           - ticket Status (Meta) matches `tasks/&lt;scope&gt;/README.md` Tracker row for this Task-ID.
+           - ticket Status (Meta) matches `tasks/<scope>/README.md` Tracker row for this Task-ID.
            - `tasks/README.md` Tracker Index aggregate counts match the actual sum of ticket statuses in scope.
            - Mismatches → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «tracker desync».
         8. Phase Progress. STOP.
@@ -386,7 +386,7 @@
       <Goal>Capture insights that should flow back into the spec.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INSIGHT_BACKFLOW`).
-        2. Walk Execution Log `Introduced &lt;X&gt; because &lt;Y&gt;` entries. For each: spec-update proposal — add `&lt;X&gt;` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
+        2. Walk Execution Log `Introduced <X> because <Y>` entries. For each: spec-update proposal — add `<X>` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
         3. Walk `Introduced … because …` reasons for new edge cases / assumptions / constraints that should land in Requirements &amp; Constraints or Module Decision Log.
         4. Phase Progress. STOP.
       </Action>
@@ -417,35 +417,35 @@
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      🔍 AU_R&lt;N&gt; | STACK: ROOT__&lt;FRAME&gt; | FRAME: F_&lt;KEY&gt;_R&lt;N&gt; | &lt;📂|🚧|↩️|⏭️|💤&gt; &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
-      🎯 GOAL: &lt;local goal&gt;
-      ⏭️ EXIT: &lt;exit condition&gt;
+      🔍 AU_R<N> | STACK: ROOT__<FRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — &lt;STEP_NAME&gt;
-        📊 Findings so far: 🔴 &lt;N&gt; · 🟠 &lt;M&gt; · 🟡 &lt;K&gt; · 🔵 &lt;L&gt;
-        ⏳ Open:    &lt;under discussion&gt;
-        ▶️ Next:    &lt;agent proposal; operator decides&gt;
+      🎯 Phase Progress — <STEP_NAME>
+        📊 Findings so far: 🔴 <N> · 🟠 <M> · 🟡 <K> · 🔵 <L>
+        ⏳ Open:    <under discussion>
+        ▶️ Next:    <agent proposal; operator decides>
       ```
     </Contract>
 
     <Contract id="FINDING_FORMAT">
       ```markdown
-      ### &lt;🔴|🟠|🟡|🔵&gt; F-NNN — &lt;short title&gt;
+      ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
       - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
       - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
       - **Confidence:** HIGH | MEDIUM | LOW
       - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
-      - 📍 **Location:** `&lt;path&gt;:&lt;line&gt;` if applicable
-      - 💬 **Detail:** &lt;factual description, no value words&gt;
+      - 📍 **Location:** `<path>:<line>` if applicable
+      - 💬 **Detail:** <factual description, no value words>
       - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
       - 📝 **Proposed Remediation:**
         - Type: `code-fix` | `spec-update` | `ticket-update`
-        - Action: &lt;concrete proposal, with diff if possible&gt;
-        - Routing: &lt;per AX_FINDING_ROUTING — where this change goes&gt;
+        - Action: <concrete proposal, with diff if possible>
+        - Routing: <per AX_FINDING_ROUTING — where this change goes>
       ```
       F-NNN IDs unique per audit session; do not reuse.
 
@@ -458,10 +458,10 @@
       Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
 
       ```
-      @audit task=&lt;Task-ID&gt; round=&lt;N&gt; mode=&lt;per-task|epic&gt; status=&lt;PASS|PASS_RISK|FAIL&gt; counts=B&lt;n&gt;·M&lt;n&gt;·m&lt;n&gt;·I&lt;n&gt;
-      F-&lt;NN&gt; | sev=&lt;B|M|m|I&gt; | type=&lt;TYPE_TOKEN&gt; | conf=&lt;H|M|L&gt; | loc=&lt;path:line|—&gt; | src=&lt;spec/ticket/rule anchor|—&gt; | route=&lt;spec-edit|ticket-reopen|ticket-update|decision-log|code-fix&gt; | act=&lt;one-line action, no newlines&gt;
-      F-&lt;NN&gt; | …
-      ~applied | &lt;target&gt; | &lt;one-line description of inline change&gt;   (optional, repeat per applied change)
+      @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n>
+      F-<NN> | sev=<B|M|m|I> | type=<TYPE_TOKEN> | conf=<H|M|L> | loc=<path:line|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
+      F-<NN> | …
+      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
       ```
 
       Token vocabulary:
@@ -498,12 +498,12 @@
       ```markdown
       ## Audit Rounds
 
-      ### Audit Round &lt;N&gt; — &lt;YYYY-MM-DD&gt;, after Execution Round &lt;M&gt;
+      ### Audit Round <N> — <YYYY-MM-DD>, after Execution Round <M>
       ```
-      @audit task=&lt;Task-ID&gt; round=&lt;N&gt; after-exec-round=&lt;M&gt; triggered-reopen=&lt;Round-M+1|none&gt; status=&lt;FAIL|PASS_RISK&gt; counts=B&lt;n&gt;·M&lt;n&gt;·m&lt;n&gt;·I&lt;n&gt;
+      @audit task=<Task-ID> round=<N> after-exec-round=<M> triggered-reopen=<Round-M+1|none> status=<FAIL|PASS_RISK> counts=B<n>·M<n>·m<n>·I<n>
       F-NN | sev=… | type=… | conf=… | loc=… | src=… | route=… | act=…
       …
-      ~applied | &lt;target&gt; | &lt;one-line description&gt;
+      ~applied | <target> | <one-line description>
       ```
       ```
 

@@ -1,7 +1,7 @@
 <SddDiscovery keywords="discovery, scope, vision, golden-dx, design-variants, decision-log, scope-rules, scope-type, infrastructure, contracts, library, product, living-spec, frame-stack, evidence-hygiene, runtime-backing, sdd-scope-discovery" type="directive" ver="3.1">
   <Directive_Context>
     <Mission>
-      Turn the operator's intent for a scope into an approved scope spec at `specs/&lt;scope-name&gt;/&lt;scope-name&gt;.spec.md`.
+      Turn the operator's intent for a scope into an approved scope spec at `specs/<scope-name>/<scope-name>.spec.md`.
 
       Input: scope name + scope-type + operator intent (raw idea, or existing spec for `refine` / `pivot`).
       Output: self-contained living scope spec. The required section set depends on `scope-type`:
@@ -71,13 +71,13 @@
 
       **Tool categories — two classes.** Mandatory: vcs, package-management, git-hooks. Optional: type-check, linting, formatting, test-unit, test-e2e, test-ui, bundler, ci, monorepo-tool, docs. The agent proposes a subset from intent. Mandatory categories cannot be dropped.
 
-      **vcs is always mandatory.** Resolves to `ai/directives/vcs/git.xml`.
+      **vcs is always mandatory.** Resolves to `ai/directives/infra/git-setup.xml`.
 
       **Per tool category: 2–3 candidates with trade-offs.** Operator picks → Mandatory Rationale Pull → Decision Log entry. No tool may be locked without a Decision Log entry.
 
       **Tool interaction check.** After every tool is chosen, verify compatibility (linter vs formatter, test runner vs type-check, CI vs package manager).
 
-      **Effective rules derived from tools.** TypeScript → `ai/directives/coding/typescript-rules.xml`; Vitest → `ai/directives/testing/vitest-rules.xml`; etc. Missing rule file → `H_TOOL_RULE_MISSING`.
+      **Effective rules derived from tools.** After tool stack is finalized, look up each chosen tool in `ai/directives/knowledge.xml` `<Rules>` section: find every rule whose `<Triggers>` match the tool name or its config artefacts. Record matched rule `<File>` paths in spec §5 Effective Rules. No matching rule found for a chosen tool → `H_TOOL_RULE_MISSING`.
 
       **Dev workflow example is required.** The spec includes a Developer Workflow Example (shell-script shape) before final approval.
     </Axiom>
@@ -115,10 +115,10 @@
 
     <Axiom id="AX_SCOPE_RULES_DECLARATION">
       Scope-wide rules are declared in spec §Rules. Categories with directory mapping:
-      - coding → `ai/directives/coding/&lt;rule&gt;.xml`
-      - testing → `ai/directives/testing/&lt;rule&gt;.xml`
-      - architecture → `ai/directives/architecture/&lt;rule&gt;.xml`
-      - quality → `ai/directives/quality/&lt;rule&gt;.xml`
+      - coding → `ai/directives/coding/<rule>.xml`
+      - testing → `ai/directives/testing/<rule>.xml`
+      - architecture → `ai/directives/architecture/<rule>.xml`
+      - infra → `ai/directives/infra/<rule>.xml`
 
       Every rule reference must resolve to an existing file. Missing → `H_MISSING_RULE_FILE`.
     </Axiom>
@@ -126,9 +126,9 @@
     <Axiom id="AX_RULE_ACTIVATION">
       Two stages:
       - Stage A — relevance per category (recommend activate / recommend skip + rationale). Operator locks the list.
-      - Stage B — per-rule axiom walkthrough (activation=now rules only). Read `Mission` + `Belief_State` + `Reward_Criteria`. Operator decides Accept / Adapt / Override → Decision Log.
+      - Stage B — per-rule axiom walkthrough (infra/* and architecture/* rules only). Read `Mission` + `Belief_State` + `Reward_Criteria`. Operator decides Accept / Adapt / Override → Decision Log.
 
-      Defaults: vcs/*, runtimes/*, quality/*, architecture/* → now. coding/*, testing/* → later.
+      Defaults: infra/*, architecture/* → walk through now. coding/*, testing/* → deferred to task-execution.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
@@ -186,7 +186,7 @@
     </Axiom>
 
     <Axiom id="AX_TRACE_ANCHORS">
-      Global: `DSC_R001`, `DSC_R002`, …. Frame: `F_INTENT_R01`, `F_REQ_R01`, `F_DV_R01`, etc. Stack rendered as `ROOT__&lt;FRAME&gt;__&lt;SUBFRAME&gt;` in the header.
+      Global: `DSC_R001`, `DSC_R002`, …. Frame: `F_INTENT_R01`, `F_REQ_R01`, `F_DV_R01`, etc. Stack rendered as `ROOT__<FRAME>__<SUBFRAME>` in the header.
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
@@ -204,7 +204,7 @@
       - Halt messages emitted to the operator.
       - Phase Progress free-text content.
 
-      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`DSC_R&lt;N&gt;`), `F-NNN` / `D-NNN` / `H_*` IDs, status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`DSC_R<N>`), `F-NNN` / `D-NNN` / `H_*` IDs, status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
     </Axiom>
   </Belief_State>
 
@@ -225,15 +225,16 @@
 
   <Execution_Plan>
     <Step id="STEP_0_INTAKE">
-      <Goal>Resolve scope name, scope-type, mode. Read Portal for context.</Goal>
+      <Goal>Resolve scope name, scope-type, mode. Read Portal and rule registry for context.</Goal>
       <Action>
         1. Read `specs/README.md` if present (for project vision + graph context).
-        2. Resolve scope name from intake (or ask).
-        3. Stat `specs/&lt;scope-name&gt;/&lt;scope-name&gt;.spec.md`:
+        2. **Read `ai/directives/knowledge.xml` in full.** This is the canonical rule registry — it tells you what rule files exist, their `<Triggers>`, `<SkipWhen>`, `<ActivationHint>`, and `<RequiresVerification>`. You will use it throughout this session: to know which rules are available when selecting tools (infrastructure), to populate §Project-Wide Rules (product/library), and to derive §Effective Rules in the spec. Read it now — do not defer.
+        3. Resolve scope name from intake (or ask).
+        4. Stat `specs/<scope-name>/<scope-name>.spec.md`:
            - Absent → `greenfield`.
            - Present → apply `AX_MODE_AUTO_DETECT_OR_HALT`.
-        4. Resolve / confirm scope-type from intake or naming convention (`infra-*` → infrastructure hint).
-        5. Proceed to STEP_1.
+        5. Resolve / confirm scope-type from intake or naming convention (`infra-*` → infrastructure hint).
+        6. Proceed to STEP_1.
       </Action>
     </Step>
 
@@ -295,7 +296,7 @@
       <Goal>Fourth type-specific step (only some types).</Goal>
       <Action>
         Per `AX_SCOPE_TYPE_BRANCH`:
-        - infrastructure → File Structure (repo root layout; config file mapping). Then Effective Rules table. STOP.
+        - infrastructure → File Structure (repo root layout; config file mapping). Then Effective Rules table. Then §Verification Commands table (mandatory — one row per active tool command). STOP.
         - contracts → skip, proceed to STEP_7.
         - library → skip, proceed to STEP_7.
         - product → Architecture Choice (operator picks variant; Mandatory Rationale Pull; Decision Log entry). STOP.
@@ -305,7 +306,7 @@
     <Step id="STEP_7_FINAL_SPEC">
       <Goal>Emit the scope spec.</Goal>
       <Action>
-        1. Assemble `specs/&lt;scope-name&gt;/&lt;scope-name&gt;.spec.md` per the corresponding SPEC_CONTRACT.
+        1. Assemble `specs/<scope-name>/<scope-name>.spec.md` per the corresponding SPEC_CONTRACT.
         2. In `pivot` mode: include §Pivot Invalidation List (per `AX_PIVOT_REQUIRES_SUPERSESSION`); emit rework-flavored Decision Log entries per `REWORK_DECISION_LOG_ENTRY_FORMAT`.
         3. Output for review. Approval Check. STOP.
       </Action>
@@ -343,10 +344,10 @@
       ```
 
       ## 5. Effective Rules (cascade)
-      | Rule | Category | Source |
-      |---|---|---|
-      | typescript-rules | coding | infra (D-002) |
-      | biome-rules | quality | infra (D-003) |
+      | Rule | Category | File | Source |
+      |---|---|---|---|
+      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (D-NNN) |
+      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (D-NNN) |
       ```
     </Pattern>
 
@@ -414,15 +415,15 @@
   <Output_Contracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
-      🦾 DSC_R&lt;N&gt; | SCOPE: &lt;scope-name&gt; | TYPE: &lt;scope-type&gt; | MODE: &lt;greenfield|refine|pivot&gt; | STACK: ROOT__&lt;FRAME&gt;__&lt;SUBFRAME&gt; | FRAME: F_&lt;KEY&gt;_R&lt;N&gt; | &lt;STATUS&gt; | CONF: &lt;LOW|MEDIUM|HIGH&gt;
-      🎯 GOAL: &lt;local goal&gt;
-      ⏭️ EXIT: &lt;exit condition&gt;
+      🦾 DSC_R<N> | SCOPE: <scope-name> | TYPE: <scope-type> | MODE: <greenfield|refine|pivot> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+      🎯 GOAL: <local goal>
+      ⏭️ EXIT: <exit condition>
       ```
     </Contract>
 
     <Contract id="INFRASTRUCTURE_SPEC_STRUCTURE">
       ```markdown
-      # &lt;scope-name&gt;: Infrastructure Specification
+      # <scope-name>: Infrastructure Specification
 
       ## scope-type
       infrastructure
@@ -438,7 +439,7 @@
       ### 2.2 Tool Choices
       | Category | Tool | Rationale |
       |---|---|---|
-      | &lt;category&gt; | &lt;tool&gt; | D-NNN |
+      | <category> | <tool> | D-NNN |
 
       ## 3. Developer Workflow Example
       [Shell-script: setup, daily flow, commit flow, debug flow.]
@@ -449,27 +450,40 @@
       ## 5. Effective Rules (for cascade)
       | Rule | Category | Source |
       |---|---|---|
-      | &lt;rule-name&gt; | coding | infra (D-NNN) |
+      | <rule-name> | coding | infra (D-NNN) |
 
-      ## 6. Decision Log
+      ## 6. §Verification Commands
+      **Mandatory for infrastructure scopes.** After tool stack is finalized, record a table:
+      | Command Name      | Invocation          |
+      | typecheck-command | <actual invocation> |
+      | test-command      | <actual invocation> |
+      | lint-command      | <actual invocation> |
+      | format-command    | <actual invocation> |
+      | check-command     | <actual invocation> |
+
+      Include only command names for tools present in the chosen stack.
+      `check-command` is **always required** when the runtime setup rule (`nodejs-npm-setup` or equivalent) is active — it is the composed entry point that runs all active phases in `CheckPhaseOrder` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use `check-command` as their single verification alias.
+
+      ## 7. Decision Log
       [D-NNN entries.]
 
-      ## 7. Scope Dependencies
+      ## 8. Scope Dependencies
       - **Depends on:** None (infrastructure scopes are typically leaves)
       - **Provides rules to:** [list of product/library scopes that depend on this]
 
-      ## 8. Handoff
+      ## 9. Handoff
       - **Setup tasks to scaffold:** [list]
       - **Effective rules ready for cascade:** see §5
+      - **Verification Commands ready for cascade:** see §6
       - **Open risks:** [not-closed items]
 
-      &lt;!-- §8.1 Pivot Invalidation List — only in pivot mode --&gt;
+      <!-- §9.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 
     <Contract id="CONTRACTS_SPEC_STRUCTURE">
       ```markdown
-      # &lt;scope-name&gt;: Contracts Specification
+      # <scope-name>: Contracts Specification
 
       ## scope-type
       contracts
@@ -480,7 +494,7 @@
       ## 2. Interface Declaration
       - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
       - **Versioning scheme:** semver | date-based (YYYY-MM-DD) | none
-      - **Namespace:** &lt;api prefix / package name&gt;
+      - **Namespace:** <api prefix / package name>
       - **Interfaces:** [список endpoint groups / message types / operations]
 
       ## 3. Versioning Policy
@@ -505,7 +519,7 @@
 
     <Contract id="LIBRARY_SPEC_STRUCTURE">
       ```markdown
-      # &lt;scope-name&gt;: Library Specification
+      # <scope-name>: Library Specification
 
       ## scope-type
       library
@@ -549,13 +563,13 @@
       - **Named abstractions:** [from Golden DX]
       - **Open risks:** [validation needs]
 
-      &lt;!-- §8.1 Pivot Invalidation List — only in pivot mode --&gt;
+      <!-- §8.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 
     <Contract id="PRODUCT_SPEC_STRUCTURE">
       ```markdown
-      # &lt;scope-name&gt;: Scope Specification
+      # <scope-name>: Scope Specification
 
       ## scope-type
       product
@@ -597,26 +611,26 @@
       - **Provides to:** [consumer scopes, if any]
 
       ## 8. Module Map
-      [Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition &lt;scope-name&gt;`».]
+      [Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition <scope-name>`».]
 
       ## 9. Handoff to module-decomposition
-      - **Primary input:** `specs/&lt;scope-name&gt;/&lt;scope-name&gt;.spec.md`
+      - **Primary input:** `specs/<scope-name>/<scope-name>.spec.md`
       - **Areas requiring decomposition:** [list]
       - **Named abstractions:** [from Golden DX]
       - **Open risks:** [validation needs]
 
-      &lt;!-- §9.1 Pivot Invalidation List — only in pivot mode --&gt;
+      <!-- §9.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
       ```markdown
-      ### D-NNN — &lt;short title&gt;
+      ### D-NNN — <short title>
       - **Status:** active | superseded | rejected | deferred
-      - **Recorded:** session Discovery, &lt;scope-name&gt;
-      - **Why:** &lt;operator's own wording&gt;
-      - **Risk accepted:** &lt;if any&gt;
-      - **Rejected alternatives:** &lt;list&gt;
+      - **Recorded:** session Discovery, <scope-name>
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list>
       - **Supersedes:** D-NNN (when superseding)
       ```
     </Contract>
@@ -625,15 +639,15 @@
       Used in `pivot` mode for each replaced decision. Self-contained: a future reader of the spec at this git ref must understand the rework without external context.
 
       ```markdown
-      ### D-NNN — &lt;short title&gt; (rework)
+      ### D-NNN — <short title> (rework)
       - **Status:** active
-      - **Recorded:** session Discovery, &lt;scope-name&gt;, pivot
+      - **Recorded:** session Discovery, <scope-name>, pivot
       - **Supersedes:** D-MMM
-      - **Pre-rework state:** git ref `&lt;sha-or-tag&gt;` (snapshot of spec immediately before this pivot)
-      - **Was:** &lt;one-sentence summary of the prior decision&gt;
-      - **Now:** &lt;one-sentence summary of the replacement&gt;
-      - **Why:** &lt;operator's own wording — what forced the rework&gt;
-      - **Risk accepted:** &lt;if any&gt;
+      - **Pre-rework state:** git ref `<sha-or-tag>` (snapshot of spec immediately before this pivot)
+      - **Was:** <one-sentence summary of the prior decision>
+      - **Now:** <one-sentence summary of the replacement>
+      - **Why:** <operator's own wording — what forced the rework>
+      - **Risk accepted:** <if any>
       - **Downstream invalidation:** see §Pivot Invalidation List
       ```
 

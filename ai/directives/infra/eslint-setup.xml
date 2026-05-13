@@ -1,4 +1,4 @@
-<EslintRules keywords="eslint, binary_severity, error_or_off, no_warn_level, autofix_preferred, motivated_non_autofix, ai_friendly, lint_pipeline, mechanical_quality_gate, flat_config, prettier, unified_formatting, no_disable_comments, type_aware_delegation" type="quality-rules" ver="2.0">
+<EslintSetup keywords="eslint, binary_severity, error_or_off, no_warn_level, autofix_preferred, motivated_non_autofix, ai_friendly, lint_pipeline, mechanical_quality_gate, flat_config, prettier, unified_formatting, no_disable_comments, type_aware_delegation" type="infra-rules" ver="2.0">
   <Mission>
     Define how ESLint is used so the lint stage is a binary, AI-friendly quality gate.
 
@@ -355,6 +355,37 @@
     </Anti_Pattern>
   </Anti_Patterns>
 
+  <Setup_Steps>
+    <!-- Ordered actions for initial ESLint configuration.
+         Axioms in Belief_State define the WHY and invariants; these steps define the HOW and sequence.
+         Workflow_Outline (below) covers runtime usage after setup is complete. -->
+    <Step id="STEP_1_INSTALL_ESLINT">
+      Install ESLint and required plugins as exact-pinned devDependencies (`npm install --save-exact --save-dev eslint <plugins>`). Exact pins prevent silent rule-behavior changes on patch updates.
+      Ref: AX_FLAT_CONFIG, AX_EXACT_PINNING_FOR_TOOLING (nodejs-npm-setup).
+    </Step>
+    <Step id="STEP_2_CREATE_CONFIG">
+      Create `eslint.config.ts` (flat config format — ESLint ≥9 default; legacy `.eslintrc.*` forbidden for new projects). One block per concern: globals, language options, preset spreads, custom rules.
+      Ref: AX_FLAT_CONFIG.
+    </Step>
+    <Step id="STEP_3_NORMALIZE_SEVERITY">
+      After each preset spread, override every rule set to `'warn'` (or `1`) to either `'error'` or `'off'`. No `'warn'` may survive in the resolved config.
+      Ref: AX_BINARY_SEVERITY, AX_PRESETS_PASSED_THROUGH_THE_GATE.
+    </Step>
+    <Step id="STEP_4_AUDIT_RULES">
+      For every non-autofix `'error'` rule (`meta.fixable` absent or `null`): add an inline comment immediately above the rule entry explaining what class of bugs or invariant it catches. Rules without this comment are `'off'`.
+      Run audit protocol PT_RULE_AUDIT_PROTOCOL for any rule proposed for addition.
+      Ref: AX_AUTOFIX_PREFERRED, AX_NO_DISABLE_COMMENTS_BY_AGENT.
+    </Step>
+    <Step id="STEP_5_DECLARE_SCRIPTS">
+      Add to `package.json`: `"lint": "eslint ."` (read-only, exit-code only) and `"lint:fix": "eslint --fix ."` (canonical agent action). Both are one-shot.
+      Ref: AX_LINT_RUN_IS_MECHANICAL.
+    </Step>
+    <Step id="STEP_6_DRY_RUN">
+      Run `npm run lint:fix` on the current codebase. Exit 0 = config valid and codebase clean. Non-zero = fix findings or adjust rules (never add disable comments).
+      Ref: AX_LINT_RUN_IS_MECHANICAL, AX_NO_DISABLE_COMMENTS_BY_AGENT.
+    </Step>
+  </Setup_Steps>
+
   <Workflow_Outline>
     <Step id="WF_1_RUN_THE_PIPELINE">Default agent action when touching code: `npm run lint:fix`. Exit 0 means lint contract satisfied.</Step>
     <Step id="WF_2_HANDLE_REMAINING_FINDINGS">Non-zero exit = finding remains after `--fix`. The finding belongs to a motivated non-autofix rule. Read the rule's explanatory comment in `eslint.config.ts`, fix the code accordingly, re-run. Disable comments NOT an option.</Step>
@@ -433,4 +464,4 @@
     ❌ `eslint-config-prettier` absent or not last in flat-config array.
     ❌ Any of `lint:fix` / `typecheck` / test pipeline fails silently without an EXPLICIT blocker statement.
   </Reward_Criteria>
-</EslintRules>
+</EslintSetup>
