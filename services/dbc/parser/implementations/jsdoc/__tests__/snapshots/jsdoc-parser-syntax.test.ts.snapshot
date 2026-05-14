@@ -42,7 +42,28 @@ exports[`DbcJsDocParser > parse() > should parse classic JSDoc block with leadin
       "value": "Writes data to the database.",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse inline tags from pipe-delimited single-line contract 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "Main description",
+      "issues": [],
+      "inline": [
+        {
+          "type": "invariant",
+          "value": "Must be stable",
+          "issues": []
+        }
+      ]
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -54,7 +75,8 @@ exports[`DbcJsDocParser > parse() > should parse one-line JSDoc contract 1`] = `
       "value": "Simple description",
       "issues": []
     }
-  ]
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -102,6 +124,7 @@ exports[`DbcJsDocParser > parse() > should parse plain text contract without JSD
       "value": "Writes data to the database.",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;

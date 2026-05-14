@@ -1,3 +1,53 @@
+exports[`DbcJsDocParser > parse() > reports ERR_DBC_ORDER for implements order violation 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "User identifier.",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    },
+    {
+      "type": "implements",
+      "value": "in ./path",
+      "issues": [
+        {
+          "code": "ERR_DBC_ORDER",
+          "line": 2
+        }
+      ],
+      "specifier": "VendorGateway"
+    }
+  ],
+  "format": "multi-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > reports ERR_DBC_ORDER when invariant precedes implements 1`] = `
+{
+  "entries": [
+    {
+      "type": "invariant",
+      "value": "Must be called after init.",
+      "issues": []
+    },
+    {
+      "type": "implements",
+      "value": "",
+      "issues": [
+        {
+          "code": "ERR_DBC_ORDER",
+          "line": 2
+        }
+      ],
+      "specifier": "VendorGateway"
+    }
+  ],
+  "format": "multi-line"
+}
+`;
+
 exports[`DbcJsDocParser > parse() > should match the invalid contract example from task spec 1`] = `
 {
   "entries": [
@@ -38,7 +88,40 @@ exports[`DbcJsDocParser > parse() > should match the invalid contract example fr
       ],
       "dataType": "string"
     }
-  ]
+  ],
+  "format": "multi-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should not report order violation for valid implements, consumer, param, returns sequence 1`] = `
+{
+  "entries": [
+    {
+      "type": "implements",
+      "value": "in ./path",
+      "issues": [],
+      "specifier": "VendorGateway"
+    },
+    {
+      "type": "consumer",
+      "value": "MainApp",
+      "issues": []
+    },
+    {
+      "type": "param",
+      "value": "User identifier.",
+      "issues": [],
+      "dataType": "string",
+      "specifier": "userId"
+    },
+    {
+      "type": "returns",
+      "dataType": "boolean",
+      "value": "True on success.",
+      "issues": []
+    }
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -63,7 +146,8 @@ exports[`DbcJsDocParser > parse() > should report contract order violation 1`] =
       "dataType": "string",
       "specifier": "userId"
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -80,7 +164,8 @@ exports[`DbcJsDocParser > parse() > should report invalid see format 1`] = `
         }
       ]
     }
-  ]
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -98,7 +183,8 @@ exports[`DbcJsDocParser > parse() > should report missing param name 1`] = `
       ],
       "dataType": "string"
     }
-  ]
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -121,6 +207,31 @@ exports[`DbcJsDocParser > parse() > should report purpose and see conflict 1`] =
       ],
       "specifier": "ExternalContract#run"
     }
-  ]
+  ],
+  "format": "multi-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should report purpose and see conflict when see precedes purpose 1`] = `
+{
+  "entries": [
+    {
+      "type": "see",
+      "value": "",
+      "issues": [],
+      "specifier": "ExternalContract#run"
+    },
+    {
+      "type": "purpose",
+      "value": "Main behavior.",
+      "issues": [
+        {
+          "code": "ERR_DBC_PURPOSE_CONFLICT",
+          "line": 2
+        }
+      ]
+    }
+  ],
+  "format": "multi-line"
 }
 `;

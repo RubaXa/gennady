@@ -1,11 +1,19 @@
+// @file: Universal contract schema types, parser interface, and issue codes for DBC parsers.
+// @consumers: DbcParserImplementations
+// @tasks: TSK-01
+
+/** @purpose Signal whether contract was authored in a single compressed line or multi-line block. */
+export type DbcSchemaFormat = 'single-line' | 'multi-line';
+
 /**
  * @purpose Defines the universal contract schema and parser interface for DBC parsers.
- * @consumer DbcParserImplementations
  * @invariant Any implementation must return an entries array for every parse invocation.
  */
 export type DbcSchema = {
   /** @purpose Parsed contract entries normalized into the universal shape. */
   entries: DbcEntrySchema[];
+  /** @purpose Format of the original input contract */
+  format: DbcSchemaFormat;
 };
 
 /**
@@ -26,6 +34,8 @@ export type DbcEntrySchema = {
   value: string;
   /** @purpose Validation issues related to this entry. */
   issues: DbcDbcEntryIssue[];
+  /** @purpose Inline child tags extracted from pipe-delimited single-line contracts */
+  inline?: DbcEntrySchema[];
 };
 
 /**

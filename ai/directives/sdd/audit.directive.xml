@@ -27,7 +27,7 @@
       - implementation files from ticket `Target Files`;
       - test files from `Target Test Files`;
       - related ports/adapters/services in `Spec References`;
-      - files flagged in Execution Log `Introduced <X> because <Y>`;
+      - files flagged in Execution Log `intro <X> ← <Y>` lines;
       - **all files modified during ticket execution** (see `AX_GIT_DIFF_SCAN`).
 
       Reading unrelated parts of the project is forbidden — derails focus, consumes context.
@@ -39,7 +39,7 @@
       Mechanics:
       - `git diff <task-start-ref>..<task-done-ref>` (or `git diff` against last pre-task commit if refs unavailable);
       - collect modified / added / deleted files;
-      - in-scope set = union(`Target Files`, `Target Test Files`, diff files, `Introduced` log).
+      - in-scope set = union(`Target Files`, `Target Test Files`, diff files, `intro` log).
 
       Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
@@ -49,16 +49,17 @@
 
       | Type | Meaning |
       |---|---|
-      | `CLOSED_WORLD_DRIFT` | entity present in code but absent from module spec Entity Inventory AND not logged as `Introduced` |
+      | `CLOSED_WORLD_DRIFT` | entity present in code but absent from module spec Entity Inventory AND no `intro` log line |
       | `COMPLETENESS_GAP` | entity / contract / scenario promised in spec but not implemented |
       | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
       | `RULES_COMPLIANCE_VIOLATION` | code violates rules activated in the round (any category); OR diff has artefact of category C while round logged `skip` for phase C (`improper-skip` tag) |
       | `RULES_CASCADE_MISMATCH` | ticket `§Effective Rules` ≠ derivable from recomputed cascade × Target Files / Target Test Files / Deferred Test Ownership |
       | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |
       | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
-      | `EXECUTION_LOG_INCOMPLETE` | mandatory log fields not filled (verification, scenario coverage, `Introduced`); OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
+      | `EXECUTION_LOG_INCOMPLETE` | mandatory action-token lines missing (`ver` / `cov` / `intro` / `aud` / `DONE`); OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
       | `INSIGHT_BACKFLOW` | Executor discovered something that changes contract / requirement understanding; should flow back into spec |
       | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (§Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
+      | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<Belief_State>` / `<Anti_Patterns>` / `<Verification_Hooks>` / `<Reward_Criteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
     </Axiom>
 
     <Axiom id="AX_SEVERITY_TAGGING">
@@ -129,7 +130,7 @@
       Comparison:
       1. Entities from `specs/<scope>/<module>/<module>.spec.md` §2 Entity Inventory.
       2. Entities actually present in code (classes, interfaces, exported types/functions with public surface).
-      3. Entities flagged by Executor in Execution Log as `Introduced <X> because <Y>`.
+      3. Entities flagged by Executor in Execution Log as `intro <X> ← <Y>` lines.
 
       Drift = (entities in code) ∖ (inventory ∪ logged-introductions). Each → `CLOSED_WORLD_DRIFT` (`BLOCKER`).
     </Axiom>
@@ -149,10 +150,24 @@
     </Axiom>
 
     <Axiom id="AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES">
-      Compliance is checked against rules ACTIVATED in the round (per `Activated <category>: …` entries in Execution Log), not against the full cascade. Phased activation per `task-execution` `AX_RULES_PHASED_ACTIVATION`.
-      - Findings appeal to specific `AX_*` IDs or sections within the activated rule files.
-      - **Decision Log overrides take precedence.** Before flagging, check whether the relevant axiom was adapted or overridden during activation. Operator-accepted divergence is expected behavior, not drift.
-      - **Improper-skip detection.** If diff contains an artefact of category C but the round's Execution Log has `skip` for phase C → `RULES_COMPLIANCE_VIOLATION` tagged `improper-skip` (`MAJOR`).
+      Compliance is checked against rules ACTIVATED in the round (per Execution Log `Activated <category>: …`), not the full cascade. Phased activation per `task-execution` `AX_RULES_PHASED_ACTIVATION`.
+
+      **Audit is universal — no embedded knowledge of any language, runtime, or tool.** Every rule file exposes the same checkable surface; audit walks these sections mechanically:
+      - `<Belief_State>` → `<Axiom AX_*>` constraints
+      - `<Anti_Patterns>` → `<Bad>` shapes that must not appear
+      - `<Verification_Hooks>` → executable check commands
+      - `<Reward_Criteria>` → ✅ invariants / ❌ forbidden states
+
+      Section missing in an activated rule → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
+
+      **Per (artifact ∈ round diff, rule ∈ activated set):**
+      1. Apply rule's `<Triggers>` / `<ActivationHint>` from `knowledge.xml` to decide if the rule governs this artifact. No match → skip pair.
+      2. Walk Reward_Criteria, Anti_Patterns, Verification_Hooks, then residual axioms (those not covered by the prior three). Each violation → `RULES_COMPLIANCE_VIOLATION` citing the specific ID (`AX_*` / `AP_*` / `HOOK_*` / Reward_Criteria line verbatim) + `Location: <path>:<line>`.
+      3. Decision Log overrides take precedence — adapted / overridden axiom → suppress finding, record `Override-honored: <D-NNN>`.
+
+      **Improper-skip.** Diff has artifact of a category while Execution Log shows `skip` for that category → `RULES_COMPLIANCE_VIOLATION` tagged `improper-skip` (`MAJOR`).
+
+      **No invented criteria.** Suspicion without a backing rule line → `INSIGHT_BACKFLOW` (proposal to add a rule), not a finding.
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
@@ -209,7 +224,7 @@
       - test files;
       - executed verification command with pass/fail and exit code;
       - confirmed scenario→test pairs;
-      - all introduced entities via `Introduced <X> because <Y>`;
+      - all introduced entities via `intro <X> ← <Y>` lines;
       - final `[x] DONE`.
 
       Any omission → `EXECUTION_LOG_INCOMPLETE`. `[x]` line containing unreplaced `<…>` literal → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
@@ -292,7 +307,7 @@
         1. TRACE_HEADER (STACK `ROOT__CLOSED_WORLD_CHECK`).
         2. Git diff scan per `AX_GIT_DIFF_SCAN`.
         3. Extract Entity Inventory from corresponding module spec.
-        4. In-scope union: `Target Files` ∪ `Target Test Files` ∪ git diff files ∪ `Introduced` log files.
+        4. In-scope union: `Target Files` ∪ `Target Test Files` ∪ git diff files ∪ `intro` log files.
         5. Scan for public entities (classes, exported types, exported functions, value objects with explicit identity).
         6. Findings:
            - entity ∈ code ∖ (inventory ∪ logged-introductions) → `CLOSED_WORLD_DRIFT` (`BLOCKER`, HIGH).
@@ -342,11 +357,8 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__RULES_CASCADE_AND_COMPLIANCE_CHECK`).
         2. Cascade verification per `AX_RULES_CASCADE_VERIFICATION`. Read Cascade Table from `tasks/<scope>/README.md`. Plan ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
-        3. Rules compliance per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`:
-           - read Execution Log for `Activated <category>: <names>` entries — this is the active set;
-           - load each activated rule file; walk axioms / golden patterns / anti-patterns;
-           - findings → `RULES_COMPLIANCE_VIOLATION` with reference to specific rule's `AX_*` ID.
-           - Improper-skip check: for each `skip` row in Activation Plan, scan diff for artefacts of that category.
+        3. Rules compliance per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`. Load each rule file listed in Execution Log under `Activated <category>: …`. For each (artifact ∈ round diff, rule ∈ activated set) apply the procedure from the axiom.
+           Maintain audit-trail: per rule, list IDs visited (`AX_*` / `AP_*` / `HOOK_*` / Reward_Criteria lines). STEP_5 cannot close without this list. **An audit that flagged only mechanics (BDD, tracker, diff) without opening a single rule file is a `BLOCKER` failure of audit itself.**
         4. Third-party tool API verification per `AX_THIRD_PARTY_TOOL_CURRENT_API` in `task-execution`:
            - identify config files in `Target Files` targeting a third-party tool;
            - for each, scan current round Execution Log for `Verified <tool>@<version> API: <summary>` entry;
@@ -386,7 +398,7 @@
       <Goal>Capture insights that should flow back into the spec.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INSIGHT_BACKFLOW`).
-        2. Walk Execution Log `Introduced <X> because <Y>` entries. For each: spec-update proposal — add `<X>` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
+        2. Walk Execution Log `intro <X> ← <Y>` lines entries. For each: spec-update proposal — add `<X>` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
         3. Walk `Introduced … because …` reasons for new edge cases / assumptions / constraints that should land in Requirements &amp; Constraints or Module Decision Log.
         4. Phase Progress. STOP.
       </Action>

@@ -8,7 +8,35 @@ exports[`DbcJsDocParser > parse() > should parse full param structure with datat
       "dataType": "string",
       "specifier": "userId"
     }
-  ]
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse implements tag with specifier and trailing value 1`] = `
+{
+  "entries": [
+    {
+      "type": "implements",
+      "value": "in src/domain/contracts/VendorGateway.ts",
+      "issues": [],
+      "specifier": "VendorGateway"
+    }
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse implements tag without specifier 1`] = `
+{
+  "entries": [
+    {
+      "type": "implements",
+      "value": "VendorGateway",
+      "issues": []
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -23,7 +51,22 @@ exports[`DbcJsDocParser > parse() > should parse optional param with optional fl
       "optional": true,
       "specifier": "age"
     }
-  ]
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse param tag without datatype 1`] = `
+{
+  "entries": [
+    {
+      "type": "param",
+      "value": "User identifier",
+      "issues": [],
+      "specifier": "userId"
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -36,7 +79,21 @@ exports[`DbcJsDocParser > parse() > should parse returns tag with datatype 1`] =
       "value": "True on success.",
       "issues": []
     }
-  ]
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse returns tag without datatype 1`] = `
+{
+  "entries": [
+    {
+      "type": "returns",
+      "value": "description without type",
+      "issues": []
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -49,7 +106,22 @@ exports[`DbcJsDocParser > parse() > should parse see tag with specifier and trai
       "issues": [],
       "specifier": "Interface#method"
     }
-  ]
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse throws tag with datatype 1`] = `
+{
+  "entries": [
+    {
+      "type": "throws",
+      "dataType": "Error",
+      "value": "On invalid input",
+      "issues": []
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
@@ -61,6 +133,7 @@ exports[`DbcJsDocParser > parse() > should parse unknown tag by generic rule 1`]
       "value": "John Doe",
       "issues": []
     }
-  ]
+  ],
+  "format": "single-line"
 }
 `;

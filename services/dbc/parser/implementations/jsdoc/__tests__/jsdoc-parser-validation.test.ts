@@ -16,6 +16,7 @@ import '#snapshot-path-setup';
  *     ├── should report contract order violation
  *     ├── should report missing param name
  *     ├── should report invalid see format
+ *     ├── should accept implements before param and consumer at any position
  *     └── should match the invalid contract example from task spec
  */
 describe('DbcJsDocParser', () => {
@@ -43,6 +44,23 @@ describe('DbcJsDocParser', () => {
       ]);
       t.assert.snapshot(schema);
       // END_VALIDATE_PURPOSE_CONFLICT_ASSERT
+    });
+
+    it('should report purpose and see conflict when see precedes purpose', (t: TestContext) => {
+      // START_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ARRANGE_INPUT
+      const inputContract = ['@see {ExternalContract#run}', '@purpose Main behavior.'].join('\n');
+      // END_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ARRANGE_INPUT
+
+      // START_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ACT
+      const schema = parser.parse(inputContract);
+      // END_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ACT
+
+      // START_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ASSERT
+      t.assert.deepStrictEqual(schema.entries[1]?.issues, [
+        { code: ERR_DBC_PURPOSE_CONFLICT, line: 2 },
+      ]);
+      t.assert.snapshot(schema);
+      // END_VALIDATE_PURPOSE_CONFLICT_SEE_FIRST_ASSERT
     });
 
     it('should report contract order violation', (t: TestContext) => {
@@ -95,6 +113,69 @@ describe('DbcJsDocParser', () => {
       ]);
       t.assert.snapshot(schema);
       // END_VALIDATE_SEE_FORMAT_ASSERT
+    });
+
+    it('should not report order violation for valid implements, consumer, param, returns sequence', (t: TestContext) => {
+      // purpose: verify updated CONTRACT_ORDER — implements precedes param; consumer is outside order
+      // contract: no ERR_DBC_ORDER when implements is first and consumer appears between order-regulated tags
+      // failure mode: adding consumer to CONTRACT_ORDER would break this scenario
+
+      // START_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ARRANGE_INPUT
+      const inputContract = [
+        '@implements {VendorGateway} in ./path',
+        '@consumer MainApp',
+        '@param {string} userId User identifier.',
+        '@returns {boolean} True on success.',
+      ].join('\n');
+      // END_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ARRANGE_INPUT
+
+      // START_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ACT
+      const schema = parser.parse(inputContract);
+      // END_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ACT
+
+      // START_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ASSERT
+      t.assert.snapshot(schema);
+      // END_VALIDATE_ORDER_IMPLEMENTS_AND_CONSUMER_ASSERT
+    });
+
+    it('reports ERR_DBC_ORDER for implements order violation', (t: TestContext) => {
+      // START_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ARRANGE_INPUT
+      const inputContract = [
+        '@param {string} userId User identifier.',
+        '@implements {VendorGateway} in ./path',
+      ].join('\n');
+      // END_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ARRANGE_INPUT
+
+      // START_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ACT
+      const schema = parser.parse(inputContract);
+      // END_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ACT
+
+      // START_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ASSERT
+      t.assert.deepStrictEqual(schema.entries[1]?.issues, [
+        { code: ERR_DBC_ORDER, line: 2 },
+      ]);
+      t.assert.snapshot(schema);
+      // END_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ASSERT
+    });
+
+    it('reports ERR_DBC_ORDER when invariant precedes implements', (t: TestContext) => {
+      // START_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ARRANGE_INPUT
+      const inputContract = [
+        '@invariant Must be called after init.',
+        '@implements {VendorGateway}',
+      ].join('\n');
+      // END_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ARRANGE_INPUT
+
+      // START_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ACT
+      const schema = parser.parse(inputContract);
+      // END_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ACT
+
+      // START_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ASSERT
+      t.assert.deepStrictEqual(schema.entries[1]?.issues, [
+        { code: ERR_DBC_ORDER, line: 2 },
+      ]);
+      t.assert.snapshot(schema);
+      // END_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ASSERT
     });
 
     it('should match the invalid contract example from task spec', (t: TestContext) => {

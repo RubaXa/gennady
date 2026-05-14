@@ -193,10 +193,10 @@
     <Axiom id="AX_OPERATOR_LANGUAGE">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
       **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
-      - Execution Log free-text fields (`Reason` on reopen, `Insight` text, `Introduced ... because <reason>` reason content, blocker `<one-line cause>` / `<proposed unblock>`).
+      - Execution Log free-text fields (Round header `<reason>`, `insight` text, `intro ... ← <reason>` reason content, blocker `<one-line cause>` / `<proposed unblock>`).
       - Halt messages emitted to the operator.
 
-      English regardless of context: all code (impl + tests), JSDoc, intent comments per `coding/typescript-rules`, file paths, tool commands, axiom IDs (`AX_*`), Trace anchors (`EX_R<N>`), IDs (`TSK-NN` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, verification-level tokens, structural Execution Log line shapes (e.g., `Verification: <cmd> → pass [exit=0]`).
+      English regardless of context: all code (impl + tests), JSDoc, intent comments per `coding/typescript-rules`, file paths, tool commands, axiom IDs (`AX_*`), Trace anchors (`EX_R<N>`), IDs (`TSK-NN` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, verification-level tokens, Execution Log action tokens (`file` / `test` / `ver` / `cov` / `aud` / `intro` / `sync` / `DONE` / etc.) and their structural shape (e.g., `ver <cmd> → pass exit=0`).
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
@@ -230,36 +230,41 @@
   </Context_Expectation>
 
   <Golden_Example>
-    Reference Execution Log of a freshly-implemented ticket and a subsequent reopen round triggered by a rules update. Demonstrates round structure, live log discipline, `Introduced` entries, canonical case name recovery, post-task audit hint.
+    Reference Execution Log in compact action-token format (vocabulary in `task-scaffolding` §Execution Log Template).
 
     ```markdown
     ## 5. Execution Log
 
     ### Round 1 — 2026-05-04, initial
-    - [x] `[2026-05-04 14:22]` Task initialized. Activated directives: typescript-rules, node-test, ports-adapters, pci-dss.
-    - [x] `[2026-05-04 14:25]` Deps gate: TSK-01, TSK-03 confirmed [x] DONE.
-    - [x] `[2026-05-04 14:30]` Implementation file created: `src/payments/adapters/stripe-payment-adapter.ts`. Header: `@file: stripe charge adapter`, `@consumers: PaymentOrchestrator`, `@tasks: TSK-04`.
-    - [x] `[2026-05-04 14:55]` Test file created: `src/payments/adapters/stripe-payment-adapter.test.ts`.
-    - [x] `[2026-05-04 15:08]` Introduced `IdempotencyKey` because Stripe API требует per-request уникальный ключ для безопасных повторов; ещё не в Entity Inventory.
-    - [x] `[2026-05-04 15:10]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass [`exit=0`].
-    - [x] `[2026-05-04 15:11]` Verification: `tsc --noEmit` → pass [`exit=0`].
-    - [x] `[2026-05-04 15:12]` Scenario coverage: Successful charge → :: `should return transaction id on successful charge`.
-    - [x] `[2026-05-04 15:12]` Scenario coverage: Invalid amount rejected → :: `should reject non-positive amount with InvalidAmountError`.
-    - [x] `[2026-05-04 15:13]` Insight: `IdempotencyKey` — стабильная cross-cutting концепция; предлагаю добавить в `specs/payments/payments.spec.md#2-entity-inventory`.
-    - [x] `[2026-05-04 15:15]` Status: [x] DONE.
+    - [x] `2026-05-04 14:25` deps TSK-01,TSK-03=DONE
+    - [x] `2026-05-04 14:25` act typescript-rules, node-test, ports-adapters, pci-dss
+    - [x] `2026-05-04 14:30` file `src/payments/adapters/stripe-payment-adapter.ts`
+    - [x] `2026-05-04 14:55` test `src/payments/adapters/stripe-payment-adapter.test.ts`
+    - [x] `2026-05-04 15:08` intro `IdempotencyKey` ← Stripe требует per-request уникальный ключ
+    - [x] `2026-05-04 15:10` ver `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass exit=0
+    - [x] `2026-05-04 15:11` ver `tsc --noEmit` → pass exit=0
+    - [x] `2026-05-04 15:12` cov Successful charge → `stripe-payment-adapter.test.ts::should return transaction id on successful charge`
+    - [x] `2026-05-04 15:12` cov Invalid amount rejected → `stripe-payment-adapter.test.ts::should reject non-positive amount with InvalidAmountError`
+    - [x] `2026-05-04 15:13` aud rules=4 ax=21 viol=0
+    - [x] `2026-05-04 15:14` insight `IdempotencyKey` — cross-cutting; → `specs/payments/payments.spec.md#2-entity-inventory`
+    - [x] `2026-05-04 15:14` sync payments+root
+    - [x] `2026-05-04 15:15` DONE
 
-    ### Round 2 — 2026-05-12, rules update: ts-rules v1.2 added strict-null-checks
-    - [x] `[2026-05-12 10:00]` Task reopened. Reason: typescript-rules v1.2 требует strict-null-checks; в impl 3 nullable поля без явных guard'ов.
-    - [x] `[2026-05-12 10:05]` Re-activated directives: typescript-rules (v1.2), node-test, ports-adapters, pci-dss.
-    - [x] `[2026-05-12 10:30]` Updated impl: добавлены явные null-guard'ы для `request.metadata`, `response.balanceTransaction`, `error.decline_code`.
-    - [x] `[2026-05-12 11:00]` Verification: `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass [`exit=0`].
-    - [x] `[2026-05-12 11:01]` Verification: `tsc --noEmit` → pass [`exit=0`].
-    - [x] `[2026-05-12 11:05]` Status: [x] DONE.
+    ### Round 2 — 2026-05-12, ts-rules v1.2 added strict-null-checks (3 nullable fields w/o guards)
+    - [x] `2026-05-12 10:05` act typescript-rules@1.2, node-test, ports-adapters, pci-dss
+    - [x] `2026-05-12 10:30` file `src/payments/adapters/stripe-payment-adapter.ts`   <!-- null-guards added: request.metadata, response.balanceTransaction, error.decline_code -->
+    - [x] `2026-05-12 11:00` ver `node --test src/payments/adapters/stripe-payment-adapter.test.ts` → pass exit=0
+    - [x] `2026-05-12 11:01` ver `tsc --noEmit` → pass exit=0
+    - [x] `2026-05-12 11:03` aud rules=4 ax=21 viol=0
+    - [x] `2026-05-12 11:04` sync payments+root
+    - [x] `2026-05-12 11:05` DONE
     ```
+
+    Auxiliary tokens used above: `deps` (dependency gate), `act` (activated rules), `insight` (spec-backflow proposal). These extend the base vocabulary as needed; same shape — token first, key=value or arrow tails.
 
     Meta block reflects the reopen:
     ```markdown
-    - **Reopens:** 1 (2026-05-12 — обновление правил: ts-rules v1.2 strict-null-checks)
+    - **Reopens:** 1 (2026-05-12 — ts-rules v1.2 strict-null-checks)
     ```
   </Golden_Example>
 
@@ -320,8 +325,8 @@
       <Goal>Open new round in Execution Log (or resume current).</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__ROUND_INIT`).
-        2. Fresh task → verify `### Round 1 — <YYYY-MM-DD>, initial` header present (add if missing). Status → `[~] IN_PROGRESS`. Log: `[<ts>] Task initialized.`
-        3. Reopen → read all prior rounds; identify reason (operator-supplied or audit finding); append `### Round N — <YYYY-MM-DD>, <reason>`; update Meta `Reopens` (increment count, refresh date/reason). Log: `[<ts>] Task reopened. Reason: <reason>.`
+        2. Fresh task → verify `### Round 1 — <YYYY-MM-DD>, initial` header present (add if missing). Status → `[~] IN_PROGRESS`. No initialization log line — Round header IS the start signal.
+        3. Reopen → read all prior rounds; identify reason (operator-supplied or audit finding); append `### Round N — <YYYY-MM-DD>, <reason>`; update Meta `Reopens` (increment count, refresh date/reason). The Round header's `<reason>` IS the reopen reason — no separate log line.
       </Action>
     </Step>
 
@@ -329,10 +334,10 @@
       <Goal>Activate PLAN-phase rules; review §5 checklist.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__PLAN`).
-        2. Activate PLAN-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip — <reason>>.`
+        2. Activate PLAN-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `<ts> act <rule-ids|skip:<reason>>`.
         3. Read §5 plan checklist; cross-check against activated rules.
         4. Plan touches files outside `Target Files` → `H_OUTSIDE_TARGET_FILES`.
-        5. Log: `[<ts>] Plan reviewed: <N> items.`
+        5. Log: `<ts> plan items=<N>`.
       </Action>
     </Step>
 
@@ -340,7 +345,7 @@
       <Goal>Write impl + tests within `Target Files`; activate IMPL/TEST rules at each phase entry; live-update §5 per `AX_LIVE_LOG`.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__IMPLEMENT`).
-        2. Before first impl write → activate IMPL-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip — <reason>>.`
+        2. Before first impl write → activate IMPL-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `<ts> act <rule-ids|skip:<reason>>`.
         3. Before first test write → activate TEST-phase rules. Log analogously. (Skip when `Deferred Test Ownership` set or no `Target Test Files` — log skip with reason.)
         4. New file → file-header per `AX_FILE_HEADER_APPEND_ONLY`. Existing file → append Task-ID, preserve other IDs.
         5. Apply currently-activated rules during writing; tests use canonical case names verbatim per `AX_BDD_NAME_DISCIPLINE`.
@@ -354,7 +359,7 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__VERIFY`).
         2. Execute each command from §3 Verification.
-        3. For each command IMMEDIATELY update §5: locate plan line → replace `<ts>`, `<command>`, `<pass|fail>`, `<exit=<code>>` with real values → toggle `[x]`.
+        3. For each command IMMEDIATELY update §5 `ver` line: replace `<ts>`, `<command>`, result, `<code>` with real values → toggle `[x]`. Shape: `<ts> ver <cmd> → pass|fail exit=<N>`.
         4. Failure → stay `[~] IN_PROGRESS`; analyze, fix, re-run. Don't proceed to STEP_7_5 until all pass and all plan lines toggled.
         5. Tooling itself missing → `H_VERIFICATION_FAIL`.
       </Action>
@@ -364,11 +369,11 @@
       <Goal>Activate AUDIT-phase rules; walk axioms of every rule activated this round against generated code.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__RULES_SELF_AUDIT`).
-        2. Activate AUDIT-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `[<ts>] Activated <category>: <list|skip>.`
+        2. Activate AUDIT-phase rules per `AX_RULES_PHASED_ACTIVATION`. Log: `<ts> act <rule-ids|skip:<reason>>`.
         3. For each rule activated in this round (across all phases): classify axioms as mechanically-covered (tooling-pass in STEP_7 proves compliance) vs discipline-only (inspect code line-by-line against axiom text).
         4. Each violation: fix in code — no suppress/disable markers (surrender, not compliance). If fix breaks ticket contract → `[!] BLOCKED`. Re-run STEP_7 verifications after fixes.
-        5. Log: `[<ts>] Self-audit: <N> rules / <M> axioms walked; <K> violations fixed.` (Or `: no violations.`)
-        6. Toggle the `[ ] Self-audit` plan line per `AX_LIVE_LOG`.
+        5. Log: `<ts> aud rules=<N> ax=<M> viol=<K|0>`.
+        6. Toggle the `[ ] aud` plan line per `AX_LIVE_LOG`.
 
         Forbidden: skipping; logging «no violations» without inspection (audit catches fabricated self-audit); suppress/disable comments.
       </Action>
@@ -378,9 +383,9 @@
       <Goal>Close the round in the log; satisfy Completion Rule.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__LOG_FINALIZE`).
-        2. Confirm scenario coverage: each BDD scenario → real test case. Log each pair.
-        3. Confirm every introduced entity logged with `Introduced <X> because <Y>`.
-        4. Optional: `Insight: <observation>. Suggested spec update: <details>.` for `INSIGHT_BACKFLOW` candidates.
+        2. Confirm scenario coverage: each BDD scenario → real test case. Log each pair as `<ts> cov <scenario> → <test-file>::<case>`.
+        3. Confirm every introduced entity logged as `<ts> intro <Entity> ← <reason>`.
+        4. Optional: `<ts> insight <observation> → <spec-section>` for `INSIGHT_BACKFLOW` candidates.
         5. Recheck Completion Rule baseline (in `tasks/README.md`) + task-specific additions in §3. Failure → stay `[~] IN_PROGRESS`, fix, recheck.
       </Action>
     </Step>
@@ -389,12 +394,12 @@
       <Goal>Mark `[x] DONE`; sync trackers; request audit invocation.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__CLOSE`).
-        2. Ticket Meta: status → `[x] DONE`. Log §5: `[<ts>] Status: [x] DONE (mechanically closed; awaiting audit).`
+        2. Ticket Meta: status → `[x] DONE`. Log §5 final line: `<ts> DONE` (the `[x]` checkbox carries the status; no «Status:» label).
         3. Sync trackers (mandatory):
            - `tasks/<scope>/README.md` Tracker row: Status → `[x] DONE` (and Reopens count if reopen).
            - `tasks/README.md` Tracker Index: aggregate counts for the scope (e.g., `4/5 done` → `5/5 done`).
            - Either tracker missing entry → `H_TRACKER_MISSING`.
-           - Log: `[<ts>] Tracker synced: tasks/<scope>/README.md (Status [x] DONE) + tasks/README.md (counts updated).`
+           - Log: `<ts> sync <scope>+root`.
         4. Emit final session output: round closed mechanically; trackers synced; audit pending — operator must invoke `audit` directive on this Task-ID, otherwise round is closed-but-unverified (drift may remain undetected: closed-world inventory, runtime backing, rules cascade, BDD coverage, task-id integrity, tracker sync).
         5. STOP. Operator's invocation of `audit` is the mandatory next step.
       </Action>
@@ -424,15 +429,16 @@
     </Contract>
 
     <Contract id="LIVE_LOG_ENTRY_FORMAT">
+      Action-token vocabulary defined in `task-scaffolding` §Execution Log Template. Shape:
       ```markdown
-      - [x] `[<YYYY-MM-DD HH:MM>]` <action verb> <object> [<modifier>].
+      - [x] `<YYYY-MM-DD HH:MM>` <token> <tail>
       ```
       Examples:
-      - `[x] [<real ts>] Task initialized.`
-      - `[x] [<real ts>] Implementation file: <real path>.`
-      - `[x] [<real ts>] Verification: <real cmd> → pass [exit=0].`
-      - `[x] [<real ts>] Introduced <EntityName> because <reason>.`
-      - `[x] [<real ts>] Insight: <observation>. Suggested spec update: <which-spec-section, what-change>.`
+      - `[x] \`<ts>\` file <real path>`
+      - `[x] \`<ts>\` ver <real cmd> → pass exit=0`
+      - `[x] \`<ts>\` intro \`<EntityName>\` ← <reason>`
+      - `[x] \`<ts>\` insight <observation> → <spec-section>`
+      - `[x] \`<ts>\` DONE`
     </Contract>
 
     <Contract id="BLOCKER_ESCALATION_FORMAT">
@@ -447,14 +453,14 @@
 
     <Contract id="INTRODUCED_ENTITY_FORMAT">
       ```markdown
-      - ✅ `[<ts>]` 📌 Introduced `<EntityName>` because <reason>.
+      - [x] `<ts>` intro `<EntityName>` ← <reason>
       ```
-      Mandatory for every entity not present in the corresponding module Entity Inventory at the moment of introduction. Audit relies on these entries to distinguish accepted introductions from drift.
+      Mandatory for every entity not present in the corresponding module Entity Inventory at the moment of introduction. Audit relies on `intro` token to distinguish accepted introductions from drift.
     </Contract>
 
     <Contract id="SPEC_UPDATE_PROPOSAL_FORMAT">
       ```markdown
-      - ✅ `[<ts>]` 💬 Insight: <observation>. Suggested spec update: <which-section-of-which-spec, what-change>.
+      - [x] `<ts>` insight <observation> → <spec-section>, <what-change>
       ```
       Agent never edits `specs/**` directly. Audit converts these entries into `INSIGHT_BACKFLOW` findings; operator approves and applies.
     </Contract>

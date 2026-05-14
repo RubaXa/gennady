@@ -21,6 +21,20 @@ describe('DbcJsDocParser', () => {
   });
 
   describe('parse()', () => {
+    it('should push description buffer at end-of-file when no tags follow', (t) => {
+      // START_PARSE_DESCRIPTION_ONLY_ARRANGE_INPUT
+      const inputContract = ['First line of docs.', 'Second line of docs.'].join('\n');
+      // END_PARSE_DESCRIPTION_ONLY_ARRANGE_INPUT
+
+      // START_PARSE_DESCRIPTION_ONLY_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_DESCRIPTION_ONLY_ACT
+
+      // START_PARSE_DESCRIPTION_ONLY_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_DESCRIPTION_ONLY_ASSERT
+    });
+
     it('should collect text before first tag into description entry', (t) => {
       // START_PARSE_TEXT_BEFORE_TAG_ARRANGE_INPUT
       const inputContract = [

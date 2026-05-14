@@ -6,7 +6,8 @@ exports[`DbcJsDocParser > parse() > should ignore empty normalized lines inside 
       "value": "MainApp",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -23,7 +24,8 @@ exports[`DbcJsDocParser > parse() > should keep unknown tags out of contract-spe
       "value": "Use v2",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -43,18 +45,47 @@ exports[`DbcJsDocParser > parse() > should parse contract with extreme spaces an
       "value": "True on success.",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse tag line that ends with closing JSDoc marker 1`] = `
+{
+  "entries": [
+    {
+      "type": "purpose",
+      "value": "Simple description",
+      "issues": []
+    }
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should parse tag with no trailing value 1`] = `
+{
+  "entries": [
+    {
+      "type": "consumer",
+      "value": "",
+      "issues": []
+    }
+  ],
+  "format": "single-line"
 }
 `;
 
 exports[`DbcJsDocParser > parse() > should return empty schema for empty input 1`] = `
 {
-  "entries": []
+  "entries": [],
+  "format": "single-line"
 }
 `;
 
 exports[`DbcJsDocParser > parse() > should skip malformed empty tag line without creating orphan multiline value 1`] = `
 {
-  "entries": []
+  "entries": [],
+  "format": "multi-line"
 }
 `;

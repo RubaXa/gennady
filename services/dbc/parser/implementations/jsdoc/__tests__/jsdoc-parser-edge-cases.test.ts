@@ -81,6 +81,34 @@ describe('DbcJsDocParser', () => {
       // END_PARSE_EMPTY_NORMALIZED_LINES_ASSERT
     });
 
+    it('should parse tag line that ends with closing JSDoc marker', (t) => {
+      // START_PARSE_TAG_LINE_WITH_END_MARKER_ARRANGE_INPUT
+      const inputContract = ['/**', ' * @purpose Simple description */', ' */'].join('\n');
+      // END_PARSE_TAG_LINE_WITH_END_MARKER_ARRANGE_INPUT
+
+      // START_PARSE_TAG_LINE_WITH_END_MARKER_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_TAG_LINE_WITH_END_MARKER_ACT
+
+      // START_PARSE_TAG_LINE_WITH_END_MARKER_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_TAG_LINE_WITH_END_MARKER_ASSERT
+    });
+
+    it('should parse tag with no trailing value', (t) => {
+      // START_PARSE_TAG_NO_VALUE_ARRANGE_INPUT
+      const inputContract = '@consumer';
+      // END_PARSE_TAG_NO_VALUE_ARRANGE_INPUT
+
+      // START_PARSE_TAG_NO_VALUE_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_TAG_NO_VALUE_ACT
+
+      // START_PARSE_TAG_NO_VALUE_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_TAG_NO_VALUE_ASSERT
+    });
+
     it('should keep unknown tags out of contract-specific issues', (t) => {
       // START_PARSE_UNKNOWN_TAG_ISSUES_ARRANGE_INPUT
       const inputContract = ['@version 1.2.3', '@deprecated Use v2'].join('\n');

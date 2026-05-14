@@ -38,7 +38,7 @@
       | library | Requirements Gate | Golden DX | Architecture | — |
       | product | Requirements Gate | Golden DX | Design Variants | Architecture Choice |
 
-      STEP_2 (Intent Capture) and STEP_7 (Final Spec) are identical across all types.
+      STEP_2 (Intent Capture), STEP_7 (External Dependencies Audit), and STEP_8 (Final Spec) are identical across all types.
     </Axiom>
 
     <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
@@ -197,6 +197,12 @@
       The spec is self-contained. `module-decomposition` and `task-scaffolding` start without history of this conversation.
     </Axiom>
 
+    <Axiom id="AX_BOOTSTRAP_NARROW_READ">
+      Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside STEP_7 (External Dependencies Audit), where narrow Read is permitted **only for inventory verification** — confirming whether a referenced package, file, scope, or tool physically exists.
+      Permitted reads in STEP_7: `package.json` and equivalents, `tsconfig.json` and equivalents, `specs/README.md`, sibling scope manifests, filesystem existence checks.
+      Forbidden in STEP_7: reading application source code to influence design decisions; revisiting Vision / Requirements / Architecture / Contracts based on what was found. If a finding genuinely invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot`.
+    </Axiom>
+
     <Axiom id="AX_OPERATOR_LANGUAGE">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
       **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
@@ -220,6 +226,7 @@
     | `H_MISSING_RULE_FILE` | Rule reference does not resolve to an existing file |
     | `H_TOOL_RULE_MISSING` | Tool chosen but its rule file is missing (infrastructure) |
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without §Pivot Invalidation List |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_7 finished without a §Bootstrap Requirements section (even empty must be declared explicitly) |
     | `H_OPERATOR_REJECT` | Operator rejected the spec |
   </Halt_Conditions>
 
@@ -303,10 +310,42 @@
       </Action>
     </Step>
 
-    <Step id="STEP_7_FINAL_SPEC">
+    <Step id="STEP_7_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Reconcile the drafted spec with repository reality. Surface every external assumption the spec makes, classify each as exists / missing / unknown, resolve unknowns with the operator, and materialize §Bootstrap Requirements.</Goal>
+      <Action>
+        1. **Walk the drafted spec end-to-end** (all sections produced by STEP_3–STEP_6). Extract every external assumption — anything the spec references that must exist before functional tasks can run. Cover all of:
+           - Third-party packages (npm / pip / cargo / etc.) — name + intended version constraint.
+           - Workspace links / monorepo packages — internal scope this scope depends on.
+           - Runtime tools (CLIs, binaries, language runtimes).
+           - Files and paths the spec assumes pre-exist (`package.json`, config files, fixtures).
+           - Types / modules / contracts sourced from other scopes (resolve via §Scope Dependencies).
+           - Environment variables, secrets, external services (DBs, queues, APIs).
+           - Repo-level structural prerequisites (a package boundary, a workspace entry, a folder).
+        2. **Classify each assumption** as `exists` | `missing` | `unknown`:
+           - For verification, narrow Read is permitted **only for inventory** (`package.json`, `tsconfig.json`, `specs/README.md`, scope manifests, filesystem checks). Reading application source code for inspiration is forbidden — `AX_SPEC_IS_SOLE_SOURCE` still holds for design content.
+           - `exists` → record actual location / version / scope ref.
+           - `missing` → assumption is real and known to be absent.
+           - `unknown` → cannot be determined from repo alone.
+        3. **Resolve every `missing` and `unknown` with the operator.** For each, ask explicitly:
+           - source (which registry / which scope / which operator action),
+           - version / shape constraint,
+           - owner (this scope's bootstrap task vs external prerequisite vs operator-side action outside SDD).
+           Record each resolution as a Decision Log entry.
+        4. **Materialize §Bootstrap Requirements** in the spec. Ordered list — each item:
+           | Requirement | Kind | Owner | Resolution |
+           Kind ∈ `package` | `workspace-link` | `tool` | `file` | `external-type` | `env` | `service` | `structural`.
+           Owner ∈ `this-scope-task` | `external-prereq-scope` | `operator-action`.
+           Resolution ∈ verbatim outcome from step 3 (e.g. `install valibot@^0.42 via npm`, `link @org/contracts via workspace`, `operator provisions DATABASE_URL`).
+        5. **Gate.** Discovery cannot proceed to STEP_8 until §Bootstrap Requirements exists. Empty list is acceptable only when steps 1–3 produced zero external assumptions — an explicit «nothing to bootstrap», not an omission. Otherwise → `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+
+        **Scope of this step:** verification of physical/external prerequisites only. This step does NOT revisit functional design — Vision, Requirements, Architecture, Contracts are immutable here. If a bootstrap finding invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot` per `AX_PIVOT_REQUIRES_SUPERSESSION`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_8_FINAL_SPEC">
       <Goal>Emit the scope spec.</Goal>
       <Action>
-        1. Assemble `specs/<scope-name>/<scope-name>.spec.md` per the corresponding SPEC_CONTRACT.
+        1. Assemble `specs/<scope-name>/<scope-name>.spec.md` per the corresponding SPEC_CONTRACT. The §Bootstrap Requirements section produced in STEP_7 is part of every spec regardless of scope-type.
         2. In `pivot` mode: include §Pivot Invalidation List (per `AX_PIVOT_REQUIRES_SUPERSESSION`); emit rework-flavored Decision Log entries per `REWORK_DECISION_LOG_ENTRY_FORMAT`.
         3. Output for review. Approval Check. STOP.
       </Action>
@@ -471,13 +510,21 @@
       - **Depends on:** None (infrastructure scopes are typically leaves)
       - **Provides rules to:** [list of product/library scopes that depend on this]
 
-      ## 9. Handoff
+      ## 9. Bootstrap Requirements
+      | Requirement | Kind | Owner | Resolution |
+      |---|---|---|---|
+      <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
+      <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
+      <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+
+      ## 10. Handoff
       - **Setup tasks to scaffold:** [list]
       - **Effective rules ready for cascade:** see §5
       - **Verification Commands ready for cascade:** see §6
+      - **Bootstrap tickets ready for cascade:** see §9
       - **Open risks:** [not-closed items]
 
-      <!-- §9.1 Pivot Invalidation List — only in pivot mode -->
+      <!-- §10.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 
@@ -511,8 +558,14 @@
       - **Depends on:** [infra scopes if any]
       - **Provides contracts to:** [product/library scopes]
 
-      ## 7. Handoff
+      ## 7. Bootstrap Requirements
+      | Requirement | Kind | Owner | Resolution |
+      |---|---|---|---|
+      <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+      ## 8. Handoff
       - **Contract files to scaffold:** [schema files, codegen configs]
+      - **Bootstrap tickets ready for cascade:** see §7
       - **Open risks:** [versioning gaps, unconfirmed consumers]
       ```
     </Contract>
@@ -558,12 +611,18 @@
       - **Depends on:** [infra-*, contracts scopes]
       - **Provides to:** [consumer scopes]
 
-      ## 8. Handoff to module-decomposition
+      ## 8. Bootstrap Requirements
+      | Requirement | Kind | Owner | Resolution |
+      |---|---|---|---|
+      <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+      ## 9. Handoff to module-decomposition
       - **Areas requiring decomposition:** [list]
       - **Named abstractions:** [from Golden DX]
+      - **Bootstrap tickets ready for cascade:** see §8
       - **Open risks:** [validation needs]
 
-      <!-- §8.1 Pivot Invalidation List — only in pivot mode -->
+      <!-- §9.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 
@@ -610,16 +669,22 @@
       - **Depends on:** [infra-*, api-contracts, design-system-* scopes]
       - **Provides to:** [consumer scopes, if any]
 
-      ## 8. Module Map
+      ## 8. Bootstrap Requirements
+      | Requirement | Kind | Owner | Resolution |
+      |---|---|---|---|
+      <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+      ## 9. Module Map
       [Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition <scope-name>`».]
 
-      ## 9. Handoff to module-decomposition
+      ## 10. Handoff to module-decomposition
       - **Primary input:** `specs/<scope-name>/<scope-name>.spec.md`
       - **Areas requiring decomposition:** [list]
       - **Named abstractions:** [from Golden DX]
+      - **Bootstrap tickets ready for cascade:** see §8
       - **Open risks:** [validation needs]
 
-      <!-- §9.1 Pivot Invalidation List — only in pivot mode -->
+      <!-- §10.1 Pivot Invalidation List — only in pivot mode -->
       ```
     </Contract>
 

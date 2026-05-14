@@ -113,9 +113,18 @@
     </Axiom>
 
     <Axiom id="AX_DAG_EXECUTION">
-      **Topological order, no cycles.** Phase 1 = Ports + base Entities. Phase 2 = Adapters, Services, Commands, Queries. Phase 3 = inter-scope integrations. If one area has both simulation seam and full runtime → split into separate tickets OR record `Deferred Runtime Scope`.
+      **Topological order, no cycles.** Phase 0 = Bootstrap (one ticket per §Bootstrap Requirements row whose Owner is `this-scope-task`). Phase 1 = Ports + base Entities. Phase 2 = Adapters, Services, Commands, Queries. Phase 3 = inter-scope integrations. If one area has both simulation seam and full runtime → split into separate tickets OR record `Deferred Runtime Scope`.
 
-      Cross-scope dependencies: when scope A depends-on scope B, scope B's tasks must be DONE before scope A's tasks that consume B's outputs.
+      Cross-scope dependencies: when scope A depends-on scope B, scope B's tasks must be DONE before scope A's tasks that consume B's outputs. Phase 0 (Bootstrap) tickets within a scope must be DONE before any Phase 1+ ticket of the same scope.
+    </Axiom>
+
+    <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
+      **Every §Bootstrap Requirements row with Owner=`this-scope-task` produces exactly one ticket in Phase 0.** Source: scope spec §Bootstrap Requirements (infrastructure §9, contracts §7, library §8, product §8).
+      - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
+      - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
+      - Bootstrap tickets are sequential within Phase 0 (e.g. `install package` precedes `wire config that uses package`).
+      - Bootstrap tickets carry §Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0).
+      - If §Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>
 
     <Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
@@ -272,6 +281,7 @@
     | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
     | `H_VERIFICATION_COMMAND_MISSING` | RequiresVerification alias not found in infra-spec §Verification Commands |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | Scope spec lacks §Bootstrap Requirements section (spec did not pass discovery STEP_7) |
   </Halt_Conditions>
 
   <Execution_Plan>
@@ -305,9 +315,13 @@
       <Goal>Build acyclic task DAG in topological implementation order.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__DAG`).
-        2. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec. Cross-scope dependencies from scope graph edges.
-        3. Form tasks per `AX_DAG_EXECUTION`. Assign sequential `TSK-NN` (project-wide).
-        4. Check: no cycles; no oversized tasks (>1 day); no missing prerequisites.
+        2. **Read §Bootstrap Requirements of each in-scope spec.** Section missing in any spec being scaffolded → `H_BOOTSTRAP_REQUIREMENTS_MISSING` (spec did not pass discovery STEP_7; abort with the offending scope name). For each row:
+           - Owner=`this-scope-task` → produce a Phase 0 ticket per `AX_BOOTSTRAP_TICKET_DERIVATION` (`bootstrap-<kind>-<short-name>`); §Verification populated from Resolution column.
+           - Owner=`external-prereq-scope` → add cross-scope dependency edge (already declared in §Scope Dependencies; verify consistency).
+           - Owner=`operator-action` → record in tracker index as an external prerequisite blocking Phase 0.
+        3. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec. Cross-scope dependencies from scope graph edges.
+        4. Form Phase 1+ tasks per `AX_DAG_EXECUTION`. Assign sequential `TSK-NN` (project-wide; Phase 0 bootstrap tickets numbered first).
+        5. Check: no cycles; no oversized tasks (>1 day); no missing prerequisites; every Phase 1 ticket depends (transitively) on all Phase 0 bootstrap tickets of the same scope.
         5. Phase Progress + Approval Check (Mermaid graph). STOP.
       </Action>
     </Step>
@@ -428,17 +442,16 @@
       - Scenario <name> → `<test-file>` :: `<canonical case name>`
 
       ## 5. Execution Log
-      *(Plan-as-checklist per `AX_EXECUTION_LOG_PLAN_VS_FACT`; protocol in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
+      *(Plan-as-checklist per `AX_EXECUTION_LOG_PLAN_VS_FACT`; token vocabulary + protocol in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
 
       ### Round 1 — <YYYY-MM-DD>, initial
-      - [ ] `[<ts>]` Task initialized.
-      - [ ] `[<ts>]` File created: `<Target File>`.
-      - [ ] `[<ts>]` Verification: `<command from §3>` → `<pass|fail>` [`exit=<code>`].
-      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
-      - [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
-      - [ ] `[<ts>]` Introduced (if any): `<EntityName>` because `<reason>`.
-      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
-      - [ ] `[<ts>]` Status: [x] DONE.
+      - [ ] `<ts>` file `<target-file>`
+      - [ ] `<ts>` ver `<command from §3>` → `<pass|fail>` exit=`<code>`
+      - [ ] `<ts>` cov `<scenario>` → `<test-file>::<case>`
+      - [ ] `<ts>` aud rules=`<N>` ax=`<M>` viol=`<list|0>`
+      - [ ] `<ts>` intro `<EntityName>` ← `<reason>`   <!-- omit if nothing introduced -->
+      - [ ] `<ts>` sync `<scope>`+root
+      - [ ] `<ts>` DONE
       ```
     </Contract>
 
@@ -470,26 +483,38 @@
       ### Execution Log Template
       Per `AX_EXECUTION_LOG_PLAN_VS_FACT` (this directive) + `AX_LIVE_LOG` in `task-execution`. Each round = one open-to-DONE cycle; append-only; old rounds NEVER edited.
 
+      **Action token vocabulary** (every log line starts with `<ts>` then exactly one token):
+      | Token | Meaning | Tail shape |
+      |---|---|---|
+      | `file` | wrote / modified file | `\`<path>\`` |
+      | `test` | wrote / modified test file | `\`<path>\`` |
+      | `ver`  | verification command + result | `` `<cmd>` → <pass\|fail> exit=<code> `` |
+      | `cov`  | scenario → test case mapping | `` <scenario> → `<test-file>::<case>` `` |
+      | `aud`  | self-audit summary | `rules=<N> ax=<M> viol=<list\|0>` |
+      | `intro`| entity introduced beyond inventory | `` `<Entity>` ← <reason> `` |
+      | `sync` | tracker sync | `<scope>+root` |
+      | `DONE` | terminal state of the round | (no tail) |
+
+      Rules: token is the first non-whitespace word after `` `<ts>` ``; no label colons; no «Task initialized» line (Round header carries it); no `Status:` line (the `[x]` checkbox IS the status).
+
       **Plan format (scaffolding pre-fills per ticket):**
       ```markdown
       ### Round 1 — <YYYY-MM-DD>, initial
-      - [ ] `[<ts>]` Task initialized.
-      - [ ] `[<ts>]` Implementation file: `<path>`.
-      - [ ] `[<ts>]` Test file: `<path>`.
-      - [ ] `[<ts>]` Verification: `<command>` → `<pass|fail>` [`exit=<code>`].
-      - [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
-      - [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
-      - [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
-      - [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
-      - [ ] `[<ts>]` Status: [x] DONE.
+      - [ ] `<ts>` file `<path>`
+      - [ ] `<ts>` test `<path>`
+      - [ ] `<ts>` ver `<command>` → `<pass|fail>` exit=`<code>`
+      - [ ] `<ts>` cov `<scenario>` → `<test-file>::<case>`
+      - [ ] `<ts>` aud rules=`<N>` ax=`<M>` viol=`<list|0>`
+      - [ ] `<ts>` intro `<Entity>` ← `<reason>`   <!-- omit if nothing introduced -->
+      - [ ] `<ts>` sync `<scope>`+root
+      - [ ] `<ts>` DONE
       ```
 
-      **Reopen rounds** (appended on subsequent rounds; prior rounds untouched):
+      **Reopen rounds** (appended on subsequent rounds; prior rounds untouched). The `, <reason>` in the Round header IS the reopen reason — no separate «Task reopened» line.
       ```markdown
       ### Round N — <YYYY-MM-DD>, <reason>
-      - [x] `[<ts>]` Task reopened. Reason: <reason>.
-      - ...
-      - [x] `[<ts>]` Status: [x] DONE.
+      - [x] `<ts>` <action lines as above>
+      - [x] `<ts>` DONE
       ```
 
       ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done; Auditor raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).

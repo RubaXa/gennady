@@ -8,7 +8,10 @@ import '#snapshot-path-setup';
  * └── parse()
  *     ├── should parse classic JSDoc block with leading stars
  *     ├── should parse plain text contract without JSDoc framing
- *     └── should parse one-line JSDoc contract
+ *     ├── should parse one-line JSDoc contract
+ *     ├── should detect single-line format for inline contract text
+ *     ├── should detect multi-line format for block contract text
+ *     └── should parse inline tags from pipe-delimited single-line contract
  */
 describe('DbcJsDocParser', () => {
   let parser: DbcJsDocParser;
@@ -80,6 +83,50 @@ describe('DbcJsDocParser', () => {
       // START_PARSE_ONE_LINE_ASSERT
       t.assert.snapshot(schema);
       // END_PARSE_ONE_LINE_ASSERT
+    });
+
+    it('should detect single-line format for inline contract text', (t) => {
+      // START_DETECT_SINGLE_LINE_FORMAT_ARRANGE_INPUT
+      const inputContract = '@param {string} name The user name';
+      // END_DETECT_SINGLE_LINE_FORMAT_ARRANGE_INPUT
+
+      // START_DETECT_SINGLE_LINE_FORMAT_ACT
+      const schema = parser.parse(inputContract);
+      // END_DETECT_SINGLE_LINE_FORMAT_ACT
+
+      // START_DETECT_SINGLE_LINE_FORMAT_ASSERT
+      t.assert.strictEqual(schema.format, 'single-line');
+      // END_DETECT_SINGLE_LINE_FORMAT_ASSERT
+    });
+
+    it('should detect multi-line format for block contract text', (t) => {
+      // START_DETECT_MULTI_LINE_FORMAT_ARRANGE_INPUT
+      const inputContract = ['@purpose Main behavior.', '@param {string} name The user name'].join(
+        '\n'
+      );
+      // END_DETECT_MULTI_LINE_FORMAT_ARRANGE_INPUT
+
+      // START_DETECT_MULTI_LINE_FORMAT_ACT
+      const schema = parser.parse(inputContract);
+      // END_DETECT_MULTI_LINE_FORMAT_ACT
+
+      // START_DETECT_MULTI_LINE_FORMAT_ASSERT
+      t.assert.strictEqual(schema.format, 'multi-line');
+      // END_DETECT_MULTI_LINE_FORMAT_ASSERT
+    });
+
+    it('should parse inline tags from pipe-delimited single-line contract', (t) => {
+      // START_PARSE_INLINE_TAGS_ARRANGE_INPUT
+      const inputContract = '/** @purpose Main description | @invariant Must be stable */';
+      // END_PARSE_INLINE_TAGS_ARRANGE_INPUT
+
+      // START_PARSE_INLINE_TAGS_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_INLINE_TAGS_ACT
+
+      // START_PARSE_INLINE_TAGS_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_INLINE_TAGS_ASSERT
     });
   });
 });

@@ -9,6 +9,7 @@ import '#snapshot-path-setup';
  *     ├── should parse full param structure with datatype and specifier
  *     ├── should parse optional param with optional flag
  *     ├── should parse see tag with specifier and trailing value
+ *     ├── should parse implements tag with specifier and trailing value
  *     ├── should parse unknown tag by generic rule
  *     └── should parse returns tag with datatype
  */
@@ -64,6 +65,20 @@ describe('DbcJsDocParser', () => {
       // END_PARSE_SEE_ASSERT
     });
 
+    it('should parse implements tag with specifier and trailing value', (t) => {
+      // START_PARSE_IMPLEMENTS_ARRANGE_INPUT
+      const inputContract = '@implements {VendorGateway} in src/domain/contracts/VendorGateway.ts';
+      // END_PARSE_IMPLEMENTS_ARRANGE_INPUT
+
+      // START_PARSE_IMPLEMENTS_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_IMPLEMENTS_ACT
+
+      // START_PARSE_IMPLEMENTS_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_IMPLEMENTS_ASSERT
+    });
+
     it('should parse unknown tag by generic rule', (t) => {
       // START_PARSE_UNKNOWN_TAG_ARRANGE_INPUT
       const inputContract = '@author John Doe';
@@ -90,6 +105,62 @@ describe('DbcJsDocParser', () => {
       // START_PARSE_RETURNS_ASSERT
       t.assert.snapshot(schema);
       // END_PARSE_RETURNS_ASSERT
+    });
+
+    it('should parse returns tag without datatype', (t) => {
+      // START_PARSE_RETURNS_NO_DATATYPE_ARRANGE_INPUT
+      const inputContract = '@returns description without type';
+      // END_PARSE_RETURNS_NO_DATATYPE_ARRANGE_INPUT
+
+      // START_PARSE_RETURNS_NO_DATATYPE_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_RETURNS_NO_DATATYPE_ACT
+
+      // START_PARSE_RETURNS_NO_DATATYPE_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_RETURNS_NO_DATATYPE_ASSERT
+    });
+
+    it('should parse param tag without datatype', (t) => {
+      // START_PARSE_PARAM_NO_DATATYPE_ARRANGE_INPUT
+      const inputContract = '@param userId User identifier';
+      // END_PARSE_PARAM_NO_DATATYPE_ARRANGE_INPUT
+
+      // START_PARSE_PARAM_NO_DATATYPE_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_PARAM_NO_DATATYPE_ACT
+
+      // START_PARSE_PARAM_NO_DATATYPE_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_PARAM_NO_DATATYPE_ASSERT
+    });
+
+    it('should parse throws tag with datatype', (t) => {
+      // START_PARSE_THROWS_ARRANGE_INPUT
+      const inputContract = '@throws {Error} On invalid input';
+      // END_PARSE_THROWS_ARRANGE_INPUT
+
+      // START_PARSE_THROWS_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_THROWS_ACT
+
+      // START_PARSE_THROWS_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_THROWS_ASSERT
+    });
+
+    it('should parse implements tag without specifier', (t) => {
+      // START_PARSE_IMPLEMENTS_NO_SPEC_ARRANGE_INPUT
+      const inputContract = '@implements VendorGateway';
+      // END_PARSE_IMPLEMENTS_NO_SPEC_ARRANGE_INPUT
+
+      // START_PARSE_IMPLEMENTS_NO_SPEC_ACT
+      const schema = parser.parse(inputContract);
+      // END_PARSE_IMPLEMENTS_NO_SPEC_ACT
+
+      // START_PARSE_IMPLEMENTS_NO_SPEC_ASSERT
+      t.assert.snapshot(schema);
+      // END_PARSE_IMPLEMENTS_NO_SPEC_ASSERT
     });
   });
 });

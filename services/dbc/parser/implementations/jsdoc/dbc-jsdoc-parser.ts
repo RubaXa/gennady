@@ -1,3 +1,7 @@
+// @file: JSDoc implementation of the DbcParser contract.
+// @consumers: DbcSchema consumers (analysis, generation, verification, documentation, agent processing)
+// @tasks: TSK-02
+
 import {
   ERR_DBC_ORDER,
   ERR_DBC_PARAM_NAME_MISSING,
@@ -7,12 +11,13 @@ import {
   type DbcIssueCode,
   type DbcParser,
   type DbcSchema,
+  type DbcSchemaFormat,
 } from '../../dbc-parser.types.ts';
 
 type ParsedEntryWithLine = DbcEntrySchema & { line: number };
 
 const CONTRACT_ORDER = [
-  'consumer',
+  'implements',
   'invariant',
   'pre',
   'param',
@@ -28,15 +33,19 @@ const CONTRACT_ORDER_INDEX = new Map<string, number>(
 
 /**
  * @purpose Parses JSDoc-like contract blocks into a universal DBC schema and validates contract rules.
- * @consumer DbcParserRuntime
+ * @implements {DbcParser} in ../../dbc-parser.types.ts
  * @invariant Input is handled line-by-line with explicit support for leading `*` markers.
  */
 export class DbcJsDocParser implements DbcParser {
-  /**
-   * @see {DbcParser#parse} in ../../dbc-parser.types.ts
-   */
+  /** @see {DbcParser#parse} in ../../dbc-parser.types.ts */
   parse(inputContract: string): DbcSchema {
     const entries: ParsedEntryWithLine[] = [];
+    const raw = inputContract.trim();
+    let content = raw;
+    if (content.startsWith('/**')) content = content.slice(3);
+    if (content.endsWith('*/')) content = content.slice(0, -2);
+    content = content.trim();
+    const format: DbcSchemaFormat = content.includes('\n') ? 'multi-line' : 'single-line';
     const lines = inputContract.split(/\r?\n/u);
 
     let activeEntry: ParsedEntryWithLine | undefined;
@@ -100,8 +109,38 @@ export class DbcJsDocParser implements DbcParser {
     this.validateParamSpecifier(entries);
     this.validateSeeSpecifier(entries);
 
+    let inlineEntriesForFirst: ParsedEntryWithLine[] | undefined;
+
+    if (format === 'single-line' && entries.length > 0) {
+      const firstEntry = entries[0];
+      if (firstEntry && firstEntry.value.includes(' | @')) {
+        const parts = firstEntry.value.split(' | @');
+        firstEntry.value = (parts[0] ?? '').trim();
+        const inlineList: ParsedEntryWithLine[] = [];
+        for (let i = 1; i < parts.length; i += 1) {
+          const tagLine = `@${parts[i] ?? ''}`;
+          const parsed = this.parseTagLine(tagLine, firstEntry.line);
+          if (parsed) {
+            inlineList.push(parsed);
+          }
+        }
+        if (inlineList.length > 0) {
+          inlineEntriesForFirst = inlineList;
+        }
+      }
+    }
+
     return {
-      entries: entries.map(({ line: _line, ...entry }) => entry),
+      entries: entries.map(({ line: _line, ...entry }, idx) => {
+        if (idx === 0 && inlineEntriesForFirst) {
+          return {
+            ...entry,
+            inline: inlineEntriesForFirst.map(({ line: _, ...e }) => e),
+          };
+        }
+        return entry;
+      }),
+      format,
     };
   }
 
@@ -158,6 +197,10 @@ export class DbcJsDocParser implements DbcParser {
 
     if (type === 'see') {
       return this.parseSeeTag(type, tail, line);
+    }
+
+    if (type === 'implements') {
+      return this.parseImplementsTag(type, tail, line);
     }
 
     if (type === 'returns' || type === 'throws') {
@@ -279,6 +322,32 @@ export class DbcJsDocParser implements DbcParser {
 
     result.specifier = seeMatch[1]?.trim();
     result.value = (seeMatch[2] ?? '').trim();
+    return result;
+  }
+
+  /**
+   * @purpose Parses `@implements` into required `{ContractName}` and optional trailing value.
+   * @param type Tag type.
+   * @param tail Content after `@implements`.
+   * @param line One-based source line number.
+   * @returns Parsed entry.
+   */
+  protected parseImplementsTag(type: string, tail: string, line: number): ParsedEntryWithLine {
+    const result: ParsedEntryWithLine = {
+      type,
+      value: '',
+      issues: [],
+      line,
+    };
+
+    const match = /^\{([^}]+)\}\s*(.*)$/u.exec(tail);
+    if (!match) {
+      result.value = tail;
+      return result;
+    }
+
+    result.specifier = match[1]?.trim();
+    result.value = (match[2] ?? '').trim();
     return result;
   }
 

@@ -9,7 +9,8 @@ exports[`DbcJsDocParser > parse() > should append multiline content to param val
       "optional": true,
       "specifier": "options"
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -21,7 +22,8 @@ exports[`DbcJsDocParser > parse() > should append multiline value to the previou
       "value": "Main behavior.\\nSecond line of behavior.\\nThird line of behavior.",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -38,7 +40,8 @@ exports[`DbcJsDocParser > parse() > should collect text before first tag into de
       "value": "MainApp",
       "issues": []
     }
-  ]
+  ],
+  "format": "multi-line"
 }
 `;
 
@@ -50,6 +53,20 @@ exports[`DbcJsDocParser > parse() > should parse explicit description tag as des
       "value": "My info",
       "issues": []
     }
-  ]
+  ],
+  "format": "single-line"
+}
+`;
+
+exports[`DbcJsDocParser > parse() > should push description buffer at end-of-file when no tags follow 1`] = `
+{
+  "entries": [
+    {
+      "type": "description",
+      "value": "First line of docs.\\nSecond line of docs.",
+      "issues": []
+    }
+  ],
+  "format": "multi-line"
 }
 `;
