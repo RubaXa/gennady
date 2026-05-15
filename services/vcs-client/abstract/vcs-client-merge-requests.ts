@@ -1,12 +1,20 @@
+// @file: Contract surface for merge request / pull request operations.
+// @consumers: VcsClient
+
 /**
  * @purpose Параметры запроса списка Merge Requests: проект, ветка, состояние, пагинация.
  * @consumer VcsClientMergeRequests
  */
 export type VcsMergeRequestsQuery = {
+  /** @purpose GitLab project path or ID */
   project: string;
+  /** @purpose Source branch name to filter MRs */
   sourceBranch?: string;
+  /** @purpose MR state filter: opened, closed, merged, etc. */
   state?: string;
+  /** @purpose Page size | @invariant Default: GitLab default when absent */
   perPage?: number;
+  /** @purpose Page number starting from 1 */
   page?: number;
 };
 
@@ -15,7 +23,9 @@ export type VcsMergeRequestsQuery = {
  * @consumer VcsClientMergeRequests
  */
 export type VcsMergeRequestByIidQuery = {
+  /** @purpose GitLab project path or ID */
   project: string;
+  /** @purpose Merge request internal ID */
   iid: string | number;
 };
 
@@ -29,6 +39,7 @@ export abstract class VcsClientMergeRequests {
    * @purpose Получить список MR по проекту и фильтрам.
    * @param query Объект запроса.
    * @returns Список Merge Request'ов по минимальным фильтрам.
+   * @sideEffect Network: GET /projects/:project/merge_requests
    */
   abstract getList(query: VcsMergeRequestsQuery): Promise<unknown[]>;
 
@@ -44,6 +55,7 @@ export abstract class VcsClientMergeRequests {
    * @purpose Получить Merge Request по IID в рамках проекта.
    * @param query Параметры: { project, iid }.
    * @returns Объект Merge Request или null при 404.
+   * @sideEffect Network: GET /projects/:project/merge_requests/:iid
    */
   abstract getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null>;
 }

@@ -84,6 +84,7 @@ graph TD
 | ----- | ------- | ----------------------- | ----- | ----- |
 | dbc   | library | [README](dbc/README.md) | 13    | 13/13 |
 | cli   | product | [README](cli/README.md) | 7     | 7/7   |
+| vcs   | product | [README](vcs/README.md) | 1     | 1/1   |
 
 ## Decision Log
 

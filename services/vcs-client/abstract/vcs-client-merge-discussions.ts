@@ -1,11 +1,18 @@
+// @file: Contract surface for merge request discussion operations.
+// @consumers: VcsClient
+
 /**
  * @purpose Параметры создания заметки в дискуссии MR: проект, IID MR, ID дискуссии, текст.
  * @consumer VcsClientMergeDiscussions
  */
 export type VcsAddNoteQuery = {
+  /** @purpose GitLab project path or ID */
   project: string;
+  /** @purpose Merge request internal ID */
   iid: string | number;
+  /** @purpose Target discussion identifier */
   discussionId: string;
+  /** @purpose Note body text in Markdown */
   body: string;
 };
 
@@ -14,9 +21,13 @@ export type VcsAddNoteQuery = {
  * @consumer VcsClientMergeDiscussions
  */
 export type VcsDiscussionsListQuery = {
+  /** @purpose GitLab project path or ID */
   project: string;
+  /** @purpose Merge request internal ID */
   iid: string | number;
+  /** @purpose Page size | @invariant Default: GitLab default when absent */
   perPage?: number;
+  /** @purpose Page number starting from 1 */
   page?: number;
 };
 

@@ -1,3 +1,6 @@
+// @file: GitLab-specific implementation of merge request discussion operations.
+// @consumers: VcsGitlabClient
+
 import {
   VcsClientMergeDiscussions,
   type VcsAddNoteQuery,
@@ -12,14 +15,21 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
  * @consumer VcsGitlabClient
  */
 export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
+  /** @purpose Bound HTTP request function injected for GitLab API calls */
   protected _request: RequestFn;
 
+  /**
+   * @purpose Wire the HTTP request adapter for GitLab merge discussion endpoints.
+   * @param request Authenticated HTTP request function targeting GitLab API.
+   */
   constructor(request: RequestFn) {
     super();
     this._request = request;
   }
 
   /**
+   * @param query Target project, MR, discussion, and note body.
+   * @returns Created note object from GitLab API.
    * @sideEffect Network: POST /projects/:project/merge_requests/:iid/discussions/:discussion_id/notes
    * @see {VcsClientMergeDiscussions#addNote} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
@@ -38,6 +48,8 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   }
 
   /**
+   * @param query Target project, MR, and optional pagination.
+   * @returns List of discussions for the requested page.
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid/discussions
    * @see {VcsClientMergeDiscussions#getList} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
@@ -53,6 +65,8 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   }
 
   /**
+   * @param query Target project and MR.
+   * @returns Complete list of all discussions across all pages.
    * @sideEffect Network: Многократные GET для постраничной загрузки.
    * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
