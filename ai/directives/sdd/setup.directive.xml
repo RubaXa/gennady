@@ -72,7 +72,7 @@
       - Halt messages emitted to the operator.
       - Phase Progress free-text fields.
 
-      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R<N>`), status tokens, scope-type tokens, section identifiers (`§Vision`), Mermaid graph IDs.
+      English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R<N>`), status tokens, scope-type tokens, section identifiers (`Vision`), Mermaid graph IDs.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">

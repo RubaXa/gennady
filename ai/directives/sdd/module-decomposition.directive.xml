@@ -5,12 +5,12 @@
 
       Second scope session. Input — `specs/<scope>/<scope>.spec.md` from Discovery. Only applicable to scope-type=product and scope-type=library. Output:
       - hierarchy of `specs/<scope>/<module>/<module>.spec.md` (nesting allowed for nested modules);
-      - scope spec §8 Module Map updated (append-only per module row);
-      - module spec §1 links back to `../../<scope>.spec.md`.
+      - scope spec 8 Module Map updated (append-only per module row);
+      - module spec 1 links back to `../../<scope>.spec.md`.
 
       Out of scope here: task tickets, BDD scenarios, execution plans, coding/testing rules linkage — those belong to `task-scaffolding`.
 
-      **Glossary.** Second scope session. Executor = `task-execution` agent (phase 4). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs). scope-type ∈ {product, library} — this directive is NOT applicable to infrastructure or contracts scopes.
+      **Glossary.** Second scope session. Phase agent = subagent under `phase-execution-protocol` (phase 4, dispatched by `sdd-execute` orchestrator). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs). scope-type ∈ {product, library} — this directive is NOT applicable to infrastructure or contracts scopes.
     </Mission>
   </Directive_Context>
 
@@ -57,23 +57,23 @@
       - **Stage A — Relevance per category.** Shortlist «recommend activate» + «considered, recommend skip», each with one-line rationale scoped to module context. Operator agree / expand / contract → list locked; deviations → Module Decision Log.
       - **Stage B — Per-rule axiom walk-through (infra rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
 
-      **Loading defaults at module level.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred to `task-execution` (Stage A only at this phase).
+      **Loading defaults at module level.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — phase-subagent loads them at phase entry per `phase-execution-protocol` (Stage A only at this phase).
 
-      Activation outcomes recorded in §7 Module Decision Log of the relevant module spec.
+      Activation outcomes recorded in 7 Module Decision Log of the relevant module spec.
     </Axiom>
 
     <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
       In `add-module` mode existing module specs are NOT touched. Only:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
-      - scope spec §8 Module Map: APPEND new module row (append at end). Other rows untouched.
+      - scope spec 8 Module Map: APPEND new module row (append at end). Other rows untouched.
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run `module-decomposition` again in `refine-module` mode for that specific module.
     </Axiom>
 
     <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
-      `module-decomposition` owns §8 Module Map in the scope spec (`specs/<scope>/<scope>.spec.md`). It appends rows per module. It does NOT own any other sections of the scope spec.
+      `module-decomposition` owns 8 Module Map in the scope spec (`specs/<scope>/<scope>.spec.md`). It appends rows per module. It does NOT own any other sections of the scope spec.
 
-      Cross-scope module dependencies: a module references a contracts-type scope through `Scope Reference` in §8 Inter-Module Dependencies — NOT by referencing another product scope's modules directly.
+      Cross-scope module dependencies: a module references a contracts-type scope through `Scope Reference` in 8 Inter-Module Dependencies — NOT by referencing another product scope's modules directly.
 
       `module-decomposition` does NOT write to `specs/README.md` (that is `setup`'s sole property).
     </Axiom>
@@ -133,7 +133,7 @@
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
-      DbC is derived from context, not only from DX code. Scope spec §4 Requirements &amp; Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+      DbC is derived from context, not only from DX code. Scope spec 4 Requirements &amp; Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
     </Axiom>
 
     <Axiom id="AX_AGNOSTICISM">
@@ -212,7 +212,7 @@
 
     <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
       Final hierarchy contains:
-      - per-module spec §9 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
+      - per-module spec 9 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
   </Belief_State>
@@ -268,7 +268,7 @@
     **Contract (DbC):**
     - Preconditions:
       - `request.amount > 0`.
-      - `request.currency` входит в supported set из scope spec §4.
+      - `request.currency` входит в supported set из scope spec 4.
       - `request.orderRef` уникален для каждого вызова `charge` (idempotency).
     - Postconditions:
       - При успехе возвращает непустой `TransactionId`.
@@ -354,7 +354,7 @@
       <Action>
         For each module:
         1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__DBC_<MODULE>`).
-        2. Per Port: Preconditions / Postconditions / Invariants. Source = scope spec §4 + entity surface.
+        2. Per Port: Preconditions / Postconditions / Invariants. Source = scope spec 4 + entity surface.
         3. Per Adapter: `Implements`; Side Effects; `Runtime Backing`; `Verification Levels`; `Deferred Runtime Scope`; Supporting Artifacts.
         4. Public Options Audit: every public flag/option/policy from scope spec → bind to contract OR mark `deferred / not consumed in v1`.
         5. Critical Analysis: weak runtime backing? silent option drop? Port without confirmed variability (collapse candidate)?
@@ -375,16 +375,16 @@
     </Step>
 
     <Step id="STEP_6_FINAL_HIERARCHY">
-      <Goal>Generate spec tree; append-only update scope spec §8 Module Map.</Goal>
+      <Goal>Generate spec tree; append-only update scope spec 8 Module Map.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__FINAL_HIERARCHY`).
         2. For each module — `specs/<scope>/<module>/<module>.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
-           - Module spec §1 MUST link back to `../../<scope>.spec.md` (parent scope spec).
-        3. **Scope spec §8 Module Map update (append-only per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
-           - `initial`: WRITE §8 Module Map with one row per module.
-           - `add-module`: APPEND a row for the new module in §8 Module Map.
-           - `refine-module`: UPDATE the target module's row in §8 Module Map if Purpose changed. Other rows untouched.
-        4. Cross-scope dependencies declared in module spec §8 Inter-Module Dependencies as Scope Reference entries (pointing to contracts-type scope specs), per `AX_CROSS_SCOPE_DEPENDENCIES` in discovery.
+           - Module spec 1 MUST link back to `../../<scope>.spec.md` (parent scope spec).
+        3. **Scope spec 8 Module Map update (append-only per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
+           - `initial`: WRITE 8 Module Map with one row per module.
+           - `add-module`: APPEND a row for the new module in 8 Module Map.
+           - `refine-module`: UPDATE the target module's row in 8 Module Map if Purpose changed. Other rows untouched.
+        4. Cross-scope dependencies declared in module spec 8 Inter-Module Dependencies as Scope Reference entries (pointing to contracts-type scope specs), per `AX_CROSS_SCOPE_DEPENDENCIES` in discovery.
         5. Output for review. STOP.
       </Action>
     </Step>
@@ -552,7 +552,7 @@
       ```
 
       ## 9. Handoff to task-scaffolding
-      - **Implementation files to be created:** <list from §6>
+      - **Implementation files to be created:** <list from 6>
       - **Test files to be created:** <list>
       - **Stack dependencies:**
         - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
@@ -568,7 +568,7 @@
     </Contract>
 
     <Contract id="SCOPE_SPEC_MODULE_MAP_UPDATE">
-      **Append-only to scope spec §8.** Do not edit other sections of the scope spec. Discovery's sections stay intact.
+      **Append-only to scope spec 8.** Do not edit other sections of the scope spec. Discovery's sections stay intact.
 
       ```markdown
       ## 8. Module Map (post-ModuleDecomposition)

@@ -29,13 +29,13 @@
         <SkipWhen>module specs lack contracts · discovery or module-decomp not closed · tasks already generated</SkipWhen>
         <Preconditions>specs/README.md Scope Graph ✅; coding rule files exist for each language</Preconditions>
       </SddTaskScaffolding>
-      <SddTaskExecution>
-        <File>ai/directives/sdd/task-execution.directive.xml</File>
-        <Purpose>Execute one task ticket end-to-end: code + tests + Execution Log.</Purpose>
-        <Triggers>task picked · TSK-NN passed · "next" / "следующую" / "pick one"</Triggers>
-        <SkipWhen>planning still open · no ticket selected</SkipWhen>
-        <Preconditions>tasks/README.md exists; ≥1 [ ] TODO ticket with deps [x]DONE</Preconditions>
-      </SddTaskExecution>
+      <SddPhaseExecution>
+        <File>ai/directives/sdd/phase-execution-protocol.xml</File>
+        <Purpose>Execute ONE phase of ONE task ticket, dispatched by sdd-execute orchestrator. Read only what the phase needs; write only Target Files; emit typed Handoff for next phase / audit.</Purpose>
+        <Triggers>orchestrator dispatches phase · phase ID + ticket path provided in prompt</Triggers>
+        <SkipWhen>operator invokes directly without orchestrator · no phase ID</SkipWhen>
+        <Preconditions>ticket has section 2 Phases Overview + section 3 Phases block for target phase ID; prior-phase Handoffs (if any) recorded in current Round</Preconditions>
+      </SddPhaseExecution>
       <SddAudit>
         <File>ai/directives/sdd/audit.directive.xml</File>
         <Purpose>Post-execution verification. Compares spec ↔ ticket ↔ code. Detects drift, gaps, rules violations. Output: ephemeral findings routed to spec/ticket.</Purpose>
