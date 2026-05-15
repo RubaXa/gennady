@@ -76,18 +76,32 @@
 
 ## 4. Execution Log
 
-### Round 1 — <YYYY-MM-DD>, initial
+### Round 1 — 2026-05-15, initial
 
-- [ ] `[<ts>]` Task initialized.
-- [ ] `[<ts>]` Implementation file: `services/dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts`.
-- [ ] `[<ts>]` Implementation file: `services/dbc/linter/implementations/ts/dbc-ts-linter.ts`.
-- [ ] `[<ts>]` Test file: `services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts`.
-- [ ] `[<ts>]` Verification: `npm test` → `<pass|fail>` [`exit=<code>`].
-- [ ] `[<ts>]` Scenario coverage: `type alias методы проверяются` → `dbc-ts-linter.test.ts`.
-- [ ] `[<ts>]` Scenario coverage: `type alias метод без контракта` → `dbc-ts-linter.test.ts`.
-- [ ] `[<ts>]` Scenario coverage: `interface property function-typed` → `dbc-ts-linter.test.ts`.
-- [ ] `[<ts>]` Scenario coverage: `SimpleLogger без ошибок` → `integration: logger.ts`.
-- [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
-- [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
-- [ ] `[<ts>]` Tracker synced: `tasks/dbc/README.md` + `tasks/README.md`.
-- [ ] `[<ts>]` Status: [x] DONE.
+#### P1
+- [x] `2026-05-15T19:10:00Z` recon targets=dbc-ts-ast-adapter.ts|exists,dbc-ts-linter.ts|exists divergence=none
+- [x] `2026-05-15T19:10:00Z` rules typescript-rules
+- [x] `2026-05-15T19:10:00Z` file services/dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts
+- [x] `2026-05-15T19:10:00Z` file services/dbc/linter/implementations/ts/dbc-ts-linter.ts
+- [x] `2026-05-15T19:10:00Z` ver npx tsc --noEmit → pass exit=0
+- [x] `2026-05-15T19:10:00Z` DONE
+      intro _extractTypeAliasMembers ← extract members from type alias with object_type
+      intro _extractObjectTypeMembers ← shared method for interface body and object_type
+      intro _isFunctionTypedProperty ← detect function_type inside property_signature
+      intro _findFunctionTypeNode ← locate function_type node for signature extraction
+      **Handoff →** artifacts: [services/dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts, services/dbc/linter/implementations/ts/dbc-ts-linter.ts]; decisions: [_extractSignature-function_type=supported, interface-property-function-typed=interface-method]; open: []
+
+#### P2
+- [x] `2026-05-15T19:11:00Z` recon targets=dbc-ts-linter.test.ts|exists divergence=none
+- [x] `2026-05-15T19:11:00Z` rules typescript-rules, node-test
+- [x] `2026-05-15T19:11:00Z` test services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts
+- [x] `2026-05-15T19:11:00Z` ver npm test → pass exit=0
+- [x] `2026-05-15T19:11:00Z` DONE
+      cov type alias методы проверяются → dbc-ts-linter.test.ts (happy path)
+      cov interface property function-typed → dbc-ts-linter.test.ts (missing contract)
+      cov SimpleLogger без ошибок → integration: logger.ts (0 dbc errors)
+      **Handoff →** artifacts: [services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts]; decisions: [test-coverage=type-alias+interface-property]; open: []
+
+#### Round close
+- [x] `2026-05-15T19:11:00Z` sync dbc+root
+- [x] `2026-05-15T19:11:00Z` DONE
