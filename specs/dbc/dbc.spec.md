@@ -125,7 +125,7 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 | FR-23 | Комментарий есть → `DbcParser.parse()` → `issues` транслируются в ошибки линтера с исходными кодами (`ERR_DBC_ORDER`, `ERR_DBC_PURPOSE_CONFLICT`, `ERR_DBC_PARAM_NAME_MISSING`, `ERR_DBC_SEE_FORMAT_INVALID`)                                                                                                                                          |
 | FR-24 | Соответствие контракта сигнатуре кода — см. матрицу проверок ниже                                                                                                                                                                                                                                                                                      |
 | FR-25 | Отчёт в ESLint-формате: `file:line:col: severity: code: message`. Все ошибки — `severity: error`                                                                                                                                                                                                                                                       |
-| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы ниже + `ERR_DBC_ORDER` + multi-line → inline (dry-run: без новых ошибок после `DbcParser.parse()`). Возвращает `DbcLintFixReport` с `autoFixed` и оставшимися ошибками                                                                                                                             |
+| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы ниже + `ERR_DBC_ORDER`. Возвращает `DbcLintFixReport` с `autoFixed` и оставшимися ошибками. Multi-line → inline удалён из autofix (I-01) — сжатие валидных контрактов с `@implements`/`@invariant` в одну строку разрушает читаемость |
 | FR-27 | Пустой или без экспортов файл → пустой отчёт                                                                                                                                                                                                                                                                                                           |
 | FR-28 | Для типизированного языка `{dataType}` в тегах `@param` и `@returns` — ошибка `ERR_DBC_LINT_TYPE_REDUNDANT`                                                                                                                                                                                                                                            |
 | FR-29 | Fixture-покрытие: каждый случай линтинга покрыт отдельным fixture-файлом                                                                                                                                                                                                                                                                               |
@@ -501,6 +501,14 @@ services/dbc/
 - **Why:** Скоуп расширяется вторым flat-модулем. Module decomposition зарегистрирует `dbc-linter` как самостоятельный модуль с собственным Port, Adapter, Value Objects.
 - **Risk accepted:** Оба модуля flat. При появлении третьего может потребоваться выделение общих типов в core-модуль.
 - **Rejected alternatives:** Сделать linter частью parser-модуля — разные зоны ответственности (парсинг контракта vs анализ покрытия).
+
+### D-015 — Multi-line → inline: только однотеговые контракты
+
+- **Status:** active
+- **Recorded:** session Discovery, dbc, refine (post-execution fix)
+- **Why:** `_inlineIfSafe` сжимал любые multi-line контракты, включая многотеговые с `@implements` + `@invariant`. Результат — нечитаемая строка. Исправлено: сжатие только если в контракте один тег (например только `@purpose`). 2+ тега → остаётся multi-line.
+- **Risk accepted:** Однотеговые multi-line (например `@purpose` с длинным описанием на несколько строк) по-прежнему сжимаются.
+- **Rejected alternatives:** Полное удаление `inlineIfSafe` — теряем полезное сжатие простых контрактов.
 
 ### D-014 — Опция `content` в `DbcLinter`
 

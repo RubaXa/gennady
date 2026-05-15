@@ -921,17 +921,23 @@ export class DbcTsLinter implements DbcLinter {
 
     // #region START_BUILD_INLINE
     // Strip JSDoc framing (/** */) and normalize content
-    const body = jsdocText
+    const lines = jsdocText
       .replace(/^\/\*\*\s*/, '')
       .replace(/\s*\*\/\s*$/, '')
       .split('\n')
       .map((l) => l.replace(/^\s*\*\s?/, '').trim())
-      .filter((l) => l.length > 0)
-      .join(' | ');
+      .filter((l) => l.length > 0);
 
-    const inlineText = `/** ${body} */`;
+    // Only inline single-tag contracts: multi-tag with @implements/invariant/etc
+    // becomes unreadable when joined with |
+    const tagCount = lines.filter((l) => l.startsWith('@')).length;
+    if (tagCount > 1) {
+      return jsdocText;
+    }
 
-    // Dry-run: parse inline version; if parse errors appear, keep original
+    const inlineText = `/** ${lines.join(' | ')} */`;
+
+    // Dry-run: parse inline version; if parse issues appear, keep original
     const schema: DbcSchema = this._parser.parse(inlineText);
     const hasIssues = schema.entries.some((e) => e.issues.length > 0);
 
