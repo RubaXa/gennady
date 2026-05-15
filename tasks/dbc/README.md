@@ -49,6 +49,8 @@ graph TD
     TSK-11 --> TSK-10
     TSK-19[TSK-19: type/interface contracts]
     TSK-19 --> TSK-10
+    TSK-20[TSK-20: _reorderTags fix]
+    TSK-20 --> TSK-10
 ```
 
 ## Tracker

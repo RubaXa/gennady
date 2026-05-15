@@ -67,6 +67,8 @@ graph TD
     TSK-09 --> TSK-08
     TSK-10 --> TSK-09
     TSK-11 --> TSK-10
+    TSK-19 --> TSK-10
+    TSK-20 --> TSK-10
     TSK-13 --> TSK-12
     TSK-14 --> TSK-12
     TSK-15 --> TSK-12
@@ -80,7 +82,7 @@ graph TD
 
 | Scope | Type    | Tracker                 | Tasks | Done  |
 | ----- | ------- | ----------------------- | ----- | ----- |
-| dbc   | library | [README](dbc/README.md) | 12    | 12/12 |
+| dbc   | library | [README](dbc/README.md) | 13    | 13/13 |
 | cli   | product | [README](cli/README.md) | 7     | 7/7   |
 
 ## Decision Log
