@@ -22,8 +22,8 @@ export type VcsDiscussionsListQuery = {
 
 /**
  * @purpose Доступ к Discussions для Merge Request в GitLab.
- * @consumer VcsClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @consumer VcsClient
  */
 export abstract class VcsClientMergeDiscussions {
   /**

@@ -1,6 +1,6 @@
 // @file: DbcContractMatchValidator (pure validation) and DbcTsLinter adapter implementing DbcLinter with autofix chain.
 // @consumers: DbcLinter
-// @tasks: TSK-09, TSK-11
+// @tasks: TSK-09, TSK-11, TSK-20
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
@@ -848,17 +848,21 @@ export class DbcTsLinter implements DbcLinter {
 
     const lines = jsdocText.split('\n');
 
-    // Extract description (lines before first @)
+    // Extract description (lines before first @), excluding closing */
     const description: string[] = [];
-    // Tag blocks: each block = tag line + its continuation lines
     type TagBlock = { tag: string; order: number; lines: string[] };
     const tagBlocks: TagBlock[] = [];
     let currentBlock: TagBlock | null = null;
     let inTags = false;
+    let closingLine: string | null = null;
 
+    // #region START_PARSE_TAG_BLOCKS — purpose: separate description, tag blocks, and closing */
     for (const line of lines) {
       let trimmed = line.trim();
-      // Strip JSDoc `* ` prefix if present
+      if (trimmed === '*/' || trimmed === '*/ ') {
+        closingLine = line;
+        continue;
+      }
       if (trimmed.startsWith('* ')) {
         trimmed = trimmed.slice(2).trimStart();
       } else if (trimmed.startsWith('*')) {
@@ -871,7 +875,6 @@ export class DbcTsLinter implements DbcLinter {
       } else if (tagMatch) {
         inTags = true;
         const tag = tagMatch[1];
-        // Save previous block
         if (currentBlock) {
           tagBlocks.push(currentBlock);
         }
@@ -881,7 +884,6 @@ export class DbcTsLinter implements DbcLinter {
           lines: [line],
         };
       } else if (inTags && currentBlock) {
-        // Continuation line
         currentBlock.lines.push(line);
       } else {
         description.push(line);
@@ -890,8 +892,9 @@ export class DbcTsLinter implements DbcLinter {
     if (currentBlock) {
       tagBlocks.push(currentBlock);
     }
+    // #endregion END_PARSE_TAG_BLOCKS
 
-    // Sort tag blocks by order, preserving relative order for same-order blocks
+    // #region START_SORT_AND_REBUILD — purpose: sort by canonical order, preserve relative for same-order
     const stable = tagBlocks.map((b, i) => ({ ...b, origIdx: i }));
     stable.sort((a, b) => {
       if (a.order !== b.order) return a.order - b.order;
@@ -902,6 +905,10 @@ export class DbcTsLinter implements DbcLinter {
     for (const block of stable) {
       rebuilt.push(...block.lines);
     }
+    if (closingLine !== null) {
+      rebuilt.push(closingLine);
+    }
+    // #endregion END_SORT_AND_REBUILD
 
     return rebuilt.join('\n');
   }

@@ -8,8 +8,8 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
 /**
  * @purpose Доступ к Discussions для Merge Request в GitLab.
- * @consumer VcsGitlabClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @consumer VcsGitlabClient
  */
 export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   protected _request: RequestFn;
@@ -20,8 +20,8 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   }
 
   /**
-   * @see {VcsClientMergeDiscussions#addNote} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: POST /projects/:project/merge_requests/:iid/discussions/:discussion_id/notes
+   * @see {VcsClientMergeDiscussions#addNote} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
   async addNote(query: VcsAddNoteQuery): Promise<unknown> {
     const projectId = encodeURIComponent(query.project);
@@ -38,8 +38,8 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   }
 
   /**
-   * @see {VcsClientMergeDiscussions#getList} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid/discussions
+   * @see {VcsClientMergeDiscussions#getList} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
   async getList(query: VcsDiscussionsListQuery): Promise<unknown[]> {
     const params = new URLSearchParams();
@@ -53,8 +53,8 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   }
 
   /**
-   * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
    * @sideEffect Network: Многократные GET для постраничной загрузки.
+   * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
   async getAll(query: { project: string; iid: string | number }): Promise<unknown[]> {
     const perPage = 100;

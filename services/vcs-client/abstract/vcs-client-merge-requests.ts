@@ -21,8 +21,8 @@ export type VcsMergeRequestByIidQuery = {
 
 /**
  * @purpose Доступ к Merge Requests/Pull Requests.
- * @consumer VcsClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @consumer VcsClient
  */
 export abstract class VcsClientMergeRequests {
   /**

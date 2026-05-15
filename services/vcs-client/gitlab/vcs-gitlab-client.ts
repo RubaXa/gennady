@@ -13,9 +13,9 @@ export type VcsGitlabClientOptions = {
 
 /**
  * @purpose Клиент GitLab для работы с REST API.
- * @consumer cli/review-verify
  * @invariant Error Policy: Любой ответ !2xx преобразуется в Error с подробностями статуса.
  * @invariant Retry Policy: Повторов нет; ответственность за ретраи на вызывающей стороне.
+ * @consumer cli/review-verify
  */
 export class VcsGitlabClient extends VcsClient {
   /** @see {VcsClient#MergeRequests} in services/vcs-client/abstract/vcs-client.ts */

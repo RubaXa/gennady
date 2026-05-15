@@ -8,8 +8,8 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
 /**
  * @purpose Доступ к Merge Requests в GitLab.
- * @consumer VcsGitlabClient
  * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @consumer VcsGitlabClient
  */
 export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   protected _request: RequestFn;
@@ -20,8 +20,8 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: GET /projects/:project/merge_requests
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    */
   async getList(query: VcsMergeRequestsQuery): Promise<unknown[]> {
     const params = new URLSearchParams();
@@ -38,8 +38,8 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: Делегирует в getList() с ограничением per_page=1.
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    */
   async getOne(query: VcsMergeRequestsQuery): Promise<unknown | null> {
     const list = await this.getList({ ...query, perPage: 1 });
@@ -47,8 +47,8 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid
+   * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    */
   async getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null> {
     const projectId = encodeURIComponent(query.project);

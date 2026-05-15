@@ -322,6 +322,14 @@ services/dbc/linter/
 - **Risk accepted:** Только type alias с объектным литералом. Mapped types, intersection types, union types — не поддерживаются (v1).
 - **Rejected alternatives:** Полный парсинг всех вариантов type alias — overengineered для v1.
 
+### D-017 — Fix `_reorderTags`: `*/` closing boundary
+
+- **Status:** active
+- **Recorded:** session Execution, dbc, TSK-20
+- **Why:** `_reorderTags` обрабатывал `*/` как continuation-строку последнего тега. После сортировки `*/` уезжал в середину, а теги с order=99 выпадали за границы JSDoc — синтаксис TypeScript ломался. Исправлено: `*/` детектится до разбора тегов и добавляется последней строкой. 7 тестов покрывают edge cases (нет тегов, один тег, обратный порядок, неизвестные теги, multi-line значения).
+- **Risk accepted:** —
+- **Rejected alternatives:** Игнорировать — баг воспроизводился на vcs-client с тегом `@consumer` (старый формат).
+
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** [`dbc-parser`](../dbc-parser/dbc-parser.spec.md) — `DbcParser`, `DbcSchema`, `DbcEntrySchema`, `DbcDbcEntryIssue`, `DbcIssueCode`, константы `ERR_DBC_*`

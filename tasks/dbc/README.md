@@ -67,6 +67,7 @@ graph TD
 | [TSK-10](dbc-linter/dbc-linter.task-10.md) | Тесты: 88 fixture-кейсов                          | dbc-linter | TSK-09       | `[x]` DONE | 1       |
 | [TSK-11](dbc-linter/dbc-linter.task-11.md) | DbcLinter: опция `content`                        | dbc-linter | TSK-10       | `[x]` DONE | 1       |
 | [TSK-19](dbc-linter/dbc-linter.task-19.md) | type alias + interface property контракты         | dbc-linter | TSK-10       | `[x]` DONE | 0       |
+| [TSK-20](dbc-linter/dbc-linter.task-20.md) | Fix _reorderTags: */ boundary + edge cases        | dbc-linter | TSK-10       | `[x]` DONE | 0       |
 
 ## Notes
 

@@ -1,6 +1,6 @@
 // @file: Comprehensive test suite for DbcTsLinter covering all 88 test cases from the coverage matrix.
 // @consumers: DbcTsLinter
-// @tasks: TSK-10, TSK-11
+// @tasks: TSK-10, TSK-11, TSK-20
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -1495,3 +1495,116 @@ describe('DbcContractMatchValidator', () => {
 });
 
 // #endregion END_DBC_CONTRACT_MATCH_VALIDATOR_TESTS
+
+// #region START_GROUP_REORDER_TAGS_TESTS
+
+describe('_reorderTags (TSK-20)', () => {
+  const parser = new DbcJsDocParser();
+  const adapter = new DbcTsAstAdapter();
+  const linter = new DbcTsLinter(parser, adapter);
+  // deno-lint-ignore no-explicit-any
+  const reorder = (text: string) => (linter as any)._reorderTags(text) as string;
+
+  it('closing */ stays last — @consumer before @invariant reordered and */ at end', () => {
+    const input = [
+      '/**',
+      ' * @consumer VcsClient',
+      ' * @invariant Error Policy: network failures propagate.',
+      ' */',
+    ].join('\n');
+    const result = reorder(input);
+    const lines = result.split('\n');
+    assert.strictEqual(lines[lines.length - 1], ' */');
+    const invIdx = lines.findIndex((l: string) => l.includes('@invariant'));
+    const conIdx = lines.findIndex((l: string) => l.includes('@consumer'));
+    assert.ok(invIdx < conIdx, '@invariant should come before @consumer');
+  });
+
+  it('no tags — unchanged', () => {
+    const input = ['/**', ' * Description line.', ' */'].join('\n');
+    assert.strictEqual(reorder(input), input);
+  });
+
+  it('single tag — unchanged', () => {
+    const input = ['/**', ' * @purpose Does something.', ' */'].join('\n');
+    assert.strictEqual(reorder(input), input);
+  });
+
+  it('already ordered — unchanged', () => {
+    const input = [
+      '/**',
+      ' * @purpose Does something.',
+      ' * @invariant Must be called after init.',
+      ' * @sideEffect Writes to disk.',
+      ' */',
+    ].join('\n');
+    assert.strictEqual(reorder(input), input);
+  });
+
+  it('reversed order — reordered to canonical', () => {
+    const input = [
+      '/**',
+      ' * @sideEffect Writes to disk.',
+      ' * @invariant Must be called after init.',
+      ' * @purpose Does something.',
+      ' */',
+    ].join('\n');
+    const result = reorder(input);
+    const lines = result.split('\n');
+    const purpIdx = lines.findIndex((l: string) => l.includes('@purpose'));
+    const invIdx = lines.findIndex((l: string) => l.includes('@invariant'));
+    const sideIdx = lines.findIndex((l: string) => l.includes('@sideEffect'));
+    assert.ok(purpIdx < invIdx, '@purpose before @invariant');
+    assert.ok(invIdx < sideIdx, '@invariant before @sideEffect');
+    assert.strictEqual(lines[lines.length - 1], ' */');
+  });
+
+  it('unknown tags preserve relative order', () => {
+    const input = [
+      '/**',
+      ' * @custom1 First custom tag.',
+      ' * @custom2 Second custom tag.',
+      ' */',
+    ].join('\n');
+    const result = reorder(input);
+    const lines = result.split('\n');
+    const c1 = lines.findIndex((l: string) => l.includes('@custom1'));
+    const c2 = lines.findIndex((l: string) => l.includes('@custom2'));
+    assert.ok(c1 < c2, '@custom1 before @custom2');
+    assert.strictEqual(lines[lines.length - 1], ' */');
+  });
+
+  it('multi-line tag values stay with their tag', () => {
+    const input = [
+      '/**',
+      ' * @purpose Does something.',
+      ' * @invariant Retry Policy: retries up to 3 times.',
+      ' *   Exponential backoff: 1s, 2s, 4s.',
+      ' */',
+    ].join('\n');
+    const result = reorder(input);
+    assert.ok(result.includes('@invariant Retry Policy'));
+    assert.ok(result.includes('Exponential backoff'));
+    assert.strictEqual(result.split('\n').pop(), ' */');
+  });
+
+  it('duplicate tags preserve relative order', () => {
+    const input = [
+      '/**',
+      ' * @param c Third parameter.',
+      ' * @param a First parameter.',
+      ' * @param b Second parameter.',
+      ' */',
+    ].join('\n');
+    const result = reorder(input);
+    const lines = result.split('\n');
+    const aIdx = lines.findIndex((l: string) => l.includes('@param a'));
+    const bIdx = lines.findIndex((l: string) => l.includes('@param b'));
+    const cIdx = lines.findIndex((l: string) => l.includes('@param c'));
+    assert.ok(cIdx < aIdx, '@param c before @param a');
+    assert.ok(aIdx < bIdx, '@param a before @param b');
+    assert.strictEqual(lines[lines.length - 1], ' */');
+  });
+});
+
+// #endregion END_REORDER_TAGS_TESTS
