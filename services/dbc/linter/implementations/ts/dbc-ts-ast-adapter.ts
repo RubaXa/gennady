@@ -309,7 +309,22 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       }
     }
 
-    // Find return_type child
+    // For function_type nodes, return type is the node after '=>'
+    if (node.type === 'function_type') {
+      const children: SyntaxNode[] = [];
+      for (let i = 0; i < node.childCount; i += 1) {
+        const c = node.child(i);
+        if (c) children.push(c);
+      }
+      const arrowIdx = children.findIndex((c) => c.type === '=>');
+      if (arrowIdx >= 0 && arrowIdx + 1 < children.length) {
+        returnType = source.slice(children[arrowIdx + 1].startIndex, children[arrowIdx + 1].endIndex).trim();
+        if (!returnType) returnType = 'unknown';
+      }
+      return { params, returnType };
+    }
+
+    // Find return_type child (field name for method/function declarations)
     const rtNode = node.childForFieldName?.('return_type') ?? null;
     if (rtNode) {
       returnType = source.slice(rtNode.startIndex + 1, rtNode.endIndex).trim(); // strip leading `:`
@@ -416,6 +431,9 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     if (kind === 'enum') {
       return this._extractEnumMembers(node, source);
     }
+    if (kind === 'type') {
+      return this._extractTypeAliasMembers(node, source);
+    }
     return [];
     // #endregion END_EXTRACT_MEMBERS
   }
@@ -510,7 +528,36 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     // #region START_EXTRACT_INTERFACE_MEMBERS
     const body = node.childForFieldName?.('body') ?? null;
     if (!body) return [];
+    return this._extractObjectTypeMembers(body, source);
+    // #endregion END_EXTRACT_INTERFACE_MEMBERS
+  }
 
+  /**
+   * @purpose Extracts members from a type alias with an object type literal body.
+   * Delegates to the same logic as interface members since object_type ≡ interface body.
+   * @param node type_alias_declaration node.
+   * @param source Full source text.
+   * @returns Array of object type members.
+   */
+  protected _extractTypeAliasMembers(node: SyntaxNode, source: string): DbcMember[] {
+    // Find the object_type child inside the type alias
+    for (let i = 0; i < node.childCount; i += 1) {
+      const child = node.child(i);
+      if (child?.type === 'object_type') {
+        return this._extractObjectTypeMembers(child, source);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * @purpose Extracts members from an object_type or interface body node.
+   * Shared by type alias (object_type) and interface declarations.
+   * @param body object_type or interface_body node.
+   * @param source Full source text.
+   * @returns Array of members.
+   */
+  protected _extractObjectTypeMembers(body: SyntaxNode, source: string): DbcMember[] {
     const members: DbcMember[] = [];
     let pendingContract: RawContract | undefined;
 
@@ -532,23 +579,29 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
         continue;
       }
 
+      if (child.type === '{' || child.type === '}' || child.type === ';' || child.type === ',') {
+        continue;
+      }
+
       let memberKind: string | undefined;
       let name = '';
       let signatureNode: SyntaxNode | null = null;
 
       if (child.type === 'method_signature') {
         const nameNode = child.childForFieldName?.('name') ?? null;
-        if (nameNode) {
-          name = source.slice(nameNode.startIndex, nameNode.endIndex);
-        }
+        if (nameNode) name = source.slice(nameNode.startIndex, nameNode.endIndex);
         memberKind = 'interface-method';
         signatureNode = child;
       } else if (child.type === 'property_signature') {
         const nameNode = child.childForFieldName?.('name') ?? null;
-        if (nameNode) {
-          name = source.slice(nameNode.startIndex, nameNode.endIndex);
+        if (nameNode) name = source.slice(nameNode.startIndex, nameNode.endIndex);
+        // Check if the property type annotation is a function type
+        if (this._isFunctionTypedProperty(child)) {
+          memberKind = 'interface-method';
+          signatureNode = this._findFunctionTypeNode(child);
+        } else {
+          memberKind = 'interface-property';
         }
-        memberKind = 'interface-property';
       }
 
       if (memberKind && name) {
@@ -556,11 +609,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
           ? this._extractSignature(signatureNode, source)
           : { params: [], returnType: 'void' };
         const contract = pendingContract
-          ? {
-              text: pendingContract.text,
-              startLine: pendingContract.startLine,
-              startCol: pendingContract.startCol,
-            }
+          ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
           : undefined;
         members.push({ name, kind: memberKind, contract, signature });
         pendingContract = undefined;
@@ -570,7 +619,41 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     }
 
     return members;
-    // #endregion END_EXTRACT_INTERFACE_MEMBERS
+  }
+
+  /**
+   * @purpose Checks if a property_signature node has a function type annotation.
+   * @param node property_signature node.
+   * @returns True if the property is function-typed.
+   */
+  protected _isFunctionTypedProperty(node: SyntaxNode): boolean {
+    for (let i = 0; i < node.childCount; i += 1) {
+      const child = node.child(i);
+      if (child?.type === 'type_annotation') {
+        for (let j = 0; j < child.childCount; j += 1) {
+          if (child.child(j)?.type === 'function_type') return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @purpose Finds the function_type node inside a property_signature's type annotation.
+   * @param node property_signature node.
+   * @returns The function_type node, or null.
+   */
+  protected _findFunctionTypeNode(node: SyntaxNode): SyntaxNode | null {
+    for (let i = 0; i < node.childCount; i += 1) {
+      const child = node.child(i);
+      if (child?.type === 'type_annotation') {
+        for (let j = 0; j < child.childCount; j += 1) {
+          const inner = child.child(j);
+          if (inner?.type === 'function_type') return inner;
+        }
+      }
+    }
+    return null;
   }
 
   /**

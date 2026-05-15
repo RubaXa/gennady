@@ -80,7 +80,7 @@ graph TD
 
 | Scope | Type    | Tracker                 | Tasks | Done  |
 | ----- | ------- | ----------------------- | ----- | ----- |
-| dbc   | library | [README](dbc/README.md) | 11    | 11/11 |
+| dbc   | library | [README](dbc/README.md) | 12    | 12/12 |
 | cli   | product | [README](cli/README.md) | 7     | 7/7   |
 
 ## Decision Log

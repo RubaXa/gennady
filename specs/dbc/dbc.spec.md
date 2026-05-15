@@ -139,7 +139,8 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 | getter                                                                         | отсутствуют                                                                                | присутствует                                                         |
 | setter                                                                         | ровно один                                                                                 | отсутствует                                                          |
 | field / property                                                               | отсутствуют                                                                                | отсутствует                                                          |
-| const / type alias / enum / enum member / interface (сам) / interface property | отсутствуют                                                                                | отсутствует                                                          |
+| const / enum / enum member / interface (сам)                                   | отсутствуют                                                                                | отсутствует                                                          |
+| type alias (объектный литерал) / interface property (function-typed)           | как function                                                                               | как function                                                         |
 | interface method sig                                                           | как function                                                                               | как function                                                         |
 
 **Параметры:**

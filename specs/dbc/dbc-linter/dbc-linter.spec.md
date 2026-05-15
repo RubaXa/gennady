@@ -63,7 +63,7 @@ _Это полный список сущностей модуля. Любое в
 ### `DbcTsAstAdapter`
 
 - **Type:** Adapter
-- **Purpose:** Реализация `DbcAstAdapter` для TypeScript через tree-sitter: обход AST, сбор export-сущностей, членов, сигнатур и JSDoc-контрактов.
+- **Purpose:** Реализация `DbcAstAdapter` для TypeScript через tree-sitter: обход AST, сбор export-сущностей, членов, сигнатур и JSDoc-контрактов. Извлекает члены из type alias с объектным литералом и различает function-typed interface property (→ interface-method).
 - **Public Properties:** N/A
 - **Public Operations:**
   - `parseFile(filePath: string, content?: string) → Promise<DbcParseResult>` — реализация контракта `DbcAstAdapter`. Если `content` передан — использовать его; иначе читать с диска через `readFileSync`
@@ -313,6 +313,14 @@ services/dbc/linter/
 - **Why:** Сверка контракта с сигнатурой — чистая функция без зависимостей. Выделение в отдельный Service упрощает unit-тестирование (не нужно инстанцировать весь линтер).
 - **Risk accepted:** —
 - **Rejected alternatives:** Держать валидацию сигнатур внутри `DbcTsLinter` — смешивает pass 2 логику с чистой функцией, усложняет тестирование.
+
+### D-016 — Проверка type alias (объектный литерал) и interface property (function-typed)
+
+- **Status:** active
+- **Recorded:** session Execution, dbc, TSK-19
+- **Why:** `type SimpleLogger = { debug: (m: string) => void }` — методы внутри type alias не проверялись. `interface property` с function type не проверялась. Адаптер расширен: `_extractTypeAliasMembers` (извлечение членов из object_type), `_isFunctionTypedProperty` (классификация function-typed property как interface-method). `_extractSignature` обновлён для `function_type` узлов.
+- **Risk accepted:** Только type alias с объектным литералом. Mapped types, intersection types, union types — не поддерживаются (v1).
+- **Rejected alternatives:** Полный парсинг всех вариантов type alias — overengineered для v1.
 
 ## 8. Inter-Module Dependencies
 
