@@ -21,7 +21,7 @@ _Это полный список сущностей модуля. Любое в
 | `DbcMember`                 | Value Object | Член сущности: имя, kind, контракт, сигнатура                                                                                    |
 | `DbcSignatureInfo`          | Value Object | Сигнатура: параметры + возвращаемый тип                                                                                          |
 | `DbcParamInfo`              | Value Object | Параметр: имя, тип, optional, isRest                                                                                             |
-| `DbcLintOptions`            | Value Object | Опции линтинга: `strategy: 'full'` (v1)                                                                                          |
+| `DbcLintOptions`            | Value Object | Опции линтинга: `strategy?: 'full'`, `content?: string` (предварительно прочитанный контент)                                     |
 | `DbcLintReport`             | Value Object | Результат `lint()`: ошибки + `format()`                                                                                          |
 | `DbcLintFixReport`          | Value Object | Результат `lintAndFix()`: оставшиеся ошибки + `autoFixed` + `format()`                                                           |
 | `DbcLintError`              | Value Object | Одна ошибка: file, line, col, severity, code, message                                                                            |
@@ -37,7 +37,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Абстракция парсинга исходного файла. Скрывает грамматику языка, движок парсинга и маппинг комментарий→узел.
 - **Public Properties:** N/A
 - **Public Operations:**
-  - `parseFile(filePath: string) → Promise<DbcParseResult>` — принять путь к файлу, вернуть либо набор экспортируемых сущностей, либо ошибку парсинга
+  - `parseFile(filePath: string, content?: string) → Promise<DbcParseResult>` — принять путь к файлу и опционально предварительно прочитанный контент. Если `content` передан — использовать его; иначе читать с диска
 - **Lifecycle:** stateless; создаётся один раз, `parseFile` идемпотентен
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Не кидает исключений. Файл не найден → `{ ok: false, error }`. Синтаксически битый → `{ ok: false, error }`.
@@ -57,8 +57,8 @@ _Это полный список сущностей модуля. Любое в
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Не кидает исключений. Все проблемы — в `errors`. Пустой/бинарный/без экспортов файл → пустой отчёт.
 - **Consumers:**
-  - Internal: CLI-команда `dbc lint`
-  - External: N/A (v1)
+  - Internal: CLI-команда `dbc lint`, `cli` scope (`lint-command`)
+  - External: N/A
 
 ### `DbcTsAstAdapter`
 
@@ -66,7 +66,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Реализация `DbcAstAdapter` для TypeScript через tree-sitter: обход AST, сбор export-сущностей, членов, сигнатур и JSDoc-контрактов.
 - **Public Properties:** N/A
 - **Public Operations:**
-  - `parseFile(filePath: string) → Promise<DbcParseResult>` — реализация контракта `DbcAstAdapter`
+  - `parseFile(filePath: string, content?: string) → Promise<DbcParseResult>` — реализация контракта `DbcAstAdapter`. Если `content` передан — использовать его; иначе читать с диска через `readFileSync`
 - **Lifecycle:** stateless; инициализирует tree-sitter с TS-грамматикой один раз
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Синтаксически битый файл → `{ ok: false, error }`. Файл не найден → `{ ok: false, error }`.
@@ -86,7 +86,7 @@ _Это полный список сущностей модуля. Любое в
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Не кидает исключений. Все ошибки — в отчёте.
 - **Consumers:**
-  - Internal: CLI-команда `dbc lint`
+  - Internal: CLI-команда `dbc lint`, `cli` scope (`lint-command`)
   - External: N/A
 
 ### `DbcContractMatchValidator`
@@ -112,7 +112,7 @@ _Это полный список сущностей модуля. Любое в
 | `DbcMember`         | `name: string`, `kind: string`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`                         |
 | `DbcSignatureInfo`  | `params: DbcParamInfo[]`, `returnType: string`                                                                                    |
 | `DbcParamInfo`      | `name: string`, `type: string`, `optional: boolean`, `isRest: boolean`                                                            |
-| `DbcLintOptions`    | `strategy: 'full'`                                                                                                                |
+| `DbcLintOptions`    | `strategy?: 'full'`, `content?: string`                                                                                           |
 | `DbcLintReport`     | `errors: DbcLintError[]`, `format(): string`                                                                                      |
 | `DbcLintFixReport`  | `errors: DbcLintError[]`, `autoFixed: number`, `format(): string`                                                                 |
 | `DbcLintError`      | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                             |
@@ -150,6 +150,7 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 
 - Preconditions:
   - `filePath` — абсолютный или относительный путь к существующему файлу
+  - `content` — опционально: предварительно прочитанный контент файла. Если передан — используется вместо чтения с диска
 - Postconditions:
   - Файл существует и парсится → `{ ok: true, exported: DbcExportedEntity[] }`
   - Файл не найден или синтаксически невалиден → `{ ok: false, error: string }`
@@ -176,7 +177,8 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 - Preconditions:
   - `parser: DbcParser` — валидный экземпляр парсера
   - `astAdapter: DbcAstAdapter` — валидный экземпляр адаптера
-  - `filePath` — путь к существующему файлу
+  - `filePath` — путь к существующему файлу (обязателен, используется в сообщениях об ошибках)
+  - `options.content` — если передан, используется вместо чтения с диска
   - `options.strategy` ∈ `{'full'}`
 - Postconditions:
   - `lint()` → `DbcLintReport` с `errors` (всегда массив, пустой при отсутствии ошибок)
@@ -216,7 +218,8 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 
 **Side Effects:**
 
-- Чтение файла (через `DbcAstAdapter`)
+- Чтение файла с диска только если `options.content` не передан
+- Парсинг через `DbcAstAdapter`: если `content` передан — использовать его; иначе `DbcAstAdapter` читает файл сам
 - Запись файла при autofix
 - Логирование через `#logger`
 
@@ -260,6 +263,7 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 | Option             | Bound to                                     | Status        |
 | ------------------ | -------------------------------------------- | ------------- |
 | `strategy: 'full'` | `DbcLinter.lint()`, `DbcLinter.lintAndFix()` | active (v1)   |
+| `content`          | `DbcLinter.lint()`, `DbcLinter.lintAndFix()` | active (v1)   |
 | `strategy: 'diff'` | —                                            | deferred (v2) |
 
 ## 6. File Structure
@@ -314,7 +318,7 @@ services/dbc/linter/
 
 - **Depends on:** [`dbc-parser`](../dbc-parser/dbc-parser.spec.md) — `DbcParser`, `DbcSchema`, `DbcEntrySchema`, `DbcDbcEntryIssue`, `DbcIssueCode`, константы `ERR_DBC_*`
 - **Scope Reference (cross-scope):** None
-- **Provides to:** N/A (других модулей в скоупе кроме dbc-parser нет)
+- **Provides to:** N/A (других модулей в скоупе кроме dbc-parser нет); cross-scope: `cli` scope (`lint-command`)
 
 ```mermaid
 graph TD

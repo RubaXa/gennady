@@ -8,5 +8,7 @@ export class Container {
    * @purpose Sets name.
    * @returns Void.
    */
-  set name(v: string) { this._name = v; }
+  set name(v: string) {
+    this._name = v;
+  }
 }

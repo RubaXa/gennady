@@ -82,6 +82,11 @@ unfixed.autoFixed; // 5 — столько ошибок исправлено
 unfixed.errors.map((e) => e.code);
 // ['ERR_DBC_LINT_MISSING_CONTRACT', 'ERR_DBC_LINT_PARAM_MISSING', ...]
 
+// --- передача контента (без чтения файла) ---
+const content = readFileSync('./fixtures/happy/user.service.ts', 'utf-8');
+const result = await dbcLinter.lint('./fixtures/happy/user.service.ts', { content });
+result.errors; // [] — контент передан, файл не читается повторно
+
 // --- крайние случаи ---
 const empty = await dbcLinter.lint('./fixtures/empty.ts');
 empty.errors; // [] — нет экспортов → нет ошибок
@@ -93,37 +98,37 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 
 ### 3.1 Functional Requirements
 
-| ID    | Требование                                                                                                                                                                                                                 |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| FR-01 | `parse(inputContract: string): DbcSchema` — принять сырой текст контракта, вернуть нормализованную схему                                                                                                                   |
-| FR-02 | Извлекать description-блок (текст до первого `@`) как запись `type: 'description'`                                                                                                                                         |
-| FR-03 | Основные теги контракта (value-формат): `@purpose`, `@invariant`, `@pre`, `@post`, `@sideEffect`, `@throws`, `@returns` — первое слово `type`, остаток строки `value`                                                      |
-| FR-04 | `@param`: извлечь `{dataType}`, `[specifier]` (optional-флаг), `value`                                                                                                                                                     |
-| FR-05 | `@see`: извлечь `{specifier}`, `value`. Вне порядка. Участвует в `ERR_DBC_PURPOSE_CONFLICT`                                                                                                                                |
-| FR-06 | `@implements {ContractName} in path`: `specifier` = `ContractName` из `{...}`, `value` = остаток. Порядок: первый                                                                                                          |
-| FR-07 | Прочие теги (включая `@consumer`, `@consumers`, `@author`, `@deprecated`…): общее правило `type + value`. Валидация контракта к ним не применяется                                                                         |
-| FR-08 | Многострочные значения: строки без нового тега джойнятся через `\n` к `value` предыдущей записи                                                                                                                            |
-| FR-09 | `ERR_DBC_ORDER`: порядок `implements → invariant → pre → param → throws → returns → post → sideEffect`                                                                                                                     |
-| FR-10 | `ERR_DBC_PURPOSE_CONFLICT`: `@purpose` + `@see` в одном контракте                                                                                                                                                          |
-| FR-11 | `ERR_DBC_PARAM_NAME_MISSING`: `@param` без specifier                                                                                                                                                                       |
-| FR-12 | `ERR_DBC_SEE_FORMAT_INVALID`: `@see` без корректного `{specifier}`                                                                                                                                                         |
-| FR-13 | Каждая запись содержит `issues: DbcDbcEntryIssue[]` (пустой если нет нарушений)                                                                                                                                            |
-| FR-14 | `DbcSchema.format: 'single-line'                                                                                                                                                                                           | 'multi-line'` — признак формы контракта |
-| FR-15 | `DbcEntrySchema.inline?: DbcEntrySchema[]` — вложенные теги из `                                                                                                                                                           | @<name>` в single-line режиме           |
-| FR-16 | Парсер принимает любой строковой вход без падений (no throw)                                                                                                                                                               |
-| FR-17 | `lint(filePath: string, options?: LintOptions): Promise<DbcLintReport>` — принять путь к файлу, вернуть отчёт                                                                                                              |
-| FR-18 | tree-sitter с TS-грамматикой парсит файл. Невалидный синтаксис → одна ошибка `ERR_DBC_LINT_PARSE_FAILED`                                                                                                                   |
-| FR-19 | Извлечь все экспортируемые сущности: `const`, `function`, `class`, `interface`, `type`, `enum`, `export default`. Re-export (`export { x } from`) — пропустить                                                             |
-| FR-20 | Члены класса (все, включая `private`): поля, методы, геттеры, сеттеры, constructor. Члены interface: сигнатуры, свойства. Члены enum: варианты                                                                             |
-| FR-21 | Комментарий-контракт: `/** ... */` непосредственно перед узлом (включая случай «комментарий → export → узел»). `/*` без `**` — не контракт                                                                                 |
-| FR-22 | Нет комментария → `ERR_DBC_LINT_MISSING_CONTRACT`                                                                                                                                                                          |
-| FR-23 | Комментарий есть → `DbcParser.parse()` → `issues` транслируются в ошибки линтера с исходными кодами (`ERR_DBC_ORDER`, `ERR_DBC_PURPOSE_CONFLICT`, `ERR_DBC_PARAM_NAME_MISSING`, `ERR_DBC_SEE_FORMAT_INVALID`)              |
-| FR-24 | Соответствие контракта сигнатуре кода — см. матрицу проверок ниже                                                                                                                                                          |
-| FR-25 | Отчёт в ESLint-формате: `file:line:col: severity: code: message`. Все ошибки — `severity: error`                                                                                                                           |
-| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы ниже + `ERR_DBC_ORDER` + multi-line → inline (dry-run: без новых ошибок после `DbcParser.parse()`). Возвращает `DbcLintFixReport` с `autoFixed` и оставшимися ошибками |
-| FR-27 | Пустой или без экспортов файл → пустой отчёт                                                                                                                                                                               |
-| FR-28 | Для типизированного языка `{dataType}` в тегах `@param` и `@returns` — ошибка `ERR_DBC_LINT_TYPE_REDUNDANT`                                                                                                                |
-| FR-29 | Fixture-покрытие: каждый случай линтинга покрыт отдельным fixture-файлом                                                                                                                                                   |
+| ID    | Требование                                                                                                                                                                                                                                                                                                                                             |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| FR-01 | `parse(inputContract: string): DbcSchema` — принять сырой текст контракта, вернуть нормализованную схему                                                                                                                                                                                                                                               |
+| FR-02 | Извлекать description-блок (текст до первого `@`) как запись `type: 'description'`                                                                                                                                                                                                                                                                     |
+| FR-03 | Основные теги контракта (value-формат): `@purpose`, `@invariant`, `@pre`, `@post`, `@sideEffect`, `@throws`, `@returns` — первое слово `type`, остаток строки `value`                                                                                                                                                                                  |
+| FR-04 | `@param`: извлечь `{dataType}`, `[specifier]` (optional-флаг), `value`                                                                                                                                                                                                                                                                                 |
+| FR-05 | `@see`: извлечь `{specifier}`, `value`. Вне порядка. Участвует в `ERR_DBC_PURPOSE_CONFLICT`                                                                                                                                                                                                                                                            |
+| FR-06 | `@implements {ContractName} in path`: `specifier` = `ContractName` из `{...}`, `value` = остаток. Порядок: первый                                                                                                                                                                                                                                      |
+| FR-07 | Прочие теги (включая `@consumer`, `@consumers`, `@author`, `@deprecated`…): общее правило `type + value`. Валидация контракта к ним не применяется                                                                                                                                                                                                     |
+| FR-08 | Многострочные значения: строки без нового тега джойнятся через `\n` к `value` предыдущей записи                                                                                                                                                                                                                                                        |
+| FR-09 | `ERR_DBC_ORDER`: порядок `implements → invariant → pre → param → throws → returns → post → sideEffect`                                                                                                                                                                                                                                                 |
+| FR-10 | `ERR_DBC_PURPOSE_CONFLICT`: `@purpose` + `@see` в одном контракте                                                                                                                                                                                                                                                                                      |
+| FR-11 | `ERR_DBC_PARAM_NAME_MISSING`: `@param` без specifier                                                                                                                                                                                                                                                                                                   |
+| FR-12 | `ERR_DBC_SEE_FORMAT_INVALID`: `@see` без корректного `{specifier}`                                                                                                                                                                                                                                                                                     |
+| FR-13 | Каждая запись содержит `issues: DbcDbcEntryIssue[]` (пустой если нет нарушений)                                                                                                                                                                                                                                                                        |
+| FR-14 | `DbcSchema.format: 'single-line'                                                                                                                                                                                                                                                                                                                       | 'multi-line'` — признак формы контракта |
+| FR-15 | `DbcEntrySchema.inline?: DbcEntrySchema[]` — вложенные теги из `                                                                                                                                                                                                                                                                                       | @<name>` в single-line режиме           |
+| FR-16 | Парсер принимает любой строковой вход без падений (no throw)                                                                                                                                                                                                                                                                                           |
+| FR-17 | `lint(filePath: string, options?: LintOptions): Promise<DbcLintReport>` и `lintAndFix(filePath: string, options?: LintOptions): Promise<DbcLintFixReport>` — принять путь к файлу (обязательный, используется в сообщениях об ошибках) и опционально контент через `options.content`. Если `content` передан — использовать его; иначе читать из файла |
+| FR-18 | tree-sitter с TS-грамматикой парсит файл. Невалидный синтаксис → одна ошибка `ERR_DBC_LINT_PARSE_FAILED`                                                                                                                                                                                                                                               |
+| FR-19 | Извлечь все экспортируемые сущности: `const`, `function`, `class`, `interface`, `type`, `enum`, `export default`. Re-export (`export { x } from`) — пропустить                                                                                                                                                                                         |
+| FR-20 | Члены класса (все, включая `private`): поля, методы, геттеры, сеттеры, constructor. Члены interface: сигнатуры, свойства. Члены enum: варианты                                                                                                                                                                                                         |
+| FR-21 | Комментарий-контракт: `/** ... */` непосредственно перед узлом (включая случай «комментарий → export → узел»). `/*` без `**` — не контракт                                                                                                                                                                                                             |
+| FR-22 | Нет комментария → `ERR_DBC_LINT_MISSING_CONTRACT`                                                                                                                                                                                                                                                                                                      |
+| FR-23 | Комментарий есть → `DbcParser.parse()` → `issues` транслируются в ошибки линтера с исходными кодами (`ERR_DBC_ORDER`, `ERR_DBC_PURPOSE_CONFLICT`, `ERR_DBC_PARAM_NAME_MISSING`, `ERR_DBC_SEE_FORMAT_INVALID`)                                                                                                                                          |
+| FR-24 | Соответствие контракта сигнатуре кода — см. матрицу проверок ниже                                                                                                                                                                                                                                                                                      |
+| FR-25 | Отчёт в ESLint-формате: `file:line:col: severity: code: message`. Все ошибки — `severity: error`                                                                                                                                                                                                                                                       |
+| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы ниже + `ERR_DBC_ORDER` + multi-line → inline (dry-run: без новых ошибок после `DbcParser.parse()`). Возвращает `DbcLintFixReport` с `autoFixed` и оставшимися ошибками                                                                                                                             |
+| FR-27 | Пустой или без экспортов файл → пустой отчёт                                                                                                                                                                                                                                                                                                           |
+| FR-28 | Для типизированного языка `{dataType}` в тегах `@param` и `@returns` — ошибка `ERR_DBC_LINT_TYPE_REDUNDANT`                                                                                                                                                                                                                                            |
+| FR-29 | Fixture-покрытие: каждый случай линтинга покрыт отдельным fixture-файлом                                                                                                                                                                                                                                                                               |
 
 **Матрица проверок FR-24 (соответствие контракта сигнатуре):**
 
@@ -164,7 +169,7 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 - **NFC-02**: Расширяемость — новая реализация добавляется без изменения ядра (`dbc-parser.types.ts`)
 - **NFC-03**: Issue-коды — стабильные строковые константы
 - **NFC-04**: Node.js 22+, TypeScript strict mode, zero runtime dependencies кроме `tree-sitter` (native prebuilt)
-- **NFC-05**: `LintOptions.strategy: 'full'` (v1); `'diff'` зарезервирован
+- **NFC-05**: `LintOptions.strategy: 'full'` (v1); `'diff'` зарезервирован. `LintOptions.content` — опциональный, позволяет передать предварительно прочитанный контент
 - **NFC-06**: Точка расширения под языки: интерфейс `DbcAstAdapter` (tree-sitter grammar + query + маппинг комментарий→узел). v1: `DbcTsAstAdapter`
 - **NFC-07**: Типы и константы линтера зависят от `dbc-parser.types.ts`, не дублируют
 - **NFC-08**: `//` и `#` комментарии-контракты не поддерживаются (v2)
@@ -252,7 +257,7 @@ export interface DbcParser {
 // --- dbc-linter types ---
 
 export interface DbcAstAdapter {
-  parseFile(filePath: string): Promise<ParseResult>;
+  parseFile(filePath: string, content?: string): Promise<ParseResult>;
 }
 
 export type ParseResult = { ok: true; exported: ExportedEntity[] } | { ok: false; error: string };
@@ -293,9 +298,16 @@ export interface ParamInfo {
 }
 
 export interface DbcLinter {
-  lint(filePath: string): Promise<DbcLintReport>;
-  lintAndFix(filePath: string): Promise<DbcLintFixReport>;
+  lint(filePath: string, options?: LintOptions): Promise<DbcLintReport>;
+  lintAndFix(filePath: string, options?: LintOptions): Promise<DbcLintFixReport>;
 }
+
+export type LintOptions = {
+  /** @purpose Linting strategy — only 'full' is supported in v1 */
+  strategy?: 'full';
+  /** @purpose Pre-read file content. When passed, use this instead of reading from disk. filePath still required — used in error messages. */
+  content?: string;
+};
 
 export interface DbcLintReport {
   errors: DbcLintError[];
@@ -490,22 +502,31 @@ services/dbc/
 - **Risk accepted:** Оба модуля flat. При появлении третьего может потребоваться выделение общих типов в core-модуль.
 - **Rejected alternatives:** Сделать linter частью parser-модуля — разные зоны ответственности (парсинг контракта vs анализ покрытия).
 
+### D-014 — Опция `content` в `DbcLinter`
+
+- **Status:** active
+- **Recorded:** session Discovery, dbc, refine
+- **Why:** Потребитель (`cli lint-command`) читает файл один раз и передаёт контент в несколько проверок. Без опции `content` линтер читает файл повторно — двойное чтение. `filePath` остаётся обязательным (используется в сообщениях об ошибках).
+- **Risk accepted:** Обратная совместимость: вызов без `content` — поведение как сейчас (чтение из файла).
+- **Rejected alternatives:** Убрать `filePath` и оставить только `content` — ломает всех существующих потребителей. Сделать `filePath` опциональным — усложняет сигнатуру без выигрыша.
+
 ## 7. Scope Dependencies
 
 - **Depends on:** [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier
-- **Provides to:** потребители схемы `DbcSchema` (анализ, генерация, проверка, автодокументация, агентная обработка), CLI-команда `dbc lint` (линтер как CLI-инструмент)
+- **Provides to:** потребители схемы `DbcSchema` (анализ, генерация, проверка, автодокументация, агентная обработка), CLI-команда `gennady lint` (через `cli` scope), CLI-команда `dbc lint` (линтер как CLI-инструмент)
 
 ## 8. Bootstrap Requirements
 
-| Requirement                                    | Kind       | Owner           | Resolution                                                                                                                                |
-| ---------------------------------------------- | ---------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Создать `specs/dbc-parser/` директорию         | structural | this-scope-task | `mkdir -p specs/dbc-parser` ✅                                                                                                            |
-| Написать `specs/dbc/dbc.spec.md`               | file       | this-scope-task | STEP_8 (этот файл)                                                                                                                        |
-| Удалить старые спеки из `services/dbc/parser/` | file       | this-scope-task | удалить `README.md`, `dbc-parser.task.spec.md`, `implementations/jsdoc/README.md`, `implementations/jsdoc/dbc-jsdoc-parser.tests.spec.md` |
-| `tree-sitter` npm-пакет                        | package    | this-scope-task | `npm install --save-dev tree-sitter@^0.22`                                                                                                |
-| `tree-sitter-typescript` npm-пакет             | package    | this-scope-task | `npm install --save-dev tree-sitter-typescript@^0.23`                                                                                     |
-| Пометить `tree-sitter` как external в Vite     | file       | this-scope-task | обновить `vite.config.ts` — добавить `tree-sitter` в `ssr.external` / `build.rollupOptions.external`                                      |
-| Создать `services/dbc/linter/`                 | structural | this-scope-task | `mkdir -p services/dbc/linter/implementations/ts/__tests__/fixtures`                                                                      |
+| Requirement                                              | Kind       | Owner           | Resolution                                                                                                                                                                                          |
+| -------------------------------------------------------- | ---------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Создать `specs/dbc-parser/` директорию                   | structural | this-scope-task | `mkdir -p specs/dbc-parser` ✅                                                                                                                                                                      |
+| Написать `specs/dbc/dbc.spec.md`                         | file       | this-scope-task | STEP_8 (этот файл)                                                                                                                                                                                  |
+| Удалить старые спеки из `services/dbc/parser/`           | file       | this-scope-task | удалить `README.md`, `dbc-parser.task.spec.md`, `implementations/jsdoc/README.md`, `implementations/jsdoc/dbc-jsdoc-parser.tests.spec.md`                                                           |
+| `tree-sitter` npm-пакет                                  | package    | this-scope-task | `npm install --save-dev tree-sitter@^0.22`                                                                                                                                                          |
+| `tree-sitter-typescript` npm-пакет                       | package    | this-scope-task | `npm install --save-dev tree-sitter-typescript@^0.23`                                                                                                                                               |
+| Пометить `tree-sitter` как external в Vite               | file       | this-scope-task | обновить `vite.config.ts` — добавить `tree-sitter` в `ssr.external` / `build.rollupOptions.external`                                                                                                |
+| Создать `services/dbc/linter/`                           | structural | this-scope-task | `mkdir -p services/dbc/linter/implementations/ts/__tests__/fixtures`                                                                                                                                |
+| Добавить `content` в `DbcLinter.lint()` и `lintAndFix()` | feature    | this-scope-task | обновить `DbcTsLinter`: если `options.content` передан — использовать его; иначе `fs.readFileSync(filePath)`. Обновить типы в `dbc-linter.types.ts`: добавить `content?: string` в `DbcLintOptions` |
 
 Все runtime-зависимости существуют: Node.js 22.19.0, `node:test`, `#logger`, файлы ядра и реализации парсера.
 

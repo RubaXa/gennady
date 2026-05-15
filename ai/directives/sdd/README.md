@@ -16,14 +16,14 @@ setup ──► discovery ──► module-decomposition? ──► task-scaffol
 
 ## Директивы
 
-| Директива                              | Что делает                                                                  | Входные данные              | Выходные данные                           |
-| -------------------------------------- | --------------------------------------------------------------------------- | --------------------------- | ----------------------------------------- |
-| `setup.directive.xml`                  | Создаёт/обновляет портал проекта — Vision и Scope Graph                     | Намерение оператора         | `specs/README.md`                         |
-| `discovery.directive.xml`              | Проектирует scope: vision, архитектура, инструменты, Bootstrap Requirements | Название scope + scope-type | `specs/<scope>/<scope>.spec.md`           |
-| `module-decomposition.directive.xml`   | Декомпозирует scope на модули (только library/product)                      | scope-spec                  | `specs/<scope>/<module>/<module>.spec.md` |
-| `task-scaffolding.directive.xml`       | Строит DAG task-тикетов с Phases Overview, BDD, правилами per phase         | Все scope-specs             | `tasks/<scope>/*.task-NN.md`              |
-| `phase-execution-protocol.xml`         | Выполняет ОДНУ фазу одного тикета (диспетчится `sdd-execute` оркестратором) | Phase ID + ticket + Handoff | Изменения в Target Files фазы + лог-блок  |
-| `audit.directive.xml`                  | Проверяет выравнивание: spec ↔ тикет ↔ код; маппит finding-ы на фазы        | Закрытый Round + код        | Эфемерный отчёт + `phases_to_fix`         |
+| Директива                            | Что делает                                                                  | Входные данные              | Выходные данные                           |
+| ------------------------------------ | --------------------------------------------------------------------------- | --------------------------- | ----------------------------------------- |
+| `setup.directive.xml`                | Создаёт/обновляет портал проекта — Vision и Scope Graph                     | Намерение оператора         | `specs/README.md`                         |
+| `discovery.directive.xml`            | Проектирует scope: vision, архитектура, инструменты, Bootstrap Requirements | Название scope + scope-type | `specs/<scope>/<scope>.spec.md`           |
+| `module-decomposition.directive.xml` | Декомпозирует scope на модули (только library/product)                      | scope-spec                  | `specs/<scope>/<module>/<module>.spec.md` |
+| `task-scaffolding.directive.xml`     | Строит DAG task-тикетов с Phases Overview, BDD, правилами per phase         | Все scope-specs             | `tasks/<scope>/*.task-NN.md`              |
+| `phase-execution-protocol.xml`       | Выполняет ОДНУ фазу одного тикета (диспетчится `sdd-execute` оркестратором) | Phase ID + ticket + Handoff | Изменения в Target Files фазы + лог-блок  |
+| `audit.directive.xml`                | Проверяет выравнивание: spec ↔ тикет ↔ код; маппит finding-ы на фазы        | Закрытый Round + код        | Эфемерный отчёт + `phases_to_fix`         |
 
 Оркестрация — через SKILL-ы (`sdd-execute`, `sdd-execute-batch`). Они читают только заголовок тикета + Phases Overview и диспетчат phase-subagent-ов; никогда не выполняют сами.
 
@@ -31,12 +31,12 @@ setup ──► discovery ──► module-decomposition? ──► task-scaffol
 
 **Scope** — архитектурно когерентная единица со своим runtime / deployment / стеком / UX-surface.
 
-| scope-type       | Пример scopes                | Ключевые секции спека                              |
-| ---------------- | ---------------------------- | -------------------------------------------------- |
-| `infrastructure` | `infra-base`, `infra-golang` | Tool Stack, Dev Workflow, Verification Commands    |
-| `contracts`      | `api-contracts`              | Interfaces, Versioning Policy, Compatibility Matrix|
-| `library`        | `design-system-core`         | Golden DX, Public API, DbC                         |
-| `product`        | `backend`, `web`, `mobile`   | Vision, Requirements Gate, Architecture, Modules   |
+| scope-type       | Пример scopes                | Ключевые секции спека                               |
+| ---------------- | ---------------------------- | --------------------------------------------------- |
+| `infrastructure` | `infra-base`, `infra-golang` | Tool Stack, Dev Workflow, Verification Commands     |
+| `contracts`      | `api-contracts`              | Interfaces, Versioning Policy, Compatibility Matrix |
+| `library`        | `design-system-core`         | Golden DX, Public API, DbC                          |
+| `product`        | `backend`, `web`, `mobile`   | Vision, Requirements Gate, Architecture, Modules    |
 
 ## Правила
 

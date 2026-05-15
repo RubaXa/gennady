@@ -45,6 +45,8 @@ graph TD
     TSK-08 --> TSK-07
     TSK-09 --> TSK-08
     TSK-10 --> TSK-09
+    TSK-11[TSK-11: content option]
+    TSK-11 --> TSK-10
 ```
 
 ## Tracker
@@ -61,6 +63,7 @@ graph TD
 | [TSK-08](dbc-linter/dbc-linter.task-08.md) | DbcTsAstAdapter: tree-sitter парсинг TS           | dbc-linter | TSK-07       | `[x]` DONE | 0       |
 | [TSK-09](dbc-linter/dbc-linter.task-09.md) | DbcTsLinter + DbcContractMatchValidator + autofix | dbc-linter | TSK-08       | `[x]` DONE | 0       |
 | [TSK-10](dbc-linter/dbc-linter.task-10.md) | Тесты: 88 fixture-кейсов                          | dbc-linter | TSK-09       | `[x]` DONE | 1       |
+| [TSK-11](dbc-linter/dbc-linter.task-11.md) | DbcLinter: опция `content`                        | dbc-linter | TSK-10       | `[x]` DONE | 1       |
 
 ## Notes
 

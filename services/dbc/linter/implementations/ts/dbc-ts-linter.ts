@@ -1,6 +1,6 @@
 // @file: DbcContractMatchValidator (pure validation) and DbcTsLinter adapter implementing DbcLinter with autofix chain.
 // @consumers: DbcLinter
-// @tasks: TSK-09
+// @tasks: TSK-09, TSK-11
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
@@ -98,10 +98,7 @@ function normalizeSpecifier(specifier: string): string {
 /**
  * @purpose Build a minimal DbcLintError with placeholder file/line/col (caller fills real positions).
  */
-function blankError(
-  code: DbcLintIssueCode | DbcIssueCode,
-  message: string,
-): DbcLintError {
+function blankError(code: DbcLintIssueCode | DbcIssueCode, message: string): DbcLintError {
   return {
     file: '',
     line: 1,
@@ -130,7 +127,7 @@ function blankError(
 export function validate(
   entries: DbcEntrySchema[],
   signature: DbcSignatureInfo,
-  kind: string,
+  kind: string
 ): DbcLintError[] {
   // Unknown kind → no validation (FR-24 safety valve)
   if (!ALL_KNOWN_KINDS.has(kind)) {
@@ -149,18 +146,13 @@ export function validate(
   // #region START_PARAM_VALIDATION
   if (hasParams) {
     const sigParamNames = signature.params.map((p) => p.name);
-    const contractParamNames = paramEntries.map(
-      (pe) => normalizeSpecifier(pe.specifier ?? ''),
-    );
+    const contractParamNames = paramEntries.map((pe) => normalizeSpecifier(pe.specifier ?? ''));
 
     // PARAM_MISSING: signature param not found in contract
     for (const sigName of sigParamNames) {
       if (!contractParamNames.includes(sigName)) {
         errors.push(
-          blankError(
-            ERR_DBC_LINT_PARAM_MISSING,
-            `Parameter '${sigName}' is missing from contract`,
-          ),
+          blankError(ERR_DBC_LINT_PARAM_MISSING, `Parameter '${sigName}' is missing from contract`)
         );
       }
     }
@@ -172,8 +164,8 @@ export function validate(
         errors.push(
           blankError(
             ERR_DBC_LINT_PARAM_EXTRA,
-            `Extra @param '${paramEntries[i].specifier ?? ''}' not in signature`,
-          ),
+            `Extra @param '${paramEntries[i].specifier ?? ''}' not in signature`
+          )
         );
       }
     }
@@ -197,23 +189,13 @@ export function validate(
         }
       }
       if (orderViolation) {
-        errors.push(
-          blankError(
-            ERR_DBC_LINT_PARAM_ORDER,
-            '@param order does not match signature',
-          ),
-        );
+        errors.push(blankError(ERR_DBC_LINT_PARAM_ORDER, '@param order does not match signature'));
       }
     }
   } else {
     // Kinds that should have no params at all
     for (let i = 0; i < paramEntries.length; i += 1) {
-      errors.push(
-        blankError(
-          ERR_DBC_LINT_PARAM_EXTRA,
-          `@param not applicable for kind '${kind}'`,
-        ),
-      );
+      errors.push(blankError(ERR_DBC_LINT_PARAM_EXTRA, `@param not applicable for kind '${kind}'`));
     }
   }
   // #endregion END_PARAM_VALIDATION
@@ -222,12 +204,7 @@ export function validate(
   if (alwaysReturns) {
     // getter: must have @returns
     if (!returnsEntry) {
-      errors.push(
-        blankError(
-          ERR_DBC_LINT_RETURNS_MISSING,
-          `Missing @returns for kind '${kind}'`,
-        ),
-      );
+      errors.push(blankError(ERR_DBC_LINT_RETURNS_MISSING, `Missing @returns for kind '${kind}'`));
     }
   } else if (checksReturns) {
     // function / method / interface-method
@@ -235,40 +212,28 @@ export function validate(
       errors.push(
         blankError(
           ERR_DBC_LINT_RETURNS_MISSING,
-          `Missing @returns for non-void return type '${signature.returnType}'`,
-        ),
+          `Missing @returns for non-void return type '${signature.returnType}'`
+        )
       );
     }
     if (signature.returnType === 'void' && returnsEntry) {
       errors.push(
-        blankError(
-          ERR_DBC_LINT_RETURNS_UNEXPECTED,
-          'Unexpected @returns for void return type',
-        ),
+        blankError(ERR_DBC_LINT_RETURNS_UNEXPECTED, 'Unexpected @returns for void return type')
       );
     }
   } else if (noReturns && returnsEntry) {
     // constructor / setter / field / const / type / enum / …
     errors.push(
-      blankError(
-        ERR_DBC_LINT_RETURNS_UNEXPECTED,
-        `@returns not applicable for kind '${kind}'`,
-      ),
+      blankError(ERR_DBC_LINT_RETURNS_UNEXPECTED, `@returns not applicable for kind '${kind}'`)
     );
   }
   // #endregion END_RETURNS_VALIDATION
 
   // #region START_TYPE_REDUNDANT_CHECK
   for (const entry of entries) {
-    if (
-      (entry.type === 'param' || entry.type === 'returns') &&
-      entry.dataType
-    ) {
+    if ((entry.type === 'param' || entry.type === 'returns') && entry.dataType) {
       errors.push(
-        blankError(
-          ERR_DBC_LINT_TYPE_REDUNDANT,
-          `Redundant {${entry.dataType}} in @${entry.type}`,
-        ),
+        blankError(ERR_DBC_LINT_TYPE_REDUNDANT, `Redundant {${entry.dataType}} in @${entry.type}`)
       );
     }
   }
@@ -287,10 +252,7 @@ export function validate(
  */
 function formatErrors(errors: DbcLintError[]): string {
   return errors
-    .map(
-      (e) =>
-        `${e.file}:${e.line}:${e.col}: ${e.severity}: ${e.code}: ${e.message}`,
-    )
+    .map((e) => `${e.file}:${e.line}:${e.col}: ${e.severity}: ${e.code}: ${e.message}`)
     .join('\n');
 }
 
@@ -321,15 +283,14 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /** @see {DbcLinter#lint} in ../../dbc-linter.types.ts */
-  async lint(
-    filePath: string,
-    _options?: DbcLintOptions,
-  ): Promise<DbcLintReport> {
+  async lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport> {
     logger.debug(`[DbcTsLinter#lint] [idle → parsing] ${filePath}`);
 
     try {
-      const parseResult: DbcParseResult =
-        await this._astAdapter.parseFile(filePath);
+      const parseResult: DbcParseResult = await this._astAdapter.parseFile(
+        filePath,
+        options?.content
+      );
 
       if (!parseResult.ok) {
         const error: DbcLintError = {
@@ -340,29 +301,19 @@ export class DbcTsLinter implements DbcLinter {
           code: ERR_DBC_LINT_PARSE_FAILED,
           message: parseResult.error,
         };
-        logger.warn(
-          `[DbcTsLinter#lint] [parsing → parse-failed] ${filePath}`,
-        );
+        logger.warn(`[DbcTsLinter#lint] [parsing → parse-failed] ${filePath}`);
         return { errors: [error], format: () => formatErrors([error]) };
       }
 
-      const errors = this._lintEntities(
-        parseResult.exported,
-        filePath,
-      );
+      const errors = this._lintEntities(parseResult.exported, filePath);
 
-      logger.info(
-        `[DbcTsLinter#lint] [parsing → linted] ${filePath} (${errors.length} errors)`,
-      );
+      logger.info(`[DbcTsLinter#lint] [parsing → linted] ${filePath} (${errors.length} errors)`);
       return {
         errors,
         format: () => formatErrors(errors),
       };
     } catch (cause) {
-      const error = new Error(
-        `[DbcTsLinter#lint] Lint failed for ${filePath}`,
-        { cause },
-      );
+      const error = new Error(`[DbcTsLinter#lint] Lint failed for ${filePath}`, { cause });
       logger.error(`[DbcTsLinter#lint] [parsing → failed] ${filePath}`, {
         error,
       });
@@ -379,10 +330,7 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /** @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts */
-  async lintAndFix(
-    filePath: string,
-    options?: DbcLintOptions,
-  ): Promise<DbcLintFixReport> {
+  async lintAndFix(filePath: string, options?: DbcLintOptions): Promise<DbcLintFixReport> {
     logger.debug(`[DbcTsLinter#lintAndFix] [idle → linting] ${filePath}`);
 
     try {
@@ -391,9 +339,7 @@ export class DbcTsLinter implements DbcLinter {
       const initialCount = initialReport.errors.length;
 
       if (initialCount === 0) {
-        logger.info(
-          `[DbcTsLinter#lintAndFix] [linting → clean] ${filePath} (nothing to fix)`,
-        );
+        logger.info(`[DbcTsLinter#lintAndFix] [linting → clean] ${filePath} (nothing to fix)`);
         return {
           errors: [],
           autoFixed: 0,
@@ -403,7 +349,7 @@ export class DbcTsLinter implements DbcLinter {
       // #endregion END_INITIAL_LINT
 
       // #region START_AUTOFIX_CHAIN
-      const parseResult = await this._astAdapter.parseFile(filePath);
+      const parseResult = await this._astAdapter.parseFile(filePath, options?.content);
       if (!parseResult.ok) {
         return {
           errors: initialReport.errors,
@@ -412,7 +358,7 @@ export class DbcTsLinter implements DbcLinter {
         };
       }
 
-      let source = readFileSync(filePath, 'utf8');
+      let source = options?.content ?? readFileSync(filePath, 'utf8');
 
       // Collect all contracts from entities and members for autofix
       const contractBlocks = this._collectContracts(parseResult.exported);
@@ -446,19 +392,16 @@ export class DbcTsLinter implements DbcLinter {
       }
 
       writeFileSync(filePath, source, 'utf8');
-      logger.info(
-        `[DbcTsLinter#lintAndFix] [fixing → written] ${filePath}`,
-      );
+      logger.info(`[DbcTsLinter#lintAndFix] [fixing → written] ${filePath}`);
       // #endregion END_AUTOFIX_CHAIN
 
       // #region START_RELINT
-      const finalReport = await this.lint(filePath, options);
+      // purpose: re-lint from disk (not cached content) to verify autofix result
+      const finalReport = await this.lint(filePath, { strategy: 'full' });
       const finalCount = finalReport.errors.length;
       const autoFixed = initialCount - finalCount;
 
-      logger.info(
-        `[DbcTsLinter#lintAndFix] [written → done] ${filePath} (autoFixed=${autoFixed})`,
-      );
+      logger.info(`[DbcTsLinter#lintAndFix] [written → done] ${filePath} (autoFixed=${autoFixed})`);
       return {
         errors: finalReport.errors,
         autoFixed: autoFixed >= 0 ? autoFixed : 0,
@@ -466,14 +409,8 @@ export class DbcTsLinter implements DbcLinter {
       };
       // #endregion END_RELINT
     } catch (cause) {
-      const error = new Error(
-        `[DbcTsLinter#lintAndFix] Fix failed for ${filePath}`,
-        { cause },
-      );
-      logger.error(
-        `[DbcTsLinter#lintAndFix] [linting → failed] ${filePath}`,
-        { error },
-      );
+      const error = new Error(`[DbcTsLinter#lintAndFix] Fix failed for ${filePath}`, { cause });
+      logger.error(`[DbcTsLinter#lintAndFix] [linting → failed] ${filePath}`, { error });
       return {
         errors: [
           {
@@ -506,10 +443,7 @@ export class DbcTsLinter implements DbcLinter {
   /**
    * @purpose Walk all exported entities and their members, collecting lint errors.
    */
-  protected _lintEntities(
-    entities: DbcExportedEntity[],
-    filePath: string,
-  ): DbcLintError[] {
+  protected _lintEntities(entities: DbcExportedEntity[], filePath: string): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
     for (const entity of entities) {
@@ -518,8 +452,8 @@ export class DbcTsLinter implements DbcLinter {
         errors.push(
           blankError(
             ERR_DBC_LINT_MISSING_CONTRACT,
-            `Entity '${entity.name}' (${entity.kind}) is missing a DBC contract`,
-          ),
+            `Entity '${entity.name}' (${entity.kind}) is missing a DBC contract`
+          )
         );
       } else {
         const entityErrors = this._validateContract(
@@ -528,7 +462,7 @@ export class DbcTsLinter implements DbcLinter {
           entity.kind,
           filePath,
           entity.contract.startLine,
-          entity.contract.startCol,
+          entity.contract.startCol
         );
         errors.push(...entityErrors);
       }
@@ -540,8 +474,8 @@ export class DbcTsLinter implements DbcLinter {
           errors.push(
             blankError(
               ERR_DBC_LINT_MISSING_CONTRACT,
-              `Member '${member.name}' (${member.kind}) of '${entity.name}' is missing a DBC contract`,
-            ),
+              `Member '${member.name}' (${member.kind}) of '${entity.name}' is missing a DBC contract`
+            )
           );
         } else {
           const memberErrors = this._validateContract(
@@ -550,7 +484,7 @@ export class DbcTsLinter implements DbcLinter {
             member.kind,
             filePath,
             member.contract.startLine,
-            member.contract.startCol,
+            member.contract.startCol
           );
           errors.push(...memberErrors);
         }
@@ -576,7 +510,7 @@ export class DbcTsLinter implements DbcLinter {
     kind: string,
     filePath: string,
     startLine: number,
-    startCol: number,
+    startCol: number
   ): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
@@ -646,29 +580,17 @@ export class DbcTsLinter implements DbcLinter {
    * with their associated kind and signature for autofix processing.
    */
   protected _collectContracts(
-    entities: DbcExportedEntity[],
+    entities: DbcExportedEntity[]
   ): InstanceType<typeof this._ContractBlock>[] {
     const blocks: InstanceType<typeof this._ContractBlock>[] = [];
 
     for (const entity of entities) {
       if (entity.contract) {
-        blocks.push(
-          new this._ContractBlock(
-            entity.contract.text,
-            entity.kind,
-            entity.signature,
-          ),
-        );
+        blocks.push(new this._ContractBlock(entity.contract.text, entity.kind, entity.signature));
       }
       for (const member of entity.members) {
         if (member.contract) {
-          blocks.push(
-            new this._ContractBlock(
-              member.contract.text,
-              member.kind,
-              member.signature,
-            ),
-          );
+          blocks.push(new this._ContractBlock(member.contract.text, member.kind, member.signature));
         }
       }
     }
@@ -688,10 +610,7 @@ export class DbcTsLinter implements DbcLinter {
   protected _removeRedundantTypes(jsdocText: string): string {
     // Remove {type} right after @param or @returns (optionally preceded by `* `):
     // `* @param {string} name` → `* @param name`
-    return jsdocText.replace(
-      /(\*?\s*)@(param|returns)\s+\{[^}]*\}\s+/g,
-      '$1@$2 ',
-    );
+    return jsdocText.replace(/(\*?\s*)@(param|returns)\s+\{[^}]*\}\s+/g, '$1@$2 ');
   }
 
   /**
@@ -701,10 +620,7 @@ export class DbcTsLinter implements DbcLinter {
    * @param signature Signature to match against.
    * @returns JSDoc text with extra params removed.
    */
-  protected _removeExtraParams(
-    jsdocText: string,
-    signature: DbcSignatureInfo,
-  ): string {
+  protected _removeExtraParams(jsdocText: string, signature: DbcSignatureInfo): string {
     const sigNames = new Set(signature.params.map((p) => p.name));
     const lines = jsdocText.split('\n');
     const result: string[] = [];
@@ -753,13 +669,12 @@ export class DbcTsLinter implements DbcLinter {
   protected _removeUnexpectedReturns(
     jsdocText: string,
     kind: string,
-    signature?: DbcSignatureInfo,
+    signature?: DbcSignatureInfo
   ): string {
     // Remove if kind is in no-returns set OR (checkable kind with void return)
     const shouldRemove =
       KINDS_NO_RETURNS.has(kind) ||
-      (KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind) &&
-        signature?.returnType === 'void');
+      (KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind) && signature?.returnType === 'void');
 
     if (!shouldRemove) {
       return jsdocText;
@@ -796,10 +711,7 @@ export class DbcTsLinter implements DbcLinter {
    * @param signature Signature with desired parameter order.
    * @returns JSDoc text with params reordered.
    */
-  protected _reorderParams(
-    jsdocText: string,
-    signature: DbcSignatureInfo,
-  ): string {
+  protected _reorderParams(jsdocText: string, signature: DbcSignatureInfo): string {
     if (signature.params.length === 0) {
       return jsdocText;
     }
@@ -1013,11 +925,7 @@ export class DbcTsLinter implements DbcLinter {
       .replace(/^\/\*\*\s*/, '')
       .replace(/\s*\*\/\s*$/, '')
       .split('\n')
-      .map((l) =>
-        l
-          .replace(/^\s*\*\s?/, '')
-          .trim(),
-      )
+      .map((l) => l.replace(/^\s*\*\s?/, '').trim())
       .filter((l) => l.length > 0)
       .join(' | ');
 

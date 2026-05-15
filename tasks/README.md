@@ -66,13 +66,22 @@ graph TD
     TSK-08 --> TSK-07
     TSK-09 --> TSK-08
     TSK-10 --> TSK-09
+    TSK-11 --> TSK-10
+    TSK-13 --> TSK-12
+    TSK-14 --> TSK-12
+    TSK-15 --> TSK-12
+    TSK-16 --> TSK-13
+    TSK-16 --> TSK-14
+    TSK-16 --> TSK-15
+    TSK-17 --> TSK-16
 ```
 
 ## Tracker Index
 
-| Scope | Type    | Tracker                 | Tasks | Done |
-| ----- | ------- | ----------------------- | ----- | ---- |
-| dbc   | library | [README](dbc/README.md) | 10    | 10/10 |
+| Scope | Type    | Tracker                 | Tasks | Done  |
+| ----- | ------- | ----------------------- | ----- | ----- |
+| dbc   | library | [README](dbc/README.md) | 11    | 11/11 |
+| cli   | product | [README](cli/README.md) | 7     | 7/7   |
 
 ## Decision Log
 

@@ -249,7 +249,11 @@ export function sum(a: number, b: number): number { return a + b; }
       assert.strictEqual(result.ok, true);
       if (!result.ok) throw new Error('expected ok: true');
       for (const entity of result.exported) {
-        assert.strictEqual(entity.contract, undefined, `entity ${entity.name} should have no contract`);
+        assert.strictEqual(
+          entity.contract,
+          undefined,
+          `entity ${entity.name} should have no contract`
+        );
       }
       // #endregion END_NO_CONTRACT_ASSERT
     } finally {
@@ -320,7 +324,11 @@ export * from './other';
       if (!result.ok) throw new Error('expected ok: true');
       const names = result.exported.map((e) => e.name);
       assert.ok(names.includes('keep'), 'should include non-re-export const');
-      assert.strictEqual(names.includes('reexported'), false, 'should NOT include re-exported name');
+      assert.strictEqual(
+        names.includes('reexported'),
+        false,
+        'should NOT include re-exported name'
+      );
       assert.strictEqual(result.exported.length, 1, 'should only have the direct export');
       // #endregion END_SKIP_REEXPORTS_ASSERT
     } finally {

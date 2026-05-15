@@ -1,6 +1,6 @@
 // @file: Port DbcLinter, Value Objects, and lint error constants for the dbc-linter module.
 // @consumers: DbcTsLinter
-// @tasks: TSK-07, TSK-09
+// @tasks: TSK-07, TSK-09, TSK-11
 
 import type { DbcIssueCode } from '../parser/dbc-parser.types.ts';
 
@@ -9,7 +9,9 @@ import type { DbcIssueCode } from '../parser/dbc-parser.types.ts';
  */
 export type DbcLintOptions = {
   /** @purpose Linting strategy — only 'full' is supported in v1 */
-  strategy: 'full';
+  strategy?: 'full';
+  /** @purpose Pre-read file content. When passed, the linter uses this instead of reading from disk. */
+  content?: string;
 };
 
 /**

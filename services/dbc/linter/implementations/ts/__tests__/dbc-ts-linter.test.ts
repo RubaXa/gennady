@@ -1,6 +1,6 @@
 // @file: Comprehensive test suite for DbcTsLinter covering all 88 test cases from the coverage matrix.
 // @consumers: DbcTsLinter
-// @tasks: TSK-10
+// @tasks: TSK-10, TSK-11
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,10 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { DbcTsLinter, validate } from '../dbc-ts-linter.ts';
 import { DbcJsDocParser } from '../../../../parser/implementations/jsdoc/dbc-jsdoc-parser.ts';
 import { DbcTsAstAdapter } from '../dbc-ts-ast-adapter.ts';
-import type {
-  DbcLintError,
-  DbcLintIssueCode,
-} from '../../../dbc-linter.types.ts';
+import type { DbcLintError, DbcLintIssueCode } from '../../../dbc-linter.types.ts';
 import {
   ERR_DBC_LINT_MISSING_CONTRACT,
   ERR_DBC_LINT_PARSE_FAILED,
@@ -26,10 +23,7 @@ import {
   ERR_DBC_LINT_TYPE_REDUNDANT,
 } from '../../../dbc-linter.types.ts';
 import type { DbcEntrySchema } from '../../../../parser/dbc-parser.types.ts';
-import type {
-  DbcParamInfo,
-  DbcSignatureInfo,
-} from '../../../dbc-ast-adapter.types.ts';
+import type { DbcParamInfo, DbcSignatureInfo } from '../../../dbc-ast-adapter.types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(__dirname, 'fixtures');
@@ -96,9 +90,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('A3 — should pass: export function void without @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'happy/function-void.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('happy/function-void.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -153,9 +145,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('A8 — should pass: export default with contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'happy/export-default.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('happy/export-default.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -166,9 +156,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('A9 — should pass: comment before export keyword', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'happy/comment-before-export.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('happy/comment-before-export.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -179,9 +167,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('A10 — should pass: multiple exports all covered', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'happy/multi-export.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('happy/multi-export.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -198,43 +184,31 @@ describe('DbcTsLinter', () => {
 
   describe('Group B — ERR_DBC_LINT_MISSING_CONTRACT', () => {
     it('B1 — export const without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/const.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/const.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         assert.strictEqual(report.errors.length, 1);
-        assert.strictEqual(
-          report.errors[0]?.code,
-          ERR_DBC_LINT_MISSING_CONTRACT,
-        );
+        assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_MISSING_CONTRACT);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('B2 — export function without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/function.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/function.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         assert.strictEqual(report.errors.length, 1);
-        assert.strictEqual(
-          report.errors[0]?.code,
-          ERR_DBC_LINT_MISSING_CONTRACT,
-        );
+        assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_MISSING_CONTRACT);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('B3 — export class without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/class.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/class.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -248,9 +222,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('B4 — export interface without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/interface.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/interface.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -263,26 +235,19 @@ describe('DbcTsLinter', () => {
     });
 
     it('B5 — export type without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/type.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/type.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         assert.strictEqual(report.errors.length, 1);
-        assert.strictEqual(
-          report.errors[0]?.code,
-          ERR_DBC_LINT_MISSING_CONTRACT,
-        );
+        assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_MISSING_CONTRACT);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('B6 — export enum without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/enum.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/enum.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -296,34 +261,25 @@ describe('DbcTsLinter', () => {
     });
 
     it('B7 — export default without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/export-default.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/export-default.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         assert.strictEqual(report.errors.length, 1);
-        assert.strictEqual(
-          report.errors[0]?.code,
-          ERR_DBC_LINT_MISSING_CONTRACT,
-        );
+        assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_MISSING_CONTRACT);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('B8 — class field without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-field.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-field.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         // entity has contract, but member field does not
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('id'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('id')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -332,16 +288,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('B9 — class method without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-method.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-method.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('run'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('run')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -350,16 +302,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('B10 — class getter without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-getter.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-getter.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('name'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('name')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -368,16 +316,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('B11 — class setter without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-setter.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-setter.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('name'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('name')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -386,16 +330,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('B12 — constructor without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-constructor.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-constructor.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('constructor'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('constructor')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -405,15 +345,13 @@ describe('DbcTsLinter', () => {
 
     it('B13 — interface property without contract', async () => {
       const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-interface-property.ts',
+        'missing-contract/member-interface-property.ts'
       );
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('color'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('color')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -422,16 +360,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('B14 — interface method without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-interface-method.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-interface-method.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const memberErrors = report.errors.filter(
-          (e) =>
-            e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            e.message.includes('draw'),
+          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT && e.message.includes('draw')
         );
         assert.ok(memberErrors.length >= 1);
       } finally {
@@ -440,9 +374,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('B15 — enum member without contract', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/member-enum.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/member-enum.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -450,7 +382,7 @@ describe('DbcTsLinter', () => {
         const memberErrors = report.errors.filter(
           (e) =>
             e.code === ERR_DBC_LINT_MISSING_CONTRACT &&
-            (e.message.includes('RED') || e.message.includes('BLUE')),
+            (e.message.includes('RED') || e.message.includes('BLUE'))
         );
         assert.ok(memberErrors.length >= 2);
       } finally {
@@ -459,21 +391,17 @@ describe('DbcTsLinter', () => {
     });
 
     it('B16 — class with all members missing contracts (5 errors)', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'missing-contract/class-all-members.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('missing-contract/class-all-members.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         // entity has contract → 0 entity errors
         // 5 members: field, constructor, method, getter, setter → 5 missing contract errors
-        const memberErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT,
-        );
+        const memberErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_MISSING_CONTRACT);
         assert.strictEqual(
           memberErrors.length,
           5,
-          `expected 5 MISSING_CONTRACT for members, got ${memberErrors.length}`,
+          `expected 5 MISSING_CONTRACT for members, got ${memberErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -487,26 +415,19 @@ describe('DbcTsLinter', () => {
 
   describe('Group C — ERR_DBC_LINT_PARSE_FAILED', () => {
     it('C1 — syntactically broken file', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parse-failed/syntax-error.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parse-failed/syntax-error.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         assert.strictEqual(report.errors.length, 1);
-        assert.strictEqual(
-          report.errors[0]?.code,
-          ERR_DBC_LINT_PARSE_FAILED,
-        );
+        assert.strictEqual(report.errors[0]?.code, ERR_DBC_LINT_PARSE_FAILED);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('C2 — empty file', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parse-failed/binary-or-empty.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parse-failed/binary-or-empty.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -524,19 +445,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group D — ERR_DBC_LINT_PARAM_MISSING', () => {
     it('D1 — function with 1 param, contract without @param', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-missing/function-single.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-missing/function-single.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const paramErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const paramErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           paramErrors.length,
           1,
-          `expected 1 PARAM_MISSING, got ${paramErrors.length}`,
+          `expected 1 PARAM_MISSING, got ${paramErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -544,19 +461,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('D2 — function with 3 params, contract with 1 @param (2 missing)', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-missing/function-multiple.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-missing/function-multiple.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const paramErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const paramErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           paramErrors.length,
           2,
-          `expected 2 PARAM_MISSING, got ${paramErrors.length}`,
+          `expected 2 PARAM_MISSING, got ${paramErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -564,19 +477,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('D3 — function with params, no @param at all', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-missing/function-all.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-missing/function-all.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const paramErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const paramErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           paramErrors.length,
           2,
-          `expected 2 PARAM_MISSING, got ${paramErrors.length}`,
+          `expected 2 PARAM_MISSING, got ${paramErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -584,19 +493,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('D4 — method with params, without @param', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-missing/method.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-missing/method.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const paramErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const paramErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           paramErrors.length,
           1,
-          `expected 1 PARAM_MISSING, got ${paramErrors.length}`,
+          `expected 1 PARAM_MISSING, got ${paramErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -604,19 +509,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('D5 — constructor with params, without @param', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-missing/constructor.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-missing/constructor.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const paramErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const paramErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           paramErrors.length,
           2,
-          `expected 2 PARAM_MISSING, got ${paramErrors.length}`,
+          `expected 2 PARAM_MISSING, got ${paramErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -630,19 +531,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group E — ERR_DBC_LINT_PARAM_EXTRA', () => {
     it('E1 — no params in signature, contract has 1 extra @param', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-extra/single.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-extra/single.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const extraErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-        );
+        const extraErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
         assert.strictEqual(
           extraErrors.length,
           1,
-          `expected 1 PARAM_EXTRA, got ${extraErrors.length}`,
+          `expected 1 PARAM_EXTRA, got ${extraErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -650,19 +547,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('E2 — 2 params, contract has 4 @param (2 extra)', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-extra/multiple.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-extra/multiple.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const extraErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-        );
+        const extraErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
         assert.strictEqual(
           extraErrors.length,
           2,
-          `expected 2 PARAM_EXTRA, got ${extraErrors.length}`,
+          `expected 2 PARAM_EXTRA, got ${extraErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -670,28 +563,22 @@ describe('DbcTsLinter', () => {
     });
 
     it('E3 — signature has x, contract has @param y (y is extra)', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-extra/renamed.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-extra/renamed.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const extraErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-        );
+        const extraErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
         assert.strictEqual(
           extraErrors.length,
           1,
-          `expected 1 PARAM_EXTRA, got ${extraErrors.length}`,
+          `expected 1 PARAM_EXTRA, got ${extraErrors.length}`
         );
         // Also should have PARAM_MISSING for x
-        const missingErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_MISSING,
-        );
+        const missingErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_MISSING);
         assert.strictEqual(
           missingErrors.length,
           1,
-          `expected 1 PARAM_MISSING, got ${missingErrors.length}`,
+          `expected 1 PARAM_MISSING, got ${missingErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -699,20 +586,13 @@ describe('DbcTsLinter', () => {
     });
 
     it('E4 — autofix removes extra @param', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-extra/autofix.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-extra/autofix.ts');
       try {
         const linter = createLinter();
         const fixReport = await linter.lintAndFix(filePath);
-        assert.ok(
-          fixReport.autoFixed >= 1,
-          `expected autoFixed >= 1, got ${fixReport.autoFixed}`,
-        );
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
         // After fix, no PARAM_EXTRA for 'extra'
-        const extraRemaining = fixReport.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-        );
+        const extraRemaining = fixReport.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
         assert.strictEqual(extraRemaining.length, 0);
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -726,19 +606,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group F — ERR_DBC_LINT_PARAM_ORDER', () => {
     it('F1 — reversed order c,b,a vs a,b,c', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-order/reversed.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-order/reversed.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const orderErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_ORDER,
-        );
+        const orderErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_ORDER);
         assert.strictEqual(
           orderErrors.length,
           1,
-          `expected 1 PARAM_ORDER, got ${orderErrors.length}`,
+          `expected 1 PARAM_ORDER, got ${orderErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -746,19 +622,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('F2 — partial order violation', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-order/partial.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-order/partial.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const orderErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_ORDER,
-        );
+        const orderErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_ORDER);
         assert.strictEqual(
           orderErrors.length,
           1,
-          `expected 1 PARAM_ORDER, got ${orderErrors.length}`,
+          `expected 1 PARAM_ORDER, got ${orderErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -766,19 +638,12 @@ describe('DbcTsLinter', () => {
     });
 
     it('F3 — autofix corrects @param order', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'param-order/autofix.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('param-order/autofix.ts');
       try {
         const linter = createLinter();
         const fixReport = await linter.lintAndFix(filePath);
-        assert.ok(
-          fixReport.autoFixed >= 1,
-          `expected autoFixed >= 1, got ${fixReport.autoFixed}`,
-        );
-        const orderRemaining = fixReport.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_PARAM_ORDER,
-        );
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
+        const orderRemaining = fixReport.errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_ORDER);
         assert.strictEqual(orderRemaining.length, 0);
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -792,19 +657,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group G — ERR_DBC_LINT_RETURNS_MISSING', () => {
     it('G1 — function returns string, no @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-missing/function.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-missing/function.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_MISSING,
-        );
+        const returnsErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_MISSING);
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -812,19 +673,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('G2 — method returns object, no @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-missing/method.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-missing/method.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_MISSING,
-        );
+        const returnsErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_MISSING);
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -832,19 +689,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('G3 — getter without @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-missing/getter.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-missing/getter.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_MISSING,
-        );
+        const returnsErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_MISSING);
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_MISSING, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -858,19 +711,17 @@ describe('DbcTsLinter', () => {
 
   describe('Group H — ERR_DBC_LINT_RETURNS_UNEXPECTED', () => {
     it('H1 — void function with @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/function-void.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/function-void.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -878,19 +729,17 @@ describe('DbcTsLinter', () => {
     });
 
     it('H2 — constructor with @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/constructor.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/constructor.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -898,19 +747,17 @@ describe('DbcTsLinter', () => {
     });
 
     it('H3 — setter with @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/setter.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/setter.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -918,19 +765,17 @@ describe('DbcTsLinter', () => {
     });
 
     it('H4 — field with @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/field.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/field.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -938,19 +783,17 @@ describe('DbcTsLinter', () => {
     });
 
     it('H5 — const with @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/const.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/const.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
         const returnsErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(
           returnsErrors.length,
           1,
-          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`,
+          `expected 1 RETURNS_UNEXPECTED, got ${returnsErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -958,18 +801,13 @@ describe('DbcTsLinter', () => {
     });
 
     it('H6 — autofix removes @returns', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'returns-unexpected/autofix.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/autofix.ts');
       try {
         const linter = createLinter();
         const fixReport = await linter.lintAndFix(filePath);
-        assert.ok(
-          fixReport.autoFixed >= 1,
-          `expected autoFixed >= 1, got ${fixReport.autoFixed}`,
-        );
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
         const returnsRemaining = fixReport.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
         );
         assert.strictEqual(returnsRemaining.length, 0);
       } finally {
@@ -984,19 +822,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group I — ERR_DBC_LINT_TYPE_REDUNDANT', () => {
     it('I1 — @param with {type}', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'type-redundant/param.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('type-redundant/param.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const typeErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
-        );
+        const typeErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT);
         assert.strictEqual(
           typeErrors.length,
           1,
-          `expected 1 TYPE_REDUNDANT, got ${typeErrors.length}`,
+          `expected 1 TYPE_REDUNDANT, got ${typeErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1004,19 +838,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('I2 — @returns with {type}', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'type-redundant/returns.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('type-redundant/returns.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const typeErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
-        );
+        const typeErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT);
         assert.strictEqual(
           typeErrors.length,
           1,
-          `expected 1 TYPE_REDUNDANT, got ${typeErrors.length}`,
+          `expected 1 TYPE_REDUNDANT, got ${typeErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1024,20 +854,16 @@ describe('DbcTsLinter', () => {
     });
 
     it('I3 — multiple @param with {type}', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'type-redundant/multiple.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('type-redundant/multiple.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const typeErrors = report.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
-        );
+        const typeErrors = report.errors.filter((e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT);
         // 2 @param with {type} + 1 @returns with {type}
         assert.strictEqual(
           typeErrors.length,
           3,
-          `expected 3 TYPE_REDUNDANT, got ${typeErrors.length}`,
+          `expected 3 TYPE_REDUNDANT, got ${typeErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1045,18 +871,13 @@ describe('DbcTsLinter', () => {
     });
 
     it('I4 — autofix removes {type}', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'type-redundant/autofix.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('type-redundant/autofix.ts');
       try {
         const linter = createLinter();
         const fixReport = await linter.lintAndFix(filePath);
-        assert.ok(
-          fixReport.autoFixed >= 1,
-          `expected autoFixed >= 1, got ${fixReport.autoFixed}`,
-        );
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
         const typeRemaining = fixReport.errors.filter(
-          (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
+          (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT
         );
         assert.strictEqual(typeRemaining.length, 0);
       } finally {
@@ -1071,19 +892,15 @@ describe('DbcTsLinter', () => {
 
   describe('Group J — Parser errors', () => {
     it('J1 — ERR_DBC_ORDER: tags not in canonical order', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parser-errors/parser-order.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parser-errors/parser-order.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const orderErrors = report.errors.filter(
-          (e) => e.code === 'ERR_DBC_ORDER',
-        );
+        const orderErrors = report.errors.filter((e) => e.code === 'ERR_DBC_ORDER');
         assert.strictEqual(
           orderErrors.length,
           1,
-          `expected 1 ERR_DBC_ORDER, got ${orderErrors.length}`,
+          `expected 1 ERR_DBC_ORDER, got ${orderErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1091,19 +908,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('J2 — ERR_DBC_PURPOSE_CONFLICT: @purpose + @see', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parser-errors/parser-purpose-conflict.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parser-errors/parser-purpose-conflict.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const conflictErrors = report.errors.filter(
-          (e) => e.code === 'ERR_DBC_PURPOSE_CONFLICT',
-        );
+        const conflictErrors = report.errors.filter((e) => e.code === 'ERR_DBC_PURPOSE_CONFLICT');
         assert.strictEqual(
           conflictErrors.length,
           1,
-          `expected 1 ERR_DBC_PURPOSE_CONFLICT, got ${conflictErrors.length}`,
+          `expected 1 ERR_DBC_PURPOSE_CONFLICT, got ${conflictErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1111,19 +924,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('J3 — ERR_DBC_PARAM_NAME_MISSING: @param without name', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parser-errors/parser-param-name-missing.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parser-errors/parser-param-name-missing.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const nameErrors = report.errors.filter(
-          (e) => e.code === 'ERR_DBC_PARAM_NAME_MISSING',
-        );
+        const nameErrors = report.errors.filter((e) => e.code === 'ERR_DBC_PARAM_NAME_MISSING');
         assert.strictEqual(
           nameErrors.length,
           1,
-          `expected 1 ERR_DBC_PARAM_NAME_MISSING, got ${nameErrors.length}`,
+          `expected 1 ERR_DBC_PARAM_NAME_MISSING, got ${nameErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1131,19 +940,15 @@ describe('DbcTsLinter', () => {
     });
 
     it('J4 — ERR_DBC_SEE_FORMAT_INVALID: @see without {specifier}', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'parser-errors/parser-see-format-invalid.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('parser-errors/parser-see-format-invalid.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
-        const seeErrors = report.errors.filter(
-          (e) => e.code === 'ERR_DBC_SEE_FORMAT_INVALID',
-        );
+        const seeErrors = report.errors.filter((e) => e.code === 'ERR_DBC_SEE_FORMAT_INVALID');
         assert.strictEqual(
           seeErrors.length,
           1,
-          `expected 1 ERR_DBC_SEE_FORMAT_INVALID, got ${seeErrors.length}`,
+          `expected 1 ERR_DBC_SEE_FORMAT_INVALID, got ${seeErrors.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1157,19 +962,14 @@ describe('DbcTsLinter', () => {
 
   describe('Group K — Autofix combined', () => {
     it('K1 — all fixable errors in one file, after autofix only unfixable remain', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/all-fixable.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/all-fixable.ts');
       try {
         const linter = createLinter();
 
         // Initial lint
         const initialReport = await linter.lint(filePath);
         const initialCount = initialReport.errors.length;
-        assert.ok(
-          initialCount >= 3,
-          `expected >= 3 initial errors, got ${initialCount}`,
-        );
+        assert.ok(initialCount >= 3, `expected >= 3 initial errors, got ${initialCount}`);
 
         // Check that fixable errors are present
         const initialCodes = errorCodes(initialReport.errors);
@@ -1185,20 +985,15 @@ describe('DbcTsLinter', () => {
 
         // Autofix
         const fixReport = await linter.lintAndFix(filePath);
-        assert.ok(
-          fixReport.autoFixed >= 1,
-          `expected autoFixed >= 1, got ${fixReport.autoFixed}`,
-        );
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
 
         // After fix: only unfixable remain (PARAM_MISSING)
         const remainingCodes = errorCodes(fixReport.errors);
-        const remainingFixable = fixableCodes.filter((c) =>
-          remainingCodes.includes(c),
-        );
+        const remainingFixable = fixableCodes.filter((c) => remainingCodes.includes(c));
         assert.deepStrictEqual(
           remainingFixable,
           [],
-          `fixable errors should be gone but got: ${remainingFixable.join(', ')}`,
+          `fixable errors should be gone but got: ${remainingFixable.join(', ')}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1206,9 +1001,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('K2 — multi-line contract without conflicts → inlined', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/multi-line-to-inline.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/multi-line-to-inline.ts');
       try {
         const linter = createLinter();
 
@@ -1221,7 +1014,7 @@ describe('DbcTsLinter', () => {
         assert.strictEqual(
           fixReport.errors.length,
           0,
-          `expected no errors after fix, got: ${fixReport.errors.map((e) => e.code).join(', ')}`,
+          `expected no errors after fix, got: ${fixReport.errors.map((e) => e.code).join(', ')}`
         );
         assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
 
@@ -1233,7 +1026,7 @@ describe('DbcTsLinter', () => {
         // After inlining: only one line of JSDoc
         assert.ok(
           commentLines.length <= 2,
-          `expected inline form (<=2 comment lines), got ${commentLines.length}`,
+          `expected inline form (<=2 comment lines), got ${commentLines.length}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1242,7 +1035,7 @@ describe('DbcTsLinter', () => {
 
     it('K3 — multi-line contract with conflicts → NOT inlined', async () => {
       const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/multi-line-cannot-inline.ts',
+        'autofix-combined/multi-line-cannot-inline.ts'
       );
       try {
         const linter = createLinter();
@@ -1250,7 +1043,7 @@ describe('DbcTsLinter', () => {
         // Initial lint: has PURPOSE_CONFLICT error
         const initialReport = await linter.lint(filePath);
         const conflictErrors = initialReport.errors.filter(
-          (e) => e.code === 'ERR_DBC_PURPOSE_CONFLICT',
+          (e) => e.code === 'ERR_DBC_PURPOSE_CONFLICT'
         );
         assert.strictEqual(conflictErrors.length, 1);
 
@@ -1259,19 +1052,14 @@ describe('DbcTsLinter', () => {
 
         // Read the fixed file — should still be multi-line
         const fixedContent = readFileSync(filePath, 'utf8');
-        assert.ok(
-          fixedContent.includes('\n'),
-          'expected multi-line contract to remain multi-line',
-        );
+        assert.ok(fixedContent.includes('\n'), 'expected multi-line contract to remain multi-line');
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     });
 
     it('K4 — ERR_DBC_ORDER + ERR_DBC_LINT_PARAM_ORDER simultaneously', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/order-tags.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/order-tags.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -1280,11 +1068,11 @@ describe('DbcTsLinter', () => {
         // Should have both ERR_DBC_ORDER and ERR_DBC_LINT_PARAM_ORDER
         assert.ok(
           codes.includes('ERR_DBC_ORDER'),
-          `expected ERR_DBC_ORDER, got: ${codes.join(', ')}`,
+          `expected ERR_DBC_ORDER, got: ${codes.join(', ')}`
         );
         assert.ok(
           codes.includes(ERR_DBC_LINT_PARAM_ORDER),
-          `expected ERR_DBC_LINT_PARAM_ORDER, got: ${codes.join(', ')}`,
+          `expected ERR_DBC_LINT_PARAM_ORDER, got: ${codes.join(', ')}`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1343,9 +1131,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('L5 — class with internal members: all covered', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'edge/private-class.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('edge/private-class.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -1357,9 +1143,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('L6 — nested class structure: no crash', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'edge/nested-class.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('edge/nested-class.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -1383,9 +1167,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('L8 — optional parameter: contract with @param [name]', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'edge/optional-param.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('edge/optional-param.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -1410,9 +1192,7 @@ describe('DbcTsLinter', () => {
     });
 
     it('L10 — comment with irregular spacing: parsed correctly', async () => {
-      const { dir, filePath } = setupTempFromFixture(
-        'edge/comment-style.ts',
-      );
+      const { dir, filePath } = setupTempFromFixture('edge/comment-style.ts');
       try {
         const linter = createLinter();
         const report = await linter.lint(filePath);
@@ -1425,6 +1205,110 @@ describe('DbcTsLinter', () => {
   });
 
   // #endregion END_GROUP_L_EDGE_CASES
+
+  // #region START_GROUP_N_CONTENT_OPTION
+
+  describe('Group N — Content option (TSK-11)', () => {
+    it('N1 — should pass: lint with pre-read content', async () => {
+      // contract: when content is passed, the linter uses it instead of reading from disk
+      // failure mode: do not mock adapter — use real implementations to verify contract end-to-end
+
+      // #region START_LINT_CONTENT_SETUP
+      const { dir, filePath } = setupTempFromFixture('happy/function.ts');
+      const content = readFileSync(filePath, 'utf8');
+      const linter = createLinter();
+      // #endregion END_LINT_CONTENT_SETUP
+
+      try {
+        // #region START_LINT_CONTENT_TRIGGER
+        const report = await linter.lint(filePath, { strategy: 'full', content });
+        // #endregion END_LINT_CONTENT_TRIGGER
+
+        // #region START_LINT_CONTENT_ASSERT
+        assert.deepStrictEqual(report.errors, []);
+        // #endregion END_LINT_CONTENT_ASSERT
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N2 — should autofix: lintAndFix with pre-read content', async () => {
+      // purpose: verify autofix chain operates on pre-read content without re-reading from disk
+      // contract: autoFixed >= 1 when fixable errors are present in content
+
+      // #region START_AUTOFIX_CONTENT_SETUP
+      const { dir, filePath } = setupTempFromFixture('returns-unexpected/autofix.ts');
+      const content = readFileSync(filePath, 'utf8');
+      const linter = createLinter();
+      // #endregion END_AUTOFIX_CONTENT_SETUP
+
+      try {
+        // #region START_AUTOFIX_CONTENT_TRIGGER
+        const fixReport = await linter.lintAndFix(filePath, { strategy: 'full', content });
+        // #endregion END_AUTOFIX_CONTENT_TRIGGER
+
+        // #region START_AUTOFIX_CONTENT_ASSERT
+        assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
+        // #endregion END_AUTOFIX_CONTENT_ASSERT
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N3 — should pass: lint without content reads from disk (backward compat)', async () => {
+      // contract: calling lint() without `content` option must still work as before
+      // failure mode: passing `undefined` content must not change behaviour
+
+      const { dir, filePath } = setupTempFromFixture('happy/function.ts');
+      try {
+        const linter = createLinter();
+
+        // #region START_BACKWARD_COMPAT_TRIGGER
+        const reportWithOpts = await linter.lint(filePath, { strategy: 'full' });
+        const reportNoOpts = await linter.lint(filePath);
+        // #endregion END_BACKWARD_COMPAT_TRIGGER
+
+        // #region START_BACKWARD_COMPAT_ASSERT
+        assert.deepStrictEqual(reportWithOpts.errors, []);
+        assert.deepStrictEqual(reportNoOpts.errors, []);
+        // #endregion END_BACKWARD_COMPAT_ASSERT
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N4 — should report correct filePath in errors when content is passed', async () => {
+      // purpose: filePath in lint errors must reflect the actual file argument, not content origin
+      // contract: error.file === filePath regardless of what content contains
+
+      // #region START_FILEPATH_CONTENT_SETUP
+      const { dir, filePath } = setupTempFromFixture('missing-contract/function.ts');
+      const content = readFileSync(filePath, 'utf8');
+      const linter = createLinter();
+      // #endregion END_FILEPATH_CONTENT_SETUP
+
+      try {
+        // #region START_FILEPATH_CONTENT_TRIGGER
+        const report = await linter.lint(filePath, { strategy: 'full', content });
+        // #endregion END_FILEPATH_CONTENT_TRIGGER
+
+        // #region START_FILEPATH_CONTENT_ASSERT
+        assert.ok(report.errors.length >= 1, 'expected at least one error');
+        for (const error of report.errors) {
+          assert.strictEqual(
+            error.file,
+            filePath,
+            `error.file should be the filePath argument, got "${error.file}"`
+          );
+        }
+        // #endregion END_FILEPATH_CONTENT_ASSERT
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  // #endregion END_GROUP_N_CONTENT_OPTION
 });
 
 // #endregion END_DBC_TS_LINTER_TESTS
@@ -1433,11 +1317,7 @@ describe('DbcTsLinter', () => {
 
 describe('DbcContractMatchValidator', () => {
   // Helper to build DbcEntrySchema
-  function paramEntry(
-    specifier: string,
-    dataType?: string,
-    value?: string,
-  ): DbcEntrySchema {
+  function paramEntry(specifier: string, dataType?: string, value?: string): DbcEntrySchema {
     const entry: DbcEntrySchema = {
       type: 'param',
       value: value ?? '',
@@ -1465,7 +1345,7 @@ describe('DbcContractMatchValidator', () => {
       optional?: boolean;
       isRest?: boolean;
     }>,
-    returnType?: string,
+    returnType?: string
   ): DbcSignatureInfo {
     return {
       params: params.map((p) => ({
@@ -1503,14 +1383,9 @@ describe('DbcContractMatchValidator', () => {
 
   it('M4 — wrong order: ERR_DBC_LINT_PARAM_ORDER', () => {
     const entries = [paramEntry('b'), paramEntry('a')];
-    const signature = sig(
-      [{ name: 'a' }, { name: 'b' }],
-      'void',
-    );
+    const signature = sig([{ name: 'a' }, { name: 'b' }], 'void');
     const errors = validate(entries, signature, 'function');
-    const orderErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_PARAM_ORDER,
-    );
+    const orderErrors = errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_ORDER);
     assert.strictEqual(orderErrors.length, 1);
   });
 
@@ -1518,9 +1393,7 @@ describe('DbcContractMatchValidator', () => {
     const entries: DbcEntrySchema[] = [];
     const signature = sig([], 'string');
     const errors = validate(entries, signature, 'function');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_MISSING,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_MISSING);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1528,9 +1401,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [returnsEntry()];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'function');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1538,9 +1409,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [returnsEntry()];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'constructor');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1548,9 +1417,7 @@ describe('DbcContractMatchValidator', () => {
     const entries: DbcEntrySchema[] = [];
     const signature = sig([], 'string');
     const errors = validate(entries, signature, 'getter');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_MISSING,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_MISSING);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1558,9 +1425,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [returnsEntry()];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'setter');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1568,9 +1433,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [paramEntry('x')];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'field');
-    const paramErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-    );
+    const paramErrors = errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
     assert.strictEqual(paramErrors.length, 1);
   });
 
@@ -1578,9 +1441,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [returnsEntry()];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'field');
-    const returnsErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED,
-    );
+    const returnsErrors = errors.filter((e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED);
     assert.strictEqual(returnsErrors.length, 1);
   });
 
@@ -1588,9 +1449,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [paramEntry('x')];
     const signature = sig([], 'void');
     const errors = validate(entries, signature, 'const');
-    const paramErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_PARAM_EXTRA,
-    );
+    const paramErrors = errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_EXTRA);
     assert.strictEqual(paramErrors.length, 1);
   });
 
@@ -1598,9 +1457,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [paramEntry('x', 'string', 'The param')];
     const signature = sig([{ name: 'x' }], 'void');
     const errors = validate(entries, signature, 'function');
-    const typeErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
-    );
+    const typeErrors = errors.filter((e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT);
     assert.strictEqual(typeErrors.length, 1);
   });
 
@@ -1608,9 +1465,7 @@ describe('DbcContractMatchValidator', () => {
     const entries = [returnsEntry('object', 'Result')];
     const signature = sig([], 'object');
     const errors = validate(entries, signature, 'function');
-    const typeErrors = errors.filter(
-      (e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT,
-    );
+    const typeErrors = errors.filter((e) => e.code === ERR_DBC_LINT_TYPE_REDUNDANT);
     assert.strictEqual(typeErrors.length, 1);
   });
 
@@ -1622,7 +1477,10 @@ describe('DbcContractMatchValidator', () => {
   });
 
   it('M16 — rest param: ...args ↔ @param ...args → no errors', () => {
-    const entries = [paramEntry('...args', undefined, 'Rest params'), returnsEntry(undefined, 'The sum')];
+    const entries = [
+      paramEntry('...args', undefined, 'Rest params'),
+      returnsEntry(undefined, 'The sum'),
+    ];
     const signature = sig([{ name: 'args', isRest: true }], 'number');
     const errors = validate(entries, signature, 'function');
     assert.deepStrictEqual(errors, []);

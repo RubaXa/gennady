@@ -1,6 +1,6 @@
 // @file: Port DbcAstAdapter and AST-related Value Objects for the dbc-linter module.
 // @consumers: DbcTsAstAdapter
-// @tasks: TSK-07
+// @tasks: TSK-07, TSK-11
 
 /**
  * @purpose Describes a single parameter in a function or method signature.
@@ -86,7 +86,8 @@ export interface DbcAstAdapter {
   /**
    * @purpose Parse a source file and extract all exported entities with their contracts and signatures.
    * @param filePath Absolute or relative path to the source file.
+   * @param content Pre-read file content. When passed, the adapter uses this instead of reading from disk.
    * @returns On success: exported entities list. On failure: error description.
    */
-  parseFile(filePath: string): Promise<DbcParseResult>;
+  parseFile(filePath: string, content?: string): Promise<DbcParseResult>;
 }

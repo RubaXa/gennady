@@ -1,6 +1,6 @@
 // @file: TypeScript tree-sitter adapter implementing DbcAstAdapter for parsing .ts files.
 // @consumers: DbcTsLinter
-// @tasks: TSK-08
+// @tasks: TSK-08, TSK-11
 
 import { readFileSync } from 'node:fs';
 import Parser from 'tree-sitter';
@@ -34,26 +34,26 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   protected _parser: Parser | undefined;
 
   /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts */
-  async parseFile(filePath: string): Promise<DbcParseResult> {
+  async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
     // #region START_PARSE_FILE
     try {
       logger.debug(`[DbcTsAstAdapter#parseFile] [idle → reading] ${filePath}`);
-      const source = readFileSync(filePath, 'utf8');
+      const source = content ?? readFileSync(filePath, 'utf8');
       const parser = this._initializeParser();
       const tree = parser.parse(source);
 
       const hasError = tree.rootNode.hasError as unknown as boolean;
       if (hasError) {
         const errorNode = this._findErrorNode(tree.rootNode);
-        const detail = errorNode
-          ? ` at line ${errorNode.startPosition.row + 1}`
-          : '';
+        const detail = errorNode ? ` at line ${errorNode.startPosition.row + 1}` : '';
         logger.warn(`[DbcTsAstAdapter#parseFile] [reading → parse-failed] ${filePath}${detail}`);
         return { ok: false, error: `Syntax error in ${filePath}${detail}` };
       }
 
       const exported = this._extractExported(tree.rootNode, source);
-      logger.info(`[DbcTsAstAdapter#parseFile] [reading → parsed] ${filePath} (${exported.length} entities)`);
+      logger.info(
+        `[DbcTsAstAdapter#parseFile] [reading → parsed] ${filePath} (${exported.length} entities)`
+      );
       return { ok: true, exported };
     } catch (cause) {
       // #region START_PARSE_FILE_CATCH
@@ -66,14 +66,10 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
         return { ok: false, error: `File not found: ${filePath}` };
       }
 
-      const error = new Error(
-        `[DbcTsAstAdapter#parseFile] Parse failed for ${filePath}`,
-        { cause }
-      );
-      logger.error(
-        `[DbcTsAstAdapter#parseFile] [reading → failed] ${filePath}`,
-        { error }
-      );
+      const error = new Error(`[DbcTsAstAdapter#parseFile] Parse failed for ${filePath}`, {
+        cause,
+      });
+      logger.error(`[DbcTsAstAdapter#parseFile] [reading → failed] ${filePath}`, { error });
       return { ok: false, error: `Failed to parse ${filePath}: ${String(cause)}` };
       // #endregion END_PARSE_FILE_CATCH
     }
@@ -191,7 +187,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     const members = this._extractMembers(declaration, source, kind);
 
     const contract = pendingContract
-      ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
+      ? {
+          text: pendingContract.text,
+          startLine: pendingContract.startLine,
+          startCol: pendingContract.startCol,
+        }
       : undefined;
 
     return {
@@ -346,7 +346,12 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
         isRest = true;
         for (let j = 0; j < child.childCount; j += 1) {
           const rc = child.child(j);
-          if (rc && (rc.type === 'identifier' || rc.type === 'object_pattern' || rc.type === 'array_pattern')) {
+          if (
+            rc &&
+            (rc.type === 'identifier' ||
+              rc.type === 'object_pattern' ||
+              rc.type === 'array_pattern')
+          ) {
             name = source.slice(rc.startIndex, rc.endIndex);
           }
         }
@@ -400,11 +405,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @param kind Entity kind.
    * @returns Array of members (empty for non-collection entities).
    */
-  protected _extractMembers(
-    node: SyntaxNode,
-    source: string,
-    kind: string
-  ): DbcMember[] {
+  protected _extractMembers(node: SyntaxNode, source: string, kind: string): DbcMember[] {
     // #region START_EXTRACT_MEMBERS
     if (kind === 'class') {
       return this._extractClassMembers(node, source);
@@ -482,7 +483,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
           ? this._extractSignature(signatureNode, source)
           : { params: [], returnType: 'void' };
         const contract = pendingContract
-          ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
+          ? {
+              text: pendingContract.text,
+              startLine: pendingContract.startLine,
+              startCol: pendingContract.startCol,
+            }
           : undefined;
         members.push({ name, kind: memberKind, contract, signature });
         pendingContract = undefined;
@@ -551,7 +556,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
           ? this._extractSignature(signatureNode, source)
           : { params: [], returnType: 'void' };
         const contract = pendingContract
-          ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
+          ? {
+              text: pendingContract.text,
+              startLine: pendingContract.startLine,
+              startCol: pendingContract.startCol,
+            }
           : undefined;
         members.push({ name, kind: memberKind, contract, signature });
         pendingContract = undefined;
@@ -606,7 +615,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       ) {
         const name = source.slice(child.startIndex, child.endIndex);
         const contract = pendingContract
-          ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
+          ? {
+              text: pendingContract.text,
+              startLine: pendingContract.startLine,
+              startCol: pendingContract.startCol,
+            }
           : undefined;
         members.push({
           name,
@@ -649,10 +662,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     for (let i = 0; i < node.childCount; i += 1) {
       const child = node.child(i);
       if (!child) continue;
-      if (
-        child.type === 'property_identifier' ||
-        child.type === 'identifier'
-      ) {
+      if (child.type === 'property_identifier' || child.type === 'identifier') {
         return source.slice(child.startIndex, child.endIndex);
       }
     }

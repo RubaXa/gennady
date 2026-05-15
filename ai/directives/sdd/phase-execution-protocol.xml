@@ -32,13 +32,12 @@
 
     <Axiom id="AX_NARROW_RECON">
       Before any Edit / Write: one quick recon scoped to THIS phase only.
-      1. `git status` — sanity check working tree.
-      2. `ls -la <Target Files dirs>` — actual files vs phase assumptions.
-      3. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
+      1. `ls <Target Files parent dirs>` — check whether parent directories exist.
+      2. Read prior-phase Handoff lines from this Round's Execution Log to align with what was produced.
 
       Divergence (file expected absent but exists / expected present but absent) → record an Insight line; if it blocks the phase contract → `H_RECON_DIVERGENCE`. Do not «fix» silently.
 
-      Forbidden: full project recon (orchestrator already did state-detection); reading sibling-phase Target Files unless cited in `Inputs`.
+      Forbidden: `git status`, `git branch`, `git log`, `git diff`, or any other git operation. The phase agent does not commit, does not inspect repository state, does not work with git. Full project recon is the orchestrator's job.
     </Axiom>
 
     <Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK">
@@ -69,6 +68,17 @@
       Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>`. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
 
       Phase kind `doc` typically has no verification — empty section is acceptable.
+    </Axiom>
+
+    <Axiom id="AX_PERMITTED_BASH_COMMANDS">
+      Phase agent may ONLY run these bash commands:
+      - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
+      - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
+      - **May run for config-kind only:** `npm view <pkg> version`, `cat node_modules/<pkg>/package.json`, `cat node_modules/<pkg>/CHANGELOG.md`.
+
+      **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` (format+typecheck — overkill; use `tsc --noEmit` for type-check, let audit run the full lint); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+
+      Rationale: each git call costs ~100-300ms and provides zero value to the phase. Audit handles project-wide checks. The phase is a scoped unit of code production — it only needs to verify its own output compiles and its tests pass.
     </Axiom>
 
     <Axiom id="AX_BDD_NAME_DISCIPLINE">
@@ -184,7 +194,7 @@
       <Action>
         Per `AX_NARROW_RECON`. Emit a single recon line:
         ```
-        - [x] `<ts>` recon git=<branch>/<dirty?> targets=<created|exists|absent> divergence=<none|<list>>
+        - [x] `<ts>` recon targets=<created|exists|absent> divergence=<none|<list>>
         ```
         Divergence blocks phase contract → `H_RECON_DIVERGENCE`.
       </Action>
@@ -237,7 +247,7 @@
     <Contract id="PHASE_BLOCK_FORMAT">
       ```markdown
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
-      - [x] `<ts>` recon git=<branch>/<dirty?> targets=<state> divergence=<none|<list>>
+      - [x] `<ts>` recon targets=<state> divergence=<none|<list>>
       - [x] `<ts>` rules <comma-separated rule-ids>
       - [x] `<ts>` file <path>
       - [x] `<ts>` test <path>                       <!-- only for test/impl mixing or test kind -->

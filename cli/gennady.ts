@@ -41,6 +41,10 @@ switch (command) {
     await import('./cmd/remote-console/index.ts');
     break;
 
+  case 'lint':
+    await import('./cmd/lint/index.ts');
+    break;
+
   default:
     await import('./cmd/help/help.cmd.ts');
     process.exit(0);
