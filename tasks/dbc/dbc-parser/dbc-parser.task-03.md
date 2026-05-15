@@ -99,6 +99,7 @@ Contract: see Spec References.
 _(Plan-as-checklist per protocol in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)_
 
 ### Round 1 — 2026-05-14, initial
+
 - [x] `[23:05]` Task initialized.
 - [x] `[23:06]` Tests updated: 5 test files + snapshots.
 - [x] `[23:06]` Verification: `npm run type-check` → pass [exit=0].

@@ -44,7 +44,7 @@ export default defineConfig({
       fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
     },
     rollupOptions: {
-      external: nodeBuiltins,
+      external: [...nodeBuiltins, 'tree-sitter'],
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
         entryFileNames: (chunkInfo) =>

@@ -151,9 +151,7 @@ describe('DbcJsDocParser', () => {
       // END_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ACT
 
       // START_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ASSERT
-      t.assert.deepStrictEqual(schema.entries[1]?.issues, [
-        { code: ERR_DBC_ORDER, line: 2 },
-      ]);
+      t.assert.deepStrictEqual(schema.entries[1]?.issues, [{ code: ERR_DBC_ORDER, line: 2 }]);
       t.assert.snapshot(schema);
       // END_VALIDATE_ORDER_IMPLEMENTS_VIOLATION_ASSERT
     });
@@ -171,9 +169,7 @@ describe('DbcJsDocParser', () => {
       // END_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ACT
 
       // START_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ASSERT
-      t.assert.deepStrictEqual(schema.entries[1]?.issues, [
-        { code: ERR_DBC_ORDER, line: 2 },
-      ]);
+      t.assert.deepStrictEqual(schema.entries[1]?.issues, [{ code: ERR_DBC_ORDER, line: 2 }]);
       t.assert.snapshot(schema);
       // END_VALIDATE_ORDER_INVARIANT_BEFORE_IMPLEMENTS_ASSERT
     });

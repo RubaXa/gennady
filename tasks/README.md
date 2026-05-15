@@ -61,13 +61,18 @@ After `[x] DONE`, invoke `sdd-audit` on the ticket. Until audit returns PASS, ro
 graph TD
     TSK-02 --> TSK-01
     TSK-03 --> TSK-02
+    TSK-05 --> TSK-04
+    TSK-07 --> TSK-06
+    TSK-08 --> TSK-07
+    TSK-09 --> TSK-08
+    TSK-10 --> TSK-09
 ```
 
 ## Tracker Index
 
 | Scope | Type    | Tracker                 | Tasks | Done |
 | ----- | ------- | ----------------------- | ----- | ---- |
-| dbc | library | [README](dbc/README.md) | 3 | 3/3 |
+| dbc   | library | [README](dbc/README.md) | 10    | 10/10 |
 
 ## Decision Log
 
