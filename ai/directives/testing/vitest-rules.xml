@@ -453,7 +453,7 @@
     </Hook>
     <Hook id="HOOK_FILE_SIZE_BUDGET">
       <Purpose>Flag test files that exceed the 500 LOC hard ceiling or the 300 LOC soft target.</Purpose>
-      <Command>find . -name '*.test.ts' -not -path '*/node_modules/*' -exec sh -c 'lines=$(grep -cvE "^\s*(//|/\*|\*|$)" "$1"); [ "$lines" -gt 300 ] &amp;&amp; echo "$lines $1"' _ {} \; | sort -n</Command>
+      <Command>find . -name '*.test.ts' -not -path '*/node_modules/*' -exec sh -c 'lines=$(grep -cvE "^\s*(//|/\*|\*|$)" "$1"); [ "$lines" -gt 300 ] && echo "$lines $1"' _ {} \; | sort -n</Command>
       <Expected>No test file exceeds 500 code-LOC. Files over 300 carry a tracked split task or explicit justification.</Expected>
     </Hook>
     <Hook id="HOOK_NO_FORBIDDEN_TEST_PATTERNS">

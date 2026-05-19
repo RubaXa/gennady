@@ -1,0 +1,292 @@
+<PlaywrightE2ERules keywords="playwright, e2e, aria-snapshot, role-locators, page-objects, fixture, storage-state, network-mock, route, visual-regression, self-verify" type="testing-rules" ver="2.0">
+  <Mission>
+    Canonical rules for authoring Playwright E2E tests. Every execution-agent MUST perceive the page through `page.ariaSnapshot()`, locate elements via `getByRole()` only, and codify the observed contract into committed test files backed by fixture-based Page Objects.
+
+    **Base axiom:** an e2e test asserts a USER-FACING contract — what a screen-reader-equivalent observer sees and what a role-driven interaction does. Anything in the test that ties to CSS classes, DOM structure, or pixel coordinates is contract leakage and will break on the first refactor that does not affect the contract. So locators come from accessible roles, structural assertions come from `toMatchAriaSnapshot`, and visual regression is reserved for explicitly visual concerns.
+
+    Scope: codification — turning exploration observations into committed test files. Companion (exploration before authoring): `ai/directives/testing/playwright-cli.xml`.
+  </Mission>
+
+  <Depends_On>
+    - ai/directives/coding/typescript-rules.xml
+    - ai/directives/testing/playwright-cli.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_E2E_AX_TREE_AS_CONTRACT">
+      The accessibility-tree snapshot (`ariaSnapshot()` + `toMatchAriaSnapshot()`) IS the structural contract. It encodes roles, accessible names, and hierarchy — the same surface a screen reader perceives. Textual/structural assertions on the DOM (e.g. `toContainText`) are allowed where AX granularity is insufficient (specific dynamic copy), but they supplement the AX snapshot, not replace it.
+    </Axiom>
+
+    <Axiom id="AX_E2E_ROLE_LOCATORS_ONLY">
+      Locator vocabulary is fixed: `getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, `getByTestId`. CSS selectors (`.class`, `#id`), XPath, and `nth-child` chains are forbidden as primary locators — they bind the test to implementation details with no contract status. `getByTestId` is a last-resort fallback for elements with no semantic role, and it is reserved for stable test IDs the component team owns.
+    </Axiom>
+
+    <Axiom id="AX_E2E_FIXTURE_BASED_POM">
+      Page Objects extend Playwright's `test.extend` fixtures — they are NOT standalone classes the test instantiates by hand. Fixture lifecycle (setup per test, teardown after) is the framework's job; bypassing it by `new SomePage(page)` reintroduces the cleanup problem the fixtures solve.
+
+      One fixture file per business domain (e.g. `auth.fixture.ts`, `checkout.fixture.ts`); unrelated domains do NOT merge into one fixture file.
+    </Axiom>
+
+    <Axiom id="AX_E2E_STRUCTURE_AX_FIRST">
+      Test structure is fixed:
+      1. Navigate (`page.goto`).
+      2. Capture / assert structure via `toMatchAriaSnapshot` on a scoped region.
+      3. Interact via `getByRole(...)`.
+      4. Assert the delta via another `toMatchAriaSnapshot` (or focused role-based assertion).
+
+      Skipping the first AX assertion turns the test into «click + hope»; without an initial baseline the interaction's delta has nothing to be a delta from.
+    </Axiom>
+
+    <Axiom id="AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT">
+      AX snapshots are scoped to a NAMED region by default (`page.getByRole('region', { name: '...' }).ariaSnapshot()`). Full-page snapshots are reserved for tests whose contract IS the full page (e.g. a landing-page structure test). Defaulting to full-page snapshots produces brittle baselines that explode on every unrelated nav/sidebar change.
+    </Axiom>
+
+    <Axiom id="AX_E2E_AUTH_VIA_STORAGE_STATE">
+      Authentication is handled exclusively via `storageState`: a setup project runs the login flow once, writes `storageState.json`, and dependent projects reuse it. Inline login inside every test is forbidden — it slows the suite, couples every test to the login UI, and turns a login regression into a cascading red across the entire suite.
+    </Axiom>
+
+    <Axiom id="AX_E2E_NETWORK_MOCK_AT_ROUTE">
+      External API calls are mocked via `page.route()` / `context.route()` at the network boundary. Mocking at the component level or hand-patching `window.fetch` is forbidden — it bypasses the request flow the production code actually exercises and routinely misses headers, CORS, or retries.
+
+      If the project standardises on a network-mocking harness (MSW, in-house helper), tests reuse it consistently rather than introducing a parallel mocking path per test.
+    </Axiom>
+
+    <Axiom id="AX_E2E_VISUAL_REGRESSION_GATED">
+      Visual regression (`toHaveScreenshot()`) is enabled ONLY when the task explicitly requires pixel-level verification. Default contract verification is structural (AX) + behavioural (interaction). Visual regression baselines drift across font rendering, OS chrome, and unrelated CSS, so they belong only on routes that genuinely care about pixels.
+    </Axiom>
+
+    <Axiom id="AX_E2E_FILE_LAYOUT">
+      Project-wide layout: tests under `e2e/tests/`, fixtures under `e2e/fixtures/`, auth setup under `e2e/auth/`, snapshot baselines under `e2e/__snapshots__/`. One subject per test file; one domain per fixture file. Mixing layouts forces every reader-agent to grep for the convention instead of trusting it.
+    </Axiom>
+
+    <Axiom id="AX_E2E_FILE_SIZE_BUDGET">
+      Soft target ≤200 lines per test file; hard ceiling 300 lines (code only). Approaching the budget triggers extraction of shared logic into fixtures or helpers; exceeding it triggers a split by scenario family. Past the ceiling, instruction-following degrades and the file becomes a maintenance liability.
+    </Axiom>
+
+    <Axiom id="AX_E2E_BROWSER_COVERAGE_PRAGMATIC">
+      Default browser coverage is Chromium. Firefox / WebKit projects are added ONLY when multi-browser support is an explicit ticket requirement. Running every test on every browser inflates CI time without proportional contract evidence; per-route multi-browser opt-in is the trade-off.
+    </Axiom>
+
+    <Axiom id="AX_E2E_HEADLESS_ALWAYS">
+      Test execution is headless. `--headed` is a human-only debugging mode and never appears in committed scripts or CI configuration.
+    </Axiom>
+
+    <Axiom id="AX_E2E_SELF_VERIFICATION_LOOP">
+      After authoring: `npx playwright test --project=chromium`. Observe output → fix failures (in component or test) → re-run. Loop continues until green. Submitting a red test without an EXPLICIT blocker note in the ticket is forbidden — silent red turns the suite into noise the next agent must reverse-engineer.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_E2E_FIXTURE_POM">
+      A Page Object exposed as a Playwright fixture: `const test = base.extend&lt;{ checkout: CheckoutPage }&gt;({ checkout: async ({ page }, use) => { await use(new CheckoutPage(page)); } });`. Tests then declare `checkout` in their argument list and receive a fresh per-test instance.
+    </Definition>
+    <Definition id="DEF_E2E_AX_CONTRACT">
+      The YAML emitted by `ariaSnapshot()` IS the structural contract. Diffs against the committed baseline (`toMatchAriaSnapshot`) signal either a real regression or an intentional UI change requiring an operator-confirmed baseline update.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_E2E_AX_SNAPSHOT_BASELINE">
+      <Intent>Navigate to a route, assert the structural baseline against the AX snapshot of a named region.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { expect, test } from '@playwright/test';
+
+        test('should render checkout form', async ({ page }) => {
+          await page.goto('/checkout');
+          await expect(
+            page.getByRole('region', { name: 'Checkout' }),
+          ).toMatchAriaSnapshot(`
+            - heading "Checkout" [level=1]
+            - textbox "Email"
+            - button "Place Order"
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Scoped to the `Checkout` region — not the full page. AX literal expresses the contract in role/name terms only.</Why>
+    </Pattern>
+
+    <Pattern id="PT_E2E_INTERACTION_DELTA">
+      <Intent>Interact via role locator; assert the AX delta after the interaction.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        test('should show validation error on empty submit', async ({ page }) => {
+          await page.goto('/checkout');
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await expect(
+            page.getByRole('region', { name: 'Checkout' }),
+          ).toMatchAriaSnapshot(`
+            - textbox "Email" [invalid=true]
+            - text: "Email is required"
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Interaction via `getByRole`; delta asserted as a second AX snapshot of the same scoped region.</Why>
+    </Pattern>
+
+    <Pattern id="PT_E2E_FIXTURE_POM">
+      <Intent>Fixture-based Page Object — instantiated by the framework lifecycle, not by the test.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // e2e/fixtures/checkout.fixture.ts
+        import { test as base, expect } from '@playwright/test';
+        import { CheckoutPage } from './checkout.page';
+
+        export const test = base.extend&lt;{ checkout: CheckoutPage }&gt;({
+          checkout: async ({ page }, use) => {
+            await use(new CheckoutPage(page));
+          },
+        });
+        export { expect };
+
+        // e2e/tests/checkout.spec.ts
+        import { expect, test } from '../fixtures/checkout.fixture';
+
+        test('happy path', async ({ checkout }) => {
+          await checkout.navigate();
+          await checkout.fillEmail('user@test.com');
+          await checkout.submit();
+          await expect(checkout.confirmation).toMatchAriaSnapshot(`
+            - heading "Order placed" [level=1]
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Test declares only `checkout`; the fixture handles construction per test. No `new CheckoutPage(...)` in the test body.</Why>
+    </Pattern>
+
+    <Pattern id="PT_E2E_AUTH_SETUP_PROJECT">
+      <Intent>Auth handled once via a setup project; dependent projects reuse `storageState`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // playwright.config.ts (excerpt)
+        export default defineConfig({
+          projects: [
+            { name: 'setup', testMatch: /auth\.setup\.ts$/ },
+            {
+              name: 'chromium',
+              use: { storageState: 'e2e/auth/user.json' },
+              dependencies: ['setup'],
+            },
+          ],
+        });
+        ```
+      </Snippet>
+      <Why>Login runs once; every chromium test starts already authenticated. No inline login per test.</Why>
+    </Pattern>
+
+    <Pattern id="PT_E2E_NETWORK_MOCK">
+      <Intent>Mock an external API at the network boundary; production code path is otherwise untouched.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        test('should show confirmation when order API succeeds', async ({ page }) => {
+          await page.route('**/api/orders', async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ orderId: 'ord-1', status: 'confirmed' }),
+            });
+          });
+          await page.goto('/checkout');
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await expect(page.getByRole('status')).toContainText('Order ord-1');
+        });
+        ```
+      </Snippet>
+      <Why>`page.route` intercepts at the network layer; component code runs unchanged. Assertion via `getByRole('status')`.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_E2E_CSS_LOCATOR">
+      <Bad>`await page.locator('.btn-primary.submit-action').click();` — CSS class chain as the primary locator.</Bad>
+      <Why_Bad>CSS selectors couple the test to implementation (`AX_E2E_ROLE_LOCATORS_ONLY`). Any class rename — even one driven by a refactor that does not change behaviour — turns the test red. The user-facing contract has no concept of `.btn-primary`.</Why_Bad>
+      <Good>`await page.getByRole('button', { name: 'Place Order' }).click();` — role + accessible name, mirroring how the user identifies the element.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_E2E_INLINE_LOGIN">
+      <Bad>Every test begins with `await page.goto('/login'); await page.getByLabel('Email').fill(...); await page.getByLabel('Password').fill(...); await page.getByRole('button', { name: 'Sign in' }).click();`.</Bad>
+      <Why_Bad>Inline login per test (`AX_E2E_AUTH_VIA_STORAGE_STATE`). One regression in the login UI cascades into every test going red; the suite spends most of its time logging in instead of exercising the contract being tested.</Why_Bad>
+      <Good>Extract the login flow into a setup project that writes `storageState.json`; configure the test project with `use: { storageState: 'e2e/auth/user.json' }, dependencies: ['setup']`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_E2E_FULL_PAGE_SNAPSHOT">
+      <Bad>`await expect(page).toMatchAriaSnapshot(\`- banner ... - main ... - contentinfo ...\`);` — full-page snapshot for a test that only verifies the checkout region.</Bad>
+      <Why_Bad>Snapshot scope mismatched to test intent (`AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT`). Any change to the unrelated banner / footer / sidebar produces a snapshot diff that has nothing to do with the test's contract. Maintenance cost balloons; signal-to-noise drops.</Why_Bad>
+      <Good>Scope to the region under test: `await expect(page.getByRole('region', { name: 'Checkout' })).toMatchAriaSnapshot(\`...\`);`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_E2E_STANDALONE_POM">
+      <Bad>`class CheckoutPage { constructor(page) { this.page = page; } } ... test('...', async ({ page }) => { const checkout = new CheckoutPage(page); ... });`</Bad>
+      <Why_Bad>Page Object instantiated by the test instead of supplied by a fixture (`AX_E2E_FIXTURE_BASED_POM`). Reintroduces the manual setup/teardown problem fixtures solve; no per-test lifecycle isolation; the page object cannot expose its own fixture-managed state (intercepts, storage, helpers).</Why_Bad>
+      <Good>Define `test = base.extend({ checkout: async ({ page }, use) => use(new CheckoutPage(page)) })`; the test declares `checkout` as an argument and receives a fresh per-test instance.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_E2E_UNMOCKED_NETWORK">
+      <Bad>Test exercises `/checkout` against the real backend; flakiness is «accepted» because the backend is «usually up».</Bad>
+      <Why_Bad>External dependency not mocked (`AX_E2E_NETWORK_MOCK_AT_ROUTE`). The test depends on infrastructure state outside the contract under test; one downstream incident turns the suite red and erodes trust. Worse, it cannot exercise failure paths because the real backend will not produce them on demand.</Why_Bad>
+      <Good>`await page.route('**/api/orders', route => route.fulfill({ status: 200, body: JSON.stringify(fixture) }));` for the happy path; `route.fulfill({ status: 500 })` for the failure path.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Workflow_Outline>
+    <Step id="WF_E2E_1_EXPLORE">Run the exploration loop in `playwright-cli.xml` to capture AX snapshots and confirmed locators against the running app.</Step>
+    <Step id="WF_E2E_2_CODIFY">Author the fixture file (if a Page Object is needed) and the test file: AX baseline → interaction via role locator → AX delta.</Step>
+    <Step id="WF_E2E_3_MOCK_AND_AUTH">Mock external APIs via `page.route()`; reuse the auth setup project rather than logging in inline.</Step>
+    <Step id="WF_E2E_4_SELF_VERIFY">`npx playwright test --project=chromium`; fix failures (component or test); re-run until green.</Step>
+    <Step id="WF_E2E_5_FINALIZE">Confirm file under budget; snapshots scoped; no CSS/XPath locators; no inline login; no committed `.only` / `.skip` without deferred-ownership reference.</Step>
+  </Workflow_Outline>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_E2E_RUN_CHROMIUM">
+      <Purpose>Run the e2e suite on Chromium.</Purpose>
+      <Command>npx playwright test --project=chromium</Command>
+      <Expected>Exit 0; all tests pass.</Expected>
+    </Hook>
+    <Hook id="HOOK_E2E_NO_CSS_LOCATORS">
+      <Purpose>Smoke-grep for forbidden CSS / XPath locator forms in test files.</Purpose>
+      <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE "page\.locator\(['\"]([.#]|\.\\.|//|xpath=)" || true</Command>
+      <Expected>Empty output. Matches must be rewritten as `getByRole` / `getByLabel` / `getByTestId` derived from the AX tree.</Expected>
+    </Hook>
+    <Hook id="HOOK_E2E_NO_HEADED">
+      <Purpose>No committed configuration runs Playwright in headed mode.</Purpose>
+      <Command>find . \( -name 'playwright.config.*' -o -name '*.spec.ts' -o -name '*.test.ts' \) -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'headless\s*:\s*false|--headed' || true</Command>
+      <Expected>Empty output.</Expected>
+    </Hook>
+    <Hook id="HOOK_E2E_FILE_SIZE_BUDGET">
+      <Purpose>Test files stay under the 300-line hard ceiling (code only).</Purpose>
+      <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | while read f; do lines=$(grep -cvE '^\s*(//|/\*|\*|$)' "$f"); [ "$lines" -gt 200 ] &amp;&amp; echo "$lines $f"; done | sort -n</Command>
+      <Expected>No file exceeds 300 code-lines. Files over 200 carry a tracked split task or explicit justification.</Expected>
+    </Hook>
+    <Hook id="HOOK_E2E_NO_ONLY_OR_SKIP">
+      <Purpose>No committed `.only` / `.skip` without a deferred-ownership reference.</Purpose>
+      <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE '\b(test|describe)\.(only|skip|fixme)\b' || true</Command>
+      <Expected>Empty output, or each match accompanied by an inline `TASK-` reference.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ AX snapshot is the structural contract; `toMatchAriaSnapshot` on scoped regions before and after interaction.
+    ✅ Locators come from accessible roles, labels, placeholders, text, or stable test IDs — never CSS / XPath / nth-child.
+    ✅ Page Objects exposed as fixtures via `test.extend`; one fixture file per business domain.
+    ✅ Auth via `storageState` from a setup project; no inline login per test.
+    ✅ External APIs mocked at the network boundary via `page.route()`; project-wide harness reused consistently.
+    ✅ Visual regression (`toHaveScreenshot`) used only when the contract is genuinely visual.
+    ✅ Files live under the documented layout (`e2e/tests/`, `e2e/fixtures/`, `e2e/auth/`, `e2e/__snapshots__/`).
+    ✅ Test files under 200 code-lines (soft) / 300 (hard); past the budget → split by scenario family.
+    ✅ Headless execution everywhere; self-verification loop completes before handoff.
+
+    ❌ CSS classes, IDs, XPath, or nth-child as primary locators.
+    ❌ Inline login inside every test.
+    ❌ Full-page AX snapshots for tests that target a specific region.
+    ❌ Standalone Page Object instantiated by the test (`new SomePage(page)`).
+    ❌ External APIs left unmocked; component-level `fetch` patching.
+    ❌ Visual regression baselines for tests whose contract is structural.
+    ❌ Test file exceeds the 300-line hard ceiling.
+    ❌ Committed `test.only` / `test.skip` / `test.fixme` without deferred-ownership reference.
+    ❌ Snapshot baselines updated silently via `--update-snapshots`.
+    ❌ Red test handed off without an EXPLICIT blocker note.
+  </Reward_Criteria>
+</PlaywrightE2ERules>

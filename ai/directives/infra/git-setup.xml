@@ -218,22 +218,22 @@
   <Verification_Hooks>
     <Hook id="HOOK_GITIGNORE_PRESENT">
       <Purpose>Verify `.gitignore` exists and is non-empty.</Purpose>
-      <Command>test -s .gitignore &amp;&amp; echo "OK"</Command>
+      <Command>test -s .gitignore && echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_ENV_TRACKED">
       <Purpose>Verify no `.env*` (except `.env.example`) is tracked.</Purpose>
-      <Command>git ls-files | grep -E '^\.env($|\.)' | grep -v '^\.env\.example$' | head -1 | grep -q . &amp;&amp; echo "FAIL: .env tracked" || echo "OK"</Command>
+      <Command>git ls-files | grep -E '^\.env($|\.)' | grep -v '^\.env\.example$' | head -1 | grep -q . && echo "FAIL: .env tracked" || echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_NODE_MODULES_TRACKED">
       <Purpose>Verify `node_modules/` is not tracked.</Purpose>
-      <Command>git ls-files node_modules 2>/dev/null | head -1 | grep -q . &amp;&amp; echo "FAIL: node_modules tracked" || echo "OK"</Command>
+      <Command>git ls-files node_modules 2>/dev/null | head -1 | grep -q . && echo "FAIL: node_modules tracked" || echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_DEFAULT_BRANCH_MAIN">
       <Purpose>Verify default branch is `main`.</Purpose>
-      <Command>git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | grep -q 'main$' &amp;&amp; echo "OK" || echo "FAIL: default branch not main"</Command>
+      <Command>git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | grep -q 'main$' && echo "OK" || echo "FAIL: default branch not main"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_TAG_ANNOTATED">

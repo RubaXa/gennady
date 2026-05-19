@@ -1,4 +1,4 @@
-# Task: TSK-20 — Fix _reorderTags: `*/` closing boundary + edge cases
+# Task: TSK-20 — Fix \_reorderTags: `*/` closing boundary + edge cases
 
 ## 1. Meta & Traceability
 
@@ -102,31 +102,34 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `2026-05-15T19:20:00Z` recon targets=dbc-ts-linter.ts|exists divergence=none
 - [x] `2026-05-15T19:20:00Z` rules typescript-rules
 - [x] `2026-05-15T19:21:00Z` file services/dbc/linter/implementations/ts/dbc-ts-linter.ts
 - [x] `2026-05-15T19:21:00Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-15T19:21:00Z` DONE
-      intro closingLine ← preserve */ boundary separate from tag blocks
+      intro closingLine ← preserve \*/ boundary separate from tag blocks
       **Handoff →** artifacts: [services/dbc/linter/implementations/ts/dbc-ts-linter.ts]; decisions: [_reorderTags-closing-boundary=preserved]; open: []
 
 #### P2
+
 - [x] `2026-05-15T19:22:00Z` recon targets=dbc-ts-linter.test.ts|exists divergence=none
 - [x] `2026-05-15T19:22:00Z` rules typescript-rules, node-test
-- [x] `2026-05-15T19:22:00Z` test services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts
-- [x] `2026-05-15T19:23:00Z` ver node --test --test-name-pattern=_reorderTags → pass exit=0
+- [x] `2026-05-15T19:22:00Z` test services/dbc/linter/implementations/ts/**tests**/dbc-ts-linter.test.ts
+- [x] `2026-05-15T19:23:00Z` ver node --test --test-name-pattern=\_reorderTags → pass exit=0
 - [x] `2026-05-15T19:23:00Z` DONE
       intro duplicate-tags-test ← audit F-03: missing duplicate tags BDD scenario
-      cov closing */ stays last → dbc-ts-linter.test.ts::_reorderTags/closing */ stays last
-      cov no tags — unchanged → dbc-ts-linter.test.ts::_reorderTags/no tags
-      cov single tag — unchanged → dbc-ts-linter.test.ts::_reorderTags/single tag
-      cov already ordered — unchanged → dbc-ts-linter.test.ts::_reorderTags/already ordered
-      cov reversed order → dbc-ts-linter.test.ts::_reorderTags/reversed order
-      cov unknown tags preserve relative order → dbc-ts-linter.test.ts::_reorderTags/unknown tags
-      cov multi-line tag values → dbc-ts-linter.test.ts::_reorderTags/multi-line values
-      cov duplicate tags preserve relative order → dbc-ts-linter.test.ts::_reorderTags/duplicate tags
+      cov closing _/ stays last → dbc-ts-linter.test.ts::\_reorderTags/closing _/ stays last
+      cov no tags — unchanged → dbc-ts-linter.test.ts::\_reorderTags/no tags
+      cov single tag — unchanged → dbc-ts-linter.test.ts::\_reorderTags/single tag
+      cov already ordered — unchanged → dbc-ts-linter.test.ts::\_reorderTags/already ordered
+      cov reversed order → dbc-ts-linter.test.ts::\_reorderTags/reversed order
+      cov unknown tags preserve relative order → dbc-ts-linter.test.ts::\_reorderTags/unknown tags
+      cov multi-line tag values → dbc-ts-linter.test.ts::\_reorderTags/multi-line values
+      cov duplicate tags preserve relative order → dbc-ts-linter.test.ts::\_reorderTags/duplicate tags
       **Handoff →** artifacts: [services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts]; decisions: [test-count=8, reorderTags-edge-cases=covered]; open: []
 
 #### Round close
+
 - [x] `2026-05-15T19:23:00Z` sync dbc+root
 - [x] `2026-05-15T19:23:00Z` DONE

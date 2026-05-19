@@ -51,6 +51,7 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `2026-05-15T19:49:29Z` recon targets=exists divergence=none
 - [x] `2026-05-15T19:49:29Z` rules typescript-rules
 - [x] `2026-05-15T19:49:29Z` file services/vcs-client/entities/vcs-user.type.ts
@@ -63,4 +64,4 @@
 - [x] `2026-05-15T19:49:29Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-15T19:49:29Z` ver npx tsx cli/gennady.ts lint <7 files> → pass exit=0
 - [x] `2026-05-15T19:49:29Z` DONE
-**Handoff →** artifacts: [services/vcs-client/entities/vcs-user.type.ts, services/vcs-client/abstract/vcs-client.ts, services/vcs-client/abstract/vcs-client-merge-discussions.ts, services/vcs-client/abstract/vcs-client-merge-requests.ts, services/vcs-client/gitlab/vcs-gitlab-client.ts, services/vcs-client/gitlab/vcs-gitlab-merge-discussions.ts, services/vcs-client/gitlab/vcs-gitlab-merge-requests.ts]; decisions: [file-header-format=@file+@consumers-no-@tasks, jsdoc-lang=mixed-ru-en-existing-preserved]; open: []
+      **Handoff →** artifacts: [services/vcs-client/entities/vcs-user.type.ts, services/vcs-client/abstract/vcs-client.ts, services/vcs-client/abstract/vcs-client-merge-discussions.ts, services/vcs-client/abstract/vcs-client-merge-requests.ts, services/vcs-client/gitlab/vcs-gitlab-client.ts, services/vcs-client/gitlab/vcs-gitlab-merge-discussions.ts, services/vcs-client/gitlab/vcs-gitlab-merge-requests.ts]; decisions: [file-header-format=@file+@consumers-no-@tasks, jsdoc-lang=mixed-ru-en-existing-preserved]; open: []

@@ -318,7 +318,9 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       }
       const arrowIdx = children.findIndex((c) => c.type === '=>');
       if (arrowIdx >= 0 && arrowIdx + 1 < children.length) {
-        returnType = source.slice(children[arrowIdx + 1].startIndex, children[arrowIdx + 1].endIndex).trim();
+        returnType = source
+          .slice(children[arrowIdx + 1].startIndex, children[arrowIdx + 1].endIndex)
+          .trim();
         if (!returnType) returnType = 'unknown';
       }
       return { params, returnType };
@@ -609,7 +611,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
           ? this._extractSignature(signatureNode, source)
           : { params: [], returnType: 'void' };
         const contract = pendingContract
-          ? { text: pendingContract.text, startLine: pendingContract.startLine, startCol: pendingContract.startCol }
+          ? {
+              text: pendingContract.text,
+              startLine: pendingContract.startLine,
+              startCol: pendingContract.startCol,
+            }
           : undefined;
         members.push({ name, kind: memberKind, contract, signature });
         pendingContract = undefined;

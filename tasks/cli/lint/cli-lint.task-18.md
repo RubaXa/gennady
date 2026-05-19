@@ -95,10 +95,11 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `2026-05-15T18:19:13Z` recon targets=exists divergence=none
 - [x] `2026-05-15T18:19:13Z` rules typescript-rules, node-test
-- [x] `2026-05-15T18:23:15Z` file cli/cmd/lint/__tests__/lint.cmd.test.ts
-- [x] `2026-05-15T18:23:15Z` test cli/cmd/lint/__tests__/lint.cmd.test.ts
+- [x] `2026-05-15T18:23:15Z` file cli/cmd/lint/**tests**/lint.cmd.test.ts
+- [x] `2026-05-15T18:23:15Z` test cli/cmd/lint/**tests**/lint.cmd.test.ts
 - [x] `2026-05-15T18:23:15Z` cov чистый файл → exit 0 → lint.cmd.test.ts::should exit 0 for clean file
 - [x] `2026-05-15T18:23:15Z` cov файл с ошибками → exit 1 → lint.cmd.test.ts::should exit 1 with ESLint format
 - [x] `2026-05-15T18:23:15Z` cov --autofix показывает количество → lint.cmd.test.ts::should show autoFixed count
@@ -107,7 +108,7 @@
 - [x] `2026-05-15T18:23:15Z` cov файл не существует → lint.cmd.test.ts::should skip missing files
 - [x] `2026-05-15T18:23:15Z` cov фильтр по .ts → lint.cmd.test.ts::should filter by extension
 - [x] `2026-05-15T18:23:15Z` cov пути консистентны → lint.cmd.test.ts::should use consistent paths
-- [x] `2026-05-15T18:23:40Z` ver node --test cli/cmd/lint/__tests__/lint.cmd.test.ts → pass exit=0
+- [x] `2026-05-15T18:23:40Z` ver node --test cli/cmd/lint/**tests**/lint.cmd.test.ts → pass exit=0
 - [x] `2026-05-15T18:23:40Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-15T18:23:40Z` DONE
-**Handoff →** artifacts: [cli/cmd/lint/__tests__/lint.cmd.test.ts]; decisions: [test-count=8, test-runner=node-test, autofix-verified=true, file-path-consistency-verified=true]; open: []
+      **Handoff →** artifacts: [cli/cmd/lint/__tests__/lint.cmd.test.ts]; decisions: [test-count=8, test-runner=node-test, autofix-verified=true, file-path-consistency-verified=true]; open: []

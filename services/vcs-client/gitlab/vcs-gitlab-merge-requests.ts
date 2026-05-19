@@ -1,11 +1,16 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
+// @tasks: TSK-29
 
 import {
   VcsClientMergeRequests,
   type VcsMergeRequestByIidQuery,
   type VcsMergeRequestsQuery,
 } from '../abstract/vcs-client-merge-requests.ts';
+import type {
+  VcsMergeRequestChanges,
+  VcsMergeRequestChangesQuery,
+} from '../entities/vcs-merge-request-changes.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
@@ -76,5 +81,55 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
       }
       throw error;
     }
+  }
+
+  /**
+   * @param query Target repository and MR IID, optional pagination.
+   * @returns List of changed files with metadata.
+   * @sideEffect Network: GET /projects/:project/merge_requests/:iid/changes
+   * @see {VcsClientMergeRequests#getChanges} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  async getChanges(query: VcsMergeRequestChangesQuery): Promise<VcsMergeRequestChanges[]> {
+    const params = new URLSearchParams();
+    if (query?.perPage) params.set('per_page', String(query.perPage));
+    if (query?.page) params.set('page', String(query.page));
+    const repoId = encodeURIComponent(query.repository);
+    const iid = encodeURIComponent(String(query.iid));
+
+    const result = (await this._request(
+      `/projects/${repoId}/merge_requests/${iid}/changes?${params.toString()}`
+    )) as { changes?: Array<Record<string, unknown>>; sha?: string; source_branch?: string };
+
+    const changes = result?.changes ?? [];
+    const ref =
+      (result as { sha?: string; source_branch?: string }).sha ??
+      (result as { source_branch?: string }).source_branch ??
+      'main';
+
+    return changes.map((c) => {
+      const newPath = (c.new_path as string) ?? (c.old_path as string) ?? '';
+      const newFile = c.new_file as boolean | undefined;
+      const deletedFile = c.deleted_file as boolean | undefined;
+      const renamedFile = c.renamed_file as boolean | undefined;
+
+      let status: VcsMergeRequestChanges['status'] = 'modified';
+      if (deletedFile) status = 'deleted';
+      else if (newFile) status = 'added';
+      else if (renamedFile) status = 'renamed';
+
+      const entry: VcsMergeRequestChanges = {
+        path: newPath,
+        status,
+        ref,
+      };
+
+      if (renamedFile && c.old_path) {
+        entry.previousPath = c.old_path as string;
+      }
+      if (typeof c.additions === 'number') entry.additions = c.additions;
+      if (typeof c.deletions === 'number') entry.deletions = c.deletions;
+
+      return entry;
+    });
   }
 }

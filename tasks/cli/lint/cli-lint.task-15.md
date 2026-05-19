@@ -70,10 +70,11 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `[2026-05-15T19:10:00Z]` recon git=main/dirty targets=dbc-contract.check.ts absent divergence=none
 - [x] `[2026-05-15T19:10:00Z]` rules typescript-rules
 - [x] `[2026-05-15T19:10:00Z]` file cli/cmd/lint/checks/dbc-contract.check.ts
 - [x] `[2026-05-15T19:10:00Z]` intro DbcContractCheck.check ← фаза P1 TSK-15: адаптер к DbcTsLinter с передачей контента
 - [x] `[2026-05-15T19:10:00Z]` ver npm run type-check → pass exit=0
 - [x] `[2026-05-15T19:10:00Z]` DONE
-**Handoff →** artifacts: [cli/cmd/lint/checks/dbc-contract.check.ts]; decisions: [module-system=esm, check-is-async=true, autofix-delegates-to-lintAndFix=true]; open: []
+      **Handoff →** artifacts: [cli/cmd/lint/checks/dbc-contract.check.ts]; decisions: [module-system=esm, check-is-async=true, autofix-delegates-to-lintAndFix=true]; open: []

@@ -1,6 +1,6 @@
 // @file: DbcContractMatchValidator (pure validation) and DbcTsLinter adapter implementing DbcLinter with autofix chain.
 // @consumers: DbcLinter
-// @tasks: TSK-09, TSK-11, TSK-20
+// @tasks: TSK-09, TSK-11, TSK-20, TSK-21
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
@@ -113,17 +113,7 @@ function blankError(code: DbcLintIssueCode | DbcIssueCode, message: string): Dbc
 
 // #region START_DBC_CONTRACT_MATCH_VALIDATOR
 
-/**
- * @purpose Pure-function validator that compares parsed contract entries against
- * a code signature and returns structural mismatches.
- * @invariant Never throws. Unknown `kind` returns an empty error array.
- * @invariant Errors are returned in stable order: PARAM_MISSING → PARAM_EXTRA →
- * PARAM_ORDER → RETURNS_MISSING → RETURNS_UNEXPECTED → TYPE_REDUNDANT.
- * @param entries Parsed contract entries from `DbcParser.parse()`.
- * @param signature Signature information extracted from AST.
- * @param kind Entity or member kind — drives the validation matrix (FR-24).
- * @returns Array of lint errors (empty when contract matches signature).
- */
+/** @purpose Pure-function validator that compares parsed contract entries against | a code signature and returns structural mismatches. | @invariant Never throws. Unknown `kind` returns an empty error array. | @invariant Errors are returned in stable order: PARAM_MISSING → PARAM_EXTRA → | PARAM_ORDER → RETURNS_MISSING → RETURNS_UNEXPECTED → TYPE_REDUNDANT. | @param entries Parsed contract entries from `DbcParser.parse()`. | @param signature Signature information extracted from AST. | @param kind Entity or member kind — drives the validation matrix (FR-24). | @returns Array of lint errors (empty when contract matches signature). */
 export function validate(
   entries: DbcEntrySchema[],
   signature: DbcSignatureInfo,
@@ -260,23 +250,12 @@ function formatErrors(errors: DbcLintError[]): string {
 
 // #region START_DBC_TS_LINTER
 
-/**
- * @purpose TypeScript adapter implementing the DbcLinter contract.
- * Pass 1: AST extraction. Pass 2: contract validation + signature matching.
- * Pass 3: ESLint report. Pass 4: autofix chain.
- * @implements {DbcLinter} in ../../dbc-linter.types.ts
- * @invariant Never throws — all errors are returned via report objects.
- * @invariant Error order is stable (top-to-bottom by entity position).
- */
+/** @purpose TypeScript adapter implementing the DbcLinter contract. | Pass 1: AST extraction. Pass 2: contract validation + signature matching. | Pass 3: ESLint report. Pass 4: autofix chain. | @implements {DbcLinter} in ../../dbc-linter.types.ts | @invariant Never throws — all errors are returned via report objects. | @invariant Error order is stable (top-to-bottom by entity position). */
 export class DbcTsLinter implements DbcLinter {
   protected _parser: DbcParser;
   protected _astAdapter: DbcAstAdapter;
 
-  /**
-   * @purpose Construct a linter with injected parser and AST adapter.
-   * @param parser DbcParser instance for contract parsing.
-   * @param astAdapter DbcAstAdapter instance for source file parsing.
-   */
+  /** @purpose Construct a linter with injected parser and AST adapter. | @param parser DbcParser instance for contract parsing. | @param astAdapter DbcAstAdapter instance for source file parsing. */
   constructor(parser: DbcParser, astAdapter: DbcAstAdapter) {
     this._parser = parser;
     this._astAdapter = astAdapter;
@@ -337,15 +316,6 @@ export class DbcTsLinter implements DbcLinter {
       // #region START_INITIAL_LINT
       const initialReport = await this.lint(filePath, options);
       const initialCount = initialReport.errors.length;
-
-      if (initialCount === 0) {
-        logger.info(`[DbcTsLinter#lintAndFix] [linting → clean] ${filePath} (nothing to fix)`);
-        return {
-          errors: [],
-          autoFixed: 0,
-          format: () => '',
-        };
-      }
       // #endregion END_INITIAL_LINT
 
       // #region START_AUTOFIX_CHAIN
@@ -364,6 +334,7 @@ export class DbcTsLinter implements DbcLinter {
       const contractBlocks = this._collectContracts(parseResult.exported);
 
       // Apply autofix chain to each contract block
+      let anyChanged = false;
       for (const block of contractBlocks) {
         const original = block.text;
         let fixed = original;
@@ -383,21 +354,31 @@ export class DbcTsLinter implements DbcLinter {
         // Chain step 5: reorder tags to canonical order
         fixed = this._reorderTags(fixed);
 
-        // Chain step 6: inline if safe (dry-run)
+        // Chain step 6: normalize multi-line format (always, even on clean)
+        fixed = this._normalizeMultiLine(fixed);
+
+        // Chain step 7: inline if safe (dry-run)
         fixed = this._inlineIfSafe(fixed);
 
         if (fixed !== original) {
           source = source.replace(original, fixed);
+          anyChanged = true;
         }
       }
 
-      writeFileSync(filePath, source, 'utf8');
-      logger.info(`[DbcTsLinter#lintAndFix] [fixing → written] ${filePath}`);
+      if (anyChanged) {
+        writeFileSync(filePath, source, 'utf8');
+        logger.info(`[DbcTsLinter#lintAndFix] [fixing → written] ${filePath}`);
+      } else {
+        logger.info(`[DbcTsLinter#lintAndFix] [linting → clean] ${filePath} (nothing to fix)`);
+      }
       // #endregion END_AUTOFIX_CHAIN
 
       // #region START_RELINT
       // purpose: re-lint from disk (not cached content) to verify autofix result
-      const finalReport = await this.lint(filePath, { strategy: 'full' });
+      const finalReport = anyChanged
+        ? await this.lint(filePath, { strategy: 'full' })
+        : initialReport;
       const finalCount = finalReport.errors.length;
       const autoFixed = initialCount - finalCount;
 
@@ -440,9 +421,7 @@ export class DbcTsLinter implements DbcLinter {
 
   // #region START_LINT_HELPERS
 
-  /**
-   * @purpose Walk all exported entities and their members, collecting lint errors.
-   */
+  /** @purpose Walk all exported entities and their members, collecting lint errors. */
   protected _lintEntities(entities: DbcExportedEntity[], filePath: string): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
@@ -500,10 +479,7 @@ export class DbcTsLinter implements DbcLinter {
     }));
   }
 
-  /**
-   * @purpose Parse a contract text and validate it, returning both parser issues
-   * (translated per FR-23) and structural mismatches via DbcContractMatchValidator.
-   */
+  /** @purpose Parse a contract text and validate it, returning both parser issues | (translated per FR-23) and structural mismatches via DbcContractMatchValidator. */
   protected _validateContract(
     contractText: string,
     signature: DbcSignatureInfo,
@@ -575,10 +551,7 @@ export class DbcTsLinter implements DbcLinter {
     }
   };
 
-  /**
-   * @purpose Walk entities and members, collecting all JSDoc contract blocks
-   * with their associated kind and signature for autofix processing.
-   */
+  /** @purpose Walk entities and members, collecting all JSDoc contract blocks | with their associated kind and signature for autofix processing. */
   protected _collectContracts(
     entities: DbcExportedEntity[]
   ): InstanceType<typeof this._ContractBlock>[] {
@@ -602,24 +575,14 @@ export class DbcTsLinter implements DbcLinter {
 
   // #region START_AUTOFIX_CHAIN_METHODS
 
-  /**
-   * @purpose Remove redundant `{dataType}` annotations from @param and @returns tags.
-   * @param jsdocText Raw JSDoc comment text.
-   * @returns JSDoc text with types stripped.
-   */
+  /** @purpose Remove redundant `{dataType}` annotations from @param and @returns tags. | @param jsdocText Raw JSDoc comment text. | @returns JSDoc text with types stripped. */
   protected _removeRedundantTypes(jsdocText: string): string {
     // Remove {type} right after @param or @returns (optionally preceded by `* `):
     // `* @param {string} name` → `* @param name`
     return jsdocText.replace(/(\*?\s*)@(param|returns)\s+\{[^}]*\}\s+/g, '$1@$2 ');
   }
 
-  /**
-   * @purpose Remove @param entries whose specifier does not match any signature parameter.
-   * Handles both multi-line and single-line contracts.
-   * @param jsdocText Raw JSDoc comment text.
-   * @param signature Signature to match against.
-   * @returns JSDoc text with extra params removed.
-   */
+  /** @purpose Remove @param entries whose specifier does not match any signature parameter. | Handles both multi-line and single-line contracts. | @param jsdocText Raw JSDoc comment text. | @param signature Signature to match against. | @returns JSDoc text with extra params removed. */
   protected _removeExtraParams(jsdocText: string, signature: DbcSignatureInfo): string {
     const sigNames = new Set(signature.params.map((p) => p.name));
     const lines = jsdocText.split('\n');
@@ -659,13 +622,7 @@ export class DbcTsLinter implements DbcLinter {
     return result.join('\n');
   }
 
-  /**
-   * @purpose Remove @returns tag when the kind does not allow it or return type is void.
-   * @param jsdocText Raw JSDoc comment text.
-   * @param kind Entity or member kind.
-   * @param signature Optional signature info to check void return type.
-   * @returns JSDoc text with unexpected @returns removed.
-   */
+  /** @purpose Remove @returns tag when the kind does not allow it or return type is void. | @param jsdocText Raw JSDoc comment text. | @param kind Entity or member kind. | @param signature Optional signature info to check void return type. | @returns JSDoc text with unexpected @returns removed. */
   protected _removeUnexpectedReturns(
     jsdocText: string,
     kind: string,
@@ -705,12 +662,7 @@ export class DbcTsLinter implements DbcLinter {
     return result.join('\n');
   }
 
-  /**
-   * @purpose Reorder @param entries to match the signature parameter order.
-   * @param jsdocText Raw JSDoc comment text.
-   * @param signature Signature with desired parameter order.
-   * @returns JSDoc text with params reordered.
-   */
+  /** @purpose Reorder @param entries to match the signature parameter order. | @param jsdocText Raw JSDoc comment text. | @param signature Signature with desired parameter order. | @returns JSDoc text with params reordered. */
   protected _reorderParams(jsdocText: string, signature: DbcSignatureInfo): string {
     if (signature.params.length === 0) {
       return jsdocText;
@@ -821,13 +773,7 @@ export class DbcTsLinter implements DbcLinter {
     // #endregion END_REBUILD
   }
 
-  /**
-   * @purpose Reorder contract tags to canonical DBC order.
-   * Order: description → purpose → implements → invariant → pre → param(*) →
-   * throws → returns → post → sideEffect → other tags.
-   * @param jsdocText Raw JSDoc comment text.
-   * @returns JSDoc text with tags in canonical order.
-   */
+  /** @purpose Reorder contract tags to canonical DBC order. | Order: description → purpose → implements → invariant → pre → param(*) → | throws → returns → post → sideEffect → other tags. | @param jsdocText Raw JSDoc comment text. | @returns JSDoc text with tags in canonical order. */
   protected _reorderTags(jsdocText: string): string {
     const TAG_ORDER: ReadonlyMap<string, number> = new Map([
       ['purpose', 0],
@@ -913,21 +859,58 @@ export class DbcTsLinter implements DbcLinter {
     return rebuilt.join('\n');
   }
 
-  /**
-   * @purpose Attempt to convert a multi-line JSDoc comment to single-line format.
-   * Performs a dry-run through the parser: if the inline version introduces new
-   * parse errors, the original multi-line text is returned unchanged.
-   * @param jsdocText Raw JSDoc comment text.
-   * @returns Inline text if safe, otherwise the original text.
-   */
+  /** @purpose Normalize multi-line JSDoc format: ensure proper ` * ` prefix | on content lines and closing marker on its own line. | @invariant Single-line contracts pass through unchanged. | @param jsdocText Raw JSDoc comment text. | @returns Normalized JSDoc text. */
+  protected _normalizeMultiLine(jsdocText: string): string {
+    if (!jsdocText.includes('\n')) {
+      return jsdocText;
+    }
+
+    const lines = jsdocText.split('\n');
+
+    // Extract content: strip framing and JSDoc prefix from each line
+    const contentLines: string[] = [];
+    for (const line of lines) {
+      let l = line;
+
+      // Strip opening `/**` — with or without trailing content
+      if (l.trimStart().startsWith('/**')) {
+        l = l.replace(/^\s*\/\*\*\s*/, '');
+        if (l.length === 0) continue;
+      }
+
+      // Strip closing `*\/` — with or without preceding content
+      if (l.includes('*/')) {
+        l = l.replace(/\s*\*\/\s*$/, '');
+        if (l.length === 0) continue;
+      }
+
+      // Strip leading `* ` or `*` prefix
+      if (l.trimStart().startsWith('* ')) {
+        l = l.replace(/^\s*\*\s/, '');
+      } else if (l.trimStart().startsWith('*')) {
+        l = l.replace(/^\s*\*\s?/, '');
+      }
+
+      const trimmed = l.trim();
+      if (trimmed.length > 0) {
+        contentLines.push(trimmed);
+      }
+    }
+
+    if (contentLines.length === 0) {
+      return '/** */';
+    }
+
+    return ['/**', ...contentLines.map((l) => ` * ${l}`), ' */'].join('\n');
+  }
+
+  /** @purpose Attempt to convert a multi-line JSDoc comment to single-line format. | Performs a dry-run through the parser: if the inline version introduces new | parse errors, the original multi-line text is returned unchanged. | Multi-tag contracts are inlined with | separator (supported by parser). | @param jsdocText Raw JSDoc comment text. | @returns Inline text if safe, otherwise the original text. */
   protected _inlineIfSafe(jsdocText: string): string {
-    // Only attempt inline for multi-line contracts
     if (!jsdocText.includes('\n')) {
       return jsdocText;
     }
 
     // #region START_BUILD_INLINE
-    // Strip JSDoc framing (/** */) and normalize content
     const lines = jsdocText
       .replace(/^\/\*\*\s*/, '')
       .replace(/\s*\*\/\s*$/, '')
@@ -935,10 +918,7 @@ export class DbcTsLinter implements DbcLinter {
       .map((l) => l.replace(/^\s*\*\s?/, '').trim())
       .filter((l) => l.length > 0);
 
-    // Only inline single-tag contracts: multi-tag with @implements/invariant/etc
-    // becomes unreadable when joined with |
-    const tagCount = lines.filter((l) => l.startsWith('@')).length;
-    if (tagCount > 1) {
+    if (lines.length === 0) {
       return jsdocText;
     }
 
@@ -951,17 +931,12 @@ export class DbcTsLinter implements DbcLinter {
     if (hasIssues) {
       return jsdocText;
     }
-    // #endregion END_BUILD_INLINE
 
     return inlineText;
+    // #endregion END_BUILD_INLINE
   }
 
-  /**
-   * @purpose Extract the specifier (parameter name) from a @param tag line.
-   * Example: `@param {string} userId Description` → `userId`
-   * @param line Trimmed line content starting with `@param`.
-   * @returns The specifier or empty string.
-   */
+  /** @purpose Extract the specifier (parameter name) from a @param tag line. | Example: `@param userId Description` → `userId` | @param line Trimmed line content starting with `@param`. | @returns The specifier or empty string. */
   protected _extractParamSpecifier(line: string): string {
     // Strip leading `@param`, optional `{type}`, and optional JSDoc `* ` prefix
     let afterTag = line.replace(/^(\*?\s*)?@param\s+/, '');

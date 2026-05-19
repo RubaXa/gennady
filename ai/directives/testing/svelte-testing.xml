@@ -1,0 +1,237 @@
+<SvelteTestingRules keywords="svelte, testing, vitest, svelte-testing-library, flushSync, effect-root, mount, unmount, jsdom" type="testing-rules" ver="2.0">
+  <Mission>
+    Canonical rules for testing Svelte 5 components on the Vitest runner with `@testing-library/svelte`. Every execution-agent MUST mount components through testing-library `render()`, flush pending effects via `flushSync()` before assertions, and unmount in cleanup so state cannot leak across cases.
+
+    **Base axiom:** a Svelte 5 component is a tree of reactive primitives backed by a compile-time effect graph. A test that asserts the DOM without first flushing the effect graph is asserting an arbitrary intermediate state — sometimes green, sometimes red, never trustworthy. So discipline is non-negotiable: render → mutate → `flushSync` → assert → cleanup.
+
+    Scope: unit/integration tests for `.svelte` components and `.svelte.ts` modules. Out of scope: end-to-end browser tests (covered by `playwright-e2e`) and Storybook-driven story tests (covered by `storybook-usage`).
+
+    Test files use the `.svelte.test.ts` extension so the Svelte plugin processes their imports.
+  </Mission>
+
+  <Depends_On>
+    - ai/directives/testing/vitest-rules.xml
+    - ai/directives/coding/svelte5-runes.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_SVELTE_TEST_FILE_EXTENSION">
+      Component test files use the `.svelte.test.ts` extension — the Svelte-aware Vitest convention. Plain `.test.ts` does NOT receive Svelte plugin processing; importing a `.svelte` component from such a file produces opaque compile or runtime errors. Naming is the contract that tells the toolchain «this file must go through the Svelte compiler».
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT">
+      After any state mutation (user event, prop change, direct state write, simulated time advance) the test MUST call `flushSync()` from `svelte` before asserting on the DOM. `flushSync` forces pending `$effect` callbacks and DOM updates to run synchronously; without it the assertion runs against an intermediate, often stale, DOM.
+
+      Async helpers like `userEvent` may flush implicitly in some scenarios — relying on that implicit flush is fragile. Explicit `flushSync()` after the mutation is the discipline.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT">
+      Tests exercising `$effect` directly (not through a mounted component) MUST run inside `$effect.root(() => { ... })` and dispose of its returned cleanup. `$effect` outside a component context is illegal; `$effect.root` provides the disposal boundary that makes it legal AND that prevents effects from leaking into subsequent tests.
+
+      For component tests, `@testing-library/svelte` `render()` already establishes a component context — explicit `$effect.root` is needed only for direct rune testing in `.svelte.ts` modules.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_MOUNT_AND_CLEANUP">
+      Every component mount MUST be paired with cleanup. Either:
+      - rely on testing-library's auto-cleanup (when the Vitest config enables it), OR
+      - register `afterEach(() => cleanup())` explicitly.
+
+      Skipping cleanup leaves mounted components in the document between cases; subsequent queries return stale matches and inter-test isolation collapses.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_LIBRARY_FOR_RENDERING">
+      Component rendering and querying go through `@testing-library/svelte`: `render(Component, { props })` for mounting; `screen.getByRole` / `getByLabelText` / `getByText` for querying. Direct `document.querySelector` / `container.querySelector` is forbidden as the default — it bypasses the accessibility-aware query layer that protects the test from CSS-coupling.
+
+      Reserved exception: an element with no semantic role AND no test-id where a selector is the only way to reach it; in that case the selector is paired with a comment naming the missing semantic.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED">
+      Within the testing-library query surface, prefer role-based queries (`getByRole`, `getByLabelText`, `getByPlaceholderText`) over text-only queries. Role queries express the user-perceived contract; text queries are fragile to copy changes that have no contract impact.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_JSDOM_ENVIRONMENT">
+      The test runner environment is `jsdom` (or the equivalent browser-like environment the project standardised on). Mixing `jsdom` with `node` between files in the same suite is forbidden — one environment per project. The Svelte plugin is registered with Vitest so `.svelte` imports compile correctly during tests.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_PREFER_STORY_TESTS_WHEN_AVAILABLE">
+      If the project has a working Storybook integration with a story-test addon, prefer authoring story-level tests over manual `render()` calls — stories already document props and behaviour, and the story-test addon reuses them as executable contracts. Manual `render()` tests are reserved for cases that have no natural story counterpart (e.g. pure `.svelte.ts` reactive modules, error boundaries hard to express as a story variant).
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY">
+      `container.querySelector('.some-class')` and `document.getElementById(...)` are forbidden as the default DOM query. They couple the test to CSS class names and DOM structure — neither of which is part of the component contract. The accessibility-aware testing-library queries are the contract surface.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_TEST_INHERITED_VITEST_RULES">
+      All Vitest discipline applies unchanged: single unified context per file, factory-over-hooks for non-lifecycle setup, file-size budget, no `vi.mock` without operator confirm, no auto snapshot updates, explicit imports from `vitest`. This directive only adds Svelte-specific overlays — it does NOT relax inherited rules.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_SVELTE_TEST_FILE">
+      A file matching `*.svelte.test.ts` — processed by the Svelte plugin during Vitest's transform stage. Plain `.test.ts` is not a Svelte test file.
+    </Definition>
+    <Definition id="DEF_FLUSH_BOUNDARY">
+      The synchronous point after a state mutation at which `$effect` callbacks and DOM updates run. `flushSync()` from `svelte` forces this boundary explicitly. Assertions placed before the boundary observe stale state.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_SVELTE_TEST_RENDER_AND_ASSERT">
+      <Intent>Minimal render + role-based query + assertion. No state mutation, so no `flushSync` needed.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // Counter.svelte.test.ts
+        import { afterEach, describe, expect, it } from 'vitest';
+        import { cleanup, render, screen } from '@testing-library/svelte';
+        import Counter from './Counter.svelte';
+
+        afterEach(() => cleanup());
+
+        describe('Counter', () => {
+          it('should render the initial count from props', () => {
+            render(Counter, { props: { initial: 5, label: 'Count' } });
+            expect(screen.getByRole('button')).toHaveTextContent('Count: 5');
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`.svelte.test.ts` extension; explicit `cleanup` in `afterEach`; role-based query; no mutation so no flush boundary.</Why>
+    </Pattern>
+
+    <Pattern id="PT_SVELTE_TEST_USER_INTERACTION_WITH_FLUSH">
+      <Intent>User interaction triggers state mutation → `flushSync` → role-based assertion of the resulting DOM.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { afterEach, describe, expect, it } from 'vitest';
+        import { cleanup, render, screen } from '@testing-library/svelte';
+        import userEvent from '@testing-library/user-event';
+        import { flushSync } from 'svelte';
+        import Counter from './Counter.svelte';
+
+        afterEach(() => cleanup());
+
+        describe('Counter#increment', () => {
+          it('should increment on click and reflect the new count', async () => {
+            render(Counter, { props: { initial: 0, label: 'Count' } });
+            const button = screen.getByRole('button');
+
+            await userEvent.click(button);
+            flushSync();
+
+            expect(button).toHaveTextContent('Count: 1');
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`userEvent.click` is the mutation; explicit `flushSync()` forces effect graph to settle before the assertion runs.</Why>
+    </Pattern>
+
+    <Pattern id="PT_SVELTE_TEST_EFFECT_ROOT_FOR_RUNES">
+      <Intent>Testing a `.svelte.ts` reactive module directly — outside any component — via `$effect.root`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // counter-store.svelte.test.ts
+        import { describe, expect, it } from 'vitest';
+        import { flushSync } from 'svelte';
+        import { createCounter } from './counter-store.svelte';
+
+        describe('createCounter', () => {
+          it('should publish derived doubled value reactively', () => {
+            const cleanup = $effect.root(() => {
+              const counter = createCounter(2);
+              let observed = 0;
+              $effect(() => { observed = counter.doubled; });
+              flushSync();
+              expect(observed).toBe(4);
+
+              counter.increment();
+              flushSync();
+              expect(observed).toBe(6);
+            });
+            cleanup();
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`$effect.root` provides the disposal boundary required for `$effect` outside a component; `flushSync` between mutation and assertion; explicit `cleanup()` disposes the root.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_SVELTE_TEST_PLAIN_TS_EXTENSION">
+      <Bad>File named `Counter.test.ts` imports `Counter.svelte`; Vitest fails with «Cannot find module» or compiles the component as plain TS and explodes at first runtime use.</Bad>
+      <Why_Bad>Plain `.test.ts` extension for a Svelte component test (`AX_SVELTE_TEST_FILE_EXTENSION`). The Svelte plugin's file-pattern rule does not match; the test file bypasses Svelte compilation entirely. The error is opaque because the failure happens during transform, not at a useful assertion point.</Why_Bad>
+      <Good>Rename to `Counter.svelte.test.ts`. No code change required; the toolchain now routes the file through the Svelte plugin.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SVELTE_TEST_NO_FLUSH">
+      <Bad>`await userEvent.click(button); expect(button).toHaveTextContent('Count: 1');` — assertion immediately after the mutation, no `flushSync`.</Bad>
+      <Why_Bad>Mutation asserted before the effect graph settles (`AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT`). Sometimes green (when the implicit microtask flush happened to run), sometimes red, never trustworthy. Order-dependent flakiness for the next agent to debug.</Why_Bad>
+      <Good>`await userEvent.click(button); flushSync(); expect(button).toHaveTextContent('Count: 1');` — explicit boundary makes the assertion deterministic.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SVELTE_TEST_NO_EFFECT_ROOT">
+      <Bad>In a `.svelte.test.ts` for a `.svelte.ts` module: `const c = createCounter(); $effect(() => { observed = c.doubled; }); flushSync();` — `$effect` invoked outside any root.</Bad>
+      <Why_Bad>`$effect` without component context AND without `$effect.root` (`AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT`). The runtime throws «effect_orphan» (or equivalent) the moment the effect tries to register. Even if it survives, there is no disposal — the effect leaks into the next test.</Why_Bad>
+      <Good>Wrap in `$effect.root`: `const cleanup = $effect.root(() => { ... $effect(...) ... }); flushSync(); cleanup();` — root provides the disposal boundary; explicit `cleanup()` runs after the assertion.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SVELTE_TEST_NO_CLEANUP">
+      <Bad>Multiple `render(Component, ...)` calls across cases; no `afterEach(() => cleanup())`; testing-library auto-cleanup not enabled in config.</Bad>
+      <Why_Bad>Mount without paired cleanup (`AX_SVELTE_TEST_MOUNT_AND_CLEANUP`). DOM accumulates between cases; `getByRole` starts returning matches from a previous test's mount, producing «works alone, fails in suite» symptoms that are hard to attribute.</Why_Bad>
+      <Good>Either enable testing-library auto-cleanup in `vitest.config.ts`, or explicitly `afterEach(() => cleanup())` in the file.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SVELTE_TEST_DIRECT_QUERYSELECTOR">
+      <Bad>`const button = container.querySelector('.submit-btn'); expect(button.textContent).toBe('Go');`</Bad>
+      <Why_Bad>Direct DOM query coupled to a CSS class (`AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY`, `AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED`). `.submit-btn` is implementation detail with no contract status. Refactor that renames the class turns the test red without any behavioural change.</Why_Bad>
+      <Good>`expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument();` — role + accessible name, the contract surface a user perceives.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_SVELTE_TEST_RUN">
+      <Purpose>Run Svelte component tests via Vitest in one-shot mode.</Purpose>
+      <Command>npx vitest run</Command>
+      <Expected>Exit 0; all `.svelte.test.ts` files pass.</Expected>
+    </Hook>
+    <Hook id="HOOK_SVELTE_TEST_EXTENSION_DISCIPLINE">
+      <Purpose>Detect Svelte component imports inside plain `.test.ts` files.</Purpose>
+      <Command>find . -name '*.test.ts' -not -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -lE "from\s+['\"][^'\"]+\.svelte['\"]" || true</Command>
+      <Expected>Empty output. Matches must be renamed to `*.svelte.test.ts`.</Expected>
+    </Hook>
+    <Hook id="HOOK_SVELTE_TEST_HAS_FLUSH_AFTER_USEREVENT">
+      <Purpose>Smoke-grep for likely flush gaps — `userEvent` immediately followed by an assertion with no `flushSync`.</Purpose>
+      <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'userEvent\.|fireEvent\.' || true</Command>
+      <Expected>Manual review: each match is followed within a few lines by `flushSync()` (or by an `await` on an async helper that documents its own flush).</Expected>
+    </Hook>
+    <Hook id="HOOK_SVELTE_TEST_NO_DIRECT_DOM_QUERIES">
+      <Purpose>Detect direct DOM queries in component tests.</Purpose>
+      <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE '(container|document)\.(querySelector|getElementById)' || true</Command>
+      <Expected>Empty output. Matches must migrate to `screen.getByRole` / `getByLabelText` / `getByText`, or carry a comment naming the missing semantic that forced a selector fallback.</Expected>
+    </Hook>
+    <Hook id="HOOK_SVELTE_TEST_HAS_CLEANUP">
+      <Purpose>Every `.svelte.test.ts` either enables auto-cleanup in config or registers `afterEach(() => cleanup())`.</Purpose>
+      <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -LE "cleanup\(\)|globals:\s*true.*cleanup" || true</Command>
+      <Expected>Empty output (every file has cleanup). Matches indicate files without cleanup wiring; reconcile with `vitest.config.ts` if auto-cleanup is enabled project-wide.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ Test files use the `.svelte.test.ts` extension; `.test.ts` is reserved for non-Svelte tests.
+    ✅ Components mount via `@testing-library/svelte` `render()`; cleanup paired (explicit `afterEach` or auto-cleanup).
+    ✅ State mutation followed by `flushSync()` before any DOM assertion.
+    ✅ `$effect` outside a component runs inside `$effect.root` with explicit disposal.
+    ✅ Role-based queries (`getByRole`, `getByLabelText`, `getByPlaceholderText`) are the default; text queries are secondary.
+    ✅ Story-level tests preferred when a Storybook integration exists and a natural story counterpart is available.
+    ✅ Inherited Vitest rules honoured: unified context per file, no `vi.mock` without operator confirm, no auto snapshot updates, file-size budget, explicit imports from `vitest`.
+
+    ❌ Component imports inside a plain `.test.ts` file.
+    ❌ Assertion immediately after a mutation with no `flushSync()`.
+    ❌ `$effect` used outside a component context without `$effect.root` and disposal.
+    ❌ Component mounted without paired cleanup.
+    ❌ `container.querySelector` / `document.getElementById` as the default DOM query.
+    ❌ Manual `render()` in a project that already maintains a story counterpart for the scenario.
+    ❌ Any inherited Vitest rule relaxed (mock without confirm, hidden snapshot update, oversized file, etc.).
+  </Reward_Criteria>
+</SvelteTestingRules>

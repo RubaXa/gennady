@@ -57,11 +57,9 @@ describe('FileHeaderCheck', () => {
 
   it('should report ERR_CLI_LINT_MISSING_CONSUMERS when @consumers: is absent', () => {
     // #region START_MISSING_CONSUMERS_SETUP_CONTENT
-    const content = [
-      '// @file: Test file.',
-      '',
-      'import { something } from "./module.ts";',
-    ].join('\n');
+    const content = ['// @file: Test file.', '', 'import { something } from "./module.ts";'].join(
+      '\n'
+    );
     // #endregion END_MISSING_CONSUMERS_SETUP_CONTENT
 
     // #region START_MISSING_CONSUMERS_TRIGGER_CHECK

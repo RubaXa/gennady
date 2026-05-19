@@ -45,6 +45,10 @@ switch (command) {
     await import('./cmd/lint/index.ts');
     break;
 
+  case 'alt-opinion':
+    await import('./cmd/alt-opinion/index.ts');
+    break;
+
   default:
     await import('./cmd/help/help.cmd.ts');
     process.exit(0);

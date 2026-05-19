@@ -1078,6 +1078,91 @@ describe('DbcTsLinter', () => {
         rmSync(dir, { recursive: true, force: true });
       }
     });
+
+    it('K5 — malformed multi-line with */ on same line → normalized or inlined', async () => {
+      // contract: when */ is on the same line as the last tag, autofix either
+      // normalizes to proper multi-line or inlines the contract. Both are correct.
+      const { dir, filePath } = setupTempFromFixture(
+        'autofix-combined/malformed-multi-line.ts'
+      );
+      try {
+        const linter = createLinter();
+
+        // Initial lint: contract is valid (no lint errors), but format is malformed
+        const initialReport = await linter.lint(filePath);
+        assert.strictEqual(initialReport.errors.length, 0, 'expected 0 lint errors');
+
+        // Autofix: should normalize even when no lint errors
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.strictEqual(fixReport.errors.length, 0);
+
+        // Read the fixed file — */ must NOT be on same line as a tag
+        const fixedContent = readFileSync(filePath, 'utf8');
+
+        // Extract JSDoc block
+        const jsDocMatch = fixedContent.match(/\/\*\*([\s\S]*?)\*\//);
+        assert.ok(jsDocMatch, 'JSDoc block not found');
+
+        const jsDocBlock = jsDocMatch[0];
+        const lines = jsDocBlock.split('\n');
+
+        if (lines.length === 1) {
+          // Inline: valid
+          assert.ok(jsDocBlock.startsWith('/** '), 'inline should start with /**');
+          assert.ok(jsDocBlock.endsWith(' */'), 'inline should end with */');
+        } else {
+          // Multi-line: */ should be on its own line
+          const lastLine = lines[lines.length - 1].trim();
+          assert.strictEqual(lastLine, '*/', `expected bare */, got: ${lastLine}`);
+          // First line should be bare /**
+          assert.strictEqual(lines[0].trim(), '/**');
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('K6 — malformed multi-line with content on /** line → normalized or inlined', async () => {
+      // contract: when content follows /** on the first line, normalizeMultiLine
+      // separates the opening marker from content. Multi-tag safe contracts may be
+      // inlined — both outcomes are correct.
+      const { dir, filePath } = setupTempFromFixture(
+        'autofix-combined/malformed-opening.ts'
+      );
+      try {
+        const linter = createLinter();
+
+        // Autofix
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.strictEqual(fixReport.errors.length, 0);
+
+        // Read the fixed file — should be either:
+        // - inline: "/** @purpose ... | @invariant Y. | @sideEffect Z. */"
+        // - multi-line normalized: "/**\n * @purpose ...\n * @invariant Y.\n * @sideEffect Z.\n */"
+        const fixedContent = readFileSync(filePath, 'utf8');
+
+        // JSDoc block should not have malformed opening (/** immediately followed by content)
+        const jsDocMatch = fixedContent.match(/\/\*\*[\s\S]*?\*\//);
+        assert.ok(jsDocMatch, 'JSDoc block not found');
+
+        const jsDocBlock = jsDocMatch[0];
+        const lines = jsDocBlock.split('\n');
+
+        if (lines.length === 1) {
+          // Inline: valid
+          assert.ok(jsDocBlock.startsWith('/** '), 'inline should start with /**');
+          assert.ok(jsDocBlock.endsWith(' */'), 'inline should end with */');
+        } else {
+          // Multi-line: first line should be exactly /**
+          assert.strictEqual(lines[0].trim(), '/**', `expected bare /**, got: ${lines[0].trim()}`);
+          // Last line should be */
+          const lastLine = lines[lines.length - 1].trim();
+          assert.strictEqual(lastLine, '*/');
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 
   // #endregion END_GROUP_K_AUTOFIX_COMBINED

@@ -402,7 +402,7 @@
     </Hook>
     <Hook id="HOOK_LINT_NO_DRIFT">
       <Purpose>Pipeline does not mutate the tree on subsequent runs (catches formatter ↔ ESLint conflicts and partial-autofix surprises).</Purpose>
-      <Command>npm run lint:fix &amp;&amp; git diff --quiet</Command>
+      <Command>npm run lint:fix && git diff --quiet</Command>
       <Expected>Both exit 0. Any non-zero from second indicates pipeline rewrites code on every run.</Expected>
     </Hook>
     <Hook id="HOOK_NO_WARN_LEVEL_IN_CONFIG">

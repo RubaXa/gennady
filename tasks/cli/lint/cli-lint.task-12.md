@@ -77,6 +77,6 @@
       intro ERR_CLI_LINT_ANCHOR_UNPAIRED_START ← error code constant
       intro ERR_CLI_LINT_ANCHOR_UNPAIRED_END ← error code constant
       intro ERR_CLI_LINT_ANCHOR_NESTING ← error code constant
-  cov LintError соответствует ESLint-формату → cli/cmd/lint/lint.types.ts (type-level: fields match spec)
-  cov LintReport агрегирует ошибки → cli/cmd/lint/lint.types.ts (type-level: exitCode 0/1 logic)
-  cov LintOptions покрывает все режимы → cli/cmd/lint/lint.types.ts (type-level: all fields accessible)
+      cov LintError соответствует ESLint-формату → cli/cmd/lint/lint.types.ts (type-level: fields match spec)
+      cov LintReport агрегирует ошибки → cli/cmd/lint/lint.types.ts (type-level: exitCode 0/1 logic)
+      cov LintOptions покрывает все режимы → cli/cmd/lint/lint.types.ts (type-level: all fields accessible)

@@ -44,10 +44,7 @@ describe('AnchorCheck', () => {
 
   it('should report ERR_CLI_LINT_ANCHOR_UNPAIRED_START for START without matching END', () => {
     // #region START_UNPAIRED_START_SETUP_CONTENT
-    const content = [
-      '// #region START_LONELY_BLOCK',
-      'code here',
-    ].join('\n');
+    const content = ['// #region START_LONELY_BLOCK', 'code here'].join('\n');
     // #endregion END_UNPAIRED_START_SETUP_CONTENT
 
     // #region START_UNPAIRED_START_TRIGGER_CHECK
@@ -63,9 +60,7 @@ describe('AnchorCheck', () => {
 
   it('should report ERR_CLI_LINT_ANCHOR_UNPAIRED_END for END without matching START', () => {
     // #region START_UNPAIRED_END_SETUP_CONTENT
-    const content = [
-      '// #endregion END_ORPHAN_BLOCK',
-    ].join('\n');
+    const content = ['// #endregion END_ORPHAN_BLOCK'].join('\n');
     // #endregion END_UNPAIRED_END_SETUP_CONTENT
 
     // #region START_UNPAIRED_END_TRIGGER_CHECK

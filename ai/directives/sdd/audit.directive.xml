@@ -154,12 +154,13 @@
       Compliance is checked against the union of rules listed across all phases of the Round (per each phase block's `<ts> rules <rule-ids>` line — or equivalently the `Rules:` bullet list in section 3 Phases). Not the full cascade — only what phases actually loaded.
 
       **Audit is universal — no embedded knowledge of any language, runtime, or tool.** Every rule file exposes the same checkable surface; audit walks these sections mechanically:
+      - `<Depends_On>` → list of rule-file paths this rule architecturally extends (optional; empty for standalone rules). Used by scaffolder for transitive closure, by audit for cascade verification — NOT walked at runtime.
       - `<Belief_State>` → `<Axiom AX_*>` constraints
       - `<Anti_Patterns>` → `<Bad>` shapes that must not appear
       - `<Verification_Hooks>` → executable check commands
       - `<Reward_Criteria>` → ✅ invariants / ❌ forbidden states
 
-      Section missing in an activated rule → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
+      Required sections: `<Belief_State>` / `<Anti_Patterns>` / `<Verification_Hooks>` / `<Reward_Criteria>`. Optional: `<Depends_On>` (only when the rule extends another). Required section missing → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
 
       **Per (artifact ∈ Round diff, rule ∈ union of all phases' Rules):**
       1. Apply rule's `<Triggers>` / `<ActivationHint>` from `knowledge.xml` to decide if the rule governs this artifact. No match → skip pair.
@@ -172,7 +173,7 @@
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`.
+      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<Depends_On>`**.
 
       Cascade tiers (sources of truth):
 
@@ -182,6 +183,8 @@
       | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec 5/4.5 |
       | module | `tasks/<scope>/README.md` module row + module spec 9 Module Rules Additions |
       | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
+
+      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<Depends_On>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once per `AX_RULE_ACTIVATION_PLAN` step 4). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
 
       Plan rows ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
     </Axiom>
@@ -234,7 +237,7 @@
     <Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
       Insights flow back into the spec. If Execution Log or code analysis shows:
       - real complexity of contract turned out higher or lower than spec;
-      - new edge cases discovered, not in Requirements &amp; Constraints;
+      - new edge cases discovered, not in Requirements & Constraints;
       - spec assumptions turned out incorrect;
       - new dependency emerged, not in Inter-Module Dependencies,
 
@@ -400,7 +403,7 @@
       <Action>
         1. TRACE_HEADER (STACK `ROOT__INSIGHT_BACKFLOW`).
         2. Walk Execution Log `intro <X> ← <Y>` lines entries. For each: spec-update proposal — add `<X>` to corresponding module Entity Inventory with proposed surface. Tag as `INSIGHT_BACKFLOW`.
-        3. Walk `Introduced … because …` reasons for new edge cases / assumptions / constraints that should land in Requirements &amp; Constraints or Module Decision Log.
+        3. Walk `Introduced … because …` reasons for new edge cases / assumptions / constraints that should land in Requirements & Constraints or Module Decision Log.
         4. Phase Progress. STOP.
       </Action>
     </Step>

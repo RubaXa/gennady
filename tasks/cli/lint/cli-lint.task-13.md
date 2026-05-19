@@ -75,10 +75,11 @@
 ### Round 1 — 2026-05-15, initial
 
 ##### P1
+
 - [x] `[2026-05-15T15:49:25Z]` recon git=main/dirty targets=absent divergence=none
 - [x] `[2026-05-15T15:49:25Z]` rules typescript-rules
 - [x] `[2026-05-15T15:49:25Z]` file cli/cmd/lint/checks/file-header.check.ts
 - [x] `[2026-05-15T15:49:25Z]` intro FileHeaderCheck.check ← фаза P1 TSK-13: реализация проверки file header
 - [x] `[2026-05-15T15:49:25Z]` ver npm run type-check → pass exit=0
 - [x] `[2026-05-15T15:49:25Z]` DONE
-**Handoff →** artifacts: [cli/cmd/lint/checks/file-header.check.ts]; decisions: [func-signature=check(content:string,filePath:string):LintError[], scan-scope=before-first-import, error-codes=ERR_CLI_LINT_MISSING_FILE|ERR_CLI_LINT_MISSING_CONSUMERS]; open: []
+      **Handoff →** artifacts: [cli/cmd/lint/checks/file-header.check.ts]; decisions: [func-signature=check(content:string,filePath:string):LintError[], scan-scope=before-first-import, error-codes=ERR_CLI_LINT_MISSING_FILE|ERR_CLI_LINT_MISSING_CONSUMERS]; open: []

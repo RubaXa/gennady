@@ -115,7 +115,7 @@
     </Axiom>
 
     <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
-      Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors &amp; Degradation, Consumers. No private detail — that is Executor's job.
+      Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
     </Axiom>
 
     <Axiom id="AX_CONSUMER_DRIVEN">
@@ -133,7 +133,7 @@
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
-      DbC is derived from context, not only from DX code. Scope spec 4 Requirements &amp; Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+      DbC is derived from context, not only from DX code. Scope spec 4 Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
     </Axiom>
 
     <Axiom id="AX_AGNOSTICISM">
@@ -453,7 +453,7 @@
       - **Public Operations:** <intent-level list, no language signatures>
       - **Lifecycle:** <who creates, who owns, when terminates>
       - **Events Emitted:** <list or N/A>
-      - **Errors &amp; Degradation:** <error behavior>
+      - **Errors & Degradation:** <error behavior>
       - **Consumers:**
         - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
         - External: <CLI / External API / Browser / OS Event Bus / ...>
@@ -519,7 +519,7 @@
       ### 4.2 Adapters
       [Per `DBC_ADAPTER_FORMAT`.]
 
-      ## 5. Public Options &amp; Policies
+      ## 5. Public Options & Policies
       [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
 
       ## 6. File Structure
@@ -563,7 +563,7 @@
         |------|----------|--------|
         | <rule-name> | coding \| testing \| architecture \| quality | `ai/directives/<category>/<rule>.xml` |
 
-      - **Open risks &amp; validation needs:** <not-closed items>
+      - **Open risks & validation needs:** <not-closed items>
       ```
     </Contract>
 
@@ -597,7 +597,7 @@
       ### 8.4 Handoff to task-scaffolding
       - **Primary input:** `specs/<scope>/<scope>.spec.md` (this file).
       - **Required directives:** all `ai/directives/coding/<lang>-rules.xml` and `ai/directives/testing/<framework>.xml` for the listed stack.
-      - **Open risks &amp; validation needs:** <consolidated list across modules>
+      - **Open risks & validation needs:** <consolidated list across modules>
       ```
     </Contract>
   </Output_Contracts>

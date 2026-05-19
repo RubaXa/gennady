@@ -123,7 +123,7 @@
 
 - [x] `2026-05-15T15:10:00Z` recon git=main/dirty targets=exists divergence=none
 - [x] `2026-05-15T15:10:00Z` rules typescript-rules, node-test
-- [x] `2026-05-15T15:10:00Z` test services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts
+- [x] `2026-05-15T15:10:00Z` test services/dbc/linter/implementations/ts/**tests**/dbc-ts-linter.test.ts
 - [x] `2026-05-15T15:10:00Z` file services/dbc/linter/implementations/ts/dbc-ts-linter.ts
 - [x] `2026-05-15T15:10:00Z` insight lintAndFix re-lint uses stale options.content вместо чтения с диска → dbc-ts-linter.ts §lintAndFix (фикс: re-lint без content) — implementation bug found by P3 test
 - [x] `2026-05-15T15:10:00Z` cov lint с переданным content → dbc-ts-linter.test.ts::N1
@@ -131,10 +131,10 @@
 - [x] `2026-05-15T15:10:00Z` cov lint без content — обратная совместимость → dbc-ts-linter.test.ts::N3
 - [x] `2026-05-15T15:10:00Z` cov Содержимое content игнорируется для filePath в ошибках → dbc-ts-linter.test.ts::N4
 - [x] `2026-05-15T15:10:00Z` ver npx tsc --noEmit → pass exit=0
-- [x] `2026-05-15T15:10:00Z` ver node --test services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts → pass exit=0
+- [x] `2026-05-15T15:10:00Z` ver node --test services/dbc/linter/implementations/ts/**tests**/dbc-ts-linter.test.ts → pass exit=0
 - [x] `2026-05-15T15:10:00Z` ver npm run lint → pass exit=0
 - [x] `2026-05-15T15:10:00Z` DONE
-**Handoff →** artifacts: [services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts, services/dbc/linter/implementations/ts/dbc-ts-linter.ts]; decisions: [P2-bug-fixed=lintAndFix-re-lint-no-content, test-coverage=4-cases]; open: []
+      **Handoff →** artifacts: [services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.test.ts, services/dbc/linter/implementations/ts/dbc-ts-linter.ts]; decisions: [P2-bug-fixed=lintAndFix-re-lint-no-content, test-coverage=4-cases]; open: []
 
 ### Round 2 — 2026-05-15, fix: address audit finding F-05
 
@@ -145,4 +145,4 @@
 - [x] `2026-05-15T15:31:02Z` file services/dbc/linter/dbc-linter.types.ts
 - [x] `2026-05-15T15:31:02Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-15T15:31:02Z` DONE
-**Handoff →** artifacts: [services/dbc/linter/dbc-linter.types.ts]; decisions: [DbcLintOptions.strategy=optional]; open: []
+      **Handoff →** artifacts: [services/dbc/linter/dbc-linter.types.ts]; decisions: [DbcLintOptions.strategy=optional]; open: []

@@ -1,0 +1,247 @@
+<SvelteKitRules keywords="sveltekit, fullstack, routing, load-functions, form-actions, server-client-boundary, hooks, adapters, ssr" type="coding-rules" ver="2.0">
+  <Mission>
+    Canonical rules for building SvelteKit fullstack applications. Every execution-agent MUST respect the server/client boundary, fetch data via `load` functions, mutate via form `actions`, and use file-based routing.
+
+    **Base axiom:** SvelteKit's value comes from a hard server/client boundary expressed through file naming (`+page.server.ts` is server-only; `+page.ts` is universal; `.svelte` is the client component). A file's name is its contract — leaking a secret across that boundary is a one-edit security failure that lints often do not catch. So every authoring decision starts from «which boundary owns this concern?», not from «where is this convenient?».
+
+    Scope: routing structure, data flow (load + actions), server hooks, page options, adapters. Out of scope: rune-level component authoring (covered by `svelte5-runes`) and TS-level conventions (covered by `typescript-rules`).
+  </Mission>
+
+  <Depends_On>
+    - ai/directives/coding/typescript-rules.xml
+    - ai/directives/coding/svelte5-runes.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_SK_ROUTING_IS_FILE_BASED">
+      Routes are declared by directory structure under `src/routes/`. A path like `src/routes/user/[id]/+page.svelte` exposes `/user/:id`. Manual route tables, parallel router libraries, or imperative `Router` mounting are forbidden — they fork the source of truth for which URL renders what.
+
+      Layout wrappers via `+layout.svelte` / `+layout.server.ts` / `+layout.ts`. Nested layouts compose; siblings do not.
+    </Axiom>
+
+    <Axiom id="AX_SK_SERVER_CLIENT_BOUNDARY">
+      The file name decides where the code runs:
+      - `+page.server.ts`, `+layout.server.ts`, `hooks.server.ts`, anything under `$lib/server/` — **server-only**. Allowed to read filesystem, talk to databases, use private env.
+      - `+page.ts`, `+layout.ts`, `.svelte` (instance script + template) — **universal/client**. MUST be safe to ship to the browser.
+
+      Private secrets (`$env/static/private`, `$env/dynamic/private`) MUST NOT be imported from universal/client files. The toolchain refuses such imports at build time — agent's job is to keep the import graph clean from the start, not to rely on the compile error as the only guardrail.
+    </Axiom>
+
+    <Axiom id="AX_SK_DATA_VIA_LOAD">
+      Data needed to render a route is fetched in `load()` — universal in `+page.ts` / `+layout.ts`, server-only in `+page.server.ts` / `+layout.server.ts`. The return shape becomes `data` on the page (`let { data } = $props()`).
+
+      Forbidden as default: calling `fetch` from a component `<script>` to populate initial state. Component-level fetch loses SSR, breaks invalidation, and bypasses the server's privileged access. Reserved exception: client-only progressive updates that have NO server data dependency.
+    </Axiom>
+
+    <Axiom id="AX_SK_MUTATIONS_VIA_ACTIONS">
+      State mutations from the browser go through form `actions` in `+page.server.ts`: `export const actions = { default: async ({ request, cookies, locals, fetch }) => { ... } }`. The page submits `<form method="POST" use:enhance>` — progressive enhancement gives a working flow even without JavaScript.
+
+      `fetch('/api/...', { method: 'POST' })` from a component to mutate state is forbidden as the default path. It re-implements what actions already give (CSRF, redirect, validation result) and reintroduces the server/client boundary problem one route at a time.
+    </Axiom>
+
+    <Axiom id="AX_SK_VALIDATION_AT_ACTION_BOUNDARY">
+      Form actions validate request input synchronously at the top, return `fail(status, payload)` on rejection. The payload is exposed as `form` on the page (`let { form } = $props()`) and re-renders the form with the offending fields preserved. Throwing arbitrary errors from an action surfaces as a 500 with no recoverable UI state — `fail()` is the contract channel.
+    </Axiom>
+
+    <Axiom id="AX_SK_HOOKS_OWN_CROSS_CUTTING">
+      Cross-cutting server concerns (auth, request enrichment, error reporting) live in `src/hooks.server.ts` via `handle({ event, resolve })`. Auth context is attached to `event.locals` and read downstream by `load` / `actions`. `handleError({ error, event })` is the single point that maps unhandled exceptions to the user-facing shape.
+
+      Client-side cross-cutting goes in `src/hooks.client.ts`. Per-route boilerplate (re-checking auth in every `load`) is forbidden — `event.locals` is the contract for «who is the caller».
+    </Axiom>
+
+    <Axiom id="AX_SK_PAGE_OPTIONS_PER_ROUTE">
+      Page-level toggles (`export const ssr`, `export const prerender`, `export const csr`, `export const trailingSlash`) live in the route's `+page.ts` / `+page.server.ts` / `+layout.ts`. They are NOT global config in `svelte.config.js`.
+
+      Forcing `ssr = false` globally turns a SvelteKit app into a single-page app and discards most of the framework's value; doing it per-route documents the trade-off where it applies.
+    </Axiom>
+
+    <Axiom id="AX_SK_FETCH_FROM_LOAD_USES_SDK_FETCH">
+      Inside `load` / `actions`, use the `fetch` provided by SvelteKit's event (`async ({ fetch }) => ...`), not the global `fetch`. The event-provided `fetch` propagates credentials, runs in-process for internal API routes, and inherits the user's request context. Using global `fetch` from a server `load` is a silent loss of context.
+    </Axiom>
+
+    <Axiom id="AX_SK_TYPES_FROM_GENERATED">
+      Route-specific types come from generated `./$types` modules: `PageServerLoad`, `Actions`, `PageLoad`, `LayoutData`, etc. Hand-rolling these types is forbidden — they drift the first time the route signature changes. `App.Locals`, `App.PageData`, `App.Error`, `App.Platform` are declared in `src/app.d.ts` and are the only place to extend per-app surfaces.
+    </Axiom>
+
+    <Axiom id="AX_SK_ADAPTER_CHOSEN_NOT_DEFAULTED">
+      Production deployment requires an explicit adapter choice (`@sveltejs/adapter-node`, `@sveltejs/adapter-static`, platform-specific, etc.) configured in `svelte.config.js`. `adapter-auto` is acceptable only for greenfield prototypes; a production project that has not committed to an adapter has not committed to a deployment shape.
+    </Axiom>
+
+    <Axiom id="AX_SK_PROJECT_LAYOUT">
+      Canonical layout: `src/routes/` for routes, `src/lib/` for shared client+server code, `src/lib/server/` for server-only code, `src/hooks.server.ts` / `src/hooks.client.ts` for hooks, `src/app.html` for the HTML shell, `src/app.d.ts` for ambient types, `static/` for unprocessed assets. The `$lib` alias points to `src/lib`; `$lib/server` is automatically server-only.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_UNIVERSAL_LOAD">
+      A `load` function exported from `+page.ts` / `+layout.ts`. Runs on the server during SSR AND in the client during navigation. MUST stay safe to bundle for the browser — no private env, no Node-only APIs.
+    </Definition>
+    <Definition id="DEF_SERVER_LOAD">
+      A `load` function exported from `+page.server.ts` / `+layout.server.ts`. Runs ONLY on the server. Has access to `cookies`, `locals`, private env, filesystem.
+    </Definition>
+    <Definition id="DEF_FORM_ACTION">
+      A handler exported under `actions` in `+page.server.ts`. Receives `request`, `cookies`, `locals`, `fetch`. Returns success payload or `fail(status, payload)`; may `redirect(status, location)`.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_SERVER_LOAD">
+      <Intent>Server-only data fetch with typed return surface.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/routes/products/[id]/+page.server.ts
+        import { error } from '@sveltejs/kit';
+        import type { PageServerLoad } from './$types';
+
+        export const load: PageServerLoad = async ({ params, fetch, locals }) => {
+          const response = await fetch(`/api/products/${params.id}`);
+          if (!response.ok) {
+            throw error(404, 'Product not found');
+          }
+          const product = await response.json();
+          return { product, viewer: locals.user };
+        };
+        ```
+      </Snippet>
+      <Why>SDK-provided `fetch` preserves request context; `locals.user` populated by `hooks.server.ts`; `error()` returns the framework's recoverable error shape.</Why>
+    </Pattern>
+
+    <Pattern id="PT_FORM_ACTION_WITH_FAIL">
+      <Intent>Form action with synchronous validation and `fail()` for recoverable rejection.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/routes/checkout/+page.server.ts
+        import { fail, redirect } from '@sveltejs/kit';
+        import type { Actions } from './$types';
+
+        export const actions = {
+          default: async ({ request, locals }) => {
+            const data = await request.formData();
+            const email = data.get('email')?.toString().trim();
+            if (!email) {
+              return fail(400, { email: '', error: 'Email is required' });
+            }
+            await locals.checkout.placeOrder({ email });
+            throw redirect(303, '/checkout/done');
+          },
+        } satisfies Actions;
+        ```
+      </Snippet>
+      <Why>`fail()` re-renders the page with `form` populated; `redirect()` is the success channel; validation is synchronous and at the top.</Why>
+    </Pattern>
+
+    <Pattern id="PT_SERVER_HOOK_AUTH">
+      <Intent>Server hook injecting auth context into `event.locals`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/hooks.server.ts
+        import type { Handle } from '@sveltejs/kit';
+        import { decodeSession } from '$lib/server/session';
+
+        export const handle: Handle = async ({ event, resolve }) => {
+          const token = event.cookies.get('session');
+          event.locals.user = token ? await decodeSession(token) : null;
+          return resolve(event);
+        };
+        ```
+      </Snippet>
+      <Why>`$lib/server/session` is automatically server-only; `event.locals.user` becomes the single contract for «who is the caller» downstream.</Why>
+    </Pattern>
+
+    <Pattern id="PT_PAGE_CONSUMING_LOAD">
+      <Intent>Route page reading `data` from a server load via `$props()`.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <!-- src/routes/products/[id]/+page.svelte -->
+        <script lang="ts">
+          import type { PageData } from './$types';
+          let { data }: { data: PageData } = $props();
+        </script>
+
+        <h1>{data.product.name}</h1>
+        <p>Viewer: {data.viewer?.email ?? 'anonymous'}</p>
+        ```
+      </Snippet>
+      <Why>Component receives `data` via `$props()` (single Svelte 5 destructure); the `PageData` type is generated by SvelteKit from the matching server load.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_SK_COMPONENT_FETCH_FOR_INITIAL_DATA">
+      <Bad>Inside `+page.svelte`: `$effect(() => { fetch('/api/products').then(r => r.json()).then(items => products = items); });` to populate the initial product list.</Bad>
+      <Why_Bad>Component-level fetch for initial data (`AX_SK_DATA_VIA_LOAD`). Loses SSR (page renders empty, then flickers), bypasses framework `invalidate()` / `depends()`, runs in the browser only — server-side rendering benefit gone. Cannot use private credentials or `locals`.</Why_Bad>
+      <Good>Move fetch into `+page.server.ts`: `export const load: PageServerLoad = async ({ fetch }) => ({ products: await (await fetch('/api/products')).json() });`. Component reads `data.products` via `$props()`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SK_PRIVATE_ENV_IN_CLIENT">
+      <Bad>`+page.ts` (universal) starts with `import { DATABASE_URL } from '$env/static/private';`.</Bad>
+      <Why_Bad>Private env imported into a universal/client module (`AX_SK_SERVER_CLIENT_BOUNDARY`). Build refuses to bundle it; even if it slipped through (e.g., via dynamic require), the secret would be shipped to the browser bundle. Boundary violation is a security failure, not a stylistic one.</Why_Bad>
+      <Good>Move the consumer to `+page.server.ts` or `$lib/server/...`; expose only the derived value the client legitimately needs through the load return.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SK_THROW_INSTEAD_OF_FAIL">
+      <Bad>In a form action: `if (!email) throw new Error('Email required');`</Bad>
+      <Why_Bad>Action throws instead of returning `fail()` (`AX_SK_VALIDATION_AT_ACTION_BOUNDARY`). Surfaces as a 500 with the framework's error page; the form loses its inputs; the user has no recoverable UI state. `fail()` is the contract channel for recoverable validation rejection.</Why_Bad>
+      <Good>`return fail(400, { email: '', error: 'Email is required' });` — page re-renders with `form.error` visible and inputs preserved.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SK_GLOBAL_FETCH_IN_LOAD">
+      <Bad>Inside `+page.server.ts`: `const res = await fetch('http://localhost:3000/api/products');` (the global `fetch`).</Bad>
+      <Why_Bad>Global `fetch` from a server load (`AX_SK_FETCH_FROM_LOAD_USES_SDK_FETCH`). Loses request context (cookies, headers), forces a real network hop for internal API routes that SvelteKit would have resolved in-process, and hard-codes the origin.</Why_Bad>
+      <Good>Destructure the SDK-provided `fetch`: `export const load: PageServerLoad = async ({ fetch }) => { const res = await fetch('/api/products'); ... };`. Relative URLs resolve to the current origin; cookies propagate.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SK_PAGE_OPTIONS_GLOBALIZED">
+      <Bad>`svelte.config.js` sets `kit: { prerender: { entries: ['*'] }, csr: false }` to disable SSR/CSR project-wide.</Bad>
+      <Why_Bad>Page options globalized into framework config (`AX_SK_PAGE_OPTIONS_PER_ROUTE`). Discards per-route trade-offs — a marketing landing page that benefits from prerender forces the same on dynamic dashboards. Hidden behavior at the framework level surprises every later contributor.</Why_Bad>
+      <Good>Per-route in the relevant `+page.ts`: `export const prerender = true;` for static pages; leave dynamic routes default.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_SK_TYPECHECK">
+      <Purpose>Generate route types and run Svelte-aware type-check; catches private-env-in-client violations.</Purpose>
+      <Command>npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json</Command>
+      <Expected>Exit 0; no errors.</Expected>
+    </Hook>
+    <Hook id="HOOK_SK_BUILD">
+      <Purpose>Production build verifies SSR, adapter, and boundary violations the dev server tolerates.</Purpose>
+      <Command>npm run build</Command>
+      <Expected>Exit 0.</Expected>
+    </Hook>
+    <Hook id="HOOK_SK_NO_PRIVATE_ENV_IN_CLIENT">
+      <Purpose>Smoke-grep for private env imported from universal/client files.</Purpose>
+      <Command>find src -type f \( -name '*.svelte' -o -name '+page.ts' -o -name '+layout.ts' \) -print0 | xargs -0 grep -nE "\\\$env/(static|dynamic)/private" || true</Command>
+      <Expected>Empty output. Matches must move to `+page.server.ts` / `+layout.server.ts` / `$lib/server/`.</Expected>
+    </Hook>
+    <Hook id="HOOK_SK_NO_GLOBAL_FETCH_IN_LOAD">
+      <Purpose>Smoke-grep for likely global `fetch(` in server load files (manual review of matches).</Purpose>
+      <Command>find src/routes -type f \( -name '+page.server.ts' -o -name '+layout.server.ts' \) -print0 | xargs -0 grep -nE '(^|[^.])fetch\(' || true</Command>
+      <Expected>For each match: confirm it is the SDK-provided `fetch` destructured from the load event, not the global `fetch`.</Expected>
+    </Hook>
+    <Hook id="HOOK_SK_NO_CLIENT_FETCH_IN_COMPONENT">
+      <Purpose>Detect direct `fetch('/api/...')` calls inside `.svelte` files used to populate initial data.</Purpose>
+      <Command>find src/routes -name '*.svelte' -print0 | xargs -0 grep -nE "fetch\(['\"]/" || true</Command>
+      <Expected>Each match must be either an explicit progressive-update path with no server data dependency, or migrated to a `load` function.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ Data fetched via `load` (server or universal); component-level fetch reserved for genuine progressive updates.
+    ✅ Mutations go through form `actions` with `<form method="POST" use:enhance>`; recoverable rejection via `fail()`; success via `redirect()`.
+    ✅ Server/client boundary respected by file naming; private env imported only in server-only files.
+    ✅ SDK-provided `fetch` used inside `load` / `actions`; global `fetch` not used for in-app routes.
+    ✅ Cross-cutting auth/request enrichment in `hooks.server.ts`; downstream code reads `event.locals` only.
+    ✅ Page options (`ssr`, `prerender`, `csr`) per-route, not globalized.
+    ✅ Route types from `./$types`; ambient types in `src/app.d.ts`.
+    ✅ Explicit adapter chosen for production builds.
+
+    ❌ Component-level fetch to populate initial render data.
+    ❌ Private env (`$env/static/private`, `$env/dynamic/private`) imported in `+page.ts` / `+layout.ts` / `.svelte`.
+    ❌ Form action throwing arbitrary errors instead of returning `fail()`.
+    ❌ Global `fetch` used inside a load / action when the SDK `fetch` is available.
+    ❌ Page options globalized in `svelte.config.js`.
+    ❌ Hand-rolled route types; bypassing `App.Locals` / `App.PageData` for ambient extensions.
+    ❌ Production build relying on `adapter-auto`.
+  </Reward_Criteria>
+</SvelteKitRules>

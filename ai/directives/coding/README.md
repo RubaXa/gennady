@@ -11,6 +11,8 @@ Distinct from:
 ## Currently available
 
 - [`typescript-rules.xml`](typescript-rules.xml) — TypeScript writing conventions.
+- [`svelte5-runes.xml`](svelte5-runes.xml) — Svelte 5 runes: $state, $derived, $effect, $props, template syntax. **Inherits typescript-rules.**
+- [`sveltekit-rules.xml`](sveltekit-rules.xml) — SvelteKit fullstack: routing, load, form actions, hooks, $app modules. **Inherits svelte5-runes + typescript-rules.**
 
 ## Planned
 

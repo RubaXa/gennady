@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Модуль `lint` — команда `gennady lint`: трёхслойная валидация TypeScript-файлов (file header, DBC-контракты, anchor-разметка) с ESLint-совместимым выводом и autofix.
+Модуль `lint` — команда `gennady lint`: четырёхслойная валидация TypeScript-файлов (file header, anchor-разметка, язык контрактов/хедеров, DBC-контракты) с ESLint-совместимым выводом и autofix.
 
 → Parent scope: [../../cli.spec.md](../../cli.spec.md)
 
@@ -10,15 +10,16 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name               | Type         | Purpose                                                                                                 |
-| ------------------ | ------------ | ------------------------------------------------------------------------------------------------------- |
-| `LintCommand`      | Service      | CLI-обвязка: parseArgs, git scan (`--staged`), цикл по файлам, агрегация ошибок, вывод в ESLint-формате |
-| `LintError`        | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                 |
-| `LintOptions`      | Value Object | Опции запуска: `files`, `autofix`, `gitMode`                                                            |
-| `LintReport`       | Value Object | Результат линтинга: `errors`, `exitCode`, `format()`                                                    |
-| `FileHeaderCheck`  | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                  |
-| `AnchorCheck`      | Service      | Проверка парности и вложенности `// #region START/END`                                                  |
-| `DbcContractCheck` | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                    |
+| Name               | Type         | Purpose                                                                                                                               |
+| ------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintCommand`      | Service      | CLI-обвязка: parseArgs, git scan (`--staged`), цикл по файлам, агрегация ошибок, вывод в ESLint-формате                               |
+| `LintError`        | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                               |
+| `LintOptions`      | Value Object | Опции запуска: `files`, `autofix`, `gitMode`                                                                                          |
+| `LintReport`       | Value Object | Результат линтинга: `errors`, `exitCode`, `format()`                                                                                  |
+| `FileHeaderCheck`  | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                |
+| `LanguageCheck`    | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`. |
+| `AnchorCheck`      | Service      | Проверка парности и вложенности `// #region START/END`                                                                                |
+| `DbcContractCheck` | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                  |
 
 ## 3. Entity Surfaces
 
@@ -47,7 +48,7 @@ _Это полный список сущностей модуля. Любое в
   - `message: string` — описание + конкретное действие
 - **Lifecycle:** immutable value object
 - **Consumers:**
-  - Internal: `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`
+  - Internal: `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `LanguageCheck`
   - External: N/A
 
 ### `LintOptions`
@@ -113,6 +114,18 @@ _Это полный список сущностей модуля. Любое в
   - Internal: `LintCommand`
   - External: N/A
 
+### `LanguageCheck`
+
+- **Type:** Service
+- **Purpose:** Проверка языка: JSDoc-контракты (DbC: `@purpose`, `@implements`, `@invariant`, `@param`, `@returns`, `@consumer`, `@sideEffect`) и file headers (`// @file:`, `// @consumers:`) — только английский. Кириллица → ошибка.
+- **Public Operations:**
+  - `check(content: string, filePath: string) → LintError[]` — проверить контент файла на наличие кириллицы
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Каждый кириллический символ в JSDoc-блоке или file header → `ERR_CLI_LINT_NON_ENGLISH`. Обычные `//` комментарии и строковые литералы не проверяются.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
 ### Value Objects
 
 | Name          | Key Properties                                                                                        |
@@ -129,6 +142,7 @@ ERR_CLI_LINT_MISSING_CONSUMERS = 'ERR_CLI_LINT_MISSING_CONSUMERS'
 ERR_CLI_LINT_ANCHOR_UNPAIRED_START = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_START'
 ERR_CLI_LINT_ANCHOR_UNPAIRED_END   = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_END'
 ERR_CLI_LINT_ANCHOR_NESTING        = 'ERR_CLI_LINT_ANCHOR_NESTING'
+ERR_CLI_LINT_NON_ENGLISH           = 'ERR_CLI_LINT_NON_ENGLISH'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -207,6 +221,31 @@ ERR_CLI_LINT_ANCHOR_NESTING        = 'ERR_CLI_LINT_ANCHOR_NESTING'
   - `filePath` в ошибках — исходный путь (не подменяется)
   - `severity: 'error'` для всех ошибок
 
+#### Service: `LanguageCheck`
+
+- **Purpose:** Проверка языка контрактов и хедеров: в JSDoc-блоках и `// @file:` / `// @consumers:` допустим только английский. Кириллица → ошибка.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `content` — непустая строка
+  - `filePath` — путь к файлу (для сообщений об ошибках)
+- Postconditions:
+  - Возвращает `LintError[]` (пустой — кириллицы нет)
+  - Каждый кириллический символ в file header (`// @file:`, `// @consumers:`) → `ERR_CLI_LINT_NON_ENGLISH`
+  - Каждый кириллический символ в JSDoc-блоке (`/** ... */`) → `ERR_CLI_LINT_NON_ENGLISH`
+- Invariants:
+  - Проверяет ТОЛЬКО строки file header (до первого `import`) и строки внутри `/** ... */` блоков
+  - Обычные `//` комментарии и строковые литералы — вне зоны проверки
+  - Чистая функция, не зависит от внешнего состояния
+  - Не кидает исключений
+
 ## 5. Public Options & Policies
 
 | Option      | Bound to                                 | Status        |
@@ -224,11 +263,13 @@ cli/cmd/lint/
 ├── lint.types.ts               # LintError, LintOptions, LintReport, константы ошибок
 ├── checks/
 │   ├── file-header.check.ts    # FileHeaderCheck.check()
+│   ├── language.check.ts       # LanguageCheck.check()
 │   ├── anchor.check.ts         # AnchorCheck.check()
 │   └── dbc-contract.check.ts   # DbcContractCheck.check()
 └── __tests__/
     ├── lint.cmd.test.ts
     ├── file-header.check.test.ts
+    ├── language.check.test.ts
     ├── anchor.check.test.ts
     └── dbc-contract.check.test.ts
 ```
@@ -236,8 +277,9 @@ cli/cmd/lint/
 **File Mapping:**
 
 - `lint.cmd.ts`: `LintCommand`
-- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 5 × `ERR_CLI_LINT_*`
+- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 6 × `ERR_CLI_LINT_*`
 - `checks/file-header.check.ts`: `FileHeaderCheck`
+- `checks/language.check.ts`: `LanguageCheck`
 - `checks/anchor.check.ts`: `AnchorCheck`
 - `checks/dbc-contract.check.ts`: `DbcContractCheck`
 
@@ -263,11 +305,13 @@ graph TD
   - `cli/cmd/lint/lint.cmd.ts`
   - `cli/cmd/lint/lint.types.ts`
   - `cli/cmd/lint/checks/file-header.check.ts`
+  - `cli/cmd/lint/checks/language.check.ts`
   - `cli/cmd/lint/checks/anchor.check.ts`
   - `cli/cmd/lint/checks/dbc-contract.check.ts`
 - **Test files to be created:**
   - `cli/cmd/lint/__tests__/lint.cmd.test.ts`
   - `cli/cmd/lint/__tests__/file-header.check.test.ts`
+  - `cli/cmd/lint/__tests__/language.check.test.ts`
   - `cli/cmd/lint/__tests__/anchor.check.test.ts`
   - `cli/cmd/lint/__tests__/dbc-contract.check.test.ts`
 - **Stack dependencies:**

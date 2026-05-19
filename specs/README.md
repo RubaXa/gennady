@@ -17,9 +17,9 @@ graph TD
 
 ## Scopes
 
-| Scope                                           | Type           | Spec | Description                                                       |
-| ----------------------------------------------- | -------------- | ---- | ----------------------------------------------------------------- |
-| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅   | Node.js 22+, npm, tsc, prettier, node:test, vite                  |
-| [`cli`](./cli/cli.spec.md)                      | product        | ✅   | CLI-модуль с командами для AI-агентов: lint (валидация TS-файлов) |
-| [`vcs`](./vcs/vcs.spec.md)                      | product        | ✅   | VCS-клиент для GitLab: Merge Requests, Discussions, Users          |
-| [`dbc`](./dbc/dbc.spec.md)                      | library        | ✅   | DBC-фреймворк: парсинг и валидация текстовых контрактов           |
+| Scope                                           | Type           | Spec | Description                                                                 |
+| ----------------------------------------------- | -------------- | ---- | --------------------------------------------------------------------------- |
+| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅   | Node.js 22+, npm, tsc, prettier, node:test, vite                            |
+| [`cli`](./cli/cli.spec.md)                      | product        | ✅   | CLI-модуль: lint, alt-opinion, cat — команды для AI-агентов                 |
+| [`vcs`](./vcs/vcs.spec.md)                      | product        | ✅   | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files |
+| [`dbc`](./dbc/dbc.spec.md)                      | library        | ✅   | DBC-фреймворк: парсинг и валидация текстовых контрактов                     |

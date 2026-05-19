@@ -30,6 +30,7 @@
       Touch only this phase's `Target Files`. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Writing anywhere outside this phase's Target Files → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or new task.
     </Axiom>
 
+
     <Axiom id="AX_NARROW_RECON">
       Before any Edit / Write: one quick recon scoped to THIS phase only.
       1. `ls <Target Files parent dirs>` — check whether parent directories exist.
@@ -72,7 +73,7 @@
 
     <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       Phase agent may ONLY run these bash commands:
-      - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
+      - **Must run:** verification commands from ticket 5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run for config-kind only:** `npm view <pkg> version`, `cat node_modules/<pkg>/package.json`, `cat node_modules/<pkg>/CHANGELOG.md`.
 

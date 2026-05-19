@@ -3,8 +3,9 @@
 Правила о том, **как конфигурировать** инструменты: пакетный менеджер, линтер, VCS.
 Применяются только в задачах типа "настроить инфру" — НЕ в задачах на написание кода или тестов.
 
-| Файл                   | Назначение                                                    |
-| ---------------------- | ------------------------------------------------------------- |
-| `eslint-setup.xml`     | Политика конфигурации ESLint (severity, autofix, flat config) |
-| `git-setup.xml`        | Настройка git: .gitignore, ветки, коммиты, хуки, secrets      |
-| `nodejs-npm-setup.xml` | Node.js runtime: .nvmrc, engines, один package manager        |
+| Файл                   | Назначение                                                          |
+| ---------------------- | ------------------------------------------------------------------- |
+| `eslint-setup.xml`     | Политика конфигурации ESLint (severity, autofix, flat config)       |
+| `git-setup.xml`        | Настройка git: .gitignore, ветки, коммиты, хуки, secrets            |
+| `nodejs-npm-setup.xml` | Node.js runtime: .nvmrc, engines, один package manager              |
+| `storybook-setup.xml`  | Storybook + MCP server: агентная установка, манифесты, Vitest addon |

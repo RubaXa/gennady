@@ -80,9 +80,10 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `2026-05-15T15:54:15Z` recon git=main/clean targets=absent divergence=none
 - [x] `2026-05-15T15:54:15Z` rules typescript-rules
 - [x] `2026-05-15T15:54:15Z` file cli/cmd/lint/checks/anchor.check.ts
 - [x] `2026-05-15T15:54:15Z` ver npm run type-check → pass exit=0
 - [x] `2026-05-15T15:54:15Z` DONE
-**Handoff →** artifacts: [cli/cmd/lint/checks/anchor.check.ts]; decisions: [stack-algorithm=search-from-top-for-matching-START, nesting=report-unclosed-above-match, error-order=ascending-line-then-col]; open: []
+      **Handoff →** artifacts: [cli/cmd/lint/checks/anchor.check.ts]; decisions: [stack-algorithm=search-from-top-for-matching-START, nesting=report-unclosed-above-match, error-order=ascending-line-then-col]; open: []

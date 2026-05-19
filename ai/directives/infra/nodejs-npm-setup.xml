@@ -292,7 +292,7 @@
   <Verification_Hooks>
     <Hook id="HOOK_NVMRC_EXACT">
       <Purpose>`.nvmrc` exists, one line, semver-exact.</Purpose>
-      <Command>test -f .nvmrc &amp;&amp; [ "$(wc -l < .nvmrc)" -eq 1 ] &amp;&amp; grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc &amp;&amp; echo "OK"</Command>
+      <Command>test -f .nvmrc && [ "$(wc -l < .nvmrc)" -eq 1 ] && grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc && echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_ENGINES_PRESENT">
@@ -302,22 +302,22 @@
     </Hook>
     <Hook id="HOOK_LOCK_FILE_EXISTS">
       <Purpose>`package-lock.json` present.</Purpose>
-      <Command>test -f package-lock.json &amp;&amp; echo "OK"</Command>
+      <Command>test -f package-lock.json && echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_NODE_MODULES_TRACKED">
       <Purpose>`node_modules/` not tracked by git.</Purpose>
-      <Command>git ls-files node_modules | head -1 | grep -q . &amp;&amp; echo "FAIL: node_modules tracked" || echo "OK"</Command>
+      <Command>git ls-files node_modules | head -1 | grep -q . && echo "FAIL: node_modules tracked" || echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NO_FOREIGN_LOCK_FILES">
       <Purpose>No foreign lock files exist.</Purpose>
-      <Command>for f in yarn.lock pnpm-lock.yaml bun.lockb; do test -f "$f" &amp;&amp; echo "FAIL: $f present"; done; echo "OK"</Command>
+      <Command>for f in yarn.lock pnpm-lock.yaml bun.lockb; do test -f "$f" && echo "FAIL: $f present"; done; echo "OK"</Command>
       <Expected>Prints only `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_NPMRC_REGISTRY">
       <Purpose>`.npmrc` exists and declares registry.</Purpose>
-      <Command>test -f .npmrc &amp;&amp; grep -q 'registry=' .npmrc &amp;&amp; echo "OK"</Command>
+      <Command>test -f .npmrc && grep -q 'registry=' .npmrc && echo "OK"</Command>
       <Expected>Prints `OK`; exit 0.</Expected>
     </Hook>
     <Hook id="HOOK_MODULE_SYSTEM_DECLARED">

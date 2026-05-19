@@ -230,7 +230,8 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 3. `removeUnexpectedReturns(source, signature) → string`
 4. `reorderParams(source, signature) → string`
 5. `reorderTags(source) → string`
-6. `inlineIfSafe(source, parser) → string` — dry-run через `DbcParser.parse()`
+6. `normalizeMultiLine(source) → string` — приводит любой multi-line JSDoc к каноническому виду: `/**` на отдельной строке, каждая строка контента с префиксом ` * `, ` */` на отдельной строке. Single-line не трогает.
+7. `inlineIfSafe(source, parser) → string` — dry-run через `DbcParser.parse()`. Многотеговые контракты инлайнятся через `|`.
 
 ### 4.3 Services
 
@@ -329,6 +330,14 @@ services/dbc/linter/
 - **Why:** `_reorderTags` обрабатывал `*/` как continuation-строку последнего тега. После сортировки `*/` уезжал в середину, а теги с order=99 выпадали за границы JSDoc — синтаксис TypeScript ломался. Исправлено: `*/` детектится до разбора тегов и добавляется последней строкой. 7 тестов покрывают edge cases (нет тегов, один тег, обратный порядок, неизвестные теги, multi-line значения).
 - **Risk accepted:** —
 - **Rejected alternatives:** Игнорировать — баг воспроизводился на vcs-client с тегом `@consumer` (старый формат).
+
+### D-018 — Autofix: normalizeMultiLine + inline expansion + always-run formatting
+
+- **Status:** active
+- **Recorded:** session Execution, dbc, TSK-21
+- **Why:** (1) `_inlineIfSafe` блокировал многотеговые контракты (`tagCount > 1 → skip`) — теперь разрешено, dry-run через парсер гарантирует безопасность. (2) Добавлен `_normalizeMultiLine` — любой multi-line JSDoc приводится к каноническому виду (`/**` отдельно, ` * ` префикс, ` */` отдельно). (3) `lintAndFix` теперь всегда парсит и нормализует (убран ранний return при `initialCount === 0`), чтобы исправлять malformed формат даже при отсутствии lint-ошибок.
+- **Risk accepted:** Многотеговые контракты с `|` разделителем становятся длинными строками — допустимо для v1.
+- **Rejected alternatives:** Оставить `tagCount > 1` guard — ломает K2 тест (multi-line→inline), не даёт нормализовать формат.
 
 ## 8. Inter-Module Dependencies
 
@@ -467,7 +476,9 @@ graph TD
   | K1 | `autofix-combined/all-fixable.ts` | Все autofix-абельные ошибки в одном файле → после autofix только неисправимые |
   | K2 | `autofix-combined/multi-line-to-inline.ts` | Multi-line контракт без конфликтов → сжат в inline |
   | K3 | `autofix-combined/multi-line-cannot-inline.ts` | Multi-line контракт с конфликтами → НЕ сжат (dry-run показал новые ошибки) |
-  | K4 | `autofix-combined/order-tags.ts` | ERR_DBC_ORDER + ERR_DBC_LINT_PARAM_ORDER одновременно |
+   | K4 | `autofix-combined/order-tags.ts` | ERR_DBC_ORDER + ERR_DBC_LINT_PARAM_ORDER одновременно |
+   | K5 | `autofix-combined/malformed-multi-line.ts` | Multi-line контракт с `*/` на одной строке с последним тегом → нормализован: `*/` на отдельной строке |
+   | K6 | `autofix-combined/malformed-opening.ts` | Multi-line контракт с `/** @tag content` на первой строке → нормализован: `/**` и контент разделены |
 
   **L. Edge cases:**
   | # | Fixture | Что проверяется |
@@ -504,4 +515,4 @@ graph TD
   | M16 | Rest параметр: `...args` ↔ `@param ...args` | Нет ошибок |
   | M17 | Неизвестный kind сущности | Пустой массив ошибок (не падает) |
 
-  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 4 autofix-combined + 10 edge + 17 unit-validator = 88 тестовых случаев.**
+   **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 6 autofix-combined + 10 edge + 17 unit-validator = 90 тестовых случаев.**

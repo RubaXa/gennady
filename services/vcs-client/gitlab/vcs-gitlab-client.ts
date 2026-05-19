@@ -1,8 +1,10 @@
 // @file: GitLab REST API client — HTTP adapter implementing VcsClient contract.
-// @consumers: cli/review-verify
+// @consumers: cli/review-verify, cli/cat
+// @tasks: TSK-29
 
 import { VcsGitlabMergeRequests } from './vcs-gitlab-merge-requests.ts';
 import { VcsGitlabMergeDiscussions } from './vcs-gitlab-merge-discussions.ts';
+import { VcsGitlabRepositoryFiles } from './vcs-gitlab-repository-files.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
@@ -29,6 +31,9 @@ export class VcsGitlabClient extends VcsClient {
   /** @see {VcsClient#MergeDiscussions} in services/vcs-client/abstract/vcs-client.ts */
   readonly MergeDiscussions: VcsGitlabMergeDiscussions;
 
+  /** @see {VcsClient#RepositoryFiles} in services/vcs-client/abstract/vcs-client.ts */
+  readonly RepositoryFiles: VcsGitlabRepositoryFiles;
+
   /**
    * @purpose Create a GitLab API client bound to a base URL with access token.
    * @param options Connection parameters: base URL and access token.
@@ -53,5 +58,6 @@ export class VcsGitlabClient extends VcsClient {
 
     this.MergeRequests = new VcsGitlabMergeRequests(request);
     this.MergeDiscussions = new VcsGitlabMergeDiscussions(request);
+    this.RepositoryFiles = new VcsGitlabRepositoryFiles(options.baseUrl, options.token);
   }
 }

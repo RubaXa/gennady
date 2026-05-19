@@ -44,7 +44,10 @@ export async function check(
     logger.info(
       `[DbcContractCheck#check] [creating → fixed] ${filePath} (autoFixed=${fixReport.autoFixed}, remaining=${fixReport.errors.length})`
     );
-    return { errors: fixReport.errors.map(translateDbcLintErrorToLintError), autoFixed: fixReport.autoFixed };
+    return {
+      errors: fixReport.errors.map(translateDbcLintErrorToLintError),
+      autoFixed: fixReport.autoFixed,
+    };
     // #endregion END_LINT_OR_FIX
   } catch (cause) {
     const error = new Error(`[DbcContractCheck#check] Lint failed for ${filePath}`, { cause });

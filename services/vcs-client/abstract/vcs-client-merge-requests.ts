@@ -1,5 +1,6 @@
 // @file: Contract surface for merge request / pull request operations.
 // @consumers: VcsClient
+// @tasks: TSK-28
 
 /**
  * @purpose Параметры запроса списка Merge Requests: проект, ветка, состояние, пагинация.
@@ -58,4 +59,14 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid
    */
   abstract getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null>;
+
+  /**
+   * @purpose Получить список изменённых файлов в MR/PR.
+   * @param query Параметры: { repository, iid, page?, perPage? }.
+   * @returns Список изменённых файлов с метаданными.
+   * @sideEffect Network: GitLab GET /projects/:id/merge_requests/:iid/changes | GitHub GET /repos/:owner/:repo/pulls/:number/files
+   */
+  abstract getChanges(
+    query: import('../entities/vcs-merge-request-changes.type.ts').VcsMergeRequestChangesQuery
+  ): Promise<import('../entities/vcs-merge-request-changes.type.ts').VcsMergeRequestChanges[]>;
 }

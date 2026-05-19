@@ -6,68 +6,149 @@ product
 
 ## 1. Vision & Primary Goal
 
-VCS-клиент для GitLab: работа с Merge Requests, discussions, пользователями. Абстрактный слой (Ports) + GitLab-реализация (Adapters). Используется CLI-командами gennady для review-пайплайна.
+VCS-клиент (GitLab + GitHub): работа с Merge Requests / Pull Requests, discussions, файлами репозиториев. Абстрактный слой (Ports) + адаптеры (Adapters). Используется CLI-командами gennady для review-пайплайна и `cat --url`.
 
 ## 2. Project Type
 
 - **Type:** service-module-sdk
-- **Why this type:** Библиотека-адаптер для внешнего API (GitLab). Предоставляет интерфейсы и реализации. Потребитель — CLI-команды gennady.
+- **Why this type:** Библиотека-адаптер для внешних API (GitLab, GitHub). Предоставляет интерфейсы и реализации. Потребители — CLI-команды gennady.
 
 ## 3. Approved Golden DX Example
 
 ```ts
-const client = new VcsGitlabClient({ baseUrl: 'https://gitlab.com', token: 'glpat-xxx' });
-const mrs = await client.mergeRequests.list({ project: 'group/repo', sourceBranch: 'feature/x' });
-const discussions = await client.mergeDiscussions.list({ project: 'group/repo', iid: mr.iid });
-await client.mergeDiscussions.addNote({ project: 'group/repo', iid: mr.iid, discussionId: disc.id, body: 'LGTM' });
+// --- GitLab: review-пайплайн ---
+const gl = new VcsGitlabClient({ baseUrl: 'https://gitlab.com/api/v4', token: 'glpat-xxx' });
+const mrs = await gl.MergeRequests.getList({ project: 'group/repo', sourceBranch: 'feature/x' });
+const discussions = await gl.MergeDiscussions?.getAll({ project: 'group/repo', iid: mr.iid });
+
+// --- GitLab: cat --url (новое) ---
+const changes = await gl.MergeRequests.getChanges({ project: 'group/repo', iid: 42 });
+// → [{ path: 'src/foo.ts', status: 'modified', ref: 'feature/x' }, ...]
+const content = await gl.RepositoryFiles.getFileContent({
+  repository: 'group/repo',
+  path: 'src/foo.ts',
+  ref: changes[0].ref,
+});
+// → { path: 'src/foo.ts', content: 'import ...', encoding: 'utf-8' }
+
+// --- GitHub: cat --url (минимальный адаптер) ---
+const gh = new VcsGithubClient({ baseUrl: 'https://api.github.com', token: 'ghp_xxx' });
+const prChanges = await gh.MergeRequests.getChanges({ repository: 'owner/repo', number: 99 });
+// → [{ path: 'lib/utils.ts', status: 'added', ref: 'feature-branch' }, ...]
+const fileContent = await gh.RepositoryFiles.getFileContent({
+  repository: 'owner/repo',
+  path: 'lib/utils.ts',
+  ref: prChanges[0].ref,
+});
+
+// --- URL-парсер ---
+const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42');
+// → { provider: 'gitlab', host: 'gitlab.com', repository: 'group/project', iid: 42 }
 ```
 
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
 
-| ID | Требование |
-|---|---|
-| FR-01 | `VcsClient` — абстрактный порт: методы для MR и discussions |
-| FR-02 | `VcsClientMergeRequests` — порт: list, getByIid |
-| FR-03 | `VcsClientMergeDiscussions` — порт: list, addNote |
-| FR-04 | `VcsGitlabClient` — adapter: GitLab REST API через fetch |
-| FR-05 | `VcsGitlabMergeRequests` — adapter: GitLab MR API |
-| FR-06 | `VcsGitlabMergeDiscussions` — adapter: GitLab Discussions API |
-| FR-07 | Все типы запросов (VcsAddNoteQuery, VcsDiscussionsListQuery, etc.) покрыты JSDoc-контрактами |
+| ID               | Требование                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Существующие** |                                                                                                                           |
+| FR-01            | `VcsClient` — абстрактный порт с опциональными подобъектами: `MergeRequests`, `MergeDiscussions?`, `RepositoryFiles?`     |
+| FR-02            | `VcsClientMergeRequests` — порт: `getList`, `getByIid`, `getChanges`                                                      |
+| FR-03            | `VcsClientMergeDiscussions` — порт: `getList`, `getAll`, `addNote`                                                        |
+| FR-04            | `VcsGitlabClient` — adapter: GitLab REST API через fetch                                                                  |
+| FR-05            | `VcsGitlabMergeRequests` — adapter: GitLab MR API (включая getChanges)                                                    |
+| FR-06            | `VcsGitlabMergeDiscussions` — adapter: GitLab Discussions API                                                             |
+| **Новые**        |                                                                                                                           |
+| FR-08            | `VcsClientRepositoryFiles` — порт: `getFileContent(repository, path, ref)` → декодированный `string`                      |
+| FR-09            | `VcsGitlabRepositoryFiles` — adapter: `GET /projects/:id/repository/files/:path/raw?ref=`                                 |
+| FR-10            | `VcsGitlabMergeRequests.getChanges` — `GET /projects/:id/merge_requests/:iid/changes`                                     |
+| FR-11            | `VcsGithubClient` — adapter: GitHub REST API (минимальный: `MergeRequests.getChanges` + `RepositoryFiles.getFileContent`) |
+| FR-12            | `VcsGithubMergeRequests.getChanges` — `GET /repos/:owner/:repo/pulls/:number/files` с пагинацией                          |
+| FR-13            | `VcsGithubRepositoryFiles.getFileContent` — `GET /repos/:owner/:repo/contents/:path?ref=` (декодирование base64 → utf-8)  |
+| FR-14            | `parseVcsUrl(url)` — pure-функция: разбор URL → `{ provider, host, repository, iid }`                                     |
+| FR-15            | Все возвращаемые типы для новых методов — типизированы (`VcsMergeRequestChanges`, `VcsFileContent`)                       |
+| FR-16            | Адаптер `getFileContent` возвращает **декодированный** контент (`string`); `encoding` — информационное поле               |
+| FR-17            | `VcsMergeRequestChanges` содержит `ref` (source branch / head SHA) для использования в `getFileContent`                   |
 
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Zero runtime dependencies (fetch — built-in Node.js 22+)
 - **NFC-02**: Все экспортируемые сущности покрыты DBC-контрактами
 - **NFC-03**: File headers: `// @file:`, `// @consumers:`
+- **NFC-04**: GitHub-адаптер НЕ реализует `MergeDiscussions` (deferred); порт `MergeDiscussions` на `VcsClient` — опциональный
+- **NFC-05**: `getChanges` поддерживает пагинацию (`page`, `perPage`) — для GitHub (limit 100/страница, max 3000)
+- **NFC-06**: `getFileContent` обрабатывает удалённые файлы (404 → `null`), бинарные файлы (пропуск с `encoding: 'base64'`)
+- **NFC-07**: URL-парсер `parseVcsUrl` — чистая функция, без сетевых вызовов
 
 ### 4.3 Out-of-Scope
 
-- GitHub/Bitbucket адаптеры (v2)
+- Полная реализация GitHub Discussions (v2)
+- Переименование `Discussions` → `Threads` (отдельная задача)
 - OAuth flow (используется PAT token)
-- Pagination helpers
+- Batch-загрузка файлов (каждый `getFileContent` — отдельный запрос)
+- Bitbucket адаптер
+- `getChangesWithDiff` (получение diff-контента) — deferred
 
 ### 4.4 Runtime Backing
 
-| Capability | Posture |
-|---|---|
-| GitLab REST API | `real-runtime` |
-| HTTP (fetch) | `real-runtime` |
+| Capability                           | Posture                      |
+| ------------------------------------ | ---------------------------- |
+| GitLab REST API (MR, Discussions)    | `real-runtime`               |
+| GitLab Repository Files API          | `real-runtime`               |
+| GitHub REST API (PR files, Contents) | `real-runtime`               |
+| HTTP (fetch)                         | `real-runtime`               |
+| URL-парсер                           | `real-runtime`               |
+| GitHub Discussions                   | `not-implemented` (deferred) |
+| Переименование Discussions → Threads | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
-| Rule | Category | Source |
-|---|---|---|
-| `typescript-rules` | coding | `ai/directives/coding/typescript-rules.xml` |
+| Rule               | Category | Source                                      |
+| ------------------ | -------- | ------------------------------------------- |
+| `typescript-rules` | coding   | `ai/directives/coding/typescript-rules.xml` |
 
 ## 5. High-Level Architecture
 
-Ports & Adapters: `abstract/` — интерфейсы, `gitlab/` — реализация, `entities/` — общие типы.
+Ports & Adapters с опциональными портами на `VcsClient`:
+
+```
+services/vcs-client/
+├── entities/
+│   ├── vcs-user.type.ts
+│   ├── vcs-merge-request-changes.type.ts    (NEW)
+│   └── vcs-file-content.type.ts             (NEW)
+├── abstract/
+│   ├── vcs-client.ts                        (MergeDiscussions → optional)
+│   ├── vcs-client-merge-requests.ts         (+ getChanges)
+│   ├── vcs-client-merge-discussions.ts
+│   └── vcs-client-repository-files.ts       (NEW)
+├── gitlab/
+│   ├── vcs-gitlab-client.ts
+│   ├── vcs-gitlab-merge-requests.ts         (+ getChanges)
+│   ├── vcs-gitlab-merge-discussions.ts
+│   └── vcs-gitlab-repository-files.ts       (NEW)
+└── github/                                   (NEW dir)
+    ├── vcs-github-client.ts                  (NEW)
+    ├── vcs-github-merge-requests.ts          (NEW: getChanges only)
+    └── vcs-github-repository-files.ts        (NEW: getFileContent only)
+```
+
+**URL-парсер:**
+
+```
+services/vcs-client/
+└── parse-vcs-url.ts                          (NEW: pure function)
+```
 
 ### 5.1 Rejected Alternatives
 
-N/A — существующая архитектура, не рефакторим.
+| Вариант                                        | Почему отвергнут                                                              |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `getChanges` на `RepositoryFiles`              | MR changes — свойство MR, не репозитория (Octokit, gitbeaker так же)          |
+| Отдельный `GithubCatSource` вместо `VcsClient` | Фрагментация абстракций; лучше один контракт адаптера с опциональными портами |
+| `GITHUB_TOKEN` (без `PERSONAL`)                | Для консистентности с `GITLAB_PERSONAL_TOKEN`                                 |
+| Обязательный `MergeDiscussions` для GitHub     | Избыточно для `cat --url`; stub загрязняет код                                |
 
 ## 6. Decision Log
 
@@ -79,26 +160,70 @@ N/A — существующая архитектура, не рефактори
 - **Risk accepted:** —
 - **Rejected alternatives:** library (нет публичного API для внешних потребителей), contracts (не только интерфейсы)
 
+### D-002 — Новый порт: VcsClientRepositoryFiles
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (cat --url)
+- **Why:** `getFileContent` — репозиторная операция, а не MR. Отдельный порт сохраняет cohesion и следует индустриальному паттерну (Octokit `repos.getContent`, gitbeaker `RepositoryFiles.show`).
+- **Risk accepted:** Порт начинается с одного метода — premature abstraction risk. Принято осознанно: будущие операции (tree, blame, raw) лягут сюда же.
+- **Rejected alternatives:** Добавить `getFileContent` в `MergeRequests` (нарушает cohesion), положить прямо на `VcsClient` (grab-bag interface).
+
+### D-003 — Опциональные порты на VcsClient
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (cat --url)
+- **Why:** Позволяет GitHub-адаптеру реализовать только `MergeRequests.getChanges` + `RepositoryFiles.getFileContent` без `MergeDiscussions`. Избегает stub-методов и нарушения LSP.
+- **Risk accepted:** Потребители должны проверять наличие порта перед вызовом (`client.MergeDiscussions?.getAll()`). Существующие потребители всегда работают с GitLab → порт всегда есть.
+- **Rejected alternatives:** Stub с `throw new Error('Not implemented')` (некрасиво), отдельный класс `GithubCatSource` (фрагментация).
+
+### D-004 — URL-парсер в vcs-client
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (cat --url)
+- **Why:** Разбор GitLab/GitHub URL — доменное знание VCS. Pure-функция без сетевых вызовов. Используется `cat --url` и потенциально другими командами.
+- **Risk accepted:** Поддерживаются только форматы `gitlab.com/.../-/merge_requests/:iid` и `github.com/.../pull/:number`. Self-hosted варианты — по тому же шаблону.
+- **Rejected alternatives:** Парсер в `cli/cmd/cat/` (доменная логика не в том слое).
+
+### D-005 — GitHub adapter: минимальный (без Discussions)
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (cat --url)
+- **Why:** `cat --url` требует только `getChanges` + `getFileContent`. Discussions — отдельная задача (существующий `vcs-github.task.spec.md`).
+- **Risk accepted:** При добавлении GitHub Discussions потребуется дореализовать `VcsGithubMergeDiscussions`. Время на это — неделя.
+- **Rejected alternatives:** Полная реализация Discussions сейчас (задержит `cat --url` на недели).
+
+### D-006 — Контракт кодировки: адаптер декодирует
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (cat --url)
+- **Why:** GitHub API возвращает base64, GitLab `/raw` — plain text. Адаптер приводит к единому формату: `VcsFileContent.content: string` (декодированный).
+- **Risk accepted:** Бинарные файлы — `encoding: 'base64'`, контент не декодируется (возвращается как есть в base64). Потребитель фильтрует по `encoding`.
+- **Rejected alternatives:** Возвращать сырой base64 и требовать от потребителя декодировать (перекладывание ответственности наружу).
+
 ## 7. Scope Dependencies
 
 - **Depends on:** [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test
-- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply)
+- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply, **cat**)
 
 ## 8. Bootstrap Requirements
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
-| Существующий код в `services/vcs-client/` | structural | this-scope-task | ✅ уже существует |
+| Requirement                               | Kind       | Owner           | Resolution                        |
+| ----------------------------------------- | ---------- | --------------- | --------------------------------- |
+| Существующий код в `services/vcs-client/` | structural | this-scope-task | ✅ уже существует                 |
+| `GITHUB_PERSONAL_TOKEN` env var           | env        | operator-action | Оператор устанавливает переменную |
 
 ## 9. Module Map
 
 ### 9.1 Modules
 
-- [vcs-client](./vcs-client/vcs-client.spec.md) — VCS-клиент: Ports, Adapters, Value Objects для GitLab API
+- [vcs-client](./vcs-client/vcs-client.spec.md) — VCS-клиент: Ports, Adapters, Value Objects для GitLab + GitHub API
 
 ### 9.4 Handoff to Task Scaffolding
 
 - **Primary input:** `specs/vcs/vcs.spec.md`
-- **Areas requiring decomposition:** None (один модуль)
-- **Named abstractions:** `VcsClient`, `VcsClientMergeRequests`, `VcsClientMergeDiscussions`, `VcsGitlabClient`, `VcsGitlabMergeRequests`, `VcsGitlabMergeDiscussions`
-- **Open risks:** Код существует, но без JSDoc-контрактов — требуется отдельная задача на покрытие
+- **Areas requiring decomposition:** `vcs-client` (новые порты + GitHub-адаптер)
+- **Named abstractions:** `VcsClient`, `VcsClientMergeRequests`, `VcsClientMergeDiscussions`, `VcsClientRepositoryFiles`, `VcsGitlabClient`, `VcsGitlabMergeRequests`, `VcsGitlabMergeDiscussions`, `VcsGitlabRepositoryFiles`, `VcsGithubClient`, `VcsGithubMergeRequests`, `VcsGithubRepositoryFiles`, `parseVcsUrl`, `VcsUrl`, `VcsMergeRequestChanges`, `VcsFileContent`
+- **Open risks:**
+  - GitHub Discussions — deferred, нужен отдельный refine
+  - Переименование `Discussions` → `Threads` — отдельная задача
+  - `project` vs `repository` naming — унифицировать при переименовании Discussions

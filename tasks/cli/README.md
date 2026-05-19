@@ -43,19 +43,42 @@ graph TD
     TSK-17 --> TSK-16
     TSK-18[TSK-18: CLI integration tests]
     TSK-18 --> TSK-17
+    TSK-32[TSK-32: LanguageCheck]
+    TSK-32 --> TSK-16
+    TSK-23[TSK-23: AltOpinion core]
+    TSK-24[TSK-24: AltOpinion CLI]
+    TSK-25[TSK-25: AltOpinion tests]
+    TSK-24 --> TSK-23
+    TSK-25 --> TSK-23
+    TSK-25 --> TSK-24
+    TSK-26[TSK-26: AltOpinion telemetry]
+    TSK-26 --> TSK-23
+    TSK-26 --> TSK-24
+    TSK-26 --> TSK-25
+    TSK-31[TSK-31: cat --url]
+    TSK-31 --> TSK-27
+    TSK-31 --> TSK-28
+    TSK-31 --> TSK-29
+    TSK-31 --> TSK-30
 ```
 
 ## Tracker
 
-| Task-ID                            | Title                               | Module | Dependencies           | Status     | Reopens |
-| ---------------------------------- | ----------------------------------- | ------ | ---------------------- | ---------- | ------- |
-| [TSK-12](lint/cli-lint.task-12.md) | Типы: LintError, LintOptions, коды  | lint   | None                   | `[x]` DONE | 0       |
-| [TSK-13](lint/cli-lint.task-13.md)         | FileHeaderCheck                      | lint   | TSK-12              | `[x]` DONE | 0       |
-| [TSK-14](lint/cli-lint.task-14.md)         | AnchorCheck                          | lint   | TSK-12              | `[x]` DONE | 0       |
-| [TSK-15](lint/cli-lint.task-15.md)         | DbcContractCheck                     | lint   | TSK-12, TSK-11      | `[x]` DONE | 0       |
-| [TSK-16](lint/cli-lint.task-16.md)         | LintCommand + регистрация в gennady  | lint   | TSK-13, TSK-14, TSK-15 | `[x]` DONE | 0       |
-| [TSK-17](lint/cli-lint.task-17.md)         | Тесты: проверки + интеграционные     | lint   | TSK-16              | `[x]` DONE | 0       |
-| [TSK-18](lint/cli-lint.task-18.md)         | Интеграционные тесты CLI команды lint | lint   | TSK-17              | `[x]` DONE | 0       |
+| Task-ID                                          | Title                                                 | Module      | Dependencies                   | Status     | Reopens |
+| ------------------------------------------------ | ----------------------------------------------------- | ----------- | ------------------------------ | ---------- | ------- |
+| [TSK-12](lint/cli-lint.task-12.md)               | Типы: LintError, LintOptions, коды                    | lint        | None                           | `[x]` DONE | 0       |
+| [TSK-13](lint/cli-lint.task-13.md)               | FileHeaderCheck                                       | lint        | TSK-12                         | `[x]` DONE | 0       |
+| [TSK-14](lint/cli-lint.task-14.md)               | AnchorCheck                                           | lint        | TSK-12                         | `[x]` DONE | 0       |
+| [TSK-15](lint/cli-lint.task-15.md)               | DbcContractCheck                                      | lint        | TSK-12, TSK-11                 | `[x]` DONE | 0       |
+| [TSK-16](lint/cli-lint.task-16.md)               | LintCommand + регистрация в gennady                   | lint        | TSK-13, TSK-14, TSK-15         | `[x]` DONE | 0       |
+| [TSK-17](lint/cli-lint.task-17.md)               | Тесты: проверки + интеграционные                      | lint        | TSK-16                         | `[x]` DONE | 0       |
+| [TSK-18](lint/cli-lint.task-18.md)               | Интеграционные тесты CLI команды lint                 | lint        | TSK-17                         | `[x]` DONE | 0       |
+| [TSK-32](lint/cli-lint.task-32.md)               | LanguageCheck: проверка языка (English-only)          | lint        | TSK-16                         | `[x]` DONE | 0       |
+| [TSK-23](alt-opinion/cli-alt-opinion.task-23.md) | AltOpinion Core (types + parser + runner)             | alt-opinion | None                           | `[x]` DONE | 2       |
+| [TSK-24](alt-opinion/cli-alt-opinion.task-24.md) | AltOpinion CLI (cmd + prompts + registration)         | alt-opinion | TSK-23                         | `[x]` DONE | 1       |
+| [TSK-25](alt-opinion/cli-alt-opinion.task-25.md) | AltOpinion Tests (parser + runner + integration)      | alt-opinion | TSK-23, TSK-24                 | `[x]` DONE | 0       |
+| [TSK-26](alt-opinion/cli-alt-opinion.task-26.md) | AltOpinion Telemetry (port + runner + output + tests) | alt-opinion | TSK-23, TSK-24, TSK-25         | `[x]` DONE | 0       |
+| [TSK-31](cat/cli-cat.task-31.md)                 | cat --url: поддержка GitLab MR / GitHub PR            | cat         | TSK-27, TSK-28, TSK-29, TSK-30 | `[x]` DONE | 0       |
 
 ## Notes
 

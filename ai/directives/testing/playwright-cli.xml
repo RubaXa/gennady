@@ -1,0 +1,199 @@
+<PlaywrightCli keywords="playwright, playwright-cli, e2e-exploration, ax-tree, trace-viewer, codegen, debug, headless, locator-picker, aria-snapshot, screenshot, self-verify" type="testing-rules" ver="2.0">
+  <Mission>
+    Canonical rules for exploring a running web application through Playwright CLI BEFORE codifying a committed e2e test. This directive gives every execution-agent perception (AX tree, screenshots, trace viewer) and interaction (role-based locators, codegen) so it can see the page, manipulate it, and confirm that the rendered structure matches intent.
+
+    **Base axiom:** the rendered DOM is the only ground truth for an e2e test contract. Writing a test from memory, from a design doc, or from a guess produces locators that pass type-check and fail at runtime. So the order is fixed: navigate → snapshot AX tree → interact → snapshot delta → only then codify. The CLI session is the source of evidence for every locator and every assertion in the committed test.
+
+    Tooling reference (canonical CLI surface):
+    - `page.goto(url)` / `page.ariaSnapshot()` — primary navigation and perception channel.
+    - `page.getByRole(...)` — primary interaction surface.
+    - `page.screenshot({ fullPage: true })` — secondary visual channel for layout-only concerns.
+    - `npx playwright test --trace=on` + `npx playwright show-trace trace.zip` — failure diagnosis with DOM snapshots and timeline.
+    - `npx playwright codegen [url]` — interaction recorder; output requires review before commit.
+    - `npx playwright test --update-snapshots` — baseline rewrite (gated; see `AX_CLI_SNAPSHOT_UPDATE_GATE`).
+
+    Companion (codification of observations into committed tests): `ai/directives/testing/playwright-e2e.xml`.
+  </Mission>
+
+  <Depends_On>
+    - ai/directives/coding/typescript-rules.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_CLI_EXPLORE_BEFORE_AUTHOR">
+      Exploration MUST precede authoring. Agent first sees the page through `page.ariaSnapshot()`, then interacts through `page.getByRole(...)`, then captures the post-state. Only after this loop completes does codification into a committed test file begin.
+
+      A locator that has never been resolved against a running page is a guess; committing it bypasses the only ground truth the test has.
+    </Axiom>
+
+    <Axiom id="AX_CLI_AX_TREE_AS_PRIMARY_VISION">
+      `page.ariaSnapshot()` is the primary perceptual channel for an agent. It emits a YAML representation of the accessibility tree — the same structure that `getByRole()` queries and `toMatchAriaSnapshot()` asserts. So the AX tree is the lingua franca across explore → interact → assert.
+
+      Pixel-level vision (screenshots, visual diff) is a secondary channel reserved for layout-only concerns. Choosing it as the primary signal binds the test to rendering pipelines that vary across machines.
+    </Axiom>
+
+    <Axiom id="AX_CLI_HEADLESS_FOR_AGENT">
+      Every CLI exploration session for an agent runs headless. The `--headed` / `--ui` / `--debug` modes are human-only — they assume a sighted operator at the terminal. An agent that opens a headed window has no consumer for the visual output and burns the session waiting for user input that will never arrive.
+    </Axiom>
+
+    <Axiom id="AX_CLI_ROLE_LOCATORS_FROM_AX_TREE">
+      Every locator used during exploration is derived from the AX tree just observed (`getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, `getByTestId`). CSS classes, ID selectors, and XPath expressions are forbidden as the primary locator strategy — they bind the test to implementation details that have no contract status.
+    </Axiom>
+
+    <Axiom id="AX_CLI_DEV_SERVER_PRECONDITION">
+      Every CLI command depends on a running application. The agent confirms the dev server is reachable (HTTP 200 at the expected URL, or the project's known boot-complete signal) BEFORE issuing the first Playwright call. Skipping this turns the first `page.goto` failure into a confusing «Playwright is broken» investigation instead of a one-line «start the dev server» fix.
+    </Axiom>
+
+    <Axiom id="AX_CLI_EXPLORE_LOOP_HAS_FOUR_STEPS">
+      The exploration loop is fixed at four steps and runs to completion before any test file is touched:
+      1. **Explore** — `page.goto(url)`; `page.ariaSnapshot()`; read structure.
+      2. **Interact** — `page.getByRole(...).click()` / `.fill()` / `.press()`; re-capture `ariaSnapshot()`; observe delta.
+      3. **Verify** — compare observed structure against expected intent; if mismatch, fix the component first, restart, re-explore.
+      4. **Capture** — record the final AX snapshot and any required screenshots as the basis for the committed test.
+
+      Skipping a step (e.g. interacting without re-snapshotting) hides the contract drift the loop exists to surface.
+    </Axiom>
+
+    <Axiom id="AX_CLI_TRACE_FOR_FAILURE_DIAGNOSIS">
+      When a test fails, the primary diagnostic is `playwright test --trace=on` followed by inspecting the trace via `show-trace`. The trace contains DOM snapshots at each step, network requests, console logs, and a timeline — enough to attribute the failure to a real cause instead of guessing.
+
+      «Edit the test until it passes» without trace inspection is forbidden — it routinely mutes real regressions by relaxing the assertion.
+    </Axiom>
+
+    <Axiom id="AX_CLI_CODEGEN_IS_RECORDER_NOT_AUTHOR">
+      `playwright codegen` records interactions but its output is NOT directly committable. The generated locators are typically CSS / nth-child / XPath chains — fragile and implementation-coupled. The agent reviews codegen output and replaces every selector with a role-based equivalent derived from the AX tree before any line of it lands in a committed file.
+    </Axiom>
+
+    <Axiom id="AX_CLI_SNAPSHOT_UPDATE_GATE">
+      `npx playwright test --update-snapshots` (rewriting AX/visual baselines) is a gated action. Allowed without confirmation only for the very FIRST snapshot of a NEW test (no prior baseline existed). For any update to an existing baseline the agent MUST stop, present the old vs new snapshot to the operator, name the cause of the diff (intentional UI change vs unexpected regression), and wait for explicit confirmation.
+
+      Silent `--update-snapshots` on every failure is the single most direct path for an agent to fabricate a green test under e2e.
+    </Axiom>
+
+    <Axiom id="AX_CLI_TRANSITION_TO_AUTHORING">
+      Exploration is complete only when: AX snapshot of the target region captured; every interactive element located via `getByRole(...)`; observed structure matches intent. At that point the agent transitions to `playwright-e2e.xml` for codification. Committing a test while exploration is still mid-loop produces a test that asserts the wrong contract.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_CLI_AX_SNAPSHOT">
+      Output of `locator.ariaSnapshot()` — YAML representation of the accessibility subtree rooted at `locator`. Default scope is partial (a region or named role), not full page.
+    </Definition>
+    <Definition id="DEF_CLI_TRACE">
+      Output of `playwright test --trace=on` — a `.zip` containing DOM snapshots at each test step, network entries, console logs, and a timeline. Inspected via `npx playwright show-trace trace.zip`.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_CLI_EXPLORE_LOOP">
+      <Intent>Canonical four-step exploration loop captured as a script before any test file is touched.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // explore.session.ts — throwaway exploration script, NOT committed as a test.
+        import { chromium } from 'playwright';
+
+        const browser = await chromium.launch();
+        const context = await browser.newContext();
+        const page = await context.newPage();
+
+        // 1. Explore
+        await page.goto('http://localhost:5173/checkout');
+        console.log(await page.getByRole('region', { name: 'Checkout' }).ariaSnapshot());
+
+        // 2. Interact
+        await page.getByRole('textbox', { name: 'Email' }).fill('user@test.com');
+        await page.getByRole('button', { name: 'Place Order' }).click();
+
+        // 3. Verify — snapshot after interaction; compare delta against intent
+        console.log(await page.getByRole('region', { name: 'Checkout' }).ariaSnapshot());
+
+        // 4. Capture — final snapshot is the seed for the committed test's toMatchAriaSnapshot
+        await browser.close();
+        ```
+      </Snippet>
+      <Why>One concrete URL, role-based locators derived from the previous snapshot, two snapshots framing the interaction so the delta is observable. The script itself is not committed — it is the audit trail for the committed test's contract.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_CLI_WRITE_TEST_WITHOUT_AX_TREE">
+      <Bad>Agent reads the design doc, writes `await page.locator('.submit-btn').click()` straight into a committed test file without ever running `page.ariaSnapshot()` against a live page.</Bad>
+      <Why_Bad>Locator never resolved against ground truth (`AX_CLI_EXPLORE_BEFORE_AUTHOR`). `.submit-btn` is a CSS class — implementation-coupled, with no contract status (`AX_CLI_ROLE_LOCATORS_FROM_AX_TREE`). First run fails or, worse, matches a different element with the same class and produces a misleading green.</Why_Bad>
+      <Good>Run the exploration loop, observe `- button "Place Order"` in the AX snapshot, then write `await page.getByRole('button', { name: 'Place Order' }).click()` in the committed test.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_CLI_CSS_XPATH_FROM_CODEGEN">
+      <Bad>Agent runs `playwright codegen`, copies `page.locator('#root > div:nth-child(3) > button.submit')` straight into the committed test.</Bad>
+      <Why_Bad>Codegen output committed without review (`AX_CLI_CODEGEN_IS_RECORDER_NOT_AUTHOR`). The structural path breaks on the first DOM reordering, and the CSS class is implementation-coupled. Codegen is a recorder, not an author.</Why_Bad>
+      <Good>Read the AX snapshot of the same region, replace the generated locator with the role-based equivalent (`getByRole('button', { name: 'Submit' })`) before any line of codegen output lands in the test.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_CLI_SKIP_TRACE_ON_FAILURE">
+      <Bad>Test fails red; agent edits the assertion (`toMatch` → `toContain` → eventual deletion of the assertion) until the test passes, never running `--trace=on`.</Bad>
+      <Why_Bad>Failure diagnosed by mutation of the test instead of inspection of the actual run (`AX_CLI_TRACE_FOR_FAILURE_DIAGNOSIS`). Real regressions get silenced by progressively weaker assertions; the trace would have shown what actually happened in 30 seconds.</Why_Bad>
+      <Good>`npx playwright test --trace=on path/to/failing.spec.ts`; `npx playwright show-trace test-results/.../trace.zip`; identify whether the failure is in the component (fix component) or in the test's contract (fix test, with the new contract documented).</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_CLI_HEADED_FOR_AGENT">
+      <Bad>Agent's exploration script launches the browser via `chromium.launch({ headless: false })` or invokes `npx playwright test --headed --ui`.</Bad>
+      <Why_Bad>Visual UI modes targeted at a human operator (`AX_CLI_HEADLESS_FOR_AGENT`). Agent has no consumer for the rendered window; the run hangs waiting for human input or burns CPU drawing pixels nobody reads.</Why_Bad>
+      <Good>Default headless: `chromium.launch()` (no `headless: false`). Perception flows through `ariaSnapshot()`, screenshots written to disk for retrospective review, traces for failure diagnosis.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_CLI_AUTO_UPDATE_SNAPSHOTS">
+      <Bad>CI fails on an AX snapshot diff; agent's response is `npx playwright test --update-snapshots` followed by a commit of the regenerated baselines.</Bad>
+      <Why_Bad>Snapshot baseline rewritten silently (`AX_CLI_SNAPSHOT_UPDATE_GATE`). The diff might have been a real regression; auto-update turns regressions into «accepted contract changes» with no operator visibility. Classic agent-side green-fabrication path.</Why_Bad>
+      <Good>Inspect the diff in the test-results report or via `show-trace`; if intentional, present old vs new snapshot to the operator, get confirmation, then `--update-snapshots` on the specific file; if unintentional, fix the component.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Workflow_Outline>
+    <Step id="WF_CLI_1_PREREQ">Confirm Playwright installed (`npx playwright --version`); if absent, `npm i -D @playwright/test &amp;&amp; npx playwright install --with-deps chromium`. Confirm dev server reachable at the expected URL.</Step>
+    <Step id="WF_CLI_2_EXPLORE">`page.goto(url)`; `page.ariaSnapshot()`; identify roles, accessible names, nesting.</Step>
+    <Step id="WF_CLI_3_INTERACT">`page.getByRole(...).click()` / `.fill()` / `.press()`; re-snapshot after each meaningful step; observe delta.</Step>
+    <Step id="WF_CLI_4_CAPTURE">Final AX snapshot of the target region; screenshots only when the test concerns visual layout.</Step>
+    <Step id="WF_CLI_5_TRANSITION">When exploration confirms structure matches intent, transition to `playwright-e2e.xml` for codification.</Step>
+  </Workflow_Outline>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_CLI_PLAYWRIGHT_INSTALLED">
+      <Purpose>Playwright + Chromium are installed and reachable.</Purpose>
+      <Command>npx playwright --version &amp;&amp; npx playwright install --dry-run chromium</Command>
+      <Expected>Version string printed; Chromium reported as already installed (or installed by the command).</Expected>
+    </Hook>
+    <Hook id="HOOK_CLI_DEV_SERVER_REACHABLE">
+      <Purpose>Dev server is reachable at the expected URL before exploration.</Purpose>
+      <Command>curl -fsS -o /dev/null -w "%{http_code}\n" "${BASE_URL:-http://localhost:5173}"</Command>
+      <Expected>HTTP 200 (or the project's known boot-complete status). Non-2xx means dev server is not ready; start it before exploring.</Expected>
+    </Hook>
+    <Hook id="HOOK_CLI_NO_HEADED_IN_AGENT_SCRIPTS">
+      <Purpose>No agent-committed script forces headed mode or `--ui`.</Purpose>
+      <Command>find . \( -name '*.ts' -o -name '*.js' \) -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'headless\s*:\s*false|--headed|--ui|--debug' || true</Command>
+      <Expected>Empty output. Matches must either be human-only debugging scripts (excluded from the agent's workflow) or removed.</Expected>
+    </Hook>
+    <Hook id="HOOK_CLI_NO_AUTO_UPDATE_SNAPSHOTS">
+      <Purpose>Detect that the agent did not run `--update-snapshots` silently against an existing baseline.</Purpose>
+      <Command>git log -1 --name-only --pretty=format: | grep -E '\.snap$|snapshots/' || true</Command>
+      <Expected>If snapshot files appear in the last commit, the commit message MUST reference operator confirmation; uncomfirmed updates are a violation.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ Exploration loop completed (explore → interact → verify → capture) before any test is authored.
+    ✅ AX tree is the primary perceptual channel; screenshots reserved for visual-layout concerns.
+    ✅ Locators come from the just-observed AX tree; role-based queries only.
+    ✅ Headless for every agent-driven session; `--headed` / `--ui` / `--debug` reserved for humans.
+    ✅ Dev server reachability confirmed before the first `page.goto`.
+    ✅ Failures diagnosed via `--trace=on` + `show-trace`, not by mutating the assertion until green.
+    ✅ Codegen output reviewed and rewritten to role-based locators before commit.
+    ✅ Snapshot baseline updates pass operator confirm; first-baseline writes are the only ungated case.
+
+    ❌ Test authored without ever running `page.ariaSnapshot()` against a live page.
+    ❌ CSS / ID / XPath selectors used as primary locators.
+    ❌ Codegen output committed verbatim.
+    ❌ Test failure debugged by weakening or deleting assertions instead of inspecting the trace.
+    ❌ Agent-driven session running in `--headed`, `--ui`, or `--debug` mode.
+    ❌ `npx playwright test --update-snapshots` against an existing baseline without operator confirmation.
+    ❌ Committing a test while exploration is still mid-loop.
+  </Reward_Criteria>
+</PlaywrightCli>

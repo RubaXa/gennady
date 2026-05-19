@@ -95,14 +95,15 @@
       1. Read `ai/directives/knowledge.xml` — the canonical rule registry (`<Rules>` section).
       2. From the scope's Project-Wide Rules, extract the candidate rule set for this scope.
       3. For each candidate rule: evaluate its `<Triggers>` and `<SkipWhen>` against THIS PHASE's `Target Files` and phase `kind`. Include the rule only when `<Triggers>` match AND `<SkipWhen>` does not apply. Signal-based only — no hardcoded language/tool knowledge in this directive.
-      4. For each included rule:
+      4. **Transitive closure via `<Depends_On>`.** For each included rule, open its file and read its `<Depends_On>` section (optional; lists rule-file paths this rule architecturally extends). Add every dependency to the phase's Rules set. Recurse until the set stops growing. Cycles → halt `H_RULES_CYCLE`. Missing dependency file → halt `H_MISSING_RULES`. This produces the explicit, fully-resolved set; phase-subagent does NOT walk `<Depends_On>` at runtime.
+      5. For each rule in the resolved set:
          - `<File>` → full path to rule file (`ai/directives/<category>/<rule>.xml`); render as Markdown link in the phase's `Rules:` bullet list.
-         - `<RequiresVerification>` → collect aliases for ticket-level Verification table (step 6).
-      5. Write the phase's `Rules:` bullet list with one `[<rule-id>](<rule-file-path>)` per included rule.
-      6. After all phases are processed, collect the union of all `<RequiresVerification>` aliases across all phases of this ticket. Group rules by alias (multiple rules may share `check-command`). Resolve each unique alias from infra-spec Verification Commands.
+         - `<RequiresVerification>` → collect aliases for ticket-level Verification table (step 7).
+      6. Write the phase's `Rules:` bullet list with one `[<rule-id>](<rule-file-path>)` per included rule (direct + transitive, all explicit).
+      7. After all phases are processed, collect the union of all `<RequiresVerification>` aliases across all phases of this ticket. Group rules by alias (multiple rules may share `check-command`). Resolve each unique alias from infra-spec Verification Commands.
          - Alias present in spec → use its invocation.
          - Alias absent → halt: H_VERIFICATION_COMMAND_MISSING (alias, ticket ID).
-      7. Write ticket section 5 Verification table (ticket-level, single table):
+      8. Write ticket section 5 Verification table (ticket-level, single table):
          | Command | Required by |
          One row per unique alias. "Required by" = comma-separated rule IDs that declared it. Phase-subagent runs only the rows whose Required-by intersects with its phase's `Rules`.
     </Axiom>
@@ -125,7 +126,7 @@
     <Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
       **Ticket carries BDD scenarios mapped to concrete tests.**
 
-      - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements &amp; Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
+      - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
       - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
       - Each scenario maps to `<test-file>::<canonical case name>` in section 6 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
@@ -309,7 +310,8 @@
     | `H_NO_SPECS` | No specs/README.md or no scope specs found |
     | `H_AMBIGUOUS_MODE` | `tasks/` present + intake unclear |
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec present but Discovery/required sections incomplete |
-    | `H_MISSING_RULES` | Any cascade source references a missing rule file |
+    | `H_MISSING_RULES` | Any cascade source OR transitive `<Depends_On>` references a missing rule file |
+    | `H_RULES_CYCLE` | Transitive `<Depends_On>` closure encounters a cycle between rule files |
     | `H_ID_COLLISION` | Generated `TSK-NN` collides with existing |
     | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |

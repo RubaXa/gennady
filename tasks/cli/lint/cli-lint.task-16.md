@@ -90,6 +90,7 @@
 ### Round 1 — 2026-05-15, initial
 
 #### P1
+
 - [x] `2026-05-15T18:50:00` recon git=main/clean targets=index.ts|absent,lint.cmd.ts|absent,gennady.ts|exists,AGENTS.md|exists divergence=none
 - [x] `2026-05-15T18:50:00` rules typescript-rules
 - [x] `2026-05-15T18:51:00` file cli/cmd/lint/index.ts
@@ -101,4 +102,4 @@
       insight parseArgs-double-slice → LintCommand: parseArgs() internally slices(2), so pre-sliced argv drops positionals. Fix: filter by .ts extension, not slice.
       insight filePath-resolve → LintCommand: resolve() gave absolute path in dbc errors vs relative in header/anchor. Fix: pass original filePath to all checks, absPath only for readFileSync.
 - [x] `2026-05-15T18:52:00` DONE
-**Handoff →** artifacts: [cli/cmd/lint/index.ts, cli/cmd/lint/lint.cmd.ts, cli/gennady.ts, cli/AGENTS.md]; decisions: [cmd-registered=lint, module-system=esm, output-format=eslint]; open: []
+      **Handoff →** artifacts: [cli/cmd/lint/index.ts, cli/cmd/lint/lint.cmd.ts, cli/gennady.ts, cli/AGENTS.md]; decisions: [cmd-registered=lint, module-system=esm, output-format=eslint]; open: []

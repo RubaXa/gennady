@@ -1,4 +1,4 @@
-// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 3 checks, ESLint output.
+// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 4 checks, ESLint output.
 // @consumers: gennady.ts
 // @tasks: TSK-16
 
@@ -10,15 +10,11 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { check as checkFileHeader } from './checks/file-header.check.ts';
 import { check as checkAnchors } from './checks/anchor.check.ts';
 import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
+import { check as checkLanguage } from './checks/language.check.ts';
 import { LintReport } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 
-/**
- * @purpose Execute the gennady lint command — collect files, run 3 checks, output ESLint-format report.
- * @implements {LintCommand} in specs/cli/lint/lint.spec.md
- * @param rawArgs Raw command-line arguments (process.argv).
- * @returns LintReport with aggregated errors and exit code.
- */
+/** @purpose Execute the gennady lint command — collect files, run 4 checks, output ESLint-format report. | @implements {LintCommand} in specs/cli/lint/lint.spec.md | @param rawArgs Raw command-line arguments (process.argv). | @returns LintReport with aggregated errors and exit code. */
 export async function run(rawArgs: string[]): Promise<LintReport> {
   const args = parseArgs(rawArgs, {
     autofix: ['autofix'],
@@ -46,7 +42,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
         .filter((f) => f.endsWith('.ts'));
       files = [...new Set(files)];
     } catch (cause) {
-      const error = new Error('[LintCommand#run] Git scan failed — not a git repository?', { cause });
+      const error = new Error('[LintCommand#run] Git scan failed — not a git repository?', {
+        cause,
+      });
       logger.error('[LintCommand#run] [collecting → failed]', { error });
       throw error;
     }
@@ -81,6 +79,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
     allErrors.push(...checkFileHeader(content, filePath));
     allErrors.push(...checkAnchors(content, filePath));
+    allErrors.push(...checkLanguage(content, filePath));
 
     const dbcResult = await checkDbcContracts(content, filePath, autofix);
     allErrors.push(...dbcResult.errors);

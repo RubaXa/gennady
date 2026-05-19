@@ -69,6 +69,7 @@ graph TD
     TSK-11 --> TSK-10
     TSK-19 --> TSK-10
     TSK-20 --> TSK-10
+    TSK-21 --> TSK-20
     TSK-13 --> TSK-12
     TSK-14 --> TSK-12
     TSK-15 --> TSK-12
@@ -76,15 +77,30 @@ graph TD
     TSK-16 --> TSK-14
     TSK-16 --> TSK-15
     TSK-17 --> TSK-16
+    TSK-18 --> TSK-17
+    TSK-32 --> TSK-16
+    TSK-24 --> TSK-23
+    TSK-25 --> TSK-23
+    TSK-25 --> TSK-24
+    TSK-26 --> TSK-23
+    TSK-26 --> TSK-24
+    TSK-26 --> TSK-25
+    TSK-28 --> TSK-27
+    TSK-29 --> TSK-28
+    TSK-30 --> TSK-28
+    TSK-31 --> TSK-27
+    TSK-31 --> TSK-28
+    TSK-31 --> TSK-29
+    TSK-31 --> TSK-30
 ```
 
 ## Tracker Index
 
 | Scope | Type    | Tracker                 | Tasks | Done  |
 | ----- | ------- | ----------------------- | ----- | ----- |
-| dbc   | library | [README](dbc/README.md) | 13    | 13/13 |
-| cli   | product | [README](cli/README.md) | 7     | 7/7   |
-| vcs   | product | [README](vcs/README.md) | 1     | 1/1   |
+| dbc   | library | [README](dbc/README.md) | 14    | 14/14 |
+| cli   | product | [README](cli/README.md) | 13    | 13/13 |
+| vcs   | product | [README](vcs/README.md) | 5     | 5/5   |
 
 ## Decision Log
 

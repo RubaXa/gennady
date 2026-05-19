@@ -1,7 +1,13 @@
+// @file: Collect file contents (local and VCS) for cat command.
+// @consumers: cmd/cat
+// @tasks: TSK-31
+
 import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { logger } from '../../../shared/common/logger.ts';
+import type { VcsMergeRequestChanges } from '../../../services/vcs-client/entities/vcs-merge-request-changes.type.ts';
+import type { VcsFileContent } from '../../../services/vcs-client/entities/vcs-file-content.type.ts';
 
 /**
  * @purpose Список расширений файлов по умолчанию для сбора контента (cat).
@@ -93,4 +99,30 @@ export const catGen = (paths: string | string[], options: CatGenOptions = {}): C
     .filter((r): r is CatGenResult => r !== null);
 
   return results;
+};
+
+/**
+ * @purpose Pure-функция преобразования VCS-изменений и содержимого в CatGenResult[].
+ *         Фильтрует deleted-файлы и бинарные (encoding: base64).
+ * @consumer cli/cmd/cat/cat-url.fn.ts
+ * @param changes Изменённые файлы из MR/PR (для ref).
+ * @param files Содержимое файлов из VCS.
+ * @returns CatGenResult[] — файлы, готовые к рендерингу.
+ */
+export const catGenFromVcs = (
+  changes: VcsMergeRequestChanges[],
+  files: VcsFileContent[]
+): CatGenResult[] => {
+  const deletedSet = new Set(changes.filter((c) => c.status === 'deleted').map((c) => c.path));
+
+  return files
+    .filter((f) => !deletedSet.has(f.path) && f.encoding !== 'base64')
+    .map((f) => {
+      const change = changes.find((c) => c.path === f.path);
+      return {
+        absPath: change?.ref ? `vcs://${f.path}?ref=${change.ref}` : `vcs://${f.path}`,
+        relativePath: f.path,
+        contents: f.content,
+      };
+    });
 };

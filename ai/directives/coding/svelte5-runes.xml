@@ -1,0 +1,248 @@
+<Svelte5RunesRules keywords="svelte5, runes, state, derived, effect, props, bindable, inspect, snippets" type="coding-rules" ver="2.0">
+  <Mission>
+    Canonical rules for writing Svelte 5 components using runes. Every execution-agent MUST use runes (`$state`, `$derived`, `$effect`, `$props`, `$bindable`, `$inspect`, `$effect.root`) as compiler keywords, not runtime function calls. Legacy Svelte 4 patterns (`export let`, `$:` reactive statements, `on:event` directives, `<slot>`, `createEventDispatcher`) are forbidden in new code.
+
+    **Base axiom:** runes are compile-time signals — the `$` prefix tells the Svelte compiler how to wire reactivity. They are not imports, not callable values, not React hooks. The component file is the only place a reading agent can recover this reactivity contract — so the file MUST stay self-describing: explicit runes, intent-named handlers, machine-friendly comments.
+
+    Scope: `.svelte`, `.svelte.js`, `.svelte.ts` files (compiler-aware). Out of scope: plain `.ts` modules (runes do not work there).
+  </Mission>
+
+  <Depends_On>
+    - ai/directives/coding/typescript-rules.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_RUNES_ARE_COMPILER_KEYWORDS">
+      Runes are compiler directives prefixed with `$`, not runtime functions. They are never imported from any module, never assigned to variables, never passed as values. Reading `$state` / `$derived` / `$effect` as «function call» mental model leads to React-hook habits (dependency arrays, memoization wrappers) — none of which apply here.
+
+      Agent treating a rune as a value (`const s = $state; s(0)`) produces code that compiles to nothing useful and silently breaks reactivity.
+    </Axiom>
+
+    <Axiom id="AX_RUNES_LOCATION_RESTRICTION">
+      Runes appear ONLY inside Svelte compiler context: `.svelte` files, or `.svelte.js` / `.svelte.ts` modules. Using a rune in a plain `.ts` file produces a compile error; the rune does NOT silently degrade to a function call.
+
+      Cross-file shared reactive state belongs in a `.svelte.ts` module exporting runes-backed values, or in classic stores. Mixing the two for the same value is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_LOCAL_RUNES_OVER_STORES_FOR_LOCAL_STATE">
+      Local component state uses `$state` / `$derived` / `$effect`. Classic stores (`writable`, `readable`, `derived` from `svelte/store`) remain available for cross-component shared state but MUST NOT be used as a substitute for local state when a rune suffices. A store introduces a subscription lifecycle that local runes do not need.
+
+      The `$store` auto-subscription syntax in templates is unchanged from Svelte 4 and remains supported.
+    </Axiom>
+
+    <Axiom id="AX_DERIVED_IS_PURE">
+      `$derived(expression)` and `$derived.by(() => ...)` MUST be pure: no side effects, no I/O, no logging, no mutation of other reactive state. Side effects belong in `$effect`. A `$derived` that mutates is a hidden cycle waiting to fire on every dependency change.
+    </Axiom>
+
+    <Axiom id="AX_EFFECT_OWNERSHIP_AND_CLEANUP">
+      `$effect(() => { ... })` runs after DOM updates; return a teardown function from the body when the effect allocates a resource (timer, subscription, listener, observer) — Svelte runs the teardown before the next run and on component destroy.
+
+      For effects outside a component context, use `$effect.root(() => { ... })` and dispose of its returned cleanup function explicitly. Forgetting the teardown function inside an effect that allocates is the classic source of leaked listeners and timers.
+    </Axiom>
+
+    <Axiom id="AX_PROPS_VIA_DESTRUCTURING">
+      Component props come from a SINGLE `$props()` destructuring call at the top of the script: `let { foo, bar = defaultValue, onSomething } = $props()`. Defaults inline in the destructuring. Optional callbacks declared as props, not via `createEventDispatcher`.
+
+      Multiple `$props()` calls in one component are forbidden — there is one props surface per component.
+    </Axiom>
+
+    <Axiom id="AX_BINDABLE_FOR_TWO_WAY">
+      Two-way bindable props are declared via `$bindable(initialValue)` inside the `$props()` destructuring (`let { value = $bindable('') } = $props()`). The parent then writes `bind:value={...}`. Without `$bindable` a prop is one-way and the parent cannot `bind:`.
+    </Axiom>
+
+    <Axiom id="AX_SNIPPETS_REPLACE_SLOTS">
+      Reusable template fragments use `{#snippet name(params)}...{/snippet}` and are invoked via `{@render name(params)}`. The Svelte 4 `<slot>` mechanism, `$$slots`, and slot props are forbidden in new components — they are removed concepts in the Svelte 5 mental model.
+    </Axiom>
+
+    <Axiom id="AX_EVENT_HANDLERS_AS_ATTRIBUTES">
+      DOM event handlers are written as attributes (`onclick={handler}`, `oninput={handler}`), NOT as `on:event` directives. Custom component events are passed as callback props (`onConfirm={...}`), NOT through `createEventDispatcher`.
+
+      `on:event` directives, `dispatch(...)`, and `createEventDispatcher` are forbidden — they belonged to the Svelte 4 event model.
+    </Axiom>
+
+    <Axiom id="AX_COMPONENT_STRUCTURE_FIXED">
+      A Svelte 5 component file has a fixed structure: an optional `<script module>` for module-scope exports (one max), an optional `<script>` for instance code (one max), the HTML template, and an optional `<style>`. Multiple instance scripts, top-level expressions outside `<script>`, and pre-script template content are forbidden.
+    </Axiom>
+
+    <Axiom id="AX_LEGACY_PATTERNS_FORBIDDEN">
+      Forbidden Svelte 4 patterns in new components: `export let prop`, `$:` reactive statements, `on:event` directives, `<slot>` and `$$slots`, `$$props` / `$$restProps`, `createEventDispatcher`, `dispatch`. Each has a Svelte 5 replacement (`$props()`, `$derived` / `$effect`, attribute handlers, `{#snippet}` + `{@render}`, callback props).
+    </Axiom>
+
+    <Axiom id="AX_INSPECT_IS_DEV_ONLY">
+      `$inspect(value)` is the debugging channel — it logs reactive changes during development and is stripped in production builds. It MUST NOT replace `logger.*` for runtime observability and MUST NOT be committed as the sole report channel for a contract-bearing state transition.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_SVELTE_RUNE">
+      A Svelte 5 rune: a compiler directive prefixed with `$`. Recognized: `$state`, `$state.raw`, `$derived`, `$derived.by`, `$effect`, `$effect.pre`, `$effect.root`, `$effect.tracking`, `$props`, `$bindable`, `$inspect`, `$host`.
+    </Definition>
+    <Definition id="DEF_RUNES_FILE">
+      A file in which runes are valid syntax: `.svelte`, `.svelte.js`, `.svelte.ts`. Plain `.ts` is NOT a runes file.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_BASIC_COMPONENT_WITH_RUNES">
+      <Intent>Minimal component using `$props`, `$state`, `$derived`, `$effect`, and an attribute event handler.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <!-- @file: Counter component demonstrating the core rune set. -->
+        <script lang="ts">
+          let { initial = 0, label = 'Count', onChange } = $props();
+          let count = $state(initial);
+          let doubled = $derived(count * 2);
+
+          $effect(() => {
+            onChange?.(count);
+          });
+
+          function increment() {
+            count += 1;
+          }
+        </script>
+
+        <button type="button" onclick={increment}>
+          {label}: {count} (x2: {doubled})
+        </button>
+        ```
+      </Snippet>
+      <Why>One `$props()` destructure with defaults; `$state` for the mutable value; `$derived` pure; `$effect` mediates the outgoing side-channel; attribute `onclick`, not `on:click`.</Why>
+    </Pattern>
+
+    <Pattern id="PT_BINDABLE_PROP">
+      <Intent>Two-way bindable prop for a form input.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <script lang="ts">
+          let { value = $bindable(''), placeholder = '' } = $props();
+        </script>
+
+        <input bind:value placeholder={placeholder} />
+        ```
+      </Snippet>
+      <Why>`$bindable` only inside `$props()` destructure; parent can now use `<TextInput bind:value={form.email} />`.</Why>
+    </Pattern>
+
+    <Pattern id="PT_SNIPPET_AND_RENDER">
+      <Intent>Reusable template fragment via `{#snippet}` and `{@render}` — the Svelte 5 replacement for slots.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        {#snippet card(title, body)}
+          <article class="card">
+            <h2>{title}</h2>
+            <p>{body}</p>
+          </article>
+        {/snippet}
+
+        {@render card('Hello', 'World')}
+        ```
+      </Snippet>
+      <Why>Snippets are reactive and re-render when arguments change. No `<slot>`, no `$$slots`.</Why>
+    </Pattern>
+
+    <Pattern id="PT_EFFECT_WITH_TEARDOWN">
+      <Intent>`$effect` allocating a resource MUST return a teardown.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <script lang="ts">
+          let { tickMs = 1000, onTick } = $props();
+
+          $effect(() => {
+            const handle = setInterval(() => onTick?.(), tickMs);
+            return () => clearInterval(handle);
+          });
+        </script>
+        ```
+      </Snippet>
+      <Why>Return value is the teardown — runs before next effect invocation and on destroy. Forgetting it leaks the interval.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_EXPORT_LET_LEGACY">
+      <Bad>`export let userId: string; export let onConfirm: () => void;` at the top of a `<script>`.</Bad>
+      <Why_Bad>Svelte 4 prop syntax. Forbidden by `AX_LEGACY_PATTERNS_FORBIDDEN` and `AX_PROPS_VIA_DESTRUCTURING`. Bypasses the single `$props()` destructure that is the only authoritative props surface in Svelte 5; mixing it with `$props()` in the same component is undefined behaviour.</Why_Bad>
+      <Good>`let { userId, onConfirm } = $props();` — single destructure at the top of the script, defaults inline if needed.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_REACTIVE_DOLLAR_COLON">
+      <Bad>`$: doubled = count * 2;` and `$: console.log(count);` inside a `<script>`.</Bad>
+      <Why_Bad>Svelte 4 reactive statements (`AX_LEGACY_PATTERNS_FORBIDDEN`). The first form is a derivation (belongs in `$derived`), the second is a side effect (belongs in `$effect`). Mixing the two intents under one syntax was exactly why `$:` was retired.</Why_Bad>
+      <Good>`let doubled = $derived(count * 2);` for the derivation; `$effect(() => { logger.debug('[Counter] [state-changed]', { count }); });` for the side effect.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_ON_EVENT_DIRECTIVE">
+      <Bad>`<button on:click={increment}>` in the template; `createEventDispatcher` + `dispatch('confirm', payload)` for component output.</Bad>
+      <Why_Bad>Svelte 4 event model (`AX_EVENT_HANDLERS_AS_ATTRIBUTES`). `on:click` and `dispatch` are removed concepts in the Svelte 5 mental model; keeping them in new components fragments the project's event syntax and confuses tooling that targets the new model.</Why_Bad>
+      <Good>`<button type="button" onclick={increment}>` for DOM; `onConfirm?.(payload)` callback prop for component output (declared in `$props()`).</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_RUNES_IN_PLAIN_TS">
+      <Bad>`// utils.ts` containing `export const counter = $state(0);`.</Bad>
+      <Why_Bad>`utils.ts` is not a runes file (`AX_RUNES_LOCATION_RESTRICTION`). The Svelte compiler does not process it; `$state` is undefined at runtime and TypeScript reports it as an unknown identifier.</Why_Bad>
+      <Good>Rename to `utils.svelte.ts` so the compiler treats it as a runes module: `export const counter = $state(0);` then works. Importers stay unchanged.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_DERIVED_WITH_SIDE_EFFECT">
+      <Bad>`let label = $derived((() => { logger.info('recomputing'); return count > 0 ? 'positive' : 'non-positive'; })());`</Bad>
+      <Why_Bad>Side effect (logging) inside `$derived` (`AX_DERIVED_IS_PURE`). `$derived` re-runs whenever any tracked dependency changes; the side effect fires on every recomputation, producing log spam and obscuring real state transitions.</Why_Bad>
+      <Good>`let label = $derived(count > 0 ? 'positive' : 'non-positive');` for the pure derivation; `$effect(() => { logger.debug('[Component] [label-changed]', { label }); });` for the observability side effect.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_EFFECT_WITHOUT_TEARDOWN">
+      <Bad>`$effect(() => { const id = setInterval(poll, 1000); });` — no return value.</Bad>
+      <Why_Bad>Allocating effect without teardown (`AX_EFFECT_OWNERSHIP_AND_CLEANUP`). The interval keeps firing across re-runs and after component destroy, leaking handlers and producing ghost network traffic.</Why_Bad>
+      <Good>`$effect(() => { const id = setInterval(poll, 1000); return () => clearInterval(id); });` — the returned cleanup runs before the next effect invocation and on destroy.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_SVELTE_CHECK">
+      <Purpose>Type-check Svelte components and `.svelte.ts` modules; flags legacy patterns the compiler refuses.</Purpose>
+      <Command>npx svelte-check --tsconfig ./tsconfig.json</Command>
+      <Expected>Exit 0; no errors or warnings.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_LEGACY_PROP_SYNTAX">
+      <Purpose>Smoke-grep for forbidden Svelte 4 prop syntax `export let` in `.svelte` files.</Purpose>
+      <Command>find . -name '*.svelte' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '^\s*export\s+let\s+' || true</Command>
+      <Expected>Empty output. Any match is a legacy prop declaration that must be migrated to `$props()` destructuring.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_LEGACY_REACTIVE">
+      <Purpose>Smoke-grep for forbidden `$:` reactive statements and `on:event` directives.</Purpose>
+      <Command>find . \( -name '*.svelte' -o -name '*.svelte.ts' -o -name '*.svelte.js' \) -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '(^|\s)\$:\s|(\s|^)on:[a-z]+=' || true</Command>
+      <Expected>Empty output. Matches must migrate to `$derived` / `$effect` or attribute handlers.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_RUNES_IN_PLAIN_TS">
+      <Purpose>Detect runes used in plain `.ts` files (not `.svelte.ts`).</Purpose>
+      <Command>find . -name '*.ts' -not -name '*.svelte.ts' -not -name '*.d.ts' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '\$(state|derived|effect|props|bindable|inspect)\b' || true</Command>
+      <Expected>Empty output. Files containing runes must be renamed to `.svelte.ts`.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_CREATE_EVENT_DISPATCHER">
+      <Purpose>Detect forbidden `createEventDispatcher` imports.</Purpose>
+      <Command>find . \( -name '*.svelte' -o -name '*.ts' \) -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -n 'createEventDispatcher' || true</Command>
+      <Expected>Empty output. Replace with callback props declared through `$props()`.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ All reactive primitives use runes (`$state`, `$derived`, `$effect`, `$props`, `$bindable`) as compiler keywords.
+    ✅ Props consumed via a single `$props()` destructure at the top of the script; defaults inline; callback props for outgoing events.
+    ✅ DOM event handlers use attribute form (`onclick={...}`); custom events use callback props.
+    ✅ Reusable template fragments use `{#snippet}` + `{@render}`.
+    ✅ Effects allocating resources return their teardown function.
+    ✅ `$derived` expressions are pure — no logging, no mutation, no I/O.
+    ✅ Runes only appear in `.svelte`, `.svelte.js`, `.svelte.ts` files; cross-file reactive values live in `.svelte.ts`.
+    ✅ Classic stores reserved for genuine cross-component shared state; local state uses runes.
+
+    ❌ `export let prop` for prop declarations in new components.
+    ❌ `$:` reactive statements (derivation OR side effect).
+    ❌ `on:event` directives or `createEventDispatcher` / `dispatch`.
+    ❌ `<slot>`, `$$slots`, `$$props`, `$$restProps`.
+    ❌ Rune used in a plain `.ts` file (must be `.svelte.ts`).
+    ❌ Rune treated as a value (`const s = $state; s(0)`).
+    ❌ Side effects inside `$derived`; allocating `$effect` without teardown.
+    ❌ Multiple `$props()` destructures or multiple instance `<script>` blocks in one component.
+    ❌ `$inspect` left in committed code as the only report channel for a contract-bearing state transition.
+  </Reward_Criteria>
+</Svelte5RunesRules>
