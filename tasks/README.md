@@ -92,15 +92,27 @@ graph TD
     TSK-31 --> TSK-28
     TSK-31 --> TSK-29
     TSK-31 --> TSK-30
+    TSK-34 --> TSK-33
+    TSK-36 --> TSK-35
+    TSK-37 --> TSK-35
+    TSK-38 --> TSK-35
+    TSK-38 --> TSK-36
+    TSK-38 --> TSK-37
+    TSK-39 --> TSK-35
+    TSK-40 --> TSK-35
+    TSK-41 --> TSK-36
+    TSK-41 --> TSK-39
+    TSK-41 --> TSK-40
 ```
 
 ## Tracker Index
 
-| Scope | Type    | Tracker                 | Tasks | Done  |
-| ----- | ------- | ----------------------- | ----- | ----- |
-| dbc   | library | [README](dbc/README.md) | 14    | 14/14 |
-| cli   | product | [README](cli/README.md) | 13    | 13/13 |
-| vcs   | product | [README](vcs/README.md) | 5     | 5/5   |
+| Scope     | Type    | Tracker                       | Tasks | Done  |
+| --------- | ------- | ----------------------------- | ----- | ----- |
+| dbc       | library | [README](dbc/README.md)       | 14    | 14/14 |
+| cli       | product | [README](cli/README.md)       | 15    | 13/15 |
+| vcs       | product | [README](vcs/README.md)       | 5     | 5/5   |
+| agent-mon | library | [README](agent-mon/README.md) | 7 | 0/7 |
 
 ## Decision Log
 

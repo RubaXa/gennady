@@ -1,4 +1,24 @@
 #!/usr/bin/env node
+// @file: CLI entry point — dispatches commands, runs update check on startup.
+// @consumers: CLI users (gennady <command>)
+// @tasks: TSK-33
+
+import { checkForUpdates } from './cmd/_shared/update-check.ts';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+declare const __GENNADY_VERSION__: string;
+
+const _version =
+  typeof __GENNADY_VERSION__ !== 'undefined'
+    ? __GENNADY_VERSION__
+    : JSON.parse(
+        readFileSync(
+          resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json'),
+          'utf-8'
+        )
+      ).version;
 
 const helpFlags = new Set(['help', '--help', '-h']);
 const command = process.argv[2];
@@ -7,6 +27,10 @@ if (!command || helpFlags.has(command)) {
   await import('./cmd/help/help.cmd.ts');
   process.exit(0);
 }
+
+// #region START_UPDATE_CHECK — non-blocking; spawn + unref ensures it never blocks exit
+checkForUpdates({ name: 'gennady', version: _version });
+// #endregion END_UPDATE_CHECK
 
 switch (command) {
   case 'cat':

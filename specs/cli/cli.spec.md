@@ -140,6 +140,60 @@ Error: --file and stdin are mutually exclusive
 
 Модели опрашиваются параллельно (`Promise.allSettled`). При отказе модели — описание ошибки в её блоке, остальные продолжаются. `--synthModel` → вывод только синтеза (без индивидуальных мнений).
 
+### 3.1 Update Check DX
+
+```bash
+# --- happy path: есть обновление ---
+$ gennady lint src/foo.ts
+
+# exit 0, stdout пуст (ошибок нет)
+
+# --- после выхода процесса, в stderr: ---
+╭──────────────────────────────────────────────────────────╮
+│                                                          │
+│   Update available: 1.2.3 → 1.3.0                       │
+│   Run npm i -g gennady@latest to update.                 │
+│                                                          │
+╰──────────────────────────────────────────────────────────╯
+
+# --- нет обновления: ничего не показывается ---
+$ gennady lint src/foo.ts
+
+# exit 0, stderr пуст
+
+# --- уже проверяли сегодня: запрос не делается ---
+$ gennady lint src/foo.ts
+
+# exit 0, молча
+
+# --- нет сети / таймаут 5с / ошибка реестра ---
+$ gennady lint src/foo.ts
+
+# exit 0, молча. Проверка просто не сработала. Не ошибка.
+
+# --- CI-окружение: проверка не делается ---
+$ CI=true gennady lint src/foo.ts
+
+# exit 0, молча
+
+# --- opt-out через env ---
+$ GENNADY_NO_UPDATE_CHECK=1 gennady lint src/foo.ts
+
+# exit 0, молча
+
+# --- opt-out через флаг ---
+$ gennady --no-update-check lint src/foo.ts
+
+# exit 0, молча
+
+# --- stdout в pipe: уведомление НЕ показывается ---
+$ gennady lint src/foo.ts | tee report.txt
+
+# exit 0, только вывод lint в stdout и файл. Без уведомления.
+```
+
+Уведомление в stderr после завершения команды, не блокирует запуск, не надоедает (раз в сутки), самоустраняется при отсутствии сети.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -197,6 +251,30 @@ Error: --file and stdin are mutually exclusive
 | FR-ALT-20      | Если порт не вернул `usage` — строка телеметрии содержит только `wall` и `reason`                                                                    |
 | FR-ALT-21      | `wall` — реальное время вызова модели в ms (через `performance.now()` до/после `port.generate()`)                                                    |
 
+### 4.1.3 Update Check Functional Requirements
+
+| ID               | Требование                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Детект**       |                                                                                                                                           |
+| FR-SU-01         | При каждом запуске CLI запускать неблокирующую проверку наличия новой версии в npm-реестре. Проверка не задерживает выполнение команды    |
+| FR-SU-02         | Проверка выполняется через `child_process.fork` с `.unref()` — не предотвращает `process.exit`                                            |
+| FR-SU-03         | Проверка не чаще одного раза в интервал (по умолчанию 24 часа). Результат кешируется на диск                                              |
+| FR-SU-04         | Интервал проверки конфигурируется через `GENNADY_UPDATE_CHECK_INTERVAL` (ms). По умолчанию: `86400000` (24h)                              |
+| **Версия**       |                                                                                                                                           |
+| FR-SU-05         | Текущая версия вшивается в бандл через Vite `define`                                                                                      |
+| FR-SU-06         | Последняя версия запрашивается из `https://registry.npmjs.org/<package>/latest` → поле `version`                                          |
+| FR-SU-07         | Таймаут HTTP-запроса к реестру — 5 секунд. При таймауте / ошибке сети — молча, без ошибки                                                 |
+| **Уведомление**  |                                                                                                                                           |
+| FR-SU-08         | Если найдена новая версия: вывести на stderr сообщение с текущей версией, новой версией и командой обновления (`npm i -g gennady@latest`) |
+| FR-SU-09         | Сообщение выводится только если stderr — TTY (не в pipe, не в файл)                                                                       |
+| FR-SU-10         | Сообщение выводится после завершения основной команды (deferred), чтобы не мешать выводу                                                  |
+| **Opt-out**      |                                                                                                                                           |
+| FR-SU-11         | `GENNADY_NO_UPDATE_CHECK=1` — пропустить проверку                                                                                         |
+| FR-SU-12         | `--no-update-check` флаг в CLI — пропустить проверку                                                                                      |
+| **Авто-пропуск** |                                                                                                                                           |
+| FR-SU-13         | Пропустить проверку в CI-окружениях (`CI`, `CONTINUOUS_INTEGRATION`, `BUILD_NUMBER` env)                                                  |
+| FR-SU-14         | Пропустить проверку если `NODE_ENV === 'test'`                                                                                            |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -208,6 +286,9 @@ Error: --file and stdin are mutually exclusive
 - **NFC-07 (alt-opinion)**: `run(rawArgs, deps)` отделён от self-executing блока — поддержка инжекции stdin/stdout в тестах
 - **NFC-08 (alt-opinion)**: Санитизация входного контента — экранирование `# CONTEXT:` и anchor-маркеров для предотвращения prompt injection
 - **NFC-09 (alt-opinion)**: Телеметрия опциональна — если `port.generate()` не вернул `usage`, блок содержит только `wall` и `reason`. Отсутствие телеметрии у одной модели не ломает вывод остальных
+- **NFC-10 (update-check)**: Zero runtime dependencies — только Node.js built-in модули (`child_process`, `https`, `fs`, `os`, `path`)
+- **NFC-11 (update-check)**: Проверка реестра — чистый HTTPS-запрос без npm CLI (не зависит от наличия `npm` в системе)
+- **NFC-12 (update-check)**: Кеш хранится в платформо-зависимой директории: `~/Library/Preferences/gennady/` (macOS), `~/.config/gennady/` (Linux), `%APPDATA%/gennady/` (Windows)
 
 ### 4.3 Out-of-Scope
 
@@ -230,6 +311,14 @@ Error: --file and stdin are mutually exclusive
 - История / лог запросов
 - Автоматический retry / fallback на другую модель
 - Concurrency limit (всегда параллельно)
+
+**update-check (v1):**
+
+- Автоматическая установка обновления — только детект и уведомление
+- Откат версии
+- Проверка из приватных реестров (Gemfury, GitHub Packages, Verdaccio) — только public npm registry
+- Кастомный npm-реестр через `.npmrc`
+- Кастомизация текста уведомления пользователем
 
 ### 4.4 Runtime Backing & Deferred Scope
 
@@ -255,6 +344,15 @@ Error: --file and stdin are mutually exclusive
 | Streaming вывод            | `not-implemented` (deferred) |
 | Кеширование ответов        | `not-implemented` (deferred) |
 | `--dry-run` / `--verbose`  | `not-implemented` (deferred) |
+
+**update-check:**
+
+| Capability                          | Posture                      |
+| ----------------------------------- | ---------------------------- |
+| HTTP-запрос к npm registry          | `real-runtime`               |
+| Кеширование результата (FS)         | `real-runtime`               |
+| Deferred-уведомление (TTY)          | `real-runtime`               |
+| Автоматическая установка обновления | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
@@ -333,6 +431,22 @@ cli/cmd/alt-opinion/
 | Использовать `parseArgs` для ::-синтаксиса                 | `parseArgs` не поддерживает `::` внутри значений. Свой парсер изолирован в команде                   |
 | Общий промпт-файл вместо per-model overrides               | Разные модели требуют разных промптов (архитектор, security-аудитор). Per-model overrides решают     |
 
+### 5.4 Update Check
+
+```
+cli/cmd/_shared/
+├── update-check.ts          # checkForUpdates(pkg): читает кеш, spawn worker, deferred notify
+└── update-check-worker.ts   # HTTPS GET к реестру → пишет результат в кеш
+```
+
+**Ключевые решения:**
+
+1. **Паттерн `update-notifier`**: неблокирующая проверка через detached child process (`fork` + `.unref()`). Кеш на диске. Deferred-уведомление после завершения команды.
+2. **Zero runtime deps**: только Node.js built-in (`child_process`, `https`, `fs`, `os`, `path`). Версия вшивается в бандл через Vite `define`. Никаких npm-зависимостей.
+3. **Worker изолирован**: `update-check-worker.ts` запускается только через `fork`, получает параметры через `process.argv`, пишет результат в кеш-файл и завершается. Не импортируется основным процессом — исключает случайную блокировку.
+4. **Интеграция в `cli/gennady.ts`**: вызов `checkForUpdates(pkg)` перед `switch`-диспатчем команд. Парсинг `--no-update-check` флага до диспатча.
+5. **Кеш-структура** (`~/.config/gennady/.update-check.json`): `{ "lastCheck": "ISO8601", "latestVersion": "x.y.z" }`. Интервал проверки конфигурируется через `GENNADY_UPDATE_CHECK_INTERVAL` (ms), по умолчанию 24h.
+
 ## 6. Decision Log
 
 ### D-001 — Архитектура Flat (Вариант А)
@@ -362,6 +476,17 @@ cli/cmd/alt-opinion/
   - Интеграция с `.gennadyrc` — легаси, alt-opinion стартует чистый слой
   - Разделение `provider` и `model` на отдельные флаги — избыточно, `provider/model` — устоявшийся формат AI SDK
 
+### D-004 — Update Check: свой механизм (zero-deps, паттерн update-notifier)
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (update-check)
+- **Why:** Механизм неблокирующего детекта обновлений на старте CLI. Индустриальный стандарт — `update-notifier` (Sindre Sorhus), но он заархивирован и тянет 15+ транзитивных зависимостей (`boxen`, `chalk`, `configstore` и др.), многие из которых тоже заброшены. Проект держит курс на zero runtime deps — решение с нуля на Node.js built-in модулях (`child_process`, `https`, `fs`). Паттерн проверенный: detached worker с `.unref()`, кеш на диске, deferred-уведомление в stderr.
+- **Risk accepted:** Свой код вместо проверенной библиотеки. Смягчается простотой механизма (~100 строк) и полным покрытием тестами.
+- **Rejected alternatives:**
+  - `update-notifier` напрямую — заархивирован + 15 зависимостей
+  - `update-notifier-cjs` (форк) — те же зависимости, меньшее сообщество
+  - Использовать `npm view` через `child_process.exec` — зависит от наличия `npm` в системе, медленно, негарантированный формат вывода
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -371,32 +496,38 @@ cli/cmd/alt-opinion/
 
 ## 8. Bootstrap Requirements
 
-| Requirement                                                        | Kind          | Owner                 | Resolution                                                                                                                          |
-| ------------------------------------------------------------------ | ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `DbcLinter.lint()` с опцией `content`                              | external-type | external-prereq-scope | `refine` dbc — добавить `opts?: { content?: string }` в `DbcLinter.lint(filePath, opts?)` и `DbcLinter.lintAndFix(filePath, opts?)` |
-| Создать `cli/cmd/lint/index.ts`                                    | file          | this-scope-task       | `import './lint.cmd.ts'`                                                                                                            |
-| Создать `cli/cmd/lint/lint.cmd.ts`                                 | file          | this-scope-task       | CLI-обвязка: parseArgs, git scan, вывод                                                                                             |
-| Создать `cli/cmd/lint/lint.types.ts`                               | file          | this-scope-task       | `LintError`, `LintOptions`, `LintReport`                                                                                            |
-| Создать `cli/cmd/lint/checks/file-header.check.ts`                 | file          | this-scope-task       | проверка `// @file:` + `// @consumers:`                                                                                             |
-| Создать `cli/cmd/lint/checks/anchor.check.ts`                      | file          | this-scope-task       | парность + вложенность START/END                                                                                                    |
-| Создать `cli/cmd/lint/checks/dbc-contract.check.ts`                | file          | this-scope-task       | адаптер к `DbcTsLinter`                                                                                                             |
-| Обновить `cli/gennady.ts`                                          | file          | this-scope-task       | добавить `case 'lint'` + `case 'alt-opinion'` в switch + help                                                                       |
-| Обновить `cli/AGENTS.md`                                           | file          | this-scope-task       | добавить строки `lint` и `alt-opinion` в таблицу команд                                                                             |
-| Обновить `cli/cmd/help/help.cmd.ts`                                | file          | this-scope-task       | добавить `lint` и `alt-opinion` в вывод                                                                                             |
-| Удалить `cli/cmd/lint/lint-cmd.task.spec.md`                       | file          | this-scope-task       | старый spec, заменён на `specs/cli/cli.spec.md`                                                                                     |
-| **alt-opinion**                                                    |               |                       |                                                                                                                                     |
-| Создать `cli/cmd/alt-opinion/index.ts`                             | file          | this-scope-task       | `import './alt-opinion.cmd.ts'`                                                                                                     |
-| Создать `cli/cmd/alt-opinion/alt-opinion.cmd.ts`                   | file          | this-scope-task       | CLI-обвязка: парсинг, stdin/--file, вызов runner, вывод                                                                             |
-| Создать `cli/cmd/alt-opinion/alt-opinion.types.ts`                 | file          | this-scope-task       | `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`                                                                           |
-| Создать `cli/cmd/alt-opinion/alt-opinion-runner.ts`                | file          | this-scope-task       | Ядро: параллельный опрос моделей + синтез (Promise.allSettled)                                                                      |
-| Создать `cli/cmd/alt-opinion/alt-opinion-parser.ts`                | file          | this-scope-task       | Парсер `--model="{provider}/{model}::{path}"`                                                                                       |
-| Создать `cli/cmd/alt-opinion/prompts/default-opinion.prompt.md`    | file          | this-scope-task       | Дефолтный промпт мнения                                                                                                             |
-| Создать `cli/cmd/alt-opinion/prompts/default-synth.prompt.md`      | file          | this-scope-task       | Дефолтный промпт синтеза                                                                                                            |
-| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts` | file          | this-scope-task       | Unit: парсер (12+ кейсов)                                                                                                           |
-| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion-runner.test.ts` | file          | this-scope-task       | Unit: runner с моками AI SDK через DI-порт (10+ кейсов)                                                                             |
-| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts`    | file          | this-scope-task       | Integration: CLI-обвязка (10+ кейсов)                                                                                               |
-| `GENNADY_LLM_PROXY_API_KEY`                                        | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
-| `GENNADY_OPENROUTER_API_KEY`                                       | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
+| Requirement                                                              | Kind          | Owner                 | Resolution                                                                                                                          |
+| ------------------------------------------------------------------------ | ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `DbcLinter.lint()` с опцией `content`                                    | external-type | external-prereq-scope | `refine` dbc — добавить `opts?: { content?: string }` в `DbcLinter.lint(filePath, opts?)` и `DbcLinter.lintAndFix(filePath, opts?)` |
+| Создать `cli/cmd/lint/index.ts`                                          | file          | this-scope-task       | `import './lint.cmd.ts'`                                                                                                            |
+| Создать `cli/cmd/lint/lint.cmd.ts`                                       | file          | this-scope-task       | CLI-обвязка: parseArgs, git scan, вывод                                                                                             |
+| Создать `cli/cmd/lint/lint.types.ts`                                     | file          | this-scope-task       | `LintError`, `LintOptions`, `LintReport`                                                                                            |
+| Создать `cli/cmd/lint/checks/file-header.check.ts`                       | file          | this-scope-task       | проверка `// @file:` + `// @consumers:`                                                                                             |
+| Создать `cli/cmd/lint/checks/anchor.check.ts`                            | file          | this-scope-task       | парность + вложенность START/END                                                                                                    |
+| Создать `cli/cmd/lint/checks/dbc-contract.check.ts`                      | file          | this-scope-task       | адаптер к `DbcTsLinter`                                                                                                             |
+| Обновить `cli/gennady.ts`                                                | file          | this-scope-task       | добавить `case 'lint'` + `case 'alt-opinion'` в switch + help                                                                       |
+| Обновить `cli/AGENTS.md`                                                 | file          | this-scope-task       | добавить строки `lint` и `alt-opinion` в таблицу команд                                                                             |
+| Обновить `cli/cmd/help/help.cmd.ts`                                      | file          | this-scope-task       | добавить `lint` и `alt-opinion` в вывод                                                                                             |
+| Удалить `cli/cmd/lint/lint-cmd.task.spec.md`                             | file          | this-scope-task       | старый spec, заменён на `specs/cli/cli.spec.md`                                                                                     |
+| **alt-opinion**                                                          |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/alt-opinion/index.ts`                                   | file          | this-scope-task       | `import './alt-opinion.cmd.ts'`                                                                                                     |
+| Создать `cli/cmd/alt-opinion/alt-opinion.cmd.ts`                         | file          | this-scope-task       | CLI-обвязка: парсинг, stdin/--file, вызов runner, вывод                                                                             |
+| Создать `cli/cmd/alt-opinion/alt-opinion.types.ts`                       | file          | this-scope-task       | `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`                                                                           |
+| Создать `cli/cmd/alt-opinion/alt-opinion-runner.ts`                      | file          | this-scope-task       | Ядро: параллельный опрос моделей + синтез (Promise.allSettled)                                                                      |
+| Создать `cli/cmd/alt-opinion/alt-opinion-parser.ts`                      | file          | this-scope-task       | Парсер `--model="{provider}/{model}::{path}"`                                                                                       |
+| Создать `cli/cmd/alt-opinion/prompts/default-opinion.prompt.md`          | file          | this-scope-task       | Дефолтный промпт мнения                                                                                                             |
+| Создать `cli/cmd/alt-opinion/prompts/default-synth.prompt.md`            | file          | this-scope-task       | Дефолтный промпт синтеза                                                                                                            |
+| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts`       | file          | this-scope-task       | Unit: парсер (12+ кейсов)                                                                                                           |
+| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion-runner.test.ts`       | file          | this-scope-task       | Unit: runner с моками AI SDK через DI-порт (10+ кейсов)                                                                             |
+| Создать `cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts`          | file          | this-scope-task       | Integration: CLI-обвязка (10+ кейсов)                                                                                               |
+| `GENNADY_LLM_PROXY_API_KEY`                                              | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
+| `GENNADY_OPENROUTER_API_KEY`                                             | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
+| **update-check**                                                         |               |                       |                                                                                                                                     |
+| Добавить `define: { __GENNADY_VERSION__ }` в `vite.config.ts`            | file          | this-scope-task       | Вшить версию из `package.json` на этапе сборки                                                                                      |
+| Создать `cli/cmd/_shared/update-check.ts`                                | file          | this-scope-task       | Модуль: read cache, spawn worker, deferred notify                                                                                   |
+| Создать `cli/cmd/_shared/update-check-worker.ts`                         | file          | this-scope-task       | Worker: HTTPS GET к реестру, запись кеша                                                                                            |
+| Интегрировать `checkForUpdates` + `--no-update-check` в `cli/gennady.ts` | file          | this-scope-task       | Вызов перед `switch`, парсинг флага из `process.argv`                                                                               |
+| Создать `cli/cmd/_shared/__tests__/update-check.test.ts`                 | file          | this-scope-task       | Unit-тесты: кеш, worker, notify                                                                                                     |
 
 ## 9. Module Map
 
@@ -407,6 +538,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [lint](./lint/lint.spec.md) — Команда `gennady lint`: file header + DBC-контракты + anchor-разметка
 - [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
+- [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 
 ### 9.2 Inter-Module Dependency Map
 
@@ -415,6 +547,7 @@ graph TD
     lint -. Scope Reference .-> dbc
     alt-opinion -. Runtime .-> ai-sdk[AI SDK]
     cat -. Runtime .-> vcs[vcs-client]
+    update-check -. Runtime .-> npm-registry[npm public registry]
 ```
 
 ### 9.3 Stack Dependencies
@@ -426,15 +559,17 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`
-- **Open risks & validation needs:**
-  - `refine dbc` (TSK-11) должен быть выполнен до `DbcContractCheck`
-  - Anchor-парсер — новая реализация
-  - Git-интеграция: поведение без git-репозитория
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`
+- **Bootstrap tickets ready for cascade:** see 8
+- **Open risks:**
+  - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
+  - Anchor-парсер — новая логика, без существующей реализации
+  - Git-интеграция: поведение при отсутствии git-репозитория не зафиксировано
+  - alt-opinion: тесты парсера — критичный компонент, делать первыми (урок из lint I-01, I-04)
   - alt-opinion: `GENNADY_LLM_PROXY_API_KEY` и `GENNADY_OPENROUTER_API_KEY` должны быть установлены оператором
-  - alt-opinion: `llmproxy` провайдер — OpenAI-совместимый API через `createOpenAI`, требует валидации baseURL
-  - alt-opinion: тесты парсера — самый критичный компонент (12+ кейсов), делать первыми
+  - update-check: интеграционные тесты worker'а с локальным HTTP-сервером — порт может быть занят
+  - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
 
 ## 11. Execution Insights
 
