@@ -171,4 +171,56 @@ describe('parseAltOpinionArgs', () => {
       }
     );
   });
+
+  it('should not conflict --file with empty non-TTY stdin', () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      get: () => false,
+      configurable: true,
+    });
+    const result = parseAltOpinionArgs(
+      argv('--model=llmproxy/test', '--file=/tmp/fake.md'),
+      { stdinContent: '' }
+    );
+    assert.strictEqual(result.models[0].provider, 'llmproxy');
+    assert.strictEqual(result.file, '/tmp/fake.md');
+    assert.strictEqual(result.artifact, '/tmp/fake.md');
+  });
+
+  it('should conflict --file with non-TTY stdin that HAS data', () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      get: () => false,
+      configurable: true,
+    });
+    assert.throws(
+      () =>
+        parseAltOpinionArgs(
+          argv('--model=llmproxy/test', '--file=/tmp/fake.md'),
+          { stdinContent: 'piped data' }
+        ),
+      (error: Error) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /mutually exclusive/);
+        return true;
+      }
+    );
+  });
+
+  it('should accept empty non-TTY stdin without --file as INPUT_MISSING', () => {
+    Object.defineProperty(process.stdin, 'isTTY', {
+      get: () => false,
+      configurable: true,
+    });
+    assert.throws(
+      () =>
+        parseAltOpinionArgs(
+          argv('--model=llmproxy/test'),
+          { stdinContent: '' }
+        ),
+      (error: Error) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /No input provided/);
+        return true;
+      }
+    );
+  });
 });

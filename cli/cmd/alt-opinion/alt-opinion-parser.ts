@@ -15,8 +15,8 @@ const VALID_PROVIDERS: readonly AltOpinionProvider[] = ['llmproxy', 'openrouter'
  * @purpose Parse a single --model or --synthModel value into an AltOpinionModel descriptor.
  * @param raw The raw value after `=` (e.g. "llmproxy/gpt-4o::./custom.md").
  * @param flag The flag name for error messages ("--model" or "--synthModel").
- * @returns Parsed model descriptor — promptPath is set only for `::` syntax.
  * @throws {Error} If provider is missing, unknown, or model is empty.
+ * @returns Parsed model descriptor — promptPath is set only for `::` syntax.
  */
 function parseModelArg(raw: string, flag: string): AltOpinionModel {
   const firstColonIdx = raw.indexOf('::');
@@ -56,11 +56,11 @@ function parseModelArg(raw: string, flag: string): AltOpinionModel {
  * and minimum model count.
  *
  * @param rawArgs Raw CLI arguments (typically process.argv).
- * @param opts.stdinContent Optional pre-read stdin content — used in tests to inject mock stdin.
+ * @param opts Options bag carrying pre-read stdin content for test injection.
  *   When omitted and stdin is not a TTY, the parser reads stdin synchronously.
- * @returns Parsed arguments with resolved artifact content.
  * @throws {Error} On validation failures (missing model, unknown provider, mutual exclusion, etc.).
- * @sideEffect FS: reads stdin when process.stdin is not a TTY and --file is not provided.
+ * @returns Parsed arguments with resolved artifact content.
+ * @sideEffect FS: reads stdin when not TTY and opts.stdinContent not provided. Actual data presence is determined by non-empty trimmed content.
  */
 export function parseAltOpinionArgs(
   rawArgs: string[],
@@ -117,8 +117,17 @@ export function parseAltOpinionArgs(
   }
   // #endregion END_VALIDATE
 
-  // #region START_RESOLVE_ARTIFACT — invariant: exactly one input source (stdin or --file)
-  const hasStdin = opts?.stdinContent !== undefined || !process.stdin.isTTY;
+  // #region START_RESOLVE_ARTIFACT — invariant: exactly one input source (stdin or --file); stdin detected by data presence, not TTY flag
+  let stdinContent: string | undefined;
+
+  if (opts?.stdinContent !== undefined) {
+    stdinContent = opts.stdinContent.trim().length > 0 ? opts.stdinContent : undefined;
+  } else if (!process.stdin.isTTY) {
+    const raw = readFileSync(process.stdin.fd, 'utf-8');
+    stdinContent = raw.trim().length > 0 ? raw : undefined;
+  }
+
+  const hasStdin = stdinContent !== undefined;
 
   if (file && hasStdin) {
     throw new Error(
@@ -131,10 +140,8 @@ export function parseAltOpinionArgs(
 
   if (file) {
     artifact = file;
-  } else if (opts?.stdinContent !== undefined) {
-    artifact = opts.stdinContent;
-  } else if (!process.stdin.isTTY) {
-    artifact = readFileSync(process.stdin.fd, 'utf-8');
+  } else if (stdinContent !== undefined) {
+    artifact = stdinContent;
   } else {
     throw new Error(
       '[parseAltOpinionArgs] No input provided. ' +

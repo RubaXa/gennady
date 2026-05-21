@@ -92,8 +92,8 @@ export interface AltOpinionModelPort {
   /**
    * @purpose Generate a text response from the AI model for the given prompt.
    * @param prompt Complete prompt string to send to the model.
-   * @returns Generated text with optional usage and finish reason metadata.
    * @throws {Error} On network failure, timeout, or API error.
+   * @returns Generated text with optional usage and finish reason metadata.
    */
   generate(prompt: string): Promise<{
     content: string;

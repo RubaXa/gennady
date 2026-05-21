@@ -16,12 +16,14 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 | dbc (traversed)        | typescript-rules | node-test |
 | cli (target)           | typescript-rules | node-test |
 | module:lint            | —                | —         |
+| module:update-check    | —                | —         |
 
 ### Rule Sources
 
 - Traversed scopes: [scope graph](../../specs/README.md)
 - Target scope: [cli spec §4.5](../../specs/cli/cli.spec.md)
 - Module: [lint spec §9](../../specs/cli/lint/lint.spec.md)
+- Module: [update-check spec §9](../../specs/cli/update-check/update-check.spec.md)
 - Files: `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
 
 ## Intra-Scope DAG
@@ -60,6 +62,9 @@ graph TD
     TSK-31 --> TSK-28
     TSK-31 --> TSK-29
     TSK-31 --> TSK-30
+    TSK-33[TSK-33: update-check impl]
+    TSK-34[TSK-34: update-check tests]
+    TSK-34 --> TSK-33
 ```
 
 ## Tracker
@@ -74,11 +79,13 @@ graph TD
 | [TSK-17](lint/cli-lint.task-17.md)               | Тесты: проверки + интеграционные                      | lint        | TSK-16                         | `[x]` DONE | 0       |
 | [TSK-18](lint/cli-lint.task-18.md)               | Интеграционные тесты CLI команды lint                 | lint        | TSK-17                         | `[x]` DONE | 0       |
 | [TSK-32](lint/cli-lint.task-32.md)               | LanguageCheck: проверка языка (English-only)          | lint        | TSK-16                         | `[x]` DONE | 0       |
-| [TSK-23](alt-opinion/cli-alt-opinion.task-23.md) | AltOpinion Core (types + parser + runner)             | alt-opinion | None                           | `[x]` DONE | 2       |
+| [TSK-23](alt-opinion/cli-alt-opinion.task-23.md) | AltOpinion Core (types + parser + runner)             | alt-opinion | None                           | `[x]` DONE | 5       |
 | [TSK-24](alt-opinion/cli-alt-opinion.task-24.md) | AltOpinion CLI (cmd + prompts + registration)         | alt-opinion | TSK-23                         | `[x]` DONE | 1       |
 | [TSK-25](alt-opinion/cli-alt-opinion.task-25.md) | AltOpinion Tests (parser + runner + integration)      | alt-opinion | TSK-23, TSK-24                 | `[x]` DONE | 0       |
 | [TSK-26](alt-opinion/cli-alt-opinion.task-26.md) | AltOpinion Telemetry (port + runner + output + tests) | alt-opinion | TSK-23, TSK-24, TSK-25         | `[x]` DONE | 0       |
 | [TSK-31](cat/cli-cat.task-31.md)                 | cat --url: поддержка GitLab MR / GitHub PR            | cat         | TSK-27, TSK-28, TSK-29, TSK-30 | `[x]` DONE | 0       |
+| [TSK-33](update-check/update-check.task-33.md)   | Bootstrap + Impl: update-check механизм              | update-check | None                           | `[ ]` TODO | 0       |
+| [TSK-34](update-check/update-check.task-34.md)   | Tests: update-check (unit + integration)             | update-check | TSK-33                         | `[ ]` TODO | 0       |
 
 ## Notes
 

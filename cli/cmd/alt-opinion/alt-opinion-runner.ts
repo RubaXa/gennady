@@ -145,7 +145,11 @@ export type RunAltOpinionDeps = {
   models: Map<string, AltOpinionModelPort>;
   /** @purpose Optional synthesis model port */
   synth?: AltOpinionModelPort;
-  /** @purpose Synchronous file reader for resolving --file, per-model prompts, and shared prompts */
+  /**
+   * @purpose Synchronous file reader for resolving --file, per-model prompts, and shared prompts.
+   * @param path Filesystem path to read.
+   * @returns File contents as a string.
+   */
   readFile: (path: string) => string;
 };
 
@@ -156,15 +160,15 @@ export type RunAltOpinionDeps = {
  * queries all models in parallel via Promise.allSettled with per-model prompts, and optionally runs
  * synthesis when --synthModel is provided.
  *
- * @param args Parsed CLI arguments from parseAltOpinionArgs.
- * @param deps Runner dependencies: model port registry, optional synth port, and file reader.
- * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
- * @throws {Error} When artifact is empty — validation before any model call.
- * @sideEffect FS: readFile for --file artifact resolution and prompt file loading.
- * @sideEffect Network: AI model API calls via injected ports.
  * @invariant Model results preserve the order of --model arguments (Promise.allSettled insertion order).
  * @invariant Timeout per model: 5 minutes via AbortSignal. Timeout → error in model block, not thrown.
  * @invariant Exit code: strict mode → 1 if ANY model failed; non-strict → 1 only if ALL failed.
+ * @param args Parsed CLI arguments from parseAltOpinionArgs.
+ * @param deps Runner dependencies: model port registry, optional synth port, and file reader.
+ * @throws {Error} When artifact is empty — validation before any model call.
+ * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
+ * @sideEffect FS: readFile for --file artifact resolution and prompt file loading.
+ * @sideEffect Network: AI model API calls via injected ports.
  */
 export async function runAltOpinion(
   args: AltOpinionParsedArgs,

@@ -41,6 +41,8 @@ command (cli/cmd/alt-opinion/)
 
 - Парсит --model, --synthModel, --file, --modelPrompt, --synthPrompt, --strict
 - Валидирует provider, ::-синтаксис, взаимоисключение stdin/--file
+- **Stdin detection:** stdin считается «присутствующим» только если содержит данные (readSync возвращает непустую строку). `!process.stdin.isTTY` сам по себе НЕ является признаком наличия данных — в CI/агентских окружениях stdin всегда не-TTY, но может быть пустым (`/dev/null`)
+- При пустом stdin + `--file` → приоритет у `--file`, ошибки взаимоисключения нет
 - Бросает Error с понятным сообщением при невалидных аргументах
 
 ### AltOpinionModelPort
@@ -138,6 +140,13 @@ cli/cmd/alt-opinion/
 - **Recorded:** session fix (alt-opinion env+chat), 2026-05-21
 - **Why:** Unit-тесты с моками не ловят несовместимость API (Responses vs Chat), неверные env-переменные, отсутствующие ключи. Минимальный smoke test: `echo "test" | gennady alt-opinion --model=llmproxy/<model> --synthModel=llmproxy/<model>` должен вернуть exit 0 и валидный вывод.
 - **Risk accepted:** Smoke test требует валидных ключей и доступа к llmproxy. В CI может быть отключён.
+
+### D-008 — Stdin detection by data presence, not isTTY
+
+- **Status:** active
+- **Recorded:** session fix (alt-opinion stdin), 2026-05-21
+- **Why:** `!process.stdin.isTTY` — ложный прокси для «stdin содержит данные». В агентских/CI окружениях stdin всегда не-TTY (часто `/dev/null`). Парсер выдавал ложную ошибку взаимоисключения при `--file` в таких окружениях. Решение: читать stdin синхронно, считать «присутствующим» только если `readSync` вернул непустую строку.
+- **Risk accepted:** Синхронное чтение может блокироваться если stdin открыт, но данных нет. На практике агентские stdin либо `/dev/null` (читается мгновенно), либо pipe с данными (читается мгновенно). Интерактивный TTY с ожиданием ввода не обрабатывается — там isTTY=true и ветка не активируется.
 
 ### D-005 — Telemetry in opinion blocks
 
