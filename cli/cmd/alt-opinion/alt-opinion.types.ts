@@ -95,9 +95,7 @@ export interface AltOpinionModelPort {
    * @returns Generated text with optional usage and finish reason metadata.
    * @throws {Error} On network failure, timeout, or API error.
    */
-  generate(
-    prompt: string
-  ): Promise<{
+  generate(prompt: string): Promise<{
     content: string;
     usage?: { promptTokens: number; completionTokens: number };
     finishReason?: string;

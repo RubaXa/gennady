@@ -103,7 +103,7 @@ function formatModelBlock(result: AltOpinionResult): string {
  * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
  * @throws {Error} On parsing failures (missing model, unknown provider, empty input).
  * @sideEffect FS: readFile for prompt files and --file resolution.
- * @sideEffect Env: reads GENNADY_LLM_PROXY_API_KEY, GENNADY_LLM_PROXY_BASE_URL, GENNADY_OPENROUTER_API_KEY.
+ * @sideEffect Env: reads LLM_PROXY_API_KEY, LLM_PROXY_BASE_URL, OPENROUTER_API_KEY.
  * @sideEffect Network: AI model API calls via @ai-sdk/openai.
  */
 export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<AltOpinionReport> {
@@ -124,16 +124,16 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
 
   // #region START_BUILD_PROVIDERS — invariant: llmproxy baseURL from env or default; openrouter fixed baseURL
   const llmproxyBaseUrl =
-    process.env['GENNADY_LLM_PROXY_BASE_URL'] ?? 'https://llmproxy.example.com/v1';
+    process.env['LLM_PROXY_BASE_URL'] ?? 'https://llmproxy.example.com/v1';
 
   const llmproxy = createOpenAI({
-    apiKey: process.env['GENNADY_LLM_PROXY_API_KEY'],
+    apiKey: process.env['LLM_PROXY_API_KEY'],
     baseURL: llmproxyBaseUrl,
     name: 'llmproxy',
   });
 
   const openrouter = createOpenAI({
-    apiKey: process.env['GENNADY_OPENROUTER_API_KEY'],
+    apiKey: process.env['OPENROUTER_API_KEY'],
     baseURL: 'https://openrouter.ai/api/v1',
     name: 'openrouter',
   });
@@ -152,7 +152,7 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
     modelPorts.set(key, {
       async generate(prompt: string) {
         const r = await generateText({
-          model: provider(model.model),
+          model: provider.chat(model.model),
           prompt,
         });
         const usage =
@@ -174,7 +174,7 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
     synthPort = {
       async generate(prompt: string) {
         const r = await generateText({
-          model: synthProvider(parsedArgs.synthModel!.model),
+          model: synthProvider.chat(parsedArgs.synthModel!.model),
           prompt,
         });
         const usage =

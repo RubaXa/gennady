@@ -13,6 +13,11 @@ import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
 import { LintReport } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
+import {
+  loadTaskReferences,
+  extractTaskIdsFromHeader,
+  resolveReferencesForTasks,
+} from './utils/resolve-references.fn.ts';
 
 /** @purpose Execute the gennady lint command — collect files, run 4 checks, output ESLint-format report. | @implements {LintCommand} in specs/cli/lint/lint.spec.md | @param rawArgs Raw command-line arguments (process.argv). | @returns LintReport with aggregated errors and exit code. */
 export async function run(rawArgs: string[]): Promise<LintReport> {
@@ -63,7 +68,13 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const allErrors: LintError[] = [];
   let totalAutoFixed = 0;
 
-  // #region START_LINT_LOOP — invariant: single read per file, content fed to all 3 checks
+  // #region START_RESOLVE_REFERENCES — invariant: load taskRefMap once, collect task IDs from headers
+  const projectRoot = resolve('.');
+  const taskRefMap = loadTaskReferences(projectRoot);
+  const foundTaskIds = new Set<string>();
+  // #endregion END_RESOLVE_REFERENCES
+
+  // #region START_LINT_LOOP — invariant: single read per file, content fed to all 4 checks
   for (const filePath of files) {
     const absPath = resolve(filePath);
 
@@ -81,13 +92,22 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkAnchors(content, filePath));
     allErrors.push(...checkLanguage(content, filePath));
 
+    // Extract task IDs from file header for reference resolution
+    const taskIds = extractTaskIdsFromHeader(content);
+    for (const tid of taskIds) {
+      foundTaskIds.add(tid);
+    }
+
     const dbcResult = await checkDbcContracts(content, filePath, autofix);
     allErrors.push(...dbcResult.errors);
     totalAutoFixed += dbcResult.autoFixed;
   }
   // #endregion END_LINT_LOOP
 
-  const report = new LintReport(allErrors, totalAutoFixed);
+  // #region START_RESOLVE_REFS_OUTPUT — invariant: resolve references from collected task IDs
+  const { taskPaths, specPaths } = resolveReferencesForTasks([...foundTaskIds], taskRefMap);
+  const report = new LintReport(allErrors, totalAutoFixed, taskPaths, specPaths);
+  // #endregion END_RESOLVE_REFS_OUTPUT
 
   // #region START_OUTPUT — invariant: ESLint format when errors present
   if (report.exitCode === 1) {

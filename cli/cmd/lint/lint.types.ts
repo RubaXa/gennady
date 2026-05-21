@@ -34,11 +34,22 @@ export class LintReport {
   readonly errors: LintError[];
   /** @purpose Count of errors auto-fixed by DbcContractCheck. */
   readonly autoFixed: number;
+  /** @purpose Deduplicated task file paths resolved from @tasks annotations in linted files. */
+  readonly taskPaths: string[];
+  /** @purpose Deduplicated spec file paths resolved from task files. */
+  readonly specPaths: string[];
 
-  /** @purpose Creates a LintReport with collected errors and optional autoFixed count. | @param errors Collected lint errors — empty array when clean. | @param autoFixed Count of auto-fixed errors, defaults to 0. */
-  constructor(errors: LintError[], autoFixed = 0) {
+  /** @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references. | @param errors Collected lint errors. | @param autoFixed Count of auto-fixed errors, defaults to 0. | @param taskPaths Resolved task file paths (deduplicated). | @param specPaths Resolved spec file paths (deduplicated). */
+  constructor(
+    errors: LintError[],
+    autoFixed = 0,
+    taskPaths: string[] = [],
+    specPaths: string[] = []
+  ) {
     this.errors = errors;
     this.autoFixed = autoFixed;
+    this.taskPaths = taskPaths;
+    this.specPaths = specPaths;
   }
 
   /** @purpose Returns 0 when no errors, 1 otherwise — ESLint convention. | @returns 0 for clean, 1 for errors. */
@@ -46,7 +57,7 @@ export class LintReport {
     return this.errors.length > 0 ? 1 : 0;
   }
 
-  /** @purpose Formats errors in ESLint-compatible output: file:line:col: severity: code: message. | @returns ESLint-compatible formatted string. */
+  /** @purpose Formats errors in ESLint-compatible output with resolved task/spec references. | @returns ESLint-compatible formatted string with References block. */
   format(): string {
     const lines: string[] = [];
     if (this.autoFixed > 0) {
@@ -58,6 +69,18 @@ export class LintReport {
           (e) => `${e.file}:${e.line}:${e.col}: ${e.severity}: ${e.code}: ${e.message}`
         )
       );
+    }
+    // Append References block: specs first, then tasks
+    if (this.specPaths.length > 0 || this.taskPaths.length > 0) {
+      lines.push('');
+      lines.push('---');
+      lines.push('References:');
+      for (const sp of this.specPaths) {
+        lines.push(`  ${sp}`);
+      }
+      for (const tp of this.taskPaths) {
+        lines.push(`  ${tp}`);
+      }
     }
     return lines.join('\n');
   }
@@ -73,5 +96,7 @@ export const ERR_CLI_LINT_ANCHOR_UNPAIRED_START = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_
 export const ERR_CLI_LINT_ANCHOR_UNPAIRED_END = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_END' as const;
 /** @purpose Anchors violate nesting — parent closed before child. */
 export const ERR_CLI_LINT_ANCHOR_NESTING = 'ERR_CLI_LINT_ANCHOR_NESTING' as const;
+/** @purpose Bare #region/#endregion without START_/END_ prefix — malformed anchor. */
+export const ERR_CLI_LINT_ANCHOR_MALFORMED = 'ERR_CLI_LINT_ANCHOR_MALFORMED' as const;
 /** @purpose Cyrillic characters found in JSDoc contracts or file headers — English required. */
 export const ERR_CLI_LINT_NON_ENGLISH = 'ERR_CLI_LINT_NON_ENGLISH' as const;

@@ -11,6 +11,7 @@
   - alt-opinion FR: [cli spec §4.1.2](../../specs/cli/cli.spec.md)
   - alt-opinion Architecture: [cli spec §5.2](../../specs/cli/cli.spec.md)
   - AltOpinionModelPort NFC-06: [cli spec §4.2](../../specs/cli/cli.spec.md)
+  - Module spec D-006, D-007: [alt-opinion spec §6](../../specs/cli/alt-opinion/alt-opinion.spec.md)
 - **§Effective Rules:**
 
   | Rule             | File                                      |
@@ -195,6 +196,7 @@
   - `runAltOpinion(args, deps)` — принимает `AltOpinionParsedArgs` и `{ models: Map<string, AltOpinionModelPort>, synth?: AltOpinionModelPort, readFile: (path: string) => string }`
   - Параллельный опрос через `Promise.allSettled(models.map(...))`
   - Каждый вызов: `AbortController` с таймаутом 5 мин, шаблон `# GOAL:\n<prompt>\n\n# CONTEXT:\n<artifact>`
+  - **Зависимость от D-006**: cmd-слой передаёт порты, созданные через `provider.chat(modelId)` (Chat Completions API)
   - При `--synthModel`: собирает успешные мнения → вызывает синтез → возвращает только синтез-блок
   - Без `--synthModel`: возвращает все блоки в порядке --model
   - Ошибка/таймаут модели → описание в блоке модели

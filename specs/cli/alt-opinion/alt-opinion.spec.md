@@ -47,9 +47,7 @@ command (cli/cmd/alt-opinion/)
 
 ```typescript
 interface AltOpinionModelPort {
-  generate(
-    prompt: string
-  ): Promise<{
+  generate(prompt: string): Promise<{
     content: string;
     usage?: { promptTokens: number; completionTokens: number };
     finishReason?: string;
@@ -79,6 +77,7 @@ type AltOpinionTelemetry = {
 ```
 
 - Параллельный опрос моделей через Promise.allSettled
+- Модели вызываются через `provider.chat(modelId)` (Chat Completions API, D-006)
 - При --synthModel: собирает успешные мнения → синтез → только синтез-блок
 - Ошибка/таймаут → описание в блоке, не прерывает остальные
 - --strict: exit 1 при любой ошибке; без: exit 1 только если все упали
@@ -106,6 +105,17 @@ cli/cmd/alt-opinion/
 - `@ai-sdk/openai` (^3.0.41) — провайдер для llmproxy/OpenRouter
 - `#logger` — сервис логирования
 
+### 5.1 Environment Variables
+
+| Variable | Provider | Required | Default |
+|---|---|---|---|
+| `LLM_PROXY___SECRET_11__` | llmproxy | Yes | — |
+| `LLM_PROXY_BASE_URL` | llmproxy | Yes | — |
+| `OPENROUTER_API_KEY` | openrouter | Yes | — |
+
+- `LLM_PROXY_BASE_URL` — OpenAI-совместимый endpoint (например `https://llm-proxy.example.com/v1`)
+- При отсутствии любого из ключей `createOpenAI` бросит ошибку "API key is required"
+
 ## 6. Decision Log
 
 ### D-004 — Embedded prompts as constants
@@ -114,6 +124,20 @@ cli/cmd/alt-opinion/
 - **Recorded:** session Discovery, cli, refine (alt-opinion), TSK-23
 - **Why:** Дефолтные промпты зашиты как TypeScript-константы в runner, а не вынесены в файлы `prompts/`. Это позволяет избежать файлового I/O для дефолтного случая и упрощает бандлинг (Vite инлайнит строки). Файлы `prompts/` — опциональный override для пользователя через `--modelPrompt`/`--synthPrompt`.
 - **Risk accepted:** При изменении дефолтных промптов потребуется изменение кода и пересборка. Пользовательские промпты через файлы не затронуты.
+
+### D-006 — Chat Completions API (provider.chat)
+
+- **Status:** active
+- **Recorded:** session fix (alt-opinion env+chat), 2026-05-21
+- **Why:** `@ai-sdk/openai` по умолчанию использует Responses API (`/v1/responses`). llmproxy поддерживает только Chat Completions API (`/v1/chat/completions`). Вызов `provider.chat(model)` вместо `provider(model)` гарантирует совместимость с OpenAI-совместимыми прокси.
+- **Risk accepted:** При использовании провайдера, требующего Responses API, потребуется обратное переключение. На практике все OpenAI-совместимые прокси поддерживают Chat Completions.
+
+### D-007 — Smoke test against real llmproxy
+
+- **Status:** active
+- **Recorded:** session fix (alt-opinion env+chat), 2026-05-21
+- **Why:** Unit-тесты с моками не ловят несовместимость API (Responses vs Chat), неверные env-переменные, отсутствующие ключи. Минимальный smoke test: `echo "test" | gennady alt-opinion --model=llmproxy/<model> --synthModel=llmproxy/<model>` должен вернуть exit 0 и валидный вывод.
+- **Risk accepted:** Smoke test требует валидных ключей и доступа к llmproxy. В CI может быть отключён.
 
 ### D-005 — Telemetry in opinion blocks
 

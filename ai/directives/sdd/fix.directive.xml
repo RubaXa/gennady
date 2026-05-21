@@ -1,0 +1,249 @@
+<SddFix keywords="fix, remediate, bugfix, code-review, findings, reopen, batch-fix" type="directive" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Turn operator findings (code review, audit, sdd-check, bug report) into concrete fixes:
+      classify each finding → plan fixes → agree with operator → execute direct edits + spec updates
+      → reopen affected tasks → dispatch sdd-execute on each reopened task → verify with sdd-check.
+
+      Input: operator context (findings list, code review comments, sdd-check output).
+      Output: applied fixes in code/specs/trackers, reopened tasks dispatched through sdd-execute, sdd-check PASS.
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_TASK_RESOLUTION">
+      BEFORE classification, resolve which task owns each affected file.
+
+      For every finding whose location is a .ts or .spec.md file:
+      1. Read the file's header (first lines before `import` / first `#`).
+      2. Extract `@tasks: TSK-NN[, TSK-MM, ...]` — this is the task that created/owns this file.
+      3. Build map: file → [Task-IDs].
+      4. If no `@tasks:` header → still classify the finding (the fix IS adding the header), but note "no task" for the plan.
+
+      Files in `tasks/` directory are tickets themselves — the Task-ID is in the filename.
+      Files in `specs/` are spec files — linked to scope, not a single task.
+      Trackers (`tasks/*/README.md`, `tasks/README.md`) — no task, global artifacts.
+
+      This map is used by AX_FIX_CLASSIFICATION to route fixes to the correct task.
+    </Axiom>
+
+    <Axiom id="AX_FIX_CLASSIFICATION">
+      Three action categories. Use AX_TASK_RESOLUTION map to determine task ownership.
+
+      **A. direct-fix** — file edit, NO task reopen needed. File is NOT a .ts implementation file.
+      Triggers: tracker desync (trackers are global), execution log placeholder (ticket file itself),
+               missing `@file:` / `@consumers:` / `@tasks:` headers on a file that has no other findings.
+      Action: Edit the file directly. Verify the fix.
+
+      **B. spec-update** — spec file edit. May trigger a task reopen if the spec change invalidates existing code.
+      Triggers: missing entity in Entity Inventory, DBC contract gap, Decision Log gap, stale pivot artifact.
+      Action: Edit the spec file. If spec change invalidates code → the owning task (from @tasks: on the code file) becomes Category C.
+
+      **C. task-reopen** — code change OR header fix on a .ts file that belongs to a task.
+      Triggers: ANY finding in a .ts file that has `@tasks:` header → reopen that task.
+               Specific triggers: code bug, missing null guard, logic error, type error,
+               DBC contract violation, missing test, BDD mismatch, RULES_COMPLIANCE_VIOLATION,
+               code review finding in implementation code.
+      Action: For each Task-ID from AX_TASK_RESOLUTION:
+              1. Read the ticket file: `tasks/<scope>/<scope>.task-NN.md`
+              2. Append new Round per AX_REOPEN_FORMAT
+              3. Add phase block(s):
+                 - P1: kind `fix` — Target Files = affected .ts files, fix the issue
+                 - P2: kind `test` — Target Files = corresponding test file, add regression test
+                 **Every code fix MUST have a test phase to prevent regression.**
+              4. Set Status → `[ ] TODO`, increment Reopens
+              5. Sync tracker
+      Multiple findings in the same task → one reopen Round with all fixes grouped into phases.
+    </Axiom>
+
+    <Axiom id="AX_TEST_MANDATE">
+      Every Category C fix (code change) REQUIRES a test phase.
+      The test phase adds a unit test that:
+      - Reproduces the exact bug/finding that triggered the fix (red → green)
+      - Covers the edge case or missing scenario
+      - Uses the canonical test name format from the original task's BDD section
+
+      A fix without a regression test is incomplete and must not be dispatched.
+    </Axiom>
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_AGREEMENT">
+      Every fix must be operator-approved before execution. The plan is shown as a table.
+      No edits are made before explicit operator "yes" / "go" / "ok".
+      Operator may edit the plan (remove items, change classification, add notes).
+    </Axiom>
+
+    <Axiom id="AX_EXECUTION_ORDER">
+      Fixes execute in category order: A (direct) → B (spec) → C (reopen + dispatch).
+      Within each category, trackers and logs first, then spec, then code tasks.
+      Rationale: direct fixes are fast and unblock spec updates; task reopens are slow and go last.
+    </Axiom>
+
+    <Axiom id="AX_REOPEN_FORMAT">
+      When reopening a task ticket, append to section 7 Execution Log:
+
+      ```
+      ### Round N — <YYYY-MM-DD>, fix: <one-line reason>
+
+      | Phase | Kind  | Status | Target Files | Deps |
+      |-------|-------|--------|-------------|------|
+      | P1    | fix   | [ ]    | <paths>     | —    |
+      ```
+
+      Set ticket Meta Status → `[ ] TODO`. Update `Reopens: <new count>`.
+      Sync tracker: `tasks/<scope>/README.md` row → `[ ] TODO`, `tasks/README.md` index → adjust counts.
+    </Axiom>
+
+    <Axiom id="AX_DISPATCH_VIA_BATCH">
+      After all reopens are prepared, dispatch sdd-execute-batch on the reopened tasks.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers.
+
+      Audit flag: pass `skip-audit` to batch — audit was already done by sdd-check at the end of this fix session.
+      (The batch should still run phases but skip the per-task audit dispatch.)
+    </Axiom>
+
+    <Axiom id="AX_VERIFY_AT_END">
+      After all tasks complete, run sdd-check. All checks must PASS.
+      If sdd-check finds issues → classify them as new findings → ask operator → fix cycle repeats.
+    </Axiom>
+  </Belief_State>
+
+  <Halt_Conditions>
+    | HALT            | Trigger |
+    |-----------------|---------|
+    | H_NO_FINDINGS   | No findings in context to fix |
+    | H_NO_AGREE      | Operator rejects the plan |
+    | H_VERIFY_FAIL   | sdd-check fails after fix cycle — operator must decide |
+  </Halt_Conditions>
+
+  <Execution_Plan>
+    <Step id="STEP_1_INTAKE">
+      Parse findings from the operator's context: code review, sdd-check, audit, bug report.
+      Normalize: file path, line, description, severity.
+    </Step>
+
+    <Step id="STEP_2_FIND_TASKS">
+      For each affected file, read its header. Extract `@tasks: TSK-NN`.
+      If file has no `@tasks:` → note "no task" — the fix includes adding the header.
+      Read each identified ticket file: `tasks/<scope>/<scope>.task-NN.md`.
+      Build map: Task-ID → [affected files, current status, last round number].
+      Multiple findings in the same task → group together.
+    </Step>
+
+    <Step id="STEP_3_FIND_SPECS">
+      For each ticket, read 1 Spec References. Trace to scope spec and module spec.
+      Read the relevant spec sections.
+      For each finding, determine: is there a spec gap that enabled this bug?
+      A spec gap = missing entity in Inventory, missing constraint in DbC, missing edge case in Requirements.
+    </Step>
+
+    <Step id="STEP_4_ROOT_CAUSE">
+      For each finding, answer: WHY did the agent make this mistake?
+      - Was the spec ambiguous or missing a constraint?
+      - Was the directive unclear about this case?
+      - Was the task ticket missing a test scenario?
+      - Was the rule file incomplete?
+
+      This root cause determines what to fix in the spec to prevent recurrence.
+      Without root cause analysis, we're only fixing symptoms.
+    </Step>
+
+    <Step id="STEP_5_PLAN">
+      Present the FULL plan to operator. This includes ALL four categories:
+
+      ```
+      ## 🔧 sdd-fix plan
+
+      ### Root cause
+      | Finding | File | Why agent failed | Spec gap |
+      |---------|------|-----------------|----------|
+      | F-01 ... | path | <reason> | <what was missing in spec> |
+
+      ### Direct fixes (N)
+      | # | What | File | Action |
+      |---|------|------|--------|
+      | 1 | Tracker desync | tasks/X/README.md | [ ] → [x] DONE |
+
+      ### Spec improvements (N)
+      | # | Spec file | What to add | Why |
+      |---|-----------|-------------|-----|
+      | 2 | specs/X/X.spec.md2 | Entity: X | Missing from closed-world inventory |
+      | 3 | specs/X/X.spec.md4 | Constraint: value > 0 | Agent didn't know about this edge case |
+
+      ### Task reopens (N)
+      | # | Task | Round | Phases | Fix | Regression test | Test file |
+      |---|------|-------|--------|-----|-----------------|-----------|
+      | 4 | TSK-27 | R2 | P1 fix, P2 test | Add null guard on parseVcsUrl | "should throw InvalidUrlError for malformed URL" | parse-vcs-url.test.ts |
+      | 5 | TSK-30 | R2 | P1 fix, P2 test | Add timeout to fetch | "should throw TimeoutError after 5s" | vcs-client.test.ts |
+
+      ### Summary
+      Direct: N | Spec: N | Reopen: N tasks with N phases and N regression tests
+
+      Proceed? [yes / edit line N / cancel]
+      ```
+
+      Every code fix MUST have a regression test (AX_TEST_MANDATE).
+      Every spec improvement MUST cite the finding it prevents.
+    </Step>
+
+    <Step id="STEP_6_AGREE">
+      WAIT for operator response. Do not proceed without explicit "yes" / "go" / "ok".
+      Operator may edit any line. Re-plan if requested.
+    </Step>
+
+    <Step id="STEP_7_EXECUTE">
+      After agreement, execute in strict order:
+
+      **7a — Direct fixes.** Edit files per plan. Verify each fix.
+
+      **7b — Spec improvements.** Edit spec files. Update Entity Inventory, DbC contracts,
+           Requirements, Decision Log. Every change = traceable to a finding.
+
+      **7c — Task reopens.** For each task:
+        1. Read the ticket
+        2. Append `### Round N — <date>, fix: <reason>`
+        3. Add P1 `fix` phase with Target Files + description of the fix
+        4. Add P2 `test` phase with Target Test File + test name + what it verifies
+        5. Set Meta Status → `[ ] TODO`, increment `Reopens: N`
+        6. Sync tracker: `tasks/<scope>/README.md` row → `[ ] TODO`
+           `tasks/README.md` Tracker Index → adjust counts
+    </Step>
+
+    <Step id="STEP_8_DISPATCH">
+      Dispatch sdd-execute-batch on the reopened task list.
+      Pass `skip-audit` — audit was already done, sdd-check verifies at end.
+      Wait for all to complete.
+    </Step>
+
+    <Step id="STEP_9_VERIFY">
+      Run sdd-check on the affected scope.
+      All checks must PASS. If not → findings → go to STEP_2 for a second pass.
+      Show final summary per FIX_SUMMARY_FORMAT.
+    </Step>
+  </Execution_Plan>
+
+  <Output_Contracts>
+    <Contract id="PLAN_TABLE_FORMAT">
+      Shown to operator at STEP_3. Compact table per category. Operator may edit.
+    </Contract>
+
+    <Contract id="FIX_SUMMARY_FORMAT">
+      ```
+      ## ✅ sdd-fix complete
+
+      Direct fixes: N applied
+        ✅ <what> → <file>
+        ✅ <what> → <file>
+
+      Spec updates: N applied
+        ✅ <what> → <file>
+
+      Tasks reopened: N
+        🔄 TSK-NN — Round N: <reason> → dispatched
+        🔄 TSK-MM — Round N: <reason> → dispatched
+
+      🔍 sdd-check: ✅ PASS (N/N checks)
+      ```
+    </Contract>
+  </Output_Contracts>
+</SddFix>

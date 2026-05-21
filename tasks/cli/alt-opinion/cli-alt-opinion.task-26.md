@@ -12,7 +12,7 @@
   - NFC-09: [cli spec §4.2](../../specs/cli/cli.spec.md)
   - D-005: [module spec §6](../../specs/cli/alt-opinion/alt-opinion.spec.md)
 - **§Effective Rules:** typescript-rules, node-test
-- **Status:** `[~]` IN_PROGRESS
+- **Status:** `[x]` DONE
 - **Verification Levels:** `unit`, `integration`
 - **Target Files:**
   - `cli/cmd/alt-opinion/alt-opinion.types.ts` (Modify)
@@ -133,3 +133,16 @@
 - [x] `2026-05-18T07:44:42Z` ver node --import tsx --experimental-test-module-mocks --test cli/cmd/alt-opinion/**tests**/alt-opinion.cmd.test.ts → pass exit=0 (12 tests)
 - [x] `2026-05-18T07:44:42Z` DONE
       **Handoff →** artifacts: [cli/cmd/alt-opinion/__tests__/alt-opinion-runner.test.ts, cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts]; decisions: [runner-tests-updated-to-object-mocks, 4-new-telemetry-tests, cmd-tests-verify-telemetry-line]; open: []
+
+### Round 2 — 2026-05-21, fix env vars + provider.chat()
+
+#### P2 — re-run: fix env vars in cmd.ts adapter
+
+- [x] `2026-05-21T08:21:00Z` recon targets=exists divergence=minor (env var names in cmd.ts)
+- [x] `2026-05-21T08:21:00Z` file cli/cmd/alt-opinion/alt-opinion.cmd.ts
+- [x] `2026-05-21T08:21:00Z` fix env var names: GENNADY_LLM_PROXY_* → LLM_PROXY_*, GENNADY_OPENROUTER_* → OPENROUTER_*
+- [x] `2026-05-21T08:21:00Z` fix provider(model) → provider.chat(model) (D-006: Chat Completions API)
+- [x] `2026-05-21T08:21:00Z` fix test env var cleanup (GENNADY_LLM_PROXY_* → LLM_PROXY_*)
+- [x] `2026-05-21T08:21:00Z` ver node --import tsx --test → all 36 tests pass exit=0
+- [x] `2026-05-21T08:21:00Z` DONE
+      **Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion.cmd.ts, cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts]; decisions: [env-vars=LLM_PROXY_ADDR_KEY+LLM_PROXY_BASE_URL+OPENROUTER_API_KEY per spec §5.1, chat-api=provider.chat(model) per spec D-006, tests-updated=env var cleanup in test file]; open: []

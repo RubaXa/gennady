@@ -226,12 +226,12 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 **Autofix chain (приватные):**
 
 1. `removeRedundantTypes(source) → string`
-2. `removeExtraParams(source, signature) → string`
-3. `removeUnexpectedReturns(source, signature) → string`
+2. `removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
+3. `removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
 4. `reorderParams(source, signature) → string`
 5. `reorderTags(source) → string`
-6. `normalizeMultiLine(source) → string` — приводит любой multi-line JSDoc к каноническому виду: `/**` на отдельной строке, каждая строка контента с префиксом ` * `, ` */` на отдельной строке. Single-line не трогает.
-7. `inlineIfSafe(source, parser) → string` — dry-run через `DbcParser.parse()`. Многотеговые контракты инлайнятся через `|`.
+6. `normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*`/`контент`_/`на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare`/\*\*`, bare `_/`, `\* content`) проходят без изменений.
+7. `inlineIfSafe(source, parser) → string` — dry-run через `DbcParser.parse()`. Инлайнятся только однотеговые контракты (ровно один `@tag`); многотеговые (2+ тегов) остаются multi-line. Сохраняет исходные отступы.
 
 ### 4.3 Services
 
@@ -331,13 +331,15 @@ services/dbc/linter/
 - **Risk accepted:** —
 - **Rejected alternatives:** Игнорировать — баг воспроизводился на vcs-client с тегом `@consumer` (старый формат).
 
-### D-018 — Autofix: normalizeMultiLine + inline expansion + always-run formatting
+### D-018 — Autofix: normalizeMultiLine + single-tag inline + always-run formatting
 
 - **Status:** active
 - **Recorded:** session Execution, dbc, TSK-21
-- **Why:** (1) `_inlineIfSafe` блокировал многотеговые контракты (`tagCount > 1 → skip`) — теперь разрешено, dry-run через парсер гарантирует безопасность. (2) Добавлен `_normalizeMultiLine` — любой multi-line JSDoc приводится к каноническому виду (`/**` отдельно, ` * ` префикс, ` */` отдельно). (3) `lintAndFix` теперь всегда парсит и нормализует (убран ранний return при `initialCount === 0`), чтобы исправлять malformed формат даже при отсутствии lint-ошибок.
+- **Why:** (1) Добавлен `_normalizeMultiLine` — реконструирует любой multi-line JSDoc в канонический вид (`/**` отдельно, ` * ` префикс, ` */` отдельно). (2) `_inlineIfSafe` инлайнит однотеговые контракты, сохраняя исходный отступ. (3) `lintAndFix` всегда парсит и нормализует (убран ранний return при `initialCount === 0`).
+- **Risk accepted:** Однотеговые контракты становятся длинными inline-строками — допустимо для v1.
+- **Rejected alternatives:** Реконструкция JSDoc с нуля без сохранения отступов — теряет форматирование в IDE.
 - **Risk accepted:** Многотеговые контракты с `|` разделителем становятся длинными строками — допустимо для v1.
-- **Rejected alternatives:** Оставить `tagCount > 1` guard — ломает K2 тест (multi-line→inline), не даёт нормализовать формат.
+- **Rejected alternatives:** Инлайнить многотеговые через `|` — невалидный JSDoc, ломает подсветку в IDE.
 
 ## 8. Inter-Module Dependencies
 
@@ -474,11 +476,12 @@ graph TD
   | # | Fixture | Что проверяется |
   |---|---------|-----------------|
   | K1 | `autofix-combined/all-fixable.ts` | Все autofix-абельные ошибки в одном файле → после autofix только неисправимые |
-  | K2 | `autofix-combined/multi-line-to-inline.ts` | Multi-line контракт без конфликтов → сжат в inline |
+  | K2 | `autofix-combined/multi-line-to-inline.ts` | Multi-line контракт с 2+ тегами → остаётся multi-line (однотеговое правило) |
   | K3 | `autofix-combined/multi-line-cannot-inline.ts` | Multi-line контракт с конфликтами → НЕ сжат (dry-run показал новые ошибки) |
-   | K4 | `autofix-combined/order-tags.ts` | ERR_DBC_ORDER + ERR_DBC_LINT_PARAM_ORDER одновременно |
-   | K5 | `autofix-combined/malformed-multi-line.ts` | Multi-line контракт с `*/` на одной строке с последним тегом → нормализован: `*/` на отдельной строке |
-   | K6 | `autofix-combined/malformed-opening.ts` | Multi-line контракт с `/** @tag content` на первой строке → нормализован: `/**` и контент разделены |
+  | K4 | `autofix-combined/order-tags.ts` | ERR_DBC_ORDER + ERR_DBC_LINT_PARAM_ORDER одновременно |
+  | K5 | `autofix-combined/malformed-multi-line.ts` | Multi-line контракт с `*/` на одной строке с последним тегом → нормализован: `*/` на отдельной строке |
+  | K6 | `autofix-combined/malformed-opening.ts` | Multi-line контракт с `/** @tag content` на первой строке → нормализован: `/**` и контент разделены |
+  | K7 | `autofix-combined/indented-multi-tag.ts` | Индентированные контракты (class methods): canonical остаётся без изменений, malformed closing нормализуется с сохранением отступов, single-tag инлайнится с отступом |
 
   **L. Edge cases:**
   | # | Fixture | Что проверяется |
@@ -515,4 +518,4 @@ graph TD
   | M16 | Rest параметр: `...args` ↔ `@param ...args` | Нет ошибок |
   | M17 | Неизвестный kind сущности | Пустой массив ошибок (не падает) |
 
-   **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 6 autofix-combined + 10 edge + 17 unit-validator = 90 тестовых случаев.**
+  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 7 autofix-combined + 10 edge + 17 unit-validator = 91 тестовый случай.**

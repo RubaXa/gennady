@@ -43,8 +43,10 @@ mock.module('@ai-sdk/openai', {
           `[createOpenAI] API key is required for provider "${config.name ?? 'unknown'}". Set the corresponding env variable.`
         );
       }
-      return (_modelId: string) =>
-        ({ modelId: _modelId, providerName: config.name }) as unknown as never;
+      return {
+        chat: (_modelId: string) =>
+          ({ modelId: _modelId, providerName: config.name }) as unknown as never,
+      };
     },
   },
 });
@@ -77,9 +79,9 @@ function setupStdoutCapture(): { output: string[]; restore: () => void } {
 }
 
 const ENV_KEYS = [
-  'GENNADY_LLM_PROXY_API_KEY',
-  'GENNADY_LLM_PROXY_BASE_URL',
-  'GENNADY_OPENROUTER_API_KEY',
+  'LLM_PROXY_API_KEY',
+  'LLM_PROXY_BASE_URL',
+  'OPENROUTER_API_KEY',
 ] as const;
 
 describe('alt-opinion cmd (integration)', () => {
@@ -94,9 +96,9 @@ describe('alt-opinion cmd (integration)', () => {
     for (const key of ENV_KEYS) {
       originalEnv[key] = process.env[key];
     }
-    process.env['GENNADY_LLM_PROXY_API_KEY'] = 'test-llmproxy-key';
-    process.env['GENNADY_OPENROUTER_API_KEY'] = 'test-openrouter-key';
-    delete process.env['GENNADY_LLM_PROXY_BASE_URL'];
+    process.env['LLM_PROXY_API_KEY'] = 'test-llmproxy-key';
+    process.env['OPENROUTER_API_KEY'] = 'test-openrouter-key';
+    delete process.env['LLM_PROXY_BASE_URL'];
 
     originalIsTtyDesc = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
     Object.defineProperty(process.stdin, 'isTTY', {
@@ -185,8 +187,8 @@ describe('alt-opinion cmd (integration)', () => {
     // purpose: verify that missing provider API key is caught at provider creation
     // contract: createOpenAI throws when apiKey is falsy
 
-    delete process.env['GENNADY_LLM_PROXY_API_KEY'];
-    delete process.env['GENNADY_OPENROUTER_API_KEY'];
+    delete process.env['LLM_PROXY_API_KEY'];
+    delete process.env['OPENROUTER_API_KEY'];
 
     // #region START_NO_API_KEY_TRIGGER_AND_ASSERT
     await assert.rejects(

@@ -591,6 +591,12 @@ export class DbcTsLinter implements DbcLinter {
 
     for (const line of lines) {
       let trimmed = line.trim();
+      // Never skip closing marker — always push and reset skipMode
+      if (trimmed === '*/' || trimmed === '*/ ') {
+        skipMode = false;
+        result.push(line);
+        continue;
+      }
       // Strip JSDoc `* ` prefix if present
       if (trimmed.startsWith('* ')) {
         trimmed = trimmed.slice(2).trimStart();
@@ -643,6 +649,12 @@ export class DbcTsLinter implements DbcLinter {
 
     for (const line of lines) {
       let trimmed = line.trim();
+      // Never skip closing marker — always push and reset skipMode
+      if (trimmed === '*/' || trimmed === '*/ ') {
+        skipMode = false;
+        result.push(line);
+        continue;
+      }
       // Strip JSDoc `* ` prefix if present
       if (trimmed.startsWith('* ')) {
         trimmed = trimmed.slice(2).trimStart();
@@ -859,7 +871,7 @@ export class DbcTsLinter implements DbcLinter {
     return rebuilt.join('\n');
   }
 
-  /** @purpose Normalize multi-line JSDoc format: ensure proper ` * ` prefix | on content lines and closing marker on its own line. | @invariant Single-line contracts pass through unchanged. | @param jsdocText Raw JSDoc comment text. | @returns Normalized JSDoc text. */
+  /** @purpose Normalize multi-line JSDoc format: ensure closing marker is on its own line | and opening marker is bare (no content after it). | Preserves original indentation by patching specific format issues | rather than reconstructing the entire block. | @invariant Single-line contracts pass through unchanged. | @param jsdocText Raw JSDoc comment text. | @returns Normalized JSDoc text. */
   protected _normalizeMultiLine(jsdocText: string): string {
     if (!jsdocText.includes('\n')) {
       return jsdocText;
@@ -867,44 +879,48 @@ export class DbcTsLinter implements DbcLinter {
 
     const lines = jsdocText.split('\n');
 
-    // Extract content: strip framing and JSDoc prefix from each line
-    const contentLines: string[] = [];
-    for (const line of lines) {
-      let l = line;
-
-      // Strip opening `/**` — with or without trailing content
-      if (l.trimStart().startsWith('/**')) {
-        l = l.replace(/^\s*\/\*\*\s*/, '');
-        if (l.length === 0) continue;
-      }
-
-      // Strip closing `*\/` — with or without preceding content
-      if (l.includes('*/')) {
-        l = l.replace(/\s*\*\/\s*$/, '');
-        if (l.length === 0) continue;
-      }
-
-      // Strip leading `* ` or `*` prefix
-      if (l.trimStart().startsWith('* ')) {
-        l = l.replace(/^\s*\*\s/, '');
-      } else if (l.trimStart().startsWith('*')) {
-        l = l.replace(/^\s*\*\s?/, '');
-      }
-
-      const trimmed = l.trim();
-      if (trimmed.length > 0) {
-        contentLines.push(trimmed);
-      }
+    // Step 1: if first line has content after /**, move it to a new line
+    let firstLine = lines[0];
+    const openMatch = firstLine.match(/^(\s*\/\*\*)\s+(.+)/);
+    if (openMatch) {
+      lines[0] = openMatch[1]; // bare /**
+      // Determine indent for the new line from existing content lines
+      const contentIndent = this._detectContentIndent(lines);
+      // Insert content as a new line after the opening
+      lines.splice(1, 0, contentIndent + openMatch[2]);
     }
 
-    if (contentLines.length === 0) {
-      return '/** */';
+    // Step 2: if last line has content before */, move */ to its own line
+    const lastIdx = lines.length - 1;
+    const lastLine = lines[lastIdx];
+    // Check if the last line has */ preceded by content (not just whitespace and */)
+    const closeMatch = lastLine.match(/^(\s*)\*\s+(.+?)\s*\*\/\s*$/);
+    if (closeMatch) {
+      const starIndent = closeMatch[1]; // indent before * on this line
+      // Keep the content line without */
+      lines[lastIdx] = starIndent + '* ' + closeMatch[2];
+      // */ should be at the indent level of /** (one space less than * lines)
+      const baseIndent = starIndent.length > 0 ? starIndent.slice(0, -1) : '';
+      lines.push(baseIndent + ' */');
     }
 
-    return ['/**', ...contentLines.map((l) => ` * ${l}`), ' */'].join('\n');
+    return lines.join('\n');
   }
 
-  /** @purpose Attempt to convert a multi-line JSDoc comment to single-line format. | Performs a dry-run through the parser: if the inline version introduces new | parse errors, the original multi-line text is returned unchanged. | Multi-tag contracts are inlined with | separator (supported by parser). | @param jsdocText Raw JSDoc comment text. | @returns Inline text if safe, otherwise the original text. */
+  /** @purpose Detect the indentation pattern used by content lines. | Returns the whitespace prefix before `*` on the first content line, | or the indent of the opening line as fallback. | @param lines All lines of the JSDoc block (may be mutated by Step 1). | @returns Indent string for `*`-prefixed content lines. */
+  protected _detectContentIndent(lines: string[]): string {
+    for (let i = 1; i < lines.length - 1; i += 1) {
+      const match = lines[i].match(/^(\s*)\*\s/);
+      if (match) {
+        return match[1];
+      }
+    }
+    // Fallback: use indent of opening line + one space (canonical convention)
+    const openIndent = lines[0].match(/^(\s*)/)?.[1] ?? '';
+    return openIndent + ' ';
+  }
+
+  /** @purpose Attempt to convert a multi-line JSDoc comment to single-line format. | Inlines only single-tag contracts (1 @tag); multi-tag contracts stay multi-line. | Performs a dry-run through the parser: if the inline version introduces new | parse errors, the original multi-line text is returned unchanged. | @param jsdocText Raw JSDoc comment text. | @returns Inline text if safe, otherwise the original text. */
   protected _inlineIfSafe(jsdocText: string): string {
     if (!jsdocText.includes('\n')) {
       return jsdocText;
@@ -922,7 +938,17 @@ export class DbcTsLinter implements DbcLinter {
       return jsdocText;
     }
 
-    const inlineText = `/** ${lines.join(' | ')} */`;
+    // Only inline if the contract has exactly ONE @tag
+    const tagCount = lines.filter((l) => /^@\w/.test(l)).length;
+    if (tagCount > 1) {
+      return jsdocText;
+    }
+
+    // Preserve original indentation
+    const indentMatch = jsdocText.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : '';
+
+    const inlineText = indent + '/** ' + lines.join(' | ') + ' */';
 
     // Dry-run: parse inline version; if parse issues appear, keep original
     const schema: DbcSchema = this._parser.parse(inlineText);

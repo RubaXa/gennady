@@ -68,7 +68,7 @@ graph TD
 | ------------------------------------------------ | ----------------------------------------------------- | ----------- | ------------------------------ | ---------- | ------- |
 | [TSK-12](lint/cli-lint.task-12.md)               | Типы: LintError, LintOptions, коды                    | lint        | None                           | `[x]` DONE | 0       |
 | [TSK-13](lint/cli-lint.task-13.md)               | FileHeaderCheck                                       | lint        | TSK-12                         | `[x]` DONE | 0       |
-| [TSK-14](lint/cli-lint.task-14.md)               | AnchorCheck                                           | lint        | TSK-12                         | `[x]` DONE | 0       |
+| [TSK-14](lint/cli-lint.task-14.md)               | AnchorCheck                                           | lint        | TSK-12                         | `[x]` DONE | 2       |
 | [TSK-15](lint/cli-lint.task-15.md)               | DbcContractCheck                                      | lint        | TSK-12, TSK-11                 | `[x]` DONE | 0       |
 | [TSK-16](lint/cli-lint.task-16.md)               | LintCommand + регистрация в gennady                   | lint        | TSK-13, TSK-14, TSK-15         | `[x]` DONE | 0       |
 | [TSK-17](lint/cli-lint.task-17.md)               | Тесты: проверки + интеграционные                      | lint        | TSK-16                         | `[x]` DONE | 0       |

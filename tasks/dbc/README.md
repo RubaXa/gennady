@@ -72,7 +72,7 @@ graph TD
 | [TSK-11](dbc-linter/dbc-linter.task-11.md) | DbcLinter: опция `content`                        | dbc-linter | TSK-10       | `[x]` DONE | 1       |
 | [TSK-19](dbc-linter/dbc-linter.task-19.md) | type alias + interface property контракты         | dbc-linter | TSK-10       | `[x]` DONE | 0       |
 | [TSK-20](dbc-linter/dbc-linter.task-20.md) | Fix \_reorderTags: \*/ boundary + edge cases      | dbc-linter | TSK-10       | `[x]` DONE | 0       |
-| [TSK-21](dbc-linter/dbc-linter.task-21.md) | Autofix: normalize multi-line + expand inlining    | dbc-linter | TSK-20       | `[x]` DONE | 0       |
+| [TSK-21](dbc-linter/dbc-linter.task-21.md) | Autofix: normalize multi-line + expand inlining   | dbc-linter | TSK-20       | `[x]` DONE | 0       |
 
 ## Notes
 

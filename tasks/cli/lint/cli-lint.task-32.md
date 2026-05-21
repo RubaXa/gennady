@@ -112,8 +112,8 @@
 
 - [x] `2026-05-18T11:10:00Z` recon targets=language.check.test.ts|exists divergence=none
 - [x] `2026-05-18T11:10:00Z` rules typescript-rules, node-test
-- [x] `2026-05-18T11:10:00Z` test cli/cmd/lint/__tests__/language.check.test.ts
-- [x] `2026-05-18T11:10:00Z` ver node --test cli/cmd/lint/__tests__/language.check.test.ts → pass exit=0 (7/7)
+- [x] `2026-05-18T11:10:00Z` test cli/cmd/lint/**tests**/language.check.test.ts
+- [x] `2026-05-18T11:10:00Z` ver node --test cli/cmd/lint/**tests**/language.check.test.ts → pass exit=0 (7/7)
 - [x] `2026-05-18T11:10:00Z` ver npx tsx cli/gennady.ts lint --autofix cli/cmd/lint/checks/language.check.ts → pass exit=0 (0 errors)
 - [x] `2026-05-18T11:10:00Z` DONE
       cov English-only → language.check.test.ts::English-only

@@ -166,14 +166,22 @@
     </Axiom>
 
     <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
-      **Scaffolding writes PLAN per-phase; phase-subagent turns plan into FACT.**
+      **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
 
-      - **PLAN** for a Round 1 = pre-filled per-phase blocks under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in section 2 Phases Overview. Each block contains `[ ]` items with placeholders (`<ts>`, `<path>`, `<cmd>`, `<pass|fail>`, etc.). Placeholders are predicted from the phase's Target Files + Rules + section 5 Verification + section 6 Test Scenario Coverage.
-      - **FACT** = `[x]` AND every placeholder replaced with real value from actual execution.
+      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in section 2 Phases Overview. Each block contains ONLY the closing lines:
+        ```
+        #### P<N>
+        - [ ] `<ts>` ver <cmd from section 5> → <pass|fail> exit=<code>
+        - [ ] `<ts>` DONE
+        ```
+        No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / section 6 / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
+      - **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
       - Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
-      - Round closes with `#### Round close` block (sync + DONE) emitted by orchestrator after the last phase.
+      - Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
       - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
       - Append-only by Rounds.
+
+      A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
     </Axiom>
 
     <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
@@ -501,32 +509,24 @@
       - Scenario <name> → `<test-file>` :: `<canonical case name>`
 
       ## 7. Execution Log
-      *(Round = one execute-then-audit attempt. Per-phase blocks within a Round; Round closes after audit. Token vocabulary + protocol in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
+      *(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skeleton is minimal — event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `BLOCKED`) appear ONLY when the event happens. Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
 
       ### Round 1 — <YYYY-MM-DD>, initial
-      <!-- Phase blocks appended by phase-subagents, one per phase, in declared order: -->
+      <!-- Skeleton pre-filled: only the closing ver + DONE lines per phase. Phase agent
+           prepends event lines as decisions/discoveries/intros/problems actually happen. -->
 
       #### P1
-      - [ ] `<ts>` recon git=<branch>/<dirty?> targets=<state> divergence=<none|<list>>
-      - [ ] `<ts>` rules <rule-ids>
-      - [ ] `<ts>` file `<path>`
-      - [ ] `<ts>` intro `<Entity>` ← `<reason>`           <!-- 0+ entries -->
       - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
       - [ ] `<ts>` DONE
-      **Handoff →** artifacts: [`<path>`]; decisions: [`<key=value>`]; open: []
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
       #### P2
-      - [ ] `<ts>` recon git=<branch>/<dirty?> targets=<state> divergence=<none|<list>>
-      - [ ] `<ts>` rules <rule-ids>
-      - [ ] `<ts>` test `<path>`
-      - [ ] `<ts>` cov `<scenario>` → `<test-file>::<case>`
       - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
       - [ ] `<ts>` DONE
-      **Handoff →** artifacts: [`<path>`]; decisions: []; open: []
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
       <!-- After last phase, orchestrator appends Round close: -->
       #### Round close
-      - [ ] `<ts>` sync `<scope>`+root
       - [ ] `<ts>` DONE
       ```
     </Contract>
@@ -559,59 +559,37 @@
       Task-specific additions live in each ticket's section 5.
 
       ### Execution Log Template
-      Per `AX_EXECUTION_LOG_PLAN_VS_FACT` (this directive) + `AX_LIVE_LOG` in `phase-execution-protocol`. Each Round = one execute-then-audit attempt; per-phase blocks within a Round; append-only; old Rounds NEVER edited.
+      Canonical token vocabulary (single source of truth; phase-protocol and audit reference this table, do not redefine):
 
-      **Action token vocabulary** (every log line starts with `<ts>` then exactly one token):
-      | Token | Meaning | Tail shape | Emitted by |
-      |---|---|---|---|
-      | `recon` | narrow recon at phase entry | `git=<branch>/<dirty?> targets=<state> divergence=<list\|none>` | phase agent |
-      | `rules` | rules loaded for this phase | comma-separated rule-ids | phase agent |
-      | `file` | wrote / modified production file | `` `<path>` `` | phase agent |
-      | `test` | wrote / modified test file | `` `<path>` `` | phase agent |
-      | `ver`  | verification command + result | `` `<cmd>` → <pass\|fail> exit=<code> `` | phase agent |
-      | `cov`  | scenario → test case mapping | `` <scenario> → `<test-file>::<case>` `` | phase agent (`test` kind) |
-      | `intro`| entity introduced beyond inventory | `` `<Entity>` ← <reason> `` | phase agent |
-      | `verified` | third-party tool API verified | `<tool>@<version> <summary>` | phase agent (`config` kind) |
-      | `insight` | spec-update proposal | `<observation> → <spec-section>, <change>` | phase agent |
-      | `sync` | tracker sync at Round close | `<scope>+root` | orchestrator |
-      | `DONE` | terminal state (phase or Round close) | (no tail) | phase agent / orchestrator |
+      | Token | Tail | Mandatory when |
+      |---|---|---|
+      | `intro` | `<Entity> ← <reason>` | new entity appears in code beyond module Entity Inventory |
+      | `decision` | `<key>=<value> ← <reason>` | typed choice that affected output |
+      | `tried` | `<approach> → <result>` | approach attempted then abandoned (failed path worth recording) |
+      | `discovery` | `<fact>` | reality diverged from spec / assumption |
+      | `insight` | `<observation> → <spec-section>, <change>` | spec gap detected |
+      | `verified` | `<tool>@<version> <summary>` | `config` kind: third-party API confirmed |
+      | `ver` | `<cmd> → pass|fail exit=<N>` | once per phase, closing run (always present) |
+      | `BLOCKED` | `<cause>` | phase ended `[!] BLOCKED` |
+      | `DONE` | (no tail) | terminal line of phase or Round close (always present) |
 
-      Rules: token is the first non-whitespace word after `` `<ts>` ``; no label colons; no «Task initialized» line (Round header carries it); no `Status:` line (the `[x]` checkbox IS the status).
-
-      **Round structure:**
+      Round structure:
       ```markdown
       ### Round <N> — <YYYY-MM-DD>, <reason>
-      <!-- reason: "initial" | "audit-driven fix: F-NNN, F-MMM" | "late-detected bug: <area>" -->
 
       #### P1
-      - [x] <ts> recon ...
-      - [x] <ts> rules ...
-      - [x] <ts> file ...
-      - [x] <ts> ver ... → pass exit=0
-      - [x] <ts> DONE
+      <!-- event lines (0+, from the table above) appended as events happen -->
+      - [x] `<ts>` ver <cmd> → pass exit=0
+      - [x] `<ts>` DONE
       **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
-      #### P2
-      ... same shape ...
-
       #### Round close
-      - [x] <ts> sync <scope>+root
-      - [x] <ts> DONE
+      - [x] `<ts>` DONE
       ```
 
-      **Re-run rounds** (audit FAIL → orchestrator dispatches `fix`-kind re-run of failing phases only):
-      ```markdown
-      ### Round N — <YYYY-MM-DD>, audit-driven fix: F-001, F-007
-      #### P2 — re-run: fix
-      ... phase block ...
-      **Handoff →** ...
+      Trivial phase with no events → 2 lines (`ver` + `DONE`) + Handoff. Padding with empty lines is forbidden.
 
-      #### Round close
-      - [x] <ts> sync <scope>+root
-      - [x] <ts> DONE
-      ```
-
-      ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done; Auditor raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+      ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done → `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
 
       ### Post-task Hook
       Per `AX_AUDIT_HOOK`. After last phase of a Round closes, the orchestrator dispatches `sdd-audit`. Until audit returns PASS, Round is closed-but-unverified and dependents are blocked.

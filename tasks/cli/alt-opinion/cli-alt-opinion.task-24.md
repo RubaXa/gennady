@@ -36,6 +36,8 @@
 **Scenario:** Дефолтные промпты [`integration`]
 **Scenario:** Регистрация в gennady.ts [`integration`]
 **Scenario:** help содержит alt-opinion [`integration`]
+**Scenario:** Env vars: LLM_PROXY_API_KEY, LLM_PROXY_BASE_URL, OPENROUTER_API_KEY [`integration`]
+**Scenario:** provider.chat(modelId) — Chat Completions API (D-006) [`integration`]
 
 ## 3. Phases
 

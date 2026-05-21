@@ -93,11 +93,11 @@ _Это полный список сущностей модуля. Любое в
 ### `AnchorCheck`
 
 - **Type:** Service
-- **Purpose:** Проверка парности и вложенности `// #region START_<NAME>` / `// #endregion END_<NAME>`. Стековый алгоритм.
+- **Purpose:** Проверка парности и вложенности `// #region START_<NAME>` / `// #endregion END_<NAME>`. Стековый алгоритм. Детектит bare `#region`/`#endregion` без `START_`/`END_` как malformed.
 - **Public Operations:**
   - `check(content: string, filePath: string) → LintError[]` — проверить контент файла
 - **Lifecycle:** stateless; pure function
-- **Errors & Degradation:** Не кидает исключений. Непарный START → `ERR_CLI_LINT_ANCHOR_UNPAIRED_START`. Непарный END → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`. Нарушение вложенности → `ERR_CLI_LINT_ANCHOR_NESTING`.
+- **Errors & Degradation:** Не кидает исключений. Непарный START → `ERR_CLI_LINT_ANCHOR_UNPAIRED_START`. Непарный END → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`. Нарушение вложенности → `ERR_CLI_LINT_ANCHOR_NESTING`. Bare `#region`/`#endregion` без `START_`/`END_` → `ERR_CLI_LINT_ANCHOR_MALFORMED`. Bare `#endregion` с непустым стеком — auto-close по вершине стека (autofix).
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -142,6 +142,7 @@ ERR_CLI_LINT_MISSING_CONSUMERS = 'ERR_CLI_LINT_MISSING_CONSUMERS'
 ERR_CLI_LINT_ANCHOR_UNPAIRED_START = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_START'
 ERR_CLI_LINT_ANCHOR_UNPAIRED_END   = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_END'
 ERR_CLI_LINT_ANCHOR_NESTING        = 'ERR_CLI_LINT_ANCHOR_NESTING'
+ERR_CLI_LINT_ANCHOR_MALFORMED      = 'ERR_CLI_LINT_ANCHOR_MALFORMED'
 ERR_CLI_LINT_NON_ENGLISH           = 'ERR_CLI_LINT_NON_ENGLISH'
 ```
 
@@ -192,6 +193,8 @@ ERR_CLI_LINT_NON_ENGLISH           = 'ERR_CLI_LINT_NON_ENGLISH'
   - Несовпадение → `ERR_CLI_LINT_ANCHOR_NESTING`
   - Непустой стек в конце → `ERR_CLI_LINT_ANCHOR_UNPAIRED_START` для каждого
   - `END` без соответствующего `START` → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`
+  - Bare `#endregion` без `END_<NAME>` → `ERR_CLI_LINT_ANCHOR_MALFORMED`. Если стек не пуст: auto-close (pop) + в сообщении указано ожидаемое `END_<NAME>` из вершины стека
+  - Bare `#region` без `START_<NAME>` → `ERR_CLI_LINT_ANCHOR_MALFORMED`
 - Invariants:
   - Чистая функция, не зависит от внешнего состояния
   - Ошибки возвращаются в порядке сверху вниз по файлу

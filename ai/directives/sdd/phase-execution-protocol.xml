@@ -48,17 +48,11 @@
     </Axiom>
 
     <Axiom id="AX_LIVE_LOG">
-      Execution Log per-phase block is your worksheet, not documentation. Process line-by-line during work; never batch at the end.
+      Token vocabulary lives in `scaffold.directive.xml` Execution Log Template — single source of truth, do not duplicate here. Only those tokens may appear in log lines; nothing outside the table is logged.
 
-      Mechanics per planned line:
-      1. Replace `<ts>` with real timestamp.
-      2. Replace every other placeholder with real value.
-      3. Toggle `[ ]` → `[x]`.
-      4. Reality diverges → edit content first, then toggle.
+      Mechanics: replace placeholders in scaffolder's pre-filled `ver` + `DONE` lines with real values; toggle `[ ]` → `[x]`. Append event lines (intro / decision / tried / discovery / insight / verified / BLOCKED) BEFORE the closing block as events happen; never retrofit, never batch.
 
-      Actions not in plan (intro entity not predicted, blocker hit) → APPEND a new `[x]` entry. Don't retrofit existing lines.
-
-      Forbidden: toggling `[x]` with any unreplaced `<…>` literal — fabricated done; audit raises `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+      Forbidden: toggling `[x]` with any unreplaced `<…>` literal (fabricated done → `EXECUTION_LOG_INCOMPLETE` BLOCKER); padding with empty lines to «look thorough».
     </Axiom>
 
     <Axiom id="AX_INTRODUCED_DISCIPLINE">
@@ -76,10 +70,38 @@
       - **Must run:** verification commands from ticket 5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run for config-kind only:** `npm view <pkg> version`, `cat node_modules/<pkg>/package.json`, `cat node_modules/<pkg>/CHANGELOG.md`.
+      - **May run SDD helper tooling, if provided by the dispatching skill.** The orchestrator that dispatched this phase will pass an absolute path to its `sdd` dispatcher in the dispatch prompt (e.g. `~/.claude/skills/sdd-execute/scripts/sdd`). When provided, prefer it for:
+        - `<sdd-path> extract <file> <NAME>` — extract anchored section from ticket/spec
+        - `<sdd-path> lint <file>...` — gennady DBC AST contract lint (parses output reliably)
+        - `<sdd-path> verify <file>...` — comprehensive gate: typecheck + DBC lint + forbidden-construct grep
+        - These tools catch DBC contract violations that `npm run check` / `npm run lint` cannot detect (missing `@param`/`@returns`, JSDoc tag order, anchor pairing). Prefer them over manual gate composition when available.
 
-      **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` (format+typecheck — overkill; use `tsc --noEmit` for type-check, let audit run the full lint); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+      **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
       Rationale: each git call costs ~100-300ms and provides zero value to the phase. Audit handles project-wide checks. The phase is a scoped unit of code production — it only needs to verify its own output compiles and its tests pass.
+    </Axiom>
+
+    <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until a later Round entry explicitly marks it RESOLVED. Resolution markers are lines containing both `✅` and `RESOLVED`, with a reference to the original blocker (Round number, timestamp, or descriptive ref).
+
+      Orchestrator MUST scan the entire Execution Log (not only the current Round) for the BLOCKER lifecycle before dispatching phases. If the dispatching skill provides `sdd check-blockers <ticket>` tool, use it; otherwise scan manually:
+      - Count `🛑 BLOCKED` lines and `✅ RESOLVED` lines from Execution Log start.
+      - If the **last** marker (by line position) is `✅` AND resolved count ≥ blocker count → all blockers resolved → CLEAR to dispatch.
+      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
+
+      Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution prose → audit treats as fabricated and may re-flag.
+
+      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line; resolution is appended in a later Round entry. The blocker history is part of the artifact.
+    </Axiom>
+
+    <Axiom id="AX_HALT_VS_FAIL_DISTINCTION">
+      Halt is NOT failure. A skill or phase that stops awaiting operator decision is in a **PAUSED** state, not a **FAILED** state. Surface to operator with distinct semantics:
+
+      - **✋ PAUSED — awaiting operator decision**: orchestrator detected unresolved BLOCKER per `AX_BLOCKER_RESOLUTION_TRAIL`, or phase agent returned `BLOCKED` per `AX_BLOCKER_ESCALATION`, or planning surface revealed `[!] BLOCKED` in Phases Overview. Skill is fully functional; it is waiting for a decision or environmental fix. To resume: operator addresses the blocker, then re-runs the skill.
+      - **❌ FAILED — skill malfunction**: skill cannot proceed due to missing rule files, malformed ticket structure beyond scaffold convention, infrastructure unreachable, or other reasons unrelated to operator decisions. To resume: fix the infrastructure issue.
+      - **⚠️ AUDIT FAIL — verification mismatch**: phases completed but audit found discrepancies. Has its own retry path (per `phase_audit_loop`).
+
+      Operator-facing messages MUST use the icon and word for the actual state. Misusing `❌` for a paused state is itself a self-deception that erodes trust in skill output (treated as fabricated halt; orchestrator must correct).
     </Axiom>
 
     <Axiom id="AX_BDD_NAME_DISCIPLINE">
@@ -146,7 +168,7 @@
       - Execution Log free-text fields (Round header `<reason>`, `insight` text, `intro ... ← <reason>` reason, blocker `<one-line cause>` / `<proposed unblock>`);
       - operator-facing return summaries.
 
-      English regardless of context: code (impl + tests), JSDoc, intent comments, file paths, tool commands, axiom IDs (`AX_*`), IDs (`TSK-NN` / `P<N>` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, action tokens (`file` / `test` / `ver` / `cov` / `aud` / `intro` / `sync` / `verified` / `DONE`).
+      English regardless of context: code (impl + tests), JSDoc, intent comments, file paths, tool commands, axiom IDs (`AX_*`), IDs (`TSK-NN` / `P<N>` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, action tokens (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `ver` / `BLOCKED` / `DONE`).
     </Axiom>
   </Belief_State>
 
@@ -191,24 +213,16 @@
     </Step>
 
     <Step id="STEP_2_NARROW_RECON">
-      <Goal>Verify ground truth before write.</Goal>
+      <Goal>Verify ground truth before write. Silent when nothing surprising.</Goal>
       <Action>
-        Per `AX_NARROW_RECON`. Emit a single recon line:
-        ```
-        - [x] `<ts>` recon targets=<created|exists|absent> divergence=<none|<list>>
-        ```
-        Divergence blocks phase contract → `H_RECON_DIVERGENCE`.
+        Per `AX_NARROW_RECON`. Do NOT log a `recon` line when state matches plan — silence is the signal that nothing is surprising. ONLY log if divergence found: emit a `discovery` line describing the divergence (e.g. `<ts> discovery file <path> already exists with non-trivial content`), then evaluate — divergence blocks the phase contract → `H_RECON_DIVERGENCE`; otherwise proceed.
       </Action>
     </Step>
 
     <Step id="STEP_3_LOAD_RULES">
-      <Goal>Internalize the rule set governing THIS phase.</Goal>
+      <Goal>Internalize the rule set governing THIS phase. No log line.</Goal>
       <Action>
-        Per `AX_RULES_LOAD_FROM_PHASE_BLOCK`. Read each cited rule file end-to-end. Log:
-        ```
-        - [x] `<ts>` rules <comma-separated rule-ids>
-        ```
-        No phase-by-phase activation gymnastics — this phase loads its rules once, applies them throughout.
+        Per `AX_RULES_LOAD_FROM_PHASE_BLOCK`. Read each cited rule file end-to-end. Do NOT emit a `rules` log line — the Rules: bullet list in section 3 already declares them; logging is duplication. Phase loads its rules once, applies them throughout.
       </Action>
     </Step>
 
@@ -216,20 +230,20 @@
       <Goal>Produce the artifacts demanded by the phase Objective within Target Files.</Goal>
       <Action>
         1. Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`, `AX_INTRODUCED_DISCIPLINE`.
-        2. For phase kind = `test`: honor `AX_BDD_NAME_DISCIPLINE`; tests reference scenarios by canonical name verbatim.
+        2. For phase kind = `test`: honor `AX_BDD_NAME_DISCIPLINE`.
         3. For phase kind = `config`: honor `AX_THIRD_PARTY_TOOL_CURRENT_API` BEFORE writing config.
-        4. Live-log per `AX_LIVE_LOG`: every file write → `<ts> file <path>` (or `test` token for test files); every intro → `<ts> intro <Entity> ← <reason>`.
-        5. Spec gap discovered → `<ts> insight <observation> → <spec-section>` per `AX_SPEC_NEVER_EDITED`. Never edit specs.
+        4. Append event lines to current phase block per `AX_LIVE_LOG` (vocabulary in scaffold). Spec gap → `insight` line, never edit specs (per `AX_SPEC_NEVER_EDITED`).
       </Action>
     </Step>
 
     <Step id="STEP_5_VERIFY">
-      <Goal>Run verification commands relevant to this phase.</Goal>
+      <Goal>Run verification commands. Log only the final result, not each retry.</Goal>
       <Action>
         1. Identify section 5 Verification rows whose `Required by` rule-ids overlap with this phase's Rules.
-        2. Execute each. For each command IMMEDIATELY append: `<ts> ver <cmd> → pass|fail exit=<N>`.
-        3. Failure → analyze, fix within Target Files, re-run. Fix breaks phase contract → `H_BLOCKED`. Tooling missing → `H_VERIFICATION_FAIL`.
-        4. Phase kind = `doc` and no relevant commands → log `<ts> ver skip:doc-phase`.
+        2. **Prefer `<sdd-path> verify <Target Files>` if the dispatching skill provided one** — this is a comprehensive gate combining `npm run typecheck` + gennady DBC AST contract lint + forbidden-construct grep in a single call with reliable exit codes. It catches a class of violations (missing @param/@returns, JSDoc tag order, anchor pairing) that `npm run check` / `npm run lint` do NOT catch.
+        3. Execute each. On the FINAL successful run, replace the placeholder `ver` line with real values: `<ts> ver <cmd> → pass exit=<N>`. Intermediate failed runs are NOT logged as separate `ver` lines — if a fix-cycle is interesting (you tried X, it failed, you switched to Y), capture that with a `tried` line, not by spamming `ver` lines.
+        4. Failure that you fix → fix, re-run, then log the passing `ver`. Fix breaks phase contract → `H_BLOCKED`. Tooling missing → `H_VERIFICATION_FAIL`.
+        5. Phase kind = `doc` and no relevant commands → log `<ts> ver skip:doc-phase`.
       </Action>
     </Step>
 
@@ -246,20 +260,24 @@
 
   <Output_Contracts>
     <Contract id="PHASE_BLOCK_FORMAT">
+      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. Mandatory closing lines: `ver` + `DONE` + Handoff.
+
       ```markdown
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
-      - [x] `<ts>` recon targets=<state> divergence=<none|<list>>
-      - [x] `<ts>` rules <comma-separated rule-ids>
-      - [x] `<ts>` file <path>
-      - [x] `<ts>` test <path>                       <!-- only for test/impl mixing or test kind -->
-      - [x] `<ts>` intro `<Entity>` ← <reason>       <!-- 0+ entries -->
-      - [x] `<ts>` cov <scenario> → `<test-file>::<case>`   <!-- test kind -->
-      - [x] `<ts>` verified <tool>@<version> <summary>      <!-- config kind -->
-      - [x] `<ts>` insight <observation> → <spec-section>   <!-- 0+ entries -->
+      <!-- Event lines (optional; appended as events happen, in chronological order): -->
+      - [x] `<ts>` intro `<Entity>` ← <reason>
+      - [x] `<ts>` decision <key>=<value> ← <reason>
+      - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
+      - [x] `<ts>` discovery <fact>
+      - [x] `<ts>` insight <observation> → <spec-section>, <change>
+      - [x] `<ts>` verified <tool>@<version> <one-line summary>    <!-- config kind only -->
+      <!-- Closing lines (mandatory): -->
       - [x] `<ts>` ver <cmd> → pass|fail exit=<N>
       - [x] `<ts>` DONE
       **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]
       ```
+
+      Trivial phase (no events worth logging): 2 lines (`ver` + `DONE`) + Handoff. That is valid and preferred over padding.
     </Contract>
 
     <Contract id="HANDOFF_FORMAT">
@@ -276,10 +294,9 @@
     </Contract>
 
     <Contract id="ROUND_CLOSE_FORMAT">
-      Emitted by orchestrator after the LAST phase of a Round. Phase agent does NOT write this block.
+      Emitted by orchestrator after the LAST phase of a Round. Phase agent does NOT write this block. Tracker sync is orchestrator's mechanical work — no `sync` log line (the work happens, not informationally noteworthy).
       ```markdown
       #### Round close
-      - [x] `<ts>` sync <scope>+root
       - [x] `<ts>` DONE
       ```
     </Contract>

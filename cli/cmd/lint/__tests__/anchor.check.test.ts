@@ -1,6 +1,6 @@
 // @file: Unit tests for AnchorCheck — validates START/END anchor pairing and nesting.
 // @consumers: LintCommand
-// @tasks: TSK-17
+// @tasks: TSK-17, TSK-14
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,6 +9,7 @@ import {
   ERR_CLI_LINT_ANCHOR_UNPAIRED_START,
   ERR_CLI_LINT_ANCHOR_UNPAIRED_END,
   ERR_CLI_LINT_ANCHOR_NESTING,
+  ERR_CLI_LINT_ANCHOR_MALFORMED,
 } from '../lint.types.ts';
 
 /**
@@ -18,7 +19,10 @@ import {
  * ├── should report ERR_CLI_LINT_ANCHOR_UNPAIRED_END for END without matching START
  * ├── should report ERR_CLI_LINT_ANCHOR_NESTING for parent closed before child
  * ├── should report multiple errors sorted by ascending line order
- * └── should return no errors when content has no anchors
+ * ├── should return no errors when content has no anchors
+ * ├── should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #endregion without END_
+ * ├── should auto-close and not leave unpaired START when bare #endregion matches
+ * └── should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #region without START_
  */
 describe('AnchorCheck', () => {
   it('should return no errors for correctly nested anchors', () => {
@@ -139,5 +143,313 @@ describe('AnchorCheck', () => {
     // #region START_NO_ANCHORS_ASSERT_RESULT
     assert.deepStrictEqual(errors, []);
     // #endregion END_NO_ANCHORS_ASSERT_RESULT
+  });
+
+  it('should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #endregion without END_', () => {
+    // contract: bare #endregion (no END_ prefix) → MALFORMED, auto-close with stack top
+    // #region START_BARE_ENDREGION_SETUP
+    const content = [
+      '// #region START_VALIDATE_BOUND',
+      'code here',
+      '// #endregion',
+      '',
+      'more code',
+    ].join('\n');
+    // #endregion END_BARE_ENDREGION_SETUP
+
+    // #region START_BARE_ENDREGION_TRIGGER_CHECK
+    const errors = check(content, 'test.ts');
+    // #endregion END_BARE_ENDREGION_TRIGGER_CHECK
+
+    // #region START_BARE_ENDREGION_ASSERT_RESULT
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /#endregion without END_<NAME>/);
+    assert.match(errors[0].message, /expected END_VALIDATE_BOUND/);
+    assert.match(errors[0].message, /auto-closed/);
+    // #endregion END_BARE_ENDREGION_ASSERT_RESULT
+  });
+
+  it('should not leave unpaired START when bare #endregion auto-closes', () => {
+    // contract: auto-close pops the stack, so no ERR_CLI_LINT_ANCHOR_UNPAIRED_START at EOF
+    // #region START_AUTO_CLOSE_SETUP
+    const content = [
+      '// #region START_MY_BLOCK',
+      'code',
+      '// #endregion',
+    ].join('\n');
+    // #endregion END_AUTO_CLOSE_SETUP
+
+    // #region START_AUTO_CLOSE_TRIGGER_CHECK
+    const errors = check(content, 'test.ts');
+    // #endregion END_AUTO_CLOSE_TRIGGER_CHECK
+
+    // #region START_AUTO_CLOSE_ASSERT_RESULT
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    // No UNPAIRED_START because stack was popped
+    const unpairedStarts = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_UNPAIRED_START);
+    assert.strictEqual(unpairedStarts.length, 0, 'should not have unpaired START');
+    // #endregion END_AUTO_CLOSE_ASSERT_RESULT
+  });
+
+  it('should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #endregion with empty stack', () => {
+    // contract: bare #endregion with no open block → MALFORMED + no open block message
+    // #region START_BARE_ENDREGION_EMPTY_SETUP
+    const content = [
+      'code here',
+      '// #endregion',
+      'more code',
+    ].join('\n');
+    // #endregion END_BARE_ENDREGION_EMPTY_SETUP
+
+    // #region START_BARE_ENDREGION_EMPTY_TRIGGER_CHECK
+    const errors = check(content, 'test.ts');
+    // #endregion END_BARE_ENDREGION_EMPTY_TRIGGER_CHECK
+
+    // #region START_BARE_ENDREGION_EMPTY_ASSERT_RESULT
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /no open block to close/);
+    // #endregion END_BARE_ENDREGION_EMPTY_ASSERT_RESULT
+  });
+
+  it('should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #region without START_', () => {
+    // contract: bare #region (no START_ prefix) → MALFORMED
+    // #region START_BARE_REGION_SETUP
+    const content = [
+      '// #region',
+      'code here',
+    ].join('\n');
+    // #endregion END_BARE_REGION_SETUP
+
+    // #region START_BARE_REGION_TRIGGER_CHECK
+    const errors = check(content, 'test.ts');
+    // #endregion END_BARE_REGION_TRIGGER_CHECK
+
+    // #region START_BARE_REGION_ASSERT_RESULT
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /#region without START_<NAME>/);
+    // #endregion END_BARE_REGION_ASSERT_RESULT
+  });
+
+  it('nested bare #endregion — auto-close uses top of stack, not bottom', () => {
+    // contract: START_A → START_B → bare #endregion → auto-closes B, A remains
+    const content = [
+      '// #region START_OUTER',
+      '// #region START_INNER',
+      'code',
+      '// #endregion',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    // bare #endregion auto-closes INNER (top of stack)
+    const malformed = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.strictEqual(malformed.length, 1);
+    assert.match(malformed[0].message, /expected END_INNER/);
+    // OUTER remains on stack → UNPAIRED_START
+    const unpaired = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_UNPAIRED_START);
+    assert.strictEqual(unpaired.length, 1);
+    assert.match(unpaired[0].message, /START_OUTER/);
+  });
+
+  it('double bare #endregion — first auto-closes, second sees empty stack', () => {
+    // contract: START_A → bare #endregion → bare #endregion
+    const content = [
+      '// #region START_ONLY',
+      'code',
+      '// #endregion',
+      '// #endregion',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    // First: auto-close with START_ONLY
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /expected END_ONLY/);
+    // Second: empty stack
+    assert.strictEqual(errors[1].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[1].message, /no open block to close/);
+  });
+
+  it('bare #region does NOT push — subsequent END_X is UNPAIRED_END', () => {
+    // contract: bare #region → no push → END_FOO has no matching START
+    const content = [
+      '// #region',
+      'code',
+      '// #endregion END_GHOST',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    // bare #region → MALFORMED
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    // END_GHOST has no START → UNPAIRED_END
+    assert.strictEqual(errors[1].code, ERR_CLI_LINT_ANCHOR_UNPAIRED_END);
+    assert.match(errors[1].message, /END_GHOST/);
+  });
+
+  it('mix valid + bare anchors — END after auto-close is UNPAIRED', () => {
+    // contract: START_A → bare #endregion (auto-closes A) → END_A → UNPAIRED_END
+    const content = [
+      '// #region START_A',
+      'code',
+      '// #endregion',
+      '// #endregion END_A',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    // bare #endregion → MALFORMED + auto-close A
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /expected END_A/);
+    // END_A — A was already popped → UNPAIRED_END
+    assert.strictEqual(errors[1].code, ERR_CLI_LINT_ANCHOR_UNPAIRED_END);
+    assert.match(errors[1].message, /END_A/);
+  });
+
+  it('3+ unpaired STARTs at EOF — each gets its own error', () => {
+    const content = [
+      '// #region START_A',
+      '// #region START_B',
+      '// #region START_C',
+      'code',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    const unpaired = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_UNPAIRED_START);
+    assert.strictEqual(unpaired.length, 3, `expected 3 unpaired, got ${unpaired.length}`);
+    assert.match(unpaired[0].message, /START_A/);
+    assert.match(unpaired[1].message, /START_B/);
+    assert.match(unpaired[2].message, /START_C/);
+  });
+
+  it('END with wrong name → UNPAIRED_END + original START stays unpaired', () => {
+    const content = [
+      '// #region START_X',
+      '// #endregion END_Y',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    // Sorted by line: UNPAIRED_START at line 1, UNPAIRED_END at line 2
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_UNPAIRED_START);
+    assert.match(errors[0].message, /START_X/);
+    assert.strictEqual(errors[1].code, ERR_CLI_LINT_ANCHOR_UNPAIRED_END);
+    assert.match(errors[1].message, /END_Y/);
+  });
+
+  it('deep nesting 3+ levels — all correctly paired produces no errors', () => {
+    const content = [
+      '// #region START_A',
+      '// #region START_B',
+      '// #region START_C',
+      'deep code',
+      '// #endregion END_C',
+      '// #endregion END_B',
+      '// #endregion END_A',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  it('double END for same START — second END is UNPAIRED_END', () => {
+    const content = [
+      '// #region START_ONCE',
+      'code',
+      '// #endregion END_ONCE',
+      '// #endregion END_ONCE',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_UNPAIRED_END);
+    assert.match(errors[0].message, /END_ONCE/);
+  });
+
+  it('duplicate START names — both close correctly with no errors', () => {
+    const content = [
+      '// #region START_DUP',
+      'first',
+      '// #endregion END_DUP',
+      '// #region START_DUP',
+      'second',
+      '// #endregion END_DUP',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  it('trailing whitespace after bare #endregion — still MALFORMED', () => {
+    const content = [
+      '// #region START_WS',
+      'code',
+      '// #endregion   ',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 1, `expected 1 error, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /expected END_WS/);
+  });
+
+  it('valid anchor with trailing text — still matched as valid', () => {
+    const content = [
+      '// #region START_A extra text here',
+      'code',
+      '// #endregion END_A trailing',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  it('lowercase start/end — silently ignored (not an error, not a match)', () => {
+    const content = [
+      '// #region start_lower',
+      'code',
+      '// #endregion end_lower',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  it('anchor-like text inside a string literal — not matched', () => {
+    const content = [
+      'const msg = "// #region START_FAKE";',
+      'const end = "// #endregion END_FAKE";',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+    assert.deepStrictEqual(errors, []);
+  });
+
+  it('bare #region followed by bare #endregion — both malformed, second sees empty stack', () => {
+    const content = [
+      '// #region',
+      'code',
+      '// #endregion',
+    ].join('\n');
+
+    const errors = check(content, 'test.ts');
+
+    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    assert.strictEqual(errors[0].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[0].message, /#region without START_/);
+    assert.strictEqual(errors[1].code, ERR_CLI_LINT_ANCHOR_MALFORMED);
+    assert.match(errors[1].message, /no open block to close/);
   });
 });

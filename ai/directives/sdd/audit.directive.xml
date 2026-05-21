@@ -57,7 +57,7 @@
       | `RULES_CASCADE_MISMATCH` | a phase's `Rules:` list ≠ what scaffolder would derive now from cascade × that phase's `Target Files` + kind |
       | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |
       | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
-      | `EXECUTION_LOG_INCOMPLETE` | mandatory action-token lines missing (`ver` / `cov` / `intro` / `aud` / `DONE`); OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
+      | `EXECUTION_LOG_INCOMPLETE` | mandatory closing lines missing (`ver` / `DONE` per phase, `DONE` at Round close); OR `intro` line absent for an entity that appears in code but not in module Inventory; OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
       | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |
       | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
       | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<Belief_State>` / `<Anti_Patterns>` / `<Verification_Hooks>` / `<Reward_Criteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
@@ -222,16 +222,9 @@
     </Axiom>
 
     <Axiom id="AX_EXECUTION_LOG_VERIFICATION">
-      Execution Log is a verifiable trail. Every mandatory line must be filled:
-      - initialization timestamp;
-      - created / modified implementation files;
-      - test files;
-      - executed verification command with pass/fail and exit code;
-      - confirmed scenario→test pairs;
-      - all introduced entities via `intro <X> ← <Y>` lines;
-      - final `[x] DONE`.
+      Token vocabulary in `scaffold.directive.xml` Execution Log Template. Required per phase block: `ver` (one final result), `DONE`, `**Handoff →**`, `intro <X> ← <reason>` for every entity in code but not in module Inventory (cross-check via git diff), `verified` for `config`-kind, `BLOCKED <cause>` if phase ended blocked.
 
-      Any omission → `EXECUTION_LOG_INCOMPLETE`. `[x]` line containing unreplaced `<…>` literal → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
+      Missing required line → `EXECUTION_LOG_INCOMPLETE`. Unreplaced `<…>` placeholder on `[x]` line → `EXECUTION_LOG_INCOMPLETE` (BLOCKER, «fabricated done»). Line with a token outside the vocabulary → `EXECUTION_LOG_INCOMPLETE` (MINOR, «padding»).
     </Axiom>
 
     <Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
@@ -295,12 +288,12 @@
     </Step>
 
     <Step id="STEP_1_PRECONDITIONS_CHECK">
-      <Goal>Ensure task is closed and audit is meaningful.</Goal>
+      <Goal>Ensure task is closed; run mechanical lint pre-pass; audit is meaningful.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__PRECONDITIONS_CHECK`).
         2. Inspect Execution Log: `[x] DONE` present? Verification commands executed and recorded?
-        3. Not closed → `H_TICKET_NOT_DONE`.
-        4. Module or scope spec missing → `H_NO_MODULE_SPEC`.
+        3. Not closed → `H_TICKET_NOT_DONE`. Module or scope spec missing → `H_NO_MODULE_SPEC`.
+        4. **Mechanical lint pre-pass** (gennady CLI; absolute path because tool is in active development): collect changed `.ts` files in this Round (git diff scope per `AX_GIT_DIFF_SCAN`). If any → run `npx tsx /Users/k.lebedev/Developer/gennady/cli/gennady.ts lint <files...>`. Every reported issue becomes a finding `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id from lint output>`. No `.ts` changed → skip silently. Lint tool unavailable → log warning, proceed to deep audit without mechanical findings.
         5. Phase Progress + Approval Check. STOP otherwise → STEP_2.
       </Action>
     </Step>

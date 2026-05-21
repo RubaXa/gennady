@@ -1000,7 +1000,7 @@ describe('DbcTsLinter', () => {
       }
     });
 
-    it('K2 — multi-line contract without conflicts → inlined', async () => {
+    it('K2 — multi-line contract with 2+ tags → stays multi-line', async () => {
       const { dir, filePath } = setupTempFromFixture('autofix-combined/multi-line-to-inline.ts');
       try {
         const linter = createLinter();
@@ -1009,7 +1009,7 @@ describe('DbcTsLinter', () => {
         const initialReport = await linter.lint(filePath);
         assert.ok(initialReport.errors.length >= 1, 'expected redundant type errors');
 
-        // After lintAndFix: types removed, contract inlined
+        // After lintAndFix: types removed, but contract stays multi-line (3 tags)
         const fixReport = await linter.lintAndFix(filePath);
         assert.strictEqual(
           fixReport.errors.length,
@@ -1018,15 +1018,11 @@ describe('DbcTsLinter', () => {
         );
         assert.ok(fixReport.autoFixed >= 1, `expected autoFixed >= 1, got ${fixReport.autoFixed}`);
 
-        // Read the fixed file — should be single-line
+        // Read the fixed file — should still be multi-line (3 tags, not inlined)
         const fixedContent = readFileSync(filePath, 'utf8');
-        const commentLines = fixedContent
-          .split('\n')
-          .filter((l) => l.trim().startsWith('/**') || l.trim().startsWith('*'));
-        // After inlining: only one line of JSDoc
         assert.ok(
-          commentLines.length <= 2,
-          `expected inline form (<=2 comment lines), got ${commentLines.length}`
+          fixedContent.includes('\n * '),
+          `expected multi-line contract (3 tags), got inline or no-lines`
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1082,9 +1078,7 @@ describe('DbcTsLinter', () => {
     it('K5 — malformed multi-line with */ on same line → normalized or inlined', async () => {
       // contract: when */ is on the same line as the last tag, autofix either
       // normalizes to proper multi-line or inlines the contract. Both are correct.
-      const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/malformed-multi-line.ts'
-      );
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/malformed-multi-line.ts');
       try {
         const linter = createLinter();
 
@@ -1126,9 +1120,7 @@ describe('DbcTsLinter', () => {
       // contract: when content follows /** on the first line, normalizeMultiLine
       // separates the opening marker from content. Multi-tag safe contracts may be
       // inlined — both outcomes are correct.
-      const { dir, filePath } = setupTempFromFixture(
-        'autofix-combined/malformed-opening.ts'
-      );
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/malformed-opening.ts');
       try {
         const linter = createLinter();
 
@@ -1159,6 +1151,56 @@ describe('DbcTsLinter', () => {
           const lastLine = lines[lines.length - 1].trim();
           assert.strictEqual(lastLine, '*/');
         }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+    it('K7 — indented multi-tag contracts preserve indentation after autofix', async () => {
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/indented-multi-tag.ts');
+      try {
+        const linter = createLinter();
+
+        // Initial lint — should have redundant type errors
+        const initialReport = await linter.lint(filePath);
+        const initialCodes = initialReport.errors.map((e) => e.code);
+
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.strictEqual(
+          fixReport.errors.length,
+          0,
+          `expected 0 errors after fix, got: ${fixReport.errors.map((e) => `${e.code}: ${e.message}`).join(', ')}. Initial: ${initialCodes.join(', ')}`
+        );
+
+        const fixedContent = readFileSync(filePath, 'utf8');
+        // Verify each method's JSDoc preserves correct indentation
+        // parse: already canonical multi-tag — unchanged (3-space * prefix)
+        assert.ok(
+          fixedContent.includes('   * @purpose Indented multi-tag contract.'),
+          'parse @purpose should keep original indent'
+        );
+        assert.ok(
+          fixedContent.includes('   * @returns The output value.'),
+          'parse @returns should keep original indent (type removed by autofix)'
+        );
+
+        // malformedClosing: */ on same line — normalized to canonical (2-space * prefix)
+        assert.ok(
+          fixedContent.includes('  * @returns 0 for clean, 1 for errors.'),
+          'malformedClosing @returns should be normalized with canonical indent'
+        );
+        assert.ok(/  \*\//m.test(fixedContent), 'closing */ should be on its own line with indent');
+
+        // singleTag: single-tag indented — should inline with indent preserved
+        assert.ok(
+          fixedContent.includes('  /** @purpose Single-tag indented'),
+          'singleTag should be inlined with indent'
+        );
+
+        // multiTagCanonical: already canonical — unchanged (3-space * prefix)
+        assert.ok(
+          fixedContent.includes('   * @purpose Multi-tag indented'),
+          'multiTagCanonical @purpose should keep original indent'
+        );
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
