@@ -202,6 +202,7 @@ export async function run(argv: string[]): Promise<void> {
 
   // #region START_ONCE_MODE — invariant: direct scan, no observe loop; print as text and exit
   if (flags.once) {
+    console.error = () => {}; // suppress logger noise in once mode
     const viewModel = await buildOnceViewModel(monitor, flags.limit);
 
     if (viewModel.status === 'error') {
