@@ -177,10 +177,9 @@ describe('parseAltOpinionArgs', () => {
       get: () => false,
       configurable: true,
     });
-    const result = parseAltOpinionArgs(
-      argv('--model=llmproxy/test', '--file=/tmp/fake.md'),
-      { stdinContent: '' }
-    );
+    const result = parseAltOpinionArgs(argv('--model=llmproxy/test', '--file=/tmp/fake.md'), {
+      stdinContent: '',
+    });
     assert.strictEqual(result.models[0].provider, 'llmproxy');
     assert.strictEqual(result.file, '/tmp/fake.md');
     assert.strictEqual(result.artifact, '/tmp/fake.md');
@@ -193,10 +192,9 @@ describe('parseAltOpinionArgs', () => {
     });
     assert.throws(
       () =>
-        parseAltOpinionArgs(
-          argv('--model=llmproxy/test', '--file=/tmp/fake.md'),
-          { stdinContent: 'piped data' }
-        ),
+        parseAltOpinionArgs(argv('--model=llmproxy/test', '--file=/tmp/fake.md'), {
+          stdinContent: 'piped data',
+        }),
       (error: Error) => {
         assert.ok(error instanceof Error);
         assert.match(error.message, /mutually exclusive/);
@@ -211,11 +209,7 @@ describe('parseAltOpinionArgs', () => {
       configurable: true,
     });
     assert.throws(
-      () =>
-        parseAltOpinionArgs(
-          argv('--model=llmproxy/test'),
-          { stdinContent: '' }
-        ),
+      () => parseAltOpinionArgs(argv('--model=llmproxy/test'), { stdinContent: '' }),
       (error: Error) => {
         assert.ok(error instanceof Error);
         assert.match(error.message, /No input provided/);

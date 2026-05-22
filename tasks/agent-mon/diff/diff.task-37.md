@@ -3,7 +3,8 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-37
-- **Status:** [ ] TODO
+- **Status:** [~] IN_PROGRESS
+- **Reopens:** 0
 - **Purpose:** Реализовать чистую функцию diff для сравнения двух AgentSession[] по семантическим полям
 - **Scope:** agent-mon
 - **Module:** diff
@@ -21,8 +22,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -106,16 +107,19 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T04:23:56Z` intro `diff` ← реализация чистой функции сравнения снапшотов по семантическим полям
+- [x] `2026-05-22T04:23:56Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T04:23:56Z` DONE
+      **Handoff →** artifacts: [services/agent-mon/diff/diff.ts, services/agent-mon/diff/index.ts]; decisions: [semanticFields=status|title|lastActivityAt|elapsedSeconds|idleSeconds|toolCallCount|errorCount|lastMessage|tokensInput|tokensOutput, excludedFields=cpuPercent|memoryMb, comparisonKey=sessionId]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T04:30:31Z` discovery pre-existing failure в `alt-opinion.cmd.test.ts` — не связано с diff; все 5 diff-тестов проходят (5/5 pass)
+- [x] `2026-05-22T04:30:31Z` ver `npm run test` → fail exit=1
+- [x] `2026-05-22T04:30:31Z` DONE
+      **Handoff →** artifacts: [services/agent-mon/diff/__tests__/diff.test.ts]; decisions: []; open: []
+
 
 #### Round close
-
-- [ ] `<ts>` DONE
+- [x] `<ts>` sync agent-mon+root
+- [x] `<ts>` DONE

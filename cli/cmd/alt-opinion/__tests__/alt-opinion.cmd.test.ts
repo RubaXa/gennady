@@ -78,11 +78,7 @@ function setupStdoutCapture(): { output: string[]; restore: () => void } {
   };
 }
 
-const ENV_KEYS = [
-  'LLM_PROXY_API_KEY',
-  'LLM_PROXY_BASE_URL',
-  'OPENROUTER_API_KEY',
-] as const;
+const ENV_KEYS = ['LLM_PROXY_API_KEY', 'LLM_PROXY_BASE_URL', 'OPENROUTER_API_KEY'] as const;
 
 describe('alt-opinion cmd (integration)', () => {
   let stdoutCapture: ReturnType<typeof setupStdoutCapture>;

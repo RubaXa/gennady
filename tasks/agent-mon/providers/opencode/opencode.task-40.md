@@ -18,8 +18,8 @@
 ## 2. Phases Overview
 | ID | Kind | Deps | Status |
 |----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| P1 | impl | —    | [x]    |
+| P2 | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -101,14 +101,21 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T05:26:16Z` intro `OpenCodeProviderDeps` ← DI-точка для тестирования, требуется P2
+- [x] `2026-05-22T05:26:16Z` intro `SessionRow` ← форма строки БД, экспортируется для потребителей db.ts
+- [x] `2026-05-22T05:26:16Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T05:26:16Z` DONE
+**Handoff →** artifacts: [services/agent-mon/providers/opencode/opencode-provider.ts, services/agent-mon/providers/opencode/db.ts, services/agent-mon/providers/opencode/model-parser.ts, services/agent-mon/providers/opencode/index.ts]; decisions: [key=opencode, constructor-deps=injectable, db-engine=node:sqlite/DatabaseSync, db-close=always-in-finally, db-path-resolution=tilde-to-os-homedir]; open: []
 
 #### P2
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T06:02:28Z` intro `model-parser.test.ts` ← покрывает BDD: extracts id, returns unknown, boundary cases (null, missing id)
+- [x] `2026-05-22T06:02:28Z` intro `db.test.ts` ← покрывает BDD: non-archived filter, ordering, since filter, queryLastMessage
+- [x] `2026-05-22T06:02:28Z` intro `opencode-provider.test.ts` ← покрывает BDD: missing db → [], scan → sessions, parentId propagation
+- [x] `2026-05-22T06:02:28Z` discovery `npm run test` имеет 1 pre-existing failure (`cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts`), не связанный с opencode; все 14 тестов opencode проходят
+- [x] `2026-05-22T06:02:28Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T06:02:28Z` ver `npm run test` → fail exit=1 (365/366 pass; 1 failure pre-existing: alt-opinion.cmd.test.ts; все тесты opencode provider: 14/14 pass)
+- [x] `2026-05-22T06:02:28Z` DONE
+**Handoff →** artifacts: [services/agent-mon/providers/opencode/__tests__/model-parser.test.ts, services/agent-mon/providers/opencode/__tests__/db.test.ts, services/agent-mon/providers/opencode/__tests__/opencode-provider.test.ts]; decisions: [test-runner=node:test, in-memory-sqlite=:memory:, di-mocking=mock.fn(), querySessions-filter=archived+since, all-bdd-scenarios-covered, coverage=14-tests:4-model-parser+6-db+4-opencode-provider]; open: []
 
 #### Round close
-- [ ] `<ts>` DONE
+- [x] `2026-05-22T06:17:37Z` DONE

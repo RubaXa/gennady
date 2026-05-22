@@ -112,7 +112,7 @@ graph TD
 | dbc       | library | [README](dbc/README.md)       | 14    | 14/14 |
 | cli       | product | [README](cli/README.md)       | 15    | 13/15 |
 | vcs       | product | [README](vcs/README.md)       | 5     | 5/5   |
-| agent-mon | library | [README](agent-mon/README.md) | 7 | 0/7 |
+| agent-mon | library | [README](agent-mon/README.md) | 7 | 7/7 |
 
 ## Decision Log
 

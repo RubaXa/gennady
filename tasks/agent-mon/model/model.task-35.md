@@ -3,11 +3,12 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-35
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Создать все типы, контракты и ошибки библиотеки — AgentSession, SessionChanges, ScanOpts, ObserveOpts, AgentProvider, DuplicateProviderError, ProviderNotFoundError
 - **Scope:** agent-mon
 - **Module:** model
 - **Dependencies:** None
+- **Reopens:** 0
 - **Spec References:**
   - Contract: [`AgentSession`](../../../specs/agent-mon/model/model.spec.md#agentsession)
   - Contract: [`SessionChanges`](../../../specs/agent-mon/model/model.spec.md#sessionchanges)
@@ -23,8 +24,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]   |
+| P2  | test | P1   | [x]   |
 
 ## 3. Phases
 
@@ -110,20 +111,19 @@ Contract: see Spec References.
 
 _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)_
 
-### Round 1 — initial
+- ### Round 1 — initial
 
 #### P1
-
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `<ts>` intro DuplicateProviderError ← ошибка реестра: дубликат ключа при register()
+- [x] `<ts>` intro ProviderNotFoundError ← ошибка реестра: ключ не найден при unregister()/scanOne()
+- [x] `<ts>` ver npm run type-check → pass exit=0
+- [x] `<ts>` DONE
+**Handoff →** artifacts: [services/agent-mon/model/agent-session.type.ts, services/agent-mon/model/session-changes.type.ts, services/agent-mon/model/scan-opts.type.ts, services/agent-mon/model/observe-opts.type.ts, services/agent-mon/model/agent-provider.type.ts, services/agent-mon/model/errors.ts, services/agent-mon/model/index.ts]; decisions: [module-system=nodenext, contract=AgentProvider-error-degradation-returns-empty-array]; open: []
 
 #### P2
-
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
-
+- [x] `<ts>` ver node --test services/agent-mon/model/__tests__/agent-session.type.test.ts → pass exit=0
+- [x] `<ts>` DONE
+**Handoff →** artifacts: [services/agent-mon/model/__tests__/agent-session.type.test.ts]; decisions: [contract-test=structural-integrity, node-test-runner=node--test]; open: []
 #### Round close
-
-- [ ] `<ts>` DONE
+- [x] `<ts>` sync agent-mon+root
+- [x] `<ts>` DONE

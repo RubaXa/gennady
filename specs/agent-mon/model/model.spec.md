@@ -16,7 +16,9 @@ _Это полный список сущностей модуля. Любое в
 | `SessionChanges` | Value Object | Результат diff: `{ added, removed, updated }`                               |
 | `ScanOpts`       | Value Object | Параметры сканирования (`since`)                                            |
 | `ObserveOpts`    | Value Object | Параметры observe (`interval`)                                              |
-| `AgentProvider`  | Port         | Контракт провайдера — `key: string`, `scan(opts) → Promise<AgentSession[]>` |
+| `AgentProvider` | Port | Контракт провайдера — `key: string`, `scan(opts) → Promise<AgentSession[]>` |
+| `DuplicateProviderError` | Error | Бросается при `register()` с дубликатом ключа |
+| `ProviderNotFoundError` | Error | Бросается при `scanOne()` с неизвестным ключом; `unregister()` для неизвестного ключа — no-op |
 
 ## 3. Entity Surfaces
 
@@ -77,6 +79,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Параметры фильтрации при сканировании
 - **Public Properties:**
   - `since?: number | 'today'` — вернуть сессии, начатые после этого timestamp или начала сегодняшнего дня
+  - `idleThresholdMs?: number` — порог простоя для определения статуса idle (default 300000)
 - **Public Operations:** N/A
 - **Lifecycle:** Создаётся потребителем, передаётся в `scanAll` / `scanOne` / `provider.scan()`
 - **Events Emitted:** N/A
@@ -91,6 +94,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Параметры цикла наблюдения
 - **Public Properties:**
   - `interval: number` — период опроса в миллисекундах
+  - `idleThresholdMs?: number` — порог простоя (default 300000 мс = 5 мин), после которого сессия помечается `idle`
 - **Public Operations:** N/A
 - **Lifecycle:** Создаётся потребителем, передаётся в `observe()`
 - **Events Emitted:** N/A

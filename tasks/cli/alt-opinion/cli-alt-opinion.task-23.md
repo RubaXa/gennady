@@ -279,10 +279,10 @@
 
 ### Round 5 — 2026-05-21, fix: stdin detection by data presence (D-008)
 
-| Phase | Kind | Status | Target Files | Deps |
-|-------|------|--------|-------------|------|
-| P1    | fix  | [x]    | cli/cmd/alt-opinion/alt-opinion-parser.ts | —   |
-| P2    | test | [x]    | cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts | P1  |
+| Phase | Kind | Status | Target Files                                             | Deps |
+| ----- | ---- | ------ | -------------------------------------------------------- | ---- |
+| P1    | fix  | [x]    | cli/cmd/alt-opinion/alt-opinion-parser.ts                | —    |
+| P2    | test | [x]    | cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts | P1   |
 
 #### P1 fix — stdin detection by data presence
 
@@ -299,21 +299,22 @@
 - [x] `2026-05-21T15:34:52Z` recon targets=exists divergence=none
 - [x] `2026-05-21T15:34:52Z` ver npx tsc --noEmit → fail exit=2 (pre-existing: agent-mon/providers/opencode-provider.ts(51,18); alt-opinion files: 0 errors)
 - [x] `2026-05-21T15:34:52Z` DONE
-**Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion-parser.ts]; decisions: [stdin-detection=actual-data-presence-not-isTTY, D-008=read-stdin-by-length-after-trim, empty-stdin+file=no-conflict, data-stdin+file=mutual-exclusion]; open: []
+      **Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion-parser.ts]; decisions: [stdin-detection=actual-data-presence-not-isTTY, D-008=read-stdin-by-length-after-trim, empty-stdin+file=no-conflict, data-stdin+file=mutual-exclusion]; open: []
 
 #### P2 test — regression: non-TTY empty stdin + --file
 
 - [x] `2026-05-21T15:40:48Z` recon targets=exists divergence=none
-- [x] `2026-05-21T15:40:48Z` test cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts
+- [x] `2026-05-21T15:40:48Z` test cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts
 - [x] `2026-05-21T15:40:48Z` cov Empty non-TTY stdin + --file no conflict → alt-opinion-parser.test.ts::should not conflict --file with empty non-TTY stdin
 - [x] `2026-05-21T15:40:48Z` cov Non-TTY stdin with data + --file mutual exclusion → alt-opinion-parser.test.ts::should conflict --file with non-TTY stdin that HAS data
 - [x] `2026-05-21T15:40:48Z` cov Empty non-TTY stdin without --file → INPUT_MISSING → alt-opinion-parser.test.ts::should accept empty non-TTY stdin without --file as INPUT_MISSING
 - [x] `2026-05-21T15:40:48Z` ver npx tsc --noEmit → fail exit=2 (pre-existing: agent-mon/providers/opencode-provider.ts(51,18); alt-opinion files: 0 errors)
-- [x] `2026-05-21T15:40:48Z` ver node --test cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts → pass exit=0
+- [x] `2026-05-21T15:40:48Z` ver node --test cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts → pass exit=0
 - [x] `2026-05-21T15:40:48Z` DONE
-**Handoff →** artifacts: [cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts]; decisions: [test-count=16, new-tests=3 covering stdin-data-presence D-008, isTTY-override-via-Object.defineProperty-inside-test]; open: []
+      **Handoff →** artifacts: [cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts]; decisions: [test-count=16, new-tests=3 covering stdin-data-presence D-008, isTTY-override-via-Object.defineProperty-inside-test]; open: []
 
 #### Round close
+
 - [x] `2026-05-21T11:30:00Z` DONE
 
 ### Round 6 — fix: address audit findings F-01, F-02, F-03
@@ -327,24 +328,27 @@
 - [x] `2026-05-21T15:56:36Z` F-03: replaced @param opts.stdinContent (nested field enumeration forbidden by AX_TAG_USAGE_MATRIX) with @param opts
 - [x] `2026-05-21T15:56:36Z` ver npx tsc --noEmit → pass exit=0 (pre-existing: opencode-provider.ts; alt-opinion files: 0 errors)
 - [x] `2026-05-21T15:56:36Z` DONE
-**Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion-parser.ts]; decisions: [F-01=@throws-before-@returns-per-tag-order, F-02=added-@param-opts, F-03=nested-field-replaced-with-opts-bag]; open: []
+      **Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion-parser.ts]; decisions: [F-01=@throws-before-@returns-per-tag-order, F-02=added-@param-opts, F-03=nested-field-replaced-with-opts-bag]; open: []
 
 #### Round close
+
 - [x] `2026-05-21T15:56:36Z` DONE
 
 ### Round 7 — 2026-05-21, audit re-run after R2 findings resolved
 
 - [x] `2026-05-21T17:00:00Z` ver npx tsc --noEmit → pass exit=0 (alt-opinion files: 0 errors)
-- [x] `2026-05-21T17:00:00Z` ver node --test cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts → pass exit=0 (16/16)
-- [x] `2026-05-21T17:00:00Z` ver npx tsx cli/gennady.ts lint alt-opinion/*.ts → fail exit=0 (7 lint errors — see Audit Round 1 below)
+- [x] `2026-05-21T17:00:00Z` ver node --test cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts → pass exit=0 (16/16)
+- [x] `2026-05-21T17:00:00Z` ver npx tsx cli/gennady.ts lint alt-opinion/\*.ts → fail exit=0 (7 lint errors — see Audit Round 1 below)
 - [x] `2026-05-21T17:00:00Z` DONE
 
 #### Round close
+
 - [x] `2026-05-21T17:00:00Z` Audit dispatched → FAIL (7 findings, phases_to_fix=[P1, P2])
 
 ## Audit Rounds
 
 ### Audit Round 1 — 2026-05-21, after Execution Round 7
+
 ```
 @audit task=TSK-23 round=1 after-exec-round=7 triggered-reopen=Round-8 status=FAIL counts=B0·M4·m2·I1 phases_to_fix=[P1, P2]
 F-01 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=cli/cmd/alt-opinion/alt-opinion.types.ts:96 | phase=P1 | src=ai/directives/coding/typescript-rules.xml#AX_BASE_CONTRACT_SHAPE | route=code-fix | act=поменять порядок тегов: `@returns` перед `@throws` в JSDoc метода `AltOpinionModelPort.generate()` — должно быть `@throws` затем `@returns`
@@ -355,7 +359,6 @@ F-05 | sev=m | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tasks/cli/alt-opinio
 F-06 | sev=M | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tasks/cli/README.md:82 | phase=— | src=ai/directives/sdd/audit.directive.xml#AX_EXECUTION_LOG_VERIFICATION | route=ticket-update | act=синхронизировать Reopens в трекере: ticket=5, tracker=2 → обновить tracker на 5
 F-07 | sev=I | type=BDD_COVERAGE_MISMATCH | conf=M | loc=tasks/cli/alt-opinion/cli-alt-opinion.task-23.md:114 | phase=— | src=specs/cli/alt-opinion/alt-opinion.spec.md | route=ticket-update | act=добавить в ticket Meta `Deferred Test Ownership: TSK-25` для runner BDD-сценариев — тесты раннера существуют в `alt-opinion-runner.test.ts` (созданы TSK-25/TSK-26)
 ```
-
 
 ### Round 8 — 2026-05-21, audit-driven fix: F-01, F-02, F-03, F-04, F-05, F-06, F-07
 
@@ -375,7 +378,7 @@ F-07 | sev=I | type=BDD_COVERAGE_MISMATCH | conf=M | loc=tasks/cli/alt-opinion/c
 - [x] `2026-05-21T17:05:00Z` F-04: fixed tag order in runAltOpinion JSDoc — @invariant before @param, @throws before @returns
 - [x] `2026-05-21T17:05:00Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-21T17:05:00Z` ver npx tsx cli/gennady.ts lint cli/cmd/alt-opinion/alt-opinion-runner.ts → pass exit=0 (0 errors)
-- [x] `2026-05-21T17:05:00Z` ver node --test cli/cmd/alt-opinion/__tests__/alt-opinion-parser.test.ts → pass exit=0 (16/16)
+- [x] `2026-05-21T17:05:00Z` ver node --test cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts → pass exit=0 (16/16)
 - [x] `2026-05-21T17:05:00Z` DONE
 
 #### Ticket-update: F-05, F-06, F-07
@@ -385,10 +388,11 @@ F-07 | sev=I | type=BDD_COVERAGE_MISMATCH | conf=M | loc=tasks/cli/alt-opinion/c
 - [x] `2026-05-21T17:05:00Z` F-07: added Deferred Test Ownership: TSK-25 to ticket Meta
 
 #### Round close
+
 - [x] `2026-05-21T17:05:00Z` DONE
 
-
 ### Audit Round 2 — 2026-05-21, after Execution Round 8
+
 ```
 @audit task=TSK-23 round=2 after-exec-round=8 triggered-reopen=none status=PASS counts=B0·M0·m0·I0
 ~applied | cli/cmd/alt-opinion/alt-opinion.types.ts:96 | @returns/ @throws порядок исправлен — @throws перед @returns

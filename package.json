@@ -24,6 +24,11 @@
     "#snapshot-path-setup": "./snapshot-path.setup.ts",
     "#logger": "./services/logger/logger.ts"
   },
+  "exports": {
+    ".": "./services/agent-mon/index.ts",
+    "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
+    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
+  },
   "files": [
     "dist/**/*",
     "README.md"

@@ -14,6 +14,7 @@ graph TD
     dbc --> infra-base
     vcs --> infra-base
     agent-mon --> infra-base
+    infra-npm-publish --> infra-base
 ```
 
 ## Scopes
@@ -25,3 +26,4 @@ graph TD
 | [`vcs`](./vcs/vcs.spec.md)                      | product        | ✅                       | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files |
 | [`dbc`](./dbc/dbc.spec.md)                      | library        | ✅                       | DBC-фреймворк: парсинг и валидация текстовых контрактов                     |
 | [`agent-mon`](./agent-mon/agent-mon.spec.md)    | library        | 🚧 (awaiting setup sync) | Пассивный мониторинг активных сессий AI-агентов через провайдеры            |
+| [`infra-npm-publish`](./infra-npm-publish/infra-npm-publish.spec.md) | infrastructure | 🚧 (awaiting setup sync) | Автоматизированная публикация npm-пакета через release-it                    |

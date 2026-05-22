@@ -88,12 +88,12 @@
 - [x] `2026-05-15T15:54:15Z` DONE
       **Handoff →** artifacts: [cli/cmd/lint/checks/anchor.check.ts]; decisions: [stack-algorithm=search-from-top-for-matching-START, nesting=report-unclosed-above-match, error-order=ascending-line-then-col]; open: []
 
-### Round 2 — 2026-05-21, fix: bare #endregion/#region without END_/START_
+### Round 2 — 2026-05-21, fix: bare #endregion/#region without END*/START*
 
-| Phase | Kind | Status | Target Files | Deps |
-|-------|------|--------|-------------|------|
+| Phase | Kind | Status | Target Files                                                        | Deps |
+| ----- | ---- | ------ | ------------------------------------------------------------------- | ---- |
 | P1    | fix  | [ ]    | `cli/cmd/lint/checks/anchor.check.ts`, `cli/cmd/lint/lint.types.ts` | —    |
-| P2    | test | [ ]    | `cli/cmd/lint/__tests__/anchor.check.test.ts` | P1   |
+| P2    | test | [ ]    | `cli/cmd/lint/__tests__/anchor.check.test.ts`                       | P1   |
 
 #### P1
 
@@ -103,7 +103,7 @@
 - [x] `2026-05-21T12:00:00Z` file cli/cmd/lint/lint.types.ts
 - [x] `2026-05-21T12:00:00Z` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-21T12:00:00Z` DONE
-      intro BARE_ANCHOR_RE ← detects bare #region/#endregion without START_/END_
+      intro BARE*ANCHOR_RE ← detects bare #region/#endregion without START*/END\_
       intro ERR_CLI_LINT_ANCHOR_MALFORMED ← new error code
       intro auto-close ← bare #endregion with non-empty stack pops top
       **Handoff →** artifacts: [anchor.check.ts, lint.types.ts]; decisions: [bare-anchor=malformed, auto-close=stack-top-pop]; open: []
@@ -112,7 +112,7 @@
 
 - [x] `2026-05-21T12:10:00Z` recon targets=anchor.check.test.ts|exists
 - [x] `2026-05-21T12:10:00Z` rules typescript-rules, node-test
-- [x] `2026-05-21T12:10:00Z` test cli/cmd/lint/__tests__/anchor.check.test.ts
+- [x] `2026-05-21T12:10:00Z` test cli/cmd/lint/**tests**/anchor.check.test.ts
 - [x] `2026-05-21T12:10:00Z` ver node --test → pass exit=0 (10/10)
 - [x] `2026-05-21T12:10:00Z` DONE
       cov bare #endregion → anchor.check.test.ts::bare #endregion
@@ -128,15 +128,15 @@
 
 ### Round 3 — 2026-05-21, fix: comprehensive edge case coverage per alt-opinion
 
-| Phase | Kind | Status | Target Files | Deps |
-|-------|------|--------|-------------|------|
+| Phase | Kind | Status | Target Files                                  | Deps |
+| ----- | ---- | ------ | --------------------------------------------- | ---- |
 | P1    | test | [ ]    | `cli/cmd/lint/__tests__/anchor.check.test.ts` | —    |
 
 #### P1
 
 - [x] `2026-05-21T13:00:00Z` recon targets=anchor.check.test.ts|exists
 - [x] `2026-05-21T13:00:00Z` rules typescript-rules, node-test
-- [x] `2026-05-21T13:00:00Z` test cli/cmd/lint/__tests__/anchor.check.test.ts
+- [x] `2026-05-21T13:00:00Z` test cli/cmd/lint/**tests**/anchor.check.test.ts
 - [x] `2026-05-21T13:00:00Z` ver node --test → pass exit=0 (23/23)
 - [x] `2026-05-21T13:00:00Z` DONE
       intro 13 new edge case tests covering all alt-opinion findings

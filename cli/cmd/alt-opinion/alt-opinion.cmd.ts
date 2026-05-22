@@ -123,8 +123,7 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
   });
 
   // #region START_BUILD_PROVIDERS — invariant: llmproxy baseURL from env or default; openrouter fixed baseURL
-  const llmproxyBaseUrl =
-    process.env['LLM_PROXY_BASE_URL'] ?? 'https://llmproxy.example.com/v1';
+  const llmproxyBaseUrl = process.env['LLM_PROXY_BASE_URL'] ?? 'https://llmproxy.example.com/v1';
 
   const llmproxy = createOpenAI({
     apiKey: process.env['LLM_PROXY_API_KEY'],

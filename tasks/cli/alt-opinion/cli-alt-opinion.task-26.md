@@ -140,9 +140,9 @@
 
 - [x] `2026-05-21T08:21:00Z` recon targets=exists divergence=minor (env var names in cmd.ts)
 - [x] `2026-05-21T08:21:00Z` file cli/cmd/alt-opinion/alt-opinion.cmd.ts
-- [x] `2026-05-21T08:21:00Z` fix env var names: GENNADY_LLM_PROXY_* → LLM_PROXY_*, GENNADY_OPENROUTER_* → OPENROUTER_*
+- [x] `2026-05-21T08:21:00Z` fix env var names: GENNADY*LLM_PROXY*_ → LLM*PROXY*_, GENNADY*OPENROUTER*_ → OPENROUTER\__
 - [x] `2026-05-21T08:21:00Z` fix provider(model) → provider.chat(model) (D-006: Chat Completions API)
-- [x] `2026-05-21T08:21:00Z` fix test env var cleanup (GENNADY_LLM_PROXY_* → LLM_PROXY_*)
+- [x] `2026-05-21T08:21:00Z` fix test env var cleanup (GENNADY*LLM_PROXY*_ → LLM*PROXY*_)
 - [x] `2026-05-21T08:21:00Z` ver node --import tsx --test → all 36 tests pass exit=0
 - [x] `2026-05-21T08:21:00Z` DONE
       **Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion.cmd.ts, cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts]; decisions: [env-vars=LLM_PROXY_ADDR_KEY+LLM_PROXY_BASE_URL+OPENROUTER_API_KEY per spec §5.1, chat-api=provider.chat(model) per spec D-006, tests-updated=env var cleanup in test file]; open: []

@@ -82,9 +82,9 @@
 ### Round 3 — 2026-05-21, llmproxy smoke test (D-007)
 
 - [x] `2026-05-21T08:21:00Z` smoke echo "content" | gennady alt-opinion --model=llmproxy/deepseek-v4-pro --model=llmproxy/glm-5.1 --synthModel=llmproxy/deepseek-v4-pro → exit=0, синтез-блок с телеметрией (wall=169502ms tokens=4282/4712 reason=stop)
-- [x] `2026-05-21T08:21:00Z` fix env vars: LLM_PROXY_API_KEY, LLM_PROXY_BASE_URL (было GENNADY_LLM_PROXY_*)
+- [x] `2026-05-21T08:21:00Z` fix env vars: LLM*PROXY_API_KEY, LLM_PROXY_BASE_URL (было GENNADY_LLM_PROXY*\*)
 - [x] `2026-05-21T08:21:00Z` fix provider.chat() — Chat Completions API вместо Responses API (D-006)
 - [x] `2026-05-21T08:21:00Z` ver node --import tsx --test → all 36 tests pass exit=0
 - [x] `2026-05-21T08:21:00Z` DONE
 
-**Handoff →** artifacts: 3 test files, 36 tests pass, 3 real smoke tests pass (openrouter + llmproxy); decisions: env-var-naming=LLM_PROXY_* not GENNADY_LLM_PROXY_*, chat-api=provider.chat() not provider(), smoke-llmproxy=D-007; open: none
+**Handoff →** artifacts: 3 test files, 36 tests pass, 3 real smoke tests pass (openrouter + llmproxy); decisions: env-var-naming=LLM*PROXY*_ not GENNADY*LLM_PROXY*_, chat-api=provider.chat() not provider(), smoke-llmproxy=D-007; open: none

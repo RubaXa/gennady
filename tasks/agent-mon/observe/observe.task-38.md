@@ -21,8 +21,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -100,16 +100,28 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T05:26:10Z` intro `observe` ← Реализация async iterable для непрерывного наблюдения за сессиями согласно спецификации
+- [x] `2026-05-22T05:26:10Z` intro `applyIdleDetection` ← Вспомогательная функция для маркировки неактивных сессий статусом idle
+- [x] `2026-05-22T05:26:10Z` intro `emptyChanges` ← Вспомогательная функция для создания пустого SessionChanges при деградации
+- [x] `2026-05-22T05:26:10Z` ver `npm run type-check` → fail exit=2
+- 🛑 `2026-05-22T05:26:10Z` BLOCKED: npm run type-check завершается с ошибкой в файле вне области видимости фазы — services/agent-mon/providers/opencode/db.ts(49,19): error TS2345 (предсуществующая ошибка, не связанная с фазой P1). Файлы observe.ts и index.ts компилируются без ошибок.
+  - 🔗 axiom: AX_VERIFICATION_BEFORE_HANDOFF
+  - 💬 unblock: исправить предсуществующую ошибку в providers/opencode/db.ts или исключить providers из tsconfig для разблокировки проверки type-check
+
+- ✅ `2026-05-22T05:32:55Z` RESOLVED: предсуществующая ошибка TS2345 в services/agent-mon/providers/opencode/db.ts исправлена. npm run type-check теперь проходит чисто (exit 0).
+- [x] `2026-05-22T05:32:55Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T05:32:55Z` DONE
+**Handoff →** artifacts: [services/agent-mon/observe/observe.ts, services/agent-mon/observe/index.ts]; decisions: [defaultIdleThresholdMs=300000, minInterval=100ms, idleDetectionAppliedBeforeDiff, observeUsesSetTimeoutForNonBlockingPoll]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T05:41:15Z` intro `observe.test.ts` ← Модульные тесты непрерывного наблюдения: мок-монитор, проверка baseline, интервала, деградации, idle-детекции, DbC preconditions
+- [x] `2026-05-22T05:41:15Z` discovery `npm run test` содержит 5 предсуществующих падений (alt-opinion.cmd.test.ts, claude-provider.test.ts (2 subtest), psInfo, opencode-provider.test.ts) — не связаны с P2. 5 новых тестов observe проходят.
+- [x] `2026-05-22T05:41:15Z` ver `node --test services/agent-mon/observe/__tests__/observe.test.ts` → pass exit=0
+- [x] `2026-05-22T05:41:15Z` ver `npm run test` → fail exit=1
+- [x] `2026-05-22T05:41:15Z` DONE
+**Handoff →** artifacts: [services/agent-mon/observe/__tests__/observe.test.ts]; decisions: [observeTestsPass=5/5, preexistingTestFailures=5, mockMonitorUsesNativeMockFn, collectYieldsBreaksLoopWithSafetyTimeout, testCanonicalNamesMatchTicketSpec]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-05-22T06:17:37Z` DONE

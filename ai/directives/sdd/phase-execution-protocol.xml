@@ -60,7 +60,11 @@
     </Axiom>
 
     <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
-      Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>`. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
+      Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket §5 Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute **verbatim — exactly as listed in ticket §5**; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>` where `<cmd>` is the literal string from §5. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
+
+      **MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Running an "equivalent" command (e.g. `npx vitest run` instead of `npm run check`, or `tsc --noEmit` instead of the ticket's `npm run typecheck`) and then logging the §5 command as `ver` is **fabricated verification** — treated by audit as `EXECUTION_LOG_INCOMPLETE` (BLOCKER severity, tag `fabricated-verification`). The log line `ver <cmd>` MUST be the exact string of the command that was actually executed, never a paraphrase.
+
+      Supplemental tools (`<sdd-path> verify`, `tsc --noEmit`, `npx vitest run <file>`) MAY run additionally for narrower diagnostics, but they NEVER replace ticket §5 commands. If a §5 command requires more time/scope than the supplemental tool, run the §5 command anyway — it is the contract.
 
       Phase kind `doc` typically has no verification — empty section is acceptable.
     </Axiom>
@@ -70,11 +74,11 @@
       - **Must run:** verification commands from ticket 5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run for config-kind only:** `npm view <pkg> version`, `cat node_modules/<pkg>/package.json`, `cat node_modules/<pkg>/CHANGELOG.md`.
-      - **May run SDD helper tooling, if provided by the dispatching skill.** The orchestrator that dispatched this phase will pass an absolute path to its `sdd` dispatcher in the dispatch prompt (e.g. `~/.claude/skills/sdd-execute/scripts/sdd`). When provided, prefer it for:
+      - **May run SDD helper tooling SUPPLEMENTALLY**, if provided by the dispatching skill. The orchestrator passes an absolute path (e.g. `~/.claude/skills/sdd-execute/scripts/sdd`) in the dispatch prompt. Available subcommands:
         - `<sdd-path> extract <file> <NAME>` — extract anchored section from ticket/spec
         - `<sdd-path> lint <file>...` — gennady DBC AST contract lint (parses output reliably)
-        - `<sdd-path> verify <file>...` — comprehensive gate: typecheck + DBC lint + forbidden-construct grep
-        - These tools catch DBC contract violations that `npm run check` / `npm run lint` cannot detect (missing `@param`/`@returns`, JSDoc tag order, anchor pairing). Prefer them over manual gate composition when available.
+        - `<sdd-path> verify <file>...` — narrower gate: typecheck + DBC lint + forbidden-construct grep
+        - **These tools NEVER replace ticket §5 verification commands** (see `AX_VERIFICATION_BEFORE_HANDOFF` — Canonical Gate Rule). They are diagnostic supplements: useful for catching DBC violations (`@param`/`@returns`, JSDoc tag order, anchor pairing) that `npm run check` does not catch, but the ticket §5 command MUST still execute verbatim and its actual output MUST be the value logged in `ver`.
 
       **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
@@ -237,13 +241,16 @@
     </Step>
 
     <Step id="STEP_5_VERIFY">
-      <Goal>Run verification commands. Log only the final result, not each retry.</Goal>
+      <Goal>Run verification commands AS LISTED IN TICKET §5. Log only the final result, not each retry.</Goal>
       <Action>
-        1. Identify section 5 Verification rows whose `Required by` rule-ids overlap with this phase's Rules.
-        2. **Prefer `<sdd-path> verify <Target Files>` if the dispatching skill provided one** — this is a comprehensive gate combining `npm run typecheck` + gennady DBC AST contract lint + forbidden-construct grep in a single call with reliable exit codes. It catches a class of violations (missing @param/@returns, JSDoc tag order, anchor pairing) that `npm run check` / `npm run lint` do NOT catch.
-        3. Execute each. On the FINAL successful run, replace the placeholder `ver` line with real values: `<ts> ver <cmd> → pass exit=<N>`. Intermediate failed runs are NOT logged as separate `ver` lines — if a fix-cycle is interesting (you tried X, it failed, you switched to Y), capture that with a `tried` line, not by spamming `ver` lines.
-        4. Failure that you fix → fix, re-run, then log the passing `ver`. Fix breaks phase contract → `H_BLOCKED`. Tooling missing → `H_VERIFICATION_FAIL`.
-        5. Phase kind = `doc` and no relevant commands → log `<ts> ver skip:doc-phase`.
+        1. Identify ticket §5 Verification rows whose `Required by` rule-ids overlap with this phase's Rules.
+        2. **MANDATORY (PROTOCOL):** Execute EACH such §5 command **verbatim — the exact string from the ticket**. No substitutions, no "equivalents", no narrower variants. If §5 says `npm run check`, run `npm run check` (not `npx vitest`, not `tsc --noEmit`, not `<sdd-path> verify`). This is the Canonical Gate (per `AX_VERIFICATION_BEFORE_HANDOFF`); fabrication is a BLOCKER-class finding at audit.
+        3. **Supplemental (OPTIONAL):** You MAY additionally run `<sdd-path> verify <Target Files>` or `tsc --noEmit` for narrower diagnostics — useful for fast feedback or DBC lint. These do NOT replace §5; they add to it. Each supplemental run is logged on its own `ver` line with its real command.
+        4. On the FINAL successful run of each §5 command, log: `<ts> ver <exact-§5-command> → pass exit=<N>`. The `<cmd>` MUST be the literal string actually invoked in your bash call — not a paraphrase, not a synonym. Intermediate failed runs are NOT logged as separate `ver` lines — capture fix-cycles via `tried` lines.
+        5. Failure that you fix → fix, re-run, then log the passing `ver`. Fix breaks phase contract → `H_BLOCKED`. Tooling missing (e.g. `npm` not available) → `H_VERIFICATION_FAIL`.
+        6. Phase kind = `doc` and no relevant commands → log `<ts> ver skip:doc-phase`.
+
+        Self-check before EMIT_HANDOFF: every `ver` line in this phase block — is the command string identical to the bash invocation that produced it? If you logged `npm run check` but actually ran `npx vitest`, **STOP and fix the log**. Logging a §5 command without having executed it verbatim is `fabricated-verification` and will fail audit.
       </Action>
     </Step>
 
