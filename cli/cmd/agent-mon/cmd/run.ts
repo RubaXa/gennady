@@ -6,7 +6,7 @@ import { render } from 'ink';
 import React from 'react';
 import { logger } from '#logger';
 import { createProviders, type CreateProvidersOpts } from './create-providers.ts';
-import { createStateManager, type StateManager } from '../state/create-state-manager.ts';
+import { createStateManager } from '../state/create-state-manager.ts';
 import type { ViewModel } from '../state/view-model.type.ts';
 import { observe } from '../../../../services/agent-mon/observe/observe.ts';
 import { groupByProvider } from '../state/group-by-provider.ts';
@@ -166,26 +166,6 @@ async function buildOnceViewModel(monitor: AgentMonitor): Promise<ViewModel> {
 }
 
 /**
- * @purpose Create a static StateManager from a pre-built ViewModel — used for --once snapshot mode.
- * @param viewModel Pre-built ViewModel to serve.
- * @returns A StateManager that always returns the given ViewModel and silently accepts subscribers.
- */
-function createStaticStateManager(viewModel: ViewModel): StateManager {
-  return {
-    getViewModel: () => viewModel,
-    subscribe: (fn: (vm: ViewModel) => void) => {
-      fn(viewModel);
-      return () => {};
-    },
-  };
-}
-
-/** @purpose Wrapper component that renders the dashboard and exits immediately for --once mode. */
-function OnceSnapshot({ stateManager, view }: { stateManager: StateManager; view: 'column' | 'compact' }) {
-  return React.createElement(AgentMonApp, { stateManager, view });
-}
-
-/**
  * @purpose CLI entry point for `gennady agent-mon` — parse flags, wire providers, render the dashboard.
  * @invariant --once mode: single scan → build ViewModel → render + exit.
  * @invariant Live mode: observe → state manager → render, process kept alive by ink.
@@ -212,20 +192,32 @@ export async function run(argv: string[]): Promise<void> {
   const monitor = createProviders(providerOpts);
   // #endregion END_CREATE_PROVIDERS
 
-  // #region START_ONCE_MODE — invariant: direct scan, no observe loop; static StateManager; render and exit
+  // #region START_ONCE_MODE — invariant: direct scan, no observe loop; print as text and exit
   if (flags.once) {
     const viewModel = await buildOnceViewModel(monitor);
-    const sm = createStaticStateManager(viewModel);
 
-    logger.info(
-      `[run] [snapshot → rendered] once sessions=${viewModel.data?.summary.total ?? 0}`,
-    );
+    if (viewModel.status === 'error') {
+      console.error('Error:', viewModel.error?.message ?? 'Scan failed');
+      process.exit(1);
+    }
 
-    const { waitUntilExit } = render(
-      React.createElement(OnceSnapshot, { stateManager: sm, view: flags.view }),
-    );
+    const columns = viewModel.data?.columns ?? [];
+    const summary = viewModel.data?.summary;
+    console.log(`\n  ${summary?.total ?? 0} sessions${summary ? ` (${Object.entries(summary.byProvider).map(([k,v]) => `${k}: ${v}`).join(', ')})` : ''}\n`);
 
-    await waitUntilExit();
+    for (const col of columns) {
+      const statusIcon: Record<string, string> = { active: '○', waiting: '⏳', idle: '·', completed: '×' };
+      console.log(`  ${col.provider} (${col.activeCount} active, ${col.waitingCount} waiting, ${col.idleCount} idle)`);
+      for (const s of col.sessions.slice(0, 10)) {
+        const icon = statusIcon[s.status] ?? '?';
+        const elapsed = s.elapsed;
+        const tok = s.tokensIn ? ` tok:${(s.tokensIn/1000).toFixed(0)}k` : '';
+        console.log(`    ${icon} ${s.title.slice(0, 60)}  [${s.model ?? '?'}]  ${s.status}  ${elapsed}${tok}`);
+      }
+      if (col.sessions.length > 10) console.log(`    ... +${col.sessions.length - 10} more`);
+      console.log();
+    }
+
     process.exit(0);
   }
   // #endregion END_ONCE_MODE
