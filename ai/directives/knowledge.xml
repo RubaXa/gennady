@@ -49,6 +49,15 @@
     <CheckPhaseOrder>typecheck test lint format</CheckPhaseOrder>
 
     <Coding>
+      <Rule id="result-conventions">
+        <File>ai/directives/coding/result-conventions.xml</File>
+        <Purpose>ESLint enforcement of Result pattern conventions: no second generic, no object literals, no isErr short-circuit, no bare throw unknown.</Purpose>
+        <Triggers>Target Files use Result from @tessell/core/result · task touches error-handling code · task adds new DML / service methods</Triggers>
+        <SkipWhen>Config-only task; no Result usage in target files</SkipWhen>
+        <ActivationHint>Before writing or reviewing any file that returns or propagates Result</ActivationHint>
+        <CheckPhase>lint</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+      </Rule>
       <Rule id="typescript-rules">
         <File>ai/directives/coding/typescript-rules.xml</File>
         <Purpose>Writing code in the chosen language: typing, DbC, patterns, anti-patterns.</Purpose>
@@ -82,23 +91,34 @@
       </Rule>
     </Coding>
     <Testing>
+      <Rule id="testing-common">
+        <File>ai/directives/testing/common.xml</File>
+        <Purpose>Shared testing core inherited by every runner-specific directive: contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget.</Purpose>
+        <Triggers>any runner-specific testing rule activates</Triggers>
+        <SkipWhen>no test files in scope</SkipWhen>
+        <ActivationHint>Auto-read whenever node-test or vitest-rules activates. Runner-specific files only state deltas.</ActivationHint>
+        <CheckPhase>test</CheckPhase>
+        <RequiresVerification>check-command</RequiresVerification>
+      </Rule>
       <Rule id="vitest-rules">
         <File>ai/directives/testing/vitest-rules.xml</File>
         <Purpose>Writing tests on Vitest runner.</Purpose>
         <Triggers>Target Test Files present AND stack uses Vitest</Triggers>
         <SkipWhen>Stack uses a different test runner; no test files in scope</SkipWhen>
-        <ActivationHint>Before writing or modifying test files</ActivationHint>
+        <ActivationHint>Before writing or modifying test files. Inherits testing-common.</ActivationHint>
         <CheckPhase>test</CheckPhase>
         <RequiresVerification>check-command</RequiresVerification>
+        <CrossRef id="testing-common">Parent directive: read first for case flow, anchors, unified context, BDD mapping.</CrossRef>
       </Rule>
       <Rule id="node-test">
         <File>ai/directives/testing/node-test.xml</File>
         <Purpose>Writing tests on node:test runner.</Purpose>
         <Triggers>Target Test Files present AND stack uses node:test</Triggers>
         <SkipWhen>Stack uses a different test runner; no test files in scope</SkipWhen>
-        <ActivationHint>Before writing or modifying test files</ActivationHint>
+        <ActivationHint>Before writing or modifying test files. Inherits testing-common.</ActivationHint>
         <CheckPhase>test</CheckPhase>
         <RequiresVerification>check-command</RequiresVerification>
+        <CrossRef id="testing-common">Parent directive: read first for case flow, anchors, unified context, BDD mapping.</CrossRef>
       </Rule>
       <Rule id="playwright-cli">
         <File>ai/directives/testing/playwright-cli.xml</File>

@@ -1,0 +1,46 @@
+<ResultConventions keywords="result, error-handling, isErr, TessellError, unwrap, success, fail" type="coding-rule" ver="1.0">
+  <Mission>
+    Four binary invariants for the Result pattern from @tessell/core/result.
+    Each maps to a forbidden idiom in AGENTS.md that survived code review and was caught retroactively.
+    Enforced via ESLint custom rules (eslint-plugin-tessell-result).
+  </Mission>
+
+  <Belief_State>
+    <Axiom id="AX_NO_RESULT_SECOND_GENERIC">
+      `Result<T, ConcreteError>` is forbidden. No method can guarantee it only throws one error class — library and runtime code can throw anything. Use `Result<T>` only.
+      Exception: when the second arg is a type parameter of the enclosing generic declaration (function / type alias / class) — that is a constraint, not a pinned class. Detection: AST walk up to nearest TSTypeParameterDeclaration; skip if name appears there.
+      Autofix: remove second type argument.
+    </Axiom>
+
+    <Axiom id="AX_NO_RESULT_OBJECT_LITERAL">
+      Manual `{ ok: true, data: x, error: null }` and `{ ok: false, data: null, error: e }` are forbidden. Always use `success(x)` / `fail(e)`.
+      Rationale: bypasses the contract, breaks silently if Result shape evolves.
+      Autofix: ok===true → success(data_value); ok===false → fail(error_value).
+    </Axiom>
+
+    <Axiom id="AX_NO_RESULT_ISERR_SHORT_CIRCUIT">
+      `if (isErr(r)) return r` and `if (!isOk(r)) return r` are forbidden. Use `unwrap + try/catch` — that is the whole point of the convention.
+      No autofix: requires restructuring the surrounding function, not a one-line substitution.
+    </Axiom>
+
+    <Axiom id="AX_NO_BARE_THROW_UNKNOWN">
+      `throw catchBinding` without wrapping in `TessellError.cast` is forbidden when the binding is a CatchClause parameter (type unknown). Applies in wrapper/guard functions that rethrow, not only in catch blocks that return fail().
+      Detection: scope analysis — ThrowStatement whose argument resolves to a CatchClause parameter, regardless of variable name (cause, err, e, error).
+      No autofix: the fallback message is context-dependent.
+    </Axiom>
+
+    <Axiom id="AX_CONFIGURABLE_NAMES">
+      Every rule that matches function or type names accepts an options object with configurable identifiers: resultTypeName, isErrFn, isOkFn, successFn, failFn, castFn.
+      Defaults match @tessell/core/result exports. On package rename — update config, not the rule.
+    </Axiom>
+  </Belief_State>
+
+  <Reward_Criteria>
+    - R1 flags `Result<T, DataStorageError>`, autofixes to `Result<T>`. Does NOT flag `Result<T, E>` where E is a type parameter of the enclosing generic.
+    - R2 flags `{ ok: true, data: x, error: null }`, autofixes to `success(x)`.
+    - R3 flags `if (isErr(r)) return r` with no autofix; error message cites `unwrap + try/catch`.
+    - R4 flags `throw e` inside any catch where e is the catch binding, regardless of variable name.
+    - R3 and R4 carry explanatory comment in eslint.config.ts (non-autofix path per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
+    - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged).
+  </Reward_Criteria>
+</ResultConventions>
