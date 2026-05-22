@@ -202,7 +202,7 @@ export async function run(argv: string[]): Promise<void> {
 
   // #region START_ONCE_MODE — invariant: direct scan, no observe loop; print as text and exit
   if (flags.once) {
-    console.error = () => {}; // suppress logger noise in once mode
+    process.stderr.write = (() => true) as typeof process.stderr.write;
     const viewModel = await buildOnceViewModel(monitor, flags.limit);
 
     if (viewModel.status === 'error') {
@@ -232,9 +232,17 @@ export async function run(argv: string[]): Promise<void> {
   // #endregion END_ONCE_MODE
 
   // #region START_LIVE_MODE — invariant: observe async iterable feeds state manager; ink render keeps process alive
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (() => true) as typeof process.stderr.write; // suppress logger noise during live mode
+
   const changes = observe(monitor, { interval: flags.interval });
   const sm = createStateManager(changes, { limit: flags.limit });
 
   render(React.createElement(AgentMonApp, { stateManager: sm, view: flags.view }));
+
+  // Restore stderr on exit for cleanup messages
+  process.on('exit', () => {
+    process.stderr.write = originalStderrWrite;
+  });
   // #endregion END_LIVE_MODE
 }

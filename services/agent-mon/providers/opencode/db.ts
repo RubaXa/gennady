@@ -61,5 +61,17 @@ export function queryLastMessage(db: DatabaseSync, sessionId: string): string | 
     'SELECT data FROM message WHERE session_id = ? ORDER BY time_updated DESC LIMIT 1'
   );
   const row = stmt.get(sessionId) as { data: string } | undefined;
-  return row?.data ?? null;
+  if (!row?.data) return null;
+
+  try {
+    const msg = JSON.parse(row.data);
+    const content = msg?.content;
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content) && content.length > 0 && typeof content[0]?.text === 'string') {
+      return content[0].text;
+    }
+    return null;
+  } catch {
+    return row.data;
+  }
 }
