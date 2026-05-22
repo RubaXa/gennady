@@ -19,4 +19,8 @@ infrastructure
 | test-unit          | node:test |
 | bundler            | vite      |
 
+### 2.1 Formatter Fixture Exclusion
+
+`.prettierignore` **обязан** содержать `**/__tests__/fixtures/**` — тестовые фикстуры могут содержать намеренно сломанный синтаксис (parse-failed scenarios), и prettier не должен их обрабатывать. `tsconfig.json` также исключает фикстуры из type-check (`"exclude": ["**/__tests__/fixtures/**"]`).
+
 > Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery infra-base`.
