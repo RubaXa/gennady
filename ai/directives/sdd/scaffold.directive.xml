@@ -260,6 +260,10 @@
     <Axiom id="AX_STATELESS_ARTIFACT">
       All DAG decisions, links, BDD, completion rules baked into Markdown. Downstream sessions start with no scaffolding history.
     </Axiom>
+
+    <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
+      Ticket sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers (grammar: `extract-section.sh`). **Anchor names in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — orchestrator (`sdd-execute`) and auditor query them by exact string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Renaming or omitting a templated anchor breaks programmatic dispatch. Each `### P<N>` phase block under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container itself is NOT wrapped — extraction is per-phase.
+    </Axiom>
   </Belief_State>
 
   <Golden_Example>
@@ -432,11 +436,12 @@
     </Contract>
 
     <Contract id="TASK_TICKET_STRUCTURE">
-      Project-wide content (file-header rule, baseline Completion Rule, Execution Log protocol, audit hint) lives in `tasks/README.md` per `AX_TICKET_DEDUPLICATION` — NOT duplicated here.
+      Anchor names in this template are normative per `AX_TICKET_SECTION_NAMES_NORMATIVE`. Project-wide content (file-header rule, baseline Completion Rule, Execution Log protocol, audit hint) lives in `tasks/README.md` per `AX_TICKET_DEDUPLICATION` — NOT duplicated here.
 
       ```markdown
       # Task: <Task-ID> — <Task Title>
 
+      <!--SECTION:META-->
       ## 1. Meta
       - **Task-ID:** <TSK-NN>
       - **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->
@@ -452,7 +457,9 @@
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** None | <description>
+      <!--/SECTION:META-->
 
+      <!--SECTION:PHASES_OVERVIEW-->
       ## 2. Phases Overview
       | ID | Kind     | Deps | Status |
       |----|----------|------|--------|
@@ -460,9 +467,11 @@
       | P2 | <kind>   | P1   | [ ]    |
 
       <!-- Status set per phase by phase-subagent at end of phase. Orchestrator reads this table for planning. -->
+      <!--/SECTION:PHASES_OVERVIEW-->
 
       ## 3. Phases
 
+      <!--SECTION:PHASE_P1-->
       ### P1 — <kind>
       - **Objective:** <one-line description>
       - **Rules:**
@@ -473,7 +482,9 @@
         - <path>
       - **Inputs:** none   <!-- or "P0 handoff" / "P0, P1 handoffs" -->
       - **Exit:** <verifiable criterion, e.g. "typecheck pass; ports-adapters compliance">
+      <!--/SECTION:PHASE_P1-->
 
+      <!--SECTION:PHASE_P2-->
       ### P2 — <kind>
       - **Objective:** <one-line>
       - **Rules:**
@@ -482,7 +493,9 @@
         - <path>
       - **Inputs:** P1 handoff
       - **Exit:** <verifiable criterion>
+      <!--/SECTION:PHASE_P2-->
 
+      <!--SECTION:BDD-->
       ## 4. Acceptance Criteria (BDD)
       Contract: see Spec References.
 
@@ -493,7 +506,9 @@
       - **When** <command/query>
       - **Then** <postcondition>
       - **And** <side effect>
+      <!--/SECTION:BDD-->
 
+      <!--SECTION:VERIFICATION-->
       ## 5. Verification
       | Command | Required by |
       |---------|-------------|
@@ -504,10 +519,14 @@
            whose Required-by overlaps with its phase's Rules list. -->
 
       - **Task-specific Completion additions:** <list or "none beyond project baseline">
+      <!--/SECTION:VERIFICATION-->
 
+      <!--SECTION:TEST_COVERAGE-->
       ## 6. Test Scenario Coverage
       - Scenario <name> → `<test-file>` :: `<canonical case name>`
+      <!--/SECTION:TEST_COVERAGE-->
 
+      <!--SECTION:EXECUTION_LOG-->
       ## 7. Execution Log
       *(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skeleton is minimal — event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `BLOCKED`) appear ONLY when the event happens. Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
 
@@ -528,6 +547,13 @@
       <!-- After last phase, orchestrator appends Round close: -->
       #### Round close
       - [ ] `<ts>` DONE
+      <!--/SECTION:EXECUTION_LOG-->
+
+      <!-- AUDIT_ROUNDS section appended ONLY after first reopen-triggering audit, per audit AX_REOPEN_ROUNDS_IN_TICKET. Anchor format: -->
+      <!--   <!--SECTION:AUDIT_ROUNDS--> -->
+      <!--   ## Audit Rounds -->
+      <!--   …(per TICKET_AUDIT_ROUND_FORMAT in audit.directive.xml) -->
+      <!--   <!--/SECTION:AUDIT_ROUNDS--> -->
       ```
     </Contract>
 

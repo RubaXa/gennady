@@ -130,6 +130,7 @@
       - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
+      - **DbC section shape is flexible.** `## 4. Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsection numbering is optional (`### 4.0`, `### 4.1`, …, or unnumbered `### OperationDef Pattern`).
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
@@ -215,6 +216,7 @@
       - per-module spec 9 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
+
   </Belief_State>
 
   <Halt_Conditions>
@@ -498,30 +500,45 @@
     </Contract>
 
     <Contract id="MODULE_SPEC_MARKDOWN_STRUCTURE">
-      Each `specs/<scope>/<module>/<module>.spec.md`:
+      Each `specs/<scope>/<module>/<module>.spec.md`. Every top-level `## N.` section wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` (open before header, close before next same-level header or EOF). Sub-sections and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary; the template below shows idiomatic choices. Grammar source of truth: `~/.claude/skills/sdd-execute/scripts/extract-section.sh`. DbC subsection shape is flexible per `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`.
 
       ```markdown
       # Module: <ModuleName>
 
+      <!--SECTION:MODULE_VISION-->
       ## 1. Module Vision
       [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
+      <!--/SECTION:MODULE_VISION-->
 
+      <!--SECTION:ENTITY_INVENTORY-->
       ## 2. Entity Inventory (Closed-World)
       [Per `ENTITY_INVENTORY_FORMAT`.]
+      <!--/SECTION:ENTITY_INVENTORY-->
 
+      <!--SECTION:ENTITY_SURFACES-->
       ## 3. Entity Surfaces
       [Each entity per `ENTITY_SURFACE_FORMAT`.]
+      <!--/SECTION:ENTITY_SURFACES-->
 
+      <!--SECTION:MODULE_CONTRACTS-->
       ## 4. Module Contracts (DbC)
+
+      <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
+           Numbering optional (`### 4.0`, `### 4.1`, …, or unnumbered like `### OperationDef Pattern`). -->
+
       ### 4.1 Ports
-      [Per `DBC_PORT_FORMAT`.]
+      [Per `DBC_PORT_FORMAT`. Omit if this module has no Ports.]
 
       ### 4.2 Adapters
-      [Per `DBC_ADAPTER_FORMAT`.]
+      [Per `DBC_ADAPTER_FORMAT`. Omit if this module has no Adapters.]
+      <!--/SECTION:MODULE_CONTRACTS-->
 
+      <!--SECTION:PUBLIC_OPTIONS-->
       ## 5. Public Options & Policies
       [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
+      <!--/SECTION:PUBLIC_OPTIONS-->
 
+      <!--SECTION:FILE_STRUCTURE-->
       ## 6. File Structure
       ```
       <module>/
@@ -534,10 +551,14 @@
 
       **File Mapping:**
       - `<path>`: <component>
+      <!--/SECTION:FILE_STRUCTURE-->
 
+      <!--SECTION:MODULE_DECISION_LOG-->
       ## 7. Module Decision Log
       [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+      <!--/SECTION:MODULE_DECISION_LOG-->
 
+      <!--SECTION:INTER_MODULE_DEPENDENCIES-->
       ## 8. Inter-Module Dependencies
       - **Depends on:** <list of modules within this scope with links>
       - **Scope Reference (cross-scope):** <contracts-type scope with link if any>
@@ -550,7 +571,9 @@
         <this-module> -. Scope Reference .-> <contracts-scope>
         <consumer> --> <this-module>
       ```
+      <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
+      <!--SECTION:HANDOFF-->
       ## 9. Handoff to task-scaffolding
       - **Implementation files to be created:** <list from 6>
       - **Test files to be created:** <list>
@@ -564,6 +587,13 @@
         | <rule-name> | coding \| testing \| architecture \| quality | `ai/directives/<category>/<rule>.xml` |
 
       - **Open risks & validation needs:** <not-closed items>
+      <!--/SECTION:HANDOFF-->
+
+      <!-- Optional appendix — include only when the module has non-trivial post-impl learnings worth preserving. -->
+      <!--SECTION:IMPLEMENTATION_INSIGHTS-->
+      ## 10. Implementation Insights
+      [Library wrap patterns, transaction subtleties, fake-runtime pitfalls, etc. Authored after audit-cycle compaction; immutable contract for future readers.]
+      <!--/SECTION:IMPLEMENTATION_INSIGHTS-->
       ```
     </Contract>
 

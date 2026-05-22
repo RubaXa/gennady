@@ -203,6 +203,8 @@
     2. Ticket: section 1 Meta, 2 Phases Overview, 3 Phases (only the target phase block), 4 Acceptance Criteria, 5 Verification, 6 Test Scenario Coverage, 7 Execution Log (current Round only).
     3. Each rule file cited in the target phase's Rules list.
     4. Spec anchors cited in section 1 Spec References (only those relevant to this phase).
+
+    Tickets and specs carry `<!--SECTION:NAME-->` anchors. Phase agent MAY substitute `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>` for full-file Read (own block `PHASE_P<N>` / `PHASE_P<N>_FIX`; ticket sections `META` / `VERIFICATION` / `TEST_COVERAGE` / `BDD` / `EXECUTION_LOG`; spec sections by canonical name). Read remains the fallback — use it when multiple sections are needed or when extract returns `ANCHOR_NOT_FOUND` (legacy artifact; log a discovery line and proceed).
   </Context_Expectation>
 
   <Phase_Procedure>

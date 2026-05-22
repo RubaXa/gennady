@@ -468,15 +468,22 @@
     </Contract>
 
     <Contract id="INFRASTRUCTURE_SPEC_STRUCTURE">
+      Every top-level `## N.` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers so any agent can pull a single section via `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>`. Open marker IMMEDIATELY before the header; close marker IMMEDIATELY before the next same-level header (or EOF). Sub-sections (`### N.M`) and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary (the four templates below illustrate idiomatic choices); no name registry is enforced. Grammar source of truth: `extract-section.sh`. The four `SPEC_STRUCTURE` templates emit anchors by default — copy verbatim.
+
       ```markdown
       # <scope-name>: Infrastructure Specification
 
+      <!--SECTION:SCOPE_TYPE-->
       ## scope-type
       infrastructure
+      <!--/SECTION:SCOPE_TYPE-->
 
+      <!--SECTION:VISION-->
       ## 1. Vision
       [Что включает dev/ops experience.]
+      <!--/SECTION:VISION-->
 
+      <!--SECTION:TOOL_STACK-->
       ## 2. Tool Stack
 
       ### 2.1 Categories Covered
@@ -486,18 +493,26 @@
       | Category | Tool | Rationale |
       |---|---|---|
       | <category> | <tool> | D-NNN |
+      <!--/SECTION:TOOL_STACK-->
 
+      <!--SECTION:WORKFLOW_EXAMPLE-->
       ## 3. Developer Workflow Example
       [Shell-script: setup, daily flow, commit flow, debug flow.]
+      <!--/SECTION:WORKFLOW_EXAMPLE-->
 
+      <!--SECTION:FILE_STRUCTURE-->
       ## 4. File Structure
       [ASCII tree + File Mapping.]
+      <!--/SECTION:FILE_STRUCTURE-->
 
+      <!--SECTION:EFFECTIVE_RULES-->
       ## 5. Effective Rules (for cascade)
       | Rule | Category | Source |
       |---|---|---|
       | <rule-name> | coding | infra (D-NNN) |
+      <!--/SECTION:EFFECTIVE_RULES-->
 
+      <!--SECTION:VERIFICATION_COMMANDS-->
       ## 6. Verification Commands
       **Mandatory for infrastructure scopes.** After tool stack is finalized, record a table:
       | Command Name      | Invocation          |
@@ -509,21 +524,29 @@
 
       Include only command names for tools present in the chosen stack.
       `check-command` is **always required** when the runtime setup rule (`nodejs-npm-setup` or equivalent) is active — it is the composed entry point that runs all active phases in `CheckPhaseOrder` order (typecheck → test → lint → format). Composition: chain invocations of each active phase command in that order. Task tickets use `check-command` as their single verification alias.
+      <!--/SECTION:VERIFICATION_COMMANDS-->
 
+      <!--SECTION:DECISION_LOG-->
       ## 7. Decision Log
       [D-NNN entries.]
+      <!--/SECTION:DECISION_LOG-->
 
+      <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 8. Scope Dependencies
       - **Depends on:** None (infrastructure scopes are typically leaves)
       - **Provides rules to:** [list of product/library scopes that depend on this]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+      <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
       ## 9. Bootstrap Requirements
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
       <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+      <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
+      <!--SECTION:HANDOFF-->
       ## 10. Handoff
       - **Setup tasks to scaffold:** [list]
       - **Effective rules ready for cascade:** see 5
@@ -532,6 +555,7 @@
       - **Open risks:** [not-closed items]
 
       <!-- 10.1 Pivot Invalidation List — only in pivot mode -->
+      <!--/SECTION:HANDOFF-->
       ```
     </Contract>
 
@@ -539,41 +563,59 @@
       ```markdown
       # <scope-name>: Contracts Specification
 
+      <!--SECTION:SCOPE_TYPE-->
       ## scope-type
       contracts
+      <!--/SECTION:SCOPE_TYPE-->
 
+      <!--SECTION:VISION-->
       ## 1. Vision
       [Что контракт определяет и для кого.]
+      <!--/SECTION:VISION-->
 
+      <!--SECTION:INTERFACE_DECLARATION-->
       ## 2. Interface Declaration
       - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
       - **Versioning scheme:** semver | date-based (YYYY-MM-DD) | none
       - **Namespace:** <api prefix / package name>
       - **Interfaces:** [список endpoint groups / message types / operations]
+      <!--/SECTION:INTERFACE_DECLARATION-->
 
+      <!--SECTION:VERSIONING_POLICY-->
       ## 3. Versioning Policy
       [Semver rules / breaking-change protocol / deprecation window.]
+      <!--/SECTION:VERSIONING_POLICY-->
 
+      <!--SECTION:COMPATIBILITY_MATRIX-->
       ## 4. Compatibility Matrix
       | Consumer scope | Min compatible version | Breaking change protocol |
       |---|---|---|
+      <!--/SECTION:COMPATIBILITY_MATRIX-->
 
+      <!--SECTION:DECISION_LOG-->
       ## 5. Decision Log
       [D-NNN entries.]
+      <!--/SECTION:DECISION_LOG-->
 
+      <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 6. Scope Dependencies
       - **Depends on:** [infra scopes if any]
       - **Provides contracts to:** [product/library scopes]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+      <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
       ## 7. Bootstrap Requirements
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+      <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
+      <!--SECTION:HANDOFF-->
       ## 8. Handoff
       - **Contract files to scaffold:** [schema files, codegen configs]
       - **Bootstrap tickets ready for cascade:** see 7
       - **Open risks:** [versioning gaps, unconfirmed consumers]
+      <!--/SECTION:HANDOFF-->
       ```
     </Contract>
 
@@ -581,15 +623,22 @@
       ```markdown
       # <scope-name>: Library Specification
 
+      <!--SECTION:SCOPE_TYPE-->
       ## scope-type
       library
+      <!--/SECTION:SCOPE_TYPE-->
 
+      <!--SECTION:VISION-->
       ## 1. Vision & Primary Goal
       [Что library делает; главная проблема, которую решает.]
+      <!--/SECTION:VISION-->
 
+      <!--SECTION:GOLDEN_DX-->
       ## 2. Approved Golden DX Example
       [Публичный API DX: init/setup + happy path + error path. Комментарии раскрывают намерение.]
+      <!--/SECTION:GOLDEN_DX-->
 
+      <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
       ## 3. Requirements & Constraints
 
       ### 3.1 Functional Requirements
@@ -604,25 +653,37 @@
       ### 3.5 Rules
       | Rule | Category | Source |
       |---|---|---|
+      <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
+      <!--SECTION:PUBLIC_API_SURFACE-->
       ## 4. Public API Surface
       [Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
+      <!--/SECTION:PUBLIC_API_SURFACE-->
 
+      <!--SECTION:ARCHITECTURE-->
       ## 5. Architecture
       [Выбранный design pattern. Кратко — rejected alternatives.]
+      <!--/SECTION:ARCHITECTURE-->
 
+      <!--SECTION:DECISION_LOG-->
       ## 6. Decision Log
       [D-NNN entries.]
+      <!--/SECTION:DECISION_LOG-->
 
+      <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 7. Scope Dependencies
       - **Depends on:** [infra-*, contracts scopes]
       - **Provides to:** [consumer scopes]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+      <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
       ## 8. Bootstrap Requirements
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+      <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
+      <!--SECTION:HANDOFF-->
       ## 9. Handoff to module-decomposition
       - **Areas requiring decomposition:** [list]
       - **Named abstractions:** [from Golden DX]
@@ -630,6 +691,7 @@
       - **Open risks:** [validation needs]
 
       <!-- 9.1 Pivot Invalidation List — only in pivot mode -->
+      <!--/SECTION:HANDOFF-->
       ```
     </Contract>
 
@@ -637,18 +699,27 @@
       ```markdown
       # <scope-name>: Scope Specification
 
+      <!--SECTION:SCOPE_TYPE-->
       ## scope-type
       product
+      <!--/SECTION:SCOPE_TYPE-->
 
+      <!--SECTION:VISION-->
       ## 1. Vision & Primary Goal
+      <!--/SECTION:VISION-->
 
+      <!--SECTION:PROJECT_TYPE-->
       ## 2. Project Type
       - **Type:** app[mobile|desktop|spa] | service-module-sdk | cli-utility
       - **Why this type:** [Краткое обоснование.]
+      <!--/SECTION:PROJECT_TYPE-->
 
+      <!--SECTION:GOLDEN_DX-->
       ## 3. Approved Golden DX Example
       [Commentary-rich: init/setup + happy path + error/degradation path.]
+      <!--/SECTION:GOLDEN_DX-->
 
+      <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
       ## 4. Requirements & Constraints
 
       ### 4.1 Functional Requirements
@@ -663,27 +734,39 @@
       ### 4.5 Rules
       | Rule | Category | Source |
       |---|---|---|
+      <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
+      <!--SECTION:ARCHITECTURE-->
       ## 5. High-Level Architecture
       [Выбранный вариант. Block diagram. Краткие описания.]
 
       ### 5.1 Rejected Alternatives
+      <!--/SECTION:ARCHITECTURE-->
 
+      <!--SECTION:DECISION_LOG-->
       ## 6. Decision Log
       [D-NNN entries.]
+      <!--/SECTION:DECISION_LOG-->
 
+      <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 7. Scope Dependencies
       - **Depends on:** [infra-*, api-contracts, design-system-* scopes]
       - **Provides to:** [consumer scopes, if any]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+      <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
       ## 8. Bootstrap Requirements
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+      <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
+      <!--SECTION:MODULE_MAP-->
       ## 9. Module Map
       [Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition <scope-name>`».]
+      <!--/SECTION:MODULE_MAP-->
 
+      <!--SECTION:HANDOFF-->
       ## 10. Handoff to module-decomposition
       - **Primary input:** `specs/<scope-name>/<scope-name>.spec.md`
       - **Areas requiring decomposition:** [list]
@@ -692,6 +775,7 @@
       - **Open risks:** [validation needs]
 
       <!-- 10.1 Pivot Invalidation List — only in pivot mode -->
+      <!--/SECTION:HANDOFF-->
       ```
     </Contract>
 

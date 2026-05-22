@@ -190,7 +190,7 @@
     </Axiom>
 
     <Axiom id="AX_TASK_ID_INTEGRITY">
-      File-header task traceability must be structurally valid; Task-IDs in code must resolve; ticket files must not collide on IDs.
+      File-header task traceability must be structurally valid; Task-IDs in code must resolve; ticket files must not collide on IDs; ticket section anchors must cover the names orchestrator queries.
 
       Checks:
       - New or header-carrying files in scope: `@file:` present (`MAJOR` if absent); `@consumers:` present (`MINOR` if absent); `@tasks:` present and contains current Task-ID (`MAJOR` if absent).
@@ -199,6 +199,7 @@
       - Each ID has a corresponding `tasks/**/*.task-NN.md`. Orphan → `TASK_ID_DRIFT` (`MAJOR`).
       - Two ticket files declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`).
       - Compare current `@tasks:` field values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
+      - **Ticket section-anchor coverage** (per scaffold `AX_TICKET_SECTION_NAMES_NORMATIVE`). For each anchor name templated in `TASK_TICKET_STRUCTURE` invoke `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` (ANCHOR_NOT_FOUND/EMPTY) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `missing-section-anchor`. Exit `3` (UNBALANCED/DUPLICATED) → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`. Optional names (`AUDIT_ROUNDS`, `PIVOT_INVALIDATION_LIST`) — not flagged when absent. Ticket with ZERO required anchors found → escalate to `BLOCKER` (dispatch impossible). Spec section names are author-discretionary → balance is checked by the STEP_1 mechanical pre-pass; no per-name coverage is enforced on specs.
     </Axiom>
 
     <Axiom id="AX_STALE_AFTER_PIVOT_VERIFICATION">
@@ -288,12 +289,12 @@
     </Step>
 
     <Step id="STEP_1_PRECONDITIONS_CHECK">
-      <Goal>Ensure task is closed; run mechanical lint pre-pass; audit is meaningful.</Goal>
+      <Goal>Ensure task is closed; run mechanical pre-pass (lint + anchor balance); audit is meaningful.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__PRECONDITIONS_CHECK`).
         2. Inspect Execution Log: `[x] DONE` present? Verification commands executed and recorded?
         3. Not closed → `H_TICKET_NOT_DONE`. Module or scope spec missing → `H_NO_MODULE_SPEC`.
-        4. **Mechanical lint pre-pass** (gennady CLI; absolute path because tool is in active development): collect changed `.ts` files in this Round (git diff scope per `AX_GIT_DIFF_SCAN`). If any → run `npx tsx /Users/k.lebedev/Developer/gennady/cli/gennady.ts lint <files...>`. Every reported issue becomes a finding `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id from lint output>`. No `.ts` changed → skip silently. Lint tool unavailable → log warning, proceed to deep audit without mechanical findings.
+        4. **Mechanical pre-pass.** (a) Lint: changed `.ts` files in this Round (per `AX_GIT_DIFF_SCAN`) → `npx tsx /Users/k.lebedev/Developer/gennady/cli/gennady.ts lint <files...>`; each issue → `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id>`. No `.ts` / tool absent → skip silently / log warning. (b) Anchor balance: `~/.claude/skills/sdd-execute/scripts/sdd scan <project-root>`; each `anchor-mismatch:<opens>-open/<closes>-close` line in `[WARNINGS]` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`, `loc=<file>:<opens>/<closes>`. Universal — name-agnostic, works on any markdown artifact. Per-ticket name coverage happens in STEP_2_5.
         5. Phase Progress + Approval Check. STOP otherwise → STEP_2.
       </Action>
     </Step>
@@ -314,7 +315,7 @@
     </Step>
 
     <Step id="STEP_2_5_TASK_ID_INTEGRITY_CHECK">
-      <Goal>Verify Task-ID integrity per `AX_TASK_ID_INTEGRITY`. Reuses STEP_2 git-diff scope.</Goal>
+      <Goal>Verify Task-ID integrity and ticket section-anchor coverage per `AX_TASK_ID_INTEGRITY`. Reuses STEP_2 git-diff scope.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__TASK_ID_INTEGRITY_CHECK`).
         2. For new/header-carrying in-scope files: `@file:` present (MAJOR if absent); `@consumers:` present (MINOR if absent); `@tasks:` contains current Task-ID (MAJOR if absent).
@@ -322,7 +323,8 @@
         4. Each ID — verify `tasks/**/*.task-NN.md` exists. Orphan → `TASK_ID_DRIFT` (`MAJOR`, HIGH).
         5. Scan all ticket files; two declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`, HIGH).
         6. Compare current `@tasks:` values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
-        7. Phase Progress. STOP.
+        7. **Ticket section-anchor coverage** (per `AX_TASK_ID_INTEGRITY` last bullet). For each anchor name templated in `TASK_TICKET_STRUCTURE` → `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` → `EXECUTION_LOG_INCOMPLETE` `missing-section-anchor`; exit `3` → `EXECUTION_LOG_INCOMPLETE` `anchor-unbalanced`. Zero anchors found → escalate to BLOCKER.
+        8. Phase Progress. STOP.
       </Action>
     </Step>
 
