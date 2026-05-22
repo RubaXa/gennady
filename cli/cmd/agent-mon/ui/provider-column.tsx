@@ -8,8 +8,8 @@ import { SessionCard } from './session-card.tsx';
 
 /** @purpose Props for the ProviderColumn component — column data to render. */
 export type ProviderColumnProps = {
-  /** @purpose Provider column data from the ViewModel */
   column: ProviderColumnData;
+  maxCards?: number;
 };
 
 /**
@@ -17,7 +17,8 @@ export type ProviderColumnProps = {
  * @invariant Sessions within the column are pre-sorted by status priority (active → waiting → idle → completed) by groupByProvider; no re-sort needed here.
  * @param column Provider column data with sessions.
  */
-export function ProviderColumn({ column }: ProviderColumnProps) {
+export function ProviderColumn({ column, maxCards }: ProviderColumnProps) {
+  const cards = maxCards ? column.sessions.slice(0, maxCards) : column.sessions;
   return (
     <Box flexDirection="column" borderStyle="single" paddingX={1} width={40}>
       <Box>
@@ -27,7 +28,7 @@ export function ProviderColumn({ column }: ProviderColumnProps) {
         {column.waitingCount > 0 && <Text color="yellow">⏳{column.waitingCount} </Text>}
         {column.idleCount > 0 && <Text dimColor>🟡{column.idleCount}</Text>}
       </Box>
-      {column.sessions.map((card) => (
+      {cards.map((card) => (
         <SessionCard key={card.sessionId} card={card} />
       ))}
     </Box>

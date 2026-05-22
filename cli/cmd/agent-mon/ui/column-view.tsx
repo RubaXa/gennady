@@ -8,8 +8,8 @@ import { ProviderColumn } from './provider-column.tsx';
 
 /** @purpose Props for the ColumnView component — dashboard ViewModel. */
 export type ColumnViewProps = {
-  /** @purpose Full dashboard ViewModel with columns and metadata */
   viewModel: ViewModel;
+  maxRows?: number;
 };
 
 /**
@@ -17,8 +17,10 @@ export type ColumnViewProps = {
  * @invariant Empty columns → "No active sessions." message (degradation per spec).
  * @param viewModel Current dashboard state snapshot.
  */
-export function ColumnView({ viewModel }: ColumnViewProps) {
+export function ColumnView({ viewModel, maxRows }: ColumnViewProps) {
   const columns = viewModel.data?.columns ?? [];
+  const nCols = columns.length || 1;
+  const perColumn = maxRows ? Math.floor(maxRows / nCols) : undefined;
 
   // #region START_EMPTY_STATE — invariant: no columns = no data yet or all providers idle → show placid message
   if (columns.length === 0) {
@@ -29,7 +31,7 @@ export function ColumnView({ viewModel }: ColumnViewProps) {
   return (
     <Box flexDirection="row" gap={1}>
       {columns.map((col) => (
-        <ProviderColumn key={col.provider} column={col} />
+        <ProviderColumn key={col.provider} column={col} maxCards={perColumn} />
       ))}
     </Box>
   );

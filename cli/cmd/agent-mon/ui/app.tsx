@@ -3,7 +3,7 @@
 // @tasks: TSK-46
 
 import { useState, useEffect } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import type { StateManager } from '../state/create-state-manager.ts';
 import type { ViewModel } from '../state/view-model.type.ts';
 import { ColumnView } from './column-view.tsx';
@@ -27,6 +27,8 @@ export type AgentMonAppProps = {
 export function AgentMonApp({ stateManager, view = 'column' }: AgentMonAppProps) {
   const [viewModel, setViewModel] = useState<ViewModel>(() => stateManager.getViewModel());
   const { exit } = useApp();
+  const { stdout } = useStdout();
+  const maxRows = (stdout?.rows ?? 24) - 3; // terminal height minus header/footer
 
   // #region START_STATE_SUBSCRIPTION — invariant: subscribe on mount → immediate emit + updates; unsubscribe on unmount → no leaks
   useEffect(() => {
@@ -62,7 +64,7 @@ export function AgentMonApp({ stateManager, view = 'column' }: AgentMonAppProps)
 
   // #region START_VIEW_SELECTION — purpose: route to the configured dashboard view; V1 supports 'column' only
   if (view === 'column') {
-    return <ColumnView viewModel={viewModel} />;
+    return <ColumnView viewModel={viewModel} maxRows={maxRows} />;
   }
 
   return <Text>Unknown view: {view}</Text>;
