@@ -63,7 +63,7 @@ function toSessionCard(
  */
 export function groupByProvider(
   sessions: AgentSession[],
-  opts?: { isWaitingFn: (s: AgentSession) => boolean },
+  opts?: { isWaitingFn?: (s: AgentSession) => boolean; limit?: number },
 ): ProviderColumn[] {
   const isWaitingFn = opts?.isWaitingFn ?? isWaitingForUser;
 
@@ -90,12 +90,14 @@ export function groupByProvider(
         return a.title.localeCompare(b.title);
       });
 
+    const sliced = opts?.limit ? cards.slice(0, opts.limit) : cards;
+
     columns.push({
       provider,
-      activeCount: cards.filter((c) => c.status === 'active').length,
-      waitingCount: cards.filter((c) => c.status === 'waiting').length,
-      idleCount: cards.filter((c) => c.status === 'idle').length,
-      sessions: cards,
+      activeCount: sliced.filter((c) => c.status === 'active').length,
+      waitingCount: sliced.filter((c) => c.status === 'waiting').length,
+      idleCount: sliced.filter((c) => c.status === 'idle').length,
+      sessions: sliced,
     });
   }
   // #endregion END_BUILD_COLUMNS

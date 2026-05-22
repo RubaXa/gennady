@@ -15,14 +15,11 @@ import type { AgentMonitor } from '../../../../services/agent-mon/monitor/agent-
 
 /** @purpose Parsed CLI flags for the agent-mon command. */
 type CliFlags = {
-  /** @purpose Snapshot mode — render once and exit */
   once: boolean;
-  /** @purpose Polling interval in milliseconds | @invariant Default 5000 when absent */
   interval: number;
-  /** @purpose Provider filter | @invariant Default 'all' */
   provider: 'claude' | 'opencode' | 'all';
-  /** @purpose View mode | @invariant Default 'column' */
   view: 'column' | 'compact';
+  limit: number;
 };
 
 /** @purpose Allowed --provider values */
@@ -43,7 +40,7 @@ function printUsageAndExit(reason?: string): never {
   process.stderr.write('  --once              Snapshot mode — print dashboard and exit\n');
   process.stderr.write('  --interval <ms>     Polling interval in ms (default: 5000)\n');
   process.stderr.write('  --provider <name>   Filter by provider: claude, opencode, all (default: all)\n');
-  process.stderr.write('  --view <mode>       Dashboard view: column, compact (default: column)\n');
+  process.stderr.write('  --limit <N>         Max sessions per provider (default: 20)\n');
   process.exit(1);
 }
 
@@ -59,6 +56,7 @@ function parseFlags(argv: string[]): CliFlags {
     interval: 5000,
     provider: 'all',
     view: 'column',
+    limit: 20,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -113,6 +111,16 @@ function parseFlags(argv: string[]): CliFlags {
         break;
       }
 
+      case '--limit': {
+        const next = argv[i + 1];
+        if (next === undefined) printUsageAndExit('--limit requires a value');
+        const parsed = Number(next);
+        if (Number.isNaN(parsed) || parsed < 1) printUsageAndExit(`--limit must be >= 1, got: ${next}`);
+        flags.limit = parsed;
+        i++;
+        break;
+      }
+
       default:
         if (arg.startsWith('-')) {
           printUsageAndExit(`Unknown flag: ${arg}`);
@@ -129,11 +137,11 @@ function parseFlags(argv: string[]): CliFlags {
  * @param monitor AgentMonitor with registered providers.
  * @returns ViewModel built from a single scanAll() call.
  */
-async function buildOnceViewModel(monitor: AgentMonitor): Promise<ViewModel> {
+async function buildOnceViewModel(monitor: AgentMonitor, limit: number): Promise<ViewModel> {
   // #region START_DIRECT_SCAN — invariant: scanAll provides fresh sessions; groupByProvider builds the ViewModel columns
   try {
     const sessions = await monitor.scanAll();
-    const columns = groupByProvider(sessions);
+    const columns = groupByProvider(sessions, { limit });
     const byProvider: Record<string, number> = {};
     for (const col of columns) {
       byProvider[col.provider] = col.sessions.length;
@@ -194,7 +202,7 @@ export async function run(argv: string[]): Promise<void> {
 
   // #region START_ONCE_MODE — invariant: direct scan, no observe loop; print as text and exit
   if (flags.once) {
-    const viewModel = await buildOnceViewModel(monitor);
+    const viewModel = await buildOnceViewModel(monitor, flags.limit);
 
     if (viewModel.status === 'error') {
       console.error('Error:', viewModel.error?.message ?? 'Scan failed');
@@ -224,9 +232,7 @@ export async function run(argv: string[]): Promise<void> {
 
   // #region START_LIVE_MODE — invariant: observe async iterable feeds state manager; ink render keeps process alive
   const changes = observe(monitor, { interval: flags.interval });
-  const sm = createStateManager(changes);
-
-  logger.info('[run] [ready → rendering] Live dashboard starting');
+  const sm = createStateManager(changes, { limit: flags.limit });
 
   render(React.createElement(AgentMonApp, { stateManager: sm, view: flags.view }));
   // #endregion END_LIVE_MODE

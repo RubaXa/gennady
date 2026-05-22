@@ -62,8 +62,8 @@ function applySessionChanges(
  * @purpose Build a ViewModel from the current session list using groupByProvider aggregation.
  * @invariant summary.byProvider entries correspond to ProviderColumn.provider keys.
  */
-function buildViewModel(sessions: AgentSession[]): ViewModel {
-  const columns = groupByProvider(sessions, { isWaitingFn: isWaitingForUser });
+function buildViewModel(sessions: AgentSession[], limit?: number): ViewModel {
+  const columns = groupByProvider(sessions, { isWaitingFn: isWaitingForUser, limit });
   const byProvider: Record<string, number> = {};
   for (const col of columns) {
     byProvider[col.provider] = col.sessions.length;
@@ -93,6 +93,7 @@ function buildViewModel(sessions: AgentSession[]): ViewModel {
  */
 export function createStateManager(
   changes: AsyncIterable<SessionChanges>,
+  opts?: { limit?: number },
 ): StateManager {
   const subscribers: Array<(vm: ViewModel) => void> = [];
   let sessions: AgentSession[] = [];
@@ -109,7 +110,7 @@ export function createStateManager(
     try {
       for await (const change of changes) {
         sessions = applySessionChanges(sessions, change);
-        viewModel = buildViewModel(sessions);
+        viewModel = buildViewModel(sessions, opts?.limit);
         logger.debug(
           `[createStateManager] [iterating → ready] sessions=${sessions.length} columns=${viewModel.data?.columns.length ?? 0}`,
         );
