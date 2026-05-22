@@ -2,7 +2,7 @@
 
 ## 1. Meta
 - **Task-ID:** TSK-41
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Создать корневой index.ts и добавить subpath-exports в package.json для импортов из Golden DX
 - **Scope:** agent-mon
 - **Module:** N/A (scope-level)

@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-38
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать свободную функцию observe(monitor, opts) → AsyncIterable<SessionChanges> с поддержкой idleThresholdMs
 - **Scope:** agent-mon
 - **Module:** observe

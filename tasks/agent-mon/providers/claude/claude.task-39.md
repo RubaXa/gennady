@@ -2,7 +2,7 @@
 
 ## 1. Meta
 - **Task-ID:** TSK-39
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать ClaudeProvider — сканирование сессий Claude Code через батчевый ps и DI-точки
 - **Scope:** agent-mon
 - **Module:** providers/claude

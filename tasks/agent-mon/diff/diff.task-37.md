@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-37
-- **Status:** [~] IN_PROGRESS
+- **Status:** [x] DONE
 - **Reopens:** 0
 - **Purpose:** Реализовать чистую функцию diff для сравнения двух AgentSession[] по семантическим полям
 - **Scope:** agent-mon

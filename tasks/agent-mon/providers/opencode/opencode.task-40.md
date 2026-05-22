@@ -2,7 +2,7 @@
 
 ## 1. Meta
 - **Task-ID:** TSK-40
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать OpenCodeProvider — сканирование сессий OpenCode через SQLite с DI-точкой для БД
 - **Scope:** agent-mon
 - **Module:** providers/opencode
