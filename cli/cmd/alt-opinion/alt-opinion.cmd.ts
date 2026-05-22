@@ -26,6 +26,10 @@ export type AltOpinionCmdDeps = {
   stdinContent?: string;
   /** @purpose Sync file reader override — defaults to readFileSync */
   readFile?: (path: string) => string;
+  /** @purpose AI SDK generateText override for testing */
+  generateText?: typeof generateText;
+  /** @purpose AI SDK createOpenAI override for testing */
+  createOpenAI?: typeof createOpenAI;
 };
 
 // #region START_SANITIZE_OUTPUT — invariant: NFC-08; escapes anchor markers in model output to prevent injection
@@ -107,6 +111,8 @@ function formatModelBlock(result: AltOpinionResult): string {
  * @sideEffect Network: AI model API calls via @ai-sdk/openai.
  */
 export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<AltOpinionReport> {
+  const _generateText = deps?.generateText ?? generateText;
+  const _createOpenAI = deps?.createOpenAI ?? createOpenAI;
   const startedAt = performance.now();
   logger.info('[altOpinionCmd#run] [idle → parsing]');
 
@@ -125,13 +131,13 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
   // #region START_BUILD_PROVIDERS — invariant: llmproxy baseURL from env or default; openrouter fixed baseURL
   const llmproxyBaseUrl = process.env['LLM_PROXY_BASE_URL'] ?? 'https://llmproxy.example.com/v1';
 
-  const llmproxy = createOpenAI({
+  const llmproxy = _createOpenAI({
     apiKey: process.env['LLM_PROXY_API_KEY'],
     baseURL: llmproxyBaseUrl,
     name: 'llmproxy',
   });
 
-  const openrouter = createOpenAI({
+  const openrouter = _createOpenAI({
     apiKey: process.env['OPENROUTER_API_KEY'],
     baseURL: 'https://openrouter.ai/api/v1',
     name: 'openrouter',
@@ -150,7 +156,7 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
     const provider = providers[model.provider];
     modelPorts.set(key, {
       async generate(prompt: string) {
-        const r = await generateText({
+        const r = await _generateText({
           model: provider.chat(model.model),
           prompt,
         });
@@ -172,7 +178,7 @@ export async function run(rawArgs: string[], deps?: AltOpinionCmdDeps): Promise<
     const synthProvider = providers[parsedArgs.synthModel.provider];
     synthPort = {
       async generate(prompt: string) {
-        const r = await generateText({
+        const r = await _generateText({
           model: synthProvider.chat(parsedArgs.synthModel!.model),
           prompt,
         });
