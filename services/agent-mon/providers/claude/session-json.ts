@@ -73,7 +73,7 @@ export function readSessionJson(filePath: string): SessionJsonData | null {
  */
 export function readSessionTitle(cwd: string, sessionId: string): string {
   try {
-    const projectPath = cwd.replace(/\//g, '-').replace(/^-/, '');
+    const projectPath = cwd.replace(/\//g, '-');
     const jsonlPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
 
     if (!existsSync(jsonlPath)) {
