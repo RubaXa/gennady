@@ -206,26 +206,68 @@ export async function run(argv: string[]): Promise<void> {
     const viewModel = await buildOnceViewModel(monitor, flags.limit);
 
     if (viewModel.status === 'error') {
+      process.stderr.write = (() => true) as typeof process.stderr.write;
       console.error('Error:', viewModel.error?.message ?? 'Scan failed');
       process.exit(1);
     }
 
-    const columns = viewModel.data?.columns ?? [];
-    const summary = viewModel.data?.summary;
-    console.log(`\n  ${summary?.total ?? 0} sessions${summary ? ` (${Object.entries(summary.byProvider).map(([k,v]) => `${k}: ${v}`).join(', ')})` : ''}\n`);
+    const cols = viewModel.data?.columns ?? [];
+    const total = viewModel.data?.summary?.total ?? 0;
+    const W = process.stdout.columns ? Math.min(process.stdout.columns - 2, 80) : 78;
 
-    for (const col of columns) {
-      const statusIcon: Record<string, string> = { active: '○', waiting: '⏳', idle: '·', completed: '×' };
-      console.log(`  ${col.provider} (${col.activeCount} active, ${col.waitingCount} waiting, ${col.idleCount} idle)`);
-      for (const s of col.sessions.slice(0, 10)) {
-        const icon = statusIcon[s.status] ?? '?';
-        const elapsed = s.elapsed;
-        const tok = s.tokensIn ? ` tok:${(s.tokensIn/1000).toFixed(0)}k` : '';
-        console.log(`    ${icon} ${s.title.slice(0, 60)}  [${s.model ?? '?'}]  ${s.status}  ${elapsed}${tok}`);
+    function box(text: string) {
+      const inner = W - 4;
+      console.log(`  ┌${'─'.repeat(inner)}┐`);
+      for (const line of text.split('\n')) {
+        const visible = line.replace(/\x1b\[[0-9;]*m/g, '');
+        const pad = Math.max(0, inner - visible.length);
+        console.log(`  │ ${line}${' '.repeat(pad)} │`);
       }
-      if (col.sessions.length > 10) console.log(`    ... +${col.sessions.length - 10} more`);
-      console.log();
+      console.log(`  └${'─'.repeat(inner)}┘`);
     }
+
+    const icons: Record<string, string> = { active: '🔴', waiting: '⏳', idle: '🟡', completed: '⬜' };
+
+    function cardText(c: any): string {
+      const parts = [`${icons[c.status] ?? '?'} ${c.title.slice(0, 55)}`];
+      const meta = [c.model, c.status, c.elapsed].filter(Boolean).join(' · ');
+      parts.push(`   ${meta}`);
+      if (c.tokensIn) parts.push(`   tok: ${Math.round(c.tokensIn / 1000)}k in / ${Math.round((c.tokensOut || 0) / 1000)}k out`);
+      if (c.lastMessage) parts.push(`   ${c.lastMessage.slice(0, 60)}`);
+      return parts.join('\n');
+    }
+
+    // Top: active + waiting cards
+    const activeCards: any[] = [];
+    for (const col of cols) {
+      for (const c of col.sessions) {
+        if (c.status === 'active' || c.status === 'waiting') activeCards.push({ ...c, _provider: col.provider });
+      }
+    }
+
+    console.log(`\n  Agent Monitor — ${total} sessions — snapshot\n`);
+    if (activeCards.length > 0) {
+      console.log(`  🔴 ACTIVE / ⏳ WAITING (${activeCards.length})\n`);
+      for (const c of activeCards.slice(0, 6)) box(cardText(c));
+      if (activeCards.length > 6) console.log(`\n  ... +${activeCards.length - 6} more\n`);
+    } else {
+      console.log('  No active sessions.\n');
+    }
+
+    // Bottom: chronological list
+    const allCards: any[] = [];
+    for (const col of cols) {
+      for (const c of col.sessions) allCards.push({ ...c, _provider: col.provider });
+    }
+    console.log(`  📋 RECENT (${total} total)\n`);
+    for (const s of allCards.slice(0, 8)) {
+      const icon = icons[s.status] ?? '?';
+      const prov = s._provider.padEnd(8);
+      const model = (s.model ?? '?').padEnd(16);
+      const title = s.title.slice(0, 40);
+      console.log(`  ${icon} ${prov} ${model} ${title}`);
+    }
+    console.log();
 
     process.exit(0);
   }
