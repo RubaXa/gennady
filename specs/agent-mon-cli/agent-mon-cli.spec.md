@@ -214,3 +214,37 @@ Modules not yet decomposed — run `module-decomposition agent-mon-cli`
   - `isWaitingForOperator` heuristic — False negatives possible; может потребоваться V2 c AI-классификацией
   - ink@^7 — отслеживать мажорные обновления
   - react@^19 — peer dependency, версия зафиксирована ink
+
+## 9. Module Map (post-ModuleDecomposition)
+
+### 9.1 Modules
+
+- [`cmd`](./cmd/cmd.spec.md) — CLI entry: парсинг флагов, создание монитора, запуск ink-приложения
+- [`state`](./state/state.spec.md) — State manager: SessionChanges → ViewModel, waiting heuristic, группировка
+- [`ui`](./ui/ui.spec.md) — Ink-компоненты: AgentMonApp, ColumnView, ProviderColumn, SessionCard, StatusBadge
+
+### 9.2 Inter-Module Dependency Map
+
+```mermaid
+graph TD
+    cmd --> state
+    cmd --> ui
+    ui --> state
+    cmd -. library .-> agent-mon
+    ui -. package .-> ink
+```
+
+### 9.3 Stack Dependencies
+
+- Languages: TypeScript + JSX
+- Test frameworks: node:test
+- TUI: ink@^7 + react@^19
+
+### 9.4 Handoff to task-scaffolding
+
+- **Primary input:** `specs/agent-mon-cli/agent-mon-cli.spec.md`
+- **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
+- **Open risks & validation needs:**
+  - `isWaitingForUser` heuristic — false positives/negatives возможны
+  - `ink-testing-library` — нужен для тестов ink-компонентов
+  - `render()` ink должен вызываться после инициализации state manager
