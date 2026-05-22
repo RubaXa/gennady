@@ -4,8 +4,9 @@ Test framework usage policy: structure, fixtures, isolation, naming.
 
 ## Currently available
 
-- [`node-test.xml`](node-test.xml) — Node.js built-in `node:test` runner usage policy.
-- [`vitest-rules.xml`](vitest-rules.xml) — Vitest usage policy: structure, mocking, snapshot discipline, file organization.
+- [`common.xml`](common.xml) — **Shared testing core** inherited by every runner-specific directive. Contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget. Read first.
+- [`node-test.xml`](node-test.xml) — Node.js built-in `node:test` runner specifics on top of `common`: assert API, native `mock.fn()`, HTTP mock-agent, snapshot file location.
+- [`vitest-rules.xml`](vitest-rules.xml) — Vitest runner specifics on top of `common`: `vitest run` (not watch), `vi`-matcher API, `vi.mock` confirm-gate, mock hygiene, time/env lifecycle, explicit imports.
 - [`playwright-cli.xml`](playwright-cli.xml) — Playwright CLI exploration & debugging: AX Tree vision, aria snapshots, trace viewer, codegen, headless self-verification. **Prerequisite for playwright-e2e.**
 - [`playwright-e2e.xml`](playwright-e2e.xml) — Playwright e2e test authoring: aria-snapshot-first contracts, role-based locators, fixture-based POM, auth via storageState, network mocking. **Activated after CLI exploration.**
 - [`storybook-usage.xml`](storybook-usage.xml) — Storybook MCP tools for component development: reading manifests (component docs, props, stories), writing stories, running tests, self-verifying component rendering. **Activated when MCP server is running.**

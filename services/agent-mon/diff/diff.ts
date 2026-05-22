@@ -32,8 +32,8 @@ const SEMANTIC_FIELDS: ReadonlyArray<keyof AgentSession> = [
 export function diff(prev: AgentSession[], curr: AgentSession[]): SessionChanges {
   logger.debug('[diff] [idle → comparing]');
 
-  const prevMap = new Map(prev.map(s => [s.sessionId, s]));
-  const currMap = new Map(curr.map(s => [s.sessionId, s]));
+  const prevMap = new Map(prev.map((s) => [s.sessionId, s]));
+  const currMap = new Map(curr.map((s) => [s.sessionId, s]));
 
   const added: AgentSession[] = [];
   const removed: AgentSession[] = [];
@@ -78,5 +78,5 @@ export function diff(prev: AgentSession[], curr: AgentSession[]): SessionChanges
  * @returns true if at least one semantic field value differs.
  */
 function hasSemanticChange(prev: AgentSession, curr: AgentSession): boolean {
-  return SEMANTIC_FIELDS.some(field => prev[field] !== curr[field]);
+  return SEMANTIC_FIELDS.some((field) => prev[field] !== curr[field]);
 }

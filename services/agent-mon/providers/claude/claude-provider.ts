@@ -71,7 +71,9 @@ export class ClaudeProvider implements AgentProvider {
       fileNames = readdirSync(sessionDir).filter((f) => f.endsWith('.json'));
     } catch (cause) {
       if ((cause as NodeJS.ErrnoException).code === 'ENOENT') {
-        this._logger.warn(`[ClaudeProvider#scan] [scanning -> not-found] Sessions dir missing: ${sessionDir}`);
+        this._logger.warn(
+          `[ClaudeProvider#scan] [scanning -> not-found] Sessions dir missing: ${sessionDir}`
+        );
         return [];
       }
       const error = new Error('[ClaudeProvider#scan] Failed to read sessions directory', { cause });

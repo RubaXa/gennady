@@ -62,7 +62,9 @@ export class AgentMonitor {
         try {
           return await provider.scan(opts);
         } catch (cause) {
-          const error = new Error(`[AgentMonitor#scanAll] Provider ${provider.key} failed`, { cause });
+          const error = new Error(`[AgentMonitor#scanAll] Provider ${provider.key} failed`, {
+            cause,
+          });
           logger.error(`[AgentMonitor#scanAll] [scanning → degraded] ${provider.key}`, { error });
           return [] as AgentSession[];
         }
@@ -98,7 +100,9 @@ export class AgentMonitor {
 
     try {
       const sessions = await provider.scan(opts);
-      logger.info(`[AgentMonitor#scanOne] [scanning → completed] ${key} sessions=${sessions.length}`);
+      logger.info(
+        `[AgentMonitor#scanOne] [scanning → completed] ${key} sessions=${sessions.length}`
+      );
       return sessions;
     } catch (cause) {
       const error = new Error(`[AgentMonitor#scanOne] Provider ${key} failed`, { cause });

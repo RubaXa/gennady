@@ -103,16 +103,19 @@ graph TD
     TSK-41 --> TSK-36
     TSK-41 --> TSK-39
     TSK-41 --> TSK-40
+    TSK-43 --> TSK-42
+    TSK-44 --> TSK-42
 ```
 
 ## Tracker Index
 
-| Scope     | Type    | Tracker                       | Tasks | Done  |
-| --------- | ------- | ----------------------------- | ----- | ----- |
-| dbc       | library | [README](dbc/README.md)       | 14    | 14/14 |
-| cli       | product | [README](cli/README.md)       | 15    | 13/15 |
-| vcs       | product | [README](vcs/README.md)       | 5     | 5/5   |
-| agent-mon | library | [README](agent-mon/README.md) | 7 | 7/7 |
+| Scope             | Type           | Tracker                               | Tasks | Done  |
+| ----------------- | -------------- | ------------------------------------- | ----- | ----- |
+| dbc               | library        | [README](dbc/README.md)               | 14    | 14/14 |
+| cli               | product        | [README](cli/README.md)               | 15    | 13/15 |
+| vcs               | product        | [README](vcs/README.md)               | 5     | 5/5   |
+| agent-mon         | library        | [README](agent-mon/README.md)         | 7     | 7/7   |
+| infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 
 ## Decision Log
 

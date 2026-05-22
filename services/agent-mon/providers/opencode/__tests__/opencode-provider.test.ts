@@ -67,11 +67,15 @@ describe('OpenCodeProvider', () => {
       const lastMessage = 'hello world';
 
       // mock query functions return fixed data without touching the real DB
-      const mockQuerySessions = mock.fn((_db: DatabaseSync, _opts?: unknown): SessionRow[] => [testRow]);
-      const mockQueryLastMessage = mock.fn((_db: DatabaseSync, _sessionId: string): string | null => lastMessage);
+      const mockQuerySessions = mock.fn((_db: DatabaseSync, _opts?: unknown): SessionRow[] => [
+        testRow,
+      ]);
+      const mockQueryLastMessage = mock.fn(
+        (_db: DatabaseSync, _sessionId: string): string | null => lastMessage
+      );
 
       const provider = new OpenCodeProvider({
-        dbPath: ':memory:',   // scan() opens a real empty in-memory DB; query mocks bypass it
+        dbPath: ':memory:', // scan() opens a real empty in-memory DB; query mocks bypass it
         querySessions: mockQuerySessions,
         queryLastMessage: mockQueryLastMessage,
         parseModelJson: (_raw) => 'deepseek-v4-pro',
@@ -98,7 +102,7 @@ describe('OpenCodeProvider', () => {
       assert.strictEqual(actual.status, 'active');
       assert.strictEqual(actual.startedAt, 1000);
       assert.strictEqual(actual.lastActivityAt, 2000);
-      assert.strictEqual(actual.elapsedSeconds, 1);   // Math.round((2000-1000)/1000) = 1
+      assert.strictEqual(actual.elapsedSeconds, 1); // Math.round((2000-1000)/1000) = 1
       assert.strictEqual(actual.lastMessage, 'hello world');
       assert.strictEqual(actual.tokensInput, 100);
       assert.strictEqual(actual.tokensOutput, 200);
@@ -123,7 +127,9 @@ describe('OpenCodeProvider', () => {
         tokens_output: null,
       });
 
-      const mockQuerySessions = mock.fn((_db: DatabaseSync, _opts?: unknown): SessionRow[] => [testRow]);
+      const mockQuerySessions = mock.fn((_db: DatabaseSync, _opts?: unknown): SessionRow[] => [
+        testRow,
+      ]);
       const mockQueryLastMessage = mock.fn((_db: DatabaseSync, _sessionId: string): null => null);
 
       const provider = new OpenCodeProvider({

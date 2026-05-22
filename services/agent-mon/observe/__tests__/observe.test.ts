@@ -79,10 +79,7 @@ describe('observe', () => {
     // #region START_FIRST_YIELD_SETUP_MONITOR
     const baselineSession = makeSession({ sessionId: 'base', startedAt: 100 });
     const newSession = makeSession({ sessionId: 'new', startedAt: 200 });
-    const monitor = mockMonitor([
-      [baselineSession],
-      [baselineSession, newSession],
-    ]);
+    const monitor = mockMonitor([[baselineSession], [baselineSession, newSession]]);
     // #endregion END_FIRST_YIELD_SETUP_MONITOR
 
     // #region START_FIRST_YIELD_TRIGGER_ITERATE
@@ -113,10 +110,7 @@ describe('observe', () => {
     // #region START_INTERVAL_SETUP_MONITOR
     const session1 = makeSession({ sessionId: 's1', startedAt: 100 });
     const session2 = makeSession({ sessionId: 's2', startedAt: 200 });
-    const monitor = mockMonitor([
-      [session1],
-      [session1, session2],
-    ]);
+    const monitor = mockMonitor([[session1], [session1, session2]]);
     // #endregion END_INTERVAL_SETUP_MONITOR
 
     // #region START_INTERVAL_TRIGGER_ITERATE
@@ -201,10 +195,7 @@ describe('observe', () => {
       status: 'active' as const,
       lastActivityAt: now - 600_000,
     });
-    const monitor = mockMonitor([
-      [activeSession],
-      [idleSession],
-    ]);
+    const monitor = mockMonitor([[activeSession], [idleSession]]);
     // #endregion END_IDLE_SETUP_SESSIONS
 
     // #region START_IDLE_TRIGGER_ITERATE

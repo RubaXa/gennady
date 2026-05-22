@@ -46,7 +46,8 @@
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "npm run format && npm run type-check"
+    "lint": "npm run format && npm run type-check",
+    "release": "release-it"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",
@@ -59,6 +60,7 @@
     "open": "^11.0.0",
     "prettier": "^3.4.2",
     "qrcode": "^1.5.4",
+    "release-it": "20.0.1",
     "tree-sitter": "^0.22.4",
     "tree-sitter-typescript": "^0.23.2",
     "tsx": "^4.19.1",

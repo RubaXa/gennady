@@ -119,7 +119,7 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 - [x] `2026-05-22T04:30:31Z` DONE
       **Handoff →** artifacts: [services/agent-mon/diff/__tests__/diff.test.ts]; decisions: []; open: []
 
-
 #### Round close
+
 - [x] `<ts>` sync agent-mon+root
 - [x] `<ts>` DONE

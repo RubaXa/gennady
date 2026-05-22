@@ -111,7 +111,7 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 - ✅ `2026-05-22T05:32:55Z` RESOLVED: предсуществующая ошибка TS2345 в services/agent-mon/providers/opencode/db.ts исправлена. npm run type-check теперь проходит чисто (exit 0).
 - [x] `2026-05-22T05:32:55Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-05-22T05:32:55Z` DONE
-**Handoff →** artifacts: [services/agent-mon/observe/observe.ts, services/agent-mon/observe/index.ts]; decisions: [defaultIdleThresholdMs=300000, minInterval=100ms, idleDetectionAppliedBeforeDiff, observeUsesSetTimeoutForNonBlockingPoll]; open: []
+      **Handoff →** artifacts: [services/agent-mon/observe/observe.ts, services/agent-mon/observe/index.ts]; decisions: [defaultIdleThresholdMs=300000, minInterval=100ms, idleDetectionAppliedBeforeDiff, observeUsesSetTimeoutForNonBlockingPoll]; open: []
 
 #### P2
 
@@ -120,7 +120,7 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 - [x] `2026-05-22T05:41:15Z` ver `node --test services/agent-mon/observe/__tests__/observe.test.ts` → pass exit=0
 - [x] `2026-05-22T05:41:15Z` ver `npm run test` → fail exit=1
 - [x] `2026-05-22T05:41:15Z` DONE
-**Handoff →** artifacts: [services/agent-mon/observe/__tests__/observe.test.ts]; decisions: [observeTestsPass=5/5, preexistingTestFailures=5, mockMonitorUsesNativeMockFn, collectYieldsBreaksLoopWithSafetyTimeout, testCanonicalNamesMatchTicketSpec]; open: []
+      **Handoff →** artifacts: [services/agent-mon/observe/__tests__/observe.test.ts]; decisions: [observeTestsPass=5/5, preexistingTestFailures=5, mockMonitorUsesNativeMockFn, collectYieldsBreaksLoopWithSafetyTimeout, testCanonicalNamesMatchTicketSpec]; open: []
 
 #### Round close
 

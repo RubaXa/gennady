@@ -47,7 +47,7 @@ graph TD
 | [TSK-38](observe/observe.task-38.md)             | observe: async iterable      | observe            | TSK-35, TSK-36, TSK-37 | `[x]` DONE | 0       |
 | [TSK-39](providers/claude/claude.task-39.md)     | ClaudeProvider               | providers/claude   | TSK-35                 | `[x]` DONE | 0       |
 | [TSK-40](providers/opencode/opencode.task-40.md) | OpenCodeProvider             | providers/opencode | TSK-35                 | `[x]` DONE | 0       |
-| [TSK-41](../agent-mon.task-41.md) | Корневой barrel + exports | N/A | TSK-36, TSK-39, TSK-40 | `[x]` DONE | 0 |
+| [TSK-41](../agent-mon.task-41.md)                | Корневой barrel + exports    | N/A                | TSK-36, TSK-39, TSK-40 | `[x]` DONE | 0       |
 
 ## Notes
 

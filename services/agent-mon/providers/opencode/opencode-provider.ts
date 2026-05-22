@@ -95,9 +95,7 @@ export class OpenCodeProvider implements AgentProvider {
         });
       }
 
-      this._logger.info(
-        `[OpenCodeProvider#scan] [querying → scanned] ${sessions.length} sessions`
-      );
+      this._logger.info(`[OpenCodeProvider#scan] [querying → scanned] ${sessions.length} sessions`);
       return sessions;
     } catch (cause) {
       const error = new Error('[OpenCodeProvider#scan] Query failed', { cause });

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/release-it@20/schema/release-it.json",
+  "hooks": {
+    "before:init": ["npm run lint", "npm test"]
+  }
+}

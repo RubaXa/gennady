@@ -124,7 +124,11 @@ describe('AgentMonitor', () => {
 
       // #region START_SCANALL_AGGREGATE_OBSERVE
       // observation focus: sort order + provider key fidelity are the contract surface
-      const actual = sessions.map((s) => ({ provider: s.provider, sessionId: s.sessionId, startedAt: s.startedAt }));
+      const actual = sessions.map((s) => ({
+        provider: s.provider,
+        sessionId: s.sessionId,
+        startedAt: s.startedAt,
+      }));
       // #endregion END_SCANALL_AGGREGATE_OBSERVE
 
       // #region START_SCANALL_AGGREGATE_ASSERT

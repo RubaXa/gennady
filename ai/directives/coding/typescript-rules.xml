@@ -265,7 +265,7 @@
       Complex (triggers non-trivial anchors + full JSDoc optional-tag set) if any: network/file/process I/O; shared-state mutation; retry/fallback/error translation; concurrency, locking, batching. OR any two of: multiple decision points, hidden pre/postconditions, nested control flow, non-local refactor hazard.
     </Definition>
     <Definition id="DEF_ALLOWED_COMMENT_PAYLOAD">
-      Closed vocabulary for machine comments: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Inside tests, additionally allowed: `contract` and `observation focus` (per directive `node-test`).
+      Closed vocabulary for machine comments: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Inside tests, additionally allowed: `contract` and `observation focus` (per directive `testing/common` `DEF_TEST_PAYLOAD_VOCAB`).
     </Definition>
   </Definitions>
 

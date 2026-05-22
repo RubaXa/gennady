@@ -10,15 +10,15 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name             | Type         | Purpose                                                                     |
-| ---------------- | ------------ | --------------------------------------------------------------------------- |
-| `AgentSession`   | Value Object | Унифицированная модель сессии — единый формат данных от всех провайдеров    |
-| `SessionChanges` | Value Object | Результат diff: `{ added, removed, updated }`                               |
-| `ScanOpts`       | Value Object | Параметры сканирования (`since`)                                            |
-| `ObserveOpts`    | Value Object | Параметры observe (`interval`)                                              |
-| `AgentProvider` | Port | Контракт провайдера — `key: string`, `scan(opts) → Promise<AgentSession[]>` |
-| `DuplicateProviderError` | Error | Бросается при `register()` с дубликатом ключа |
-| `ProviderNotFoundError` | Error | Бросается при `scanOne()` с неизвестным ключом; `unregister()` для неизвестного ключа — no-op |
+| Name                     | Type         | Purpose                                                                                       |
+| ------------------------ | ------------ | --------------------------------------------------------------------------------------------- |
+| `AgentSession`           | Value Object | Унифицированная модель сессии — единый формат данных от всех провайдеров                      |
+| `SessionChanges`         | Value Object | Результат diff: `{ added, removed, updated }`                                                 |
+| `ScanOpts`               | Value Object | Параметры сканирования (`since`)                                                              |
+| `ObserveOpts`            | Value Object | Параметры observe (`interval`)                                                                |
+| `AgentProvider`          | Port         | Контракт провайдера — `key: string`, `scan(opts) → Promise<AgentSession[]>`                   |
+| `DuplicateProviderError` | Error        | Бросается при `register()` с дубликатом ключа                                                 |
+| `ProviderNotFoundError`  | Error        | Бросается при `scanOne()` с неизвестным ключом; `unregister()` для неизвестного ключа — no-op |
 
 ## 3. Entity Surfaces
 

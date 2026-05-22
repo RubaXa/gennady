@@ -1,0 +1,234 @@
+<TestingCommon keywords="testing, ai_first_tests, contract_testing, case_flow, phase_anchors, unified_context, factory, mocks, bdd_mapping, snapshots, isolation" type="testing-rules" ver="1.0">
+  <Mission>
+    Shared testing core for every runner-specific directive (`testing/node-test`, `testing/vitest-rules`, future Jest/Pytest/Go directives). Defines: what a test must protect, how the case body is structured for the next agent to read, how dependencies are isolated, how BDD scenarios in a ticket map to `it` cases.
+
+    Runner-specific directives reference this file under `Inherited_Baseline` and only state the differences (assertion API, mocking surface, lifecycle vocabulary, snapshot location).
+
+    **A test is executable learning context.** Title, structural anchors, intent comments must reveal what is under protection, what must not regress, where the scenario is fragile. Tests are CODE — they obey the same machine-first annotation language as production code (`coding/typescript-rules`). The repo reads as one system.
+  </Mission>
+
+  <Belief_State>
+
+    <!-- ── Contract boundary ──────────────────────────────────────────────── -->
+
+    <Axiom id="AX_CONTRACT_OVER_IMPLEMENTATION">
+      Test the public contract; never inspect protected/private state of the SUT. A refactor that preserves behavior must not break the test suite. Applies uniformly to:
+      - state-returning methods → assert returned value;
+      - emitters / subscriptions → assert emitted event payload via a public listener; do NOT inspect listener arrays or registration mechanics;
+      - cancellation APIs → assert observable signal (`aborted`, `reason`, downstream reaction); do NOT inspect controller wiring;
+      - lifecycle hooks → assert the side effect at the public boundary, not internal counters.
+
+      Tests bound to internals become an obligation for every refactor and lose the ability to catch real regressions.
+    </Axiom>
+
+    <Axiom id="AX_ISOLATION_THROUGH_PUBLIC_BOUNDARY">
+      Isolate the SUT by stubbing its external dependencies and exercising it through its public surface. Determinism comes from controlling inputs at the boundary, not from reaching past the boundary to set internal state.
+    </Axiom>
+
+    <!-- ── Case flow + anchors ────────────────────────────────────────────── -->
+
+    <Axiom id="AX_CASE_FLOW">
+      Canonical case pattern: `SETUP → TRIGGER → OBSERVE → ASSERT` (`CLEANUP` when needed). Keep only the phases that add clarity. `AAA` is a useful short form — not a law. Forced empty phases are noise; merging obvious phases (`TRIGGER_AND_ASSERT` around `assert.rejects` / `rejects.toThrow`) is allowed and preferred over a fake split.
+
+      TRIGGER and ASSERT are mandatory in every non-trivial case (trigger crosses the contract boundary; assert verifies it).
+    </Axiom>
+
+    <Axiom id="AX_PHASE_ANCHORS">
+      **Wrap each present phase that carries ≥2 statements OR encodes local policy** (retry, fallback, aggregation, fixture build) in paired anchors:
+
+      ```
+      // #region START_[CASE]_[PHASE]_[INTENT]
+      ...phase body...
+      // #endregion END_[CASE]_[PHASE]_[INTENT]
+      ```
+
+      PHASE ∈ {`SETUP`, `TRIGGER`, `OBSERVE`, `ASSERT`, `CLEANUP`}.
+
+      **Skip anchors when the phase is a single statement with no hidden policy.** A one-line `await assert.rejects(...)` covering both TRIGGER and ASSERT does NOT need an anchor — title + the call already expose intent. Anchors around trivial one-liners are ritual noise that erodes the signal of anchors on truly non-trivial phases.
+
+      Anchors are machine grammar for refactoring: they let the next agent cut and replace phases by pairs without an AST.
+    </Axiom>
+
+    <Axiom id="AX_TEST_ANCHOR_NAMING">
+      Anchor names describe intent, not raw syntax. `START_FETCH_ITEM_OBSERVE_RETRY_SUMMARY` — yes; `START_FETCH_ITEM_ASSERT_2` — no. Uppercase, high-signal tokens. CASE = short scenario id; INTENT = what this phase is about.
+    </Axiom>
+
+    <!-- ── Brief ──────────────────────────────────────────────────────────── -->
+
+    <Axiom id="AX_IT_OPENING_BRIEF">
+      Open the `it` body with a 1–3 line brief **when the title alone does not convey invariant / failure mode / non-goal**. Brief never duplicates the title — it adds what the title cannot.
+
+      Closed vocabulary (machine-first payload): `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`, `contract`, `observation focus`.
+
+      Skip the brief on cases where title + direct input + a single assertion already expose the scenario. A brief on a self-evident case is noise that weakens the signal of briefs on hard cases.
+    </Axiom>
+
+    <!-- ── Assertion shape ────────────────────────────────────────────────── -->
+
+    <Axiom id="AX_DEFAULT_DIRECT_ASSERTION_PROTOCOL">
+      Start with the simplest direct assertion on the real contract surface. Introduce an OBSERVE phase with an aggregated `actual` object only when a single rich diff genuinely beats several isolated assertions (composite contract: returned value + emitted log + side-effect summary). Do NOT fragment one coherent shape into many tiny assertions; do NOT force aggregation when orthogonal observations read more clearly standalone. The criterion is **diagnostic clarity of the failure report**.
+
+      Concrete assertion API (`strictEqual` / `toBe`, `deepStrictEqual` / `toEqual`, `throws` / `toThrow`, etc.) lives in the runner-specific directive.
+    </Axiom>
+
+    <Axiom id="AX_PARTIAL_STRING_VIA_MATCH">
+      Partial string / error-message checks go through regex match (`assert.match` / `toMatch`), never through boolean fold (`includes`, `toContain`). Match shows the real value in the failure output; boolean fold loses context.
+    </Axiom>
+
+    <Axiom id="AX_RESULT_UNWRAP_ON_SUCCESS_PATHS">
+      If the SUT returns `Result<T>`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
+    </Axiom>
+
+    <Axiom id="AX_FOCUSED_ERROR_ASSERTIONS">
+      Error cases use a focused set: domain error class via `instanceof` AND a stable message fragment via regex match. Do NOT strict-equal a dynamic error message (correlation ids, timestamps) — flaky failures with no diagnostic signal.
+    </Axiom>
+
+    <!-- ── Unified context + factory ──────────────────────────────────────── -->
+
+    <Axiom id="AX_ONE_UNIFIED_CONTEXT_PER_FILE">
+      **Each test file defines exactly ONE context shape** — a single `XxxContext` type and a single factory `createXxxContext(overrides?)` (or, when teardown required, a single lifecycle context object built in `beforeEach` and disposed in `afterEach`).
+
+      Every case in the file consumes this same context. New requirements extend the existing shape and factory through optional fields and overrides; they do NOT spawn parallel `createOrderContextHappy` / `createOrderContextFailing` factories or sibling `let`s in the describe.
+
+      A nested `describe` MAY introduce its own narrower context only when its sub-group has lifecycle needs that cannot be expressed as overrides on the parent; the exception must be obvious from the diff.
+
+      Why: test files stay small and predictable — one shape applies to every case, new tests almost always add an override, marginal cost per case stays flat.
+    </Axiom>
+
+    <Axiom id="AX_PREFER_FACTORY_OVER_HOOKS">
+      Default preparation = the file's single factory called inside the case. Each case constructs the exact context it needs by `createXxxContext({ ... overrides })` at the top of the case, destructures only the fields it uses, and proceeds. Per-case dependencies become visible at the call site; no scrolling to a hook; no shared mutable `let` populated in `beforeEach`.
+
+      `beforeEach` is reserved for setup that REQUIRES teardown (see `AX_HOOKS_ONLY_FOR_LIFECYCLE`).
+    </Axiom>
+
+    <Axiom id="AX_HOOKS_ONLY_FOR_LIFECYCLE">
+      `beforeEach` / `afterEach` are reserved for context that REQUIRES teardown — open resources (timers, sockets, file handles, DB connections), global stubs (env, globals), module mocks, fake timers, fixture filesystems, in-process servers.
+
+      A justified hook MUST follow the **single-context shape**: hook builds ONE context object and `afterEach` disposes it. Cases consume properties off that single object — no pile of `let sut, let saveOrder, let publish` in describe scope.
+    </Axiom>
+
+    <Axiom id="AX_NO_DESCRIBE_LET_PILEUP">
+      `describe`-scope MUST NOT host mutable `let` variables populated by hooks. Static fixtures (frozen constants, fixture paths, factory definitions, type aliases) are allowed. Anything mutable per-case lives either inside the case (factory result) or inside the SINGLE lifecycle context object exposed by the hook. Mutable describe-scope state is the structural source of inter-test leakage.
+    </Axiom>
+
+    <!-- ── Mocking discipline ─────────────────────────────────────────────── -->
+
+    <Axiom id="AX_MOCK_AS_LAST_RESORT">
+      Prefer real modules with dependency injection over module-level mocks. A SUT that accepts its collaborators as constructor or function arguments is tested by passing test doubles directly through those seams — no module-level mocking needed.
+
+      Module-level mocking is allowed ONLY when ALL of:
+      1. Dependency is genuinely external (network, FS, process, OS time, randomness, third-party SDKs touching the network).
+      2. No available injection seam in the SUT (refactoring to add one is out of scope).
+      3. Case carries an explicit justification comment naming the dependency and why injection is unavailable.
+
+      Mocks of pure in-process neighboring modules are forbidden by default. Every mock freezes an assumption about another module's behavior; injection keeps the seam observable in the type system.
+    </Axiom>
+
+    <Axiom id="AX_NO_FALSIFICATION_VIA_MOCKS">
+      A test MUST NOT mock the very module that contains the SUT, its direct collaborator under test, or the contract method being verified. Mocking the SUT or its co-tested collaborator turns the test into a tautology — it asserts the mock instead of production code. Non-negotiable; most common form of fabricated green tests in agent-written suites.
+    </Axiom>
+
+    <Axiom id="AX_FIXTURE_IO_POLICY">
+      Reading fixture files is allowed. Writing files inside unit tests is NOT. Writes from a test make the runtime stateful, break parallelism, and leave artifacts in FS that mutate between runs.
+    </Axiom>
+
+    <!-- ── Snapshots ──────────────────────────────────────────────────────── -->
+
+    <Axiom id="AX_SNAPSHOT_USAGE_GATE">
+      Snapshots ONLY for large stable serializable outputs (generated text, HTML, JSON documents, codegen). Do NOT replace scalar or small-object equality with a snapshot — failure shows a diff of snapshot blobs instead of the actual mismatch, and manual review of every scalar change is ceremony with no payoff.
+    </Axiom>
+
+    <Axiom id="AX_SNAPSHOT_OPERATOR_CONFIRM">
+      **Execution-agent MUST NOT update existing snapshots autonomously.** Forbidden: running snapshot-update flags (`vitest -u`, `--update`); editing snapshot literals to make a test pass; deleting snapshot files.
+
+      Allowed: writing the FIRST snapshot for a NEW test (operator reviews in PR/diff). For any change to an existing snapshot the agent stops, presents old vs new content, and waits for explicit operator confirmation. Auto-update is the most direct path an agent has to fabricate a green test.
+    </Axiom>
+
+    <!-- ── File shape + scenario hygiene ──────────────────────────────────── -->
+
+    <Axiom id="AX_FILE_NAME_AND_DEFAULT_SHAPE">
+      File naming: `[subject].test.ts`. Default shape: `describe(subject)` → optional shared hooks → nested `describe(method)` → `it(case)`. A `Test Graph` header comment (map of cases) is RECOMMENDED for multi-method or non-trivial files, OPTIONAL for tiny focused ones.
+    </Axiom>
+
+    <Axiom id="AX_TEST_FILE_SIZE_BUDGET">
+      **Soft target: ≤300 code-LOC per test file. Hard ceiling: 500.** Split axes in priority order: (1) by SUT method — `[subject].[method].test.ts`, sharing factory via a sibling `[subject].test-context.ts`; (2) by scenario family — `[subject].error-paths.test.ts` separate from happy-paths. After a split each file STILL holds exactly one context shape (`AX_ONE_UNIFIED_CONTEXT_PER_FILE`).
+
+      Why: instruction-following degrades with file size. Past 500 LOC the agent loses structure between read/edit cycles → fabricated green tests slip in.
+    </Axiom>
+
+    <Axiom id="AX_ONE_TEST_ONE_SCENARIO">
+      One `it` covers one scenario. Duplicate cases that prove the same behavior create false confidence in coverage and double maintenance cost when the contract changes.
+    </Axiom>
+
+    <Axiom id="AX_TESTS_NO_HUMAN_NARRATION">
+      Never write step-by-step narration like `Step 1`, `Step 2` inside a case. Phase anchors already make the steps machine-visible. Comments only where they increase recoverable intent; do not duplicate the title, assertion text, or obvious setup facts.
+    </Axiom>
+
+    <Axiom id="AX_ENGLISH_ONLY_NAMES_AND_COMMENTS">
+      Test titles, comments, anchors, helper variable names — English only. Mixed languages break grep and comprehension.
+    </Axiom>
+
+    <Axiom id="AX_NO_FOCUSED_OR_SKIPPED_TESTS_ON_MERGE">
+      `it.only` / `describe.only` / `it.skip` / `describe.skip` / `it.todo` MUST NOT be present in committed code unless paired with an inline reference to a tracked deferred-ownership task. A focused `.only` silently disables the rest of the suite; a stray `.skip` rots into a coverage hole.
+    </Axiom>
+
+    <!-- ── Coverage + finalization ────────────────────────────────────────── -->
+
+    <Axiom id="AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE">
+      Measure CONTRACT coverage, not line coverage. Mandatory minimum per public method/function:
+      1. ≥1 happy-path scenario.
+      2. ≥1 boundary scenario (boundary value, edge of input domain) when contract has boundary semantics.
+      3. ≥1 failure-path scenario per declared `@throws` / rejected promise.
+
+      Ignored: thin pass-through wrappers without hidden policy, type-only constructs, dead branches excluded by `AX_MINIMAL_ERROR_SURFACE` in coding-rules.
+    </Axiom>
+
+    <Axiom id="AX_COVERAGE_REPORT_BLOCKER_EXPLICIT">
+      Type-check or coverage cannot run because of an environment / project blocker → declare the blocker EXPLICITLY; do not simulate success. A silent skip turns the completion gate into fiction.
+    </Axiom>
+
+    <Axiom id="AX_VERIFY_AND_FINALIZE">
+      Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
+    </Axiom>
+
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_NON_TRIVIAL_CASE">
+      A case is non-trivial if any of: async behavior with setup; retries / fallbacks / errors; emitted events or external side effects; more than one meaningful observation; nested control flow that another agent could misread at a glance. Non-trivial cases are candidates for opening brief and phase anchors per the thresholds in `AX_PHASE_ANCHORS` and `AX_IT_OPENING_BRIEF`.
+    </Definition>
+    <Definition id="DEF_PHASE_ANCHOR_FORMAT">
+      `// #region START_[CASE]_[PHASE]_[INTENT]` and paired `// #endregion END_[CASE]_[PHASE]_[INTENT]`. PHASE ∈ {`SETUP`, `TRIGGER`, `OBSERVE`, `ASSERT`, `CLEANUP`}. CASE = uppercase short scenario id; INTENT = uppercase intent token.
+    </Definition>
+    <Definition id="DEF_TEST_PAYLOAD_VOCAB">
+      Closed vocabulary for intent comments inside tests: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`, `contract`, `observation focus`. Same base as production code (`coding/typescript-rules`), plus test-specific `contract` and `observation focus`.
+    </Definition>
+    <Definition id="DEF_UNIFIED_CONTEXT">
+      The single per-file `XxxContext` type plus its single factory `createXxxContext(overrides?)` (or the single `beforeEach`/`afterEach`-managed lifecycle object). Every case in the file uses this one shape. New scenarios extend it via optional fields and overrides rather than introducing parallel structures.
+    </Definition>
+    <Definition id="DEF_INJECTION_SEAM">
+      A constructor parameter, function argument, or factory option of the SUT through which a collaborator can be supplied from outside. Tests use injection seams to pass test doubles without resorting to module-level mocks.
+    </Definition>
+  </Definitions>
+
+  <BDD_Mapping_Hint>
+    Public contract between `task-scaffolding` and any execution-agent writing tests under a runner-specific directive that inherits this file.
+
+    - **`BDD_CANONICAL_CASE_NAME_BINDING`** — canonical case name from ticket MUST be used verbatim as the `it(...)` title. Execution-agent changes a name → MUST update `Test Scenario Coverage` in the ticket BEFORE closing.
+    - **`BDD_SCENARIO_TO_IT`** — one BDD scenario → one `it(...)` case (1:1). Don't merge scenarios; don't split a scenario without explicit derivation.
+    - **`BDD_FEATURE_TO_DESCRIBE`** — `Feature: [Component Behavior]` → outer `describe(...)` (or semantically equivalent SUT name). Each `Scenario:` → separate `it(...)`.
+    - **`BDD_GIVEN_WHEN_THEN_TO_CASE_FLOW`** — `Given` → SETUP phase (or `beforeEach` if shared and lifecycle-bound). `When` → TRIGGER. `Then` → ASSERT. `And` after `Then` → additional assertion in ASSERT or a separate OBSERVE if aggregation justified.
+    - **`BDD_ERROR_SCENARIO_BINDING`** — error / rejection scenario → assert-throws / assert-rejects (runner-specific API). Assert message via regex match (`AX_PARTIAL_STRING_VIA_MATCH`). Domain error class → assert both `instanceof` AND message pattern.
+    - **`BDD_VERIFICATION_SURFACE_GUARDRAIL`** — `Test Scenario Coverage` carries a `Runtime Fidelity` marker. Tests under this directive cover ONLY `contract-only` and `simulation-backed`. `runtime-hook-required` and `e2e-required` are out of scope; record deferred coverage owner EXPLICITLY in Execution Log.
+    - **`BDD_DEFERRED_OWNERSHIP_HONESTY`** — BDD scenario cannot be materialized at this runner level → silent skipping forbidden; add deferred-ownership reference in `Test Scenario Coverage`.
+  </BDD_Mapping_Hint>
+
+  <Workflow_Outline>
+    <Step id="WF_1_DERIVE_SCENARIOS">Read contract + ticket's `Test Scenario Coverage`. Derive happy-path, boundary, failure scenarios. BDD scenarios are normative source of case names.</Step>
+    <Step id="WF_2_DEFINE_UNIFIED_CONTEXT">Define ONE `XxxContext` type and ONE factory at top of file. Teardown required → ONE lifecycle context object in `beforeEach`/`afterEach`. Choose ONE preparation path for the whole file.</Step>
+    <Step id="WF_3_BUDGET_CHECK">Estimate file size for planned cases. Projection >300 LOC → plan a split now (by method or scenario family); unified context survives the split.</Step>
+    <Step id="WF_4_IMPLEMENT_CASES">For each `it`: decide if title alone conveys intent (skip brief) or not (add brief from closed vocab). Wrap phases ≥2 statements or carrying policy in anchors; skip anchors on one-liners. Pass stubs through injection seams.</Step>
+    <Step id="WF_5_CHOOSE_DIAGNOSTIC_ASSERTIONS">Simplest direct assertion first. Aggregate into OBSERVE only when one rich diff beats several isolated assertions.</Step>
+    <Step id="WF_6_VERIFY_AND_FINALIZE">Re-check unified context, anchor pairing, snapshot placement, no ungated mocks. Run type-check + tests with coverage. Blocker → declared EXPLICITLY.</Step>
+  </Workflow_Outline>
+</TestingCommon>

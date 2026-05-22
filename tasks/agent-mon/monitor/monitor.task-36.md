@@ -22,7 +22,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [x]   |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [x]    |
 
 ## 3. Phases
@@ -131,9 +131,9 @@ _(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#e
 - [x] `<ts>` insight 1 предсуществующий failing test в `cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts` (test 5: Synthesis failure) → не относится к P2. Все 8 тестов P2 проходят.
 - [x] `<ts>` ver `node --test services/agent-mon/monitor/__tests__/*.test.ts` → pass exit=0 (8/8, изолированно; project-wide npm run test fail=exit1 — предсуществующий сбой alt-opinion.cmd.test.ts, не относится к TSK-36)
 - [x] `<ts>` DONE
-  **Handoff →** artifacts: [services/agent-mon/monitor/__tests__/agent-monitor.test.ts, services/agent-mon/monitor/__tests__/create-monitor.test.ts]; decisions: [test-runner=node-test, mock-strategy=native-mock-fn, bdd-coverage=4-of-5-scenarios (perf-deferred)]; open: [perf: scanAll-50-sessions scenario deferred to manual check per ticket §4]
-
+      **Handoff →** artifacts: [services/agent-mon/monitor/__tests__/agent-monitor.test.ts, services/agent-mon/monitor/__tests__/create-monitor.test.ts]; decisions: [test-runner=node-test, mock-strategy=native-mock-fn, bdd-coverage=4-of-5-scenarios (perf-deferred)]; open: [perf: scanAll-50-sessions scenario deferred to manual check per ticket §4]
 
 #### Round close
+
 - [x] `<ts>` sync agent-mon+root
 - [x] `<ts>` DONE

@@ -1,6 +1,7 @@
 # infra-npm-publish: Infrastructure Specification
 
 ## scope-type
+
 infrastructure
 
 ## 1. Vision
@@ -11,23 +12,23 @@ infrastructure
 
 ### 2.1 Categories Covered
 
-| Категория | Статус | Обоснование |
-|-----------|--------|-------------|
-| npm-publish-tool | включена | ядро скоупа — автоматизация релизного процесса |
-| vcs | включена (mandatory) | git — теги, коммиты, push |
-| package-management | включена (mandatory) | npm — registry, publish |
-| git-hooks | включена (mandatory) | pre-publish проверки через release-it hooks |
+| Категория          | Статус               | Обоснование                                    |
+| ------------------ | -------------------- | ---------------------------------------------- |
+| npm-publish-tool   | включена             | ядро скоупа — автоматизация релизного процесса |
+| vcs                | включена (mandatory) | git — теги, коммиты, push                      |
+| package-management | включена (mandatory) | npm — registry, publish                        |
+| git-hooks          | включена (mandatory) | pre-publish проверки через release-it hooks    |
 
 linting, formatting, test-unit, type-check, bundler, ci — исключены: покрываются `infra-base`.
 
 ### 2.2 Tool Choices
 
-| Category | Tool | Rationale |
-|----------|------|-----------|
-| npm-publish-tool | release-it | D-001 |
-| vcs | git | D-002 |
-| package-management | npm | D-003 |
-| git-hooks | release-it hooks | D-004 |
+| Category           | Tool             | Rationale |
+| ------------------ | ---------------- | --------- |
+| npm-publish-tool   | release-it       | D-001     |
+| vcs                | git              | D-002     |
+| package-management | npm              | D-003     |
+| git-hooks          | release-it hooks | D-004     |
 
 ## 3. Developer Workflow Example
 
@@ -54,24 +55,25 @@ npm run release
 
 ## 5. Effective Rules (for cascade)
 
-| Rule | Category | Source |
-|------|----------|--------|
-| nodejs-npm-setup | infra | infra-base (D-003) |
+| Rule             | Category | Source             |
+| ---------------- | -------- | ------------------ |
+| nodejs-npm-setup | infra    | infra-base (D-003) |
 
 ## 6. Verification Commands
 
-| Command Name | Invocation |
-|--------------|------------|
-| typecheck-command | `npm run type-check` |
-| test-command | `npm test` |
-| lint-command | `npm run lint` |
-| format-command | `npm run format:check` |
-| check-command | `npm run type-check && npm test && npm run lint && npm run format:check` |
-| release-dry-run | `npx release-it --dry-run` |
+| Command Name      | Invocation                                                               |
+| ----------------- | ------------------------------------------------------------------------ |
+| typecheck-command | `npm run type-check`                                                     |
+| test-command      | `npm test`                                                               |
+| lint-command      | `npm run lint`                                                           |
+| format-command    | `npm run format:check`                                                   |
+| check-command     | `npm run type-check && npm test && npm run lint && npm run format:check` |
+| release-dry-run   | `npx release-it --dry-run`                                               |
 
 ## 7. Decision Log
 
 ### D-001 — Выбор release-it как npm-publish-tool
+
 - **Status:** active
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** Интерактивный bump (major/minor/patch), хуки до изменений (безопасно — при падении ничего не испорчено), OTP, git tag/push, публикация. При необходимости можно добавить CI позже (`--ci`).
@@ -79,18 +81,21 @@ npm run release
 - **Rejected alternatives:** np (нет CI, нет хуков), bumpp + ручной npm publish (нет единого flow, нет OTP)
 
 ### D-002 — git как vcs
+
 - **Status:** active
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** Единственный VCS в проекте. Зафиксирован в infra-base.
 - **Rejected alternatives:** —
 
 ### D-003 — npm как package-management
+
 - **Status:** active
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** Зафиксирован в infra-base (nodejs-npm-setup rule).
 - **Rejected alternatives:** —
 
 ### D-004 — release-it hooks вместо husky
+
 - **Status:** active
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** release-it предоставляет встроенные хуки (`before:init`). Запускаются до bump — при падении ничего не изменено, откат не нужен.
@@ -103,12 +108,12 @@ npm run release
 
 ## 9. Bootstrap Requirements
 
-| Requirement | Kind | Owner | Resolution |
-|-------------|------|-------|------------|
-| `release-it` | package | this-scope-task | `npm i -D release-it` |
-| `.release-it.json` | file | this-scope-task | создать конфиг release-it в корне |
-| `"release"` script в `package.json` | structural | this-scope-task | добавить `"release": "release-it"` в scripts |
-| npm login | env | operator-action | оператор должен быть залогинен (`npm whoami`) |
+| Requirement                         | Kind       | Owner           | Resolution                                    |
+| ----------------------------------- | ---------- | --------------- | --------------------------------------------- |
+| `release-it`                        | package    | this-scope-task | `npm i -D release-it`                         |
+| `.release-it.json`                  | file       | this-scope-task | создать конфиг release-it в корне             |
+| `"release"` script в `package.json` | structural | this-scope-task | добавить `"release": "release-it"` в scripts  |
+| npm login                           | env        | operator-action | оператор должен быть залогинен (`npm whoami`) |
 
 ## 10. Handoff
 

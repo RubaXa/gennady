@@ -1,6 +1,7 @@
 # Task: TSK-41 — Корневой barrel + subpath-exports
 
 ## 1. Meta
+
 - **Task-ID:** TSK-41
 - **Status:** [x] DONE
 - **Purpose:** Создать корневой index.ts и добавить subpath-exports в package.json для импортов из Golden DX
@@ -15,13 +16,15 @@
 - **Deferred Runtime Scope:** None
 
 ## 2. Phases Overview
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [x] |
+
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [x]    |
 
 ## 3. Phases
 
 ### P1 — impl
+
 - **Objective:** Создать services/agent-mon/index.ts с реэкспортом createMonitor, diff, observe, типов и ошибок; добавить exports в package.json
 - **Rules:**
   - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
@@ -32,42 +35,50 @@
 - **Exit:** `import { createMonitor, diff, observe } from 'agent-mon'` работает; `import { claudeProvider } from 'agent-mon/providers/claude'` работает
 
 ## 4. Acceptance Criteria (BDD)
+
 Contract: see Spec References.
 
 **Feature:** Импорты из Golden DX компилируются
 
 **Scenario:** Корневой импорт createMonitor, diff, observe [`contract`]
+
 - **Given** `services/agent-mon/index.ts`
   - `package.json` с реэкспортом
 - **When** `import { createMonitor, diff, observe } from 'agent-mon'`
 - **Then** type-check проходит
 
 **Scenario:** Subpath-импорт Claude провайдера [`contract`]
+
 - **Given** exports map в package.json
 - **When** `import { claudeProvider } from 'agent-mon/providers/claude'`
 - **Then** type-check проходит
 
 **Scenario:** Subpath-импорт OpenCode провайдера [`contract`]
+
 - **Given** exports map в package.json
 - **When** `import { opencodeProvider } from 'agent-mon/providers/opencode'`
 - **Then** type-check проходит
 
 ## 5. Verification
-| Command | Required by |
-|---------|-------------|
+
+| Command            | Required by      |
+| ------------------ | ---------------- |
 | npm run type-check | typescript-rules |
 
 ## 6. Test Scenario Coverage
+
 - Scenario "Корневой импорт" → contract-level (type-check)
 - Scenario "Claude subpath" → contract-level (type-check)
 - Scenario "OpenCode subpath" → contract-level (type-check)
 
 ## 7. Execution Log
-*(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)*
+
+_(Token vocabulary in [tasks/README.md#execution-log-template](../../README.md#execution-log-template).)_
 
 ### Round 1 — initial
 
 #### P1
+
 - [x] `2026-05-22` ver `npm run type-check` → pass exit=0
 - 🛑 `2026-05-22` BLOCKED: Объектив фазы требует добавить exports в package.json, но package.json не указан в Target Files
   - 🔗 axiom: AX_PHASE_SCOPE_LOCK
@@ -75,10 +86,12 @@ Contract: see Spec References.
 - ✅ `2026-05-22` RESOLVED: package.json добавлен в Target Files P1 (строка 30). Exports map внесён.
 - [x] `2026-05-22` ver `npm run type-check` → pass exit=0
 - [x] `2026-05-22` DONE
-**Handoff →** artifacts: [services/agent-mon/index.ts, package.json]; decisions: [barrel-created=true, exports-map=3-entries]; open: []
+      **Handoff →** artifacts: [services/agent-mon/index.ts, package.json]; decisions: [barrel-created=true, exports-map=3-entries]; open: []
 
 #### Round close
+
 - [ ] `<ts>` DONE
 
 #### Round close
+
 - [x] `2026-05-22T06:29:14Z` DONE

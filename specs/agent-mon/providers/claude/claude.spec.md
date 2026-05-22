@@ -8,15 +8,15 @@ Adapter для Claude Code. Реализует `AgentProvider`: сканируе
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name               | Type     | Purpose                                                             |
-| ------------------ | -------- | ------------------------------------------------------------------- |
-| `ClaudeProvider`   | Adapter  | Реализует `AgentProvider` для Claude Code                           |
-| `psInfo`           | Function | `ps -p PID -o pcpu=,rss=` → `{ cpuPercent, memoryMb } \| null`      |
-| `parseClaudeArgs`  | Function | `ps -p PID -o args=` → regex `--model`, `--effort`                  |
-| `readSessionJson`  | Function | Парсинг `<PID>.json` из `~/.claude/sessions/`                       |
-| `readSessionTitle` | Function | Поиск `ai-title` в `~/.claude/projects/<project>/<sessionId>.jsonl` |
-| `PsInfoEntry` | Type | Результат батчевого ps: `{ pid: number, cpuPercent: number, memoryMb: number, args: string }` |
-| `SessionJsonData` | Type | Распарсенный session JSON: `{ pid: number, sessionId: string, cwd: string, startedAt: number }` |
+| Name               | Type     | Purpose                                                                                         |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `ClaudeProvider`   | Adapter  | Реализует `AgentProvider` для Claude Code                                                       |
+| `psInfo`           | Function | `ps -p PID -o pcpu=,rss=` → `{ cpuPercent, memoryMb } \| null`                                  |
+| `parseClaudeArgs`  | Function | `ps -p PID -o args=` → regex `--model`, `--effort`                                              |
+| `readSessionJson`  | Function | Парсинг `<PID>.json` из `~/.claude/sessions/`                                                   |
+| `readSessionTitle` | Function | Поиск `ai-title` в `~/.claude/projects/<project>/<sessionId>.jsonl`                             |
+| `PsInfoEntry`      | Type     | Результат батчевого ps: `{ pid: number, cpuPercent: number, memoryMb: number, args: string }`   |
+| `SessionJsonData`  | Type     | Распарсенный session JSON: `{ pid: number, sessionId: string, cwd: string, startedAt: number }` |
 
 ## 3. Entity Surfaces
 

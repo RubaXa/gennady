@@ -287,6 +287,7 @@ path            TEXT
 - **Rejected alternatives:** enum `'claude' | 'opencode'` — требует изменения enum при добавлении провайдера.
 
 ### D-005 — diff и observe как свободные функции, не методы AgentMonitor
+
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-mon, post-review fix
 - **Why:** `AgentMonitor.diff()` и `AgentMonitor.observe()` как методы создавали циклическую зависимость в DAG: TSK-36 (monitor) не может реализовать observe без TSK-38, а TSK-38 зависит от TSK-36. Свободные функции `diff()` и `observe(monitor, opts)` разрешают цикл: TSK-38 → TSK-36, без обратного ребра.
@@ -300,11 +301,11 @@ path            TEXT
 
 ## 8. Bootstrap Requirements
 
-| Requirement                                     | Kind | Owner                 | Resolution                                                               |
-| ----------------------------------------------- | ---- | --------------------- | ------------------------------------------------------------------------ |
-| Node.js >= 22.5 (для node:sqlite) | tool | external-prereq-scope | уже в infra-base; `node:sqlite` экспериментальный в 22.x (работает с ExperimentalWarning), стабилизирован в Node 24 |
-| Claude sessions dir ~/.claude/sessions/         | file | operator-action       | создаётся Claude.app; формат задокументирован реверсом в секции 5        |
-| OpenCode DB ~/.local/share/opencode/opencode.db | file | operator-action       | создаётся OpenCode.app; схема задокументирована реверсом в секции 5      |
+| Requirement                                     | Kind | Owner                 | Resolution                                                                                                          |
+| ----------------------------------------------- | ---- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Node.js >= 22.5 (для node:sqlite)               | tool | external-prereq-scope | уже в infra-base; `node:sqlite` экспериментальный в 22.x (работает с ExperimentalWarning), стабилизирован в Node 24 |
+| Claude sessions dir ~/.claude/sessions/         | file | operator-action       | создаётся Claude.app; формат задокументирован реверсом в секции 5                                                   |
+| OpenCode DB ~/.local/share/opencode/opencode.db | file | operator-action       | создаётся OpenCode.app; схема задокументирована реверсом в секции 5                                                 |
 
 ## 9. Handoff to module-decomposition
 

@@ -34,7 +34,10 @@ function createSessionTable(db: DatabaseSync): void {
 /**
  * @purpose Insert a session row and return the inserted row for assertion reference.
  */
-function insertSession(db: DatabaseSync, overrides: Partial<SessionRow> & { id: string; slug: string; directory: string }): SessionRow {
+function insertSession(
+  db: DatabaseSync,
+  overrides: Partial<SessionRow> & { id: string; slug: string; directory: string }
+): SessionRow {
   const defaults: SessionRow = {
     title: null,
     time_created: 1000,
@@ -69,8 +72,16 @@ function insertSession(db: DatabaseSync, overrides: Partial<SessionRow> & { id: 
 /**
  * @purpose Insert an archived session (time_archived set) for filter exclusion tests.
  */
-function insertArchivedSession(db: DatabaseSync, overrides: Partial<SessionRow> & { id: string; slug: string; directory: string }): SessionRow {
-  const row = { ...overrides, id: overrides.id, slug: overrides.slug, directory: overrides.directory };
+function insertArchivedSession(
+  db: DatabaseSync,
+  overrides: Partial<SessionRow> & { id: string; slug: string; directory: string }
+): SessionRow {
+  const row = {
+    ...overrides,
+    id: overrides.id,
+    slug: overrides.slug,
+    directory: overrides.directory,
+  };
   const defaults = insertSession(db, row);
   db.prepare('UPDATE session SET time_archived = 1 WHERE id = ?').run(defaults.id);
   return defaults;
@@ -150,7 +161,7 @@ describe('querySessions', () => {
 
     // #region START_ORDERING_ASSERT
     // newer should come first due to DESC ordering
-    const activeIds = rows.map(r => r.id);
+    const activeIds = rows.map((r) => r.id);
     const newIdx = activeIds.indexOf('sess-newer');
     const oldIdx = activeIds.indexOf('sess-older');
     assert.ok(newIdx >= 0, 'newer session must be present');
@@ -245,9 +256,21 @@ describe('queryLastMessage', () => {
 
   it('returns the most recent message data for a session', () => {
     // #region START_LAST_MSG_SETUP
-    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run('sess-1', 'first message', 1000);
-    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run('sess-1', 'second message', 2000);
-    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run('sess-2', 'other session', 1500);
+    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run(
+      'sess-1',
+      'first message',
+      1000
+    );
+    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run(
+      'sess-1',
+      'second message',
+      2000
+    );
+    db.prepare('INSERT INTO message (session_id, data, time_updated) VALUES (?, ?, ?)').run(
+      'sess-2',
+      'other session',
+      1500
+    );
     // #endregion END_LAST_MSG_SETUP
 
     // #region START_LAST_MSG_TRIGGER

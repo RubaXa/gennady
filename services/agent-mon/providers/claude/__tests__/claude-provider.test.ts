@@ -84,10 +84,17 @@ describe('ClaudeProvider', () => {
       // note: readdirSync runs real listing real ~/.claude/sessions/ files; session count depends on real files
 
       const sessionJson = makeSessionJson({ pid: 100, sessionId: 'sess-1' });
-      const psEntry = makePsEntry({ pid: 100, cpuPercent: 1.5, memoryMb: 150, args: 'claude --model sonnet' });
+      const psEntry = makePsEntry({
+        pid: 100,
+        cpuPercent: 1.5,
+        memoryMb: 150,
+        args: 'claude --model sonnet',
+      });
 
       // #region START_VALID_DATA_SETUP
-      const readSessionJsonMock = mock.fn((_filePath: string): SessionJsonData | null => sessionJson);
+      const readSessionJsonMock = mock.fn(
+        (_filePath: string): SessionJsonData | null => sessionJson
+      );
 
       const psInfoMock = mock.fn((_pids: number[]): Map<number, PsInfoEntry> => {
         return new Map([[100, psEntry]]);
@@ -97,7 +104,9 @@ describe('ClaudeProvider', () => {
         return { model: 'sonnet' };
       });
 
-      const readSessionTitleMock = mock.fn((_cwd: string, _sessionId: string): string => 'Test Session');
+      const readSessionTitleMock = mock.fn(
+        (_cwd: string, _sessionId: string): string => 'Test Session'
+      );
 
       const provider = new ClaudeProvider({
         psInfo: psInfoMock,
@@ -109,7 +118,9 @@ describe('ClaudeProvider', () => {
 
       // #region START_VALID_DATA_TRIGGER
       // Use infinite idleThresholdMs to prevent real statSync mtimeMs from triggering idle status
-      const sessions = await provider.scan({ idleThresholdMs: Number.MAX_SAFE_INTEGER } as ScanOpts);
+      const sessions = await provider.scan({
+        idleThresholdMs: Number.MAX_SAFE_INTEGER,
+      } as ScanOpts);
       // #endregion END_VALID_DATA_TRIGGER
 
       // #region START_VALID_DATA_OBSERVE
@@ -149,12 +160,19 @@ describe('ClaudeProvider', () => {
       // note: statSync runs real providing real mtimeMs; Date.now is mocked to be far in the future to exaggerate idle gap
 
       const sessionJson = makeSessionJson({ pid: 200, sessionId: 'idle-sess' });
-      const psEntry = makePsEntry({ pid: 200, cpuPercent: 0.5, memoryMb: 100, args: 'claude --model opus' });
+      const psEntry = makePsEntry({
+        pid: 200,
+        cpuPercent: 0.5,
+        memoryMb: 100,
+        args: 'claude --model opus',
+      });
 
       // #region START_IDLE_SETUP
       const farFuture = Date.now() + 86_400_000; // 1 day in the future
 
-      const readSessionJsonMock = mock.fn((_filePath: string): SessionJsonData | null => sessionJson);
+      const readSessionJsonMock = mock.fn(
+        (_filePath: string): SessionJsonData | null => sessionJson
+      );
 
       const psInfoMock = mock.fn((_pids: number[]): Map<number, PsInfoEntry> => {
         return new Map([[200, psEntry]]);
@@ -164,7 +182,9 @@ describe('ClaudeProvider', () => {
         return { model: 'opus' };
       });
 
-      const readSessionTitleMock = mock.fn((_cwd: string, _sessionId: string): string => 'Idle Session');
+      const readSessionTitleMock = mock.fn(
+        (_cwd: string, _sessionId: string): string => 'Idle Session'
+      );
 
       const provider = new ClaudeProvider({
         psInfo: psInfoMock,
@@ -188,7 +208,10 @@ describe('ClaudeProvider', () => {
       for (const session of sessions) {
         assert.strictEqual(session.provider, 'claude');
         assert.strictEqual(session.status, 'idle', `expected idle status for ${session.sessionId}`);
-        assert.ok(session.idleSeconds !== undefined, `expected idleSeconds for ${session.sessionId}`);
+        assert.ok(
+          session.idleSeconds !== undefined,
+          `expected idleSeconds for ${session.sessionId}`
+        );
         assert.ok(session.idleSeconds! > 0, `expected idleSeconds > 0, got ${session.idleSeconds}`);
       }
       // #endregion END_IDLE_ASSERT

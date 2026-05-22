@@ -24,8 +24,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [x]   |
-| P2  | test | P1   | [x]   |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -114,16 +114,20 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - ### Round 1 — initial
 
 #### P1
+
 - [x] `<ts>` intro DuplicateProviderError ← ошибка реестра: дубликат ключа при register()
 - [x] `<ts>` intro ProviderNotFoundError ← ошибка реестра: ключ не найден при unregister()/scanOne()
 - [x] `<ts>` ver npm run type-check → pass exit=0
 - [x] `<ts>` DONE
-**Handoff →** artifacts: [services/agent-mon/model/agent-session.type.ts, services/agent-mon/model/session-changes.type.ts, services/agent-mon/model/scan-opts.type.ts, services/agent-mon/model/observe-opts.type.ts, services/agent-mon/model/agent-provider.type.ts, services/agent-mon/model/errors.ts, services/agent-mon/model/index.ts]; decisions: [module-system=nodenext, contract=AgentProvider-error-degradation-returns-empty-array]; open: []
+      **Handoff →** artifacts: [services/agent-mon/model/agent-session.type.ts, services/agent-mon/model/session-changes.type.ts, services/agent-mon/model/scan-opts.type.ts, services/agent-mon/model/observe-opts.type.ts, services/agent-mon/model/agent-provider.type.ts, services/agent-mon/model/errors.ts, services/agent-mon/model/index.ts]; decisions: [module-system=nodenext, contract=AgentProvider-error-degradation-returns-empty-array]; open: []
 
 #### P2
-- [x] `<ts>` ver node --test services/agent-mon/model/__tests__/agent-session.type.test.ts → pass exit=0
+
+- [x] `<ts>` ver node --test services/agent-mon/model/**tests**/agent-session.type.test.ts → pass exit=0
 - [x] `<ts>` DONE
-**Handoff →** artifacts: [services/agent-mon/model/__tests__/agent-session.type.test.ts]; decisions: [contract-test=structural-integrity, node-test-runner=node--test]; open: []
+      **Handoff →** artifacts: [services/agent-mon/model/__tests__/agent-session.type.test.ts]; decisions: [contract-test=structural-integrity, node-test-runner=node--test]; open: []
+
 #### Round close
+
 - [x] `<ts>` sync agent-mon+root
 - [x] `<ts>` DONE

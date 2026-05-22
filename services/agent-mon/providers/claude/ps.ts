@@ -70,7 +70,9 @@ export function psInfo(pids: number[]): Map<number, PsInfoEntry> {
       });
     }
 
-    logger.debug(`[psInfo] [idle → completed] Batch ps: ${pids.length} requested, ${result.size} alive`);
+    logger.debug(
+      `[psInfo] [idle → completed] Batch ps: ${pids.length} requested, ${result.size} alive`
+    );
     return result;
   } catch (cause) {
     const error = new Error('[psInfo] Batch ps command failed', { cause });
