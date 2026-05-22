@@ -133,3 +133,39 @@ export function readSessionTitle(cwd: string, sessionId: string): string {
     return 'Unknown';
   }
 }
+
+import { readdirSync } from 'node:fs';
+
+/**
+ * @purpose Read active task title from ~/.claude/tasks/<sessionId>/ as fallback when JSONL is missing.
+ * @invariant Returns the subject of the first in-progress task, or the first task overall.
+ * @param sessionId Unique session identifier.
+ * @returns Active task subject or 'Unknown' when no tasks directory exists.
+ */
+export function readActiveTaskTitle(sessionId: string): string {
+  try {
+    const taskDir = join(homedir(), '.claude', 'tasks', sessionId);
+    if (!existsSync(taskDir)) return 'Unknown';
+
+    const files = readdirSync(taskDir).filter((f) => f.endsWith('.json'));
+    if (files.length === 0) return 'Unknown';
+
+    // Prefer in_progress task, fallback to first task
+    let fallback: string | undefined;
+    for (const file of files) {
+      try {
+        const raw = readFileSync(join(taskDir, file), 'utf-8');
+        const data = JSON.parse(raw);
+        const subject = data?.subject as string | undefined;
+        if (!subject) continue;
+        if (data?.status === 'in_progress') return subject;
+        fallback = fallback ?? subject;
+      } catch {
+        // skip malformed task files
+      }
+    }
+    return fallback ?? 'Unknown';
+  } catch {
+    return 'Unknown';
+  }
+}

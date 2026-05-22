@@ -56,7 +56,7 @@ function parseFlags(argv: string[]): CliFlags {
     interval: 5000,
     provider: 'all',
     view: 'column',
-    limit: 20,
+    limit: 10,
   };
 
   for (let i = 0; i < argv.length; i++) {

@@ -20,7 +20,7 @@ export type ProviderColumnProps = {
 export function ProviderColumn({ column, maxCards }: ProviderColumnProps) {
   const cards = maxCards ? column.sessions.slice(0, maxCards) : column.sessions;
   return (
-    <Box flexDirection="column" borderStyle="single" paddingX={1} width={40}>
+    <Box flexDirection="column" borderStyle="single" paddingX={1} width={34}>
       <Box>
         <Text bold>{column.provider}</Text>
         <Text>  </Text>

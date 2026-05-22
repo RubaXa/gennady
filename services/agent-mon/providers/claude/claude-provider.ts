@@ -14,7 +14,7 @@ import { psInfo as defaultPsInfo, parseClaudeArgs as defaultParseClaudeArgs } fr
 import type { PsInfoEntry } from './ps.ts';
 import {
   readSessionJson as defaultReadSessionJson,
-  readSessionTitle as defaultReadSessionTitle,
+  readSessionTitle as defaultReadSessionTitle, readActiveTaskTitle,
 } from './session-json.ts';
 
 // #region START_CLAUDE_PROVIDER_DEPS_TYPE
@@ -148,7 +148,12 @@ export class ClaudeProvider implements AgentProvider {
       }
 
       const model = psEntry ? this._parseClaudeArgs(psEntry.args).model : undefined;
-      const title = this._readSessionTitle(s.cwd, s.sessionId);
+      let title = this._readSessionTitle(s.cwd, s.sessionId);
+
+      // Fallback: try Claude tasks directory for active task info
+      if (title === 'Unknown') {
+        title = readActiveTaskTitle(s.sessionId);
+      }
       const elapsedSeconds = (now - s.startedAt) / 1000;
 
       result.push({
