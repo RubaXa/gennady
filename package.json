@@ -37,7 +37,7 @@
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
-    "test": "node --test",
+    "test": "node --import tsx --test --experimental-test-module-mocks",
     "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
     "dev": "tsx cli/gennady.ts",
     "build": "vite build",
@@ -55,6 +55,7 @@
     "@mtcute/node": "^0.28.2",
     "@types/node": "^25.3.2",
     "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.15",
     "ai": "^6.0.116",
     "fast-glob": "^3.3.3",
     "open": "^11.0.0",
@@ -67,5 +68,9 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
     "zod": "^4.3.6"
+  },
+  "dependencies": {
+    "ink": "^7.0.3",
+    "react": "^19.2.6"
   }
 }

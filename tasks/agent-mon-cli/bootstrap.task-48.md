@@ -17,7 +17,7 @@
 ## 2. Phases Overview
 | ID | Kind | Deps | Status |
 |----|------|------|--------|
-| P1 | bootstrap | — | [ ] |
+| P1 | bootstrap | — | [x] |
 
 ## 3. Phases
 
@@ -61,9 +61,12 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] 2026-05-22T09:30:01Z ver npm ls ink react → pass exit=0
+- [x] 2026-05-22T09:30:01Z DONE
+**Handoff →** artifacts: [package.json, package-lock.json]; decisions: [ink=^7, react=^19, @types/react=^19 (dev)]; open: []
 
 #### Round close
 - [ ] `<ts>` DONE
+
+#### Round close
+- [x] `2026-05-22T10:45:57Z` DONE

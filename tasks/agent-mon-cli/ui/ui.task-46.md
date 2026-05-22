@@ -20,8 +20,8 @@
 ## 2. Phases Overview
 | ID | Kind | Deps | Status |
 |----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| P1 | impl | —    | [x]    |
+| P2 | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -92,14 +92,25 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T09:55:28Z` discovery tsconfig.json lacked `"jsx": "react-jsx"` — needed for .tsx compilation; added to compilerOptions
+- [x] `2026-05-22T09:55:28Z` intro `StatusBadge` ← spec §3 Entity Inventory: визуальный индикатор статуса сессии
+- [x] `2026-05-22T09:55:28Z` intro `SessionCard` ← spec §3 Entity Inventory: карточка одной сессии с метаданными
+- [x] `2026-05-22T09:55:28Z` intro `ProviderColumn` ← spec §3 Entity Inventory: колонка провайдера с заголовком и карточками
+- [x] `2026-05-22T09:55:28Z` intro `ColumnView` ← spec §3 Entity Inventory: дашборд с колонками по провайдерам
+- [x] `2026-05-22T09:55:28Z` intro `AgentMonApp` ← spec §3 Entity Inventory: корень — useInput, подписка на state manager, выбор view
+- [x] `2026-05-22T09:55:28Z` ver npm run type-check → pass exit=0
+- [x] `2026-05-22T09:55:28Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/ui/status-badge.tsx, cli/cmd/agent-mon/ui/session-card.tsx, cli/cmd/agent-mon/ui/provider-column.tsx, cli/cmd/agent-mon/ui/column-view.tsx, cli/cmd/agent-mon/ui/app.tsx, cli/cmd/agent-mon/ui/index.ts]; decisions: [module-system=esm, jsx-transform=react-jsx, state-imports-use-.ts-extension, ui-imports-use-.tsx-extension]; open: []
 
 #### P2
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T10:05:33Z` discovery `.tsx`-тесты не обнаруживаются `node --test` (ERR_UNKNOWN_FILE_EXTENSION); для запуска используется `node --import tsx --test`
+- [x] `2026-05-22T10:05:33Z` ver npm run test → pass exit=0
+- [x] `2026-05-22T10:05:33Z` ver node --import tsx --test cli/cmd/agent-mon/ui/__tests__/*.test.tsx → pass exit=0
+- [x] `2026-05-22T10:05:33Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/ui/__tests__/app.test.tsx, cli/cmd/agent-mon/ui/__tests__/column-view.test.tsx, cli/cmd/agent-mon/ui/__tests__/session-card.test.tsx]; decisions: [test-runner=node-test+tsx-loader, tsx-test-files-undiscoverable-by-plan-node-test]; open: [tsx-extension: .tsx тесты требуют tsx loader для запуска, npm run test их не покрывает]
 
 #### Round close
 - [ ] `<ts>` DONE
+
+#### Round close
+- [x] `2026-05-22T10:45:57Z` DONE

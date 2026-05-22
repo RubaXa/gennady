@@ -1,0 +1,241 @@
+// @file: CLI entry point — parses flags, wires providers and state, renders ink dashboard.
+// @consumers: cli/gennady.ts
+// @tasks: TSK-47
+
+import { render } from 'ink';
+import React from 'react';
+import { logger } from '#logger';
+import { createProviders, type CreateProvidersOpts } from './create-providers.ts';
+import { createStateManager, type StateManager } from '../state/create-state-manager.ts';
+import type { ViewModel } from '../state/view-model.type.ts';
+import { observe } from '../../../../services/agent-mon/observe/observe.ts';
+import { groupByProvider } from '../state/group-by-provider.ts';
+import { AgentMonApp } from '../ui/app.tsx';
+import type { AgentMonitor } from '../../../../services/agent-mon/monitor/agent-monitor.ts';
+
+/** @purpose Parsed CLI flags for the agent-mon command. */
+type CliFlags = {
+  /** @purpose Snapshot mode — render once and exit */
+  once: boolean;
+  /** @purpose Polling interval in milliseconds | @invariant Default 5000 when absent */
+  interval: number;
+  /** @purpose Provider filter | @invariant Default 'all' */
+  provider: 'claude' | 'opencode' | 'all';
+  /** @purpose View mode | @invariant Default 'column' */
+  view: 'column' | 'compact';
+};
+
+/** @purpose Allowed --provider values */
+const ALLOWED_PROVIDERS = new Set(['claude', 'opencode', 'all']);
+
+/** @purpose Allowed --view values */
+const ALLOWED_VIEWS = new Set(['column', 'compact']);
+
+/**
+ * @purpose Render usage text to stderr and exit with code 1 — triggered by unknown or invalid flags.
+ * @sideEffect Writes to stderr, calls process.exit(1).
+ */
+function printUsageAndExit(reason?: string): never {
+  if (reason) {
+    process.stderr.write(`Error: ${reason}\n\n`);
+  }
+  process.stderr.write('Usage: gennady agent-mon [options]\n');
+  process.stderr.write('  --once              Snapshot mode — print dashboard and exit\n');
+  process.stderr.write('  --interval <ms>     Polling interval in ms (default: 5000)\n');
+  process.stderr.write('  --provider <name>   Filter by provider: claude, opencode, all (default: all)\n');
+  process.stderr.write('  --view <mode>       Dashboard view: column, compact (default: column)\n');
+  process.exit(1);
+}
+
+/**
+ * @purpose Parse raw argument strings into typed CliFlags with validation.
+ * @param argv Raw argument array (excluding command name).
+ * @returns Validated CliFlags.
+ * @throws process.exit(1) on invalid flags — follows fail-fast validation per AX_FAIL_FAST_VALIDATION.
+ */
+function parseFlags(argv: string[]): CliFlags {
+  const flags: CliFlags = {
+    once: false,
+    interval: 5000,
+    provider: 'all',
+    view: 'column',
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+
+    switch (arg) {
+      case '--once':
+        flags.once = true;
+        break;
+
+      case '--interval': {
+        const next = argv[i + 1];
+        if (next === undefined) {
+          printUsageAndExit('--interval requires a value (ms)');
+        }
+        const parsed = Number(next);
+        if (Number.isNaN(parsed) || parsed < 100) {
+          printUsageAndExit(`--interval must be >= 100ms, got: ${next}`);
+        }
+        flags.interval = parsed;
+        i++;
+        break;
+      }
+
+      case '--provider': {
+        const next = argv[i + 1];
+        if (next === undefined) {
+          printUsageAndExit('--provider requires a value (claude | opencode | all)');
+        }
+        if (!ALLOWED_PROVIDERS.has(next)) {
+          printUsageAndExit(
+            `Unknown provider: ${next}. Must be one of: claude, opencode, all`,
+          );
+        }
+        flags.provider = next as 'claude' | 'opencode' | 'all';
+        i++;
+        break;
+      }
+
+      case '--view': {
+        const next = argv[i + 1];
+        if (next === undefined) {
+          printUsageAndExit('--view requires a value (column | compact)');
+        }
+        if (!ALLOWED_VIEWS.has(next)) {
+          printUsageAndExit(
+            `Unknown view: ${next}. Must be one of: column, compact`,
+          );
+        }
+        flags.view = next as 'column' | 'compact';
+        i++;
+        break;
+      }
+
+      default:
+        if (arg.startsWith('-')) {
+          printUsageAndExit(`Unknown flag: ${arg}`);
+        }
+        printUsageAndExit(`Unexpected argument: ${arg}`);
+    }
+  }
+
+  return flags;
+}
+
+/**
+ * @purpose Build a one-shot ViewModel from a direct scan — used in --once mode.
+ * @param monitor AgentMonitor with registered providers.
+ * @returns ViewModel built from a single scanAll() call.
+ */
+async function buildOnceViewModel(monitor: AgentMonitor): Promise<ViewModel> {
+  // #region START_DIRECT_SCAN — invariant: scanAll provides fresh sessions; groupByProvider builds the ViewModel columns
+  try {
+    const sessions = await monitor.scanAll();
+    const columns = groupByProvider(sessions);
+    const byProvider: Record<string, number> = {};
+    for (const col of columns) {
+      byProvider[col.provider] = col.sessions.length;
+    }
+
+    return {
+      status: 'ready',
+      data: {
+        columns,
+        summary: {
+          total: sessions.length,
+          byProvider,
+        },
+      },
+      lastUpdated: Date.now(),
+    };
+  } catch (cause) {
+    const error =
+      cause instanceof Error
+        ? cause
+        : new Error('[buildOnceViewModel] Scan failed', { cause });
+    logger.error('[buildOnceViewModel] [scanning → failed]', { error });
+    return {
+      status: 'error',
+      error,
+      lastUpdated: Date.now(),
+    };
+  }
+  // #endregion END_DIRECT_SCAN
+}
+
+/**
+ * @purpose Create a static StateManager from a pre-built ViewModel — used for --once snapshot mode.
+ * @param viewModel Pre-built ViewModel to serve.
+ * @returns A StateManager that always returns the given ViewModel and silently accepts subscribers.
+ */
+function createStaticStateManager(viewModel: ViewModel): StateManager {
+  return {
+    getViewModel: () => viewModel,
+    subscribe: (fn: (vm: ViewModel) => void) => {
+      fn(viewModel);
+      return () => {};
+    },
+  };
+}
+
+/** @purpose Wrapper component that renders the dashboard and exits immediately for --once mode. */
+function OnceSnapshot({ stateManager, view }: { stateManager: StateManager; view: 'column' | 'compact' }) {
+  return React.createElement(AgentMonApp, { stateManager, view });
+}
+
+/**
+ * @purpose CLI entry point for `gennady agent-mon` — parse flags, wire providers, render the dashboard.
+ * @invariant --once mode: single scan → build ViewModel → render + exit.
+ * @invariant Live mode: observe → state manager → render, process kept alive by ink.
+ * @param argv Argument vector (excluding the command name 'agent-mon').
+ * @pre argv contains CLI flags per the agent-mon subcommand contract.
+ * @post Process is kept alive by ink (live mode) or exits after snapshot (--once).
+ * @throws Never — on invalid input, prints usage and exits with code 1.
+ * @sideEffect Starts ink renderer; registers providers; may spawn observe polling loop.
+ */
+export async function run(argv: string[]): Promise<void> {
+  logger.debug('[run] [idle → parsing]');
+
+  const flags = parseFlags(argv);
+
+  logger.debug(`[run] [parsing → parsed] once=${flags.once} interval=${flags.interval} provider=${flags.provider} view=${flags.view}`);
+
+  // #region START_CREATE_PROVIDERS — invariant: provider filter controls which providers are registered
+  const providerOpts: CreateProvidersOpts = {};
+  if (flags.provider !== 'all') {
+    providerOpts.claude = flags.provider === 'claude';
+    providerOpts.opencode = flags.provider === 'opencode';
+  }
+
+  const monitor = createProviders(providerOpts);
+  // #endregion END_CREATE_PROVIDERS
+
+  // #region START_ONCE_MODE — invariant: direct scan, no observe loop; static StateManager; render and exit
+  if (flags.once) {
+    const viewModel = await buildOnceViewModel(monitor);
+    const sm = createStaticStateManager(viewModel);
+
+    logger.info(
+      `[run] [snapshot → rendered] once sessions=${viewModel.data?.summary.total ?? 0}`,
+    );
+
+    const { waitUntilExit } = render(
+      React.createElement(OnceSnapshot, { stateManager: sm, view: flags.view }),
+    );
+
+    await waitUntilExit();
+    process.exit(0);
+  }
+  // #endregion END_ONCE_MODE
+
+  // #region START_LIVE_MODE — invariant: observe async iterable feeds state manager; ink render keeps process alive
+  const changes = observe(monitor, { interval: flags.interval });
+  const sm = createStateManager(changes);
+
+  logger.info('[run] [ready → rendering] Live dashboard starting');
+
+  render(React.createElement(AgentMonApp, { stateManager: sm, view: flags.view }));
+  // #endregion END_LIVE_MODE
+}

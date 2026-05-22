@@ -20,8 +20,8 @@
 ## 2. Phases Overview
 | ID | Kind | Deps | Status |
 |----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| P1 | impl | —    | [x]    |
+| P2 | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -99,14 +99,18 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T09:36:34Z` intro `StateManager` ← export type not listed as standalone in Entity Inventory but needed as public contract surface for createStateManager return
+- [x] `2026-05-22T09:36:34Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T09:36:34Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/state/view-model.type.ts, cli/cmd/agent-mon/state/is-waiting.ts, cli/cmd/agent-mon/state/group-by-provider.ts, cli/cmd/agent-mon/state/create-state-manager.ts, cli/cmd/agent-mon/state/index.ts]; decisions: [StateManager-as-separate-type=yes, import-extensions=.ts, SessionCard-waiting-derived-from-isWaitingFn, tasks-field-deferred-to-V2]; open: []
 
 #### P2
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T09:45:40Z` ver `npm run test` → pass exit=0
+- [x] `2026-05-22T09:45:40Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/state/__tests__/create-state-manager.test.ts, cli/cmd/agent-mon/state/__tests__/group-by-provider.test.ts, cli/cmd/agent-mon/state/__tests__/is-waiting.test.ts]; decisions: [import-extensions=.ts, subscribe-promise-pattern=used-for-async-wait]; open: []
 
 #### Round close
 - [ ] `<ts>` DONE
+
+#### Round close
+- [x] `2026-05-22T10:45:57Z` DONE

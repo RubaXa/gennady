@@ -18,6 +18,9 @@ console.info(
 console.info('  remote-console    Mirror browser console output into local stdout');
 console.info('  lint              Validate TypeScript files: file header, DBC contracts, anchors');
 console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
+console.info(
+  '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
+);
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

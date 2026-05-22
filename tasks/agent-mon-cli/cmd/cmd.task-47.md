@@ -20,8 +20,8 @@
 ## 2. Phases Overview
 | ID | Kind | Deps | Status |
 |----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| P1 | impl | —    | [x]    |
+| P2 | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -92,14 +92,24 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T10:15:50Z` intro `createProviders` ← фабрика монитора — регистрирует Claude и OpenCode провайдеры
+- [x] `2026-05-22T10:15:50Z` intro `run` ← CLI entry point — парсинг флагов, создание монитора, рендер ink-приложения
+- [x] `2026-05-22T10:15:50Z` intro `CreateProvidersOpts` ← опции фильтрации провайдеров
+- [x] `2026-05-22T10:15:50Z` intro `CliFlags` ← типизированные CLI-флаги команды
+- [x] `2026-05-22T10:15:50Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-22T10:15:50Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/cmd/run.ts, cli/cmd/agent-mon/cmd/create-providers.ts, cli/cmd/agent-mon/cmd/index.ts, cli/gennady.ts, cli/cmd/help/help.cmd.ts]; decisions: [module-system=esm, import-paths=relative-with-.ts-extensions, logger=#logger, once-mode=static-state-manager, provider-filter=CreateProvidersOpts]; open: []
 
 #### P2
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-**Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-05-22T10:37:49Z` ✅ RESOLVED: `package.json` test script обновлён — `--experimental-test-module-mocks` добавлен (оператором)
+- [x] `2026-05-22T10:37:49Z` ver `npm run test` → fail exit=1
+  - `create-providers.test.ts` — pass
+  - `run.test.ts` — fail: `ERR_UNKNOWN_FILE_EXTENSION` для `.tsx` файлов (app.tsx импортируется транзитивно из run.ts)
+- [x] `2026-05-22T10:42:43Z` ✅ RESOLVED: `package.json` test script обновлён — `--import tsx` добавлен (оператором)
+- [x] `2026-05-22T10:42:43Z` ver `npm run test` → pass exit=0
+- [x] `2026-05-22T10:42:43Z` DONE
+**Handoff →** artifacts: [cli/cmd/agent-mon/cmd/__tests__/run.test.ts, cli/cmd/agent-mon/cmd/__tests__/create-providers.test.ts]; decisions: [test-runner=node-test, mock-strategy=mock.module+mock.method, tsx-loader=required-for-tsx-imports]; open: []
 
 #### Round close
 - [ ] `<ts>` DONE
+
