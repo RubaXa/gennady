@@ -1,3 +1,7 @@
+// @file: Generic model descriptor from any provider (Open Router, LLM proxy, etc.).
+// @consumers: open-router-model.type, open-router-provider
+// @tasks: N/A
+
 /**
  * @purpose Generic model descriptor from any provider (Open Router, LLM proxy, etc.).
  * @behavior Only id and name are guaranteed; other fields depend on the source.

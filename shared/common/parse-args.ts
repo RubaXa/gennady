@@ -1,3 +1,7 @@
+// @file: Распарсить аргументы командной строки по схеме опций и алиасов.
+// @consumers: cat.cmd, commit.cmd, lint.cmd, parse-review-command-args.logic, remote-console.cmd, resolve-conflicts-command-args-parse.logic, review.cmd, vcs-reply, vcs-reply.cmd
+// @tasks: N/A
+
 /**
  * @purpose Распарсить аргументы командной строки по схеме опций и алиасов.
  * @consumer CLI (gennady, cmd/*)

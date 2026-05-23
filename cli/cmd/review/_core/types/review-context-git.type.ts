@@ -1,3 +1,7 @@
+// @file: Git-контекст для review-команд.
+// @consumers: build-review-context-git.logic, load-review-context-mr.logic, run-review-command.logic
+// @tasks: N/A
+
 import type { GitRemoteInfo } from '../../../../../shared/backend/git/git-core.ts';
 
 /**

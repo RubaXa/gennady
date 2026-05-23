@@ -1,3 +1,7 @@
+// @file: Загрузить шаблон resolve-conflicts из проекта или fallback из библиотеки.
+// @consumers: resolve-conflicts-render.xml
+// @tasks: N/A
+
 import { loadAgentTemplate } from '../../../_shared/prompt/io/load-agent-template.io.ts';
 
 /**

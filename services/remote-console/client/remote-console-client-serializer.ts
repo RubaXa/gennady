@@ -1,3 +1,7 @@
+// @file: Converts unknown console arguments into deterministic, printable transport-safe descriptors.
+// @consumers: remote-console, remote-console-client
+// @tasks: N/A
+
 import type { RemoteConsoleSerializedArg } from './remote-console-client.types.ts';
 
 /**

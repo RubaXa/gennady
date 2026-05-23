@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @file: Отправить ответы в дискуссии GitLab MR: читает JSON-массив из stdin или opts, постит notes.
+// @consumers: vcs-reply
+// @tasks: N/A
+
 
 import fs from 'node:fs';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';

@@ -1,3 +1,7 @@
+// @file: Собрать дерево XmlNode артефакта resolve-conflicts из git-контекста merge.
+// @consumers: resolve-conflicts-command-run.logic
+// @tasks: N/A
+
 import { serializeXmlNode } from '../../../../../shared/common/xml.ts';
 import type { XmlNode } from '../../../../../shared/common/xml.ts';
 import type { ResolveConflictsContextGit } from '../types/resolve-conflicts-context-git.type.ts';

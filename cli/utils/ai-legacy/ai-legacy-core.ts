@@ -1,3 +1,7 @@
+// @file: Ядро выбора модели и батчинга промптов по diff; объединяет GennadyRc и AiLegacyModel.
+// @consumers: commit-gen, review-gen
+// @tasks: N/A
+
 import { AiLegacyModel } from './ai-legacy-model.ts';
 import { GennadyRc } from '../../../shared/backend/rc/rc-config.ts';
 import { logger } from '#logger';

@@ -79,6 +79,8 @@ graph TD
     TSK-17 --> TSK-16
     TSK-18 --> TSK-17
     TSK-32 --> TSK-16
+    TSK-49[TSK-49: resolveTargets + LintCommand] --> TSK-16
+    TSK-50[TSK-50: Tests resolveTargets + integration] --> TSK-49
     TSK-24 --> TSK-23
     TSK-25 --> TSK-23
     TSK-25 --> TSK-24
@@ -114,7 +116,7 @@ graph TD
 | Scope             | Type           | Tracker                               | Tasks | Done  |
 | ----------------- | -------------- | ------------------------------------- | ----- | ----- |
 | dbc               | library        | [README](dbc/README.md)               | 14    | 14/14 |
-| cli               | product        | [README](cli/README.md)               | 15    | 13/15 |
+| cli               | product        | [README](cli/README.md)               | 17    | 17/17 |
 | vcs               | product        | [README](vcs/README.md)               | 5     | 5/5   |
 | agent-mon | library | [README](agent-mon/README.md) | 7 | 7/7 |
 | agent-mon-cli | product | [README](agent-mon-cli/README.md) | 4 | 0/4 |

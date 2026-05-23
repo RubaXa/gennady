@@ -1,3 +1,7 @@
+// @file: Reads a secret from stdin without echoing (masks with *).
+// @consumers: telegram-demo
+// @tasks: N/A
+
 import * as QRCode from 'qrcode';
 import { Dialog, TelegramClient, User, type TelegramClientOptions } from '@mtcute/node';
 import { Dispatcher, MessageContext } from '@mtcute/dispatcher';

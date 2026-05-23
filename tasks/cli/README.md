@@ -47,6 +47,10 @@ graph TD
     TSK-18 --> TSK-17
     TSK-32[TSK-32: LanguageCheck]
     TSK-32 --> TSK-16
+    TSK-49[TSK-49: resolveTargets + LintCommand]
+    TSK-49 --> TSK-16
+    TSK-50[TSK-50: Tests resolveTargets + integration]
+    TSK-50 --> TSK-49
     TSK-23[TSK-23: AltOpinion core]
     TSK-24[TSK-24: AltOpinion CLI]
     TSK-25[TSK-25: AltOpinion tests]
@@ -79,6 +83,8 @@ graph TD
 | [TSK-17](lint/cli-lint.task-17.md)               | Тесты: проверки + интеграционные                      | lint         | TSK-16                         | `[x]` DONE | 0       |
 | [TSK-18](lint/cli-lint.task-18.md)               | Интеграционные тесты CLI команды lint                 | lint         | TSK-17                         | `[x]` DONE | 0       |
 | [TSK-32](lint/cli-lint.task-32.md)               | LanguageCheck: проверка языка (English-only)          | lint         | TSK-16                         | `[x]` DONE | 0       |
+| [TSK-49](lint/cli-lint.task-49.md)               | resolveTargets() + интеграция в LintCommand          | lint         | TSK-16                         | `[x]` DONE | 0       |
+| [TSK-50](lint/cli-lint.task-50.md)               | Тесты: resolveTargets (24u) + интеграционные (19i)   | lint         | TSK-49                         | `[x]` DONE | 0       |
 | [TSK-23](alt-opinion/cli-alt-opinion.task-23.md) | AltOpinion Core (types + parser + runner)             | alt-opinion  | None                           | `[x]` DONE | 5       |
 | [TSK-24](alt-opinion/cli-alt-opinion.task-24.md) | AltOpinion CLI (cmd + prompts + registration)         | alt-opinion  | TSK-23                         | `[x]` DONE | 1       |
 | [TSK-25](alt-opinion/cli-alt-opinion.task-25.md) | AltOpinion Tests (parser + runner + integration)      | alt-opinion  | TSK-23, TSK-24                 | `[x]` DONE | 0       |

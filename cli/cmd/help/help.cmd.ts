@@ -1,3 +1,7 @@
+// @file: CLI command: help
+// @consumers: N/A
+// @tasks: TSK-45
+
 console.info('Gennady CLI');
 console.info('');
 console.info('Usage:');

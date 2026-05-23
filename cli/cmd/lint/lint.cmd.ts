@@ -1,10 +1,10 @@
 // @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 4 checks, ESLint output.
 // @consumers: gennady.ts
-// @tasks: TSK-16
+// @tasks: TSK-16, TSK-49
 
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { extname, join, resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { check as checkFileHeader } from './checks/file-header.check.ts';
@@ -12,6 +12,10 @@ import { check as checkAnchors } from './checks/anchor.check.ts';
 import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
 import { LintReport } from './lint.types.ts';
+import {
+  ERR_CLI_LINT_STAGED_CONFLICT,
+  ERR_CLI_LINT_RESOLVE_FAILED,
+} from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 import {
   loadTaskReferences,
@@ -26,16 +30,32 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     staged: ['staged'],
   });
 
-  // parseArgs does its own .slice(2); args._ may include command name — filter by .ts extension
-  const positional = (args._ as string[]).filter((f) => f.endsWith('.ts'));
+  const positional = (args._ as string[]).filter(
+    (f: string) => typeof f === 'string'
+  );
 
   const autofix = args.autofix === true || args.autofix === 'true';
   const staged = args.staged === true || args.staged === 'true';
 
-  // #region START_COLLECT_FILES — invariant: --staged → git diff + ls-files; otherwise positional args
+  // #region START_COLLECT_FILES — invariant: --staged → git diff + ls-files; otherwise resolveTargets
   let files: string[];
+  const resolutionErrors: LintError[] = [];
 
   if (staged) {
+    if (positional.length > 0) {
+      const error: LintError = {
+        file: '',
+        line: 0,
+        col: 0,
+        severity: 'error',
+        code: ERR_CLI_LINT_STAGED_CONFLICT,
+        message:
+          '--staged and positional targets are mutually exclusive. Use either --staged or provide file/directory paths, not both.',
+      };
+      logger.warn('[LintCommand#run] --staged and positional targets are mutually exclusive');
+      return new LintReport([error]);
+    }
+
     logger.debug('[LintCommand#run] [idle → collecting] staged mode');
     try {
       const stagedOut = execSync('git diff --staged --name-only', { encoding: 'utf-8' }).trim();
@@ -53,19 +73,27 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       logger.error('[LintCommand#run] [collecting → failed]', { error });
       throw error;
     }
+  } else if (positional.length > 0) {
+    logger.debug(`[LintCommand#run] [idle → resolving] ${positional.length} target(s)`);
+    const result = resolveTargets(positional);
+    files = result.files;
+    resolutionErrors.push(...result.errors);
+    for (const re of result.errors) {
+      logger.warn(`[LintCommand#run] [resolving → failed] ${re.file}: ${re.message}`);
+    }
   } else {
-    files = positional;
+    files = [];
   }
   // #endregion END_COLLECT_FILES
 
   if (files.length === 0) {
     logger.debug('[LintCommand#run] [collecting → done] no files to lint');
-    return new LintReport([]);
+    return new LintReport(resolutionErrors);
   }
 
   logger.debug(`[LintCommand#run] [collecting → linting] ${files.length} file(s)`);
 
-  const allErrors: LintError[] = [];
+  const allErrors: LintError[] = [...resolutionErrors];
   let totalAutoFixed = 0;
 
   // #region START_RESOLVE_REFERENCES — invariant: load taskRefMap once, collect task IDs from headers
@@ -119,6 +147,99 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   return report;
 }
+
+// #region START_RESOLVE_TARGETS — invariant: recursive dir walk, filter .ts/.tsx, dedup, sort, exclude system dirs, skip symlinks
+const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
+const EXCLUDED_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'coverage',
+  'build',
+  'out',
+]);
+
+function resolveTargets(
+  targets: string[]
+): { files: string[]; errors: LintError[] } {
+  logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
+  const fileSet = new Set<string>();
+  const errors: LintError[] = [];
+
+  for (const target of targets) {
+    let stat;
+    try {
+      stat = lstatSync(target);
+    } catch (cause: unknown) {
+      const err = cause as NodeJS.ErrnoException;
+      errors.push({
+        file: target,
+        line: 0,
+        col: 0,
+        severity: 'error',
+        code: ERR_CLI_LINT_RESOLVE_FAILED,
+        message: `${target}: ${err.code ?? 'UNKNOWN'}: ${err.message}`,
+      });
+      continue;
+    }
+
+    if (stat.isSymbolicLink()) {
+      continue;
+    }
+
+    const absTarget = resolve(target);
+
+    if (stat.isDirectory()) {
+      walkDir(absTarget, fileSet);
+    } else if (stat.isFile()) {
+      const ext = extname(target).toLowerCase();
+      if (SUPPORTED_EXTENSIONS.includes(ext)) {
+        fileSet.add(absTarget);
+      }
+    }
+  }
+
+  const files = [...fileSet].sort();
+  logger.debug(
+    `[resolveTargets] [resolving → resolved] ${files.length} file(s), ${errors.length} error(s)`
+  );
+  return { files, errors };
+}
+
+// #region START_WALK_DIR — invariant: recursive, lstat, skip hidden/system dirs, filter by SUPPORTED_EXTENSIONS
+function walkDir(dir: string, fileSet: Set<string>): void {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
+    if (EXCLUDED_DIRS.has(entry.name)) {
+      continue;
+    }
+
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      walkDir(fullPath, fileSet);
+    } else if (entry.isFile()) {
+      const ext = extname(entry.name).toLowerCase();
+      if (SUPPORTED_EXTENSIONS.includes(ext)) {
+        fileSet.add(fullPath);
+      }
+    }
+  }
+}
+// #endregion END_WALK_DIR
+// #endregion END_RESOLVE_TARGETS
 
 // Self-executing for CLI: gennady lint <args>
 const report = await run(process.argv);

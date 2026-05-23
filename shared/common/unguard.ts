@@ -1,3 +1,7 @@
+// @file: Синхронно развернуть result tuple.
+// @consumers: ai-legacy-agent, ai-legacy-core, ai-legacy-model
+// @tasks: N/A
+
 /**
  * @purpose Синхронно развернуть result tuple.
  * @param resultTuple Кортеж [result, error]; при error — бросает его.

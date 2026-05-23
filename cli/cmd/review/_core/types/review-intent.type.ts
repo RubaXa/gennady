@@ -1,3 +1,7 @@
+// @file: Исходное намерение review-запроса: явный MR или поиск по ветке.
+// @consumers: load-review-context-mr.logic, resolve-review-intent.logic, run-review-command.logic
+// @tasks: N/A
+
 /**
  * @purpose Исходное намерение review-запроса: явный MR или поиск по ветке.
  * @consumer resolve-review-intent.logic

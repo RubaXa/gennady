@@ -1,3 +1,7 @@
+// @file: Описать конфигурацию одной AI-модели в rc-файле (имя, URL, опциональный ключ).
+// @consumers: ai-legacy-core
+// @tasks: N/A
+
 import { readFileSync, existsSync } from 'node:fs';
 import { join as pathJoin } from 'node:path';
 

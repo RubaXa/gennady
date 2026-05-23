@@ -1,3 +1,7 @@
+// @file: Renders remote log entries into deterministic flat stdout lines for terminal consumers.
+// @consumers: remote-console, remote-console-server
+// @tasks: N/A
+
 import type { RemoteConsoleLogEntry } from '../client/remote-console-client.types.ts';
 
 /**

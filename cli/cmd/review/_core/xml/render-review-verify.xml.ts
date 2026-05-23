@@ -1,3 +1,7 @@
+// @file: Сформировать итоговый XML для review-verify (template + артефакт + подстановки по проекту).
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import { buildAiFirstKnowledgeBlock } from '../logic/build-ai-first-knowledge-block.logic.ts';
 import { buildVerifyCommandPlaceholders } from '../logic/build-ai-verify-placeholders.logic.ts';
 import { loadReviewVerifyTemplate } from '../io/load-review-verify-template.io.ts';

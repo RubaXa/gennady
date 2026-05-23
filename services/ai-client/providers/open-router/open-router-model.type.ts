@@ -1,3 +1,7 @@
+// @file: Open Router GET /models API response item (full schema).
+// @consumers: open-router-provider
+// @tasks: N/A
+
 import type { AIModel } from '../ai-model.type.ts';
 
 /**

@@ -1,3 +1,7 @@
+// @file: telegram-demo
+// @consumers: N/A
+// @tasks: N/A
+
 import { dirname, join } from 'node:path';
 import { TelegramDataOre } from './telegram-data-ore.ts';
 import { homedir, hostname, platform, release } from 'node:os';

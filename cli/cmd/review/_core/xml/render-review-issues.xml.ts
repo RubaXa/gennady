@@ -1,3 +1,7 @@
+// @file: Сформировать итоговый XML для review-issues (только артефакт).
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 /**
  * @purpose Сформировать итоговый XML для review-issues (только артефакт).
  * @consumer run-review-command.logic

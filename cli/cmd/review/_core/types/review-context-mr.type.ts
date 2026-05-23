@@ -1,3 +1,7 @@
+// @file: Минимальный MR-контекст для генерации review-артефакта.
+// @consumers: build-review-artifact.xml, load-review-context-mr.logic, review-artifact.type
+// @tasks: N/A
+
 /**
  * @purpose Минимальный MR-контекст для генерации review-артефакта.
  * @consumer load-review-context-mr.logic

@@ -1,3 +1,7 @@
+// @file: Загрузить шаблон review-verify из проекта или fallback из библиотеки.
+// @consumers: render-review-verify.xml
+// @tasks: N/A
+
 import { loadAgentTemplate } from '../../../_shared/prompt/io/load-agent-template.io.ts';
 
 /**

@@ -1,3 +1,7 @@
+// @file: Централизованный доступ к шаблонам промптов (agent, commit, review) из .md-файлов.
+// @consumers: commit-gen, create-providers, review-gen
+// @tasks: N/A
+
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

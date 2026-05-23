@@ -1,3 +1,7 @@
+// @file: Определить язык программирования по расширению файла.
+// @consumers: git-diff
+// @tasks: N/A
+
 import { execSync as nodeExecSync } from 'node:child_process';
 
 const languages: Record<string, string> = {

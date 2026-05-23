@@ -1,3 +1,7 @@
+// @file: index
+// @consumers: commit-gen, create-providers, review-gen
+// @tasks: N/A
+
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { main } from './vcs-reply.cmd.ts';
 

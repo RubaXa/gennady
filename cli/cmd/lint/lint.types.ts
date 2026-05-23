@@ -1,6 +1,6 @@
 // @file: Types and error codes for the lint command module.
 // @consumers: LintCommand, FileHeaderCheck, AnchorCheck, DbcContractCheck, LanguageCheck
-// @tasks: TSK-12
+// @tasks: TSK-12, TSK-49
 
 /** @purpose Single lint error in ESLint-compatible format. */
 export type LintError = {
@@ -100,3 +100,9 @@ export const ERR_CLI_LINT_ANCHOR_NESTING = 'ERR_CLI_LINT_ANCHOR_NESTING' as cons
 export const ERR_CLI_LINT_ANCHOR_MALFORMED = 'ERR_CLI_LINT_ANCHOR_MALFORMED' as const;
 /** @purpose Cyrillic characters found in JSDoc contracts or file headers — English required. */
 export const ERR_CLI_LINT_NON_ENGLISH = 'ERR_CLI_LINT_NON_ENGLISH' as const;
+
+/** @purpose Target resolution failed — path does not exist (ENOENT) or permission denied (EACCES). | @invariant Used by resolveTargets for graceful degradation. */
+export const ERR_CLI_LINT_RESOLVE_FAILED = 'ERR_CLI_LINT_RESOLVE_FAILED' as const;
+
+/** @purpose Mutually exclusive flags: --staged and positional targets cannot be used together. */
+export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as const;

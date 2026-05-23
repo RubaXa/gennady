@@ -1,3 +1,7 @@
+// @file: Загрузить MR и discussions по ReviewIntent.
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import type { ReviewContextMr } from '../types/review-context-mr.type.ts';
 import type { ReviewContextMrDiscussion } from '../types/review-context-mr.type.ts';
 import type { ReviewContextVcs } from '../types/review-context-vcs.type.ts';

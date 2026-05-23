@@ -1,3 +1,7 @@
+// @file: Разрешить намерение review-запуска из аргументов (url/ref/project+iid/branch).
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import type { ReviewCommandArgs } from '../types/review-command-args.type.ts';
 import type { ReviewIntent } from '../types/review-intent.type.ts';
 

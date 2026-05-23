@@ -1,3 +1,7 @@
+// @file: Базовый артефакт review-команд: MR + discussions + XML.
+// @consumers: review-command-result.type
+// @tasks: N/A
+
 import type { ReviewContextMr } from './review-context-mr.type.ts';
 import type { ReviewContextMrDiscussion } from './review-context-mr.type.ts';
 

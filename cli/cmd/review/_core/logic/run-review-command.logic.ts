@@ -1,3 +1,7 @@
+// @file: Выполнить общий pipeline review-команд и вернуть финальный output.
+// @consumers: review-issues.cmd, review-verify.cmd
+// @tasks: N/A
+
 import { style } from '../../../../../shared/common/style.ts';
 import { buildReviewContextGit } from './build-review-context-git.logic.ts';
 import { buildReviewContextVcs } from './build-review-context-vcs.logic.ts';

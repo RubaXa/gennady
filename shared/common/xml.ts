@@ -1,3 +1,7 @@
+// @file: Описывает узел XML-дерева — тег, атрибуты и дочерние узлы или текст.
+// @consumers: commit-gen
+// @tasks: N/A
+
 /**
  * @purpose Описывает узел XML-дерева — тег, атрибуты и дочерние узлы или текст.
  * @consumer commit-gen, review-verify, cat-gen

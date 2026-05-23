@@ -1,3 +1,7 @@
+// @file: Сформировать подстановку `<!--ai:first-->` с обязательными knowledge-файлами проекта.
+// @consumers: render-review-verify.xml, resolve-conflicts-render.xml
+// @tasks: N/A
+
 import fs from 'node:fs';
 import path from 'node:path';
 

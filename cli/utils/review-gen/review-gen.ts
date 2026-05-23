@@ -1,3 +1,7 @@
+// @file: Генерировать ревью кода (критические замечания) через LLM с учётом языковых спеков.
+// @consumers: review.cmd
+// @tasks: N/A
+
 import { AiLegacyCore } from '../ai-legacy/ai-legacy-core.ts';
 import { prompts } from '../prompts/index.ts';
 import { readFileSync, readdirSync } from 'node:fs';

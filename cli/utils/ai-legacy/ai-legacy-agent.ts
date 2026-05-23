@@ -1,3 +1,7 @@
+// @file: Legacy AI Agent — обёртка над AiLegacyModel для получения структурированного JSON-ответа.
+// @consumers: N/A
+// @tasks: N/A
+
 import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 import { AiLegacyModel } from './ai-legacy-model.ts';
 

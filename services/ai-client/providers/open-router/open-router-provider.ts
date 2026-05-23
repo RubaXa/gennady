@@ -1,3 +1,7 @@
+// @file: open-router-provider
+// @consumers: ai-client, telegram-demo-music-helper
+// @tasks: N/A
+
 import { createOpenAI, type OpenAIProvider, type OpenAIProviderSettings } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import type { AIModel } from '../ai-model.type.ts';

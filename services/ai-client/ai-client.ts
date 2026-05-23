@@ -1,3 +1,7 @@
+// @file: ai-client
+// @consumers: N/A
+// @tasks: N/A
+
 import { readFileSync } from 'node:fs';
 import { OpenRouterProvider } from './providers/open-router/open-router-provider.ts';
 

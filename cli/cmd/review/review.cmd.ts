@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @file: CLI command: review
+// @consumers: N/A
+// @tasks: N/A
+
 
 import { getGitDiffInfo } from '../../../shared/backend/git/git-core.ts';
 import { ReviewGen } from '../../utils/review-gen/review-gen.ts';

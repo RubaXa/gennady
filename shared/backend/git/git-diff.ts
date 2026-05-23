@@ -1,3 +1,7 @@
+// @file: Описать один файл из разобранного git diff: флаги, имя, категория, язык, хунки и число токенов.
+// @consumers: git-core
+// @tasks: N/A
+
 import { getProgrammingLanguage } from '../../common/language.ts';
 import { countTokens } from '../../common/tokens.ts';
 

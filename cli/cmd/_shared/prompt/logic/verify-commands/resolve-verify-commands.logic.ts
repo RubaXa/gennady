@@ -1,3 +1,7 @@
+// @file: Вернуть безопасные команды проверки кода для текущего проекта (тесты, линт, типы).
+// @consumers: build-ai-verify-placeholders.logic
+// @tasks: N/A
+
 import fs from 'node:fs';
 import path from 'node:path';
 

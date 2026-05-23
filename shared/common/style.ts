@@ -1,3 +1,7 @@
+// @file: Предоставить цепочку стилей для раскраски текста в терминале (ANSI).
+// @consumers: cat.cmd, commit-gen, commit.cmd, resolve-conflicts-command-run.logic, review.cmd, run-review-command.logic, vcs-reply.cmd
+// @tasks: N/A
+
 const NO_COLOR = ['plain', 'nocolor', 'noColor', 'no-color', 'color=no', 'color=never'].some(
   (arg) => process.argv.includes(`-${arg}`) || process.argv.includes(`--${arg}`)
 );

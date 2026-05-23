@@ -1,3 +1,7 @@
+// @file: Выполнить системную команду синхронно с безопасной обработкой ошибок.
+// @consumers: git-core, resolve-conflicts-context-git-build.logic
+// @tasks: N/A
+
 import { execSync as nodeExecSync } from 'node:child_process';
 import { logger } from './logger.ts';
 

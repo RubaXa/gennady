@@ -1,3 +1,7 @@
+// @file: Собрать merge-контекст из git для генерации prompt resolve-conflicts.
+// @consumers: resolve-conflicts-command-run.logic
+// @tasks: N/A
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { getGitCurrentBranch, getGitRemote } from '../../../../../shared/backend/git/git-core.ts';

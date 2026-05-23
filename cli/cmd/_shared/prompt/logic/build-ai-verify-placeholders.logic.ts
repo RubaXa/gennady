@@ -1,3 +1,7 @@
+// @file: Описать подстановки verify-блока для AI-шаблона.
+// @consumers: render-review-verify.xml, resolve-conflicts-render.xml
+// @tasks: N/A
+
 import { resolveSafeVerifyCommands } from './verify-commands/resolve-verify-commands.logic.ts';
 
 /**

@@ -1,3 +1,7 @@
+// @file: Сформировать итоговый XML для resolve-conflicts (template + артефакт + project placeholders).
+// @consumers: resolve-conflicts-command-run.logic
+// @tasks: N/A
+
 import { buildAiFirstKnowledgeBlock } from '../../../_shared/prompt/logic/build-ai-first-knowledge-block.logic.ts';
 import { buildVerifyCommandPlaceholders } from '../../../_shared/prompt/logic/build-ai-verify-placeholders.logic.ts';
 import { loadResolveConflictsTemplate } from '../io/resolve-conflicts-template-load.io.ts';

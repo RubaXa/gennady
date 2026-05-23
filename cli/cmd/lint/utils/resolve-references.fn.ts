@@ -1,3 +1,7 @@
+// @file: Resolved reference pair: task file path and its linked spec paths.
+// @consumers: lint.cmd
+// @tasks: N/A
+
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 

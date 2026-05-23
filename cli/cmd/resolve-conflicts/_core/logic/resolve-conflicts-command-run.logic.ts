@@ -1,3 +1,7 @@
+// @file: Выполнить pipeline resolve-conflicts и вернуть финальный prompt.
+// @consumers: resolve-conflicts.cmd
+// @tasks: N/A
+
 import { style } from '../../../../../shared/common/style.ts';
 import { buildResolveConflictsContextGit } from './resolve-conflicts-context-git-build.logic.ts';
 import { buildResolveConflictsArtifactXml } from '../xml/resolve-conflicts-artifact-build.xml.ts';

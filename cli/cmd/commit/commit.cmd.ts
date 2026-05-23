@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @file: CLI command: commit
+// @consumers: N/A
+// @tasks: N/A
+
 
 import fs from 'node:fs';
 import os from 'node:os';

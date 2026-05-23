@@ -1,3 +1,7 @@
+// @file: Генерировать commit-сообщение из staged diff через LLM.
+// @consumers: commit.cmd
+// @tasks: N/A
+
 import { AiLegacyCore } from '../ai-legacy/ai-legacy-core.ts';
 import { getGitDiffInfo } from '../../../shared/backend/git/git-core.ts';
 import { prompts } from '../prompts/index.ts';

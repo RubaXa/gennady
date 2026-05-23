@@ -1,3 +1,7 @@
+// @file: Нормализовать CLI-аргументы resolve-conflicts в единый контракт.
+// @consumers: resolve-conflicts.cmd
+// @tasks: N/A
+
 import { parseArgs } from '../../../../../shared/common/parse-args.ts';
 import type { ResolveConflictsCommandArgs } from '../types/resolve-conflicts-command-args.type.ts';
 

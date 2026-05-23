@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// @file: Defines parsed CLI arguments for remote-console command execution.
+// @consumers: remote-console
+// @tasks: N/A
+
 
 import open from 'open';
 import { parseArgs } from '../../../shared/common/parse-args.ts';

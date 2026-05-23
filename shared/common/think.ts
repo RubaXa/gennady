@@ -1,3 +1,7 @@
+// @file: Удалить think-блоки и лишний преамбульный текст из сырого ответа LLM.
+// @consumers: ai-legacy-model
+// @tasks: N/A
+
 const THINK_CLOSE_TAG = '</think>';
 
 /**

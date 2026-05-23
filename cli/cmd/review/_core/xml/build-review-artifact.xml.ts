@@ -1,3 +1,7 @@
+// @file: Собрать дерево XmlNode артефакта ревью из MR и дискуссий.
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import { serializeXmlNode } from '../../../../../shared/common/xml.ts';
 import type { XmlNode } from '../../../../../shared/common/xml.ts';
 import type {

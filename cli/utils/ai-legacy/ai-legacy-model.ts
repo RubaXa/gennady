@@ -1,3 +1,7 @@
+// @file: Конфигурация инициализации AI Legacy Model: имя, URL, опциональный ключ и доп. параметры.
+// @consumers: ai-legacy-agent, ai-legacy-core
+// @tasks: N/A
+
 import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 import { removeThink } from '../../../shared/common/think.ts';
 

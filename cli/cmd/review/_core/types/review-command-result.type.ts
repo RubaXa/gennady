@@ -1,3 +1,7 @@
+// @file: Результат выполнения review-команды.
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import type { ReviewArtifact } from './review-artifact.type.ts';
 
 /**

@@ -1,3 +1,7 @@
+// @file: Собрать git-контекст review-запуска (branch + origin remote).
+// @consumers: run-review-command.logic
+// @tasks: N/A
+
 import { getGitCurrentBranch, getGitRemote } from '../../../../../shared/backend/git/git-core.ts';
 import type { ReviewContextGit } from '../types/review-context-git.type.ts';
 

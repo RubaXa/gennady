@@ -1,3 +1,7 @@
+// @file: Generate structured music release description from Telegram data.
+// @consumers: telegram-data-ore, telegram-demo
+// @tasks: N/A
+
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';

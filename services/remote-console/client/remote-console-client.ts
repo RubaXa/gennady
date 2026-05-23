@@ -1,3 +1,7 @@
+// @file: Stores one active connection state machine for a specific patched console target.
+// @consumers: remote-console
+// @tasks: N/A
+
 import { serializeRemoteConsoleArg } from './remote-console-client-serializer.ts';
 import type {
   RemoteConsoleClientConnectConfig,
