@@ -18,6 +18,8 @@ export type AgentSession = {
   slug?: string;
   /** @purpose Working directory of the session */
   cwd: string;
+  /** @purpose Project name derived from cwd | @invariant basename of working directory */
+  project: string;
   /** @purpose AI model used in the session */
   model?: string;
   /** @purpose Agent kind identifier */

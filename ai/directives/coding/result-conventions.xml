@@ -1,8 +1,6 @@
 <ResultConventions keywords="result, error-handling, isErr, TessellError, unwrap, success, fail" type="coding-rule" ver="1.0">
   <Mission>
-    Four binary invariants for the Result pattern from @tessell/core/result.
-    Each maps to a forbidden idiom in AGENTS.md that survived code review and was caught retroactively.
-    Enforced via ESLint custom rules (eslint-plugin-tessell-result).
+    Invariants for the Result pattern from @tessell/core/result. Four binary idioms (R1–R4) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each maps to a forbidden idiom in AGENTS.md that survived code review and was caught retroactively. One architectural convention (AX_RESULT_PUBLIC_BOUNDARY) is code-review-only — not mechanically detectable.
   </Mission>
 
   <Belief_State>
@@ -27,6 +25,17 @@
       `throw catchBinding` without wrapping in `TessellError.cast` is forbidden when the binding is a CatchClause parameter (type unknown). Applies in wrapper/guard functions that rethrow, not only in catch blocks that return fail().
       Detection: scope analysis — ThrowStatement whose argument resolves to a CatchClause parameter, regardless of variable name (cause, err, e, error).
       No autofix: the fallback message is context-dependent.
+    </Axiom>
+
+    <Axiom id="AX_RESULT_PUBLIC_BOUNDARY" enforcement="convention">
+      Result is the transport form of error across the public / port boundary — not an internal control-flow primitive. Public surface (port interface methods, exported factory return types, closures returned from factories) MUST return `Result<T>`. Inside the same class:
+      - protected/private async helpers with I/O → throw; the public caller wraps in try/catch and returns `fail(error)` (per AX_CATCH_LOG_RECOVER in typescript-rules).
+      - pure helpers (predicates, classifiers) → honest return type (`Error | null`, scalar, enum literal); not Result.
+      - Result in protected is permitted only when the helper carries a typed `kind` the public call-site immediately unwraps — and even then, throw is usually cleaner because it avoids the `Result → unwrapSync → throw → catch → re-emit` double-packaging pattern.
+
+      Rationale: mixing Result and null-pattern in helpers of one class produces structural noise (two error-channel styles in one surface) and double-packaging. The convention keeps Result as a boundary artifact, not an internal one.
+
+      Not ESLint-enforced. The public/private boundary is not mechanically detectable: closures returned from factories (e.g. `defineDataStorageQuery → (storage, params) => Promise<Result<R>>`) are public-by-intent but private-by-syntax, and methods on factory-returned object literals (e.g. `defineDataOperation`) are not visible as class members. Enforced via code review and this directive.
     </Axiom>
 
     <Axiom id="AX_CONFIGURABLE_NAMES">

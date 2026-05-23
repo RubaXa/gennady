@@ -102,3 +102,21 @@ export function parseClaudeArgs(args: string): { model?: string; effort?: string
 
   return result;
 }
+
+/**
+ * @purpose Extract a context hint from Claude process args — uses Read/Edit allowed paths.
+ * @invariant Returns the most specific path segment from allowedTools, or undefined.
+ * @param args Full ps command-line string.
+ * @returns Short context description, e.g. "sdd/directives" or undefined.
+ */
+export function parseContextHint(args: string): string | undefined {
+  const match = args.match(/--allowedTools\s+([^"]*?)(?:\s+--|$)/);
+  if (!match) return undefined;
+  const tools = match[1] ?? '';
+  const readMatch = tools.match(/Read\(\/\/(?:Users\/[^/]+\/Developer\/)?([^)]+?)(?:\/\*\*)?\)/);
+  if (!readMatch) return undefined;
+  const path = readMatch[1] ?? '';
+  const parts = path.split('/');
+  if (parts.length <= 1) return parts[0];
+  return parts.slice(-2).join('/');
+}

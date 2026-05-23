@@ -83,6 +83,7 @@ export class OpenCodeProvider implements AgentProvider {
           title: row.title ?? '',
           slug: row.slug,
           cwd: row.directory,
+          project: row.directory.split('/').pop() ?? row.directory,
           model: modelId,
           agent: row.agent ?? undefined,
           status: 'active',

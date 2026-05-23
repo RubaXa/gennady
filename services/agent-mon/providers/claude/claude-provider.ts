@@ -3,7 +3,7 @@
 // @tasks: TSK-39
 
 import { readdirSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
+import * as path from 'node:path';import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { logger } from '#logger';
 
@@ -11,6 +11,7 @@ import type { AgentSession } from '../../model/agent-session.type.js';
 import type { ScanOpts } from '../../model/scan-opts.type.js';
 import type { AgentProvider } from '../../model/agent-provider.type.js';
 import { psInfo as defaultPsInfo, parseClaudeArgs as defaultParseClaudeArgs } from './ps.ts';
+import { parseContextHint } from './ps.ts';
 import type { PsInfoEntry } from './ps.ts';
 import {
   readSessionJson as defaultReadSessionJson,
@@ -152,8 +153,10 @@ export class ClaudeProvider implements AgentProvider {
       if (title === 'Unknown') {
         title = readActiveTaskTitle(s.sessionId);
       }
-      if (title === 'Unknown') {
-        title = `[${s.cwd.split('/').pop() ?? s.cwd}] session`;
+      if (title === 'Unknown' && psEntry) {
+        const hint = parseContextHint(psEntry.args);
+        if (hint) title = `${path.basename(s.cwd)}: ${hint}`;
+        else title = `[${path.basename(s.cwd)}] session`;
       }
       const elapsedSeconds = (now - s.startedAt) / 1000;
 
@@ -162,6 +165,7 @@ export class ClaudeProvider implements AgentProvider {
         pid: s.pid,
         sessionId: s.sessionId,
         cwd: s.cwd,
+        project: path.basename(s.cwd),
         startedAt: s.startedAt,
         lastActivityAt: s.lastActivityAt > 0 ? s.lastActivityAt : undefined,
         status,

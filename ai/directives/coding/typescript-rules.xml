@@ -70,8 +70,14 @@
       Preserve original context via `{ cause }`. Create and rethrow via `new Error("[Trace-Prefix] ...", { cause })`. NEVER transform `cause` — it can be any value. `cause` is a lossless channel for the root cause; any transform breaks the debug chain.
     </Axiom>
 
-    <Axiom id="AX_CATCH_LOG_THROW">
-      Catch-Log-Throw is the only pattern in business-logic catch blocks. First `logger.error` with Trace-Prefix and context, then `throw` a new error with `{ cause }`. `logger.error` records the failure with its context at detection time; `throw` preserves control flow. Skipping either step makes the failure either invisible (no log) or swallowed (no throw).
+    <Axiom id="AX_CATCH_LOG_RECOVER">
+      Catch-Log-Recover is the only pattern in business-logic catch blocks. First `logger.error` with Trace-Prefix and context, then recovery in ONE of two forms depending on the surrounding method's contract:
+      - throw-style API → `throw new Error("[Trace-Prefix] msg", { cause })`.
+      - Result-style API → `return fail(error)` (per project Result conventions; the `error` carries `{ cause }` via its own constructor).
+
+      `logger.error` records the failure with its context at detection time — this is the LDD trace (debug-level escalation lets an agent reconstruct the data path even when stacks are minified or aggregator-truncated). Recovery preserves control flow.
+
+      Both forms require both steps. Skipping `logger.error` makes the failure invisible to the trace; skipping recovery swallows it. NEVER do both (log + throw + return fail) — that re-emits and double-logs across boundaries.
     </Axiom>
 
     <Axiom id="AX_FAIL_FAST_VALIDATION">
@@ -99,7 +105,7 @@
     </Axiom>
 
     <Axiom id="AX_LOG_DENSITY">
-      Logs at entry points, important branches, external I/O / mutations, catch blocks. Loops logged in aggregate, NOT per iteration. In `catch`: ALWAYS `logger.error` with Trace-Prefix and context, then `throw` (per `AX_CATCH_LOG_THROW`). Intent-driven density yields a readable story-line; per-iteration spam drowns real signals.
+      Logs at entry points, important branches, external I/O / mutations, catch blocks. Loops logged in aggregate, NOT per iteration. In `catch`: ALWAYS `logger.error` with Trace-Prefix and context, then recover via `throw` or `return fail()` per `AX_CATCH_LOG_RECOVER`. Intent-driven density yields a readable story-line; per-iteration spam drowns real signals.
     </Axiom>
 
     <Axiom id="AX_ANCHOR_FORMAT">
@@ -120,36 +126,22 @@
       Anchor name describes WHY the block exists. Does NOT restate syntax or literal conditions. `START_APPLY_FALLBACK_STRATEGY`, not `START_IF_NO_PATH`. The name is the only way for a reader-agent to recognize the block's policy without reading the body.
     </Axiom>
 
-    <Axiom id="AX_COMMENTS_AS_LEARNING_CONTEXT">
-      Comments externalize what would otherwise need reverse-engineering. Comment's purpose: purpose, consumers, invariants, side effects, failure boundaries, non-goals. The next agent has no access to the chat in which this code was written. A comment is the only context channel that does not derive from syntax.
+    <Axiom id="AX_COMMENTS_ADD_NONSYNTACTIC_INTENT">
+      All comments are agent-authored machine comments and MUST add intent that an agent cannot safely infer from syntax. A comment SUPPLEMENTS pretrained code understanding instead of fighting it: prefer the smallest local comment that increases recoverable intent / patch safety / invariant preservation. The next reader-agent has no access to the chat in which the code was written — a comment is the only context channel that does not derive from syntax. Excess comments compete with code and drift; insufficient comments force reconstruction from stack traces. Comments do NOT explain syntax to humans; in an AI-to-AI ecosystem, human narrative is noise.
     </Axiom>
 
-    <Axiom id="AX_COMMENT_ALIGNMENT">
-      Alignment over override. A comment SUPPLEMENTS the agent's pretrained code understanding instead of fighting it. Prefer the smallest local comment that increases recoverable intent / patch safety / invariant preservation. Excess comments compete with code for reader attention and tend to drift; insufficient comments force reconstruction from stack traces.
+    <Axiom id="AX_COMMENT_VOCABULARY">
+      Closed payload vocabulary: one or more of `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Use terse high-signal prose or `key: value` lines. Closed vocabulary makes comments greppable and predictable.
+
+      Forbidden: decorative prefixes (`// NOTE:`, `// IMPORTANT:`) — no machine semantics; narrating loops, branches, assignments, obvious names — steals credit from real policy comments; duplicating JSDoc, types, signatures, log messages. NEVER write «temporary workaround» without (a) the cause, (b) the boundary of applicability, (c) what must remain unchanged — workaround without context is a mine for the next refactor.
     </Axiom>
 
-    <Axiom id="AX_MACHINE_FIRST_COMMENTS">
-      All comments are agent-authored machine comments. A comment MUST add intent that an agent cannot safely infer from syntax. Comments do NOT explain syntax to humans. In an AI-to-AI ecosystem, human narrative is noise.
-    </Axiom>
-
-    <Axiom id="AX_COMMENT_ALLOWED_PAYLOAD">
-      Allowed comment payload: one or more of `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Use terse high-signal prose or `key: value` lines. Do NOT invent decorative prefixes. A closed payload vocabulary makes comments greppable and predictable; decorative prefixes (`// NOTE:`, `// IMPORTANT:`) are noise without machine semantics.
-    </Axiom>
-
-    <Axiom id="AX_FORBIDDEN_COMMENT_NOISE">
-      Forbidden comment forms: narrating loops, branches, assignments, obvious names; duplicating JSDoc, types, signatures, log messages. NEVER write «temporary workaround» without the cause, the boundary of applicability, and a description of what must remain unchanged. Each narration comment steals credit from real policy comments; «temporary workaround» without context is a mine for the next refactor.
-    </Axiom>
-
-    <Axiom id="AX_BODY_EXECUTABLE_FIRST">
+    <Axiom id="AX_COMMENT_PLACEMENT">
       Function body starts with executable code. Hidden constraints belong in JSDoc (`@invariant`, `@sideEffect`, `@throws`, `@pre`, `@post`); block-level invariants inside `// #region START_<NAME>` anchors. No narrative brief or rule-summary at method head — JSDoc + signature is the canonical contract surface.
     </Axiom>
 
-    <Axiom id="AX_LOCAL_BLOCK_COMMENTS">
-      Local comments only where their removal would hide a business rule, invariant, integration constraint, or refactor hazard. A local comment «costs» reader attention; its right to exist is a unique intent not expressed in code.
-    </Axiom>
-
-    <Axiom id="AX_COMMENT_SILENCE_RULE">
-      Pure data reshaping, obvious getters/setters, trivial guard clauses, straight-line pure computations are NOT commented. Silence is itself a signal: «no hidden policy here.» A comment on trivial code falsely tells the agent to look for an invariant that does not exist.
+    <Axiom id="AX_COMMENT_DENSITY">
+      Comment iff removing it would hide a business rule, invariant, integration constraint, or refactor hazard. Pure data reshaping, obvious getters/setters, trivial guard clauses, straight-line pure computations are NOT commented — silence signals «no hidden policy here». A comment on trivial code falsely tells the agent to look for an invariant that does not exist; a missing comment on non-trivial code forces reverse-engineering.
     </Axiom>
 
     <Axiom id="AX_TYPE_VS_INTERFACE_CHOICE">
@@ -243,19 +235,8 @@
       - **Within one implementing surface** `@implements` and member-level `@see` MUST use same path style and same contract names — do not mix local-relative and project-root-relative references inside one module.
     </Axiom>
 
-    <Axiom id="AX_VALIDATION_CHECKLIST">
-      Pre-finalize checklist:
-      - File has `// @file:` line-comment header; no `@purpose` at file level.
-      - Every exported entity has `@purpose`, a valid `@see`, OR `@purpose` + `@implements`.
-      - Exported runtime implementations do NOT use a class-level `@see`.
-      - Every public/protected member implementing a contract has `@see {Interface#member}` OR explicit override contract. Missing `@implements`, missing `@see`, OR mixed path style = HARD CONTRACT GAPS.
-      - Optional tags in strict order; `@param` does not restate object structure; `@returns` does not restate the TS type.
-      - Methods with external effects declare `@sideEffect` or `@post`.
-      - `type`/`interface`/`class` chosen by the architectural rule.
-    </Axiom>
-
     <Axiom id="AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC">
-      Exception handling is mandatory in business logic. Any business method with network/file/process I/O, mutation of external state, or integration with an external system MUST wrap the failure point in `try`/`catch` per `AX_CATCH_LOG_THROW`. Missing try/catch on an integration boundary turns any transient failure into an un-traced un-contextualized exception.
+      Exception handling is mandatory in business logic. Any business method with network/file/process I/O, mutation of external state, or integration with an external system MUST wrap the failure point in `try`/`catch` per `AX_CATCH_LOG_RECOVER`. Missing try/catch on an integration boundary turns any transient failure into an un-traced un-contextualized exception.
     </Axiom>
   </Belief_State>
 
@@ -367,7 +348,7 @@
     </Pattern>
 
     <Pattern id="PT_ASYNC_OPERATION_WITH_TIMING">
-      <Intent>Async operation with `performance.now()` timing, state transitions in logs, Catch-Log-Throw.</Intent>
+      <Intent>Async operation with `performance.now()` timing, state transitions in logs, Catch-Log-Recover.</Intent>
       <Snippet language="typescript">
         ```typescript
         // @file: Timed execution helper for long-running async action.
@@ -378,7 +359,7 @@
 
         /**
          * @purpose Performs an atomic action with performance measurement and state tracing.
-         * @invariant On failure: emit `logger.error` with elapsed time, then rethrow with cause-chain — both steps mandatory per Catch-Log-Throw.
+         * @invariant On failure: emit `logger.error` with elapsed time, then recover via rethrow with cause-chain (or `return fail(error)` in Result-style APIs) — both steps mandatory per Catch-Log-Recover.
          * @param specifier Unique identifier of the target resource or action.
          * @throws {Error} When the action fails (wraps the original cause).
          * @returns Status of successful execution.
@@ -457,7 +438,7 @@
   <Anti_Patterns>
     <Anti_Pattern id="AP_ATOMIC_NOISE_ANCHORS">
       <Bad>Anchors around a single `const`; anchor name `START_CHECK_RETRIES` (names syntax, not intent); comment restates the `if`; `Error("Limit")` without Trace-Prefix or cause.</Bad>
-      <Why_Bad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_FORBIDDEN_COMMENT_NOISE`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</Why_Bad>
+      <Why_Bad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_COMMENT_VOCABULARY`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</Why_Bad>
       <Good language="typescript">
         ```typescript
         const maxRetries = 3;
@@ -536,7 +517,7 @@
 
     <Anti_Pattern id="AP_REDUNDANT_JSDOC_DUPLICATION">
       <Bad>`/** @purpose User DTO. @param id The id field, type string. @param name The name field, type string. @returns Returns a User object with id and name. */ export type User = { id: string; name: string; };`.</Bad>
-      <Why_Bad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_VALIDATION_CHECKLIST`). `User DTO` carries no business meaning.</Why_Bad>
+      <Why_Bad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_FLAT_JSDOC_FOR_PROPERTIES`). `User DTO` carries no business meaning.</Why_Bad>
       <Good language="typescript">
         ```typescript
         // @file: Identity shape exposed by session-related APIs.
@@ -567,12 +548,12 @@
     </Hook>
     <Hook id="HOOK_NO_FORBIDDEN_CONSTRUCTS">
       <Purpose>Smoke-grep for forbidden transpile-only constructs and raw `console.*`.</Purpose>
-      <Command>rg --no-heading -n "^\s*(enum |namespace |private )|#[a-zA-Z_]+\s*[:=]|\bconsole\.(log|warn|error|info|debug)\b" -t ts --glob '!**/node_modules/**' --glob '!**/dist/**'</Command>
+      <Command>rg --follow --no-heading -n "^\s*(enum |namespace |private )|#[a-zA-Z_]+\s*[:=]|\bconsole\.(log|warn|error|info|debug)\b" -t ts --glob '!**/node_modules/**' --glob '!**/dist/**'</Command>
       <Expected>Empty (no matches) on new/changed files; matches on pre-existing files tolerated only if outside current task scope.</Expected>
     </Hook>
     <Hook id="HOOK_ANCHOR_PAIRING">
       <Purpose>Verify anchor parity and enable agent grep-navigation: every `// #region START_X` must have `// #endregion END_X` in the same file.</Purpose>
-      <Command>rg --no-heading -n "#(region|endregion)\s+(START|END)_[A-Z0-9_]+" -t ts</Command>
+      <Command>rg --follow --no-heading -n "#(region|endregion)\s+(START|END)_[A-Z0-9_]+" -t ts</Command>
       <Expected>For every `START_NAME` occurrence there is a matching `END_NAME` in the same file; counts equal per file.</Expected>
     </Hook>
   </Verification_Hooks>
@@ -584,7 +565,7 @@
     ✅ Comments carry intent (purpose / consumer / invariant / side effect / failure mode / non-goal); do NOT restate syntax.
     ✅ Anchors on every non-trivial control-flow block; intent-named, not syntax-named; paired `START_X`/`END_X`; compact single-line form when one payload kind, multi-line when 2+.
     ✅ Trivial guards and single-action branches NOT wrapped in anchors.
-    ✅ Error messages contain Trace-Prefix; rethrow uses `{ cause }`; catch blocks follow Catch-Log-Throw.
+    ✅ Error messages contain Trace-Prefix; rethrow uses `{ cause }`; catch blocks follow Catch-Log-Recover (log + throw OR log + `return fail()` per surrounding contract).
     ✅ Logs through shared logger from `#logger`; format `[Trace-Prefix] [stateA → stateB] Description`; primitives in message, objects in detail.
     ✅ Modern TS operators (`?.`, `??`, `||=`, `&&=`, `??=`) instead of verbose null-checks.
     ✅ Class fields declared explicitly in body; `readonly` on field declaration; `protected _foo` over `private`/`#`.
