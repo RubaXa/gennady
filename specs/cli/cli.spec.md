@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`).
 
 ## 2. Project Type
 
@@ -31,6 +31,16 @@ src/foo.ts:18:1: error: ERR_CLI_LINT_ANCHOR_UNPAIRED_START  START_RETRY at line 
 
 # exit 1
 
+# --- линтинг директории (рекурсивно, .ts + .tsx) ---
+$ gennady lint services/dbc/
+
+# exit 0
+
+# --- смешанный ввод: файлы + директории ---
+$ gennady lint src/foo.ts services/ cli/cmd/
+
+# exit 0
+
 # --- autofix: исправляем что можно, остаток показываем ---
 $ gennady lint --autofix services/dbc/parser/dbc-parser.types.ts
 
@@ -46,9 +56,30 @@ $ gennady lint --staged
 
 # --- комбинированный ---
 $ gennady lint --staged --autofix
+
+# --- ошибка: --staged + позиционные цели взаимоисключающие ---
+$ gennady lint --staged src/foo.ts
+Error: --staged and positional targets are mutually exclusive
+
+# exit 1
+
+# --- degradation: несуществующий путь ---
+$ gennady lint src/foo.ts nonexistent/
+
+src/foo.ts:5:3: error: ERR_DBC_LINT_MISSING_CONTRACT  Entity 'bar' has no JSDoc contract.
+ERR_CLI_LINT_RESOLVE_FAILED: nonexistent/: ENOENT: no such file or directory
+
+# exit 1 (одна ошибка линтинга + одна ошибка резолвинга)
+
+# --- degradation: файл без прав на чтение ---
+$ gennady lint src/foo.ts restricted/
+
+ERR_CLI_LINT_RESOLVE_FAILED: restricted/: EACCES: permission denied
+
+# exit 0 (если src/foo.ts чист) или exit 1 (если есть ошибки линтинга)
 ```
 
-Файл читается один раз, контент передаётся во все три проверки. Сообщения об ошибках содержат: что сломано → указание на место → конкретное действие по исправлению.
+Файл читается один раз, контент передаётся во все три проверки. Сообщения об ошибках содержат: что сломано → указание на место → конкретное действие по исправлению. При передаче директорий — рекурсивный обход с фильтрацией по поддерживаемым расширениям (`.ts`, `.tsx`). Ошибки резолвинга целей (ENOENT, EACCES) выводятся в stderr и не прерывают линтинг остальных файлов.
 
 ### alt-opinion DX
 
@@ -212,7 +243,12 @@ $ gennady lint src/foo.ts | tee report.txt
 | FR-07               | Проверить вложенность: стек открытых регионов. `END_X` закрывает последний открытый `START_X`; закрытие не того → `ERR_CLI_LINT_ANCHOR_NESTING` |
 | FR-08               | Непарный `END` без `START` → `ERR_CLI_LINT_ANCHOR_UNPAIRED_END`                                                                                 |
 | **Интерфейс**       |                                                                                                                                                 |
-| FR-09               | Принимать список `.ts` файлов позиционными аргументами                                                                                          |
+| FR-09               | Принимать список файлов и/или директорий позиционными аргументами. Директории обходятся рекурсивно, собираются `.ts`/`.tsx` файлы                 |
+| FR-09a              | Рекурсивный обход — поведение по умолчанию, без дополнительного флага. Фильтр: только `.ts`/`.tsx` (регистро-независимо: `.TS` ≡ `.ts`)           |
+| FR-09b              | Дедупликация: файл, переданный явно и найденный в директории — линтится один раз. Результат — уникальный отсортированный список абсолютных путей   |
+| FR-09c              | При рекурсивном обходе исключаются: `node_modules`, скрытые директории (`.`-префикс), `dist`, `coverage`, `build`, `out`. Symlink не обходятся      |
+| FR-09d              | Ошибки FS (ENOENT, EACCES) → `ERR_CLI_LINT_RESOLVE_FAILED` в stderr, цель пропускается. Команда продолжается                                         |
+| FR-09e              | `--staged` и позиционные цели — взаимоисключающие. Одновременная передача → ошибка, exit 1                                                            |
 | FR-10               | Режим `--staged` — автоматический сбор `.ts` файлов из `git diff --staged --name-only` + `git ls-files --others --exclude-standard`             |
 | FR-11               | Флаг `--autofix` — исправлять dbc-ошибки через `lintAndFix()`; anchor и header — только диагностика                                             |
 | **Вывод**           |                                                                                                                                                 |
@@ -327,6 +363,9 @@ $ gennady lint src/foo.ts | tee report.txt
 | Capability                      | Posture                      |
 | ------------------------------- | ---------------------------- |
 | Чтение файлов (FS)              | `real-runtime`               |
+| Рекурсивный обход директорий    | `real-runtime`               |
+| Фильтрация по расширениям       | `real-runtime`               |
+| Защита от symlink-циклов        | `real-runtime`               |
 | Git-интеграция (`--staged`)     | `real-runtime`               |
 | DBC-линтинг (через `DbcLinter`) | `real-runtime`               |
 | Anchor-парсинг                  | `real-runtime`               |
@@ -487,6 +526,27 @@ cli/cmd/_shared/
   - `update-notifier-cjs` (форк) — те же зависимости, меньшее сообщество
   - Использовать `npm view` через `child_process.exec` — зависит от наличия `npm` в системе, медленно, негарантированный формат вывода
 
+### D-005 — Поддержка директорий в lint (рекурсивный обход)
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (lint-директории)
+- **Why:** Команда `gennady lint` должна принимать не только отдельные файлы, но и директории. При передаче директории — рекурсивно собирать все `.ts`/`.tsx` файлы и линтить их. Расширения объявляются самим линтером — не хардкодятся в CLI-обвязке. Рекурсивный обход — поведение по умолчанию, без дополнительного флага.
+- **Risk accepted:** Рекурсивный обход без ограничения глубины. При передаче директории с очень большим количеством файлов — потенциально долгое выполнение. Смягчается тем, что оператор контролирует что передаёт.
+- **Rejected alternatives:**
+  - Флаг `--recursive` — усложняет интерфейс без выигрыша; рекурсивность — ожидаемое поведение по умолчанию для линтера директорий
+  - Жёсткий фильтр по `.ts` без учёта `.tsx` — линтер уже поддерживает оба расширения, искусственное ограничение
+
+### D-006 — Контракт resolveTargets (дедупликация, исключения, graceful degradation)
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (lint-директории, alt-opinion audit)
+- **Why:** После аудита spec'а через alt-opinion выявлены критические пробелы в обработке corner cases. `resolveTargets` должен возвращать кортеж `{ files, errors }` вместо `string[]` — это позволяет graceful degradation при ошибках FS. Явно зафиксированы правила: дедупликация (уникальные абсолютные пути), сортировка, исключение `node_modules`/скрытых/`dist`/`coverage`/`build`/`out`, регистро-независимое сравнение расширений, защита от symlink (lstat, не следуем), запрет одновременного использования `--staged` и позиционных целей. Контракт изолирован в чистую функцию, тестируемую с моком `fs`.
+- **Risk accepted:** Список исключаемых директорий (`dist`, `coverage`, `build`, `out`) не конфигурируется пользователем в v1. При необходимости — отдельный refine. Symlink-политика «не следуем» может быть неожиданной для пользователей, ожидающих обход symlink. Запрет `--staged` + позиционные цели — потенциально неудобно, но устраняет неоднозначность.
+- **Rejected alternatives:**
+  - Возврат `string[]` с игнорированием ошибок — молчаливый пропуск проблемных целей ведёт к ложному ощущению успеха
+  - Конфигурируемый список исключений через `.gennadyignore` — premature для v1, усложняет контракт
+  - Пересечение `--staged` и позиционных целей (линтить только пересечение) — семантически запутанно, сложно объяснить пользователю
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -500,11 +560,12 @@ cli/cmd/_shared/
 | ------------------------------------------------------------------------ | ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `DbcLinter.lint()` с опцией `content`                                    | external-type | external-prereq-scope | `refine` dbc — добавить `opts?: { content?: string }` в `DbcLinter.lint(filePath, opts?)` и `DbcLinter.lintAndFix(filePath, opts?)` |
 | Создать `cli/cmd/lint/index.ts`                                          | file          | this-scope-task       | `import './lint.cmd.ts'`                                                                                                            |
-| Создать `cli/cmd/lint/lint.cmd.ts`                                       | file          | this-scope-task       | CLI-обвязка: parseArgs, git scan, вывод                                                                                             |
+| Создать `cli/cmd/lint/lint.cmd.ts`                                       | file          | this-scope-task       | `LintCommand.run()` + `resolveTargets()`: парсинг, сбор из директорий, git scan, вывод                                               |
 | Создать `cli/cmd/lint/lint.types.ts`                                     | file          | this-scope-task       | `LintError`, `LintOptions`, `LintReport`                                                                                            |
 | Создать `cli/cmd/lint/checks/file-header.check.ts`                       | file          | this-scope-task       | проверка `// @file:` + `// @consumers:`                                                                                             |
 | Создать `cli/cmd/lint/checks/anchor.check.ts`                            | file          | this-scope-task       | парность + вложенность START/END                                                                                                    |
 | Создать `cli/cmd/lint/checks/dbc-contract.check.ts`                      | file          | this-scope-task       | адаптер к `DbcTsLinter`                                                                                                             |
+| Создать `cli/cmd/lint/__tests__/resolve-targets.test.ts`                  | file          | this-scope-task       | Юнит-тесты `resolveTargets()` с моком `fs` (24 сценария — см. lint.spec.md §6.1)                                                    |
 | Обновить `cli/gennady.ts`                                                | file          | this-scope-task       | добавить `case 'lint'` + `case 'alt-opinion'` в switch + help                                                                       |
 | Обновить `cli/AGENTS.md`                                                 | file          | this-scope-task       | добавить строки `lint` и `alt-opinion` в таблицу команд                                                                             |
 | Обновить `cli/cmd/help/help.cmd.ts`                                      | file          | this-scope-task       | добавить `lint` и `alt-opinion` в вывод                                                                                             |
