@@ -123,9 +123,7 @@ export class ClaudeProvider implements AgentProvider {
     const pids = sessions.map((s) => s.pid);
     const psResults = this._psInfo(pids);
 
-    const idleThresholdMs = opts?.idleThresholdMs ?? 300_000;
     const now = Date.now();
-
     const result: AgentSession[] = [];
     for (const s of sessions) {
       const psEntry: PsInfoEntry | undefined = psResults.get(s.pid);
@@ -136,11 +134,12 @@ export class ClaudeProvider implements AgentProvider {
       let completedAt: number | undefined;
 
       if (isAlive) {
-        if (s.lastActivityAt > 0 && now - s.lastActivityAt > idleThresholdMs) {
-          status = 'idle';
-          idleSeconds = (now - s.lastActivityAt) / 1000;
-        } else {
+        // active if process is using CPU (> 0.5% threshold), otherwise idle
+        if ((psEntry?.cpuPercent ?? 0) > 0.5) {
           status = 'active';
+        } else {
+          status = 'idle';
+          idleSeconds = s.lastActivityAt > 0 ? (now - s.lastActivityAt) / 1000 : undefined;
         }
       } else {
         status = 'completed';
@@ -150,9 +149,11 @@ export class ClaudeProvider implements AgentProvider {
       const model = psEntry ? this._parseClaudeArgs(psEntry.args).model : undefined;
       let title = this._readSessionTitle(s.cwd, s.sessionId);
 
-      // Fallback: try Claude tasks directory for active task info
       if (title === 'Unknown') {
         title = readActiveTaskTitle(s.sessionId);
+      }
+      if (title === 'Unknown') {
+        title = `[${s.cwd.split('/').pop() ?? s.cwd}] session`;
       }
       const elapsedSeconds = (now - s.startedAt) / 1000;
 

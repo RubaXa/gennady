@@ -31,18 +31,10 @@ export function querySessions(db: DatabaseSync, opts?: ScanOpts): SessionRow[] {
   let sql = `SELECT id, slug, title, directory, time_created, time_updated, agent, model, tokens_input, tokens_output, parent_id FROM session WHERE time_archived IS NULL`;
   const params: SQLInputValue[] = [];
 
-  // #region START_APPLY_SINCE_FILTER
-  if (opts?.since !== undefined) {
-    sql += ' AND time_created >= ?';
-    if (opts.since === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      params.push(today.getTime());
-    } else {
-      params.push(opts.since);
-    }
-  }
-  // #endregion END_APPLY_SINCE_FILTER
+  // Default: last 24 hours by time_updated (activity), unless explicit since is provided
+  const since = opts?.since ?? Date.now() - 24 * 60 * 60 * 1000;
+  sql += ' AND time_updated >= ?';
+  params.push(since);
 
   sql += ' ORDER BY time_updated DESC';
 
