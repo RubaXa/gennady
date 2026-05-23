@@ -46,8 +46,9 @@
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "npm run format && npm run type-check",
-    "release": "release-it"
+    "lint": "npm run format && npm run type-check && npm run lint:contracts",
+    "release": "release-it",
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",
