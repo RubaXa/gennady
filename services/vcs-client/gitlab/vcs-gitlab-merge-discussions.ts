@@ -10,8 +10,8 @@ import {
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
 /**
- * @purpose Доступ к Discussions для Merge Request в GitLab.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @purpose Access to Discussions for Merge Requests in GitLab.
+ * @invariant Error Policy: Network/status errors are thrown outward from request().
  * @consumer VcsGitlabClient
  */
 export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
@@ -67,7 +67,7 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
   /**
    * @param query Target project and MR.
    * @returns Complete list of all discussions across all pages.
-   * @sideEffect Network: Многократные GET для постраничной загрузки.
+   * @sideEffect Network: Multiple GET requests for paginated loading.
    * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
    */
   async getAll(query: { project: string; iid: string | number }): Promise<unknown[]> {

@@ -1,4 +1,4 @@
-// @file: Выполнить общий pipeline review-команд и вернуть финальный output.
+// @file: Execute common review command pipeline and return the final output.
 // @consumers: review-issues.cmd, review-verify.cmd
 // @tasks: N/A
 
@@ -46,10 +46,10 @@ function resolveReviewProject(
 }
 
 /**
- * @purpose Выполнить общий pipeline review-команд и вернуть финальный output.
+ * @purpose Execute common review command pipeline and return the final output.
+ * @param options Command mode and launch arguments.
+ * @returns Exit code and ready output.
  * @consumer review-verify.cmd, review-issues.cmd
- * @param options Режим команды и аргументы запуска.
- * @returns Код выполнения и готовый output.
  */
 export async function runReviewCommand(
   options: ReviewCommandOptions

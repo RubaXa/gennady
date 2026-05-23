@@ -1,11 +1,11 @@
-// @file: Описать подстановки verify-блока для AI-шаблона.
+// @file: Describe verify-block substitutions for the AI template.
 // @consumers: render-review-verify.xml, resolve-conflicts-render.xml
 // @tasks: N/A
 
 import { resolveSafeVerifyCommands } from './verify-commands/resolve-verify-commands.logic.ts';
 
 /**
- * @purpose Описать подстановки verify-блока для AI-шаблона.
+ * @purpose Describe verify-block substitutions for the AI template.
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
  */
 export type VerifyCommandPlaceholders = {
@@ -19,10 +19,10 @@ function formatCommandList(commands: string[]): string {
 }
 
 /**
- * @purpose Построить безопасные подстановки `<!--ai:verify-*-->` для шаблона.
+ * @purpose Build safe `<!--ai:verify-*-->` substitutions for the template.
+ * @param projectRoot Repository root for searching verification commands.
+ * @returns Set of strings for insertion into the template.
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
- * @param projectRoot Корень репозитория для поиска команд проверки.
- * @returns Набор строк для вставки в шаблон.
  */
 export function buildVerifyCommandPlaceholders(projectRoot: string): VerifyCommandPlaceholders {
   const commands = resolveSafeVerifyCommands(projectRoot);

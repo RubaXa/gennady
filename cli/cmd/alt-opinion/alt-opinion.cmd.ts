@@ -18,9 +18,7 @@ import type {
   AltOpinionTelemetry,
 } from './alt-opinion.types.ts';
 
-/**
- * @purpose Injectable dependencies for the alt-opinion CLI command — enables testing without real stdin/fs.
- */
+/** @purpose Injectable dependencies for the alt-opinion CLI command — enables testing without real stdin/fs. */
 export type AltOpinionCmdDeps = {
   /** @purpose Pre-read stdin content bypassing process.stdin */
   stdinContent?: string;
@@ -104,8 +102,8 @@ function formatModelBlock(result: AltOpinionResult): string {
  *
  * @param rawArgs Raw CLI arguments (typically process.argv).
  * @param deps Optional injectable dependencies for testing.
- * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
  * @throws {Error} On parsing failures (missing model, unknown provider, empty input).
+ * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
  * @sideEffect FS: readFile for prompt files and --file resolution.
  * @sideEffect Env: reads LLM_PROXY_API_KEY, LLM_PROXY_BASE_URL, OPENROUTER_API_KEY.
  * @sideEffect Network: AI model API calls via @ai-sdk/openai.

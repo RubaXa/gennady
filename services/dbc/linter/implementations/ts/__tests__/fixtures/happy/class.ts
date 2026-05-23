@@ -1,6 +1,4 @@
-/**
- * @purpose A simple counter with increment.
- */
+/** @purpose A simple counter with increment. */
 export class Counter {
   /** @purpose Current count value. */
   count: number = 0;

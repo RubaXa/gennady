@@ -7,9 +7,9 @@ import type { VcsClientMergeRequests } from './vcs-client-merge-requests.ts';
 import type { VcsClientRepositoryFiles } from './vcs-client-repository-files.ts';
 
 /**
- * @purpose Абстрактный клиент для работы с VCS Сервисами (например GitLab, Github).
- * @invariant Error Policy: Любой ответ !2xx преобразуется в Error с подробностями статуса.
- * @invariant Retry Policy: Повторов нет; ответственность за ретраи на вызывающей стороне.
+ * @purpose Abstract client for working with VCS services (e.g. GitLab, GitHub).
+ * @invariant Error Policy: Any non-2xx response is converted to an Error with status details.
+ * @invariant Retry Policy: No retries; retry responsibility lies with the caller.
  * @consumer cli/review-verify, cli/cat
  */
 export abstract class VcsClient {

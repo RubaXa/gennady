@@ -1,4 +1,4 @@
-// @file: Определить язык программирования по расширению файла.
+// @file: Determine programming language by file extension.
 // @consumers: git-diff
 // @tasks: N/A
 
@@ -33,20 +33,17 @@ const languages: Record<string, string> = {
 };
 
 /**
- * @purpose Определить язык программирования по расширению файла.
+ * @purpose Determine programming language by file extension.
  * @consumer review-gen, cat-gen
- * @param ext Расширение без точки (например 'ts', 'js').
- * @returns Человекочитаемое имя языка или undefined, если расширение неизвестно.
  */
 export const getProgrammingLanguage = (ext: string): string | undefined => {
   return languages[ext] ?? undefined;
 };
 
 /**
- * @purpose Получить системный язык пользователя (locale) для локализации вывода.
+ * @purpose Get system user language (locale) for output localization.
+ * @sideEffect Process: call osascript to read system info.
  * @consumer ai-legacy, prompts
- * @sideEffect Process: вызов osascript для чтения system info.
- * @returns Код языка (например 'ru', 'en') или 'en' при ошибке.
  */
 export const getSysLang = (): string => {
   try {

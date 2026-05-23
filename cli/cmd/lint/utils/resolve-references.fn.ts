@@ -5,9 +5,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
-/**
- * @purpose Resolved reference pair: task file path and its linked spec paths.
- */
+/** @purpose Resolved reference pair: task file path and its linked spec paths. */
 export type ResolvedReference = {
   /** @purpose Relative path to the task file from project root */
   taskPath: string;

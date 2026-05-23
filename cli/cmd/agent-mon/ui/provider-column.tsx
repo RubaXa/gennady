@@ -15,7 +15,6 @@ export type ProviderColumnProps = {
 /**
  * @purpose Renders one provider column — header with status counts, then stacked session cards.
  * @invariant Sessions within the column are pre-sorted by status priority (active → waiting → idle → completed) by groupByProvider; no re-sort needed here.
- * @param column Provider column data with sessions.
  */
 export function ProviderColumn({ column, maxCards }: ProviderColumnProps) {
   const cards = maxCards ? column.sessions.slice(0, maxCards) : column.sessions;

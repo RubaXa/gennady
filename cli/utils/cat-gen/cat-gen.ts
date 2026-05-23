@@ -10,13 +10,13 @@ import type { VcsMergeRequestChanges } from '../../../services/vcs-client/entiti
 import type { VcsFileContent } from '../../../services/vcs-client/entities/vcs-file-content.type.ts';
 
 /**
- * @purpose Список расширений файлов по умолчанию для сбора контента (cat).
+ * @purpose Default file extension list for content collection (cat).
  * @consumer catGen
  */
 export const DEFAULT_EXTENSIONS = ['.md', '.mdc', '.js', '.ts', '.tsx', '.go', '.sh', '.puml', '.'];
 
 /**
- * @purpose Опции сбора файлов: расширения, исключения, отключение дефолтных исключений.
+ * @purpose File collection options: extensions, exclusions, disabling default exclusions.
  * @consumer catGen
  */
 export type CatGenOptions = {
@@ -26,7 +26,7 @@ export type CatGenOptions = {
 };
 
 /**
- * @purpose Один результат catGen: абсолютный путь, относительный путь, содержимое файла.
+ * @purpose Single catGen result: absolute path, relative path, file contents.
  * @consumer catGen, cmd/cat
  */
 export type CatGenResult = {
@@ -36,12 +36,9 @@ export type CatGenResult = {
 };
 
 /**
- * @purpose Получить содержимое всех файлов по указанным glob-паттернам для вывода в XML/MD.
+ * @purpose Get contents of all files by specified glob patterns for output in XML/MD.
+ * @sideEffect Filesystem: traversal and reading of files.
  * @consumer CLI (cmd/cat)
- * @param paths Путь к файлу/директории или glob-паттерн(ы); директория раскрывается в **\/*.
- * @param options Опции: extensions, exclude, ignoreDefaultExcludes (node_modules по умолчанию исключён).
- * @returns Массив объектов { absPath, relativePath, contents }; файлы с ошибкой чтения пропускаются.
- * @sideEffect Filesystem: обход и чтение файлов.
  */
 export const catGen = (paths: string | string[], options: CatGenOptions = {}): CatGenResult[] => {
   const { extensions = DEFAULT_EXTENSIONS, exclude = [], ignoreDefaultExcludes = false } = options;
@@ -102,12 +99,9 @@ export const catGen = (paths: string | string[], options: CatGenOptions = {}): C
 };
 
 /**
- * @purpose Pure-функция преобразования VCS-изменений и содержимого в CatGenResult[].
- *         Фильтрует deleted-файлы и бинарные (encoding: base64).
+ * @purpose Pure function for converting VCS changes and contents into CatGenResult[].
+ *         Filters deleted files and binary (encoding: base64).
  * @consumer cli/cmd/cat/cat-url.fn.ts
- * @param changes Изменённые файлы из MR/PR (для ref).
- * @param files Содержимое файлов из VCS.
- * @returns CatGenResult[] — файлы, готовые к рендерингу.
  */
 export const catGenFromVcs = (
   changes: VcsMergeRequestChanges[],

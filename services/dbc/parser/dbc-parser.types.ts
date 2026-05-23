@@ -18,8 +18,8 @@ export type DbcSchema = {
 
 /**
  * @purpose Represents a single parsed contract tag or inferred description block.
- * @consumer DbcSchema
  * @invariant Every entry always contains an `issues` array, even when it is empty.
+ * @consumer DbcSchema
  */
 export type DbcEntrySchema = {
   /** @purpose Tag type without leading at-sign, for example `param` or `returns`. */
@@ -49,24 +49,16 @@ export type DbcDbcEntryIssue = {
   line?: number;
 };
 
-/**
- * @purpose Signals a forbidden combination: `@purpose` and `@see` are used together.
- */
+/** @purpose Signals a forbidden combination: `@purpose` and `@see` are used together. */
 export const ERR_DBC_PURPOSE_CONFLICT = 'ERR_DBC_PURPOSE_CONFLICT';
 
-/**
- * @purpose Signals that contract tags violate the required ordering.
- */
+/** @purpose Signals that contract tags violate the required ordering. */
 export const ERR_DBC_ORDER = 'ERR_DBC_ORDER';
 
-/**
- * @purpose Signals that a `@param` tag misses its specifier.
- */
+/** @purpose Signals that a `@param` tag misses its specifier. */
 export const ERR_DBC_PARAM_NAME_MISSING = 'ERR_DBC_PARAM_NAME_MISSING';
 
-/**
- * @purpose Signals that a `@see` tag misses a valid `{specifier}` payload.
- */
+/** @purpose Signals that a `@see` tag misses a valid `{specifier}` payload. */
 export const ERR_DBC_SEE_FORMAT_INVALID = 'ERR_DBC_SEE_FORMAT_INVALID';
 
 /** @purpose Union of all supported parser issue codes. */
@@ -79,8 +71,6 @@ export type DbcIssueCode =
 /**
  * @purpose Defines the universal parser contract for textual Design by Contract blocks.
  * @consumer Any parser implementation in `services/dbc/parser/implementations/*`
- * @param inputContract Raw contract text in plain or JSDoc-like syntax.
- * @returns Parsed entries with entry-local validation diagnostics in the universal schema.
  */
 export interface DbcParser {
   parse(inputContract: string): DbcSchema;

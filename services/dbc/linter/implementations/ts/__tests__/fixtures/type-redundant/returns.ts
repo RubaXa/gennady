@@ -1,6 +1,6 @@
 /**
  * @purpose Create user.
- * @returns {object} New user.
+ * @returns New user.
  */
 export function createUser(): Record<string, unknown> {
   return {};

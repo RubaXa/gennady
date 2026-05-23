@@ -1,4 +1,4 @@
-// @file: Вернуть безопасные команды проверки кода для текущего проекта (тесты, линт, типы).
+// @file: Return safe code verification commands for the current project (tests, lint, types).
 // @consumers: build-ai-verify-placeholders.logic
 // @tasks: N/A
 
@@ -6,10 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * @purpose Вернуть безопасные команды проверки кода для текущего проекта (тесты, линт, типы).
+ * @purpose Return safe code verification commands for the current project (tests, lint, types).
  * @consumer build-ai-verify-placeholders.logic
- * @param projectRoot Корень проекта для поиска маркеров и package.json.
- * @returns Список команд в порядке приоритета; пустой список, если детектор не нашёл безопасный набор.
+ * @param projectRoot Project root for searching markers and package.json.
+ * @returns List of commands in priority order; empty list if the detector did not find a safe set.
  */
 
 type MarkerRow = {

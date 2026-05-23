@@ -137,9 +137,7 @@ async function queryModel(
 }
 // #endregion END_QUERY_MODEL
 
-/**
- * @purpose Dependencies for the alt-opinion runner, injected by the cmd layer.
- */
+/** @purpose Dependencies for the alt-opinion runner, injected by the cmd layer. */
 export type RunAltOpinionDeps = {
   /** @purpose Model ports keyed by `provider/model` string (e.g. "llmproxy/deepseek-v4-pro") */
   models: Map<string, AltOpinionModelPort>;

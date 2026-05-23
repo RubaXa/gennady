@@ -1,4 +1,4 @@
-// @file: Ядро выбора модели и батчинга промптов по diff; объединяет GennadyRc и AiLegacyModel.
+// @file: Core for model selection and prompt batching by diff; combines GennadyRc and AiLegacyModel.
 // @consumers: commit-gen, review-gen
 // @tasks: N/A
 
@@ -16,10 +16,10 @@ type AiLegacyCoreInit = {
 type ParsedDiffFile = import('../../../shared/backend/git/git-diff.ts').ParsedDiffFile;
 
 /**
- * @purpose Ядро выбора модели и батчинга промптов по diff; объединяет GennadyRc и AiLegacyModel.
+ * @purpose Core for model selection and prompt batching by diff; combines GennadyRc and AiLegacyModel.
+ * @invariant Models loaded from .gennadyrc (cwd, HOME); if absent — getDefault().
  * @consumer CommitGen, ReviewGen
- * @invariant Модели загружаются из .gennadyrc (cwd, HOME); при отсутствии — getDefault().
- * @deprecated Используй прямую работу с AiLegacyModel и GennadyRc.
+ * @deprecated Use direct work with AiLegacyModel and GennadyRc.
  */
 export class AiLegacyCore {
   protected _models: AiLegacyModel[] = [];
@@ -49,25 +49,25 @@ export class AiLegacyCore {
     }
   }
 
-  /** @purpose Имя первой загруженной модели (для отображения в CLI). */
+  /** @purpose Name of the first loaded model (for CLI display). */
   get model(): string | undefined {
     return this._models[0]?.name;
   }
 
-  /** @purpose URL первой загруженной модели. */
+  /** @purpose URL of the first loaded model. */
   get apiUrl(): string | undefined {
     return this._models[0]?.url;
   }
 
-  /** @purpose Лимит токенов на один батч при разбиении diff. */
+  /** @purpose Token limit per batch when splitting diff. */
   get maxInputTokens(): number {
     return this.init.maxInputTokens;
   }
 
   /**
-   * @purpose Разбить разобранный diff на батчи по maxInputTokens для последовательных запросов к LLM.
-   * @param parseDiff Массив ParsedDiffFile (обычно parsedCodeDiff из getGitDiffInfo).
-   * @returns Массив батчей { tokens, diff, languages }.
+   * @purpose Split parsed diff into batches by maxInputTokens for sequential LLM requests.
+   * @param parseDiff Array of ParsedDiffFile (usually parsedCodeDiff from getGitDiffInfo).
+   * @returns Array of batches { tokens, diff, languages }.
    */
   createPromptsBatchesByDiff(
     parseDiff: ParsedDiffFile[]
@@ -107,11 +107,11 @@ export class AiLegacyCore {
   }
 
   /**
-   * @purpose Вызвать первую доступную модель (ping) и сгенерировать ответ по промпту.
-   * @param prompt Текст запроса.
-   * @param [systemPrompt] Опциональный system-промпт.
-   * @returns Текст ответа модели или пустая строка при ошибке.
-   * @sideEffect Network: ping затем generate; Logs: error/warn при сбое модели.
+   * @purpose Call the first available model (ping) and generate a response from the prompt.
+   * @param prompt Prompt text.
+   * @param [systemPrompt] Optional system prompt.
+   * @returns Model response text or empty string on error.
+   * @sideEffect Network: ping then generate; Logs: error/warn on model failure.
    */
   async generate(prompt: string, systemPrompt?: { system?: string }): Promise<string> {
     try {
@@ -128,9 +128,9 @@ export class AiLegacyCore {
   }
 
   /**
-   * @purpose Выбрать первую модель, успешно ответившую на ping; кэширует в _activeModel.
-   * @returns Кортеж [модель, null] или [null, Error], если ни одна модель не доступна.
-   * @sideEffect Network: ping по каждой модели до первого успеха.
+   * @purpose Select the first model that successfully responded to ping; caches in _activeModel.
+   * @returns Tuple [model, null] or [null, Error] if no model is available.
+   * @sideEffect Network: ping each model until first success.
    */
   protected async _choiceModel(): Promise<[AiLegacyModel, null] | [null, Error]> {
     if (this._activeModel) {

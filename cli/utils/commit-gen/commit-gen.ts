@@ -1,4 +1,4 @@
-// @file: Генерировать commit-сообщение из staged diff через LLM.
+// @file: Generate commit message from staged diff via LLM.
 // @consumers: commit.cmd
 // @tasks: N/A
 
@@ -19,9 +19,9 @@ type CommitGenInit = {
 };
 
 /**
- * @purpose Генерировать commit-сообщение из staged diff через LLM.
+ * @purpose Generate commit message from staged diff via LLM.
+ * @invariant Uses AiLegacyCore and getGitDiffInfo; returns undefined if diff is empty.
  * @consumer CLI (cmd/commit)
- * @invariant Использует AiLegacyCore и getGitDiffInfo; при пустом diff возвращает undefined.
  */
 export class CommitGen {
   protected init: CommitGenInit & {
@@ -55,50 +55,50 @@ export class CommitGen {
     });
   }
 
-  /** @purpose Получить экземпляр логгера, используемый при генерации. */
+  /** @purpose Get the logger instance used during generation. */
   get logger(): typeof logger {
     return this.init.logger;
   }
 
-  /** @purpose Режим вывода коммита: auto | oneline | detailed. */
+  /** @purpose Commit output mode: auto | oneline | detailed. */
   get mode(): string {
     return this.init.mode;
   }
 
-  /** @purpose Имя активной AI-модели (из первого доступного rc). */
+  /** @purpose Active AI model name (from the first available rc). */
   get model(): string | undefined {
     return this.ai.model;
   }
 
-  /** @purpose URL API активной модели. */
+  /** @purpose Active model API URL. */
   get apiUrl(): string | undefined {
     return this.ai.apiUrl;
   }
 
-  /** @purpose Ветка, относительно которой строится diff (если задана). */
+  /** @purpose Branch against which the diff is built (if specified). */
   get targetBranch(): string | undefined {
     return this.init.targetBranch;
   }
 
-  /** @purpose Идентификатор задачи для подстановки в subject (опционально). */
+  /** @purpose Task identifier for substitution in subject (optional). */
   get task(): string | number | undefined {
     return this.init.task;
   }
 
   /**
-   * @purpose Вызвать LLM с одним промптом без think-блоков (для тестов или кастомного ввода).
-   * @param input Текст промпта.
-   * @returns Ответ модели как строка.
-   * @sideEffect Network: запрос к AI API.
+   * @purpose Call LLM with a single prompt without think blocks (for tests or custom input).
+   * @param input Prompt text.
+   * @returns Model response as string.
+   * @sideEffect Network: request to AI API.
    */
   async fetchPrompt(input: string): Promise<string> {
     return this.ai.generate(`/no_think ${input} /no_think`);
   }
 
   /**
-   * @purpose Сгенерировать commit-сообщение по staged diff (batches → changeset → message).
-   * @returns Строка сообщения (oneline или с description) или undefined при пустом diff/ошибке.
-   * @sideEffect Network: запросы к AI; Logs: info/warn/debug.
+   * @purpose Generate commit message from staged diff (batches → changeset → message).
+   * @returns Message string (oneline or with description) or undefined on empty diff/error.
+   * @sideEffect Network: requests to AI; Logs: info/warn/debug.
    */
   async generate(): Promise<string | undefined> {
     const startedAt = performance.now();

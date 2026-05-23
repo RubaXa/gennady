@@ -1,4 +1,4 @@
-// @file: Выполнить pipeline resolve-conflicts и вернуть финальный prompt.
+// @file: Execute resolve-conflicts pipeline and return the final prompt.
 // @consumers: resolve-conflicts.cmd
 // @tasks: N/A
 
@@ -10,10 +10,10 @@ import type { ResolveConflictsCommandArgs } from '../types/resolve-conflicts-com
 import type { ResolveConflictsCommandResult } from '../types/resolve-conflicts-command-result.type.ts';
 
 /**
- * @purpose Выполнить pipeline resolve-conflicts и вернуть финальный prompt.
+ * @purpose Execute resolve-conflicts pipeline and return the final prompt.
+ * @param args Normalized launch arguments.
+ * @returns Exit code and ready output.
  * @consumer resolve-conflicts.cmd
- * @param args Нормализованные аргументы запуска.
- * @returns Код выполнения и готовый output.
  */
 export async function runResolveConflictsCommand(
   args: ResolveConflictsCommandArgs

@@ -1,7 +1,7 @@
 /**
  * @purpose Order fix.
- * @param b Second.
  * @param a First.
+ * @param b Second.
  * @returns Result.
  */
 export function autofix(a: string, b: number): string {

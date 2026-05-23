@@ -2,9 +2,7 @@
 // @consumers: DbcTsAstAdapter
 // @tasks: TSK-07, TSK-11
 
-/**
- * @purpose Describes a single parameter in a function or method signature.
- */
+/** @purpose Describes a single parameter in a function or method signature. */
 export type DbcParamInfo = {
   /** @purpose Parameter name as declared in source */
   name: string;
@@ -16,9 +14,7 @@ export type DbcParamInfo = {
   isRest: boolean;
 };
 
-/**
- * @purpose Describes the full signature of a callable entity: parameters and return type.
- */
+/** @purpose Describes the full signature of a callable entity: parameters and return type. */
 export type DbcSignatureInfo = {
   /** @purpose Ordered list of parameters in the signature */
   params: DbcParamInfo[];
@@ -38,9 +34,7 @@ type DbcContractInfo = {
   startCol: number;
 };
 
-/**
- * @purpose A member of an exported entity: field, method, getter, setter, constructor, or interface/enum member.
- */
+/** @purpose A member of an exported entity: field, method, getter, setter, constructor, or interface/enum member. */
 export type DbcMember = {
   /** @purpose Member name as declared in source */
   name: string;
@@ -70,9 +64,7 @@ export type DbcExportedEntity = {
   signature: DbcSignatureInfo;
 };
 
-/**
- * @purpose Result of parsing a source file: either a list of exported entities or a parse error.
- */
+/** @purpose Result of parsing a source file: either a list of exported entities or a parse error. */
 export type DbcParseResult =
   | { ok: true; exported: DbcExportedEntity[] }
   | { ok: false; error: string };

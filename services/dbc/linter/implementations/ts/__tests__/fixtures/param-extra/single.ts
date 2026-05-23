@@ -1,5 +1,2 @@
-/**
- * @purpose No params.
- * @param x Extra parameter.
- */
+/** @purpose No params. */
 export function noParams(): void {}

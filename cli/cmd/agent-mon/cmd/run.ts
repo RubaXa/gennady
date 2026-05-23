@@ -177,10 +177,10 @@ async function buildOnceViewModel(monitor: AgentMonitor, limit: number): Promise
  * @purpose CLI entry point for `gennady agent-mon` — parse flags, wire providers, render the dashboard.
  * @invariant --once mode: single scan → build ViewModel → render + exit.
  * @invariant Live mode: observe → state manager → render, process kept alive by ink.
- * @param argv Argument vector (excluding the command name 'agent-mon').
  * @pre argv contains CLI flags per the agent-mon subcommand contract.
- * @post Process is kept alive by ink (live mode) or exits after snapshot (--once).
+ * @param argv Argument vector (excluding the command name 'agent-mon').
  * @throws Never — on invalid input, prints usage and exits with code 1.
+ * @post Process is kept alive by ink (live mode) or exits after snapshot (--once).
  * @sideEffect Starts ink renderer; registers providers; may spawn observe polling loop.
  */
 export async function run(argv: string[]): Promise<void> {

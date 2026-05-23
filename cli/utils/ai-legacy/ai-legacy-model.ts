@@ -1,4 +1,4 @@
-// @file: Конфигурация инициализации AI Legacy Model: имя, URL, опциональный ключ и доп. параметры.
+// @file: AI Legacy Model initialization config: name, URL, optional key and additional parameters.
 // @consumers: ai-legacy-agent, ai-legacy-core
 // @tasks: N/A
 
@@ -6,7 +6,7 @@ import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 import { removeThink } from '../../../shared/common/think.ts';
 
 /**
- * @purpose Конфигурация инициализации AI Legacy Model: имя, URL, опциональный ключ и доп. параметры.
+ * @purpose AI Legacy Model initialization config: name, URL, optional key and additional parameters.
  * @consumer AiLegacyModel, AiLegacyCore, GennadyRc
  */
 export type AiLegacyModelInit = {
@@ -17,15 +17,15 @@ export type AiLegacyModelInit = {
 };
 
 /**
- * @purpose Legacy AI Model (LLM) — единая точка запросов к API генерации (Ollama/OpenAI-совместимые).
+ * @purpose Legacy AI Model (LLM) — single point for API generation requests (Ollama/OpenAI-compatible).
+ * @invariant Error Policy: network/timeout errors are returned as [null, Error]; does not throw.
+ * @invariant Retry Policy: no built-in retries; responsibility on the caller.
  * @consumer AiLegacyCore, cmd/agent
- * @invariant Error Policy: ошибки сети/таймаута возвращаются как [null, Error]; не бросает.
- * @invariant Retry Policy: нет встроенных ретраев; ответственность на вызывающей стороне.
  */
 export class AiLegacyModel {
   /**
-   * @purpose Создать экземпляр с дефолтными настройками (Ollama local).
-   * @returns Экземпляр с model=llama3.1:8b, url=localhost:11434.
+   * @purpose Create an instance with default settings (Ollama local).
+   * @returns Instance with model=llama3.1:8b, url=localhost:11434.
    */
   static getDefault(): AiLegacyModel {
     return new AiLegacyModel({
@@ -45,26 +45,26 @@ export class AiLegacyModel {
     };
   }
 
-  /** @purpose Имя модели (для логов и заголовков). */
+  /** @purpose Model name (for logs and headers). */
   get name(): string {
     return this._init.model;
   }
 
-  /** @purpose URL эндпоинта API. */
+  /** @purpose API endpoint URL. */
   get url(): string {
     return this._init.url;
   }
 
-  /** @purpose API-ключ (если требуется авторизация). */
+  /** @purpose API key (if authorization is required). */
   get key(): string | undefined {
     return this._init.key;
   }
 
   /**
-   * @purpose Проверить доступность модели коротким запросом.
-   * @param [timeout] Таймаут в мс (по умолчанию 10e3).
-   * @returns Кортеж [true, null] при успехе, [null, Error] при сбое.
-   * @sideEffect Network: один запрос к API; Logs: debug/error.
+   * @purpose Check model availability with a short request.
+   * @param [timeout] Timeout in ms (default 10e3).
+   * @returns Tuple [true, null] on success, [null, Error] on failure.
+   * @sideEffect Network: single request to API; Logs: debug/error.
    */
   async ping(timeout = 10e3): Promise<[boolean, null] | [null, Error]> {
     this._pingPromise ??= (async () => {
@@ -94,11 +94,11 @@ export class AiLegacyModel {
   }
 
   /**
-   * @purpose Отправить промпт в LLM и получить ответ (с подстановкой __KEY__ и удалением think-блоков).
-   * @param prompt Текст запроса пользователя.
-   * @param [init] system, temperature, timeout, replacements для подстановки в промпт/system.
-   * @returns Кортеж [текст ответа, null] при успехе, [null, Error] при ошибке сети/парсинга.
-   * @sideEffect Network: POST к this.url.
+   * @purpose Send a prompt to the LLM and get a response (with __KEY__ substitution and think-block removal).
+   * @param prompt User prompt text.
+   * @param [init] system, temperature, timeout, replacements for substitution in prompt/system.
+   * @returns Tuple [response text, null] on success, [null, Error] on network/parsing error.
+   * @sideEffect Network: POST to this.url.
    */
   async generate(
     prompt: string,
@@ -171,11 +171,11 @@ export class AiLegacyModel {
   }
 
   /**
-   * @purpose Выполнить POST-запрос к API и вернуть JSON или ошибку.
-   * @param params Тело запроса (Ollama- или OpenAI-формат).
-   * @param [timeout] Таймаут в мс.
-   * @returns Кортеж [parsed JSON, null] или [null, Error].
-   * @sideEffect Network: fetch с AbortController.
+   * @purpose Execute a POST request to the API and return JSON or an error.
+   * @param params Request body (Ollama or OpenAI format).
+   * @param [timeout] Timeout in ms.
+   * @returns Tuple [parsed JSON, null] or [null, Error].
+   * @sideEffect Network: fetch with AbortController.
    */
   protected async _fetchAsJson(
     params: unknown,

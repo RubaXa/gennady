@@ -1,6 +1,4 @@
-/**
- * @purpose Class with various visibility modifiers.
- */
+/** @purpose Class with various visibility modifiers. */
 export class PrivateClass {
   /** @purpose Public field. */
   name: string;

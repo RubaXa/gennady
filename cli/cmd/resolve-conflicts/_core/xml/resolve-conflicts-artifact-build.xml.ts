@@ -1,4 +1,4 @@
-// @file: Собрать дерево XmlNode артефакта resolve-conflicts из git-контекста merge.
+// @file: Build the resolve-conflicts artifact XmlNode tree from merge git context.
 // @consumers: resolve-conflicts-command-run.logic
 // @tasks: N/A
 
@@ -11,10 +11,10 @@ function shortSha(sha: string): string {
 }
 
 /**
- * @purpose Собрать дерево XmlNode артефакта resolve-conflicts из git-контекста merge.
+ * @purpose Build the resolve-conflicts artifact XmlNode tree from merge git context.
+ * @param resolveConflictsContextGit Merge context and conflicting files.
+ * @returns Root XmlNode (tag: Merge_Conflict_Context).
  * @consumer resolve-conflicts-artifact-build.xml
- * @param resolveConflictsContextGit Контекст merge и конфликтующих файлов.
- * @returns Корневой XmlNode (tag: Merge_Conflict_Context).
  */
 export function createResolveConflictsArtifactXmlNode(
   resolveConflictsContextGit: ResolveConflictsContextGit
@@ -78,10 +78,10 @@ export function createResolveConflictsArtifactXmlNode(
 }
 
 /**
- * @purpose Построить XML-артефакт для resolve-conflicts.
+ * @purpose Build the XML artifact for resolve-conflicts.
+ * @param resolveConflictsContextGit Git merge context.
+ * @returns XML string (Merge_Conflict_Context).
  * @consumer resolve-conflicts-command-run.logic
- * @param resolveConflictsContextGit Git-контекст merge.
- * @returns Строка XML (Merge_Conflict_Context).
  */
 export function buildResolveConflictsArtifactXml(
   resolveConflictsContextGit: ResolveConflictsContextGit

@@ -3,16 +3,16 @@
 // @tasks: TSK-27
 
 /**
- * @purpose Результат парсинга URL merge request / pull request.
+ * @purpose Parsed merge request / pull request URL result.
  * @consumer parseVcsUrl
  */
 export type VcsUrl = {
-  /** @purpose VCS-провайдер: gitlab или github */
+  /** @purpose VCS provider: gitlab or github */
   provider: 'gitlab' | 'github';
-  /** @purpose Хост (с портом если есть): gitlab.com, github.internal.com:8443 */
+  /** @purpose Host (with port if present): gitlab.com, github.internal.com:8443 */
   host: string;
-  /** @purpose Идентификатор репозитория: group/project для GitLab, owner/repo для GitHub */
+  /** @purpose Repository identifier: group/project for GitLab, owner/repo for GitHub */
   repository: string;
-  /** @purpose Номер MR (IID) или PR (number) */
+  /** @purpose MR number (IID) or PR (number) */
   iid: number;
 };

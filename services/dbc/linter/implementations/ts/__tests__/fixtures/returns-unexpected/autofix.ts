@@ -1,5 +1,2 @@
-/**
- * @purpose Noop function.
- * @returns Unnecessary tag.
- */
+/** @purpose Noop function. */
 export function autofix(): void {}

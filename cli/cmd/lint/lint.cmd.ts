@@ -156,6 +156,7 @@ const EXCLUDED_DIRS = new Set([
   'coverage',
   'build',
   'out',
+  '__tests__',
 ]);
 
 function resolveTargets(

@@ -6,9 +6,9 @@ import { VcsClientRepositoryFiles } from '../abstract/vcs-client-repository-file
 import type { VcsFileContent, VcsFileContentQuery } from '../entities/vcs-file-content.type.ts';
 
 /**
- * @purpose Доступ к содержимому файлов репозитория через GitHub Contents API.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу. 404 → null.
- * @invariant Encoding Contract: GitHub возвращает base64 → адаптер декодирует в utf-8.
+ * @purpose Access to repository file contents via GitHub Contents API.
+ * @invariant Error Policy: Network/status errors are thrown outward. 404 → null.
+ * @invariant Encoding Contract: GitHub returns base64 → adapter decodes to utf-8.
  * @consumer VcsGithubClient
  */
 export class VcsGithubRepositoryFiles extends VcsClientRepositoryFiles {

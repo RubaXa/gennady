@@ -1,4 +1,4 @@
-// @file: Описать один файл из разобранного git diff: флаги, имя, категория, язык, хунки и число токенов.
+// @file: Describe one file from parsed git diff: flags, name, category, language, hunks and token count.
 // @consumers: git-core
 // @tasks: N/A
 
@@ -41,7 +41,7 @@ const FILE_CATEGORY_REGEX: Record<string, RegExp> = {
 };
 
 /**
- * @purpose Описать один файл из разобранного git diff: флаги, имя, категория, язык, хунки и число токенов.
+ * @purpose Describe one file from parsed git diff: flags, name, category, language, hunks and token count.
  * @consumer git-core, commit-gen, review-gen
  */
 export type ParsedDiffFile = {
@@ -79,11 +79,9 @@ const getCategory = (filename: string, metadata?: FileMetadata): string => {
 };
 
 /**
- * @purpose Разобрать текстовый вывод git diff в нормализованный список файлов с метаданными и токенами.
+ * @purpose Parse raw git diff output into normalized file list with metadata and tokens.
+ * @pre Input string must match `git diff` format (unified diff).
  * @consumer git/git-core, commit-gen, review-gen
- * @pre Входная строка должна соответствовать формату `git diff` (unified diff).
- * @param diffText Полный текстовый diff для парсинга.
- * @returns Массив объектов файлов с признаками (isNew/isDeleted/isRenamed), категориями, языком, хунками и суммой токенов.
  */
 export const parseGitDiff = (diffText: string): ParsedDiffFile[] => {
   const lines = diffText.split('\n');

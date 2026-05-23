@@ -1,5 +1,2 @@
-/**
- * @purpose Renamed param.
- * @param y Wrong name.
- */
+/** @purpose Renamed param. */
 export function renamed(x: string): void {}

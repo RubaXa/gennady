@@ -18,9 +18,7 @@ export type AltOpinionModel = {
   promptPath?: string;
 };
 
-/**
- * @purpose Telemetry data for a model call — wall time, token usage, and finish reason.
- */
+/** @purpose Telemetry data for a model call — wall time, token usage, and finish reason. */
 export type AltOpinionTelemetry = {
   /** @purpose Wall-clock time elapsed in milliseconds */
   wallMs: number;
@@ -32,9 +30,7 @@ export type AltOpinionTelemetry = {
   finishReason?: string;
 };
 
-/**
- * @purpose Result of a single model call — either success with content or failure with error.
- */
+/** @purpose Result of a single model call — either success with content or failure with error. */
 export type AltOpinionResult =
   | {
       model: AltOpinionModel;
@@ -64,9 +60,7 @@ export type AltOpinionReport = {
   synthTelemetry?: AltOpinionTelemetry;
 };
 
-/**
- * @purpose Parsed CLI arguments ready for the runner.
- */
+/** @purpose Parsed CLI arguments ready for the runner. */
 export type AltOpinionParsedArgs = {
   /** @purpose Ordered list of models to query */
   models: AltOpinionModel[];

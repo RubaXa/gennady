@@ -1,4 +1,4 @@
-// @file: Сформировать итоговый XML для resolve-conflicts (template + артефакт + project placeholders).
+// @file: Build the final XML for resolve-conflicts (template + artifact + project placeholders).
 // @consumers: resolve-conflicts-command-run.logic
 // @tasks: N/A
 
@@ -7,11 +7,11 @@ import { buildVerifyCommandPlaceholders } from '../../../_shared/prompt/logic/bu
 import { loadResolveConflictsTemplate } from '../io/resolve-conflicts-template-load.io.ts';
 
 /**
- * @purpose Сформировать итоговый XML для resolve-conflicts (template + артефакт + project placeholders).
+ * @purpose Build the final XML for resolve-conflicts (template + artifact + project placeholders).
+ * @param resolveConflictsArtifactXml Merge conflicts XML artifact.
+ * @param projectRoot Repository root for searching knowledge and verify commands.
+ * @returns Full XML prompt for resolve-conflicts.
  * @consumer resolve-conflicts-command-run.logic
- * @param resolveConflictsArtifactXml XML-артефакт merge conflicts.
- * @param projectRoot Корень репозитория для поиска знаний и verify-команд.
- * @returns Полный XML-промпт для resolve-conflicts.
  */
 export async function renderResolveConflictsXml(
   resolveConflictsArtifactXml: string,

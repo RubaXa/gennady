@@ -15,8 +15,8 @@ import type {
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
 /**
- * @purpose Доступ к Merge Requests в GitLab.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @purpose Access GitLab Merge Requests.
+ * @invariant Error Policy: Network/status errors propagated to caller.
  * @consumer VcsGitlabClient
  */
 export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
@@ -55,7 +55,7 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   /**
    * @param query Target project and optional filters.
    * @returns First matching merge request or null.
-   * @sideEffect Network: Делегирует в getList() с ограничением per_page=1.
+   * @sideEffect Network: Delegates to getList() with per_page=1 limit.
    * @see {VcsClientMergeRequests#getList} in services/vcs-client/abstract/vcs-merge-requests.ts
    */
   async getOne(query: VcsMergeRequestsQuery): Promise<unknown | null> {

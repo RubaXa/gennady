@@ -1,5 +1,2 @@
-/**
- * @purpose Noop.
- * @returns Nothing.
- */
+/** @purpose Noop. */
 export function noop(): void {}

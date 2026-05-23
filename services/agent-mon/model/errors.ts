@@ -2,9 +2,7 @@
 // @consumers: monitor
 // @tasks: TSK-35
 
-/**
- * @purpose Raised when attempting to register a provider with a key already in use.
- */
+/** @purpose Raised when attempting to register a provider with a key already in use. */
 export class DuplicateProviderError extends Error {
   /** @purpose The conflicting provider key */
   readonly key: string;
@@ -20,9 +18,7 @@ export class DuplicateProviderError extends Error {
   }
 }
 
-/**
- * @purpose Raised when attempting to access a provider that is not registered.
- */
+/** @purpose Raised when attempting to access a provider that is not registered. */
 export class ProviderNotFoundError extends Error {
   /** @purpose The missing provider key */
   readonly key: string;

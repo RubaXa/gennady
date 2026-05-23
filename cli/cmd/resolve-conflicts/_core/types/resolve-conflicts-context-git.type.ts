@@ -1,11 +1,11 @@
-// @file: Описать один конфликтующий файл в merge-контексте.
+// @file: Describe a single conflicting file in the merge context.
 // @consumers: resolve-conflicts-artifact-build.xml, resolve-conflicts-artifact.type, resolve-conflicts-context-git-build.logic
 // @tasks: N/A
 
 import type { GitRemoteInfo } from '../../../../../shared/backend/git/git-core.ts';
 
 /**
- * @purpose Описать один конфликтующий файл в merge-контексте.
+ * @purpose Describe a single conflicting file in the merge context.
  * @consumer resolve-conflicts-context-git-build.logic, resolve-conflicts-artifact-build.xml
  */
 export type ResolveConflictsContextFile = {
@@ -18,7 +18,7 @@ export type ResolveConflictsContextFile = {
 };
 
 /**
- * @purpose Собрать git-контекст для генерации prompt resolve-conflicts.
+ * @purpose Build git context for resolve-conflicts prompt generation.
  * @consumer resolve-conflicts-command-run.logic
  */
 export type ResolveConflictsContextGit = {

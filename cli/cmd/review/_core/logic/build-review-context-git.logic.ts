@@ -1,4 +1,4 @@
-// @file: Собрать git-контекст review-запуска (branch + origin remote).
+// @file: Build git context for review launch (branch + origin remote).
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -6,10 +6,10 @@ import { getGitCurrentBranch, getGitRemote } from '../../../../../shared/backend
 import type { ReviewContextGit } from '../types/review-context-git.type.ts';
 
 /**
- * @purpose Собрать git-контекст review-запуска (branch + origin remote).
- * @consumer run-review-command.logic
- * @param [branchOverride] Явно заданная ветка из CLI.
+ * @purpose Build git context for review launch (branch + origin remote).
+ * @param [branchOverride] Explicitly specified branch from CLI.
  * @returns ReviewContextGit.
+ * @consumer run-review-command.logic
  */
 export function buildReviewContextGit(branchOverride?: string): ReviewContextGit {
   const remote = getGitRemote();

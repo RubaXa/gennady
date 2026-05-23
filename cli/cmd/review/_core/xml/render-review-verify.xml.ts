@@ -1,4 +1,4 @@
-// @file: Сформировать итоговый XML для review-verify (template + артефакт + подстановки по проекту).
+// @file: Build the final XML for review-verify (template + artifact + project substitutions).
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -7,11 +7,11 @@ import { buildVerifyCommandPlaceholders } from '../logic/build-ai-verify-placeho
 import { loadReviewVerifyTemplate } from '../io/load-review-verify-template.io.ts';
 
 /**
- * @purpose Сформировать итоговый XML для review-verify (template + артефакт + подстановки по проекту).
+ * @purpose Build the final XML for review-verify (template + artifact + project substitutions).
+ * @param reviewArtifactXml Review XML artifact.
+ * @param projectRoot Repository root for searching knowledge files and command detectors (default `process.cwd()`).
+ * @returns Full XML prompt for review-verify.
  * @consumer run-review-command.logic
- * @param reviewArtifactXml XML-артефакт ревью.
- * @param projectRoot Корень репозитория для поиска файлов знаний и детекторов команд (по умолчанию `process.cwd()`).
- * @returns Полный XML-промпт для review-verify.
  */
 export async function renderReviewVerifyXml(
   reviewArtifactXml: string,

@@ -1,9 +1,9 @@
-// @file: Минимальный MR-контекст для генерации review-артефакта.
+// @file: Minimal MR context for review artifact generation.
 // @consumers: build-review-artifact.xml, load-review-context-mr.logic, review-artifact.type
 // @tasks: N/A
 
 /**
- * @purpose Минимальный MR-контекст для генерации review-артефакта.
+ * @purpose Minimal MR context for review artifact generation.
  * @consumer load-review-context-mr.logic
  */
 export type ReviewContextMr = {
@@ -16,7 +16,7 @@ export type ReviewContextMr = {
 };
 
 /**
- * @purpose Тип заметки GitLab discussion, используемый в XML-артефакте.
+ * @purpose GitLab discussion note type used in the XML artifact.
  * @consumer build-review-artifact.xml
  */
 export type ReviewContextMrNote = {
@@ -37,7 +37,7 @@ export type ReviewContextMrNote = {
 };
 
 /**
- * @purpose Тип discussion GitLab, используемый в XML-артефакте.
+ * @purpose GitLab discussion type used in the XML artifact.
  * @consumer build-review-artifact.xml
  */
 export type ReviewContextMrDiscussion = {

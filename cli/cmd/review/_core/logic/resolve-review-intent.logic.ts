@@ -1,4 +1,4 @@
-// @file: Разрешить намерение review-запуска из аргументов (url/ref/project+iid/branch).
+// @file: Resolve review launch intent from arguments (url/ref/project+iid/branch).
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -41,10 +41,10 @@ function parseReviewUrl(reviewUrl: string): { host: string; project: string; iid
 }
 
 /**
- * @purpose Разрешить намерение review-запуска из аргументов (url/ref/project+iid/branch).
+ * @purpose Resolve review launch intent from arguments (url/ref/project+iid/branch).
+ * @param args Normalized review command arguments.
+ * @returns ReviewIntent with priority url > ref > project+iid > branch fallback.
  * @consumer run-review-command.logic
- * @param args Нормализованные аргументы review-команды.
- * @returns ReviewIntent с приоритетом url > ref > project+iid > branch fallback.
  */
 export function resolveReviewIntent(args: ReviewCommandArgs): ReviewIntent {
   if (args.url) {

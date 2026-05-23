@@ -6,9 +6,9 @@ import { VcsClientRepositoryFiles } from '../abstract/vcs-client-repository-file
 import type { VcsFileContent, VcsFileContentQuery } from '../entities/vcs-file-content.type.ts';
 
 /**
- * @purpose Доступ к файлам репозитория через GitLab API (/raw endpoint).
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу. 404 → null.
- * @invariant Encoding Contract: Текстовые файлы → encoding: 'utf-8'; бинарные → encoding: 'base64'.
+ * @purpose Access repository files via GitLab API (/raw endpoint).
+ * @invariant Error Policy: Network/status errors propagated to caller. 404 → null.
+ * @invariant Encoding Contract: Text files → encoding: 'utf-8'; binary → encoding: 'base64'.
  * @consumer VcsGitlabClient
  */
 export class VcsGitlabRepositoryFiles extends VcsClientRepositoryFiles {

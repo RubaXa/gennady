@@ -1,4 +1,4 @@
-// @file: Выполнить системную команду синхронно с безопасной обработкой ошибок.
+// @file: Execute system command synchronously with safe error handling.
 // @consumers: git-core, resolve-conflicts-context-git-build.logic
 // @tasks: N/A
 
@@ -6,12 +6,10 @@ import { execSync as nodeExecSync } from 'node:child_process';
 import { logger } from './logger.ts';
 
 /**
- * @purpose Выполнить системную команду синхронно с безопасной обработкой ошибок.
- * @consumer git/git-core, другие домены через utils
- * @pre Команда и бинарь доступны в PATH; запуск в корректном окружении.
- * @param cmd Строка команды для выполнения в подпроцессе.
- * @returns Стандартный вывод (stdout) как строка; пустая строка при ошибке.
- * @sideEffect Process: запуск внешнего процесса; Logs: error при сбое.
+ * @purpose Execute system command synchronously with safe error handling.
+ * @pre Command and binary available in PATH; run in correct environment.
+ * @sideEffect Process: launch external process; Logs: error on failure.
+ * @consumer git/git-core, other domains via utils
  */
 export const execSyncSafe = (cmd: string): string => {
   try {

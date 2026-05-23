@@ -2,7 +2,7 @@
 // @consumers: VcsClient
 
 /**
- * @purpose Параметры создания заметки в дискуссии MR: проект, IID MR, ID дискуссии, текст.
+ * @purpose Parameters for creating a note in an MR discussion: project, MR IID, discussion ID, text.
  * @consumer VcsClientMergeDiscussions
  */
 export type VcsAddNoteQuery = {
@@ -17,7 +17,7 @@ export type VcsAddNoteQuery = {
 };
 
 /**
- * @purpose Параметры запроса списка дискуссий MR: проект, IID MR, пагинация.
+ * @purpose Parameters for querying MR discussion list: project, MR IID, pagination.
  * @consumer VcsClientMergeDiscussions
  */
 export type VcsDiscussionsListQuery = {
@@ -32,32 +32,32 @@ export type VcsDiscussionsListQuery = {
 };
 
 /**
- * @purpose Доступ к Discussions для Merge Request в GitLab.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @purpose Access to Discussions for Merge Requests in GitLab.
+ * @invariant Error Policy: Network/status errors are thrown outward from request().
  * @consumer VcsClient
  */
 export abstract class VcsClientMergeDiscussions {
   /**
-   * @purpose Создать ответ (note) в существующей дискуссии Merge Request.
-   * @param query Параметры запроса.
-   * @returns Объект созданной заметки (JSON), как возвращает GitLab API.
+   * @purpose Create a reply (note) in an existing Merge Request discussion.
+   * @param query Query parameters.
+   * @returns Created note object (JSON), as returned by GitLab API.
    * @sideEffect Network: POST /projects/:project/merge_requests/:iid/discussions/:discussion_id/notes
    */
   abstract addNote(query: VcsAddNoteQuery): Promise<unknown>;
 
   /**
-   * @purpose Получить страницу дискуссий MR.
-   * @param query Параметры: { project, iid, perPage?, page? }.
-   * @returns Список дискуссий текущей страницы.
+   * @purpose Get a page of MR discussions.
+   * @param query Parameters: { project, iid, perPage?, page? }.
+   * @returns List of discussions for the current page.
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid/discussions
    */
   abstract getList(query: VcsDiscussionsListQuery): Promise<unknown[]>;
 
   /**
-   * @purpose Собрать все страницы дискуссий MR.
-   * @param query Параметры: { project, iid }.
-   * @returns Полный список дискуссий MR.
-   * @sideEffect Network: Многократные GET для постраничной загрузки.
+   * @purpose Collect all pages of MR discussions.
+   * @param query Parameters: { project, iid }.
+   * @returns Complete list of MR discussions.
+   * @sideEffect Network: Multiple GET requests for paginated loading.
    */
   abstract getAll(query: { project: string; iid: string | number }): Promise<unknown[]>;
 }

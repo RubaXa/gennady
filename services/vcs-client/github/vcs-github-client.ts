@@ -7,7 +7,7 @@ import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
- * @purpose Опции для создания клиента GitHub API: базовый URL и токен доступа.
+ * @purpose Options for creating a GitHub API client: base URL and access token.
  * @consumer VcsGithubClient
  */
 export type VcsGithubClientOptions = {
@@ -18,8 +18,8 @@ export type VcsGithubClientOptions = {
 };
 
 /**
- * @purpose Клиент GitHub для работы с REST API (минимальный: без MergeDiscussions).
- * @invariant Error Policy: Любой ответ !2xx преобразуется в Error с подробностями статуса.
+ * @purpose GitHub client for working with REST API (minimal: without MergeDiscussions).
+ * @invariant Error Policy: Any non-2xx response is converted to an Error with status details.
  * @consumer cli/cat
  */
 export class VcsGithubClient extends VcsClient {

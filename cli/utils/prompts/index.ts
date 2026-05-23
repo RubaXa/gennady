@@ -1,4 +1,4 @@
-// @file: Централизованный доступ к шаблонам промптов (agent, commit, review) из .md-файлов.
+// @file: Centralized access to prompt templates (agent, commit, review) from .md files.
 // @consumers: commit-gen, create-providers, review-gen
 // @tasks: N/A
 
@@ -9,19 +9,19 @@ import { fileURLToPath } from 'node:url';
 const PROMPTS_DIR = dirname(fileURLToPath(import.meta.url));
 
 /**
- * @purpose Централизованный доступ к шаблонам промптов (agent, commit, review) из .md-файлов.
+ * @purpose Centralized access to prompt templates (agent, commit, review) from .md files.
+ * @invariant File names: agent/<name> → agent-{name}-prompt.md, commit → commit-{name}-prompt.md, review → review-{name}-prompt.md.
+ * @sideEffect Filesystem: file read on each call.
  * @consumer CommitGen, ReviewGen, cmd/agent
- * @invariant Имена файлов: agent/<name> → agent-{name}-prompt.md, commit → commit-{name}-prompt.md, review → review-{name}-prompt.md.
- * @sideEffect Filesystem: чтение файла при каждом вызове.
  */
 export const prompts = {
-  /** @purpose Загрузить промпт для agent по имени (например 'keywords'). */
+  /** @purpose Load agent prompt by name (e.g. 'keywords'). */
   agent: (name: string): string =>
     readFileSync(join(PROMPTS_DIR, 'agent', `agent-${name}-prompt.md`)).toString(),
-  /** @purpose Загрузить промпт для commit по имени ('message' | 'changeset'). */
+  /** @purpose Load commit prompt by name ('message' | 'changeset'). */
   commit: (name: string): string =>
     readFileSync(join(PROMPTS_DIR, 'commit', `commit-${name}-prompt.md`)).toString(),
-  /** @purpose Загрузить промпт для review по имени (например 'base'). */
+  /** @purpose Load review prompt by name (e.g. 'base'). */
   review: (name: string): string =>
     readFileSync(join(PROMPTS_DIR, 'review', `review-${name}-prompt.md`)).toString(),
 };

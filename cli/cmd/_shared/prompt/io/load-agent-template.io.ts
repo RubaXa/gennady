@@ -1,4 +1,4 @@
-// @file: Прочитать XML-шаблон, если файл существует.
+// @file: Read XML template if the file exists.
 // @consumers: load-review-verify-template.io, resolve-conflicts-template-load.io
 // @tasks: N/A
 
@@ -9,10 +9,10 @@ import { fileURLToPath } from 'node:url';
 const AGENTS_DIRNAME = 'ai/agents';
 
 /**
- * @purpose Прочитать XML-шаблон, если файл существует.
+ * @purpose Read XML template if the file exists.
  * @consumer load-agent-template.io
- * @param candidatePath Абсолютный путь к потенциальному файлу шаблона.
- * @returns Promise с содержимым файла или null, если файл отсутствует.
+ * @param candidatePath Absolute path to the potential template file.
+ * @returns Promise with file content or null if the file does not exist.
  */
 function readTemplateIfExists(candidatePath: string): Promise<string> | null {
   if (fs.existsSync(candidatePath)) {
@@ -22,10 +22,10 @@ function readTemplateIfExists(candidatePath: string): Promise<string> | null {
 }
 
 /**
- * @purpose Найти корень установленного npm-пакета по ближайшему package.json.
+ * @purpose Find the root of the installed npm package by the nearest package.json.
  * @consumer load-agent-template.io
- * @param startDir Директория, от которой начинается поиск вверх по дереву.
- * @returns Абсолютный путь к корню пакета или null, если package.json не найден.
+ * @param startDir Directory from which the upward search in the tree starts.
+ * @returns Absolute path to the package root or null if package.json is not found.
  */
 function resolvePackageRoot(startDir: string): string | null {
   let probeDir = startDir;
@@ -44,10 +44,10 @@ function resolvePackageRoot(startDir: string): string | null {
 }
 
 /**
- * @purpose Загрузить agent-шаблон из проекта (override) или fallback из gennady.
+ * @purpose Load agent template from the project (override) or fallback from gennady.
+ * @param templateFilename XML file name in `ai/agents`.
+ * @returns XML template content.
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
- * @param templateFilename Имя XML-файла в `ai/agents`.
- * @returns Содержимое XML-шаблона.
  */
 export async function loadAgentTemplate(templateFilename: string): Promise<string> {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));

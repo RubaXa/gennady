@@ -3,35 +3,35 @@
 // @tasks: TSK-27
 
 /**
- * @purpose Один изменённый файл в MR/PR: путь, статус, ветка, метрики изменений.
+ * @purpose One changed file in MR/PR: path, status, branch, change metrics.
  * @consumer VcsClientMergeRequests.getChanges
  */
 export type VcsMergeRequestChanges = {
-  /** @purpose Путь к файлу (new_path для GitLab, filename для GitHub) */
+  /** @purpose File path (new_path for GitLab, filename for GitHub) */
   path: string;
-  /** @purpose Статус изменения: added, modified, deleted, renamed */
+  /** @purpose Change status: added, modified, deleted, renamed */
   status: 'added' | 'modified' | 'deleted' | 'renamed';
-  /** @purpose Предыдущий путь (только для renamed) */
+  /** @purpose Previous path (only for renamed) */
   previousPath?: string;
-  /** @purpose Ветка (source_branch GitLab / head.ref GitHub) — для getFileContent */
+  /** @purpose Branch (source_branch GitLab / head.ref GitHub) — for getFileContent */
   ref: string;
-  /** @purpose Количество добавленных строк */
+  /** @purpose Number of added lines */
   additions?: number;
-  /** @purpose Количество удалённых строк */
+  /** @purpose Number of deleted lines */
   deletions?: number;
 };
 
 /**
- * @purpose Параметры запроса изменений MR/PR: репозиторий, номер, пагинация.
+ * @purpose MR/PR changes query parameters: repository, number, pagination.
  * @consumer VcsClientMergeRequests.getChanges
  */
 export type VcsMergeRequestChangesQuery = {
-  /** @purpose Идентификатор репозитория (group/project или owner/repo) */
+  /** @purpose Repository identifier (group/project or owner/repo) */
   repository: string;
-  /** @purpose Номер MR (IID) или PR (number) */
+  /** @purpose MR number (IID) or PR (number) */
   iid: string | number;
-  /** @purpose Номер страницы (начиная с 1) */
+  /** @purpose Page number (starting from 1) */
   page?: number;
-  /** @purpose Размер страницы */
+  /** @purpose Page size */
   perPage?: number;
 };

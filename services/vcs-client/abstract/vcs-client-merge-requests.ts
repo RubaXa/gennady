@@ -3,7 +3,7 @@
 // @tasks: TSK-28
 
 /**
- * @purpose Параметры запроса списка Merge Requests: проект, ветка, состояние, пагинация.
+ * @purpose Parameters for querying Merge Request list: project, branch, state, pagination.
  * @consumer VcsClientMergeRequests
  */
 export type VcsMergeRequestsQuery = {
@@ -20,7 +20,7 @@ export type VcsMergeRequestsQuery = {
 };
 
 /**
- * @purpose Параметры запроса Merge Request по IID.
+ * @purpose Parameters for querying a Merge Request by IID.
  * @consumer VcsClientMergeRequests
  */
 export type VcsMergeRequestByIidQuery = {
@@ -31,39 +31,39 @@ export type VcsMergeRequestByIidQuery = {
 };
 
 /**
- * @purpose Доступ к Merge Requests/Pull Requests.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @purpose Access to Merge Requests/Pull Requests.
+ * @invariant Error Policy: Network/status errors are thrown outward from request().
  * @consumer VcsClient
  */
 export abstract class VcsClientMergeRequests {
   /**
-   * @purpose Получить список MR по проекту и фильтрам.
-   * @param query Объект запроса.
-   * @returns Список Merge Request'ов по минимальным фильтрам.
+   * @purpose Get MR list by project and filters.
+   * @param query Query object.
+   * @returns List of Merge Requests by minimal filters.
    * @sideEffect Network: GET /projects/:project/merge_requests
    */
   abstract getList(query: VcsMergeRequestsQuery): Promise<unknown[]>;
 
   /**
-   * @purpose Получить первый MR, удовлетворяющий тем же фильтрам, что и getList.
-   * @param query Объект запроса.
-   * @returns Первый найденный MR или null.
-   * @sideEffect Network: Делегирует в getList() с ограничением per_page=1.
+   * @purpose Get the first MR matching the same filters as getList.
+   * @param query Query object.
+   * @returns First found MR or null.
+   * @sideEffect Network: Delegates to getList() with per_page=1 limit.
    */
   abstract getOne(query: VcsMergeRequestsQuery): Promise<unknown | null>;
 
   /**
-   * @purpose Получить Merge Request по IID в рамках проекта.
-   * @param query Параметры: { project, iid }.
-   * @returns Объект Merge Request или null при 404.
+   * @purpose Get Merge Request by IID within a project.
+   * @param query Parameters: { project, iid }.
+   * @returns Merge Request object or null on 404.
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid
    */
   abstract getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null>;
 
   /**
-   * @purpose Получить список изменённых файлов в MR/PR.
-   * @param query Параметры: { repository, iid, page?, perPage? }.
-   * @returns Список изменённых файлов с метаданными.
+   * @purpose Get list of changed files in MR/PR.
+   * @param query Parameters: { repository, iid, page?, perPage? }.
+   * @returns List of changed files with metadata.
    * @sideEffect Network: GitLab GET /projects/:id/merge_requests/:iid/changes | GitHub GET /repos/:owner/:repo/pulls/:number/files
    */
   abstract getChanges(

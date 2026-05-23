@@ -17,7 +17,6 @@ const DEFAULT_WAIT_PATTERNS: RegExp[] = [
  * @purpose Determine whether an agent session is waiting for operator input based on last message content.
  * @invariant Pure function — no side effects, no I/O, deterministic given same inputs.
  * @param session Agent session data — uses only lastMessage field for detection.
- * @param patterns Optional custom regex patterns to match against lastMessage; falls back to DEFAULT_WAIT_PATTERNS.
  * @returns true if lastMessage matches any pattern, false otherwise (including when lastMessage is absent).
  */
 export function isWaitingForUser(

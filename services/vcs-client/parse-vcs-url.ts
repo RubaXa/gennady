@@ -4,11 +4,7 @@
 
 import type { VcsUrl } from './entities/vcs-url.type.ts';
 
-/**
- * @purpose Разбор URL GitLab Merge Request или GitHub Pull Request.
- * @param url Входной URL-строка (может быть null/undefined).
- * @returns VcsUrl при успешном парсинге, null если URL не является MR/PR.
- */
+/** @purpose Parse GitLab Merge Request or GitHub Pull Request URL. */
 export const parseVcsUrl = (url: string | null | undefined): VcsUrl | null => {
   if (!url || typeof url !== 'string' || url.trim().length === 0) {
     return null;

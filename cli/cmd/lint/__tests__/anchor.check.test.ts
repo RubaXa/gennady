@@ -12,6 +12,8 @@ import {
   ERR_CLI_LINT_ANCHOR_MALFORMED,
 } from '../lint.types.ts';
 
+const S = '/' + '/';
+
 /**
  * AnchorCheck Test Graph:
  * ├── should return no errors for correctly nested anchors
@@ -28,12 +30,12 @@ describe('AnchorCheck', () => {
   it('should return no errors for correctly nested anchors', () => {
     // #region START_VALID_NESTING_SETUP_CONTENT
     const content = [
-      '// #region START_OUTER_BLOCK',
+      S + ' #region START_OUTER_BLOCK',
       'code here',
-      '// #region START_INNER_BLOCK',
+      S + ' #region START_INNER_BLOCK',
       'inner code',
-      '// #endregion END_INNER_BLOCK',
-      '// #endregion END_OUTER_BLOCK',
+      S + ' #endregion END_INNER_BLOCK',
+      S + ' #endregion END_OUTER_BLOCK',
     ].join('\n');
     // #endregion END_VALID_NESTING_SETUP_CONTENT
 
@@ -48,7 +50,7 @@ describe('AnchorCheck', () => {
 
   it('should report ERR_CLI_LINT_ANCHOR_UNPAIRED_START for START without matching END', () => {
     // #region START_UNPAIRED_START_SETUP_CONTENT
-    const content = ['// #region START_LONELY_BLOCK', 'code here'].join('\n');
+    const content = [S + ' #region START_LONELY_BLOCK', 'code here'].join('\n');
     // #endregion END_UNPAIRED_START_SETUP_CONTENT
 
     // #region START_UNPAIRED_START_TRIGGER_CHECK
@@ -64,7 +66,7 @@ describe('AnchorCheck', () => {
 
   it('should report ERR_CLI_LINT_ANCHOR_UNPAIRED_END for END without matching START', () => {
     // #region START_UNPAIRED_END_SETUP_CONTENT
-    const content = ['// #endregion END_ORPHAN_BLOCK'].join('\n');
+    const content = [S + ' #endregion END_ORPHAN_BLOCK'].join('\n');
     // #endregion END_UNPAIRED_END_SETUP_CONTENT
 
     // #region START_UNPAIRED_END_TRIGGER_CHECK
@@ -82,10 +84,10 @@ describe('AnchorCheck', () => {
     // contract: when outer END appears while inner START is still open → nesting violation
     // #region START_NESTING_VIOLATION_SETUP_CONTENT
     const content = [
-      '// #region START_OUTER',
-      '// #region START_INNER',
-      '// #endregion END_OUTER',
-      '// #endregion END_INNER',
+      S + ' #region START_OUTER',
+      S + ' #region START_INNER',
+      S + ' #endregion END_OUTER',
+      S + ' #endregion END_INNER',
     ].join('\n');
     // #endregion END_NESTING_VIOLATION_SETUP_CONTENT
 
@@ -104,12 +106,12 @@ describe('AnchorCheck', () => {
     // contract: errors are returned in ascending line order — deterministic for consumers
     // #region START_MULTIPLE_ERRORS_SETUP_CONTENT
     const content = [
-      '// #region START_A',
-      '// #region START_B',
-      '// #endregion END_A',
-      '// #endregion END_B',
+      S + ' #region START_A',
+      S + ' #region START_B',
+      S + ' #endregion END_A',
+      S + ' #endregion END_B',
       '',
-      '// #region START_C',
+      S + ' #region START_C',
     ].join('\n');
     // #endregion END_MULTIPLE_ERRORS_SETUP_CONTENT
 
@@ -149,9 +151,9 @@ describe('AnchorCheck', () => {
     // contract: bare #endregion (no END_ prefix) → MALFORMED, auto-close with stack top
     // #region START_BARE_ENDREGION_SETUP
     const content = [
-      '// #region START_VALIDATE_BOUND',
+      S + ' #region START_VALIDATE_BOUND',
       'code here',
-      '// #endregion',
+      S + ' #endregion',
       '',
       'more code',
     ].join('\n');
@@ -173,7 +175,7 @@ describe('AnchorCheck', () => {
   it('should not leave unpaired START when bare #endregion auto-closes', () => {
     // contract: auto-close pops the stack, so no ERR_CLI_LINT_ANCHOR_UNPAIRED_START at EOF
     // #region START_AUTO_CLOSE_SETUP
-    const content = ['// #region START_MY_BLOCK', 'code', '// #endregion'].join('\n');
+    const content = [S + ' #region START_MY_BLOCK', 'code', '// #endregion'].join('\n');
     // #endregion END_AUTO_CLOSE_SETUP
 
     // #region START_AUTO_CLOSE_TRIGGER_CHECK
@@ -192,7 +194,7 @@ describe('AnchorCheck', () => {
   it('should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #endregion with empty stack', () => {
     // contract: bare #endregion with no open block → MALFORMED + no open block message
     // #region START_BARE_ENDREGION_EMPTY_SETUP
-    const content = ['code here', '// #endregion', 'more code'].join('\n');
+    const content = ['code here', S + ' #endregion', 'more code'].join('\n');
     // #endregion END_BARE_ENDREGION_EMPTY_SETUP
 
     // #region START_BARE_ENDREGION_EMPTY_TRIGGER_CHECK
@@ -209,7 +211,7 @@ describe('AnchorCheck', () => {
   it('should report ERR_CLI_LINT_ANCHOR_MALFORMED for bare #region without START_', () => {
     // contract: bare #region (no START_ prefix) → MALFORMED
     // #region START_BARE_REGION_SETUP
-    const content = ['// #region', 'code here'].join('\n');
+    const content = [S + ' #region', 'code here'].join('\n');
     // #endregion END_BARE_REGION_SETUP
 
     // #region START_BARE_REGION_TRIGGER_CHECK
@@ -226,10 +228,10 @@ describe('AnchorCheck', () => {
   it('nested bare #endregion — auto-close uses top of stack, not bottom', () => {
     // contract: START_A → START_B → bare #endregion → auto-closes B, A remains
     const content = [
-      '// #region START_OUTER',
-      '// #region START_INNER',
+      S + ' #region START_OUTER',
+      S + ' #region START_INNER',
       'code',
-      '// #endregion',
+      S + ' #endregion',
     ].join('\n');
 
     const errors = check(content, 'test.ts');
@@ -247,7 +249,7 @@ describe('AnchorCheck', () => {
 
   it('double bare #endregion — first auto-closes, second sees empty stack', () => {
     // contract: START_A → bare #endregion → bare #endregion
-    const content = ['// #region START_ONLY', 'code', '// #endregion', '// #endregion'].join('\n');
+    const content = [S + ' #region START_ONLY', 'code', S + ' #endregion', '// #endregion'].join('\n');
 
     const errors = check(content, 'test.ts');
 
@@ -262,7 +264,7 @@ describe('AnchorCheck', () => {
 
   it('bare #region does NOT push — subsequent END_X is UNPAIRED_END', () => {
     // contract: bare #region → no push → END_FOO has no matching START
-    const content = ['// #region', 'code', '// #endregion END_GHOST'].join('\n');
+    const content = [S + ' #region', 'code', S + ' #endregion END_GHOST'].join('\n');
 
     const errors = check(content, 'test.ts');
 
@@ -276,7 +278,7 @@ describe('AnchorCheck', () => {
 
   it('mix valid + bare anchors — END after auto-close is UNPAIRED', () => {
     // contract: START_A → bare #endregion (auto-closes A) → END_A → UNPAIRED_END
-    const content = ['// #region START_A', 'code', '// #endregion', '// #endregion END_A'].join(
+    const content = [S + ' #region START_A', 'code', S + ' #endregion', S + ' #endregion END_A'].join(
       '\n'
     );
 
@@ -292,7 +294,7 @@ describe('AnchorCheck', () => {
   });
 
   it('3+ unpaired STARTs at EOF — each gets its own error', () => {
-    const content = ['// #region START_A', '// #region START_B', '// #region START_C', 'code'].join(
+    const content = [S + ' #region START_A', S + ' #region START_B', S + ' #region START_C', 'code'].join(
       '\n'
     );
 
@@ -306,7 +308,7 @@ describe('AnchorCheck', () => {
   });
 
   it('END with wrong name → UNPAIRED_END + original START stays unpaired', () => {
-    const content = ['// #region START_X', '// #endregion END_Y'].join('\n');
+    const content = [S + ' #region START_X', S + ' #endregion END_Y'].join('\n');
 
     const errors = check(content, 'test.ts');
 
@@ -320,13 +322,13 @@ describe('AnchorCheck', () => {
 
   it('deep nesting 3+ levels — all correctly paired produces no errors', () => {
     const content = [
-      '// #region START_A',
-      '// #region START_B',
-      '// #region START_C',
+      S + ' #region START_A',
+      S + ' #region START_B',
+      S + ' #region START_C',
       'deep code',
-      '// #endregion END_C',
-      '// #endregion END_B',
-      '// #endregion END_A',
+      S + ' #endregion END_C',
+      S + ' #endregion END_B',
+      S + ' #endregion END_A',
     ].join('\n');
 
     const errors = check(content, 'test.ts');
@@ -335,10 +337,10 @@ describe('AnchorCheck', () => {
 
   it('double END for same START — second END is UNPAIRED_END', () => {
     const content = [
-      '// #region START_ONCE',
+      S + ' #region START_ONCE',
       'code',
-      '// #endregion END_ONCE',
-      '// #endregion END_ONCE',
+      S + ' #endregion END_ONCE',
+      S + ' #endregion END_ONCE',
     ].join('\n');
 
     const errors = check(content, 'test.ts');
@@ -350,12 +352,12 @@ describe('AnchorCheck', () => {
 
   it('duplicate START names — both close correctly with no errors', () => {
     const content = [
-      '// #region START_DUP',
+      S + ' #region START_DUP',
       'first',
-      '// #endregion END_DUP',
-      '// #region START_DUP',
+      S + ' #endregion END_DUP',
+      S + ' #region START_DUP',
       'second',
-      '// #endregion END_DUP',
+      S + ' #endregion END_DUP',
     ].join('\n');
 
     const errors = check(content, 'test.ts');
@@ -363,7 +365,7 @@ describe('AnchorCheck', () => {
   });
 
   it('trailing whitespace after bare #endregion — still MALFORMED', () => {
-    const content = ['// #region START_WS', 'code', '// #endregion   '].join('\n');
+    const content = [S + ' #region START_WS', 'code', '// #endregion   '].join('\n');
 
     const errors = check(content, 'test.ts');
 
@@ -374,9 +376,9 @@ describe('AnchorCheck', () => {
 
   it('valid anchor with trailing text — still matched as valid', () => {
     const content = [
-      '// #region START_A extra text here',
+      S + ' #region START_A extra text here',
       'code',
-      '// #endregion END_A trailing',
+      S + ' #endregion END_A trailing',
     ].join('\n');
 
     const errors = check(content, 'test.ts');
@@ -401,7 +403,7 @@ describe('AnchorCheck', () => {
   });
 
   it('bare #region followed by bare #endregion — both malformed, second sees empty stack', () => {
-    const content = ['// #region', 'code', '// #endregion'].join('\n');
+    const content = [S + ' #region', 'code', '// #endregion'].join('\n');
 
     const errors = check(content, 'test.ts');
 

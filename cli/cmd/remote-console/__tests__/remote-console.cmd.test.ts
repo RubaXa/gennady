@@ -1,3 +1,7 @@
+// @file: Unit tests for remote-console command — CLI arg parsing and activation URL generation.
+// @consumers: RemoteConsoleCommand
+// @tasks: TSK-44
+
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {

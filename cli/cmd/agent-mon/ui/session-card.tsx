@@ -27,7 +27,6 @@ function formatTokens(inTokens?: number, outTokens?: number): string | undefined
 /**
  * @purpose Renders one agent session as a bordered card with status badge and metadata.
  * @invariant Absent optional fields (tokens, cpu, memory) are not rendered — degradation per spec.
- * @param card Session card data from the ViewModel.
  */
 export function SessionCard({ card }: SessionCardProps) {
   const tokens = formatTokens(card.tokensIn, card.tokensOut);

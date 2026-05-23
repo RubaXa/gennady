@@ -1,4 +1,4 @@
-// @file: Предоставить цепочку стилей для раскраски текста в терминале (ANSI).
+// @file: Provide style chain for terminal text coloring (ANSI).
 // @consumers: cat.cmd, commit-gen, commit.cmd, resolve-conflicts-command-run.logic, review.cmd, run-review-command.logic, vcs-reply.cmd
 // @tasks: N/A
 
@@ -81,9 +81,9 @@ function createStyler(appliedStyles: string[] = []): Styler {
 }
 
 /**
- * @purpose Предоставить цепочку стилей для раскраски текста в терминале (ANSI).
+ * @purpose Provide style chain for terminal text coloring (ANSI).
+ * @invariant With NO_COLOR flag (plain, nocolor, --color=no etc.) returns text without codes; otherwise — with ANSI codes.
+ * @sideEffect Read process.argv at module initialization.
  * @consumer CLI, review-gen, commit-gen, cat-gen
- * @invariant При флаге NO_COLOR (plain, nocolor, --color=no и т.п.) возвращает текст без кодов; иначе — с ANSI-кодами.
- * @sideEffect Чтение process.argv при инициализации модуля.
  */
 export const style = createStyler();

@@ -1,12 +1,12 @@
-// @file: Сформировать итоговый XML для review-issues (только артефакт).
+// @file: Build the final XML for review-issues (artifact only).
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
 /**
- * @purpose Сформировать итоговый XML для review-issues (только артефакт).
+ * @purpose Build the final XML for review-issues (artifact only).
+ * @param reviewArtifactXml Review XML artifact.
+ * @returns XML artifact without template.
  * @consumer run-review-command.logic
- * @param reviewArtifactXml XML-артефакт ревью.
- * @returns XML-артефакт без шаблона.
  */
 export function renderReviewIssuesXml(reviewArtifactXml: string): string {
   return reviewArtifactXml;

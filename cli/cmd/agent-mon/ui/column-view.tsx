@@ -15,7 +15,6 @@ export type ColumnViewProps = {
 /**
  * @purpose Dashboard view that renders provider columns horizontally.
  * @invariant Empty columns → "No active sessions." message (degradation per spec).
- * @param viewModel Current dashboard state snapshot.
  */
 export function ColumnView({ viewModel, maxRows }: ColumnViewProps) {
   const columns = viewModel.data?.columns ?? [];

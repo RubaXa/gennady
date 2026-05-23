@@ -1,4 +1,4 @@
-// @file: Собрать merge-контекст из git для генерации prompt resolve-conflicts.
+// @file: Build merge context from git for resolve-conflicts prompt generation.
 // @consumers: resolve-conflicts-command-run.logic
 // @tasks: N/A
 
@@ -184,11 +184,11 @@ function buildResolveConflictsContextFile(
 }
 
 /**
- * @purpose Собрать merge-контекст из git для генерации prompt resolve-conflicts.
- * @consumer resolve-conflicts-command-run.logic
- * @param args Аргументы запуска команды.
- * @throws {Error} Когда текущая директория не git-репозиторий, нет активного merge или нет конфликтов.
+ * @purpose Build merge context from git for resolve-conflicts prompt generation.
+ * @param args Command launch arguments.
+ * @throws {Error} When the current directory is not a git repository, no active merge, or no conflicts.
  * @returns ResolveConflictsContextGit.
+ * @consumer resolve-conflicts-command-run.logic
  */
 export function buildResolveConflictsContextGit(
   args: ResolveConflictsCommandArgs

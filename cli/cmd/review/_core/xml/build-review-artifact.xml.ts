@@ -1,4 +1,4 @@
-// @file: Собрать дерево XmlNode артефакта ревью из MR и дискуссий.
+// @file: Build XmlNode tree of the review artifact from MR and discussions.
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -58,12 +58,12 @@ function parseHostFromWebUrl(webUrl?: string): string {
 }
 
 /**
- * @purpose Собрать дерево XmlNode артефакта ревью из MR и дискуссий.
+ * @purpose Build XmlNode tree of the review artifact from MR and discussions.
+ * @param mergeRequest MR object (iid, author, web_url, source_branch, title, etc.).
+ * @param discussions Array of discussions with notes (body, author, position).
+ * @param showAll Flag to show all threads, including resolved ones.
+ * @returns Root XmlNode (tag: MR_Audit_Context).
  * @consumer buildReviewArtifactXml
- * @param mergeRequest Объект MR (iid, author, web_url, source_branch, title и т.д.).
- * @param discussions Массив дискуссий с notes (body, author, position).
- * @param showAll Флаг показа всех тредов, включая resolved.
- * @returns Корневой XmlNode (tag: MR_Audit_Context).
  */
 export function createReviewArtifactXmlNode(
   mergeRequest: ReviewContextMr,
@@ -150,12 +150,12 @@ export function createReviewArtifactXmlNode(
 }
 
 /**
- * @purpose Построить XML артефакт ревью (MR + дискуссии).
+ * @purpose Build review XML artifact (MR + discussions).
+ * @param mergeRequest MR object.
+ * @param discussions Array of discussions.
+ * @param showAll Flag to show all threads, including resolved ones.
+ * @returns XML string (MR_Audit_Context).
  * @consumer run-review-command.logic
- * @param mergeRequest Объект MR.
- * @param discussions Массив дискуссий.
- * @param showAll Флаг показа всех тредов, включая resolved.
- * @returns Строка XML (MR_Audit_Context).
  */
 export function buildReviewArtifactXml(
   mergeRequest: ReviewContextMr,

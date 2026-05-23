@@ -83,8 +83,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   protected _initializeParser(): Parser {
     if (!this._parser) {
       this._parser = new Parser();
-      // tree-sitter-typescript v0.23+ exports `typescript` as the default
-      const language: unknown = (tsLanguage as Record<string, unknown>).typescript ?? tsLanguage;
+      const language: unknown = (tsLanguage as Record<string, unknown>).tsx ?? tsLanguage;
       this._parser.setLanguage(language as Parser.Language);
     }
     return this._parser;

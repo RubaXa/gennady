@@ -1,9 +1,9 @@
-// @file: Режим вывода review-команды.
+// @file: Review command output mode.
 // @consumers: review-command-options.type
 // @tasks: N/A
 
 /**
- * @purpose Режим вывода review-команды.
+ * @purpose Review command output mode.
  * @consumer review cmd _core
  */
 export type ReviewCommandMode = 'verify' | 'issues';

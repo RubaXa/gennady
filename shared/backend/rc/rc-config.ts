@@ -1,4 +1,4 @@
-// @file: Описать конфигурацию одной AI-модели в rc-файле (имя, URL, опциональный ключ).
+// @file: Describe AI model configuration in rc-file (name, URL, optional key).
 // @consumers: ai-legacy-core
 // @tasks: N/A
 
@@ -6,7 +6,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join as pathJoin } from 'node:path';
 
 /**
- * @purpose Описать конфигурацию одной AI-модели в rc-файле (имя, URL, опциональный ключ).
+ * @purpose Describe AI model configuration in rc-file (name, URL, optional key).
  * @consumer GennadyRc, ai-legacy
  */
 export type RcModel = {
@@ -16,7 +16,7 @@ export type RcModel = {
 };
 
 /**
- * @purpose Корневая структура данных конфигурации Gennady RC (список моделей).
+ * @purpose Root configuration data structure for Gennady RC (model list).
  * @consumer GennadyRc
  */
 export type GennadyRcData = {
@@ -24,19 +24,19 @@ export type GennadyRcData = {
 };
 
 /**
- * @purpose Загрузить и парсить конфигурацию Gennady из rc-файла в заданной директории.
+ * @purpose Load and parse Gennady configuration from rc-file in a given directory.
+ * @invariant On read/parse error _error is populated; getModels() returns an empty array.
+ * @sideEffect IO: file read at constructor.
  * @consumer ai-legacy, CLI agent
- * @invariant При ошибке чтения/парсинга _error заполняется; getModels() возвращает пустой массив.
- * @sideEffect IO: чтение файла при конструкторе.
  */
 export class GennadyRc {
-  /** @purpose Имя файла конфигурации по умолчанию. */
+  /** @purpose Default configuration filename. */
   static DEFAULT_FILENAME = '.gennadyrc';
 
   /**
-   * @purpose Создать экземпляры GennadyRc для текущей директории и HOME (приоритет поиска).
-   * @returns Массив из двух экземпляров: [cwd, HOME].
-   * @sideEffect IO: чтение файлов при конструкторе.
+   * @purpose Create GennadyRc instances for current directory and HOME (lookup priority).
+   * @returns Array of two instances: [cwd, HOME].
+   * @sideEffect IO: file read at constructor.
    */
   static getDefaults(): GennadyRc[] {
     return [process.cwd(), process.env.HOME].map((dir) => new GennadyRc(dir));
@@ -81,24 +81,24 @@ export class GennadyRc {
   }
 
   /**
-   * @purpose Проверить, что конфигурация была успешно загружена и распознана.
-   * @returns true, если ошибки нет; false при ошибке парсинга или невалидных данных.
+   * @purpose Check that configuration was successfully loaded and recognized.
+   * @returns true if no error; false on parse error or invalid data.
    */
   isValid(): boolean {
     return !this._error;
   }
 
   /**
-   * @purpose Получить список моделей из загруженного rc.
-   * @returns Массив RcModel (пустой при ошибке или отсутствии файла).
+   * @purpose Get list of models from loaded rc.
+   * @returns Array of RcModel (empty on error or missing file).
    */
   getModels(): RcModel[] {
     return this._data.models;
   }
 
   /**
-   * @purpose Получить ошибку загрузки/парсинга, если она произошла.
-   * @returns Error или null при успешной загрузке.
+   * @purpose Get load/parse error if one occurred.
+   * @returns Error or null on successful load.
    */
   getError(): Error | null {
     return this._error;

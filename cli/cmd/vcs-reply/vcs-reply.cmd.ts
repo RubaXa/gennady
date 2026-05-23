@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @file: Отправить ответы в дискуссии GitLab MR: читает JSON-массив из stdin или opts, постит notes.
+// @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
 // @tasks: N/A
 
@@ -22,11 +22,11 @@ type MainOpts = {
 };
 
 /**
- * @purpose Отправить ответы в дискуссии GitLab MR: читает JSON-массив из stdin или opts, постит notes.
+ * @purpose Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
+ * @param [opts] project, iid, dryRun, stdinJsonArray, token, remote, baseUrl, vcs (for tests).
+ * @returns Object { ok, sent, failed, code }; code 0 on ok, otherwise 1.
+ * @sideEffect Network: POST to GitLab Discussions API; Console: status and error output.
  * @consumer CLI (cmd/vcs-reply)
- * @param [opts] project, iid, dryRun, stdinJsonArray, token, remote, baseUrl, vcs (для тестов).
- * @returns Объект { ok, sent, failed, code }; code 0 при ok, иначе 1.
- * @sideEffect Network: POST в GitLab Discussions API; Console: вывод статуса и ошибок.
  */
 export async function main(opts: MainOpts = {}): Promise<{
   ok: boolean;

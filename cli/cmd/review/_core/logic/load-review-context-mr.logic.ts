@@ -1,4 +1,4 @@
-// @file: Загрузить MR и discussions по ReviewIntent.
+// @file: Load MR and discussions by ReviewIntent.
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -9,12 +9,12 @@ import type { ReviewIntent } from '../types/review-intent.type.ts';
 import type { ReviewContextGit } from '../types/review-context-git.type.ts';
 
 /**
- * @purpose Загрузить MR и discussions по ReviewIntent.
+ * @purpose Load MR and discussions by ReviewIntent.
+ * @param reviewIntent Review command launch intent.
+ * @param reviewContextVcs VCS context with GitLab client.
+ * @param [reviewContextGit] Git context (needed for branch fallback).
+ * @returns MR and list of discussions or null if MR not found.
  * @consumer run-review-command.logic
- * @param reviewIntent Намерение запуска review-команды.
- * @param reviewContextVcs VCS-контекст с клиентом GitLab.
- * @param [reviewContextGit] Git-контекст (нужен для branch fallback).
- * @returns MR и список discussions или null, если MR не найден.
  */
 export async function loadReviewContextMr(
   reviewIntent: ReviewIntent,

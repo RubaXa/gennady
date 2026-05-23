@@ -1,7 +1,7 @@
 /**
  * @purpose Echo.
- * @param {string} input Echo input.
- * @returns {string} Echo result.
+ * @param input Echo input.
+ * @returns Echo result.
  */
 export function autofix(input: string): string {
   return input;

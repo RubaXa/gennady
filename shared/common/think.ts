@@ -4,11 +4,7 @@
 
 const THINK_CLOSE_TAG = '</think>';
 
-/**
- * @purpose Удалить think-блоки и лишний преамбульный текст из сырого ответа LLM.
- * @param raw Сырая строка ответа.
- * @returns Очищенная строка.
- */
+/** @purpose Удалить think-блоки и лишний преамбульный текст из сырого ответа LLM. */
 export const removeThink = (raw: string): string => {
   const cleaned = String(raw ?? '')
     .split(THINK_CLOSE_TAG)

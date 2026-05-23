@@ -1,10 +1,5 @@
-/**
- * @purpose Container.
- */
+/** @purpose Container. */
 export class Container {
-  /**
-   * @purpose Creates container.
-   * @returns Instance.
-   */
+  /** @purpose Creates container. */
   constructor() {}
 }

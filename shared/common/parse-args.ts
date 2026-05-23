@@ -1,13 +1,10 @@
-// @file: Распарсить аргументы командной строки по схеме опций и алиасов.
+// @file: Parse command-line arguments by options schema and aliases.
 // @consumers: cat.cmd, commit.cmd, lint.cmd, parse-review-command-args.logic, remote-console.cmd, resolve-conflicts-command-args-parse.logic, review.cmd, vcs-reply, vcs-reply.cmd
 // @tasks: N/A
 
 /**
- * @purpose Распарсить аргументы командной строки по схеме опций и алиасов.
+ * @purpose Parse command-line arguments by options schema and aliases.
  * @consumer CLI (gennady, cmd/*)
- * @param argv Массив аргументов (обычно process.argv).
- * @param [schema] Схема: ключ — имя опции в результате, значение — массив алиасов (например --opt, -o).
- * @returns Объект: ключи из schema с значениями или true; _ — массив позиционных аргументов.
  */
 export const parseArgs = <T extends Record<string, string[]>>(
   argv: string[],

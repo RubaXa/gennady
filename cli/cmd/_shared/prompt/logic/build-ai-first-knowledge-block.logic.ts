@@ -1,4 +1,4 @@
-// @file: Сформировать подстановку `<!--ai:first-->` с обязательными knowledge-файлами проекта.
+// @file: Build `<!--ai:first-->` substitution with mandatory project knowledge files.
 // @consumers: render-review-verify.xml, resolve-conflicts-render.xml
 // @tasks: N/A
 
@@ -6,10 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * @purpose Сформировать подстановку `<!--ai:first-->` с обязательными knowledge-файлами проекта.
+ * @purpose Build `<!--ai:first-->` substitution with mandatory project knowledge files.
+ * @param projectRoot Repository root.
+ * @returns Empty string if knowledge files are not found; otherwise mandatory read text.
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
- * @param projectRoot Корень репозитория.
- * @returns Пустая строка, если knowledge-файлы не найдены; иначе текст обязательного чтения.
  */
 export function buildAiFirstKnowledgeBlock(projectRoot: string): string {
   const projectKnowledgeFileCandidates: readonly string[] = [

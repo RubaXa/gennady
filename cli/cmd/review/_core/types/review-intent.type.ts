@@ -1,9 +1,9 @@
-// @file: Исходное намерение review-запроса: явный MR или поиск по ветке.
+// @file: Initial review request intent: explicit MR or branch search.
 // @consumers: load-review-context-mr.logic, resolve-review-intent.logic, run-review-command.logic
 // @tasks: N/A
 
 /**
- * @purpose Исходное намерение review-запроса: явный MR или поиск по ветке.
+ * @purpose Initial review request intent: explicit MR or branch search.
  * @consumer resolve-review-intent.logic
  */
 export type ReviewIntent =

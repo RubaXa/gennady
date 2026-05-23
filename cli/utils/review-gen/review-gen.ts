@@ -1,4 +1,4 @@
-// @file: Генерировать ревью кода (критические замечания) через LLM с учётом языковых спеков.
+// @file: Generate code review (critical remarks) via LLM considering language specs.
 // @consumers: review.cmd
 // @tasks: N/A
 
@@ -24,9 +24,9 @@ type SpecMethods = { methods?: Record<string, { exceptions?: unknown[]; hint?: s
 type SpecShape = Record<string, SpecGlobal & SpecMethods>;
 
 /**
- * @purpose Генерировать ревью кода (критические замечания) через LLM с учётом языковых спеков.
+ * @purpose Generate code review (critical remarks) via LLM considering language specs.
+ * @invariant Uses AiLegacyCore and specs from specs/{lang}; returns empty string on error.
  * @consumer CLI (cmd/review)
- * @invariant Использует AiLegacyCore и specs из specs/{lang}; при ошибке возвращает пустую строку.
  */
 export class ReviewGen {
   protected _langSpecs: Record<string, SpecShape> = {};
@@ -51,22 +51,22 @@ export class ReviewGen {
 
   protected _ai: AiLegacyCore;
 
-  /** @purpose Экземпляр AiLegacyCore для вызова LLM. */
+  /** @purpose Instance of AiLegacyCore for calling LLM. */
   get ai(): AiLegacyCore {
     return this._ai;
   }
 
-  /** @purpose Логгер (если передан при инициализации). */
+  /** @purpose Logger (if passed during initialization). */
   get logger(): typeof import('../../../shared/common/logger.ts').logger | undefined {
     return this.init.logger;
   }
 
   /**
-   * @purpose Сгенерировать текст ревью по коду и списку языков.
-   * @param code Исходный код для анализа.
-   * @param [langs] Языки (по умолчанию выводятся из расширения в code).
-   * @returns Текст ревью от LLM.
-   * @sideEffect Network: запрос к AI; Filesystem: чтение specs при первом обращении.
+   * @purpose Generate review text from code and list of languages.
+   * @param code Source code for analysis.
+   * @param [langs] Languages (default derived from extension in code).
+   * @returns Review text from LLM.
+   * @sideEffect Network: request to AI; Filesystem: reading specs on first access.
    */
   async generate(
     code: string,

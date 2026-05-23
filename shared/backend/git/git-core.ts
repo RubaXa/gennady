@@ -1,4 +1,4 @@
-// @file: Описать данные удалённого репозитория origin (хост, проект, схема).
+// @file: Describe origin remote repository data (host, project, scheme).
 // @consumers: build-review-context-git.logic, commit-gen, resolve-conflicts-context-git-build.logic, resolve-conflicts-context-git.type, review-context-git.type, review.cmd, vcs-reply.cmd
 // @tasks: N/A
 
@@ -8,7 +8,7 @@ import { isTestFile } from '../../common/files.ts';
 import { logger } from '../../common/logger.ts';
 
 /**
- * @purpose Описать данные удалённого репозитория origin (хост, проект, схема).
+ * @purpose Describe origin remote repository data (host, project, scheme).
  * @consumer git-core, vcs-client
  */
 export type GitRemoteInfo = {
@@ -18,7 +18,7 @@ export type GitRemoteInfo = {
 };
 
 /**
- * @purpose Агрегированная информация по diff: сырой текст, разобранные файлы, метрики токенов и коммитов.
+ * @purpose Aggregated diff information: raw text, parsed files, token and commit metrics.
  * @consumer commit-gen, review-gen, ai-legacy
  */
 export type GitDiffInfo = {
@@ -32,9 +32,8 @@ export type GitDiffInfo = {
 };
 
 /**
- * @purpose Определить базовую ветку репозитория (main или master) для анализа diff.
- * @returns Имя базовой ветки для сравнений (main|master), либо 'master' по умолчанию.
- * @sideEffect Process: выполнение git branch.
+ * @purpose Determine the base branch (main or master) for diff analysis.
+ * @sideEffect Process: executes git branch.
  */
 export const detectGitBaseBranch = (): string => {
   const branchesOutput = execSyncSafe('git branch --list 2>/dev/null');
@@ -43,9 +42,8 @@ export const detectGitBaseBranch = (): string => {
 };
 
 /**
- * @purpose Получить имя текущей ветки Git.
- * @returns Имя текущей ветки; 'HEAD' при отсоединённой голове или ошибке.
- * @sideEffect Process: выполнение git rev-parse.
+ * @purpose Get current Git branch name.
+ * @sideEffect Process: executes git rev-parse.
  */
 export const getGitCurrentBranch = (): string => {
   const branch = execSyncSafe('git rev-parse --abbrev-ref HEAD 2>/dev/null').trim();
@@ -53,9 +51,8 @@ export const getGitCurrentBranch = (): string => {
 };
 
 /**
- * @purpose Получить сведения об удалённом репозитории origin.
- * @returns {host, project, scheme} или null, если origin не настроен/не распознан.
- * @sideEffect Process: выполнение git config / git remote.
+ * @purpose Get origin remote repository info.
+ * @sideEffect Process: executes git config / git remote.
  */
 export const getGitRemote = (): GitRemoteInfo | null => {
   const remote =
@@ -91,9 +88,8 @@ export const getGitRemote = (): GitRemoteInfo | null => {
 };
 
 /**
- * @purpose Посчитать количество коммитов поверх базовой ветки.
- * @returns Ненулевое целое число коммитов поверх базовой ветки; 0 при ошибке/отсутствии данных.
- * @sideEffect Process: выполнение git rev-list.
+ * @purpose Count commits on top of the base branch.
+ * @sideEffect Process: executes git rev-list.
  */
 export const getGitCommitCount = (): number => {
   try {
@@ -106,10 +102,8 @@ export const getGitCommitCount = (): number => {
 };
 
 /**
- * @purpose Получить текстовый diff текущего состояния относительно цели.
- * @param targetBranch Ветка или ревизия, относительно которой строится diff; если не указана — используется HEAD.
- * @returns Строка с текстовым представлением diff из git.
- * @sideEffect Process: выполнение git diff.
+ * @purpose Get textual diff of current state against target.
+ * @sideEffect Process: executes git diff.
  */
 export const getGitDiff = (targetBranch?: string): string => {
   if (targetBranch) {
@@ -119,10 +113,8 @@ export const getGitDiff = (targetBranch?: string): string => {
 };
 
 /**
- * @purpose Построить агрегированную информацию по diff для дальнейшего анализа/ранжирования.
- * @param branch Целевая ветка/ревизия для сравнения; если не указана — сравнение с HEAD.
- * @returns Объект с исходным diff, разобранными файлами и метриками (языки, токены, коммиты).
- * @sideEffect Process: вызовы getGitDiff и getGitCommitCount (git команды).
+ * @purpose Build aggregated diff info for further analysis/ranking.
+ * @sideEffect Process: calls getGitDiff and getGitCommitCount (git commands).
  */
 export const getGitDiffInfo = (branch?: string): GitDiffInfo => {
   const diff = getGitDiff(branch);

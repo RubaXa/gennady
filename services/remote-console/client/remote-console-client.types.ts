@@ -44,9 +44,6 @@ export type RemoteConsoleLogEntry = {
 /**
  * @purpose Provides URL-centric browser connection options for remote console transport.
  * @consumer Browser page runtime
- * @param url Absolute HTTP endpoint used for both log and disconnect envelopes.
- * @param [tabId] Optional source tag copied to outgoing entries.
- * @param [branch] Optional source branch tag copied to outgoing entries.
  */
 export type RemoteConsoleClientConnectConfig = {
   /** @purpose Stores absolute endpoint used for both logs and disconnect envelopes. */

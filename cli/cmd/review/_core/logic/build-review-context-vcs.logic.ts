@@ -1,4 +1,4 @@
-// @file: Собрать VCS-контекст и клиент GitLab API.
+// @file: Build VCS context and GitLab API client.
 // @consumers: run-review-command.logic
 // @tasks: N/A
 
@@ -6,11 +6,11 @@ import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-g
 import type { ReviewContextVcs } from '../types/review-context-vcs.type.ts';
 
 /**
- * @purpose Собрать VCS-контекст и клиент GitLab API.
- * @consumer run-review-command.logic
+ * @purpose Build VCS context and GitLab API client.
  * @param host GitLab host.
  * @param project GitLab project path/id.
  * @returns ReviewContextVcs.
+ * @consumer run-review-command.logic
  */
 export function buildReviewContextVcs(host: string, project: string): ReviewContextVcs {
   const token = process.env.GITLAB_PERSONAL_TOKEN;

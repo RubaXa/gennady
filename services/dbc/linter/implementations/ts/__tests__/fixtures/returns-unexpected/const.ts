@@ -1,5 +1,2 @@
-/**
- * @purpose Constant.
- * @returns The value.
- */
+/** @purpose Constant. */
 export const version = 1;

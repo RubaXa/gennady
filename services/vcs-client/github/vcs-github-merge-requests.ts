@@ -11,8 +11,8 @@ import type {
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
 /**
- * @purpose Доступ к файлам Pull Request через GitHub API.
- * @invariant Error Policy: Ошибки сети/статуса пробрасываются наружу из request().
+ * @purpose Access to Pull Request files via GitHub API.
+ * @invariant Error Policy: Network/status errors are thrown outward from request().
  * @consumer VcsGithubClient
  */
 export class VcsGithubMergeRequests extends VcsClientMergeRequests {

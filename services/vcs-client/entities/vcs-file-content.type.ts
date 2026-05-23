@@ -3,27 +3,27 @@
 // @tasks: TSK-27
 
 /**
- * @purpose Содержимое файла из репозитория: путь, контент (декодированный), кодировка.
+ * @purpose File content from repository: path, content (decoded), encoding.
  * @consumer VcsClientRepositoryFiles.getFileContent
  */
 export type VcsFileContent = {
-  /** @purpose Путь к файлу в репозитории */
+  /** @purpose Path to file in repository */
   path: string;
-  /** @purpose Содержимое файла (декодировано адаптером: base64 → utf-8 для текстовых, base64 для бинарных) */
+  /** @purpose File content (decoded by adapter: base64 → utf-8 for text, base64 for binary) */
   content: string;
-  /** @purpose Кодировка контента: utf-8 (текст) или base64 (бинарные) */
+  /** @purpose Content encoding: utf-8 (text) or base64 (binary) */
   encoding: 'utf-8' | 'base64';
 };
 
 /**
- * @purpose Параметры запроса содержимого файла: репозиторий, путь, ветка/коммит.
+ * @purpose File content query parameters: repository, path, branch/commit.
  * @consumer VcsClientRepositoryFiles.getFileContent
  */
 export type VcsFileContentQuery = {
-  /** @purpose Идентификатор репозитория (group/project или owner/repo) */
+  /** @purpose Repository identifier (group/project or owner/repo) */
   repository: string;
-  /** @purpose Путь к файлу в репозитории */
+  /** @purpose Path to file in repository */
   path: string;
-  /** @purpose Ветка, тег или SHA коммита */
+  /** @purpose Branch, tag, or commit SHA */
   ref: string;
 };

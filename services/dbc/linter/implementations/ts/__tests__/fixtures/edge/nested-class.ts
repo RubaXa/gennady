@@ -1,14 +1,10 @@
-/**
- * @purpose Outer class.
- */
+/** @purpose Outer class. */
 export class Outer {
   /** @purpose Outer method. */
   run(): void {}
 }
 
-/**
- * @purpose Inner class.
- */
+/** @purpose Inner class. */
 export class Inner {
   /** @purpose Inner method. */
   work(): void {}

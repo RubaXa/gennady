@@ -8,7 +8,7 @@ import { VcsGitlabRepositoryFiles } from './vcs-gitlab-repository-files.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
- * @purpose Опции для создания клиента GitLab API: базовый URL и токен доступа.
+ * @purpose Options for creating a GitLab API client: base URL and access token.
  * @consumer VcsGitlabClient
  */
 export type VcsGitlabClientOptions = {
@@ -19,9 +19,9 @@ export type VcsGitlabClientOptions = {
 };
 
 /**
- * @purpose Клиент GitLab для работы с REST API.
- * @invariant Error Policy: Любой ответ !2xx преобразуется в Error с подробностями статуса.
- * @invariant Retry Policy: Повторов нет; ответственность за ретраи на вызывающей стороне.
+ * @purpose GitLab client for working with REST API.
+ * @invariant Error Policy: Any non-2xx response is converted to an Error with status details.
+ * @invariant Retry Policy: No retries; retry responsibility lies with the caller.
  * @consumer cli/review-verify
  */
 export class VcsGitlabClient extends VcsClient {
