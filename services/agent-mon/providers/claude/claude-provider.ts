@@ -134,8 +134,8 @@ export class ClaudeProvider implements AgentProvider {
       let completedAt: number | undefined;
 
       if (isAlive) {
-        // active if process is using CPU (> 0.5% threshold), otherwise idle
-        if ((psEntry?.cpuPercent ?? 0) > 0.5) {
+        // active if process is using CPU (> 0), otherwise idle
+        if ((psEntry?.cpuPercent ?? 0) > 0) {
           status = 'active';
         } else {
           status = 'idle';
