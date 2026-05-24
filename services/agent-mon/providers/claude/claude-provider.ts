@@ -43,10 +43,15 @@ export class ClaudeProvider implements AgentProvider {
   /** @see {AgentProvider#key} in ../../model/agent-provider.type.ts */
   readonly key: 'claude' = 'claude';
 
+  /** @purpose Batch ps inspection function */
   protected _psInfo: typeof defaultPsInfo;
+  /** @purpose Claude CLI argument parser */
   protected _parseClaudeArgs: typeof defaultParseClaudeArgs;
+  /** @purpose Session JSON file reader */
   protected _readSessionJson: typeof defaultReadSessionJson;
+  /** @purpose Session title extractor from JSONL */
   protected _readSessionTitle: typeof defaultReadSessionTitle;
+  /** @purpose Logger instance */
   protected _logger: typeof logger;
 
   /**
@@ -61,7 +66,10 @@ export class ClaudeProvider implements AgentProvider {
     this._logger = logger;
   }
 
-  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts */
+  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts
+   * @param opts Optional scan filtering parameters.
+   * @returns Parsed agent sessions array.
+   */
   async scan(opts?: ScanOpts): Promise<AgentSession[]> {
     this._logger.debug('[ClaudeProvider#scan] [idle -> scanning]');
 

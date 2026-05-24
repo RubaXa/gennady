@@ -252,7 +252,9 @@ function formatErrors(errors: DbcLintError[]): string {
 
 /** @purpose TypeScript adapter implementing the DbcLinter contract. | Pass 1: AST extraction. Pass 2: contract validation + signature matching. | Pass 3: ESLint report. Pass 4: autofix chain. | @implements {DbcLinter} in ../../dbc-linter.types.ts | @invariant Never throws — all errors are returned via report objects. | @invariant Error order is stable (top-to-bottom by entity position). */
 export class DbcTsLinter implements DbcLinter {
+  /** @purpose DBC parser for parsing contract text */
   protected _parser: DbcParser;
+  /** @purpose AST adapter for parsing TypeScript source files */
   protected _astAdapter: DbcAstAdapter;
 
   /** @purpose Construct a linter with injected parser and AST adapter. | @param parser DbcParser instance for contract parsing. | @param astAdapter DbcAstAdapter instance for source file parsing. */
@@ -261,7 +263,11 @@ export class DbcTsLinter implements DbcLinter {
     this._astAdapter = astAdapter;
   }
 
-  /** @see {DbcLinter#lint} in ../../dbc-linter.types.ts */
+  /** @see {DbcLinter#lint} in ../../dbc-linter.types.ts
+   * @param filePath Path to the source file to check.
+   * @param options Optional lint configuration.
+   * @returns Full lint report with errors and a formatting function.
+   */
   async lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport> {
     logger.debug(`[DbcTsLinter#lint] [idle → parsing] ${filePath}`);
 
@@ -308,7 +314,11 @@ export class DbcTsLinter implements DbcLinter {
     }
   }
 
-  /** @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts */
+  /** @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts
+   * @param filePath Path to the source file to check.
+   * @param options Optional lint configuration.
+   * @returns Combined report with errors and count of auto-fixed issues.
+   */
   async lintAndFix(filePath: string, options?: DbcLintOptions): Promise<DbcLintFixReport> {
     logger.debug(`[DbcTsLinter#lintAndFix] [idle → linting] ${filePath}`);
 
@@ -421,7 +431,11 @@ export class DbcTsLinter implements DbcLinter {
 
   // #region START_LINT_HELPERS
 
-  /** @purpose Walk all exported entities and their members, collecting lint errors. */
+  /** @purpose Walk all exported entities and their members, collecting lint errors.
+   * @param entities Exported entities from AST parse result.
+   * @param filePath Source file path for error attribution.
+   * @returns Array of lint errors collected from entities and members.
+   */
   protected _lintEntities(entities: DbcExportedEntity[], filePath: string): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
@@ -479,7 +493,16 @@ export class DbcTsLinter implements DbcLinter {
     }));
   }
 
-  /** @purpose Parse a contract text and validate it, returning both parser issues | (translated per FR-23) and structural mismatches via DbcContractMatchValidator. */
+  /** @purpose Parse a contract text and validate it, returning both parser issues
+   * (translated per FR-23) and structural mismatches via DbcContractMatchValidator.
+   * @param contractText Raw JSDoc contract text to parse and validate.
+   * @param signature Signature info from AST for parameter/returns matching.
+   * @param kind Entity or member kind for validation matrix lookup.
+   * @param filePath Source file path for error attribution.
+   * @param startLine Contract start line in source for error position.
+   * @param startCol Contract start column in source for error position.
+   * @returns Array of lint errors from parser issues and structural mismatches.
+   */
   protected _validateContract(
     contractText: string,
     signature: DbcSignatureInfo,
@@ -551,7 +574,11 @@ export class DbcTsLinter implements DbcLinter {
     }
   };
 
-  /** @purpose Walk entities and members, collecting all JSDoc contract blocks | with their associated kind and signature for autofix processing. */
+  /** @purpose Walk entities and members, collecting all JSDoc contract blocks
+   * with their associated kind and signature for autofix processing.
+   * @param entities Exported entities from AST parse result.
+   * @returns Array of contract blocks with kind and signature context.
+   */
   protected _collectContracts(
     entities: DbcExportedEntity[]
   ): InstanceType<typeof this._ContractBlock>[] {

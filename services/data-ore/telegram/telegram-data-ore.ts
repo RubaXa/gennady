@@ -17,10 +17,19 @@ type PeerLike = {
   displayName?: string;
 };
 
+/**
+ * @purpose Telegram client wrapper providing authentication and dialog retrieval.
+ */
 export class TelegramDataOre {
+  /** @purpose Underlying mtcute Telegram client instance */
   protected _client: TelegramClient;
+  /** @purpose Message dispatcher for routing incoming updates */
   protected _dispatcher: Dispatcher;
 
+  /**
+   * @purpose Initialize the Telegram client with given options and wire up message handler.
+   * @param options Telegram client configuration options.
+   */
   constructor(options: TelegramClientOptions) {
     this._client = new TelegramClient(options);
     this._dispatcher = Dispatcher.for(
@@ -30,6 +39,10 @@ export class TelegramDataOre {
     this._dispatcher.onNewMessage(this._handleNewMessage);
   }
 
+  /**
+   * @purpose Authorize the Telegram client, using QR login as fallback.
+   * @returns Authenticated user object.
+   */
   async authorize(): Promise<User> {
     try {
       return await this._client.start();
@@ -50,6 +63,11 @@ export class TelegramDataOre {
     });
   }
 
+  /**
+   * @purpose Retrieve dialogs from Telegram with optional query filters.
+   * @param query Optional query parameters for filtering and pagination.
+   * @returns Async iterable iterator of dialogs.
+   */
   async getDialogs(query?: DialogsQuery): Promise<AsyncIterableIterator<Dialog>> {
     const limit = query?.limit ?? 100;
 
@@ -67,6 +85,7 @@ export class TelegramDataOre {
     return results;
   }
 
+  /** @purpose Handler for incoming Telegram messages, formats and prints them. */
   protected _handleNewMessage = async (update: MessageContext, _state: never) => {
     const getChatIcon = (peer: PeerLike): string => {
       if (peer.type === 'user') {

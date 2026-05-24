@@ -31,9 +31,14 @@ type RawContract = {
  * @invariant `exported` contains all top-level exported entities, excluding re-exports.
  */
 export class DbcTsAstAdapter implements DbcAstAdapter {
+  /** @purpose Lazy-initialized tree-sitter parser instance */
   protected _parser: Parser | undefined;
 
-  /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts */
+  /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts
+   * @param filePath Absolute path to the TypeScript source file.
+   * @param content Optional pre-loaded file content, bypasses disk read.
+   * @returns Parse result with exported entities or an error.
+   */
   async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
     // #region START_PARSE_FILE
     try {

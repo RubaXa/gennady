@@ -29,13 +29,18 @@ type SpecShape = Record<string, SpecGlobal & SpecMethods>;
  * @consumer CLI (cmd/review)
  */
 export class ReviewGen {
+  /** @purpose Cached language specs loaded from specs directory on first access. */
   protected _langSpecs: Record<string, SpecShape> = {};
+  /** @purpose Configuration with base prompt template and timeout. */
   protected init: ReviewGenInit & {
     basePromptTemplate: string;
     timeout: number;
     logger?: typeof import('../../../shared/common/logger.ts').logger;
   };
 
+  /**
+   * @purpose Initialize ReviewGen with configuration and AI core.
+   * @param init Configuration overrides (timeout, logger). */
   constructor(init: ReviewGenInit = {}) {
     this.init = {
       basePromptTemplate: prompts.review('base'),
@@ -49,14 +54,17 @@ export class ReviewGen {
     });
   }
 
+  /** @purpose Instance of AiLegacyCore for calling LLM. */
   protected _ai: AiLegacyCore;
 
-  /** @purpose Instance of AiLegacyCore for calling LLM. */
+  /** @purpose Instance of AiLegacyCore for calling LLM.
+   * @returns AiLegacyCore instance. */
   get ai(): AiLegacyCore {
     return this._ai;
   }
 
-  /** @purpose Logger (if passed during initialization). */
+  /** @purpose Logger (if passed during initialization).
+   * @returns Logger instance or undefined. */
   get logger(): typeof import('../../../shared/common/logger.ts').logger | undefined {
     return this.init.logger;
   }
@@ -80,6 +88,12 @@ export class ReviewGen {
     return this._ai.generate(input);
   }
 
+  /**
+   * @purpose Build extra rules prompt from language specs matching the code under review.
+   * @param langs List of programming language names.
+   * @param code Source code to scan for known constructs.
+   * @returns Extra rules prompt string (empty if no matches found).
+   */
   protected _getExtraRulesPrompt(langs: string[], code: string): string {
     const spec = this._loadSpec(langs);
 
@@ -135,6 +149,11 @@ export class ReviewGen {
     return prompt ? `\n${prompt}\n` : '';
   }
 
+  /**
+   * @purpose Load and cache language specs from JSON files in the specs directory.
+   * @param langs List of programming language names.
+   * @returns Merged spec shape for all requested languages.
+   */
   protected _loadSpec(langs: string[]): SpecShape {
     return langs.reduce((spec: SpecShape, lang) => {
       const specName = lang === 'JavaScript' || lang === 'TypeScript' ? 'js' : lang;

@@ -12,8 +12,11 @@ import { logger } from '../../common/logger.ts';
  * @consumer git-core, vcs-client
  */
 export type GitRemoteInfo = {
+  /** @purpose Git host domain (e.g. github.com). */
   host: string;
+  /** @purpose Repository path on the host (e.g. owner/repo). */
   project: string;
+  /** @purpose URL scheme used for origin remote (http, https, ssh). */
   scheme: string;
 };
 
@@ -22,12 +25,19 @@ export type GitRemoteInfo = {
  * @consumer commit-gen, review-gen, ai-legacy
  */
 export type GitDiffInfo = {
+  /** @purpose Raw git diff text output. */
   diff: string;
+  /** @purpose All parsed diff files sorted by token count ascending. */
   parsedDiff: ParsedDiffFile[];
+  /** @purpose Code/config files only, excluding tests, deleted and renamed. */
   parsedCodeDiff: ParsedDiffFile[];
+  /** @purpose Total token count across parsed code diff files. */
   parsedCodeTokens: number;
+  /** @purpose Token count of the largest code file chunk. */
   parsedCodeChunkMaxTokens: number;
+  /** @purpose Unique programming languages detected across code diff files. */
   programmingLanguages: (string | undefined)[];
+  /** @purpose Number of commits on top of base branch. */
   commitCount: number;
 };
 

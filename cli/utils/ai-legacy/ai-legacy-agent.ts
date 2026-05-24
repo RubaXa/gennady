@@ -11,6 +11,7 @@ import { AiLegacyModel } from './ai-legacy-model.ts';
  * @consumer cmd/agent, tests
  */
 export class AiLegacyAgent {
+  /** @purpose AI model instance for making generation requests. */
   protected _brain: AiLegacyModel;
 
   /**

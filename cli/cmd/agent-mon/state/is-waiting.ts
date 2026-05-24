@@ -17,18 +17,20 @@ const DEFAULT_WAIT_PATTERNS: RegExp[] = [
  * @purpose Determine whether an agent session is waiting for operator input based on last message content.
  * @invariant Pure function — no side effects, no I/O, deterministic given same inputs.
  * @param session Agent session data — uses only lastMessage field for detection.
+ * @param patterns Regex patterns for waiting detection; uses DEFAULT_WAIT_PATTERNS when falsy.
  * @returns true if lastMessage matches any pattern, false otherwise (including when lastMessage is absent).
  */
 export function isWaitingForUser(
   session: AgentSession,
-  patterns: RegExp[] = DEFAULT_WAIT_PATTERNS,
+  patterns?: RegExp[],
 ): boolean {
+  const effectivePatterns = patterns ?? DEFAULT_WAIT_PATTERNS;
   // #region START_CHECK_LAST_MESSAGE_PRESENCE — invariant: no lastMessage → cannot be waiting
   if (!session.lastMessage) return false;
   // #endregion END_CHECK_LAST_MESSAGE_PRESENCE
 
   // #region START_TEST_PATTERNS — invariant: any pattern match signals waiting; short-circuit on first match
-  for (const pattern of patterns) {
+  for (const pattern of effectivePatterns) {
     if (pattern.test(session.lastMessage)) return true;
   }
   // #endregion END_TEST_PATTERNS

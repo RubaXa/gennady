@@ -9,8 +9,11 @@ import { resolveSafeVerifyCommands } from './verify-commands/resolve-verify-comm
  * @consumer render-review-verify.xml, render-resolve-conflicts.xml
  */
 export type VerifyCommandPlaceholders = {
+  /** @purpose Hint for agent on which verification command to run. */
   axiomHint: string;
+  /** @purpose Example tool commands for the agent to reference. */
   toolsExample: string;
+  /** @purpose Step-by-step verification instruction for the agent. */
   verifyStep: string;
 };
 

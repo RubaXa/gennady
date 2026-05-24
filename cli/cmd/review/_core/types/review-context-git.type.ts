@@ -9,6 +9,8 @@ import type { GitRemoteInfo } from '../../../../../shared/backend/git/git-core.t
  * @consumer build-review-context-git.logic
  */
 export type ReviewContextGit = {
+  /** @purpose Current branch name for the review. */
   branch: string;
+  /** @purpose Remote repository info extracted from git config. */
   remote: GitRemoteInfo;
 };

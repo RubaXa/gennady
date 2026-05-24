@@ -10,8 +10,17 @@ import type { VcsMergeRequestChanges } from '../../../services/vcs-client/entiti
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { CatGenResult } from '../../utils/cat-gen/cat-gen.ts';
 
+/**
+ * @purpose Result of resolving a VCS URL to cat-gen file list — either successful with files or failed with an error.
+ */
 export type CatUrlResult = { ok: true; files: CatGenResult[] } | { ok: false; error: string };
 
+/**
+ * @purpose Resolve a VCS URL (GitLab MR or GitHub PR) into CatGenResult files for cat output.
+ * @param url VCS URL to parse and resolve.
+ * @param options Optional filtering by exclude patterns or file extensions.
+ * @returns CatUrlResult with either fetched files or a user-facing error message.
+ */
 export async function resolveCatUrl(
   url: string,
   options: { exclude?: string | string[]; extensions?: string[] } = {}

@@ -20,9 +20,11 @@ export type AgentMonAppProps = {
  * @purpose Root ink component — subscribes to state manager, handles keyboard exit, selects the active view.
  * @invariant Subscribes on mount, unsubscribes on unmount — no leaks.
  * @invariant Loading → "Scanning for active sessions..."; error → red message + last data if available.
+ * @param props Component properties from AgentMonAppProps.
  * @sideEffect Keyboard input capture for exit (Esc, q, Ctrl+C).
  */
-export function AgentMonApp({ stateManager, view = 'column' }: AgentMonAppProps) {
+export function AgentMonApp(props: AgentMonAppProps) {
+  const { stateManager, view = 'column' } = props;
   const [viewModel, setViewModel] = useState<ViewModel>(() => stateManager.getViewModel());
   const { exit } = useApp();
   const { stdout } = useStdout();

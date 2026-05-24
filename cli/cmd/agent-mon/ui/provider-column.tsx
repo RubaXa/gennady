@@ -8,15 +8,19 @@ import { SessionCard } from './session-card.tsx';
 
 /** @purpose Props for the ProviderColumn component — column data to render. */
 export type ProviderColumnProps = {
+  /** @purpose Provider column data from the ViewModel. */
   column: ProviderColumnData;
+  /** @purpose Max session cards to render in this column. */
   maxCards?: number;
 };
 
 /**
  * @purpose Renders one provider column — header with status counts, then stacked session cards.
  * @invariant Sessions within the column are pre-sorted by status priority (active → waiting → idle → completed) by groupByProvider; no re-sort needed here.
+ * @param props Component properties from ProviderColumnProps.
  */
-export function ProviderColumn({ column, maxCards }: ProviderColumnProps) {
+export function ProviderColumn(props: ProviderColumnProps) {
+  const { column, maxCards } = props;
   const cards = maxCards ? column.sessions.slice(0, maxCards) : column.sessions;
   return (
     <Box flexDirection="column" borderStyle="single" paddingX={1} width={34}>

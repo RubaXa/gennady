@@ -31,7 +31,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   });
 
   const positional = (args._ as string[]).filter(
-    (f: string) => typeof f === 'string'
+    (f: string) => typeof f === 'string' && f !== 'lint'
   );
 
   const autofix = args.autofix === true || args.autofix === 'true';

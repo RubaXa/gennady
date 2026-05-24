@@ -10,9 +10,13 @@ import { removeThink } from '../../../shared/common/think.ts';
  * @consumer AiLegacyModel, AiLegacyCore, GennadyRc
  */
 export type AiLegacyModelInit = {
+  /** @purpose Model name identifier (e.g. "llama3.1:8b"). */
   model: string;
+  /** @purpose API endpoint URL for generation requests. */
   url: string;
+  /** @purpose Optional API key for authorization. */
   key?: string;
+  /** @purpose Extra parameters merged into the request body. */
   extra?: Record<string, unknown>;
 };
 
@@ -34,9 +38,14 @@ export class AiLegacyModel {
     });
   }
 
+  /** @purpose Model initialization config with name, URL, and key. */
   protected _init: AiLegacyModelInit;
+  /** @purpose Cached ping promise to avoid duplicate pings. */
   protected _pingPromise: Promise<[boolean, null] | [null, Error]> | null = null;
 
+  /**
+   * @purpose Create an AI model instance with the given configuration.
+   * @param init Partial initialization config (model, url, key, extra). */
   constructor(init: Partial<AiLegacyModelInit>) {
     this._init = {
       model: init.model ?? 'llama3.1:8b',
@@ -45,17 +54,20 @@ export class AiLegacyModel {
     };
   }
 
-  /** @purpose Model name (for logs and headers). */
+  /** @purpose Model name (for logs and headers).
+   * @returns Model name string. */
   get name(): string {
     return this._init.model;
   }
 
-  /** @purpose API endpoint URL. */
+  /** @purpose API endpoint URL.
+   * @returns API URL string. */
   get url(): string {
     return this._init.url;
   }
 
-  /** @purpose API key (if authorization is required). */
+  /** @purpose API key (if authorization is required).
+   * @returns API key string or undefined. */
   get key(): string | undefined {
     return this._init.key;
   }

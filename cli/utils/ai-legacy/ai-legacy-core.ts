@@ -22,14 +22,20 @@ type ParsedDiffFile = import('../../../shared/backend/git/git-diff.ts').ParsedDi
  * @deprecated Use direct work with AiLegacyModel and GennadyRc.
  */
 export class AiLegacyCore {
+  /** @purpose Loaded AI model list from gennadyrc. */
   protected _models: AiLegacyModel[] = [];
+  /** @purpose Currently active model that passed ping check. */
   protected _activeModel: AiLegacyModel | null = null;
+  /** @purpose Configuration and dependencies for the core. */
   protected init: AiLegacyCoreInit & {
     logger: typeof logger;
     timeout: number;
     maxInputTokens: number;
   };
 
+  /**
+   * @purpose Initialize AiLegacyCore with loaded models from gennadyrc.
+   * @param init Configuration (logger, timeout, maxInputTokens). */
   constructor(init: AiLegacyCoreInit = {}) {
     this.init = {
       logger,
@@ -49,17 +55,20 @@ export class AiLegacyCore {
     }
   }
 
-  /** @purpose Name of the first loaded model (for CLI display). */
+  /** @purpose Name of the first loaded model (for CLI display).
+   * @returns Model name string or undefined. */
   get model(): string | undefined {
     return this._models[0]?.name;
   }
 
-  /** @purpose URL of the first loaded model. */
+  /** @purpose URL of the first loaded model.
+   * @returns API URL string or undefined. */
   get apiUrl(): string | undefined {
     return this._models[0]?.url;
   }
 
-  /** @purpose Token limit per batch when splitting diff. */
+  /** @purpose Token limit per batch when splitting diff.
+   * @returns Max input tokens count. */
   get maxInputTokens(): number {
     return this.init.maxInputTokens;
   }

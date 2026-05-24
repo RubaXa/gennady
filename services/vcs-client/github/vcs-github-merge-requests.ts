@@ -28,14 +28,26 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
     this._request = request;
   }
 
+  /**
+   * @purpose GitHub getList not implemented — use getChanges for PR files.
+   * @returns Empty array — not implemented.
+   */
   async getList(): Promise<unknown[]> {
     throw new Error('GitHub getList not implemented — use getChanges for PR files');
   }
 
+  /**
+   * @purpose GitHub getOne not implemented.
+   * @returns Null — not implemented.
+   */
   async getOne(): Promise<unknown | null> {
     throw new Error('GitHub getOne not implemented');
   }
 
+  /**
+   * @purpose GitHub getByIid not implemented.
+   * @returns Null — not implemented.
+   */
   async getByIid(): Promise<unknown | null> {
     throw new Error('GitHub getByIid not implemented');
   }

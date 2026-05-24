@@ -180,6 +180,7 @@ async function buildOnceViewModel(monitor: AgentMonitor, limit: number): Promise
  * @pre argv contains CLI flags per the agent-mon subcommand contract.
  * @param argv Argument vector (excluding the command name 'agent-mon').
  * @throws Never — on invalid input, prints usage and exits with code 1.
+ * @returns void (process is kept alive by ink in live mode or exits after snapshot in --once).
  * @post Process is kept alive by ink (live mode) or exits after snapshot (--once).
  * @sideEffect Starts ink renderer; registers providers; may spawn observe polling loop.
  */

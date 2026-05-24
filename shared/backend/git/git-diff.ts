@@ -45,18 +45,31 @@ const FILE_CATEGORY_REGEX: Record<string, RegExp> = {
  * @consumer git-core, commit-gen, review-gen
  */
 export type ParsedDiffFile = {
+  /** @purpose True if the file was created in this diff (new file mode). */
   isNew: boolean;
+  /** @purpose True if the file was deleted in this diff (deleted file mode). */
   isDeleted: boolean;
+  /** @purpose True if the file was renamed (rename from/to headers present). */
   isRenamed: boolean;
+  /** @purpose Current file path (post-rename if applicable). */
   filename: string;
+  /** @purpose Original file path before rename, or null. */
   oldFilename: string | null;
+  /** @purpose New file mode octet (e.g. 100644), or null. */
   newFileMode: string | null;
+  /** @purpose Deleted file mode octet, or null. */
   deletedFileMode: string | null;
+  /** @purpose Aggregated hunk data: token counts and change lines. */
   diff: { tokens: number; hunks: { header: string; changes: string[]; tokens: number }[] };
+  /** @purpose Total token count computed across all hunks. */
   tokens: number;
+  /** @purpose Raw metadata extracted from diff headers (index, modes, etc.). */
   metadata: Record<string, unknown>;
+  /** @purpose File extension in lowercase (e.g. 'ts'). */
   ext: string;
+  /** @purpose File category: code, config, doc, img, bin, lock, etc. */
   category: string;
+  /** @purpose Detected programming language from file extension, if any. */
   programmingLanguage?: string;
 };
 

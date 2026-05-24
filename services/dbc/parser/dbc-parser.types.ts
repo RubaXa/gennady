@@ -73,5 +73,10 @@ export type DbcIssueCode =
  * @consumer Any parser implementation in `services/dbc/parser/implementations/*`
  */
 export interface DbcParser {
+  /**
+   * @purpose Parse a raw contract text block into a universal DBC schema with entries and issues.
+   * @param inputContract Raw JSDoc-like contract text block to parse.
+   * @returns Parsed schema containing normalized entries and format info.
+   */
   parse(inputContract: string): DbcSchema;
 }

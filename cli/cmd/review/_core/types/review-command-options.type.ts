@@ -10,6 +10,8 @@ import type { ReviewCommandMode } from './review-command-mode.type.ts';
  * @consumer run-review-command.logic
  */
 export type ReviewCommandOptions = {
+  /** @purpose Review command mode (verify or issues). */
   mode: ReviewCommandMode;
+  /** @purpose Normalized launch arguments for the review command. */
   args: ReviewCommandArgs;
 };

@@ -8,16 +8,27 @@ import type { ScanOpts } from '../../model/scan-opts.type.js';
 
 /** @purpose Raw row shape from the OpenCode session table. */
 export type SessionRow = {
+  /** @purpose Unique session identifier */
   id: string;
+  /** @purpose URL-friendly unique slug for the session */
   slug: string;
+  /** @purpose Human-readable session title */
   title: string | null;
+  /** @purpose Working directory the session was started in */
   directory: string;
+  /** @purpose Session creation timestamp in epoch ms */
   time_created: number;
+  /** @purpose Session last update timestamp in epoch ms */
   time_updated: number;
+  /** @purpose Agent name used for the session */
   agent: string | null;
+  /** @purpose Model name used for the session */
   model: string | null;
+  /** @purpose Input token count for the session */
   tokens_input: number | null;
+  /** @purpose Output token count for the session */
   tokens_output: number | null;
+  /** @purpose Parent session ID for forked sessions */
   parent_id: string | null;
 };
 

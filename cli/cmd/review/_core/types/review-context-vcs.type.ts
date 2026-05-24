@@ -9,7 +9,10 @@ import type { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/
  * @consumer build-review-context-vcs.logic
  */
 export type ReviewContextVcs = {
+  /** @purpose GitLab host (e.g. "gitlab.example.com"). */
   host: string;
+  /** @purpose GitLab project path (owner/repo). */
   project: string;
+  /** @purpose Initialized VCS client for GitLab API requests. */
   vcs: VcsGitlabClient;
 };

@@ -25,13 +25,17 @@ export type RemoteConsoleCommandDeps = {
   /** @purpose Starts remote-console server runtime and returns lifecycle handle. */
   startServer: typeof startRemoteConsoleServer;
 
-  /** @purpose Opens target URL in default browser process. */
+  /** @purpose Opens target URL in default browser process.
+   * @param targetUrl Absolute browser URL provided by CLI user.
+   * @returns Promise resolving after the browser opens. */
   openBrowser: (targetUrl: string) => Promise<unknown>;
 
-  /** @purpose Emits informational command diagnostics for operator feedback. */
+  /** @purpose Emits informational command diagnostics for operator feedback.
+   * @param args Format arguments passed to console.info. */
   info: (...args: unknown[]) => void;
 
-  /** @purpose Emits degraded-path diagnostics when optional browser opening fails. */
+  /** @purpose Emits degraded-path diagnostics when optional browser opening fails.
+   * @param args Format arguments passed to console.warn. */
   warn: (...args: unknown[]) => void;
 };
 
@@ -39,6 +43,7 @@ export type RemoteConsoleCommandDeps = {
  * @purpose Runs remote-console CLI command, starts server and optionally opens a browser URL with activation flag.
  * @param argv Process argv or compatible command argument list.
  * @param deps Optional dependency overrides for deterministic tests.
+ * @returns void — process stays alive while server runs.
  * @sideEffect Network: starts HTTP server runtime for remote console envelopes.
  * @sideEffect Process: writes startup diagnostics to stdout.
  * @sideEffect OS: opens default browser when --url is passed.

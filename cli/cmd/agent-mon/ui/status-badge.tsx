@@ -18,8 +18,10 @@ const STATUS_DISPLAY: Record<StatusBadgeProps['status'], { emoji: string; label:
   completed: { emoji: '⬜', label: 'completed' },
 };
 
-/** @purpose Visual indicator of agent session status — emoji icon + text label. */
-export function StatusBadge({ status }: StatusBadgeProps) {
+/** @purpose Visual indicator of agent session status — emoji icon + text label.
+ * @param props Component properties from StatusBadgeProps. */
+export function StatusBadge(props: StatusBadgeProps) {
+  const { status } = props;
   const display = STATUS_DISPLAY[status];
   return <Text>{display.emoji} {display.label}</Text>;
 }

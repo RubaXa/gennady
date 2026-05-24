@@ -9,6 +9,8 @@ import type { ResolveConflictsContextGit } from './resolve-conflicts-context-git
  * @consumer resolve-conflicts-command-run.logic
  */
 export type ResolveConflictsArtifact = {
+  /** @purpose Git context for resolve-conflicts prompt generation. */
   resolveConflictsContextGit: ResolveConflictsContextGit;
+  /** @purpose XML artifact generated from the resolve-conflicts pipeline. */
   resolveConflictsArtifactXml: string;
 };

@@ -20,8 +20,11 @@ export const DEFAULT_EXTENSIONS = ['.md', '.mdc', '.js', '.ts', '.tsx', '.go', '
  * @consumer catGen
  */
 export type CatGenOptions = {
+  /** @purpose File extensions to include (e.g. ['.ts', '.md']). */
   extensions?: string[];
+  /** @purpose Patterns or paths to exclude from collection. */
   exclude?: string | string[];
+  /** @purpose When true, skip default node_modules exclusion. */
   ignoreDefaultExcludes?: boolean;
 };
 
@@ -30,8 +33,11 @@ export type CatGenOptions = {
  * @consumer catGen, cmd/cat
  */
 export type CatGenResult = {
+  /** @purpose Absolute path of the collected file. */
   absPath: string;
+  /** @purpose Path relative to the working directory. */
   relativePath: string;
+  /** @purpose File contents as a UTF-8 string. */
   contents: string;
 };
 

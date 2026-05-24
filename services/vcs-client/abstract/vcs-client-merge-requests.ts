@@ -2,6 +2,11 @@
 // @consumers: VcsClient
 // @tasks: TSK-28
 
+import type {
+  VcsMergeRequestChanges,
+  VcsMergeRequestChangesQuery,
+} from '../entities/vcs-merge-request-changes.type.ts';
+
 /**
  * @purpose Parameters for querying Merge Request list: project, branch, state, pagination.
  * @consumer VcsClientMergeRequests
@@ -67,6 +72,6 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: GitLab GET /projects/:id/merge_requests/:iid/changes | GitHub GET /repos/:owner/:repo/pulls/:number/files
    */
   abstract getChanges(
-    query: import('../entities/vcs-merge-request-changes.type.ts').VcsMergeRequestChangesQuery
-  ): Promise<import('../entities/vcs-merge-request-changes.type.ts').VcsMergeRequestChanges[]>;
+    query: VcsMergeRequestChangesQuery
+  ): Promise<VcsMergeRequestChanges[]>;
 }

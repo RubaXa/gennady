@@ -26,6 +26,9 @@ const storagePath = join(homedir(), '.gennady', 'tg', 'sessions', 'main.session'
 
 mkdirSync(dirname(storagePath), { recursive: true });
 
+/**
+ * @purpose Pre-configured Telegram client instance for demo usage.
+ */
 export const tg = new TelegramDataOre({
   apiId: +process.env.GENNADY_TELEGRAM_API_ID,
   apiHash: process.env.GENNADY_TELEGRAM_API_HASH,

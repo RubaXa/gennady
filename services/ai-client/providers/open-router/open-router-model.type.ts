@@ -6,7 +6,6 @@ import type { AIModel } from '../ai-model.type.ts';
 
 /**
  * @purpose Open Router GET /models API response item (full schema).
- * @see {AIModel} in ./ai-model.type.ts
  */
 export type OpenRouterModel = AIModel & {
   canonical_slug: string;

@@ -168,6 +168,11 @@ function tryNpmPackageJson(projectRoot: string, row: NpmPackageJsonRow): string[
   return picked.slice(0, row.maxCommands);
 }
 
+/**
+ * @purpose Return safe code verification commands for the current project (tests, lint, types).
+ * @param projectRoot Repository root for searching markers and package.json.
+ * @returns List of commands in priority order; empty list if the detector did not find a safe set.
+ */
 export function resolveSafeVerifyCommands(projectRoot: string): string[] {
   for (const row of DETECTOR_ROWS) {
     if (row.kind === 'marker') {

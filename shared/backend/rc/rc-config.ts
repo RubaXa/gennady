@@ -10,8 +10,11 @@ import { join as pathJoin } from 'node:path';
  * @consumer GennadyRc, ai-legacy
  */
 export type RcModel = {
+  /** @purpose Model identifier string (e.g. 'deepseek-v4-pro'). */
   model: string;
+  /** @purpose Base URL of the model API endpoint. */
   url: string;
+  /** @purpose Optional API key for authenticated requests. */
   key?: string;
 };
 
@@ -20,6 +23,7 @@ export type RcModel = {
  * @consumer GennadyRc
  */
 export type GennadyRcData = {
+  /** @purpose List of configured AI models. */
   models: RcModel[];
 };
 
@@ -42,12 +46,19 @@ export class GennadyRc {
     return [process.cwd(), process.env.HOME].map((dir) => new GennadyRc(dir));
   }
 
+  /** @purpose Full path to the loaded rc config file. */
   protected _filename = '';
+  /** @purpose Parsed configuration data with model list. */
   protected _data: GennadyRcData = {
     models: [],
   };
+  /** @purpose Load/parse error if config is invalid, null otherwise. */
   protected _error: Error | null = null;
 
+  /** @purpose Load and parse Gennady RC config file from a directory.
+   * @param dir Directory to look for the rc file in (defaults to cwd).
+   * @param name Config filename (defaults to .gennadyrc).
+   */
   constructor(dir = process.cwd(), name = GennadyRc.DEFAULT_FILENAME) {
     this._filename = pathJoin(dir, name);
 

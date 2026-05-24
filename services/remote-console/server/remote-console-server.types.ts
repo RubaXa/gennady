@@ -35,10 +35,14 @@ export type RemoteConsoleServerOptions = {
   /** @purpose Defines process exit code used after controlled disconnect shutdown. */
   exitCode?: number;
 
-  /** @purpose Custom line writer for tests or integration embeddings. */
+  /** @purpose Custom line writer for tests or integration embeddings.
+   * @param line Text line to write.
+   */
   stdoutWrite?: (line: string) => void;
 
-  /** @purpose Custom exit strategy for tests; defaults to process.exit in production runtime. */
+  /** @purpose Custom exit strategy for tests; defaults to process.exit in production runtime.
+   * @param code Exit code to use.
+   */
   exit?: (code: number) => void;
 };
 
@@ -47,6 +51,8 @@ export type RemoteConsoleServerLifecycle = {
   /** @purpose Exposes fully resolved endpoint URL for browser client configuration. */
   url: string;
 
-  /** @purpose Closes the listening server without forcing process termination. */
+  /** @purpose Closes the listening server without forcing process termination.
+   * @returns Promise that resolves when server is closed.
+   */
   close: () => Promise<void>;
 };

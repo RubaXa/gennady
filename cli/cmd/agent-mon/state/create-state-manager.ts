@@ -14,13 +14,14 @@ import { logger } from '#logger';
  * @invariant getViewModel() always returns the latest snapshot; subscribe fires immediately with current state.
  */
 export type StateManager = {
-  /** @purpose Retrieve the current ViewModel snapshot. */
+    /** @purpose Retrieve the current ViewModel snapshot.
+     * @returns Current immutable copy. */
   getViewModel(): ViewModel;
-  /**
-   * @purpose Register a callback invoked on every ViewModel update, including the current state immediately.
-   * @param fn Callback receiving the updated ViewModel.
-   * @returns Unsubscribe function — call to stop receiving updates.
-   */
+    /**
+     * @purpose Register a callback invoked on every ViewModel update, including the current state immediately.
+     * @param fn Callback receiving the updated ViewModel.
+     * @returns Unsubscribe function — call to stop receiving updates.
+     */
   subscribe(fn: (vm: ViewModel) => void): () => void;
 };
 
@@ -88,6 +89,7 @@ function buildViewModel(sessions: AgentSession[], limit?: number): ViewModel {
  * @invariant Subscribers receive the current ViewModel immediately on subscribe; status='loading' until first iteration.
  * @invariant On observer error: status transitions to 'error', data preserves last successful scan.
  * @param changes Async iterable of SessionChanges — produced by the agent-mon observe() pipeline.
+ * @param opts Optional configuration to control per-provider session limit.
  * @returns StateManager instance with getViewModel and subscribe methods.
  * @sideEffect Spawns background async iteration over changes; notifies subscribers on each update.
  */

@@ -1,29 +1,33 @@
-// @file: Описывает узел XML-дерева — тег, атрибуты и дочерние узлы или текст.
+// @file: XML tree node — tag, attributes, child nodes or text.
 // @consumers: commit-gen
 // @tasks: N/A
 
 /**
- * @purpose Описывает узел XML-дерева — тег, атрибуты и дочерние узлы или текст.
+ * @purpose XML tree node — tag, attributes, child nodes or text.
  * @consumer commit-gen, review-verify, cat-gen
  */
 export type XmlNode = {
+  /** @purpose XML tag name (e.g. 'message', 'commit'). */
   tag: string;
+  /** @purpose Optional key-value attributes on the tag. */
   attrs?: Record<string, string>;
+  /** @purpose Child content: nested nodes, text, string array, or CDATA. */
   children?: XmlNode[] | string | string[] | XmlCdataNode;
 };
 
 /**
- * @purpose Представить текстовый XML-блок как CDATA-контент без escape спецсимволов.
+ * @purpose Represent XML block as CDATA content without escaping special chars.
  * @consumer xml serializer
  */
 export type XmlCdataNode = {
+  /** @purpose Raw CDATA text content (not escaped). */
   cdata: string;
 };
 
 /**
- * @purpose Извлечь из XML-строки блок <message> и преобразовать его в плоский объект для коммита.
- * @param xmlString Строка с XML (например, вывод команды или файл).
- * @returns Объект type, icon, subject, description или null, если блок <message> не найден.
+ * @purpose Extract \<message\> block from XML string and convert to flat object for commit.
+ * @param xmlString XML string (e.g. command output or file).
+ * @returns Object type, icon, subject, description or null if \<message\> block not found.
  */
 export function xmlCommitMessageToJson(xmlString: string): {
   type: string;
@@ -53,9 +57,9 @@ export function xmlCommitMessageToJson(xmlString: string): {
 }
 
 /**
- * @purpose Экранировать специальные символы в строке для безопасной вставки в XML.
- * @param str Исходная строка, которая может содержать <, >, &, ', ".
- * @returns Строка с заменёнными сущностями (&lt;, &gt;, &amp;, &apos;, &quot;).
+ * @purpose Escape special characters in string for safe XML insertion.
+ * @param str Source string that may contain \<, \>, &, ', ".
+ * @returns String with replaced entities (&lt;, &gt;, &amp;, &apos;, &quot;).
  */
 export function escapeXml(str: string): string {
   if (!str) return '';
@@ -78,10 +82,10 @@ export function escapeXml(str: string): string {
 }
 
 /**
- * @purpose Сериализовать объектное представление узла в валидную XML-строку с отступами.
- * @param node Узел XmlNode для сериализации.
- * @param [level] Уровень вложенности для отступов (по умолчанию 0).
- * @returns Форматированная XML-строка.
+ * @purpose Serialize XmlNode object to indented XML string.
+ * @param node XmlNode to serialize.
+ * @param [level] Nesting level for indentation (default 0).
+ * @returns Formatted XML string.
  */
 export function serializeXmlNode(node: XmlNode, level = 0): string {
   const indent = '  '.repeat(level);

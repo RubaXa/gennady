@@ -17,9 +17,13 @@ import { parseModelJson as defaultParseModelJson } from './model-parser.ts';
 
 /** @purpose Injectable constructor dependencies for OpenCodeProvider testing and customization. */
 export type OpenCodeProviderDeps = {
+  /** @purpose Custom SQLite database path override */
   dbPath?: string;
+  /** @purpose Session query function injectable for testing */
   querySessions?: typeof defaultQuerySessions;
+  /** @purpose Last message query function injectable for testing */
   queryLastMessage?: typeof defaultQueryLastMessage;
+  /** @purpose Model JSON parser injectable for testing */
   parseModelJson?: typeof defaultParseModelJson;
 };
 
@@ -30,8 +34,11 @@ const DEFAULT_DB_PATH = '~/.local/share/opencode/opencode.db';
  * @implements {AgentProvider} in ../../model/agent-provider.type.ts
  */
 export class OpenCodeProvider implements AgentProvider {
+  /** @purpose Provider identifier key ('opencode') */
   readonly key = 'opencode';
+  /** @purpose Resolved dependency injection container */
   protected _deps: Required<OpenCodeProviderDeps>;
+  /** @purpose Logger instance for structured logging */
   protected _logger = logger;
 
   /**
@@ -47,7 +54,10 @@ export class OpenCodeProvider implements AgentProvider {
     };
   }
 
-  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts */
+  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts
+   * @param opts Optional scan filtering parameters.
+   * @returns Parsed agent sessions array.
+   */
   async scan(opts?: ScanOpts): Promise<AgentSession[]> {
     this._logger.debug('[OpenCodeProvider#scan] [idle → opening]');
 

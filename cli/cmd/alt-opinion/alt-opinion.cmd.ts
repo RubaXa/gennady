@@ -22,7 +22,9 @@ import type {
 export type AltOpinionCmdDeps = {
   /** @purpose Pre-read stdin content bypassing process.stdin */
   stdinContent?: string;
-  /** @purpose Sync file reader override — defaults to readFileSync */
+  /** @purpose Sync file reader override — defaults to readFileSync
+   * @param path File path to read.
+   * @returns File content as string. */
   readFile?: (path: string) => string;
   /** @purpose AI SDK generateText override for testing */
   generateText?: typeof generateText;

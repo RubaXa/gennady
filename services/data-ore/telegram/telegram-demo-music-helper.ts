@@ -216,6 +216,7 @@ function appendToReport(markdown: string): void {
 /**
  * @purpose Generate structured music release description from Telegram data.
  * @param source Telegram dialog or message context.
+ * @returns Promise that resolves when music description has been generated and saved.
  */
 export async function generateMusicDescription(source: TelegramSource): Promise<void> {
   try {

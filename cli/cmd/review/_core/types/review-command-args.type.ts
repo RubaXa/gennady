@@ -7,10 +7,16 @@
  * @consumer review-verify.cmd, review-issues.cmd
  */
 export type ReviewCommandArgs = {
+  /** @purpose Branch name for the review. */
   branch?: string;
+  /** @purpose MR URL for VCS-based review. */
   url?: string;
+  /** @purpose Git ref to review. */
   ref?: string;
+  /** @purpose VCS project path (owner/repo). */
   project?: string;
+  /** @purpose MR IID for GitLab-based review. */
   iid?: string;
+  /** @purpose Review all MRs (for review-verify --all). */
   all?: boolean;
 };
