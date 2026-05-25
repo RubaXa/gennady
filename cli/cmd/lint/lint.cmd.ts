@@ -5,7 +5,7 @@
 import { execSync } from 'node:child_process';
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { logger } from '#logger';
+import { logger, setLogLevel } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { check as checkFileHeader } from './checks/file-header.check.ts';
 import { check as checkAnchors } from './checks/anchor.check.ts';
@@ -28,6 +28,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const args = parseArgs(rawArgs, {
     autofix: ['autofix'],
     staged: ['staged'],
+    verbose: ['verbose', 'v'],
   });
 
   const positional = (args._ as string[]).filter(
@@ -36,6 +37,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   const autofix = args.autofix === true || args.autofix === 'true';
   const staged = args.staged === true || args.staged === 'true';
+  const verbose = args.verbose === true || args.verbose === 'true';
+
+  if (verbose) setLogLevel('debug');
 
   // #region START_COLLECT_FILES — invariant: --staged → git diff + ls-files; otherwise resolveTargets
   let files: string[];
@@ -139,9 +143,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_OUTPUT — invariant: ESLint format when errors present
   if (report.exitCode === 1) {
-    logger.info(`[LintCommand#run] [linting → failed] ${allErrors.length} error(s)`);
+    console.log(`[LintCommand#run] [linting → failed] ${allErrors.length} error(s)`);
   } else {
-    logger.info('[LintCommand#run] [linting → clean] no errors');
+    console.log('[LintCommand#run] [linting → clean] no errors');
   }
   // #endregion END_OUTPUT
 

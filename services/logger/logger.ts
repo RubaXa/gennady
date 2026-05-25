@@ -1,4 +1,4 @@
-// @file: Project-wide logger contract and console-bound implementation.
+// @file: Project-wide logger contract and console-bound level-aware implementation.
 // @consumers: All services and CLI commands
 
 /** @purpose Project-wide logger contract with a stable debug/info/warn/error API. */
@@ -32,8 +32,36 @@ export type SimpleLogger = {
   error: (message: string, detail?: unknown) => void;
 };
 
+/** @purpose Ordered log levels — lower index = more verbose. */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'silent';
+
+const LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3, silent: 4 };
+
+let _level: LogLevel = 'warn';
+
 /**
- * @purpose Logger implementation bound to the runtime console.
- * @sideEffect Console: writes log entries to stdout/stderr.
+ * @purpose Set the minimum log level for the global logger instance.
+ * @param level New minimum level — messages below this level are suppressed.
  */
-export const logger: SimpleLogger = console;
+export const setLogLevel = (level: LogLevel): void => {
+  _level = level;
+};
+
+/**
+ * @purpose Logger implementation bound to the runtime console, filtered by the active log level.
+ * @sideEffect Console: writes log entries to stderr via console methods.
+ */
+export const logger: SimpleLogger = {
+  debug: (message, detail?) => {
+    if (LEVELS[_level] <= LEVELS.debug) console.debug(message, ...(detail !== undefined ? [detail] : []));
+  },
+  info: (message, detail?) => {
+    if (LEVELS[_level] <= LEVELS.info) console.info(message, ...(detail !== undefined ? [detail] : []));
+  },
+  warn: (message, detail?) => {
+    if (LEVELS[_level] <= LEVELS.warn) console.warn(message, ...(detail !== undefined ? [detail] : []));
+  },
+  error: (message, detail?) => {
+    if (LEVELS[_level] <= LEVELS.error) console.error(message, ...(detail !== undefined ? [detail] : []));
+  },
+};
