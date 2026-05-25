@@ -81,6 +81,7 @@ graph TD
     TSK-32 --> TSK-16
     TSK-49[TSK-49: resolveTargets + LintCommand] --> TSK-16
     TSK-50[TSK-50: Tests resolveTargets + integration] --> TSK-49
+    TSK-51[TSK-51: DisablesCheck D-007] --> TSK-50
     TSK-24 --> TSK-23
     TSK-25 --> TSK-23
     TSK-25 --> TSK-24

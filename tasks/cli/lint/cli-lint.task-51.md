@@ -13,7 +13,7 @@
   - Service: [`DisablesCheck`](../../../specs/cli/lint/lint.spec.md#disablescheck)
   - DbC: [`Service: DisablesCheck`](../../../specs/cli/lint/lint.spec.md#service-disablescheck)
   - Test Scenarios: [`§6.1 DisablesCheck`](../../../specs/cli/lint/lint.spec.md#unit-disablescheck-disablescheckttest-ts)
-  - Authorized exception: [`vcs-client.spec.md` D-051](../../../specs/vcs/vcs-client/vcs-client.spec.md#d-051--authorized-escape-hatch-ts-expect-error-in-abstract-class-contract-test)
+  - Authorized exception: [`vcs-client.spec.md` D-001](../../../specs/vcs/vcs-client/vcs-client.spec.md#d-001--authorized-escape-hatch-ts-expect-error-in-abstract-class-contract-test)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`, `unit`
 - **Deferred Runtime Scope:** None
@@ -56,7 +56,7 @@
 
 <!--SECTION:PHASE_P3-->
 ### P3 — refactor
-- **Objective:** добавить `D-051` ссылки к существующим 3 `@ts-expect-error` в `services/vcs-client/__tests__/abstract/vcs-client-abstract.test.ts`; финальный full-repo lint должен быть зелёным.
+- **Objective:** добавить ссылки `D-001` (vcs-client local Decision Log) к существующим 3 `@ts-expect-error` в `services/vcs-client/__tests__/abstract/vcs-client-abstract.test.ts`; финальный full-repo lint должен быть зелёным.
 - **Rules:**
   - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
@@ -126,22 +126,27 @@ Contract: см. Spec References. Полный список — [`lint.spec.md §
 
 <!--SECTION:TEST_COVERAGE-->
 ## 6. Test Scenario Coverage
-- Scenario «Сигнатура check возвращает LintError[]» → `cli/cmd/lint/__tests__/disables.check.test.ts` :: `DC-01 contract typing`
-- Scenario «Валидный @ts-expect-error с D-NNN» → `disables.check.test.ts` :: `DC-03 valid @ts-expect-error with D-NNN`
-- Scenario «@ts-expect-error без D-NNN» → `disables.check.test.ts` :: `DC-04 unauthorized @ts-expect-error`
-- Scenario «eslint-disable-next-line с D-NNN» → `disables.check.test.ts` :: `DC-07 eslint-disable with D-NNN justification`
-- Scenario «Маркер в строковом литерале не флагается» → `disables.check.test.ts` :: `DC-14 marker in string literal`
-- Scenario «Block-comment с D-NNN» → `disables.check.test.ts` :: `DC-10 block comment with D-NNN`
-- Scenario «Несколько маркеров» → `disables.check.test.ts` :: `DC-15 multiple markers mixed`
-- Scenario «Колонка ошибки» → `disables.check.test.ts` :: `DC-20 error col points to marker`
+
+Полный список сценариев (DC-01..DC-20) — single source of truth в [`specs/cli/lint/lint.spec.md §6.1 DisablesCheck`](../../../specs/cli/lint/lint.spec.md#unit-disablescheck-disablescheckttest-ts). Этот раздел ticket'а перечисляет 10 ключевых, цитируемых в section 4 BDD; остальные 10 (DC-02/05/06/08/09/11/12/13/16/17) присутствуют как `it(...)` в `disables.check.test.ts` и покрывают вариации того же контракта.
+
+Canonical case names verbatim из `cli/cmd/lint/__tests__/disables.check.test.ts`:
+
+- Scenario «Сигнатура check возвращает LintError[]» → `disables.check.test.ts` :: `DC-01 contract typing — check(content, filePath) returns LintError[]`
+- Scenario «Валидный @ts-expect-error с D-NNN» → `disables.check.test.ts` :: `DC-03 valid @ts-expect-error with D-NNN → []`
+- Scenario «@ts-expect-error без D-NNN» → `disables.check.test.ts` :: `DC-04 unauthorized @ts-expect-error → 1 error`
+- Scenario «eslint-disable-next-line с D-NNN» → `disables.check.test.ts` :: `DC-07 eslint-disable-next-line with D-NNN justification → []`
+- Scenario «Маркер в строковом литерале не флагается» → `disables.check.test.ts` :: `DC-14 marker text in string literal → []`
+- Scenario «Block-comment с D-NNN» → `disables.check.test.ts` :: `DC-10 block comment with D-NNN → []`
+- Scenario «Несколько маркеров» → `disables.check.test.ts` :: `DC-15 multiple markers mixed → 1 error for the unauthorized one`
+- Scenario «Колонка ошибки» → `disables.check.test.ts` :: `DC-20 error col points to start of the marker`
 - Scenario «D-NNN case-insensitive» → `disables.check.test.ts` :: `DC-19 case insensitive D-NNN`
-- Scenario «file-header без срабатывания» → `disables.check.test.ts` :: `DC-18 file header is not a disable marker`
+- Scenario «file-header без срабатывания» → `disables.check.test.ts` :: `DC-18 file header is not a disable marker → []`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:DECISION_LOG-->
 ## 8. Decision Log
 - D-007 (scope cli) — policy «Disable Discipline»; этот ticket — её enforcement в lint module
-- D-051 (module vcs-client) — authorized escape hatch для существующих 3 `@ts-expect-error`
+- D-001 (module vcs-client) — authorized escape hatch для существующих 3 `@ts-expect-error`
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -160,7 +165,7 @@ Contract: см. Spec References. Полный список — [`lint.spec.md §
 
 #### P3
 - [x] `2026-05-25T00:00Z` ver `npx tsx cli/gennady.ts lint .` → fail exit=1 (213 ошибок) — ALL pre-existing legacy (`ERR_CLI_LINT_MISSING_FILE`, `ERR_CLI_LINT_NON_ENGLISH`) в `assistant/` директории, вне scope ticket'а. Zero new `ERR_CLI_LINT_UNAUTHORIZED_DISABLE` ошибок.
-- [x] `2026-05-25T00:00Z` ver `npx tsx cli/gennady.ts lint services/vcs-client/__tests__/abstract/vcs-client-abstract.test.ts` → pass exit=0 — все 3 `@ts-expect-error` теперь авторизованы через D-051.
+- [x] `2026-05-25T00:00Z` ver `npx tsx cli/gennady.ts lint services/vcs-client/__tests__/abstract/vcs-client-abstract.test.ts` → pass exit=0 — все 3 `@ts-expect-error` теперь авторизованы через D-001 vcs-client.
 - [x] `2026-05-25T00:00Z` DONE — refactor complete; legacy errors в `assistant/` — отдельный debt-ticket.
 
 #### Round close

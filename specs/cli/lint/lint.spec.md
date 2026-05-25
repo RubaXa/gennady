@@ -291,6 +291,7 @@ ERR_CLI_LINT_UNAUTHORIZED_DISABLE  = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE'
   - Чистая функция, не зависит от внешнего состояния
   - Не кидает исключений
   - Multi-line `/* ... */` блоки: проверяется только строка с маркером; `D-\d+` обязан быть на той же строке (упрощение MVP — расширение области поиска — отдельная итерация)
+  - Распознавание открывашки комментария вне строковых литералов: state-machine отслеживает single-quote / double-quote / backtick с escape-rule `\` отменяет следующий символ. **Не моделируется:** template-literal interpolation `${...}` (внутри которого может быть отдельный nested literal или код). Граничный кейс: `` `foo ${'bar' + // @ts-ignore`} `` потенциально может дать false-positive или false-negative; в текущей кодовой базе таких паттернов нет. Полная поддержка interpolation — отдельная итерация при появлении реальных кейсов.
 
 ## 5. Public Options & Policies
 

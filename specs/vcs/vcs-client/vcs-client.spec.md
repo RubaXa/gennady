@@ -138,7 +138,7 @@ services/vcs-client/
 
 ## 7. Module Decision Log
 
-### D-051 — Authorized Escape Hatch: `@ts-expect-error` in abstract-class contract test
+### D-001 — Authorized Escape Hatch: `@ts-expect-error` in abstract-class contract test
 
 - **Status:** active
 - **Recorded:** session refine (lint disable-discipline, cli D-007)
