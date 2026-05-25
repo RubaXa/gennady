@@ -20,7 +20,7 @@ _Это полный список сущностей модуля. Любое в
 | `LanguageCheck`    | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`. |
 | `AnchorCheck`      | Service      | Проверка парности и вложенности `// #region START/END`                                                                                |
 | `DbcContractCheck` | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                  |
-| `DisablesCheck`    | Service      | Проверка: каждое отключение TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`) обязано в той же строке нести ссылку `D-\d+` на Decision Log запись. Реализация политики D-007 из `cli.spec.md`. |
+| `DisablesCheck`    | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`. |
 
 ## 3. Entity Surfaces
 
@@ -131,11 +131,13 @@ _Это полный список сущностей модуля. Любое в
 ### `DisablesCheck`
 
 - **Type:** Service
-- **Purpose:** Проверка дисциплины отключений TypeScript / линтера (политика D-007 из `cli.spec.md`). Каждое вхождение маркера отключения в комментарии обязано в той же строке нести ссылку `D-\d+`. Чек ортогонален ESLint и TypeScript: нельзя обойти inline-комментарием отключения, потому что сам комментарий И есть искомый паттерн.
+- **Purpose:** Проверка дисциплины отключений TypeScript / линтера (политика D-007 из `cli.spec.md`). Каждый маркер отключения в комментарии обязан в той же строке нести три части: (a) сам маркер, (b) `D-\d+` ссылку на Decision Log, (c) purpose-обоснование (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Чек ортогонален ESLint и TypeScript: нельзя обойти inline-комментарием отключения, потому что сам комментарий И есть искомый паттерн.
 - **Public Operations:**
   - `check(content: string, filePath: string) → LintError[]` — проверить контент файла
 - **Lifecycle:** stateless; pure function
-- **Errors & Degradation:** Не кидает исключений. Каждое отключение без `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`.
+- **Errors & Degradation:** Не кидает исключений.
+  - Маркер без `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`
+  - Маркер с `D-\d+` но без достаточного purpose-обоснования → `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -161,6 +163,7 @@ ERR_CLI_LINT_NON_ENGLISH           = 'ERR_CLI_LINT_NON_ENGLISH'
 ERR_CLI_LINT_RESOLVE_FAILED        = 'ERR_CLI_LINT_RESOLVE_FAILED'
 ERR_CLI_LINT_STAGED_CONFLICT       = 'ERR_CLI_LINT_STAGED_CONFLICT'
 ERR_CLI_LINT_UNAUTHORIZED_DISABLE  = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE'
+ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -282,15 +285,17 @@ ERR_CLI_LINT_UNAUTHORIZED_DISABLE  = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE'
   - `content` — непустая строка
   - `filePath` — путь к файлу (для сообщений об ошибках)
 - Postconditions:
-  - Возвращает `LintError[]` (пустой — все отключения с `D-\d+`, либо отключений нет)
-  - Каждое вхождение маркера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable[*]`) в комментарии БЕЗ `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`
-  - Сообщение об ошибке содержит обнаруженный маркер и инструкцию: «add `D-NNN` reference pointing to a Decision Log entry in the same comment»
+  - Возвращает `LintError[]` (пустой — все отключения корректно оформлены, либо отключений нет)
+  - Маркер (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable[*]`) в комментарии БЕЗ `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`. Сообщение содержит маркер и инструкцию добавить `D-NNN` со ссылкой на Decision Log.
+  - Маркер С `D-\d+`, НО purpose-text после удаления маркера и токена `D-NNN` короче 8 непробельных символов → `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`. Сообщение содержит маркер, обнаруженный D-NNN, и инструкцию добавить purpose (≥ 8 символов).
 - Invariants:
   - Маркер засчитывается ТОЛЬКО если предшествует комментарий-открывашка (`//` или `/*`) на той же строке (защита от ложноположительных в строковых литералах с похожим текстом)
   - `D-\d+` распознаётся в любой части той же строки после открывашки комментария
+  - Purpose-длина считается так: из строки удаляются (1) text комментария-открывашки `//` или `/*`, (2) первое вхождение маркера, (3) первое вхождение `D-\d+` токена. Остаток нормализуется (whitespace ужимается), считаются непробельные символы. Threshold ≥ 8 — отсекает «fix», «todo», «.» и т.п., пропускает реальные обоснования вроде «abstract class instantiation gate».
   - Чистая функция, не зависит от внешнего состояния
   - Не кидает исключений
-  - Multi-line `/* ... */` блоки: проверяется только строка с маркером; `D-\d+` обязан быть на той же строке (упрощение MVP — расширение области поиска — отдельная итерация)
+  - Multi-line `/* ... */` блоки: проверяется только строка с маркером; `D-\d+` и purpose обязаны быть на той же строке (упрощение MVP — расширение области поиска — отдельная итерация)
+  - Распознавание открывашки комментария вне строковых литералов: state-machine отслеживает single-quote / double-quote / backtick с escape-rule `\` отменяет следующий символ. **Не моделируется:** template-literal interpolation `${...}`
   - Распознавание открывашки комментария вне строковых литералов: state-machine отслеживает single-quote / double-quote / backtick с escape-rule `\` отменяет следующий символ. **Не моделируется:** template-literal interpolation `${...}` (внутри которого может быть отдельный nested literal или код). Граничный кейс: `` `foo ${'bar' + // @ts-ignore`} `` потенциально может дать false-positive или false-negative; в текущей кодовой базе таких паттернов нет. Полная поддержка interpolation — отдельная итерация при появлении реальных кейсов.
 
 ## 5. Public Options & Policies
@@ -453,6 +458,11 @@ cli/cmd/lint/
 | DC-18  | Маркер в строке с file-header `// @file: ... D-042`                   | `[]` — file-header не несёт маркер отключения                                                 |
 | DC-19  | Капитализация D-NNN: `d-042`, `D-NNN`, `d42`                          | `d-042` валидный (case-insensitive `D`); `D-NNN` невалидный (нужны цифры); `d42` невалидный    |
 | DC-20  | Колонка ошибки указывает на позицию маркера                           | `col` = индекс начала маркера в строке + 1                                                    |
+| DC-21  | `// @ts-expect-error: D-042` — D-NNN есть, purpose отсутствует       | 1 error `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`                                                |
+| DC-22  | `// @ts-ignore D-042 fix` — purpose только 3 непробельных символа    | 1 error `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`                                                |
+| DC-23  | `// @ts-ignore: D-042 — abstract class gate` — 26+ символов purpose  | `[]`                                                                                          |
+| DC-24  | `// eslint-disable-next-line foo -- D-017` — purpose только rule name | 1 error `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE` (rule `foo` — часть конструкции, не purpose)   |
+| DC-25  | `/* @ts-ignore: D-099 */` — purpose пуст                              | 1 error `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`                                                |
 
 ## 7. Module Decision Log
 

@@ -1,12 +1,13 @@
-// @file: Unit tests for DisablesCheck — validates that every TS / linter disable cites a Decision Log entry.
+// @file: Unit tests for DisablesCheck — validates that every TS / linter disable cites a Decision Log entry AND carries a purpose.
 // @consumers: LintCommand
-// @tasks: TSK-51
+// @tasks: TSK-51, TSK-52
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { check } from '../checks/disables.check.ts';
 import {
   ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
+  ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
   type LintError,
 } from '../lint.types.ts';
 
@@ -51,6 +52,46 @@ describe('DisablesCheck', () => {
   it('DC-03 valid @ts-expect-error with D-NNN → []', () => {
     const content = `${S} @ts-expect-error: D-042 — abstract class instantiation test\nclass _X {}\n`;
     assert.deepEqual(check(content, 'foo.ts'), []);
+  });
+
+  // --- TSK-52 additions: purpose enforcement (DC-21..DC-25) ---
+
+  it('DC-21 D-NNN without purpose → MISSING_PURPOSE', () => {
+    const content = `${S} @ts-expect-error: D-042\nclass _X {}\n`;
+    const errors = check(content, 'foo.ts');
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].code, ERR_CLI_LINT_DISABLE_MISSING_PURPOSE);
+    assert.ok(errors[0].message.includes('D-042'));
+    assert.ok(errors[0].message.includes('@ts-expect-error'));
+    assert.ok(errors[0].message.includes('≥'));
+  });
+
+  it('DC-22 D-NNN with too-short purpose → MISSING_PURPOSE', () => {
+    const content = `${S} @ts-ignore D-042 fix\nfoo()\n`;
+    const errors = check(content, 'foo.ts');
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].code, ERR_CLI_LINT_DISABLE_MISSING_PURPOSE);
+  });
+
+  it('DC-23 D-NNN with sufficient purpose → []', () => {
+    // purpose text: `: — abstract class gate` (after stripping marker + D-042) — 19 non-ws chars
+    const content = `${S} @ts-ignore: D-042 — abstract class gate\nfoo()\n`;
+    assert.deepEqual(check(content, 'foo.ts'), []);
+  });
+
+  it('DC-24 eslint-disable with rule name but no reason → MISSING_PURPOSE', () => {
+    // After stripping `eslint-disable-next-line` and `D-017`: ` foo -- ` → `foo--` = 5 non-ws chars
+    const content = `${S} eslint-disable-next-line foo -- D-017\nconst x: any = 1;\n`;
+    const errors = check(content, 'foo.ts');
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].code, ERR_CLI_LINT_DISABLE_MISSING_PURPOSE);
+  });
+
+  it('DC-25 block comment with D-NNN but no purpose → MISSING_PURPOSE', () => {
+    const content = `${BS} @ts-ignore: D-099 ${BE}\nfoo()\n`;
+    const errors = check(content, 'foo.ts');
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].code, ERR_CLI_LINT_DISABLE_MISSING_PURPOSE);
   });
 
   it('DC-04 unauthorized @ts-expect-error → 1 error', () => {
@@ -117,13 +158,14 @@ describe('DisablesCheck', () => {
 
   it('DC-15 multiple markers mixed → 1 error for the unauthorized one', () => {
     const content =
-      `${S} @ts-ignore: D-001 — ok\n` +
-      `${S} @ts-expect-error: D-002 — ok\n` +
+      `${S} @ts-ignore: D-001 — first valid disable\n` +
+      `${S} @ts-expect-error: D-002 — second valid disable\n` +
       `${S} @ts-nocheck\n` +
-      `${S} eslint-disable-next-line no-explicit-any -- D-003\n`;
+      `${S} eslint-disable-next-line no-explicit-any -- D-003 third valid disable\n`;
     const errors = check(content, 'foo.ts');
     assert.equal(errors.length, 1);
     assert.equal(errors[0].line, 3);
+    assert.equal(errors[0].code, ERR_CLI_LINT_UNAUTHORIZED_DISABLE);
   });
 
   it('DC-16 single-digit D-N is valid', () => {

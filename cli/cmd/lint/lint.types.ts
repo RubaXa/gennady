@@ -1,6 +1,6 @@
 // @file: Types and error codes for the lint command module.
-// @consumers: LintCommand, FileHeaderCheck, AnchorCheck, DbcContractCheck, LanguageCheck
-// @tasks: TSK-12, TSK-49
+// @consumers: LintCommand, FileHeaderCheck, AnchorCheck, DbcContractCheck, LanguageCheck, DisablesCheck
+// @tasks: TSK-12, TSK-49, TSK-51, TSK-52
 
 /** @purpose Single lint error in ESLint-compatible format. */
 export type LintError = {
@@ -109,3 +109,6 @@ export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as co
 
 /** @purpose TypeScript / linter disable comment without a Decision Log reference (D-NNN) in the same line. | @invariant Implements policy D-007 (cli.spec.md): every @ts-ignore / @ts-nocheck / @ts-expect-error / eslint-disable* must cite D-NNN in the same comment. */
 export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE' as const;
+
+/** @purpose TypeScript / linter disable comment has a D-NNN reference but lacks a purpose explanation. | @invariant Implements D-007 contract tightening (TSK-52): >= 8 non-whitespace characters of purpose must remain after stripping the comment opener, the marker, and the D-NNN token. */
+export const ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE' as const;

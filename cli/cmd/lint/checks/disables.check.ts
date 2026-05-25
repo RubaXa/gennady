@@ -1,9 +1,15 @@
-// @file: DisablesCheck — enforce TypeScript / linter disable comments cite a Decision Log entry (policy D-007).
+// @file: DisablesCheck — enforce TypeScript / linter disable comments cite a Decision Log entry AND carry a purpose (policy D-007).
 // @consumers: LintCommand
-// @tasks: TSK-51
+// @tasks: TSK-51, TSK-52
 
 import type { LintError } from '../lint.types.ts';
-import { ERR_CLI_LINT_UNAUTHORIZED_DISABLE } from '../lint.types.ts';
+import {
+  ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
+  ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
+} from '../lint.types.ts';
+
+/** @purpose Minimum non-whitespace characters of purpose text required after stripping the marker and D-NNN token. Set to 8 — filters trivial placeholders like `fix`/`todo`/`.` while accepting real rationales. */
+const MIN_PURPOSE_NON_WS_CHARS = 8;
 
 /** @purpose Regex matching one disable marker name (without comment opener). The opener is detected separately via a string-aware state machine. */
 const MARKER_RE = /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
@@ -59,24 +65,58 @@ export function check(content: string, filePath: string): LintError[] {
     if (commentStart < 0) continue;
 
     const afterOpener = line.slice(commentStart);
-    const match = MARKER_RE.exec(afterOpener);
-    if (!match) continue;
+    const markerMatch = MARKER_RE.exec(afterOpener);
+    if (!markerMatch) continue;
 
-    if (D_REF_RE.test(line)) continue;
-
-    const marker = match[0];
+    const marker = markerMatch[0];
     // Column = position of the marker itself (not the comment opener), 1-based
-    const col = commentStart + match.index + 1;
+    const col = commentStart + markerMatch.index + 1;
 
-    errors.push({
-      file: filePath,
-      line: i + 1,
-      col,
-      severity: 'error',
-      code: ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
-      message: `Unauthorized disable: \`${marker}\` has no Decision Log reference. Add \`D-NNN\` (e.g., \`D-042\`) in the same comment line pointing to a Decision Log entry that authorizes this disable. Policy: see specs/cli/cli.spec.md#d-007.`,
-    });
+    const dRefMatch = D_REF_RE.exec(line);
+    if (!dRefMatch) {
+      errors.push({
+        file: filePath,
+        line: i + 1,
+        col,
+        severity: 'error',
+        code: ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
+        message: `Unauthorized disable: \`${marker}\` has no Decision Log reference. Add \`D-NNN\` (e.g., \`D-042\`) in the same comment line pointing to a Decision Log entry that authorizes this disable. Policy: see specs/cli/cli.spec.md#d-007.`,
+      });
+      continue;
+    }
+
+    // D-NNN present — verify purpose text length (>= MIN_PURPOSE_NON_WS_CHARS non-whitespace chars after stripping marker + D-NNN from the post-opener segment)
+    const purposeNonWsCount = countPurposeChars(afterOpener, marker, dRefMatch[0]);
+    if (purposeNonWsCount < MIN_PURPOSE_NON_WS_CHARS) {
+      errors.push({
+        file: filePath,
+        line: i + 1,
+        col,
+        severity: 'error',
+        code: ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
+        message: `Disable lacks purpose: \`${marker}\` cites \`${dRefMatch[0]}\` but the explanation is too short (${purposeNonWsCount} non-whitespace chars; need ≥ ${MIN_PURPOSE_NON_WS_CHARS}). Add a purpose after the D-NNN reference, e.g., \`${marker}: ${dRefMatch[0]} — <why this disable is necessary>\`. Policy: see specs/cli/cli.spec.md#d-007.`,
+      });
+    }
   }
 
   return errors;
+}
+
+/**
+ * @purpose Count non-whitespace characters of purpose text remaining after the marker and the D-NNN token are stripped from the comment segment.
+ * @invariant Removes ONE occurrence of the marker (first match) and ONE occurrence of the D-NNN token (first match) — both are required structural tokens, the rest is treated as purpose.
+ * @invariant Counts all non-whitespace characters in the residual; does not distinguish punctuation from alphanum (acceptable MVP simplification — `:`/`—`/`--` separators count toward purpose length but realistic purposes always exceed the threshold).
+ * @param segment Comment content from the opener onwards (`//`-prefixed or `/*`-prefixed text).
+ * @param marker The disable marker token found in this segment.
+ * @param dRef The D-NNN token found in the source line.
+ * @returns Count of non-whitespace characters in the residual.
+ */
+function countPurposeChars(segment: string, marker: string, dRef: string): number {
+  let residual = segment.replace(marker, '');
+  residual = residual.replace(dRef, '');
+  // Strip closing block-comment delimiter so it doesn't inflate the count
+  residual = residual.replace(/\*\//g, '');
+  // Strip leading `//` or `/*` opener tokens (already implied — defensive)
+  residual = residual.replace(/^\/\/|^\/\*/g, '');
+  return residual.replace(/\s/g, '').length;
 }

@@ -541,10 +541,18 @@ cli/cmd/_shared/
 - **Status:** active
 - **Recorded:** session refine (lint disable-discipline)
 - **Why:** Любое отключение TypeScript (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`) или линтера (`eslint-disable*`) обходит механизм статической верификации, который мы целенаправленно встроили в pipeline. Незадокументированное отключение — это **тихий drift от спецификации**: агент во время реализации обошёл систему, не обсудив это с оператором. Грубейшее нарушение implementation discipline. Поэтому каждое отключение обязано нести ссылку на запись Decision Log (формат `D-\d+`) в той же строке комментария — сам факт ссылки превращает молчаливый shortcut в осознанное решение, обсуждённое заранее.
-- **Form:** комментарий с маркером отключения МОЖЕТ существовать только если в той же строке есть ссылка `D-\d+`, указывающая на Decision Log запись с обоснованием:
+- **Form:** комментарий с маркером отключения МОЖЕТ существовать только если в той же строке присутствуют **три части**: (a) сам маркер, (b) ссылка `D-\d+` на Decision Log запись, (c) **purpose** — обоснование в свободной форме (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`).
+  Рекомендованный, но не обязательный синтаксис: `<marker> — <D-NNN>: <purpose>`. Формат гибкий — разделители (`:`, `—`, `--`) не унифицированы для совместимости с ESLint-конвенцией `// eslint-disable-next-line rule -- reason`:
   ```ts
   // @ts-expect-error: D-042 — abstract class instantiation required by contract test
-  // eslint-disable-next-line no-explicit-any -- D-017: third-party type missing
+  // @ts-expect-error — D-042: abstract class instantiation required by contract test
+  // eslint-disable-next-line no-explicit-any -- D-017: third-party type definition missing
+  ```
+  Невалидные (purpose отсутствует или слишком короткий):
+  ```ts
+  /* @ts-ignore: D-099 */                                     // purpose пуст
+  // eslint-disable-next-line no-explicit-any -- D-017        // после D-017 ничего нет
+  // @ts-ignore D-042 fix                                     // 3 непробельных символа после D-042 — недостаточно
   ```
 - **Where D-NNN lives:** в первой итерации — синтаксическое требование (ссылка должна присутствовать). Существование D-NNN в каком-либо `*.spec.md` не верифицируется. Допустимы записи в scope-spec / module-spec / task-ticket Decision Log в формате `D-NNN — Authorized Escape Hatch`.
 - **Enforcement:** новый чек `DisablesCheck` в gennady lint, ортогональный к ESLint и TypeScript (нельзя обойти inline-комментарием отключения — сам комментарий И есть искомый паттерн). Аудит SDD вызывает `gennady lint` на STEP_1 mechanical pre-pass — нарушения попадают в findings автоматически.
@@ -555,6 +563,8 @@ cli/cmd/_shared/
   - Запрет любых disable-комментариев — слишком строго; легитимные кейсы существуют (compile-time gates, third-party type gaps)
   - Verification существования D-NNN в spec файлах сразу — преждевременная сложность; начинаем с синтаксической проверки, существование добавляем второй итерацией если понадобится
   - Расширить проверку на `: any` / `.skip` — отдельная политика; начинаем с самого узкого среза (только явные отключения), расширим после пилота
+  - Требовать только D-NNN без purpose (первая итерация) — позволяло формально соблюдать политику без реального обоснования (`/* @ts-ignore: D-099 */`); пересмотрено в refine (см. TSK-52)
+  - Жёсткий формат `<marker> — <D-NNN>: <purpose>` без альтернативных разделителей — ломает ESLint-конвенцию `-- reason`; выбран семантический подход (три части присутствуют, формат гибкий)
 
 ### D-006 — Контракт resolveTargets (дедупликация, исключения, graceful degradation)
 
