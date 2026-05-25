@@ -136,6 +136,22 @@ services/vcs-client/
 └── parse-vcs-url.ts                     (NEW: pure function)
 ```
 
+## 7. Module Decision Log
+
+### D-051 — Authorized Escape Hatch: `@ts-expect-error` in abstract-class contract test
+
+- **Status:** active
+- **Recorded:** session refine (lint disable-discipline, cli D-007)
+- **Where:** `services/vcs-client/__tests__/abstract/vcs-client-abstract.test.ts` — три `@ts-expect-error` (строки ~12, ~14, ~16)
+- **Marker:** `@ts-expect-error`
+- **Why:** Эти три отключения — **compile-time gates**, верифицирующие что abstract class нельзя инстанциировать без определения обязательных ports. Они НЕ скрывают баг; они проверяют, что `tsc --noEmit` действительно ловит попытку инстанциирования. Это type-level тест: если TypeScript перестанет генерировать ошибку (из-за изменения контракта `VcsClient` / `VcsClientMergeRequests` / `VcsClientRepositoryFiles`), `@ts-expect-error` сам станет ошибкой — тест упадёт. Без `@ts-expect-error` тест невозможен принципиально: код намеренно не компилируется, иначе он бы не проверял compile-time invariant.
+- **Risk accepted:** При рефакторинге abstract-классов может потребоваться обновить этот тест. Зависит от типов из `vcs-client.ts`, `vcs-client-merge-requests.ts`, `vcs-client-repository-files.ts`.
+- **Revisit:** при удалении или фундаментальном изменении контракта abstract-классов VcsClient.
+- **Rejected alternatives:**
+  - Перенести compile-time gate в `tsd` / `expectTypeOf` — добавляет dependency без выигрыша; node:test + `@ts-expect-error` достаточно
+  - Удалить тест — потеря compile-time гарантии: ничто не помешает кому-то добавить дефолтную реализацию абстрактного порта и сломать контракт
+  - Использовать `// eslint-disable @typescript-eslint/no-unused-vars` для `_VcsClientWithoutMergeRequests` — `_` префикс уже решает unused-vars; проблема не в этом
+
 ## 9. Handoff to Task Scaffolding
 
 - **Implementation files:** 6 существуют, 9 новых, 2 изменяемых

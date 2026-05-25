@@ -9,11 +9,11 @@ import { VcsClientMergeRequests } from '../../abstract/vcs-client-merge-requests
 import { VcsClientRepositoryFiles } from '../../abstract/vcs-client-repository-files.ts';
 
 // --- Compile-time gate tests (verified by tsc --noEmit, NOT run by node:test) ---
-// @ts-expect-error: Cannot instantiate abstract class
+// @ts-expect-error: D-051 — abstract class instantiation gate (see specs/vcs/vcs-client/vcs-client.spec.md#d-051)
 class _VcsClientWithoutMergeRequests extends VcsClient {}
-// @ts-expect-error: Cannot instantiate abstract class
+// @ts-expect-error: D-051 — abstract class instantiation gate
 class _VcsMergeRequestsWithoutGetChanges extends VcsClientMergeRequests {}
-// @ts-expect-error: Cannot instantiate abstract class
+// @ts-expect-error: D-051 — abstract class instantiation gate
 class _VcsRepositoryFilesWithoutGetFileContent extends VcsClientRepositoryFiles {}
 
 // Compiles successfully — optional ports can be omitted

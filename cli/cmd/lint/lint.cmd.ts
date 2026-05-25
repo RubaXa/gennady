@@ -10,6 +10,7 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { check as checkFileHeader } from './checks/file-header.check.ts';
 import { check as checkAnchors } from './checks/anchor.check.ts';
 import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
+import { check as checkDisables } from './checks/disables.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
 import { LintReport } from './lint.types.ts';
 import {
@@ -123,6 +124,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkFileHeader(content, filePath));
     allErrors.push(...checkAnchors(content, filePath));
     allErrors.push(...checkLanguage(content, filePath));
+    allErrors.push(...checkDisables(content, filePath));
 
     // Extract task IDs from file header for reference resolution
     const taskIds = extractTaskIdsFromHeader(content);

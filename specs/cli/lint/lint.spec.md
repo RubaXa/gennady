@@ -20,6 +20,7 @@ _Это полный список сущностей модуля. Любое в
 | `LanguageCheck`    | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`. |
 | `AnchorCheck`      | Service      | Проверка парности и вложенности `// #region START/END`                                                                                |
 | `DbcContractCheck` | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                  |
+| `DisablesCheck`    | Service      | Проверка: каждое отключение TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`) обязано в той же строке нести ссылку `D-\d+` на Decision Log запись. Реализация политики D-007 из `cli.spec.md`. |
 
 ## 3. Entity Surfaces
 
@@ -127,6 +128,18 @@ _Это полный список сущностей модуля. Любое в
   - Internal: `LintCommand`
   - External: N/A
 
+### `DisablesCheck`
+
+- **Type:** Service
+- **Purpose:** Проверка дисциплины отключений TypeScript / линтера (политика D-007 из `cli.spec.md`). Каждое вхождение маркера отключения в комментарии обязано в той же строке нести ссылку `D-\d+`. Чек ортогонален ESLint и TypeScript: нельзя обойти inline-комментарием отключения, потому что сам комментарий И есть искомый паттерн.
+- **Public Operations:**
+  - `check(content: string, filePath: string) → LintError[]` — проверить контент файла
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Каждое отключение без `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
 ### Value Objects
 
 | Name          | Key Properties                                                                                        |
@@ -147,6 +160,7 @@ ERR_CLI_LINT_ANCHOR_MALFORMED      = 'ERR_CLI_LINT_ANCHOR_MALFORMED'
 ERR_CLI_LINT_NON_ENGLISH           = 'ERR_CLI_LINT_NON_ENGLISH'
 ERR_CLI_LINT_RESOLVE_FAILED        = 'ERR_CLI_LINT_RESOLVE_FAILED'
 ERR_CLI_LINT_STAGED_CONFLICT       = 'ERR_CLI_LINT_STAGED_CONFLICT'
+ERR_CLI_LINT_UNAUTHORIZED_DISABLE  = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -252,6 +266,32 @@ ERR_CLI_LINT_STAGED_CONFLICT       = 'ERR_CLI_LINT_STAGED_CONFLICT'
   - Чистая функция, не зависит от внешнего состояния
   - Не кидает исключений
 
+#### Service: `DisablesCheck`
+
+- **Purpose:** Enforcement политики D-007: каждое отключение TypeScript / линтера обязано в той же строке комментария содержать ссылку `D-\d+` на Decision Log запись.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `content` — непустая строка
+  - `filePath` — путь к файлу (для сообщений об ошибках)
+- Postconditions:
+  - Возвращает `LintError[]` (пустой — все отключения с `D-\d+`, либо отключений нет)
+  - Каждое вхождение маркера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable[*]`) в комментарии БЕЗ `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`
+  - Сообщение об ошибке содержит обнаруженный маркер и инструкцию: «add `D-NNN` reference pointing to a Decision Log entry in the same comment»
+- Invariants:
+  - Маркер засчитывается ТОЛЬКО если предшествует комментарий-открывашка (`//` или `/*`) на той же строке (защита от ложноположительных в строковых литералах с похожим текстом)
+  - `D-\d+` распознаётся в любой части той же строки после открывашки комментария
+  - Чистая функция, не зависит от внешнего состояния
+  - Не кидает исключений
+  - Multi-line `/* ... */` блоки: проверяется только строка с маркером; `D-\d+` обязан быть на той же строке (упрощение MVP — расширение области поиска — отдельная итерация)
+
 ## 5. Public Options & Policies
 
 | Option      | Bound to                                 | Status        |
@@ -312,22 +352,25 @@ cli/cmd/lint/
 │   ├── file-header.check.ts    # FileHeaderCheck.check()
 │   ├── language.check.ts       # LanguageCheck.check()
 │   ├── anchor.check.ts         # AnchorCheck.check()
+│   ├── disables.check.ts       # DisablesCheck.check()
 │   └── dbc-contract.check.ts   # DbcContractCheck.check()
 └── __tests__/
     ├── lint.cmd.test.ts
     ├── file-header.check.test.ts
     ├── language.check.test.ts
     ├── anchor.check.test.ts
+    ├── disables.check.test.ts
     └── dbc-contract.check.test.ts
 ```
 
 **File Mapping:**
 
 - `lint.cmd.ts`: `LintCommand`
-- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 6 × `ERR_CLI_LINT_*`
+- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 7 × `ERR_CLI_LINT_*`
 - `checks/file-header.check.ts`: `FileHeaderCheck`
 - `checks/language.check.ts`: `LanguageCheck`
 - `checks/anchor.check.ts`: `AnchorCheck`
+- `checks/disables.check.ts`: `DisablesCheck`
 - `checks/dbc-contract.check.ts`: `DbcContractCheck`
 
 ## 6.1 Test Scenarios
@@ -385,10 +428,36 @@ cli/cmd/lint/
 | IT-18  | Все цели невалидны (3 несуществующих пути)                            | 3 ошибки в stderr, пустой отчёт, exit 0                                               |
 | IT-19  | Пути с пробелами и кириллицей                                         | Корректная обработка, ошибки линтинга с правильными путями                             |
 
+### Unit: `DisablesCheck` (`disables.check.test.ts`)
+
+| ID     | Сценарий                                                              | Ожидаемый результат                                                                           |
+| ------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| DC-01  | Contract typing — shape `check(content, filePath) → LintError[]`      | Compile-pass; tsc возвращает `LintError[]` без `as any` в тесте                              |
+| DC-02  | Пустой контент                                                        | `[]`                                                                                          |
+| DC-03  | `// @ts-expect-error: D-042 — reason` (валидный)                      | `[]`                                                                                          |
+| DC-04  | `// @ts-expect-error: Cannot instantiate abstract class` (нет D-NNN) | 1 error `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`                                                   |
+| DC-05  | `// @ts-ignore` без D-NNN                                             | 1 error                                                                                       |
+| DC-06  | `// @ts-nocheck` без D-NNN                                            | 1 error                                                                                       |
+| DC-07  | `// eslint-disable-next-line no-explicit-any -- D-017` (валидный)     | `[]`                                                                                          |
+| DC-08  | `// eslint-disable-next-line no-explicit-any` (нет D-NNN)             | 1 error                                                                                       |
+| DC-09  | `// eslint-disable` (файловый, нет D-NNN)                             | 1 error                                                                                       |
+| DC-10  | `/* @ts-ignore: D-099 */` block (валидный)                            | `[]`                                                                                          |
+| DC-11  | `/* @ts-ignore */` block без D-NNN                                    | 1 error                                                                                       |
+| DC-12  | Inline trailing: `code(); // @ts-expect-error D-042`                  | `[]`                                                                                          |
+| DC-13  | Inline trailing без D-NNN: `code(); // @ts-expect-error`              | 1 error                                                                                       |
+| DC-14  | Строковый литерал содержит `@ts-ignore`                               | `[]` (нет открывашки комментария перед маркером)                                              |
+| DC-15  | Несколько маркеров в файле: 2 валидных, 1 невалидный                  | 1 error                                                                                       |
+| DC-16  | `D-7` (одна цифра)                                                    | Валидный — `\bD-\d+\b` матчит                                                                 |
+| DC-17  | `D-042` в комментарии БЕЗ маркера отключения                          | `[]` — чек не активен                                                                         |
+| DC-18  | Маркер в строке с file-header `// @file: ... D-042`                   | `[]` — file-header не несёт маркер отключения                                                 |
+| DC-19  | Капитализация D-NNN: `d-042`, `D-NNN`, `d42`                          | `d-042` валидный (case-insensitive `D`); `D-NNN` невалидный (нужны цифры); `d42` невалидный    |
+| DC-20  | Колонка ошибки указывает на позицию маркера                           | `col` = индекс начала маркера в строке + 1                                                    |
+
 ## 7. Module Decision Log
 
 - D-005 (scope) — Поддержка директорий: рекурсивный обход, `.ts`/`.tsx`, без флага `--recursive`
 - D-006 (scope) — resolveTargets: дедупликация, сортировка, игнор node_modules/скрытых/symlink, регистро-независимые расширения, ENOENT/EACCES → ошибки в errors[]
+- D-007 (scope) — TypeScript/Linter Disable Discipline: `DisablesCheck` реализует enforcement; каждое отключение обязано нести `D-\d+` ссылку
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies

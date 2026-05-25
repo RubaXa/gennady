@@ -106,3 +106,6 @@ export const ERR_CLI_LINT_RESOLVE_FAILED = 'ERR_CLI_LINT_RESOLVE_FAILED' as cons
 
 /** @purpose Mutually exclusive flags: --staged and positional targets cannot be used together. */
 export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as const;
+
+/** @purpose TypeScript / linter disable comment without a Decision Log reference (D-NNN) in the same line. | @invariant Implements policy D-007 (cli.spec.md): every @ts-ignore / @ts-nocheck / @ts-expect-error / eslint-disable* must cite D-NNN in the same comment. */
+export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE' as const;
