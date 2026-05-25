@@ -108,17 +108,27 @@
          One row per unique alias. "Required by" = comma-separated rule IDs that declared it. Phase-subagent runs only the rows whose Required-by intersects with its phase's `Rules`.
     </Axiom>
 
-    <Axiom id="AX_DAG_EXECUTION">
-      **Topological order, no cycles.** Phase 0 = Bootstrap (one ticket per Bootstrap Requirements row whose Owner is `this-scope-task`). Phase 1 = Ports + base Entities. Phase 2 = Adapters, Services, Commands, Queries. Phase 3 = inter-scope integrations. If one area has both simulation seam and full runtime → split into separate tickets OR record `Deferred Runtime Scope`.
+    <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / contracts scope → one ticket per discrete capability.
 
-      Cross-scope dependencies: when scope A depends-on scope B, scope B's tasks must be DONE before scope A's tasks that consume B's outputs. Phase 0 (Bootstrap) tickets within a scope must be DONE before any Phase 1+ ticket of the same scope.
+      DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
+
+      **Split one ticket into N only when BOTH conditions hold:**
+      - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
+      - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
+
+      **NOT a reason to split:** audit milestone granularity (audit runs once per ticket regardless of size); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+
+      Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
+
+      Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
     </Axiom>
 
     <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
-      **Every Bootstrap Requirements row with Owner=`this-scope-task` produces exactly one ticket in Phase 0.** Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
       - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
       - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
-      - Bootstrap tickets are sequential within Phase 0 (e.g. `install package` precedes `wire config that uses package`).
+      - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
       - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0).
       - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
     </Axiom>
@@ -132,6 +142,7 @@
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
+      - For every DbC contract in Spec References (Port / Adapter / Value Object / branded type / discriminated union): one `contract`-level typing scenario MUST exist — covers input/output shape, branded-type rejection at boundary, union exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
     </Axiom>
 
     <Axiom id="AX_DONE_REQUIRES_EVIDENCE">
@@ -224,6 +235,7 @@
         - third-party tool config files (`eslint.config.*`, `vitest.config.*`, `lefthook.yml`, etc.) → `config` phase.
         - markdown docs → `doc` phase.
         - package install + foundational config (from Bootstrap Requirements) → `bootstrap` phase, no Deps.
+        - trivial wiring files (module barrel `index.ts`, parent re-export update, single-line type-alias re-export) → NOT a separate ticket and NOT a separate phase. They are added to the `Target Files` of the `impl` phase that creates the symbols they re-export.
       - Each phase carries its own `Rules:` list — subset of cascade-derived rules whose `<Triggers>` apply to its file class.
       - Each phase carries its own `Target Files:` bullet list (NO ticket-level `Target Files` outside phases).
       - Each phase carries `Inputs:` (`none` or list of prior phase IDs whose Handoff it consumes) and `Exit:` (one-line verifiable criterion).
@@ -267,19 +279,20 @@
   </Belief_State>
 
   <Golden_Example>
-    Concrete ticket — `tasks/backend/payments/payments.task-04.md`. Names of rules in the Activation Plan are project-specific (driven by cascade); the directive itself is language-agnostic.
+    Concrete ticket — `tasks/backend/payments/payments.task-04.md`. **Pattern: one module-spec → one ticket.** Port + Adapter + Value Objects + module barrel co-edit and travel together. Phases inside the ticket separate `impl` vs `test` cascades. Names of rules in the Activation Plan are project-specific (driven by cascade); the directive itself is language-agnostic.
 
     ```markdown
-    # Task: TSK-04 — Implement StripePaymentAdapter
+    # Task: TSK-04 — Implement payments module
 
     ## 1. Meta
     - **Task-ID:** TSK-04
     - **Status:** [ ] TODO
-    - **Purpose:** Реализовать `StripePaymentAdapter` против контракта `PaymentGatewayPort`.
+    - **Purpose:** Реализовать модуль `payments` целиком: `PaymentGatewayPort` + `StripePaymentAdapter` + `PaymentRequest`/`TransactionId` Value Objects + module barrel; покрыть unit + integration тестами.
     - **Scope:** `backend`
     - **Module:** `payments`
     - **Dependencies:** TSK-01, TSK-03
     - **Spec References:**
+      - Module spec: [payments](../../../specs/backend/payments/payments.spec.md)
       - Contract: [`PaymentGatewayPort`](../../../specs/backend/payments/payments.spec.md#paymentgatewayport)
       - Adapter: [`StripePaymentAdapter`](../../../specs/backend/payments/payments.spec.md#stripepaymentadapter)
       - Consumer: [`OrderProcessor`](../../../specs/backend/orders/orders.spec.md#orderprocessor)
@@ -296,24 +309,31 @@
     ## 3. Phases
 
     ### P1 — impl
-    - **Objective:** реализовать `StripePaymentAdapter` под `PaymentGatewayPort`
+    - **Objective:** реализовать Port + Adapter + Value Objects + module barrel в одной impl-фазе (один phase-subagent context).
     - **Rules:**
       - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
       - [ports-adapters](../../../ai/directives/architecture/ports-adapters.xml)
     - **Target Files:**
+      - `src/payments/ports/payment-gateway-port.ts`
+      - `src/payments/value-objects/payment-request.ts`
+      - `src/payments/value-objects/transaction-id.ts`
       - `src/payments/adapters/stripe-payment-adapter.ts`
+      - `src/payments/index.ts`               <!-- trivial wiring lives here, not a separate phase -->
     - **Inputs:** none
-    - **Exit:** typecheck pass; ports-adapters compliance; intro-discipline honored
+    - **Exit:** typecheck pass; ports-adapters compliance; intro-discipline honored; `import { PaymentGatewayPort } from '@/payments'` resolves through module barrel.
 
     ### P2 — test
-    - **Objective:** unit tests против контракта `PaymentGatewayPort`
+    - **Objective:** unit + integration tests против контракта `PaymentGatewayPort` и `StripePaymentAdapter`.
     - **Rules:**
       - [node-test](../../../ai/directives/testing/node-test.xml)
     - **Target Files:**
       - `src/payments/adapters/stripe-payment-adapter.test.ts`
+      - `src/payments/ports/payment-gateway-port.contract.test.ts`
     - **Inputs:** P1 handoff
     - **Exit:** все BDD-сценарии из section 4 покрыты; tests pass
     ```
+
+    **Anti-pattern (forbidden):** splitting this into `TSK-04 Port + VOs`, `TSK-05 Adapter`, `TSK-06 module barrel`. Sequential split (each depends on prior) without (C) context overflow = pure sub-process overhead per `AX_DAG_AND_TICKET_BOUNDARIES`.
   </Golden_Example>
 
   <Halt_Conditions>
@@ -329,6 +349,7 @@
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
     | `H_VERIFICATION_COMMAND_MISSING` | RequiresVerification alias not found in infra-spec Verification Commands |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | Scope spec lacks Bootstrap Requirements section (spec did not pass discovery STEP_7) |
+    | `H_TYPING_SCENARIO_MISSING` | A contract in Spec References has no `contract`-level typing scenario in section 4 per `AX_TICKET_HAS_BDD_AND_TESTS` |
   </Halt_Conditions>
 
   <Execution_Plan>
@@ -367,8 +388,8 @@
            - Owner=`external-prereq-scope` → add cross-scope dependency edge (already declared in Scope Dependencies; verify consistency).
            - Owner=`operator-action` → record in tracker index as an external prerequisite blocking Phase 0.
         3. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec. Cross-scope dependencies from scope graph edges.
-        4. Form Phase 1+ tasks per `AX_DAG_EXECUTION`. Assign sequential `TSK-NN` (project-wide; Phase 0 bootstrap tickets numbered first).
-        5. Check: no cycles; no oversized tasks (>1 day); no missing prerequisites; every Phase 1 ticket depends (transitively) on all Phase 0 bootstrap tickets of the same scope.
+        4. Form post-bootstrap tickets per `AX_DAG_AND_TICKET_BOUNDARIES` (default: one per coherent spec unit — one ticket per module-spec for product/library; one ticket per discrete capability for infra/contracts). Subdivide only when (P) parallel-executable or (C) context overflow. Assign sequential `TSK-NN` (project-wide; bootstrap tickets numbered first).
+        5. Check: no cycles; no context-overflow tickets per (C); no missing prerequisites; every non-bootstrap ticket depends (transitively) on all bootstrap tickets of the same scope.
         5. Phase Progress + Approval Check (Mermaid graph). STOP.
       </Action>
     </Step>
@@ -395,9 +416,12 @@
            - Scope-level task: `tasks/<scope>/<scope>.task-NN.md`.
            - Module-level task: `tasks/<scope>/<module>/<module>.task-NN.md`.
            - Cross-scope integration: `tasks/integration/<label>.task-NN.md`.
-        5. Write ticket per `TASK_TICKET_STRUCTURE`.
-        6. Pre-fill section 7 Execution Log as PLAN per `AX_EXECUTION_LOG_PLAN_VS_FACT` — one `#### P<N>` block per phase declared in section 2 Phases Overview.
-        7. Phase Progress per batch + Approval Check. STOP.
+        5. Draft section 4 BDD per `AX_TICKET_HAS_BDD_AND_TESTS`, including the mandatory `contract`-level typing scenario for each DbC contract in Spec References.
+        6. **BDD review pass — isolated subagent.** Dispatch ONE general-purpose subagent with clean context; inputs = module spec slice + contract anchors + Requirements & Constraints + draft section 4 only; question = «какие negative / corner / trust-boundary / failure-mode сценарии отсутствуют?». Merge approved candidates into section 4 + section 6; append the full reviewed checklist (merged / rejected with reason) to section 8 Decision Log. Out-of-scope proposals (new entities / phases / contracts) → rejected, surfaced to operator at STEP_5.
+        7. Validate every contract in Spec References has its typing scenario mapped to a real test file under a `test` phase of THIS ticket. Missing → `H_TYPING_SCENARIO_MISSING` (name offending contract).
+        8. Write ticket per `TASK_TICKET_STRUCTURE`.
+        9. Pre-fill section 7 Execution Log as PLAN per `AX_EXECUTION_LOG_PLAN_VS_FACT` — one `#### P<N>` block per phase declared in section 2 Phases Overview.
+        10. Phase Progress per batch + Approval Check. STOP.
       </Action>
     </Step>
 

@@ -59,21 +59,31 @@
 
       **Loading defaults at module level.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — phase-subagent loads them at phase entry per `phase-execution-protocol` (Stage A only at this phase).
 
-      Activation outcomes recorded in 7 Module Decision Log of the relevant module spec.
+      Activation outcomes recorded in 8 Module Decision Log of the relevant module spec.
     </Axiom>
 
     <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
       In `add-module` mode existing module specs are NOT touched. Only:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
-      - scope spec 8 Module Map: APPEND new module row (append at end). Other rows untouched.
+      - scope spec 8 Module Map: APPEND new module row (append at end). Other rows untouched;
+      - scope spec Golden DX Example: rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run `module-decomposition` again in `refine-module` mode for that specific module.
     </Axiom>
 
     <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
-      `module-decomposition` owns 8 Module Map in the scope spec (`specs/<scope>/<scope>.spec.md`). It appends rows per module. It does NOT own any other sections of the scope spec.
+      `module-decomposition` owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
-      Cross-scope module dependencies: a module references a contracts-type scope through `Scope Reference` in 8 Inter-Module Dependencies — NOT by referencing another product scope's modules directly.
+      - **Module Map** (`## 8. Module Map`) — append-only rows per module.
+      - **Golden DX Example** (`## 2.` library / `## 3.` product) — composition view. Every module-decomposition session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `## 2. Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+
+      **Bidirectional consistency check** before session close — both directions must pass:
+      - (→) every named abstraction in scope-spec Golden DX has a home in some module's `## 3. Entity Inventory`;
+      - (←) every module with public surface (≥1 entry in `## 4. Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `## 8. Module Decision Log`.
+
+      Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
+
+      All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `## 9. Inter-Module Dependencies`, never a direct reference to another product scope's modules.
 
       `module-decomposition` does NOT write to `specs/README.md` (that is `setup`'s sole property).
     </Axiom>
@@ -110,8 +120,6 @@
 
     <Axiom id="AX_CLOSED_WORLD_INVENTORY">
       Entity inventory is a closed world. For every module the agent lists ALL entities explicitly. Phrases like «и т.д.», «etc.», «and similar» are forbidden. Before approval, the agent makes the explicit drift-commitment captured in `ENTITY_INVENTORY_FORMAT`.
-
-      Cross-check trigger: walk through approved Golden DX Example and High-Level Architecture in scope spec; ensure every abstraction mentioned there finds a home in some module inventory.
     </Axiom>
 
     <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
@@ -130,7 +138,7 @@
       - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
-      - **DbC section shape is flexible.** `## 4. Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsection numbering is optional (`### 4.0`, `### 4.1`, …, or unnumbered `### OperationDef Pattern`).
+      - **DbC section shape is flexible.** `## 5. Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsection numbering is optional (`### 5.0`, `### 5.1`, …, or unnumbered `### OperationDef Pattern`).
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
@@ -213,7 +221,7 @@
 
     <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
       Final hierarchy contains:
-      - per-module spec 9 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
+      - per-module spec 10 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
 
@@ -237,7 +245,21 @@
     Reference fragment of `specs/backend/payments/payments.spec.md` showing one assembled Port + Adapter pair with Inventory, Surfaces, DbC, Inter-Module Dependencies. Composition reference; individual Output_Contracts describe parts.
 
     ```markdown
-    ## 2. Entity Inventory (Closed-World)
+    ## 2. Module Usage Example
+
+    ```ts
+    import { StripePaymentAdapter } from '@/payments';
+
+    const gateway = new StripePaymentAdapter({ apiKey: env.STRIPE_KEY });
+    const txId = await gateway.charge({
+      orderId: 'ord_42',
+      amount: { value: 1999, currency: 'USD' },
+    });
+    // → TransactionId('txn_…') on success
+    // throws InvalidAmountError | UnsupportedCurrencyError | GatewayUnavailableError
+    ```
+
+    ## 3. Entity Inventory (Closed-World)
 
     _Это полный список сущностей модуля `payments`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
@@ -248,7 +270,7 @@
     | `PaymentRequest` | Value Object | Намерение списать сумму в валюте по reference order. |
     | `TransactionId` | Value Object | Идемпотентный идентификатор успешного списания. |
 
-    ## 3. Entity Surfaces
+    ## 4. Entity Surfaces
 
     ### `PaymentGatewayPort`
     - **Type:** Port
@@ -260,7 +282,7 @@
     - **Errors & Degradation:** `InvalidAmountError`, `UnsupportedCurrencyError`, `GatewayUnavailableError`.
     - **Consumers:** Internal `OrderProcessor` (`../../orders/orders.spec.md#orderprocessor`); External — N/A.
 
-    ## 4. Module Contracts (DbC)
+    ## 5. Module Contracts (DbC)
 
     #### Port: `PaymentGatewayPort`
     - **Runtime Backing:** `real-runtime`
@@ -288,7 +310,7 @@
     - HTTPS-запрос к `api.stripe.com/v1/charges`.
     - Эмиссия `payment.charged` через ModuleEventBus.
 
-    ## 8. Inter-Module Dependencies
+    ## 9. Inter-Module Dependencies
     - **Depends on:** `observability` (`../../observability/observability.spec.md`).
     - **Scope Reference (cross-scope):** `api-contracts` (`../../../api-contracts/api-contracts.spec.md`) — REST API v1.
     - **Provides to:** `orders` (`../../orders/orders.spec.md`).
@@ -329,7 +351,7 @@
         For each module:
         1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI_<MODULE>`).
         2. Entity Inventory Draft: complete list. Each entity = `<Name>` + Type + 1-sentence Purpose.
-        3. Cross-check vs scope spec: walk through Golden DX + High-Level Architecture; explicitly list which abstractions found a home. Gaps surfaced explicitly.
+        3. Cross-check vs scope spec High-Level Architecture: explicitly list which abstractions found a home. Gaps surfaced explicitly. (Golden DX coverage check — at session close per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`.)
         4. Closed-World Commitment per `AX_CLOSED_WORLD_INVENTORY`.
         5. Phase Progress + Approval Check. STOP per module.
 
@@ -338,16 +360,19 @@
     </Step>
 
     <Step id="STEP_3_ENTITY_SURFACE">
-      <Goal>Public surface and consumers for every entity.</Goal>
+      <Goal>Public surface and consumers for every entity. Module Usage Example per module.</Goal>
       <Action>
         Iterate entities (or per-module batches if trivial):
         1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI__ES_<MODULE>_<ENTITY>`).
         2. Surface Draft per `ENTITY_SURFACE_FORMAT`.
         3. Consumers: Internal (file path or entity name), External (CLI/API/Browser/…). No consumer in v1 → mark candidate for removal or `deferred`.
         4. ≥1 uncomfortable question per `AX_UNCOMFORTABLE_QUESTIONS`.
-        5. Phase Progress + Approval Check (per entity or batch). STOP.
+        5. Phase Progress + Approval Check (per entity or batch).
 
-        All surfaces must be approved before STEP_4.
+        After all surfaces of a module are approved, BEFORE STEP_4 for that module:
+        6. Draft **Module Usage Example** (section 2 of module spec) — self-sufficient happy-path snippet exercising the public surface drafted in steps 2–3 (init / happy path / минимальный error path). Self-contained; composition with other modules NOT here. Operator approval. STOP.
+
+        All surfaces + usage examples must be approved before STEP_4.
       </Action>
     </Step>
 
@@ -382,12 +407,14 @@
         1. TRACE_HEADER (STACK `ROOT__FINAL_HIERARCHY`).
         2. For each module — `specs/<scope>/<module>/<module>.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
            - Module spec 1 MUST link back to `../../<scope>.spec.md` (parent scope spec).
-        3. **Scope spec 8 Module Map update (append-only per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
+        3. **Scope spec 8 Module Map update (per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
            - `initial`: WRITE 8 Module Map with one row per module.
            - `add-module`: APPEND a row for the new module in 8 Module Map.
            - `refine-module`: UPDATE the target module's row in 8 Module Map if Purpose changed. Other rows untouched.
-        4. Cross-scope dependencies declared in module spec 8 Inter-Module Dependencies as Scope Reference entries (pointing to contracts-type scope specs), per `AX_CROSS_SCOPE_DEPENDENCIES` in discovery.
-        5. Output for review. STOP.
+        4. Rewrite scope-spec Golden DX Example as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`.
+        5. Cross-scope dependencies declared in module spec 9 Inter-Module Dependencies as Scope Reference entries (pointing to contracts-type scope specs), per `AX_CROSS_SCOPE_DEPENDENCIES` in discovery.
+        6. Run bidirectional consistency check per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. Any direction fails → fix and re-run; do NOT proceed to operator review with inconsistency.
+        7. Output for review. STOP.
       </Action>
     </Step>
   </Execution_Plan>
@@ -510,36 +537,41 @@
       [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
       <!--/SECTION:MODULE_VISION-->
 
+      <!--SECTION:MODULE_USAGE_EXAMPLE-->
+      ## 2. Module Usage Example
+      [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
+      <!--/SECTION:MODULE_USAGE_EXAMPLE-->
+
       <!--SECTION:ENTITY_INVENTORY-->
-      ## 2. Entity Inventory (Closed-World)
+      ## 3. Entity Inventory (Closed-World)
       [Per `ENTITY_INVENTORY_FORMAT`.]
       <!--/SECTION:ENTITY_INVENTORY-->
 
       <!--SECTION:ENTITY_SURFACES-->
-      ## 3. Entity Surfaces
+      ## 4. Entity Surfaces
       [Each entity per `ENTITY_SURFACE_FORMAT`.]
       <!--/SECTION:ENTITY_SURFACES-->
 
       <!--SECTION:MODULE_CONTRACTS-->
-      ## 4. Module Contracts (DbC)
+      ## 5. Module Contracts (DbC)
 
       <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
-           Numbering optional (`### 4.0`, `### 4.1`, …, or unnumbered like `### OperationDef Pattern`). -->
+           Numbering optional (`### 5.0`, `### 5.1`, …, or unnumbered like `### OperationDef Pattern`). -->
 
-      ### 4.1 Ports
+      ### 5.1 Ports
       [Per `DBC_PORT_FORMAT`. Omit if this module has no Ports.]
 
-      ### 4.2 Adapters
+      ### 5.2 Adapters
       [Per `DBC_ADAPTER_FORMAT`. Omit if this module has no Adapters.]
       <!--/SECTION:MODULE_CONTRACTS-->
 
       <!--SECTION:PUBLIC_OPTIONS-->
-      ## 5. Public Options & Policies
+      ## 6. Public Options & Policies
       [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
       <!--/SECTION:PUBLIC_OPTIONS-->
 
       <!--SECTION:FILE_STRUCTURE-->
-      ## 6. File Structure
+      ## 7. File Structure
       ```
       <module>/
       ├── ports/
@@ -554,12 +586,12 @@
       <!--/SECTION:FILE_STRUCTURE-->
 
       <!--SECTION:MODULE_DECISION_LOG-->
-      ## 7. Module Decision Log
+      ## 8. Module Decision Log
       [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
       <!--/SECTION:MODULE_DECISION_LOG-->
 
       <!--SECTION:INTER_MODULE_DEPENDENCIES-->
-      ## 8. Inter-Module Dependencies
+      ## 9. Inter-Module Dependencies
       - **Depends on:** <list of modules within this scope with links>
       - **Scope Reference (cross-scope):** <contracts-type scope with link if any>
       - **Provides to:** <list of modules within this scope>
@@ -574,8 +606,8 @@
       <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
       <!--SECTION:HANDOFF-->
-      ## 9. Handoff to task-scaffolding
-      - **Implementation files to be created:** <list from 6>
+      ## 10. Handoff to task-scaffolding
+      - **Implementation files to be created:** <list from 7>
       - **Test files to be created:** <list>
       - **Stack dependencies:**
         - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
@@ -591,14 +623,14 @@
 
       <!-- Optional appendix — include only when the module has non-trivial post-impl learnings worth preserving. -->
       <!--SECTION:IMPLEMENTATION_INSIGHTS-->
-      ## 10. Implementation Insights
+      ## 11. Implementation Insights
       [Library wrap patterns, transaction subtleties, fake-runtime pitfalls, etc. Authored after audit-cycle compaction; immutable contract for future readers.]
       <!--/SECTION:IMPLEMENTATION_INSIGHTS-->
       ```
     </Contract>
 
     <Contract id="SCOPE_SPEC_MODULE_MAP_UPDATE">
-      **Append-only to scope spec 8.** Do not edit other sections of the scope spec. Discovery's sections stay intact.
+      **Module Map (`## 8.`) — append-only.** Golden DX Example (`## 2.` library / `## 3.` product) is rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. All other scope-spec sections stay intact.
 
       ```markdown
       ## 8. Module Map (post-ModuleDecomposition)

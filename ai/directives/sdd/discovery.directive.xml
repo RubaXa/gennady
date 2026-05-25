@@ -180,6 +180,8 @@
       - For product service-module-sdk: API DX at the transport boundary.
 
       DX is the empathic anchor for downstream design; without it Design Variants drift into solution-space gymnastics.
+
+      For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
     </Axiom>
 
     <Axiom id="AX_STACK_BASED_FLOW">
