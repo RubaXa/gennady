@@ -72,9 +72,7 @@ describe('AgentMonApp', () => {
       lastUpdated: Date.now(),
     });
 
-    const output = await renderToString(
-      <AgentMonApp stateManager={stateManager} />,
-    );
+    const output = await renderToString(<AgentMonApp stateManager={stateManager} />);
 
     assert.match(output, /Scanning for active sessions/);
   });
@@ -109,9 +107,7 @@ describe('AgentMonApp', () => {
       lastUpdated: Date.now(),
     });
 
-    const output = await renderToString(
-      <AgentMonApp stateManager={stateManager} />,
-    );
+    const output = await renderToString(<AgentMonApp stateManager={stateManager} />);
 
     assert.match(output, /observer crash/);
     assert.match(output, /Test Session/);

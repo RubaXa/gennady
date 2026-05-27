@@ -87,8 +87,8 @@ graph TD
 | [TSK-17](lint/cli-lint.task-17.md)               | Тесты: проверки + интеграционные                      | lint         | TSK-16                         | `[x]` DONE | 0       |
 | [TSK-18](lint/cli-lint.task-18.md)               | Интеграционные тесты CLI команды lint                 | lint         | TSK-17                         | `[x]` DONE | 0       |
 | [TSK-32](lint/cli-lint.task-32.md)               | LanguageCheck: проверка языка (English-only)          | lint         | TSK-16                         | `[x]` DONE | 0       |
-| [TSK-49](lint/cli-lint.task-49.md)               | resolveTargets() + интеграция в LintCommand          | lint         | TSK-16                         | `[x]` DONE | 0       |
-| [TSK-50](lint/cli-lint.task-50.md)               | Тесты: resolveTargets (24u) + интеграционные (19i)   | lint         | TSK-49                         | `[x]` DONE | 0       |
+| [TSK-49](lint/cli-lint.task-49.md)               | resolveTargets() + интеграция в LintCommand           | lint         | TSK-16                         | `[x]` DONE | 0       |
+| [TSK-50](lint/cli-lint.task-50.md)               | Тесты: resolveTargets (24u) + интеграционные (19i)    | lint         | TSK-49                         | `[x]` DONE | 0       |
 | [TSK-51](lint/cli-lint.task-51.md)               | DisablesCheck (D-007 enforcement)                     | lint         | TSK-50                         | `[x]` DONE | 0       |
 | [TSK-52](lint/cli-lint.task-52.md)               | DisablesCheck purpose requirement (D-007 tighten)     | lint         | TSK-51                         | `[x]` DONE | 0       |
 | [TSK-23](alt-opinion/cli-alt-opinion.task-23.md) | AltOpinion Core (types + parser + runner)             | alt-opinion  | None                           | `[x]` DONE | 5       |

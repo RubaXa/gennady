@@ -22,9 +22,11 @@ import type {
 export type AltOpinionCmdDeps = {
   /** @purpose Pre-read stdin content bypassing process.stdin */
   stdinContent?: string;
-  /** @purpose Sync file reader override — defaults to readFileSync
+  /**
+   * @purpose Sync file reader override — defaults to readFileSync
    * @param path File path to read.
-   * @returns File content as string. */
+   * @returns File content as string.
+   */
   readFile?: (path: string) => string;
   /** @purpose AI SDK generateText override for testing */
   generateText?: typeof generateText;
@@ -97,13 +99,13 @@ function formatModelBlock(result: AltOpinionResult): string {
 
 /**
  * @purpose CLI entry point for the alt-opinion command.
- *
+ * *
  * Parses CLI arguments, creates AI SDK providers from environment variables,
  * builds a Map of AltOpinionModelPort keyed by "provider/model", calls the core runner,
  * and formats the results to stdout with anchor-wrapped blocks or synthesis output.
- *
+ * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
- * @param deps Optional injectable dependencies for testing.
+ * @param [deps] Optional injectable dependencies for testing.
  * @throws {Error} On parsing failures (missing model, unknown provider, empty input).
  * @returns AltOpinionReport with per-model results, exit code, and optional synthesis block.
  * @sideEffect FS: readFile for prompt files and --file resolution.

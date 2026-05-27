@@ -34,11 +34,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   /** @purpose Lazy-initialized tree-sitter parser instance */
   protected _parser: Parser | undefined;
 
-  /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts
-   * @param filePath Absolute path to the TypeScript source file.
-   * @param content Optional pre-loaded file content, bypasses disk read.
-   * @returns Parse result with exported entities or an error.
-   */
+  /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts */
   async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
     // #region START_PARSE_FILE
     try {
@@ -189,6 +185,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     const name = this._extractName(declaration, source, isDefault);
     const signature = this._extractSignature(declaration, source);
     const members = this._extractMembers(declaration, source, kind);
+    const implementsInterfaces = kind === 'class' ? this._hasImplements(declaration) : undefined;
 
     const contract = pendingContract
       ? {
@@ -204,6 +201,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       members,
       contract,
       signature,
+      implementsInterfaces,
     };
     // #endregion END_EXTRACT_EXPORT_ENTITY
   }
@@ -387,6 +385,12 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
 
       // Optional marker `?` inside optional_parameter
       if (child.type === '?') {
+        optional = true;
+        continue;
+      }
+
+      // Default initializer `=` makes a required_parameter effectively optional
+      if (child.type === '=') {
         optional = true;
         continue;
       }
@@ -776,6 +780,17 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       }
     }
     return false;
+  }
+
+  /**
+   * @purpose Checks if a class_declaration node has an implements clause.
+   * @param node class_declaration node.
+   * @returns True if the class has `implements` clause.
+   */
+  protected _hasImplements(node: SyntaxNode): boolean {
+    const heritage = this._findChild(node, 'class_heritage');
+    if (!heritage) return false;
+    return this._findChild(heritage, 'implements_clause') !== null;
   }
 
   /**

@@ -39,7 +39,9 @@ function printUsageAndExit(reason?: string): never {
   process.stderr.write('Usage: gennady agent-mon [options]\n');
   process.stderr.write('  --once              Snapshot mode — print dashboard and exit\n');
   process.stderr.write('  --interval <ms>     Polling interval in ms (default: 5000)\n');
-  process.stderr.write('  --provider <name>   Filter by provider: claude, opencode, all (default: all)\n');
+  process.stderr.write(
+    '  --provider <name>   Filter by provider: claude, opencode, all (default: all)\n'
+  );
   process.stderr.write('  --limit <N>         Max sessions per provider (default: 20)\n');
   process.exit(1);
 }
@@ -87,9 +89,7 @@ function parseFlags(argv: string[]): CliFlags {
           printUsageAndExit('--provider requires a value (claude | opencode | all)');
         }
         if (!ALLOWED_PROVIDERS.has(next)) {
-          printUsageAndExit(
-            `Unknown provider: ${next}. Must be one of: claude, opencode, all`,
-          );
+          printUsageAndExit(`Unknown provider: ${next}. Must be one of: claude, opencode, all`);
         }
         flags.provider = next as 'claude' | 'opencode' | 'all';
         i++;
@@ -102,9 +102,7 @@ function parseFlags(argv: string[]): CliFlags {
           printUsageAndExit('--view requires a value (column | compact)');
         }
         if (!ALLOWED_VIEWS.has(next)) {
-          printUsageAndExit(
-            `Unknown view: ${next}. Must be one of: column, compact`,
-          );
+          printUsageAndExit(`Unknown view: ${next}. Must be one of: column, compact`);
         }
         flags.view = next as 'column' | 'compact';
         i++;
@@ -115,7 +113,8 @@ function parseFlags(argv: string[]): CliFlags {
         const next = argv[i + 1];
         if (next === undefined) printUsageAndExit('--limit requires a value');
         const parsed = Number(next);
-        if (Number.isNaN(parsed) || parsed < 1) printUsageAndExit(`--limit must be >= 1, got: ${next}`);
+        if (Number.isNaN(parsed) || parsed < 1)
+          printUsageAndExit(`--limit must be >= 1, got: ${next}`);
         flags.limit = parsed;
         i++;
         break;
@@ -160,9 +159,7 @@ async function buildOnceViewModel(monitor: AgentMonitor, limit: number): Promise
     };
   } catch (cause) {
     const error =
-      cause instanceof Error
-        ? cause
-        : new Error('[buildOnceViewModel] Scan failed', { cause });
+      cause instanceof Error ? cause : new Error('[buildOnceViewModel] Scan failed', { cause });
     logger.error('[buildOnceViewModel] [scanning → failed]', { error });
     return {
       status: 'error',
@@ -189,7 +186,9 @@ export async function run(argv: string[]): Promise<void> {
 
   const flags = parseFlags(argv);
 
-  logger.debug(`[run] [parsing → parsed] once=${flags.once} interval=${flags.interval} provider=${flags.provider} view=${flags.view}`);
+  logger.debug(
+    `[run] [parsing → parsed] once=${flags.once} interval=${flags.interval} provider=${flags.provider} view=${flags.view}`
+  );
 
   // #region START_CREATE_PROVIDERS — invariant: provider filter controls which providers are registered
   const providerOpts: CreateProvidersOpts = {};
@@ -227,13 +226,21 @@ export async function run(argv: string[]): Promise<void> {
       console.log(`  └${'─'.repeat(inner)}┘`);
     }
 
-    const icons: Record<string, string> = { active: '🔴', waiting: '⏳', idle: '🟡', completed: '⬜' };
+    const icons: Record<string, string> = {
+      active: '🔴',
+      waiting: '⏳',
+      idle: '🟡',
+      completed: '⬜',
+    };
 
     function cardText(c: any): string {
       const parts = [`${icons[c.status] ?? '?'} ${c.title.slice(0, 55)}`];
       const meta = [c.model, c.status, c.elapsed].filter(Boolean).join(' · ');
       parts.push(`   ${meta}`);
-      if (c.tokensIn) parts.push(`   tok: ${Math.round(c.tokensIn / 1000)}k in / ${Math.round((c.tokensOut || 0) / 1000)}k out`);
+      if (c.tokensIn)
+        parts.push(
+          `   tok: ${Math.round(c.tokensIn / 1000)}k in / ${Math.round((c.tokensOut || 0) / 1000)}k out`
+        );
       if (c.lastMessage) parts.push(`   ${c.lastMessage.slice(0, 60)}`);
       return parts.join('\n');
     }
@@ -242,7 +249,8 @@ export async function run(argv: string[]): Promise<void> {
     const activeCards: any[] = [];
     for (const col of cols) {
       for (const c of col.sessions) {
-        if (c.status === 'active' || c.status === 'waiting') activeCards.push({ ...c, _provider: col.provider });
+        if (c.status === 'active' || c.status === 'waiting')
+          activeCards.push({ ...c, _provider: col.provider });
       }
     }
 

@@ -50,13 +50,13 @@ function parseModelArg(raw: string, flag: string): AltOpinionModel {
 
 /**
  * @purpose Parse CLI arguments for the alt-opinion command.
- *
+ * *
  * Parses repeated --model, optional --synthModel, --file, --modelPrompt, --synthPrompt, --strict.
  * Validates provider names, mutual exclusion of stdin/--file, :: syntax for per-model prompts,
  * and minimum model count.
- *
+ * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
- * @param opts Options bag carrying pre-read stdin content for test injection.
+ * @param [opts] Options bag carrying pre-read stdin content for test injection.
  *   When omitted and stdin is not a TTY, the parser reads stdin synchronously.
  * @throws {Error} On validation failures (missing model, unknown provider, mutual exclusion, etc.).
  * @returns Parsed arguments with resolved artifact content.

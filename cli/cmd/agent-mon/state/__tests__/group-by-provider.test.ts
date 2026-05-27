@@ -42,8 +42,8 @@ describe('groupByProvider', () => {
     // #region START_GROUP_BY_PROVIDER_ASSERT_STRUCTURE
     assert.strictEqual(columns.length, 2);
 
-    const claudeCol = columns.find(c => c.provider === 'claude')!;
-    const opencodeCol = columns.find(c => c.provider === 'opencode')!;
+    const claudeCol = columns.find((c) => c.provider === 'claude')!;
+    const opencodeCol = columns.find((c) => c.provider === 'opencode')!;
 
     // Claude column: 2 sessions, active before idle
     assert.strictEqual(claudeCol.activeCount, 1);

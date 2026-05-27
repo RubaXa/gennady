@@ -45,7 +45,8 @@ export class AiLegacyModel {
 
   /**
    * @purpose Create an AI model instance with the given configuration.
-   * @param init Partial initialization config (model, url, key, extra). */
+   * @param init Partial initialization config (model, url, key, extra).
+   */
   constructor(init: Partial<AiLegacyModelInit>) {
     this._init = {
       model: init.model ?? 'llama3.1:8b',
@@ -54,20 +55,26 @@ export class AiLegacyModel {
     };
   }
 
-  /** @purpose Model name (for logs and headers).
-   * @returns Model name string. */
+  /**
+   * @purpose Model name (for logs and headers).
+   * @returns Model name string.
+   */
   get name(): string {
     return this._init.model;
   }
 
-  /** @purpose API endpoint URL.
-   * @returns API URL string. */
+  /**
+   * @purpose API endpoint URL.
+   * @returns API URL string.
+   */
   get url(): string {
     return this._init.url;
   }
 
-  /** @purpose API key (if authorization is required).
-   * @returns API key string or undefined. */
+  /**
+   * @purpose API key (if authorization is required).
+   * @returns API key string or undefined.
+   */
   get key(): string | undefined {
     return this._init.key;
   }

@@ -40,7 +40,8 @@ export class CommitGen {
 
   /**
    * @purpose Initialize CommitGen with configuration and AI core.
-   * @param init Configuration overrides (mode, oneline, targetBranch, task, timeout). */
+   * @param [init] Configuration overrides (mode, oneline, targetBranch, task, timeout).
+   */
   constructor(init: CommitGenInit = {}) {
     this.init = {
       mode: 'auto',
@@ -60,38 +61,50 @@ export class CommitGen {
     });
   }
 
-  /** @purpose Get the logger instance used during generation.
-   * @returns Logger instance. */
+  /**
+   * @purpose Get the logger instance used during generation.
+   * @returns Logger instance.
+   */
   get logger(): typeof logger {
     return this.init.logger;
   }
 
-  /** @purpose Commit output mode: auto | oneline | detailed.
-   * @returns Mode string. */
+  /**
+   * @purpose Commit output mode: auto | oneline | detailed.
+   * @returns Mode string.
+   */
   get mode(): string {
     return this.init.mode;
   }
 
-  /** @purpose Active AI model name (from the first available rc).
-   * @returns Model name string or undefined. */
+  /**
+   * @purpose Active AI model name (from the first available rc).
+   * @returns Model name string or undefined.
+   */
   get model(): string | undefined {
     return this.ai.model;
   }
 
-  /** @purpose Active model API URL.
-   * @returns API URL string or undefined. */
+  /**
+   * @purpose Active model API URL.
+   * @returns API URL string or undefined.
+   */
   get apiUrl(): string | undefined {
     return this.ai.apiUrl;
   }
 
-  /** @purpose Branch against which the diff is built (if specified).
-   * @returns Target branch name or undefined. */
+  /**
+   * @purpose Branch against which the diff is built (if specified).
+   * @returns Target branch name or undefined.
+   */
   get targetBranch(): string | undefined {
     return this.init.targetBranch;
   }
 
-  /** @purpose Task identifier for substitution in subject (optional).
-   * @returns Task ID string or number, or undefined. */
+  /**
+   * @purpose Task identifier for substitution in subject (optional).
+   * @returns Task ID string or number, or undefined.
+   */
   get task(): string | number | undefined {
     return this.init.task;
   }

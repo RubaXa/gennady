@@ -65,7 +65,7 @@ mock.module('ink', {
 
 // Mock createProviders — returns a controlled monitor with a stubbed scanAll
 const scanAllFn = mock.fn(
-  async () => [makeSession({ title: 'Test', sessionId: 's-1' })] as AgentSession[],
+  async () => [makeSession({ title: 'Test', sessionId: 's-1' })] as AgentSession[]
 );
 const mockMonitor = { scanAll: scanAllFn } as unknown as AgentMonitor;
 const createProvidersFn = mock.fn(() => mockMonitor);

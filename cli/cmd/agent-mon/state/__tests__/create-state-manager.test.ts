@@ -44,7 +44,9 @@ describe('createStateManager', () => {
 
     // Wait for transition to ready via subscribe
     let resolveReady: (() => void) | undefined;
-    const ready = new Promise<void>(r => { resolveReady = r; });
+    const ready = new Promise<void>((r) => {
+      resolveReady = r;
+    });
     const unsub = manager.subscribe((vm) => {
       if (vm.status === 'ready') resolveReady!();
     });
@@ -74,7 +76,9 @@ describe('createStateManager', () => {
 
     // Wait for error transition
     let resolveError: (() => void) | undefined;
-    const errorState = new Promise<void>(r => { resolveError = r; });
+    const errorState = new Promise<void>((r) => {
+      resolveError = r;
+    });
     const unsub = manager.subscribe((vm) => {
       if (vm.status === 'error') resolveError!();
     });

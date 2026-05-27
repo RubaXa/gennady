@@ -29,6 +29,7 @@ import {
   ERR_DBC_LINT_RETURNS_MISSING,
   ERR_DBC_LINT_RETURNS_UNEXPECTED,
   ERR_DBC_LINT_TYPE_REDUNDANT,
+  ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
 } from '../../dbc-linter.types.ts';
 
 // #region START_KIND_CLASSIFICATION
@@ -160,6 +161,30 @@ export function validate(
       }
     }
 
+    // PARAM_OPTIONAL_MISMATCH: @param brackets must match signature optionality
+    const sigParamMap = new Map(signature.params.map((p) => [p.name, p]));
+    for (const pe of paramEntries) {
+      const norm = normalizeSpecifier(pe.specifier ?? '');
+      const sigParam = sigParamMap.get(norm);
+      if (sigParam && !sigParam.isRest) {
+        if (sigParam.optional && !pe.optional) {
+          errors.push(
+            blankError(
+              ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
+              `Parameter '${norm}' is optional in signature but missing brackets in contract`
+            )
+          );
+        } else if (!sigParam.optional && pe.optional) {
+          errors.push(
+            blankError(
+              ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
+              `Parameter '${norm}' is not optional in signature but has brackets in contract`
+            )
+          );
+        }
+      }
+    }
+
     // PARAM_ORDER: contract @param order differs from signature order
     // Skip order check if there are extra/missing params (already reported)
     if (
@@ -263,10 +288,11 @@ export class DbcTsLinter implements DbcLinter {
     this._astAdapter = astAdapter;
   }
 
-  /** @see {DbcLinter#lint} in ../../dbc-linter.types.ts
+  /**
    * @param filePath Path to the source file to check.
-   * @param options Optional lint configuration.
+   * @param [options] Optional lint configuration.
    * @returns Full lint report with errors and a formatting function.
+   @see {DbcLinter#lint} in ../../dbc-linter.types.ts
    */
   async lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport> {
     logger.debug(`[DbcTsLinter#lint] [idle → parsing] ${filePath}`);
@@ -314,10 +340,11 @@ export class DbcTsLinter implements DbcLinter {
     }
   }
 
-  /** @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts
+  /**
    * @param filePath Path to the source file to check.
-   * @param options Optional lint configuration.
+   * @param [options] Optional lint configuration.
    * @returns Combined report with errors and count of auto-fixed issues.
+   @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts
    */
   async lintAndFix(filePath: string, options?: DbcLintOptions): Promise<DbcLintFixReport> {
     logger.debug(`[DbcTsLinter#lintAndFix] [idle → linting] ${filePath}`);
@@ -349,26 +376,29 @@ export class DbcTsLinter implements DbcLinter {
         const original = block.text;
         let fixed = original;
 
+        // Chain step 1: expand pipe format to multi-line for callable kinds
+        fixed = this._expandToMultiline(fixed, block.kind);
+
         // Chain step 1: remove {type} annotations
         fixed = this._removeRedundantTypes(fixed);
 
-        // Chain step 2: remove extra @param
+        // Chain step 2: normalize param brackets to match signature optionality
+        fixed = this._normalizeParamBrackets(fixed, block.signature);
+
+        // Chain step 3: remove extra @param
         fixed = this._removeExtraParams(fixed, block.signature);
 
-        // Chain step 3: remove unexpected @returns
+        // Chain step 4: remove unexpected @returns
         fixed = this._removeUnexpectedReturns(fixed, block.kind, block.signature);
 
-        // Chain step 4: reorder @param to match signature
+        // Chain step 5: reorder @param to match signature
         fixed = this._reorderParams(fixed, block.signature);
 
-        // Chain step 5: reorder tags to canonical order
+        // Chain step 6: reorder tags to canonical order
         fixed = this._reorderTags(fixed);
 
-        // Chain step 6: normalize multi-line format (always, even on clean)
+        // Chain step 7: normalize multi-line format (always, even on clean)
         fixed = this._normalizeMultiLine(fixed);
-
-        // Chain step 7: inline if safe (dry-run)
-        fixed = this._inlineIfSafe(fixed);
 
         if (fixed !== original) {
           source = source.replace(original, fixed);
@@ -431,7 +461,8 @@ export class DbcTsLinter implements DbcLinter {
 
   // #region START_LINT_HELPERS
 
-  /** @purpose Walk all exported entities and their members, collecting lint errors.
+  /**
+   @purpose Walk all exported entities and their members, collecting lint errors.
    * @param entities Exported entities from AST parse result.
    * @param filePath Source file path for error attribution.
    * @returns Array of lint errors collected from entities and members.
@@ -493,7 +524,8 @@ export class DbcTsLinter implements DbcLinter {
     }));
   }
 
-  /** @purpose Parse a contract text and validate it, returning both parser issues
+  /**
+   @purpose Parse a contract text and validate it, returning both parser issues
    * (translated per FR-23) and structural mismatches via DbcContractMatchValidator.
    * @param contractText Raw JSDoc contract text to parse and validate.
    * @param signature Signature info from AST for parameter/returns matching.
@@ -574,7 +606,8 @@ export class DbcTsLinter implements DbcLinter {
     }
   };
 
-  /** @purpose Walk entities and members, collecting all JSDoc contract blocks
+  /**
+   @purpose Walk entities and members, collecting all JSDoc contract blocks
    * with their associated kind and signature for autofix processing.
    * @param entities Exported entities from AST parse result.
    * @returns Array of contract blocks with kind and signature context.
@@ -602,11 +635,121 @@ export class DbcTsLinter implements DbcLinter {
 
   // #region START_AUTOFIX_CHAIN_METHODS
 
+  /**
+   * @purpose Expand single-line pipe contracts to multi-line for callable kinds or >3 tags.
+   * @param jsdocText Raw JSDoc comment text.
+   * @param [kind] Entity kind — callable kinds or pipe with >3 tags are expanded.
+   * @returns JSDoc text in multi-line format if applicable.
+   */
+  protected _expandToMultiline(jsdocText: string, kind?: string): string {
+    if (jsdocText.includes('\n')) return jsdocText;
+    if (!jsdocText.includes(' | @')) return jsdocText;
+    const inner = jsdocText.replace(/^\s*\/\*\*\s*/, '').replace(/\s*\*\/\s*$/, '');
+    const parts = inner.split(' | @');
+    if (parts.length === 0) return jsdocText;
+    const tagCount = parts.length;
+    if (tagCount <= 3 && !KINDS_WITH_PARAMS.has(kind ?? '')) return jsdocText;
+    const indentMatch = jsdocText.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : '';
+    const starIndent = indent + ' ';
+    const lines: string[] = [indent + '/**'];
+    lines.push(starIndent + '* ' + (parts[0] ?? '').trim());
+    for (let i = 1; i < parts.length; i += 1) {
+      lines.push(starIndent + '* @' + (parts[i] ?? '').trim());
+    }
+    lines.push(indent + ' */');
+    return lines.join('\n');
+  }
+
   /** @purpose Remove redundant `{dataType}` annotations from @param and @returns tags. | @param jsdocText Raw JSDoc comment text. | @returns JSDoc text with types stripped. */
   protected _removeRedundantTypes(jsdocText: string): string {
     // Remove {type} right after @param or @returns (optionally preceded by `* `):
     // `* @param {string} name` → `* @param name`
     return jsdocText.replace(/(\*?\s*)@(param|returns)\s+\{[^}]*\}\s+/g, '$1@$2 ');
+  }
+
+  /** @purpose Adjust @param specifiers to wrap optional params in `[brackets]` and remove brackets from required params. | @param jsdocText Raw JSDoc comment text. | @param signature Signature with optionality flags. | @returns JSDoc text with normalized brackets. */
+  protected _normalizeParamBrackets(jsdocText: string, signature: DbcSignatureInfo): string {
+    const sigMap = new Map(signature.params.map((p) => [p.name, p]));
+
+    // Single-line contract: process inline @param entries directly
+    if (!jsdocText.includes('\n')) {
+      const indentMatch = jsdocText.match(/^(\s*)/);
+      const indent = indentMatch ? indentMatch[1] : '';
+      let inner = jsdocText.replace(/^\s*\/\*\*\s*/, '').replace(/\s*\*\/\s*$/, '');
+      const parts = inner.split(' | ');
+      const newParts = parts.map((part) => {
+        const trimmed = part.trim();
+        if (!/^@param\s/.test(trimmed)) return part;
+        const spec = this._extractParamSpecifier(trimmed);
+        const normalized = normalizeSpecifier(spec);
+        const sigParam = sigMap.get(normalized);
+        if (!sigParam || sigParam.isRest) return part;
+        const needsBrackets = sigParam.optional;
+        const hasBrackets = spec.startsWith('[') && spec.endsWith(']');
+        if (needsBrackets === hasBrackets) return part;
+        let newSpec: string;
+        if (needsBrackets) {
+          newSpec = spec.startsWith('...') ? '[...' + normalized + ']' : '[' + normalized + ']';
+        } else {
+          newSpec = spec.startsWith('...') ? '...' + normalized : normalized;
+        }
+        const escapedSpec = spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return part.replace(
+          new RegExp(`(@param\\s+(?:\\{[^}]*\\}\\s+)?)${escapedSpec}`),
+          `$1${newSpec}`
+        );
+      });
+      return indent + '/** ' + newParts.join(' | ') + ' */';
+    }
+
+    const lines = jsdocText.split('\n');
+    const result: string[] = [];
+
+    for (const line of lines) {
+      let trimmed = line.trim();
+      if (trimmed.startsWith('* ')) {
+        trimmed = trimmed.slice(2).trimStart();
+      } else if (trimmed.startsWith('*')) {
+        trimmed = trimmed.slice(1).trimStart();
+      }
+
+      if (!/^@param\s/.test(trimmed)) {
+        result.push(line);
+        continue;
+      }
+
+      const spec = this._extractParamSpecifier(trimmed);
+      const normalized = normalizeSpecifier(spec);
+      const sigParam = sigMap.get(normalized);
+      if (!sigParam || sigParam.isRest) {
+        result.push(line);
+        continue;
+      }
+
+      const needsBrackets = sigParam.optional;
+      const hasBrackets = spec.startsWith('[') && spec.endsWith(']');
+      if (needsBrackets === hasBrackets) {
+        result.push(line);
+        continue;
+      }
+
+      let newSpec: string;
+      if (needsBrackets) {
+        newSpec = spec.startsWith('...') ? '[...' + normalized + ']' : '[' + normalized + ']';
+      } else {
+        newSpec = spec.startsWith('...') ? '...' + normalized : normalized;
+      }
+
+      const escapedSpec = spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const replaced = line.replace(
+        new RegExp(`(@param\\s+(?:\\{[^}]*\\}\\s+)?)${escapedSpec}`),
+        `$1${newSpec}`
+      );
+      result.push(replaced);
+    }
+
+    return result.join('\n');
   }
 
   /** @purpose Remove @param entries whose specifier does not match any signature parameter. | Handles both multi-line and single-line contracts. | @param jsdocText Raw JSDoc comment text. | @param signature Signature to match against. | @returns JSDoc text with extra params removed. */
@@ -655,7 +798,7 @@ export class DbcTsLinter implements DbcLinter {
     return result.join('\n');
   }
 
-  /** @purpose Remove @returns tag when the kind does not allow it or return type is void. | @param jsdocText Raw JSDoc comment text. | @param kind Entity or member kind. | @param signature Optional signature info to check void return type. | @returns JSDoc text with unexpected @returns removed. */
+  /** @purpose Remove @returns tag when the kind does not allow it or return type is void. | @param jsdocText Raw JSDoc comment text. | @param kind Entity or member kind. | @param [signature] Optional signature info to check void return type. | @returns JSDoc text with unexpected @returns removed. */
   protected _removeUnexpectedReturns(
     jsdocText: string,
     kind: string,
@@ -914,7 +1057,7 @@ export class DbcTsLinter implements DbcLinter {
       // Determine indent for the new line from existing content lines
       const contentIndent = this._detectContentIndent(lines);
       // Insert content as a new line after the opening
-      lines.splice(1, 0, contentIndent + openMatch[2]);
+      lines.splice(1, 0, contentIndent + '* ' + openMatch[2]);
     }
 
     // Step 2: if last line has content before */, move */ to its own line
@@ -929,6 +1072,15 @@ export class DbcTsLinter implements DbcLinter {
       // */ should be at the indent level of /** (one space less than * lines)
       const baseIndent = starIndent.length > 0 ? starIndent.slice(0, -1) : '';
       lines.push(baseIndent + ' */');
+    }
+
+    // Step 3: ensure every content line has * prefix
+    const nmIndent = this._detectContentIndent(lines);
+    for (let i = 1; i < lines.length - 1; i += 1) {
+      const line = lines[i];
+      if (!/^\s*\*\s/.test(line) && line.trim() !== '') {
+        lines[i] = nmIndent + '* ' + line.trimStart();
+      }
     }
 
     return lines.join('\n');

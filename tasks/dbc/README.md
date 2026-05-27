@@ -65,9 +65,9 @@ graph TD
 | [TSK-04](dbc-linter/dbc-linter.task-04.md) | Bootstrap: установить tree-sitter                 | dbc-linter | None         | `[x]` DONE | 0       |
 | [TSK-05](dbc-linter/dbc-linter.task-05.md) | Bootstrap: tree-sitter external в Vite            | dbc-linter | TSK-04       | `[x]` DONE | 0       |
 | [TSK-06](dbc-linter/dbc-linter.task-06.md) | Bootstrap: создать структуру директорий           | dbc-linter | None         | `[x]` DONE | 0       |
-| [TSK-07](dbc-linter/dbc-linter.task-07.md) | Типы: Ports, VO, константы                        | dbc-linter | TSK-06       | `[x]` DONE | 0       |
-| [TSK-08](dbc-linter/dbc-linter.task-08.md) | DbcTsAstAdapter: tree-sitter парсинг TS           | dbc-linter | TSK-07       | `[x]` DONE | 0       |
-| [TSK-09](dbc-linter/dbc-linter.task-09.md) | DbcTsLinter + DbcContractMatchValidator + autofix | dbc-linter | TSK-08       | `[x]` DONE | 0       |
+| [TSK-07](dbc-linter/dbc-linter.task-07.md) | Типы: Ports, VO, константы                        | dbc-linter | TSK-06       | `[x]` DONE | 1       |
+| [TSK-08](dbc-linter/dbc-linter.task-08.md) | DbcTsAstAdapter: tree-sitter парсинг TS           | dbc-linter | TSK-07       | `[x]` DONE | 2       |
+| [TSK-09](dbc-linter/dbc-linter.task-09.md) | DbcTsLinter + DbcContractMatchValidator + autofix | dbc-linter | TSK-08       | `[x]` DONE | 2       |
 | [TSK-10](dbc-linter/dbc-linter.task-10.md) | Тесты: 88 fixture-кейсов                          | dbc-linter | TSK-09       | `[x]` DONE | 1       |
 | [TSK-11](dbc-linter/dbc-linter.task-11.md) | DbcLinter: опция `content`                        | dbc-linter | TSK-10       | `[x]` DONE | 1       |
 | [TSK-19](dbc-linter/dbc-linter.task-19.md) | type alias + interface property контракты         | dbc-linter | TSK-10       | `[x]` DONE | 0       |

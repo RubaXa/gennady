@@ -13,10 +13,7 @@ import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
 import { check as checkDisables } from './checks/disables.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
 import { LintReport } from './lint.types.ts';
-import {
-  ERR_CLI_LINT_STAGED_CONFLICT,
-  ERR_CLI_LINT_RESOLVE_FAILED,
-} from './lint.types.ts';
+import { ERR_CLI_LINT_STAGED_CONFLICT, ERR_CLI_LINT_RESOLVE_FAILED } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 import {
   loadTaskReferences,
@@ -156,18 +153,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
 // #region START_RESOLVE_TARGETS — invariant: recursive dir walk, filter .ts/.tsx, dedup, sort, exclude system dirs, skip symlinks
 const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
-const EXCLUDED_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'coverage',
-  'build',
-  'out',
-  '__tests__',
-]);
+const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out', '__tests__']);
 
-function resolveTargets(
-  targets: string[]
-): { files: string[]; errors: LintError[] } {
+function resolveTargets(targets: string[]): { files: string[]; errors: LintError[] } {
   logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
   const fileSet = new Set<string>();
   const errors: LintError[] = [];

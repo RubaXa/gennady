@@ -35,7 +35,8 @@ export class AiLegacyCore {
 
   /**
    * @purpose Initialize AiLegacyCore with loaded models from gennadyrc.
-   * @param init Configuration (logger, timeout, maxInputTokens). */
+   * @param [init] Configuration (logger, timeout, maxInputTokens).
+   */
   constructor(init: AiLegacyCoreInit = {}) {
     this.init = {
       logger,
@@ -55,20 +56,26 @@ export class AiLegacyCore {
     }
   }
 
-  /** @purpose Name of the first loaded model (for CLI display).
-   * @returns Model name string or undefined. */
+  /**
+   * @purpose Name of the first loaded model (for CLI display).
+   * @returns Model name string or undefined.
+   */
   get model(): string | undefined {
     return this._models[0]?.name;
   }
 
-  /** @purpose URL of the first loaded model.
-   * @returns API URL string or undefined. */
+  /**
+   * @purpose URL of the first loaded model.
+   * @returns API URL string or undefined.
+   */
   get apiUrl(): string | undefined {
     return this._models[0]?.url;
   }
 
-  /** @purpose Token limit per batch when splitting diff.
-   * @returns Max input tokens count. */
+  /**
+   * @purpose Token limit per batch when splitting diff.
+   * @returns Max input tokens count.
+   */
   get maxInputTokens(): number {
     return this.init.maxInputTokens;
   }

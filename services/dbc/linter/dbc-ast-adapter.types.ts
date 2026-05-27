@@ -62,6 +62,8 @@ export type DbcExportedEntity = {
   contract?: DbcContractInfo;
   /** @purpose Extracted signature information for callable entities */
   signature: DbcSignatureInfo;
+  /** @purpose Whether the class declaration has `implements` clause */
+  implementsInterfaces?: boolean;
 };
 
 /** @purpose Result of parsing a source file: either a list of exported entities or a parse error. */
@@ -78,7 +80,7 @@ export interface DbcAstAdapter {
   /**
    * @purpose Parse a source file and extract all exported entities with their contracts and signatures.
    * @param filePath Absolute or relative path to the source file.
-   * @param content Pre-read file content. When passed, the adapter uses this instead of reading from disk.
+   * @param [content] Pre-read file content. When passed, the adapter uses this instead of reading from disk.
    * @returns On success: exported entities list. On failure: error description.
    */
   parseFile(filePath: string, content?: string): Promise<DbcParseResult>;

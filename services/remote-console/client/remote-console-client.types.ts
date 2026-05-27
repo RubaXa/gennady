@@ -58,7 +58,8 @@ export type RemoteConsoleClientConnectConfig = {
 
 /** @purpose Declares runtime controls published on patched console targets. */
 export type RemoteConsoleClientRuntime = {
-  /** @purpose Stops batching, attempts final flush and sends disconnect envelope exactly once.
+  /**
+   * @purpose Stops batching, attempts final flush and sends disconnect envelope exactly once.
    * @returns Promise that resolves after disconnect.
    */
   disconnect: () => Promise<void>;
@@ -69,27 +70,32 @@ export type RemoteConsoleClientRuntime = {
  * @consumer remoteConsoleClient.connect
  */
 export type RemoteConsoleClientTarget = {
-  /** @purpose Receives plain log-level messages while patched runtime mirrors entries remotely.
+  /**
+   * @purpose Receives plain log-level messages while patched runtime mirrors entries remotely.
    * @param args Log arguments to mirror remotely.
    * @returns Result of the underlying console call.
    */
   log: (...args: unknown[]) => unknown;
-  /** @purpose Receives info-level messages while patched runtime mirrors entries remotely.
+  /**
+   * @purpose Receives info-level messages while patched runtime mirrors entries remotely.
    * @param args Info arguments to mirror remotely.
    * @returns Result of the underlying console call.
    */
   info: (...args: unknown[]) => unknown;
-  /** @purpose Receives warning-level messages while patched runtime mirrors entries remotely.
+  /**
+   * @purpose Receives warning-level messages while patched runtime mirrors entries remotely.
    * @param args Warning arguments to mirror remotely.
    * @returns Result of the underlying console call.
    */
   warn: (...args: unknown[]) => unknown;
-  /** @purpose Receives error-level messages while patched runtime mirrors entries remotely.
+  /**
+   * @purpose Receives error-level messages while patched runtime mirrors entries remotely.
    * @param args Error arguments to mirror remotely.
    * @returns Result of the underlying console call.
    */
   error: (...args: unknown[]) => unknown;
-  /** @purpose Receives debug-level messages while patched runtime mirrors entries remotely.
+  /**
+   * @purpose Receives debug-level messages while patched runtime mirrors entries remotely.
    * @param args Debug arguments to mirror remotely.
    * @returns Result of the underlying console call.
    */

@@ -9,7 +9,7 @@ import { loadResolveConflictsTemplate } from '../io/resolve-conflicts-template-l
 /**
  * @purpose Build the final XML for resolve-conflicts (template + artifact + project placeholders).
  * @param resolveConflictsArtifactXml Merge conflicts XML artifact.
- * @param projectRoot Repository root for searching knowledge and verify commands.
+ * @param [projectRoot] Repository root for searching knowledge and verify commands.
  * @returns Full XML prompt for resolve-conflicts.
  * @consumer resolve-conflicts-command-run.logic
  */

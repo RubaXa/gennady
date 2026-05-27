@@ -50,23 +50,15 @@ const MockOpenCodeProvider = mock.fn(function (this: any) {
 });
 
 // Module-level mocks — intercept imports inside create-providers.ts
-mock.module(
-  '../../../../../services/agent-mon/providers/claude/index.ts',
-  {
-    namedExports: { ClaudeProvider: MockClaudeProvider },
-  },
-);
-mock.module(
-  '../../../../../services/agent-mon/providers/opencode/index.ts',
-  {
-    namedExports: { OpenCodeProvider: MockOpenCodeProvider },
-  },
-);
+mock.module('../../../../../services/agent-mon/providers/claude/index.ts', {
+  namedExports: { ClaudeProvider: MockClaudeProvider },
+});
+mock.module('../../../../../services/agent-mon/providers/opencode/index.ts', {
+  namedExports: { OpenCodeProvider: MockOpenCodeProvider },
+});
 
 // After mocks are registered, import the SUT
-const {
-  createProviders,
-} = await import('../create-providers.ts');
+const { createProviders } = await import('../create-providers.ts');
 
 describe('createProviders', () => {
   it('registers claude and opencode by default', async () => {

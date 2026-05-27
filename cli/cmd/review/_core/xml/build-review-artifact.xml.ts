@@ -61,7 +61,7 @@ function parseHostFromWebUrl(webUrl?: string): string {
  * @purpose Build XmlNode tree of the review artifact from MR and discussions.
  * @param mergeRequest MR object (iid, author, web_url, source_branch, title, etc.).
  * @param discussions Array of discussions with notes (body, author, position).
- * @param showAll Flag to show all threads, including resolved ones.
+ * @param [showAll] Flag to show all threads, including resolved ones.
  * @returns Root XmlNode (tag: MR_Audit_Context).
  * @consumer buildReviewArtifactXml
  */
@@ -153,7 +153,7 @@ export function createReviewArtifactXmlNode(
  * @purpose Build review XML artifact (MR + discussions).
  * @param mergeRequest MR object.
  * @param discussions Array of discussions.
- * @param showAll Flag to show all threads, including resolved ones.
+ * @param [showAll] Flag to show all threads, including resolved ones.
  * @returns XML string (MR_Audit_Context).
  * @consumer run-review-command.logic
  */

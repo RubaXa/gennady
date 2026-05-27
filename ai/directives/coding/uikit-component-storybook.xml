@@ -1,0 +1,347 @@
+<!--
+@file: Storybook rules for uikit components — hierarchy mirroring spec, play functions with a11y, ai-generated tagging.
+@consumers: SDD agents (story-writing phase of uikit-component tasks)
+@tasks: TSK-26
+-->
+<UiKitComponentStorybook keywords="uikit, storybook, hierarchy, play-function, a11y-audit, ai-generated, spec-mirror" type="testing-rules" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Canonical rules for writing Storybook stories for uikit components. Every execution-agent MUST apply these conventions when creating or modifying `.stories.ts` files. These rules are LAYERED ON TOP of `storybook-usage.xml` — the base Storybook rules are prerequisites; this directive adds uikit-specific hierarchy, play-function, and a11y-audit constraints derived from the first component (Button).
+
+      **Base axiom:** Storybook is the executable mirror of the component spec. The story hierarchy IS the spec's variant hierarchy — not invented by the developer, not rearranged for convenience. Every story carries a `play` function that asserts visual and a11y contracts. The agent writes stories by reading the spec, not by guessing props.
+
+      You are NOT in charge of:
+      - Retrieving component documentation via MCP (delegated to `storybook-usage.xml`);
+      - The Svelte component implementation (delegated to `uikit-component-svelte.xml`);
+      - Storybook installation/setup (delegated to `storybook-setup.xml`).
+    </Mission>
+  </Directive_Context>
+
+  <Depends_On>
+    - ai/directives/testing/storybook-usage.xml
+    - ai/directives/coding/uikit-component-svelte.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_HIERARCHY_MIRRORS_SPEC">
+      The Storybook sidebar hierarchy is a direct mirror of the spec's Variants table structure. For Button, the hierarchy is:
+
+      ```
+      Button / Appearance / Mode
+      ├── Accent
+      │   ├── Primary
+      │   │   ├── Small Normal
+      │   │   ├── Small Hover
+      │   │   ├── Small Active
+      │   │   ├── Small Disabled
+      │   │   ├── Medium Normal
+      │   │   └── ...
+      │   ├── Secondary
+      │   ├── Tertiary
+      │   └── Outline
+      ├── Neutral
+      └── Contrary
+      ```
+
+      Title format: `ComponentName/Appearance/Mode` (e.g. `Button/Accent/Primary`). The spec's Variants table is the single source of truth for the hierarchy — every `(appearance, mode, size, state)` combination maps to exactly one story. No "convenience" groupings that collapse size or state, no ad-hoc categories.
+
+      The `title` field in `export default` sets the hierarchy root: `title: 'Button/Accent/Primary'` groups all stories for that appearance+mode under that sidebar node. Each size×state combination becomes a named export within that group.
+    </Axiom>
+
+    <Axiom id="AX_ONE_STORY_PER_VARIANT">
+      Each variant from the spec's Variants table becomes ONE story. A story name follows the pattern `<Size> <State>` (e.g. `SmallNormal`, `MediumHover`, `LargeDisabled`). The story's `args` encode the variant parameters:
+
+      ```typescript
+      export const SmallNormal: Story = {
+        args: {
+          appearance: 'accent',
+          mode: 'primary',
+          size: 's',
+          state: 'normal',
+          label: 'Button',
+        },
+      };
+      ```
+
+      The `args` object must contain ALL variant parameters (appearance, mode, size, state) plus all optional props (label, icon, counter, indicator, disabled). No parameter is omitted — the story is self-describing. When `disabled: true`, `state` is set to `disabled` as well (the component resolves precedence, but the story is explicit).
+    </Axiom>
+
+    <Axiom id="AX_PLAY_FUNCTION_REQUIRED">
+      Every story MUST have a `play` function. The `play` function performs these assertions, in order:
+
+      1. **Role assertion:** `canvas.getByRole('button')` (or the component's correct role).
+      2. **Data-attribute assertion:** `expect(element).toHaveAttribute('data-state', expectedState)`.
+      3. **A11y audit:** `parameters: { a11y: { test: 'error' } }` — axe-core runs automatically; any violation fails the story.
+      4. **Visual contract:** for state-dependent stories (e.g. hover), `expect(element).toHaveStyle(...)` for critical properties (background, opacity).
+
+      Template:
+      ```typescript
+      export const SmallNormal: Story = {
+        args: { appearance: 'accent', mode: 'primary', size: 's', state: 'normal', label: 'Button' },
+        parameters: { a11y: { test: 'error' } },
+        play: async ({ canvasElement, step }) => {
+          const canvas = within(canvasElement);
+          await step('Renders with correct role and state', async () => {
+            const btn = canvas.getByRole('button');
+            await expect(btn).toBeInTheDocument();
+            await expect(btn).toHaveAttribute('data-state', 'normal');
+          });
+        },
+      };
+      ```
+
+      `within`, `expect`, `userEvent` are imported from `@storybook/test`. `step` is provided by the Storybook test runner. No Vitest-specific imports.
+    </Axiom>
+
+    <Axiom id="AX_A11Y_AUDIT_PARAMETERS">
+      Every story carries `parameters: { a11y: { test: 'error' } }`. This enables the `@storybook/addon-a11y` to run axe-core automatically during `run-story-tests`. A violation at `error` level fails the story run.
+
+      The parameter can be set at the `meta` level to apply to all stories:
+      ```typescript
+      const meta: Meta<typeof Button> = {
+        component: Button,
+        tags: ['autodocs'],
+        parameters: { a11y: { test: 'error' } },
+      };
+      ```
+      Individual stories can override with stricter config but never less strict.
+    </Axiom>
+
+    <Axiom id="AX_AI_GENERATED_TAG">
+      Every agent-authored story file carries the `'ai-generated'` tag. This applies at the `meta` level and propagates to all stories:
+
+      ```typescript
+      const meta: Meta<typeof Button> = {
+        component: Button,
+        tags: ['autodocs', 'ai-generated'],
+      };
+      ```
+
+      When composing with an existing story, the new story adds `'ai-generated'` to its own `tags` array. The base story's tags are not modified.
+    </Axiom>
+
+    <Axiom id="AX_COMPOSE_FROM_BASE_STORY">
+      New stories compose their `args` from the closest base story rather than restating the full args map:
+
+      ```typescript
+      export const SmallHover: Story = {
+        args: { ...SmallNormal.args, state: 'hover' },
+        play: async ({ canvasElement, step }) => { /* ... */ },
+      };
+      ```
+
+      This keeps the base variant as the single source of truth for shared args. When the base changes (e.g. a new prop added), all composed stories pick it up automatically.
+    </Axiom>
+
+    <Axiom id="AX_IMPORT_CANONICAL_FORM">
+      Imports in `.stories.ts` follow a fixed order:
+
+      ```typescript
+      import type { Meta, StoryObj } from '@storybook/svelte';
+      import { expect, within } from '@storybook/test';
+      import Button from './button.svelte';
+      ```
+
+      1. Storybook Svelte framework types.
+      2. Storybook test utilities (`expect`, `within`, optionally `userEvent`).
+      3. The component under test (kebab-case import path).
+      4. No other imports unless explicitly required by the story logic.
+    </Axiom>
+
+    <Axiom id="AX_STORYBOOK_TITLE_FROM_SPEC">
+      The story title is derived from the spec's component name and variant hierarchy, not invented:
+
+      For Button, variants are grouped by `(appearance, mode)`. The story file organizes stories into title groups matching this grouping. A single `.stories.ts` file can export multiple `meta` objects (using named exports) to group stories under different titles, OR a single file groups all stories under a common root and uses story names for differentiation.
+
+      Preferred pattern for uikit: one `.stories.ts` file per component. Stories are organized by exporting a single `meta` with a root title like `'Button'`, and story names encode the variant: `AccentPrimarySmallNormal`, `AccentPrimarySmallHover`, etc. The Storybook sidebar auto-groups by title segments.
+
+      Alternative (used in Button spec examples): multiple `export default` in separate files, or named exports with different titles. Either pattern is acceptable as long as the hierarchy matches the spec.
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_SPEC_MIRROR_HIERARCHY">
+      The Storybook sidebar tree that is a 1:1 reflection of the spec's Variants table. Hierarchy format: `ComponentName / Appearance / Mode`. Every leaf is a `Size × State` story.
+    </Definition>
+    <Definition id="DEF_PLAY_CONTRACT">
+      The mandatory `play` function in every story that asserts: (1) correct ARIA role via `getByRole`, (2) correct `data-state` attribute via `toHaveAttribute`, (3) a11y violations via axe-core parameters. Combined, these three assertions form the executable component contract.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_CANONICAL_STORIES_FILE">
+      <Intent>Complete canonical `.stories.ts` file for a uikit Button component.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import type { Meta, StoryObj } from '@storybook/svelte';
+        import { expect, within } from '@storybook/test';
+        import Button from './button.svelte';
+
+        const meta: Meta<typeof Button> = {
+          component: Button,
+          tags: ['autodocs', 'ai-generated'],
+          parameters: { a11y: { test: 'error' } },
+        };
+        export default meta;
+
+        type Story = StoryObj<typeof meta>;
+
+        // Accent / Primary / Small
+        export const AccentPrimarySmallNormal: Story = {
+          args: {
+            appearance: 'accent',
+            mode: 'primary',
+            size: 's',
+            state: 'normal',
+            label: 'Button',
+          },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders button with correct role and state', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toBeInTheDocument();
+              await expect(btn).toHaveAttribute('data-state', 'normal');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallHover: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'hover' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders hover state with correct attribute', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'hover');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallActive: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'active' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders active state with correct attribute and aria-pressed', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'active');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallDisabled: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'disabled', disabled: true },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders disabled state with aria-disabled', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'disabled');
+              await expect(btn).toHaveAttribute('aria-disabled', 'true');
+            });
+          },
+        };
+        ```
+      </Snippet>
+      <Why>One file per component; `meta` with `ai-generated` tag and a11y error-level; stories compose from base; every story has `play` with `getByRole` and `toHaveAttribute`; variant params are explicit; kebab-case import path.</Why>
+    </Pattern>
+
+    <Pattern id="PT_STORY_WITH_VISUAL_CONTRACT">
+      <Intent>Story with visual style assertion for state-dependent rendering.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        export const AccentPrimarySmallHover: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'hover' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            const btn = canvas.getByRole('button');
+            await step('Hover state has correct background', async () => {
+              await expect(btn).toHaveAttribute('data-state', 'hover');
+              await expect(btn).toHaveStyle({ background: 'rgb(0, 115, 247)' });
+            });
+          },
+        };
+        ```
+      </Snippet>
+      <Why>Adds `toHaveStyle` assertion on top of the role+attribute baseline. Background color values come from the spec's BDD scenarios (hex → rgb conversion for jsdom). Only add when the spec specifies an exact color; don't fabricate colors.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_ADHOC_HIERARCHY">
+      <Bad>Story title `'Components/Button'` or `'UI/Button/Primary'` — hierarchy invented by developer.</Bad>
+      <Why_Bad>Hierarchy not derived from spec (`AX_HIERARCHY_MIRRORS_SPEC`). When the spec adds a new appearance, the developer must manually reorganize stories. The spec and Storybook drift apart silently.</Why_Bad>
+      <Good>Title `'Button/Accent/Primary'` — matches spec's Variants table columns. Adding a new appearance is a mechanical addition of one title group.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_MISSING_PLAY">
+      <Bad>Story has `args: { ... }` but no `play` function.</Bad>
+      <Why_Bad>Play function required by `AX_PLAY_FUNCTION_REQUIRED`. Without `play`, `run-story-tests` passes trivially without asserting any contract. The story is documentation, not an executable spec mirror.</Why_Bad>
+      <Good>Every story has `play` with `getByRole` + `toHaveAttribute('data-state', ...)` at minimum.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_MISSING_A11Y_AUDIT">
+      <Bad>Story or meta lacks `parameters: { a11y: { test: 'error' } }`.</Bad>
+      <Why_Bad>A11y audit not configured (`AX_A11Y_AUDIT_PARAMETERS`). axe-core does not run during `run-story-tests`; a11y violations (missing labels, wrong contrast, invalid roles) pass silently.</Why_Bad>
+      <Good>Add `parameters: { a11y: { test: 'error' } }` to `meta` (applies to all stories) or to each individual story.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_RESTATED_ARGS">
+      <Bad>`SmallHover` story restates all args from `SmallNormal` instead of composing.</Bad>
+      <Why_Bad>Args restated instead of composed (`AX_COMPOSE_FROM_BASE_STORY`). When `SmallNormal` gains a new prop, `SmallHover` silently falls behind without any test pointing at the drift.</Why_Bad>
+      <Good>`args: { ...SmallNormal.args, state: 'hover' }` — composition makes the diff visible.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_MULTIPLE_CONCEPTS_ONE_STORY">
+      <Bad>One story named `AccentPrimaryAllSizes` with `play` that loops over sizes and asserts all of them.</Bad>
+      <Why_Bad>Multiple concepts in one story. When a test fails, the failure message says which size broke but the story name doesn't identify which variant the story was testing. The spec demands one story per variant.</Why_Bad>
+      <Good>Separate stories: `AccentPrimarySmallNormal`, `AccentPrimaryMediumNormal`, `AccentPrimaryLargeNormal`. Each fails independently.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SKIP_INSTEAD_OF_FIX">
+      <Bad>Failing story is marked `.skip` or deleted to make `run-story-tests` green.</Bad>
+      <Why_Bad>Failure silenced instead of fixed. The story was the canary for a real bug — skipping it buries the bug. The self-verification loop is now blind to that variant.</Why_Bad>
+      <Good>Fix the component or the story, re-run until green. If the failure is environment-dependent, surface as a blocker with deferred-ownership reference.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_SB_RUN_STORY_TESTS">
+      <Purpose>Run all story tests for the component file. Green run = stories pass type-check, render, and their `play` assertions succeed.</Purpose>
+      <Command>npm run test-storybook -- --url http://localhost:6006</Command>
+      <Expected>Exit 0; all stories pass. Non-zero requires fix or explicit deferred-ownership reference.</Expected>
+    </Hook>
+    <Hook id="HOOK_SB_PLAY_PRESENT">
+      <Purpose>Verify every exported story has a `play` function.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l 'play:' || echo MISSING_PLAY</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_PLAY` means some file has no `play` function.</Expected>
+    </Hook>
+    <Hook id="HOOK_SB_A11Y_AUDIT_CONFIG">
+      <Purpose>Verify a11y audit is configured at `error` level.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l "a11y.*test.*error" || echo MISSING_A11Y</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_A11Y` means a11y audit is not configured.</Expected>
+    </Hook>
+    <Hook id="HOOK_SB_AI_TAG_PRESENT">
+      <Purpose>Verify 'ai-generated' tag is present in every stories file.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l "'ai-generated'" || echo MISSING_TAG</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_TAG` means the reserved tag is absent.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ Storybook hierarchy is a 1:1 mirror of the spec's Variants table — `ComponentName / Appearance / Mode`.
+    ✅ One story per variant combination (size × state); story name = `<Size><State>`.
+    ✅ Every story has a `play` function asserting role via `getByRole` and state via `toHaveAttribute('data-state', ...)`.
+    ✅ A11y audit enabled at `error` level for all stories.
+    ✅ `'ai-generated'` tag present on `meta` or on each agent-authored story.
+    ✅ New stories compose args from the closest base story.
+    ✅ Imports follow canonical order: Storybook types → test utilities → component.
+    ✅ All stories pass `run-story-tests` before handoff.
+
+    ❌ Hierarchy invented by developer (not matching spec).
+    ❌ Story without `play` function.
+    ❌ Missing a11y audit configuration.
+    ❌ Missing `'ai-generated'` tag.
+    ❌ Args restated instead of composed.
+    ❌ Multiple variants collapsed into one story.
+    ❌ Failing story skipped or deleted instead of fixed.
+    ❌ `run-story-tests` not executed before handoff.
+  </Reward_Criteria>
+</UiKitComponentStorybook>

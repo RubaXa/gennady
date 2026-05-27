@@ -9,7 +9,7 @@ import { loadReviewVerifyTemplate } from '../io/load-review-verify-template.io.t
 /**
  * @purpose Build the final XML for review-verify (template + artifact + project substitutions).
  * @param reviewArtifactXml Review XML artifact.
- * @param projectRoot Repository root for searching knowledge files and command detectors (default `process.cwd()`).
+ * @param [projectRoot] Repository root for searching knowledge files and command detectors (default `process.cwd()`).
  * @returns Full XML prompt for review-verify.
  * @consumer run-review-command.logic
  */

@@ -28,5 +28,5 @@ graph TD
 | [`vcs`](./vcs/vcs.spec.md)                                           | product        | ✅                       | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files |
 | [`dbc`](./dbc/dbc.spec.md)                                           | library        | ✅                       | DBC-фреймворк: парсинг и валидация текстовых контрактов                     |
 | [`agent-mon`](./agent-mon/agent-mon.spec.md)                         | library        | 🚧 (awaiting setup sync) | Пассивный мониторинг активных сессий AI-агентов через провайдеры            |
-| [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md) | product | 🚧 (awaiting setup sync) | TUI-дашборд для мониторинга сессий агентов (ink + React) |
+| [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md)             | product        | 🚧 (awaiting setup sync) | TUI-дашборд для мониторинга сессий агентов (ink + React)                    |
 | [`infra-npm-publish`](./infra-npm-publish/infra-npm-publish.spec.md) | infrastructure | 🚧 (awaiting setup sync) | Автоматизированная публикация npm-пакета через release-it                   |

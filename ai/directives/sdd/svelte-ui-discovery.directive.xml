@@ -1,0 +1,263 @@
+<SvelteUiDiscovery keywords="svelte, ui-component, figma, svg, design-tokens, vkui, paradigm, storybook, sdd, component-discovery" type="directive" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Провести оператора через создание SDD-спеки Svelte UI-компонента: от Figma SVG-макета до утверждённого `.ui.spec.md`, готового к scaffold.
+      
+      Вход: имя компонента + SVG-макет в `specs/<scope>/_figma/<name>.svg`.
+      Выход: `specs/<scope>/components/<name>.ui.spec.md` — самодостаточная спека компонента по секциям SPEC_STRUCTURE.
+      
+      Не scope-level, не module-level — компонент-level. Директива дополняет основной SDD flow: используется при запуске discovery для UI-компонента внутри любого scope (uikit, app, etc.).
+      
+      Процесс многоступенчатый: на каждом шаге агент извлекает данные из SVG через figma-utils, показывает вывод оператору, оператор подтверждает или поправляет. Без подтверждения — не идём дальше.
+      
+      Как активируется: оператор запускает SDD-сессию с указанием этой директивы — «создать компонент Button по svelte-ui-discovery».
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_TOOLS_AS_HANDS">
+      figma-utils — руки агента в SVG, не источник истины. Агент использует команды для извлечения контекста, но решения принимает сам:
+      
+      - `figma:extract <name>` — полный JSON со всеми вариантами, измерениями, токен-кандидатами
+      - `figma:inspect <name> <pattern>` — точечный зум в конкретный вариант: размеры, элементы, fill/stroke
+      - `figma:tokens find <pattern>` — grep по именам токенов дизайн-системы
+      - `figma:tokens near <value> [delta]` — найти токены, близкие к измеренному значению
+      - `figma:tokens groups` — категории токенов
+      
+      Агент НЕ должен полагаться только на extract. Если данные неполны или противоречивы — запустить inspect для конкретных вариантов, найти токены near, перепроверить.
+    </Axiom>
+
+    <Axiom id="AX_STEP_BY_STEP_APPROVAL">
+      Многоступенчатый flow. Каждый шаг завершается Approval Check — оператор подтверждает или поправляет. Без подтверждения следующий шаг не начинается.
+      
+      Шаги:
+      1. SKELETON — скелет компонента (иерархия, слоты)
+      2. AXES — оси вариативности (size, appearance, mode, state)
+      3. TOKENS — дизайн-токены (маппинг, overrides)
+      4. API — пропсы, события, слоты
+      5. A11Y — доступность
+      6. STORYBOOK — план stories
+      7. FINAL — утверждение спеки
+    </Axiom>
+
+    <Axiom id="AX_EXISTING_COMPONENTS_CHECK">
+      Перед созданием нового компонента — проверить существующие. Шаг 0:
+      - Есть ли в `specs/<scope>/components/` спека с похожим именем?
+      - Можно ли собрать нужный вариант из existing компонента (композиция)?
+      - Можно ли доработать existing (добавить mode/appearance/size)?
+      
+      Если existing подходит — не создаём новый, а запускаем refine existing. Результат фиксируется в Decision Log.
+    </Axiom>
+
+    <Axiom id="AX_SVELTE_CONVENTIONS">
+      Компонент — Svelte 5 с runes. Конвенции из `infra-ui`:
+      - data-атрибуты: `.btn[data-mode="primary"]`, не `:host()`
+      - CSS custom properties: `var(--vkui--...)` через `:root`
+      - Файлы: `<name>.svelte` + `<name>.module.css` + `<name>.tokens.css` + `<name>.stories.ts`
+      - Именование: kebab-case, lower-case
+      - `data-state` для тестируемости hover/active/disabled
+      - Counter: `box-sizing: border-box`
+    </Axiom>
+
+    <Axiom id="AX_TOKEN_DISCIPLINE">
+      Токены — семантический маппинг, не числовой:
+      - Маппинг по имени токена (height → `--vkui--size_button_small_height--compact`)
+      - diff ≤ 1px → OK (субпиксельный рендеринг)
+      - diff > 1px → OVERRIDE с комментарием `/* override: was Xpx */`
+      - Токен не найден → новый компонентный токен `--paradigm--<component>-*`
+      - Цвета — через VKUI-токены, не хардкод
+    </Axiom>
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Факты / Предположения / Гипотезы — разделены в каждом intake-фрейме.
+      - Факты — из figma:extract (измерения, цвета, классификация)
+      - Предположения — семантическая интерпретация (этот элемент — иконка, этот — счётчик)
+      - Гипотезы — требуют валидации оператором (disabled определяется по opacity группы)
+    </Axiom>
+
+    <Axiom id="AX_SPEC_STRUCTURE">
+      Формат `.ui.spec.md` — секции SPEC_STRUCTURE:
+      1. Vision &amp; Purpose — назначение компонента
+      2. Anatomy — ASCII-дерево слотов + таблица (имя, назначение, обязательность)
+      3. Variant Axes — оси вариативности (size, appearance, mode, state) с таблицами значений
+      4. States — состояния (default, hover, active, disabled, loading) с поведением
+      5. Design Tokens — таблица токенов (роль → VKUI-токен → значение → override)
+      6. API — пропсы (имя, тип, по умолчанию, описание)
+      7. Accessibility — role, aria, keyboard
+      8. Storybook Plan — иерархия stories, количество вариантов
+      9. BDD Scenarios — по одному на состояние × appearance × mode
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      Директивная проза — English. Артефакты и сообщения оператору — Russian.
+    </Axiom>
+  </Belief_State>
+
+  <Execution_Plan>
+    <Step id="STEP_0_EXISTING_CHECK">
+      <Goal>Проверить существующие компоненты. Можно ли переиспользовать?</Goal>
+      <Action>
+        1. Прочитать `specs/<scope>/components/` — список существующих спек.
+        2. Если есть компонент с похожим именем — предложить refine вместо create.
+        3. Если можно скомпоновать из existing — предложить композицию.
+        4. Результат → Decision Log.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_SKELETON">
+      <Goal>Понять анатомию компонента из SVG.</Goal>
+      <Action>
+        1. `figma:extract <name>` — получить все варианты.
+        2. `figma:inspect <name> <first-variant>` — посмотреть конкретный вариант.
+        3. Предложить ASCII-дерево слотов (icon, label, counter, indicator).
+        4. Таблица: слот, назначение, обязательность.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_AXES">
+      <Goal>Определить оси вариативности.</Goal>
+      <Action>
+        1. Из extract: уникальные size, appearance, mode, state.
+        2. Предложить таблицы значений для каждой оси.
+        3. Указать невалидные комбинации (если есть).
+        4. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_TOKENS">
+      <Goal>Смаппить измерения на дизайн-токены.</Goal>
+      <Action>
+        1. Из extract: tokenOverrides для каждого измерения.
+        2. `figma:tokens near <value>` — найти токены по значению.
+        3. `figma:tokens find <pattern>` — найти токены по имени.
+        4. Предложить таблицу: роль → VKUI-токен → значение SVG → значение токена → diff → решение (OK/OVERRIDE/NEW).
+        5. Для отсутствующих токенов — предложить `--paradigm--<component>-*`.
+        6. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_API">
+      <Goal>Спроектировать API компонента.</Goal>
+      <Action>
+        1. Пропсы: из осей (appearance, mode, size, state) + контентные (before/after, label, counter) + поведенческие (disabled, loading, stretched).
+        2. Типы, значения по умолчанию.
+        3. События: click, нет специфичных.
+        4. Слоты: соответствие анатомии.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_A11Y">
+      <Goal>Определить требования доступности.</Goal>
+      <Action>
+        1. Role: button.
+        2. aria-label, aria-disabled, aria-busy.
+        3. Keyboard: Enter, Space.
+        4. Focus: outline.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_STORYBOOK">
+      <Goal>Спланировать Storybook-истории.</Goal>
+      <Action>
+        1. Иерархия: Component / Appearance / Mode / Size × State.
+        2. Количество stories: уникальные комбинации из осей.
+        3. Play-функции: render + interaction + expect.
+        4. A11y-аудит: parameters.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_FINAL">
+      <Goal>Сгенерировать и утвердить `.ui.spec.md`.</Goal>
+      <Action>
+        1. Собрать все секции по SPEC_STRUCTURE.
+        2. Записать `specs/<scope>/components/<name>.ui.spec.md`.
+        3. Decision Log: D-001 (decomposition axis), D-002 (token overrides).
+        4. Handoff: готово к scaffold.
+        5. Approval Check. STOP.
+      </Action>
+    </Step>
+  </Execution_Plan>
+
+  <Halt_Conditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_SVG` | SVG-макет не найден в `_figma/` |
+    | `H_EXTRACT_FAILED` | `figma:extract` упал — починить инструменты перед продолжением |
+    | `H_OPERATOR_REJECT` | Оператор отверг предложение на любом шаге |
+    | `H_EXISTING_BETTER` | Существующий компонент покрывает потребность — refine вместо create |
+  </Halt_Conditions>
+
+  <Output_Contracts>
+    <Contract id="SPEC_STRUCTURE">
+      ```markdown
+      # <ComponentName> — спецификация компонента
+
+      ## 1. Vision & Purpose
+      [Назначение, контекст использования, отличия от похожих компонентов.]
+
+      ## 2. Anatomy
+      [ASCII-дерево слотов.]
+      
+      | Слот | Назначение | Обязательность |
+      |---|---|---|
+      | `<name>` | `<purpose>` | yes / no |
+      
+      [Нюансы реализации.]
+
+      ## 3. Variant Axes
+      ### `size` — размер
+      | Значение | Высота | Padding X | Gap | Описание |
+      |---|---|---|---|---|
+      
+      ### `appearance` — цветовая тема
+      ### `mode` — степень акцента
+      
+      [Невалидные комбинации, если есть.]
+
+      ## 4. States
+      | Состояние | Поведение |
+      |---|---|
+      | default | ... |
+      | hover | ... |
+      | active | ... |
+      | disabled | ... |
+      | loading | ... |
+
+      ## 5. Design Tokens
+      | Роль | VKUI-токен | Значение SVG | Значение токена | Diff | Решение |
+      |---|---|---|---|---|---|
+      
+      [Override-токены с комментариями.]
+      [Новые токены: `--paradigm--<component>-*`.]
+
+      ## 6. API
+      | Проп | Тип | По умолчанию | Описание |
+      |---|---|---|---|
+
+      ## 7. Accessibility
+      - Role: button
+      - aria-label: ...
+      - Keyboard: Enter, Space
+
+      ## 8. Storybook Plan
+      [Иерархия: Component / Appearance / Mode / Size × State.]
+      [Количество stories.]
+
+      ## 9. BDD Scenarios
+      ### <appearance> / <mode> / <state>
+      - **Given** ...
+      - **When** ...
+      - **Then** ...
+
+      ## 10. Decision Log
+      ### D-001 — ...
+      ## 11. Handoff
+      ```
+    </Contract>
+  </Output_Contracts>
+</SvelteUiDiscovery>

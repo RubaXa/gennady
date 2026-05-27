@@ -8,18 +8,19 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name | Type | Purpose |
-|------|------|---------|
-| `createStateManager` | Factory | Принимает `AsyncIterable<SessionChanges>`, управляет ViewModel, оповещает подписчиков |
-| `ViewModel` | Value Object | Полное состояние дашборда: `{ status, data?, error?, lastUpdated }` |
-| `ProviderColumn` | Value Object | Колонка провайдера: `{ provider, activeCount, waitingCount, idleCount, sessions }` |
-| `SessionCard` | Value Object | Карточка сессии: все поля для рендеринга |
-| `isWaitingForUser` | Function | Эвристика: ждёт ли сессия оператора |
-| `groupByProvider` | Function | Группировка `AgentSession[]` → `ProviderColumn[]` |
+| Name                 | Type         | Purpose                                                                               |
+| -------------------- | ------------ | ------------------------------------------------------------------------------------- |
+| `createStateManager` | Factory      | Принимает `AsyncIterable<SessionChanges>`, управляет ViewModel, оповещает подписчиков |
+| `ViewModel`          | Value Object | Полное состояние дашборда: `{ status, data?, error?, lastUpdated }`                   |
+| `ProviderColumn`     | Value Object | Колонка провайдера: `{ provider, activeCount, waitingCount, idleCount, sessions }`    |
+| `SessionCard`        | Value Object | Карточка сессии: все поля для рендеринга                                              |
+| `isWaitingForUser`   | Function     | Эвристика: ждёт ли сессия оператора                                                   |
+| `groupByProvider`    | Function     | Группировка `AgentSession[]` → `ProviderColumn[]`                                     |
 
 ## 3. Entity Surfaces
 
 ### `createStateManager`
+
 - **Type:** Factory
 - **Purpose:** Управление жизненным циклом ViewModel
 - **Public Properties:** N/A
@@ -32,6 +33,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Consumers:** Internal — `ui/app.tsx`
 
 ### `ViewModel`
+
 - **Type:** Value Object
 - **Purpose:** Полный снапшот состояния дашборда
 - **Public Properties:**
@@ -43,6 +45,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Consumers:** Internal — `ui` (все компоненты)
 
 ### `ProviderColumn`
+
 - **Type:** Value Object
 - **Purpose:** Данные колонки одного провайдера
 - **Public Properties:**
@@ -53,6 +56,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Consumers:** Internal — `ui/provider-column.tsx`
 
 ### `SessionCard`
+
 - **Type:** Value Object
 - **Purpose:** Данные для рендеринга одной карточки
 - **Public Properties:**
@@ -68,6 +72,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Consumers:** Internal — `ui/session-card.tsx`, `state/group-by-provider.ts`
 
 ### `isWaitingForUser`
+
 - **Type:** Function
 - **Purpose:** Определить, ждёт ли сессия оператора
 - **Public Operations:**
@@ -79,6 +84,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Consumers:** Internal — `state/create-state-manager.ts`
 
 ### `groupByProvider`
+
 - **Type:** Function
 - **Purpose:** Группировка и сортировка сессий
 - **Public Operations:**
@@ -91,12 +97,14 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 ## 4. Module Contracts (DbC)
 
 ### Service: `StateManager`
+
 - **Purpose:** Управление ViewModel жизненным циклом
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`
 - **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
+
 - Preconditions: `changes` — валидный `AsyncIterable<SessionChanges>`
 - Postconditions: `getViewModel()` возвращает актуальный ViewModel; `subscribe(fn)` вызывает fn при каждом обновлении
 - Invariants:
@@ -105,12 +113,14 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
   - `status: 'ready'` только после первой успешной итерации
 
 ### Function: `isWaitingForUser`
+
 - **Purpose:** Эвристика ожидания оператора
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`
 - **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
+
 - Preconditions: `session.lastMessage` — непустая строка
 - Postconditions: Возвращает `boolean`
 - Invariants: Без `lastMessage` → `false`; чистая функция без сайд-эффектов
@@ -131,6 +141,7 @@ state/
 ```
 
 **File Mapping:**
+
 - `create-state-manager.ts` — `createStateManager`, `StateManager`
 - `view-model.type.ts` — `ViewModel`, `ProviderColumn`, `SessionCard`
 - `group-by-provider.ts` — `groupByProvider`
@@ -139,6 +150,7 @@ state/
 ## 7. Module Decision Log
 
 ### D-ST-001 — isWaitingForUser heuristic, not AI classification
+
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-mon-cli
 - **Why:** Эвристика на основе паттернов в lastMessage покрывает 90% случаев без LLM-зависимости. Конфигурируема через `--wait-heuristic`.

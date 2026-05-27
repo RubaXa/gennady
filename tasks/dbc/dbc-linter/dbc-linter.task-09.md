@@ -211,3 +211,18 @@ _(Plan-as-checklist; token vocabulary + protocol in [tasks/README.md#execution-l
 - [x] `2026-05-15 09:30` aud rules=1 ax=58 viol=0
 - [x] `2026-05-15 09:30` sync dbc+root
 - [x] `2026-05-15 09:30` DONE
+
+### Round 3 — 2026-05-26, fix: implements+@see — skip param/returns, autofix removal
+
+| Phase | Kind | Status | Target Files                          | Deps |
+| ----- | ---- | ------ | ------------------------------------- | ---- |
+| P1    | fix  | [x]    | dbc-linter.types.ts, dbc-ts-linter.ts | —    |
+| P2    | test | [x]    | dbc-ts-linter.test.ts (M21-M24, K11)  | —    |
+
+- [x] 2026-05-26T13:00:00Z file dbc-linter.types.ts — ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+- [x] 2026-05-26T13:00:00Z file dbc-ts-linter.ts — validate() implements+@see; autofix \_removeRedundantInImplements
+- [x] 2026-05-26T13:00:00Z test dbc-ts-linter.test.ts — M21-M24 validator, K11 autofix + fixture
+- [x] 2026-05-26T13:00:00Z ver tsc --noEmit → pass
+- [x] 2026-05-26T13:00:00Z ver node --test → pass (116/116)
+- [x] 2026-05-26T13:00:00Z ver npm run lint → pass
+- [x] 2026-05-26T13:00:00Z DONE

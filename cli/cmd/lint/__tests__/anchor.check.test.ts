@@ -249,7 +249,9 @@ describe('AnchorCheck', () => {
 
   it('double bare #endregion — first auto-closes, second sees empty stack', () => {
     // contract: START_A → bare #endregion → bare #endregion
-    const content = [S + ' #region START_ONLY', 'code', S + ' #endregion', '// #endregion'].join('\n');
+    const content = [S + ' #region START_ONLY', 'code', S + ' #endregion', '// #endregion'].join(
+      '\n'
+    );
 
     const errors = check(content, 'test.ts');
 
@@ -278,9 +280,12 @@ describe('AnchorCheck', () => {
 
   it('mix valid + bare anchors — END after auto-close is UNPAIRED', () => {
     // contract: START_A → bare #endregion (auto-closes A) → END_A → UNPAIRED_END
-    const content = [S + ' #region START_A', 'code', S + ' #endregion', S + ' #endregion END_A'].join(
-      '\n'
-    );
+    const content = [
+      S + ' #region START_A',
+      'code',
+      S + ' #endregion',
+      S + ' #endregion END_A',
+    ].join('\n');
 
     const errors = check(content, 'test.ts');
 
@@ -294,9 +299,12 @@ describe('AnchorCheck', () => {
   });
 
   it('3+ unpaired STARTs at EOF — each gets its own error', () => {
-    const content = [S + ' #region START_A', S + ' #region START_B', S + ' #region START_C', 'code'].join(
-      '\n'
-    );
+    const content = [
+      S + ' #region START_A',
+      S + ' #region START_B',
+      S + ' #region START_C',
+      'code',
+    ].join('\n');
 
     const errors = check(content, 'test.ts');
 

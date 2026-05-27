@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, copyFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,7 @@ import {
   ERR_DBC_LINT_RETURNS_MISSING,
   ERR_DBC_LINT_RETURNS_UNEXPECTED,
   ERR_DBC_LINT_TYPE_REDUNDANT,
+  ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
 } from '../../../dbc-linter.types.ts';
 import type { DbcEntrySchema } from '../../../../parser/dbc-parser.types.ts';
 import type { DbcParamInfo, DbcSignatureInfo } from '../../../dbc-ast-adapter.types.ts';
@@ -1190,16 +1191,39 @@ describe('DbcTsLinter', () => {
         );
         assert.ok(/  \*\//m.test(fixedContent), 'closing */ should be on its own line with indent');
 
-        // singleTag: single-tag indented — should inline with indent preserved
+        // singleTag: method — stays multi-line
         assert.ok(
-          fixedContent.includes('  /** @purpose Single-tag indented'),
-          'singleTag should be inlined with indent'
+          fixedContent.includes('Single-tag indented'),
+          'singleTag @purpose must be preserved'
         );
 
         // multiTagCanonical: already canonical — unchanged (3-space * prefix)
         assert.ok(
           fixedContent.includes('   * @purpose Multi-tag indented'),
           'multiTagCanonical @purpose should keep original indent'
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('K7 — autofix adds brackets to default-value param', async () => {
+      const { dir, filePath } = setupTempFromFixture('autofix-combined/bracket-mismatch.ts');
+      try {
+        const linter = createLinter();
+        const initialReport = await linter.lint(filePath);
+        const mismatchErrors = initialReport.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH
+        );
+        assert.strictEqual(mismatchErrors.length, 1, 'expected 1 bracket mismatch error');
+
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.strictEqual(fixReport.errors.length, 0, 'expected all errors fixed');
+
+        const fixedContent = readFileSync(filePath, 'utf8');
+        assert.ok(
+          fixedContent.includes('@param [name]'),
+          'expected brackets to be added around optional param'
         );
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1300,6 +1324,18 @@ describe('DbcTsLinter', () => {
         const report = await linter.lint(filePath);
         // Contract uses [name] → adapter has optional=true
         // The normalizeSpecifier strips brackets → 'name' matches
+        assert.deepStrictEqual(report.errors, []);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('L8a — default-value parameter treated as optional', async () => {
+      const { dir, filePath } = setupTempFromFixture('edge/default-param.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        // Default value makes param optional → [name] required in contract
         assert.deepStrictEqual(report.errors, []);
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -1452,6 +1488,9 @@ describe('DbcContractMatchValidator', () => {
       specifier,
     };
     if (dataType) entry.dataType = dataType;
+    if (specifier.startsWith('[') && specifier.endsWith(']')) {
+      entry.optional = true;
+    }
     return entry;
   }
 
@@ -1619,6 +1658,31 @@ describe('DbcContractMatchValidator', () => {
     const errors = validate(entries, signature, 'unknown-kind');
     assert.deepStrictEqual(errors, []);
   });
+
+  it('M18 — optional param without brackets: ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH', () => {
+    const entries = [paramEntry('x')];
+    const signature = sig([{ name: 'x', optional: true }], 'void');
+    const errors = validate(entries, signature, 'function');
+    const mismatch = errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH);
+    assert.strictEqual(mismatch.length, 1);
+    assert.ok(mismatch[0]?.message.includes('missing brackets'));
+  });
+
+  it('M19 — required param with brackets: ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH', () => {
+    const entries = [paramEntry('[x]')];
+    const signature = sig([{ name: 'x', optional: false }], 'void');
+    const errors = validate(entries, signature, 'function');
+    const mismatch = errors.filter((e) => e.code === ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH);
+    assert.strictEqual(mismatch.length, 1);
+    assert.ok(mismatch[0]?.message.includes('has brackets'));
+  });
+
+  it('M20 — default-value param with [x]: no errors', () => {
+    const entries = [paramEntry('[x]')];
+    const signature = sig([{ name: 'x', optional: true }], 'void');
+    const errors = validate(entries, signature, 'function');
+    assert.deepStrictEqual(errors, []);
+  });
 });
 
 // #endregion END_DBC_CONTRACT_MATCH_VALIDATOR_TESTS
@@ -1735,3 +1799,41 @@ describe('_reorderTags (TSK-20)', () => {
 });
 
 // #endregion END_REORDER_TAGS_TESTS
+
+// #region START_SNAPSHOT_TESTS
+
+const SNAPSHOTS_DIR = join(__dirname, 'fixtures', 'snapshots');
+
+describe('Snapshots — autofix matches expected output', () => {
+  const fixtureNames = readdirSync(SNAPSHOTS_DIR)
+    .filter((f) => f.endsWith('.fixture.ts'))
+    .sort();
+
+  for (const name of fixtureNames) {
+    const base = name.replace('.fixture.ts', '');
+    const fixturePath = join(SNAPSHOTS_DIR, name);
+    const expectedPath = join(SNAPSHOTS_DIR, base + '.expected.ts');
+
+    it(base, async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'dbc-snap-'));
+      const tmp = join(dir, 'test.ts');
+      try {
+        copyFileSync(fixturePath, tmp);
+        const linter = createLinter();
+        await linter.lintAndFix(tmp);
+        const actual = readFileSync(tmp, 'utf8');
+        const expected = readFileSync(expectedPath, 'utf8');
+        assert.strictEqual(actual, expected);
+
+        // Idempotency: second autofix must be a no-op
+        const r2 = await linter.lintAndFix(tmp);
+        assert.strictEqual(r2.autoFixed, 0, 'idempotency: second pass must fix nothing');
+        assert.strictEqual(readFileSync(tmp, 'utf8'), expected, 'idempotency: output unchanged');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+// #endregion END_SNAPSHOT_TESTS

@@ -40,7 +40,8 @@ export class ReviewGen {
 
   /**
    * @purpose Initialize ReviewGen with configuration and AI core.
-   * @param init Configuration overrides (timeout, logger). */
+   * @param [init] Configuration overrides (timeout, logger).
+   */
   constructor(init: ReviewGenInit = {}) {
     this.init = {
       basePromptTemplate: prompts.review('base'),
@@ -57,14 +58,18 @@ export class ReviewGen {
   /** @purpose Instance of AiLegacyCore for calling LLM. */
   protected _ai: AiLegacyCore;
 
-  /** @purpose Instance of AiLegacyCore for calling LLM.
-   * @returns AiLegacyCore instance. */
+  /**
+   * @purpose Instance of AiLegacyCore for calling LLM.
+   * @returns AiLegacyCore instance.
+   */
   get ai(): AiLegacyCore {
     return this._ai;
   }
 
-  /** @purpose Logger (if passed during initialization).
-   * @returns Logger instance or undefined. */
+  /**
+   * @purpose Logger (if passed during initialization).
+   * @returns Logger instance or undefined.
+   */
   get logger(): typeof import('../../../shared/common/logger.ts').logger | undefined {
     return this.init.logger;
   }

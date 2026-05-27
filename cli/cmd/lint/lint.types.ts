@@ -39,7 +39,7 @@ export class LintReport {
   /** @purpose Deduplicated spec file paths resolved from task files. */
   readonly specPaths: string[];
 
-  /** @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references. | @param errors Collected lint errors. | @param autoFixed Count of auto-fixed errors, defaults to 0. | @param taskPaths Resolved task file paths (deduplicated). | @param specPaths Resolved spec file paths (deduplicated). */
+  /** @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references. | @param errors Collected lint errors. | @param [autoFixed] Count of auto-fixed errors, defaults to 0. | @param [taskPaths] Resolved task file paths (deduplicated). | @param [specPaths] Resolved spec file paths (deduplicated). */
   constructor(
     errors: LintError[],
     autoFixed = 0,

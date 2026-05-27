@@ -3,7 +3,6 @@
 // @consumers: vcs-reply
 // @tasks: N/A
 
-
 import fs from 'node:fs';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';

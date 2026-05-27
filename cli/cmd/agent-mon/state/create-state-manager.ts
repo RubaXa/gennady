@@ -14,14 +14,16 @@ import { logger } from '#logger';
  * @invariant getViewModel() always returns the latest snapshot; subscribe fires immediately with current state.
  */
 export type StateManager = {
-    /** @purpose Retrieve the current ViewModel snapshot.
-     * @returns Current immutable copy. */
+  /**
+   * @purpose Retrieve the current ViewModel snapshot.
+   * @returns Current immutable copy.
+   */
   getViewModel(): ViewModel;
-    /**
-     * @purpose Register a callback invoked on every ViewModel update, including the current state immediately.
-     * @param fn Callback receiving the updated ViewModel.
-     * @returns Unsubscribe function — call to stop receiving updates.
-     */
+  /**
+   * @purpose Register a callback invoked on every ViewModel update, including the current state immediately.
+   * @param fn Callback receiving the updated ViewModel.
+   * @returns Unsubscribe function — call to stop receiving updates.
+   */
   subscribe(fn: (vm: ViewModel) => void): () => void;
 };
 
@@ -29,10 +31,7 @@ export type StateManager = {
  * @purpose Merge SessionChanges into the current session list — add added, remove removed, replace updated.
  * @invariant Matches by sessionId; added sessions are appended; updated sessions replace by index.
  */
-function applySessionChanges(
-  current: AgentSession[],
-  changes: SessionChanges,
-): AgentSession[] {
+function applySessionChanges(current: AgentSession[], changes: SessionChanges): AgentSession[] {
   // #region START_REMOVE_STALE_SESSIONS — invariant: removal by sessionId; non-existent IDs safely ignored
   const removedIds = new Set(changes.removed.map((s) => s.sessionId));
   let result = current.filter((s) => !removedIds.has(s.sessionId));
@@ -89,13 +88,13 @@ function buildViewModel(sessions: AgentSession[], limit?: number): ViewModel {
  * @invariant Subscribers receive the current ViewModel immediately on subscribe; status='loading' until first iteration.
  * @invariant On observer error: status transitions to 'error', data preserves last successful scan.
  * @param changes Async iterable of SessionChanges — produced by the agent-mon observe() pipeline.
- * @param opts Optional configuration to control per-provider session limit.
+ * @param [opts] Optional configuration to control per-provider session limit.
  * @returns StateManager instance with getViewModel and subscribe methods.
  * @sideEffect Spawns background async iteration over changes; notifies subscribers on each update.
  */
 export function createStateManager(
   changes: AsyncIterable<SessionChanges>,
-  opts?: { limit?: number },
+  opts?: { limit?: number }
 ): StateManager {
   const subscribers: Array<(vm: ViewModel) => void> = [];
   let sessions: AgentSession[] = [];
@@ -114,7 +113,7 @@ export function createStateManager(
         sessions = applySessionChanges(sessions, change);
         viewModel = buildViewModel(sessions, opts?.limit);
         logger.debug(
-          `[createStateManager] [iterating → ready] sessions=${sessions.length} columns=${viewModel.data?.columns.length ?? 0}`,
+          `[createStateManager] [iterating → ready] sessions=${sessions.length} columns=${viewModel.data?.columns.length ?? 0}`
         );
         notify();
       }

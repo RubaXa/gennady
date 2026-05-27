@@ -1,0 +1,344 @@
+<!--
+@file: Svelte component conventions for uikit — data attributes, CSS tokens, file structure, a11y, token overrides.
+@consumers: SDD agents (implementation phase of uikit-component tasks)
+@tasks: TSK-26
+-->
+<UiKitComponentSvelte keywords="uikit, svelte-component, data-attributes, css-tokens, file-structure, a11y, token-overrides" type="coding-rules" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Canonical rules for implementing a uikit Svelte component. Every execution-agent MUST apply these conventions when creating or modifying a Svelte component for the uikit library. These rules are LAYERED ON TOP of `svelte5-runes.xml` — the base Svelte 5 rules are prerequisites; this directive adds uikit-specific structural, styling, and accessibility constraints derived from the first component (Button).
+
+      **Base axiom:** A uikit component is a closed-world artifact — four files in kebab-case, data-attribute selectors (never `:host()`), VKUI CSS custom properties inherited through `:root`, `data-state` for testable pseudo-states, and WAI-ARIA accessibility. Deviating from any of these breaks the automated verification pipeline (no `:host()` in headless Chromium, no pseudo-class triggers in programmatic tests).
+
+      You are NOT in charge of:
+      - Enforcing Svelte 5 runes syntax (delegated to `svelte5-runes.xml`);
+      - Storybook conventions (delegated to `uikit-component-storybook.xml`);
+      - Deriving the component spec (that is `uikit-spec` territory).
+    </Mission>
+  </Directive_Context>
+
+  <Depends_On>
+    - ai/directives/coding/svelte5-runes.xml
+    - ai/directives/coding/uikit-spec-drafting.xml
+  </Depends_On>
+
+  <Belief_State>
+    <Axiom id="AX_DATA_ATTRS_NOT_HOST">
+      CSS selectors use `data-*` attributes on an inner wrapper element, NOT `:host()` pseudo-class selectors. The outer host element is a simple `display: inline-block` container; all styling and testable selectors target the inner element.
+
+      Reasoning (D-UC01): `:host([attr="value"])` compound selectors fail in headless Chromium — `getComputedStyle` returns `0px` for padding. The inner-wrapper approach with `data-*` attributes is proven in the Button PoC and works consistently across all test environments.
+
+      Correct pattern:
+      ```css
+      .btn[data-mode="primary"] { ... }
+      .btn[data-appearance="accent"] { ... }
+      .btn[data-size="s"] { height: var(--vkui--size_button_small_height--compact); }
+      .btn[data-state="hover"] { /* hover styles */ }
+      ```
+
+      Forbidden: `:host([mode="primary"])`, `:host(.primary)`, any `:host()` usage.
+    </Axiom>
+
+    <Axiom id="AX_CSS_TOKENS_VIA_ROOT">
+      CSS custom properties (design tokens) are inherited through `:root` in `<name>.tokens.css`. Shadow DOM is NOT used for token inheritance — the component relies on the global CSS cascade.
+
+      The tokens file has two mandatory blocks:
+      1. `:root { ... }` — the token declarations block.
+      2. Override block — tokens where the SVG value differs from the VKUI default, each with a `/* override: was Xpx */` comment.
+
+      The CSS module (`<name>.module.css`) consumes these tokens via `var(--vkui--...)` functions. No hardcoded pixel values in `.module.css` — every dimension, color, and spacing comes from a token.
+
+      Counter element: `box-sizing: border-box` is mandatory (prevents overflow when the counter number grows).
+    </Axiom>
+
+    <Axiom id="AX_FILE_STRUCTURE_KEBAB_CASE">
+      Every uikit component consists of EXACTLY four files, all in kebab-case, all in a single directory `src/ui/<name>/`:
+
+      | File                     | Purpose                                        |
+      |--------------------------|------------------------------------------------|
+      | `<name>.svelte`           | Svelte component (data-attributes, a11y)       |
+      | `<name>.module.css`       | CSS module (data-attribute selectors)          |
+      | `<name>.tokens.css`       | `:root` + override tokens                      |
+      | `<name>.stories.ts`       | Storybook stories (mirror of spec)             |
+
+      No PascalCase (`Button.svelte`), no camelCase (`buttonModule.css`), no additional files (`button.utils.ts` belongs elsewhere or doesn't exist). The four-file set is the closed-world contract per `ComponentArtefact`.
+    </Axiom>
+
+    <Axiom id="AX_DATA_STATE_FOR_TESTABILITY">
+      Every interactive state that is normally expressed through a CSS pseudo-class (`:hover`, `:active`, `:disabled`) MUST also be expressed through a `data-state` attribute on the inner wrapper element. CSS pseudo-classes cannot be triggered programmatically in headless test environments — `data-state` provides the testable channel.
+
+      States: `normal`, `hover`, `active`, `disabled`. The `data-state` attribute is always present, never conditionally omitted. The component derives `data-state` from the `state` prop, not from browser events.
+
+      For test assertions: `expect(element).toHaveAttribute('data-state', 'hover')` — NOT `expect(element).toHaveStyle(...)` for pseudo-class-triggered styles (that won't work in headless).
+    </Axiom>
+
+    <Axiom id="AX_A11Y_REQUIREMENTS">
+      Every interactive uikit component MUST declare:
+      - `role` — WAI-ARIA role (button, checkbox, etc.).
+      - `aria-label` — computed from label + counter (when present).
+      - `aria-disabled` — bound to the disabled state.
+      - `tabindex` — `0` when interactive, `-1` when disabled.
+      - Keyboard support — Enter and Space for activation.
+
+      For Button specifically:
+      - `role="button"`
+      - `aria-label={label}` (plus counter if present: `` `${label} ${counter}` ``)
+      - `aria-disabled={disabled}`
+      - `aria-pressed={state === 'active'}` (optional, for toggle mode)
+      - `tabindex={disabled ? -1 : 0}`
+
+      Focus styles use `:focus-visible` with appearance-dependent styling. No custom focus ring that overrides the browser default without providing equivalent visual feedback.
+    </Axiom>
+
+    <Axiom id="AX_ICON_SVG_TIGHT_VIEWBOX">
+      SVG icons have their viewBox cropped to the tight bounding box of the path — NOT the 20×20 Figma container. This prevents unwanted whitespace around icons and ensures consistent spacing within the button.
+
+      The icon SVG is inlined (not an `<img>` tag) so its fill color can be controlled via CSS. Icon fill inherits from the button's current appearance/mode color.
+    </Axiom>
+
+    <Axiom id="AX_TOKEN_OVERRIDE_COMMENT">
+      Every token override (where `diff > 1px` between SVG measurement and VKUI default) MUST carry a comment in `.tokens.css`:
+
+      ```css
+      /* override: was 8px */
+      --vkui--size_button_tertiary_small_padding_horizontal_icon--regular: 14px;
+      ```
+
+      The comment format is: `/* override: was <original-value> */`. This preserves the audit trail — an operator or SpecValidator can verify that the override was intentional and trace it back to the Token Mapping table in the spec.
+    </Axiom>
+
+    <Axiom id="AX_COMPONENT_PROPS_CONTRACT">
+      A uikit component receives its variant configuration through Svelte 5 `$props()` destructuring. The prop surface matches the spec's Variants table columns:
+
+      ```typescript
+      let {
+          appearance = 'accent',
+          mode = 'primary',
+          size = 's',
+          state = 'normal',
+          icon = false,
+          label = '',
+          counter = undefined,
+          indicator = false,
+          disabled = false,
+      }: Props = $props();
+      ```
+
+      The `disabled` prop takes precedence over `state` — when `disabled={true}`, `data-state` is `disabled` regardless of the `state` prop value. The component derives `aria-disabled` and `tabindex` from `disabled`.
+    </Axiom>
+
+    <Axiom id="AX_CSS_MODULE_SELECTOR_CONVENTIONS">
+      CSS module selectors follow the data-attribute pattern consistently:
+      - `.btn[data-size="s"]` for size-dependent styles.
+      - `.btn[data-mode="primary"][data-appearance="accent"]` for mode × appearance combinations.
+      - `.btn[data-state="hover"]` for state-dependent styles.
+      - Child elements use class selectors: `.icon`, `.label`, `.counter`, `.indicator`.
+
+      No ID selectors, no tag selectors (except `:root` in tokens), no descendant selectors deeper than 2 levels. Every selector is scoped to the component's root class (`.btn`).
+    </Axiom>
+  </Belief_State>
+
+  <Definitions>
+    <Definition id="DEF_COMPONENT_ARTEFACT">
+      The closed-world set of four files that constitute one uikit component: `<name>.svelte`, `<name>.module.css`, `<name>.tokens.css`, `<name>.stories.ts`. All in `src/ui/<name>/`, all in kebab-case.
+    </Definition>
+    <Definition id="DEF_DATA_ATTRIBUTE_SELECTOR">
+      A CSS selector that targets a `data-*` HTML attribute on the component's inner wrapper: `.btn[data-mode="primary"]`. Preferred over class-based selectors because `data-*` attributes are machine-verifiable in tests via `toHaveAttribute`.
+    </Definition>
+    <Definition id="DEF_TOKEN_OVERRIDE">
+      A CSS custom property declaration in `.tokens.css` whose value differs from the VKUI default. Must carry a `/* override: was ... */` comment. Originates from the Token Mapping table in the component's `.ui.spec.md`.
+    </Definition>
+  </Definitions>
+
+  <Code_Patterns>
+    <Pattern id="PT_COMPONENT_SVELTE_TEMPLATE">
+      <Intent>Canonical structure of a uikit Svelte component file.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <!-- @file: Button component — uikit conventions: data-attributes, a11y, CSS tokens. -->
+        <script lang="ts">
+          let {
+              appearance = 'accent',
+              mode = 'primary',
+              size = 's',
+              state = 'normal',
+              icon = false,
+              label = '',
+              counter = undefined,
+              indicator = false,
+              disabled = false,
+          }: Props = $props();
+
+          let resolvedState = $derived(disabled ? 'disabled' : state);
+        </script>
+
+        <div
+          class="btn"
+          data-appearance={appearance}
+          data-mode={mode}
+          data-size={size}
+          data-state={resolvedState}
+          role="button"
+          aria-label={label}
+          aria-disabled={disabled}
+          tabindex={disabled ? -1 : 0}
+        >
+          {#if icon}
+            <span class="icon">
+              <!-- Inlined SVG with tight viewBox -->
+            </span>
+          {/if}
+          {#if label}
+            <span class="label">{label}</span>
+          {/if}
+          {#if counter !== undefined}
+            <span class="counter">{counter}</span>
+          {/if}
+          {#if indicator}
+            <span class="indicator">
+              <!-- Chevron SVG -->
+            </span>
+          {/if}
+        </div>
+        ```
+      </Snippet>
+      <Why>Single `$props()` destructure with all variant props; `$derived` resolves state vs disabled; inner wrapper carries all data-attributes and ARIA; child elements conditionally rendered; no `:host()`, no `<slot>`, no legacy patterns.</Why>
+    </Pattern>
+
+    <Pattern id="PT_TOKENS_CSS_TEMPLATE">
+      <Intent>Canonical structure of a uikit `.tokens.css` file.</Intent>
+      <Snippet language="css">
+        ```css
+        :root {
+          --vkui--size_button_small_height--compact: 28px;
+          --vkui--size_button_base_small_padding_horizontal_icon--regular: 14px;
+          /* override: was 8px */
+          --vkui--size_button_tertiary_small_padding_horizontal_icon--regular: 14px;
+          /* override: was rgba(0,0,0,0.12) */
+          --vkui--color_background_tertiary_alpha--active: rgba(0, 16, 61, 0.14);
+        }
+        ```
+      </Snippet>
+      <Why>Single `:root` block with all token declarations; override tokens carry `/* override: was ... */` comments; token names match the VKUI naming convention; no shadow DOM, no `@import`, no extra blocks.</Why>
+    </Pattern>
+
+    <Pattern id="PT_MODULE_CSS_TEMPLATE">
+      <Intent>Canonical structure of a uikit `.module.css` file.</Intent>
+      <Snippet language="css">
+        ```css
+        .btn[data-size='s'] {
+          height: var(--vkui--size_button_small_height--compact);
+        }
+
+        .btn[data-mode='primary'][data-appearance='accent'] {
+          background: var(--vkui--color_background_accent);
+        }
+
+        .btn[data-state='hover'] {
+          /* hover styles via data-state, not :hover pseudo-class */
+        }
+
+        .counter {
+          width: 18px;
+          height: 18px;
+          box-sizing: border-box;
+        }
+        ```
+      </Snippet>
+      <Why>Data-attribute selectors for variant-dependent styles; CSS custom properties for all values; `box-sizing: border-box` on counter; no `:host()`, no hardcoded values, no deep nesting.</Why>
+    </Pattern>
+  </Code_Patterns>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_HOST_SELECTOR">
+      <Bad>`.module.css` containing `:host([mode="primary"]) { background: blue; }`.</Bad>
+      <Why_Bad>`:host()` compound selectors fail in headless Chromium (`AX_DATA_ATTRS_NOT_HOST`). Padding returns `0px` from `getComputedStyle`, breaking visual tests. The inner-wrapper approach is the proven alternative.</Why_Bad>
+      <Good>Inner wrapper with data-attribute: `.btn[data-mode="primary"] { background: var(--vkui--color_background_accent); }`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_MISSING_DATA_STATE">
+      <Bad>Component relies on CSS `:hover` pseudo-class for hover styling, with no `data-state` attribute.</Bad>
+      <Why_Bad>Headless test environments cannot trigger `:hover` programmatically (`AX_DATA_STATE_FOR_TESTABILITY`). The hover variant is untestable — visual regression tests pass trivially without actually verifying hover appearance.</Why_Bad>
+      <Good>Add `data-state={resolvedState}` attribute and use `.btn[data-state="hover"]` selectors. Tests assert `toHaveAttribute('data-state', 'hover')`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_HARDCODED_PIXELS">
+      <Bad>`.module.css` with `height: 28px;` instead of `var(--vkui--size_button_small_height--compact)`.</Bad>
+      <Why_Bad>Token not consumed via custom property (`AX_CSS_TOKENS_VIA_ROOT`). The value cannot be overridden, themed, or traced back to the VKUI token system. When the design system updates the token, this component silently stays at the old value.</Why_Bad>
+      <Good>`height: var(--vkui--size_button_small_height--compact);` — the token from `.tokens.css` flows through.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_PASCAL_CASE_FILENAME">
+      <Bad>Component file named `Button.svelte` or `Button.module.css`.</Bad>
+      <Why_Bad>Violates kebab-case convention (`AX_FILE_STRUCTURE_KEBAB_CASE`, D-UC03). Inconsistent with existing project files (`app.svelte`, `app.stories.ts`). Breaks the closed-world `ComponentArtefact` contract.</Why_Bad>
+      <Good>`button.svelte`, `button.module.css`, `button.tokens.css`, `button.stories.ts`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_MISSING_ARIA">
+      <Bad>Button component with `<div class="btn" onclick={handler}>` and no ARIA attributes.</Bad>
+      <Why_Bad>A11y contract not fulfilled (`AX_A11Y_REQUIREMENTS`). Screen readers cannot identify the element as a button, cannot announce its label, cannot report its disabled state. Keyboard users cannot focus or activate it.</Why_Bad>
+      <Good>`<div class="btn" role="button" aria-label={label} aria-disabled={disabled} tabindex={disabled ? -1 : 0}>`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_OVERRIDE_WITHOUT_COMMENT">
+      <Bad>`.tokens.css` with `--vkui--size_button_tertiary_small_padding_horizontal_icon--regular: 14px;` and no override comment.</Bad>
+      <Why_Bad>Override without audit trail (`AX_TOKEN_OVERRIDE_COMMENT`). Cannot distinguish intentional override from accidental drift. SpecValidator cannot trace the value back to the Token Mapping table.</Why_Bad>
+      <Good>`/* override: was 8px */` on the line above the declaration.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_IMG_TAG_ICON">
+      <Bad>Icon rendered as `<img src="icon.svg" alt="" />`.</Bad>
+      <Why_Bad>Icon fill cannot be controlled via CSS when using `<img>` (`AX_ICON_SVG_TIGHT_VIEWBOX`). Each appearance/mode combination would need a separate SVG file with hardcoded fill. Inlined SVG with `fill: currentColor` or CSS variable solves this.</Why_Bad>
+      <Good>Inline the SVG with tight viewBox; control fill via CSS on the `.icon` container or the SVG paths directly.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Verification_Hooks>
+    <Hook id="HOOK_NO_HOST_SELECTOR">
+      <Purpose>Detect forbidden `:host()` pseudo-class usage in component CSS.</Purpose>
+      <Command>find . -name '*.module.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -n ':host' || true</Command>
+      <Expected>Empty output. Any match is a violation of `AX_DATA_ATTRS_NOT_HOST`.</Expected>
+    </Hook>
+    <Hook id="HOOK_DATA_STATE_PRESENT">
+      <Purpose>Verify every uikit component exposes `data-state` attribute.</Purpose>
+      <Command>find src/ui -name '*.svelte' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l 'data-state=' || echo MISSING</Command>
+      <Expected>Every `.svelte` file in `src/ui/` must appear in output. `MISSING` means at least one component lacks `data-state`.</Expected>
+    </Hook>
+    <Hook id="HOOK_ARIA_ATTRIBUTES_PRESENT">
+      <Purpose>Verify every uikit component has ARIA role and label.</Purpose>
+      <Command>find src/ui -name '*.svelte' -not -path '*/node_modules/*' -print0 | xargs -0 grep -lE 'role="button"|role="checkbox"|role="radio"' || echo MISSING</Command>
+      <Expected>Every `.svelte` file must appear. `MISSING` means a component lacks ARIA role.</Expected>
+    </Hook>
+    <Hook id="HOOK_KEBAB_CASE_FILES">
+      <Purpose>Verify all component files are in kebab-case.</Purpose>
+      <Command>find src/ui -type f \( -name '*.svelte' -o -name '*.module.css' -o -name '*.tokens.css' -o -name '*.stories.ts' \) -not -path '*/node_modules/*' | while read f; do basename "$f"; done | grep -E '[A-Z]' || true</Command>
+      <Expected>Empty output. Any match is a PascalCase/camelCase filename violation.</Expected>
+    </Hook>
+    <Hook id="HOOK_OVERRIDE_COMMENTS_PRESENT">
+      <Purpose>Verify every override token has its audit comment.</Purpose>
+      <Command>find src/ui -name '*.tokens.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -c 'override: was' || true</Command>
+      <Expected>Count should match the number of OVERRIDE rows in the component's Token Mapping table. Zero when the spec has zero overrides; positive otherwise.</Expected>
+    </Hook>
+  </Verification_Hooks>
+
+  <Reward_Criteria>
+    ✅ Component uses `data-*` attribute selectors on inner wrapper; no `:host()` anywhere.
+    ✅ CSS custom properties inherited through `:root` in `.tokens.css`; consumed via `var()` in `.module.css`.
+    ✅ Four files per component, all kebab-case: `<name>.svelte`, `<name>.module.css`, `<name>.tokens.css`, `<name>.stories.ts`.
+    ✅ `data-state` attribute present and used in CSS selectors for all interactive states.
+    ✅ ARIA role, label, disabled, and tabindex correctly wired.
+    ✅ SVG icons inlined with tight viewBox; fill controlled via CSS.
+    ✅ Override tokens carry `/* override: was ... */` comment.
+    ✅ Props match the spec's Variants table; `disabled` takes precedence over `state`.
+    ✅ Counter element has `box-sizing: border-box`.
+
+    ❌ `:host()` selector in any CSS file.
+    ❌ Hardcoded pixel/color values in `.module.css` (must use `var()`).
+    ❌ PascalCase or camelCase component filenames.
+    ❌ Missing `data-state` attribute.
+    ❌ Missing ARIA role or label on interactive component.
+    ❌ Override token without audit comment.
+    ❌ Icon as `<img>` tag (not inlined SVG).
+    ❌ `disabled` and `state` props conflicting without clear precedence.
+  </Reward_Criteria>
+</UiKitComponentSvelte>

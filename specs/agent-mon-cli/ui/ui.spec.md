@@ -8,17 +8,18 @@ Ink-компоненты для рендеринга дашборда. `AgentMon
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name | Type | Purpose |
-|------|------|---------|
-| `AgentMonApp` | Component | Корень: `useInput`, подписка на state manager, выбор SessionDashboard |
-| `ColumnView` | Component | Колонки по провайдерам — implements SessionDashboard |
-| `ProviderColumn` | Component | Колонка провайдера: заголовок + карточки |
-| `SessionCard` | Component | Карточка сессии |
-| `StatusBadge` | Component | 🔴⏳🟡⬜ индикатор статуса |
+| Name             | Type      | Purpose                                                               |
+| ---------------- | --------- | --------------------------------------------------------------------- |
+| `AgentMonApp`    | Component | Корень: `useInput`, подписка на state manager, выбор SessionDashboard |
+| `ColumnView`     | Component | Колонки по провайдерам — implements SessionDashboard                  |
+| `ProviderColumn` | Component | Колонка провайдера: заголовок + карточки                              |
+| `SessionCard`    | Component | Карточка сессии                                                       |
+| `StatusBadge`    | Component | 🔴⏳🟡⬜ индикатор статуса                                            |
 
 ## 3. Entity Surfaces
 
 ### `AgentMonApp`
+
 - **Type:** Component (ink)
 - **Purpose:** Корневой компонент — lifecycle, input, connect state → view
 - **Public Properties:**
@@ -34,6 +35,7 @@ Ink-компоненты для рендеринга дашборда. `AgentMon
 - **Consumers:** External — `cmd/run.ts`
 
 ### `ColumnView`
+
 - **Type:** Component (ink)
 - **Purpose:** Дашборд с колонками по провайдерам
 - **Public Properties:** `viewModel: ViewModel`
@@ -42,6 +44,7 @@ Ink-компоненты для рендеринга дашборда. `AgentMon
 - **Consumers:** Internal — `AgentMonApp`
 
 ### `ProviderColumn` (component)
+
 - **Type:** Component (ink)
 - **Purpose:** Одна колонка провайдера
 - **Public Properties:** `column: ProviderColumn`
@@ -50,6 +53,7 @@ Ink-компоненты для рендеринга дашборда. `AgentMon
 - **Consumers:** Internal — `ColumnView`
 
 ### `SessionCard` (component)
+
 - **Type:** Component (ink)
 - **Purpose:** Карточка одной сессии
 - **Public Properties:** `card: SessionCard`
@@ -59,6 +63,7 @@ Ink-компоненты для рендеринга дашборда. `AgentMon
 - **Consumers:** Internal — `ProviderColumn`
 
 ### `StatusBadge`
+
 - **Type:** Component (ink)
 - **Purpose:** Визуальный индикатор статуса
 - **Public Properties:** `status: 'active' | 'waiting' | 'idle' | 'completed'`
@@ -87,6 +92,7 @@ ui/
 ```
 
 **File Mapping:**
+
 - `app.tsx` — `AgentMonApp`
 - `column-view.tsx` — `ColumnView`
 - `provider-column.tsx` — `ProviderColumn`

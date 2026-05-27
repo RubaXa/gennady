@@ -4,9 +4,7 @@
 
 import type { AIModel } from '../ai-model.type.ts';
 
-/**
- * @purpose Open Router GET /models API response item (full schema).
- */
+/** @purpose Open Router GET /models API response item (full schema). */
 export type OpenRouterModel = AIModel & {
   canonical_slug: string;
   context_length: number;

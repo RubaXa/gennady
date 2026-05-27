@@ -6,28 +6,28 @@ export type SimpleLogger = {
   /**
    * @purpose Emits a debug-level message for development diagnostics.
    * @param message Log message with Trace-Prefix and state transition.
-   * @param detail Optional structured payload.
+   * @param [detail] Optional structured payload.
    */
   debug: (message: string, detail?: unknown) => void;
 
   /**
    * @purpose Emits an info-level message for normal operational events.
    * @param message Log message with Trace-Prefix and state transition.
-   * @param detail Optional structured payload.
+   * @param [detail] Optional structured payload.
    */
   info: (message: string, detail?: unknown) => void;
 
   /**
    * @purpose Emits a warning-level message for non-fatal issues.
    * @param message Log message with Trace-Prefix and state transition.
-   * @param detail Optional structured payload.
+   * @param [detail] Optional structured payload.
    */
   warn: (message: string, detail?: unknown) => void;
 
   /**
    * @purpose Emits an error-level message for failures requiring investigation.
    * @param message Log message with Trace-Prefix and state transition.
-   * @param detail Optional structured payload.
+   * @param [detail] Optional structured payload.
    */
   error: (message: string, detail?: unknown) => void;
 };
@@ -39,10 +39,7 @@ const LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3,
 
 let _level: LogLevel = 'warn';
 
-/**
- * @purpose Set the minimum log level for the global logger instance.
- * @param level New minimum level — messages below this level are suppressed.
- */
+/** @purpose Set the minimum log level for the global logger instance. */
 export const setLogLevel = (level: LogLevel): void => {
   _level = level;
 };
@@ -53,15 +50,19 @@ export const setLogLevel = (level: LogLevel): void => {
  */
 export const logger: SimpleLogger = {
   debug: (message, detail?) => {
-    if (LEVELS[_level] <= LEVELS.debug) console.debug(message, ...(detail !== undefined ? [detail] : []));
+    if (LEVELS[_level] <= LEVELS.debug)
+      console.debug(message, ...(detail !== undefined ? [detail] : []));
   },
   info: (message, detail?) => {
-    if (LEVELS[_level] <= LEVELS.info) console.info(message, ...(detail !== undefined ? [detail] : []));
+    if (LEVELS[_level] <= LEVELS.info)
+      console.info(message, ...(detail !== undefined ? [detail] : []));
   },
   warn: (message, detail?) => {
-    if (LEVELS[_level] <= LEVELS.warn) console.warn(message, ...(detail !== undefined ? [detail] : []));
+    if (LEVELS[_level] <= LEVELS.warn)
+      console.warn(message, ...(detail !== undefined ? [detail] : []));
   },
   error: (message, detail?) => {
-    if (LEVELS[_level] <= LEVELS.error) console.error(message, ...(detail !== undefined ? [detail] : []));
+    if (LEVELS[_level] <= LEVELS.error)
+      console.error(message, ...(detail !== undefined ? [detail] : []));
   },
 };

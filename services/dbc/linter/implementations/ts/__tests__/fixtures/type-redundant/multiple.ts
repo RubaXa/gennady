@@ -1,8 +1,8 @@
 /**
  * @purpose Build config.
- * @param name Config name.
- * @param port Config port.
- * @returns Config object.
+ * @param {string} name Config name.
+ * @param {number} port Config port.
+ * @returns {object} Config object.
  */
 export function buildConfig(name: string, port: number): Record<string, unknown> {
   return { name, port };

@@ -26,7 +26,7 @@ export function ProviderColumn(props: ProviderColumnProps) {
     <Box flexDirection="column" borderStyle="single" paddingX={1} width={34}>
       <Box>
         <Text bold>{column.provider}</Text>
-        <Text>  </Text>
+        <Text> </Text>
         {column.activeCount > 0 && <Text color="red">🔴{column.activeCount} </Text>}
         {column.waitingCount > 0 && <Text color="yellow">⏳{column.waitingCount} </Text>}
         {column.idleCount > 0 && <Text dimColor>🟡{column.idleCount}</Text>}

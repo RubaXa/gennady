@@ -17,9 +17,7 @@ type PeerLike = {
   displayName?: string;
 };
 
-/**
- * @purpose Telegram client wrapper providing authentication and dialog retrieval.
- */
+/** @purpose Telegram client wrapper providing authentication and dialog retrieval. */
 export class TelegramDataOre {
   /** @purpose Underlying mtcute Telegram client instance */
   protected _client: TelegramClient;
@@ -65,7 +63,7 @@ export class TelegramDataOre {
 
   /**
    * @purpose Retrieve dialogs from Telegram with optional query filters.
-   * @param query Optional query parameters for filtering and pagination.
+   * @param [query] Optional query parameters for filtering and pagination.
    * @returns Async iterable iterator of dialogs.
    */
   async getDialogs(query?: DialogsQuery): Promise<AsyncIterableIterator<Dialog>> {

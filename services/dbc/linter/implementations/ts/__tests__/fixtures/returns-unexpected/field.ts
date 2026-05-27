@@ -1,5 +1,10 @@
-/** @purpose Container. */
+/**
+ * @purpose Container.
+ */
 export class Container {
-  /** @purpose Identifier field. */
+  /**
+   * @purpose Identifier field.
+   * @returns The id.
+   */
   id: string = '';
 }

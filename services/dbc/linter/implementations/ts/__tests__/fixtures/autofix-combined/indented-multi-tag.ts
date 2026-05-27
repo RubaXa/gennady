@@ -2,12 +2,14 @@
 // @consumers: DbcTsLinterTest
 // @tasks: TSK-21
 
-/** @purpose Service class for testing indentation preservation in autofix. */
+/**
+ * @purpose Service class for testing indentation preservation in autofix.
+ */
 export class IndentedService {
   /**
    * @purpose Indented multi-tag contract.
-   * @param input The input value.
-   * @returns The output value.
+   * @param {string} input The input value.
+   * @returns {string} The output value.
    */
   parse(input: string): string {
     return input;
@@ -15,13 +17,14 @@ export class IndentedService {
 
   /**
    * @purpose Malformed closing — closing marker on same line as last tag.
-   * @returns 0 for clean, 1 for errors.
-   */
+   * @returns 0 for clean, 1 for errors. */
   malformedClosing(): number {
     return 0;
   }
 
-  /** @purpose Single-tag indented — should inline. */
+  /**
+   * @purpose Single-tag indented — should inline.
+   */
   singleTag(): void {}
 
   /**

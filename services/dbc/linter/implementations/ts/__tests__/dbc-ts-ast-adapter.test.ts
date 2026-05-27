@@ -383,6 +383,29 @@ export * from './other';
     }
   });
 
+  it('should treat default-value param as optional', async () => {
+    // purpose: verify that required_parameter with `=` initializer is marked optional
+    // contract: params[0].optional === true when default value is present
+
+    const source = 'export function foo(x: string = "default"): void {}';
+    const { dir, filePath } = setupTempFile('default-param.ts', source);
+    const adapter = new DbcTsAstAdapter();
+
+    try {
+      const result = await adapter.parseFile(filePath);
+      assert.strictEqual(result.ok, true);
+      if (!result.ok) throw new Error('expected ok: true');
+      const entity = result.exported[0];
+      assert.ok(entity, 'no entity found');
+      const { params } = entity!.signature;
+      assert.strictEqual(params.length, 1);
+      assert.strictEqual(params[0]?.name, 'x');
+      assert.strictEqual(params[0]?.optional, true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('should never throw', async () => {
     // purpose: verify that the adapter never throws, even on garbage input
     // contract: DbcParseResult is always returned; no unhandled exceptions

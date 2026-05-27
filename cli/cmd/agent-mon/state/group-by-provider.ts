@@ -35,7 +35,7 @@ function formatElapsedSeconds(seconds: number): string {
  */
 function toSessionCard(
   session: AgentSession,
-  isWaitingFn: (s: AgentSession) => boolean,
+  isWaitingFn: (s: AgentSession) => boolean
 ): SessionCard {
   const isWaiting = isWaitingFn(session);
   return {
@@ -57,13 +57,13 @@ function toSessionCard(
  * @purpose Group sessions by provider, compute per-column counts, and sort sessions within each column.
  * @invariant Sessions within each column are sorted: active → waiting → idle → completed.
  * @param sessions Flat array of agent sessions across all providers.
- * @param opts Optional overrides — isWaitingFn replaces default isWaitingForUser for testing.
+ * @param [opts] Optional overrides — isWaitingFn replaces default isWaitingForUser for testing.
  * @returns One ProviderColumn per unique provider, with sessions sorted by status priority.
  * @sideEffect None — pure transformation.
  */
 export function groupByProvider(
   sessions: AgentSession[],
-  opts?: { isWaitingFn?: (s: AgentSession) => boolean; limit?: number },
+  opts?: { isWaitingFn?: (s: AgentSession) => boolean; limit?: number }
 ): ProviderColumn[] {
   const isWaitingFn = opts?.isWaitingFn ?? isWaitingForUser;
 

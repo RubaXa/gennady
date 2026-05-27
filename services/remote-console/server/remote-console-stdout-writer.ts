@@ -12,8 +12,9 @@ export class RemoteConsoleStdoutWriter {
   /** @purpose Stores low-level line sink used to emit already-rendered stdout entries. */
   protected readonly _writeLine: (line: string) => void;
 
-  /** @purpose Configures writer with injected sink or defaults to process.stdout line output.
-   * @param writeLine Optional custom line writer function.
+  /**
+   * @purpose Configures writer with injected sink or defaults to process.stdout line output.
+   * @param [writeLine] Optional custom line writer function.
    */
   constructor(writeLine?: (line: string) => void) {
     this._writeLine = writeLine ?? ((line) => process.stdout.write(`${line}\n`));

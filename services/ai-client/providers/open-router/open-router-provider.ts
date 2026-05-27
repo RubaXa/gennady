@@ -7,9 +7,7 @@ import { generateText } from 'ai';
 import type { AIModel } from '../ai-model.type.ts';
 import type { OpenRouterModel } from './open-router-model.type.ts';
 
-/**
- * @purpose Provider adapter for Open Router API, wrapping OpenAI-compatible SDK.
- */
+/** @purpose Provider adapter for Open Router API, wrapping OpenAI-compatible SDK. */
 export class OpenRouterProvider {
   /** @purpose OpenAI provider settings */
   protected _settings: OpenAIProviderSettings;

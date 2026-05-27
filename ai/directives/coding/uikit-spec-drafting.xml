@@ -1,0 +1,243 @@
+<!--
+@file: Drafting rules for converting ExtractionResult JSON to a draft .ui.spec.md UI component spec.
+@consumers: SDD agents (drafting phase of uikit-component tasks)
+@tasks: TSK-25
+-->
+<UiKitSpecDrafting keywords="uikit, spec-drafting, extraction-result, ui-spec, token-mapping, variant-grouping, bdd-generation, a11y-defaults" type="drafting-rules" ver="1.0">
+  <Directive_Context>
+    <Mission>
+      Convert an ExtractionResult — the JSON output of `figma-utils extract &lt;component&gt;` — into a draft `.ui.spec.md` (per `spec-format.md`). The draft is a starting point for operator refinement; it must preserve ALL data from the extraction (all variants, all token candidates, all elements) without loss.
+
+      The format of the output spec is defined in `specs/uikit/spec-format.md`. This directive governs the TRANSFORMATION logic: how to group variants, populate token mappings, generate BDD, and apply a11y defaults.
+
+      You are NOT in charge of:
+      - Running `figma-utils extract` (that is a prior step, TSK-24);
+      - Validating the draft (SpecValidator is a separate check);
+      - Finalising the spec (operator approves after review).
+    </Mission>
+  </Directive_Context>
+
+  <Belief_State>
+    <Axiom id="AX_EXTRACTION_INPUT">
+      The input is an `ExtractionResult` object with shape:
+      ```json
+      {
+        "component": "button",
+        "svg": "<path-to-svg>",
+        "variants": [ /* SvgVariant[] */ ],
+        "elements": [ "icon", "label", "counter", "indicator" ],
+        "tokenOverrides": [ /* TokenCandidate[] where match=false */ ]
+      }
+      ```
+      Every `SvgVariant` carries: `id`, `size`, `appearance`, `mode`, `state`, and `measurements` (MeasurementSet with height, width, leftPad, rightPad, borderRadius, rectFill, elements).
+      Every `TokenCandidate` carries: `metric`, `svgValue`, `token`, `tokenValue`, `diff`, `match`.
+    </Axiom>
+
+    <Axiom id="AX_VARIANT_GROUPING">
+      Variants are grouped hierarchically: `size → appearance → mode`. Each leaf group contains all 4 states (normal, hover, active, disabled). The result is a closed-world table — every combination is listed explicitly, no «и т.д.» allowed.
+
+      Procedure:
+      1. Collect all unique triples `(size, appearance, mode)` from `ExtractionResult.variants`.
+      2. Sort: size (s, m, l) → appearance (accent, neutral, contrary) → mode (primary, secondary, tertiary, outline).
+      3. For each triple, list states: `normal, hover, active, disabled`.
+      4. If a state is missing from the extraction data, mark it as `⚠️ not in extraction` — do NOT omit the row.
+    </Axiom>
+
+    <Axiom id="AX_TOKEN_SECTION_GENERATION">
+      The Token Mapping section populates measurements from `ExtractionResult.variants[].measurements` and maps them to VKUI tokens from `TokenCandidate[]`.
+
+      Procedure:
+      1. Collect all unique `(element, metric)` pairs across all variants. The `element` prefix is derived from `MeasurementSet` fields: `icon-padding-left` (from leftPad of icon element), `height`, `border-radius`, etc.
+      2. For each pair, find the corresponding `TokenCandidate` where exists. If not found → mark as `⚠️ no token`.
+      3. Compute `diff = |svgValue - tokenValue|`.
+      4. If `diff ≤ 1` → Action = `OK`. If `diff > 1` → Action = `OVERRIDE: &lt;svgValue&gt;px`.
+      5. Sort rows: element name alphabetically.
+
+      Note: `ExtractionResult.tokenOverrides` contains only candidates where `match: false`. For the full Token Mapping table, you need ALL measurements — both matched and unmatched. If `tokenOverrides` is the only source, the table will be incomplete. Prefer deriving measurements from `variants[].measurements` and cross-referencing with token mappings.
+    </Axiom>
+
+    <Axiom id="AX_BDD_GENERATION">
+      BDD scenarios are generated for each `(appearance, mode, state)` combination.
+
+      Procedure:
+      1. For each group from variant grouping: heading `### &lt;Appearance&gt; / &lt;Mode&gt;`.
+      2. For each state (normal, hover, active, disabled): sub-heading `#### &lt;State&gt;`.
+      3. Write Given/When/Then:
+         - **Given:** component with `appearance=...`, `mode=...`, `state=...`, `size=...` (pick representative size, note size parameter)
+         - **When:** rendered
+         - **Then:** visual expectations derived from `Measurements` of the corresponding variant:
+           - `background = &lt;rectFill&gt;` (hex color from the variant's background rect)
+           - `text = &lt;label fill&gt;` (if label element exists)
+           - `height = &lt;height&gt;px`, `borderRadius = &lt;borderRadius&gt;px`
+           - For hover/active states: background color from the corresponding variant
+           - For disabled: `opacity = &lt;rectOpacity&gt;`
+
+      Minimum coverage: one scenario per state per (appearance, mode) group. All scenarios must reference real measurement data from the extraction.
+    </Axiom>
+
+    <Axiom id="AX_A11Y_DEFAULTS">
+      Default a11y requirements for common component types. Apply the template matching the component type.
+
+      For **button:**
+      - **Role:** button
+      - **aria-label:** формируется из label + counter (если есть)
+      - **aria-disabled:** при state=disabled
+      - **Keyboard:** Enter, Space активируют кнопку
+
+      For **other interactive components** (checkbox, radio, link, input): infer role from component name and visual structure; apply standard WAI-ARIA patterns.
+    </Axiom>
+
+    <Axiom id="AX_ELEMENT_STRUCTURE_FROM_EXTRACTION">
+      The Element Structure section is derived from `ExtractionResult.elements` — the list of element names discovered in the SVG.
+
+      Procedure:
+      1. Map each element name to a semantic description:
+         - `icon` → "SVG-иконка (обрезанный viewBox до tight path bounds)"
+         - `label` → "текстовая метка"
+         - `counter` → "числовой счётчик (box-sizing: border-box)"
+         - `indicator` → "шеврон (стрелка вправо)"
+      2. For unknown element names: infer from context, mark with `⚠️ requires clarification`.
+      3. Order elements: icon, label, counter, indicator (visual left-to-right).
+    </Axiom>
+
+    <Axiom id="AX_NO_DATA_LOSS">
+      The draft MUST preserve ALL data from `ExtractionResult`:
+      - All `variants[]` are reflected in the Variants table.
+      - All unique `(element, metric)` pairs from all `Measurements` are reflected in Token Mapping.
+      - All `elements[]` are listed in Element Structure.
+      - Every state for every (size, appearance, mode) combination has a BDD scenario.
+
+      Missing data (state not in extraction, token not found) → mark explicitly with `⚠️`, never silently omit.
+    </Axiom>
+
+    <Axiom id="AX_DRAFT_READY_FOR_REVIEW">
+      The output is a DRAFT — marked with a header comment:
+      ```markdown
+      &lt;!-- DRAFT: generated from figma-utils extract. Review and finalise before scaffold. --&gt;
+      ```
+      This signals to the operator that the spec is machine-generated and requires human approval.
+    </Axiom>
+  </Belief_State>
+
+  <Drafting_Procedure>
+    <Step id="STEP_1_LOAD_EXTRACTION">
+      <Goal>Receive and validate the ExtractionResult.</Goal>
+      <Action>
+        1. Confirm `ExtractionResult.variants` is non-empty.
+        2. Confirm `ExtractionResult.elements` is non-empty.
+        3. If either is empty → abort with diagnostic: «ExtractionResult пуст — запустите figma:extract &lt;component&gt; сначала».
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_BUILD_VISION">
+      <Goal>Write the Vision section.</Goal>
+      <Action>
+        Format: `&lt;ComponentName&gt; — &lt;brief description&gt;. &lt;count&gt; size × &lt;appearances&gt; × &lt;states&gt;.`
+
+        Example: `Кнопка с иконкой — Primary CTA. 3 size × accent/neutral/contrary × normal/hover/active/disabled.`
+
+        Derive:
+        - `count` = number of unique sizes
+        - `appearances` = unique appearance values, joined by `/`
+        - `states` = unique state values, joined by `/`
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_BUILD_VARIANTS">
+      <Goal>Build the closed-world Variants table.</Goal>
+      <Action>
+        Per `AX_VARIANT_GROUPING`:
+        1. Group variants by `(size, appearance, mode)`.
+        2. Sort hierarchically.
+        3. For each group, list states as comma-separated.
+        4. Flag missing states with `⚠️`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_BUILD_TOKEN_MAPPING">
+      <Goal>Build the Token Mapping table.</Goal>
+      <Action>
+        Per `AX_TOKEN_SECTION_GENERATION`:
+        1. Extract all unique `(element, metric, svgValue)` from all variants.
+        2. Cross-reference with token candidates.
+        3. Compute diff and action.
+        4. Flag missing tokens with `⚠️ no token`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_BUILD_ELEMENT_STRUCTURE">
+      <Goal>Build the Element Structure section.</Goal>
+      <Action>
+        Per `AX_ELEMENT_STRUCTURE_FROM_EXTRACTION`: map element names to semantic descriptions.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_BUILD_A11Y">
+      <Goal>Build the A11y Requirements section.</Goal>
+      <Action>
+        Per `AX_A11Y_DEFAULTS`: apply the template for the component type.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_BUILD_BDD">
+      <Goal>Build BDD scenarios for every state.</Goal>
+      <Action>
+        Per `AX_BDD_GENERATION`:
+        1. For each (appearance, mode) group, write a heading.
+        2. For each state, write a sub-heading and Given/When/Then.
+        3. Derive expected values from the variant's `Measurements`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_8_EMIT_DRAFT">
+      <Goal>Write the draft file.</Goal>
+      <Action>
+        1. Prepend draft header: `&lt;!-- DRAFT: generated from figma-utils extract. Review and finalise before scaffold. --&gt;`.
+        2. Write all 6 sections in order: Vision, Variants, Token Mapping, Element Structure, A11y Requirements, BDD Scenarios.
+        3. Save as `specs/uikit/components/&lt;component&gt;.ui.spec.md`.
+      </Action>
+    </Step>
+  </Drafting_Procedure>
+
+  <Anti_Patterns>
+    <Anti_Pattern id="AP_DROPPED_VARIANTS">
+      <Bad>Пропуск строки в таблице Variants, потому что «этот вариант не в extraction».</Bad>
+      <Why_Bad>Closed-world нарушен. Последующий SpecValidator не сможет отличить «пропущен осознанно» от «забыли».</Why_Bad>
+      <Good>Строка присутствует, но состояния помечены `⚠️ not in extraction`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_SILENT_MISSING_TOKEN">
+      <Bad>Пропуск строки в Token Mapping, когда токен не найден.</Bad>
+      <Why_Bad>Измерение теряется. SpecValidator не может проверить, что все измерения покрыты.</Why_Bad>
+      <Good>Строка с `⚠️ no token` в колонке Token и `Action = ⚠️`.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_DUPLICATE_BDD_GROUP">
+      <Bad>Один BDD-заголовок на несколько размеров: `### Primary / Accent (все размеры)`.</Bad>
+      <Why_Bad>Разные размеры имеют разные ожидаемые значения (height, pads). Сгруппированные BDD нельзя верифицировать.</Why_Bad>
+      <Good>Отдельный BDD-заголовок на каждый (appearance, mode), внутри указывается representative size и конкретные значения.</Good>
+    </Anti_Pattern>
+
+    <Anti_Pattern id="AP_FABRICATED_MEASUREMENTS">
+      <Bad>BDD-сценарий с выдуманными значениями: `background = #0077FF`, когда в extraction нет такого цвета.</Bad>
+      <Why_Bad>SpecValidator обнаружит расхождение. Фабрикация данных подрывает доверие к спекам.</Why_Bad>
+      <Good>Все Then-значения берутся из `MeasurementSet` соответствующего варианта: `rectFill`, `height`, `borderRadius`, etc.</Good>
+    </Anti_Pattern>
+  </Anti_Patterns>
+
+  <Reward_Criteria>
+    ✅ Draft содержит все 6 обязательных секций (Vision, Variants, Token Mapping, Element Structure, A11y, BDD).
+    ✅ Variants — closed-world таблица, все комбинации size × appearance × mode перечислены.
+    ✅ Token Mapping — каждая строка имеет валидный VKUI токен или явную пометку `⚠️ no token`.
+    ✅ Element Structure — все элементы из `ExtractionResult.elements` перечислены с семантическим описанием.
+    ✅ A11y — role, aria-атрибуты, keyboard navigation для типа компонента.
+    ✅ BDD — минимум один сценарий на каждое состояние, все значения из реальных измерений.
+    ✅ Нет потери данных: все variants[], все метрики, все элементы отражены в спеке.
+
+    ❌ Пропущена строка в Variants (нарушение closed-world).
+    ❌ Пропущено измерение в Token Mapping.
+    ❌ BDD без реальных данных (фабрикация).
+    ❌ Отсутствует a11y-секция.
+    ❌ Draft без пометки `DRAFT`.
+  </Reward_Criteria>
+</UiKitSpecDrafting>

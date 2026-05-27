@@ -3,7 +3,8 @@
 // @tasks: TSK-39
 
 import { readdirSync, statSync } from 'node:fs';
-import * as path from 'node:path';import { homedir } from 'node:os';
+import * as path from 'node:path';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { logger } from '#logger';
 
@@ -15,7 +16,8 @@ import { parseContextHint } from './ps.ts';
 import type { PsInfoEntry } from './ps.ts';
 import {
   readSessionJson as defaultReadSessionJson,
-  readSessionTitle as defaultReadSessionTitle, readActiveTaskTitle,
+  readSessionTitle as defaultReadSessionTitle,
+  readActiveTaskTitle,
 } from './session-json.ts';
 
 // #region START_CLAUDE_PROVIDER_DEPS_TYPE
@@ -56,7 +58,7 @@ export class ClaudeProvider implements AgentProvider {
 
   /**
    * @purpose Construct with optional DI overrides for testing.
-   * @param deps Injectable function replacements; omitted deps use real implementations.
+   * @param [deps] Injectable function replacements; omitted deps use real implementations.
    */
   constructor(deps?: ClaudeProviderDeps) {
     this._psInfo = deps?.psInfo ?? defaultPsInfo;
@@ -66,10 +68,7 @@ export class ClaudeProvider implements AgentProvider {
     this._logger = logger;
   }
 
-  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts
-   * @param opts Optional scan filtering parameters.
-   * @returns Parsed agent sessions array.
-   */
+  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts */
   async scan(opts?: ScanOpts): Promise<AgentSession[]> {
     this._logger.debug('[ClaudeProvider#scan] [idle -> scanning]');
 

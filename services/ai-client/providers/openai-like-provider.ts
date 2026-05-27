@@ -4,7 +4,5 @@
 
 import { createOpenAI } from '@ai-sdk/openai';
 
-/**
- * @purpose Factory re-export of the OpenAI-compatible provider creation function.
- */
+/** @purpose Factory re-export of the OpenAI-compatible provider creation function. */
 export const createOpenAiLikeProvider = createOpenAI;

@@ -104,7 +104,7 @@ function registerBeforeExitNotification(currentVersion: string, latestVersion: s
  * @invariant Never throws — all failure paths are silent.
  * @invariant Never blocks process.exit — spawn uses unref().
  * @param pkg Package identity with name and semver version.
- * @param opts Optional configuration overrides.
+ * @param [opts] Optional configuration overrides.
  * @post Returns synchronously without blocking; if stale/missing cache: detached worker spawned via unref(); if fresh cache with newer version: beforeExit hook registered.
  * @sideEffect FS: reads and writes cache directory. Subprocess: may spawn UpdateCheckWorker.
  */

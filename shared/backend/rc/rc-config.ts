@@ -55,9 +55,10 @@ export class GennadyRc {
   /** @purpose Load/parse error if config is invalid, null otherwise. */
   protected _error: Error | null = null;
 
-  /** @purpose Load and parse Gennady RC config file from a directory.
-   * @param dir Directory to look for the rc file in (defaults to cwd).
-   * @param name Config filename (defaults to .gennadyrc).
+  /**
+   * @purpose Load and parse Gennady RC config file from a directory.
+   * @param [dir] Directory to look for the rc file in (defaults to cwd).
+   * @param [name] Config filename (defaults to .gennadyrc).
    */
   constructor(dir = process.cwd(), name = GennadyRc.DEFAULT_FILENAME) {
     this._filename = pathJoin(dir, name);

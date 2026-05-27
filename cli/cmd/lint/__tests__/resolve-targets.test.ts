@@ -4,14 +4,7 @@
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  writeFileSync,
-  mkdirSync,
-  rmSync,
-  symlinkSync,
-  chmodSync,
-} from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, symlinkSync, chmodSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ERR_CLI_LINT_RESOLVE_FAILED } from '../lint.types.ts';
@@ -97,10 +90,7 @@ describe('resolveTargets', () => {
     const result = mod.resolveTargets([dirPath]);
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.files.length, 2);
-    assert.deepStrictEqual(result.files, [
-      abs('mixed/a.ts'),
-      abs('mixed/b.tsx'),
-    ]);
+    assert.deepStrictEqual(result.files, [abs('mixed/a.ts'), abs('mixed/b.tsx')]);
   });
 
   // ── UT-06: nested directories (2 levels) ──
@@ -113,10 +103,7 @@ describe('resolveTargets', () => {
     const result = mod.resolveTargets([abs('nested')]);
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.files.length, 2);
-    assert.deepStrictEqual(result.files, [
-      abs('nested/inner/leaf.tsx'),
-      abs('nested/root.ts'),
-    ]);
+    assert.deepStrictEqual(result.files, [abs('nested/inner/leaf.tsx'), abs('nested/root.ts')]);
   });
 
   // ── UT-07: case-insensitive extensions ──

@@ -37,10 +37,7 @@ const CONTRACT_ORDER_INDEX = new Map<string, number>(
  * @invariant Input is handled line-by-line with explicit support for leading `*` markers.
  */
 export class DbcJsDocParser implements DbcParser {
-  /** @see {DbcParser#parse} in ../../dbc-parser.types.ts
-   * @param inputContract Raw JSDoc-like contract text to parse.
-   * @returns Parsed universal DBC schema.
-   */
+  /** @see {DbcParser#parse} in ../../dbc-parser.types.ts */
   parse(inputContract: string): DbcSchema {
     const entries: ParsedEntryWithLine[] = [];
     const raw = inputContract.trim();
@@ -306,7 +303,7 @@ export class DbcJsDocParser implements DbcParser {
    * @purpose Parses `@see` into required `{specifier}` and optional trailing value.
    * @param type Tag type.
    * @param tail Content after `@see`.
-   * @param line One-based source line number.
+   * @param line Source line number.
    * @returns Parsed entry.
    */
   protected parseSeeTag(type: string, tail: string, line: number): ParsedEntryWithLine {
@@ -417,8 +414,8 @@ export class DbcJsDocParser implements DbcParser {
   }
 
   /**
-   * @purpose Emits invalid-see-format issues for `@see` entries without a non-empty specifier.
-   * @param entries Parsed entries with source lines.
+   * @purpose Emits invalid-see-format issues for `@see` entries.
+   * @param entries Parsed entries to validate.
    */
   protected validateSeeSpecifier(entries: ParsedEntryWithLine[]): void {
     for (const entry of entries) {

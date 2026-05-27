@@ -17,7 +17,7 @@ export interface AgentProvider {
 
   /**
    * @purpose Scan the provider's source and return normalized agent sessions.
-   * @param opts Optional scan filtering parameters.
+   * @param [opts] Optional scan filtering parameters.
    * @throws Never — failures return [] per graceful degradation contract.
    * @returns Normalized agent sessions (may be empty).
    * @sideEffect Read access to provider's data source (filesystem, database).

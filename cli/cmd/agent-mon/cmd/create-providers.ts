@@ -18,7 +18,7 @@ export type CreateProvidersOpts = {
 /**
  * @purpose Create an AgentMonitor and register Claude and OpenCode providers according to options.
  * @invariant Stateless — each call creates a fresh monitor instance.
- * @param opts Provider selection — both enabled by default.
+ * @param [opts] Provider selection — both enabled by default.
  * @returns AgentMonitor with selected providers registered and ready for scanning.
  */
 export function createProviders(opts?: CreateProvidersOpts): AgentMonitor {
@@ -39,7 +39,7 @@ export function createProviders(opts?: CreateProvidersOpts): AgentMonitor {
   // #endregion END_REGISTER_PROVIDERS
 
   logger.info(
-    `[createProviders] [registering → ready] claude=${opts?.claude !== false} opencode=${opts?.opencode !== false}`,
+    `[createProviders] [registering → ready] claude=${opts?.claude !== false} opencode=${opts?.opencode !== false}`
   );
   return monitor;
 }

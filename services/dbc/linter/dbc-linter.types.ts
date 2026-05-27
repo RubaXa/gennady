@@ -36,6 +36,13 @@ export const ERR_DBC_LINT_RETURNS_UNEXPECTED = 'ERR_DBC_LINT_RETURNS_UNEXPECTED'
 /** @purpose Stable string code: {dataType} annotation in @param or @returns is redundant in a typed language. */
 export const ERR_DBC_LINT_TYPE_REDUNDANT = 'ERR_DBC_LINT_TYPE_REDUNDANT';
 
+/** @purpose Stable string code: @param optionality (brackets) does not match signature optionality. */
+export const ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH = 'ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH';
+
+/** @purpose Stable string code: @param/@returns present in implements-method contract (redundant — described in interface). */
+export const ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS =
+  'ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS';
+
 /** @purpose Union of all supported dbc-linter issue codes. */
 export type DbcLintIssueCode =
   | typeof ERR_DBC_LINT_MISSING_CONTRACT
@@ -45,7 +52,9 @@ export type DbcLintIssueCode =
   | typeof ERR_DBC_LINT_PARAM_ORDER
   | typeof ERR_DBC_LINT_RETURNS_MISSING
   | typeof ERR_DBC_LINT_RETURNS_UNEXPECTED
-  | typeof ERR_DBC_LINT_TYPE_REDUNDANT;
+  | typeof ERR_DBC_LINT_TYPE_REDUNDANT
+  | typeof ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH
+  | typeof ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS;
 
 /** @purpose A single lint error bound to a specific file location and issue code. */
 export type DbcLintError = {
@@ -102,7 +111,7 @@ export interface DbcLinter {
   /**
    * @purpose Run a full lint pass on a source file.
    * @param filePath Path to the source file to lint.
-   * @param options Optional linting configuration (strategy selection).
+   * @param [options] Optional linting configuration (strategy selection).
    * @returns A report with all discovered errors.
    */
   lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport>;
@@ -110,7 +119,7 @@ export interface DbcLinter {
   /**
    * @purpose Run lint and auto-fix fixable errors, mutating the source file.
    * @param filePath Path to the source file to lint and fix.
-   * @param options Optional linting configuration (strategy selection).
+   * @param [options] Optional linting configuration (strategy selection).
    * @returns A report with remaining unfixable errors and auto-fix count.
    * @sideEffect Mutates the source file on disk to apply auto-fixes.
    */

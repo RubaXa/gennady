@@ -17,7 +17,7 @@ export type ResolvedReference = {
  * @purpose Scan all task .md files in tasks/ directory and build a map of taskId -> ResolvedReference.
  * Walks the directory tree recursively, parses each task file for Task-ID and Spec References.
  * @param projectRoot Absolute path to the project root (where tasks/ lives).
- * @param taskDir Relative path to the tasks directory (default: 'tasks').
+ * @param [taskDir] Relative path to the tasks directory (default: 'tasks').
  * @returns Map from task ID string (e.g. 'TSK-21') to its ResolvedReference.
  */
 export function loadTaskReferences(

@@ -8,14 +8,15 @@ CLI entry point — парсинг флагов, создание монитор
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name | Type | Purpose |
-|------|------|---------|
-| `run` | Function | CLI entry: парсинг флагов, создание монитора, `render(<AgentMonApp />)` |
-| `createProviders` | Function | Создать `AgentMonitor` + зарегистрировать Claude/OpenCode провайдеры |
+| Name              | Type     | Purpose                                                                 |
+| ----------------- | -------- | ----------------------------------------------------------------------- |
+| `run`             | Function | CLI entry: парсинг флагов, создание монитора, `render(<AgentMonApp />)` |
+| `createProviders` | Function | Создать `AgentMonitor` + зарегистрировать Claude/OpenCode провайдеры    |
 
 ## 3. Entity Surfaces
 
 ### `run`
+
 - **Type:** Function
 - **Purpose:** CLI entry point
 - **Public Properties:** N/A
@@ -32,6 +33,7 @@ CLI entry point — парсинг флагов, создание монитор
 - **Consumers:** External — `cli/gennady.ts`
 
 ### `createProviders`
+
 - **Type:** Function
 - **Purpose:** Создать монитор с провайдерами
 - **Public Properties:** N/A
@@ -46,23 +48,27 @@ CLI entry point — парсинг флагов, создание монитор
 ## 4. Module Contracts (DbC)
 
 ### Function: `run`
+
 - **Purpose:** CLI entry point — composition root
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `integration`
 - **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
+
 - Preconditions: `argv` содержит минимум `agent-mon` как команду
 - Postconditions: `render()` вызван с валидным `AgentMonApp`; при `--once` — вывод и exit 0
 - Invariants: Не падает при недоступности провайдера (graceful degradation)
 
 ### Function: `createProviders`
+
 - **Purpose:** Фабрика монитора
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`
 - **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
+
 - Preconditions: `agent-mon` библиотека доступна для импорта
 - Postconditions: Возвращает `AgentMonitor` с ≥1 зарегистрированным провайдером
 - Invariants: Stateless — каждый вызов создаёт новый монитор
@@ -81,6 +87,7 @@ cmd/
 ```
 
 **File Mapping:**
+
 - `run.ts` — `run(argv) → void`
 - `create-providers.ts` — `createProviders(opts?) → AgentMonitor`
 

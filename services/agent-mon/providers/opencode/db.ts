@@ -35,7 +35,7 @@ export type SessionRow = {
 /**
  * @purpose Query active (non-archived) sessions from the OpenCode database.
  * @param db Open SQLite database connection.
- * @param opts Optional scan filtering parameters.
+ * @param [opts] Optional scan filtering parameters.
  * @returns Rows matching the active session criteria, ordered by most recently updated.
  */
 export function querySessions(db: DatabaseSync, opts?: ScanOpts): SessionRow[] {

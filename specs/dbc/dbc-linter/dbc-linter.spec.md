@@ -494,6 +494,7 @@ graph TD
   | L6 | `edge/nested-class.ts` | Класс внутри класса — члены внешнего покрыты, внутренний класс — отдельная сущность |
   | L7 | `edge/decorators.ts` | Файл с декораторами — не должен падать |
   | L8 | `edge/optional-param.ts` | `x?: string` → @param [x] |
+  | L8a | `edge/default-param.ts` | `x: string = "default"` → @param [x] |
   | L9 | `edge/rest-param.ts` | `...args: string[]` → @param ...args |
   | L10 | `edge/comment-style.ts` | Комментарий с пробелами/звёздочками разного форматирования внутри /\*\* \*/ |
 
@@ -517,5 +518,37 @@ graph TD
   | M15 | Optional параметр: `x?` ↔ `@param [x]` | Нет ошибок |
   | M16 | Rest параметр: `...args` ↔ `@param ...args` | Нет ошибок |
   | M17 | Неизвестный kind сущности | Пустой массив ошибок (не падает) |
+  | M18 | Optional param без скобок: `x?` + `@param x` | `ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH` |
+  | M19 | Required param со скобками: `x` + `@param [x]` | `ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH` |
+  | M20 | Default-value param с `[x]`: `x = default` + `@param [x]` | Нет ошибок |
 
-  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 7 autofix-combined + 10 edge + 17 unit-validator = 91 тестовый случай.**
+  **K. Autofix combined (continued):**
+  | # | Тест | Что проверяется |
+  |---|------|-----------------|
+  | K7 | `autofix-combined/bracket-mismatch.ts` | Autofix добавляет `[brackets]` для default-value param |
+
+  **S. Snapshot tests (byte-level comparison, 20 fixtures с идемпотентностью):**
+  | # | Fixture | Формат |
+  |---|---------|--------|
+  | S1 | content-on-opening | `/**` + контент → multi-line |
+  | S2 | content-on-closing | контент + `*/` → `*/` отдельно |
+  | S3 | no-star-prefix | строки без `* ` → `* ` |
+  | S4 | mixed-star-prefix | часть строк с `*`, часть без |
+  | S5 | indented-method | класс с 2-пробельным отступом |
+  | S6 | pipe-function | pipe → multi-line (функция) |
+  | S7 | pipe-four-tags | pipe >3 тегов → multi-line |
+  | S8 | pipe-const-stays | pipe ≤3 тегов → без изменений |
+  | S9 | extra-spaces | лишние пробелы в JSDoc |
+  | S10 | malformed-closing | `*/` на строке с тегом |
+  | S11 | crlf-endings | `\r\n` (CRLF) |
+  | S12 | bom-header | UTF-8 BOM |
+  | S13 | tab-indent | табуляция |
+  | S14 | mixed-tabs-spaces | табы + пробелы |
+  | S15 | destructured-param | `@param props.a` |
+  | S16 | rest-param | `@param ...args` |
+  | S17 | property-only-purpose | только `@purpose` |
+  | S18 | empty-jsdoc | пустой `/** */` |
+  | S19 | multiple-blocks | 2 функции в файле |
+  | S20 | trailing-spaces | пробелы в конце строк |
+
+  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 8 autofix-combined + 11 edge + 20 unit-validator + 20 snapshots = 116 тестовый случай.**

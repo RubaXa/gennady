@@ -39,12 +39,16 @@ export function SessionCard(props: SessionCardProps) {
       {card.model && <Text dimColor>{card.model}</Text>}
       <Box>
         <StatusBadge status={card.status} />
-        <Text>  {card.elapsed}</Text>
+        <Text> {card.elapsed}</Text>
       </Box>
       {tokens && <Text>{tokens}</Text>}
       {card.cpuPercent !== undefined && <Text>CPU: {card.cpuPercent}%</Text>}
       {card.memoryMb !== undefined && <Text>MEM: {card.memoryMb}MB</Text>}
-      {card.lastMessage && <Text dimColor wrap="truncate-end">{card.lastMessage}</Text>}
+      {card.lastMessage && (
+        <Text dimColor wrap="truncate-end">
+          {card.lastMessage}
+        </Text>
+      )}
     </Box>
   );
 }

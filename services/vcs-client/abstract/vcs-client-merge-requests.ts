@@ -71,7 +71,5 @@ export abstract class VcsClientMergeRequests {
    * @returns List of changed files with metadata.
    * @sideEffect Network: GitLab GET /projects/:id/merge_requests/:iid/changes | GitHub GET /repos/:owner/:repo/pulls/:number/files
    */
-  abstract getChanges(
-    query: VcsMergeRequestChangesQuery
-  ): Promise<VcsMergeRequestChanges[]>;
+  abstract getChanges(query: VcsMergeRequestChangesQuery): Promise<VcsMergeRequestChanges[]>;
 }

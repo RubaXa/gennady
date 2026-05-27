@@ -1,6 +1,7 @@
 # Task: TSK-45 — State manager + ViewModel + waiting
 
 ## 1. Meta
+
 - **Task-ID:** TSK-45
 - **Status:** [ ] TODO
 - **Purpose:** Реализовать state manager: createStateManager, ViewModel, groupByProvider, isWaitingForUser
@@ -18,14 +19,16 @@
 - **Deferred Runtime Scope:** None
 
 ## 2. Phases Overview
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [x]    |
-| P2 | test | P1   | [x]    |
+
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
 ### P1 — impl
+
 - **Objective:** Реализовать createStateManager, ViewModel, groupByProvider, isWaitingForUser
 - **Rules:**
   - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
@@ -39,6 +42,7 @@
 - **Exit:** typecheck pass; createStateManager принимает AsyncIterable<SessionChanges>; ViewModel.status: loading|ready|error
 
 ### P2 — test
+
 - **Objective:** Unit-тесты groupByProvider, isWaitingForUser, createStateManager
 - **Rules:**
   - [node-test](../../../ai/directives/testing/node-test.xml)
@@ -50,44 +54,52 @@
 - **Exit:** все BDD сценарии покрыты; tests pass
 
 ## 4. Acceptance Criteria (BDD)
+
 Contract: see Spec References.
 
 **Feature:** State manager lifecycle + waiting detection
 
 **Scenario:** createStateManager переходит loading→ready [`unit`]
+
 - **Given** AsyncIterable с одним SessionChanges
 - **When** создаём state manager и подписываемся
 - **Then** первый вызов subscribe → status='loading'
 - **And** после итерации → status='ready', data.columns заполнены
 
 **Scenario:** groupByProvider группирует по провайдеру [`unit`]
+
 - **Given** 3 сессии: 2 Claude, 1 OpenCode
 - **When** groupByProvider(sessions)
 - **Then** возвращает 2 ProviderColumn (Claude, OpenCode)
 - **And** sessions отсортированы: active→waiting→idle→completed
 
 **Scenario:** isWaitingForUser детектит вопрос [`unit`]
+
 - **Given** lastMessage = "Choose variant?"
 - **When** isWaitingForUser(session)
 - **Then** возвращает true
 
 **Scenario:** isWaitingForUser не детектит обычное сообщение [`unit`]
+
 - **Given** lastMessage = "Running type-check..."
 - **When** isWaitingForUser(session)
 - **Then** возвращает false
 
 **Scenario:** ошибка в observe → status='error' [`unit`]
+
 - **Given** AsyncIterable, который бросает на второй итерации
 - **When** state manager обрабатывает
 - **Then** status='error', data содержит данные первой (успешной) итерации
 
 ## 5. Verification
-| Command | Required by |
-|---------|-------------|
+
+| Command            | Required by      |
+| ------------------ | ---------------- |
 | npm run type-check | typescript-rules |
-| npm run test | node-test |
+| npm run test       | node-test        |
 
 ## 6. Test Scenario Coverage
+
 - Scenario "loading→ready" → `cli/cmd/agent-mon/state/__tests__/create-state-manager.test.ts` :: `transitions loading to ready`
 - Scenario "groupByProvider" → `cli/cmd/agent-mon/state/__tests__/group-by-provider.test.ts` :: `groups by provider with sort order`
 - Scenario "isWaitingForUser detects question" → `cli/cmd/agent-mon/state/__tests__/is-waiting.test.ts` :: `detects question in last message`
@@ -99,18 +111,22 @@ Contract: see Spec References.
 ### Round 1 — initial
 
 #### P1
+
 - [x] `2026-05-22T09:36:34Z` intro `StateManager` ← export type not listed as standalone in Entity Inventory but needed as public contract surface for createStateManager return
 - [x] `2026-05-22T09:36:34Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-05-22T09:36:34Z` DONE
-**Handoff →** artifacts: [cli/cmd/agent-mon/state/view-model.type.ts, cli/cmd/agent-mon/state/is-waiting.ts, cli/cmd/agent-mon/state/group-by-provider.ts, cli/cmd/agent-mon/state/create-state-manager.ts, cli/cmd/agent-mon/state/index.ts]; decisions: [StateManager-as-separate-type=yes, import-extensions=.ts, SessionCard-waiting-derived-from-isWaitingFn, tasks-field-deferred-to-V2]; open: []
+      **Handoff →** artifacts: [cli/cmd/agent-mon/state/view-model.type.ts, cli/cmd/agent-mon/state/is-waiting.ts, cli/cmd/agent-mon/state/group-by-provider.ts, cli/cmd/agent-mon/state/create-state-manager.ts, cli/cmd/agent-mon/state/index.ts]; decisions: [StateManager-as-separate-type=yes, import-extensions=.ts, SessionCard-waiting-derived-from-isWaitingFn, tasks-field-deferred-to-V2]; open: []
 
 #### P2
+
 - [x] `2026-05-22T09:45:40Z` ver `npm run test` → pass exit=0
 - [x] `2026-05-22T09:45:40Z` DONE
-**Handoff →** artifacts: [cli/cmd/agent-mon/state/__tests__/create-state-manager.test.ts, cli/cmd/agent-mon/state/__tests__/group-by-provider.test.ts, cli/cmd/agent-mon/state/__tests__/is-waiting.test.ts]; decisions: [import-extensions=.ts, subscribe-promise-pattern=used-for-async-wait]; open: []
+      **Handoff →** artifacts: [cli/cmd/agent-mon/state/__tests__/create-state-manager.test.ts, cli/cmd/agent-mon/state/__tests__/group-by-provider.test.ts, cli/cmd/agent-mon/state/__tests__/is-waiting.test.ts]; decisions: [import-extensions=.ts, subscribe-promise-pattern=used-for-async-wait]; open: []
 
 #### Round close
+
 - [ ] `<ts>` DONE
 
 #### Round close
+
 - [x] `2026-05-22T10:45:57Z` DONE

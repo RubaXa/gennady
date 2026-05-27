@@ -49,7 +49,7 @@ export class AgentMonitor {
   /**
    * @purpose Scan all registered providers concurrently, aggregate and sort results by startedAt descending.
    * @invariant Graceful degradation: a failing provider returns [] and does not abort other providers.
-   * @param opts Optional scan filtering (since timestamp or 'today').
+   * @param [opts] Optional scan filtering (since timestamp or 'today').
    * @returns All sessions from all providers, sorted by startedAt descending.
    * @sideEffect Calls each registered provider's scan() — may read filesystem / database.
    */
@@ -83,7 +83,7 @@ export class AgentMonitor {
   /**
    * @purpose Scan a single provider by key; rejects when the provider is not registered.
    * @param key Registered provider key.
-   * @param opts Optional scan filtering.
+   * @param [opts] Optional scan filtering.
    * @throws {ProviderNotFoundError} When the key is not registered.
    * @returns Sessions from the specified provider.
    * @sideEffect Calls the provider's scan() — may read filesystem / database.

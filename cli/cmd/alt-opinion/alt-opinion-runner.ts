@@ -153,11 +153,11 @@ export type RunAltOpinionDeps = {
 
 /**
  * @purpose Core alt-opinion runner — polls models in parallel and optionally synthesizes results.
- *
+ * *
  * Resolves artifact content (from --file or pre-resolved stdin), sanitizes it against prompt injection,
  * queries all models in parallel via Promise.allSettled with per-model prompts, and optionally runs
  * synthesis when --synthModel is provided.
- *
+ * *
  * @invariant Model results preserve the order of --model arguments (Promise.allSettled insertion order).
  * @invariant Timeout per model: 5 minutes via AbortSignal. Timeout → error in model block, not thrown.
  * @invariant Exit code: strict mode → 1 if ANY model failed; non-strict → 1 only if ALL failed.

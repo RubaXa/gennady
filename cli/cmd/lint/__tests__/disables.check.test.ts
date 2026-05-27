@@ -121,7 +121,10 @@ describe('DisablesCheck', () => {
   });
 
   it('DC-08 eslint-disable-next-line without D-NNN → 1 error', () => {
-    const errors = check(`${S} eslint-disable-next-line no-explicit-any\nconst x: any = 1;\n`, 'foo.ts');
+    const errors = check(
+      `${S} eslint-disable-next-line no-explicit-any\nconst x: any = 1;\n`,
+      'foo.ts'
+    );
     assert.equal(errors.length, 1);
     assert.equal(errors[0].code, ERR_CLI_LINT_UNAUTHORIZED_DISABLE);
   });

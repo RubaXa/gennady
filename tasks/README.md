@@ -120,8 +120,8 @@ graph TD
 | dbc               | library        | [README](dbc/README.md)               | 14    | 14/14 |
 | cli               | product        | [README](cli/README.md)               | 17    | 17/17 |
 | vcs               | product        | [README](vcs/README.md)               | 5     | 5/5   |
-| agent-mon | library | [README](agent-mon/README.md) | 7 | 7/7 |
-| agent-mon-cli | product | [README](agent-mon-cli/README.md) | 4 | 0/4 |
+| agent-mon         | library        | [README](agent-mon/README.md)         | 7     | 7/7   |
+| agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 
 ## Decision Log

@@ -125,23 +125,25 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 | FR-23 | Комментарий есть → `DbcParser.parse()` → `issues` транслируются в ошибки линтера с исходными кодами (`ERR_DBC_ORDER`, `ERR_DBC_PURPOSE_CONFLICT`, `ERR_DBC_PARAM_NAME_MISSING`, `ERR_DBC_SEE_FORMAT_INVALID`)                                                                                                                                          |
 | FR-24 | Соответствие контракта сигнатуре кода — см. матрицу проверок ниже                                                                                                                                                                                                                                                                                      |
 | FR-25 | Отчёт в ESLint-формате: `file:line:col: severity: code: message`. Все ошибки — `severity: error`                                                                                                                                                                                                                                                       |
-| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы ниже + `ERR_DBC_ORDER`. Возвращает `DbcLintFixReport` с `autoFixed` и оставшимися ошибками. Multi-line → inline удалён из autofix (I-01) — сжатие валидных контрактов с `@implements`/`@invariant` в одну строку разрушает читаемость                                                              |
+| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы. Цепочка шагов: `expandToMultiline` → `removeRedundantInImplements` → `removeRedundantTypes` → `normalizeParamBrackets` → `removeExtraParams` → `removeUnexpectedReturns` → `reorderParams` → `reorderTags` → `normalizeMultiLine`. Каждый шаг — чистая функция `(text, context) → text`. Идемпотентность: повторный autofix не меняет результат.                                                                                                                                                             |
 | FR-27 | Пустой или без экспортов файл → пустой отчёт                                                                                                                                                                                                                                                                                                           |
 | FR-28 | Для типизированного языка `{dataType}` в тегах `@param` и `@returns` — ошибка `ERR_DBC_LINT_TYPE_REDUNDANT`                                                                                                                                                                                                                                            |
 | FR-29 | Fixture-покрытие: каждый случай линтинга покрыт отдельным fixture-файлом                                                                                                                                                                                                                                                                               |
 
 **Матрица проверок FR-24 (соответствие контракта сигнатуре):**
 
-| Сущность                                                             | @param                                                                                     | @returns                                                             |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| function / method (не constructor)                                   | Каждый параметр сигнатуры ↔ `@param`. Порядок `@param`-ов должен совпадать с сигнатурой    | `void` → `@returns` отсутствует. Не `void` → `@returns` присутствует |
-| constructor                                                          | Как method, но для деструктурированных параметров — сравнение по позиции (`arg0`, `arg1`…) | не проверяется                                                       |
-| getter                                                               | отсутствуют                                                                                | присутствует                                                         |
-| setter                                                               | ровно один                                                                                 | отсутствует                                                          |
-| field / property                                                     | отсутствуют                                                                                | отсутствует                                                          |
-| const / enum / enum member / interface (сам)                         | отсутствуют                                                                                | отсутствует                                                          |
-| type alias (объектный литерал) / interface property (function-typed) | как function                                                                               | как function                                                         |
-| interface method sig                                                 | как function                                                                               | как function                                                         |
+| Сущность                                                             | @param                                                                                       | @returns                                                             |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| function / method (не constructor)                                   | Каждый параметр сигнатуры ↔ `@param`. Порядок `@param`-ов должен совпадать с сигнатурой      | `void` → `@returns` отсутствует. Не `void` → `@returns` присутствует |
+| method (внутри `class implements Interface` + `@see` в контракте)    | отсутствуют (redundant — описаны в интерфейсе). `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` | отсутствует                                                          |
+| method с `override` (TS 4.3+)                                        | как обычный method                                                                           | как обычный method                                                   |
+| constructor                                                          | Как method, но для деструктурированных параметров — сравнение по позиции (`arg0`, `arg1`…)   | не проверяется                                                       |
+| getter                                                               | отсутствуют                                                                                  | присутствует                                                         |
+| setter                                                               | ровно один                                                                                   | отсутствует                                                          |
+| field / property                                                     | отсутствуют                                                                                  | отсутствует                                                          |
+| const / enum / enum member / interface (сам)                         | отсутствуют                                                                                  | отсутствует                                                          |
+| type alias (объектный литерал) / interface property (function-typed) | как function                                                                                 | как function                                                         |
+| interface method sig                                                 | как function                                                                                 | как function                                                         |
 
 **Параметры:**
 
@@ -150,19 +152,26 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 - Rest: `...args: string[]` → `@param ...args`
 - Деструктуризация: не поддерживается, параметр именуется по позиции: `@param arg0`, `arg1`…
 - Overloads: не поддерживаются (v2)
+- **Implements-методы:** метод в классе с `implements Interface` + контракт `@see {Interface#method}` → `@param`/`@returns` избыточны (redundant). Автофикс удаляет их. Без `@see` — обрабатывается как обычный метод.
+- **Форматы контрактов:**
+  - Multi-line (`/** … */` с `\n`) — основной формат для функций, методов, конструкторов
+  - Pipe (`/** @purpose X | @param y … */`) — разрешён только для невызываемых сущностей (field, const, type, enum, getter, setter, interface-property), ≤3 тегов. При >3 тегах autofix разворачивает в multi-line.
+  - Autofix **никогда** не сворачивает multi-line в pipe.
 
 **Коды ошибок линтера:**
 
-| Код                               | Условие                               | Autofix          |
-| --------------------------------- | ------------------------------------- | ---------------- |
-| `ERR_DBC_LINT_MISSING_CONTRACT`   | сущность без JSDoc                    | —                |
-| `ERR_DBC_LINT_PARSE_FAILED`       | файл сломан синтаксически             | —                |
-| `ERR_DBC_LINT_PARAM_MISSING`      | параметр в сигнатуре, нет в контракте | —                |
-| `ERR_DBC_LINT_PARAM_EXTRA`        | `@param` в контракте, нет в сигнатуре | удалить          |
-| `ERR_DBC_LINT_PARAM_ORDER`        | порядок `@param` ≠ сигнатура          | пересортировать  |
-| `ERR_DBC_LINT_RETURNS_MISSING`    | не-void без `@returns`                | —                |
-| `ERR_DBC_LINT_RETURNS_UNEXPECTED` | `@returns` где не нужен               | удалить          |
-| `ERR_DBC_LINT_TYPE_REDUNDANT`     | `{type}` в `@param`/`@returns`        | удалить `{type}` |
+| Код                                          | Условие                                                   | Autofix                     |
+| -------------------------------------------- | --------------------------------------------------------- | --------------------------- |
+| `ERR_DBC_LINT_MISSING_CONTRACT`              | сущность без JSDoc                                        | —                           |
+| `ERR_DBC_LINT_PARSE_FAILED`                  | файл сломан синтаксически                                 | —                           |
+| `ERR_DBC_LINT_PARAM_MISSING`                 | параметр в сигнатуре, нет в контракте                     | —                           |
+| `ERR_DBC_LINT_PARAM_EXTRA`                   | `@param` в контракте, нет в сигнатуре                     | удалить                     |
+| `ERR_DBC_LINT_PARAM_ORDER`                   | порядок `@param` ≠ сигнатура                              | пересортировать             |
+| `ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH`       | опциональность `@param` ≠ сигнатуре (скобки)              | добавить/убрать `[]`        |
+| `ERR_DBC_LINT_RETURNS_MISSING`               | не-void без `@returns`                                    | —                           |
+| `ERR_DBC_LINT_RETURNS_UNEXPECTED`            | `@returns` где не нужен                                   | удалить                     |
+| `ERR_DBC_LINT_TYPE_REDUNDANT`                | `{type}` в `@param`/`@returns`                            | удалить `{type}`            |
+| `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` | `@param`/`@returns` в методе `implements`-класса с `@see` | удалить `@param`/`@returns` |
 
 ### 3.2 Non-Functional Constraints
 
@@ -475,7 +484,9 @@ services/dbc/
 
 - **Status:** active
 - **Recorded:** session Discovery, dbc, refine
-- **Why:** Autofix-ошибки (порядок, лишние теги, multi→inline) исправляются текстовыми заменами в исходном файле. Каждая трансформация — чистая функция `(source: string) → string`. AST-мутации избыточны и рискуют сломать форматирование.
+- **Why:** Autofix-ошибки исправляются текстовыми заменами в исходном файле. Цепочка: `expandToMultiline` → `removeRedundantInImplements` → `removeRedundantTypes` → `normalizeParamBrackets` → `removeExtraParams` → `removeUnexpectedReturns` → `reorderParams` → `reorderTags` → `normalizeMultiLine`. Каждый шаг — чистая функция `(text, context) → text`. AST-мутации избыточны.
+- **Pipe-формат:** разрешён для невызываемых сущностей (field, const, type, enum, getter, setter) с ≤3 тегами. Вызываемые (function, method, constructor) и >3 тега — autofix разворачивает в multi-line. Autofix никогда не сворачивает multi-line в pipe.
+- **Верификация:** 20 снапшот-тестов (fixture → autofix → expected, побайтовое сравнение + идемпотентность).
 - **Risk accepted:** Текстовые замены могут быть хрупкими при нестандартном форматировании JSDoc.
 - **Rejected alternatives:** AST-мутации (сложнее, риск сломать код); перезапись через `typescript` printer (тянет компилятор).
 

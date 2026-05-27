@@ -12,7 +12,8 @@ import {
 const MIN_PURPOSE_NON_WS_CHARS = 8;
 
 /** @purpose Regex matching one disable marker name (without comment opener). The opener is detected separately via a string-aware state machine. */
-const MARKER_RE = /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
+const MARKER_RE =
+  /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
 
 /** @purpose Regex matching a Decision Log reference. Case-insensitive on the `D` letter; requires `-` followed by ≥1 digit. */
 const D_REF_RE = /\bd-\d+\b/i;

@@ -135,3 +135,16 @@ _(Plan-as-checklist; token vocabulary + protocol in [tasks/README.md#execution-l
 - [x] `2026-05-15 01:18` aud rules=2 ax=44 viol=0
 - [x] `2026-05-15 01:20` sync dbc+root
 - [x] `2026-05-15 01:20` DONE
+
+### Round 3 — 2026-05-26, fix: detect implements clause on class declarations
+
+| Phase | Kind | Status | Target Files                                    | Deps |
+| ----- | ---- | ------ | ----------------------------------------------- | ---- |
+| P1    | fix  | [x]    | dbc-ast-adapter.types.ts, dbc-ts-ast-adapter.ts | —    |
+| P2    | test | [x]    | dbc-ts-linter.test.ts (K11)                     | —    |
+
+- [x] 2026-05-26T13:00:00Z file dbc-ast-adapter.types.ts — DbcExportedEntity.implementsInterfaces
+- [x] 2026-05-26T13:00:00Z file dbc-ts-ast-adapter.ts — \_hasImplements via class_heritage
+- [x] 2026-05-26T13:00:00Z ver tsc --noEmit → pass
+- [x] 2026-05-26T13:00:00Z ver node --import tsx --test → pass (116/116)
+- [x] 2026-05-26T13:00:00Z DONE
