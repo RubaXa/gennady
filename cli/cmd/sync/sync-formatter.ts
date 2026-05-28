@@ -18,9 +18,10 @@ const LABEL_WOULD_UPDATE = '(would update)';
 const LABEL_UNCHANGED_SKIP = '(unchanged, skip)';
 
 /**
- * @purpose Форматировать список файлов в строки для stdout.
- * Порядок строк соответствует порядку entries.
- * Последняя строка — итог.
+ * @purpose Format a list of sync file entries into stdout lines.
+ * @param entries List of sync file entries to format.
+ * @param [opts] Formatting options (dryRun enables would-add/would-update labels).
+ * @returns Array of formatted lines, last line is the summary.
  */
 export function formatEntries(entries: SyncFileEntry[], opts: FormatOpts = {}): string[] {
   const lines: string[] = [];

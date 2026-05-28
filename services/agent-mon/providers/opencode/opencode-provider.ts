@@ -54,7 +54,11 @@ export class OpenCodeProvider implements AgentProvider {
     };
   }
 
-  /** @see {AgentProvider#scan} in ../../model/agent-provider.type.ts */
+  /**
+   * @param [opts] Optional scan filtering parameters.
+   * @returns Parsed agent sessions array.
+   * @see {AgentProvider#scan} in ../../model/agent-provider.type.ts
+   */
   async scan(opts?: ScanOpts): Promise<AgentSession[]> {
     this._logger.debug('[OpenCodeProvider#scan] [idle → opening]');
 

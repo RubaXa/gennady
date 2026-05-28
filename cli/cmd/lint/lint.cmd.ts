@@ -160,6 +160,11 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out', '__tests__']);
 
+/**
+ * @purpose Resolve user-provided target paths to a flat list of .ts/.tsx files.
+ * @param targets Paths or glob patterns from CLI arguments.
+ * @returns Resolved file list and any resolution errors.
+ */
 export function resolveTargets(targets: string[]): { files: string[]; errors: LintError[] } {
   logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
   const fileSet = new Set<string>();

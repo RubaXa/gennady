@@ -16,16 +16,24 @@ import type { SyncCoreDeps } from './sync-core.ts';
 // #region START_DEPS — invariant: DI allows mocking filesystem and output for testability
 /** @purpose Injectable dependencies for the sync CLI command — enables testing without real FS. */
 export type SyncCmdDeps = {
+  /** @purpose Read file from disk. */
   readFile?: typeof readFileSync;
+  /** @purpose Write file to disk. */
   writeFile?: typeof writeFileSync;
+  /** @purpose Create directory. */
   mkdir?: typeof mkdirSync;
+  /** @purpose Get file stats. */
   stat?: typeof statSync;
+  /** @purpose List directory contents. */
   readdir?: typeof readdirSync;
+  /** @purpose Resolve package directory. */
   resolvePackageDir?: typeof resolvePackageDir;
+  /** @purpose Standard output stream. */
   stdout?: NodeJS.WriteStream;
+  /** @purpose Standard error stream. */
   stderr?: NodeJS.WriteStream;
 };
-// #endregion START_DEPS
+// #endregion END_DEPS
 
 // #region START_FORMAT_AND_WRITE — invariant: formatter produces lines; stdout writes them
 function formatAndWrite(

@@ -37,7 +37,11 @@ const CONTRACT_ORDER_INDEX = new Map<string, number>(
  * @invariant Input is handled line-by-line with explicit support for leading `*` markers.
  */
 export class DbcJsDocParser implements DbcParser {
-  /** @see {DbcParser#parse} in ../../dbc-parser.types.ts */
+  /**
+   * @param inputContract Raw contract text to parse.
+   * @returns Parsed DBC schema with entries and format metadata.
+   * @see {DbcParser#parse} in ../../dbc-parser.types.ts
+   */
   parse(inputContract: string): DbcSchema {
     const entries: ParsedEntryWithLine[] = [];
     const raw = inputContract.trim();
