@@ -13,6 +13,7 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
+    "**/__tests__/**",
     "assistant/**/*",
     "vite.config.ts",
     "scripts/**/*"
