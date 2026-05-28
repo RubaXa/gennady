@@ -1,0 +1,6 @@
+<!-- @file: Agent directive for review verification -->
+<!-- @consumers: review-verify command -->
+<!-- @tasks: TSK-33 -->
+<Agent name="agent-review-verifier" type="directive" ver="0.1">
+  <Mission>Verify review results against code changes.</Mission>
+</Agent>
