@@ -7,7 +7,15 @@ import { ERR_CLI_LINT_NON_ENGLISH } from '../lint.types.ts';
 
 const CYRILLIC_RE = /\p{Script=Cyrillic}/u;
 
-/** @purpose Validates that JSDoc contracts and file headers use English, not Russian/Cyrillic. | @implements {LanguageCheck} in specs/cli/lint/lint.spec.md | @invariant Scans JSDoc blocks and file header lines (// @file:, // @consumers:). | @invariant Pure function — no I/O, no exceptions. | @param content Source text to validate. | @param filePath File path for error messages. | @returns List of lint errors in ascending line order, empty when no Cyrillic found. */
+/**
+ * @purpose Validates that JSDoc contracts and file headers use English, not Russian/Cyrillic.
+ * @implements {LanguageCheck} in specs/cli/lint/lint.spec.md
+ * @invariant Scans JSDoc blocks and file header lines (// @file:, // @consumers:).
+ * @invariant Pure function — no I/O, no exceptions.
+ * @param content Source text to validate.
+ * @param filePath File path for error messages.
+ * @returns List of lint errors in ascending line order, empty when no Cyrillic found.
+ */
 export function check(content: string, filePath: string): LintError[] {
   const errors: LintError[] = [];
   const lines = content.split('\n');

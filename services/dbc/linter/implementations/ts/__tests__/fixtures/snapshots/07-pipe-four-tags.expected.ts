@@ -6,5 +6,5 @@
  * @see B
  * @see C
  * @see D
- */
+*/
 export const c7: string = 'ok';

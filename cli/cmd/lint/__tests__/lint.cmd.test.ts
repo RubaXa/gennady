@@ -194,11 +194,7 @@ describe('LintCommand', () => {
     // #region START_CONSISTENT_ASSERT_RESULT
     assert.ok(report.errors.length > 0, 'expected errors in the file');
     for (const err of report.errors) {
-      assert.strictEqual(
-        err.file,
-        fullPath,
-        `expected ${fullPath}, got ${err.file}`
-      );
+      assert.strictEqual(err.file, fullPath, `expected ${fullPath}, got ${err.file}`);
     }
     // #endregion END_CONSISTENT_ASSERT_RESULT
   });

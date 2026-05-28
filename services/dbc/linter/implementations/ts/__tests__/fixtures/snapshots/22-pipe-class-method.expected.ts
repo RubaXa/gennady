@@ -1,10 +1,10 @@
-// @file: indented method
+// @file: pipe in class method
 // @consumers: test
 export class Svc {
   /**
-   * @purpose Indented method with missing star.
+   * @purpose Indented pipe in class.
    * @param x Input.
    * @returns Result.
-   */
+  */
   m1(x: string): string { return x; }
 }

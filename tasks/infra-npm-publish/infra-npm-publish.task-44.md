@@ -79,7 +79,7 @@ _(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skele
 
 #### P1
 
-- [x] 2026-05-27T18:50:00Z added ai/**/* to package.json#files
+- [x] 2026-05-27T18:50:00Z added ai/\*_/_ to package.json#files
 - [x] 2026-05-27T18:50:00Z ver node -e assert -> pass exit=0
 - [x] 2026-05-27T18:50:00Z DONE
       **Handoff ->** artifacts: [package.json (files += ai/**/*)]; decisions: [ai-in-files]; open: []

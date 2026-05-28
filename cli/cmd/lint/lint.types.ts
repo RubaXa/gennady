@@ -39,7 +39,13 @@ export class LintReport {
   /** @purpose Deduplicated spec file paths resolved from task files. */
   readonly specPaths: string[];
 
-  /** @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references. | @param errors Collected lint errors. | @param [autoFixed] Count of auto-fixed errors, defaults to 0. | @param [taskPaths] Resolved task file paths (deduplicated). | @param [specPaths] Resolved spec file paths (deduplicated). */
+  /**
+   * @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references.
+   * @param errors Collected lint errors.
+   * @param [autoFixed] Count of auto-fixed errors, defaults to 0.
+   * @param [taskPaths] Resolved task file paths (deduplicated).
+   * @param [specPaths] Resolved spec file paths (deduplicated).
+   */
   constructor(
     errors: LintError[],
     autoFixed = 0,
@@ -57,7 +63,10 @@ export class LintReport {
     return this.errors.length > 0 ? 1 : 0;
   }
 
-  /** @purpose Formats errors in ESLint-compatible output with resolved task/spec references. | @returns ESLint-compatible formatted string with References block. */
+  /**
+   * @purpose Formats errors in ESLint-compatible output with resolved task/spec references.
+   * @returns ESLint-compatible formatted string with References block.
+   */
   format(): string {
     const lines: string[] = [];
     if (this.autoFixed > 0) {
