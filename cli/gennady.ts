@@ -77,6 +77,10 @@ switch (command) {
     await import('./cmd/agent-mon/cmd/index.ts');
     break;
 
+  case 'sync':
+    await import('./cmd/sync/index.ts');
+    break;
+
   default:
     await import('./cmd/help/help.cmd.ts');
     process.exit(0);

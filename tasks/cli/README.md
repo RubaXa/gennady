@@ -17,6 +17,7 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 | cli (target)           | typescript-rules | node-test |
 | module:lint            | —                | —         |
 | module:update-check    | —                | —         |
+| module:sync            | —                | —         |
 
 ### Rule Sources
 
@@ -24,6 +25,7 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 - Target scope: [cli spec §4.5](../../specs/cli/cli.spec.md)
 - Module: [lint spec §9](../../specs/cli/lint/lint.spec.md)
 - Module: [update-check spec §9](../../specs/cli/update-check/update-check.spec.md)
+- Module: [sync spec §9](../../specs/cli/sync/sync.spec.md)
 - Files: `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
 
 ## Intra-Scope DAG
@@ -73,6 +75,9 @@ graph TD
     TSK-33[TSK-33: update-check impl]
     TSK-34[TSK-34: update-check tests]
     TSK-34 --> TSK-33
+    TSK-53[TSK-53: sync core + CLI]
+    TSK-54[TSK-54: sync tests]
+    TSK-54 --> TSK-53
 ```
 
 ## Tracker
@@ -98,6 +103,8 @@ graph TD
 | [TSK-31](cat/cli-cat.task-31.md)                 | cat --url: поддержка GitLab MR / GitHub PR            | cat          | TSK-27, TSK-28, TSK-29, TSK-30 | `[x]` DONE | 0       |
 | [TSK-33](update-check/update-check.task-33.md)   | Bootstrap + Impl: update-check механизм               | update-check | None                           | `[x]` DONE | 0       |
 | [TSK-34](update-check/update-check.task-34.md)   | Tests: update-check (unit + integration)              | update-check | TSK-33                         | `[x]` DONE | 0       |
+| [TSK-53...                                       | `[x]` DONE                                            |
+| [TSK-54](sync/cli-sync.task-54.md)               | Sync: Tests (core 15u + fmt 7u + integration 9i)      | sync         | TSK-53...                      | `[x]` DONE |
 
 ## Notes
 

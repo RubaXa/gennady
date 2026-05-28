@@ -23,6 +23,9 @@ console.info('  remote-console    Mirror browser console output into local stdou
 console.info('  lint              Validate TypeScript files: file header, DBC contracts, anchors');
 console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
 console.info(
+  '  sync              Synchronize ai/directives/ from npm package into current project'
+);
+console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
 );
 console.info('');

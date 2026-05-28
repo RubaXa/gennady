@@ -16,6 +16,7 @@
 | remote-console    | [cmd/remote-console/](cmd/remote-console/)       | Проксирование browser console в локальный stdout через HTTP sink      |
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты              |
 | alt-opinion       | [cmd/alt-opinion/](cmd/alt-opinion/)             | Получение альтернативных мнений от AI-моделей с опциональным синтезом |
+| sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект           |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

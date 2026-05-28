@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект).
 
 ## 2. Project Type
 
@@ -225,6 +225,101 @@ $ gennady lint src/foo.ts | tee report.txt
 
 Уведомление в stderr после завершения команды, не блокирует запуск, не надоедает (раз в сутки), самоустраняется при отсутствии сети.
 
+### 3.4 sync DX
+
+```bash
+# --- первый запуск: ai/directives/ не существует ---
+$ gennady sync
+
+Sync: /Users/user/my-project
+  + ai/directives/knowledge.xml
+  + ai/directives/coding/typescript-rules.xml
+  + ai/directives/coding/result-conventions.xml
+  + ai/directives/infra/eslint-setup.xml
+  + ai/directives/infra/git-setup.xml
+  ...
+  + ai/directives/testing/node-test.xml
+Synced: 34 added, 0 updated, 0 skipped (unchanged)
+
+# exit 0
+
+# --- повторный запуск: ничего не изменилось ---
+$ gennady sync
+
+Sync: /Users/user/my-project
+  = ai/directives/knowledge.xml                                   (unchanged)
+  = ai/directives/coding/typescript-rules.xml                     (unchanged)
+  ... (34 files unchanged)
+Synced: 0 added, 0 updated, 34 skipped (unchanged)
+
+# exit 0
+
+# --- часть файлов изменилась в новой версии пакета ---
+$ gennady sync
+
+Sync: /Users/user/my-project
+  ~ ai/directives/sdd/discovery.directive.xml
+  ~ ai/directives/sdd/setup.directive.xml
+  = ai/directives/knowledge.xml                                   (unchanged)
+  ... (2 updated, 32 unchanged)
+Synced: 0 added, 2 updated, 32 skipped (unchanged)
+
+# exit 0
+
+# --- dry-run: предпросмотр без записи ---
+$ gennady sync --dry-run
+
+Sync (dry-run): /Users/user/my-project
+  + ai/directives/knowledge.xml                                   (would add)
+  ~ ai/directives/sdd/discovery.directive.xml                     (would update)
+  = ai/directives/testing/node-test.xml                           (unchanged, skip)
+  ... (1 add, 1 update, 32 skip)
+Dry-run: no files written.
+
+# exit 0
+
+# --- фильтр: только sdd ---
+$ gennady sync sdd
+
+Sync: /Users/user/my-project
+  = ai/directives/sdd/README.md                                   (unchanged)
+  = ai/directives/sdd/discovery.directive.xml                     (unchanged)
+  ... (8 files)
+Synced: 0 added, 0 updated, 8 skipped (unchanged)
+
+# exit 0
+
+# --- фильтр: несколько поддиректорий ---
+$ gennady sync sdd coding testing
+
+Sync: /Users/user/my-project
+  = ai/directives/sdd/...                                         (unchanged)
+  = ai/directives/coding/...                                      (unchanged)
+  = ai/directives/testing/...                                     (unchanged)
+Synced: 0 added, 0 updated, 27 skipped (unchanged)
+
+# exit 0
+
+# --- ошибка: несуществующая поддиректория ---
+$ gennady sync nonexistent/
+
+Error: ai/directives/nonexistent/ not found in package.
+Available: sdd, coding, testing, infra, perf-auditor
+
+# exit 1
+
+# --- ошибка: пакет не найден ---
+$ gennady sync
+
+Error: gennady package not found. Install it locally: npm i -D gennady
+
+# exit 1
+```
+
+Легенда вывода: `+` — добавлен (файла не было), `~` — обновлён (содержимое изменилось), `=` — пропущен (содержимое совпадает). Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`.
+
+Пакет-источник: приоритет — локальная установка (`node_modules/gennady`), fallback — резолв от запущенного процесса. Исключённые из синхронизации (захардкожены в команде): `architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -311,6 +406,33 @@ $ gennady lint src/foo.ts | tee report.txt
 | FR-SU-13         | Пропустить проверку в CI-окружениях (`CI`, `CONTINUOUS_INTEGRATION`, `BUILD_NUMBER` env)                                                  |
 | FR-SU-14         | Пропустить проверку если `NODE_ENV === 'test'`                                                                                            |
 
+### 4.1.4 sync Functional Requirements
+
+| ID                     | Требование                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Обнаружение пакета** |                                                                                                                                                              |
+| FR-SYNC-01             | При наличии `<cwd>/node_modules/gennady/ai/directives/` — использовать локальную версию, независимо от способа запуска геннадия                              |
+| FR-SYNC-02             | При отсутствии локальной установки — резолвить путь от запущенного процесса (глобальная / npx) через `import.meta.resolve('gennady')`                        |
+| FR-SYNC-03             | Если пакет не найден — ошибка с сообщением `gennady package not found. Install it locally: npm i -D gennady`                                                 |
+| **Копирование**        |                                                                                                                                                              |
+| FR-SYNC-04             | Рекурсивно копировать `ai/directives/` из пакета-источника в `<cwd>/ai/directives/`                                                                          |
+| FR-SYNC-05             | Целевая директория создаётся рекурсивно (`mkdirSync({ recursive: true })`), если отсутствует                                                                 |
+| FR-SYNC-06             | Существующие файлы перезаписываются молча. Команда идемпотентна                                                                                              |
+| **Исключения**         |                                                                                                                                                              |
+| FR-SYNC-07             | Из синхронизации исключены (захардкожены): `architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml` |
+| **Фильтрация**         |                                                                                                                                                              |
+| FR-SYNC-08             | Без позиционных аргументов — синхронизируется вся `ai/directives/` (кроме исключённых)                                                                       |
+| FR-SYNC-09             | Позиционные аргументы — имена поддиректорий внутри `ai/directives/`. Синхронизируются только указанные поддиректории                                         |
+| FR-SYNC-10             | Если указанная поддиректория не существует в источнике — ошибка с перечислением доступных поддиректорий                                                      |
+| **Сравнение**          |                                                                                                                                                              |
+| FR-SYNC-11             | Файлы сравниваются побайтово (`Buffer.compare`). Изменение даже на 1 байт → `updated`                                                                        |
+| **Вывод**              |                                                                                                                                                              |
+| FR-SYNC-12             | Каждый файл выводится строкой: `  <маркер> <относительный_путь>` с маркером `+` (added), `~` (updated), `=` (unchanged)                                      |
+| FR-SYNC-13             | Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`                                                                                         |
+| FR-SYNC-14             | `--dry-run` — выводит что БЫЛО БЫ скопировано (`(would add)` / `(would update)` / `(unchanged, skip)`), без фактической записи                               |
+| FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                                                |
+| FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                                         |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -325,6 +447,8 @@ $ gennady lint src/foo.ts | tee report.txt
 - **NFC-10 (update-check)**: Zero runtime dependencies — только Node.js built-in модули (`child_process`, `https`, `fs`, `os`, `path`)
 - **NFC-11 (update-check)**: Проверка реестра — чистый HTTPS-запрос без npm CLI (не зависит от наличия `npm` в системе)
 - **NFC-12 (update-check)**: Кеш хранится в платформо-зависимой директории: `~/Library/Preferences/gennady/` (macOS), `~/.config/gennady/` (Linux), `%APPDATA%/gennady/` (Windows)
+- **NFC-13 (sync)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`, `url`)
+- **NFC-14 (sync)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/directives/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
 
 ### 4.3 Out-of-Scope
 
@@ -355,6 +479,15 @@ $ gennady lint src/foo.ts | tee report.txt
 - Проверка из приватных реестров (Gemfury, GitHub Packages, Verdaccio) — только public npm registry
 - Кастомный npm-реестр через `.npmrc`
 - Кастомизация текста уведомления пользователем
+
+**sync (v1):**
+
+- Интерактивный режим подтверждения перезаписи (v1 — молча)
+- Синхронизация других директорий `ai/` (agents, flow) — только `directives`
+- Синхронизация исключённых файлов (`architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`)
+- `--watch` режим
+- Автоматический `git diff` после синхронизации
+- Сетевые запросы (работает полностью офлайн)
 
 ### 4.4 Runtime Backing & Deferred Scope
 
@@ -392,6 +525,17 @@ $ gennady lint src/foo.ts | tee report.txt
 | Кеширование результата (FS)         | `real-runtime`               |
 | Deferred-уведомление (TTY)          | `real-runtime`               |
 | Автоматическая установка обновления | `not-implemented` (deferred) |
+
+**sync:**
+
+| Capability                      | Posture                      |
+| ------------------------------- | ---------------------------- |
+| Чтение файлов из пакета (FS)    | `real-runtime`               |
+| Запись в проект (FS)            | `real-runtime`               |
+| Обнаружение локальной установки | `real-runtime`               |
+| Сравнение файлов (Buffer)       | `real-runtime`               |
+| Сетевое взаимодействие          | `not-implemented` (offline)  |
+| Интерактивное подтверждение     | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
@@ -469,6 +613,9 @@ cli/cmd/alt-opinion/
 | Использовать `services/ai-client` (легаси) для alt-opinion | Легаси-код с другой моделью конфигурации (.gennadyrc). alt-opinion — чистый старт на AI SDK          |
 | Использовать `parseArgs` для ::-синтаксиса                 | `parseArgs` не поддерживает `::` внутри значений. Свой парсер изолирован в команде                   |
 | Общий промпт-файл вместо per-model overrides               | Разные модели требуют разных промптов (архитектор, security-аудитор). Per-model overrides решают     |
+| require.resolve как единственный способ поиска пакета      | Не работает при глобальной установке, если в проекте своя версия — приоритет должен быть у локальной |
+| Хеширование (SHA256) для сравнения файлов                  | Избыточно для мелких XML/MD-файлов. `Buffer.compare` проще и быстрее                                 |
+| Интерактивный prompt перед перезаписью                     | YAGNI для v1. Git покажет diff — пользователь сам решит                                              |
 
 ### 5.4 Update Check
 
@@ -485,6 +632,38 @@ cli/cmd/_shared/
 3. **Worker изолирован**: `update-check-worker.ts` запускается только через `fork`, получает параметры через `process.argv`, пишет результат в кеш-файл и завершается. Не импортируется основным процессом — исключает случайную блокировку.
 4. **Интеграция в `cli/gennady.ts`**: вызов `checkForUpdates(pkg)` перед `switch`-диспатчем команд. Парсинг `--no-update-check` флага до диспатча.
 5. **Кеш-структура** (`~/.config/gennady/.update-check.json`): `{ "lastCheck": "ISO8601", "latestVersion": "x.y.z" }`. Интервал проверки конфигурируется через `GENNADY_UPDATE_CHECK_INTERVAL` (ms), по умолчанию 24h.
+
+### 5.5 sync
+
+```
+cli/cmd/sync/
+├── index.ts                    # import { run } from './sync.cmd.ts'; run(process.argv)
+├── sync.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
+├── sync.types.ts               # SyncOptions, SyncFileEntry, SyncResult
+├── sync-core.ts                # Ядро: resolvePackageDir, scanDirectives, collectAndCompare
+├── sync-formatter.ts           # Форматтер: + / ~ / =, dry-run маркеры, итоговая строка
+└── __tests__/
+    ├── sync-core.test.ts       # Unit: resolveSource, scanSource, сравнение
+    ├── sync-formatter.test.ts  # Unit: форматтер вывода (added / updated / unchanged / dry-run)
+    └── sync.cmd.test.ts        # Integration: CLI-обвязка (parseArgs, --dry-run, ошибки)
+```
+
+**Ключевые решения:**
+
+1. **Pattern C (alt-opinion style)**: `run(rawArgs, deps?: SyncCmdDeps)` с DI — позволяет мокать файловую систему в тестах без monkey-patching.
+2. **`SyncCmdDeps`**: `{ readFile, writeFile, mkdir, stat, readdir, resolvePackageDir, stdout, stderr }`. В проде — `fs.*`, `path.*`, `process.stdout/stderr`.
+3. **`sync-core.ts`** — чистое ядро: принимает `deps` + `SyncOptions`, возвращает `SyncFileEntry[]` (без I/O к stdout).
+4. **`sync-formatter.ts`** — чистый трансформер `SyncFileEntry[] → string[]`. Формат вывода изолирован от логики.
+5. **`sync.cmd.ts`** — CLI-обвязка: `parseArgs` (разбор `--dry-run` + позиционных поддиректорий), сборка `SyncOptions`, вызов `syncCore(options, deps)` + `syncFormatter(entries, opts)`, вывод.
+6. **Обнаружение пакета** (`resolvePackageDir`):
+   - Проверить `<cwd>/node_modules/gennady/ai/directives/` — если существует → локальная версия.
+   - Иначе — `import.meta.resolve('gennady')` → отрезать `package.json` → путь к пакету.
+   - Не найдено → ошибка.
+7. **Сравнение файлов** — `Buffer.compare()` (побайтово). Без хешей, без timestamp.
+8. **Исключения** — константа `EXCLUDED_ENTRIES = new Set(['architecture', 'dbc-audit.directive.xml', 'dev-review.directive.xml', 'semantic-change-extractor.directive.xml'])`.
+9. **`index.ts`** — `import { run } from './sync.cmd.ts'; run(process.argv)` (как alt-opinion).
+10. **Guarded self-execution** через `fileURLToPath(import.meta.url)`.
+11. **Регистрация**: `case 'sync': await import('./cmd/sync/index.ts'); break` в `cli/gennady.ts`.
 
 ## 6. Decision Log
 
@@ -577,11 +756,23 @@ cli/cmd/_shared/
   - Конфигурируемый список исключений через `.gennadyignore` — premature для v1, усложняет контракт
   - Пересечение `--staged` и позиционных целей (линтить только пересечение) — семантически запутанно, сложно объяснить пользователю
 
+### D-008 — Команда sync: синхронизация ai/directives из npm-пакета
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (sync)
+- **Why:** Агентам, работающим в проекте, нужны актуальные директивы (`ai/directives/`) из пакета gennady. Команда `sync` решает проблему распространения промптов: разработчик устанавливает `gennady` локально в проект → запускает `gennady sync` → получает актуальные директивы. Приоритет у локальной установки (`node_modules/gennady`), fallback — глобальная/npx. Zero runtime deps (только Node.js built-ins), побайтовое сравнение файлов, `--dry-run` для предпросмотра.
+- **Risk accepted:** Пакет сейчас не публикует `ai/directives/` — требуется доработка `infra-npm-publish` (добавить в `package.json#files` и `prepare-publish-artifacts.ts`). Исключённые файлы (`architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`) захардкожены — при добавлении новых исключений потребуется новый релиз gennady.
+- **Rejected alternatives:**
+  - `npx gennady sync` копирует с GitHub (git clone / raw) — требует сети, медленно, не работает офлайн
+  - Отдельный npm-пакет `@gennady/directives` — усложняет распространение, два пакета вместо одного
+  - Копирование всей `ai/` (не только directives) — agents и flow не нужны в проекте-потребителе
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
   - [`dbc`](../dbc/dbc.spec.md) — `DbcLinter`, `DbcLintError`, `DbcLintReport`; требует `refine` для опции `content`
   - [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier, Vite
+  - [`infra-npm-publish`](../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/directives/` в npm-пакете (sync читает из пакета)
 - **Provides to:** AI-агенты (через CLI)
 
 ## 8. Bootstrap Requirements
@@ -613,6 +804,20 @@ cli/cmd/_shared/
 | Создать `cli/cmd/alt-opinion/__tests__/alt-opinion.cmd.test.ts`          | file          | this-scope-task       | Integration: CLI-обвязка (10+ кейсов)                                                                                               |
 | `GENNADY_LLM_PROXY_API_KEY`                                              | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
 | `GENNADY_OPENROUTER_API_KEY`                                             | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
+| **sync**                                                                 |               |                       |                                                                                                                                     |
+| `ai/**/*` в `package.json#files`                                         | structural    | external-prereq-scope | refine infra-npm-publish — добавить `"ai/**/*"` в `"files"`                                                                         |
+| `ai/ → dist/ai/` в `prepare-publish-artifacts.ts`                        | structural    | external-prereq-scope | refine infra-npm-publish — добавить копирование `ai/ → dist/ai/`                                                                    |
+| Создать `cli/cmd/sync/index.ts`                                          | file          | this-scope-task       | `import { run } from './sync.cmd.ts'; run(process.argv)`                                                                            |
+| Создать `cli/cmd/sync/sync.cmd.ts`                                       | file          | this-scope-task       | CLI-обвязка: parseArgs, deps, вызов core + formatter, вывод                                                                         |
+| Создать `cli/cmd/sync/sync.types.ts`                                     | file          | this-scope-task       | `SyncOptions`, `SyncFileEntry`, `SyncResult`                                                                                        |
+| Создать `cli/cmd/sync/sync-core.ts`                                      | file          | this-scope-task       | Ядро: resolvePackageDir, scanDirectives, collectAndCompare                                                                          |
+| Создать `cli/cmd/sync/sync-formatter.ts`                                 | file          | this-scope-task       | Форматтер: + / ~ / =, dry-run маркеры                                                                                               |
+| Создать `cli/cmd/sync/__tests__/sync-core.test.ts`                       | file          | this-scope-task       | Unit: resolveSource, scanSource, сравнение                                                                                          |
+| Создать `cli/cmd/sync/__tests__/sync-formatter.test.ts`                  | file          | this-scope-task       | Unit: форматтер (added / updated / unchanged / dry-run)                                                                             |
+| Создать `cli/cmd/sync/__tests__/sync.cmd.test.ts`                        | file          | this-scope-task       | Integration: CLI-обвязка (parseArgs, --dry-run, ошибки)                                                                             |
+| Обновить `cli/gennady.ts` (case 'sync')                                  | file          | this-scope-task       | добавить `case 'sync': await import('./cmd/sync/index.ts'); break`                                                                  |
+| Обновить `cli/AGENTS.md` (строка sync)                                   | file          | this-scope-task       | добавить строку `sync` в таблицу команд                                                                                             |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка sync)                        | file          | this-scope-task       | добавить `sync` в вывод help                                                                                                        |
 | **update-check**                                                         |               |                       |                                                                                                                                     |
 | Добавить `define: { __GENNADY_VERSION__ }` в `vite.config.ts`            | file          | this-scope-task       | Вшить версию из `package.json` на этапе сборки                                                                                      |
 | Создать `cli/cmd/_shared/update-check.ts`                                | file          | this-scope-task       | Модуль: read cache, spawn worker, deferred notify                                                                                   |
@@ -629,6 +834,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [lint](./lint/lint.spec.md) — Команда `gennady lint`: file header + DBC-контракты + anchor-разметка
 - [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
+- [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 
 ### 9.2 Inter-Module Dependency Map
@@ -639,6 +845,7 @@ graph TD
     alt-opinion -. Runtime .-> ai-sdk[AI SDK]
     cat -. Runtime .-> vcs[vcs-client]
     update-check -. Runtime .-> npm-registry[npm public registry]
+    sync -. Runtime .-> npm-package[gennady npm package]
 ```
 
 ### 9.3 Stack Dependencies
@@ -650,8 +857,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -679,8 +886,8 @@ graph TD
 ## 10. Handoff to module-decomposition
 
 - **Primary input:** `specs/cli/cli.spec.md`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`
-- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`
+- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -688,3 +895,5 @@ graph TD
   - Git-интеграция: поведение при отсутствии git-репозитория не зафиксировано
   - alt-opinion: тесты парсера — критичный компонент, делать первыми (урок из lint I-01, I-04)
   - alt-opinion: API-ключи должны быть у оператора, без них команда неработоспособна
+  - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
+  - sync: `infra-npm-publish` требует refine для включения `ai/directives/` в публикацию — sync неработоспособен без этого

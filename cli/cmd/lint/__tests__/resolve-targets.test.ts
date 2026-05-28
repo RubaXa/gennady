@@ -141,7 +141,7 @@ describe('resolveTargets', () => {
     assert.strictEqual(result.files.length, 0);
     assert.strictEqual(result.errors.length, 1);
     assert.strictEqual(result.errors[0].code, ERR_CLI_LINT_RESOLVE_FAILED);
-    assert.match(result.errors[0].message, /resolveTargets/);
+    assert.match(result.errors[0].message, /ENOENT/);
   });
 
   // ── UT-11: EACCES ──
@@ -161,7 +161,7 @@ describe('resolveTargets', () => {
     assert.strictEqual(result.files.length, 0);
     assert.strictEqual(result.errors.length, 1);
     assert.strictEqual(result.errors[0].code, ERR_CLI_LINT_RESOLVE_FAILED);
-    assert.match(result.errors[0].message, /resolveTargets/);
+    assert.match(result.errors[0].message, /EACCES/);
   });
 
   // ── UT-12: mixed valid + ENOENT + EACCES ──

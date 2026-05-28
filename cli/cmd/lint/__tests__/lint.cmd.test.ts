@@ -149,12 +149,16 @@ describe('LintCommand', () => {
   });
 
   it('should skip missing files', async () => {
-    // contract: non-existent file path is skipped (continue), not crashed — exitCode 0, no errors
-    // failure mode: crash on missing file would escape the test runner (process.exit mock prevents kill, but assertion fails)
+    // contract: non-existent file path produces ERR_CLI_LINT_RESOLVE_FAILED, exitCode 1 (errors present)
+    // but command continues — no crash, no unhandled exception
     const report = await mod.run(['node', 'gennady', 'lint', 'nonexistent_file.ts']);
 
-    assert.strictEqual(report.exitCode, 0);
-    assert.strictEqual(report.errors.length, 0);
+    assert.strictEqual(report.exitCode, 1);
+    assert.ok(report.errors.length > 0, 'expected ERR_CLI_LINT_RESOLVE_FAILED');
+    assert.ok(
+      report.errors.every((e) => e.code === 'ERR_CLI_LINT_RESOLVE_FAILED'),
+      'all errors should be resolve failures'
+    );
   });
 
   it('should filter by extension', async () => {
@@ -175,8 +179,8 @@ describe('LintCommand', () => {
   });
 
   it('should use consistent paths', async () => {
-    // purpose: verify all 3 checks (file-header, anchor, dbc) report the same filePath for a given argument
-    // contract: every error.file equals the raw argument passed to run(), not a resolved absolute path
+    // purpose: verify all 3 checks report the same filePath for a given argument
+    // contract: every error.file equals the resolved absolute path of the input
     const subdirPath = join(tmpDir, 'subdir');
     mkdirSync(subdirPath);
     const fullPath = join(subdirPath, 'file.ts');
@@ -190,7 +194,11 @@ describe('LintCommand', () => {
     // #region START_CONSISTENT_ASSERT_RESULT
     assert.ok(report.errors.length > 0, 'expected errors in the file');
     for (const err of report.errors) {
-      assert.strictEqual(err.file, relativePath, `expected ${relativePath}, got ${err.file}`);
+      assert.strictEqual(
+        err.file,
+        fullPath,
+        `expected ${fullPath}, got ${err.file}`
+      );
     }
     // #endregion END_CONSISTENT_ASSERT_RESULT
   });

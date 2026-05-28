@@ -1,3 +1,6 @@
+// @file: Vite build configuration — lib mode, node22 target, external deps
+// @consumers: npm run build, npm run build:publish
+// @tasks: TSK-33
 import { defineConfig } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,7 +55,7 @@ export default defineConfig({
       fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
     },
     rollupOptions: {
-      external: [...nodeBuiltins, 'tree-sitter'],
+      external: [...nodeBuiltins, 'tree-sitter', 'node:sqlite'],
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
         entryFileNames: (chunkInfo) =>

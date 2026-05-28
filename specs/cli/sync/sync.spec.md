@@ -1,0 +1,277 @@
+# Module: sync
+
+## 1. Module Vision
+
+Команда `gennady sync` в `cli/cmd/sync/`: синхронизирует `ai/directives/` из npm-пакета gennady в текущий проект. Приоритет у локальной установки (`node_modules/gennady`), fallback — резолв запущенного процесса. Файлы сравниваются побайтово (`Buffer.compare`). Вывод: `+` (added), `~` (updated), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Поддержка `--dry-run`.
+
+→ Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.5 sync).
+
+## 2. Entity Inventory (Closed-World)
+
+_Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+
+| Name            | Type         | Purpose                                                                                               |
+| --------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| `SyncOptions`   | Value Object | Конфигурация: `sourceDir`, `targetDir`, `subdirs?`, `dryRun?`                                         |
+| `SyncFileEntry` | Value Object | Результат сравнения одного файла: `relativePath`, `status`, `sourceSize`                              |
+| `SyncResult`    | Value Object | Агрегат: `entries` + computed `added`, `updated`, `unchanged`, `summary`                              |
+| `SyncCore`      | Service      | Ядро: `resolvePackageDir`, `scanDirectives`, `collectAndCompare`                                      |
+| `SyncFormatter` | Service      | Форматтер: `format(entries, opts) → string[]`                                                         |
+| `SyncCmdDeps`   | Port         | DI-порт: `readFile`, `writeFile`, `mkdir`, `stat`, `readdir`, `resolvePackageDir`, `stdout`, `stderr` |
+
+## 3. Entity Surfaces
+
+### `SyncOptions`
+
+- **Type:** Value Object
+- **Purpose:** Входная конфигурация для `SyncCore.collectAndCompare`
+- **Public Properties:**
+  - `sourceDir: string` — абсолютный путь к `ai/directives/` в npm-пакете
+  - `targetDir: string` — абсолютный путь к `<cwd>/ai/directives/`
+  - `subdirs?: string[]` — опциональный фильтр: имена поддиректорий внутри `ai/directives/`
+  - `dryRun?: boolean` — default `false`
+- **Lifecycle:** Создаётся в `sync.cmd.ts` после `resolvePackageDir`, передаётся в `SyncCore`
+- **Consumers:** `SyncCore`
+
+### `SyncFileEntry`
+
+- **Type:** Value Object
+- **Purpose:** Результат сравнения одного файла
+- **Public Properties:**
+  - `relativePath: string` — путь относительно `ai/directives/` (например, `sdd/discovery.directive.xml`)
+  - `status: 'added' | 'updated' | 'unchanged'`
+  - `sourceSize?: number` — размер в байтах в источнике
+  - `targetSize?: number` — размер в байтах в цели (только для `updated`/`unchanged`)
+- **Lifecycle:** Immutable. Создаётся `collectAndCompare` для каждого файла
+- **Consumers:** `SyncFormatter`, `SyncResult`
+
+### `SyncResult`
+
+- **Type:** Value Object
+- **Purpose:** Агрегат всех `SyncFileEntry` + computed свойства
+- **Public Properties:**
+  - `entries: SyncFileEntry[]`
+- **Public Operations (getters):**
+  - `get added(): SyncFileEntry[]` — фильтр по `status === 'added'`
+  - `get updated(): SyncFileEntry[]` — фильтр по `status === 'updated'`
+  - `get unchanged(): SyncFileEntry[]` — фильтр по `status === 'unchanged'`
+  - `get summary(): string` — `Synced: N added, M updated, K skipped (unchanged)`
+  - `get dryRunSummary(): string` — `Dry-run: no files written.`
+- **Lifecycle:** Создаётся `SyncCore.collectAndCompare`. Immutable
+- **Consumers:** `SyncFormatter`, `sync.cmd.ts`
+
+### `SyncCore`
+
+- **Type:** Service (чистые функции, без I/O к stdout)
+- **Purpose:** Ядро синхронизации: обнаружение пакета, сканирование, сравнение
+- **Public Operations:**
+  - `resolvePackageDir(cwd: string): string | null` — приоритет: `node_modules/gennady` > `import.meta.resolve('gennady')`
+  - `scanDirectives(sourceDir: string, subdirs?: string[]): string[]` — список относительных путей всех файлов; применяет `EXCLUDED_ENTRIES`
+  - `collectAndCompare(deps: SyncCmdDeps, opts: SyncOptions): SyncResult` — главная точка входа
+- **Lifecycle:** Stateless. Вызывается `sync.cmd.ts`
+- **Errors & Degradation:**
+  - `resolvePackageDir` → `null` если пакет не найден
+  - `scanDirectives` → ошибка если поддиректория не существует (с перечислением доступных)
+  - `collectAndCompare` → ошибка если `sourceDir` не существует
+- **Consumers:** `sync.cmd.ts`
+
+### `SyncFormatter`
+
+- **Type:** Service (pure transformer)
+- **Purpose:** Форматирует `SyncFileEntry[]` в строки для stdout
+- **Public Operations:**
+  - `format(entries: SyncFileEntry[], opts: { dryRun?: boolean }): string[]` — массив строк для вывода
+- **Lifecycle:** Stateless
+- **Format:**
+  - `added` → `  + <relativePath>`
+  - `updated` → `  ~ <relativePath>`
+  - `unchanged` → `  = <relativePath>                                           (unchanged)`
+  - dryRun `added` → `  + <relativePath>                                   (would add)`
+  - dryRun `updated` → `  ~ <relativePath>                                   (would update)`
+  - dryRun `unchanged` → `  = <relativePath>                                   (unchanged, skip)`
+  - Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`
+  - dryRun итоговая: `Dry-run: no files written.`
+- **Consumers:** `sync.cmd.ts`
+
+### `SyncCmdDeps` (Port)
+
+- **Type:** Port (интерфейс для DI)
+- **Purpose:** Абстракция файловой системы и вывода для тестируемости
+- **Public Properties:**
+  - `readFile: (path: string) => Buffer`
+  - `writeFile: (path: string, data: Buffer) => void`
+  - `mkdir: (path: string, options?: { recursive: boolean }) => void`
+  - `stat: (path: string) => Stats`
+  - `readdir: (path: string) => string[]`
+  - `resolvePackageDir: (cwd: string) => string | null`
+  - `stdout: Writable`
+  - `stderr: Writable`
+- **Lifecycle:** Создаётся в `sync.cmd.ts` — в проде `fs.*`, `path.*`, `process.stdout/stderr`. В тестах — моки
+- **Consumers:** `SyncCore`, `sync.cmd.ts`
+
+## 4. Module Contracts (DbC)
+
+### 4.1 Ports
+
+### `SyncCmdDeps` (Port)
+
+None.
+
+### 4.2 Service: `SyncCore`
+
+- **Purpose:** Ядро синхронизации
+- **Consumers:** `sync.cmd.ts`
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- **Preconditions:**
+  - `deps` — все поля не-null
+  - `opts.sourceDir` — существующая директория с `ai/directives/`
+  - `opts.targetDir` — корректный путь (может не существовать)
+- **Postconditions:**
+  - Если `dryRun` — ни один `writeFile` не вызван
+  - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile`
+  - Возвращённый `SyncResult.entries` отсортирован по `relativePath`
+  - `EXCLUDED_ENTRIES` не попадают в результат
+- **Invariants:**
+  - Никогда не пишет в stdout/stderr
+  - `resolvePackageDir` всегда возвращает путь с `ai/directives` на конце
+  - `scanDirectives` всегда возвращает пути с прямыми слешами (`/`)
+
+### 4.3 Service: `SyncFormatter`
+
+- **Purpose:** Форматирование вывода
+- **Consumers:** `sync.cmd.ts`
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- **Preconditions:**
+  - `entries` — массив `SyncFileEntry`
+- **Postconditions:**
+  - Возвращает `string[]` — каждая строка ровно один файл из `entries`
+  - Порядок строк соответствует порядку `entries`
+  - Итоговая строка — последняя в массиве
+  - При `dryRun` — используются `(would add)` / `(would update)` маркеры
+  - При пустом `entries` — только итоговая строка `Synced: 0 added, 0 updated, 0 skipped (unchanged)`
+- **Invariants:**
+  - Не делает I/O
+  - Формат строки: `  <marker> <path><padding><status_label>`
+
+## 5. Public Options & Policies
+
+| Option             | Binding                    | Status   |
+| ------------------ | -------------------------- | -------- |
+| `--dry-run`        | `SyncOptions.dryRun`       | ✅ bound |
+| Позиционные args   | `SyncOptions.subdirs`      | ✅ bound |
+| `EXCLUDED_ENTRIES` | Константа в `sync-core.ts` | ✅ bound |
+
+Все опции привязаны. Нет отложенных.
+
+## 6. File Structure
+
+```
+cli/cmd/sync/
+├── index.ts                    # import { run } from './sync.cmd.ts'; run(process.argv)
+├── sync.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод (~80 lines)
+├── sync.types.ts               # SyncOptions, SyncFileEntry, SyncResult (~40 lines)
+├── sync-core.ts                # Ядро: resolvePackageDir, scanDirectives, collectAndCompare (~80 lines)
+├── sync-formatter.ts           # Форматтер: format(entries, opts) → string[] (~50 lines)
+└── __tests__/
+    ├── sync-core.test.ts       # Unit: resolveSource (3), scanDirectives (5), collectAndCompare (7) = ~15 cases (~130 lines)
+    ├── sync-formatter.test.ts  # Unit: format (6 cases): mixed, dryRun, all-same, empty, summary (~80 lines)
+    └── sync.cmd.test.ts        # Integration: happy path, --dry-run, filter, errors (9 cases) (~140 lines)
+```
+
+**File Mapping:**
+
+| File                             | Entity                                       | Notes                                                                          |
+| -------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------ |
+| `cli/cmd/sync/sync.types.ts`     | `SyncOptions`, `SyncFileEntry`, `SyncResult` | Value Objects + error codes                                                    |
+| `cli/cmd/sync/sync-core.ts`      | `SyncCore`                                   | `resolvePackageDir`, `scanDirectives`, `collectAndCompare`, `EXCLUDED_ENTRIES` |
+| `cli/cmd/sync/sync-formatter.ts` | `SyncFormatter`                              | `format(entries, opts)` — pure transformer                                     |
+| `cli/cmd/sync/sync.cmd.ts`       | `run()`, `SyncCmdDeps`                       | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод                    |
+| `cli/cmd/sync/index.ts`          | —                                            | `import { run } from './sync.cmd.ts'; run(process.argv)`                       |
+
+**Namespace:** `sync` — единый префикс, `rg sync` находит все файлы модуля.
+
+**Limits:** Все файлы ≤ 140 строк. Портов/адаптеров нет — один implementation.
+
+## 7. Module Decision Log
+
+### D-M001 — Pattern C (alt-opinion style) с DI-портом
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, cli, sync
+- **Why:** `run(rawArgs, deps?: SyncCmdDeps)` позволяет мокать файловую систему в тестах без monkey-patching. `SyncCore` и `SyncFormatter` — чистые функции/сервисы без I/O к stdout, легко тестируются. Паттерн заимствован из `alt-opinion` — самый современный в проекте.
+- **Risk accepted:** DI-интерфейс `SyncCmdDeps` с 8 полями — overhead для небольшой команды. Смягчается простотой реализации deps (прямой маппинг на `fs.*` / `process.*`).
+- **Rejected alternatives:**
+  - Flat script без DI (как `cat`) — не тестируется без мока на уровне модуля/fs
+  - `run()` без DI (как `lint`) — требует `mock.module` в тестах вместо простого DI
+
+### D-M002 — Побайтовое сравнение (Buffer.compare)
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, cli, sync
+- **Why:** XML/MD файлы — килобайты. `Buffer.compare()` быстрее хеширования для мелких файлов и не требует крипто-зависимости. Изменение даже на 1 байт → `updated`. Просто и надёжно.
+- **Risk accepted:** Для бинарных файлов (если появятся) `Buffer.compare` всё ещё корректен.
+- **Rejected alternatives:**
+  - SHA256 — избыточно, тянет `crypto`, медленнее для мелких файлов
+  - `fs.stat.mtimeMs` — не ловит контентные изменения при touch
+
+### D-M003 — Хардкод EXCLUDED_ENTRIES в модуле
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, cli, sync
+- **Why:** Список исключений (`architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`) стабилен и редко меняется. Вынесение в конфиг — premature. При изменении списка — новый релиз gennady.
+- **Risk accepted:** Добавление новых исключений требует релиза пакета. Смягчается редкостью таких изменений.
+- **Rejected alternatives:**
+  - `.syncignore` в проекте — оверкилл, пользователи не должны управлять исключениями (это решение пакета)
+  - Аргумент `--exclude` — оверкилл, те же причины
+
+## 8. Inter-Module Dependencies
+
+- **Depends on:** None (не зависит от других модулей cli)
+- **Scope Reference (cross-scope):** [`infra-base`](../../infra-base/infra-base.spec.md) — Node.js 22+, TypeScript, node:test, Vite
+- **Scope Reference (cross-scope):** [`infra-npm-publish`](../../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/` в npm-пакете
+- **Provides to:** `cli/gennady.ts` (регистрация `case 'sync'`)
+
+```mermaid
+graph TD
+    gennady.ts --> sync
+    sync -. Runtime .-> npm-package[gennady npm package]
+    sync -. Bootstrap prereq .-> infra-npm-publish
+```
+
+## 9. Handoff to Task Scaffolding
+
+- **Implementation files to be created:**
+  - `cli/cmd/sync/sync.types.ts`
+  - `cli/cmd/sync/sync-core.ts`
+  - `cli/cmd/sync/sync-formatter.ts`
+  - `cli/cmd/sync/sync.cmd.ts`
+  - `cli/cmd/sync/index.ts`
+- **Test files to be created:**
+  - `cli/cmd/sync/__tests__/sync-core.test.ts`
+  - `cli/cmd/sync/__tests__/sync-formatter.test.ts`
+  - `cli/cmd/sync/__tests__/sync.cmd.test.ts`
+- **Files to modify:**
+  - `cli/gennady.ts` — добавить `case 'sync': await import('./cmd/sync/index.ts'); break`
+  - `cli/AGENTS.md` — добавить строку `sync` в таблицу команд
+  - `cli/cmd/help/help.cmd.ts` — добавить `sync` в вывод help
+- **Stack dependencies:**
+  - Language: TypeScript (resolves to `ai/directives/coding/typescript-rules.xml`)
+  - Test framework: node:test (resolves to `ai/directives/testing/node-test.xml`)
+- **Module Rules Additions:** None (scope-wide baseline достаточен)
+
+- **Open risks & validation needs:**
+  - `import.meta.resolve('gennady')` — поведение в разных рантаймах (tsx, npx, глобальная установка) требует проверки
+  - Интеграционные тесты sync.cmd.test.ts требуют временной директории с мок-файлами — использовать `fs.mkdtempSync` + очистку
+  - `fs.cpSync` для рекурсивного копирования директорий доступен с Node.js 16.7 — OK для Node 22+
+  - `Buffer.compare` — убедиться что работает идентично на всех платформах (разные line endings не должны влиять, т.к. сравниваем сырые байты)
+  - Фильтр `EXCLUDED_ENTRIES` применяется и к файлам и к директориям — `architecture/` исключается целиком

@@ -21,7 +21,12 @@ import {
   resolveReferencesForTasks,
 } from './utils/resolve-references.fn.ts';
 
-/** @purpose Execute the gennady lint command — collect files, run 4 checks, output ESLint-format report. | @implements {LintCommand} in specs/cli/lint/lint.spec.md | @param rawArgs Raw command-line arguments (process.argv). | @returns LintReport with aggregated errors and exit code. */
+/**
+ * @purpose Execute the gennady lint command — collect files, run 4 checks, output ESLint-format report.
+ * @implements {LintCommand} in specs/cli/lint/lint.spec.md
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @returns LintReport with aggregated errors and exit code.
+ */
 export async function run(rawArgs: string[]): Promise<LintReport> {
   const args = parseArgs(rawArgs, {
     autofix: ['autofix'],
@@ -155,12 +160,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
 const EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out', '__tests__']);
 
-function resolveTargets(targets: string[]): { files: string[]; errors: LintError[] } {
+export function resolveTargets(targets: string[]): { files: string[]; errors: LintError[] } {
   logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
   const fileSet = new Set<string>();
   const errors: LintError[] = [];
 
   for (const target of targets) {
+    const ext = extname(target).toLowerCase();
+    if (ext && !SUPPORTED_EXTENSIONS.includes(ext) && !target.endsWith('/')) {
+      // skip non-ts/tsx file extensions silently (e.g. readme.md, notes.txt)
+      continue;
+    }
+
     let stat;
     try {
       stat = lstatSync(target);

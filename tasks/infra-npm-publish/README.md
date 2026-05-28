@@ -27,15 +27,17 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 graph TD
     TSK-43 --> TSK-42
     TSK-44 --> TSK-42
+    TSK-45 --> TSK-44
 ```
 
 ## Tracker
 
-| Task-ID                                | Title                                        | Module | Dependencies | Status     | Reopens |
-| -------------------------------------- | -------------------------------------------- | ------ | ------------ | ---------- | ------- |
-| [TSK-42](infra-npm-publish.task-42.md) | Установить release-it как devDependency      | N/A    | None         | `[x]` DONE | 0       |
-| [TSK-43](infra-npm-publish.task-43.md) | Создать `.release-it.json`                   | N/A    | TSK-42       | `[x]` DONE | 0       |
-| [TSK-44](infra-npm-publish.task-44.md) | Добавить `"release"` script в `package.json` | N/A    | TSK-42       | `[x]` DONE | 0       |
+| Task-ID                                | Title                                   | Module | Dependencies | Status     | Reopens |
+| -------------------------------------- | --------------------------------------- | ------ | ------------ | ---------- | ------- |
+| [TSK-42](infra-npm-publish.task-42.md) | Установить release-it как devDependency | N/A    | None         | `[x]` DONE | 0       |
+| [TSK-43](infra-npm-publish.task-43.md) | Создать `.release-it.json`              | N/A    | TSK-42       | `[x]` DONE | 0       |
+| [TSK-44...                             | `[x]` DONE                              |
+| [TSK-45](infra-npm-publish.task-45.md) | Копировать `ai/` в `dist/ai/`           | N/A    | TSK-44...    | `[x]` DONE |
 
 ## Внешние предусловия
 
