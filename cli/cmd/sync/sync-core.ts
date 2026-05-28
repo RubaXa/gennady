@@ -20,26 +20,46 @@ export const EXCLUDED_ENTRIES = new Set([
 
 /** @purpose DI port for SyncCore — abstracts filesystem access for testability. @invariant All deps must be provided; no optional fields. */
 export interface SyncCoreDeps {
-  /** @purpose Read file from disk. | @param path File path. | @returns File contents as Buffer. */
+  /**
+   * @purpose Read file from disk.
+   * @param path File path.
+   * @returns File contents as Buffer.
+   */
   readFile: (path: string) => Buffer;
-  /** @purpose Write file to disk. | @param path File path. | @param data File contents. */
+  /**
+   * @purpose Write file to disk.
+   * @param path File path.
+   * @param data File contents.
+   */
   writeFile: (path: string, data: Buffer) => void;
-  /** @purpose Create directory. | @param path Directory path. | @param [opts] Options. */
+  /**
+   * @purpose Create directory.
+   * @param path Directory path.
+   * @param [opts] Options.
+   */
   mkdir: (path: string, opts?: { recursive: boolean }) => void;
-  /** @purpose Get file stats. | @param path File path. | @returns Stats object. */
+  /**
+   * @purpose Get file stats.
+   * @param path File path.
+   * @returns Stats object.
+   */
   stat: (path: string) => { isDirectory(): boolean; isFile(): boolean };
-  /** @purpose List directory contents. | @param path Directory path. | @returns File names. */
+  /**
+   * @purpose List directory contents.
+   * @param path Directory path.
+   * @returns File names.
+   */
   readdir: (path: string) => string[];
   /** @purpose Current working directory. */
   cwd: string;
 }
 
-  /**
-   * @purpose Find the ai/directives/ directory in the installed gennady npm package.
-   * @param cwd Current working directory.
-   * @returns Absolute path to ai/directives/ or null if the package is not found.
-   */
-  export function resolvePackageDir(cwd: string): string | null {
+/**
+ * @purpose Find the ai/directives/ directory in the installed gennady npm package.
+ * @param cwd Current working directory.
+ * @returns Absolute path to ai/directives/ or null if the package is not found.
+ */
+export function resolvePackageDir(cwd: string): string | null {
   const localPath = join(cwd, 'node_modules', 'gennady', DIRECTIVES_SUBDIR);
   if (existsSync(localPath)) return localPath;
 

@@ -34,7 +34,10 @@ export class SyncResult {
   /** @purpose List of all synced file entries. */
   readonly entries: SyncFileEntry[];
 
-  /** @purpose Construct a SyncResult from a list of entries. | @param entries File entries. */
+  /**
+   * @purpose Construct a SyncResult from a list of entries.
+   * @param entries File entries.
+   */
   constructor(entries: SyncFileEntry[]) {
     this.entries = entries;
   }
