@@ -3,8 +3,7 @@
 // @tasks: TSK-08, TSK-11
 
 import { readFileSync } from 'node:fs';
-import Parser from 'tree-sitter';
-import tsLanguage from 'tree-sitter-typescript';
+import type { default as Parser } from 'tree-sitter';
 import type { SyntaxNode } from 'tree-sitter';
 import { logger } from '#logger';
 import type {
@@ -45,7 +44,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     try {
       logger.debug(`[DbcTsAstAdapter#parseFile] [idle → reading] ${filePath}`);
       const source = content ?? readFileSync(filePath, 'utf8');
-      const parser = this._initializeParser();
+      const parser = await this._initializeParser();
       const tree = parser.parse(source);
 
       const hasError = tree.rootNode.hasError as unknown as boolean;
@@ -84,11 +83,18 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
 
   /**
    * @purpose Lazy-initializes the tree-sitter Parser with the TypeScript grammar.
+   * Uses dynamic import so tree-sitter is only loaded when the adapter is actually used.
    * @returns Configured Parser instance.
    */
-  protected _initializeParser(): Parser {
+  protected async _initializeParser(): Promise<Parser> {
     if (!this._parser) {
-      this._parser = new Parser();
+      const [treeSitterModule, tsModule] = await Promise.all([
+        import('tree-sitter'),
+        import('tree-sitter-typescript'),
+      ]);
+      const ParserImpl = treeSitterModule.default;
+      const tsLanguage = tsModule.default;
+      this._parser = new ParserImpl();
       const language: unknown = (tsLanguage as Record<string, unknown>).tsx ?? tsLanguage;
       this._parser.setLanguage(language as Parser.Language);
     }
