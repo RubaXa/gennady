@@ -18,6 +18,8 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 | module:lint            | —                | —         |
 | module:update-check    | —                | —         |
 | module:sync            | —                | —         |
+| module:sync-skills     | —                | —         |
+| module:orient          | —                | —         |
 
 ### Rule Sources
 
@@ -26,6 +28,8 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 - Module: [lint spec §9](../../specs/cli/lint/lint.spec.md)
 - Module: [update-check spec §9](../../specs/cli/update-check/update-check.spec.md)
 - Module: [sync spec §9](../../specs/cli/sync/sync.spec.md)
+- Module: [sync-skills spec §10](../../specs/cli/sync-skills/sync-skills.spec.md)
+- Module: orient — [cli spec §3.5 + §4.1.5](../../specs/cli/cli.spec.md#35-orient-dx)
 - Files: `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
 
 ## Intra-Scope DAG
@@ -78,6 +82,12 @@ graph TD
     TSK-53[TSK-53: sync core + CLI]
     TSK-54[TSK-54: sync tests]
     TSK-54 --> TSK-53
+    TSK-55[TSK-55: orient — file-header navigation]
+    TSK-56[TSK-56: shared sync core]
+    TSK-57[TSK-57: sync-skills command]
+    TSK-58[TSK-58: ai/skills bootstrap]
+    TSK-57 --> TSK-56
+    TSK-58 --> TSK-57
 ```
 
 ## Tracker
@@ -103,11 +113,15 @@ graph TD
 | [TSK-31](cat/cli-cat.task-31.md)                 | cat --url: поддержка GitLab MR / GitHub PR            | cat          | TSK-27, TSK-28, TSK-29, TSK-30 | `[x]` DONE | 0       |
 | [TSK-33](update-check/update-check.task-33.md)   | Bootstrap + Impl: update-check механизм               | update-check | None                           | `[x]` DONE | 0       |
 | [TSK-34](update-check/update-check.task-34.md)   | Tests: update-check (unit + integration)              | update-check | TSK-33                         | `[x]` DONE | 0       |
-| [TSK-53...                                       | `[x]` DONE                                            |
-| [TSK-54](sync/cli-sync.task-54.md)               | Sync: Tests (core 15u + fmt 7u + integration 9i)      | sync         | TSK-53...                      | `[x]` DONE |
+| [TSK-53](sync/cli-sync.task-53.md)               | Sync: core + CLI                                      | sync         | None                           | `[x]` DONE | 0       |
+| [TSK-54](sync/cli-sync.task-54.md)               | Sync: Tests                                           | sync         | TSK-53                         | `[x]` DONE | 0       |
+| [TSK-55](orient/orient.task-55.md)               | orient: file-header + DBC навигация (S1-S9)           | orient       | None                           | `[x]` DONE | 0       |
+| [TSK-56](sync-skills/cli-sync-skills.task-56.md) | Extract shared sync core + refactor sync               | sync-skills  | TSK-53, TSK-54                 | `[ ]` TODO | 0       |
+| [TSK-57](sync-skills/cli-sync-skills.task-57.md) | sync-skills command (types, core, fmt, CLI, tests)     | sync-skills  | TSK-56                         | `[ ]` TODO | 0       |
+| [TSK-58](sync-skills/cli-sync-skills.task-58.md) | ai/skills bootstrap (13 SDD skills)                    | sync-skills  | TSK-57                         | `[ ]` TODO | 0       |
 
 ## Notes
 
 - TSK-11 (dbc refine: опция content) — внешняя зависимость для TSK-15
-- `cli/gennady.ts` и `cli/AGENTS.md` обновляются в TSK-16
+- `cli/gennady.ts` и `cli/AGENTS.md` обновляются в TSK-16, TSK-24, TSK-53, TSK-55
 - `cli/cmd/lint/` уже существует (пустая, с устаревшим `lint-cmd.task.spec.md`)
