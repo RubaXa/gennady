@@ -6,6 +6,8 @@
 
 → Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.7 sync-skills).
 
+→ Out-of-scope (v1): [`../../cli.spec.md §4.3`](../../cli.spec.md) — авто-проверка обновлений, регистрация в opencode.json, интерактивный режим, --watch, другие источники, миграция форматов.
+
 ## 2. Entity Inventory (Closed-World)
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
@@ -43,6 +45,7 @@ _Это полный список сущностей модуля. Любое в
   - `status: 'added' | 'updated' | 'deleted' | 'unchanged' | 'deleteFailed'`
   - `sourceSize?: number` — размер в байтах в источнике
   - `targetSize?: number` — размер в байтах в цели (только для `updated`/`unchanged`)
+  - `errorCode?: string` — код ошибки ОС при `deleteFailed` (например `EACCES`, `EBUSY`)
 - **Lifecycle:** Immutable. Создаётся `collectAndCompareSkills` для каждого файла
 - **Consumers:** `SyncSkillsFormatter`, `SyncSkillsResult`
 
@@ -76,7 +79,7 @@ _Это полный список сущностей модуля. Любое в
   - `collectAndCompareSkills` → ошибка если `sourceDir` не существует
   - Ошибка удаления orphan (EACCES, EBUSY) → `status: 'deleteFailed'`, не прерывает синхронизацию
 - **Consumers:** `sync-skills.cmd.ts`
-- **Uses shared:** `resolvePackageDir(subdir)` из `shared/common/sync/sync-core.shared.ts`
+- **Uses shared:** `compareBytes` из `shared/common/sync/sync-core.shared.ts`. `resolvePackageDir` НЕ вызывается ядром — cmd.ts резолвит путь через `deps.resolvePackageDir` и передаёт готовый `sourceDir` в `SyncSkillsOptions`
 
 ### `SyncSkillsFormatter`
 
@@ -94,7 +97,7 @@ _Это полный список сущностей модуля. Любое в
   - `unchanged` → `  = <skillName>/                                                   (unchanged)`
   - dryRun `added` → `      <relativePath>                                   (would add)`
   - dryRun `updated` → `      <relativePath>                                   (would update)`
-  - dryRun `deleted` → `  - <skillName>/                                            (would delete)`
+  - dryRun `deleted` → `  - <skillName>/                                            (would delete)` + все файлы скила с `      <relativePath>                                   (would delete)`
   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`
   - При наличии deleteFailed: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
@@ -141,7 +144,7 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
 - **Preconditions:**
   - `deps` — все поля не-null
   - `opts.sourceDir` — существующая директория с `ai/skills/`
-  - `opts.targetDir` — корректный путь (может не существовать)
+  - `opts.targetDir` — корректный путь (может не существовать). Родительская директория (`.claude/`) должна быть либо отсутствующей, либо директорией. Если `.claude` существует как файл — ошибка с понятным сообщением
 - **Postconditions:**
   - Если `dryRun` — ни один `writeFile` / `unlink` / `rmdir` не вызван
   - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile`
@@ -171,7 +174,7 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
   - Порядок групп: added → updated → deleted → unchanged, лексикографически внутри
   - Для `added`: показывает имя скила + все файлы с отступом
   - Для `updated`: показывает имя скила + только изменившиеся файлы с отступом
-  - Для `deleted`: показывает только имя скила с маркером `-`
+  - Для `deleted`: показывает только имя скила с маркером `-`. При `dryRun` — показывает имя скила + все файлы скила с `(would delete)`
   - Для `deleteFailed`: показывает имя скила с маркером `!` и кодом ошибки
   - Для `unchanged`: показывает имя скила с маркером `=` и меткой `(unchanged)`
   - Итоговая строка — последняя в массиве
@@ -331,3 +334,20 @@ graph TD
   - `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты `sync` не ломаются (добавить поля в моки)
   - 13 скилов в `ai/skills/` — нужно физически скопировать из `~/.config/opencode/skills/` (12) + `~/.claude/skills/sdd-critic/` (1), адаптировав пути с `~/.config/opencode/skills/` на `${SKILL_DIR}`
   - `package.json#files` уже включает `"ai/**/*"` — `ai/skills/` попадёт в пакет автоматически. Проверить после публикации
+
+## 11. Critic Rounds
+
+### Round 1 — 2026-05-30
+- **Critic verdict:** NEEDS_WORK
+- **Findings accepted:** 6
+- **Changes made:**
+  - Добавлено поле `errorCode?: string` в `SyncSkillsFileEntry` (F1 — formatter не мог вывести код ошибки)
+  - Контракт форматтера: dry-run `deleted` показывает все файлы с `(would delete)` — приведено к DX (F2)
+  - Добавлена ссылка на out-of-scope родительского spec (F3)
+  - Добавлен precondition: `.claude` как файл → ошибка (F5)
+  - Уточнён flow `resolvePackageDir`: cmd.ts резолвит, ядро не вызывает (F7)
+  - Clarified note: "skipped" в summary — user-facing термин для `unchanged` (F6)
+- **Findings rejected (with reason):**
+  - "Отдельный entity для delete error" → YAGNI, `errorCode` в `SyncSkillsFileEntry` достаточно (F4)
+  - "Magic number 13" → это closed-world inventory скилов, точное число — часть контракта (F8)
+  - "Concurrent execution" → общая проблема CLI-утилит, не специфична для sync-skills (F9)
