@@ -4,7 +4,12 @@
 
 - **Task-ID:** TSK-58
 - **Status:** [ ] TODO
-- **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути: заменить `~/.config/opencode/skills/` и `~/.claude/skills/` на `${SKILL_DIR}` во всех `.md` и `.prompt.md` файлах (платформо-независимая ссылка).
+- **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути во всех `.md` и `.prompt.md` файлах: заменить `~/.config/opencode/skills/<skillName>/` и `~/.claude/skills/<skillName>/` на литеральную строку `${SKILL_DIR}/` (эта переменная резолвится рантаймом Claude/OpenCode).
+
+Примеры замен:
+- `~/.config/opencode/skills/sdd-execute/scripts/verify.sh` → `${SKILL_DIR}/scripts/verify.sh`
+- `~/.claude/skills/sdd-critic/SKILL.md` → `${SKILL_DIR}/SKILL.md`
+- Если файл не содержит ни одного из этих паттернов — замена пропускается (копирование успешно).
 - **Scope:** cli
 - **Module:** sync-skills (bootstrap)
 - **Dependencies:** TSK-57
@@ -111,11 +116,3 @@
 #### Round close
 
 - [ ] DONE
-
-## 8. Critic Rounds
-
-### Round 1 — 2026-05-30
-- **Critic verdict:** NEEDS_WORK
-- **Findings accepted:** see list
-- **Changes made:** BDD scenarios added for error paths, edge cases, and spec-contract preconditions discovered during isolated review
-- **Findings rejected (with reason):** minor/low-impact findings deferred to execution

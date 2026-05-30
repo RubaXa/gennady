@@ -41,7 +41,7 @@
   - `cli/cmd/sync/sync-formatter.ts` (modify — удалить локальный форматтер, заменить на реэкспорт из shared)
   - `cli/cmd/sync/sync.cmd.ts` (modify — обновить импорты на shared)
 - **Inputs:** none
-- **Exit:** `npm run type-check` pass; sync импортирует из shared, существующие тесты TSK-54 проходят
+- **Exit:** `npm run type-check && npm test` pass; sync импортирует из shared, существующие тесты TSK-54 проходят
 
 ### P2 — test
 
@@ -70,7 +70,7 @@
 - **Given** entries с added, updated, deleted, unchanged
 - **When** вызван `formatSyncOutput(entries, { dryRun: false })`
 - **Then** added → `  + <relativePath>`, updated → `  ~ <relativePath>`, deleted → `  - <relativePath>`, unchanged → `  = <relativePath> (unchanged)`
-- **And** итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`
+- **And** итоговая строка: `Synced: N added, M updated, K skipped (unchanged), D deleted` (фрагмент `, D deleted` опускается, если deleted = 0)
 
 **Scenario:** formatSyncOutput — dry-run маркеры [`unit`]
 
@@ -81,18 +81,16 @@
 
 **Scenario:** resolvePackageDir возвращает путь с поддиректорией [`unit`]
 
-**Scenario:** resolvePackageDir возвращает путь с поддиректорией [`unit`]
-
 - **Given** пакет gennady установлен локально
 - **When** вызван `resolvePackageDir(cwd, 'ai/skills')`
 - **Then** возвращён путь, заканчивающийся на `ai/skills`
 - **And** при отсутствии локальной установки — fallback через `import.meta.resolve`
 
-**Scenario:** resolvePackageDir возвращает null при отсутствии пакета [`unit`]
+**Scenario:** resolvePackageDir возвращает null при EACCES [`unit`]
 
-- **Given** ни `node_modules/gennady` ни `import.meta.resolve('gennady')` не находят пакет
+- **Given** `node_modules/` существует, но `gennady/` нечитаема (EACCES)
 - **When** вызван `resolvePackageDir(cwd, 'ai/skills')`
-- **Then** возвращает `null`
+- **Then** возвращает `null` (деградация, не throw)
 
 **Scenario:** compareBytes детектит изменения [`unit`]
 
@@ -101,6 +99,18 @@
 - **Then** возвращает `false` (нет изменений)
 - **And** при разных буферах возвращает `true`
 
+**Scenario:** compareBytes — пустые буферы [`unit`]
+
+- **Given** два пустых Buffer (`Buffer.alloc(0)`)
+- **When** вызван `compareBytes(buf1, buf2)`
+- **Then** возвращает `false` (нет изменений)
+
+**Scenario:** compareBytes — пустой vs непустой [`unit`]
+
+- **Given** пустой Buffer (`Buffer.alloc(0)`) и непустой Buffer
+- **When** вызван `compareBytes(empty, nonEmpty)`
+- **Then** возвращает `true` (есть изменения)
+
 **Scenario:** SyncCmdDeps включает unlink/rmdir [`contract`]
 
 - **Given** тип `SyncCmdDeps` определён
@@ -108,6 +118,7 @@
 - **Then** содержит `unlink: (path: string) => void`
 - **And** содержит `rmdir: (path: string, options?: { recursive: boolean }) => void`
 - **And** существующие поля (`readFile`, `writeFile`, `mkdir`, `stat`, `readdir`, `resolvePackageDir`, `stdout`, `stderr`) сохранены
+- **And** в модуле sync `unlink` и `rmdir` — no-op функции (`() => {}`), так как sync не удаляет файлы
 
 **Scenario:** sync импортирует resolvePackageDir из shared [`contract`]
 
@@ -140,7 +151,10 @@
 |---|---|---|
 | resolvePackageDir возвращает путь | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | resolvePackageDir возвращает null | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
+| resolvePackageDir возвращает null при EACCES | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | compareBytes детектит изменения | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
+| compareBytes — пустые буферы | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
+| compareBytes — пустой vs непустой | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | SyncCmdDeps включает unlink/rmdir | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | formatSyncOutput — все маркеры | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ] |
 | formatSyncOutput — dry-run | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ] |
@@ -167,10 +181,24 @@
 
 - [ ] DONE
 
-## 8. Critic Rounds
+## Critic Rounds
 
 ### Round 1 — 2026-05-30
-- **Critic verdict:** NEEDS_WORK
-- **Findings accepted:** see list
-- **Changes made:** BDD scenarios added for error paths, edge cases, and spec-contract preconditions discovered during isolated review
-- **Findings rejected (with reason):** minor/low-impact findings deferred to execution
+- Вердикт критика: NEEDS_WORK
+- Принято: 6 находок
+  - Удалены дубликаты BDD-сценариев (пустой resolvePackageDir путь, дубликат null)
+  - Добавлен сценарий compareBytes с пустыми буферами
+  - Добавлен сценарий compareBytes пустой vs непустой
+  - Добавлен сценарий resolvePackageDir при EACCES
+  - Исправлена итоговая строка formatSyncOutput — добавлен `D deleted`
+  - Уточнено: unlink/rmdir в sync — no-op функции
+  - Уточнён P1 Exit: type-check + npm test
+- Отклонено: 1 находка
+  - "Dry-run итоговая строка не учитывает deleted" → dry-run итоговая строка намеренно лаконична (cli.spec.md §3.4, §3.6); per-entry маркеры передают всю информацию
+- Изменения:
+  - Удалены дубликаты BDD-сценариев (§4)
+  - Добавлены 3 новых BDD-сценария: compareBytes пустые буферы, compareBytes пустой vs непустой, resolvePackageDir EACCES
+  - Исправлена итоговая строка formatSyncOutput: добавлен счётчик deleted
+  - В SyncCmdDeps BDD добавлено: в модуле sync unlink/rmdir — no-op
+  - P1 Exit изменён на `npm run type-check && npm test`
+  - Test Scenario Coverage таблица обновлена: добавлены новые сценарии
