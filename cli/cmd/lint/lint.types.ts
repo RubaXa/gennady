@@ -121,3 +121,13 @@ export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISA
 
 /** @purpose TypeScript / linter disable comment has a D-NNN reference but lacks a purpose explanation. | @invariant Implements D-007 contract tightening (TSK-52): >= 8 non-whitespace characters of purpose must remain after stripping the comment opener, the marker, and the D-NNN token. */
 export const ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE' as const;
+
+/** @purpose Entity has more invariants than the configured threshold — contract may be overloaded. | @invariant Counts both @invariant JSDoc tags and invariant: in region comments. */
+export const ERR_CLI_LINT_TOO_MANY_INVARIANTS = 'ERR_CLI_LINT_TOO_MANY_INVARIANTS' as const;
+
+/** @purpose #region START / #endregion END found at class body level — regions must not separate class members. */
+export const ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY = 'ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY' as const;
+
+/** @purpose Two #region START at the same brace depth without an intervening #endregion END — merge or close the first region. */
+export const ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START =
+  'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START' as const;

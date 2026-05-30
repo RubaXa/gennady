@@ -10,7 +10,7 @@ console.info('');
 console.info('Commands:');
 console.info('  commit            Generate commit message from staged changes');
 console.info('  cat               Display file contents as XML or Markdown');
-console.info('  agent             Run AI agent request');
+console.info('  review            Review staged changes using AI models');
 console.info('  vcs-reply         Post replies to GitLab MR discussions from stdin');
 console.info('  review-verify     Build verification prompt from open GitLab MR or GitHub PR');
 console.info(
@@ -20,7 +20,9 @@ console.info(
   '  resolve-conflicts Build confidence-aware merge-conflict resolution prompt from active git merge'
 );
 console.info('  remote-console    Mirror browser console output into local stdout');
-console.info('  lint              Validate TypeScript files: file header, DBC contracts, anchors');
+console.info(
+  '  lint              Validate .ts files: headers, anchors, DBC contracts, invariants, disables'
+);
 console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
 console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
@@ -33,3 +35,4 @@ console.info('Examples:');
 console.info('  npx gennady');
 console.info('  npx gennady commit');
 console.info('  npx gennady cat "./src/**/*.js" --output=md');
+console.info('  npx gennady <command> --help  (per-command help)');

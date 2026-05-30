@@ -12,6 +12,8 @@ import { check as checkAnchors } from './checks/anchor.check.ts';
 import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
 import { check as checkDisables } from './checks/disables.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
+import { check as checkInvariantCount } from './checks/invariant-count.check.ts';
+import { check as checkAnchorClassBody } from './checks/anchor-class-body.check.ts';
 import { LintReport } from './lint.types.ts';
 import { ERR_CLI_LINT_STAGED_CONFLICT, ERR_CLI_LINT_RESOLVE_FAILED } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
@@ -22,7 +24,7 @@ import {
 } from './utils/resolve-references.fn.ts';
 
 /**
- * @purpose Execute the gennady lint command — collect files, run 4 checks, output ESLint-format report.
+ * @purpose Execute the gennady lint command — collect files, run 7 checks, output ESLint-format report.
  * @implements {LintCommand} in specs/cli/lint/lint.spec.md
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns LintReport with aggregated errors and exit code.
@@ -32,6 +34,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     autofix: ['autofix'],
     staged: ['staged'],
     verbose: ['verbose', 'v'],
+    maxInvariants: ['max-invariants'],
   });
 
   const positional = (args._ as string[]).filter(
@@ -41,6 +44,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const autofix = args.autofix === true || args.autofix === 'true';
   const staged = args.staged === true || args.staged === 'true';
   const verbose = args.verbose === true || args.verbose === 'true';
+  const maxInvariants =
+    typeof args.maxInvariants === 'string' ? parseInt(args.maxInvariants, 10) : 3;
 
   if (verbose) setLogLevel('debug');
 
@@ -127,6 +132,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkAnchors(content, filePath));
     allErrors.push(...checkLanguage(content, filePath));
     allErrors.push(...checkDisables(content, filePath));
+    allErrors.push(...checkAnchorClassBody(content, filePath));
+    allErrors.push(...checkInvariantCount(content, filePath, maxInvariants));
 
     // Extract task IDs from file header for reference resolution
     const taskIds = extractTaskIdsFromHeader(content);

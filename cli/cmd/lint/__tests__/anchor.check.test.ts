@@ -236,7 +236,7 @@ describe('AnchorCheck', () => {
 
     const errors = check(content, 'test.ts');
 
-    assert.strictEqual(errors.length, 2, `expected 2 errors, got ${errors.length}`);
+    assert.strictEqual(errors.length, 3, `expected 3 errors, got ${errors.length}`);
     // bare #endregion auto-closes INNER (top of stack)
     const malformed = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_MALFORMED);
     assert.strictEqual(malformed.length, 1);
@@ -245,6 +245,10 @@ describe('AnchorCheck', () => {
     const unpaired = errors.filter((e) => e.code === ERR_CLI_LINT_ANCHOR_UNPAIRED_START);
     assert.strictEqual(unpaired.length, 1);
     assert.match(unpaired[0].message, /START_OUTER/);
+    // INNER is consecutive after OUTER → CONSECUTIVE_START (new rule D-010)
+    const consec = errors.filter((e) => e.code === 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START');
+    assert.strictEqual(consec.length, 1);
+    assert.match(consec[0].message, /START_INNER/);
   });
 
   it('double bare #endregion — first auto-closes, second sees empty stack', () => {
@@ -328,7 +332,7 @@ describe('AnchorCheck', () => {
     assert.match(errors[1].message, /END_Y/);
   });
 
-  it('deep nesting 3+ levels — all correctly paired produces no errors', () => {
+  it('deep nesting 3+ levels — all correctly paired produces consecutive errors for same-depth adjacent STARTs', () => {
     const content = [
       S + ' #region START_A',
       S + ' #region START_B',
@@ -340,7 +344,11 @@ describe('AnchorCheck', () => {
     ].join('\n');
 
     const errors = check(content, 'test.ts');
-    assert.deepStrictEqual(errors, []);
+    // Consecutive STARTs at same depth (rule D-010): B follows A, C follows B
+    const consec = errors.filter((e) => e.code === 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START');
+    assert.strictEqual(consec.length, 2);
+    assert.match(consec[0].message, /START_B/);
+    assert.match(consec[1].message, /START_C/);
   });
 
   it('double END for same START — second END is UNPAIRED_END', () => {
