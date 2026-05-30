@@ -1,6 +1,6 @@
 // @file: CLI command: help
 // @consumers: N/A
-// @tasks: TSK-45
+// @tasks: TSK-45, TSK-55
 
 console.info('Gennady CLI');
 console.info('');
@@ -29,6 +29,9 @@ console.info(
 );
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
+);
+console.info(
+  '  orient            Navigate file headers and DBC contracts — project map, search, dependency graph'
 );
 console.info('');
 console.info('Examples:');

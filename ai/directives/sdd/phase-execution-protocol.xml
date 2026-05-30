@@ -71,14 +71,11 @@
 
     <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       Phase agent may ONLY run these bash commands:
-      - **Must run:** verification commands from ticket 5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
+      - **Must run:** `<sdd-path> verify <target-files>` — MANDATORY. Auto-discovers and runs typecheck, gennady DBC lint, linter, tests, and format check for the project. Runs before §5 commands. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line. Output suppressed on success; full output dumped on failure.
+      - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
-      - **May run for config-kind only:** `npm view <pkg> version`, `cat node_modules/<pkg>/package.json`, `cat node_modules/<pkg>/CHANGELOG.md`.
-      - **May run SDD helper tooling SUPPLEMENTALLY**, if provided by the dispatching skill. The orchestrator passes an absolute path (e.g. `~/.claude/skills/sdd-execute/scripts/sdd`) in the dispatch prompt. Available subcommands:
-        - `<sdd-path> extract <file> <NAME>` — extract anchored section from ticket/spec
-        - `<sdd-path> lint <file>...` — gennady DBC AST contract lint (parses output reliably)
-        - `<sdd-path> verify <file>...` — narrower gate: typecheck + DBC lint + forbidden-construct grep
-        - **These tools NEVER replace ticket §5 verification commands** (see `AX_VERIFICATION_BEFORE_HANDOFF` — Canonical Gate Rule). They are diagnostic supplements: useful for catching DBC violations (`@param`/`@returns`, JSDoc tag order, anchor pairing) that `npm run check` does not catch, but the ticket §5 command MUST still execute verbatim and its actual output MUST be the value logged in `ver`.
+      - **May run:** `<sdd-path> extract <file> <NAME>` — extract anchored section from ticket/spec.
+      - **May run:** `<sdd-path> lint <file>...` — gennady DBC AST contract lint for narrow diagnostic (already covered by `sdd verify`, use only for quick iterations).
 
       **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
@@ -243,9 +240,10 @@
     </Step>
 
     <Step id="STEP_5_VERIFY">
-      <Goal>Run verification commands AS LISTED IN TICKET §5. Log only the final result, not each retry.</Goal>
+      <Goal>Run MANDATORY sdd verify on target files, then ticket §5 commands. Log only final results.</Goal>
       <Action>
-        1. Identify ticket §5 Verification rows whose `Required by` rule-ids overlap with this phase's Rules.
+        1. **MANDATORY — sdd verify gate:** Run `<sdd-path> verify <target-files>`. This auto-discovers and executes typecheck, gennady DBC lint, linter, tests, and format check from package.json scripts. Each passing gate gets its own `ver` line. If any gate fails → fix and re-run the full `sdd verify` again. Do NOT proceed to EMIT_HANDOFF until all gates pass.
+        2. Then run ticket §5 commands per existing logic below.
         2. **MANDATORY (PROTOCOL):** Execute EACH such §5 command **verbatim — the exact string from the ticket**. No substitutions, no "equivalents", no narrower variants. If §5 says `npm run check`, run `npm run check` (not `npx vitest`, not `tsc --noEmit`, not `<sdd-path> verify`). This is the Canonical Gate (per `AX_VERIFICATION_BEFORE_HANDOFF`); fabrication is a BLOCKER-class finding at audit.
         3. **Supplemental (OPTIONAL):** You MAY additionally run `<sdd-path> verify <Target Files>` or `tsc --noEmit` for narrower diagnostics — useful for fast feedback or DBC lint. These do NOT replace §5; they add to it. Each supplemental run is logged on its own `ver` line with its real command.
         4. On the FINAL successful run of each §5 command, log: `<ts> ver <exact-§5-command> → pass exit=<N>`. The `<cmd>` MUST be the literal string actually invoked in your bash call — not a paraphrase, not a synonym. Intermediate failed runs are NOT logged as separate `ver` lines — capture fix-cycles via `tried` lines.

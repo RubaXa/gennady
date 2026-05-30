@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI entry point — dispatches commands, runs update check on startup.
 // @consumers: CLI users (gennady <command>)
-// @tasks: TSK-33, TSK-47
+// @tasks: TSK-33, TSK-47, TSK-55
 
 import { checkForUpdates } from './cmd/_shared/update-check.ts';
 import { readFileSync } from 'node:fs';
@@ -86,6 +86,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/sync/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'orient':
+      await import('./cmd/orient/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -143,6 +147,10 @@ switch (command) {
 
   case 'sync':
     await import('./cmd/sync/index.ts');
+    break;
+
+  case 'orient':
+    await import('./cmd/orient/index.ts');
     break;
 
   default:

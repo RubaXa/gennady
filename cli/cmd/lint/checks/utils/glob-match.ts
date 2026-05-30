@@ -58,7 +58,7 @@ export function globToRegex(pattern: string): RegExp {
  * @purpose Checks whether a file path matches any of the given glob patterns.
  * @param filePath Relative file path to check.
  * @param patterns Array of glob patterns (already compiled or string).
- * @param compiled Optional pre-compiled regexes for performance.
+ * @param [compiled] Optional pre-compiled regexes for performance.
  * @returns True if the path matches any pattern.
  */
 export function matchesAnyGlob(filePath: string, patterns: string[], compiled?: RegExp[]): boolean {
