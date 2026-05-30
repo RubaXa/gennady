@@ -42,7 +42,10 @@ function printUsageAndExit(reason?: string): never {
   process.stderr.write(
     '  --provider <name>   Filter by provider: claude, opencode, all (default: all)\n'
   );
-  process.stderr.write('  --limit <N>         Max sessions per provider (default: 20)\n');
+  process.stderr.write(
+    '  --view <name>       Dashboard layout: column, compact (default: column)\n'
+  );
+  process.stderr.write('  --limit <N>         Max sessions per provider (default: 10)\n');
   process.exit(1);
 }
 
@@ -119,6 +122,11 @@ function parseFlags(argv: string[]): CliFlags {
         i++;
         break;
       }
+
+      case '--help':
+      case '-h':
+        printUsageAndExit();
+        break;
 
       default:
         if (arg.startsWith('-')) {

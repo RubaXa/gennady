@@ -8,7 +8,7 @@
 | ----------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
 | commit            | [cmd/commit/](cmd/commit/)                       | Генерация commit из staged → cli/utils/commit-gen                     |
 | cat               | [cmd/cat/](cmd/cat/)                             | Вывод файлов XML/MD → cli/utils/cat-gen                               |
-| agent             | [cmd/agent/](cmd/agent/)                         | AI agent request → cli/utils/ai-legacy                                |
+| review            | [cmd/review/](cmd/review/)                       | Ревью staged изменений через AI-модели                                |
 | vcs-reply         | [cmd/vcs-reply/](cmd/vcs-reply/)                 | Постинг ответов в GitLab MR discussions                               |
 | review-verify     | [cmd/review-verify/](cmd/review-verify/)         | Верификация по MR (общий core: [cmd/review/](cmd/review/))            |
 | review-issues     | [cmd/review-issues/](cmd/review-issues/)         | XML-артефакт issues по MR (общий core: [cmd/review/](cmd/review/))    |
@@ -17,6 +17,7 @@
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты              |
 | alt-opinion       | [cmd/alt-opinion/](cmd/alt-opinion/)             | Получение альтернативных мнений от AI-моделей с опциональным синтезом |
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект           |
+| agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов         |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

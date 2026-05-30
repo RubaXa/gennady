@@ -58,7 +58,12 @@ const paths = (args._ as string[]).filter((a) => {
 });
 
 if (paths.length === 0 && !url) {
-  console.error(style.yellow('Usage: npx gennady cat <path/to/glob> [--url=<MR/PR URL>]'));
+  console.error(
+    style.yellow(
+      'Usage: npx gennady cat <path/to/glob> [--plain] [--exclude=<glob>] [--ext=<exts>] [--output=<xml|md>] [--url=<MR/PR URL>]'
+    )
+  );
+  console.error(style.yellow('       npx gennady cat --help  (see all options)'));
   process.exit(1);
 }
 

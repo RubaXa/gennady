@@ -32,6 +32,70 @@ if (!command || helpFlags.has(command)) {
 checkForUpdates({ name: 'gennady', version: _version });
 // #endregion END_UPDATE_CHECK
 
+// #region START_PER_COMMAND_HELP — if rest args contain --help/-h, dispatch to command help and exit
+const restArgs = process.argv.slice(3);
+if (restArgs.some((a) => helpFlags.has(a))) {
+  let helpLoaded = false;
+
+  switch (command) {
+    case 'cat':
+      await import('./cmd/cat/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'review':
+      await import('./cmd/review/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'vcs-reply':
+      await import('./cmd/vcs-reply/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'review-verify':
+      await import('./cmd/review-verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'review-issues':
+      await import('./cmd/review-issues/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'resolve-conflicts':
+      await import('./cmd/resolve-conflicts/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'commit':
+      await import('./cmd/commit/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'remote-console':
+      await import('./cmd/remote-console/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'lint':
+      await import('./cmd/lint/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'alt-opinion':
+      await import('./cmd/alt-opinion/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'agent-mon':
+      await import('./cmd/agent-mon/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sync':
+      await import('./cmd/sync/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+  }
+
+  if (!helpLoaded) {
+    console.error(`No help available for "${command}".`);
+  }
+
+  process.exit(0);
+}
+// #endregion END_PER_COMMAND_HELP
+
 switch (command) {
   case 'cat':
     await import('./cmd/cat/index.ts');
