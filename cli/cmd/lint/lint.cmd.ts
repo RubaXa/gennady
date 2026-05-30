@@ -1,10 +1,10 @@
-// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 4 checks, ESLint output.
+// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 7 checks, ESLint output.
 // @consumers: gennady.ts
 // @tasks: TSK-16, TSK-49
 
 import { execSync } from 'node:child_process';
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, relative, resolve } from 'node:path';
 import { logger, setLogLevel } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { check as checkFileHeader } from './checks/file-header.check.ts';
@@ -22,6 +22,7 @@ import {
   extractTaskIdsFromHeader,
   resolveReferencesForTasks,
 } from './utils/resolve-references.fn.ts';
+import { globToRegex } from './checks/utils/glob-match.ts';
 
 /**
  * @purpose Execute the gennady lint command — collect files, run 7 checks, output ESLint-format report.
@@ -35,6 +36,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     staged: ['staged'],
     verbose: ['verbose', 'v'],
     maxInvariants: ['max-invariants'],
+    exclude: ['exclude'],
   });
 
   const positional = (args._ as string[]).filter(
@@ -46,6 +48,27 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const verbose = args.verbose === true || args.verbose === 'true';
   const maxInvariants =
     typeof args.maxInvariants === 'string' ? parseInt(args.maxInvariants, 10) : 3;
+
+  // Default exclude patterns — always active
+  const DEFAULT_EXCLUDES = [
+    '**/node_modules/**',
+    '**/__tests__/**',
+    '**/fixtures/**',
+    '**/dist/**',
+    '**/coverage/**',
+    '**/build/**',
+    '**/out/**',
+  ];
+
+  // Collect --exclude values (parseArgs packs multiples into array)
+  const rawExclude = args.exclude;
+  const userExcludes: string[] = Array.isArray(rawExclude)
+    ? rawExclude
+    : typeof rawExclude === 'string'
+      ? [rawExclude]
+      : [];
+  const excludePatterns = [...DEFAULT_EXCLUDES, ...userExcludes];
+  const excludeRegexes = excludePatterns.map(globToRegex);
 
   if (verbose) setLogLevel('debug');
 
@@ -97,6 +120,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     files = [];
   }
   // #endregion END_COLLECT_FILES
+
+  // #region START_EXCLUDE_FILTER — invariant: apply glob excludes to collected files
+  if (files.length > 0 && excludeRegexes.length > 0) {
+    const before = files.length;
+    const cwd = resolve('.');
+    files = files.filter((f) => {
+      const rel = f.startsWith('/') ? relative(cwd, f) : f;
+      return !excludeRegexes.some((re) => re.test(rel));
+    });
+    logger.debug(`[LintCommand#run] [filtering → filtered] ${before} → ${files.length} file(s)`);
+  }
+  // #endregion END_EXCLUDE_FILTER
 
   if (files.length === 0) {
     logger.debug('[LintCommand#run] [collecting → done] no files to lint');

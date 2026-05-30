@@ -14,6 +14,11 @@ export function printHelp(): void {
   );
   console.info('  --verbose, -v       Enable debug logging output');
   console.info('  --max-invariants <n>  Max invariants per exported entity (default: 3)');
+  console.info('  --exclude <glob>      Exclude files matching glob pattern (repeatable)');
+  console.info('');
+  console.info('  Default exclude patterns (always active):');
+  console.info('    **/node_modules/**  **/__tests__/**  **/fixtures/**');
+  console.info('    **/dist/**          **/coverage/**   **/build/**  **/out/**');
   console.info('');
   console.info('  When no paths or --staged are provided, lints nothing.');
   console.info('');

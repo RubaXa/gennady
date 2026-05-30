@@ -390,6 +390,7 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
 | `--autofix`        | `LintCommand.run()` → `DbcContractCheck`    | active (v1)   |
 | `--staged`         | `LintCommand.run()` → git scan              | active (v1)   |
 | `--max-invariants` | `LintCommand.run()` → `InvariantCountCheck` | active (v1)   |
+| `--exclude`        | `LintCommand.run()` → file filtering        | active (v1)   |
 | `--changed`        | —                                           | deferred (v2) |
 
 **`--max-invariants` contract:**
@@ -398,6 +399,23 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
 - По умолчанию: `3`
 - Если не указан явно — используется значение по умолчанию
 - Передаётся в `InvariantCountCheck.check(content, filePath, maxInvariants)`
+
+**`--exclude` contract:**
+
+- Тип: `string` (glob-паттерн), можно указывать несколько раз
+- Назначение: исключить файлы из линтинга по glob-паттерну, применённому к относительному пути от `cwd`
+- Множественное указание: `--exclude "**/*.test.ts" --exclude "**/fixtures/**"` → оба паттерна активны
+- Дефолтные паттерны (всегда активны, даже без явного `--exclude`):
+  - `**/node_modules/**`
+  - `**/__tests__/**`
+  - `**/fixtures/**`
+  - `**/dist/**`
+  - `**/coverage/**`
+  - `**/build/**`
+  - `**/out/**`
+- Пользовательские паттерны добавляются поверх дефолтных
+- Фильтрация применяется после сбора файлов (`resolveTargets` / `--staged`), перед линтингом
+- Glob-синтаксис: `*` (кроме `/`), `**` (включая `/`), `?` (один символ), `[...]` (класс символов)
 
 ### Supported Extensions
 
@@ -740,6 +758,21 @@ cli/cmd/lint/
 | AB-66 | Generic-класс (`class Foo<T> { ... }`)                                                   | ✅ / ❌ (корректное определение класса с generic-параметром)                         |
 | AB-67 | Generic-метод (`foo<T>(x: T): void { ... }`)                                             | ✅ (регион внутри — ок)                                                              |
 
+### Unit: Exclude glob filtering (`lint.cmd.test.ts`)
+
+| ID    | Сценарий                                                                          | Ожидаемый результат                                      |
+| ----- | --------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| EX-01 | Без `--exclude` — дефолтные паттерны активны, `__tests__/` файлы исключены        | Файлы из `__tests__/` не линтятся                        |
+| EX-02 | Без `--exclude` — дефолтные паттерны активны, `fixtures/` файлы исключены         | Файлы из `fixtures/` не линтятся                         |
+| EX-03 | `--exclude "**/*.test.ts"` — исключает тестовые файлы по расширению               | `.test.ts` файлы не линтятся                             |
+| EX-04 | `--exclude "**/*.special.ts"` — исключает конкретный файл по имени                | `special.ts` файл не линтится                            |
+| EX-05 | Два `--exclude`: `--exclude "**/a/**" --exclude "**/b/**"` — оба активны          | Файлы из `a/` и `b/` исключены, `c/` линтится            |
+| EX-06 | `--exclude "**/dir/**"` — исключает все файлы в конкретной директории             | Файлы в `dir/` и её поддиректориях исключены             |
+| EX-07 | `--exclude` с паттерном, который ничему не соответствует                          | Все файлы линтятся (нет ложных исключений)               |
+| EX-08 | `--staged --exclude "**/*.test.ts"` — exclude работает вместе с --staged          | Staged `.test.ts` файлы исключены                        |
+| EX-09 | Дефолтный `**/node_modules/**` исключает файлы даже при явной передаче директории | Файлы из `node_modules/` не линтятся                     |
+| EX-10 | Пользовательский `--exclude` не отменяет дефолтные — оба набора работают          | И дефолтные, и пользовательские паттерны исключают файлы |
+
 ## 7. Module Decision Log
 
 - D-005 (scope) — Поддержка директорий: рекурсивный обход, `.ts`/`.tsx`, без флага `--recursive`
@@ -748,6 +781,7 @@ cli/cmd/lint/
 - D-008 (module) — Invariant limit: `InvariantCountCheck` с порогом `--max-invariants=3` по умолчанию. Суммируются `@invariant` в JSDoc + `invariant:` в регион-комментариях. Превышение → `ERR_CLI_LINT_TOO_MANY_INVARIANTS` (error).
 - D-009 (module) — Anchor class body boundary: `AnchorClassBodyCheck` запрещает `#region START` / `#endregion END` на уровне тела класса. Регионы допустимы внутри тел методов и на top-level. Top-level регионы оборачивают функции модуля.
 - D-010 (module) — Anchor consecutive START: `AnchorCheck` детектит два `#region START` подряд на одном уровне brace depth без промежуточного `#endregion END`. Ошибка на втором START → `ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START`. Агент должен либо объединить регионы, либо закрыть первый.
+- D-011 (module) — Exclude glob filtering: `--exclude` опция с glob-паттернами для исключения файлов из линтинга. Дефолтные паттерны: `node_modules`, `__tests__`, `fixtures`, `dist`, `coverage`, `build`, `out`. Можно указать несколько пользовательских паттернов, они добавляются поверх дефолтных.
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies
