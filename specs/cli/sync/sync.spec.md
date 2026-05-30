@@ -180,12 +180,20 @@ cli/cmd/sync/
 ├── index.ts                    # import { run } from './sync.cmd.ts'; run(process.argv)
 ├── sync.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод (~80 lines)
 ├── sync.types.ts               # SyncOptions, SyncFileEntry, SyncResult (~40 lines)
-├── sync-core.ts                # Ядро: resolvePackageDir, scanDirectives, collectAndCompare (~80 lines)
-├── sync-formatter.ts           # Форматтер: format(entries, opts) → string[] (~50 lines)
+├── sync-core.ts                # Ядро: scanDirectives, collectAndCompare (~80 lines)
+├── sync-formatter.ts           # → перенесён в shared/common/sync/sync-formatter.shared.ts (D-M004). Импорт из shared
 └── __tests__/
     ├── sync-core.test.ts       # Unit: resolveSource (3), scanDirectives (5), collectAndCompare (7) = ~15 cases (~130 lines)
-    ├── sync-formatter.test.ts  # Unit: format (6 cases): mixed, dryRun, all-same, empty, summary (~80 lines)
+    ├── sync-formatter.test.ts  # → перенесён в shared/common/sync/__tests__/ (D-M004)
     └── sync.cmd.test.ts        # Integration: happy path, --dry-run, filter, errors (9 cases) (~140 lines)
+
+shared/common/sync/             # shared с sync-skills (D-M004)
+├── sync-core.shared.ts         # resolvePackageDir(subdir), compareBytes
+├── sync-formatter.shared.ts    # formatSyncOutput(entries, opts) — общие маркеры, dry-run, итог
+├── sync-deps.type.ts           # SyncCmdDeps (расширен unlink, rmdir)
+└── __tests__/
+    ├── sync-core.shared.test.ts
+    └── sync-formatter.shared.test.ts
 ```
 
 **File Mapping:**
@@ -234,6 +242,16 @@ cli/cmd/sync/
   - `.syncignore` в проекте — оверкилл, пользователи не должны управлять исключениями (это решение пакета)
   - Аргумент `--exclude` — оверкилл, те же причины
 
+### D-M004 — Shared sync core: извлечение общего кода
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, cli, sync-skills
+- **Why:** `sync` и `sync-skills` используют одинаковый механизм обнаружения пакета (`resolvePackageDir`), побайтового сравнения (`compareBytes`) и форматирования вывода (маркеры, dry-run, итоговая строка). Вынос в `shared/common/sync/` предотвращает дублирование ~100 строк и гарантирует консистентность формата между командами. `SyncFormatter` и `resolvePackageDir` уходят в shared; `SyncCmdDeps` становится shared-портом, расширенным полями `unlink`, `rmdir` (для sync-skills, sync их игнорирует).
+- **Risk accepted:** Shared-код меняет File Structure модуля — `sync-formatter.ts` переносится в shared. `SyncCmdDeps` пополняется двумя полями. Существующие юнит-тесты нужно обновить (добавить `unlink`, `rmdir` в моки).
+- **Rejected alternatives:**
+  - Оставить дублирование — расхождение формата при независимой эволюции
+  - Вынести только `resolvePackageDir` без форматтера — не решает проблему консистентности вывода
+
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** None (не зависит от других модулей cli)
@@ -253,12 +271,19 @@ graph TD
 - **Implementation files to be created:**
   - `cli/cmd/sync/sync.types.ts`
   - `cli/cmd/sync/sync-core.ts`
-  - `cli/cmd/sync/sync-formatter.ts`
-  - `cli/cmd/sync/sync.cmd.ts`
+  - `cli/cmd/sync/sync.cmd.ts` (импортит formatter из shared)
   - `cli/cmd/sync/index.ts`
+  - `shared/common/sync/sync-core.shared.ts` (D-M004)
+  - `shared/common/sync/sync-formatter.shared.ts` (D-M004)
+  - `shared/common/sync/sync-deps.type.ts` (D-M004)
+- **Files to refactor (D-M004):**
+  - `cli/cmd/sync/sync-formatter.ts` → перенести в `shared/common/sync/sync-formatter.shared.ts`
+  - `cli/cmd/sync/sync-core.ts` → заменить локальный `resolvePackageDir` на импорт из shared
+  - `cli/cmd/sync/sync.cmd.ts` → обновить импорт `SyncFormatter` на shared
 - **Test files to be created:**
   - `cli/cmd/sync/__tests__/sync-core.test.ts`
-  - `cli/cmd/sync/__tests__/sync-formatter.test.ts`
+  - `shared/common/sync/__tests__/sync-core.shared.test.ts`
+  - `shared/common/sync/__tests__/sync-formatter.shared.test.ts`
   - `cli/cmd/sync/__tests__/sync.cmd.test.ts`
 - **Files to modify:**
   - `cli/gennady.ts` — добавить `case 'sync': await import('./cmd/sync/index.ts'); break`

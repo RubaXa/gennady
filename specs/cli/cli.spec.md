@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей).
 
 ## 2. Project Type
 
@@ -320,6 +320,511 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Пакет-источник: приоритет — локальная установка (`node_modules/gennady`), fallback — резолв от запущенного процесса. Исключённые из синхронизации (захардкожены в команде): `architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`.
 
+### 3.5 orient DX
+
+```bash
+# --- карта проекта (S1) ---
+$ gennady orient
+
+services/dbc/
+  parser/
+    dbc-parser.types.ts — @file: Universal contract schema types, parser interface, and issue codes | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
+    implementations/jsdoc/
+      dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
+      ... 1 more dir, 3 files
+  linter/
+    dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-03 | @consumers: DbcTsLinter | @exports: 4
+    implementations/ts/
+      ... 2 more files
+
+Hints:
+  --detail          Show exports for each file
+  orient <keyword>  Search files by purpose
+  orient --task=<id>  Find files by task
+  orient --consumer=<name>  See who depends on a module
+
+# exit 0
+
+# --- карта с детализацией экспортов ---
+$ gennady orient --detail
+
+services/dbc/
+  parser/
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
+      DbcParser: interface
+        @purpose: Parse DBC contracts into universal schema
+      DbcSchema: type
+        @purpose: Universal contract schema structure
+      ...
+
+# exit 0
+
+# --- поиск по задаче (S2): один task-id ---
+$ gennady orient --task=TSK-04
+
+TSK-04 → tasks/dbc/dbc-linter/dbc-linter.task-04.md → specs/dbc/dbc-linter/dbc-linter.spec.md
+
+1 file:
+
+  dbc-ts-linter.ts — @file: TypeScript linter implementation with 4-pass contract match validation | @tasks: TSK-04, TSK-05 | @consumers: lint command | @exports: 4
+
+Hints:
+  --detail               Show exports for each file
+  orient --file=<path>   Inspect any file in full detail
+  orient --consumer=<name>  See who depends on these files
+
+# exit 0
+
+# --- поиск по задаче: несколько task-id ---
+$ gennady orient --task=TSK-01 --task=TSK-02
+
+TSK-01, TSK-02
+
+TSK-01: dbc-parser.types.ts, dbc-linter.types.ts
+TSK-02: dbc-jsdoc-parser.ts, dbc-ts-linter.ts, dbc-ts-ast-adapter.ts
+
+5 files:
+
+  dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
+  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-01 | @consumers: DbcTsLinter | @exports: 4
+  dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
+  dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @tasks: TSK-02, TSK-11 | @consumers: DbcTsLinter | @exports: 1
+  dbc-ts-linter.ts — @file: TypeScript linter implementation | @tasks: TSK-02, TSK-04, TSK-05 | @exports: 4
+
+Hints:
+  --detail               Show exports for each file
+  orient --file=<path>   Inspect any file in full detail
+  orient --consumer=<name>  See who depends on these files
+
+# exit 0
+
+# --- поиск потребителей (S3) ---
+$ gennady orient --consumer=DbcTsLinter
+
+"DbcTsLinter" referenced as consumer by 3 files:
+
+  dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @tasks: TSK-07 | @consumers: DbcTsLinter | @exports: 5
+  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-03 | @consumers: DbcTsLinter | @exports: 4
+  file-header.check.ts — @file: File header validation | @tasks: TSK-16 | @consumers: DbcTsLinter, lint.cmd.ts | @exports: 1
+
+Hints:
+  --detail               Show exports for each file
+  orient --file=<path>   Inspect any file in full detail
+  orient --task=<id>     Find tasks related to these files
+
+# exit 0
+
+# --- поиск по ключевым словам (S4) ---
+$ gennady orient "merge conflict"
+
+"merge conflict" found in 2 files:
+
+  cli/cmd/resolve-conflicts/resolve-conflicts.cmd.ts — @file: Resolves merge conflicts in review artifacts | @tasks: TSK-40 | @exports: 2
+  shared/common/merge.ts — @file: Merge utility functions | @tasks: TSK-22 | @exports: 3
+    - mergeArtifacts()  @purpose: Merge two review artifacts with conflict resolution
+
+Hints:
+  --detail               Show exports for each file
+  orient --file=<path>   Inspect any file in full detail
+  orient --task=<id>     Filter results by task
+
+# exit 0
+
+# --- детальный взгляд на файл (S5) ---
+$ gennady orient --file=services/dbc/parser/dbc-parser.types.ts
+
+dbc-parser.types.ts
+
+@file: Universal contract schema types, parser interface, and issue codes for DBC parsers
+@tasks: TSK-01
+@consumers: DbcParserImplementations
+@exports: 4
+
+  DbcParser: interface
+    @purpose: Parse DBC contracts into universal DbcSchema
+    parse(inputContract: string): DbcSchema
+      @purpose: Parse raw JSDoc text into DbcSchema
+      @param inputContract: string — Raw JSDoc contract text
+      @returns: DbcSchema — Parsed contract schema
+
+  DbcSchema: type
+    @purpose: Universal contract schema structure with entries and metadata
+
+  DbcEntrySchema: type
+    @purpose: Single contract entry — params, returns, throws, side effects
+
+  DbcIssueCode: enum
+    @purpose: Standardized error codes for DBC parser issues
+
+Hints:
+  orient --consumer=<name>  See who depends on this file
+  orient --task=<id>        See other files for the same tasks
+  orient <keyword>          Search by purpose across all files
+
+# exit 0
+
+# --- несколько файлов ---
+$ gennady orient --file=src/lint.ts --file=src/check.ts
+
+lint.ts
+
+@file: Lint command CLI wrapper
+...
+
+check.ts
+
+@file: File header validation
+...
+
+# exit 0
+
+# --- поиск сущности (S6) ---
+$ gennady orient --entity=DbcJsDocParser
+
+"DbcJsDocParser" found in 1 file:
+
+  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
+    DbcJsDocParser: class
+      @purpose: Parse JSDoc contracts into universal DbcSchema
+      @implements: DbcParser
+
+Hints:
+  orient --file=<path>     Inspect the file in full detail
+  orient <keyword>         Search by purpose across all files
+  orient --consumer=<name>  See who depends on the defining file
+
+# exit 0
+
+# --- поиск сущности с fuzzy ---
+$ gennady orient --entity=DbcJdocParsr --fuzzy
+
+"DbcJdocParsr" matched 1 entity:
+
+  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: TSK-02 | @exports: 1
+    DbcJsDocParser: class
+      @purpose: Parse JSDoc contracts into universal DbcSchema
+
+# exit 0
+
+# --- граф зависимостей (S7) ---
+$ gennady orient --graph
+
+Project dependencies:
+
+  DbcJsDocParser consumes:
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01
+
+  DbcTsLinter consumes:
+    dbc-linter.types.ts — @file: DbcLinter interface | @tasks: TSK-03
+    dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface | @tasks: TSK-07
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01
+
+  lint command consumes:
+    dbc-ts-linter.ts — @file: TypeScript linter | @tasks: TSK-04
+    file-header.check.ts — @file: File header validation | @tasks: TSK-16
+    anchor.check.ts — @file: Anchor validation | @tasks: TSK-17
+
+  ...
+
+Hints:
+  --recursive        Show transitive dependency chains
+  orient --consumer=<name>  Focus on a specific consumer
+  orient --file=<path>  Inspect any file in full detail
+
+# exit 0
+
+# --- граф с транзитивными зависимостями ---
+$ gennady orient --graph --recursive
+
+  gennady.ts
+    lint command
+      dbc-ts-linter.ts
+        dbc-linter.types.ts
+        dbc-ast-adapter.types.ts
+        dbc-parser.types.ts
+      file-header.check.ts
+      anchor.check.ts
+    sync command
+      ...
+
+# exit 0
+
+# --- фильтрация по директории ---
+$ gennady orient --dir=services/dbc/parser
+
+services/dbc/parser/
+  dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01 | @exports: 4
+  implementations/jsdoc/
+    dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: TSK-02 | @exports: 1
+
+# exit 0
+
+# --- лимит результатов ---
+$ gennady orient <keyword> --max-results=10
+
+# exit 0
+
+# --- ошибка: файл не существует ---
+$ gennady orient --file=nonexistent.ts
+Error: nonexistent.ts: ENOENT: no such file or directory
+
+# exit 1
+
+# --- ошибка: нет совпадений ---
+$ gennady orient --task=TSK-999
+No files found for TSK-999
+
+# exit 0
+
+# --- ошибка: нет совпадений по consumer ---
+$ gennady orient --consumer=NonexistentModule
+"NonexistentModule" not found as consumer
+
+# exit 0
+
+# --- ошибка: --graph и позиционный keyword взаимоисключающие ---
+$ gennady orient "merge conflict" --graph
+Error: positional <keyword> and --graph are mutually exclusive
+
+# exit 1
+
+# --- ошибка: --file и --dir одновременно ---
+$ gennady orient --file=src/foo.ts --dir=src/
+Error: --file and --dir are mutually exclusive. Use --file for specific files, orient <keyword> for directory-scoped search.
+
+# exit 1
+
+# --- обзор всех спек (S8) ---
+$ gennady orient --specs
+
+Specs overview:
+
+  dbc-linter.spec.md
+    TSK-03: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
+    TSK-04: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
+    TSK-07: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
+    TSK-08: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+    TSK-11: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+
+  dbc-parser.spec.md
+    TSK-01: dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @consumers: DbcParserImplementations | @exports: 4
+    TSK-02: dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @exports: 1
+
+  dbc.spec.md
+    (library-level spec — 2 sub-specs above)
+
+Hints:
+  orient --spec=<path>       Search by a specific spec
+  orient --task=<id>         Find files by task
+  orient --file=<path>       Inspect any file in full detail
+
+# exit 0
+
+# --- поиск по конкретной спеке (S9) ---
+$ gennady orient --spec=dbc-linter.spec.md
+
+dbc-linter.spec.md
+
+4 tasks, 4 files:
+
+  TSK-03: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
+  TSK-04: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
+  TSK-07: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
+  TSK-08: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+
+Hints:
+  orient --file=<path>       Inspect any file in full detail
+  orient --task=<id>         Find files by task
+
+# exit 0
+
+# --- ошибка: спека не найдена ---
+$ gennady orient --spec=nonexistent.spec.md
+Error: spec "nonexistent.spec.md" not found. Use orient --specs for available specs.
+
+# exit 1
+```
+
+### 3.6 sync-skills DX
+
+```bash
+# --- первый запуск: .claude/skills/ не существует ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  + alt-opinion/
+      opinion.prompt.md
+      SKILL.md
+      synth.prompt.md
+  + sdd-audit/
+      SKILL.md
+  + sdd-check/
+      SKILL.md
+  + sdd-continue/
+      SKILL.md
+  + sdd-critic/
+      SKILL.md
+  + sdd-discover/
+      SKILL.md
+  + sdd-execute/
+      SKILL.md
+      scripts/README.md
+      scripts/check-blockers.sh
+      scripts/classify-scripts.js
+      scripts/classify-scripts.ts
+      scripts/extract-section.sh
+      scripts/lint-artifacts.sh
+      scripts/scan.sh
+      scripts/sdd
+      scripts/verify.sh
+  + sdd-execute-batch/
+      SKILL.md
+  + sdd-fix/
+      SKILL.md
+  + sdd-infra/
+      SKILL.md
+  + sdd-module-decomposition/
+      SKILL.md
+  + sdd-scaffold/
+      SKILL.md
+  + sdd-setup/
+      SKILL.md
+Synced: 13 added, 0 updated, 0 skipped, 0 deleted
+
+# exit 0
+
+# --- повторный запуск: ничего не изменилось ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  = alt-opinion/                                                   (unchanged)
+  = sdd-audit/                                                     (unchanged)
+  ... (13 skills unchanged)
+Synced: 0 added, 0 updated, 13 skipped, 0 deleted
+
+# exit 0
+
+# --- обновился пакет: часть скилов изменилась ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  ~ sdd-execute/
+      scripts/verify.sh
+  ~ sdd-fix/
+      SKILL.md
+  = alt-opinion/                                                   (unchanged)
+  ... (2 updated, 11 unchanged)
+Synced: 0 added, 2 updated, 11 skipped, 0 deleted
+
+# exit 0
+
+# --- dry-run: предпросмотр без записи ---
+$ gennady sync-skills --dry-run
+
+Sync skills (dry-run): /Users/user/my-project
+  + sdd-audit/
+      SKILL.md                                                      (would add)
+  ~ sdd-execute/
+      scripts/check-blockers.sh                                    (would update)
+  - sdd-old-deprecated/                                            (would delete)
+      SKILL.md
+  = alt-opinion/                                                   (unchanged, skip)
+  ... (1 add, 1 update, 1 delete, 10 skip)
+Dry-run: no files written.
+
+# exit 0
+
+# --- orphan-удаление: скил удалён из пакета ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  - sdd-old-deprecated/
+  = alt-opinion/                                                   (unchanged)
+  ... (1 deleted, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 deleted
+
+# exit 0
+
+# --- пользовательские скилы в target (не из gennady) ---
+# В .claude/skills/ уже есть my-custom-skill/ от пользователя.
+# Его нет в ai/skills/ пакета → orphan → будет удалён.
+
+$ gennady sync-skills --dry-run
+
+Sync skills (dry-run): /Users/user/my-project
+  - my-custom-skill/                                               (would delete)
+      SKILL.md
+  = alt-opinion/                                                   (unchanged, skip)
+  = sdd-audit/                                                     (unchanged, skip)
+  ... (1 delete, 12 skip)
+Dry-run: no files written.
+
+# exit 0
+
+# --- реальный запуск: пользовательский скил удалён ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  - my-custom-skill/
+  = alt-opinion/                                                   (unchanged)
+  ... (1 deleted, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 deleted
+
+# exit 0
+
+# --- ошибка удаления orphan (EACCES) ---
+$ gennady sync-skills
+
+Sync skills: /Users/user/my-project
+  ! my-custom-skill/                                        (delete failed: EACCES)
+  = alt-opinion/                                                   (unchanged)
+  ... (1 delete failed, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 delete failed
+
+# exit 0 (ошибка удаления — не фатальная)
+
+# --- фильтр + orphan: только указанный скил ---
+# В target есть sdd-old-deprecated (удалён из пакета) и sdd-execute (указан).
+# sdd-old-deprecated НЕ удаляется, потому что не указан в фильтре.
+
+$ gennady sync-skills sdd-execute
+
+Sync skills: /Users/user/my-project
+  = sdd-execute/                                                   (unchanged)
+Synced: 0 added, 0 updated, 1 skipped, 0 deleted
+
+# exit 0
+
+# --- фильтр: только указанные скилы ---
+$ gennady sync-skills sdd-execute alt-opinion
+
+Sync skills: /Users/user/my-project
+  = alt-opinion/                                                   (unchanged)
+  = sdd-execute/                                                   (unchanged)
+Synced: 0 added, 0 updated, 2 skipped, 0 deleted
+
+# exit 0
+
+# --- ошибка: скил не существует ---
+$ gennady sync-skills nonexistent-skill
+
+Error: ai/skills/nonexistent-skill/ not found in package.
+Available: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute, sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup
+
+# exit 1
+
+# --- ошибка: пакет не найден ---
+$ gennady sync-skills
+
+Error: gennady package not found. Install it locally: npm i -D gennady
+
+# exit 1
+```
+
+Легенда вывода: `+` — скил добавлен, `~` — скил обновлён (изменился хотя бы один файл), `-` — скил удалён (orphan: есть в target, нет в source), `=` — пропущен без изменений. Внутри скила с маркером `~` показываются только изменившиеся файлы с отступом. Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. Порядок вывода: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
+
+Источник скилов — `ai/skills/` в npm-пакете gennady. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -433,6 +938,89 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 | FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                                                |
 | FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                                         |
 
+### 4.1.5 orient Functional Requirements
+
+| ID                  | Требование                                                                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Индекс**          |                                                                                                                                                                             |
+| FR-OR-01            | Сканировать `.ts` и `.tsx` файлы в `--dir` (по умолчанию cwd), исключая `node_modules`, `.git`, `dist`, `coverage`, `build`, `out`, скрытые (`.`-префикс)                   |
+| FR-OR-02            | Извлекать `@file:`, `@tasks:`, `@consumers:` из хедера файла (строки до первого `import`). Отсутствие `@file:` → `(missing)` в выводе                                       |
+| FR-OR-03            | Извлекать экспортируемые сущности (function, class, interface, type, enum, const) с их DBC-контрактами через `DbcJsDocParser`                                               |
+| FR-OR-04            | Строить инвертированный индекс: слово → `{файл:источник}` для `@file:` и `@purpose`. Индекс — in-memory, без кэша на диск                                                   |
+| FR-OR-05            | Индекс строится за один проход по файлам. Сканирование — lazy: при первом вызове команды в сессии                                                                           |
+| **S1: Карта**       |                                                                                                                                                                             |
+| FR-OR-06            | Без аргументов и флагов (кроме `--dir`, `--depth`, `--max-results`) — вывод дерева файлов с аннотациями                                                                     |
+| FR-OR-07            | Формат строки файла: `path — @file: <purpose> \| @tasks: <ids> \| @consumers: <names> \| @exports: <N>`. Порядок полей фиксирован                                           |
+| FR-OR-08            | `@tasks:` и `@consumers:` только если присутствуют в хедере. `@exports:` — всегда                                                                                           |
+| FR-OR-09            | Индикатор глубины: `... N more dirs/dir, M files/file` (подузел с тем же отступом, singular/plural для `dirs`/`files`)                                                      |
+| **S2: Задачи**      |                                                                                                                                                                             |
+| FR-OR-10            | `--task=<TSK-NN>` — повторяемый. Поиск файлов с указанным task-id в `@tasks:`                                                                                               |
+| FR-OR-11            | Резолвить task-id → task.md → spec.md через существующий `resolve-references.fn.ts`. Выводить строкой контекста перед списком                                               |
+| FR-OR-12            | Одна задача: `N files:` → список. Несколько задач: группировка `TSK-XX: file1, file2` → полный список                                                                       |
+| **S3: Потребители** |                                                                                                                                                                             |
+| FR-OR-13            | `--consumer=<name>` — повторяемый. Подстрока в `@consumers:` (не точное совпадение)                                                                                         |
+| FR-OR-14            | Вывод: `"<name>" referenced as consumer by N files:` → список                                                                                                               |
+| FR-OR-15            | Несколько consumer: группировка + полный список (как S2)                                                                                                                    |
+| **S4: Поиск**       |                                                                                                                                                                             |
+| FR-OR-16            | Позиционный `<keyword>` — поиск по `@file:` и `@purpose` сущностей                                                                                                          |
+| FR-OR-17            | Алгоритм: инвертированный индекс (exact match +10, prefix match +5) + Damerau-Levenshtein (≤2 для коротких слов, ≤3 для длинных, +3). Сортировка по счёту                   |
+| FR-OR-18            | Совпадение в `@purpose` сущности → подстрока `- entity()  @purpose: ...` под строкой файла                                                                                  |
+| **S5: Файл**        |                                                                                                                                                                             |
+| FR-OR-19            | `--file=<path>` — повторяемый. Вывод хедера блоками (`@file:`, `@tasks:`, `@consumers:`, `@exports:`) + все экспорты с полными DBC-контрактами                              |
+| FR-OR-20            | Сущности: `имя(параметры): возврат` для функций, `имя: тип` для const/enum/interface. Под сущностью — DBC-теги (`@purpose`, `@param`, `@returns`, `@throws`, `@implements`) |
+| **S6: Сущности**    |                                                                                                                                                                             |
+| FR-OR-21            | `--entity=<name>` — повторяемый. Поиск экспортируемых сущностей по имени. Fuzzy с `--fuzzy` (Damerau-Levenshtein ≤2/≤3)                                                     |
+| FR-OR-22            | Вывод: `"<name>" found in N files:` → файл → сущность с полными DBC-контрактами                                                                                             |
+| **S7: Граф**        |                                                                                                                                                                             |
+| FR-OR-23            | `--graph` — плоская картина: `ConsumerName consumes:` → список файлов. По умолчанию без транзитивности                                                                      |
+| FR-OR-24            | `--graph --recursive` — транзитивное дерево от корневых потребителей вглубь. `--depth=N` контролирует глубину                                                               |
+| **Hints**           |                                                                                                                                                                             |
+| FR-OR-25            | Каждый вывод завершается блоком `Hints:` (≤4 подсказки): флаги текущего режима, затем переходы к другим режимам                                                             |
+| FR-OR-26            | Hints ссылаются на `<cmd>` (токен команды, заменяемый на `orient`) и флаги с синтаксисом `--flag` / `<cmd> --flag=<value>`                                                  |
+| **Модификаторы**    |                                                                                                                                                                             |
+| FR-OR-27            | `--detail` — добавить exports в вывод S1-S4 (режимы, выводящие список файлов)                                                                                               |
+| FR-OR-28            | `--dir=<path>` — ограничить сканирование директорией (несовместим с `--file`)                                                                                               |
+| FR-OR-29            | `--depth=N` — глубина раскрытия дерева (S1, S7 recursive). По умолчанию 2                                                                                                   |
+| FR-OR-30            | `--max-results=N` — лимит строк вывода. По умолчанию 50. Остаток: `... N more files`                                                                                        |
+| FR-OR-31            | `--fuzzy` — включить Damerau-Levenshtein для `--entity` и `--consumer`                                                                                                      |
+| **Вывод**           |                                                                                                                                                                             |
+| FR-OR-32            | Exit code 0 при успехе/нет совпадений. Exit code 1 при ошибке (несуществующий файл, несовместимые флаги)                                                                    |
+| FR-OR-33            | Формат вывода — текст с отступами (markdown-friendly). `--graph` и позиционный `<keyword>` взаимоисключающие                                                                |
+| **S8/S9: Спеки**    |                                                                                                                                                                             |
+| FR-OR-34            | `--specs` — обзор всех спек: для каждого `.spec.md` файла показать список `TSK-XX: file.ts` через обратный резолв `@tasks:`                                                 |
+| FR-OR-35            | `--spec=<path>` — повторяемый. Поиск по конкретной спеке: все task-id, зарезолвленные в файлы, с аннотациями                                                                |
+| FR-OR-36            | Спеки без задач (library-level, только под-спеки) → `(library-level spec — N sub-specs below)`                                                                              |
+| FR-OR-37            | Резолв spec → tasks → files через `resolve-references.fn.ts` (существующий)                                                                                                 |
+| FR-OR-38            | `--specs` и `--spec` взаимоисключающие с `--file`, `--task`, `--consumer`, `--entity`, `--graph`                                                                            |
+
+### 4.1.6 sync-skills Functional Requirements
+
+| ID                     | Требование                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Обнаружение пакета** |                                                                                                                                                              |
+| FR-SS-01               | Использовать shared `resolvePackageDir('ai/skills')`: приоритет — `<cwd>/node_modules/gennady/ai/skills/`, fallback — `import.meta.resolve('gennady')` + `/ai/skills/` |
+| FR-SS-02               | Пакет не найден → ошибка `gennady package not found. Install it locally: npm i -D gennady`                                                                    |
+| **Синхронизация**      |                                                                                                                                                              |
+| FR-SS-03               | Source → Target: `<pkg>/ai/skills/` → `<cwd>/.claude/skills/`                                                                                                |
+| FR-SS-04               | Рекурсивное копирование: каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts)                                                                 |
+| FR-SS-05               | **Orphan-удаление:** файл/директория есть в target, отсутствует в source → удалить. Полная синхронизация (rsync --delete). При фильтрации по позиционным аргументам — orphan-удаление применяется только к указанным скилам; неуказанные скилы в target не затрагиваются |
+| FR-SS-05a              | Ошибка удаления orphan (EACCES, EBUSY) → предупреждение `ERR_CLI_SYNC_SKILLS_DELETE_FAILED` в stderr, скил помечается маркером `!`, синхронизация продолжается |
+| FR-SS-06               | Target-директория `.claude/skills/` создаётся `mkdirSync({ recursive: true })`, если отсутствует                                                              |
+| **Сравнение**          |                                                                                                                                                              |
+| FR-SS-07               | Файлы сравниваются побайтово через shared `compareBytes` (`Buffer.compare`). Скил помечается `updated`, если изменился хотя бы один файл внутри              |
+| FR-SS-08               | При сравнении исключаются: скрытые файлы (`.`-префикс), `.DS_Store`                                                                                          |
+| **Фильтрация**         |                                                                                                                                                              |
+| FR-SS-09               | Без позиционных аргументов — синхронизируются все скилы из `ai/skills/`                                                                                      |
+| FR-SS-10               | Позиционные аргументы — имена скилов (например, `gennady sync-skills sdd-execute alt-opinion`). Синхронизируются только указанные                            |
+| FR-SS-11               | Несуществующий скил → ошибка с перечислением доступных                                                                                                       |
+| **Вывод**              |                                                                                                                                                              |
+| FR-SS-12               | Маркеры: `+` (added), `~` (updated), `-` (deleted/orphan), `=` (unchanged) через shared `SyncFormatter`                                                      |
+| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ sdd-execute/` → `      scripts/verify.sh`. Для `+` показываются все файлы, для `=`/`-` — только имя скила |
+| FR-SS-14               | Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`                                                                                          |
+| FR-SS-15               | `--dry-run` — предпросмотр: маркеры `(would add)` / `(would update)` / `(would delete)` / `(unchanged, skip)`. Итог: `Dry-run: no files written.`            |
+| **Exit codes**         |                                                                                                                                                              |
+| FR-SS-16               | Exit 0 — успех, exit 1 — ошибка (пакет не найден, несуществующий скил)                                                                                       |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -449,6 +1037,13 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 - **NFC-12 (update-check)**: Кеш хранится в платформо-зависимой директории: `~/Library/Preferences/gennady/` (macOS), `~/.config/gennady/` (Linux), `%APPDATA%/gennady/` (Windows)
 - **NFC-13 (sync)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`, `url`)
 - **NFC-14 (sync)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/directives/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
+- **NFC-15 (orient)**: Один проход по файлам — хедеры извлекаются из первых ~10 строк каждого `.ts`/`.tsx` файла. DBC-парсинг (полный) — только для `--file`, `--entity`, `--detail`. Индекс — in-memory, без кэша на диск
+- **NFC-16 (orient)**: Инвертированный индекс — `Map<word, Set<{file, source, entity?}>>`. Поиск O(1) для exact match, O(k) для fuzzy (k — количество кандидатов после фильтрации по длине)
+- **NFC-17 (orient)**: Damerau-Levenshtein — zero-deps реализация (~15 строк). Порог ≤2 для слов ≤5 символов, ≤3 для длиннее
+- **NFC-18 (orient)**: Формат вывода — текст с отступами (2 пробела). Не XML, не JSON. Читаем и человеком, и агентом (markdown-friendly)
+- **NFC-19 (sync-skills)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`, `buffer`). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`
+- **NFC-20 (sync-skills)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/skills/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
+- **NFC-21 (sync-skills)**: Orphan-удаление: перед записью новых файлов — рекурсивное сравнение target и source, удаление отсутствующих в source. Сухие функции без I/O к stdout
 
 ### 4.3 Out-of-Scope
 
@@ -488,6 +1083,26 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 - `--watch` режим
 - Автоматический `git diff` после синхронизации
 - Сетевые запросы (работает полностью офлайн)
+
+**orient (v1):**
+
+- Кэширование индекса на диск (in-memory per session)
+- XML / JSON формат вывода (только текст с отступами)
+- Интерактивный режим (всегда one-shot запрос)
+- `--watch` режим
+- Граф с рендерингом в Mermaid / Graphviz
+- Поиск по содержимому файлов (не по мета-аннотациям — не задача orient)
+- Проверка обратной совместимости контрактов
+- Интеграция с внешними AI-инструментами (только CLI-вывод)
+
+**sync-skills (v1):**
+
+- Автоматическая проверка обновлений скилов (только явный вызов)
+- Регистрация скилов в `opencode.json` проекта (OpenCode сам сканирует `.claude/skills/`)
+- Интерактивный режим подтверждения (v1 — молча, как sync)
+- `--watch` режим
+- Синхронизация из других источников (только npm-пакет gennady)
+- Миграция/трансляция формата скилов между платформами
 
 ### 4.4 Runtime Backing & Deferred Scope
 
@@ -536,6 +1151,33 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 | Сравнение файлов (Buffer)       | `real-runtime`               |
 | Сетевое взаимодействие          | `not-implemented` (offline)  |
 | Интерактивное подтверждение     | `not-implemented` (deferred) |
+
+**orient:**
+
+| Capability                              | Posture                      |
+| --------------------------------------- | ---------------------------- |
+| Сканирование файлов (FS)                | `real-runtime`               |
+| Извлечение file-header                  | `real-runtime`               |
+| Парсинг DBC-контрактов (DbcJsDocParser) | `real-runtime`               |
+| Инвертированный индекс                  | `real-runtime`               |
+| Damerau-Levenshtein (fuzzy search)      | `real-runtime`               |
+| Резолв task-id → task.md → spec.md      | `real-runtime`               |
+| Кэширование индекса на диск             | `not-implemented` (deferred) |
+| XML / JSON формат вывода                | `not-implemented` (deferred) |
+| Кросспроектный поиск                    | `not-implemented` (deferred) |
+
+**sync-skills:**
+
+| Capability                      | Posture                      |
+| ------------------------------- | ---------------------------- |
+| Чтение файлов из пакета (FS)    | `real-runtime`               |
+| Запись в проект (FS)            | `real-runtime`               |
+| Обнаружение локальной установки | `real-runtime`               |
+| Сравнение файлов (Buffer)       | `real-runtime`               |
+| Orphan-удаление (FS)            | `real-runtime`               |
+| Сетевое взаимодействие          | `not-implemented` (offline)  |
+| Интерактивное подтверждение     | `not-implemented` (deferred) |
+| Регистрация в opencode.json     | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
@@ -665,6 +1307,161 @@ cli/cmd/sync/
 10. **Guarded self-execution** через `fileURLToPath(import.meta.url)`.
 11. **Регистрация**: `case 'sync': await import('./cmd/sync/index.ts'); break` в `cli/gennady.ts`.
 
+### 5.6 orient
+
+```
+cli/cmd/orient/
+├── index.ts                      # import { run } from './orient.cmd.ts'; run(process.argv)
+├── orient.cmd.ts                 # CLI-обвязка: parseArgs, автоопределение сценария, вызов ядра, вывод + Hints
+├── orient.types.ts               # OrientOptions, OrientResult, FileIndexEntry, IndexMatch
+├── core/
+│   ├── scan-files.ts             # Сканирование директорий: walkDir с фильтром .ts/.tsx, исключения
+│   ├── build-index.ts            # Сборка FileIndexEntry[] → Index (Map<word, Set<FileWordRef>>)
+│   ├── extract-header.ts         # Извлечение @file:/@tasks:/@consumers: из первых строк файла
+│   ├── query-task.ts             # S2: поиск по @tasks:
+│   ├── query-consumer.ts         # S3: поиск по @consumers:
+│   ├── query-keyword.ts          # S4: поиск по индексу (exact + Damerau-Levenshtein)
+│   ├── query-entity.ts           # S6: поиск экспортируемых сущностей с fuzzy
+│   ├── query-graph.ts            # S7: построение графа зависимостей
+│   ├── query-spec.ts             # S8/S9: поиск по спекам (spec → tasks → files)
+│   ├── damerau-levenshtein.ts    # zero-deps реализация (~15 строк)
+│   └── hints.ts                  # Генерация Hints-блока для каждого сценария
+├── render/
+│   ├── render-file-list.ts       # Форматтер строки файла: path — @file: ... | @tasks: ... | ...
+│   ├── render-detail.ts          # Форматтер S5: header блоками + exports с DBC-контрактами
+│   ├── render-tree.ts            # Форматтер S1: дерево с отступами и индикаторами глубины
+│   ├── render-graph.ts           # Форматтер S7: плоский/рекурсивный граф
+│   ├── render-specs.ts           # Форматтер S8/S9: обзор спек / поиск по спеке
+│   └── render-search.ts          # Форматтер S4: результаты поиска с матчами
+└── __tests__/
+    ├── extract-header.test.ts    # Unit: парсинг хедера (валидный, отсутствующий, multiline)
+    ├── build-index.test.ts       # Unit: индекс (добавление, поиск, fuzzy)
+    ├── damerau-levenshtein.test.ts  # Unit: расстояние (exact, transpose, insert, delete)
+    ├── query-task.test.ts        # Unit: поиск по задачам
+    ├── query-consumer.test.ts    # Unit: поиск по потребителям
+    ├── query-keyword.test.ts     # Unit: keyword search + fuzzy
+    ├── query-entity.test.ts      # Unit: поиск сущностей
+    ├── query-graph.test.ts       # Unit: граф зависимостей
+    ├── query-spec.test.ts        # Unit: поиск по спекам
+    ├── render-file-list.test.ts  # Unit: форматтер строки файла
+    ├── render-detail.test.ts     # Unit: форматтер детального вывода
+    ├── render-specs.test.ts      # Unit: форматтер спек
+    ├── hints.test.ts             # Unit: генерация hints
+    └── orient.cmd.test.ts        # Integration: CLI-обвязка (parseArgs, exit codes, флаги)
+```
+
+**Ключевые решения:**
+
+1. **Одна команда, явные флаги.** `gennady orient` — без позиционных аргументов → S1. `gennady orient <keyword>` → S4. Флаги `--task`, `--consumer`, `--entity`, `--file`, `--graph` — каждый активирует свой сценарий. Без smart-диспатча (кроме keyword vs no-args).
+
+2. **In-memory индекс.** Строится один раз при первом вызове, переиспользуется для всех запросов в рамках сессии. `Map<word, Set<{file, source, entity?}>>`. Без кэша на диск.
+
+3. **Легковесная extraction.** `extract-header.ts` читает первые ~10 строк файла, regex-парсит `@file:`, `@tasks:`, `@consumers:`. Без tree-sitter, без полного парсинга TypeScript. DBC-парсинг (`DbcJsDocParser`) — только для `--file`, `--entity`, `--detail`.
+
+4. **Damerau-Levenshtein zero-deps.** ~15 строк кода. Порог ≤2 для слов ≤5 символов, ≤3 для длиннее. Используется в S4 (keyword fuzzy) и S6 (entity fuzzy).
+
+5. **Рендеринг изолирован.** `render/*.ts` — чистые трансформеры `Index → string[]`. Не зависят от CLI, не пишут в stdout. CLI-обвязка только собирает результат и выводит.
+
+6. **Hints.** `hints.ts` — чистая функция `(scenario, options) → string[]`. Генерирует ≤4 подсказок в зависимости от активного сценария и переданных флагов.
+
+7. **`run(rawArgs, deps?)`.** Как alt-opinion и sync — отделён от `process.exit`. `deps` позволяет мокать FS в тестах.
+
+8. **Регистрация**: `case 'orient': await import('./cmd/orient/index.ts'); break` в `cli/gennady.ts`.
+
+### 5.7 sync-skills
+
+```
+shared/common/sync/                   # новый — общий код (извлечён из sync)
+├── sync-core.shared.ts               # resolvePackageDir(subdir), compareBytes
+├── sync-formatter.shared.ts          # formatSyncOutput(entries, opts)
+└── sync-deps.type.ts                 # SyncCmdDeps (DI-порт)
+
+cli/cmd/sync/                         # рефакторинг — импортит shared
+├── sync-core.ts                       # scanDirectives, collectAndCompare (плоская)
+├── sync.cmd.ts                        # ← импорт shared resolvePackageDir + format
+├── sync-formatter.ts                  # удалить → shared
+├── sync.types.ts
+├── index.ts
+└── __tests__/
+
+cli/cmd/sync-skills/                  # новый модуль
+├── index.ts
+├── sync-skills.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
+├── sync-skills.types.ts              # SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult
+├── sync-skills-core.ts               # scanSkills, collectAndCompareSkills (рекурсивная, orphan-удаление)
+├── sync-skills-formatter.ts          # Форматтер: +/~/-/= с отступами для вложенных файлов
+└── __tests__/
+    ├── sync-skills-core.test.ts
+    ├── sync-skills-formatter.test.ts
+    └── sync-skills.cmd.test.ts
+
+ai/skills/                            # 13 скилов (физические артефакты)
+├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
+├── sdd-audit/SKILL.md
+├── sdd-check/SKILL.md
+├── sdd-continue/SKILL.md
+├── sdd-critic/SKILL.md
+├── sdd-discover/SKILL.md
+├── sdd-execute/                       # SKILL.md + scripts/ (8 файлов)
+├── sdd-execute-batch/SKILL.md
+├── sdd-fix/SKILL.md
+├── sdd-infra/SKILL.md
+├── sdd-module-decomposition/SKILL.md
+├── sdd-scaffold/SKILL.md
+└── sdd-setup/SKILL.md
+```
+
+**Ключевые решения:**
+
+1. **Shared core** (`shared/common/sync/`): `resolvePackageDir(subdir)`, `compareBytes`, `SyncFormatter` вынесены из `sync`. Обе команды импортят. Изменение формата — в одном месте.
+2. **`sync-skills-core.ts`** — рекурсивное сравнение директорий: `walkDir(source)` → для каждого скила сравнивает все файлы. Детектит orphan (есть в target, нет в source) — удаляет перед записью.
+3. **`sync-skills-formatter.ts`** — расширяет shared-форматтер: вложенные файлы с отступом, маркер `-` для удалённых, группировка по скилам.
+4. **Orphan-удаление:** перед записью новых файлов — удаление директорий/файлов, которых нет в source. В dry-run — только показывается маркер `-`.
+5. **Исключения:** скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при сканировании.
+6. **Pattern C (DI-порт)**: `run(rawArgs, deps?: SyncCmdDeps)` — наследует паттерн из `sync` и `alt-opinion`. `SyncCmdDeps` — из shared.
+7. **`index.ts`** — `import { run } from './sync-skills.cmd.ts'; run(process.argv)` (как sync).
+8. **Регистрация**: `case 'sync-skills': await import('./cmd/sync-skills/index.ts'); break` в `cli/gennady.ts`.
+9. **Скилы в пакете**: `package.json#files` уже включает `"ai/**/*"` → `ai/skills/` попадает в npm-пакет автоматически. `infra-npm-publish` обновлений не требует.
+
+→ Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, DbC, File Structure).
+
+### 5.8 Rejected Alternatives (sync-skills)
+
+| Вариант                                                    | Почему отвергнут                                                                                     |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Флаг `--skills` в команде `sync`                           | Разные доменные модели: файлы vs директории, нет orphan vs есть orphan. Смешивание создало бы раздутый интерфейс |
+| Copypaste кода вместо shared core                          | Дублирование ~100 строк, расхождение формата вывода при независимой эволюции                         |
+| Отдельный npm-пакет для скилов (`@gennady/skills`)         | Overkill для 13 скилов. `ai/skills/` в том же пакете — проще распространение                         |
+| Хеширование (SHA256) для сравнения файлов                  | Избыточно для мелких файлов. `Buffer.compare` из shared — проверено в `sync`                         |
+| Сохранение orphan-файлов (не удалять)                      | Неполная синхронизация — пользователь не может доверять состоянию `.claude/skills/`                  |
+| Синхронизация в поддиректорию `.claude/skills/gennady/`    | Усложняет структуру, Claude Code может не увидеть скилы во вложенной директории                      |
+| Интерактивный prompt перед удалением                       | YAGNI для v1. Git покажет diff — пользователь сам решит                                              |
+
+### 5.9 Rejected Alternatives (orient)
+
+| Вариант                                                   | Почему отвергнут                                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Smart-диспатч (TSK-NN → S2, PascalCase → S6+S3)           | Непредсказуемо для агента. Явные флаги (`--task`, `--consumer`, `--entity`) дают детерминированный результат   |
+| Несколько команд (`tree`, `search`, `graph`, `info`)      | 4 отдельных case в `gennady.ts`. Общая логика (индекс, extract-header) дублируется или требует `_shared/` слой |
+| Флаговый интерфейс (`--tree`, `--search`, `--graph`)      | Взаимоисключающие булевы флаги — антипаттерн CLI. Сценарии естественно разделяются по типу запроса             |
+| JSON / XML вывод                                          | YAGNI для v1. Текстовый вывод с отступами читается и агентом, и человеком. XML — deferred                      |
+| Кэш индекса на диск                                       | YAGNI для v1. Индекс строится <100ms для 200 файлов. Кэш — deferred                                            |
+| Использовать `tree-sitter` для extraction                 | Избыточно. Хедер — первые ~10 строк, regex достаточно. tree-sitter — для DBC-линтинга, не для orient           |
+| Полный DBC-парсинг для всех файлов при построении индекса | Дорого (447 строк парсера на файл). Только для `--file`, `--entity`, `--detail`                                |
+
+### D-009 — Команда orient: навигация по file-header и DBC-контрактам
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (orient)
+- **Why:** Агентам нужен быстрый способ ориентироваться в проекте через существующую разметку (`@file:`, `@consumers:`, `@tasks:`, `@purpose`) без чтения каждого файла. Команда `orient` предоставляет 7 сценариев (S1-S7) через единую точку входа с явными флагами. Инвертированный индекс строится in-memory за один проход, без кэша на диск. DBC-парсинг только для режимов, требующих полных контрактов (`--file`, `--entity`, `--detail`). Вывод — текст с отступами, markdown-friendly. Zero runtime deps (только Node.js built-ins + существующий `DbcJsDocParser` из `services/dbc/`).
+- **Risk accepted:** Инвертированный индекс в памяти — при очень больших проектах (>1000 файлов) может потреблять значительный объём памяти. Смягчается `--dir` и `--max-results`. Fuzzy-поиск (Damerau-Levenshtein) — своя реализация, не библиотека. Тестируется unit-тестами на всех операциях (exact, transpose, insert, delete).
+- **Rejected alternatives:**
+  - Smart-диспатч позиционных аргументов — непредсказуемость для агента
+  - Несколько отдельных команд — дублирование логики индекса и хедер-экстракции
+  - JSON/XML вывод в v1 — YAGNI; текст с отступами читается и агентом, и человеком
+  - Кэш индекса на диск — YAGNI; индекс строится <100ms для 200 файлов
+  - Полный tree-sitter парсинг для extraction — избыточно; regex достаточно для первых ~10 строк
+
 ## 6. Decision Log
 
 ### D-001 — Архитектура Flat (Вариант А)
@@ -767,6 +1564,27 @@ cli/cmd/sync/
   - Отдельный npm-пакет `@gennady/directives` — усложняет распространение, два пакета вместо одного
   - Копирование всей `ai/` (не только directives) — agents и flow не нужны в проекте-потребителе
 
+### D-010 — Shared sync core: извлечение общего кода из sync
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (sync-skills)
+- **Why:** `sync` и `sync-skills` используют одинаковый механизм обнаружения пакета (`resolvePackageDir`), побайтового сравнения (`compareBytes`) и форматирования вывода (маркеры `+`/`~`/`=`/`-`, dry-run, итоговая строка). Вынос в `shared/common/sync/` предотвращает дублирование ~100 строк и гарантирует консистентность вывода между командами.
+- **Risk accepted:** Изменение shared-кода влияет на обе команды. Смягчается тестами обеих команд при каждом изменении shared.
+- **Rejected alternatives:**
+  - Copypaste — дублирование кода, расхождение формата вывода при независимой эволюции
+
+### D-011 — Команда sync-skills: синхронизация SDD-скилов из npm-пакета
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (sync-skills)
+- **Why:** Агентам нужны актуальные SDD-скилы (skill definitions) из пакета gennady. Команда `sync-skills` синхронизирует 13 скилов из `ai/skills/` npm-пакета в `.claude/skills/` проекта. Отдельная команда (не флаг `--skills` в `sync`), потому что источник, целевая директория, структура данных (директории vs файлы) и семантика (orphan-удаление) принципиально отличаются от `sync`. Shared core с `sync` минимизирует дублирование. Скилы платформо-независимы — работают в Claude Code и OpenCode. Zero runtime deps.
+- **Risk accepted:** Две команды с похожим интерфейсом (`sync` / `sync-skills`) могут запутать пользователя. Смягчается консистентным форматом вывода и именованием. Orphan-удаление — полная синхронизация (rsync --delete): пользовательские файлы в `.claude/skills/`, не принадлежащие gennady, будут удалены при sync-skills. Это задокументированное поведение, а не баг. Скилы привязаны к версии gennady — при добавлении новых скилов потребуется новый релиз пакета.
+- **Rejected alternatives:**
+  - Флаг `--skills` в `sync` — смешивает две разные доменные модели (файлы vs директории, нет orphan vs есть orphan)
+  - Отдельный npm-пакет `@gennady/skills` — overkill для 13 скилов
+  - Интерактивный режим подтверждения — YAGNI для v1; git покажет diff
+  - Синхронизация в поддиректорию `.claude/skills/gennady/` — Claude Code может не увидеть скилы во вложенной директории
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -824,6 +1642,44 @@ cli/cmd/sync/
 | Создать `cli/cmd/_shared/update-check-worker.ts`                         | file          | this-scope-task       | Worker: HTTPS GET к реестру, запись кеша                                                                                            |
 | Интегрировать `checkForUpdates` + `--no-update-check` в `cli/gennady.ts` | file          | this-scope-task       | Вызов перед `switch`, парсинг флага из `process.argv`                                                                               |
 | Создать `cli/cmd/_shared/__tests__/update-check.test.ts`                 | file          | this-scope-task       | Unit-тесты: кеш, worker, notify                                                                                                     |
+| **orient**                                                               |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/orient/index.ts`                                        | file          | this-scope-task       | `import { run } from './orient.cmd.ts'; run(process.argv)`                                                                          |
+| Создать `cli/cmd/orient/orient.cmd.ts`                                   | file          | this-scope-task       | CLI-обвязка: parseArgs, вызов ядра, вывод + Hints                                                                                   |
+| Создать `cli/cmd/orient/orient.types.ts`                                 | file          | this-scope-task       | `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`                                                                     |
+| Создать `cli/cmd/orient/core/scan-files.ts`                              | file          | this-scope-task       | Сканирование директорий с фильтром .ts/.tsx + исключениями                                                                          |
+| Создать `cli/cmd/orient/core/build-index.ts`                             | file          | this-scope-task       | Сборка `Map<word, Set<FileWordRef>>` из FileIndexEntry[]                                                                            |
+| Создать `cli/cmd/orient/core/extract-header.ts`                          | file          | this-scope-task       | Извлечение @file:/@tasks:/@consumers: из первых строк файла                                                                         |
+| Создать `cli/cmd/orient/core/query-task.ts`                              | file          | this-scope-task       | S2: поиск по @tasks: с резолвом task.md → spec.md                                                                                   |
+| Создать `cli/cmd/orient/core/query-consumer.ts`                          | file          | this-scope-task       | S3: поиск по @consumers: (подстрока)                                                                                                |
+| Создать `cli/cmd/orient/core/query-keyword.ts`                           | file          | this-scope-task       | S4: поиск по индексу (exact match + Damerau-Levenshtein)                                                                            |
+| Создать `cli/cmd/orient/core/query-entity.ts`                            | file          | this-scope-task       | S6: поиск экспортируемых сущностей с fuzzy                                                                                          |
+| Создать `cli/cmd/orient/core/query-graph.ts`                             | file          | this-scope-task       | S7: построение графа зависимостей (плоский + recursive)                                                                             |
+| Создать `cli/cmd/orient/core/query-spec.ts`                              | file          | this-scope-task       | S8/S9: поиск по спекам (spec → tasks → files)                                                                                       |
+| Создать `cli/cmd/orient/core/damerau-levenshtein.ts`                     | file          | this-scope-task       | Zero-deps реализация (~15 строк)                                                                                                    |
+| Создать `cli/cmd/orient/core/hints.ts`                                   | file          | this-scope-task       | Генерация Hints-блока для каждого сценария                                                                                          |
+| Создать `cli/cmd/orient/render/render-file-list.ts`                      | file          | this-scope-task       | Форматтер строки файла                                                                                                              |
+| Создать `cli/cmd/orient/render/render-detail.ts`                         | file          | this-scope-task       | Форматтер S5: header блоками + exports с DBC                                                                                        |
+| Создать `cli/cmd/orient/render/render-tree.ts`                           | file          | this-scope-task       | Форматтер S1: дерево с отступами и индикаторами глубины                                                                             |
+| Создать `cli/cmd/orient/render/render-graph.ts`                          | file          | this-scope-task       | Форматтер S7: плоский/рекурсивный граф                                                                                              |
+| Создать `cli/cmd/orient/render/render-specs.ts`                          | file          | this-scope-task       | Форматтер S8/S9: обзор спек / поиск по спеке                                                                                        |
+| Создать `cli/cmd/orient/render/render-search.ts`                         | file          | this-scope-task       | Форматтер S4: результаты поиска с матчами                                                                                           |
+| Создать `cli/cmd/orient/__tests__/extract-header.test.ts`                | file          | this-scope-task       | Unit: парсинг хедера                                                                                                                |
+| Создать `cli/cmd/orient/__tests__/build-index.test.ts`                   | file          | this-scope-task       | Unit: индекс                                                                                                                        |
+| Создать `cli/cmd/orient/__tests__/damerau-levenshtein.test.ts`           | file          | this-scope-task       | Unit: расстояние                                                                                                                    |
+| Создать `cli/cmd/orient/__tests__/query-task.test.ts`                    | file          | this-scope-task       | Unit: поиск по задачам                                                                                                              |
+| Создать `cli/cmd/orient/__tests__/query-consumer.test.ts`                | file          | this-scope-task       | Unit: поиск по потребителям                                                                                                         |
+| Создать `cli/cmd/orient/__tests__/query-keyword.test.ts`                 | file          | this-scope-task       | Unit: keyword search + fuzzy                                                                                                        |
+| Создать `cli/cmd/orient/__tests__/query-entity.test.ts`                  | file          | this-scope-task       | Unit: поиск сущностей                                                                                                               |
+| Создать `cli/cmd/orient/__tests__/query-graph.test.ts`                   | file          | this-scope-task       | Unit: граф зависимостей                                                                                                             |
+| Создать `cli/cmd/orient/__tests__/query-spec.test.ts`                    | file          | this-scope-task       | Unit: поиск по спекам                                                                                                               |
+| Создать `cli/cmd/orient/__tests__/render-file-list.test.ts`              | file          | this-scope-task       | Unit: форматтер строки файла                                                                                                        |
+| Создать `cli/cmd/orient/__tests__/render-detail.test.ts`                 | file          | this-scope-task       | Unit: форматтер детального вывода                                                                                                   |
+| Создать `cli/cmd/orient/__tests__/render-specs.test.ts`                  | file          | this-scope-task       | Unit: форматтер спек                                                                                                                |
+| Создать `cli/cmd/orient/__tests__/hints.test.ts`                         | file          | this-scope-task       | Unit: генерация hints                                                                                                               |
+| Создать `cli/cmd/orient/__tests__/orient.cmd.test.ts`                    | file          | this-scope-task       | Integration: CLI-обвязка                                                                                                            |
+| Обновить `cli/gennady.ts` (case 'orient')                                | file          | this-scope-task       | добавить `case 'orient': await import('./cmd/orient/index.ts'); break`                                                              |
+| Обновить `cli/AGENTS.md` (строка orient)                                 | file          | this-scope-task       | добавить строку `orient` в таблицу команд                                                                                           |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка orient)                      | file          | this-scope-task       | добавить `orient` в вывод help                                                                                                      |
 
 ## 9. Module Map
 
@@ -836,6 +1692,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
+- orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 
 ### 9.2 Inter-Module Dependency Map
 
@@ -844,6 +1701,7 @@ graph TD
     lint -. Scope Reference .-> dbc
     alt-opinion -. Runtime .-> ai-sdk[AI SDK]
     cat -. Runtime .-> vcs[vcs-client]
+    orient -. Scope Reference .-> dbc
     update-check -. Runtime .-> npm-registry[npm public registry]
     sync -. Runtime .-> npm-package[gennady npm package]
 ```
@@ -857,8 +1715,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -868,6 +1726,8 @@ graph TD
   - alt-opinion: `GENNADY_LLM_PROXY_API_KEY` и `GENNADY_OPENROUTER_API_KEY` должны быть установлены оператором
   - update-check: интеграционные тесты worker'а с локальным HTTP-сервером — порт может быть занят
   - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
+  - orient: Damerau-Levenshtein — своя реализация, требует тщательного unit-тестирования на всех операциях
+  - orient: `DbcJsDocParser` используется для извлечения DBC-контрактов — зависит от `services/dbc/` (scope dependency уже зафиксирован)
 
 ## 11. Execution Insights
 
@@ -886,8 +1746,8 @@ graph TD
 ## 10. Handoff to module-decomposition
 
 - **Primary input:** `specs/cli/cli.spec.md`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`
-- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`, `orient`
+- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -897,3 +1757,4 @@ graph TD
   - alt-opinion: API-ключи должны быть у оператора, без них команда неработоспособна
   - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
   - sync: `infra-npm-publish` требует refine для включения `ai/directives/` в публикацию — sync неработоспособен без этого
+  - orient: Damerau-Levenshtein — своя реализация, требует unit-тестирования
