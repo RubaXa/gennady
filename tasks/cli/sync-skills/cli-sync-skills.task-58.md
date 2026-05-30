@@ -4,7 +4,7 @@
 
 - **Task-ID:** TSK-58
 - **Status:** [ ] TODO
-- **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути: заменить `~/.config/opencode/skills/` на `${SKILL_DIR}` в SKILL.md (платформо-независимая ссылка).
+- **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути: заменить `~/.config/opencode/skills/` и `~/.claude/skills/` на `${SKILL_DIR}` во всех `.md` и `.prompt.md` файлах (платформо-независимая ссылка).
 - **Scope:** cli
 - **Module:** sync-skills (bootstrap)
 - **Dependencies:** TSK-57
@@ -46,7 +46,7 @@
   - `ai/skills/sdd-scaffold/SKILL.md` (copy from `~/.config/opencode/skills/sdd-scaffold/SKILL.md`)
   - `ai/skills/sdd-setup/SKILL.md` (copy from `~/.config/opencode/skills/sdd-setup/SKILL.md`)
 - **Inputs:** none
-- **Exit:** Все 13 скилов присутствуют в `ai/skills/`. Пути `~/.config/opencode/skills/` заменены на `${SKILL_DIR}` в SKILL.md. Нет `.DS_Store`.
+- **Exit:** Все 13 скилов присутствуют в `ai/skills/`. Пути `~/.config/opencode/skills/` и `~/.claude/skills/` заменены на `${SKILL_DIR}` во всех `.md` и `.prompt.md` файлах. Нет `.DS_Store`.
 
 ## 4. Acceptance Criteria (BDD)
 
@@ -55,26 +55,26 @@
 **Scenario:** 12 скилов скопированы из OpenCode [`contract`]
 
 - **Given** `~/.config/opencode/skills/` существует с 12 скилами
-- **When** запущен скрипт копирования
+- **When** выполнено копирование
 - **Then** `ai/skills/` содержит 12 директорий: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-discover, sdd-execute, sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup
 
 **Scenario:** sdd-critic скопирован из Claude [`contract`]
 
 - **Given** `~/.claude/skills/sdd-critic/SKILL.md` существует
-- **When** запущен скрипт копирования
+- **When** выполнено копирование
 - **Then** `ai/skills/sdd-critic/SKILL.md` существует
 
 **Scenario:** sdd-execute содержит scripts/ [`contract`]
 
 - **Given** `~/.config/opencode/skills/sdd-execute/scripts/` существует с 8 файлами
-- **When** запущен скрипт копирования
+- **When** выполнено копирование
 - **Then** `ai/skills/sdd-execute/scripts/` содержит все 8 файлов
 
 **Scenario:** Пути адаптированы на ${SKILL_DIR} [`contract`]
 
 - **Given** SKILL.md содержит `~/.config/opencode/skills/sdd-execute/scripts/`
 - **When** применена адаптация путей
-- **Then** заменено на `${SKILL_DIR}/scripts/`
+- **Then** заменено на `${SKILL_DIR}/scripts/` (и `~/.claude/skills/` → `${SKILL_DIR}/` для sdd-critic)
 
 **Scenario:** Нет .DS_Store в ai/skills/ [`contract`]
 
@@ -111,3 +111,11 @@
 #### Round close
 
 - [ ] DONE
+
+## 8. Critic Rounds
+
+### Round 1 — 2026-05-30
+- **Critic verdict:** NEEDS_WORK
+- **Findings accepted:** see list
+- **Changes made:** BDD scenarios added for error paths, edge cases, and spec-contract preconditions discovered during isolated review
+- **Findings rejected (with reason):** minor/low-impact findings deferred to execution

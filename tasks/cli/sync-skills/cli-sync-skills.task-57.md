@@ -120,12 +120,37 @@
 - **Then** ни один `writeFile` / `unlink` / `rmdir` не вызван
 - **And** результат содержит entries с корректными статусами
 
-**Scenario:** deleteFailed при ошибке удаления orphan [`unit`]
+**Scenario:** deleteFailed при ошибке удаления orphan-файла [`unit`]
 
 - **Given** orphan-файл с запретом на запись
 - **When** вызван `collectAndCompareSkills` (не dry-run)
-- **Then** файл помечен `status: 'deleteFailed'`
+- **Then** файл помечен `status: 'deleteFailed'` с `errorCode: 'EACCES'`
 - **And** синхронизация остальных скилов продолжается
+
+**Scenario:** deleteFailed при ошибке удаления orphan-директории [`unit`]
+
+- **Given** orphan-директория не может быть удалена (EBUSY)
+- **When** вызван `collectAndCompareSkills`
+- **Then** директория помечена `status: 'deleteFailed'` с `errorCode: 'EBUSY'`
+- **And** синхронизация остальных скилов продолжается
+
+**Scenario:** `.claude` как файл → ошибка [`unit`]
+
+- **Given** `<cwd>/.claude` существует как файл (не директория)
+- **When** запущен `collectAndCompareSkills`
+- **Then** выбрасывается ошибка c сообщением `.claude exists but is not a directory`
+
+**Scenario:** Форматтер — пустой entries [`unit`]
+
+- **Given** `entries` — пустой массив
+- **When** вызван `format(entries, { dryRun: false })`
+- **Then** возвращает одну строку `Synced: 0 added, 0 updated, 0 skipped, 0 deleted`
+
+**Scenario:** Fresh install — targetDir не существует [`integration`]
+
+- **Given** `.claude/skills/` не существует, source содержит скилы
+- **When** запущен `collectAndCompareSkills`
+- **Then** все скилы отмечены как `added`, директория `.claude/skills/` создана
 
 **Scenario:** Форматтер группирует по скилам с отступами [`unit`]
 
@@ -230,3 +255,11 @@
 #### Round close
 
 - [ ] DONE
+
+## 8. Critic Rounds
+
+### Round 1 — 2026-05-30
+- **Critic verdict:** NEEDS_WORK
+- **Findings accepted:** see list
+- **Changes made:** BDD scenarios added for error paths, edge cases, and spec-contract preconditions discovered during isolated review
+- **Findings rejected (with reason):** minor/low-impact findings deferred to execution

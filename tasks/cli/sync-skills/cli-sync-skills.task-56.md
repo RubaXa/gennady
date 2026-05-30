@@ -59,12 +59,40 @@
 
 **Feature:** Shared sync core извлечён из модуля sync
 
+**Scenario:** resolvePackageDir возвращает null при отсутствии пакета [`unit`]
+
+- **Given** ни `node_modules/gennady` ни `import.meta.resolve('gennady')` не находят пакет
+- **When** вызван `resolvePackageDir(cwd, 'ai/skills')`
+- **Then** возвращает `null`
+
+**Scenario:** formatSyncOutput — все маркеры + итоговая строка [`unit`]
+
+- **Given** entries с added, updated, deleted, unchanged
+- **When** вызван `formatSyncOutput(entries, { dryRun: false })`
+- **Then** added → `  + <relativePath>`, updated → `  ~ <relativePath>`, deleted → `  - <relativePath>`, unchanged → `  = <relativePath> (unchanged)`
+- **And** итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`
+
+**Scenario:** formatSyncOutput — dry-run маркеры [`unit`]
+
+- **Given** entries с added, updated, deleted, unchanged
+- **When** вызван `formatSyncOutput(entries, { dryRun: true })`
+- **Then** added → `(would add)`, updated → `(would update)`, deleted → `(would delete)`, unchanged → `(unchanged, skip)`
+- **And** итоговая строка: `Dry-run: no files written.`
+
+**Scenario:** resolvePackageDir возвращает путь с поддиректорией [`unit`]
+
 **Scenario:** resolvePackageDir возвращает путь с поддиректорией [`unit`]
 
 - **Given** пакет gennady установлен локально
 - **When** вызван `resolvePackageDir(cwd, 'ai/skills')`
 - **Then** возвращён путь, заканчивающийся на `ai/skills`
 - **And** при отсутствии локальной установки — fallback через `import.meta.resolve`
+
+**Scenario:** resolvePackageDir возвращает null при отсутствии пакета [`unit`]
+
+- **Given** ни `node_modules/gennady` ни `import.meta.resolve('gennady')` не находят пакет
+- **When** вызван `resolvePackageDir(cwd, 'ai/skills')`
+- **Then** возвращает `null`
 
 **Scenario:** compareBytes детектит изменения [`unit`]
 
@@ -111,6 +139,7 @@
 | Scenario | Test File | Status |
 |---|---|---|
 | resolvePackageDir возвращает путь | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
+| resolvePackageDir возвращает null | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | compareBytes детектит изменения | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | SyncCmdDeps включает unlink/rmdir | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
 | formatSyncOutput — все маркеры | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ] |
@@ -137,3 +166,11 @@
 #### Round close
 
 - [ ] DONE
+
+## 8. Critic Rounds
+
+### Round 1 — 2026-05-30
+- **Critic verdict:** NEEDS_WORK
+- **Findings accepted:** see list
+- **Changes made:** BDD scenarios added for error paths, edge cases, and spec-contract preconditions discovered during isolated review
+- **Findings rejected (with reason):** minor/low-impact findings deferred to execution
