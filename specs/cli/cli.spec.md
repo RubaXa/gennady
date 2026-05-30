@@ -825,6 +825,8 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Источник скилов — `ai/skills/` в npm-пакете gennady. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
 
+→ Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, Contracts, File Structure).
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -1691,6 +1693,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
+- [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 
@@ -1704,6 +1707,9 @@ graph TD
     orient -. Scope Reference .-> dbc
     update-check -. Runtime .-> npm-registry[npm public registry]
     sync -. Runtime .-> npm-package[gennady npm package]
+    sync-skills -. Runtime .-> npm-package
+    sync --> shared-sync[shared/common/sync/]
+    sync-skills --> shared-sync
 ```
 
 ### 9.3 Stack Dependencies
@@ -1715,8 +1721,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -1728,6 +1734,10 @@ graph TD
   - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
   - orient: Damerau-Levenshtein — своя реализация, требует тщательного unit-тестирования на всех операциях
   - orient: `DbcJsDocParser` используется для извлечения DBC-контрактов — зависит от `services/dbc/` (scope dependency уже зафиксирован)
+  - sync-skills: `import.meta.resolve('gennady')` + `/ai/skills/` — поведение в разных рантаймах требует проверки (общее с sync)
+  - sync-skills: `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты sync не ломаются
+  - sync-skills: 13 скилов в `ai/skills/` нужно физически скопировать (пути адаптировать с `~/.config/opencode/skills/` на `${SKILL_DIR}`)
+  - sync-skills: orphan-удаление деструктивно — пользовательские скилы в `.claude/skills/` будут потеряны без dry-run
 
 ## 11. Execution Insights
 
@@ -1746,8 +1756,8 @@ graph TD
 ## 10. Handoff to module-decomposition
 
 - **Primary input:** `specs/cli/cli.spec.md`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`, `orient`
-- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`, `sync-skills`, `orient`
+- **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
