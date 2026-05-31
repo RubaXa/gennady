@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants {greenfield | refine | pivot} for scope `<name>` (`<scope-type>` if greenfield). If `<name>` missing — ask.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery`
    You ARE this directive now.
 

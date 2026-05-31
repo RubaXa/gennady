@@ -31,6 +31,7 @@ library
 ```markdown
 1. Extract intent → 2. Load & activate directive → 3. Execute plan
 ```
+
 Потребители: sdd-discover, sdd-setup, sdd-audit, sdd-scaffold, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix.
 
 ### Orchestrator: [`sdd-skills` → `OrchestratorProtocol`](./sdd-skills/sdd-skills.spec.md#orchestratorprotocol)
@@ -38,6 +39,7 @@ library
 ```
 Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → Audit (mandatory)
 ```
+
 Потребители: sdd-execute, sdd-execute-batch.
 
 ### CLI-delegation: [`alt-opinion` → `AltOpinionSkill`](./alt-opinion/alt-opinion.spec.md#altopinionskill)
@@ -45,6 +47,7 @@ Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → A
 ```bash
 npx gennady alt-opinion --file="<path>"
 ```
+
 Потребители: alt-opinion.
 
 Навык не содержит логики — только трёхшаговый активатор: извлеки intent, загрузи директиву, активируйся как она, выполни план директивы.
@@ -72,7 +75,7 @@ You are an ORCHESTRATOR. You PLAN and DISPATCH; you do NOT execute phases yourse
         ai/directives/sdd/phase-execution-protocol.xml
       Step 2 — Activate. Announce: "🔒 DIRECTIVE ACTIVATED: SddPhaseExecution"
       Step 3 — Apply to intent. Ticket: <path>, Phase: <P<N>>
-      SDD tooling available at: ${SKILL_DIR}/scripts/sdd
+      SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
       ```
 5. **Dispatch AUDIT** with prompt:
 ````
@@ -107,7 +110,7 @@ compatibility: opencode
 ### Шаг 2: Запусти CLI
 
 ```bash
-npx gennady alt-opinion --file="<path>"
+npx tsx ~/Developer/gennady/cli/gennady.ts alt-opinion --file="<path>"
 ```
 ````
 
@@ -149,7 +152,7 @@ ai/skills/<name>/
 | ID | Ограничение |
 |---|---|
 | NFR-01 | Навык — текстовый артефакт, не код. Нет runtime-зависимостей кроме директив и скриптов |
-| NFR-02 | Пути в навыках — от корня проекта (`ai/directives/...`). Никаких абсолютных путей |
+| NFR-02 | **Dev/prod dual path mode.** В исходниках (`ai/skills/`) пути указываются в dev-форме: `~/Developer/gennady/ai/directives/...` для директив, `~/Developer/gennady/ai/skills/...` для скриптов (вместо `${SKILL_DIR}`), `npx tsx ~/Developer/gennady/cli/gennady.ts` для CLI-вызовов. При `sync-skills` нормализуются в продуктовые: `ai/directives/...`, `.claude/skills/...`, `npx gennady ...`. Никаких абсолютных путей в продуктовой версии |
 | NFR-03 | Scripts — bash, macOS-совместимые. Node.js скрипты только через `tsx` |
 | NFR-04 | Директивы — XML, read-only для навыка. Навык не модифицирует директиву |
 | NFR-05 | Cross-skill consistency: assume sync. No runtime validation |
@@ -216,7 +219,7 @@ ai/skills/<name>/
 │ Agent │ (Claude Code / OpenCode)
 └─────────┘
 
-```
+````
 
 **Три execution-паттерна:**
 
@@ -226,9 +229,9 @@ ai/skills/<name>/
 | **Orchestrator** | Планирует → диспатчит subagent-фазы с typed Handoff → диспатчит audit. Сам код не пишет | sdd-execute, sdd-execute-batch |
 | **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | alt-opinion |
 
-**sdd-check** — read-only verifier: саморефлексия протокольных нарушений + механические проверки через `${SKILL_DIR}/scripts/sdd scan`. Код не пишет.
+**sdd-check** — read-only verifier: саморефлексия протокольных нарушений + механические проверки через `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan`. Код не пишет.
 
-**Скрипты:** `${SKILL_DIR}` — переменная агента-хостера, указывающая на корень директории навыка. Скрипты есть только у `sdd-execute` (9 файлов), `sdd-check` использует их же.
+**Скрипты:** В dev-режиме скрипты доступны по пути `~/Developer/gennady/ai/skills/<skill-name>/scripts/`. При `sync-skills` путь нормализуется в `.claude/skills/<skill-name>/scripts/`. Скрипты есть только у `sdd-execute` (9 файлов), `sdd-check` использует их же.
 
 ### 5.1 Rejected Alternatives
 
@@ -309,33 +312,38 @@ graph TD
     alt-opinion -. Runtime .-> cli
     sdd-skills -. Runtime .-> infra-base
     alt-opinion -. Runtime .-> infra-base
-```
+````
 
 ### 8.3 Stack Dependencies
+
 - Languages: TypeScript (для classify-scripts.ts)
 - Test frameworks: node:test
 
 ### 8.4 Handoff to Task Scaffolding
+
 - **Primary input:** `specs/ai-skills/ai-skills.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
 - **Open risks & validation needs:**
-  - Абсолютные пути в телах SKILL.md требуют релативизации
+  - ~~Абсолютные пути в телах SKILL.md требуют релативизации~~ → Закрыто D-M007 (sync-skills): PathNormalizer заменяет dev-пути на продуктовые при синхронизации
   - Скрипты завязаны на macOS/bash — не кроссплатформенны
-  - `${SKILL_DIR}` — переменная агента-хостера; поведение при отсутствии требует проверки
-<!--/SECTION:MODULE_MAP-->
+  - `${SKILL_DIR}` заменён на dev-пути `~/Developer/gennady/ai/skills/...`; при sync-skills нормализуется в `.claude/skills/...`
+  <!--/SECTION:MODULE_MAP-->
 
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+
 ## 9. Bootstrap Requirements
 
-| # | Requirement | Kind | Owner | Resolution |
-|---|---|---|---|---|
-| BR-01 | Создать `specs/ai-skills/ai-skills.spec.md` | file | this-scope-task | Уже создан в STEP_8 |
+| #     | Requirement                                     | Kind | Owner           | Resolution                            |
+| ----- | ----------------------------------------------- | ---- | --------------- | ------------------------------------- |
+| BR-01 | Создать `specs/ai-skills/ai-skills.spec.md`     | file | this-scope-task | Уже создан в STEP_8                   |
 | BR-02 | Добавить ai-skills в Portal (`specs/README.md`) | file | operator-action | Запустить `sdd-setup` после discovery |
 
 Все остальные зависимости (13 SKILL.md, директивы, скрипты, CLI) уже существуют в репозитории.
+
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:HANDOFF-->
+
 ## 10. Handoff to module-decomposition
 
 - **Primary input:** `specs/ai-skills/ai-skills.spec.md`
@@ -350,7 +358,10 @@ graph TD
   - CLI delegation pattern (prepare → invoke → show)
 - **Bootstrap tickets ready for cascade:** see §8
 - **Open risks:**
-  - Абсолютные пути в теле существующих навыков (`/Users/k.lebedev/...`) — требуют релативизации при рефакторинге
+  - ~~Абсолютные пути в теле существующих навыков (`/Users/k.lebedev/...`) — требуют релативизации при рефакторинге~~ → Закрыто: PathNormalizer в sync-skills (D-M007) + dev-пути в исходниках
   - `sdd-execute` скрипты привязаны к macOS/bash — не кроссплатформенны
-<!--/SECTION:HANDOFF-->
+  <!--/SECTION:HANDOFF-->
+
+```
+
 ```

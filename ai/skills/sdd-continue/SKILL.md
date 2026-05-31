@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants to evolve existing scope spec — refine or pivot. Resolve scope: ask if not given, then `ls specs/<scope-name>/<scope-name>.spec.md` to verify it exists.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | continue`
    You ARE this directive now.
 

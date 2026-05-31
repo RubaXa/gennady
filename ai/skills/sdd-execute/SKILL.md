@@ -45,7 +45,7 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
    - No `tasks/` directory → halt: "No tasks/ — wrong cwd or scaffolding not done".
 
 2.  **Plan:** Read ONLY ticket sections 1, 2, and 7-current-Round.
-    - **Preflight: scan for unresolved blockers** (per `AX_BLOCKER_RESOLUTION_TRAIL`). Skill ships its own helper scripts at `${SKILL_DIR}/scripts/`. Run `${SKILL_DIR}/scripts/sdd check-blockers <ticket-path>`.
+    - **Preflight: scan for unresolved blockers** (per `AX_BLOCKER_RESOLUTION_TRAIL`). Skill ships its own helper scripts at `~/Developer/gennady/ai/skills/sdd-execute/scripts/`. Run `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket-path>`.
       - exit 0 (CLEAR) → continue to state detection.
       - exit 2 (UNRESOLVED_BLOCKERS) → emit **✋ AWAITING OPERATOR DECISION** message with the script's output, then halt. This is a PAUSED state, NOT a skill failure — be clear in the message. Operator must either (a) mark resolution in Execution Log if blocker is no longer active, or (b) provide unblock decision.
     - State detection from Phases Overview Status column:
@@ -75,8 +75,8 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
           Phase: <P<N>>, kind: <kind>
           Reason: <"initial" | "fix: address audit findings F-NNN, F-MMM" | "resume after blocker">
           Inputs: <verbatim prior Handoff lines OR "none — first phase">
-           SDD tooling available at: ${SKILL_DIR}/scripts/sdd
-             (run "${SKILL_DIR}/scripts/sdd help" for surface; use these
+           SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
+             (run "~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help" for surface; use these
               for any extraction/lint/verify operations the directive references).
              MANDATORY before EMIT_HANDOFF: sdd verify <target-files> — auto-discovers and runs
              typecheck, gennady lint, linter, tests, and format check for the project.
@@ -106,7 +106,7 @@ Pause path (distinguish from failure — skill is awaiting operator, not broken)
 - Read `tasks/README.md` Tracker Index. Update the scope's aggregate counts (done/total). Write back.
 - Verify: re-read both files, confirm the changes took effect. If not → retry once.
 
-5.  **Dispatch AUDIT** (MANDATORY, always runs). Dispatch ONE subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking against artifacts; sonnet capability is overkill, haiku is faster and cheaper for this read-heavy task). Include in prompt the SDD tooling location: `${SKILL_DIR}/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands). With this prompt:
+5.  **Dispatch AUDIT** (MANDATORY, always runs). Dispatch ONE subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking against artifacts; sonnet capability is overkill, haiku is faster and cheaper for this read-heavy task). Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands). With this prompt:
 
     ```
     Step 1 — Read the directive. Use Read tool directly on:

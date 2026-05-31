@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-58
-- **Status:** [x] DONE
+- **Status:** [ ] TODO
 - **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути во всех `.md` и `.prompt.md` файлах: заменить `~/.config/opencode/skills/<skillName>/` и `~/.claude/skills/<skillName>/` на литеральную строку `${SKILL_DIR}/` (эта переменная резолвится рантаймом Claude/OpenCode).
 
 Примеры замен:
@@ -119,4 +119,15 @@
 
 #### Round close
 
-- - [x] DONE
+- - [ ] TODO
+### Round 2 — 2026-05-31, fix: lint-artifacts.sh dev-path normalization + PathNormalizer safety net
+
+| Phase | Kind | Status | Target Files | Deps |
+|-------|------|--------|-------------|------|
+| P1    | fix  | [ ]    | ai/skills/sdd-execute/scripts/lint-artifacts.sh, shared/common/sync/path-normalizer.ts | — |
+| P2    | test | [ ]    | cli/__tests__/e2e/sync.e2e.test.ts | P1 |
+
+- Fix: `GENNADY_CLI="$HOME/Developer/..."` -> `~/Developer/...` (tilde, covered by RULE_CLI_TILDE)
+- Fix: `node --experimental-strip-types "$GENNADY_CLI" lint` -> `npx tsx "$GENNADY_CLI" lint` (matches RULE_CLI_TSX_FULL after normalize)
+- Fix: Add `RULE_CLI_HOME` to PathNormalizer safety net for any remaining $HOME paths
+- Test: e2e — verify lint-artifacts.sh does NOT contain `$HOME/Developer` after sync-skills

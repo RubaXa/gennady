@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Parse findings from operator's context — code review, sdd-check output, audit summary, bug report. If no findings → HALT with explicit ask.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/fix.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/fix.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddFix`
    You ARE this directive now.
 

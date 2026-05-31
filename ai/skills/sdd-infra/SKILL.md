@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants to bootstrap or evolve infrastructure scope. Scope-type is fixed: `infrastructure`. Resolve scope name from intake.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure`
    You ARE this directive now.
 

@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants to scaffold tasks for {scope | all scopes}. Mode: `initial` (no `tasks/` yet) or `extend-dag` (`tasks/` exists, adding to it).
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/scaffold.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddScaffold`
    You ARE this directive now.
 

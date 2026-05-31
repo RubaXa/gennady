@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants to decompose scope `<name>` into modules. Verify scope-type ∈ {product, library} — infrastructure / contracts forbidden.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/module-decomposition.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/module-decomposition.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddModuleDecomposition`
    You ARE this directive now.
 

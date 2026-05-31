@@ -137,7 +137,7 @@ Required action (ORCHESTRATOR, not phase agent):
   1. Read the file directly via Read tool.
   2. Verify the section exists by markdown header (e.g. ## 1. Meta, ### P1 — impl).
   3. If section exists in header form but lacks anchors → retrofit anchors per
-     AX_TICKET_ANCHOR_FORMAT in /Users/k.lebedev/Developer/vkt/ai/directives/sdd/scaffold.directive.xml.
+      AX_TICKET_ANCHOR_FORMAT in ~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml.
   4. If section does not exist at all → escalate to operator: ticket needs
      re-scaffolding or section content authoring.
 

@@ -71,7 +71,7 @@
 
     <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       Phase agent may ONLY run these bash commands:
-      - **Must run:** `<sdd-path> verify <target-files>` — MANDATORY. Auto-discovers and runs typecheck, gennady DBC lint, linter, tests, and format check for the project. Runs before §5 commands. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line. Output suppressed on success; full output dumped on failure.
+      - **Must run:** `<sdd-path> verify <target-files>` — MANDATORY. Auto-discovers and runs typecheck, gennady DBC lint, linter, tests, and format check for the project. Runs before §5 commands. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. **SUPPRESS-ON-SUCCESS**: passing gates produce zero output; only failed gates dump their command, exit code, and captured output. On all-pass: single summary line. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line.
       - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `<sdd-path> extract <file> <NAME>` — extract anchored section from ticket/spec.
@@ -242,7 +242,11 @@
     <Step id="STEP_5_VERIFY">
       <Goal>Run MANDATORY sdd verify on target files, then ticket §5 commands. Log only final results.</Goal>
       <Action>
-        1. **MANDATORY — sdd verify gate:** Run `<sdd-path> verify <target-files>`. This auto-discovers and executes typecheck, gennady DBC lint, linter, tests, and format check from package.json scripts. Each passing gate gets its own `ver` line. If any gate fails → fix and re-run the full `sdd verify` again. Do NOT proceed to EMIT_HANDOFF until all gates pass.
+         1. **MANDATORY — sdd verify gate:** Run `<sdd-path> verify <target-files>`. This auto-discovers and executes typecheck, gennady DBC lint, linter, tests, and format check from package.json scripts. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. **SUPPRESS-ON-SUCCESS**: passing gates produce zero output; only failed gates dump their command, exit code, and captured output. On all-pass: single summary line. If any gate fails → fix ALL failures and re-run the full `sdd verify` again. Do NOT proceed to EMIT_HANDOFF until all gates pass.
+
+            **⚠️ ERROR OWNERSHIP (MANDATORY):** Every error surfaced by `<sdd-path> verify` is an error of the current session. The agent is the sole actor in this repository during the session. No error may be dismissed as «not my file», «pre-existing», «someone else's problem», or «out of scope». If `<sdd-path> verify` reports a failure in ANY file — edited, created, never touched, outside Target Files, config, spec, task, generated — the agent owns it and MUST fix it. There is no «their error». There are only errors the agent has not yet fixed. Verification is holistic; so is ownership. Fix everything.
+
+            Each passing gate gets its own `ver` line.
         2. Then run ticket §5 commands per existing logic below.
         2. **MANDATORY (PROTOCOL):** Execute EACH such §5 command **verbatim — the exact string from the ticket**. No substitutions, no "equivalents", no narrower variants. If §5 says `npm run check`, run `npm run check` (not `npx vitest`, not `tsc --noEmit`, not `<sdd-path> verify`). This is the Canonical Gate (per `AX_VERIFICATION_BEFORE_HANDOFF`); fabrication is a BLOCKER-class finding at audit.
         3. **Supplemental (OPTIONAL):** You MAY additionally run `<sdd-path> verify <Target Files>` or `tsc --noEmit` for narrower diagnostics — useful for fast feedback or DBC lint. These do NOT replace §5; they add to it. Each supplemental run is logged on its own `ver` line with its real command.

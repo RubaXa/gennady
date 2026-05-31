@@ -180,7 +180,7 @@ _Это полный список сущностей модуля. Любое в
 **Contract (DbC):**
 
 - **Preconditions:**
-  - Навык содержит путь к XML-директиве в `ai/directives/`
+  - Навык содержит путь к XML-директиве в dev-форме: `~/Developer/gennady/ai/directives/...` (при sync-skills заменяется на `ai/directives/...`)
   - Директива существует и читаема
   - Агент может читать файлы в проекте
 - **Postconditions:**
@@ -202,7 +202,7 @@ _Это полный список сущностей модуля. Любое в
 
 - **Preconditions:**
   - Ticket существует и содержит Meta + Phases Overview + Execution Log
-  - `${SKILL_DIR}/scripts/sdd` доступен
+  - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` доступен (в dev-режиме; при sync-skills → `.claude/skills/sdd-execute/scripts/sdd`)
 - **Postconditions:**
   - Все pending-фазы выполнены последовательно
   - Аудит запущен после закрытия раунда
@@ -317,6 +317,6 @@ graph TD
 | —    | —        | —      |
 
 - **Open risks & validation needs:**
-  - В существующих навыках есть абсолютные пути (`/Users/k.lebedev/...`) — требуют релативизации
+  - ~~В существующих навыках есть абсолютные пути (`/Users/k.lebedev/...`) — требуют релативизации~~ → Закрыто: PathNormalizer в sync-skills (D-M007) + dev-пути в исходниках
   - `compatibility: opencode` в существующих навыках — ок для OpenCode, Claude игнорирует
   <!--/SECTION:HANDOFF-->

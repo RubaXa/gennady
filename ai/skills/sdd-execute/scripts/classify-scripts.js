@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // @file: Heuristic npm script classifier — reads package.json, outputs discovered commands as JSON.
 // @consumers: verify.sh
+// @tasks: TSK-55, TSK-61
 //
 // Usage: node classify-scripts.js [project-root]
 
-const { readFileSync } = require('node:fs');
-const { resolve } = require('node:path');
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 function hasCategory(body, category) {
   const patterns = {

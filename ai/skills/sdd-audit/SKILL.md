@@ -6,7 +6,7 @@ compatibility: opencode
 
 1. **Extract intent.** Operator wants audit of {TSK-NN | full tree | current changes}. If ambiguous — ask.
 
-2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/audit.directive.xml`
+2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/audit.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddAudit`
    You ARE this directive now.
 

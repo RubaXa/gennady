@@ -294,7 +294,7 @@
         1. TRACE_HEADER (STACK `ROOT__PRECONDITIONS_CHECK`).
         2. Inspect Execution Log: `[x] DONE` present? Verification commands executed and recorded?
         3. Not closed → `H_TICKET_NOT_DONE`. Module or scope spec missing → `H_NO_MODULE_SPEC`.
-        4. **Mechanical pre-pass.** (a) Lint: changed `.ts` files in this Round (per `AX_GIT_DIFF_SCAN`) → `npx tsx /Users/k.lebedev/Developer/gennady/cli/gennady.ts lint <files...>`; each issue → `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id>`. No `.ts` / tool absent → skip silently / log warning. (b) Anchor balance: `~/.claude/skills/sdd-execute/scripts/sdd scan <project-root>`; each `anchor-mismatch:<opens>-open/<closes>-close` line in `[WARNINGS]` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`, `loc=<file>:<opens>/<closes>`. Universal — name-agnostic, works on any markdown artifact. Per-ticket name coverage happens in STEP_2_5.
+        4. **Mechanical pre-pass.** (a) Lint: changed `.ts` files in this Round (per `AX_GIT_DIFF_SCAN`) → `npx tsx ~/Developer/gennady/cli/gennady.ts lint <files...>`; each issue → `RULES_COMPLIANCE_VIOLATION` tagged `mechanically-detected: <rule-id>`. No `.ts` / tool absent → skip silently / log warning. (b) Anchor balance: `~/.claude/skills/sdd-execute/scripts/sdd scan <project-root>`; each `anchor-mismatch:<opens>-open/<closes>-close` line in `[WARNINGS]` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged `anchor-unbalanced`, `loc=<file>:<opens>/<closes>`. Universal — name-agnostic, works on any markdown artifact. Per-ticket name coverage happens in STEP_2_5.
         5. Phase Progress + Approval Check. STOP otherwise → STEP_2.
       </Action>
     </Step>

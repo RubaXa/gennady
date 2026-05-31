@@ -64,7 +64,7 @@ Per-task phase tokens:
 
     Cycle detection: working set with unresolved deps after all layering → cycle. Halt with explicit cycle path.
 
-    **Preflight: blocker scan** (per `AX_BLOCKER_RESOLUTION_TRAIL`). For each ticket in working set, run `${SKILL_DIR}/scripts/sdd check-blockers <ticket>` (skill helper scripts ship with the sibling `sdd-execute` skill). Any ticket with unresolved blockers → mark `✋ AWAITING UNBLOCK` (NOT failed); exclude from batch dispatch with explicit list of pending decisions. Distinguish in summary from `❌ FAILED` tasks.
+    **Preflight: blocker scan** (per `AX_BLOCKER_RESOLUTION_TRAIL`). For each ticket in working set, run `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket>` (skill helper scripts ship with the sibling `sdd-execute` skill). Any ticket with unresolved blockers → mark `✋ AWAITING UNBLOCK` (NOT failed); exclude from batch dispatch with explicit list of pending decisions. Distinguish in summary from `❌ FAILED` tasks.
 
 3.  **Show full plan to operator:**
 
@@ -117,8 +117,8 @@ Per-task phase tokens:
                   Phase: <P<N>>, kind: <kind>
                   Reason: <"initial" | "fix: address audit findings F-NNN" | "resume after blocker">
                   Inputs: <verbatim prior Handoff lines OR "none — first phase">
-                  SDD tooling available at: ${SKILL_DIR}/scripts/sdd
-                    (run "${SKILL_DIR}/scripts/sdd help" for surface;
+                  SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
+                    (run "~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help" for surface;
                      use for any extraction/lint/verify operations the directive references).
 
                   Follow the directive. This ONE phase only. Do not invoke audit.
@@ -132,7 +132,7 @@ Per-task phase tokens:
 
           After all phases DONE: close Round (append `#### Round close` block: sync + DONE). Sync trackers. Ticket Status → `[x] DONE`.
 
-           d. Dispatch AUDIT subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking, haiku sufficient and cheaper). MANDATORY, always runs. Include in prompt the SDD tooling location: `${SKILL_DIR}/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands):
+           d. Dispatch AUDIT subagent (`subagent_type: general-purpose`, **`model: "haiku"`** — audit is mechanical verification + fact-checking, haiku sufficient and cheaper). MANDATORY, always runs. Include in prompt the SDD tooling location: `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` (audit may use `lint`, `verify`, `check-blockers` subcommands):
               ```
               Step 1 — Read the directive. Use Read tool directly on:
                 ai/directives/sdd/audit.directive.xml

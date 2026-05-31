@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Команда `gennady sync` в `cli/cmd/sync/`: синхронизирует `ai/directives/` из npm-пакета gennady в текущий проект. Приоритет у локальной установки (`node_modules/gennady`), fallback — резолв запущенного процесса. Файлы сравниваются побайтово (`Buffer.compare`). Вывод: `+` (added), `~` (updated), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Поддержка `--dry-run`.
+Команда `gennady sync` в `cli/cmd/sync/`: синхронизирует `ai/directives/` из npm-пакета gennady в текущий проект. Приоритет у локальной установки (`node_modules/gennady`), fallback — резолв запущенного процесса. Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`ai/directives/...`, `npx gennady`).** Вывод: `+` (added), `~` (updated), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Поддержка `--dry-run`.
 
 → Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.5 sync).
 
@@ -23,14 +23,17 @@ _Это полный список сущностей модуля. Любое в
 
 ### shared/
 
-| Name                   | Type         | Purpose                                                                                  |
-| ---------------------- | ------------ | ---------------------------------------------------------------------------------------- |
-| `resolvePackageDir`    | Function     | `(projectRoot: string, subdir: string) => string \| null` — обнаружение пакета (shared)  |
-| `compareBytes`         | Function     | `(a: Buffer, b: Buffer) => boolean` — побайтовое сравнение (shared)                      |
-| `formatSyncOutput`     | Function     | `(entries: SyncFormatEntry[], opts: SyncFormatOptions) => string[]` — форматтер (shared) |
-| `SyncFormatEntry`      | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)  |
-| `SyncFormatOptions`    | Value Object | `{ dryRun?: boolean }` (shared)                                                          |
-| `SyncCmdDeps` (shared) | Port         | Расширенная версия с `unlink?`, `rmdir?` для sync-skills (shared)                        |
+| Name                    | Type         | Purpose                                                                                      |
+| ----------------------- | ------------ | -------------------------------------------------------------------------------------------- |
+| `resolvePackageDir`     | Function     | `(projectRoot: string, subdir: string) => string \| null` — обнаружение пакета (shared)      |
+| `compareBytes`          | Function     | `(a: Buffer, b: Buffer) => boolean` — побайтовое сравнение (shared)                          |
+| `PathNormalizer`        | Function     | `(content: string, rules: PathNormalizationRule[]) => string` — нормализация путей (shared)  |
+| `PathNormalizationRule` | Value Object | `{ from: RegExp; to: string }` — одно правило замены (shared)                                |
+| `SYNC_PATH_RULES`       | Constant     | Правила замены для sync: 6 регекс-правил (все из path-normalizer.ts кроме RULE_SKILLS_TILDE) |
+| `formatSyncOutput`      | Function     | `(entries: SyncFormatEntry[], opts: SyncFormatOptions) => string[]` — форматтер (shared)     |
+| `SyncFormatEntry`       | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)      |
+| `SyncFormatOptions`     | Value Object | `{ dryRun?: boolean }` (shared)                                                              |
+| `SyncCmdDeps` (shared)  | Port         | Расширенная версия с `unlink?`, `rmdir?` для sync-skills (shared)                            |
 
 ## 3. Entity Surfaces
 
@@ -80,7 +83,7 @@ _Это полный список сущностей модуля. Любое в
 - **Public Operations:**
   - `resolvePackageDir(cwd: string): string | null` — приоритет: `node_modules/gennady` > `import.meta.resolve('gennady')`
   - `scanDirectives(sourceDir: string, subdirs?: string[]): string[]` — список относительных путей всех файлов; применяет `EXCLUDED_ENTRIES`
-  - `collectAndCompare(deps: SyncCmdDeps, opts: SyncOptions): SyncResult` — главная точка входа
+  - `collectAndCompare(deps: SyncCmdDeps, opts: SyncOptions): SyncResult` — главная точка входа. Применяет `PathNormalizer` с `SYNC_PATH_RULES` к содержимому каждого файла перед сравнением и записью
 - **Lifecycle:** Stateless. Вызывается `sync.cmd.ts`
 - **Errors & Degradation:**
   - `resolvePackageDir` → `null` если пакет не найден
@@ -146,7 +149,7 @@ None.
   - `opts.targetDir` — корректный путь (может не существовать)
 - **Postconditions:**
   - Если `dryRun` — ни один `writeFile` не вызван
-  - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile`
+  - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile` с **нормализованным** содержимым (dev-пути заменены на продуктовые)
   - Возвращённый `SyncResult.entries` отсортирован по `relativePath`
   - `EXCLUDED_ENTRIES` не попадают в результат
 - **Invariants:**
@@ -270,6 +273,16 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 - **What happened:** The `sync` module's `sync-core.ts` already has `mkdirSync(join(p, '..'), { recursive: true })` before every `writeFile`. This pattern was not inherited by `syncFile` in the new `sync-skills` module, causing ENOENT on first run.
 - **Lesson:** The `mkdir`-before-`writeFile` pattern in `sync-core.ts` is a deliberate contract, not incidental. Any refactoring that extracts shared writing logic (e.g., D-M004) must either preserve inline `mkdir` calls or expose `mkdir` through DI so callees can ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path for both modules.
 
+### D-M005 — PathNormalizer: замена dev-путей на продуктовые в директивах
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, sync, refine
+- **Why:** Директивы в исходниках (`ai/directives/`) могут содержать dev-пути (`~/Developer/gennady/...`, `/Users/k.lebedev/...`, `npx tsx ~/Developer/gennady/cli/...`). При синхронизации в пользовательский проект эти пути должны заменяться на продуктовые эквиваленты (`ai/directives/...`, `npx gennady ...`). Shared `PathNormalizer` из `shared/common/sync/path-normalizer.ts` (D-M007 в sync-skills.spec.md). `SYNC_PATH_RULES` — подмножество правил, релевантных для XML-директив (только `ai/` и CLI-пути, без `~/Developer/gennady/ai/skills/` → `.claude/skills/`).
+- **Risk accepted:** Регекс-замена внутри XML может задеть CDATA или атрибуты. Практика показывает что dev-пути встречаются только в prose-тексте между тегами. При появлении в атрибутах — правила нужно расширить.
+- **Rejected alternatives:**
+  - Не нормализовать директивы — в директивах есть ссылки на `~/.claude/skills/...` и `npx gennady`; dev-версии этих путей будут битые в продакшене
+  - Отдельный `PathNormalizer` для sync — дублирование; shared через `shared/common/sync/`
+
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** None (не зависит от других модулей cli)
@@ -293,15 +306,17 @@ graph TD
   - `cli/cmd/sync/index.ts`
   - `shared/common/sync/sync-core.shared.ts` (D-M004)
   - `shared/common/sync/sync-formatter.shared.ts` (D-M004)
+  - `shared/common/sync/path-normalizer.ts` (D-M005)
   - `shared/common/sync/sync-deps.type.ts` (D-M004)
 - **Files to refactor (D-M004):**
   - `cli/cmd/sync/sync-formatter.ts` → перенести в `shared/common/sync/sync-formatter.shared.ts`
-  - `cli/cmd/sync/sync-core.ts` → заменить локальный `resolvePackageDir` на импорт из shared
+  - `cli/cmd/sync/sync-core.ts` → заменить локальный `resolvePackageDir` на импорт из shared; интегрировать `PathNormalizer` в `collectAndCompare` (D-M005)
   - `cli/cmd/sync/sync.cmd.ts` → обновить импорт `SyncFormatter` на shared
 - **Test files to be created:**
   - `cli/cmd/sync/__tests__/sync-core.test.ts`
   - `shared/common/sync/__tests__/sync-core.shared.test.ts`
   - `shared/common/sync/__tests__/sync-formatter.shared.test.ts`
+  - `shared/common/sync/__tests__/path-normalizer.test.ts`
   - `cli/cmd/sync/__tests__/sync.cmd.test.ts`
 - **Files to modify:**
   - `cli/gennady.ts` — добавить `case 'sync': await import('./cmd/sync/index.ts'); break`
@@ -317,4 +332,6 @@ graph TD
   - Интеграционные тесты sync.cmd.test.ts требуют временной директории с мок-файлами — использовать `fs.mkdtempSync` + очистку
   - `fs.cpSync` для рекурсивного копирования директорий доступен с Node.js 16.7 — OK для Node 22+
   - `Buffer.compare` — убедиться что работает идентично на всех платформах (разные line endings не должны влиять, т.к. сравниваем сырые байты)
+  - Нормализация путей (D-M005): проверить что регекс-правила не задевают пути внутри XML-атрибутов или CDATA секций
+  - Нормализация путей (D-M005): `compareBytes` должно вызываться ПОСЛЕ нормализации для корректного детекта изменений
   - Фильтр `EXCLUDED_ENTRIES` применяется и к файлам и к директориям — `architecture/` исключается целиком

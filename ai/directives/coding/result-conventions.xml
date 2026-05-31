@@ -1,6 +1,6 @@
-<ResultConventions keywords="result, error-handling, isErr, TessellError, unwrap, success, fail" type="coding-rule" ver="1.0">
+<ResultConventions keywords="result, error-handling, isErr, TessellError, must, unwrap, success, fail" type="coding-rule" ver="1.1">
   <Mission>
-    Invariants for the Result pattern from @tessell/core/result. Four binary idioms (R1–R4) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each maps to a forbidden idiom in AGENTS.md that survived code review and was caught retroactively. One architectural convention (AX_RESULT_PUBLIC_BOUNDARY) is code-review-only — not mechanically detectable.
+    Invariants for the Result pattern from @tessell/core/result. Six binary idioms (R1–R6) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each maps to a forbidden idiom in AGENTS.md that survived code review. One architectural convention (AX_RESULT_PUBLIC_BOUNDARY) is code-review-only — not mechanically detectable. Canonical consumption idiom: `must` + try/catch.
   </Mission>
 
   <Belief_State>
@@ -17,8 +17,20 @@
     </Axiom>
 
     <Axiom id="AX_NO_RESULT_ISERR_SHORT_CIRCUIT">
-      `if (isErr(r)) return r` and `if (!isOk(r)) return r` are forbidden. Use `unwrap + try/catch` — that is the whole point of the convention.
+      `if (isErr(r)) return r` and `if (!isOk(r)) return r` are forbidden. Use `must` + try/catch — that is the whole point of the convention.
       No autofix: requires restructuring the surrounding function, not a one-line substitution.
+    </Axiom>
+
+    <Axiom id="AX_NO_RESULT_OK_SHORT_CIRCUIT">
+      `if (!r.ok) return r` and `if (r.ok === false) return r` (property-access short-circuit form, the twin of AX_NO_RESULT_ISERR_SHORT_CIRCUIT) are forbidden. Use `must` + try/catch.
+      Detection: IfStatement whose test is `!r.ok` or `r.ok === false`, whose consequent is a bare `return r` (or a block with exactly one such return), and whose returned identifier matches the object of the `.ok` access.
+      No autofix: requires restructuring the surrounding function, not a one-line substitution.
+    </Axiom>
+
+    <Axiom id="AX_NO_RESULT_UNWRAP">
+      `unwrap(...)` and `unwrapSync(...)` from @tessell/core/result are forbidden. Use `must`: `must(result)` returns the data or throws the error; for Promise<Result> write `must(await fn())`. `must` accepts only a resolved Result, so a forgotten await is a compile error.
+      Detection: only identifiers resolving to an import from the result module — `unwrap` from other packages is never flagged.
+      Autofix: unambiguous forms only (`unwrapSync(x)`→`must(x)`, `await unwrap(x)`→`must(await x)`, import rename). Ambiguous `unwrap(promise)` passthrough → report without fix.
     </Axiom>
 
     <Axiom id="AX_NO_BARE_THROW_UNKNOWN">
@@ -31,7 +43,7 @@
       Result is the transport form of error across the public / port boundary — not an internal control-flow primitive. Public surface (port interface methods, exported factory return types, closures returned from factories) MUST return `Result<T>`. Inside the same class:
       - protected/private async helpers with I/O → throw; the public caller wraps in try/catch and returns `fail(error)` (per AX_CATCH_LOG_RECOVER in typescript-rules).
       - pure helpers (predicates, classifiers) → honest return type (`Error | null`, scalar, enum literal); not Result.
-      - Result in protected is permitted only when the helper carries a typed `kind` the public call-site immediately unwraps — and even then, throw is usually cleaner because it avoids the `Result → unwrapSync → throw → catch → re-emit` double-packaging pattern.
+      - Result in protected is permitted only when the helper carries a typed `kind` the public call-site immediately unwraps — and even then, throw is usually cleaner because it avoids the `Result → must → throw → catch → re-emit` double-packaging pattern.
 
       Rationale: mixing Result and null-pattern in helpers of one class produces structural noise (two error-channel styles in one surface) and double-packaging. The convention keeps Result as a boundary artifact, not an internal one.
 
@@ -47,9 +59,11 @@
   <Reward_Criteria>
     - R1 flags `Result<T, DataStorageError>`, autofixes to `Result<T>`. Does NOT flag `Result<T, E>` where E is a type parameter of the enclosing generic.
     - R2 flags `{ ok: true, data: x, error: null }`, autofixes to `success(x)`.
-    - R3 flags `if (isErr(r)) return r` with no autofix; error message cites `unwrap + try/catch`.
+    - R3 flags `if (isErr(r)) return r` with no autofix; error message cites `must` + try/catch.
     - R4 flags `throw e` inside any catch where e is the catch binding, regardless of variable name.
-    - R3 and R4 carry explanatory comment in eslint.config.ts (non-autofix path per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
-    - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged).
+    - R5 flags `if (!r.ok) return r` and `if (r.ok === false) return r` with no autofix; does NOT flag `if (!r.ok) doSomethingElse()`.
+    - R6 flags `unwrap`/`unwrapSync` resolving to the result module; autofixes unambiguous forms to `must`, report-only for the `unwrap(promise)` passthrough; never flags `unwrap` from other packages.
+    - R3, R4, R5 and the non-autofix path of R6 carry explanatory comment in eslint.config.ts (per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
+    - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged; R6: autofixable vs report-only forms + foreign-import not flagged).
   </Reward_Criteria>
 </ResultConventions>

@@ -66,6 +66,11 @@ const RULE_CLI_ABS: PathNormalizationRule = {
   to: 'npx gennady',
 };
 
+const RULE_CLI_HOME: PathNormalizationRule = {
+  from: /\$HOME\/Developer\/gennady\/cli\/gennady\.ts\b/g,
+  to: '~/Developer/gennady/cli/gennady.ts',
+};
+
 /** @purpose Path rules for `sync` (ai/directives/): directive and CLI paths only. */
 export const SYNC_PATH_RULES: readonly PathNormalizationRule[] = [
   RULE_CLI_TSX_FULL,
@@ -74,6 +79,7 @@ export const SYNC_PATH_RULES: readonly PathNormalizationRule[] = [
   RULE_DIRECTIVES_TILDE,
   RULE_AI_ABS,
   RULE_CLI_ABS,
+  RULE_CLI_HOME,
 ];
 
 /** @purpose Path rules for `sync-skills` (ai/skills/): all rules, including skill path replacement. */
@@ -85,4 +91,5 @@ export const SYNC_SKILLS_PATH_RULES: readonly PathNormalizationRule[] = [
   RULE_DIRECTIVES_TILDE,
   RULE_AI_ABS,
   RULE_CLI_ABS,
+  RULE_CLI_HOME,
 ];

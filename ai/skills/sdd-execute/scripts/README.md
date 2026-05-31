@@ -1,30 +1,30 @@
 # sdd-execute / scripts
 
-Helper scripts bundled with the `sdd-execute` skill. They live alongside the skill, not in any project — invoke via absolute path `${SKILL_DIR}/scripts/sdd`.
+Helper scripts bundled with the `sdd-execute` skill. They live alongside the skill, not in any project — invoke via absolute path `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd`.
 
 All scripts honor the contract: **never produce silent empty output**. On miss, they emit actionable diagnostic instructions and a non-zero exit code. Phase agents and audit agents can therefore rely on either content-on-stdout (exit 0) or instruction-on-stdout (exit ≠ 0) to drive their next decision.
 
 ## Entry point — `sdd` dispatcher
 
 ```bash
-${SKILL_DIR}/scripts/sdd help                                 # surface
-${SKILL_DIR}/scripts/sdd extract <file> <SECTION_NAME>        # extract anchored section
-${SKILL_DIR}/scripts/sdd lint <file>...                       # gennady DBC AST contract lint
-${SKILL_DIR}/scripts/sdd verify <file>...                     # comprehensive gate (typecheck + lint + grep)
-${SKILL_DIR}/scripts/sdd check-blockers <ticket-file>         # scan Execution Log per AX_BLOCKER_RESOLUTION_TRAIL
-${SKILL_DIR}/scripts/sdd scan [project-root]                  # one-shot rich snapshot for triage skills
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd help                                 # surface
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd extract <file> <SECTION_NAME>        # extract anchored section
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd lint <file>...                       # gennady DBC AST contract lint
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd verify <file>...                     # comprehensive gate (typecheck + lint + grep)
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket-file>         # scan Execution Log per AX_BLOCKER_RESOLUTION_TRAIL
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan [project-root]                  # one-shot rich snapshot for triage skills
 ```
 
 Single permission rule covers all subcommands:
 
 ```json
-"Bash(${SKILL_DIR}/scripts/sdd *)"
+"Bash(~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd *)"
 ```
 
 Or broader:
 
 ```json
-"Bash(${SKILL_DIR}/scripts/*)"
+"Bash(~/Developer/gennady/ai/skills/sdd-execute/scripts/*)"
 ```
 
 ## Files

@@ -61,11 +61,16 @@ SUBCOMMANDS
                                   Output parsed for "[linting → clean]" / "[linting → failed]".
                                   Exit code reliable (unlike raw gennady).
 
-    verify <file>...            Comprehensive verification gate — runs in this order:
-                                    (1) npm run typecheck
-                                    (2) gennady DBC lint on listed files
-                                    (3) forbidden-construct grep (private/enum/namespace/#/console)
-                                  Single PASS/FAIL summary. ALL must pass.
+    verify <file>...            Comprehensive verification gate — runs ALL of:
+                                   (1) npm run typecheck
+                                   (2) gennady DBC lint on listed files
+                                   (3) npm run lint
+                                   (4) npm run test
+                                   (5) npm run format check
+                                 RUN-ALL: every gate executes; failures accumulate.
+                                 SUPPRESS-ON-SUCCESS: passing gates produce zero output.
+                                 On all-pass: single line. On failure: only failed gates
+                                 with captured output shown.
 
     scan [root]                 Emit one rich snapshot of an SDD project:
                                   [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY]

@@ -152,7 +152,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Bash-скрипты для SDD-операций
 - **Public Operations:**
   - `sdd extract <file> <NAME>` — извлечь SECTION из markdown
-  - `sdd verify <files>` — typecheck + lint + forbidden grep
+  - `sdd verify <files>` — all gates (typecheck + gennady DBC lint + lint + test + format check); RUN-ALL: failures accumulate; SUPPRESS-ON-SUCCESS: passing gates produce zero output
   - `sdd check-blockers <ticket>` — сканировать BLOCKER в Execution Log
   - `sdd scan [root]` — снапшот проекта
   - `sdd lint <files>` — DBC AST lint
@@ -219,7 +219,7 @@ _Это полный список сущностей модуля. Любое в
   - macOS (bash 3.2+)
   - `npx tsx` доступен для Node.js скриптов
 - **Postconditions:**
-  - `verify` → PASS только если typecheck + lint + forbidden_grep все прошли
+  - `verify` → RUN-ALL: все гейты выполняются всегда, ошибки накапливаются. SUPPRESS-ON-SUCCESS: успешные гейты не печатают ничего; выводятся только упавшие (command + exit code + captured output). PASS → одна строка `[verify] ALL_GATES_PASS (N/N)`. FAIL → exit 1 с выводом только упавших гейтов.
   - `check-blockers` → exit 0 если нет неразрешённых BLOCKER
   - `extract` → содержимое SECTION или ошибка
 - **Invariants:**
@@ -316,6 +316,15 @@ graph TD
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
 <!--SECTION:HANDOFF-->
+
+## Critic Rounds
+
+### Round 1 — 2026-05-31
+
+- Verdict: NEEDS_WORK
+- Accepted: 0
+- Rejected: 7 — all findings are pre-existing spec gaps unrelated to the `verify` RUN-ALL/SUPPRESS-ON-SUCCESS change; out of scope for this surgical edit (AX_SURGICAL)
+- Changes: none
 
 ## 10. Handoff to Task Scaffolding
 

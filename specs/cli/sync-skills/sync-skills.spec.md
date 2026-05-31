@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
+Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
 → Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.7 sync-skills).
 
@@ -24,6 +24,8 @@ _Это полный список сущностей модуля. Любое в
 | `deleteOrphan`                | Helper       | Удаляет сиротский файл/директорию с graceful degradation                                            |
 | `SyncSkillsFormatter`         | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов              |
 | `SyncSkillsFormatOptions`     | Type         | Опции форматирования: `{ dryRun?: boolean }`                                                        |
+| `PathNormalizer`              | Service      | Нормализация путей: заменяет dev-пути (`~/Developer/gennady/...`) на продуктовые (shared с `sync`)  |
+| `SYNC_SKILLS_PATH_RULES`      | Constant     | Правила замены путей для sync-skills: 6 регекс-правил                                               |
 | `SyncCmdDeps`                 | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
 | `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code   | Source directory not found                                                                          |
 | `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code   | Skill name not found in source                                                                      |
@@ -79,7 +81,7 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Ядро синхронизации скилов: сканирование, рекурсивное сравнение, orphan-детект
 - **Public Operations:**
   - `scanSkills(sourceDir: string, skillNames?: string[]): Map<string, Map<string, Buffer>>` — карта `skillName → {filePath → content}`. Применяет исключения (скрытые файлы, `.DS_Store`)
-  - `collectAndCompareSkills(deps: SyncCmdDeps, opts: SyncSkillsOptions): SyncSkillsResult` — главная точка входа
+  - `collectAndCompareSkills(deps: SyncCmdDeps, opts: SyncSkillsOptions): SyncSkillsResult` — главная точка входа. Применяет `PathNormalizer` с `SYNC_SKILLS_PATH_RULES` к содержимому каждого файла перед сравнением и записью
 - **Lifecycle:** Stateless. Вызывается `sync-skills.cmd.ts`
 - **Errors & Degradation:**
 - `resolvePackageDir` может вернуть `null` — ошибка обрабатывается в `sync-skills.cmd.ts` до создания `SyncSkillsOptions`: вывод `gennady package not found. Install it locally: npm i -D gennady`, exit 1. Ядро получает гарантированно валидный `sourceDir`
@@ -115,6 +117,41 @@ _Это полный список сущностей модуля. Любое в
   - dryRun итоговая: `Dry-run: no files written.`
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `SyncFormatter` базовые маркеры из `shared/common/sync/sync-formatter.shared.ts`
+
+### `PathNormalizer`
+
+- **Type:** Service (pure function, shared с `sync`)
+- **Purpose:** Применяет правила замены к содержимому файла перед сравнением и записью. Гарантирует, что в целевой проект попадают продуктовые пути, а не dev-пути из исходников пакета.
+- **File:** `shared/common/sync/path-normalizer.ts`
+- **Public Operations:**
+  - `normalize(content: string, rules: PathNormalizationRule[]): string` — применяет все правила последовательно
+- **Lifecycle:** Stateless. Вызывается `collectAndCompareSkills` для каждого файла перед сравнением и записью
+- **Consumers:** `SyncSkillsCore`, `SyncCore` (sync)
+
+### `PathNormalizationRule`
+
+- **Type:** Value Object (shared с `sync`)
+- **Purpose:** Одно правило замены: regex → строка замены
+- **Public Properties:**
+  - `from: RegExp` — что искать (глобальный флаг `g` обязателен)
+  - `to: string` — на что заменять
+- **Lifecycle:** Immutable. Определяется как константа в модуле
+- **Consumers:** `PathNormalizer`
+
+### `SYNC_SKILLS_PATH_RULES`
+
+- **Type:** Constant (массив `PathNormalizationRule[]`)
+- **Purpose:** Правила замены dev-путей на продуктовые для sync-skills
+- **Rules (в порядке применения):**
+  1. `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd>` → `npx gennady <cmd>` (CLI-вызовы через tsx с полным путём)
+  2. `npx tsx ~/Developer/gennady/cli <cmd>` → `npx gennady <cmd>` (CLI-вызовы через tsx)
+  3. `~/Developer/gennady/cli/gennady.ts` → `npx gennady` (прямая ссылка на CLI)
+  4. `~/Developer/gennady/ai/skills/` → `.claude/skills/` (пути к скиллам)
+  5. `~/Developer/gennady/ai/directives/` → `ai/directives/` (пути к директивам)
+  6. `/Users/k.lebedev/Developer/gennady/ai/` → `ai/` (абсолютные dev-пути → относительные)
+  7. `/Users/k.lebedev/Developer/gennady/cli/gennady.ts` → `npx gennady` (абсолютный путь к CLI)
+- **Lifecycle:** Константа в `sync-skills-core.ts`. Передаётся в `PathNormalizer.normalize()`
+- **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 
 ### `SyncCmdDeps` (Port)
 
@@ -160,7 +197,7 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
   - `opts.targetDir` — корректный путь (может не существовать). Родительская директория (`.claude/`) должна быть либо отсутствующей, либо директорией. `mkdirSync({ recursive: true })` создаёт и `.claude/` и `.claude/skills/` за один вызов. Если `.claude` существует как файл — ошибка с anchor-сообщением `[sync-skills] .claude exists but is not a directory`
 - **Postconditions:**
   - Если `dryRun` — ни один `writeFile` / `unlink` / `rmdir` не вызван
-  - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile`
+  - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile` с **нормализованным** содержимым (dev-пути заменены на продуктовые)
   - Если не `dryRun` — для каждого `deleted` файла/директории вызван `unlink`/`rmdir`
   - Возвращённый `SyncSkillsResult.entries` отсортирован: скилы лексикографически, файлы внутри скила лексикографически
   - Скрытые файлы (`.`-префикс) и `.DS_Store` не попадают в результат
@@ -169,6 +206,7 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
   - Никогда не пишет в stdout/stderr
   - `scanSkills` всегда возвращает пути с прямыми слешами (`/`)
   - Целевые пути (`.claude/`, `.claude/skills/`) должны быть реальными директориями. Символические ссылки не обрабатываются специально — orphan-удаление через symlink может задеть файлы вне ожидаемого target. Пользователь обязуется не использовать symlink в целевом пути.
+  - Нормализация применяется к содержимому ВСЕХ файлов (`.md`, `.sh`, `.xml`, `.prompt.md`). Бинарные файлы в скиллах отсутствуют по определению.
 
 ### 4.3 Service: `SyncSkillsFormatter`
 
@@ -205,7 +243,7 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
 - **Preconditions:**
   - `syncFile` MUST ensure the target file's parent directory exists before writing. Caller or callee must invoke `mkdir(targetParent, { recursive: true })` before `writeFile`. Failing to do so causes `ENOENT` on the first file in a new skill directory.
 - **Postconditions:**
-  - Файл в target идентичен файлу в source (побайтово)
+  - Файл в target идентичен файлу в source после нормализации (побайтово). `syncFile` получает уже нормализованное содержимое от `collectAndCompareSkills`
 - **Invariants:**
   - Не пишет в stdout/stderr
 
@@ -237,6 +275,7 @@ cli/cmd/sync-skills/
 shared/common/sync/                    # shared с командой sync
 ├── sync-core.shared.ts               # resolvePackageDir(subdir), compareBytes (~30 lines)
 ├── sync-formatter.shared.ts          # formatSyncOutput(entries, opts) — базовые маркеры (~40 lines)
+├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
 └── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
 
 ai/skills/                            # 13 скилов (физические артефакты в репозитории)
@@ -327,13 +366,13 @@ graph TD
 - **Implementation files to be created:**
   - `shared/common/sync/sync-core.shared.ts`
   - `shared/common/sync/sync-formatter.shared.ts`
+  - `shared/common/sync/path-normalizer.ts` (D-M007)
   - `shared/common/sync/sync-deps.type.ts` (расширить `unlink`/`rmdir`)
   - `cli/cmd/sync-skills/sync-skills.types.ts`
   - `cli/cmd/sync-skills/sync-skills-core.ts`
   - `cli/cmd/sync-skills/sync-skills-formatter.ts`
   - `cli/cmd/sync-skills/sync-skills.cmd.ts`
   - `cli/cmd/sync-skills/index.ts`
-  - `ai/skills/` (13 скилов — скопировать из `~/.config/opencode/skills/` + `~/.claude/skills/sdd-critic/`)
 - **Test files to be created:**
   - `shared/common/sync/__tests__/sync-core.shared.test.ts`
   - `shared/common/sync/__tests__/sync-formatter.shared.test.ts`
@@ -344,6 +383,10 @@ graph TD
   - `cli/cmd/sync/sync-core.ts` — заменить локальный `resolvePackageDir` на импорт из shared
   - `cli/cmd/sync/sync-formatter.ts` — удалить, заменить на импорт из shared
   - `cli/cmd/sync/sync.cmd.ts` — обновить импорты
+  - `cli/cmd/sync-skills/sync-skills-core.ts` — интегрировать `PathNormalizer` в `collectAndCompareSkills` (D-M007)
+  - `ai/skills/**/SKILL.md` — заменить `${SKILL_DIR}` на dev-пути `~/Developer/gennady/ai/skills/...`; заменить `npx gennady` CLI-вызовы на `npx tsx ~/Developer/gennady/cli/...` (см. D-M007 §Rules)
+  - `ai/skills/**/scripts/*.sh` — заменить хардкод-пути на `~/Developer/gennady/...` (см. D-M007 §Rules)
+  - `ai/directives/**/*.xml` — заменить абсолютные dev-пути на `~/Developer/gennady/...` (см. sync.spec.md D-M005)
   - `cli/gennady.ts` — добавить `case 'sync-skills': await import('./cmd/sync-skills/index.ts'); break`
   - `cli/AGENTS.md` — добавить строку `sync-skills` в таблицу команд
   - `cli/cmd/help/help.cmd.ts` — добавить `sync-skills` в вывод help
@@ -357,7 +400,8 @@ graph TD
   - Интеграционные тесты sync-skills.cmd.test.ts требуют временной директории с мок-файлами — использовать `fs.mkdtempSync` + очистку
   - Orphan-удаление директорий: `fs.rmdirSync` с `{ recursive: true }` доступен с Node.js 12 — OK для Node 22+
   - `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты `sync` не ломаются (добавить поля в моки)
-  - 13 скилов в `ai/skills/` — нужно физически скопировать из `~/.config/opencode/skills/` (12) + `~/.claude/skills/sdd-critic/` (1), адаптировав пути с `~/.config/opencode/skills/` на `${SKILL_DIR}`
+  - Нормализация путей (D-M007): проверить что регекс-правила не задевают пути в frontmatter или других структурных элементах, где замена нежелательна
+  - Нормализация путей (D-M007): убедиться что `compareBytes` для нормализованного содержимого работает корректно — сравнение идёт ПОСЛЕ нормализации
   - `package.json#files` уже включает `"ai/**/*"` — `ai/skills/` попадёт в пакет автоматически. Проверить после публикации
 
 ### Round 4 — 2026-05-30
@@ -395,3 +439,15 @@ graph TD
 - **Root cause:** The original `sync` module's `sync-core.ts` has this pattern (`mkdirSync(join(p, '..'), { recursive: true })`), but the new `syncFile` didn't inherit it.
 - **Fix:** Added `mkdir` parameter to `syncFile` signature; caller passes `deps.mkdir`. Parent directory created before every `writeFile`.
 - **Lesson:** Any file-writing function in a sync context must ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path.
+
+### D-M007 — PathNormalizer: замена dev-путей на продуктовые при синхронизации
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, sync-skills, refine
+- **Why:** Навыки в исходниках (`ai/skills/`) используют dev-пути (`~/Developer/gennady/ai/skills/...`, `npx tsx ~/Developer/gennady/cli/...`) чтобы локально работать с актуальным кодом gennady. При синхронизации в пользовательский проект эти пути должны заменяться на продуктовые эквиваленты (`.claude/skills/...`, `npx gennady ...`, `ai/directives/...`). Без нормализации скиллы после sync-skills содержат битые пути, указывающие на несуществующую dev-машину.
+- **Risk accepted:** Регекс-замена может задеть prose, где dev-путь упомянут в документации. Это допустимо — в продуктовой версии упоминание dev-пути в prose так же бессмысленно, как в коде. Правила упорядочены от специфичных к общим, чтобы избежать конфликтов.
+- **Risk accepted:** Добавление новых dev-путей в будущем потребует обновления правил. Смягчается тем, что правила — константа в одном файле.
+- **Rejected alternatives:**
+  - Переменные `${SKILL_DIR}` / `${GENNADY_CLI}` вместо dev-путей — агент не резолвит их в dev-режиме (там нет хостера, который подставит значения)
+  - Два набора файлов (dev + prod) — дублирование, расхождение
+  - Пост-обработка отдельной командой — требует от пользователя двух шагов; нормализация — часть контракта sync

@@ -43,7 +43,7 @@ Output: a compact self-assessment table before proceeding to mechanical checks.
 **BATCH ALL READS.** Use the SDD scan tool for one-shot snapshot, then targeted reads.
 
 1. **One bash call** to get comprehensive snapshot:
-   `${SKILL_DIR}/scripts/sdd scan <project-root>`
+   `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan <project-root>`
    This emits [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY] in a single call — replaces multiple find/grep commands.
 
 2. **Concurrent reads** of all key files: Portal, scope specs (from SPECS list), trackers with issues (from WARNINGS). Do NOT read module specs initially — only if Check 2 needs them.
