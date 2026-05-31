@@ -263,7 +263,11 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 - **Risk accepted:** Shared-код меняет File Structure модуля — `sync-formatter.ts` переносится в shared. `SyncCmdDeps` пополняется двумя полями. Существующие юнит-тесты нужно обновить (добавить `unlink`, `rmdir` в моки).
 - **Rejected alternatives:**
   - Оставить дублирование — расхождение формата при независимой эволюции
-  - Вынести только `resolvePackageDir` без форматтера — не решает проблему консистентности вывода
+   - Вынести только `resolvePackageDir` без форматтера — не решает проблему консистентности вывода
+
+### Insight — 2026-05-31: mkdir-before-write contract is deliberate
+- **What happened:** The `sync` module's `sync-core.ts` already has `mkdirSync(join(p, '..'), { recursive: true })` before every `writeFile`. This pattern was not inherited by `syncFile` in the new `sync-skills` module, causing ENOENT on first run.
+- **Lesson:** The `mkdir`-before-`writeFile` pattern in `sync-core.ts` is a deliberate contract, not incidental. Any refactoring that extracts shared writing logic (e.g., D-M004) must either preserve inline `mkdir` calls or expose `mkdir` through DI so callees can ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path for both modules.
 
 ## 8. Inter-Module Dependencies
 

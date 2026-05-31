@@ -116,7 +116,8 @@ export function syncFile(
   targetData: Buffer | undefined,
   targetSkillDir: string,
   dryRun: boolean,
-  writeFile: (path: string, data: Buffer) => void
+  writeFile: (path: string, data: Buffer) => void,
+  mkdir: (path: string, opts?: { recursive: boolean }) => void
 ): SyncSkillsFileEntry {
   let status: SyncSkillsFileStatus;
   if (!targetData) {
@@ -128,7 +129,9 @@ export function syncFile(
   }
 
   if (!dryRun && status !== 'unchanged') {
-    writeFile(join(targetSkillDir, relativePath), sourceData);
+    const filePath = join(targetSkillDir, relativePath);
+    mkdir(join(filePath, '..'), { recursive: true });
+    writeFile(filePath, sourceData);
   }
 
   return {
@@ -313,6 +316,7 @@ export function collectAndCompareSkills(
   // #endregion END_VALIDATE_INPUTS
 
   const _writeFile = deps.writeFile!;
+  const _mkdir = deps.mkdir!;
 
   // #region START_SCAN_SKILLS — invariants: scan source returns skill→files map; list target skills for orphan detection
   const sourceSkills = scanSkills(opts.sourceDir, opts.skillNames);
@@ -347,7 +351,7 @@ export function collectAndCompareSkills(
     )) {
       const targetData = targetFiles.get(relativePath);
       entries.push(
-        syncFile(skillName, relativePath, sourceData, targetData, targetSkillDir, opts.dryRun ?? false, _writeFile)
+        syncFile(skillName, relativePath, sourceData, targetData, targetSkillDir, opts.dryRun ?? false, _writeFile, _mkdir)
       );
     }
 

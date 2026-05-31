@@ -189,8 +189,25 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
    - При пустом `entries` — только итоговая строка `Synced: 0 added, 0 updated, 0 skipped, 0 deleted`.
    - `deleted` статус — только на уровне целого скила. Смешанные статусы (часть файлов added, часть deleted) внутри одного скила невозможны.
 - **Invariants:**
-  - Не делает I/O
-  - Формат строки: `  <marker> <skillName>/<padding><status_label>`
+   - Не делает I/O
+   - Формат строки: `  <marker> <skillName>/<padding><status_label>`
+
+### 4.4 Helper: `syncFile`
+
+- **Purpose:** Копирует отдельный файл из source в target с проверкой изменений
+- **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- **Preconditions:**
+  - `syncFile` MUST ensure the target file's parent directory exists before writing. Caller or callee must invoke `mkdir(targetParent, { recursive: true })` before `writeFile`. Failing to do so causes `ENOENT` on the first file in a new skill directory.
+- **Postconditions:**
+  - Файл в target идентичен файлу в source (побайтово)
+- **Invariants:**
+  - Не пишет в stdout/stderr
 
 ## 5. Public Options & Policies
 
@@ -368,4 +385,10 @@ graph TD
 - **Принято (confusion):** 0
 - **Отклонено:** 0 находок
 - **Изменения:**
-  - §3 Format: удалена дублирующая строка про deleteFailed
+   - §3 Format: удалена дублирующая строка про deleteFailed
+
+### Insight — 2026-05-31: mkdir-before-write contract
+- **What happened:** `syncFile` in sync-skills-core.ts was missing `mkdir` before `writeFile`, causing ENOENT on first run.
+- **Root cause:** The original `sync` module's `sync-core.ts` has this pattern (`mkdirSync(join(p, '..'), { recursive: true })`), but the new `syncFile` didn't inherit it.
+- **Fix:** Added `mkdir` parameter to `syncFile` signature; caller passes `deps.mkdir`. Parent directory created before every `writeFile`.
+- **Lesson:** Any file-writing function in a sync context must ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path.
