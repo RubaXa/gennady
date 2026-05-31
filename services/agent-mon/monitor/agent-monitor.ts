@@ -26,11 +26,11 @@ export class AgentMonitor {
    * @post Provider is stored in the registry under the given key.
    */
   register(key: string, provider: AgentProvider): void {
-    // #region START_ENFORCE_UNIQUE_PROVIDER_KEY — invariant: provider keys must be unique; duplicate registration is a contract violation
+    // // --- ENFORCE_UNIQUE_PROVIDER_KEY — invariant: provider keys must be unique; duplicate registration is a contract violation
     if (this._providers.has(key)) {
       throw new DuplicateProviderError(key);
     }
-    // #endregion END_ENFORCE_UNIQUE_PROVIDER_KEY
+    // // --- end ENFORCE_UNIQUE_PROVIDER_KEY
 
     this._providers.set(key, provider);
     logger.debug(`[AgentMonitor#register] [idle → registered] ${key}`);
@@ -56,7 +56,7 @@ export class AgentMonitor {
   async scanAll(opts?: ScanOpts): Promise<AgentSession[]> {
     logger.debug(`[AgentMonitor#scanAll] [idle → scanning] providers=${this._providers.size}`);
 
-    // #region START_GATHER_PROVIDER_SCANS — invariant: Promise.all preserves concurrency; individual failures are caught and logged per N3 graceful degradation
+    // // --- GATHER_PROVIDER_SCANS — invariant: Promise.all preserves concurrency; individual failures are caught and logged per N3 graceful degradation
     const scans = await Promise.all(
       [...this._providers.values()].map(async (provider) => {
         try {
@@ -70,11 +70,11 @@ export class AgentMonitor {
         }
       })
     );
-    // #endregion END_GATHER_PROVIDER_SCANS
+    // // --- end GATHER_PROVIDER_SCANS
 
-    // #region START_FLATTEN_AND_SORT — invariant: sort by startedAt descending; flat() concatenates all provider results
+    // // --- FLATTEN_AND_SORT — invariant: sort by startedAt descending; flat() concatenates all provider results
     const sessions = scans.flat().sort((a, b) => b.startedAt - a.startedAt);
-    // #endregion END_FLATTEN_AND_SORT
+    // // --- end FLATTEN_AND_SORT
 
     logger.info(`[AgentMonitor#scanAll] [scanning → completed] sessions=${sessions.length}`);
     return sessions;
@@ -91,12 +91,12 @@ export class AgentMonitor {
   async scanOne(key: string, opts?: ScanOpts): Promise<AgentSession[]> {
     logger.debug(`[AgentMonitor#scanOne] [idle → scanning] ${key}`);
 
-    // #region START_ENSURE_PROVIDER_EXISTS — invariant: unknown key is a contract violation → ProviderNotFoundError
+    // // --- ENSURE_PROVIDER_EXISTS — invariant: unknown key is a contract violation → ProviderNotFoundError
     const provider = this._providers.get(key);
     if (provider === undefined) {
       throw new ProviderNotFoundError(key);
     }
-    // #endregion END_ENSURE_PROVIDER_EXISTS
+    // // --- end ENSURE_PROVIDER_EXISTS
 
     try {
       const sessions = await provider.scan(opts);

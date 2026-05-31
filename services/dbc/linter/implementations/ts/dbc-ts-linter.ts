@@ -32,7 +32,7 @@ import {
   ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
 } from '../../dbc-linter.types.ts';
 
-// #region START_KIND_CLASSIFICATION
+// --- KIND_CLASSIFICATION
 /** @purpose Set of entity/member kinds that require parameter matching against signature. */
 const KINDS_WITH_PARAMS: ReadonlySet<string> = new Set([
   'function',
@@ -75,9 +75,9 @@ const ALL_KNOWN_KINDS: ReadonlySet<string> = new Set([
   ...KINDS_NO_RETURNS,
   'export-default',
 ]);
-// #endregion END_KIND_CLASSIFICATION
+// --- END KIND_CLASSIFICATION
 
-// #region START_VALIDATOR_HELPERS
+// --- VALIDATOR_HELPERS
 
 /**
  * @purpose Normalise a contract entry specifier for comparison with a signature parameter name.
@@ -110,9 +110,9 @@ function blankError(code: DbcLintIssueCode | DbcIssueCode, message: string): Dbc
   };
 }
 
-// #endregion END_VALIDATOR_HELPERS
+// --- END VALIDATOR_HELPERS
 
-// #region START_DBC_CONTRACT_MATCH_VALIDATOR
+// --- DBC_CONTRACT_MATCH_VALIDATOR
 
 /**
  * @purpose Pure-function validator that compares parsed contract entries against | a code signature and returns structural mismatches.
@@ -142,7 +142,7 @@ export function validate(
   const alwaysReturns = KINDS_ALWAYS_RETURNS.has(kind);
   const noReturns = KINDS_NO_RETURNS.has(kind);
 
-  // #region START_PARAM_VALIDATION
+  // --- PARAM_VALIDATION
   if (hasParams) {
     const sigParamNames = signature.params.map((p) => p.name);
     const contractParamNames = paramEntries.map((pe) => normalizeSpecifier(pe.specifier ?? ''));
@@ -221,9 +221,9 @@ export function validate(
       errors.push(blankError(ERR_DBC_LINT_PARAM_EXTRA, `@param not applicable for kind '${kind}'`));
     }
   }
-  // #endregion END_PARAM_VALIDATION
+  // --- END PARAM_VALIDATION
 
-  // #region START_RETURNS_VALIDATION
+  // --- RETURNS_VALIDATION
   if (alwaysReturns) {
     // getter: must have @returns
     if (!returnsEntry) {
@@ -250,9 +250,9 @@ export function validate(
       blankError(ERR_DBC_LINT_RETURNS_UNEXPECTED, `@returns not applicable for kind '${kind}'`)
     );
   }
-  // #endregion END_RETURNS_VALIDATION
+  // --- END RETURNS_VALIDATION
 
-  // #region START_TYPE_REDUNDANT_CHECK
+  // --- TYPE_REDUNDANT_CHECK
   for (const entry of entries) {
     if ((entry.type === 'param' || entry.type === 'returns') && entry.dataType) {
       errors.push(
@@ -260,14 +260,14 @@ export function validate(
       );
     }
   }
-  // #endregion END_TYPE_REDUNDANT_CHECK
+  // --- END TYPE_REDUNDANT_CHECK
 
   return errors;
 }
 
-// #endregion END_DBC_CONTRACT_MATCH_VALIDATOR
+// --- END DBC_CONTRACT_MATCH_VALIDATOR
 
-// #region START_ESLINT_FORMATTER
+// --- ESLINT_FORMATTER
 
 /**
  * @purpose Format an array of errors in ESLint-compatible output.
@@ -279,9 +279,9 @@ function formatErrors(errors: DbcLintError[]): string {
     .join('\n');
 }
 
-// #endregion END_ESLINT_FORMATTER
+// --- END ESLINT_FORMATTER
 
-// #region START_DBC_TS_LINTER
+// --- DBC_TS_LINTER
 
 /**
  * @purpose TypeScript adapter implementing the DbcLinter contract. | Pass 1: AST extraction. Pass 2: contract validation + signature matching. | Pass 3: ESLint report. Pass 4: autofix chain.
@@ -367,12 +367,12 @@ export class DbcTsLinter implements DbcLinter {
     logger.debug(`[DbcTsLinter#lintAndFix] [idle → linting] ${filePath}`);
 
     try {
-      // #region START_INITIAL_LINT
+      // --- INITIAL_LINT
       const initialReport = await this.lint(filePath, options);
       const initialCount = initialReport.errors.length;
-      // #endregion END_INITIAL_LINT
+      // --- END INITIAL_LINT
 
-      // #region START_AUTOFIX_CHAIN
+      // --- AUTOFIX_CHAIN
       const parseResult = await this._astAdapter.parseFile(filePath, options?.content);
       if (!parseResult.ok) {
         return {
@@ -442,9 +442,9 @@ export class DbcTsLinter implements DbcLinter {
       } else {
         logger.info(`[DbcTsLinter#lintAndFix] [linting → clean] ${filePath} (nothing to fix)`);
       }
-      // #endregion END_AUTOFIX_CHAIN
+      // --- END AUTOFIX_CHAIN
 
-      // #region START_RELINT
+      // --- RELINT
       // purpose: re-lint from disk (not cached content) to verify autofix result
       const finalReport = anyChanged
         ? await this.lint(filePath, { strategy: 'full' })
@@ -458,7 +458,7 @@ export class DbcTsLinter implements DbcLinter {
         autoFixed: autoFixed >= 0 ? autoFixed : 0,
         format: () => formatErrors(finalReport.errors),
       };
-      // #endregion END_RELINT
+      // --- END RELINT
     } catch (cause) {
       const error = new Error(`[DbcTsLinter#lintAndFix] Fix failed for ${filePath}`, { cause });
       logger.error(`[DbcTsLinter#lintAndFix] [linting → failed] ${filePath}`, { error });
@@ -489,7 +489,7 @@ export class DbcTsLinter implements DbcLinter {
     }
   }
 
-  // #region START_LINT_HELPERS
+  // --- LINT_HELPERS
 
   /**
    * @purpose Walk all exported entities and their members, collecting lint errors.
@@ -501,7 +501,7 @@ export class DbcTsLinter implements DbcLinter {
     const errors: DbcLintError[] = [];
 
     for (const entity of entities) {
-      // #region START_ENTITY_CONTRACT_CHECK
+      // --- ENTITY_CONTRACT_CHECK
       if (!entity.contract) {
         errors.push(
           blankError(
@@ -520,9 +520,9 @@ export class DbcTsLinter implements DbcLinter {
         );
         errors.push(...entityErrors);
       }
-      // #endregion END_ENTITY_CONTRACT_CHECK
+      // --- END ENTITY_CONTRACT_CHECK
 
-      // #region START_MEMBER_CONTRACT_CHECK
+      // --- MEMBER_CONTRACT_CHECK
       for (const member of entity.members) {
         if (!member.contract) {
           errors.push(
@@ -543,7 +543,7 @@ export class DbcTsLinter implements DbcLinter {
           errors.push(...memberErrors);
         }
       }
-      // #endregion END_MEMBER_CONTRACT_CHECK
+      // --- END MEMBER_CONTRACT_CHECK
     }
 
     // Assign file path and stable positions (entity order)
@@ -575,7 +575,7 @@ export class DbcTsLinter implements DbcLinter {
   ): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
-    // #region START_PARSER_VALIDATION
+    // --- PARSER_VALIDATION
     const schema: DbcSchema = this._parser.parse(contractText);
 
     // Flatten entries to include inline entries from single-line contracts
@@ -603,9 +603,9 @@ export class DbcTsLinter implements DbcLinter {
         });
       }
     }
-    // #endregion END_PARSER_VALIDATION
+    // --- END PARSER_VALIDATION
 
-    // #region START_SIGNATURE_VALIDATION
+    // --- SIGNATURE_VALIDATION
     const matchErrors = validate(flatEntries, signature, kind);
     for (const me of matchErrors) {
       errors.push({
@@ -615,14 +615,14 @@ export class DbcTsLinter implements DbcLinter {
         col: startCol,
       });
     }
-    // #endregion END_SIGNATURE_VALIDATION
+    // --- END SIGNATURE_VALIDATION
 
     return errors;
   }
 
-  // #endregion END_LINT_HELPERS
+  // --- END LINT_HELPERS
 
-  // #region START_AUTOFIX_COLLECT
+  // --- AUTOFIX_COLLECT
 
   /** @purpose Internal record of a contract block with context for autofix. */
   protected _ContractBlock = class {
@@ -661,9 +661,9 @@ export class DbcTsLinter implements DbcLinter {
     return blocks;
   }
 
-  // #endregion END_AUTOFIX_COLLECT
+  // --- END AUTOFIX_COLLECT
 
-  // #region START_AUTOFIX_CHAIN_METHODS
+  // --- AUTOFIX_CHAIN_METHODS
 
   /**
    * @purpose Expand single-line pipe contracts to multi-line for callable kinds or >3 tags.
@@ -908,7 +908,7 @@ export class DbcTsLinter implements DbcLinter {
     const sigOrder = signature.params.map((p) => p.name);
     const lines = jsdocText.split('\n');
 
-    // #region START_EXTRACT_PARAM_BLOCKS
+    // --- EXTRACT_PARAM_BLOCKS
     // Extract @param blocks: each block = the @param line + its continuation lines
     type ParamBlock = { name: string; lines: string[] };
     const paramBlocks: ParamBlock[] = [];
@@ -977,9 +977,9 @@ export class DbcTsLinter implements DbcLinter {
     if (currentBlock) {
       paramBlocks.push(currentBlock);
     }
-    // #endregion END_EXTRACT_PARAM_BLOCKS
+    // --- END EXTRACT_PARAM_BLOCKS
 
-    // #region START_REORDER_BLOCKS
+    // --- REORDER_BLOCKS
     // Sort param blocks to match signature order; unmatched stay at end
     const nameToBlock = new Map<string, ParamBlock>();
     for (const block of paramBlocks) {
@@ -998,16 +998,16 @@ export class DbcTsLinter implements DbcLinter {
     for (const [, block] of nameToBlock) {
       reordered.push(block);
     }
-    // #endregion END_REORDER_BLOCKS
+    // --- END REORDER_BLOCKS
 
-    // #region START_REBUILD
+    // --- REBUILD
     const rebuilt: string[] = [...preamble];
     for (const block of reordered) {
       rebuilt.push(...block.lines);
     }
     rebuilt.push(...postamble);
     return rebuilt.join('\n');
-    // #endregion END_REBUILD
+    // --- END REBUILD
   }
 
   /**
@@ -1043,7 +1043,7 @@ export class DbcTsLinter implements DbcLinter {
     let inTags = false;
     let closingLine: string | null = null;
 
-    // #region START_PARSE_TAG_BLOCKS — purpose: separate description, tag blocks, and closing */
+    // --- PARSE_TAG_BLOCKS — purpose: separate description, tag blocks, and closing */
     for (const line of lines) {
       let trimmed = line.trim();
       if (trimmed === '*/' || trimmed === '*/ ') {
@@ -1079,9 +1079,9 @@ export class DbcTsLinter implements DbcLinter {
     if (currentBlock) {
       tagBlocks.push(currentBlock);
     }
-    // #endregion END_PARSE_TAG_BLOCKS
+    // --- END PARSE_TAG_BLOCKS
 
-    // #region START_SORT_AND_REBUILD — purpose: sort by canonical order, preserve relative for same-order
+    // --- SORT_AND_REBUILD — purpose: sort by canonical order, preserve relative for same-order
     const stable = tagBlocks.map((b, i) => ({ ...b, origIdx: i }));
     stable.sort((a, b) => {
       if (a.order !== b.order) return a.order - b.order;
@@ -1095,7 +1095,7 @@ export class DbcTsLinter implements DbcLinter {
     if (closingLine !== null) {
       rebuilt.push(closingLine);
     }
-    // #endregion END_SORT_AND_REBUILD
+    // --- END SORT_AND_REBUILD
 
     return rebuilt.join('\n');
   }
@@ -1179,7 +1179,7 @@ export class DbcTsLinter implements DbcLinter {
       return jsdocText;
     }
 
-    // #region START_BUILD_INLINE
+    // --- BUILD_INLINE
     const lines = jsdocText
       .replace(/^\/\*\*\s*/, '')
       .replace(/\s*\*\/\s*$/, '')
@@ -1212,7 +1212,7 @@ export class DbcTsLinter implements DbcLinter {
     }
 
     return inlineText;
-    // #endregion END_BUILD_INLINE
+    // --- END BUILD_INLINE
   }
 
   /**
@@ -1230,7 +1230,7 @@ export class DbcTsLinter implements DbcLinter {
     return match ? match[1] : '';
   }
 
-  // #endregion END_AUTOFIX_CHAIN_METHODS
+  // --- END AUTOFIX_CHAIN_METHODS
 }
 
-// #endregion END_DBC_TS_LINTER
+// --- END DBC_TS_LINTER

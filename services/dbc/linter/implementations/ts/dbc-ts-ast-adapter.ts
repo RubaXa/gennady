@@ -40,7 +40,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts
    */
   async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
-    // #region START_PARSE_FILE
+    // --- PARSE_FILE
     try {
       logger.debug(`[DbcTsAstAdapter#parseFile] [idle → reading] ${filePath}`);
       const source = content ?? readFileSync(filePath, 'utf8');
@@ -61,7 +61,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       );
       return { ok: true, exported };
     } catch (cause) {
-      // #region START_PARSE_FILE_CATCH
+      // --- PARSE_FILE_CATCH
       const isFileNotFound =
         cause instanceof Error &&
         'code' in cause &&
@@ -76,9 +76,9 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       });
       logger.error(`[DbcTsAstAdapter#parseFile] [reading → failed] ${filePath}`, { error });
       return { ok: false, error: `Failed to parse ${filePath}: ${String(cause)}` };
-      // #endregion END_PARSE_FILE_CATCH
+      // --- END PARSE_FILE_CATCH
     }
-    // #endregion END_PARSE_FILE
+    // --- END PARSE_FILE
   }
 
   /**
@@ -109,7 +109,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Array of exported entities.
    */
   protected _extractExported(root: SyntaxNode, source: string): DbcExportedEntity[] {
-    // #region START_EXTRACT_EXPORTED
+    // --- EXTRACT_EXPORTED
     const entities: DbcExportedEntity[] = [];
     let pendingContract: RawContract | undefined;
 
@@ -148,7 +148,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     }
 
     return entities;
-    // #endregion END_EXTRACT_EXPORTED
+    // --- END EXTRACT_EXPORTED
   }
 
   /**
@@ -164,7 +164,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     source: string,
     pendingContract: RawContract | undefined
   ): DbcExportedEntity | undefined {
-    // #region START_EXTRACT_EXPORT_ENTITY
+    // --- EXTRACT_EXPORT_ENTITY
     // Detect re-exports: `export { ... } from '...'` or `export * from '...'`
     if (this._isReExport(node)) {
       return undefined;
@@ -214,7 +214,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       signature,
       implementsInterfaces,
     };
-    // #endregion END_EXTRACT_EXPORT_ENTITY
+    // --- END EXTRACT_EXPORT_ENTITY
   }
 
   /**
@@ -361,7 +361,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Parameter info.
    */
   protected _extractParam(paramNode: SyntaxNode, source: string): DbcParamInfo {
-    // #region START_EXTRACT_PARAM
+    // --- EXTRACT_PARAM
     let name = '';
     let type = 'any';
     let optional = paramNode.type === 'optional_parameter';
@@ -431,7 +431,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     }
 
     return { name, type, optional, isRest };
-    // #endregion END_EXTRACT_PARAM
+    // --- END EXTRACT_PARAM
   }
 
   /**
@@ -442,7 +442,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Array of members (empty for non-collection entities).
    */
   protected _extractMembers(node: SyntaxNode, source: string, kind: string): DbcMember[] {
-    // #region START_EXTRACT_MEMBERS
+    // --- EXTRACT_MEMBERS
     if (kind === 'class') {
       return this._extractClassMembers(node, source);
     }
@@ -456,7 +456,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       return this._extractTypeAliasMembers(node, source);
     }
     return [];
-    // #endregion END_EXTRACT_MEMBERS
+    // --- END EXTRACT_MEMBERS
   }
 
   /**
@@ -466,7 +466,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Array of class members.
    */
   protected _extractClassMembers(node: SyntaxNode, source: string): DbcMember[] {
-    // #region START_EXTRACT_CLASS_MEMBERS
+    // --- EXTRACT_CLASS_MEMBERS
     const body = node.childForFieldName?.('body') ?? null;
     if (!body) return [];
 
@@ -536,7 +536,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     }
 
     return members;
-    // #endregion END_EXTRACT_CLASS_MEMBERS
+    // --- END EXTRACT_CLASS_MEMBERS
   }
 
   /**
@@ -546,11 +546,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Array of interface members.
    */
   protected _extractInterfaceMembers(node: SyntaxNode, source: string): DbcMember[] {
-    // #region START_EXTRACT_INTERFACE_MEMBERS
+    // --- EXTRACT_INTERFACE_MEMBERS
     const body = node.childForFieldName?.('body') ?? null;
     if (!body) return [];
     return this._extractObjectTypeMembers(body, source);
-    // #endregion END_EXTRACT_INTERFACE_MEMBERS
+    // --- END EXTRACT_INTERFACE_MEMBERS
   }
 
   /**
@@ -688,7 +688,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Array of enum members.
    */
   protected _extractEnumMembers(node: SyntaxNode, source: string): DbcMember[] {
-    // #region START_EXTRACT_ENUM_MEMBERS
+    // --- EXTRACT_ENUM_MEMBERS
     const body = node.childForFieldName?.('body') ?? null;
     if (!body) return [];
 
@@ -742,7 +742,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     }
 
     return members;
-    // #endregion END_EXTRACT_ENUM_MEMBERS
+    // --- END EXTRACT_ENUM_MEMBERS
   }
 
   /**
@@ -826,7 +826,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns First ERROR node found, or undefined.
    */
   protected _findErrorNode(node: SyntaxNode): SyntaxNode | undefined {
-    // #region START_FIND_ERROR_NODE
+    // --- FIND_ERROR_NODE
     if (node.type === 'ERROR' || (node as unknown as { isError: boolean }).isError) {
       return node;
     }
@@ -837,6 +837,6 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       if (found) return found;
     }
     return undefined;
-    // #endregion END_FIND_ERROR_NODE
+    // --- END FIND_ERROR_NODE
   }
 }

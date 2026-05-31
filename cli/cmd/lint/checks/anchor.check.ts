@@ -12,7 +12,7 @@ import {
 } from '../lint.types.ts';
 import { stripStringsAndComments } from './utils/strip-strings-comments.ts';
 
-/** @purpose Compiled regex for matching `#region START_NAME` / `#endregion END_NAME` directives per AX_ANCHOR_FORMAT. */
+/** @purpose Compiled regex for matching `// --- NAME` / `// --- end NAME` directives per AX_ANCHOR_FORMAT. */
 const ANCHOR_RE = /\/\/ #(region|endregion)\s+(START|END)_([A-Z0-9_]+)/;
 
 /** @purpose Regex for bare `#region` / `#endregion` without START_ / END_ prefix. */
@@ -56,9 +56,9 @@ export function check(content: string, filePath: string): LintError[] {
       const directiveIdx = line.indexOf(directive, startIdx);
       const col = (directiveIdx >= 0 ? directiveIdx : startIdx) + 1;
 
-      // #region START_PUSH_TO_STACK
+      // // --- PUSH_TO_STACK
       if (directive === 'START') {
-        // #region START_CONSECUTIVE_CHECK — invariant: two STARTs at same brace depth without intervening content or END
+        // // --- CONSECUTIVE_CHECK — invariant: two STARTs at same brace depth without intervening content or END
         const lastStart = lastStartByDepth.get(braceDepth);
         const hadContent = contentSinceAnchor.get(braceDepth) ?? false;
         if (lastStart && isStartStillOpen(stack, lastStart) && !hadContent) {
@@ -71,20 +71,20 @@ export function check(content: string, filePath: string): LintError[] {
             message: `START_${name} immediately follows START_${lastStart.name} at the same level — merge regions or close START_${lastStart.name} first`,
           });
         }
-        // #endregion END_CONSECUTIVE_CHECK
+        // // --- end CONSECUTIVE_CHECK
 
         stack.push({ name, line: lineNum, col });
         lastStartByDepth.set(braceDepth, { name, line: lineNum, col });
         contentSinceAnchor.set(braceDepth, false);
         continue;
       }
-      // #endregion END_PUSH_TO_STACK
+      // // --- end PUSH_TO_STACK
 
-      // #region START_RESOLVE_END_DIRECTIVE — invariant: finds matching START in stack from top; reports nesting for unclosed blocks above match
+      // // --- RESOLVE_END_DIRECTIVE — invariant: finds matching START in stack from top; reports nesting for unclosed blocks above match
       const matchIdx = findLastMatchingIndex(stack, (e) => e.name === name);
 
       if (matchIdx === -1) {
-        // #region START_UNPAIRED_END
+        // // --- UNPAIRED_END
         errors.push({
           file: filePath,
           line: lineNum,
@@ -93,9 +93,9 @@ export function check(content: string, filePath: string): LintError[] {
           code: ERR_CLI_LINT_ANCHOR_UNPAIRED_END,
           message: `END_${name} without matching START_${name} — add the missing opening anchor or remove this closing one`,
         });
-        // #endregion END_UNPAIRED_END
+        // // --- end UNPAIRED_END
       } else {
-        // #region START_NESTING_CHECK
+        // // --- NESTING_CHECK
         for (let j = stack.length - 1; j > matchIdx; j--) {
           const entry = stack[j];
           errors.push({
@@ -108,23 +108,23 @@ export function check(content: string, filePath: string): LintError[] {
           });
         }
         stack.length = matchIdx;
-        // #endregion END_NESTING_CHECK
-        // #region START_RESET_CONSECUTIVE — invariant: END resets consecutive tracking at this depth
+        // // --- end NESTING_CHECK
+        // // --- RESET_CONSECUTIVE — invariant: END resets consecutive tracking at this depth
         lastStartByDepth.delete(braceDepth);
         contentSinceAnchor.set(braceDepth, false);
-        // #endregion END_RESET_CONSECUTIVE
+        // // --- end RESET_CONSECUTIVE
       }
-      // #endregion END_RESOLVE_END_DIRECTIVE
+      // // --- end RESOLVE_END_DIRECTIVE
       continue;
     }
 
-    // #region START_CONTENT_TRACKING — invariant: non-anchor, non-empty, non-comment-only lines mark content at current depth
+    // // --- CONTENT_TRACKING — invariant: non-anchor, non-empty, non-comment-only lines mark content at current depth
     if (isSignificantLine(line)) {
       contentSinceAnchor.set(braceDepth, true);
     }
-    // #endregion END_CONTENT_TRACKING
+    // // --- end CONTENT_TRACKING
 
-    // #region START_BARE_ANCHOR_CHECK — invariant: bare #region/#endregion without START_/END_ is malformed
+    // // --- BARE_ANCHOR_CHECK — invariant: bare #region/#endregion without START_/END_ is malformed
     const bareMatch = line.match(BARE_ANCHOR_RE);
     if (bareMatch) {
       const lineNum = i + 1;
@@ -143,10 +143,10 @@ export function check(content: string, filePath: string): LintError[] {
             message: `#endregion without END_<NAME> — expected END_${top.name} (auto-closed by stack top START_${top.name} at line ${top.line})`,
           });
           stack.pop();
-          // #region START_BARE_END_CLEANUP — invariant: bare end resets consecutive tracking
+          // // --- BARE_END_CLEANUP — invariant: bare end resets consecutive tracking
           lastStartByDepth.delete(braceDepth);
           contentSinceAnchor.set(braceDepth, false);
-          // #endregion END_BARE_END_CLEANUP
+          // // --- end BARE_END_CLEANUP
         } else {
           errors.push({
             file: filePath,
@@ -169,10 +169,10 @@ export function check(content: string, filePath: string): LintError[] {
         });
       }
     }
-    // #endregion END_BARE_ANCHOR_CHECK
+    // // --- end BARE_ANCHOR_CHECK
   }
 
-  // #region START_COLLECT_UNPAIRED_STARTS
+  // // --- COLLECT_UNPAIRED_STARTS
   for (const entry of stack) {
     errors.push({
       file: filePath,
@@ -183,7 +183,7 @@ export function check(content: string, filePath: string): LintError[] {
       message: `START_${entry.name} without matching END_${entry.name} — add the missing closing anchor`,
     });
   }
-  // #endregion END_COLLECT_UNPAIRED_STARTS
+  // // --- end COLLECT_UNPAIRED_STARTS
 
   errors.sort((a, b) => a.line - b.line || a.col - b.col);
   return errors;
