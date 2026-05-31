@@ -1,6 +1,6 @@
 // @file: CLI command: help
 // @consumers: N/A
-// @tasks: TSK-45, TSK-55
+// @tasks: TSK-45, TSK-55, TSK-57
 
 console.info('Gennady CLI');
 console.info('');
@@ -26,6 +26,9 @@ console.info(
 console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
 console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
+);
+console.info(
+  '  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/'
 );
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'

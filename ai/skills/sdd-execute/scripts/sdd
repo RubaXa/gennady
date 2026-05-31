@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# @file: SDD command dispatcher — single entry point for all SDD helper scripts.
+# @consumers: phase agents, audit agents, orchestrator skills
+# @contract: AX_BASH_NO_SILENT_EMPTY. Stable surface: `sdd <subcommand> <args>`.
+#
+# Subcommands:
+#   sdd extract <file> <NAME>           — extract <!--SECTION:NAME--> ... <!--/SECTION:NAME--> block
+#   sdd lint <file>...                  — run gennady DBC AST lint, parse output reliably
+#   sdd verify <file>...                — comprehensive gate: typecheck + gennady lint + forbidden_grep
+#   sdd check-blockers <ticket-file>    — scan Execution Log for unresolved BLOCKER entries
+#   sdd scan [project-root]             — emit comprehensive project snapshot (single rich call)
+#   sdd help                            — print this help
+#
+# Why this wrapper exists:
+#   - Single permission rule pattern: `Bash(scripts/sdd/sdd *)` covers ALL SDD operations.
+#   - Stable API across project lifetimes — script names underneath can change without breaking agent patterns.
+#   - Consistent error contract (AX_BASH_NO_SILENT_EMPTY) across all subcommands.
+#
+# Exit codes (forwarded from subcommand):
+#   0    — success
+#   1-N  — subcommand-specific failure (see each subcommand's documented codes)
+#   127  — unknown subcommand
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROG="sdd"
+SUBCMD="${1:-help}"
+shift 2>/dev/null || true
+
+case "$SUBCMD" in
+    extract)
+        exec "$SCRIPT_DIR/extract-section.sh" "$@"
+        ;;
+    lint)
+        exec "$SCRIPT_DIR/lint-artifacts.sh" "$@"
+        ;;
+    verify)
+        exec "$SCRIPT_DIR/verify.sh" "$@"
+        ;;
+    check-blockers)
+        exec "$SCRIPT_DIR/check-blockers.sh" "$@"
+        ;;
+    scan)
+        exec "$SCRIPT_DIR/scan.sh" "$@"
+        ;;
+    help|--help|-h)
+        cat <<'EOF'
+sdd — SDD command dispatcher
+
+USAGE
+    sdd <subcommand> <args>
+
+SUBCOMMANDS
+    extract <file> <NAME>       Extract anchored section from a markdown file.
+                                  NAME format: ^[A-Z][A-Z0-9_]*$
+                                  Examples: META, PHASES_OVERVIEW, PHASE_P1, BDD, VERIFICATION,
+                                            TEST_COVERAGE, EXECUTION_LOG
+
+    lint <file>...              Run gennady DBC AST lint on listed TypeScript files.
+                                  Output parsed for "[linting → clean]" / "[linting → failed]".
+                                  Exit code reliable (unlike raw gennady).
+
+    verify <file>...            Comprehensive verification gate — runs in this order:
+                                    (1) npm run typecheck
+                                    (2) gennady DBC lint on listed files
+                                    (3) forbidden-construct grep (private/enum/namespace/#/console)
+                                  Single PASS/FAIL summary. ALL must pass.
+
+    scan [root]                 Emit one rich snapshot of an SDD project:
+                                  [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY]
+                                  Designed so triage/check skills make ONE call instead of
+                                  many ad-hoc find/grep commands. Suspicious states
+                                  (DONE+placeholders, DONE+active-blocker, anchor mismatch,
+                                  unparseable Meta.Status, broken spec links) are surfaced
+                                  in [WARNINGS]. Defaults to current directory.
+
+    check-blockers <ticket>     Scan ticket Execution Log for unresolved BLOCKER entries.
+                                  A BLOCKER is considered RESOLVED if a later Round contains
+                                  a "✅ RESOLVED" entry referencing it. Returns list of
+                                  unresolved blockers, or PASS if all resolved / none.
+
+    help                        Print this help.
+
+PERMISSION HINT
+    Single project permission rule covers all subcommands:
+        "Bash(scripts/sdd/sdd *)"
+
+CONTRACT
+    All subcommands honor AX_BASH_NO_SILENT_EMPTY — empty output is never produced;
+    instead actionable diagnostic instructions are emitted with non-zero exit.
+EOF
+        exit 0
+        ;;
+    "")
+        echo "[$PROG] BAD_INVOCATION: no subcommand"
+        echo "  Run: sdd help"
+        exit 127
+        ;;
+    *)
+        cat <<EOF
+[$PROG] UNKNOWN_SUBCOMMAND: $SUBCMD
+
+Available subcommands: extract, lint, verify, check-blockers, scan, help.
+Run: sdd help
+EOF
+        exit 127
+        ;;
+esac

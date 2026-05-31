@@ -18,6 +18,19 @@ _Это полный список сущностей модуля. Любое в
 | `SyncCore`      | Service      | Ядро: `resolvePackageDir`, `scanDirectives`, `collectAndCompare`                                      |
 | `SyncFormatter` | Service      | Форматтер: `format(entries, opts) → string[]`                                                         |
 | `SyncCmdDeps`   | Port         | DI-порт: `readFile`, `writeFile`, `mkdir`, `stat`, `readdir`, `resolvePackageDir`, `stdout`, `stderr` |
+| `SyncCoreDeps`  | Port         | DI-порт для SyncCore: `readFile`, `writeFile`, `mkdir`, `stat`, `readdir`, `cwd` (все обязательные)   |
+| `formatEntries` | Function     | Backward-compat alias для `formatSyncOutput`; реэкспортирован из `sync-formatter.ts`                  |
+
+### shared/
+
+| Name                   | Type         | Purpose                                                                                  |
+| ---------------------- | ------------ | ---------------------------------------------------------------------------------------- |
+| `resolvePackageDir`    | Function     | `(projectRoot: string, subdir: string) => string \| null` — обнаружение пакета (shared)  |
+| `compareBytes`         | Function     | `(a: Buffer, b: Buffer) => boolean` — побайтовое сравнение (shared)                      |
+| `formatSyncOutput`     | Function     | `(entries: SyncFormatEntry[], opts: SyncFormatOptions) => string[]` — форматтер (shared) |
+| `SyncFormatEntry`      | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)  |
+| `SyncFormatOptions`    | Value Object | `{ dryRun?: boolean }` (shared)                                                          |
+| `SyncCmdDeps` (shared) | Port         | Расширенная версия с `unlink?`, `rmdir?` для sync-skills (shared)                        |
 
 ## 3. Entity Surfaces
 
@@ -80,7 +93,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Service (pure transformer)
 - **Purpose:** Форматирует `SyncFileEntry[]` в строки для stdout
 - **Public Operations:**
-  - `format(entries: SyncFileEntry[], opts: { dryRun?: boolean }): string[]` — массив строк для вывода
+  - `formatEntries(entries: SyncFileEntry[], opts: { dryRun?: boolean }): string[]` — массив строк для вывода
 - **Lifecycle:** Stateless
 - **Format:**
   - `added` → `  + <relativePath>`

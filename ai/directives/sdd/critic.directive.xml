@@ -1,291 +1,158 @@
-<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot-detection, autonomous-polish, multi-round, pre-execute-validation" type="directive" ver="2.0">
+<SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration" type="directive" ver="2.0">
   <Directive_Context>
     <Mission>
-      Autonomous multi-round critique of ONE SDD artifact — a scope spec or a task ticket. You are the ORCHESTRATOR, running in the root session where the skill was invoked. You dispatch an isolated critic subagent per round, evaluate its structured feedback against your full project context, surgically edit the artifact for accepted findings, and re-dispatch until the critic reports CLEAN or no edits were applied (max 5 rounds).
-
-      You own the artifact and apply edits directly. You have FULL project context — parent specs, related tasks, conventions. The critic subagent is ISOLATED: it receives ONLY the artifact + parent spec. Isolation is the detection mechanism — if the critic misunderstands, the artifact is ambiguous.
-
-      Input: artifact path (spec or task), resolved from operator command.
-      Output: round-by-round trace in `## Critic Rounds` section of artifact + ephemeral final summary in chat.
-
-      Glossary. Critic = isolated subagent, receives only artifact + parent spec. Orchestrator = you, the root session — evaluates feedback, edits artifact, controls the loop. Round = one cycle: dispatch → evaluate → edit → decide continuation.
+      Autonomous critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). You are the ORCHESTRATOR in the root session. Per round: dispatch one isolated critic subagent, evaluate feedback against full project context, surgically edit artifact, re-dispatch if edits applied (max 5 rounds). For batch: spec first, then tasks in DAG layers — parallel within layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding). Artifact is clean, improvements integrated.
     </Mission>
   </Directive_Context>
 
   <Belief_State>
-    <Axiom id="AX_ORCHESTRATOR_OWNS_ARTIFACT">
-      The orchestrator applies edits directly to the artifact file. The critic is a sensor — it provides structured feedback but never modifies files. The orchestrator decides which findings reveal genuine gaps requiring a fix and which are artifacts of isolation.
-    </Axiom>
-
-    <Axiom id="AX_CRITIC_ISOLATION_IS_THE_SIGNAL">
-      The critic receives ONLY: artifact path + parent spec path (for tasks). No other specs, no other tasks, no code, no rules. If the critic misunderstands the artifact — the artifact is underspecified and must be clarified. Confusion is a specification defect.
-    </Axiom>
-
-    <Axiom id="AX_RE_DISPATCH_ON_EDITS">
-      Any edit to the artifact triggers mandatory re-dispatch. Edits can create contradictions, break clarity, or shift meaning — only a fresh isolated agent can detect this. Even if the prior critic returned CLEAN but a minor edit was applied → re-dispatch.
-    </Axiom>
-
-    <Axiom id="AX_STOP_WHEN_NO_EDITS">
-      Zero edits applied → stop, regardless of verdict. Re-dispatching on an unchanged artifact produces the identical verdict. The orchestrator's rejection reasons in `Critic Rounds` document why the artifact stays as-is.
-    </Axiom>
-
-    <Axiom id="AX_MAX_FIVE_ROUNDS">
-      Hard cap: 5 rounds. Round 5 applied edits but critic not CLEAN → stop with MAX_ROUNDS. Signal: artifact has deep issues beyond autonomous repair.
-    </Axiom>
-
-    <Axiom id="AX_EXPLAIN_EVERY_REJECTION">
-      Every rejected finding carries a specific, contextual reason. "I have more context" is insufficient. Format: "Finding X is already covered in <parent-spec>§<section> — the critic's isolation prevented seeing this."
-    </Axiom>
-
-    <Axiom id="AX_ACCEPT_WHEN_UNCERTAIN">
-      Uncertain whether a finding is real → ACCEPT. Cost of rejecting a real finding (downstream bug) exceeds cost of accepting a marginal one (minor artifact clarification).
-    </Axiom>
-
-    <Axiom id="AX_CRITIC_CONFUSION_IS_A_BUG">
-      Critic reports "I do not understand section X" → this IS a specification defect. An artifact that confuses an isolated reader is underspecified. ALWAYS accept confusion findings and clarify.
-    </Axiom>
-
-    <Axiom id="AX_SURGICAL_EDITS_ONLY">
-      Edit only the gaps the critic found. Add the missing BDD scenario. Clarify the boundary. Fill the placeholder. Do not rewrite sections, restructure documents, or change prose style. Structural overhaul → suggest re-scaffold, stop.
-    </Axiom>
-
-    <Axiom id="AX_TRACEABILITY_IN_ARTIFACT">
-      Every round's decisions recorded in `## Critic Rounds` section of the artifact. Append-only. Format: round number, critic verdict, accepted/rejected counts with reasons, concrete changes. This is the audit trail.
-    </Axiom>
-
-    <Axiom id="AX_OPERATOR_LANGUAGE">
-      Directive prose, axiom IDs, step names, contract identifiers — English. Operator-facing artifact prose (`Critic Rounds` entries, final summary body) — Russian.
-    </Axiom>
+    <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
+    <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
+    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+    <Axiom id="AX_STOP_NO_EDITS">Zero edits → stop. Unchanged input → unchanged verdict → infinite loop.</Axiom>
+    <Axiom id="AX_CAP_5">Max 5 rounds. Round 5 + edits + not CLEAN → stop, flag MAX_ROUNDS.</Axiom>
+    <Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>
+    <Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>
+    <Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
+    <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
+    <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
+    <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
+    <Axiom id="AX_LANG">Directive: English. Artifact prose (Critic Rounds, summary): Russian.</Axiom>
   </Belief_State>
 
   <Halt_Conditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_NO_ARTIFACT` | Operator provided no path or path does not resolve to `.spec.md` / `.task-*.md` |
-    | `H_PARENT_SPEC_MISSING` | Task ticket references a scope whose spec file does not exist |
-    | `H_CRITIC_DISPATCH_FAILED` | Subagent dispatch failed twice |
-    | `H_STRUCTURAL_REWRITE_NEEDED` | Artifact needs restructuring beyond surgical edits — suggest re-scaffold |
+    | H_NO_ARTIFACT | Path does not resolve to .spec.md / .task-*.md |
+    | H_PARENT_SPEC_MISSING | Task scope spec not found |
+    | H_DISPATCH_FAILED | Critic subagent dispatch failed twice |
+    | H_STRUCTURAL | Artifact needs restructuring beyond surgical edits |
   </Halt_Conditions>
 
   <Anti_Patterns>
-    <Pattern id="AP_ORCHESTRATOR_AS_CRITIC">Critiquing the artifact yourself instead of dispatching the isolated critic. Your reading is biased by full context — you miss what isolation reveals.</Pattern>
-    <Pattern id="AP_EDIT_WITHOUT_RE_DISPATCH">Applying edits and stopping because "they were small." Any edit invalidates the prior critic verdict. Re-dispatch is mandatory.</Pattern>
-    <Pattern id="AP_INFINITE_LOOP">Re-dispatching when zero edits were applied. Same input → same critic → same verdict → infinite spin.</Pattern>
-    <Pattern id="AP_OVER_EDITING">Rewriting entire sections when one line needed clarification. Close the gap, do not redecorate.</Pattern>
-    <Pattern id="AP_IGNORING_CONFUSION">Dismissing "I don't understand X" as the critic's problem. Confusion = underspecification. Always fix.</Pattern>
-    <Pattern id="AP_VAGUE_REJECTION">Rejecting with "I have more context." Cite the specific file, section, or entity that resolves the concern.</Pattern>
+    <Pattern id="AP_SELF_CRITIQUE">Critiquing artifact yourself. Dispatch isolated critic.</Pattern>
+    <Pattern id="AP_NO_RE_DISPATCH">Edits without re-dispatch. Edit invalidates prior verdict.</Pattern>
+    <Pattern id="AP_SPIN">Re-dispatch with zero edits. Same input → same verdict.</Pattern>
+    <Pattern id="AP_OVEREDIT">Rewriting sections. Close the gap, don't redecorate.</Pattern>
+    <Pattern id="AP_DISMISS_CONFUSION">Ignoring "I don't understand X". Always fix.</Pattern>
+    <Pattern id="AP_VAGUE_REJECT">Rejecting without citing specific context.</Pattern>
   </Anti_Patterns>
 
   <Execution_Plan>
-    <Step id="STEP_0_RESOLVE_ARTIFACT">
-      <Goal>Resolve artifact path and type.</Goal>
+    <Step id="0_RESOLVE">
+      <Goal>Resolve what to critique.</Goal>
       <Action>
-        1. Operator passes a path. Resolve to absolute. Verify file exists and extension is `.spec.md` or `.task-*.md`. Fail → `H_NO_ARTIFACT`.
-        2. Determine type: `spec` or `task`.
-        3. For task: read ticket §1 Meta to extract scope name. Resolve parent spec: `specs/<scope>/<scope>.spec.md`. Verify exists. Missing → `H_PARENT_SPEC_MISSING`.
-        4. Record: artifact type, absolute path, parent spec path (or N/A). Proceed to STEP_1.
+        Operator input → determine scope:
+        - .spec.md path → ask: (1) spec only, (2) spec + all tasks, (3) all tasks only.
+        - .task-*.md path → single task, no question.
+        - scope name / tasks/<scope>/ → all tasks in scope.
+        Build queue: spec-first if included, then tasks in DAG layers.
+        For each task: read §1 Meta → resolve parent spec. Missing → H_PARENT_SPEC_MISSING.
       </Action>
     </Step>
 
-    <Step id="STEP_1_DISPATCH_CRITIC">
-      <Goal>Dispatch one isolated critic subagent for the current round.</Goal>
+    <Step id="1_DISPATCH">
+      <Goal>Dispatch one isolated critic subagent.</Goal>
       <Action>
-        1. Dispatch ONE subagent, fresh isolated context. The dispatch prompt embeds the critic's full protocol — the subagent does NOT read a separate directive:
-
+        Dispatch subagent, fresh context:
         ```
-        You are an ISOLATED artifact critic. You receive ONE artifact (spec or task) and its parent spec (for tasks). You READ and REPORT. You NEVER edit files.
-
-        🔴 HARD RULE: You do NOT have permission to edit. Your only output is text — the structured critique. The orchestrator applies edits. If you edit the artifact, you violate the isolation contract and corrupt the loop.
-
-        ## What you receive
-        - Artifact: <absolute-path>
-        - Parent spec: <parent-spec-path | "N/A — this is a spec">
-        - Round: <N>
-
-        ## Protocol
-
-        ### Step 1 — Read the artifact
-        Read the artifact end-to-end. For a task, also read the parent spec — focus on entity inventory, contracts, requirements relevant to the task's phases.
-
-        DO NOT read any other files. No other specs, no other tasks, no code, no rules. Your isolation IS the mechanism — if you can't understand something, the artifact is underspecified.
-
-        ### Step 2 — Articulate understanding
-        Write: "## What I understood"
-        Concise summary. Spec: what system, its boundaries, its entities. Task: what change, what phases do, what BDD scenarios cover.
-
-        ### Step 3 — Flag confusion
-        Write: "## What I did NOT understand"
-        Every point of confusion. Be specific: section name, what's unclear. Do NOT fabricate certainty. "I don't understand X" is valid and valuable output.
-
-        ### Step 4 — Find problems
-        For **specs**, check 9 dimensions:
-        1. Boundary clarity — explicit "in scope" / "out of scope"? Can a reader tell where this scope ends?
-        2. Purpose & audience — WHO uses this, FOR WHAT? Are use cases explicit?
-        3. Entity inventory — all entities listed with public surfaces? Relationships clear?
-        4. Contract completeness — Ports/Adapters/Services with pre/post conditions? Invariants stated?
-        5. Dependencies — external dependencies named and versioned?
-        6. "What if" coverage — failure modes? What happens when dependency unavailable, input invalid, happy path breaks?
-        7. Non-goals — what does this scope explicitly NOT cover?
-        8. Consistency — internal contradictions?
-        9. Testability — can claims be verified, or are they vague ("should be fast")?
-
-        For **tasks**, check 5 dimensions:
-        1. BDD completeness — Happy path, edge cases (empty/max/boundary), error paths (network/file/timeout), negative cases. Each needs concrete GIVEN/WHEN/THEN. "test error handling" alone is insufficient.
-        2. Spec alignment — entity names match parent spec? Contracts covered by phases? No entities absent from spec? Verification references correct test files?
-        3. Phase structure — correctly ordered? Dependencies explicit? Missing phase (impl without test)? Target Files non-overlapping?
-        4. Clarity — can a fresh agent understand what to build? Inputs/outputs specified? Ambiguous terms defined?
-        5. Completeness — all sections filled? No &lt;TBD&gt; or &lt;YYYY-MM-DD&gt; placeholders?
-
-        Format each finding:
+        Step 1 — Read directive: ai/directives/sdd/critic-protocol.xml
+        Step 2 — Activate. Announce: "🔒 SddCriticProtocol"
+        Step 3 — Apply. Artifact: <path>, Parent spec: <path|N/A>, Round: <N>.
+        Follow Execution_Plan. Do not deviate.
         ```
-        ### &lt;dimension&gt; — &lt;problem summary&gt;
-        - Location: &lt;section or line&gt;
-        - Finding: &lt;concrete gap&gt;
-        - Why it matters: &lt;what goes wrong if unfixed&gt;
-        - Severity: CRITICAL | MAJOR | MINOR | INFO
-        - Suggested fix: &lt;concrete improvement&gt;
-        ```
-
-        Severity:
-        - CRITICAL — artifact unusable. Downstream agent would produce wrong work. Missing error paths, contradictory requirements.
-        - MAJOR — significant gap. Missing edge cases, ambiguous boundary.
-        - MINOR — improvement. Vague wording, missing non-goal.
-        - INFO — observation, not a problem.
-
-        ### Step 5 — Verdict
-        Write: "## Verdict"
-        - CLEAN — no CRITICAL or MAJOR findings.
-        - NEEDS_WORK — MAJOR findings present, no CRITICAL.
-        - CRITICAL — one or more CRITICAL findings.
-
-        ## Output rules
-        - Start directly with "## What I understood". No greetings, no sign-off.
-        - Use exact section headers: "## What I understood", "## What I did NOT understand", "## Problems found", "## Verdict".
-        - Do NOT edit the artifact. Report only.
-
-        ## Anti-patterns (what NOT to do)
-        - Editing the artifact. This is the orchestrator's job, not yours. You read and report — nothing more.
-        - Surface scan: reading only headers. Read full content.
-        - Nitpicking: every minor wording as CRITICAL. Focus on what would break a downstream agent.
-        - Overconfidence: declaring certainty without verification. Say "I'm not sure" when you are not.
-        - Blind acceptance: assuming correctness because the artifact looks well-formatted.
-        - Context creep: reading files beyond artifact + parent spec. Stay isolated.
-        ```
-
-        2. Dispatch fails → retry once. Fails again → `H_CRITIC_DISPATCH_FAILED`.
-        3. Record critic output. Proceed to STEP_2.
+        Fail → retry once. Fail again → H_DISPATCH_FAILED.
       </Action>
     </Step>
 
-    <Step id="STEP_2_EVALUATE">
-      <Goal>Classify every finding as ACCEPT or REJECT with reasoning.</Goal>
+    <Step id="2_EVALUATE">
+      <Goal>Classify findings: ACCEPT or REJECT.</Goal>
       <Action>
-        1. Read the critic's full output.
-        2. For each finding under "## Problems found":
-
-           ACCEPT if ANY of:
-           - Genuine gap, omission, or ambiguity (objective defect).
-           - Critic misunderstood — the misunderstanding reveals insufficient clarity → clarify the artifact.
-           - Finding, if unfixed, would cause a fresh agent to produce incorrect work.
-           - You are uncertain whether the finding is real (per `AX_ACCEPT_WHEN_UNCERTAIN`).
-
-           REJECT if BOTH:
-           - Finding stems from a misreading no competent agent would make.
-           - You cite the SPECIFIC context (file, section, line) that resolves the concern.
-
-        3. Confusion points ("## What I did NOT understand"): ALWAYS accept (per `AX_CRITIC_CONFUSION_IS_A_BUG`).
-
-        4. Zero accepted AND zero confusion → proceed to STEP_5 (no edits, stop).
-        5. Any accepted → proceed to STEP_3.
+        ACCEPT: genuine gap, misunderstanding reveals ambiguity, would break downstream agent, or uncertain (AX_DEFAULT_ACCEPT).
+        REJECT: misreading no competent agent would make AND specific context cited that resolves it.
+        Confusion points → ALWAYS accept (AX_CONFUSION_BUG).
+        Zero accepted → go to STEP_5 (stop). Any accepted → go to STEP_3.
       </Action>
     </Step>
 
-    <Step id="STEP_3_EDIT">
-      <Goal>Surgically edit the artifact for accepted findings.</Goal>
+    <Step id="3_EDIT">
+      <Goal>Surgical edit.</Goal>
       <Action>
-        1. Edit the artifact file directly. Target only the gap:
-           - Missing BDD scenario → add GIVEN/WHEN/THEN.
-           - Ambiguous boundary → add "Out of scope:" or "Does NOT cover:".
-           - Spec-task misalignment → correct entity/contract/path reference.
-           - Placeholder → fill with concrete value.
-        2. Do NOT restructure, rewrite, or restyle.
-        3. Structural overhaul needed → `H_STRUCTURAL_REWRITE_NEEDED`.
-        4. Proceed to STEP_4.
+        Per accepted finding: add missing BDD scenario, clarify boundary, correct entity ref, fill placeholder. Target only the gap. Structural rewrite → H_STRUCTURAL.
       </Action>
     </Step>
 
-    <Step id="STEP_4_RECORD">
-      <Goal>Append scratch round trace to artifact. This section is TEMPORARY — it is removed on CLEAN (STEP_6). It exists only to give the orchestrator working memory between rounds.</Goal>
+    <Step id="4_RECORD">
+      <Goal>Append scratch log.</Goal>
       <Action>
-        1. If `## Critic Rounds` absent → create at end of artifact.
-        2. Append:
+        Create/append `## Critic Rounds`:
         ```
         ### Round N — YYYY-MM-DD
-        - Вердикт критика: CLEAN | NEEDS_WORK | CRITICAL
-        - Принято: N находок
-          - краткое описание каждой
-        - Отклонено: N находок
-          - "finding" → причина (конкретный файл/секция)
-        - Изменения:
-          - конкретное изменение 1
-          - конкретное изменение 2
+        - Verdict: <CLEAN|NEEDS_WORK|CRITICAL>
+        - Accepted: N — <list>
+        - Rejected: N — "<finding>" → <reason>
+        - Changes: <list>
         ```
-        3. Prior rounds immutable. Proceed to STEP_5.
+        Append-only.
       </Action>
     </Step>
 
-    <Step id="STEP_5_DECIDE">
+    <Step id="5_DECIDE">
       <Goal>Re-dispatch or conclude.</Goal>
       <Action>
-        1. Edits applied AND round &lt; 5 → increment round, go to STEP_1. Edits invalidate prior verdict.
-        2. No edits applied → conclude (no cleanup). Go to STEP_6. Same artifact = same verdict.
-        3. Round = 5 → conclude (no cleanup). Go to STEP_6. Flag MAX_ROUNDS if edits applied but not CLEAN.
-
-        Note: `## Critic Rounds` is removed ONLY when the final critic verdict is CLEAN (see STEP_6). If we stop without CLEAN, the section stays — it documents unresolved findings for the operator.
+        Edits applied AND round < 5 → round++, go to STEP_1.
+        No edits → conclude (go to STEP_6).
+        Round 5 → conclude, flag MAX_ROUNDS if not CLEAN.
       </Action>
     </Step>
 
-    <Step id="STEP_6_SUMMARY">
-      <Goal>Clean up temporary scaffolding and emit final summary.</Goal>
+    <Step id="6_FINALIZE">
+      <Goal>Cleanup and detailed final summary.</Goal>
       <Action>
-        1. **Cleanup.** If the final critic verdict is CLEAN → DELETE the entire `## Critic Rounds` section from the artifact. All improvements are already integrated into the artifact body — the scratch log is no longer needed. If verdict is NOT CLEAN → keep the section as documentation of unresolved findings.
+        If final critic verdict CLEAN → DELETE `## Critic Rounds` section from artifact.
+        If not CLEAN → keep section as documentation of unresolved findings.
 
-        2. Emit summary:
+        Emit FULL summary (operator needs detail to discuss, challenge, or revert):
         ```
-        🔍 sdd-critic — <artifact-path>
+        🔍 sdd-critic — <path>
 
-        📊 Раундов: N
-          R1: verdict → N принято, M отклонено
-          R2: verdict → N принято, M отклонено
-          ...
-          RN: verdict → причина остановки
+        📊 Rounds: N
+          R1: <verdict>
+            🔴 CRITICAL: <N>  🟠 MAJOR: <N>  🟡 MINOR: <N>  🔵 INFO: <N>
+            Принято:
+              - <finding summary> → <what was changed>
+              - ...
+            Отклонено:
+              - "<finding summary>" → <reason (specific context)>
+              - ...
 
-        ✏️ Изменения (все раунды):
-          - изменение 1
-          - изменение 2
+          R2: <verdict>
+            (same structure)
+            ...
 
-        ❌ Отклонённые находки:
-          - "finding" → причина
+          RN: <verdict> → <stop reason>
 
-        ⚠️ Нерешённое (если остановились без CLEAN):
-          - оставшиеся CRITICAL/MAJOR
-          → Рекомендация: ручная проверка | пересобрать таск | разделить
+        ✏️ All changes:
+          - <change>
+          - ...
 
-        📍 Артефакт: path
+        ⚠️ Unresolved (if not CLEAN):
+          - <finding> → <recommendation>
+
+        📍 Artifact: <path> — <CLEAN | NEEDS_WORK | CRITICAL>
         ```
-        3. No commentary beyond the summary.
       </Action>
     </Step>
   </Execution_Plan>
 
   <HardForbidden>
-    - Critiquing the artifact yourself. Dispatch the isolated critic subagent. You evaluate and edit; the critic critiques.
-    - Re-dispatching when zero edits were applied. Same input → same verdict → infinite loop.
-    - Exceeding 5 rounds. Hard cap.
-    - Deleting or rewriting the artifact. Surgical edits only.
-    - Sharing full project context with the critic. Critic receives: artifact + parent spec. Nothing else.
-    - Skipping the `## Critic Rounds` section. Every round must be traceable.
-    - Accepting a finding without editing. ACCEPT → edit.
-    - Rejecting without citing the specific context that resolves the concern.
+    - Self-critique. Dispatch critic.
+    - Re-dispatch with zero edits.
+    - >5 rounds.
+    - Rewrite artifact.
+    - Share full context with critic.
+    - Keep `## Critic Rounds` after CLEAN.
+    - ACCEPT without edit.
+    - REJECT without specific context.
   </HardForbidden>
 </SddCritic>

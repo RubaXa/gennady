@@ -1,6 +1,6 @@
 // @file: Integration tests for sync CLI — run() with mock deps
-// @consumers: TSK-54
-// @tasks: TSK-54
+// @consumers: sync.cmd.ts, run
+// @tasks: TSK-54, TSK-56
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Writable } from 'node:stream';
 import { run } from '../sync.cmd.ts';
-import type { SyncCmdDeps } from '../sync.cmd.ts';
+import type { SyncCmdDeps } from '../../../../shared/common/sync/sync-deps.type.ts';
 
 interface CaptureStream extends Writable {
   _chunks: string[];
@@ -55,7 +55,9 @@ function makeDeps(sourceDir: string, targetDir: string): SyncCmdDeps {
     },
     stat: (p: string) => fsStatSync(p),
     readdir: readdirSync,
-    resolvePackageDir: (_cwd: string) => sourceDir,
+    resolvePackageDir: (_projectRoot: string, _subdir: string) => sourceDir,
+    unlink: () => {},
+    rmdir: () => {},
   };
 }
 

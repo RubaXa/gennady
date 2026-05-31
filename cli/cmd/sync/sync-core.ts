@@ -1,14 +1,15 @@
-// @file: Sync core — resolvePackageDir, scanDirectives, collectAndCompare
+// @file: Sync core — scanDirectives, collectAndCompare
 // @consumers: sync.cmd.ts, sync-core.test.ts
-// @tasks: TSK-53, TSK-54
+// @tasks: TSK-53, TSK-54, TSK-56
 
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { ERR_SYNC_SUBDIR_NOT_FOUND, ERR_SYNC_SOURCE_NOT_FOUND, SyncResult } from './sync.types.ts';
 import type { SyncFileEntry, SyncOptions, SyncFileStatus } from './sync.types.ts';
-
-const DIRECTIVES_SUBDIR = 'ai/directives';
+import {
+  resolvePackageDir as _resolvePackageDirShared,
+  compareBytes,
+} from '../../../shared/common/sync/sync-core.shared.ts';
 
 /** @purpose Entries excluded from sync: empty architecture dir, deprecated/domain-specific directives. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
 export const EXCLUDED_ENTRIES = new Set([
@@ -55,27 +56,13 @@ export interface SyncCoreDeps {
 }
 
 /**
- * @purpose Find the ai/directives/ directory in the installed gennady npm package.
+ * @purpose Locate ai/directives/ in the installed gennady package. Delegates to shared resolvePackageDir.
  * @param cwd Current working directory.
+ * @param [subdir] Subdirectory inside gennady package (defaults to 'ai/directives').
  * @returns Absolute path to ai/directives/ or null if the package is not found.
  */
-export function resolvePackageDir(cwd: string): string | null {
-  const localPath = join(cwd, 'node_modules', 'gennady', DIRECTIVES_SUBDIR);
-  if (existsSync(localPath)) return localPath;
-
-  try {
-    const resolved = import.meta.resolve('gennady');
-    const pkgFile = fileURLToPath(resolved);
-    // resolved points to .../gennady/dist/gennady.js
-    // navigate up to package root: strip /dist/... suffix
-    const pkgRoot = pkgFile.replace(/[/\\]dist[/\\].*$/, '');
-    const directivesPath = join(pkgRoot, DIRECTIVES_SUBDIR);
-    if (existsSync(directivesPath)) return directivesPath;
-  } catch {
-    // import.meta.resolve may fail
-  }
-
-  return null;
+export function resolvePackageDir(cwd: string, subdir = 'ai/directives'): string | null {
+  return _resolvePackageDirShared(cwd, subdir);
 }
 
 /**
@@ -93,7 +80,7 @@ export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] 
 
     for (const subdir of subdirs) {
       if (!available.includes(subdir)) {
-        const msg = `ai/directives/${subdir}/ not found in package.\nAvailable: ${available.join(', ')}`;
+        const msg = `[scanDirectives] ai/directives/${subdir}/ not found in package.\nAvailable: ${available.join(', ')}`;
         const error = new Error(msg);
         (error as Error & { code: string }).code = ERR_SYNC_SUBDIR_NOT_FOUND;
         throw error;
@@ -147,7 +134,7 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
   try {
     deps.stat(opts.sourceDir);
   } catch {
-    const msg = `Source directory not found: ${opts.sourceDir}`;
+    const msg = `[collectAndCompare] Source directory not found: ${opts.sourceDir}`;
     const error = new Error(msg);
     (error as Error & { code: string }).code = ERR_SYNC_SOURCE_NOT_FOUND;
     throw error;
@@ -172,7 +159,7 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     let status: SyncFileStatus;
     if (targetData === null) {
       status = 'added';
-    } else if (Buffer.compare(sourceData, targetData) === 0) {
+    } else if (!compareBytes(sourceData, targetData)) {
       status = 'unchanged';
     } else {
       status = 'updated';

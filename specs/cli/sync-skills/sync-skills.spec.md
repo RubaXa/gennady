@@ -16,10 +16,17 @@ _Это полный список сущностей модуля. Любое в
 | --------------------- | ------------ | --------------------------------------------------------------------------------------------------- |
 | `SyncSkillsOptions`   | Value Object | Конфигурация: `sourceDir`, `targetDir`, `skillNames?`, `dryRun?`                                    |
 | `SyncSkillsFileEntry` | Value Object | Результат сравнения одного файла внутри скила: `skillName`, `relativePath`, `status`, `sourceSize`  |
+| `SyncSkillsFileStatus` | Type         | Discriminated union: `'added' \| 'updated' \| 'deleted' \| 'unchanged' \| 'deleteFailed'`           |
 | `SyncSkillsResult`    | Value Object | Агрегат: `entries` + computed `added`, `updated`, `deleted`, `unchanged`, `deleteFailed`, `summary` |
 | `SyncSkillsCore`      | Service      | Ядро: `scanSkills`, `collectAndCompareSkills` (рекурсивное, с orphan-детектом)                      |
+| `syncFile`            | Helper       | Копирует отдельный файл из source в target с проверкой изменений                                   |
+| `collectOrphanFiles`  | Helper       | Собирает список сиротских файлов в target                                                          |
+| `deleteOrphan`        | Helper       | Удаляет сиротский файл/директорию с graceful degradation                                          |
 | `SyncSkillsFormatter` | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов             |
+| `SyncSkillsFormatOptions` | Type      | Опции форматирования: `{ dryRun?: boolean }`                                                        |
 | `SyncCmdDeps`         | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
+| `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code | Source directory not found                                                                     |
+| `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code | Skill name not found in source                                                                |
 
 ## 3. Entity Surfaces
 

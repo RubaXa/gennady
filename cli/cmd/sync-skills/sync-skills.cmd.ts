@@ -1,30 +1,30 @@
-// @file: SyncCommand — CLI entry point for gennady sync: parseArgs, resolve package, compare + copy directives.
-// @consumers: gennady.ts
-// @tasks: TSK-53, TSK-54, TSK-56
+// @file: SyncSkills command — CLI entry point for gennady sync-skills: parseArgs, resolve package, compare + copy skills.
+// @consumers: gennady.ts, sync-skills.cmd.test.ts
+// @tasks: TSK-57
 
-import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, unlinkSync, rmdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { collectAndCompare, resolvePackageDir } from './sync-core.ts';
-import { formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
-import type { SyncFileEntry, SyncOptions } from './sync.types.ts';
-import { ERR_SYNC_SUBDIR_NOT_FOUND } from './sync.types.ts';
-import type { SyncCoreDeps } from './sync-core.ts';
+import { resolvePackageDir } from '../../../shared/common/sync/sync-core.shared.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
+import { collectAndCompareSkills } from './sync-skills-core.ts';
+import { format } from './sync-skills-formatter.ts';
+import { ERR_SKILLS_SKILL_NOT_FOUND, ERR_SKILLS_SOURCE_NOT_FOUND } from './sync-skills.types.ts';
+import type { SyncSkillsFileEntry, SyncSkillsOptions } from './sync-skills.types.ts';
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
 // #region START_FORMAT_AND_WRITE — invariant: formatter produces lines; stdout writes them
 function formatAndWrite(
-  entries: SyncFileEntry[],
+  entries: SyncSkillsFileEntry[],
   dryRun: boolean,
   stdout: NodeJS.WriteStream,
   projectDir: string
 ): void {
-  stdout.write(`Sync${dryRun ? ' (dry-run)' : ''}: ${projectDir}\n`);
-  const lines = formatSyncOutput(entries, { dryRun });
+  stdout.write(`Sync skills${dryRun ? ' (dry-run)' : ''}: ${projectDir}\n`);
+  const lines = format(entries, { dryRun });
   for (const line of lines) {
     stdout.write(line + '\n');
   }
@@ -32,7 +32,7 @@ function formatAndWrite(
 // #endregion END_FORMAT_AND_WRITE
 
 /**
- * @purpose CLI entry point for the sync command.
+ * @purpose CLI entry point for the sync-skills command.
  * *
  * Parses CLI arguments, resolves the package source directory,
  * compares source with target, and outputs the result.
@@ -48,57 +48,64 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _mkdir = deps?.mkdir ?? mkdirSync;
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
+  const _unlink = deps?.unlink ?? unlinkSync;
+  const _rmdir = deps?.rmdir ?? rmdirSync;
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
 
-  // #region START_PARSE — invariant: dryRun flag + positional subdirs
+  // #region START_PARSE — invariant: dryRun flag + positional skill names
   const args = parseArgs(rawArgs, {
     dryRun: ['dry-run'],
   });
 
   const dryRun = args.dryRun === true || args.dryRun === 'true';
   const positional = (args._ as string[]).filter(
-    (f: string) => typeof f === 'string' && f !== 'sync'
+    (f: string) => typeof f === 'string' && f !== 'sync-skills'
   );
   // #endregion END_PARSE
 
   const cwd = process.cwd();
 
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
-  const packageDir = _resolvePackageDir(cwd, 'ai/directives');
+  const packageDir = _resolvePackageDir(cwd, 'ai/skills');
   if (!packageDir) {
     _stderr.write('Error: gennady package not found. Install it locally: npm i -D gennady\n');
     return 1;
   }
   // #endregion END_RESOLVE_PACKAGE
 
-  const targetDir = join(cwd, 'ai', 'directives');
+  const targetDir = join(cwd, '.claude', 'skills');
 
-  const opts: SyncOptions = {
+  const opts: SyncSkillsOptions = {
     sourceDir: packageDir,
     targetDir,
-    subdirs: positional.length > 0 ? positional : undefined,
+    skillNames: positional.length > 0 ? positional : undefined,
     dryRun,
   };
 
-  // #region START_COLLECT_AND_COMPARE — invariant: core handles read/compare/write; dryRun skips write
+  // #region START_COLLECT_AND_COMPARE — invariant: core handles read/compare/write/delete; dryRun skips mutations
   try {
-    const coreDeps: SyncCoreDeps = {
+    const coreDeps: SyncCmdDeps = {
       readFile: _readFile,
       writeFile: _writeFile,
       mkdir: _mkdir as (p: string, opts?: { recursive: boolean }) => void,
       stat: (p: string) => _stat(p),
       readdir: _readdir,
-      cwd,
+      unlink: _unlink,
+      rmdir: _rmdir as (p: string, opts?: { recursive: boolean }) => void,
+      resolvePackageDir: _resolvePackageDir,
     };
 
-    const result = collectAndCompare(coreDeps, opts);
+    const result = collectAndCompareSkills(coreDeps, opts);
     formatAndWrite(result.entries, dryRun, _stdout, cwd);
     return 0;
   } catch (err) {
     const error = err as Error & { code?: string };
-    if (error.code === ERR_SYNC_SUBDIR_NOT_FOUND) {
+    if (
+      error.code === ERR_SKILLS_SKILL_NOT_FOUND ||
+      error.code === ERR_SKILLS_SOURCE_NOT_FOUND
+    ) {
       _stderr.write(`Error: ${error.message}\n`);
       return 1;
     }
@@ -115,8 +122,8 @@ if (process.argv[1]) {
       const exitCode = run(process.argv);
       process.exit(exitCode);
     } catch (cause) {
-      const error = new Error('[syncCmd] Self-execution failed', { cause });
-      logger.error('[syncCmd#run] [self-executing → failed]', { error });
+      const error = new Error('[syncSkillsCmd] Self-execution failed', { cause });
+      logger.error('[syncSkillsCmd#run] [self-executing → failed]', { error });
       process.exit(1);
     }
   }

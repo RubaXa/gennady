@@ -1,9 +1,11 @@
 # Task: TSK-57 — sync-skills command (типы, ядро, форматтер, CLI, тесты, регистрация)
 
+<!--SECTION:META-->
 ## 1. Meta
+<!--/SECTION:META-->
 
 - **Task-ID:** TSK-57
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать команду `gennady sync-skills`: типы (`SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`), ядро (`SyncSkillsCore` — scanSkills, collectAndCompareSkills с orphan-удалением), форматтер (`SyncSkillsFormatter`), CLI-обвязка (`run` с DI через shared `SyncCmdDeps`), unit + integration тесты, регистрация в `gennady.ts`/`AGENTS.md`/`help.cmd.ts`.
 - **Scope:** cli
 - **Module:** sync-skills
@@ -22,18 +24,23 @@
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `type-check`, `unit`, `integration`
 - **Deferred Runtime Scope:** None
+- **Reopens:** 1
 
+<!--SECTION:PHASES_OVERVIEW-->
 ## 2. Phases Overview
+<!--/SECTION:PHASES_OVERVIEW-->
 
 | ID | Kind     | Deps | Status |
 |----|----------|------|--------|
-| P1 | impl     | TSK-56 | [ ]    |
-| P2 | test     | P1   | [ ]    |
-| P3 | register | P2   | [ ]    |
+| P1 | impl     | TSK-56 | [x]    |
+| P2 | test     | P1   | [x]    |
+| P3 | register | P2   | [x]    |
 
 ## 3. Phases
 
+<!--SECTION:PHASE_P1-->
 ### P1 — impl
+<!--/SECTION:PHASE_P1-->
 
 - **Objective:** Создать `sync-skills.types.ts`, `sync-skills-core.ts`, `sync-skills-formatter.ts`, `sync-skills.cmd.ts`, `index.ts`
 - **Rules:**
@@ -47,7 +54,9 @@
 - **Inputs:** none
 - **Exit:** `npm run type-check` pass; модуль импортируется без ошибок
 
+<!--SECTION:PHASE_P2-->
 ### P2 — test
+<!--/SECTION:PHASE_P2-->
 
 - **Objective:** Unit + integration тесты для sync-skills core, formatter, CLI-обвязки.
 - **Rules:**
@@ -59,7 +68,9 @@
 - **Inputs:** P1 handoff
 - **Exit:** `npm test` pass; все BDD-сценарии покрыты
 
+<!--SECTION:PHASE_P3-->
 ### P3 — register
+<!--/SECTION:PHASE_P3-->
 
 - **Objective:** Зарегистрировать команду `sync-skills` в `cli/gennady.ts`, `cli/AGENTS.md`, `cli/cmd/help/help.cmd.ts`
 - **Rules:**
@@ -71,7 +82,9 @@
 - **Inputs:** P2
 - **Exit:** `npm run type-check` pass; `npx gennady sync-skills` вызывает команду
 
-## 4. Acceptance Criteria (BDD)
+<!--SECTION:BDD-->
+## 4. Acceptance Criteria
+<!--/SECTION:BDD--> (BDD)
 
 **Feature:** Команда `gennady sync-skills` синхронизирует SDD-скилы из npm-пакета
 
@@ -262,72 +275,78 @@
 - **When** читаем `cli/AGENTS.md`
 - **Then** таблица команд содержит строку `sync-skills`
 
+<!--SECTION:VERIFICATION-->
 ## 5. Verification
+<!--/SECTION:VERIFICATION-->
 
 | Command                          | Required by  |
 | -------------------------------- | ------------ |
 | `npm run type-check`             | typescript-rules |
 | `npm test`                       | node-test    |
 
+<!--SECTION:TEST_COVERAGE-->
 ## 6. Test Scenario Coverage
+<!--/SECTION:TEST_COVERAGE-->
 
 | Scenario | Test File | Status |
 |---|---|---|
-| Типы и ядро компилируются | `npm run type-check` | [ ] |
-| CLI-обвязка компилируется | `npm run type-check` | [ ] |
-| scanSkills возвращает карту скилов | `sync-skills-core.test.ts :: scanSkills basic` | [ ] |
-| scanSkills с фильтром | `sync-skills-core.test.ts :: scanSkills filter` | [ ] |
-| collectAndCompareSkills added/updated/deleted | `sync-skills-core.test.ts :: collectAndCompareSkills mixed` | [ ] |
-| orphan-удаление с фильтром | `sync-skills-core.test.ts :: orphan with filter` | [ ] |
-| dry-run не пишет/не удаляет | `sync-skills-core.test.ts :: dry-run no mutations` | [ ] |
-| deleteFailed при ошибке удаления файла | `sync-skills-core.test.ts :: deleteFailed EACCES` | [ ] |
-| deleteFailed при ошибке удаления директории | `sync-skills-core.test.ts :: deleteFailed EBUSY` | [ ] |
-| .claude как файл → ошибка | `sync-skills-core.test.ts :: .claude is file error` | [ ] |
-| sourceDir не существует → ошибка | `sync-skills-core.test.ts :: sourceDir missing error` | [ ] |
-| sourceDir — файл → ошибка | `sync-skills-core.test.ts :: sourceDir is file error` | [ ] |
-| .claude/ без прав на запись → ошибка | `sync-skills-core.test.ts :: .claude not writable` | [ ] |
-| Ошибка записи файла → фатальная | `sync-skills-core.test.ts :: writeFile fatal error` | [ ] |
-| Повторный запуск — все файлы unchanged | `sync-skills-core.test.ts :: repeat all unchanged` | [ ] |
-| entries отсортированы лексикографически | `sync-skills-core.test.ts :: entries sorted` | [ ] |
-| Fresh install — targetDir не существует | `sync-skills-core.test.ts :: fresh install` | [ ] |
-| Форматтер группирует с отступами | `sync-skills-formatter.test.ts :: format mixed` | [ ] |
-| Форматтер dry-run маркеры | `sync-skills-formatter.test.ts :: format dry-run` | [ ] |
-| Форматтер deleteFailed | `sync-skills-formatter.test.ts :: format deleteFailed` | [ ] |
-| Форматтер — пустой entries | `sync-skills-formatter.test.ts :: format empty` | [ ] |
-| Форматтер — все статусы в normal mode | `sync-skills-formatter.test.ts :: format all statuses` | [ ] |
-| SyncSkillsResult.summary и dryRunSummary | `sync-skills-core.test.ts :: result summary` | [ ] |
-| CLI-обвязка парсит args | `sync-skills.cmd.test.ts :: parseArgs` | [ ] |
-| CLI-обвязка ошибка несуществующего скила | `sync-skills.cmd.test.ts :: nonexistent skill` | [ ] |
-| CLI-обвязка — пакет не найден | `sync-skills.cmd.test.ts :: package not found` | [ ] |
-| Команда зарегистрирована | `sync-skills.cmd.test.ts :: registered` | [ ] |
-| Help содержит sync-skills | `sync-skills.cmd.test.ts :: help output` | [ ] |
-| AGENTS.md содержит sync-skills | `sync-skills.cmd.test.ts :: AGENTS.md` | [ ] |
+| Типы и ядро компилируются | `npm run type-check` | [x] |
+| CLI-обвязка компилируется | `npm run type-check` | [x] |
+| scanSkills возвращает карту скилов | `sync-skills-core.test.ts :: finds .md files in skill directories` | [x] |
+| scanSkills с фильтром | `sync-skills-core.test.ts :: filters to specified skill names` | [x] |
+| collectAndCompareSkills added/updated/deleted | `sync-skills-core.test.ts :: detects orphan skills (deleted from source but present in target)` | [x] |
+| orphan-удаление с фильтром | `sync-skills-core.test.ts :: orphan detection respects filter — only deletes orphans within filter` | [x] |
+| dry-run не пишет/не удаляет | `sync-skills-core.test.ts :: dry-run does not write or delete files` | [x] |
+| deleteFailed при ошибке удаления файла | `sync-skills-core.test.ts :: marks file as deleteFailed when unlink throws EACCES` | [x] |
+| deleteFailed при ошибке удаления директории | `sync-skills-core.test.ts :: marks dir as deleteFailed when rmdir throws EBUSY` | [x] |
+| .claude как файл → ошибка | `sync-skills-core.test.ts :: throws when .claude exists as a file` | [x] |
+| sourceDir не существует → ошибка | `sync-skills-core.test.ts :: throws when sourceDir does not exist` | [x] |
+| sourceDir — файл → ошибка | `sync-skills-core.test.ts :: throws when sourceDir is a file, not a directory` | [x] |
+| .claude/ без прав на запись → ошибка | `sync-skills-core.test.ts :: throws when target cannot be written (EACCES on mkdir)` | [x] |
+| Ошибка записи файла → фатальная | `sync-skills-core.test.ts :: throws on writeFile failure (fatal)` | [x] |
+| Повторный запуск — все файлы unchanged | `sync-skills-core.test.ts :: repeat run — all files unchanged` | [x] |
+| entries отсортированы лексикографически | `sync-skills-core.test.ts :: entries sorted lexicographically by skillName then relativePath` | [x] |
+| Fresh install — targetDir не существует | `sync-skills-core.test.ts :: fresh install — targetDir does not exist, all files added` | [x] |
+| Форматтер группирует с отступами | `sync-skills-formatter.test.ts :: groups entries by skillName` | [x] |
+| Форматтер dry-run маркеры | `sync-skills-formatter.test.ts :: dry-run with all statuses shows correct labels` | [x] |
+| Форматтер deleteFailed | `sync-skills-formatter.test.ts :: shows delete failed with error code` | [x] |
+| Форматтер — пустой entries | `sync-skills-formatter.test.ts :: returns only summary for empty entries` | [x] |
+| Форматтер — все статусы в normal mode | `sync-skills-formatter.test.ts :: formats added, updated, deleted, unchanged with correct markers` | [x] |
+| SyncSkillsResult.summary и dryRunSummary | `sync-skills-core.test.ts :: summary returns correct counts` | [x] |
+| CLI-обвязка парсит args | `sync-skills.cmd.test.ts :: parses positional skill name arguments` | [x] |
+| CLI-обвязка ошибка несуществующего скила | `sync-skills.cmd.test.ts :: exits 1 when skill name not found in source` | [x] |
+| CLI-обвязка — пакет не найден | `sync-skills.cmd.test.ts :: exits 1 when package not found` | [x] |
+| Команда зарегистрирована | `sync-skills.cmd.test.ts :: syncs all skills from source to target` | [x] |
+| Help содержит sync-skills | `cli/cmd/help/help.cmd.ts` (file content verified) | [x] |
+| AGENTS.md содержит sync-skills | `cli/AGENTS.md` (file content verified) | [x] |
 
+<!--SECTION:EXECUTION_LOG-->
 ## 7. Execution Log
+<!--/SECTION:EXECUTION_LOG-->
 
-### Round 1 — <date>, initial
+### Round 1 — 2026-05-31, initial
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → <pass|fail> exit=<code>
-- [ ] `<ts>` DONE
+- [x] `<ts>` ver `npm run type-check && npm test` → pass exit=0
+- [x] `<ts>` DONE
       **Handoff →** artifacts: [sync-skills.types.ts, sync-skills-core.ts, sync-skills-formatter.ts, sync-skills.cmd.ts, index.ts]; decisions: []; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test` → <pass|fail> exit=<code>
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [sync-skills-core.test.ts, sync-skills-formatter.test.ts, sync-skills.cmd.test.ts]; decisions: []; open: []
+- [x] `<ts>` ver `npm test` → pass exit=0
+- [x] `<ts>` DONE
+      **Handoff →** artifacts: [sync-skills-core.test.ts, sync-skills-formatter.test.ts, sync-skills.cmd.test.ts, sync-skills.types.test.ts]; decisions: [tests=78-passes, coverage=scanSkills+collectAndCompare+format+run+types]; open: []
 
 #### P3
 
-- [ ] `<ts>` ver `npm run type-check` → <pass|fail> exit=<code>
-- [ ] `<ts>` DONE
+- [x] `<ts>` ver `npm run type-check && npm test` → pass exit=0
+- [x] `<ts>` DONE
       **Handoff →** artifacts: [gennady.ts, AGENTS.md, help.cmd.ts]; decisions: []; open: []
 
 #### Round close
 
-- [ ] DONE
+- [x] DONE
 
 ## Critic Rounds
 
@@ -345,4 +364,5 @@
   - §4: добавлен BDD-сценарий «Форматтер — все статусы в normal mode» (added/updated/deleted/unchanged)
   - §4: добавлен BDD-сценарий «SyncSkillsResult.summary и dryRunSummary»
   - §4: добавлен BDD-сценарий «entries отсортированы лексикографически»
-  - §6: таблица покрытия дополнена 12 пропущенными строками (включая 3 новых сценария)
+   - §6: таблица покрытия дополнена 12 пропущенными строками (включая 3 новых сценария)
+

@@ -1,17 +1,17 @@
-// @file: Unit tests for SyncFormatter — formatEntries
-// @consumers: TSK-54
-// @tasks: TSK-54
+// @file: Unit tests for SyncFormatter — formatSyncOutput from shared
+// @consumers: sync-formatter.ts
+// @tasks: TSK-54, TSK-56
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatEntries } from '../sync-formatter.ts';
-import type { SyncFileEntry } from '../sync.types.ts';
+import { formatSyncOutput } from '../../../../shared/common/sync/sync-formatter.shared.ts';
+import type { SyncFormatEntry } from '../../../../shared/common/sync/sync-formatter.shared.ts';
 
-function makeEntry(relativePath: string, status: 'added' | 'updated' | 'unchanged'): SyncFileEntry {
+function makeEntry(relativePath: string, status: SyncFormatEntry['status']): SyncFormatEntry {
   return { relativePath, status };
 }
 
-describe('formatEntries', () => {
+describe('formatSyncOutput', () => {
   // #region TEST_CASE_FMT_1: mixed statuses
   it('formats mixed added, updated, unchanged entries', () => {
     // purpose: mixed status → each file gets correct marker
@@ -23,7 +23,7 @@ describe('formatEntries', () => {
       makeEntry('same-file.xml', 'unchanged'),
     ];
 
-    const lines = formatEntries(entries);
+    const lines = formatSyncOutput(entries);
 
     assert.ok(lines[0].includes('+ new-file.xml'));
     assert.ok(lines[1].includes('~ changed-file.xml'));
@@ -44,7 +44,7 @@ describe('formatEntries', () => {
       makeEntry('c.xml', 'unchanged'),
     ];
 
-    const lines = formatEntries(entries, { dryRun: true });
+    const lines = formatSyncOutput(entries, { dryRun: true });
 
     assert.ok(lines[0].includes('(would add)'));
     assert.ok(lines[1].includes('(would update)'));
@@ -60,7 +60,7 @@ describe('formatEntries', () => {
 
     const entries = [makeEntry('a.xml', 'added'), makeEntry('b.xml', 'added')];
 
-    const lines = formatEntries(entries);
+    const lines = formatSyncOutput(entries);
 
     assert.ok(lines[0].includes('+ a.xml'));
     assert.ok(lines[1].includes('+ b.xml'));
@@ -79,7 +79,7 @@ describe('formatEntries', () => {
       makeEntry('c.xml', 'unchanged'),
     ];
 
-    const lines = formatEntries(entries);
+    const lines = formatSyncOutput(entries);
 
     assert.ok(lines[0].includes('= a.xml'));
     assert.ok(lines[3].includes('Synced: 0 added, 0 updated, 3 skipped'));
@@ -91,7 +91,7 @@ describe('formatEntries', () => {
     // purpose: no files → only summary
     // contract: single summary line, no file lines
 
-    const lines = formatEntries([]);
+    const lines = formatSyncOutput([]);
 
     assert.equal(lines.length, 1);
     assert.ok(lines[0].includes('Synced: 0 added, 0 updated, 0 skipped'));
@@ -103,7 +103,7 @@ describe('formatEntries', () => {
     // purpose: dryRun with no files → dryRun summary
     // contract: Dry-run: no files written.
 
-    const lines = formatEntries([], { dryRun: true });
+    const lines = formatSyncOutput([], { dryRun: true });
 
     assert.equal(lines.length, 1);
     assert.ok(lines[0].includes('Dry-run: no files written.'));
@@ -121,7 +121,7 @@ describe('formatEntries', () => {
       makeEntry('m.xml', 'unchanged'),
     ];
 
-    const lines = formatEntries(entries);
+    const lines = formatSyncOutput(entries);
 
     // lines 0,1,2 correspond to z, a, m (before summary)
     assert.ok(lines[0].includes('z.xml'));

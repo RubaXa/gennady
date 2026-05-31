@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию).
 
 ## 2. Project Type
 
@@ -827,6 +827,89 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 → Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, Contracts, File Structure).
 
+### 3.7 agents-rules DX
+
+```bash
+# --- пакет gennady не установлен в проекте ---
+$ gennady agents-rules
+
+Error: gennady package not found. Install it locally: npm i -D gennady
+
+# exit 1
+
+# --- пакет установлен, агент получает инструкцию ---
+$ gennady agents-rules
+
+# stdout — содержимое cli/cmd/orient/README.md (markdown):
+```
+
+````markdown
+# Agent Rules: orient
+
+`orient` — команда для навигации по репозиторию через file-header разметку
+(`@file:`, `@tasks:`, `@consumers:`) и DBC-контракты.
+
+## Когда использовать
+
+| Тебе нужно ...                                          | Вызови                                          |
+| ------------------------------------------------------- | ----------------------------------------------- |
+| Понять структуру проекта, какие файлы за что отвечают   | `npx gennady orient`                            |
+| Найти файлы, связанные с конкретной задачей (TSK-XX)    | `npx gennady orient --task=TSK-03`              |
+| Узнать, кто потребляет модуль (зависимости снизу-вверх) | `npx gennady orient --consumer=DbcTsLinter`     |
+| Найти файлы по ключевому слову в `@file:` описании      | `npx gennady orient "keyword"`                  |
+| Посмотреть хедер и DBC-контракты конкретного файла      | `npx gennady orient --file=path/to/file.ts`     |
+| Найти экспортируемую сущность (fuzzy)                   | `npx gennady orient --entity=MyService --fuzzy` |
+| Увидеть граф зависимостей (кто что потребляет)          | `npx gennady orient --graph`                    |
+| Обзор всех спек и их задач                              | `npx gennady orient --specs`                    |
+
+## Примеры
+
+### Узнать, кто потребляет DbcJsDocParser
+
+```bash
+npx gennady orient --consumer=DbcJsDocParser
+```
+````
+
+Вывод: список файлов, у которых `@consumers: DbcJsDocParser` в хедере.
+
+### Найти файлы задачи TSK-04
+
+```bash
+npx gennady orient --task=TSK-04
+```
+
+Вывод: `TSK-04 → dbc-ts-linter.spec.md → список файлов с аннотациями`.
+
+### Посмотреть конкретный файл в деталях
+
+```bash
+npx gennady orient --file=services/dbc/parser/dbc-parser.types.ts
+```
+
+Вывод: хедер (`@file:`, `@tasks:`, `@consumers:`) + все экспортируемые сущности с DBC-контрактами.
+
+## Как встроить в AGENTS.md
+
+Запусти `npx gennady agents-rules`, прочитай вывод, переосмысли под свою задачу
+и добавь в секцию «Tools / Commands» своего AGENTS.md.
+
+```
+
+```
+
+# exit 0
+
+# --- повторный вызов: вывод идентичен ---
+
+$ gennady agents-rules
+
+# exit 0, тот же вывод
+
+```
+
+Команда `agents-rules` читает `cli/cmd/orient/README.md` из пакета gennady и выводит на stdout. `README.md` — канонический источник: виден человеку в GitHub и доступен агенту через команду. Перед чтением проверяется наличие `node_modules/gennady/` в проекте.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -1023,6 +1106,19 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 | **Exit codes**         |                                                                                                                                                              |
 | FR-SS-16               | Exit 0 — успех, exit 1 — ошибка (пакет не найден, несуществующий скил)                                                                                       |
 
+### 4.1.7 agents-rules Functional Requirements
+
+| ID          | Требование                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Проверка** |                                                                                                                                                              |
+| FR-AR-01    | Проверить, что `gennady` установлен в проекте (`<cwd>/node_modules/gennady/`). Если нет — ошибка: `gennady package not found. Install it locally: npm i -D gennady`, exit 1 |
+| **Вывод**   |                                                                                                                                                              |
+| FR-AR-02    | Прочитать `cli/cmd/orient/README.md` из пакета gennady (резолв через `import.meta.resolve('gennady')` + путь к `cli/cmd/orient/README.md`)                    |
+| FR-AR-03    | Вывести содержимое `README.md` на stdout как есть (markdown)                                                                                                  |
+| FR-AR-04    | Без аргументов, без флагов. Одна точка входа: `gennady agents-rules`                                                                                          |
+| FR-AR-05    | Exit code 0 при успехе, 1 при ошибке (пакет не найден)                                                                                                        |
+| FR-AR-06    | `README.md` — канонический источник контента. При добавлении новой команды в `orient` разработчик обязан обновить `README.md`                                 |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -1046,6 +1142,7 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 - **NFC-19 (sync-skills)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`, `buffer`). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`
 - **NFC-20 (sync-skills)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/skills/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
 - **NFC-21 (sync-skills)**: Orphan-удаление: перед записью новых файлов — рекурсивное сравнение target и source, удаление отсутствующих в source. Сухие функции без I/O к stdout
+- **NFC-22 (agents-rules)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`). Контент — статический `README.md`, читается через `fs.readFileSync`
 
 ### 4.3 Out-of-Scope
 
@@ -1105,6 +1202,13 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 - `--watch` режим
 - Синхронизация из других источников (только npm-пакет gennady)
 - Миграция/трансляция формата скилов между платформами
+
+**agents-rules (v1):**
+
+- Описание других команд кроме `orient`
+- Динамическое чтение метаданных команд (контент — статический `README.md`)
+- Генерация файлов (`README.md` в `cli/cmd/orient/` — создаётся разработчиком вручную)
+- Аргументы / флаги (одна точка входа, без вариаций)
 
 ### 4.4 Runtime Backing & Deferred Scope
 
@@ -1181,6 +1285,14 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 | Интерактивное подтверждение     | `not-implemented` (deferred) |
 | Регистрация в opencode.json     | `not-implemented` (deferred) |
 
+**agents-rules:**
+
+| Capability                      | Posture        |
+| ------------------------------- | -------------- |
+| Проверка `node_modules/gennady` | `real-runtime` |
+| Чтение `README.md` (FS)        | `real-runtime` |
+| Вывод на stdout                 | `real-runtime` |
+
 ### 4.5 Rules
 
 | Rule               | Category | Source                                      |
@@ -1197,19 +1309,21 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 ### 5.1 lint
 
 ```
+
 cli/cmd/lint/
-├── index.ts                    # import './lint.cmd.ts'
-├── lint.cmd.ts                 # CLI-обвязка: parseArgs, git scan, цикл по файлам, вывод
-├── lint.types.ts               # LintError, LintOptions, LintReport
+├── index.ts # import './lint.cmd.ts'
+├── lint.cmd.ts # CLI-обвязка: parseArgs, git scan, цикл по файлам, вывод
+├── lint.types.ts # LintError, LintOptions, LintReport
 ├── checks/
-│   ├── file-header.check.ts    # проверка // @file: + // @consumers:
-│   ├── anchor.check.ts         # парность + вложенность #region START/END
-│   └── dbc-contract.check.ts   # адаптер к DbcTsLinter (путь или контент)
-└── __tests__/
-    ├── lint.cmd.test.ts
-    ├── file-header.check.test.ts
-    ├── anchor.check.test.ts
-    └── dbc-contract.check.test.ts
+│ ├── file-header.check.ts # проверка // @file: + // @consumers:
+│ ├── anchor.check.ts # парность + вложенность #region START/END
+│ └── dbc-contract.check.ts # адаптер к DbcTsLinter (путь или контент)
+└── **tests**/
+├── lint.cmd.test.ts
+├── file-header.check.test.ts
+├── anchor.check.test.ts
+└── dbc-contract.check.test.ts
+
 ```
 
 **Ключевые решения:**
@@ -1222,19 +1336,21 @@ cli/cmd/lint/
 ### 5.2 alt-opinion
 
 ```
+
 cli/cmd/alt-opinion/
-├── index.ts                    # import './alt-opinion.cmd.ts'
-├── alt-opinion.cmd.ts          # CLI-обвязка: парсинг args, чтение stdin/--file, вызов runner, вывод
-├── alt-opinion.types.ts        # AltOpinionModel, AltOpinionResult, AltOpinionReport
-├── alt-opinion-runner.ts       # Ядро: параллельный опрос моделей + опциональный синтез (Promise.allSettled)
-├── alt-opinion-parser.ts       # Свой парсер аргументов (:: синтаксис не поддерживается parseArgs)
+├── index.ts # import './alt-opinion.cmd.ts'
+├── alt-opinion.cmd.ts # CLI-обвязка: парсинг args, чтение stdin/--file, вызов runner, вывод
+├── alt-opinion.types.ts # AltOpinionModel, AltOpinionResult, AltOpinionReport
+├── alt-opinion-runner.ts # Ядро: параллельный опрос моделей + опциональный синтез (Promise.allSettled)
+├── alt-opinion-parser.ts # Свой парсер аргументов (:: синтаксис не поддерживается parseArgs)
 ├── prompts/
-│   ├── default-opinion.prompt.md   # Дефолтный промпт мнения
-│   └── default-synth.prompt.md     # Дефолтный промпт синтеза
-└── __tests__/
-    ├── alt-opinion-parser.test.ts      # Unit: парсер (12+ кейсов)
-    ├── alt-opinion-runner.test.ts      # Unit: runner с моками AI SDK через DI-порт
-    └── alt-opinion.cmd.test.ts         # Integration: CLI-обвязка
+│ ├── default-opinion.prompt.md # Дефолтный промпт мнения
+│ └── default-synth.prompt.md # Дефолтный промпт синтеза
+└── **tests**/
+├── alt-opinion-parser.test.ts # Unit: парсер (12+ кейсов)
+├── alt-opinion-runner.test.ts # Unit: runner с моками AI SDK через DI-порт
+└── alt-opinion.cmd.test.ts # Integration: CLI-обвязка
+
 ```
 
 **Ключевые решения:**
@@ -1264,9 +1380,11 @@ cli/cmd/alt-opinion/
 ### 5.4 Update Check
 
 ```
-cli/cmd/_shared/
-├── update-check.ts          # checkForUpdates(pkg): читает кеш, spawn worker, deferred notify
-└── update-check-worker.ts   # HTTPS GET к реестру → пишет результат в кеш
+
+cli/cmd/\_shared/
+├── update-check.ts # checkForUpdates(pkg): читает кеш, spawn worker, deferred notify
+└── update-check-worker.ts # HTTPS GET к реестру → пишет результат в кеш
+
 ```
 
 **Ключевые решения:**
@@ -1280,16 +1398,18 @@ cli/cmd/_shared/
 ### 5.5 sync
 
 ```
+
 cli/cmd/sync/
-├── index.ts                    # import { run } from './sync.cmd.ts'; run(process.argv)
-├── sync.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
-├── sync.types.ts               # SyncOptions, SyncFileEntry, SyncResult
-├── sync-core.ts                # Ядро: resolvePackageDir, scanDirectives, collectAndCompare
-├── sync-formatter.ts           # Форматтер: + / ~ / =, dry-run маркеры, итоговая строка
-└── __tests__/
-    ├── sync-core.test.ts       # Unit: resolveSource, scanSource, сравнение
-    ├── sync-formatter.test.ts  # Unit: форматтер вывода (added / updated / unchanged / dry-run)
-    └── sync.cmd.test.ts        # Integration: CLI-обвязка (parseArgs, --dry-run, ошибки)
+├── index.ts # import { run } from './sync.cmd.ts'; run(process.argv)
+├── sync.cmd.ts # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
+├── sync.types.ts # SyncOptions, SyncFileEntry, SyncResult
+├── sync-core.ts # Ядро: resolvePackageDir, scanDirectives, collectAndCompare
+├── sync-formatter.ts # Форматтер: + / ~ / =, dry-run маркеры, итоговая строка
+└── **tests**/
+├── sync-core.test.ts # Unit: resolveSource, scanSource, сравнение
+├── sync-formatter.test.ts # Unit: форматтер вывода (added / updated / unchanged / dry-run)
+└── sync.cmd.test.ts # Integration: CLI-обвязка (parseArgs, --dry-run, ошибки)
+
 ```
 
 **Ключевые решения:**
@@ -1312,44 +1432,46 @@ cli/cmd/sync/
 ### 5.6 orient
 
 ```
+
 cli/cmd/orient/
-├── index.ts                      # import { run } from './orient.cmd.ts'; run(process.argv)
-├── orient.cmd.ts                 # CLI-обвязка: parseArgs, автоопределение сценария, вызов ядра, вывод + Hints
-├── orient.types.ts               # OrientOptions, OrientResult, FileIndexEntry, IndexMatch
+├── index.ts # import { run } from './orient.cmd.ts'; run(process.argv)
+├── orient.cmd.ts # CLI-обвязка: parseArgs, автоопределение сценария, вызов ядра, вывод + Hints
+├── orient.types.ts # OrientOptions, OrientResult, FileIndexEntry, IndexMatch
 ├── core/
-│   ├── scan-files.ts             # Сканирование директорий: walkDir с фильтром .ts/.tsx, исключения
-│   ├── build-index.ts            # Сборка FileIndexEntry[] → Index (Map<word, Set<FileWordRef>>)
-│   ├── extract-header.ts         # Извлечение @file:/@tasks:/@consumers: из первых строк файла
-│   ├── query-task.ts             # S2: поиск по @tasks:
-│   ├── query-consumer.ts         # S3: поиск по @consumers:
-│   ├── query-keyword.ts          # S4: поиск по индексу (exact + Damerau-Levenshtein)
-│   ├── query-entity.ts           # S6: поиск экспортируемых сущностей с fuzzy
-│   ├── query-graph.ts            # S7: построение графа зависимостей
-│   ├── query-spec.ts             # S8/S9: поиск по спекам (spec → tasks → files)
-│   ├── damerau-levenshtein.ts    # zero-deps реализация (~15 строк)
-│   └── hints.ts                  # Генерация Hints-блока для каждого сценария
+│ ├── scan-files.ts # Сканирование директорий: walkDir с фильтром .ts/.tsx, исключения
+│ ├── build-index.ts # Сборка FileIndexEntry[] → Index (Map<word, Set<FileWordRef>>)
+│ ├── extract-header.ts # Извлечение @file:/@tasks:/@consumers: из первых строк файла
+│ ├── query-task.ts # S2: поиск по @tasks:
+│ ├── query-consumer.ts # S3: поиск по @consumers:
+│ ├── query-keyword.ts # S4: поиск по индексу (exact + Damerau-Levenshtein)
+│ ├── query-entity.ts # S6: поиск экспортируемых сущностей с fuzzy
+│ ├── query-graph.ts # S7: построение графа зависимостей
+│ ├── query-spec.ts # S8/S9: поиск по спекам (spec → tasks → files)
+│ ├── damerau-levenshtein.ts # zero-deps реализация (~15 строк)
+│ └── hints.ts # Генерация Hints-блока для каждого сценария
 ├── render/
-│   ├── render-file-list.ts       # Форматтер строки файла: path — @file: ... | @tasks: ... | ...
-│   ├── render-detail.ts          # Форматтер S5: header блоками + exports с DBC-контрактами
-│   ├── render-tree.ts            # Форматтер S1: дерево с отступами и индикаторами глубины
-│   ├── render-graph.ts           # Форматтер S7: плоский/рекурсивный граф
-│   ├── render-specs.ts           # Форматтер S8/S9: обзор спек / поиск по спеке
-│   └── render-search.ts          # Форматтер S4: результаты поиска с матчами
-└── __tests__/
-    ├── extract-header.test.ts    # Unit: парсинг хедера (валидный, отсутствующий, multiline)
-    ├── build-index.test.ts       # Unit: индекс (добавление, поиск, fuzzy)
-    ├── damerau-levenshtein.test.ts  # Unit: расстояние (exact, transpose, insert, delete)
-    ├── query-task.test.ts        # Unit: поиск по задачам
-    ├── query-consumer.test.ts    # Unit: поиск по потребителям
-    ├── query-keyword.test.ts     # Unit: keyword search + fuzzy
-    ├── query-entity.test.ts      # Unit: поиск сущностей
-    ├── query-graph.test.ts       # Unit: граф зависимостей
-    ├── query-spec.test.ts        # Unit: поиск по спекам
-    ├── render-file-list.test.ts  # Unit: форматтер строки файла
-    ├── render-detail.test.ts     # Unit: форматтер детального вывода
-    ├── render-specs.test.ts      # Unit: форматтер спек
-    ├── hints.test.ts             # Unit: генерация hints
-    └── orient.cmd.test.ts        # Integration: CLI-обвязка (parseArgs, exit codes, флаги)
+│ ├── render-file-list.ts # Форматтер строки файла: path — @file: ... | @tasks: ... | ...
+│ ├── render-detail.ts # Форматтер S5: header блоками + exports с DBC-контрактами
+│ ├── render-tree.ts # Форматтер S1: дерево с отступами и индикаторами глубины
+│ ├── render-graph.ts # Форматтер S7: плоский/рекурсивный граф
+│ ├── render-specs.ts # Форматтер S8/S9: обзор спек / поиск по спеке
+│ └── render-search.ts # Форматтер S4: результаты поиска с матчами
+└── **tests**/
+├── extract-header.test.ts # Unit: парсинг хедера (валидный, отсутствующий, multiline)
+├── build-index.test.ts # Unit: индекс (добавление, поиск, fuzzy)
+├── damerau-levenshtein.test.ts # Unit: расстояние (exact, transpose, insert, delete)
+├── query-task.test.ts # Unit: поиск по задачам
+├── query-consumer.test.ts # Unit: поиск по потребителям
+├── query-keyword.test.ts # Unit: keyword search + fuzzy
+├── query-entity.test.ts # Unit: поиск сущностей
+├── query-graph.test.ts # Unit: граф зависимостей
+├── query-spec.test.ts # Unit: поиск по спекам
+├── render-file-list.test.ts # Unit: форматтер строки файла
+├── render-detail.test.ts # Unit: форматтер детального вывода
+├── render-specs.test.ts # Unit: форматтер спек
+├── hints.test.ts # Unit: генерация hints
+└── orient.cmd.test.ts # Integration: CLI-обвязка (parseArgs, exit codes, флаги)
+
 ```
 
 **Ключевые решения:**
@@ -1373,44 +1495,46 @@ cli/cmd/orient/
 ### 5.7 sync-skills
 
 ```
-shared/common/sync/                   # новый — общий код (извлечён из sync)
-├── sync-core.shared.ts               # resolvePackageDir(subdir), compareBytes
-├── sync-formatter.shared.ts          # formatSyncOutput(entries, opts)
-└── sync-deps.type.ts                 # SyncCmdDeps (DI-порт)
 
-cli/cmd/sync/                         # рефакторинг — импортит shared
-├── sync-core.ts                       # scanDirectives, collectAndCompare (плоская)
-├── sync.cmd.ts                        # ← импорт shared resolvePackageDir + format
-├── sync-formatter.ts                  # удалить → shared
+shared/common/sync/ # новый — общий код (извлечён из sync)
+├── sync-core.shared.ts # resolvePackageDir(subdir), compareBytes
+├── sync-formatter.shared.ts # formatSyncOutput(entries, opts)
+└── sync-deps.type.ts # SyncCmdDeps (DI-порт)
+
+cli/cmd/sync/ # рефакторинг — импортит shared
+├── sync-core.ts # scanDirectives, collectAndCompare (плоская)
+├── sync.cmd.ts # ← импорт shared resolvePackageDir + format
+├── sync-formatter.ts # удалить → shared
 ├── sync.types.ts
 ├── index.ts
-└── __tests__/
+└── **tests**/
 
-cli/cmd/sync-skills/                  # новый модуль
+cli/cmd/sync-skills/ # новый модуль
 ├── index.ts
-├── sync-skills.cmd.ts                 # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
-├── sync-skills.types.ts              # SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult
-├── sync-skills-core.ts               # scanSkills, collectAndCompareSkills (рекурсивная, orphan-удаление)
-├── sync-skills-formatter.ts          # Форматтер: +/~/-/= с отступами для вложенных файлов
-└── __tests__/
-    ├── sync-skills-core.test.ts
-    ├── sync-skills-formatter.test.ts
-    └── sync-skills.cmd.test.ts
+├── sync-skills.cmd.ts # CLI-обвязка: parseArgs, build deps, вызов core + formatter, вывод
+├── sync-skills.types.ts # SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult
+├── sync-skills-core.ts # scanSkills, collectAndCompareSkills (рекурсивная, orphan-удаление)
+├── sync-skills-formatter.ts # Форматтер: +/~/-/= с отступами для вложенных файлов
+└── **tests**/
+├── sync-skills-core.test.ts
+├── sync-skills-formatter.test.ts
+└── sync-skills.cmd.test.ts
 
-ai/skills/                            # 13 скилов (физические артефакты)
-├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
+ai/skills/ # 13 скилов (физические артефакты)
+├── alt-opinion/ # SKILL.md + opinion.prompt.md + synth.prompt.md
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
 ├── sdd-continue/SKILL.md
 ├── sdd-critic/SKILL.md
 ├── sdd-discover/SKILL.md
-├── sdd-execute/                       # SKILL.md + scripts/ (8 файлов)
+├── sdd-execute/ # SKILL.md + scripts/ (8 файлов)
 ├── sdd-execute-batch/SKILL.md
 ├── sdd-fix/SKILL.md
 ├── sdd-infra/SKILL.md
 ├── sdd-module-decomposition/SKILL.md
 ├── sdd-scaffold/SKILL.md
 └── sdd-setup/SKILL.md
+
 ```
 
 **Ключевые решения:**
@@ -1450,6 +1574,38 @@ ai/skills/                            # 13 скилов (физические а
 | Кэш индекса на диск                                       | YAGNI для v1. Индекс строится <100ms для 200 файлов. Кэш — deferred                                            |
 | Использовать `tree-sitter` для extraction                 | Избыточно. Хедер — первые ~10 строк, regex достаточно. tree-sitter — для DBC-линтинга, не для orient           |
 | Полный DBC-парсинг для всех файлов при построении индекса | Дорого (447 строк парсера на файл). Только для `--file`, `--entity`, `--detail`                                |
+
+### 5.10 agents-rules
+
+```
+
+cli/cmd/orient/
+├── README.md ← канонический источник контента (markdown)
+├── index.ts
+├── orient.cmd.ts
+└── ...
+
+cli/cmd/agents-rules/
+├── index.ts # import { run } from './agents-rules.cmd.ts'; run(process.argv)
+└── agents-rules.cmd.ts # проверка node_modules/gennady → readFileSync(README.md) → stdout
+
+````
+
+**Ключевые решения:**
+
+1. **README.md как источник.** Контент живёт в `cli/cmd/orient/README.md`. Команда `agents-rules` читает этот файл и выводит на stdout. `README.md` — единый источник: виден человеку в GitHub и доступен агенту через команду.
+2. **Проверка установки.** Перед чтением — проверить `<cwd>/node_modules/gennady/`. Пакет не найден → ошибка с инструкцией `npm i -D gennady`, exit 1.
+3. **Резолв пути.** `import.meta.resolve('gennady')` → отрезать `package.json` → прибавить `cli/cmd/orient/README.md`.
+4. **Zero runtime deps.** Только `fs.readFileSync`, `path.resolve`, `import.meta.resolve`. Никаких npm-зависимостей.
+5. **Регистрация.** `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break` в `cli/gennady.ts`.
+
+### 5.11 Rejected Alternatives (agents-rules)
+
+| Вариант                                                    | Почему отвергнут                                                                                     |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Контент как template literal в коде                        | `README.md` дублируется: один в коде (для команды), один в `cli/cmd/orient/` (для GitHub). Дрифт между ними |
+| Динамический сбор метаданных команд (JSDoc / экспорты)     | YAGNI для v1. `orient` — единственная команда, которую `agents-rules` описывает. Статический README.md проще |
+| Отдельный файл контента вне `orient/`                     | README.md логически принадлежит `orient/` — описывает использование orient. GitHub рендерит его в директории |
 
 ### D-009 — Команда orient: навигация по file-header и DBC-контрактам
 
@@ -1525,13 +1681,16 @@ ai/skills/                            # 13 скилов (физические а
   // @ts-expect-error: D-042 — abstract class instantiation required by contract test
   // @ts-expect-error — D-042: abstract class instantiation required by contract test
   // eslint-disable-next-line no-explicit-any -- D-017: third-party type definition missing
-  ```
-  Невалидные (purpose отсутствует или слишком короткий):
-  ```ts
-  /* @ts-ignore: D-099 */ // purpose пуст
-  // eslint-disable-next-line no-explicit-any -- D-017        // после D-017 ничего нет
-  // @ts-ignore D-042 fix                                     // 3 непробельных символа после D-042 — недостаточно
-  ```
+````
+
+Невалидные (purpose отсутствует или слишком короткий):
+
+```ts
+/* @ts-ignore: D-099 */ // purpose пуст
+// eslint-disable-next-line no-explicit-any -- D-017        // после D-017 ничего нет
+// @ts-ignore D-042 fix                                     // 3 непробельных символа после D-042 — недостаточно
+```
+
 - **Where D-NNN lives:** в первой итерации — синтаксическое требование (ссылка должна присутствовать). Существование D-NNN в каком-либо `*.spec.md` не верифицируется. Допустимы записи в scope-spec / module-spec / task-ticket Decision Log в формате `D-NNN — Authorized Escape Hatch`.
 - **Enforcement:** новый чек `DisablesCheck` в gennady lint, ортогональный к ESLint и TypeScript (нельзя обойти inline-комментарием отключения — сам комментарий И есть искомый паттерн). Аудит SDD вызывает `gennady lint` на STEP_1 mechanical pre-pass — нарушения попадают в findings автоматически.
 - **Scope:** код И тесты, любой `.ts`/`.tsx` файл в проекте.
@@ -1586,6 +1745,17 @@ ai/skills/                            # 13 скилов (физические а
   - Отдельный npm-пакет `@gennady/skills` — overkill для 13 скилов
   - Интерактивный режим подтверждения — YAGNI для v1; git покажет diff
   - Синхронизация в поддиректорию `.claude/skills/gennady/` — Claude Code может не увидеть скилы во вложенной директории
+
+### D-012 — Команда agents-rules: документация orient для AI-агентов
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (agents-rules)
+- **Why:** Агентам, работающим в проекте, нужна документация по тому, КОГДА и ЗАЧЕМ вызывать `orient`. Команда `agents-rules` читает `cli/cmd/orient/README.md` из пакета gennady и выводит на stdout — агент получает готовую инструкцию, переосмысливает под свою задачу и интегрирует в `AGENTS.md`. `README.md` — канонический источник: виден в GitHub и доступен через команду. Проверка наличия `node_modules/gennady/` перед чтением гарантирует, что пакет установлен. Zero runtime deps (только `fs.readFileSync`).
+- **Risk accepted:** Контент статический — при изменении `orient` (новые сценарии, флаги) разработчик должен вручную обновить `README.md`. Автоматической синхронизации нет — риск дрифта документации. Смягчается тем, что `README.md` находится в той же директории, что и код `orient`.
+- **Rejected alternatives:**
+  - Хардкод контента в коде команды — дублирование с `README.md`, дрифт
+  - Динамический сбор метаданных из кода orient — YAGNI для v1, усложняет архитектуру
+  - Отдельный файл контента вне `orient/` — теряется связность; `README.md` логически принадлежит `orient/`
 
 ## 7. Scope Dependencies
 
@@ -1682,6 +1852,13 @@ ai/skills/                            # 13 скилов (физические а
 | Обновить `cli/gennady.ts` (case 'orient')                                | file          | this-scope-task       | добавить `case 'orient': await import('./cmd/orient/index.ts'); break`                                                              |
 | Обновить `cli/AGENTS.md` (строка orient)                                 | file          | this-scope-task       | добавить строку `orient` в таблицу команд                                                                                           |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка orient)                      | file          | this-scope-task       | добавить `orient` в вывод help                                                                                                      |
+| **agents-rules**                                                         |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/orient/README.md`                                       | file          | this-scope-task       | Канонический markdown: описание orient, таблица «когда использовать», примеры                                                       |
+| Создать `cli/cmd/agents-rules/index.ts`                                  | file          | this-scope-task       | `import { run } from './agents-rules.cmd.ts'; run(process.argv)`                                                                    |
+| Создать `cli/cmd/agents-rules/agents-rules.cmd.ts`                       | file          | this-scope-task       | Проверка `node_modules/gennady` → `import.meta.resolve` → `readFileSync(README.md)` → stdout                                        |
+| Обновить `cli/gennady.ts` (case 'agents-rules')                          | file          | this-scope-task       | добавить `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break`                                                  |
+| Обновить `cli/AGENTS.md` (строка agents-rules)                           | file          | this-scope-task       | добавить строку `agents-rules` в таблицу команд                                                                                     |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка agents-rules)                | file          | this-scope-task       | добавить `agents-rules` в вывод help                                                                                                |
 
 ## 9. Module Map
 
@@ -1694,6 +1871,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
 - [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
+- [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 
@@ -1708,6 +1886,7 @@ graph TD
     update-check -. Runtime .-> npm-registry[npm public registry]
     sync -. Runtime .-> npm-package[gennady npm package]
     sync-skills -. Runtime .-> npm-package
+    agents-rules -. Runtime .-> npm-package
     sync --> shared-sync[shared/common/sync/]
     sync-skills --> shared-sync
 ```
@@ -1721,8 +1900,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -1738,6 +1917,7 @@ graph TD
   - sync-skills: `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты sync не ломаются
   - sync-skills: 13 скилов в `ai/skills/` нужно физически скопировать (пути адаптировать с `~/.config/opencode/skills/` на `${SKILL_DIR}`)
   - sync-skills: orphan-удаление деструктивно — пользовательские скилы в `.claude/skills/` будут потеряны без dry-run
+  - agents-rules: `README.md` — статический контент. При изменении orient (новые сценарии/флаги) разработчик должен вручную синхронизировать README.md
 
 ## 11. Execution Insights
 
