@@ -91,6 +91,7 @@ graph TD
     TSK-57 --> TSK-56
     TSK-58 --> TSK-57
     TSK-59[TSK-59: agents-rules command]
+    TSK-60[TSK-60: e2e tests]
 ```
 
 ## Tracker
@@ -123,6 +124,7 @@ graph TD
 | [TSK-57](sync-skills/cli-sync-skills.task-57.md) | sync-skills command (types, core, fmt, CLI, tests)    | sync-skills  | TSK-56                         | `[x]` DONE | 1       |
 | [TSK-58](sync-skills/cli-sync-skills.task-58.md) | ai/skills bootstrap (13 SDD skills)                   | sync-skills  | TSK-57                         | `[ ]` TODO | 1       |
 | [TSK-59](agents-rules/agents-rules.task-59.md)   | agents-rules: команда документации orient для агентов | agents-rules | None                           | `[x]` DONE | 0       |
+| [TSK-60](e2e/e2e.task-60.md)                     | E2E-тесты CLI-команд через npm pack                   | e2e          | None                           | `[x]` DONE | 3       |
 
 ## Notes
 

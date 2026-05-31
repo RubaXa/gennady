@@ -1,6 +1,6 @@
 // @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 7 checks, ESLint output.
 // @consumers: gennady.ts
-// @tasks: TSK-16, TSK-49
+// @tasks: TSK-16, TSK-49, TSK-60
 
 import { execSync } from 'node:child_process';
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
@@ -54,6 +54,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     '**/node_modules/**',
     '**/__tests__/**',
     '**/fixtures/**',
+    '**/__tests__/fixtures/**',
     '**/dist/**',
     '**/coverage/**',
     '**/build/**',
@@ -94,10 +95,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     logger.debug('[LintCommand#run] [idle → collecting] staged mode');
     try {
       const stagedOut = execSync('git diff --staged --name-only', { encoding: 'utf-8' }).trim();
-      const untrackedOut = execSync('git ls-files --others --exclude-standard', {
-        encoding: 'utf-8',
-      }).trim();
-      files = [...stagedOut.split('\n'), ...untrackedOut.split('\n')]
+      files = stagedOut
+        .split('\n')
         .filter(Boolean)
         .filter((f) => f.endsWith('.ts'));
       files = [...new Set(files)];
@@ -296,5 +295,5 @@ function walkDir(dir: string, fileSet: Set<string>): void {
 
 // Self-executing for CLI: gennady lint <args>
 const report = await run(process.argv);
-if (report.exitCode === 1) console.log(report.format());
+if (report.exitCode === 1 || report.autoFixed > 0) console.log(report.format());
 process.exit(report.exitCode);

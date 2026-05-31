@@ -41,6 +41,9 @@ const nodeBuiltins = (() => {
   return [...entries];
 })();
 
+/**
+ * @purpose Vite build configuration for the gennady CLI — lib mode, node22 target, chunked output.
+ */
 export default defineConfig({
   define: {
     __GENNADY_VERSION__: JSON.stringify(pkg.version),
@@ -55,7 +58,7 @@ export default defineConfig({
       fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
     },
     rollupOptions: {
-      external: [...nodeBuiltins, 'tree-sitter', 'node:sqlite'],
+      external: [...nodeBuiltins, 'node:sqlite', 'tree-sitter', 'tree-sitter-typescript'],
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
         entryFileNames: (chunkInfo) =>

@@ -1119,6 +1119,44 @@ $ gennady agents-rules
 | FR-AR-05    | Exit code 0 при успехе, 1 при ошибке (пакет не найден)                                                                                                        |
 | FR-AR-06    | `README.md` — канонический источник контента. При добавлении новой команды в `orient` разработчик обязан обновить `README.md`                                 |
 
+### 4.1.8 E2E Testing Functional Requirements
+
+| ID               | Требование                                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Артефакт**     |                                                                                                                                                           |
+| FR-E2E-01        | E2E-тесты работают с локальным артефактом: `npm pack` создаёт `.tgz`, идентичный публикуемому в реестр                                                     |
+| FR-E2E-02        | `setup.ts` запускает `npm run build` первым шагом. Если билд падает — тест падает с ошибкой билда (stderr команды `npm run build`) |
+| **Setup-ошибки**  |                                                                                                                                                           |
+| FR-E2E-02a       | `npm pack` — при падении (npm не установлен, permission denied) тест падает с сообщением `npm pack failed: <stderr>`. BDD: `GIVEN npm pack fails WHEN setupE2e() called THEN test fails with pack error in message` |
+| FR-E2E-02b       | `npm install <tgz>` — при падении (диск заполнен, permission denied) тест падает с сообщением `npm install failed: <stderr>`. BDD: `GIVEN npm install fails WHEN setupE2e() called THEN test fails with install error in message` |
+| FR-E2E-02c       | Создание temp-директории — при падении (EACCES) тест падает с сообщением `failed to create temp directory: <error>`. BDD: `GIVEN os.tmpdir() unavailable WHEN setupE2e() called THEN test fails with directory creation error` |
+| FR-E2E-02d       | Копирование fixture-проекта — при падении (ENOENT, EACCES) тест падает с указанием недостающего файла. BDD: `GIVEN fixtures/ missing WHEN setupE2e() called THEN test fails specifying which fixture file is absent` |
+| **Фикстура**     |                                                                                                                                                           |
+| FR-E2E-03        | Статическая fixture-директория `cli/__tests__/e2e/fixtures/` содержит преднастроенные файлы для каждой тестируемой команды. Для lint: 5 `.ts` файлов с разными типами ошибок. Для orient: 2 `.ts` файла с `@tasks:`, `@consumers:` и экспортируемыми сущностями с `@purpose` |
+| FR-E2E-04        | Fixture-директория исключена из линтинга, форматирования и type-check (`**/__tests__/fixtures/**` уже в `.prettierignore` и `tsconfig.json exclude`)      |
+| FR-E2E-05        | `gennady lint` НЕ линтит файлы из `**/__tests__/fixtures/**` — они исключаются в `resolveTargets` наравне с `node_modules` и `dist`                        |
+| FR-E2E-06        | Один раз перед всеми тестами (`before`) fixture-проект копируется во временную директорию (`os.tmpdir()/gennady-e2e-XXXXX/`), в неё устанавливается `.tgz`. После завершения ВСЕХ тестов (`after`) временная директория удаляется |
+| FR-E2E-06a       | `afterEach` очищает состояние после тестов, модифицирующих fixture: для `sync` — удаляет `ai/directives/`, для `sync-skills` — удаляет `.claude/skills/`. Если очистка падает (EACCES) — ошибка выводится в stderr, но НЕ фейлит тест (ОС чистит `/tmp`) |
+| **Запуск команд** |                                                                                                                                                           |
+| FR-E2E-07        | Команды запускаются как дочерний процесс: `spawn('npx', ['gennady', ...args], { cwd: tempDir, timeout: 30_000 })`. Таймаут 30 секунд на команду            |
+| FR-E2E-07a       | При таймауте `spawn` — тест падает с сообщением `spawn timed out after 30s: gennady <args>`. BDD: `GIVEN CLI command hangs WHEN timeout exceeded THEN test fails with timeout message` |
+| FR-E2E-08        | Тест перехватывает stdout, stderr и exit code дочернего процесса                                                                                          |
+| FR-E2E-09        | Все e2e-тесты запускаются с `GENNADY_NO_UPDATE_CHECK=1` (update-check не релевантен для e2e)                                                               |
+| **Покрытие lint** |                                                                                                                                                           |
+| FR-E2E-10        | `lint`: happy path (чистый файл → exit 0), ошибки (нет @file:, нет @consumers:, непарные anchor), autofix, `--staged` (fixture: `git init && git add -A` в `setup.ts`), передача директории, несуществующий путь |
+| FR-E2E-10a       | Fixture-файлы для lint: `clean.ts` (`@file:` + `@consumers:` валидны, парные anchor), `no-header.ts` (без `@file:`), `no-consumers.ts` (без `@consumers:`), `bad-anchor.ts` (START_X без END_X, но `@file:` и `@consumers:` валидны — anchor-ошибка не должна маскироваться header-ошибкой), `needs-autofix.ts` (валидный header + парные anchor, но DBC-ошибки) |
+| **Покрытие sync** |                                                                                                                                                           |
+| FR-E2E-11        | `sync`: первый запуск (добавление `ai/directives/` из пакета), повторный без изменений (тест сам делает два последовательных `spawn sync` — первый создаёт, второй проверяет "unchanged"), `--dry-run`, фильтр по поддиректориям, несуществующая поддиректория |
+| **Покрытие orient** |                                                                                                                                                        |
+| FR-E2E-12        | `orient`: карта проекта (`orient`), поиск по задаче (`--task=TSK-FIX-01` — fixture-файлы содержат этот task-id), поиск потребителей (`--consumer=FixtureConsumer`), поиск по ключевому слову (`"fixture"` в `@file:`), детальный файл (`--file=src/service.ts`), граф (`--graph`) |
+| FR-E2E-12a       | Fixture-файлы для orient: `service.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureService` с `@purpose`), `helper.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureHelper` с `@purpose`). Эти файлы также имеют валидные header и anchor — они проходят lint |
+| **Покрытие sync-skills** |                                                                                                                                                     |
+| FR-E2E-13        | `sync-skills`: установка (включает повторный `spawn` для проверки "unchanged"), `--dry-run`, фильтр по скилам |
+| **Вывод**        |                                                                                                                                                           |
+| FR-E2E-14        | Отдельная npm-команда: `npm run test:e2e`. Не входит в `npm test`                                                                                         |
+| FR-E2E-15        | При падении теста — вывод stdout/stderr упавшей команды для отладки                                                                                       |
+| FR-E2E-16        | Тесты используют `node:test` (как весь проект, согласно `infra-base`)                                                                                      |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -1143,6 +1181,11 @@ $ gennady agents-rules
 - **NFC-20 (sync-skills)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/skills/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
 - **NFC-21 (sync-skills)**: Orphan-удаление: перед записью новых файлов — рекурсивное сравнение target и source, удаление отсутствующих в source. Сухие функции без I/O к stdout
 - **NFC-22 (agents-rules)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`). Контент — статический `README.md`, читается через `fs.readFileSync`
+- **NFC-E2E-01**: Shell-независим: E2E-тесты не используют bash-специфичный синтаксис, работают на macOS/Linux/Windows
+- **NFC-E2E-02**: Временная директория — `os.tmpdir()/gennady-e2e-XXXXX/`. Если тест упал и не удалил за собой — ОС чистит `/tmp`
+- **NFC-E2E-03**: `npm pack` вызывается через `child_process.spawn` (не shell) — платформо-независимо
+- **NFC-E2E-04**: Zero новых npm-зависимостей: `child_process`, `fs`, `os`, `path` — только Node.js built-in. Требуется `npm` CLI для `npm pack`/`npm install` на этапе setup'a
+- **NFC-E2E-05**: `spawn` имеет таймаут 30 секунд на команду. При превышении — тест падает с сообщением `spawn timed out after 30s`
 
 ### 4.3 Out-of-Scope
 
@@ -1209,6 +1252,16 @@ $ gennady agents-rules
 - Динамическое чтение метаданных команд (контент — статический `README.md`)
 - Генерация файлов (`README.md` в `cli/cmd/orient/` — создаётся разработчиком вручную)
 - Аргументы / флаги (одна точка входа, без вариаций)
+
+**e2e (v1):**
+
+- E2E для `alt-opinion` — требует API-ключей (`GENNADY_LLM_PROXY_API_KEY`), сетевое взаимодействие, нестабильное время ответа
+- E2E для `cat` — требует vcs-client (GitLab/GitHub), сетевое взаимодействие
+- E2E для `agents-rules` — тривиальная команда (читает статический README.md), покрывается тем что `orient` работает
+- E2E для `update-check` — требует сетевого доступа к npm registry
+- E2E для sync-skills orphan-удаления — требует преднаполнения target-директории лишними скилами (усложняет fixture setup). Deferred до v2
+- Интеграция e2e в `npm run release` / CI — отдельный refine после MVP
+- Параллельное выполнение e2e-тестов — sequential в v1 (проще отладка)
 
 ### 4.4 Runtime Backing & Deferred Scope
 
@@ -1292,6 +1345,18 @@ $ gennady agents-rules
 | Проверка `node_modules/gennady` | `real-runtime` |
 | Чтение `README.md` (FS)        | `real-runtime` |
 | Вывод на stdout                 | `real-runtime` |
+
+**e2e:**
+
+| Capability                              | Posture                      |
+| --------------------------------------- | ---------------------------- |
+| Vite `build` → `dist/`                  | `real-runtime`               |
+| `npm pack` → `.tgz`                     | `real-runtime`               |
+| Копирование fixture в temp dir (FS)     | `real-runtime`               |
+| `npm install` локального `.tgz`         | `real-runtime`               |
+| `spawn` CLI-команд как дочерний процесс | `real-runtime`               |
+| Очистка temp директории (FS)            | `real-runtime`               |
+| CI-интеграция                           | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
@@ -1757,6 +1822,56 @@ cli/cmd/agents-rules/
   - Динамический сбор метаданных из кода orient — YAGNI для v1, усложняет архитектуру
   - Отдельный файл контента вне `orient/` — теряется связность; `README.md` логически принадлежит `orient/`
 
+### 5.12 E2E Testing
+
+```
+cli/__tests__/e2e/
+├── e2e.test.ts              # describe('cli e2e', ...) — оркестратор
+├── setup.ts                 # npm run build → npm pack → git init && git add -A → cp fixture → npm install → { cwd, spawn, cleanup }
+├── lint.e2e.test.ts         # describe('lint', ...) — 8 тестов
+├── orient.e2e.test.ts       # describe('orient', ...) — 6 тестов
+├── sync.e2e.test.ts         # describe('sync', ...) — 5 тестов
+├── sync-skills.e2e.test.ts  # describe('sync-skills', ...) — 3 теста
+└── fixtures/
+    ├── package.json          # { "name": "gennady-e2e-fixture", "private": true }
+    └── src/
+        ├── clean.ts          # @file: fixture clean file | @consumers: FixtureConsumer (валидный lint)
+        ├── no-header.ts      # без @file: (ожидается ERR_CLI_LINT_MISSING_FILE)
+        ├── no-consumers.ts   # без @consumers: (ожидается ERR_CLI_LINT_MISSING_CONSUMERS)
+        ├── bad-anchor.ts     # START_X без END_X (ожидается ERR_CLI_LINT_ANCHOR_UNPAIRED_START). @file: и @consumers: валидны
+        ├── needs-autofix.ts  # DBC-ошибки для проверки --autofix. @file:, @consumers: и anchors валидны
+        ├── service.ts        # для orient: @file: E2E fixture service | @tasks: TSK-FIX-01 | @consumers: FixtureConsumer | exports FixtureService with @purpose
+        └── helper.ts         # для orient: @file: E2E fixture helper | @tasks: TSK-FIX-01 | @consumers: FixtureConsumer | exports FixtureHelper with @purpose
+```
+
+**Ключевые решения:**
+
+1. **Shared Fixture, Sequential** (Variant A): один fixture-проект на все тесты. `npm pack` + `npm install` — один раз в `before`. Тесты идут последовательно: lint → orient → sync → sync-skills. Порядок важен: `lint` и `orient` — read-only, `sync` и `sync-skills` пишут в свои директории. `afterEach` очищает написанное.
+
+2. **`npm pack` как канонический артефакт.** `npm pack` создаёт `.tgz`, побайтово идентичный публикуемому. `npm install <путь к .tgz>` в fixture-проект симулирует полную установку из реестра. Тесты проверяют ТОЧНО то, что получит пользователь.
+
+3. **`spawn` CLI как дочерний процесс.** Команды запускаются через `child_process.spawn('npx', ['gennady', ...args], { cwd })`. Это настоящий E2E: отдельный процесс, реальный stdout/stderr, реальный exit code.
+
+4. **`setup.ts` — контракт.** `setupE2e(): Promise<E2eContext>` возвращает `{ cwd, spawn, cleanup }`. `spawn` — обёртка над `child_process.spawn` с автозахватом stdout/stderr/exitCode. `cleanup` — `rm -rf` временной директории (всегда, даже при падении теста).
+
+5. **Fixture исключена из линтеров.** `resolveTargets` расширен паттерном `**/__tests__/fixtures/**` — `gennady lint` не сканирует fixture-файлы. `.prettierignore` и `tsconfig.json` уже исключают `**/__tests__/fixtures/**`.
+
+6. **`GENNADY_NO_UPDATE_CHECK=1`.** Все e2e-тесты запускаются с этой переменной — update-check не релевантен для e2e и не должен мешать.
+
+7. **Отдельная npm-команда.** `npm run test:e2e` → `node --import tsx --test cli/__tests__/e2e/e2e.test.ts`. Не входит в `npm test`.
+
+### D-013 — E2E-тестирование CLI-команд через локальный артефакт (npm pack)
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (e2e)
+- **Why:** Нужен способ убедиться, что CLI-команды реально работают после сборки И перед публикацией. Текущие unit/integration-тесты используют моки FS и AI SDK через DI-порт — они не проверяют, что `package.json#bin` корректен, что бандл запускается, что команды выдают ожидаемый stdout/stderr/exit code. Решение: `npm pack` создаёт `.tgz`, идентичный публикуемому → установка в fixture-проект → `spawn('npx', ['gennady', '<cmd>', ...])` → проверка реального вывода. Это индустриальный стандарт (eslint, vitest, tsx). MVP: 4 команды (lint, sync, orient, sync-skills), 22 теста. Без `alt-opinion` (API-ключи) и `cat` (сеть).
+- **Risk accepted:** `npm pack` + `npm install` добавляет ~5 секунд к времени запуска e2e-тестов. Смягчается тем, что это отдельная команда (`npm run test:e2e`), не входит в `npm test`. `spawn('npx', ...)` зависит от наличия `npx` в системе — но `npx` поставляется с Node.js (как и `node`). Временная директория в `/tmp` — на Windows `os.tmpdir()` возвращает корректный путь.
+- **Rejected alternatives:**
+  - Прямой запуск `dist/gennady.js` через `execa` (как tsx) — быстрее, но не тестирует `package.json#bin`, `package.json#files`, реальный резолв пакета
+  - E2E против опубликованной версии из реестра — тест показывает результат прошлого релиза, а не текущего кода; необходим динамический skip, который усложняет логику
+  - `npm link` — быстрее (нет overhead `.tgz`), но создаёт symlink, а не реальную установку. Не проверяет `package.json#files` — файлы, не попавшие в `files`, всё равно будут доступны через symlink. `npm pack + install` — побайтово идентично registry-установке
+  - Отдельный npm-пакет для e2e-фикстур — избыточно для 7 тестовых файлов
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -1859,6 +1974,25 @@ cli/cmd/agents-rules/
 | Обновить `cli/gennady.ts` (case 'agents-rules')                          | file          | this-scope-task       | добавить `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break`                                                  |
 | Обновить `cli/AGENTS.md` (строка agents-rules)                           | file          | this-scope-task       | добавить строку `agents-rules` в таблицу команд                                                                                     |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка agents-rules)                | file          | this-scope-task       | добавить `agents-rules` в вывод help                                                                                                |
+| **e2e**                                                                  |               |                       |                                                                                                                                     |
+| `"test:e2e"` script в `package.json`                                     | structural    | this-scope-task       | добавить `"test:e2e": "node --import tsx --test cli/__tests__/e2e/e2e.test.ts"`                                                     |
+| Директория `cli/__tests__/e2e/`                                          | structural    | this-scope-task       | создать                                                                                                                             |
+| `cli/__tests__/e2e/setup.ts`                                             | file          | this-scope-task       | npm run build → npm pack → git init && git add -A → cp fixture → npm install → { cwd, spawn, cleanup }                              |
+| `cli/__tests__/e2e/e2e.test.ts`                                          | file          | this-scope-task       | Оркестратор: before (setup), describe (lint → orient → sync → sync-skills), after (cleanup)                                         |
+| `cli/__tests__/e2e/lint.e2e.test.ts`                                     | file          | this-scope-task       | 8 тестов: clean file, missing @file:, missing @consumers:, unpaired anchor, autofix, --staged, directory, nonexistent               |
+| `cli/__tests__/e2e/orient.e2e.test.ts`                                   | file          | this-scope-task       | 6 тестов: project map, --task, --consumer, keyword search, --file, --graph                                                          |
+| `cli/__tests__/e2e/sync.e2e.test.ts`                                     | file          | this-scope-task       | 5 тестов: first run, repeat (unchanged), --dry-run, filter, nonexistent dir                                                         |
+| `cli/__tests__/e2e/sync-skills.e2e.test.ts`                              | file          | this-scope-task       | 3 теста: установка + повторный запуск (unchanged), --dry-run, фильтр по скилам                                                      |
+| `cli/__tests__/e2e/fixtures/`                                            | structural    | this-scope-task       | Статическая фикстура: package.json + src/ с 7 .ts файлами под lint и orient                                                         |
+| `cli/__tests__/e2e/fixtures/src/clean.ts`                                | file          | this-scope-task       | Валидный файл: @file: + @consumers: + anchors парные                                                                                |
+| `cli/__tests__/e2e/fixtures/src/no-header.ts`                            | file          | this-scope-task       | Файл без @file: (ожидается ERR_CLI_LINT_MISSING_FILE)                                                                               |
+| `cli/__tests__/e2e/fixtures/src/no-consumers.ts`                         | file          | this-scope-task       | Файл без @consumers: (ожидается ERR_CLI_LINT_MISSING_CONSUMERS)                                                                     |
+| `cli/__tests__/e2e/fixtures/src/bad-anchor.ts`                           | file          | this-scope-task       | Файл с непарными START/END (ожидается ERR_CLI_LINT_ANCHOR_UNPAIRED_START)                                                           |
+| `cli/__tests__/e2e/fixtures/src/needs-autofix.ts`                        | file          | this-scope-task       | Файл с DBC-ошибками для проверки --autofix                                                                                          |
+| `cli/__tests__/e2e/fixtures/src/service.ts`                              | file          | this-scope-task       | Файл для orient: @file:, @tasks: TSK-FIX-01, @consumers: FixtureConsumer, exports FixtureService with @purpose                      |
+| `cli/__tests__/e2e/fixtures/src/helper.ts`                               | file          | this-scope-task       | Файл для orient: @file:, @tasks: TSK-FIX-01, @consumers: FixtureConsumer, exports FixtureHelper with @purpose                       |
+| `*.tgz` в `.gitignore`                                                   | structural    | this-scope-task       | добавить строку `*.tgz`                                                                                                             |
+| `resolveTargets` — исключение `**/__tests__/fixtures/**`                 | file          | this-scope-task       | добавить паттерн в `EXCLUDE_PATTERNS` (наравне с `node_modules`, `dist`, etc.)                                                      |
 
 ## 9. Module Map
 
@@ -1874,6 +2008,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
+- e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
 
 ### 9.2 Inter-Module Dependency Map
 
@@ -1889,6 +2024,10 @@ graph TD
     agents-rules -. Runtime .-> npm-package
     sync --> shared-sync[shared/common/sync/]
     sync-skills --> shared-sync
+    e2e -. тестирует .-> lint
+    e2e -. тестирует .-> orient
+    e2e -. тестирует .-> sync
+    e2e -. тестирует .-> sync-skills
 ```
 
 ### 9.3 Stack Dependencies
@@ -1900,8 +2039,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`, `e2e`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`, `E2eContext`, `setupE2e`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -1918,8 +2057,14 @@ graph TD
   - sync-skills: 13 скилов в `ai/skills/` нужно физически скопировать (пути адаптировать с `~/.config/opencode/skills/` на `${SKILL_DIR}`)
   - sync-skills: orphan-удаление деструктивно — пользовательские скилы в `.claude/skills/` будут потеряны без dry-run
   - agents-rules: `README.md` — статический контент. При изменении orient (новые сценарии/флаги) разработчик должен вручную синхронизировать README.md
+  - e2e: `spawn('npx', ['gennady', ...])` — требует `npx` в системе. `npx` поставляется с Node.js, но теоретически может отсутствовать в минимальных окружениях
+  - e2e: fixture-файлы исключаются из линтинга проекта через `resolveTargets` (`**/__tests__/fixtures/**`). При изменении структуры `resolveTargets` нужно следить, что исключение не сломалось
+  - e2e: порядок тестов важен (Variant A Shared Fixture). При добавлении новых команд в e2e — добавлять после sync-skills или явно чистить состояние
+  - e2e: кроссплатформенное поведение не верифицировано — CI пока только на macOS/Linux. Windows — deferred
+  - e2e: Vite-чанки с хешами в именах — `npm pack` включает хешированные имена в `.tgz`. При изменении структуры чанков fixture-проект должен быть пересоздан (но тесты копируют fixture заново при каждом запуске)
+  - e2e: `npm` и `npx` должны быть доступны в системе. Минимальные Docker-образы (alpine) могут не включать npm. Для CI-интеграции потребуется явная установка Node.js с npm
 
-## 11. Execution Insights
+## 10. Execution Insights
 
 Закрытые проблемы, обнаруженные при реализации. Сохранены для будущих refin'ов и смежных скоупов.
 
@@ -1933,10 +2078,10 @@ graph TD
 | I-06 | `parseArgs(process.argv)` включает имя команды (`cat`) и путь к скрипту в `args._`. При запуске через `npx tsx ~/path/cli cat ...` в `args._` попадают и путь к скрипту, и `'cat'`. Простая проверка `args._.length > 0` даёт ложное срабатывание. | Фильтровать `args._`: удалять имя команды, пути скриптов (`.ts`, `.js`, `.mjs`, абсолютные пути). Команда должна работать при запуске через `tsx <абсолютный путь>`. Паттерн из lint (фильтр по расширению `.ts`). |
 | I-07 | GitLab `/repository/files/:path/raw` endpoint возвращает 404 для `source_branch` (имя ветки), но работает с `sha` (head commit).                                                                                                                   | `VcsGitlabMergeRequests.getChanges` использует `sha` из ответа MR как `ref`. `source_branch` — fallback.                                                                                                           |
 
-## 10. Handoff to module-decomposition
+## 11. Handoff to module-decomposition
 
 - **Primary input:** `specs/cli/cli.spec.md`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`, `sync-skills`, `orient`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `sync`, `sync-skills`, `orient`, `e2e`
 - **Named abstractions:** `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionModelPort`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**

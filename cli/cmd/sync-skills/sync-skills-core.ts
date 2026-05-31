@@ -5,6 +5,7 @@
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { compareBytes } from '../../../shared/common/sync/sync-core.shared.ts';
+import { normalize, SYNC_SKILLS_PATH_RULES } from '../../../shared/common/sync/path-normalizer.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 import {
   SyncSkillsResult,
@@ -111,6 +112,7 @@ function collectSkillFiles(
  * @param targetSkillDir Absolute path to target skill directory.
  * @param dryRun When true, skips actual file writes.
  * @param writeFile Injectable file writer.
+ * @param mkdir Injectable directory creator.
  * @returns SyncSkillsFileEntry with comparison result.
  */
 export function syncFile(
@@ -357,12 +359,14 @@ export function collectAndCompareSkills(
     for (const [relativePath, sourceData] of [...skillFiles.entries()].sort(([a], [b]) =>
       a.localeCompare(b)
     )) {
+      const normalizedContent = normalize(sourceData.toString('utf-8'), SYNC_SKILLS_PATH_RULES);
+      const normalizedData = Buffer.from(normalizedContent, 'utf-8');
       const targetData = targetFiles.get(relativePath);
       entries.push(
         syncFile(
           skillName,
           relativePath,
-          sourceData,
+          normalizedData,
           targetData,
           targetSkillDir,
           opts.dryRun ?? false,

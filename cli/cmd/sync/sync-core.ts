@@ -10,6 +10,7 @@ import {
   resolvePackageDir as _resolvePackageDirShared,
   compareBytes,
 } from '../../../shared/common/sync/sync-core.shared.ts';
+import { normalize, SYNC_PATH_RULES } from '../../../shared/common/sync/path-normalizer.ts';
 
 /** @purpose Entries excluded from sync: empty architecture dir, deprecated/domain-specific directives. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
 export const EXCLUDED_ENTRIES = new Set([
@@ -147,7 +148,9 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     const sourcePath = join(opts.sourceDir, relativePath);
     const targetPath = join(opts.targetDir, relativePath);
     const sourceData = deps.readFile(sourcePath);
-    const sourceSize = sourceData.length;
+    const normalizedContent = normalize(sourceData.toString('utf-8'), SYNC_PATH_RULES);
+    const normalizedData = Buffer.from(normalizedContent, 'utf-8');
+    const sourceSize = normalizedData.length;
 
     let targetData: Buffer | null = null;
     try {
@@ -159,7 +162,7 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     let status: SyncFileStatus;
     if (targetData === null) {
       status = 'added';
-    } else if (!compareBytes(sourceData, targetData)) {
+    } else if (!compareBytes(normalizedData, targetData)) {
       status = 'unchanged';
     } else {
       status = 'updated';
@@ -174,7 +177,7 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
 
     if (!opts.dryRun && status !== 'unchanged') {
       deps.mkdir(join(opts.targetDir, relativePath, '..'), { recursive: true });
-      deps.writeFile(targetPath, sourceData);
+      deps.writeFile(targetPath, normalizedData);
     }
   }
 

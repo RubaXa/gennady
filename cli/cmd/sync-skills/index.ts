@@ -2,4 +2,4 @@
 // @consumers: gennady.ts
 // @tasks: TSK-57
 import { run } from './sync-skills.cmd.ts';
-run(process.argv);
+process.exit(run(process.argv));

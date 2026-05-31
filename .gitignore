@@ -28,3 +28,4 @@ coverage
 .gennadyrc
 ai/drafts
 .claude/
+*.tgz
