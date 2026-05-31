@@ -18,7 +18,8 @@ interface EntityContext {
   nameLine: number;
   nameCol: number;
   bodyDepth: number;
-  count: number;
+  jsdocCount: number;
+  regionCount: number;
 }
 
 /**
@@ -114,7 +115,8 @@ export function check(content: string, filePath: string, maxInvariants: number):
             nameLine: pendingEntityLine,
             nameCol: pendingEntityCol,
             bodyDepth: braceDepth,
-            count: jsdocInvariants.length, // JSDoc invariants collected before the declaration
+            jsdocCount: jsdocInvariants.length,
+            regionCount: 0,
           };
 
           // Also push to stack so nested entity can be tracked
@@ -126,14 +128,24 @@ export function check(content: string, filePath: string, maxInvariants: number):
       } else if (ch === '}') {
         // Check if current entity's body is closing
         if (currentEntity && braceDepth === currentEntity.bodyDepth) {
-          if (currentEntity.count > maxInvariants) {
+          if (currentEntity.jsdocCount > maxInvariants) {
             errors.push({
               file: filePath,
               line: currentEntity.nameLine,
               col: currentEntity.nameCol,
               severity: 'error',
               code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-              message: `Entity "${currentEntity.name}" has ${currentEntity.count} invariants (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+              message: `Entity "${currentEntity.name}" has ${currentEntity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+            });
+          }
+          if (currentEntity.regionCount > maxInvariants) {
+            errors.push({
+              file: filePath,
+              line: currentEntity.nameLine,
+              col: currentEntity.nameCol,
+              severity: 'error',
+              code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
+              message: `Entity "${currentEntity.name}" has ${currentEntity.regionCount} region invariants (max ${maxInvariants}) — consider reviewing the contract; too many region invariants suggest the entity is overloaded`,
             });
           }
           entityStack.pop();
@@ -145,20 +157,30 @@ export function check(content: string, filePath: string, maxInvariants: number):
 
     // Check for region invariant on this line
     if (currentEntity && REGION_INVARIANT_RE.test(line)) {
-      currentEntity.count++;
+      currentEntity.regionCount++;
     }
   }
 
   // Clean up remaining entities (unclosed — shouldn't happen normally but just in case)
   for (const entity of entityStack) {
-    if (entity.count > maxInvariants) {
+    if (entity.jsdocCount > maxInvariants) {
       errors.push({
         file: filePath,
         line: entity.nameLine,
         col: entity.nameCol,
         severity: 'error',
         code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
-        message: `Entity "${entity.name}" has ${entity.count} invariants (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+        message: `Entity "${entity.name}" has ${entity.jsdocCount} JSDoc @invariant tags (max ${maxInvariants}) — consider reviewing the contract; too many invariants suggest the entity is overloaded`,
+      });
+    }
+    if (entity.regionCount > maxInvariants) {
+      errors.push({
+        file: filePath,
+        line: entity.nameLine,
+        col: entity.nameCol,
+        severity: 'error',
+        code: ERR_CLI_LINT_TOO_MANY_INVARIANTS,
+        message: `Entity "${entity.name}" has ${entity.regionCount} region invariants (max ${maxInvariants}) — consider reviewing the contract; too many region invariants suggest the entity is overloaded`,
       });
     }
   }

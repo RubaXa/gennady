@@ -89,7 +89,7 @@ describe('InvariantCountCheck', () => {
     );
     const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 4 invariants/);
+    assert.match(errors[0].message, /JSDoc @invariant/);
     assert.match(errors[0].message, /max 3/);
     assert.match(errors[0].message, /"Foo"/);
   });
@@ -107,7 +107,8 @@ describe('InvariantCountCheck', () => {
     );
     const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 5 invariants/);
+    assert.match(errors[0].message, /JSDoc @invariant/);
+    assert.match(errors[0].message, /has 5/);
     assert.match(errors[0].message, /"bar"/);
   });
 
@@ -153,12 +154,13 @@ describe('InvariantCountCheck', () => {
     );
     const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 4 invariants/);
+    assert.match(errors[0].message, /region invariants/);
+    assert.match(errors[0].message, /has 4/);
     assert.match(errors[0].message, /"foo"/);
   });
 
-  // --- Mixed JSDoc + region ---
-  it('IC-14: 2 JSDoc + 2 region = 4 (exceeds threshold)', () => {
+  // --- Mixed JSDoc + region — counted separately ---
+  it('IC-14: 2 JSDoc + 2 region = each within threshold 3, no error', () => {
     const src = lines(
       '/**',
       ' * @invariant a',
@@ -173,9 +175,8 @@ describe('InvariantCountCheck', () => {
       '  }',
       '}'
     );
-    const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
-    assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 4 invariants/);
+    // 2 JSDoc ≤ 3, 2 region ≤ 3 — both OK, counted separately
+    assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
   it('IC-15: 1 JSDoc + 1 region = 2 (within threshold)', () => {
@@ -293,21 +294,23 @@ describe('InvariantCountCheck', () => {
     assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
-  it('IC-25: region with "invariant:" but no text — still counted', () => {
+  it('IC-25: region with "invariant:" but no text — still counted as region invariant', () => {
     const src = lines(
-      '/** @invariant a @invariant b @invariant c */',
+      '/** @invariant a @invariant b @invariant c @invariant d */',
       'export function foo() {',
       '  // #region START_X — invariant:',
       '  // #endregion END_X',
       '}'
     );
+    // 4 JSDoc > 3 → 1 error (JSDoc). 1 region ≤ 3 → OK.
     const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 4 invariants/);
+    assert.match(errors[0].message, /JSDoc @invariant/);
+    assert.match(errors[0].message, /has 4/);
   });
 
   // --- Region invariant attribution to enclosing entity ---
-  it('IC-26: region-invariant inside class method — attributed to class', () => {
+  it('IC-26: region-invariant inside class method — attributed to class, counted separately', () => {
     const src = lines(
       '/** @invariant a @invariant b @invariant c */',
       'export class Foo {',
@@ -317,10 +320,8 @@ describe('InvariantCountCheck', () => {
       '  }',
       '}'
     );
-    const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
-    assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /"Foo"/);
-    assert.match(errors[0].message, /has 4 invariants/);
+    // 3 JSDoc ≤ 3, 1 region ≤ 3 — both OK
+    assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
   it('IC-27: region-invariant outside exported entity (top-level) — ignored', () => {
@@ -405,7 +406,7 @@ describe('InvariantCountCheck', () => {
     assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
-  it('IC-34: region-invariant inside nested function — attributed to outer exported function', () => {
+  it('IC-34: region-invariant inside nested function — attributed to outer, counted separately', () => {
     const src = lines(
       '/** @invariant a @invariant b @invariant c */',
       'export function outer() {',
@@ -416,13 +417,11 @@ describe('InvariantCountCheck', () => {
       '  return inner();',
       '}'
     );
-    const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
-    assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /has 4 invariants/);
-    assert.match(errors[0].message, /"outer"/);
+    // 3 JSDoc ≤ 3, 1 region ≤ 3 — both OK
+    assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
-  it('IC-35: region-invariant inside arrow function inside class method — attributed to class', () => {
+  it('IC-35: region-invariant inside arrow function in class method — attributed to class, counted separately', () => {
     const src = lines(
       '/** @invariant a @invariant b @invariant c */',
       'export class Foo {',
@@ -435,9 +434,8 @@ describe('InvariantCountCheck', () => {
       '  }',
       '}'
     );
-    const errors = check(src, 'f.ts', DEFAULT_THRESHOLD);
-    assert.strictEqual(errors.length, 1);
-    assert.match(errors[0].message, /"Foo"/);
+    // 3 JSDoc ≤ 3, 1 region ≤ 3 — both OK
+    assert.deepStrictEqual(check(src, 'f.ts', DEFAULT_THRESHOLD), []);
   });
 
   it('IC-36: threshold not specified — defaults to 3', () => {

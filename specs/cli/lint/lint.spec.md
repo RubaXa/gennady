@@ -323,12 +323,14 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
   - `maxInvariants` — целое число ≥ 1 (порог)
 - Postconditions:
   - Возвращает `LintError[]` (пустой — все сущности в пределах лимита)
-  - Для каждой экспортируемой сущности подсчитываются инварианты двух видов:
-    - `@invariant` в JSDoc-блоке сущности
-    - `#region START_<NAME> — invariant:` в регион-комментариях внутри сущности
-  - Если сумма > `maxInvariants` → один `LintError` с кодом `ERR_CLI_LINT_TOO_MANY_INVARIANTS`, severity `'error'`
+  - Для каждой экспортируемой сущности подсчитываются инварианты двух видов **раздельно**:
+    - `@invariant` в JSDoc-блоке сущности — счётчик `jsdocCount`
+    - `#region START_<NAME> — invariant:` в регион-комментариях внутри сущности — счётчик `regionCount`
+  - Если `jsdocCount > maxInvariants` → `LintError` с указанием типа «JSDoc @invariant tags»
+  - Если `regionCount > maxInvariants` → `LintError` с указанием типа «region invariants»
+  - Каждый тип проверяется независимо; если оба превышают → две ошибки на одну сущность
 - Invariants:
-  - Инварианты обоих видов суммируются (не считаются раздельно)
+  - JSDoc и регион-инварианты считаются раздельно (не суммируются)
   - Чистая функция, не зависит от внешнего состояния
   - Не кидает исключений
 
@@ -362,7 +364,7 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
 ### `InvariantCountCheck`
 
 - **Type:** Service
-- **Purpose:** Подсчёт инвариантов на экспортируемую сущность (функция, класс, интерфейс). Инварианты распознаются двух видов: (a) `@invariant <текст>` в JSDoc-контракте, (b) `// #region START_<NAME> — invariant: <текст>` в регион-комментариях. Если общее количество инвариантов на сущность превышает настроенный порог → ошибка. Высокое количество инвариантов — сигнал, что сущность перегружена и требует декомпозиции.
+- **Purpose:** Подсчёт инвариантов на экспортируемую сущность (функция, класс, интерфейс). Инварианты распознаются двух видов: (a) `@invariant <текст>` в JSDoc-контракте, (b) `// #region START_<NAME> — invariant: <текст>` в регион-комментариях. Каждый вид считается **раздельно** (свой счётчик). Если количество любого вида превышает настроенный порог → ошибка. Высокое количество инвариантов — сигнал, что сущность перегружена и требует декомпозиции.
 - **Public Operations:**
   - `check(content: string, filePath: string, maxInvariants: number) → LintError[]` — проверить файл на превышение лимита инвариантов
 - **Lifecycle:** stateless; pure function
@@ -778,7 +780,7 @@ cli/cmd/lint/
 - D-005 (scope) — Поддержка директорий: рекурсивный обход, `.ts`/`.tsx`, без флага `--recursive`
 - D-006 (scope) — resolveTargets: дедупликация, сортировка, игнор node_modules/скрытых/symlink, регистро-независимые расширения, ENOENT/EACCES → ошибки в errors[]
 - D-007 (scope) — TypeScript/Linter Disable Discipline: `DisablesCheck` реализует enforcement; каждое отключение обязано нести `D-\d+` ссылку
-- D-008 (module) — Invariant limit: `InvariantCountCheck` с порогом `--max-invariants=3` по умолчанию. Суммируются `@invariant` в JSDoc + `invariant:` в регион-комментариях. Превышение → `ERR_CLI_LINT_TOO_MANY_INVARIANTS` (error).
+- D-008 (module) — Invariant limit: `InvariantCountCheck` с порогом `--max-invariants=3` по умолчанию. JSDoc `@invariant` и регион `invariant:` считаются **раздельно** (разный scope). Каждый тип сравнивается с порогом независимо. Превышение → `ERR_CLI_LINT_TOO_MANY_INVARIANTS` (error) с указанием типа (JSDoc / region).
 - D-009 (module) — Anchor class body boundary: `AnchorClassBodyCheck` запрещает `#region START` / `#endregion END` на уровне тела класса. Регионы допустимы внутри тел методов и на top-level. Top-level регионы оборачивают функции модуля.
 - D-010 (module) — Anchor consecutive START: `AnchorCheck` детектит два `#region START` подряд на одном уровне brace depth без промежуточного `#endregion END`. Ошибка на втором START → `ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START`. Агент должен либо объединить регионы, либо закрыть первый.
 - D-011 (module) — Exclude glob filtering: `--exclude` опция с glob-паттернами для исключения файлов из линтинга. Дефолтные паттерны: `node_modules`, `__tests__`, `fixtures`, `dist`, `coverage`, `build`, `out`. Можно указать несколько пользовательских паттернов, они добавляются поверх дефолтных.
