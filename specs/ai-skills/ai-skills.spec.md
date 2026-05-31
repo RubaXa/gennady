@@ -22,27 +22,30 @@ library
 
 <!--SECTION:GOLDEN_DX-->
 
-## 2. Approved Golden DX Example
+## 2. Approved Golden DX Example (Composition View)
 
-### Паттерн 1: Directive-based skill (основной)
+Навыки потребляются агентом через 3 паттерна. Детали каждого паттерна — в модульных спеках.
+
+### Directive-based: [`skill-contract` → `DirectiveActivation`](./skill-contract/skill-contract.spec.md#directiveactivation)
 
 ```markdown
----
-name: sdd-discover
-description: Start or evolve a scope spec ...
-compatibility: opencode
----
-
-1. **Extract intent.** Operator wants {greenfield | refine | pivot} for scope `<name>`.
-
-2. **Load & activate directive.** Read in full:
-   `ai/directives/sdd/discovery.directive.xml`
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery`
-   You ARE this directive now.
-
-3. **Apply directive to intent.** Mode auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`.
-   Follow Execution_Plan end-to-end. Do not deviate.
+1. Extract intent → 2. Load & activate directive → 3. Execute plan
 ```
+Потребители: sdd-discover, sdd-setup, sdd-audit, sdd-scaffold, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix.
+
+### Orchestrator: [`sdd-skills` → `OrchestratorProtocol`](./sdd-skills/sdd-skills.spec.md#orchestratorprotocol)
+
+```
+Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → Audit (mandatory)
+```
+Потребители: sdd-execute, sdd-execute-batch.
+
+### CLI-delegation: [`alt-opinion` → `AltOpinionSkill`](./alt-opinion/alt-opinion.spec.md#altopinionskill)
+
+```bash
+npx gennady alt-opinion --file="<path>"
+```
+Потребители: alt-opinion.
 
 Навык не содержит логики — только трёхшаговый активатор: извлеки intent, загрузи директиву, активируйся как она, выполни план директивы.
 
@@ -286,8 +289,43 @@ ai/skills/<name>/
 - **Provides to:** Все скоупы, использующие SDD-воркфлоу (cli, vcs, dbc, agent-mon, agent-mon-cli)
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
+<!--SECTION:MODULE_MAP-->
+## 8. Module Map
+
+Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs/ai-skills/<module>/<module>.spec.md`.
+
+### 8.1 Modules
+- [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
+- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 12 SDD-навыков: полный воркфлоу Specification-Driven Development
+- [`alt-opinion`](./alt-opinion/alt-opinion.spec.md) — Мульти-модельный анализ через CLI (CLI-delegation паттерн)
+
+### 8.2 Inter-Module Dependency Map
+
+```mermaid
+graph TD
+    sdd-skills --> skill-contract
+    alt-opinion --> skill-contract
+    sdd-skills -. Runtime .-> cli
+    alt-opinion -. Runtime .-> cli
+    sdd-skills -. Runtime .-> infra-base
+    alt-opinion -. Runtime .-> infra-base
+```
+
+### 8.3 Stack Dependencies
+- Languages: TypeScript (для classify-scripts.ts)
+- Test frameworks: node:test
+
+### 8.4 Handoff to Task Scaffolding
+- **Primary input:** `specs/ai-skills/ai-skills.spec.md` (this file).
+- **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
+- **Open risks & validation needs:**
+  - Абсолютные пути в телах SKILL.md требуют релативизации
+  - Скрипты завязаны на macOS/bash — не кроссплатформенны
+  - `${SKILL_DIR}` — переменная агента-хостера; поведение при отсутствии требует проверки
+<!--/SECTION:MODULE_MAP-->
+
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
-## 8. Bootstrap Requirements
+## 9. Bootstrap Requirements
 
 | # | Requirement | Kind | Owner | Resolution |
 |---|---|---|---|---|
@@ -298,7 +336,7 @@ ai/skills/<name>/
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:HANDOFF-->
-## 9. Handoff to module-decomposition
+## 10. Handoff to module-decomposition
 
 - **Primary input:** `specs/ai-skills/ai-skills.spec.md`
 - **Areas requiring decomposition:**
