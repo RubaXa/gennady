@@ -1,6 +1,6 @@
 <ResultConventions keywords="result, error-handling, isErr, TessellError, must, success, fail" type="coding-rule" ver="1.2">
   <Mission>
-    Invariants for the Result pattern from @tessell/core/result. Six conventions (R1–R6) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each codifies an idiom from AGENTS.md that survived code review. One architectural convention (AX_RESULT_PUBLIC_BOUNDARY) is code-review-only — not mechanically detectable. Canonical consumption idiom: `must` + try/catch.
+    Invariants for the Result pattern from @tessell/core/result. Seven conventions (R1–R7) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each codifies an idiom from AGENTS.md that survived code review. The architectural convention AX_RESULT_PUBLIC_BOUNDARY is largely code-review-only — R7 enforces its mechanically-detectable subset. Canonical consumption idiom: `must` + try/catch.
   </Mission>
 
   <Belief_State>
@@ -48,6 +48,11 @@
       Not ESLint-enforced. The public/private boundary is not mechanically detectable: closures returned from factories (e.g. `defineDataStorageQuery → (storage, params) => Promise<Result<R>>`) are public-by-intent but private-by-syntax, and methods on factory-returned object literals (e.g. `defineDataOperation`) are not visible as class members. Enforced via code review and this directive.
     </Axiom>
 
+    <Axiom id="AX_GUARDED_RESULT_BOUNDARY">
+      A public Result-returning surface guards thrown errors. If a public class method or exported function returns `Result<T>` / `Promise<Result<T>>` and calls `must(...)`, that call must sit inside a try/catch whose `catch` returns `fail(...)` — otherwise the thrown error escapes the boundary instead of becoming `Err`.
+      Detection: explicit return-type annotation `Result`/`Promise<Result>` + a `must` call outside try (no autofix; optional suggestion). ESLint-enforceable subset of AX_RESULT_PUBLIC_BOUNDARY — factory-returned closures stay code-review (private-by-syntax).
+    </Axiom>
+
     <Axiom id="AX_CONFIGURABLE_NAMES">
       Every rule that matches function or type names accepts an options object with configurable identifiers: resultTypeName, isErrFn, isOkFn, successFn, failFn, castFn.
       Defaults match @tessell/core/result exports. On package rename — update config, not the rule.
@@ -61,7 +66,8 @@
     - R4 flags `throw e` inside any catch where e is the catch binding, regardless of variable name.
     - R5 flags `if (!r.ok) return r` and `if (r.ok === false) return r` with no autofix; does NOT flag `if (!r.ok) doSomethingElse()`.
     - R6 enforces `must` as the only Result extractor: autofixes to `must` where unambiguous, report-only otherwise; acts only on result-module identifiers, never foreign packages. Detection/autofix matrix: rule + TSK-58.
-    - R3, R4, R5 and the non-autofix path of R6 carry explanatory comment in eslint.config.ts (per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
-    - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged; R6: autofixable vs report-only forms + foreign-import not flagged).
+    - R7 flags an unguarded `must(...)` (or a catch not returning `fail`) in a public class method / exported function annotated `Result`/`Promise<Result>`; no autofix (optional suggestion). Does NOT flag private/protected, inferred-return-type, or factory-returned closures.
+    - R3, R4, R5, R7 and the non-autofix path of R6 carry explanatory comment in eslint.config.ts (per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
+    - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged; R6: autofixable vs report-only forms + foreign-import not flagged; R7: factory-closure/private/inferred-type not flagged).
   </Reward_Criteria>
 </ResultConventions>

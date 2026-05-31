@@ -120,12 +120,13 @@
 #### Round close
 
 - - [ ] TODO
+
 ### Round 2 — 2026-05-31, fix: lint-artifacts.sh dev-path normalization + PathNormalizer safety net
 
-| Phase | Kind | Status | Target Files | Deps |
-|-------|------|--------|-------------|------|
-| P1    | fix  | [ ]    | ai/skills/sdd-execute/scripts/lint-artifacts.sh, shared/common/sync/path-normalizer.ts | — |
-| P2    | test | [ ]    | cli/__tests__/e2e/sync.e2e.test.ts | P1 |
+| Phase | Kind | Status | Target Files                                                                           | Deps |
+| ----- | ---- | ------ | -------------------------------------------------------------------------------------- | ---- |
+| P1    | fix  | [ ]    | ai/skills/sdd-execute/scripts/lint-artifacts.sh, shared/common/sync/path-normalizer.ts | —    |
+| P2    | test | [ ]    | cli/**tests**/e2e/sync.e2e.test.ts                                                     | P1   |
 
 - Fix: `GENNADY_CLI="$HOME/Developer/..."` -> `~/Developer/...` (tilde, covered by RULE_CLI_TILDE)
 - Fix: `node --experimental-strip-types "$GENNADY_CLI" lint` -> `npx tsx "$GENNADY_CLI" lint` (matches RULE_CLI_TSX_FULL after normalize)
