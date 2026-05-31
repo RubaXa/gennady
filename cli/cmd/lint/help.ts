@@ -1,3 +1,5 @@
+// @file: lint command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the lint command.
  */

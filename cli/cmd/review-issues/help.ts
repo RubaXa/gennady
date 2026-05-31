@@ -1,3 +1,5 @@
+// @file: review-issues command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the review-issues command.
  */

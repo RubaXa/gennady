@@ -1,3 +1,5 @@
+// @file: review-verify command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the review-verify command.
  */

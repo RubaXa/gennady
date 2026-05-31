@@ -1,3 +1,5 @@
+// @file: vcs-reply command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the vcs-reply command.
  */

@@ -1,3 +1,5 @@
+// @file: agent-mon command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the agent-mon command.
  */

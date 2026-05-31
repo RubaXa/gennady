@@ -1,3 +1,5 @@
+// @file: alt-opinion command help output
+// @consumers: help command
 /**
  * @purpose Print CLI help for the alt-opinion command.
  */
