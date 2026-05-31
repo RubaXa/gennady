@@ -3,12 +3,7 @@
 // @tasks: TSK-57
 
 /** @purpose Discriminated status of a synced skill file. */
-export type SyncSkillsFileStatus =
-  | 'added'
-  | 'updated'
-  | 'deleted'
-  | 'unchanged'
-  | 'deleteFailed';
+export type SyncSkillsFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged' | 'deleteFailed';
 
 /** @purpose Options for the sync-skills command. */
 export type SyncSkillsOptions = {

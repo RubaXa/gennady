@@ -36,6 +36,7 @@ Output: a compact self-assessment table before proceeding to mechanical checks.
 📊 Protocol violations: <N>
 ⏭️ Proceeding to mechanical checks...
 ```
+
 </Step0_SelfReflection>
 
 <ExecutionStrategy>
@@ -58,27 +59,35 @@ Total: ≤5 tool calls for all 8 checks. Target: <15 seconds.
 Run these checks in order using BATCHED reads. Each check produces PASS / FAIL with location.
 
 ### Check 1 — Portal Integrity (1 read)
+
 Read `specs/README.md`. Verify: scopes table entries match `specs/<scope>/<scope>.spec.md` existence. Graph nodes match table. Status emoji matches file presence.
 
 ### Check 2 — Spec Linking (read scope specs only)
+
 For each scope spec 9/7: module paths resolve to files. Module spec 1 links to parent. Cross-scope references resolve.
 
 ### Check 3 — Tracker Sync (1 grep)
+
 `grep -rn "\[x\] DONE\|\[ \] TODO\|\[~\] IN_PROGRESS\|\[!\] BLOCKED" tasks/README.md tasks/*/README.md`. Compare counts.
 
 ### Check 4 — DAG Consistency (parse from tracker)
+
 Parse `Dependencies:` from each task ticket planning surface. Topological sort. No cycles.
 
 ### Check 5 — Execution Log Completeness
+
 From scan [TASKS] output: check `placeholders` column for any task with >0. Flag tasks where placeholders > 0 even if status DONE. Also inspect `warnings` column for `no-execlog-section` or `anchors-mismatch`.
 
 ### Check 6 — File Headers (sample 3 files)
+
 Pick 3 recently modified .ts files from `git diff --name-only HEAD~3`. Check for `@file:`, `@consumers:`, `@tasks:`.
 
 ### Check 7 — Test Coverage (1 find)
+
 `find tasks -name '*.task-*.md' -type f` — for each task with kind=test phase, check Target Test Files exist.
 
 ### Check 8 — Decision Log (read scope specs only)
+
 Parse D-NNN from all scope specs. Check uniqueness, supersedes links.</Checks>
 
 <Output>
@@ -114,11 +123,12 @@ First: Self-Reflection. Then: Mechanical Checks. Use compact single-line-per-che
 ```
 
 Rules for VERDICT line:
+
 - All 8 checks PASS AND 0 protocol violations → `✅ CLEAN — artifact tree is consistent, next pickable: TSK-NN`
 - All 8 checks PASS AND 0 violations but some tasks deferred/TODO → `✅ CLEAN — <N> tasks remaining in queue`
 - Any FAIL check OR protocol violations → `❌ NOT READY — <N> issue(s) require attention`
 - Checks skipped (marked `—`) → treat as PASS for verdict unless evidence of gap exists
-</Output>
+  </Output>
 
 <HardForbidden>
 - Writing, editing, or modifying ANY file. Read-only.

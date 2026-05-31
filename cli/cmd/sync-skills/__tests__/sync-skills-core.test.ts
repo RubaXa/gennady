@@ -52,7 +52,11 @@ function createMockDeps(
     mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
     stat: (p: string) => statSync(p),
     readdir: (p: string) => {
-      try { return readdirSync(p); } catch { return []; }
+      try {
+        return readdirSync(p);
+      } catch {
+        return [];
+      }
     },
     unlink: unlinkSync,
     rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
@@ -182,7 +186,10 @@ describe('collectAndCompareSkills', () => {
     if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
   });
 
-  function run(opts?: Partial<SyncSkillsOptions>, depsOverrides?: Partial<SyncCmdDeps>): SyncSkillsResult {
+  function run(
+    opts?: Partial<SyncSkillsOptions>,
+    depsOverrides?: Partial<SyncCmdDeps>
+  ): SyncSkillsResult {
     const deps = createMockDeps(_sourceDir, _targetDir, depsOverrides);
     return collectAndCompareSkills(deps, {
       sourceDir: _sourceDir,
@@ -356,7 +363,8 @@ describe('collectAndCompareSkills error paths', () => {
     assert.throws(
       () => runDeps(join(_tmpDir, 'nonexistent'), join(_tmpDir, '.claude', 'skills')),
       (err: Error & { code?: string }) =>
-        err.code === ERR_SKILLS_SOURCE_NOT_FOUND && err.message.includes('[collectAndCompareSkills]')
+        err.code === ERR_SKILLS_SOURCE_NOT_FOUND &&
+        err.message.includes('[collectAndCompareSkills]')
     );
   });
 
@@ -366,7 +374,8 @@ describe('collectAndCompareSkills error paths', () => {
 
     assert.throws(
       () => runDeps(sourceFile, join(_tmpDir, '.claude', 'skills')),
-      (err: Error) => err.message.includes('[collectAndCompareSkills]') && err.message.includes('not a directory')
+      (err: Error) =>
+        err.message.includes('[collectAndCompareSkills]') && err.message.includes('not a directory')
     );
   });
 
@@ -521,9 +530,27 @@ describe('SyncSkillsResult', () => {
       { skillName: 'a', relativePath: 'f1.md', status: 'added', sourceSize: 10 },
       { skillName: 'a', relativePath: 'f2.md', status: 'added', sourceSize: 20 },
       { skillName: 'b', relativePath: 'f3.md', status: 'updated', sourceSize: 30, targetSize: 25 },
-      { skillName: 'c', relativePath: 'f4.md', status: 'unchanged', sourceSize: 40, targetSize: 40 },
-      { skillName: 'c', relativePath: 'f5.md', status: 'unchanged', sourceSize: 50, targetSize: 50 },
-      { skillName: 'c', relativePath: 'f6.md', status: 'unchanged', sourceSize: 60, targetSize: 60 },
+      {
+        skillName: 'c',
+        relativePath: 'f4.md',
+        status: 'unchanged',
+        sourceSize: 40,
+        targetSize: 40,
+      },
+      {
+        skillName: 'c',
+        relativePath: 'f5.md',
+        status: 'unchanged',
+        sourceSize: 50,
+        targetSize: 50,
+      },
+      {
+        skillName: 'c',
+        relativePath: 'f6.md',
+        status: 'unchanged',
+        sourceSize: 60,
+        targetSize: 60,
+      },
       { skillName: 'd', relativePath: '', status: 'deleted' },
     ];
 
@@ -546,7 +573,10 @@ describe('SyncSkillsResult', () => {
 
     const result = new SyncSkillsResult(entries);
 
-    assert.match(result.summary, /Synced: 1 added, 0 updated, 0 skipped, 0 deleted, 2 delete failed/);
+    assert.match(
+      result.summary,
+      /Synced: 1 added, 0 updated, 0 skipped, 0 deleted, 2 delete failed/
+    );
   });
 
   it('dryRunSummary returns the dry-run message', () => {

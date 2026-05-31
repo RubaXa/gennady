@@ -11,7 +11,11 @@ import {
   ERR_SKILLS_SOURCE_NOT_FOUND,
   ERR_SKILLS_SKILL_NOT_FOUND,
 } from './sync-skills.types.ts';
-import type { SyncSkillsFileEntry, SyncSkillsFileStatus, SyncSkillsOptions } from './sync-skills.types.ts';
+import type {
+  SyncSkillsFileEntry,
+  SyncSkillsFileStatus,
+  SyncSkillsOptions,
+} from './sync-skills.types.ts';
 
 /** @purpose Filenames excluded from scan: hidden files and system artifacts. */
 const EXCLUDED_NAMES = new Set(['.DS_Store']);
@@ -306,10 +310,14 @@ export function collectAndCompareSkills(
   } catch (err) {
     const e = err as NodeJS.ErrnoException;
     if (e.code === 'EACCES') {
-      throw new Error(`[collectAndCompareSkills] cannot write to ${opts.targetDir}: ${e.code}`, { cause: err });
+      throw new Error(`[collectAndCompareSkills] cannot write to ${opts.targetDir}: ${e.code}`, {
+        cause: err,
+      });
     }
     if (e.code === 'ENOTDIR') {
-      throw new Error('[collectAndCompareSkills] .claude exists but is not a directory', { cause: err });
+      throw new Error('[collectAndCompareSkills] .claude exists but is not a directory', {
+        cause: err,
+      });
     }
     throw err;
   }
@@ -351,7 +359,16 @@ export function collectAndCompareSkills(
     )) {
       const targetData = targetFiles.get(relativePath);
       entries.push(
-        syncFile(skillName, relativePath, sourceData, targetData, targetSkillDir, opts.dryRun ?? false, _writeFile, _mkdir)
+        syncFile(
+          skillName,
+          relativePath,
+          sourceData,
+          targetData,
+          targetSkillDir,
+          opts.dryRun ?? false,
+          _writeFile,
+          _mkdir
+        )
       );
     }
 

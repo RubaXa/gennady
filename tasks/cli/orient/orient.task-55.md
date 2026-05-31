@@ -873,25 +873,25 @@ _(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skele
 
 - [x] DONE
 
-
-
-### Round 3 — 2026-05-30, sdd-fix: __tests__ dirs not excluded from scan
+### Round 3 — 2026-05-30, sdd-fix: **tests** dirs not excluded from scan
 
 #### P1 — fix
-- **Objective:** add __tests__ to EXCLUDED_DIRS in scan-files.ts (already applied)
-- **Exit:** orient output shows 0 __tests__ directories
-- [x] ver orient shows 0 __tests__ dirs DONE
-**Handoff ->** artifacts: [cli/cmd/orient/core/scan-files.ts]; decisions: [excluded_dirs=added___tests__]; open: []
+
+- **Objective:** add **tests** to EXCLUDED_DIRS in scan-files.ts (already applied)
+- **Exit:** orient output shows 0 **tests** directories
+- [x] ver orient shows 0 **tests** dirs DONE
+      **Handoff ->** artifacts: [cli/cmd/orient/core/scan-files.ts]; decisions: [excluded_dirs=added___tests__]; open: []
 
 #### P2 — test
-- **Objective:** add regression test for __tests__ exclusion in scan-files.test.ts
+
+- **Objective:** add regression test for **tests** exclusion in scan-files.test.ts
 - **Rules:**
   - [node-test](../../../ai/directives/testing/node-test.xml)
 - **Target Files:**
-  - cli/cmd/orient/__tests__/scan-files.test.ts
-- **Exit:** test verifies __tests__ is excluded; all tests pass
+  - cli/cmd/orient/**tests**/scan-files.test.ts
+- **Exit:** test verifies **tests** is excluded; all tests pass
 - [ ] ver -> pass|fail exit=<code>
 - [ ] DONE
-**Handoff ->** artifacts: [...]; decisions: [...]; open: []
+      **Handoff ->** artifacts: [...]; decisions: [...]; open: []
 
 <!--/SECTION:EXECUTION_LOG-->

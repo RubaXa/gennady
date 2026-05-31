@@ -21,10 +21,10 @@
 
 ## 2. Phases Overview
 
-| ID | Kind  | Deps | Status |
-|----|-------|------|--------|
-| P1 | impl  | —    | [ ]    |
-| P2 | test  | P1   | [ ]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | test | P1   | [ ]    |
 
 ## 3. Phases
 
@@ -140,26 +140,26 @@
 
 ## 5. Verification
 
-| Command                          | Required by  |
-| -------------------------------- | ------------ |
-| `npm run type-check`             | typescript-rules |
-| `npm test`                       | node-test    |
+| Command              | Required by      |
+| -------------------- | ---------------- |
+| `npm run type-check` | typescript-rules |
+| `npm test`           | node-test        |
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Test File | Status |
-|---|---|---|
-| resolvePackageDir возвращает путь | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| resolvePackageDir возвращает null | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| resolvePackageDir возвращает null при EACCES | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| compareBytes детектит изменения | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| compareBytes — пустые буферы | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| compareBytes — пустой vs непустой | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| SyncCmdDeps включает unlink/rmdir | `shared/common/sync/__tests__/sync-core.shared.test.ts` | [ ] |
-| formatSyncOutput — все маркеры | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ] |
-| formatSyncOutput — dry-run | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ] |
-| sync импортирует из shared | `npm run type-check` | [ ] |
-| Существующие тесты проходят | `cli/cmd/sync/__tests__/sync.cmd.test.ts` | [ ] |
+| Scenario                                     | Test File                                                    | Status |
+| -------------------------------------------- | ------------------------------------------------------------ | ------ |
+| resolvePackageDir возвращает путь            | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| resolvePackageDir возвращает null            | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| resolvePackageDir возвращает null при EACCES | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| compareBytes детектит изменения              | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| compareBytes — пустые буферы                 | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| compareBytes — пустой vs непустой            | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| SyncCmdDeps включает unlink/rmdir            | `shared/common/sync/__tests__/sync-core.shared.test.ts`      | [ ]    |
+| formatSyncOutput — все маркеры               | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ]    |
+| formatSyncOutput — dry-run                   | `shared/common/sync/__tests__/sync-formatter.shared.test.ts` | [ ]    |
+| sync импортирует из shared                   | `npm run type-check`                                         | [ ]    |
+| Существующие тесты проходят                  | `cli/cmd/sync/__tests__/sync.cmd.test.ts`                    | [ ]    |
 
 ## 7. Execution Log
 
@@ -184,6 +184,7 @@
 ## Critic Rounds
 
 ### Round 1 — 2026-05-30
+
 - Вердикт критика: NEEDS_WORK
 - Принято: 6 находок
   - Удалены дубликаты BDD-сценариев (пустой resolvePackageDir путь, дубликат null)

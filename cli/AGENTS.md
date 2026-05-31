@@ -20,6 +20,7 @@
 | sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync SDD skills from ai/skills/ to .claude/skills/                          |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов               |
 | orient            | [cmd/orient/](cmd/orient/)                       | Навигация по file-header и DBC-контрактам — карта, поиск, граф зависимостей |
+| agents-rules      | [cmd/agents-rules/](cmd/agents-rules/)           | Вывод инструкции по orient для AI-агентов                                   |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

@@ -42,7 +42,10 @@ export function format(
   }
 
   // #region START_GROUP — invariant: group entries by skillName, determine dominant status per group
-  const skillGroups = new Map<string, { entries: SyncSkillsFileEntry[]; dominantStatus: SyncSkillsFileStatus }>();
+  const skillGroups = new Map<
+    string,
+    { entries: SyncSkillsFileEntry[]; dominantStatus: SyncSkillsFileStatus }
+  >();
 
   for (const entry of entries) {
     let group = skillGroups.get(entry.skillName);
@@ -67,9 +70,7 @@ export function format(
   // #endregion END_GROUP
 
   // #region START_COMPUTE_PADDING — invariant: pad to max skill-name prefix width across all group headers
-  const maxPrefixLen = Math.max(
-    ...sortedGroups.map(([name]) => `  _ ${name}/`.length)
-  );
+  const maxPrefixLen = Math.max(...sortedGroups.map(([name]) => `  _ ${name}/`.length));
   const labelColumn = maxPrefixLen + 4;
   // #endregion END_COMPUTE_PADDING
 

@@ -12,21 +12,21 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                  | Type         | Purpose                                                                                             |
-| --------------------- | ------------ | --------------------------------------------------------------------------------------------------- |
-| `SyncSkillsOptions`   | Value Object | Конфигурация: `sourceDir`, `targetDir`, `skillNames?`, `dryRun?`                                    |
-| `SyncSkillsFileEntry` | Value Object | Результат сравнения одного файла внутри скила: `skillName`, `relativePath`, `status`, `sourceSize`  |
-| `SyncSkillsFileStatus` | Type         | Discriminated union: `'added' \| 'updated' \| 'deleted' \| 'unchanged' \| 'deleteFailed'`           |
-| `SyncSkillsResult`    | Value Object | Агрегат: `entries` + computed `added`, `updated`, `deleted`, `unchanged`, `deleteFailed`, `summary` |
-| `SyncSkillsCore`      | Service      | Ядро: `scanSkills`, `collectAndCompareSkills` (рекурсивное, с orphan-детектом)                      |
-| `syncFile`            | Helper       | Копирует отдельный файл из source в target с проверкой изменений                                   |
-| `collectOrphanFiles`  | Helper       | Собирает список сиротских файлов в target                                                          |
-| `deleteOrphan`        | Helper       | Удаляет сиротский файл/директорию с graceful degradation                                          |
-| `SyncSkillsFormatter` | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов             |
-| `SyncSkillsFormatOptions` | Type      | Опции форматирования: `{ dryRun?: boolean }`                                                        |
-| `SyncCmdDeps`         | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
-| `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code | Source directory not found                                                                     |
-| `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code | Skill name not found in source                                                                |
+| Name                          | Type         | Purpose                                                                                             |
+| ----------------------------- | ------------ | --------------------------------------------------------------------------------------------------- |
+| `SyncSkillsOptions`           | Value Object | Конфигурация: `sourceDir`, `targetDir`, `skillNames?`, `dryRun?`                                    |
+| `SyncSkillsFileEntry`         | Value Object | Результат сравнения одного файла внутри скила: `skillName`, `relativePath`, `status`, `sourceSize`  |
+| `SyncSkillsFileStatus`        | Type         | Discriminated union: `'added' \| 'updated' \| 'deleted' \| 'unchanged' \| 'deleteFailed'`           |
+| `SyncSkillsResult`            | Value Object | Агрегат: `entries` + computed `added`, `updated`, `deleted`, `unchanged`, `deleteFailed`, `summary` |
+| `SyncSkillsCore`              | Service      | Ядро: `scanSkills`, `collectAndCompareSkills` (рекурсивное, с orphan-детектом)                      |
+| `syncFile`                    | Helper       | Копирует отдельный файл из source в target с проверкой изменений                                    |
+| `collectOrphanFiles`          | Helper       | Собирает список сиротских файлов в target                                                           |
+| `deleteOrphan`                | Helper       | Удаляет сиротский файл/директорию с graceful degradation                                            |
+| `SyncSkillsFormatter`         | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов              |
+| `SyncSkillsFormatOptions`     | Type         | Опции форматирования: `{ dryRun?: boolean }`                                                        |
+| `SyncCmdDeps`                 | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
+| `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code   | Source directory not found                                                                          |
+| `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code   | Skill name not found in source                                                                      |
 
 ## 3. Entity Surfaces
 
@@ -109,10 +109,10 @@ _Это полный список сущностей модуля. Любое в
   - dryRun `added` → `      <relativePath>                                   (would add)`
   - dryRun `updated` → `      <relativePath>                                   (would update)`
   - dryRun `deleted` → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (rmdir recursive — одна операция)
-   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
-   - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
-   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
-   - dryRun итоговая: `Dry-run: no files written.`
+  - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
+  - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
+  - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
+  - dryRun итоговая: `Dry-run: no files written.`
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `SyncFormatter` базовые маркеры из `shared/common/sync/sync-formatter.shared.ts`
 
@@ -165,10 +165,10 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
   - Возвращённый `SyncSkillsResult.entries` отсортирован: скилы лексикографически, файлы внутри скила лексикографически
   - Скрытые файлы (`.`-префикс) и `.DS_Store` не попадают в результат
   - При фильтрации (`skillNames`) — orphan-удаление только для указанных скилов
- - **Invariants:**
-   - Никогда не пишет в stdout/stderr
-   - `scanSkills` всегда возвращает пути с прямыми слешами (`/`)
-   - Целевые пути (`.claude/`, `.claude/skills/`) должны быть реальными директориями. Символические ссылки не обрабатываются специально — orphan-удаление через symlink может задеть файлы вне ожидаемого target. Пользователь обязуется не использовать symlink в целевом пути.
+- **Invariants:**
+  - Никогда не пишет в stdout/stderr
+  - `scanSkills` всегда возвращает пути с прямыми слешами (`/`)
+  - Целевые пути (`.claude/`, `.claude/skills/`) должны быть реальными директориями. Символические ссылки не обрабатываются специально — orphan-удаление через symlink может задеть файлы вне ожидаемого target. Пользователь обязуется не использовать symlink в целевом пути.
 
 ### 4.3 Service: `SyncSkillsFormatter`
 
@@ -183,14 +183,14 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
 - **Preconditions:**
   - `entries` — массив `SyncSkillsFileEntry`
 - **Postconditions:**
-   - Возвращает `string[]` — сгруппировано по `skillName`.
-   - Порядок групп: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
-   - Конкретные маркеры, dry-run-суффиксы, отступы и итоговая строка описаны в §3 (Format).
-   - При пустом `entries` — только итоговая строка `Synced: 0 added, 0 updated, 0 skipped, 0 deleted`.
-   - `deleted` статус — только на уровне целого скила. Смешанные статусы (часть файлов added, часть deleted) внутри одного скила невозможны.
+  - Возвращает `string[]` — сгруппировано по `skillName`.
+  - Порядок групп: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
+  - Конкретные маркеры, dry-run-суффиксы, отступы и итоговая строка описаны в §3 (Format).
+  - При пустом `entries` — только итоговая строка `Synced: 0 added, 0 updated, 0 skipped, 0 deleted`.
+  - `deleted` статус — только на уровне целого скила. Смешанные статусы (часть файлов added, часть deleted) внутри одного скила невозможны.
 - **Invariants:**
-   - Не делает I/O
-   - Формат строки: `  <marker> <skillName>/<padding><status_label>`
+  - Не делает I/O
+  - Формат строки: `  <marker> <skillName>/<padding><status_label>`
 
 ### 4.4 Helper: `syncFile`
 
@@ -211,12 +211,12 @@ Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-
 
 ## 5. Public Options & Policies
 
-| Option             | Binding                        | Status   |
-| ------------------ | ------------------------------ | -------- |
-| `--dry-run`        | `SyncSkillsOptions.dryRun`     | ✅ bound |
-| Позиционные args   | `SyncSkillsOptions.skillNames` | ✅ bound |
-| Скрытые файлы      | Константа в `sync-skills-core.ts` | ✅ bound |
-| `.DS_Store`        | Константа в `sync-skills-core.ts` | ✅ bound |
+| Option           | Binding                           | Status   |
+| ---------------- | --------------------------------- | -------- |
+| `--dry-run`      | `SyncSkillsOptions.dryRun`        | ✅ bound |
+| Позиционные args | `SyncSkillsOptions.skillNames`    | ✅ bound |
+| Скрытые файлы    | Константа в `sync-skills-core.ts` | ✅ bound |
+| `.DS_Store`      | Константа в `sync-skills-core.ts` | ✅ bound |
 
 Все опции привязаны. Нет отложенных.
 
@@ -257,16 +257,16 @@ ai/skills/                            # 13 скилов (физические а
 
 **File Mapping:**
 
-| File                                      | Entity                                       | Notes                                                                             |
-| ----------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
-| `cli/cmd/sync-skills/sync-skills.types.ts` | `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult` | Value Objects                                                          |
-| `cli/cmd/sync-skills/sync-skills-core.ts`  | `SyncSkillsCore`                              | `scanSkills`, `collectAndCompareSkills`, константы исключений                     |
-| `cli/cmd/sync-skills/sync-skills-formatter.ts` | `SyncSkillsFormatter`                     | `format(entries, opts)` — pure transformer с группировкой по скилам               |
-| `cli/cmd/sync-skills/sync-skills.cmd.ts`   | `run()`, `SyncCmdDeps`                        | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод                       |
-| `cli/cmd/sync-skills/index.ts`             | —                                            | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`                   |
-| `shared/common/sync/sync-core.shared.ts`   | `resolvePackageDir`, `compareBytes`           | Shared: `sync` + `sync-skills`                                                    |
-| `shared/common/sync/sync-formatter.shared.ts` | `formatSyncOutput`                         | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка               |
-| `shared/common/sync/sync-deps.type.ts`     | `SyncCmdDeps`                                 | Shared DI-порт, расширен `unlink`/`rmdir` для orphan-удаления                     |
+| File                                           | Entity                                                         | Notes                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `cli/cmd/sync-skills/sync-skills.types.ts`     | `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult` | Value Objects                                                       |
+| `cli/cmd/sync-skills/sync-skills-core.ts`      | `SyncSkillsCore`                                               | `scanSkills`, `collectAndCompareSkills`, константы исключений       |
+| `cli/cmd/sync-skills/sync-skills-formatter.ts` | `SyncSkillsFormatter`                                          | `format(entries, opts)` — pure transformer с группировкой по скилам |
+| `cli/cmd/sync-skills/sync-skills.cmd.ts`       | `run()`, `SyncCmdDeps`                                         | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод         |
+| `cli/cmd/sync-skills/index.ts`                 | —                                                              | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`     |
+| `shared/common/sync/sync-core.shared.ts`       | `resolvePackageDir`, `compareBytes`                            | Shared: `sync` + `sync-skills`                                      |
+| `shared/common/sync/sync-formatter.shared.ts`  | `formatSyncOutput`                                             | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка   |
+| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rmdir` для orphan-удаления       |
 
 **Namespace:** `sync-skills` — единый префикс.
 
@@ -361,6 +361,7 @@ graph TD
   - `package.json#files` уже включает `"ai/**/*"` — `ai/skills/` попадёт в пакет автоматически. Проверить после публикации
 
 ### Round 4 — 2026-05-30
+
 - **Вердикт критика:** CLEAN
 - **Принято:** 4 находок
   - Инварианта resolvePackageDir misplaced в контракте SyncSkillsCore (MINOR) — перенесена в §4.1
@@ -379,15 +380,17 @@ graph TD
   - §4.3 Postconditions: удалено дублирование формата, добавлена ссылка на §3
 
 ### Round 5 — 2026-05-30
+
 - **Вердикт критика:** CLEAN
 - **Принято:** 1 находка
   - Дублирование строки deleteFailed в §3 Format (MINOR) — удалён дубликат строки 108
 - **Принято (confusion):** 0
 - **Отклонено:** 0 находок
 - **Изменения:**
-   - §3 Format: удалена дублирующая строка про deleteFailed
+  - §3 Format: удалена дублирующая строка про deleteFailed
 
 ### Insight — 2026-05-31: mkdir-before-write contract
+
 - **What happened:** `syncFile` in sync-skills-core.ts was missing `mkdir` before `writeFile`, causing ENOENT on first run.
 - **Root cause:** The original `sync` module's `sync-core.ts` has this pattern (`mkdirSync(join(p, '..'), { recursive: true })`), but the new `syncFile` didn't inherit it.
 - **Fix:** Added `mkdir` parameter to `syncFile` signature; caller passes `deps.mkdir`. Parent directory created before every `writeFile`.

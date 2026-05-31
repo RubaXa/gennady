@@ -2,7 +2,15 @@
 // @consumers: gennady.ts, sync-skills.cmd.test.ts
 // @tasks: TSK-57
 
-import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, unlinkSync, rmdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+  readdirSync,
+  unlinkSync,
+  rmdirSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
@@ -102,10 +110,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
     return 0;
   } catch (err) {
     const error = err as Error & { code?: string };
-    if (
-      error.code === ERR_SKILLS_SKILL_NOT_FOUND ||
-      error.code === ERR_SKILLS_SOURCE_NOT_FOUND
-    ) {
+    if (error.code === ERR_SKILLS_SKILL_NOT_FOUND || error.code === ERR_SKILLS_SOURCE_NOT_FOUND) {
       _stderr.write(`Error: ${error.message}\n`);
       return 1;
     }

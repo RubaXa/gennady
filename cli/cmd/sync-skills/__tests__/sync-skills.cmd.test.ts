@@ -79,7 +79,11 @@ describe('run integration', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
@@ -185,7 +189,11 @@ describe('run --dry-run', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
@@ -261,7 +269,11 @@ describe('run filter', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
@@ -338,7 +350,11 @@ describe('run error paths', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
@@ -453,7 +469,11 @@ describe('run parseArgs', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,
@@ -483,7 +503,11 @@ describe('run parseArgs', () => {
       mkdir: (p: string, opts?: { recursive: boolean }) => mkdirSync(p, opts),
       stat: (p: string) => fsStatSync(p),
       readdir: (p: string) => {
-        try { return readdirSync(p); } catch { return []; }
+        try {
+          return readdirSync(p);
+        } catch {
+          return [];
+        }
       },
       resolvePackageDir: () => _sourceDir,
       unlink: unlinkSync,

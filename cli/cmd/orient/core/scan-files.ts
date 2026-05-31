@@ -6,7 +6,15 @@ import { lstatSync, readdirSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 
 const SUPPORTED_EXTENSIONS = ['.ts', '.tsx'];
-const EXCLUDED_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', 'build', 'out', '__tests__']);
+const EXCLUDED_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'coverage',
+  'build',
+  'out',
+  '__tests__',
+]);
 const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|tsx)$/;
 
 /**

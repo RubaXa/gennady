@@ -7,6 +7,7 @@
 - **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути во всех `.md` и `.prompt.md` файлах: заменить `~/.config/opencode/skills/<skillName>/` и `~/.claude/skills/<skillName>/` на литеральную строку `${SKILL_DIR}/` (эта переменная резолвится рантаймом Claude/OpenCode).
 
 Примеры замен:
+
 - `~/.config/opencode/skills/sdd-execute/scripts/verify.sh` → `${SKILL_DIR}/scripts/verify.sh`
 - `~/.claude/skills/sdd-critic/SKILL.md` → `${SKILL_DIR}/SKILL.md`
 - Если файл не содержит ни одного из этих паттернов — замена пропускается (копирование успешно).
@@ -22,9 +23,9 @@
 
 ## 2. Phases Overview
 
-| ID | Kind      | Deps | Status |
-|----|-----------|------|--------|
-- | P1 | bootstrap | —    | [x]  |
+| ID  | Kind | Deps      | Status |
+| --- | ---- | --------- | ------ | --- |
+| -   | P1   | bootstrap | —      | [x] |
 
 ## 3. Phases
 
@@ -89,19 +90,19 @@
 
 ## 5. Verification
 
-| Command                 | Required by  |
-| ----------------------- | ------------ |
-| `ls ai/skills/*/ | wc -l` | manual       |
+| Command           | Required by |
+| ----------------- | ----------- | ------ |
+| `ls ai/skills/\*/ | wc -l`      | manual |
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Check | Status |
-|---|---|---|
-- | 12 скилов из OpenCode | `ls ai/skills/*/SKILL.md \| wc -l` → 13 | [x] |
-| sdd-critic из Claude | `head -3 ai/skills/sdd-critic/SKILL.md` | [x] |
-| sdd-execute scripts/ | `ls ai/skills/sdd-execute/scripts/ \| wc -l` → 9 | [x] |
-| Пути адаптированы | `grep -r 'opencode/skills' ai/skills/` → 0 matches | [x] |
-| Нет .DS_Store | `find ai/skills/ -name '.DS_Store'` → empty | [x] |
+| Scenario             | Check                                              | Status                                  |
+| -------------------- | -------------------------------------------------- | --------------------------------------- | --- |
+| -                    | 12 скилов из OpenCode                              | `ls ai/skills/*/SKILL.md \| wc -l` → 13 | [x] |
+| sdd-critic из Claude | `head -3 ai/skills/sdd-critic/SKILL.md`            | [x]                                     |
+| sdd-execute scripts/ | `ls ai/skills/sdd-execute/scripts/ \| wc -l` → 9   | [x]                                     |
+| Пути адаптированы    | `grep -r 'opencode/skills' ai/skills/` → 0 matches | [x]                                     |
+| Нет .DS_Store        | `find ai/skills/ -name '.DS_Store'` → empty        | [x]                                     |
 
 ## 7. Execution Log
 
@@ -114,7 +115,7 @@
 - [x] `2026-05-31 12:00` ver `ls ai/skills/sdd-execute/scripts/ | wc -l` → 9 pass exit=0
 - [x] `2026-05-31 12:00` ver `find ai/skills/ -name '.DS_Store'` → empty pass exit=0
 - [x] `2026-05-31 12:00` DONE
-       **Handoff →** artifacts: [ai/skills/ (13 directories, 24 files)]; decisions: []; open: []
+      **Handoff →** artifacts: [ai/skills/ (13 directories, 24 files)]; decisions: []; open: []
 
 #### Round close
 

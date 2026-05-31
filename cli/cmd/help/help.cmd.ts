@@ -1,6 +1,6 @@
 // @file: CLI command: help
 // @consumers: N/A
-// @tasks: TSK-45, TSK-55, TSK-57
+// @tasks: TSK-45, TSK-55, TSK-57, TSK-59
 
 console.info('Gennady CLI');
 console.info('');
@@ -27,15 +27,14 @@ console.info('  alt-opinion       Get alternative opinions from AI models with o
 console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
 );
-console.info(
-  '  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/'
-);
+console.info('  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/');
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
 );
 console.info(
   '  orient            Navigate file headers and DBC contracts — project map, search, dependency graph'
 );
+console.info('  agents-rules      Print orient usage instructions for AI agents');
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

@@ -55,12 +55,24 @@ function classify(name: string, body: string): ScriptClass[] {
 
   const typecheckName = /^(type-?check|typecheck|typecheck:|tsc)$/.test(name);
   const typecheckBody = /\b(tsc|tsgo)\b/.test(body) && /--noEmit/.test(body);
-  if ((typecheckName || typecheckBody || name === 'lint:ts') && !name.startsWith('build:') && !name.startsWith('prepublish'))
+  if (
+    (typecheckName || typecheckBody || name === 'lint:ts') &&
+    !name.startsWith('build:') &&
+    !name.startsWith('prepublish')
+  )
     classes.push('typecheck');
 
-  const lintName = /^(lint|lint:all|lint-check|eslint|mc:eslint|stylist:lint|stylelint)$/.test(name);
+  const lintName = /^(lint|lint:all|lint-check|eslint|mc:eslint|stylist:lint|stylelint)$/.test(
+    name
+  );
   const lintBody = hasCategory(body, 'lint');
-  if ((lintName || lintBody) && !name.startsWith('lint:fix') && !name.startsWith('lint:contracts') && !name.startsWith('lint:ts') && !hasGennady)
+  if (
+    (lintName || lintBody) &&
+    !name.startsWith('lint:fix') &&
+    !name.startsWith('lint:contracts') &&
+    !name.startsWith('lint:ts') &&
+    !hasGennady
+  )
     classes.push('lint');
 
   const testName = /^(test|test:|mc:test|mc:jest|jest)$/.test(name);

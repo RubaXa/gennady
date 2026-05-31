@@ -16,6 +16,8 @@ graph TD
     agent-mon --> infra-base
     agent-mon-cli --> infra-base
     agent-mon-cli --> agent-mon
+    ai-skills --> infra-base
+    ai-skills --> cli
     infra-npm-publish --> infra-base
 ```
 
@@ -30,3 +32,4 @@ graph TD
 | [`agent-mon`](./agent-mon/agent-mon.spec.md)                         | library        | 🚧 (awaiting setup sync) | Пассивный мониторинг активных сессий AI-агентов через провайдеры            |
 | [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md)             | product        | 🚧 (awaiting setup sync) | TUI-дашборд для мониторинга сессий агентов (ink + React)                    |
 | [`infra-npm-publish`](./infra-npm-publish/infra-npm-publish.spec.md) | infrastructure | ✅                       | Автоматизированная публикация npm-пакета через release-it                   |
+| [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅                       | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                           |

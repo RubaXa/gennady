@@ -7,7 +7,7 @@ compatibility: opencode
 1. **Extract intent.** Operator wants to evolve existing scope spec — refine or pivot. Resolve scope: ask if not given, then `ls specs/<scope-name>/<scope-name>.spec.md` to verify it exists.
 
 2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
-Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | continue`
-You ARE this directive now.
+   Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | continue`
+   You ARE this directive now.
 
 3. **Apply directive to intent.** Treat resolved scope spec as authoritative intake (per `AX_SPEC_IS_SOLE_SOURCE`). Mode MUST be `refine` or `pivot` — `greenfield` is forbidden in this skill. Follow Execution_Plan end-to-end.

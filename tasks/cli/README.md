@@ -122,7 +122,7 @@ graph TD
 | [TSK-56](sync-skills/cli-sync-skills.task-56.md) | Extract shared sync core + refactor sync              | sync-skills  | TSK-53, TSK-54                 | `[x]` DONE | 1       |
 | [TSK-57](sync-skills/cli-sync-skills.task-57.md) | sync-skills command (types, core, fmt, CLI, tests)    | sync-skills  | TSK-56                         | `[x]` DONE | 1       |
 | [TSK-58](sync-skills/cli-sync-skills.task-58.md) | ai/skills bootstrap (13 SDD skills)                   | sync-skills  | TSK-57                         | `[ ]` TODO | 1       |
-| [TSK-59](agents-rules/agents-rules.task-59.md)   | agents-rules: команда документации orient для агентов | agents-rules | None                           | `[ ]` TODO | 0       |
+| [TSK-59](agents-rules/agents-rules.task-59.md)   | agents-rules: команда документации orient для агентов | agents-rules | None                           | `[x]` DONE | 0       |
 
 ## Notes
 

@@ -29,14 +29,14 @@ Or broader:
 
 ## Files
 
-| File | Purpose |
-|---|---|
-| `sdd` | Command dispatcher (single entry point) |
-| `extract-section.sh` | Extract `<!--SECTION:NAME-->...<!--/SECTION:NAME-->` block from markdown |
-| `lint-artifacts.sh` | Run gennady DBC AST contract lint; parse output reliably |
-| `verify.sh` | Three-gate verification: typecheck + gennady DBC lint + forbidden-construct grep |
-| `check-blockers.sh` | Detect unresolved BLOCKER entries in ticket Execution Log per `AX_BLOCKER_RESOLUTION_TRAIL` |
-| `scan.sh` | Emit comprehensive project snapshot ([HEADER]/[TASKS]/[TRACKERS]/[SPECS]/[WARNINGS]/[SUMMARY]). Designed so triage skills make ONE call instead of many ad-hoc find/grep. Surfaces suspicious states automatically (DONE+placeholders, DONE+active-blocker, anchor mismatch, unparseable Status, broken spec links). |
+| File                 | Purpose                                                                                                                                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sdd`                | Command dispatcher (single entry point)                                                                                                                                                                                                                                                                              |
+| `extract-section.sh` | Extract `<!--SECTION:NAME-->...<!--/SECTION:NAME-->` block from markdown                                                                                                                                                                                                                                             |
+| `lint-artifacts.sh`  | Run gennady DBC AST contract lint; parse output reliably                                                                                                                                                                                                                                                             |
+| `verify.sh`          | Three-gate verification: typecheck + gennady DBC lint + forbidden-construct grep                                                                                                                                                                                                                                     |
+| `check-blockers.sh`  | Detect unresolved BLOCKER entries in ticket Execution Log per `AX_BLOCKER_RESOLUTION_TRAIL`                                                                                                                                                                                                                          |
+| `scan.sh`            | Emit comprehensive project snapshot ([HEADER]/[TASKS]/[TRACKERS]/[SPECS]/[WARNINGS]/[SUMMARY]). Designed so triage skills make ONE call instead of many ad-hoc find/grep. Surfaces suspicious states automatically (DONE+placeholders, DONE+active-blocker, anchor mismatch, unparseable Status, broken spec links). |
 
 ## Anchor convention (used by `extract`)
 
@@ -44,12 +44,16 @@ Markdown sections delimited by HTML-comment anchors:
 
 ```markdown
 <!--SECTION:META-->
+
 ## 1. Meta
+
 ...
+
 <!--/SECTION:META-->
 ```
 
 Grammar:
+
 - Open: `<!--SECTION:<NAME>-->`
 - Close: `<!--/SECTION:<NAME>-->`
 - `<NAME>` matches `^[A-Z][A-Z0-9_]*$`
@@ -71,6 +75,7 @@ To resolve a blocker, append to ticket Execution Log:
 ## Project-agnostic by design
 
 These scripts know nothing about any specific project. They expect:
+
 - A markdown file with anchored sections (for `extract`).
 - A TypeScript file to lint (for `lint`).
 - A ticket file with `## 7. Execution Log` section (for `check-blockers`).

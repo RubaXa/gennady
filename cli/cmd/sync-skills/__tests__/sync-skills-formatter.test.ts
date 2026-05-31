@@ -68,8 +68,14 @@ describe('format all statuses normal mode', () => {
     assert.ok(lines[0].includes('+ sdd-audit/'), 'added header');
     assert.ok(lines[1].includes('SKILL.md'), 'added file line');
 
-    assert.ok(lines.some((l) => l.includes('~ sdd-execute/')), 'updated header');
-    assert.ok(lines.some((l) => l.includes('- sdd-old/')), 'deleted header');
+    assert.ok(
+      lines.some((l) => l.includes('~ sdd-execute/')),
+      'updated header'
+    );
+    assert.ok(
+      lines.some((l) => l.includes('- sdd-old/')),
+      'deleted header'
+    );
 
     const unchangedLine = lines.find((l) => l.includes('= sdd-check/'));
     assert.ok(unchangedLine, 'unchanged header exists');
@@ -98,7 +104,9 @@ describe('format grouping', () => {
     assert.equal(headers.length, 1);
 
     // Two file lines
-    const fileLines = lines.filter((l) => !l.startsWith('  ') || l.includes('SKILL.md') || l.includes('README.md'));
+    const fileLines = lines.filter(
+      (l) => !l.startsWith('  ') || l.includes('SKILL.md') || l.includes('README.md')
+    );
     const filesInOutput = lines.filter((l) => l.includes('SKILL.md') || l.includes('README.md'));
     assert.equal(filesInOutput.length, 2);
   });
@@ -113,7 +121,9 @@ describe('format grouping', () => {
     const lines = fmt(entries);
 
     const fileIndexes = lines
-      .map((l, i) => (l.includes('NOTES.md') || l.includes('README.md') || l.includes('SKILL.md') ? i : -1))
+      .map((l, i) =>
+        l.includes('NOTES.md') || l.includes('README.md') || l.includes('SKILL.md') ? i : -1
+      )
       .filter((i) => i >= 0);
 
     assert.ok(fileIndexes[0] < fileIndexes[1]);
@@ -122,9 +132,13 @@ describe('format grouping', () => {
 
   it('uses correct group markers for each status', () => {
     const addedEntries = [entry('skills-a', 'f.md', 'added', { sourceSize: 10 })];
-    const updatedEntries = [entry('skills-b', 'f.md', 'updated', { sourceSize: 10, targetSize: 5 })];
+    const updatedEntries = [
+      entry('skills-b', 'f.md', 'updated', { sourceSize: 10, targetSize: 5 }),
+    ];
     const deletedEntries = [entry('skills-c', '', 'deleted')];
-    const unchangedEntries = [entry('skills-d', 'f.md', 'unchanged', { sourceSize: 10, targetSize: 10 })];
+    const unchangedEntries = [
+      entry('skills-d', 'f.md', 'unchanged', { sourceSize: 10, targetSize: 10 }),
+    ];
 
     assert.ok(fmt(addedEntries)[0].includes('+ skills-a/'));
     assert.ok(fmt(updatedEntries)[0].includes('~ skills-b/'));
@@ -164,7 +178,9 @@ describe('format dry-run', () => {
   });
 
   it('uses (would update) label for updated entries', () => {
-    const entries = [entry('sdd-execute', 'SKILL.md', 'updated', { sourceSize: 200, targetSize: 150 })];
+    const entries = [
+      entry('sdd-execute', 'SKILL.md', 'updated', { sourceSize: 200, targetSize: 150 }),
+    ];
 
     const lines = fmt(entries, { dryRun: true });
 
@@ -182,7 +198,9 @@ describe('format dry-run', () => {
   });
 
   it('uses (unchanged, skip) label for unchanged entries', () => {
-    const entries = [entry('sdd-check', 'SKILL.md', 'unchanged', { sourceSize: 300, targetSize: 300 })];
+    const entries = [
+      entry('sdd-check', 'SKILL.md', 'unchanged', { sourceSize: 300, targetSize: 300 }),
+    ];
 
     const lines = fmt(entries, { dryRun: true });
 

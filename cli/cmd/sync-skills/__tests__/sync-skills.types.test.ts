@@ -9,7 +9,11 @@ import {
   ERR_SKILLS_SOURCE_NOT_FOUND,
   ERR_SKILLS_SKILL_NOT_FOUND,
 } from '../sync-skills.types.ts';
-import type { SyncSkillsFileEntry, SyncSkillsOptions, SyncSkillsFileStatus } from '../sync-skills.types.ts';
+import type {
+  SyncSkillsFileEntry,
+  SyncSkillsOptions,
+  SyncSkillsFileStatus,
+} from '../sync-skills.types.ts';
 
 // #region SyncSkillsResult — getters
 
@@ -30,7 +34,13 @@ describe('SyncSkillsResult', () => {
     const entries: SyncSkillsFileEntry[] = [
       { skillName: 'a', relativePath: 'f1.md', status: 'updated', sourceSize: 10, targetSize: 5 },
       { skillName: 'b', relativePath: 'f2.md', status: 'updated', sourceSize: 20, targetSize: 10 },
-      { skillName: 'c', relativePath: 'f3.md', status: 'unchanged', sourceSize: 30, targetSize: 30 },
+      {
+        skillName: 'c',
+        relativePath: 'f3.md',
+        status: 'unchanged',
+        sourceSize: 30,
+        targetSize: 30,
+      },
     ];
 
     const result = new SyncSkillsResult(entries);
@@ -52,8 +62,20 @@ describe('SyncSkillsResult', () => {
 
   it('unchanged getter returns only unchanged entries', () => {
     const entries: SyncSkillsFileEntry[] = [
-      { skillName: 'a', relativePath: 'f1.md', status: 'unchanged', sourceSize: 10, targetSize: 10 },
-      { skillName: 'a', relativePath: 'f2.md', status: 'unchanged', sourceSize: 20, targetSize: 20 },
+      {
+        skillName: 'a',
+        relativePath: 'f1.md',
+        status: 'unchanged',
+        sourceSize: 10,
+        targetSize: 10,
+      },
+      {
+        skillName: 'a',
+        relativePath: 'f2.md',
+        status: 'unchanged',
+        sourceSize: 20,
+        targetSize: 20,
+      },
       { skillName: 'b', relativePath: 'f3.md', status: 'added', sourceSize: 30 },
     ];
 
@@ -96,9 +118,27 @@ describe('SyncSkillsResult summary', () => {
       { skillName: 'a', relativePath: 'f1.md', status: 'added', sourceSize: 10 },
       { skillName: 'a', relativePath: 'f2.md', status: 'added', sourceSize: 20 },
       { skillName: 'b', relativePath: 'f3.md', status: 'updated', sourceSize: 30, targetSize: 25 },
-      { skillName: 'c', relativePath: 'f4.md', status: 'unchanged', sourceSize: 40, targetSize: 40 },
-      { skillName: 'c', relativePath: 'f5.md', status: 'unchanged', sourceSize: 50, targetSize: 50 },
-      { skillName: 'c', relativePath: 'f6.md', status: 'unchanged', sourceSize: 60, targetSize: 60 },
+      {
+        skillName: 'c',
+        relativePath: 'f4.md',
+        status: 'unchanged',
+        sourceSize: 40,
+        targetSize: 40,
+      },
+      {
+        skillName: 'c',
+        relativePath: 'f5.md',
+        status: 'unchanged',
+        sourceSize: 50,
+        targetSize: 50,
+      },
+      {
+        skillName: 'c',
+        relativePath: 'f6.md',
+        status: 'unchanged',
+        sourceSize: 60,
+        targetSize: 60,
+      },
       { skillName: 'd', relativePath: '', status: 'deleted' },
     ];
 
@@ -121,7 +161,10 @@ describe('SyncSkillsResult summary', () => {
 
     const result = new SyncSkillsResult(entries);
 
-    assert.match(result.summary, /Synced: 0 added, 0 updated, 0 skipped, 0 deleted, 2 delete failed/);
+    assert.match(
+      result.summary,
+      /Synced: 0 added, 0 updated, 0 skipped, 0 deleted, 2 delete failed/
+    );
   });
 
   it('summary omits deleteFailed when count is 0', () => {

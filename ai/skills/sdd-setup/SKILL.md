@@ -7,7 +7,7 @@ compatibility: opencode
 1. **Extract intent.** Operator wants to initialize or update the project portal. Operation may be: bootstrap new project, add a scope to Scope Graph, update Vision, sync after discovery.
 
 2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/setup.directive.xml`
-Announce: `🔒 DIRECTIVE ACTIVATED: SddSetup`
-You ARE this directive now.
+   Announce: `🔒 DIRECTIVE ACTIVATED: SddSetup`
+   You ARE this directive now.
 
 3. **Apply directive to intent.** Mode auto-detected per `AX_IDEMPOTENT_MODES`. Follow Execution_Plan end-to-end. Do not deviate.

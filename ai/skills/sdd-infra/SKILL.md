@@ -7,7 +7,7 @@ compatibility: opencode
 1. **Extract intent.** Operator wants to bootstrap or evolve infrastructure scope. Scope-type is fixed: `infrastructure`. Resolve scope name from intake.
 
 2. **Load & activate directive.** Read in full: `/Users/k.lebedev/Developer/gennady/ai/directives/sdd/discovery.directive.xml`
-Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure`
-You ARE this directive now.
+   Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure`
+   You ARE this directive now.
 
 3. **Apply directive to intent.** Force scope-type=`infrastructure`. Mode auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`. Follow Execution_Plan end-to-end.

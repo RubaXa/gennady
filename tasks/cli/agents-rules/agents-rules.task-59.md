@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-59
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать команду `gennady agents-rules`: проверка `node_modules/gennady` → чтение `cli/cmd/orient/README.md` → stdout
 - **Scope:** cli
 - **Module:** agents-rules
@@ -21,8 +21,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -104,20 +104,29 @@ Contract: см. Spec References → module spec §4.2 DbC.
 
 ## 7. Execution Log
 
-### Round 1 — YYYY-MM-DD, initial
+### Round 1 — 2026-05-31, initial
 
 #### P1
 
-- [ ] `<ts>` ver `tsc --noEmit -p tsconfig.json` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [index.ts, agents-rules.cmd.ts, README.md, gennady.ts, AGENTS.md, help.cmd.ts]; decisions: [...]; open: [...]
+- [x] `2026-05-31T08:46:10Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-31T08:46:11Z` ver `npx tsx cli/gennady.ts lint cli/cmd/agents-rules/index.ts cli/cmd/agents-rules/agents-rules.cmd.ts cli/cmd/orient/README.md cli/gennady.ts cli/AGENTS.md cli/cmd/help/help.cmd.ts` → pass exit=0
+- [x] `2026-05-31T08:46:18Z` ver `npm run test` → pass exit=0
+- [x] `2026-05-31T08:46:21Z` discovery `npm run format:check` gate failed with pre-existing issues in 31 files outside phase scope (ai/skills/, sync-skills/, orient/), all 6 target files pass format check
+- [x] `2026-05-31T08:47:05Z` ver `./node_modules/.bin/tsc --noEmit -p tsconfig.json` → pass exit=0
+- [x] `2026-05-31T08:47:05Z` DONE
+      **Handoff →** artifacts: [cli/cmd/agents-rules/index.ts, cli/cmd/agents-rules/agents-rules.cmd.ts, cli/cmd/orient/README.md, cli/gennady.ts, cli/AGENTS.md, cli/cmd/help/help.cmd.ts]; decisions: [pkg-resolve=import.meta.resolve+walk-up-to-package-root, entry-pattern=index-calls-run-cmd-exports-it, no-logger=zero-runtime-deps-as-specified]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `node --test --experimental-test-module-mocks cli/cmd/agents-rules/__tests__/agents-rules.cmd.test.ts` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [agents-rules.cmd.test.ts]; decisions: [...]; open: [...]
+- [x] `2026-05-31T09:03:17Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-05-31T09:03:17Z` ver `npm run lint:contracts` (1 file) → pass (gennady DBC lint on target)
+- [x] `2026-05-31T09:03:17Z` ver `npm run test` → pass exit=0
+- [x] `2026-05-31T09:03:17Z` discovery `npm run format:check` gate failed with pre-existing issues in 31 files outside phase scope, target file passes format check
+- [x] `2026-05-31T09:03:17Z` ver `tsc --noEmit -p tsconfig.json` → pass exit=0
+- [x] `2026-05-31T09:03:17Z` ver `node --test --experimental-test-module-mocks cli/cmd/agents-rules/__tests__/agents-rules.cmd.test.ts` → pass exit=0
+- [x] `2026-05-31T09:03:17Z` DONE
+      **Handoff →** artifacts: [cli/cmd/agents-rules/__tests__/agents-rules.cmd.test.ts]; decisions: [test-runner=node:test, test-kind=integration, mock-strategy=mock.module+process.exit-throw, mock-target=node:fs-existsSync+readFileSync, import.meta.resolve-requires-nm-symlink]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-05-31T09:02:00Z` DONE

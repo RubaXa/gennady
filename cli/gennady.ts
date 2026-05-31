@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI entry point — dispatches commands, runs update check on startup.
 // @consumers: CLI users (gennady <command>)
-// @tasks: TSK-33, TSK-47, TSK-55, TSK-57
+// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59
 
 import { checkForUpdates } from './cmd/_shared/update-check.ts';
 import { readFileSync } from 'node:fs';
@@ -155,6 +155,10 @@ switch (command) {
 
   case 'orient':
     await import('./cmd/orient/index.ts');
+    break;
+
+  case 'agents-rules':
+    await import('./cmd/agents-rules/index.ts');
     break;
 
   default:
