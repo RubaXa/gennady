@@ -1,5 +1,6 @@
 // @file: Help output for the gennady orient command.
-// @consumers: gennady.ts
+// @consumers: help command
+// @tasks: 
 // @tasks: TSK-55
 
 /**

@@ -1,5 +1,6 @@
 // @file: cat command help output
 // @consumers: help command
+// @tasks: TSK-31
 /**
  * @purpose Print CLI help for the cat command.
  */

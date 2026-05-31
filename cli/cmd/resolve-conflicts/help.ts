@@ -1,5 +1,6 @@
 // @file: resolve-conflicts command help output
 // @consumers: help command
+// @tasks: TSK-0 (legacy — no task ticket)
 /**
  * @purpose Print CLI help for the resolve-conflicts command.
  */

@@ -1,5 +1,6 @@
 // @file: sync command help output
 // @consumers: help command
+// @tasks: TSK-53, TSK-54
 /**
  * @purpose Print CLI help for the sync command.
  */

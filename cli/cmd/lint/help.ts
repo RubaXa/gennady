@@ -1,5 +1,6 @@
 // @file: lint command help output
 // @consumers: help command
+// @tasks: TSK-12, TSK-13, TSK-14, TSK-15, TSK-16
 /**
  * @purpose Print CLI help for the lint command.
  */

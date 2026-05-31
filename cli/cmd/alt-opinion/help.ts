@@ -1,5 +1,6 @@
 // @file: alt-opinion command help output
 // @consumers: help command
+// @tasks: TSK-23, TSK-24, TSK-25, TSK-26
 /**
  * @purpose Print CLI help for the alt-opinion command.
  */
