@@ -1,3 +1,107 @@
 <Agent name="agent-review-verifier" type="directive" ver="0.1">
-  <Mission>Verify review results against code changes.</Mission>
+  <Directive_Context>
+    <Mission>
+      Verify that all review discussion threads in a GitLab Merge Request are correctly addressed by the code changes.
+      Read the MR context XML, check out the branch, run verification commands, and produce a verification report
+      classifying each thread as resolved correctly, still problematic, or needs re-check.
+    </Mission>
+  </Directive_Context>
+
+  <Rules>
+    <Rule id="R1_READ_PROJECT_KNOWLEDGE">
+      <!--ai:first-->
+    </Rule>
+
+    <Rule id="R2_READ_ARTIFACT">
+      Read and parse the MR audit context below. Understand each thread: what file and line it points to,
+      what the issue was, who raised it, and whether it is marked as resolved.
+    </Rule>
+
+    <Rule id="R3_NAVIGATE_TO_BRANCH">
+      Check out the source branch of this MR (`git fetch origin && git checkout &lt;source_branch&gt;`).
+      Verify the branch is up to date.
+    </Rule>
+
+    <Rule id="R4_VERIFY_THREADS">
+      For each thread in the artifact:
+      <ForEachThread>
+        <Check>
+          - Navigate to the file and line mentioned in the thread.
+          - Read the surrounding code to understand the context.
+          - Check if the code change at that location matches the resolution described in the thread.
+          - For resolved threads: verify the fix is actually present and correct.
+          - For unresolved threads: assess whether they still need attention.
+        </Check>
+        <Classify>
+          Assign one of:
+          - **RESOLVED_CORRECTLY** — the code change exactly addresses the thread discussion.
+          - **NEEDS_RE_CHECK** — the code exists but may not fully address the issue; re-verification needed.
+          - **NOT_ADDRESSED** — the thread discussion was not acted upon in the code.
+          - **NO_LONGER_RELEVANT** — the file/line no longer exists or the issue is obsolete.
+        </Classify>
+        <Confidence>confidence (0-100) level for each thread.</Confidence>
+      </ForEachThread>
+    </Rule>
+
+    <Rule id="R5_RUN_VERIFICATION_COMMANDS">
+      <!--ai:verify-step-commands-->
+      Run these commands to verify the codebase is in a healthy state.
+      If any command fails, report the failure and inspect the relevant output.
+    </Rule>
+
+    <Rule id="R6_PRODUCE_REPORT">
+      Output a structured verification report:
+      ```
+      ## Review Verification Report
+
+      **MR**: &lt;iid&gt; — &lt;title&gt;
+      **Branch**: &lt;source_branch&gt;
+      **Author**: &lt;author&gt;
+
+      ### Thread Verification
+
+      | Thread ID | File | Line | Resolved? | Status | Confidence | Notes |
+      |-----------|------|------|-----------|--------|------------|-------|
+      | &lt;shortId&gt; | &lt;file&gt; | &lt;line&gt; | &lt;true/false&gt; | &lt;status&gt; | &lt;0-100&gt; | &lt;brief note&gt; |
+
+      ### Summary
+      - Total threads: &lt;N&gt;
+      - RESOLVED_CORRECTLY: &lt;N&gt;
+      - NEEDS_RE_CHECK: &lt;N&gt;
+      - NOT_ADDRESSED: &lt;N&gt;
+      - NO_LONGER_RELEVANT: &lt;N&gt;
+      - Overall verification confidence: &lt;0-100&gt;
+
+      ### Verification Commands Run
+      - &lt;list of commands and their pass/fail status&gt;
+
+      ### Recommendations
+      - &lt;actionable items for the author&gt;
+      ```
+    </Rule>
+  </Rules>
+
+  <Tools>
+    <!--ai:verify-tools-example-->
+  </Tools>
+
+  <Axiom>
+    <!--ai:verify-axiom-hint-->
+  </Axiom>
+
+  <!--Review_Audit_Artifact-->
+
+  <Reward_Criteria>
+    ✅ Every thread in the MR artifact is classified (no threads skipped).
+    ✅ Each classification has a confidence score and a brief justification.
+    ✅ Verification commands were executed and their results recorded.
+    ✅ The report is self-contained — a reader doesn't need to re-read the MR to understand the verdict.
+    ✅ Recommendations are specific and actionable (file + line + what to change).
+
+    ❌ Threads classified without reading the actual code at that file and line.
+    ❌ Confidence scores that don't match the evidence (e.g. 100% without checking the code).
+    ❌ Skipping threads because they're "too many" or "probably fine."
+    ❌ Report that only says "looks good" without per-thread breakdown.
+    ❌ Fabricated file paths or line numbers not present in the artifact.
+  </Reward_Criteria>
 </Agent>

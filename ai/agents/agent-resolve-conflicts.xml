@@ -1,3 +1,133 @@
 <Agent name="agent-resolve-conflicts" type="directive" ver="0.1">
-  <Mission>Resolve merge conflicts with confidence scoring.</Mission>
+  <Directive_Context>
+    <Mission>
+      Resolve merge conflicts with intent preservation. Analyze each conflicting file, understand both sides
+      of the conflict, make a confidence-aware resolution decision, and apply the resolution.
+    </Mission>
+  </Directive_Context>
+
+  <Rules>
+    <Rule id="R1_READ_PROJECT_KNOWLEDGE">
+      <!--ai:first-->
+    </Rule>
+
+    <Rule id="R2_READ_ARTIFACT">
+      Read and parse the merge conflict context below. Understand the merge state: which branch is being merged
+      into which, how many commits are unique to each side, and which files have conflicts.
+    </Rule>
+
+    <Rule id="R3_ANALYZE_EACH_CONFLICT">
+      For each conflicting file:
+      <ForEachFile>
+        <Step>
+          Read the file with conflicts present. Identify all conflict markers (`&lt;&lt;&lt;&lt;&lt;&lt;&lt;`, `=======`, `&gt;&gt;&gt;&gt;&gt;&gt;&gt;`).
+        </Step>
+        <Step>
+          For each conflict region:
+          - **Current** (`ours`): the code in the current branch.
+          - **Incoming** (`theirs`): the code coming from the merged branch.
+          - **Base** (if available): the common ancestor code.
+        </Step>
+        <Step>
+          Determine resolution strategy:
+          - **Keep ours** — current code is correct; incoming change is obsolete or wrong.
+          - **Take theirs** — incoming code is the intended update; current code is stale.
+          - **Merge both** — both sides add non-overlapping value; combine them.
+          - **Rewrite** — neither side is correct; write a new version that incorporates both intents.
+        </Step>
+        <Step>
+          Assign a confidence score (0-100) for each resolution decision based on:
+          - Clarity of intent from commit messages and surrounding context.
+          - Whether both sides are modifying the same feature or independent concerns.
+          - Whether either side references a spec, ticket, or discussion that clarifies intent.
+        </Step>
+      </ForEachFile>
+    </Rule>
+
+    <Rule id="R4_APPLY_RESOLUTIONS">
+      Apply the chosen resolution for each conflict region:
+      - Edit the file to remove conflict markers and keep the resolved code.
+      - Preserve JSDoc contracts, file headers, and structural anchors from both sides where applicable.
+      - Do NOT silently drop one side's logic without confirming it is truly obsolete.
+    </Rule>
+
+    <Rule id="R5_VERIFY_RESOLUTION">
+      After resolving all conflicts:
+      - Stage the resolved files (`git add &lt;resolved-files&gt;`).
+      - Run verification commands to ensure the codebase compiles and tests pass.
+      <!--ai:verify-step-commands-->
+    </Rule>
+
+    <Rule id="R6_PRODUCE_REPORT">
+      Output a structured resolution report:
+      ```
+      ## Merge Conflict Resolution Report
+
+      **Merge**: &lt;current_branch&gt; ← &lt;incoming_branch&gt;
+      **Current HEAD**: &lt;current_head&gt;
+      **Incoming HEAD**: &lt;incoming_head&gt;
+      **Merge Base**: &lt;merge_base&gt;
+      **Divergence**: &lt;currentOnlyCommits&gt; commits ahead / &lt;incomingOnlyCommits&gt; commits behind
+
+      ### Conflict Files
+
+      | File | Regions | Resolution Strategy | Confidence | Notes |
+      |------|---------|---------------------|------------|-------|
+      | &lt;path&gt; | &lt;N&gt; | &lt;strategy&gt; | &lt;0-100&gt; | &lt;brief note&gt; |
+
+      ### Per-Conflict Details
+
+      For each file with conflicts: show which region was resolved how and why.
+
+      ### Summary
+      - Total files: &lt;N&gt;
+      - Total conflict regions: &lt;N&gt;
+      - Resolved by keep-ours: &lt;N&gt;
+      - Resolved by take-theirs: &lt;N&gt;
+      - Resolved by merge-both: &lt;N&gt;
+      - Resolved by rewrite: &lt;N&gt;
+      - Overall confidence: &lt;0-100&gt;
+
+      ### Verification
+      - &lt;list of commands run and their pass/fail status&gt;
+
+      ### Unresolved / Low Confidence (&lt; 70)
+      - &lt;list of regions where confidence is low, with rationale and suggested next steps&gt;
+      ```
+    </Rule>
+  </Rules>
+
+  <Decision_Mode>
+    Priority order for conflict resolution:
+    1. **Spec/ticket reference** — if one side references a spec/ticket and the other doesn't, prefer the referenced side.
+    2. **Recency** — if both sides modify the same concern, prefer the more recent change (by commit date).
+    3. **Intent clarity** — prefer the side whose commit message and code clearly state what and why.
+    4. **Non-destructive merge** — when in doubt, merge both and add a comment flagging the decision for human review.
+  </Decision_Mode>
+
+  <Tools>
+    <!--ai:verify-tools-example-->
+  </Tools>
+
+  <Axiom>
+    <!--ai:verify-axiom-hint-->
+  </Axiom>
+
+  <!--Resolve_Conflicts_Artifact-->
+
+  <Reward_Criteria>
+    ✅ Every conflict region is resolved (no remaining `&lt;&lt;&lt;&lt;&lt;&lt;&lt;` / `=======` / `&gt;&gt;&gt;&gt;&gt;&gt;&gt;` markers).
+    ✅ Every resolution has a documented rationale and confidence score.
+    ✅ Resolved code preserves JSDoc contracts, file headers, and structural anchors from both sides.
+    ✅ Verification commands pass after resolution (or documented failures with explanation).
+    ✅ Low-confidence decisions (&lt; 70) are flagged with suggested human review steps.
+    ✅ Commit of the resolution exists or the user is prompted to commit.
+
+    ❌ Silent deletion of one side's logic without documented rationale.
+    ❌ Resolution that breaks existing JSDoc contracts or structural anchors.
+    ❌ Confidence score of 100% without verifying both sides' intent from commit history.
+    ❌ Leaving unresolved conflicts in any file.
+    ❌ Resolution that compiles but silently changes behaviour of unrelated code.
+    ❌ Not running verification commands after resolution.
+  </Reward_Criteria>
 </Agent>
