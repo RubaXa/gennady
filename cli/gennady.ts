@@ -21,7 +21,13 @@ const _version =
       ).version;
 
 const helpFlags = new Set(['help', '--help', '-h']);
+const versionFlags = new Set(['--version', '-v']);
 const command = process.argv[2];
+
+if (versionFlags.has(command)) {
+  console.log(_version);
+  process.exit(0);
+}
 
 if (!command || helpFlags.has(command)) {
   await import('./cmd/help/help.cmd.ts');

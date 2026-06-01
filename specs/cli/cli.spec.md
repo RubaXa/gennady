@@ -16,6 +16,13 @@ CLI-модуль с командами для AI-агентов. Команды:
 ## 3. Approved Golden DX Example
 
 ```bash
+# --- версия ---
+$ gennady --version
+0.8.1
+
+$ gennady -v
+0.8.1
+
 # --- happy path: всё чисто ---
 $ gennady lint services/dbc/linter/dbc-linter.types.ts
 
@@ -995,6 +1002,8 @@ $ gennady agents-rules
 | **Авто-пропуск** |                                                                                                                                           |
 | FR-SU-13         | Пропустить проверку в CI-окружениях (`CI`, `CONTINUOUS_INTEGRATION`, `BUILD_NUMBER` env)                                                  |
 | FR-SU-14         | Пропустить проверку если `NODE_ENV === 'test'`                                                                                            |
+| **Версия CLI**   |                                                                                                                                           |
+| FR-SU-15         | `--version` и `-v` выводят текущую версию в stdout и завершаются с exit code 0
 
 ### 4.1.4 sync Functional Requirements
 

@@ -177,6 +177,33 @@ describe('checkForUpdates', () => {
     // #endregion END_NO_TTY_ASSERT_NO_HOOK
   });
 
+  it('stale cache with older version — no downgrade notification', () => {
+    // purpose: cache has older version than installed (user upgraded since last check) → no notification
+    // contract: isNewerVersion prevents downgrade notifications from stale caches
+
+    // #region START_DOWNGRADE_PREVENTION_SETUP_FIXTURE
+    _stdIsTTY = true;
+    const cachePath = join(_tmpDir, 'update-check-cache.json');
+    const freshLastCheck = new Date(Date.now() - 3_600_000).toISOString();
+    writeFileSync(
+      cachePath,
+      JSON.stringify({ lastCheck: freshLastCheck, latestVersion: '0.7.1' }),
+      'utf-8'
+    );
+    // #endregion END_DOWNGRADE_PREVENTION_SETUP_FIXTURE
+
+    // #region START_DOWNGRADE_PREVENTION_TRIGGER
+    checkForUpdates(
+      { name: 'test-pkg', version: '0.8.1' },
+      { _spawnFn: _mockSpawn, cacheDir: _tmpDir }
+    );
+    // #endregion END_DOWNGRADE_PREVENTION_TRIGGER
+
+    // #region START_DOWNGRADE_PREVENTION_ASSERT_NO_HOOK
+    assert.strictEqual(_beforeExitHandlers.length, 0);
+    // #endregion END_DOWNGRADE_PREVENTION_ASSERT_NO_HOOK
+  });
+
   it('NO_UPDATE_CHECK — immediate return', () => {
     // purpose: GENNADY_NO_UPDATE_CHECK=1 → return before any FS or spawn call
     // contract: opt-out env var is checked first

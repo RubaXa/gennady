@@ -80,6 +80,29 @@ function isCacheFresh(cache: UpdateCheckCache, intervalMs: number): boolean {
   return Date.now() - new Date(cache.lastCheck).getTime() < intervalMs;
 }
 
+// #region START_SEMVER_GT
+/**
+ * @purpose Compare two semver strings — returns true if `latest` is strictly greater than `current`.
+ * @param current Current installed version.
+ * @param latest Version from the npm registry cache.
+ * @returns true only when latest > current (prevents downgrade notifications on stale cache).
+ * @invariant Uses simple semver parsing (major.minor.patch); falls back to string comparison if parsing fails.
+ */
+function isNewerVersion(current: string, latest: string): boolean {
+  const parse = (v: string) => v.split('.').map((s) => parseInt(s, 10));
+  const cur = parse(current);
+  const lat = parse(latest);
+  if (cur.some(isNaN) || lat.some(isNaN)) return false;
+  for (let i = 0; i < Math.max(cur.length, lat.length); i++) {
+    const c = cur[i] ?? 0;
+    const l = lat[i] ?? 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false;
+}
+// #endregion END_SEMVER_GT
+
 // #region START_BEFOREEXIT_NOTIFICATION
 /**
  * @purpose Register a deferred beforeExit hook to display update notification on stderr.
@@ -149,7 +172,7 @@ export function checkForUpdates(
   if (cache && isCacheFresh(cache, interval)) {
     if (
       cache.latestVersion &&
-      cache.latestVersion !== pkg.version &&
+      isNewerVersion(pkg.version, cache.latestVersion) &&
       (process.stderr.isTTY || opts?.skipNotificationIfNoTty === false)
     ) {
       registerBeforeExitNotification(pkg.version, cache.latestVersion);
@@ -175,7 +198,7 @@ export function checkForUpdates(
   // #region START_STALE_CACHE_NOTIFICATION — older cache may report a newer version while worker rechecks
   if (
     cache?.latestVersion &&
-    cache.latestVersion !== pkg.version &&
+    isNewerVersion(pkg.version, cache.latestVersion) &&
     (process.stderr.isTTY || opts?.skipNotificationIfNoTty === false)
   ) {
     registerBeforeExitNotification(pkg.version, cache.latestVersion);

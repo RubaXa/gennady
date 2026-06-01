@@ -34,7 +34,9 @@ console.info(
 console.info(
   '  orient            Navigate file headers and DBC contracts — project map, search, dependency graph'
 );
-console.info('  agents-rules      Print orient usage instructions for AI agents');
+console.info(
+  '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'
+);
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

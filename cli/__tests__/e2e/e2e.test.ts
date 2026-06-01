@@ -286,6 +286,22 @@ if (isE2eRun) {
       });
     });
 
+    describe('version', () => {
+      it('--version should print version and exit 0', async () => {
+        const { spawn } = getContext();
+        const result = await spawn(['--version']);
+        assert.strictEqual(result.exitCode, 0);
+        assert.ok(result.stdout.trim().length > 0, 'should output version');
+      });
+
+      it('-v should print version and exit 0', async () => {
+        const { spawn } = getContext();
+        const result = await spawn(['-v']);
+        assert.strictEqual(result.exitCode, 0);
+        assert.ok(result.stdout.trim().length > 0, 'should output version');
+      });
+    });
+
     after(() => {
       getContext().cleanup();
     });
