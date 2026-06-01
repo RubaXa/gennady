@@ -1257,7 +1257,7 @@ $ gennady agents-rules
 
 - E2E для `alt-opinion` — требует API-ключей (`GENNADY_LLM_PROXY_API_KEY`), сетевое взаимодействие, нестабильное время ответа
 - E2E для `cat` — требует vcs-client (GitLab/GitHub), сетевое взаимодействие
-- E2E для `agents-rules` — тривиальная команда (читает статический README.md), покрывается тем что `orient` работает
+- E2E для `agents-rules` — команда проверяет наличие `README.md` в пакете, покрывается e2e-тестом (exit 0 + stdout содержит `npx gennady orient`)
 - E2E для `update-check` — требует сетевого доступа к npm registry
 - E2E для sync-skills orphan-удаления — требует преднаполнения target-директории лишними скилами (усложняет fixture setup). Deferred до v2
 - Интеграция e2e в `npm run release` / CI — отдельный refine после MVP
@@ -1969,6 +1969,7 @@ cli/__tests__/e2e/
 | Обновить `cli/cmd/help/help.cmd.ts` (строка orient)                      | file          | this-scope-task       | добавить `orient` в вывод help                                                                                                      |
 | **agents-rules**                                                         |               |                       |                                                                                                                                     |
 | Создать `cli/cmd/orient/README.md`                                       | file          | this-scope-task       | Канонический markdown: описание orient, таблица «когда использовать», примеры                                                       |
+| `cli/cmd/orient/README.md` в `package.json#files`                        | structural    | this-scope-task       | добавить `"cli/cmd/orient/README.md"` в `"files"`, чтобы файл попадал в npm-пакет                                                    |
 | Создать `cli/cmd/agents-rules/index.ts`                                  | file          | this-scope-task       | `import { run } from './agents-rules.cmd.ts'; run(process.argv)`                                                                    |
 | Создать `cli/cmd/agents-rules/agents-rules.cmd.ts`                       | file          | this-scope-task       | Проверка `node_modules/gennady` → `import.meta.resolve` → `readFileSync(README.md)` → stdout                                        |
 | Обновить `cli/gennady.ts` (case 'agents-rules')                          | file          | this-scope-task       | добавить `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break`                                                  |

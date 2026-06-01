@@ -18,7 +18,7 @@ E2E-тестирование CLI-команд через локальный ар
 
 Внутренний модуль — не экспортирует публичное API. Единственная точка входа — `npm run test:e2e`.
 
-**Out-of-Scope (v1):** E2E для `alt-opinion` (API-ключи), `cat` (сеть), `agents-rules` (тривиально), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
+**Out-of-Scope (v1):** E2E для `alt-opinion` (API-ключи), `cat` (сеть), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
 
 <!--/SECTION:MODULE_VISION-->
 
@@ -135,8 +135,13 @@ $ npm run test:e2e
   $ npx gennady sync-skills sdd-execute
   ✓ exit 0
 
+# === agents-rules (1 тест) ===
+▶ agents-rules
+  $ npx gennady agents-rules
+  ✓ exit 0
+
 # === итог ===
-✓ 22 passed (14.2s)
+✓ 23 passed (14.2s)
 ```
 
 Альтернативный путь — при падении setup:
