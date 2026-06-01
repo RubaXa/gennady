@@ -12,10 +12,10 @@ _Это полный список сущностей модуля. Любое в
 
 | Name                   | Type         | Purpose                                                                                                                                                                                                                                                                                                                               |
 | ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, вывод в ESLint-формате                                                                                                                                                                                       |
+| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате |
 | `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                               |
 | `LintOptions`          | Value Object | Опции запуска: `targets` (файлы + директории), `autofix`, `gitMode`                                                                                                                                                                                                                                                                   |
-| `LintReport`           | Value Object | Результат линтинга: `errors`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                  |
+| `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                   |
 | `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                |
 | `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                 |
 | `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                |
@@ -29,7 +29,7 @@ _Это полный список сущностей модуля. Любое в
 ### `LintCommand`
 
 - **Type:** Service
-- **Purpose:** Точка входа команды `gennady lint`. Парсинг аргументов, резолвинг целей (файлы + директории → плоский список `.ts`/`.tsx`), оркестрация проверок, вывод.
+- **Purpose:** Точка входа команды `gennady lint`. Парсинг аргументов, резолвинг целей (файлы + директории → плоский список `.ts`/`.tsx`), оркестрация проверок, резолвинг ссылок на spec/task файлы (только для файлов с ошибками), вывод.
 - **Public Operations:**
   - `run(args: string[]) → Promise<LintReport>` — выполнить линтинг
   - `resolveTargets(targets: string[]) → { files: string[]; errors: LintError[] }` — рекурсивно обойти директории, собрать файлы поддерживаемых расширений. `files` — уникальный, отсортированный список абсолютных путей к `.ts`/`.tsx`. `errors` — ошибки для целей, которые не удалось обработать (ENOENT, EACCES). Файлы других расширений молча игнорируются
@@ -74,9 +74,12 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Агрегированный результат линтинга.
 - **Public Properties:**
   - `errors: LintError[]` — все ошибки (пустой массив = чисто)
+  - `autoFixed: number` — количество авто-исправленных ошибок
+  - `taskPaths: string[]` — пути к task-файлам, связанным с ошибочными файлами
+  - `specPaths: string[]` — пути к spec-файлам, связанным с ошибочными файлами
   - `exitCode: 0 | 1`
 - **Public Operations:**
-  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`
+  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`. Если есть ошибки — также выводит блок `Relevant specs & tasks for errors above:` с путями к связанным spec/task файлам. Если `autoFixed > 0` — первую строку `Auto-fixed: N error(s)`. | `LintReport`  | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `format(): string`                                         |
 - **Lifecycle:** immutable value object
 - **Consumers:**
   - Internal: `LintCommand` (вывод в stdout)
@@ -150,7 +153,7 @@ _Это полный список сущностей модуля. Любое в
 | ------------- | ----------------------------------------------------------------------------------------------------- |
 | `LintError`   | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string` |
 | `LintOptions` | `targets: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                         |
-| `LintReport`  | `errors: LintError[]`, `exitCode: 0 \| 1`, `format(): string`                                         |
+| `LintReport`  | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `format(): string` |
 
 ### Error Codes
 
@@ -475,6 +478,8 @@ cli/cmd/lint/
 │   ├── dbc-contract.check.ts   # DbcContractCheck.check()
 │   ├── invariant-count.check.ts # InvariantCountCheck.check()
 │   └── anchor-class-body.check.ts # AnchorClassBodyCheck.check()
+├── utils/
+│   └── resolve-references.fn.ts # loadTaskReferences(), extractTaskIdsFromHeader(), resolveReferencesForTasks()
 └── __tests__/
     ├── lint.cmd.test.ts
     ├── file-header.check.test.ts
@@ -497,6 +502,7 @@ cli/cmd/lint/
 - `checks/dbc-contract.check.ts`: `DbcContractCheck`
 - `checks/invariant-count.check.ts`: `InvariantCountCheck`
 - `checks/anchor-class-body.check.ts`: `AnchorClassBodyCheck`
+- `utils/resolve-references.fn.ts`: `ResolvedReference`, `loadTaskReferences()`, `extractTaskIdsFromHeader()`, `resolveReferencesForTasks()`
 
 ## 6.1 Test Scenarios
 

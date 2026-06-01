@@ -79,11 +79,11 @@ export class LintReport {
         )
       );
     }
-    // Append References block: specs first, then tasks
-    if (this.specPaths.length > 0 || this.taskPaths.length > 0) {
+    // Append references block only when there are errors — specs first, then tasks
+    if (this.errors.length > 0 && (this.specPaths.length > 0 || this.taskPaths.length > 0)) {
       lines.push('');
       lines.push('---');
-      lines.push('References:');
+      lines.push('Relevant specs & tasks for errors above:');
       for (const sp of this.specPaths) {
         lines.push(`  ${sp}`);
       }

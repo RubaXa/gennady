@@ -162,6 +162,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       continue;
     }
 
+    const errorCountBefore = allErrors.length;
+
     allErrors.push(...checkFileHeader(content, filePath));
     allErrors.push(...checkAnchors(content, filePath));
     allErrors.push(...checkLanguage(content, filePath));
@@ -169,15 +171,16 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkAnchorClassBody(content, filePath));
     allErrors.push(...checkInvariantCount(content, filePath, maxInvariants));
 
-    // Extract task IDs from file header for reference resolution
-    const taskIds = extractTaskIdsFromHeader(content);
-    for (const tid of taskIds) {
-      foundTaskIds.add(tid);
-    }
-
     const dbcResult = await checkDbcContracts(content, filePath, autofix);
     allErrors.push(...dbcResult.errors);
     totalAutoFixed += dbcResult.autoFixed;
+
+    if (allErrors.length > errorCountBefore) {
+      const taskIds = extractTaskIdsFromHeader(content);
+      for (const tid of taskIds) {
+        foundTaskIds.add(tid);
+      }
+    }
   }
   // #endregion END_LINT_LOOP
 
@@ -188,9 +191,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_OUTPUT — invariant: ESLint format when errors present
   if (report.exitCode === 1) {
-    console.log(`[LintCommand#run] [linting → failed] ${allErrors.length} error(s)`);
+    console.log(`❌ [LintCommand#run] [linting → failed] ${allErrors.length} error(s)`);
   } else {
-    console.log('[LintCommand#run] [linting → clean] no errors');
+    console.log('✅ [LintCommand#run] [linting → clean] no errors');
   }
   // #endregion END_OUTPUT
 
