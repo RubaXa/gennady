@@ -276,6 +276,16 @@ if (isE2eRun) {
     registerSyncTests();
     registerSyncSkillsTests();
 
+    describe('agents-rules', () => {
+      it('should output README content', async () => {
+        const { spawn } = getContext();
+        const result = await spawn(['agents-rules']);
+        assert.strictEqual(result.exitCode, 0);
+        assert.ok(result.stdout.length > 100, 'should output non-trivial content');
+        assert.match(result.stdout, /npx gennady orient/);
+      });
+    });
+
     after(() => {
       getContext().cleanup();
     });

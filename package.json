@@ -32,7 +32,8 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "ai/**/*"
+    "ai/**/*",
+    "cli/cmd/orient/README.md"
   ],
   "scripts": {
     "type-check": "tsc --noEmit",
