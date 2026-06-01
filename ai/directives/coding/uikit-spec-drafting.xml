@@ -1,8 +1,3 @@
-<!--
-@file: Drafting rules for converting ExtractionResult JSON to a draft .ui.spec.md UI component spec.
-@consumers: SDD agents (drafting phase of uikit-component tasks)
-@tasks: TSK-25
--->
 <UiKitSpecDrafting keywords="uikit, spec-drafting, extraction-result, ui-spec, token-mapping, variant-grouping, bdd-generation, a11y-defaults" type="drafting-rules" ver="1.0">
   <Directive_Context>
     <Mission>

@@ -1,6 +1,3 @@
-<!-- @file: Agent directive for conflict resolution -->
-<!-- @consumers: resolve-conflicts command -->
-<!-- @tasks: TSK-33 -->
 <Agent name="agent-resolve-conflicts" type="directive" ver="0.1">
   <Mission>Resolve merge conflicts with confidence scoring.</Mission>
 </Agent>

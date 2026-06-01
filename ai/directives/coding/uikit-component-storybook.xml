@@ -1,8 +1,3 @@
-<!--
-@file: Storybook rules for uikit components — hierarchy mirroring spec, play functions with a11y, ai-generated tagging.
-@consumers: SDD agents (story-writing phase of uikit-component tasks)
-@tasks: TSK-26
--->
 <UiKitComponentStorybook keywords="uikit, storybook, hierarchy, play-function, a11y-audit, ai-generated, spec-mirror" type="testing-rules" ver="1.0">
   <Directive_Context>
     <Mission>

@@ -1,8 +1,3 @@
-<!--
-@file: Svelte component conventions for uikit — data attributes, CSS tokens, file structure, a11y, token overrides.
-@consumers: SDD agents (implementation phase of uikit-component tasks)
-@tasks: TSK-26
--->
 <UiKitComponentSvelte keywords="uikit, svelte-component, data-attributes, css-tokens, file-structure, a11y, token-overrides" type="coding-rules" ver="1.0">
   <Directive_Context>
     <Mission>
