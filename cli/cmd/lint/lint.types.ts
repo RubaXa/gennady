@@ -131,3 +131,6 @@ export const ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY = 'ERR_CLI_LINT_ANCHOR_AT_CLASS_B
 /** @purpose Two #region START at the same brace depth without an intervening #endregion END — merge or close the first region. */
 export const ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START =
   'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START' as const;
+
+/** @purpose Region contains fewer than 2 meaningful lines — region is too thin. Keep any comment and remove the region wrapper. */
+export const ERR_CLI_LINT_ANCHOR_TOO_THIN = 'ERR_CLI_LINT_ANCHOR_TOO_THIN' as const;

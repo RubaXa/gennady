@@ -1,4 +1,4 @@
-// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 7 checks, ESLint output.
+// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 8 checks, ESLint output.
 // @consumers: gennady.ts
 // @tasks: TSK-16, TSK-49, TSK-60
 
@@ -14,6 +14,7 @@ import { check as checkDisables } from './checks/disables.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
 import { check as checkInvariantCount } from './checks/invariant-count.check.ts';
 import { check as checkAnchorClassBody } from './checks/anchor-class-body.check.ts';
+import { check as checkAnchorThin } from './checks/anchor-thin.check.ts';
 import { LintReport } from './lint.types.ts';
 import { ERR_CLI_LINT_STAGED_CONFLICT, ERR_CLI_LINT_RESOLVE_FAILED } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
@@ -25,7 +26,7 @@ import {
 import { globToRegex } from './checks/utils/glob-match.ts';
 
 /**
- * @purpose Execute the gennady lint command — collect files, run 7 checks, output ESLint-format report.
+ * @purpose Execute the gennady lint command — collect files, run 8 checks, output ESLint-format report.
  * @implements {LintCommand} in specs/cli/lint/lint.spec.md
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns LintReport with aggregated errors and exit code.
@@ -148,7 +149,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const foundTaskIds = new Set<string>();
   // #endregion END_RESOLVE_REFERENCES
 
-  // #region START_LINT_LOOP — invariant: single read per file, content fed to all 4 checks
+  // #region START_LINT_LOOP — invariant: single read per file, content fed to all 8 checks
   for (const filePath of files) {
     const absPath = resolve(filePath);
 
@@ -169,6 +170,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkLanguage(content, filePath));
     allErrors.push(...checkDisables(content, filePath));
     allErrors.push(...checkAnchorClassBody(content, filePath));
+    allErrors.push(...checkAnchorThin(content, filePath));
     allErrors.push(...checkInvariantCount(content, filePath, maxInvariants));
 
     const dbcResult = await checkDbcContracts(content, filePath, autofix);

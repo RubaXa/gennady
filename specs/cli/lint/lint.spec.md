@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Модуль `lint` — команда `gennady lint`: многослойная валидация TypeScript-файлов (file header, anchor-разметка, язык контрактов/хедеров, DBC-контракты, дисциплина отключений, лимит инвариантов, запрет anchor-разделителей в теле класса) с ESLint-совместимым выводом и autofix. Принимает файлы и директории — директории обходятся рекурсивно, собираются файлы поддерживаемых расширений (`.ts`, `.tsx`).
+Модуль `lint` — команда `gennady lint`: многослойная валидация TypeScript-файлов (file header, anchor-разметка, язык контрактов/хедеров, DBC-контракты, дисциплина отключений, лимит инвариантов, запрет anchor-разделителей в теле класса, минимальная наполненность регионов) с ESLint-совместимым выводом и autofix. Принимает файлы и директории — директории обходятся рекурсивно, собираются файлы поддерживаемых расширений (`.ts`, `.tsx`).
 
 → Parent scope: [../../cli.spec.md](../../cli.spec.md)
 
@@ -23,6 +23,7 @@ _Это полный список сущностей модуля. Любое в
 | `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`. |
 | `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                             |
 | `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                               |
+| `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.  |
 
 ## 3. Entity Surfaces
 
@@ -172,6 +173,7 @@ ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE'
 ERR_CLI_LINT_TOO_MANY_INVARIANTS     = 'ERR_CLI_LINT_TOO_MANY_INVARIANTS'
 ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY    = 'ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY'
 ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
+ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -364,6 +366,35 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
   - Чистая функция, не зависит от внешнего состояния
   - Не кидает исключений
 
+#### Service: `AnchorThinCheck`
+
+- **Purpose:** Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода. Регионы-обёртки вокруг единственного комментария — ошибка.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+- **Deferred Runtime Scope:** None
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `content` — непустая строка
+  - `filePath` — путь к файлу (для сообщений об ошибках)
+- Postconditions:
+  - Возвращает `LintError[]` (пустой — все регионы достаточно наполнены)
+  - Регион с 0 meaningful строк и наличием аннотации/комментария → `ERR_CLI_LINT_ANCHOR_TOO_THIN` с сообщением «keep the comment(s) and remove the region wrapper»
+  - Регион с 0 meaningful строк без комментариев → `ERR_CLI_LINT_ANCHOR_TOO_THIN` с сообщением «remove the empty region»
+  - Регион с 1 meaningful строкой и аннотацией на START → `ERR_CLI_LINT_ANCHOR_TOO_THIN` с сообщением «keep the annotation as a plain comment»
+  - Регион с 1 meaningful строкой без аннотации → `ERR_CLI_LINT_ANCHOR_TOO_THIN` с сообщением «regions need at least 2 lines»
+  - Непарные START/END → не проверяются (делегируются в `AnchorCheck`)
+- Invariants:
+  - Meaningful строка = не пустая, не начинается с `//`, не маркер региона
+  - Аннотация = любой текст на строке START после маркера региона (напр. `— invariant: ...`, `— описание`)
+  - Вложенные регионы: meaningful строки внутреннего региона засчитываются внешнему
+  - Чистая функция, не зависит от внешнего состояния
+  - Не кидает исключений
+
 ### `InvariantCountCheck`
 
 - **Type:** Service
@@ -384,6 +415,18 @@ ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
   - `check(content: string, filePath: string) → LintError[]` — проверить файл на наличие anchor-разделителей в теле класса
 - **Lifecycle:** stateless; pure function
 - **Errors & Degradation:** Не кидает исключений. `#region START` или `#endregion END` на уровне тела класса (вне тела метода/функции/геттера/сеттера) → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
+### `AnchorThinCheck`
+
+- **Type:** Service
+- **Purpose:** Проверка минимальной наполненности регионов. Каждый регион `#region START` / `#endregion END` должен содержать ≥ 2 meaningful строк кода. Meaningful строка = не пустая, не начинается с `//`, не маркер региона. Пустой регион (0 строк) или регион с 1 строкой кода — ошибка. Регион, оборачивающий только комментарии (включая аннотацию `— invariant:` / `— описание` на строке START) — ошибка с предложением оставить комментарий и убрать обёртку. Вложенные регионы: код внутри внутреннего региона засчитывается внешнему.
+- **Public Operations:**
+  - `check(content: string, filePath: string) → LintError[]` — проверить файл на thin-регионы
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Только корректно закрытые регионы проверяются; непарные START/END делегируются в `AnchorCheck`.
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -477,7 +520,8 @@ cli/cmd/lint/
 │   ├── disables.check.ts       # DisablesCheck.check()
 │   ├── dbc-contract.check.ts   # DbcContractCheck.check()
 │   ├── invariant-count.check.ts # InvariantCountCheck.check()
-│   └── anchor-class-body.check.ts # AnchorClassBodyCheck.check()
+│   ├── anchor-class-body.check.ts # AnchorClassBodyCheck.check()
+│   └── anchor-thin.check.ts       # AnchorThinCheck.check()
 ├── utils/
 │   └── resolve-references.fn.ts # loadTaskReferences(), extractTaskIdsFromHeader(), resolveReferencesForTasks()
 └── __tests__/
@@ -488,13 +532,14 @@ cli/cmd/lint/
     ├── disables.check.test.ts
     ├── dbc-contract.check.test.ts
     ├── invariant-count.check.test.ts
-    └── anchor-class-body.check.test.ts
+    ├── anchor-class-body.check.test.ts
+    └── anchor-thin.check.test.ts
 ```
 
 **File Mapping:**
 
 - `lint.cmd.ts`: `LintCommand`
-- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 9 × `ERR_CLI_LINT_*`
+- `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 10 × `ERR_CLI_LINT_*`
 - `checks/file-header.check.ts`: `FileHeaderCheck`
 - `checks/language.check.ts`: `LanguageCheck`
 - `checks/anchor.check.ts`: `AnchorCheck`
@@ -502,6 +547,7 @@ cli/cmd/lint/
 - `checks/dbc-contract.check.ts`: `DbcContractCheck`
 - `checks/invariant-count.check.ts`: `InvariantCountCheck`
 - `checks/anchor-class-body.check.ts`: `AnchorClassBodyCheck`
+- `checks/anchor-thin.check.ts`: `AnchorThinCheck`
 - `utils/resolve-references.fn.ts`: `ResolvedReference`, `loadTaskReferences()`, `extractTaskIdsFromHeader()`, `resolveReferencesForTasks()`
 
 ## 6.1 Test Scenarios
@@ -790,6 +836,7 @@ cli/cmd/lint/
 - D-009 (module) — Anchor class body boundary: `AnchorClassBodyCheck` запрещает `#region START` / `#endregion END` на уровне тела класса. Регионы допустимы внутри тел методов и на top-level. Top-level регионы оборачивают функции модуля.
 - D-010 (module) — Anchor consecutive START: `AnchorCheck` детектит два `#region START` подряд на одном уровне brace depth без промежуточного `#endregion END`. Ошибка на втором START → `ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START`. Агент должен либо объединить регионы, либо закрыть первый.
 - D-011 (module) — Exclude glob filtering: `--exclude` опция с glob-паттернами для исключения файлов из линтинга. Дефолтные паттерны: `node_modules`, `__tests__`, `fixtures`, `dist`, `coverage`, `build`, `out`. Можно указать несколько пользовательских паттернов, они добавляются поверх дефолтных.
+- D-012 (module) — Anchor thinness: `AnchorThinCheck` проверяет, что регион содержит ≥ 2 meaningful строк кода. Регион с 0–1 строками кода — ошибка `ERR_CLI_LINT_ANCHOR_TOO_THIN`. Если регион оборачивает только комментарий (аннотацию на строке START или body-комментарии) — сообщение предлагает оставить комментарий и убрать обёртку. Порог 2 — осознанный минимум: одна строка кода не оправдывает накладных расходов региона (2 строки маркеров + контекст).
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies
@@ -816,6 +863,7 @@ graph TD
   - `cli/cmd/lint/checks/disables.check.ts`
   - `cli/cmd/lint/checks/invariant-count.check.ts`
   - `cli/cmd/lint/checks/anchor-class-body.check.ts`
+  - `cli/cmd/lint/checks/anchor-thin.check.ts`
 - **Test files to be created:**
   - `cli/cmd/lint/__tests__/lint.cmd.test.ts` (19 интеграционных сценариев — см. 6.1)
   - `cli/cmd/lint/__tests__/file-header.check.test.ts`
@@ -826,6 +874,7 @@ graph TD
   - `cli/cmd/lint/__tests__/resolve-targets.test.ts` (24 юнит-сценария — см. 6.1)
   - `cli/cmd/lint/__tests__/invariant-count.check.test.ts` (36 юнит-сценариев — см. 6.1)
   - `cli/cmd/lint/__tests__/anchor-class-body.check.test.ts` (67 юнит-сценариев — см. 6.1)
+  - `cli/cmd/lint/__tests__/anchor-thin.check.test.ts` (см. 6.1)
 - **Stack dependencies:**
   - Language: `TypeScript` (resolves to `ai/directives/coding/typescript-rules.xml`)
   - Test framework: `node:test` (resolves to `ai/directives/testing/node-test.xml`)
