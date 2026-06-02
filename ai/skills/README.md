@@ -12,7 +12,7 @@
 npx gennady sync-skills
 ```
 
-Затем в агенте: «@sdd-setup создай проект» → «@sdd-discover спроектируй scope vcs-client» → «@sdd-module-decomposition разбей на модули» → «@sdd-scaffold сгенерируй таски» → «@sdd-execute TSK-01»
+Затем в агенте: «@sdd-setup создай проект» → «@sdd-discover спроектируй scope vcs-client» → «@sdd-module-decomposition разбей на модули» → «@sdd-scaffold сгенерируй таски» → «@sdd-critic проверь таски» → «@sdd-execute TSK-01»
 
 | Шаг | Навык | Что делает |
 | --- | ----- | ---------- |
@@ -20,7 +20,8 @@ npx gennady sync-skills
 | 2 | `sdd-discover` | Создаёт `specs/<scope>/<scope>.spec.md` — видение, требования, архитектура |
 | 3 | `sdd-module-decomposition` | Декомпозирует product/library scope на модульные спеки с инвентарём сущностей |
 | 4 | `sdd-scaffold` | Генерирует DAG тасков из спек: Cascade Table, BDD, Phases Overview |
-| 5 | `sdd-execute` | Исполняет один таск от начала до конца: dispatch фаз → audit |
+| 5 | `sdd-critic` | Многораундовая критика тасков: диспатчит критика, правит артефакт (до 5 раундов) |
+| 6 | `sdd-execute` | Исполняет один таск от начала до конца: dispatch фаз → audit |
 
 ### 2. Выполнить задачу
 

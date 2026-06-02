@@ -73,6 +73,7 @@ npx gennady commit --apply
 npx gennady cat ./src
 npx gennady cat "./src/**/*.ts" --output=md
 npx gennady cat ./src --plain
+npx gennady cat --url="https://gitlab.com/.../-/merge_requests/123"
 ```
 
 **Опции:**
@@ -81,6 +82,22 @@ npx gennady cat ./src --plain
 - `--plain`: без ANSI-цветов
 - `--exclude`, `-e`: исключить паттерны
 - `--ext`: фильтр по расширениям
+- `--url`: MR/PR URL для удалённого сбора файлов
+
+---
+
+### 🔍 `review`
+
+AI-ревью staged изменений.
+
+```bash
+npx gennady review
+npx gennady review --branch=develop
+```
+
+**Опции:**
+
+- `--branch`, `-b`: target branch для diff (по умолчанию origin/main)
 
 ---
 
@@ -160,7 +177,6 @@ echo '[{"discussionId":"123","body":"✅ Fixed"}]' | \
   npx gennady vcs-reply --project=group/project --iid=123
 
 # Проверка без отправки
-
 echo '[{"discussionId":"123","body":"✅ Fixed"}]' | \
   npx gennady vcs-reply --project=group/project --iid=123 --dry-run
 ```
@@ -179,19 +195,212 @@ echo '[{"discussionId":"123","body":"✅ Fixed"}]' | \
 
 ---
 
+### 🧹 `lint`
+
+Валидация TypeScript-файлов: file-header, anchors, DbC-контракты, invariant-count.
+
+```bash
+npx gennady lint ./src
+npx gennady lint --staged
+npx gennady lint ./src --autofix --verbose
+```
+
+**Опции:**
+
+- `--autofix`: автоисправление DbC-контрактов
+- `--staged`: только staged и untracked `.ts` (взаимоисключающий с путями)
+- `--verbose`, `-v`: debug-логи
+- `--max-invariants`: макс. инвариантов на сущность (по умолчанию 3)
+- `--exclude`: исключить файлы по glob (повторяемый)
+
+---
+
+### 🗯️ `alt-opinion`
+
+Мульти-модельные мнения с опциональным синтезом.
+
+```bash
+# Мнение двух моделей с синтезом
+npx gennady alt-opinion \
+  --model="llmproxy/kimi-k2.6" \
+  --model="llmproxy/glm-5.1" \
+  --synthModel="llmproxy/deepseek-v4-pro" \
+  --file="./spec.md"
+
+# Через stdin
+cat spec.md | npx gennady alt-opinion \
+  --model="llmproxy/gpt-4o" \
+  --model="openrouter/claude-sonnet"
+```
+
+**Опции:**
+
+- `--model`: дескриптор модели `provider/model[::prompt.md]` (повторяемый)
+- `--synthModel`: модель-синтезатор
+- `--file`: путь к входному файлу
+- `--modelPrompt`: промпт для всех моделей
+- `--synthPrompt`: промпт для синтезатора
+- `--strict`: exit 1 при ошибке любой модели
+
+---
+
+### 🔄 `sync`
+
+Синхронизация `ai/directives/` из npm-пакета в текущий проект.
+
+```bash
+npx gennady sync
+npx gennady sync --dry-run
+npx gennady sync ts-patterns typescript --dry-run
+```
+
+**Опции:**
+
+- `--dry-run`: предпросмотр без записи
+
+---
+
+### 🔄 `sync-skills`
+
+Синхронизация SDD-навыков из `ai/skills/` в `.claude/skills/` проекта.
+
+```bash
+npx gennady sync-skills
+npx gennady sync-skills --dry-run
+npx gennady sync-skills sdd-execute
+```
+
+**Опции:**
+
+- `--dry-run`: предпросмотр без записи
+
+---
+
+### 🧭 `orient`
+
+Навигация по проекту: file-header разметка, DBC-контракты, граф зависимостей.
+
+```bash
+npx gennady orient                          # карта проекта
+npx gennady orient --task=TSK-03            # файлы задачи
+npx gennady orient --consumer=DbcTsLinter   # кто потребляет модуль
+npx gennady orient --file=path/to/file.ts   # детальный просмотр
+npx gennady orient --graph                  # граф зависимостей
+npx gennady orient --specs                  # обзор спек
+```
+
+**Опции:**
+
+- `--file`, `--task`, `--consumer`, `--entity`: поиск по атрибутам
+- `--graph`, `--specs`: обзорные режимы
+- `--fuzzy`, `--detail`, `--depth`, `--max-results`: настройки вывода
+
+---
+
+### 📋 `agents-rules`
+
+Выводит инструкцию по `orient` для AI-агентов.
+
+```bash
+npx gennady agents-rules
+```
+
+---
+
+### 🖥️ `remote-console`
+
+Зеркалирование браузерной консоли в локальный stdout.
+
+```bash
+npx gennady remote-console
+npx gennady remote-console --port=8080
+npx gennady remote-console --url="https://example.com"
+```
+
+**Опции:**
+
+- `--port`, `-p`: порт (по умолчанию 43001)
+- `--host`: хост (по умолчанию localhost)
+- `--url`: URL страницы для открытия с активацией
+
+---
+
+Подробнее: [`cli/cmd/README.md`](cli/cmd/README.md).
+
+---
+
 ## 🛠️ Типовые сценарии
 
-### 1. Верификация MR
+### 1. Сделать коммит
+
+```bash
+npx gennady commit
+npx gennady commit --mode=oneline --apply --task=TSK-42
+```
+
+### 2. Проверить качество кода
+
+```bash
+npx gennady lint ./src
+npx gennady lint --staged --autofix
+```
+
+### 3. Навигация по проекту
+
+```bash
+npx gennady orient                    # карта
+npx gennady orient --task=TSK-03      # файлы задачи
+npx gennady orient --graph            # граф зависимостей
+npx gennady agents-rules              # инструкция для AGENTS.md
+```
+
+### 4. Верификация MR
 
 ```bash
 export GITLAB_PERSONAL_TOKEN="<token>"
 npx gennady review-verify --ref=group/project!123
 ```
 
-### 2. Разрешение merge-конфликтов
+### 5. AI-ревью изменений
+
+```bash
+npx gennady review
+npx gennady review --branch=develop
+```
+
+### 6. Разрешение merge-конфликтов
 
 ```bash
 git merge feature/some-branch
 # если есть конфликты
 npx gennady resolve-conflicts
+```
+
+### 7. Собрать файлы для AI
+
+```bash
+npx gennady cat "./src/**/*.ts" --output=md --plain | pbcopy
+```
+
+### 8. Синхронизация директив и навыков
+
+```bash
+npx gennady sync
+npx gennady sync-skills
+```
+
+### 9. Мульти-модельный анализ
+
+```bash
+npx gennady alt-opinion \
+  --model="llmproxy/kimi-k2.6" \
+  --model="llmproxy/glm-5.1" \
+  --synthModel="llmproxy/deepseek-v4-pro" \
+  --file="./spec.md"
+```
+
+### 10. Зеркалирование консоли браузера
+
+```bash
+npx gennady remote-console
 ```
