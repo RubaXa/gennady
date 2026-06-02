@@ -146,6 +146,7 @@ ai/skills/<name>/
 | FR-05 | **Артефакты навыка.** Навык может поставлять ресурсы: скрипты (`scripts/`), промпты (`*.prompt.md`) |
 | FR-06 | **Синхронизация.** Навыки разрабатываются в `ai/skills/`, деплоятся через `npx gennady sync-skills` в `.claude/skills/` проекта |
 | FR-07 | **Три execution-паттерна:** directive-based (загрузка + активация + применение), orchestrator (план + dispatch subagent), CLI-delegation (подготовка артефакта → вызов CLI) |
+| FR-08 | **README на навыки.** `ai/skills/README.md` — единый README со всеми навыками, типовыми сценариями (use cases) и execution-паттернами. При добавлении/изменении навыка README.md синхронно обновляется |
 
 ### 3.2 Non-Functional Constraints
 
@@ -157,6 +158,7 @@ ai/skills/<name>/
 | NFR-04 | Директивы — XML, read-only для навыка. Навык не модифицирует директиву |
 | NFR-05 | Cross-skill consistency: assume sync. No runtime validation |
 | NFR-06 | `compatibility: opencode` для всех навыков. Claude Code игнорирует нераспознанные поля |
+| NFR-07 | `ai/skills/README.md` — канонический источник документации навыков с use cases. Синхронизируется с SKILL.md frontmatter при изменениях |
 
 ### 3.3 Out-of-Scope
 

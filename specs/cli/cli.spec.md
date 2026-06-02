@@ -1190,6 +1190,7 @@ $ gennady agents-rules
 - **NFC-20 (sync-skills)**: Поиск пакета через `fs.existsSync` (`node_modules/gennady/ai/skills/`) и `import.meta.resolve('gennady')`. Никаких сетевых запросов, не требует npm
 - **NFC-21 (sync-skills)**: Orphan-удаление: перед записью новых файлов — рекурсивное сравнение target и source, удаление отсутствующих в source. Сухие функции без I/O к stdout
 - **NFC-22 (agents-rules)**: Zero runtime dependencies — только Node.js built-in модули (`fs`, `path`). Контент — статический `README.md`, читается через `fs.readFileSync`
+- **NFC-23**: `cli/cmd/README.md` — канонический источник документации всех CLI-команд: типовые сценарии (use cases), таблица команд, структура. Виден человеку в GitHub и доступен агенту. При добавлении/изменении команды README.md синхронно обновляется
 - **NFC-E2E-01**: Shell-независим: E2E-тесты не используют bash-специфичный синтаксис, работают на macOS/Linux/Windows
 - **NFC-E2E-02**: Временная директория — `os.tmpdir()/gennady-e2e-XXXXX/`. Если тест упал и не удалил за собой — ОС чистит `/tmp`
 - **NFC-E2E-03**: `npm pack` вызывается через `child_process.spawn` (не shell) — платформо-независимо
@@ -1373,6 +1374,7 @@ $ gennady agents-rules
 | ------------------ | -------- | ------------------------------------------- |
 | `typescript-rules` | coding   | `ai/directives/coding/typescript-rules.xml` |
 | `node-test`        | testing  | `ai/directives/testing/node-test.xml`       |
+| `readme-per-cmd`   | docs     | `cli/cmd/README.md` — единый README для всех команд (см. NFC-23) |
 
 ## 5. High-Level Architecture
 
