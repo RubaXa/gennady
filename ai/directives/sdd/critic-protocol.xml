@@ -21,6 +21,7 @@
       7. Non-goals — explicit exclusions.
       8. Consistency — no internal contradictions.
       9. Testability — claims verifiable, not vague ("should be fast").
+      10. Parsimony — every entity/type/contract traces to a requirement or use-case. Flag: unjustified (no driving requirement), redundant (two entities overlap WITHIN this spec), speculative (surface beyond stated boundary). Prefer reuse/extend over a new entity. Scope is intra-spec only — you cannot see the project, so never claim "X already exists elsewhere" (that is the orchestrator's check).
     </Axiom>
 
     <Axiom id="AX_TASK_DIMENSIONS">
@@ -30,6 +31,7 @@
       3. Phases — ordered correctly, deps explicit, no gaps (impl without test), Target Files non-overlapping.
       4. Clarity — fresh agent can build from this alone. Inputs/outputs specified.
       5. Completeness — all sections filled, no <TBD> or <YYYY-MM-DD>.
+      6. Parsimony — task introduces NO entity/type/method absent from the parent spec inventory. New surface declared in a task without spec backing = finding. Spec entities are reused, not re-declared. Cross-project reuse is the orchestrator's check, not yours.
     </Axiom>
 
     <Axiom id="AX_SEVERITY">
@@ -54,6 +56,7 @@
     <Pattern id="AP_FORMAT_BIAS">Assuming quality from formatting. Structure ≠ correctness.</Pattern>
     <Pattern id="AP_CREEP">Reading beyond artifact + parent spec.</Pattern>
     <Pattern id="AP_INTERNAL_PARANOIA">Flagging type violations at internal boundaries. Type system prevents these.</Pattern>
+    <Pattern id="AP_REUSE_BLIND">Claiming an entity duplicates something "in the project". You see only artifact + parent spec — judge redundancy ONLY within that scope. Project-wide dedup is the orchestrator's job.</Pattern>
   </Anti_Patterns>
 
   <Execution_Plan>
