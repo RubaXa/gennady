@@ -53,12 +53,12 @@ export function check(content: string, filePath: string): LintError[] {
         hasStartAnnotation,
         hasBodyComment: false,
       });
-      // #endregion START_PUSH
+      // #endregion END_PUSH
       continue;
     }
 
     if (match && match[2] === 'END') {
-      // #region END_POP — invariant: find matching START, check count, pop
+      // #region START_POP — invariant: find matching START, check count, pop
       const name = match[3];
       const matchIdx = findLastMatchingIndex(stack, (e) => e.name === name);
 

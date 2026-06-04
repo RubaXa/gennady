@@ -162,9 +162,8 @@ export function checkForUpdates(
   const cacheDir = resolveCacheDir(opts?.cacheDir);
   const cachePath = resolve(cacheDir, CACHE_FILENAME);
 
-  // #region START_ENSURE_CACHE_DIR
+  // invariant: ensure cache directory exists before writing
   mkdirSync(cacheDir, { recursive: true });
-  // #endregion END_ENSURE_CACHE_DIR
 
   const cache = readCache(cachePath);
 

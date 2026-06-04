@@ -19,9 +19,8 @@ const DEFAULT_WAIT_PATTERNS: RegExp[] = [/[?]$/, /choose|select|pick|вариа�
  */
 export function isWaitingForUser(session: AgentSession, patterns?: RegExp[]): boolean {
   const effectivePatterns = patterns ?? DEFAULT_WAIT_PATTERNS;
-  // #region START_CHECK_LAST_MESSAGE_PRESENCE — invariant: no lastMessage → cannot be waiting
+  // invariant: no lastMessage → cannot be waiting
   if (!session.lastMessage) return false;
-  // #endregion END_CHECK_LAST_MESSAGE_PRESENCE
 
   // #region START_TEST_PATTERNS — invariant: any pattern match signals waiting; short-circuit on first match
   for (const pattern of effectivePatterns) {

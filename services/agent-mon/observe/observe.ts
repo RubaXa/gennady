@@ -85,9 +85,8 @@ export async function* observe(
 
   // #region START_POLLING_LOOP — invariant: infinite loop, terminated by external break; errors degrade to empty yield, never abort
   while (true) {
-    // #region START_POLL_INTERVAL — invariant: setTimeout-based non-blocking delay preserves event loop
+    // invariant: setTimeout-based non-blocking delay preserves event loop
     await new Promise<void>((resolve) => setTimeout(resolve, opts.interval));
-    // #endregion END_POLL_INTERVAL
 
     // #region START_SCAN_CYCLE — invariant: scan → idle detection → diff → yield; scan failure yields empty SessionChanges
     try {

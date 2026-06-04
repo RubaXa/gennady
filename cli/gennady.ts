@@ -34,9 +34,8 @@ if (!command || helpFlags.has(command)) {
   process.exit(0);
 }
 
-// #region START_UPDATE_CHECK — non-blocking; spawn + unref ensures it never blocks exit
+// invariant: non-blocking; spawn + unref ensures it never blocks exit
 checkForUpdates({ name: 'gennady', version: _version });
-// #endregion END_UPDATE_CHECK
 
 // #region START_PER_COMMAND_HELP — if rest args contain --help/-h, dispatch to command help and exit
 const restArgs = process.argv.slice(3);

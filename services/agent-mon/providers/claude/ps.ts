@@ -28,9 +28,8 @@ export type PsInfoEntry = {
  * @sideEffect Process: spawns `ps` via execSync.
  */
 export function psInfo(pids: number[]): Map<number, PsInfoEntry> {
-  // #region START_EMPTY_GUARD
+  // invariant: empty pids → no ps call needed
   if (pids.length === 0) return new Map();
-  // #endregion END_EMPTY_GUARD
 
   // #region START_BATCH_PS_CALL — invariant: single ps spawn per batch, per ticket contract
   try {
