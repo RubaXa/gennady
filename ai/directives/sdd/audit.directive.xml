@@ -45,6 +45,16 @@
       Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
     </Axiom>
 
+    <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
+      Deterministic mechanical checks — file-header presence, Task-ID collision, tracker-sync — are NOT hand-coded here. They live in one tool, `sdd check`, which sdd-check (whole tree) and this directive (scoped) both consume. Single source of mechanical truth → no drift between the two SDD reviewers.
+
+      - `sdd check --files <git-diff in-scope files>` → [HEADERS] (`@file`/`@consumers`/`@tasks` presence).
+      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC] (Meta.Status vs tracker row).
+      - `sdd check <root>` (no flag) → tree-wide [TASKID] orphan refs (epic mode).
+
+      Audit still owns everything the tool cannot decide mechanically: semantic `@consumers` resolvability, current-Task-ID identity, append-only `@tasks` regression vs git, section-anchor coverage, and all code-reading checks (closed-world, completeness, rules-compliance, runtime-backing, backflow).
+    </Axiom>
+
     <Axiom id="AX_DRIFT_TAXONOMY">
       Findings are classified by type. Every finding has exactly one:
 
@@ -318,13 +328,15 @@
       <Goal>Verify Task-ID integrity and ticket section-anchor coverage per `AX_TASK_ID_INTEGRITY`. Reuses STEP_2 git-diff scope.</Goal>
       <Action>
         1. TRACE_HEADER (STACK `ROOT__TASK_ID_INTEGRITY_CHECK`).
-        2. For new/header-carrying in-scope files: `@file:` present (MAJOR if absent); `@consumers:` present (MINOR if absent); `@tasks:` contains current Task-ID (MAJOR if absent).
-        3. Collect all `@tasks: TSK-NN[, …]` references from in-scope files.
-        4. Each ID — verify `tasks/**/*.task-NN.md` exists. Orphan → `TASK_ID_DRIFT` (`MAJOR`, HIGH).
-        5. Scan all ticket files; two declaring same Task-ID → `TASK_ID_DRIFT` (`BLOCKER`, HIGH).
-        6. Compare current `@tasks:` values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
-        7. **Ticket section-anchor coverage** (per `AX_TASK_ID_INTEGRITY` last bullet). For each anchor name templated in `TASK_TICKET_STRUCTURE` → `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` → `EXECUTION_LOG_INCOMPLETE` `missing-section-anchor`; exit `3` → `EXECUTION_LOG_INCOMPLETE` `anchor-unbalanced`. Zero anchors found → escalate to BLOCKER.
-        8. Phase Progress. STOP.
+        2. **Mechanical primitives — delegate, do NOT hand-grep** (shared source of truth with sdd-check, per `AX_MECHANICAL_VIA_SDD_CHECK`):
+           - `~/.claude/skills/sdd-execute/scripts/sdd check --files <git-diff in-scope files>` → [HEADERS]: `verdict=PARTIAL`/`NONE` on a code file → `@file:` absent = `TASK_ID_DRIFT`/`MAJOR`, `@tasks:` absent = `MAJOR`; `has_consumers=0` = `MINOR`.
+           - `~/.claude/skills/sdd-execute/scripts/sdd check --task <Task-ID>` → [TASKID] `collision` → `TASK_ID_DRIFT` (`BLOCKER`); orphan refs surface in tree-mode (run plain `sdd check` for epic-level).
+        3. **Residual semantic checks the tool cannot do** (keep here):
+           - `@consumers:` value must resolve to an entity name in spec/codebase (not a path/dir) → `MINOR` if it does not.
+           - `@tasks:` contains current Task-ID (the tool reports presence; YOU confirm it is THIS Task-ID, not just any).
+           - Compare current `@tasks:` values against pre-task git ref. Prior IDs removed → `TASK_ID_DRIFT` (`MAJOR`).
+        4. **Ticket section-anchor coverage** (per `AX_TASK_ID_INTEGRITY` last bullet). For each anchor name templated in `TASK_TICKET_STRUCTURE` → `~/.claude/skills/sdd-execute/scripts/sdd extract <ticket> <NAME>`. Exit `2` → `EXECUTION_LOG_INCOMPLETE` `missing-section-anchor`; exit `3` → `EXECUTION_LOG_INCOMPLETE` `anchor-unbalanced`. Zero anchors found → escalate to BLOCKER.
+        5. Phase Progress. STOP.
       </Action>
     </Step>
 
@@ -375,10 +387,9 @@
         4. **Placeholder leftover scan** (fabricated done): for every `[x]` line in current round, scan for residual `<...>` literal. Any match → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`) tagged «fabricated done».
         5. Round immutability: prior round sections compared against pre-round git ref. Any edit/reorder/delete → `EXECUTION_LOG_INCOMPLETE` (`BLOCKER`).
         6. Reopens metadata: Meta `Reopens: <count>` = (Round headers count − 1). Mismatch → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`).
-        7. Tracker sync:
-           - ticket Status (Meta) matches `tasks/<scope>/README.md` Tracker row for this Task-ID.
-           - `tasks/README.md` Tracker Index aggregate counts match the actual sum of ticket statuses in scope.
-           - Mismatches → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «tracker desync».
+        7. Tracker sync — delegate to `sdd check --task <Task-ID>` (per `AX_MECHANICAL_VIA_SDD_CHECK`), do NOT hand-grep:
+           - read [TRACKER_SYNC]: `match=NO` (ticket Meta.Status ≠ tracker row) or `NO_ROW` → `EXECUTION_LOG_INCOMPLETE` (`MAJOR`) tagged «tracker desync». `UNPARSEABLE` → INFO.
+           - aggregate Tracker Index counts (`tasks/README.md`) vs sum of statuses in scope remains a manual cross-check in epic mode.
         8. Phase Progress. STOP.
       </Action>
     </Step>

@@ -1,6 +1,8 @@
 # ai/skills — AI-навыки для агентов
 
-13 навыков (12 SDD + 1 alt-opinion) для Specification-Driven Development и мульти-модельного анализа.
+15 навыков (13 SDD + alt-opinion + workspace-permission-setup) для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды.
+
+> `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
 
 ---
 

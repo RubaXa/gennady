@@ -16,14 +16,25 @@ import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts'
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
+function getPackageVersion(packageDir: string): string {
+  try {
+    const pkgRoot = join(packageDir, '..', '..');
+    const content = readFileSync(join(pkgRoot, 'package.json'), 'utf-8');
+    return (JSON.parse(content) as { version?: string }).version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
 // #region START_FORMAT_AND_WRITE — invariant: formatter produces lines; stdout writes them
 function formatAndWrite(
   entries: SyncFileEntry[],
   dryRun: boolean,
   stdout: NodeJS.WriteStream,
-  projectDir: string
+  projectDir: string,
+  version: string
 ): void {
-  stdout.write(`Sync${dryRun ? ' (dry-run)' : ''}: ${projectDir}\n`);
+  stdout.write(`Sync (v${version})${dryRun ? ' (dry-run)' : ''}: ${projectDir}\n`);
   const lines = formatSyncOutput(entries, { dryRun });
   for (const line of lines) {
     stdout.write(line + '\n');
@@ -71,6 +82,8 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
     _stderr.write('Error: gennady package not found. Install it locally: npm i -D gennady\n');
     return 1;
   }
+
+  const version = getPackageVersion(packageDir);
   // #endregion END_RESOLVE_PACKAGE
 
   const targetDir = join(cwd, 'ai', 'directives');
@@ -94,7 +107,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
     };
 
     const result = collectAndCompare(coreDeps, opts);
-    formatAndWrite(result.entries, dryRun, _stdout, cwd);
+    formatAndWrite(result.entries, dryRun, _stdout, cwd, version);
     return 0;
   } catch (err) {
     const error = err as Error & { code?: string };

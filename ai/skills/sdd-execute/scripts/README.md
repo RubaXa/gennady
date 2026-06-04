@@ -13,6 +13,7 @@ All scripts honor the contract: **never produce silent empty output**. On miss, 
 ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd verify <file>...                     # comprehensive gate (typecheck + lint + grep)
 ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check-blockers <ticket-file>         # scan Execution Log per AX_BLOCKER_RESOLUTION_TRAIL
 ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan [project-root]                  # one-shot rich snapshot for triage skills
+~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check [root|--task TSK-NN|--files f...] # deterministic mechanical checks (shared by sdd-check + sdd-audit)
 ```
 
 Single permission rule covers all subcommands:
@@ -37,6 +38,8 @@ Or broader:
 | `verify.sh`          | Three-gate verification: typecheck + gennady DBC lint + forbidden-construct grep                                                                                                                                                                                                                                     |
 | `check-blockers.sh`  | Detect unresolved BLOCKER entries in ticket Execution Log per `AX_BLOCKER_RESOLUTION_TRAIL`                                                                                                                                                                                                                          |
 | `scan.sh`            | Emit comprehensive project snapshot ([HEADER]/[TASKS]/[TRACKERS]/[SPECS]/[WARNINGS]/[SUMMARY]). Designed so triage skills make ONE call instead of many ad-hoc find/grep. Surfaces suspicious states automatically (DONE+placeholders, DONE+active-blocker, anchor mismatch, unparseable Status, broken spec links). |
+| `check.sh`           | Deterministic mechanical checks — [TASKID] (collisions, orphan `@tasks`), [TRACKER_SYNC] (ticket Meta.Status vs tracker row), [HEADERS] (`--files` mode). Single source of mechanical truth shared by `sdd-check` (whole tree) and `sdd-audit` (scoped via `--task`/`--files`). Exit 0 clean / 3 findings / 2 structural / 4 bad-invocation. |
+| `_sdd-lib.sh`        | Shared artifact parsers (status, Task-ID, tracker-row, header flags) sourced by `check.sh`. Not executed directly. `scan.sh` migration to this lib pending.                                                                                                                                                          |
 
 ## Anchor convention (used by `extract`)
 

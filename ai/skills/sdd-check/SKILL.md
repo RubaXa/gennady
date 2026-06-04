@@ -42,9 +42,12 @@ Output: a compact self-assessment table before proceeding to mechanical checks.
 <ExecutionStrategy>
 **BATCH ALL READS.** Use the SDD scan tool for one-shot snapshot, then targeted reads.
 
-1. **One bash call** to get comprehensive snapshot:
-   `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan <project-root>`
-   This emits [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY] in a single call — replaces multiple find/grep commands.
+1. **Two bash calls** to get comprehensive snapshot + mechanical findings:
+   - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan <project-root>`
+     → [HEADER] [TASKS] [TRACKERS] [SPECS] [WARNINGS] [SUMMARY] in one call.
+   - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd check <project-root>`
+     → [TASKID] (collisions, orphan @tasks refs) + [TRACKER_SYNC] (ticket Meta.Status vs tracker row).
+     This is the SAME tool sdd-audit uses — do NOT re-implement these greps by hand (Checks 3 & 5b below read its output).
 
 2. **Concurrent reads** of all key files: Portal, scope specs (from SPECS list), trackers with issues (from WARNINGS). Do NOT read module specs initially — only if Check 2 needs them.
 
@@ -52,7 +55,7 @@ Output: a compact self-assessment table before proceeding to mechanical checks.
 
 4. **Do NOT scan code files.** Check 6 samples at most 3 files.
 
-Total: ≤5 tool calls for all 8 checks. Target: <15 seconds.
+Total: ≤6 tool calls for all checks (scan + check + check --files + targeted reads). Target: <15 seconds.
 </ExecutionStrategy>
 
 <Checks>
@@ -66,9 +69,9 @@ Read `specs/README.md`. Verify: scopes table entries match `specs/<scope>/<scope
 
 For each scope spec 9/7: module paths resolve to files. Module spec 1 links to parent. Cross-scope references resolve.
 
-### Check 3 — Tracker Sync (1 grep)
+### Check 3 — Tracker Sync (from `sdd check` [TRACKER_SYNC])
 
-`grep -rn "\[x\] DONE\|\[ \] TODO\|\[~\] IN_PROGRESS\|\[!\] BLOCKED" tasks/README.md tasks/*/README.md`. Compare counts.
+Read the [TRACKER_SYNC] section of `sdd check`. Each row `match=NO` (ticket Meta.Status ≠ tracker row) or `NO_ROW` (ticket has no tracker row) is a FAIL with the Task-ID. `UNPARSEABLE` (old-template ticket without Meta.Status) → INFO, not a fail. Do NOT re-grep counts by hand.
 
 ### Check 4 — DAG Consistency (parse from tracker)
 
@@ -78,9 +81,15 @@ Parse `Dependencies:` from each task ticket planning surface. Topological sort. 
 
 From scan [TASKS] output: check `placeholders` column for any task with >0. Flag tasks where placeholders > 0 even if status DONE. Also inspect `warnings` column for `no-execlog-section` or `anchors-mismatch`.
 
-### Check 6 — File Headers (sample 3 files)
+### Check 5b — Task-ID Integrity (from `sdd check` [TASKID])
 
-Pick 3 recently modified .ts files from `git diff --name-only HEAD~3`. Check for `@file:`, `@consumers:`, `@tasks:`.
+Read the [TASKID] section of `sdd check`. `collision` (one Task-ID on ≥2 ticket files) → FAIL (BLOCKER). `orphan` (a code `@tasks: TSK-NN` with no ticket file) → FAIL. Empty section → PASS. Same tool sdd-audit STEP_2_5 uses.
+
+### Check 6 — File Headers (from `sdd check --files`)
+
+Pass recently modified source files to the shared checker instead of sampling by hand:
+`sdd check --files $(git diff --name-only HEAD~3 | grep -E '\.(ts|js|sh|go)$')`.
+Read [HEADERS]: `verdict=PARTIAL` (has some markers, missing `@file` or `@tasks`) or `NONE` on a code file → FAIL. `@consumers` absence alone → MINOR.
 
 ### Check 7 — Test Coverage (1 find)
 
@@ -107,7 +116,8 @@ First: Self-Reflection. Then: Mechanical Checks. Use compact single-line-per-che
 ▸ MECHANICAL
   ✅ Portal          4 scopes, graph ↔ table
   ✅ Spec linking    all modules → parent, cross-scope refs resolve
-  ✅ Tracker sync    dbc 13/13  cli 7/7  vcs 1/1
+  ✅ Tracker sync    dbc 13/13  cli 7/7  vcs 1/1   (sdd check [TRACKER_SYNC])
+  ✅ Task-ID         no collisions, no orphan @tasks   (sdd check [TASKID])
   ✅ DAG             no cycles, all deps satisfied
   ✅ Execution Log   no <YYYY-MM-DD> placeholders in tasks
   ✅ File headers    21 files scanned, all have @file: + @consumers:

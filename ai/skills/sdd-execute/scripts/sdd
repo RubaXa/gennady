@@ -9,6 +9,7 @@
 #   sdd verify <file>...                — comprehensive gate: typecheck + gennady lint + forbidden_grep
 #   sdd check-blockers <ticket-file>    — scan Execution Log for unresolved BLOCKER entries
 #   sdd scan [project-root]             — emit comprehensive project snapshot (single rich call)
+#   sdd check [root|--task TSK-NN|--files f...] — deterministic mechanical checks (task-id, tracker-sync, headers)
 #   sdd help                            — print this help
 #
 # Why this wrapper exists:
@@ -43,6 +44,9 @@ case "$SUBCMD" in
         ;;
     scan)
         exec "$SCRIPT_DIR/scan.sh" "$@"
+        ;;
+    check)
+        exec "$SCRIPT_DIR/check.sh" "$@"
         ;;
     help|--help|-h)
         cat <<'EOF'
@@ -79,6 +83,14 @@ SUBCOMMANDS
                                   (DONE+placeholders, DONE+active-blocker, anchor mismatch,
                                   unparseable Meta.Status, broken spec links) are surfaced
                                   in [WARNINGS]. Defaults to current directory.
+
+    check [root]                Deterministic mechanical checks — the single source of
+      check --task TSK-NN [root]   mechanical truth shared by sdd-check (whole tree) and
+      check --files <f...>         sdd-audit (scoped). Emits [TASKID] (collisions, orphan
+                                  @tasks refs), [TRACKER_SYNC] (ticket Meta.Status vs tracker
+                                  row), and — in --files mode — [HEADERS] (@file/@consumers/
+                                  @tasks presence on a caller-supplied in-scope file list).
+                                  Exit 0 clean, 3 findings, 2 structural, 4 bad invocation.
 
     check-blockers <ticket>     Scan ticket Execution Log for unresolved BLOCKER entries.
                                   A BLOCKER is considered RESOLVED if a later Round contains
