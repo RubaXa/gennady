@@ -39,7 +39,14 @@ describe('elements', () => {
 
   it('should have role-based config on each primitive', () => {
     for (const el of [
-      Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden, Section, List, Code,
+      Prompt,
+      PrimaryGoal,
+      BeliefState,
+      Axiom,
+      HardForbidden,
+      Section,
+      List,
+      Code,
     ]) {
       assert.strictEqual(typeof el.config.markdown, 'object');
     }

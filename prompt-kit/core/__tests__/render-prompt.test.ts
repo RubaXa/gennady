@@ -10,7 +10,9 @@ describe('renderPrompt', () => {
     it('renders a prompt element tree to XML', async () => {
       const Section = definePromptElement({
         role: 'section',
-        markdown: { title: ({ props }: { props: Record<string, unknown> }) => props.title as string },
+        markdown: {
+          title: ({ props }: { props: Record<string, unknown> }) => props.title as string,
+        },
       });
       const tree: JSXNode = {
         type: Section,
@@ -27,7 +29,9 @@ describe('renderPrompt', () => {
     it('renders a prompt element tree to MD', async () => {
       const Section = definePromptElement({
         role: 'section',
-        markdown: { title: ({ props }: { props: Record<string, unknown> }) => props.title as string },
+        markdown: {
+          title: ({ props }: { props: Record<string, unknown> }) => props.title as string,
+        },
       });
       const tree: JSXNode = {
         type: Section,
@@ -45,7 +49,9 @@ describe('renderPrompt', () => {
     it('invokes function component with props and renders result', async () => {
       const Section = definePromptElement({
         role: 'section',
-        markdown: { title: ({ props }: { props: Record<string, unknown> }) => props.title as string },
+        markdown: {
+          title: ({ props }: { props: Record<string, unknown> }) => props.title as string,
+        },
       });
       const Component = (props: Record<string, unknown>): JSXNode => ({
         type: Section,

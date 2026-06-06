@@ -5,13 +5,30 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type {
-  PromptProps, PrimaryGoalProps, BeliefStateProps, AxiomProps,
-  HardForbiddenProps, SectionProps, ListProps, CodeProps, BoldProps,
-  GroupProps, NodeProps,
+  PromptProps,
+  PrimaryGoalProps,
+  BeliefStateProps,
+  AxiomProps,
+  HardForbiddenProps,
+  SectionProps,
+  ListProps,
+  CodeProps,
+  BoldProps,
+  GroupProps,
+  NodeProps,
 } from '../index.js';
 import {
-  Prompt, PrimaryGoal, BeliefState, Axiom,
-  HardForbidden, Section, List, Code, Bold, Group, Node,
+  Prompt,
+  PrimaryGoal,
+  BeliefState,
+  Axiom,
+  HardForbidden,
+  Section,
+  List,
+  Code,
+  Bold,
+  Group,
+  Node,
 } from '../index.js';
 import type { PromptElement } from '../core/types.js';
 
@@ -87,8 +104,17 @@ describe('element prop types', () => {
 
   it('all elements are PromptElement instances', () => {
     const elements: PromptElement[] = [
-      Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden,
-      Section, List, Code, Bold, Group, Node,
+      Prompt,
+      PrimaryGoal,
+      BeliefState,
+      Axiom,
+      HardForbidden,
+      Section,
+      List,
+      Code,
+      Bold,
+      Group,
+      Node,
     ];
     for (const el of elements) {
       assert.strictEqual(typeof el.tagName, 'string');

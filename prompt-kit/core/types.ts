@@ -12,7 +12,8 @@ export const PROMPT_ELEMENT_SYMBOL = Symbol.for('prompt-element');
 export type PromptElementConfig<Props extends Record<string, unknown> = Record<string, unknown>> = {
   /** @purpose Role determining which TFormatEngine method is dispatched | @invariant One of root|section|list|block|inline */
   role: 'root' | 'section' | 'list' | 'block' | 'inline';
-  tagName?: string;  /** @purpose Markdown-specific rendering options: title extractor, wrapper, ordered flag, lang, boundary comments */
+  /** @purpose Explicit tag name override. Falls back to element role when absent. */
+  tagName?: string; /** @purpose Markdown-specific rendering options: title extractor, wrapper, ordered flag, lang, boundary comments */
   markdown?: {
     /** @purpose Extract title from props for section heading | @sideEffect none */
     title?: (ctx: { tagName: string; props: Props; depth: number }) => string;
@@ -38,6 +39,7 @@ export type PromptElementConfig<Props extends Record<string, unknown> = Record<s
  * @purpose Branded factory object created by definePromptElement; carries config and identifies as prompt-element.
  * @invariant Detected by ElementResolver via PROMPT_ELEMENT_SYMBOL property.
  */
+/** @purpose PromptElement prop type for prompt-kit element. */
 export type PromptElement = {
   /** @purpose Call signature — makes the type valid as a JSX element type. Returns React-compatible JSX.Element */
   (props?: Record<string, unknown>): any;
@@ -53,6 +55,7 @@ export type PromptElement = {
  * @purpose Canonical JSX tree node after normalization — uniform {type, props, children} shape.
  * @invariant children is always defined as JSXNode[]; type may be PromptElement, string, function, or undefined.
  */
+/** @purpose JSXNode prop type for prompt-kit element. */
 export type JSXNode = {
   /** @purpose Element factory (PromptElement), HTML tag name (string), transparent function, or undefined (skip) */
   type: unknown;
@@ -66,6 +69,7 @@ export type JSXNode = {
  * @purpose Context propagated top-down during tree traversal.
  * @invariant depth increments for section children; inList set true for list children.
  */
+/** @purpose RenderContext prop type for prompt-kit element. */
 export type RenderContext = {
   /** @purpose Current nesting depth | @invariant Starts at 0; increments for section children */
   depth: number;
@@ -142,6 +146,7 @@ export interface TFormatEngine {
  * @purpose Renderer function for an HTML tag — receives context, raw children, props, and a walk callback.
  * @invariant The walk callback must be called to recursively render children that are not plain text.
  */
+/** @purpose HtmlTagRenderer prop type for prompt-kit element. */
 export type HtmlTagRenderer = (
   ctx: RenderContext,
   rawChildren: JSXNode[],

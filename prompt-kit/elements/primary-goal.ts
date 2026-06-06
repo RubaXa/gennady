@@ -4,8 +4,10 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
+/** No configurable props — PrimaryGoal has only children. */
 export type PrimaryGoalProps = Record<string, never>;
 
+/** Section declaring the agent's primary objective. Includes boundary anchors in MD output. */
 export const PrimaryGoal = definePromptElement<PrimaryGoalProps>({
   tagName: 'PrimaryGoal',
   role: 'section',
