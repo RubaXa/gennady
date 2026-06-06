@@ -6,7 +6,7 @@
  * Test Graph:
  *   run()
  *     - runs default engine without calling detect
- *     - defaults timeout to 120000 and passes it to engine
+ *     - defaults timeout to 1800000 (30 min) and passes it to engine
  *     - throws LAUNCH_FAILED on empty task without dispatching
  *     - throws AGENT_NOT_INSTALLED on empty registry
  *     - passes model to engine
@@ -76,8 +76,9 @@ describe('run()', () => {
     assert.strictEqual(engine.runSpy.mock.callCount(), 1);
   });
 
-  it('defaults timeout to 120000 and passes it to engine', async () => {
-    // contract: when timeout is absent from RunOptions, engine receives timeout=120000
+  it('defaults timeout to 1800000 (30 min) and passes it to engine', async () => {
+    // contract: when timeout is absent from RunOptions, engine receives the default 1_800_000 ms
+    // (30 min — real agent work runs long; the timeout is a hang safety-net, not a work limit)
     const engine = createFakeEngine();
     register(engine);
 
@@ -85,7 +86,7 @@ describe('run()', () => {
 
     assert.strictEqual(engine.runSpy.mock.callCount(), 1);
     const passedOptions = engine.runSpy.mock.calls[0]?.arguments[0] as RunOptions;
-    assert.strictEqual(passedOptions.timeout, 120_000);
+    assert.strictEqual(passedOptions.timeout, 1_800_000);
   });
 
   it('throws LAUNCH_FAILED on empty task without dispatching', async () => {

@@ -39,8 +39,18 @@ function parseRunArgs(argv: string[]): {
 
   const model   = values['model']   as string | undefined;
   const engine  = values['engine']  as string | undefined;
+
+  // purpose: reject a non-numeric / non-positive --timeout instead of letting NaN reach setTimeout (fires immediately)
   const rawTimeout = values['timeout'] as string | undefined;
-  const timeout = rawTimeout !== undefined ? Number(rawTimeout) : undefined;
+  let timeout: number | undefined;
+  if (rawTimeout !== undefined) {
+    const parsed = Number(rawTimeout);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      process.stderr.write(`✗ --timeout must be a positive number of milliseconds, got: ${rawTimeout}\n`);
+      process.exit(1);
+    }
+    timeout = parsed;
+  }
 
   return { task, dirs, model, engine, timeout };
 }

@@ -82,7 +82,7 @@ export class OpencodeEngine implements AgentEngine {
 
     // #region START_VERSION_PROBE — failure mode: ENOENT/EACCES → installed:false; unexpected error degrades gracefully
     try {
-      const { stdout } = await execFileAsync('opencode', ['--version']);
+      const { stdout } = await execFileAsync('opencode', ['--version'], { timeout: 10_000 });
       const version = stdout.trim() || undefined;
       logger.info(`[OpencodeEngine#detect] [probing → installed] version=${version ?? 'unknown'}`);
       return { installed: true, version };
@@ -253,7 +253,8 @@ export class OpencodeEngine implements AgentEngine {
 
     // #region START_LIST_MODELS_PARSE — failure mode: non-zero exit or parse error → [] (degraded)
     try {
-      const { stdout } = await execFileAsync('opencode', ['models']);
+      // failure mode: opencode models can hang on network/API; bound it so MODEL_UNAVAILABLE hint enrichment can't hang run()
+      const { stdout } = await execFileAsync('opencode', ['models'], { timeout: 10_000 });
       const models = stdout
         .split('\n')
         .map((line) => line.trim())

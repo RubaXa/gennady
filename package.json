@@ -33,7 +33,8 @@
     "dist/**/*",
     "README.md",
     "ai/**/*",
-    "cli/cmd/orient/README.md"
+    "cli/cmd/orient/README.md",
+    "services/agent-run/engines/opencode/readonly.config.json"
   ],
   "scripts": {
     "type-check": "tsc --noEmit",
