@@ -1,0 +1,8 @@
+<Prompt>
+    <Section title="Collide Me" anchors="true">
+      first occurrence
+    </Section>
+    <Section title="Collide Me" anchors="true">
+      second occurrence — anchor suppressed
+    </Section>
+</Prompt>

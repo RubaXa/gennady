@@ -1,0 +1,9 @@
+<!--START_BELIEFSTATE-->
+# BELIEF STATE:
+
+<!--START_AXIOM-->
+## AXIOM `AX_1`:
+
+аксиома
+<!--END_AXIOM-->
+<!--END_BELIEFSTATE-->

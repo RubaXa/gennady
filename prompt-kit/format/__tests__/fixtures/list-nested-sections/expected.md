@@ -1,0 +1,3 @@
+- **First axiom** — axiom one body;
+- **Second axiom** — axiom two body;
+- **Third rule** — rule three body.

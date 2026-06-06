@@ -1,0 +1,5 @@
+<!--START_HARDFORBIDDEN-->
+# HARD FORBIDDEN:
+
+не делай Xне делай Y
+<!--END_HARDFORBIDDEN-->

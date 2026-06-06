@@ -1,0 +1,4 @@
+<Block lang="typescript" title="Example">
+  const x = 42;
+  console.log(x);
+</Block>
