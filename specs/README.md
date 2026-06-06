@@ -18,6 +18,7 @@ graph TD
     agent-mon-cli --> agent-mon
     ai-skills --> infra-base
     ai-skills --> cli
+    prompt-kit --> infra-base
     infra-npm-publish --> infra-base
 ```
 
@@ -33,3 +34,5 @@ graph TD
 | [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md)             | product        | 🚧 (awaiting setup sync) | TUI-дашборд для мониторинга сессий агентов (ink + React)                    |
 | [`infra-npm-publish`](./infra-npm-publish/infra-npm-publish.spec.md) | infrastructure | ✅                       | Автоматизированная публикация npm-пакета через release-it                   |
 | [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅                       | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                           |
+| [`prompt-kit`](./prompt-kit/prompt-kit.spec.md)                     | library        | 🚧 (awaiting setup sync) | JSX-библиотека для сборки промптов из примитивов с рендером в XML/Markdown  |
+| [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | 🚧 (awaiting setup sync) | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly |
