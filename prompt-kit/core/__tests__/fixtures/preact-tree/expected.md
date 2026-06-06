@@ -1,1 +1,3 @@
-текст из preact
+# Preact Style:
+
+nested via __c

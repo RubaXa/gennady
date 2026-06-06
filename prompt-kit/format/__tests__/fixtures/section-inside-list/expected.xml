@@ -1,9 +1,0 @@
-<Prompt>
-    <List>
-      First item;
-          <Section title="Inside List Section">
-            text inside section in list
-          </Section>;
-      Last item.
-    </List>
-</Prompt>

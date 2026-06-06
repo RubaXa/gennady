@@ -1,5 +1,5 @@
 <!--START_HARDFORBIDDEN-->
-# HARD FORBIDDEN:
+# HARD FORBIDDEN::
 
-не делай Xне делай Y
+Do not modify protected state
 <!--END_HARDFORBIDDEN-->

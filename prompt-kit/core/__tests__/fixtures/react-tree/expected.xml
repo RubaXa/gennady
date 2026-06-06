@@ -1,1 +1,3 @@
-текст из react
+<section title="React Style">
+  nested via props
+</section>

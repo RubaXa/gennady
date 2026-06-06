@@ -37,19 +37,13 @@ describe('elements', () => {
     assert.strictEqual(Bold.config.role, 'inline');
   });
 
-  it('should have markdown config on each primitive', () => {
+  it('should have role-based config on each primitive', () => {
     for (const el of [
-      Prompt,
-      PrimaryGoal,
-      BeliefState,
-      Axiom,
-      HardForbidden,
-      Section,
-      List,
-      Code,
-      Bold,
+      Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden, Section, List, Code,
     ]) {
       assert.strictEqual(typeof el.config.markdown, 'object');
     }
+    // Bold is inline — no markdown config needed
+    assert.strictEqual(Bold.config.role, 'inline');
   });
 });

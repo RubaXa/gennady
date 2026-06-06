@@ -1,1 +1,3 @@
-текст из preact
+<section title="Preact Style">
+  nested via __c
+</section>

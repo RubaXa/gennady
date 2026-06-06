@@ -1,1 +1,4 @@
+KEYWORDS:
+rules, safety
+
 текст

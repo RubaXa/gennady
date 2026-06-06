@@ -1,5 +1,5 @@
 <!--START_PRIMARYGOAL-->
-# PRIMARY GOAL:
+# PRIMARY GOAL::
 
-описание цели
+Define the primary mission
 <!--END_PRIMARYGOAL-->

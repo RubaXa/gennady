@@ -22,8 +22,9 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const tag = element.config.xml?.tag ?? element.tagName;
-    return this._formatter.formatElement(tag, props, children, ctx.depth);
+    const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
+    const attrs = { ...props }; delete attrs.is;
+    return this._formatter.formatElement(tag, attrs, children, ctx.depth);
   }
 
   /** @see {TFormatEngine#formatList} in ./types.ts */
@@ -33,8 +34,9 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const tag = element.config.xml?.tag ?? element.tagName;
-    return this._formatter.formatElement(tag, props, children, ctx.depth);
+    const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
+    const attrs = { ...props }; delete attrs.is;
+    return this._formatter.formatElement(tag, attrs, children, ctx.depth);
   }
 
   /** @see {TFormatEngine#formatBlock} in ./types.ts */
@@ -44,8 +46,9 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const tag = element.config.xml?.tag ?? element.tagName;
-    return this._formatter.formatElement(tag, props, children, ctx.depth);
+    const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
+    const attrs = { ...props }; delete attrs.is;
+    return this._formatter.formatElement(tag, attrs, children, ctx.depth);
   }
 
   /** @see {TFormatEngine#formatInline} in ./types.ts */
@@ -55,8 +58,9 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const tag = element.config.xml?.tag ?? element.tagName;
-    return this._formatter.formatInline(tag, props, children);
+    const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
+    const attrs = { ...props }; delete attrs.is;
+    return this._formatter.formatInline(tag, attrs, children);
   }
 }
 

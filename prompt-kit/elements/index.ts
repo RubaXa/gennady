@@ -11,3 +11,4 @@ export { Section } from './section.js';
 export { List } from './list.js';
 export { Code } from './code.js';
 export { Bold } from './bold.js';
+export { Group, Node } from './group.js';

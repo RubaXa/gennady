@@ -204,7 +204,7 @@ describe('TreeWalker', () => {
   });
 
   describe('root role', () => {
-    it('acts as transparent wrapper rendering only children', async () => {
+    it('renders root with XML wrapper tag', async () => {
       const engine = createMockEngine();
       const walker = new TreeWalker(engine);
       const root = definePromptElement({ role: 'root' });
@@ -218,10 +218,8 @@ describe('TreeWalker', () => {
 
       const result = walker.walk(tree, ctx);
 
-      // contract: root renders children only; no formatter call for root
-      const secCalls = (engine.formatSection as ReturnType<typeof mock.fn>).mock;
-      assert.strictEqual(secCalls.callCount(), 0);
-      assert.match(result, /^\[inline:/);
+      // contract: root wraps inline children in XML tag when format is xml
+      assert.match(result, /<root>[\s\S]*\[inline:[\s\S]*<\/root>/);
     });
   });
 });

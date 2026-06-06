@@ -1,5 +1,5 @@
 <!--START_AXIOM-->
-# AXIOM `AX_SURGICAL`:
+# Axiom `AX_1`:
 
-текст аксиомы
+текст
 <!--END_AXIOM-->

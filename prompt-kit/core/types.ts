@@ -25,9 +25,9 @@ export type PromptElementConfig = {
     /** @purpose Emit START_/END_ boundary comments around section */
     includeBoundaryComments?: boolean;
   };
-  /** @purpose XML-specific rendering options: tag name override */
-  xml?: {
-    /** @purpose Override the XML tag name | @invariant Falls back to tagName when absent */
+  /** @purpose HTML-specific rendering options: tag name override */
+  html?: {
+    /** @purpose Override the HTML tag name | @invariant Falls back to element.tagName when absent */
     tag?: string;
   };
 };

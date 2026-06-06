@@ -1,9 +1,5 @@
 <!--START_BELIEFSTATE-->
-# BELIEF STATE:
+# BELIEF STATE::
 
-<!--START_AXIOM-->
-## AXIOM `AX_1`:
-
-аксиома
-<!--END_AXIOM-->
+All knowledge is provisional
 <!--END_BELIEFSTATE-->

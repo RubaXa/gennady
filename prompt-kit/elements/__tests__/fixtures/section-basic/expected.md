@@ -1,5 +1,5 @@
 <!--START_SECTION-->
-# HELP:
+# Basic Section:
 
-текст
+Content here
 <!--END_SECTION-->

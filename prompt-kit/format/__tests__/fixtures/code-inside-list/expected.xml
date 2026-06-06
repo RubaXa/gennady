@@ -1,9 +1,0 @@
-<List>
-  description item;
-    <Block lang="json">
-      {
-        &quot;key&quot;: &quot;value&quot;
-      }
-    </Block>;
-  final item.
-</List>
