@@ -1,16 +1,23 @@
 # prompt-kit: Library Specification
 
 <!--SECTION:SCOPE_TYPE-->
+
 ## scope-type
+
 library
+
 <!--/SECTION:SCOPE_TYPE-->
 
 <!--SECTION:VISION-->
+
 ## 1. Vision & Primary Goal
+
 Библиотека для декларативного описания промптов через JSX-компоненты. Разработчик собирает сообщение из семантических примитивов, рендерит в XML-подобный формат или Markdown — и отправляет агенту как строку.
+
 <!--/SECTION:VISION-->
 
 <!--SECTION:GOLDEN_DX-->
+
 ## 2. Approved Golden DX Example (composition view)
 
 Публичная поверхность собирается из трёх модулей. Полный сценарий — см. usage-примеры каждого модуля.
@@ -18,11 +25,11 @@ library
 ```tsx
 // 1. Описываем промпт — module: elements
 //    см. [elements/usage](./elements/elements.spec.md#2-module-usage-example)
-import { Prompt, Axiom, List, Code, Bold } from 'gennady/prompt-kit'
+import { Prompt, Axiom, List, Code, Bold } from 'gennady/prompt-kit';
 
 // 2. Или создаём свой элемент — module: core
 //    см. [core/usage](./core/core.spec.md#2-module-usage-example)
-import { definePromptElement } from 'gennady/prompt-kit'
+import { definePromptElement } from 'gennady/prompt-kit';
 
 const MyAxiom = definePromptElement<{ id: string }>({
   role: 'section',
@@ -30,7 +37,7 @@ const MyAxiom = definePromptElement<{ id: string }>({
     title: ({ tagName, props }) => `${tagName} \`${props.id}\``,
     includeBoundaryComments: true,
   },
-})
+});
 
 const directive = (
   <Prompt keywords="rules, safety">
@@ -42,18 +49,20 @@ const directive = (
       текст
     </List>
   </Prompt>
-)
+);
 
 // 3. Рендерим — module: core
 //    Форматеры (module: format) вызываются движком автоматически.
-import { renderPrompt } from 'gennady/prompt-kit'
+import { renderPrompt } from 'gennady/prompt-kit';
 
-const xml = renderPrompt(directive, {}, 'xml')
-const md  = renderPrompt(directive, {}, 'md')
+const xml = renderPrompt(directive, {}, 'xml');
+const md = renderPrompt(directive, {}, 'md');
 ```
+
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
 ## 3. Requirements & Constraints
 
 ### 3.1 Functional Requirements
@@ -95,47 +104,49 @@ const md  = renderPrompt(directive, {}, 'md')
 
 ### 3.5 Rules
 
-| Rule | Category | Source |
-|---|---|---|
-| typescript-rules | coding | ai/directives/coding/typescript-rules.xml |
+| Rule             | Category | Source                                    |
+| ---------------- | -------- | ----------------------------------------- |
+| typescript-rules | coding   | ai/directives/coding/typescript-rules.xml |
+
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:PUBLIC_API_SURFACE-->
+
 ## 4. Public API Surface
 
 ### Ядро
 
 ```ts
-const PROMPT_ELEMENT_BRAND = Symbol('prompt-element')
+const PROMPT_ELEMENT_BRAND = Symbol('prompt-element');
 
-function definePromptElement<Props>(
-  config: PromptElementConfig<Props>
-): PromptElement<Props>
+function definePromptElement<Props>(config: PromptElementConfig<Props>): PromptElement<Props>;
 
 function renderPrompt(
   tree: JSXNode | ((props: any) => JSXNode),
   props: Record<string, unknown>,
   format: 'xml' | 'md'
-): string
+): string;
 
 type PromptElement<Props> = {
-  (props: Props): JSXNode
-  [PROMPT_ELEMENT_BRAND]: true
-  tagName: string
-  config: PromptElementConfig<Props>
-}
+  (props: Props): JSXNode;
+  [PROMPT_ELEMENT_BRAND]: true;
+  tagName: string;
+  config: PromptElementConfig<Props>;
+};
 
 type JSXNode = {
-  type: PromptElement<any> | string | Function
-  props: Record<string, unknown>
-  children?: JSXNode[]
-}
+  type: PromptElement<any> | string | Function;
+  props: Record<string, unknown>;
+  children?: JSXNode[];
+};
 ```
+
 Рендер различает `PromptElement` (brand symbol) и обычную функцию (transparent): `PromptElement` рендерится по конфигу, обычная функция — прозрачно.
 
 `renderPrompt` оборачивает вызов компонента и рекурсивный обход в try/catch. При ошибке → выбрасывает `Error` с исходной ошибкой как `cause`, префикс `[prompt-kit]`. Частичный вывод не возвращается.
 
 Нормализатор (`JSXTreeNormalizer` в core) приводит любой вход к этому каноническому виду:
+
 - `children` внутри `props.children` → извлекается в `node.children`
 - Фрагменты (`Symbol.for('react.fragment')`, `<>...</>`) → плоский массив children
 - Примитивы (`string`, `number`, `boolean`) → оборачиваются в текстовый узел
@@ -146,21 +157,22 @@ type JSXNode = {
 
 ```ts
 type PromptElementConfig<Props> = {
-  role: 'root' | 'section' | 'block' | 'inline' | 'list'
+  role: 'root' | 'section' | 'block' | 'inline' | 'list';
   markdown?: {
-    title?: (ctx: { tagName: string; props: Props; depth: number }) => string
-    renderChildren?: (ctx: { children: string; props: Props }) => string
-    renderChildElement?: (ctx: { children: string; props: Props; index: number }) => string
-    includeBoundaryComments?: boolean
-  }
+    title?: (ctx: { tagName: string; props: Props; depth: number }) => string;
+    renderChildren?: (ctx: { children: string; props: Props }) => string;
+    renderChildElement?: (ctx: { children: string; props: Props; index: number }) => string;
+    includeBoundaryComments?: boolean;
+  };
   xml?: {
-    renderChildren?: (ctx: { children: string; props: Props }) => string
-    renderChildElement?: (ctx: { children: string; props: Props; index: number }) => string
-  }
-}
+    renderChildren?: (ctx: { children: string; props: Props }) => string;
+    renderChildElement?: (ctx: { children: string; props: Props; index: number }) => string;
+  };
+};
 ```
 
 Роли:
+
 - `root` — корень сообщения. xml: `<Prompt keywords="...">\n{children}\n</Prompt>`. md: `## KEYWORDS:\n{keywords}\n\n{children}`. Если keywords отсутствует — заголовок/атрибут не выводится.
 - `section` — заголовок + тело. Влияет на depth. Внутри списка схлопывается в строчную форму.
 - `block` — блочный элемент (код). Не влияет на depth.
@@ -169,24 +181,26 @@ type PromptElementConfig<Props> = {
 
 ### Встроенные примитивы (из коробки)
 
-| Элемент | Роль | Пропсы |
-|---|---|---|
-| `Prompt` | root | `keywords?: string` |
-| `PrimaryGoal` | section | — |
-| `BeliefState` | section | — |
-| `Axiom` | section | `id: string` |
-| `HardForbidden` | section | — |
-| `Section` | section | `title: string`, `id?: string` |
-| `List` | list | `ordered?: boolean`, `title?: string` |
-| `Code` | block | `lang?: string`, `title?: string` |
-| `Bold` | inline | — |
+| Элемент         | Роль    | Пропсы                                |
+| --------------- | ------- | ------------------------------------- |
+| `Prompt`        | root    | `keywords?: string`                   |
+| `PrimaryGoal`   | section | —                                     |
+| `BeliefState`   | section | —                                     |
+| `Axiom`         | section | `id: string`                          |
+| `HardForbidden` | section | —                                     |
+| `Section`       | section | `title: string`, `id?: string`        |
+| `List`          | list    | `ordered?: boolean`, `title?: string` |
+| `Code`          | block   | `lang?: string`, `title?: string`     |
+| `Bold`          | inline  | —                                     |
 
 ### Встроенные HTML-теги (распознаются по строковому имени)
 
 `b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td`
+
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
 <!--SECTION:ARCHITECTURE-->
+
 ## 5. Architecture
 
 ### Поток рендера
@@ -219,9 +233,11 @@ type PromptElementConfig<Props> = {
 <!--/SECTION:ARCHITECTURE-->
 
 <!--SECTION:DECISION_LOG-->
+
 ## 6. Decision Log
 
 ### D-001 — Единая фабрика definePromptElement
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Одна точка создания элементов с ролью вместо набора фабрик (`defineSection`, `defineInline`, `defineList`). Меньше API, гибче.
@@ -229,6 +245,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** `defineSection` / `defineInline` / `defineList` — дробит API без выигрыша в типобезопасности.
 
 ### D-002 — Движок управляет форматированием
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Отступы, переносы, пунктуация, уровни заголовков — зона движка. Элемент задаёт семантику, движок — представление. Убирает дублирование и баги с `\n`.
@@ -236,6 +253,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Каждый элемент сам форматирует — плодит `\n` и ` `, расходится между элементами.
 
 ### D-003 — Толерантность к JSX-рантаймам
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Дерево может быть создано React, Preact, или любым jsx-трансформером. Движок нормализует структуру, не привязан к `$$typeof` или конкретному формату пропсов.
@@ -243,6 +261,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Привязка к React-дереву — режет потребителей без причины.
 
 ### D-004 — Встроенные HTML-теги
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** `b`, `em`, `table`, `tr`, `td` и другие — стандартные имена, которые движок знает из коробки. Пользователь не объявляет их через `definePromptElement`.
@@ -250,6 +269,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Объявлять каждый тег явно — boilerplate.
 
 ### D-005 — Прозрачные компоненты
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Обычная функция-компонент не имеет представления в выводе. Позволяет декомпозицию (`MySection = () => <Section>...</Section>`) без влияния на результат.
@@ -257,6 +277,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Рендерить имя функции как тег — смешивает декомпозицию и семантику.
 
 ### D-006 — Zero runtime dependencies
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Проектный стандарт (gennady). Чистый строковый рендер не требует внешних библиотек.
@@ -264,6 +285,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Зависимость от React — противоречит цели.
 
 ### D-007 — Использование существующего react-jsx
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Репозиторий уже настроен на `"jsx": "react-jsx"`. Prompt-kit читает готовое дерево, не требует своего `jsxImportSource`. 8 существующих .tsx файлов (agent-mon UI на ink) продолжают работать без изменений.
@@ -271,6 +293,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Свой `jsxImportSource` — ломает agent-mon UI.
 
 ### D-008 — Экспорт через gennady/prompt-kit
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit
 - **Why:** Библиотека — часть репозитория, импортируется как `gennady/prompt-kit`.
@@ -278,6 +301,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Отдельный npm-пакет — усложняет разработку и синхронизацию версий.
 
 ### D-009 — Декомпозиция по слоям (core + elements + format)
+
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, prompt-kit
 - **Why:** Три модуля с чёткими границами: алгоритмы ядра не знают про элементы, элементы не знают про форматы. Расширение (новый примитив, новый формат) — точечное, без каскада.
@@ -286,26 +310,32 @@ type PromptElementConfig<Props> = {
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
+
 ## 7. Scope Dependencies
+
 - **Depends on:** infra-base (TypeScript, prettier, node:test, vite)
 - **Provides to:** cli, ai-skills
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+
 ## 8. Bootstrap Requirements
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
+| Requirement                  | Kind       | Owner           | Resolution                                                          |
+| ---------------------------- | ---------- | --------------- | ------------------------------------------------------------------- |
 | Экспорт `gennady/prompt-kit` | structural | this-scope-task | Добавить `./prompt-kit` и `./prompt-kit/*` в `exports` package.json |
-| Директория `prompt-kit/` | structural | this-scope-task | Создать корневую директорию |
+| Директория `prompt-kit/`     | structural | this-scope-task | Создать корневую директорию                                         |
+
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:MODULE_MAP-->
+
 ## 9. Module Map
 
 Spec hierarchy is materialized at `specs/prompt-kit/`. Module specs are at `specs/prompt-kit/<module>/<module>.spec.md`.
 
 ### 9.1 Modules
+
 - [core](./core/core.spec.md) — ядро: definePromptElement, renderPrompt, обход дерева, нормализация JSX, разрешение элементов
 - [elements](./elements/elements.spec.md) — встроенные примитивы: Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden, Section, List, Code, Bold
 - [format](./format/format.spec.md) — движки форматирования: XML, Markdown, отступы, якоря, пунктуация, таблицы
@@ -319,12 +349,15 @@ graph TD
 ```
 
 ### 9.3 Stack Dependencies
+
 - Languages: TypeScript
 - Test frameworks: node:test
 <!--/SECTION:MODULE_MAP-->
 
 <!--SECTION:HANDOFF-->
+
 ## 10. Handoff to module-decomposition
+
 - **Primary input:** `specs/prompt-kit/prompt-kit.spec.md`
 - **Areas requiring decomposition:** decomposition complete — core, elements, format
 - **Named abstractions:** `definePromptElement`, `renderPrompt`, `PromptElement`, `PromptElementConfig`, `Prompt`, `PrimaryGoal`, `BeliefState`, `Axiom`, `HardForbidden`, `Section`, `List`, `Code`, `Bold`
@@ -335,6 +368,7 @@ graph TD
 ## Critic Rounds
 
 ### Round 1 — 2026-06-06
+
 - Verdict: NEEDS_WORK
 - Accepted: 3 — JSXNode тип не определён, нормализация недоописана, дубликат §9.4 с placeholder
 - Rejected: 0
@@ -342,6 +376,7 @@ graph TD
 - Changes: добавлен тип JSXNode + контракт нормализации; удалён дубликат §9.4
 
 ### Round 2 — 2026-06-06
+
 - Verdict: NEEDS_WORK
 - Accepted: 3 — PromptElement неотличим от transparent (brand symbol), FR3 противоречит API surface, renderPrompt не обрабатывает throw
 - Rejected: 0
@@ -349,6 +384,7 @@ graph TD
 - Changes: добавлен `Symbol('prompt-element')` brand; FR3 исправлен (Em/Underline/Table → FR11); renderPrompt try/catch + Error; JSXNode тип
 
 ### Round 3 — 2026-06-06
+
 - Verdict: NEEDS_WORK
 - Accepted: 6 — renderPrompt сигнатура vs Golden DX, XML escaping, keywords effect, anchor collision, unrecognised node.type, html→xml naming
 - Rejected: 0

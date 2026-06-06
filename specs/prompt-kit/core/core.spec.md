@@ -1,13 +1,17 @@
 # Module: core
 
 <!--SECTION:MODULE_VISION-->
+
 ## 1. Module Vision
+
 Ядро prompt-kit: фабрика элементов, рендер-движок, нормализация JSX-деревьев, разрешение элементов. Не знает про конкретные примитивы и форматы — только инфраструктура.
 
 [Scope spec → `../../prompt-kit.spec.md`](../../prompt-kit.spec.md)
+
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
+
 ## 2. Module Usage Example
 
 ```ts
@@ -28,31 +32,36 @@ const MyPrompt = (props: { name: string }) => (
 const result = renderPrompt(MyPrompt, { name: 'world' }, 'md')
 // → ## Hello world:\n<!--START_MYSECTION-->\nсодержимое\n<!--END_MYSECTION-->
 ```
+
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
 <!--SECTION:ENTITY_INVENTORY-->
+
 ## 3. Entity Inventory (Closed-World)
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name | Surface | Type | Purpose |
-|---|---|---|---|
-| `definePromptElement` | 🟢 | Factory | Создаёт элемент промпта по конфигу (роль, рендер-функции, флаги) |
-| `renderPrompt` | 🟢 | Service | Принимает компонент + пропсы + формат, возвращает строку |
-| `PromptElement` | 🟢 | Type | Тип элемента — результат `definePromptElement` |
-| `PromptElementConfig` | 🟢 | Type | Конфиг элемента: роль, markdown.*, html.* |
-| `JSXNode` | ⚪ | Type | Канонический узел JSX-дерева: `{ type, props, children }` |
-| `JSXTreeNormalizer` | ⚪ | Utility | Приводит деревья от разных JSX-рантаймов к `{type, props, children}` |
-| `RenderContext` | ⚪ | Value Object | Контекст рендера: depth, inList, format |
-| `TreeWalker` | ⚪ | Service | Рекурсивный обход дерева: дети → родитель, разрешение type → рендер |
-| `ElementResolver` | ⚪ | Utility | По `node.type` определяет стратегию: PromptElement, string (HTML-тег), function (прозрачный) |
-| `HTMLTagRegistry` | ⚪ | Registry | Реестр встроенных HTML-тегов (`b`, `em`, `table`, ...) — маппинг имени на рендер |
+| Name                  | Surface | Type         | Purpose                                                                                      |
+| --------------------- | ------- | ------------ | -------------------------------------------------------------------------------------------- |
+| `definePromptElement` | 🟢      | Factory      | Создаёт элемент промпта по конфигу (роль, рендер-функции, флаги)                             |
+| `renderPrompt`        | 🟢      | Service      | Принимает компонент + пропсы + формат, возвращает строку                                     |
+| `PromptElement`       | 🟢      | Type         | Тип элемента — результат `definePromptElement`                                               |
+| `PromptElementConfig` | 🟢      | Type         | Конфиг элемента: роль, markdown._, html._                                                    |
+| `JSXNode`             | ⚪      | Type         | Канонический узел JSX-дерева: `{ type, props, children }`                                    |
+| `JSXTreeNormalizer`   | ⚪      | Utility      | Приводит деревья от разных JSX-рантаймов к `{type, props, children}`                         |
+| `RenderContext`       | ⚪      | Value Object | Контекст рендера: depth, inList, format                                                      |
+| `TreeWalker`          | ⚪      | Service      | Рекурсивный обход дерева: дети → родитель, разрешение type → рендер                          |
+| `ElementResolver`     | ⚪      | Utility      | По `node.type` определяет стратегию: PromptElement, string (HTML-тег), function (прозрачный) |
+| `HTMLTagRegistry`     | ⚪      | Registry     | Реестр встроенных HTML-тегов (`b`, `em`, `table`, ...) — маппинг имени на рендер             |
+
 <!--/SECTION:ENTITY_INVENTORY-->
 
 <!--SECTION:ENTITY_SURFACES-->
+
 ## 4. Entity Surfaces
 
 ### `definePromptElement`
+
 - **Type:** Factory
 - **Purpose:** Создаёт элемент промпта из конфига. Возвращает объект, используемый JSX как `node.type`.
 - **Public Properties:** `tagName`, `config` (readonly)
@@ -65,6 +74,7 @@ _Это полный список сущностей модуля. Любое в
   - External: пользовательский код
 
 ### `renderPrompt`
+
 - **Type:** Service
 - **Purpose:** Вызывает функцию-компонент → получает JSX-дерево → рекурсивно обходит → рендерит в строку.
 - **Public Properties:** N/A
@@ -77,17 +87,20 @@ _Это полный список сущностей модуля. Любое в
   - External: CLI, скрипты генерации промптов
 
 ### `JSXTreeNormalizer`
+
 - **Type:** Utility (⚪)
 - **Purpose:** Нормализует дерево от `jsx()` / `jsxs()` / `createElement()` к единой форме `{type, props, children}`. Обрабатывает `children` внутри `props` и отдельным аргументом.
 - **Consumers:** Internal — `renderPrompt`
 
 ### `RenderContext`
+
 - **Type:** Value Object (⚪)
 - **Purpose:** Контекст, передаваемый сверху вниз при обходе дерева.
 - **Public Properties:** `depth: number`, `inList: boolean`, `format: 'xml' | 'md'`
 - **Consumers:** Internal — `TreeWalker`, `TFormatEngine`
 
 ### `TreeWalker`
+
 - **Type:** Service (⚪)
 - **Purpose:** Рекурсивно обходит нормализованное дерево: сначала рендерит детей, затем передаёт результат родителю. Для каждого узла разрешает тип через `ElementResolver` и вызывает соответствующий метод `TFormatEngine`.
 - **Role→method dispatch (для PromptElement):**
@@ -104,6 +117,7 @@ _Это полный список сущностей модуля. Любое в
 - **Consumers:** Internal — `renderPrompt`
 
 ### `ElementResolver`
+
 - **Type:** Utility (⚪)
 - **Purpose:** По `node.type` определяет категорию: `'prompt-element'` (brand symbol), `'html-tag'` (строка), `'transparent'` (функция без brand). Нераспознанный тип → `Error`.
 - **Public Operations:** `resolve(type) → 'prompt-element' | 'html-tag' | 'transparent' | 'skip'`
@@ -111,6 +125,7 @@ _Это полный список сущностей модуля. Любое в
 - `'skip'` — для `null` / `undefined` type (пустой JSX-узел), TreeWalker пропускает
 
 ### `HTMLTagRegistry`
+
 - **Type:** Registry (⚪)
 - **Purpose:** Словарь: строковое имя HTML-тега → рендер-функции. Наполняется при импорте модуля.
 - **Public Operations:** `register(name: string, renderer: HtmlTagRenderer)`, `resolve(name: string) → HtmlTagRenderer | null`
@@ -118,9 +133,11 @@ _Это полный список сущностей модуля. Любое в
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
+
 ## 5. Module Contracts (DbC)
 
 ### Module-level invariants
+
 - **Рендер синхронный**: `renderPrompt` не делает I/O, не аллоцирует внешние ресурсы, не зависит от сети.
 - **Толерантность к деревьям**: `JSXTreeNormalizer` принимает любое дерево и нормализует losslessly. Распознанные паттерны (props.children, фрагменты, примитивы) — нормализуются. Нераспознанные — проходят как есть (pass-through), ошибка не бросается.
 - **Прозрачность**: обычная функция без `Symbol('prompt-element')` в `node.type` → рендерятся только children. Пропсы и имя функции игнорируются.
@@ -141,12 +158,17 @@ _Это полный список сущностей модуля. Любое в
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
+
 ## 6. Public Options & Policies
+
 N/A — модуль не имеет публичных опций.
+
 <!--/SECTION:PUBLIC_OPTIONS-->
 
 <!--SECTION:FILE_STRUCTURE-->
+
 ## 7. File Structure
+
 ```
 core/
 ├── define-prompt-element.ts
@@ -160,6 +182,7 @@ core/
 ```
 
 **File Mapping:**
+
 - `define-prompt-element.ts`: `definePromptElement`
 - `render-prompt.ts`: `renderPrompt`
 - `tree-walker.ts`: `TreeWalker`
@@ -171,12 +194,17 @@ core/
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
+
 ## 8. Module Decision Log
+
 _Пусто — решения уровня scope зафиксированы в scope-спеке._
+
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
 ## 9. Inter-Module Dependencies
+
 - **Depends on:** `format` (TreeWalker вызывает XmlFormatter / MdFormatter)
 - **Scope Reference (cross-scope):** N/A
 - **Provides to:** `elements`, внешние потребители
@@ -186,14 +214,18 @@ graph TD
   core --> format
   elements --> core
 ```
+
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
 <!--SECTION:HANDOFF-->
+
 ## 10. Handoff to task scaffolding **Implementation files to be created:** `core/define-prompt-element.ts`, `core/render-prompt.ts`, `core/tree-walker.ts`, `core/jsx-normalizer.ts`, `core/element-resolver.ts`, `core/html-tag-registry.ts`, `core/types.ts`, `core/index.ts`
+
 - **Test files to be created:** `core/__tests__/define-prompt-element.test.ts`, `core/__tests__/render-prompt.test.ts`, `core/__tests__/tree-walker.test.ts`, `core/__tests__/jsx-normalizer.test.ts`, `core/__tests__/element-resolver.test.ts`, `core/__tests__/html-tag-registry.test.ts`
 - **Fixture test files:** сквозные фикстуры — renderPrompt от входа до выхода.
 
   Структура: `core/__tests__/fixtures/<case-name>/`
+
   ```
   <case-name>/
   ├── input.tsx            # JSX-дерево
@@ -201,8 +233,7 @@ graph TD
   └── expected.md          # ожидаемый Markdown
   ```
 
-  *Критические кейсы:*
-
+  _Критические кейсы:_
   - `transparent-component` — обычная функция-компонент прозрачна (только children)
   - `custom-element` — элемент через definePromptElement, оба формата
   - `custom-element-props` — definePromptElement с пропсами, атрибуты в xml, заголовок в md
@@ -214,6 +245,7 @@ graph TD
   - `html-tag-em` — строчный тег `em`
   - `html-tag-table` — table/tr/td из коробки
   - `html-tag-p` — параграф `p`
+
 - **Stack dependencies:**
   - Language: `TypeScript` (resolves to `ai/directives/coding/typescript-rules.xml`)
   - Test framework: `node:test` (resolves to `ai/directives/testing/node-test.xml`)
@@ -224,12 +256,14 @@ graph TD
 ## Critic Rounds
 
 ### Round 1 — 2026-06-06
+
 - Verdict: NEEDS_WORK
 - Accepted: 3 — TreeWalker-formatter interface unspecified, normalizer error boundary, missing HTMLTagRegistry test
 - Rejected: 0
 - Changes: добавлен TFormatEngine интерфейс; нормализатор lossless + pass-through; html-tag-registry.test.ts; brand-symbol dispatch
 
 ### Round 2 — 2026-06-06
+
 - Verdict: NEEDS_WORK
 - Accepted: 7 — surfaces + TFormatEngine params + dispatch table + error contract + normalizer boundary
 - Rejected: 0
