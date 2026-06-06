@@ -22,9 +22,9 @@ function parseRunArgs(argv: string[]): {
   const { positionals, values } = parseArgs({
     args: argv.slice(3),
     options: {
-      dir:     { type: 'string', multiple: true },
-      model:   { type: 'string' },
-      engine:  { type: 'string' },
+      dir: { type: 'string', multiple: true },
+      model: { type: 'string' },
+      engine: { type: 'string' },
       timeout: { type: 'string' },
     },
     allowPositionals: true,
@@ -37,8 +37,8 @@ function parseRunArgs(argv: string[]): {
   const dirValues = values['dir'] as string[] | undefined;
   const dirs = dirValues && dirValues.length > 0 ? dirValues : undefined;
 
-  const model   = values['model']   as string | undefined;
-  const engine  = values['engine']  as string | undefined;
+  const model = values['model'] as string | undefined;
+  const engine = values['engine'] as string | undefined;
 
   // purpose: reject a non-numeric / non-positive --timeout instead of letting NaN reach setTimeout (fires immediately)
   const rawTimeout = values['timeout'] as string | undefined;
@@ -46,7 +46,9 @@ function parseRunArgs(argv: string[]): {
   if (rawTimeout !== undefined) {
     const parsed = Number(rawTimeout);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      process.stderr.write(`✗ --timeout must be a positive number of milliseconds, got: ${rawTimeout}\n`);
+      process.stderr.write(
+        `✗ --timeout must be a positive number of milliseconds, got: ${rawTimeout}\n`
+      );
       process.exit(1);
     }
     timeout = parsed;
@@ -62,6 +64,7 @@ function parseRunArgs(argv: string[]): {
  * @invariant RunResult.text → stdout, exit 0.
  * @param argv Raw process.argv array.
  * @throws Never — all errors are caught and reported via stderr + process.exit.
+ * @returns Promise resolving when command completes. Exit code handled via process.exit internally.
  * @sideEffect stdout: RunResult.text on success. stderr: usage/error message on failure.
  */
 export async function runCommand(argv: string[]): Promise<void> {
@@ -71,16 +74,18 @@ export async function runCommand(argv: string[]): Promise<void> {
 
   // #region START_VALIDATE_TASK — invariant: engine must not be called with empty task
   if (!opts.task) {
-    process.stderr.write('Usage: gennady run "<task>" [--dir <dir>]... [--model <model>] [--engine <engine>] [--timeout <ms>]\n');
+    process.stderr.write(
+      'Usage: gennady run "<task>" [--dir <dir>]... [--model <model>] [--engine <engine>] [--timeout <ms>]\n'
+    );
     process.exit(1);
   }
   // #endregion END_VALIDATE_TASK
 
   const runOptions = {
-    task:    opts.task,
-    ...(opts.dirs    !== undefined && { dirs:    opts.dirs    }),
-    ...(opts.model   !== undefined && { model:   opts.model   }),
-    ...(opts.engine  !== undefined && { engine:  opts.engine  }),
+    task: opts.task,
+    ...(opts.dirs !== undefined && { dirs: opts.dirs }),
+    ...(opts.model !== undefined && { model: opts.model }),
+    ...(opts.engine !== undefined && { engine: opts.engine }),
     ...(opts.timeout !== undefined && { timeout: opts.timeout }),
   };
 
