@@ -125,6 +125,7 @@ graph TD
 | [TSK-58](sync-skills/cli-sync-skills.task-58.md) | ai/skills bootstrap (13 SDD skills)                   | sync-skills  | TSK-57                         | `[ ]` TODO | 1       |
 | [TSK-59](agents-rules/agents-rules.task-59.md)   | agents-rules: команда документации orient для агентов | agents-rules | None                           | `[x]` DONE | 0       |
 | [TSK-60](e2e/e2e.task-60.md)                     | E2E-тесты CLI-команд через npm pack                   | e2e          | None                           | `[x]` DONE | 3       |
+| [TSK-65](run/run.task-65.md)                     | run: команда-обёртка над agent-run                    | run          | TSK-64                         | `[x]` DONE | 0       |
 
 ## Notes
 

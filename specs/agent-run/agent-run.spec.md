@@ -1,11 +1,15 @@
 # agent-run: Library Specification
 
 <!--SECTION:SCOPE_TYPE-->
+
 ## scope-type
+
 library
+
 <!--/SECTION:SCOPE_TYPE-->
 
 <!--SECTION:VISION-->
+
 ## 1. Vision & Primary Goal
 
 Ядро, которое запускает внешний AI-движок и возвращает текстовый ответ. Вызывающий — чаще другой агент, чем человек — даёт текст-задание и (опционально) рабочие директории, получает Markdown-ответ. Вызывающий не обязан знать, какой движок внутри: по умолчанию opencode, дальше — другие.
@@ -13,32 +17,34 @@ library
 Главная задача: дать единый простой вызов «запусти агента над этими папками с этим заданием» и спрятать различия движков, изоляцию и режим прав. В v1 — только readonly: движку можно искать и читать, нельзя редактировать.
 
 Отдельная цель — **ошибки как контракт**. Потребитель не человек у терминала, а агент: при любом сбое он должен получить не сырой stderr, а типизированную ошибку с подсказкой — что сломалось и какая помощь нужна от человека. Тогда вызывающий агент либо чинит сам, либо просит оператора.
+
 <!--/SECTION:VISION-->
 
 <!--SECTION:GOLDEN_DX-->
+
 ## 2. Approved Golden DX Example
 
 ### Ядро (library)
 
 ```ts
-import { run, AgentRunError } from '@services/agent-run'
+import { run, AgentRunError } from '@services/agent-run';
 
 // happy: одна или несколько директорий
 const res = await run({
   task: 'как связаны эти репозитории и кто кого вызывает?',
   dirs: ['/path/repoA', '/path/repoB'], // пусто → текущая директория
-}) // mode: 'readonly' по умолчанию
+}); // mode: 'readonly' по умолчанию
 
-console.log(res.text) // Markdown-ответ движка
-console.log(res.engine) // 'opencode' — кто отработал
+console.log(res.text); // Markdown-ответ движка
+console.log(res.engine); // 'opencode' — кто отработал
 
 // error: типизированно, с подсказкой для оператора
 try {
-  await run({ task: '…', dirs: ['…'] })
+  await run({ task: '…', dirs: ['…'] });
 } catch (e) {
   if (e instanceof AgentRunError) {
-    e.code // 'VERSION_MISMATCH'
-    e.hint // 'попроси оператора: brew upgrade opencode'
+    e.code; // 'VERSION_MISMATCH'
+    e.hint; // 'попроси оператора: brew upgrade opencode'
   }
 }
 ```
@@ -47,7 +53,14 @@ try {
 
 ```text
 $ gennady run "как связаны эти репозитории?" --dir ../repoA --dir ../repoB
+<markdown-ответ движка>                       # модель по умолчанию llm-proxy/deepseek-v4-pro
+
+$ gennady run "опиши" --model llm-proxy/glm-4.7
 <markdown-ответ движка>
+
+$ gennady run "…" --model нет/такой
+✗ Модель «нет/такой» недоступна. Доступные: llm-proxy/deepseek-v4-pro, google/gemini-2.5-pro, …
+  Что сделать: выбери модель из списка через --model.   [MODEL_UNAVAILABLE]
 
 $ gennady run "…"
 ✗ Не удалось запустить агента: CLI opencode отстал от версии приложения.
@@ -55,9 +68,11 @@ $ gennady run "…"
 ```
 
 Текст на входе — текст на выходе. И в успехе, и в ошибке.
+
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
 ## 3. Requirements & Constraints
 
 ### 3.1 Functional Requirements
@@ -68,6 +83,7 @@ $ gennady run "…"
 - **F4** — режим readonly: чтение и поиск разрешены, любое редактирование запрещено и проговорено движку в задании.
 - **F5** — вернуть текстовый ответ (Markdown) и идентификатор отработавшего движка.
 - **F6** — при сбое бросить типизированную `AgentRunError` (`code` + `hint`): что не так и что нужно от человека.
+- **F7** — выбор модели: `model?` в `RunOptions`; не задана → дефолт движка (`llm-proxy/deepseek-v4-pro` у opencode). Модель недоступна → `MODEL_UNAVAILABLE` со списком доступных в hint (без молчаливой подмены). `listModels()` отдаёт список движка.
 
 ### 3.2 Non-Functional Constraints
 
@@ -86,12 +102,13 @@ $ gennady run "…"
 - Любое редактирование файлов движком (запись/патч).
 - Провайдеры кроме opencode (claude/codex/cursor — позже).
 - Headless-сервер / демон.
+- `--variant` (reasoning effort) — позже; в v1 только выбор модели (`--model`).
 
 ### 3.4 Runtime Backing & Deferred Scope
 
 - **Запуск opencode** — `real-runtime`: реальный подпроцесс `opencode run`.
 - **readonly-enforcement** — `real-runtime`, делегирован opencode. Механизм подтверждён: `opencode agent create --permissions "read,glob,grep,webfetch,websearch,lsp"` + `--agent` (allow-list; `edit`/`write`/`bash` вне списка). **Trust boundary:** ядро не перехватывает файловые операции само — полагается на permission-движок opencode. Если движок нарушит профиль, ядро это не остановит.
-- **multi-directory доступ** — `real-runtime`: первая директория → `--dir`, остальные → `external_directory: allow`. Феасибилити подтверждается спайком на этапе module-decomposition.
+- **multi-directory доступ** — намерение: первая директория → `--dir`, остальные → `external_directory: allow`. **v1: одна `--dir` + остальные пути в тексте задания; `external_directory` deferred** (Спайк 1). Феасибилити подтверждается спайком.
 - **Провайдеры кроме opencode** — `not-implemented` (deferred): контракт `AgentEngine` оставляет точку расширения, реализаций нет.
 
 ### 3.5 Rules
@@ -100,58 +117,69 @@ $ gennady run "…"
 | ---------------- | -------- | ---------------------- |
 | typescript-rules | coding   | inherited from project |
 | node-test        | testing  | inherited from project |
+
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:PUBLIC_API_SURFACE-->
+
 ## 4. Public API Surface
 
 ```ts
 // --- Рабочая точка входа ---
-export async function run(opts: RunOptions): Promise<RunResult>
+export async function run(opts: RunOptions): Promise<RunResult>;
 
 // --- Лёгкое «что установлено» (для CLI-подсказок и агентов) ---
-export async function listEngines(): Promise<EngineStatus[]>
+export async function listEngines(): Promise<EngineStatus[]>;
+
+// --- Список моделей движка (для CLI-подсказок и при MODEL_UNAVAILABLE) ---
+export async function listModels(engine?: string): Promise<string[]>;
 
 // --- Типизированная ошибка ---
 export class AgentRunError extends Error {
-  readonly code: ErrorCode
-  readonly hint: string
+  readonly code: ErrorCode;
+  readonly hint: string;
+  constructor(code: ErrorCode, hint: string); // message строится авто: `[AgentRunError] <code>: <hint>`
 }
+// Потребитель печатает hint + code (не message — message содержит их же).
 
 // --- DTO ---
 export type RunOptions = {
-  task: string // задание текстом
-  dirs?: string[] // первая = корень; остальные = разрешённые внешние; пусто = cwd
-  mode?: 'readonly' // v1: только readonly
-  engine?: string // по умолчанию авто (opencode первым)
-  timeout?: number // потолок на запуск, мс (дефолт 120000)
-}
+  task: string; // задание текстом
+  dirs?: string[]; // первая = корень; остальные = разрешённые внешние; пусто = cwd
+  mode?: 'readonly'; // v1: только readonly
+  engine?: string; // по умолчанию авто (opencode первым)
+  timeout?: number; // потолок на запуск, мс (дефолт 1800000 = 30 мин; реальная работа агента длинная)
+  model?: string; // 'provider/model'; не задана → дефолт движка (opencode: llm-proxy/deepseek-v4-pro)
+};
 
 export type RunResult = {
-  text: string // Markdown-ответ движка
-  engine: string // идентификатор отработавшего движка
-}
+  text: string; // Markdown-ответ движка
+  engine: string; // идентификатор отработавшего движка
+};
 
 export type EngineStatus = {
-  id: string // 'opencode'
-  installed: boolean
-  version?: string
-}
+  id: string; // 'opencode'
+  installed: boolean;
+  version?: string;
+};
 
 export type ErrorCode =
   | 'AGENT_NOT_INSTALLED' // движок не найден в PATH (spawn ENOENT/EACCES)
   | 'NETWORK_BLOCKED' // прокси/сеть режет доступ к провайдеру
   | 'VERSION_MISMATCH' // CLI движка рассинхронен (напр. schema-ошибка БД)
-  | 'MODEL_FORBIDDEN' // нет прав на модель/провайдера
+  | 'MODEL_FORBIDDEN' // нет прав на модель/провайдера (403)
+  | 'MODEL_UNAVAILABLE' // модель не найдена у движка; hint = список доступных
   | 'CREDENTIAL_MISSING' // не задан ключ провайдера
   | 'TIMEOUT' // запуск превысил timeout, подпроцесс убит
-  | 'LAUNCH_FAILED' // прочее: сырой stderr + «причина не распознана»
+  | 'LAUNCH_FAILED'; // прочее: сырой stderr + «причина не распознана»
 ```
 
 Каталог `ErrorCode` растёт по мере новых случаев; сигнатура `run()` при этом стабильна.
+
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
 <!--SECTION:ARCHITECTURE-->
+
 ## 5. Architecture
 
 Паттерн: **движок-адаптер + registry**. Один внутренний контракт `AgentEngine`, opencode — первая реализация. `registry` находит установленные движки и выбирает дефолт (opencode первым). Новый движок — новая папка под `engines/`; публичный API и контракт не меняются.
@@ -175,9 +203,9 @@ services/agent-run/
 
 ```ts
 interface AgentEngine {
-  readonly id: string // 'opencode'
-  detect(): Promise<{ installed: boolean; version?: string }>
-  run(opts: RunOptions): Promise<RunResult> // кидает AgentRunError
+  readonly id: string; // 'opencode'
+  detect(): Promise<{ installed: boolean; version?: string }>;
+  run(opts: RunOptions): Promise<RunResult>; // кидает AgentRunError
 }
 ```
 
@@ -194,9 +222,11 @@ interface AgentEngine {
 <!--/SECTION:ARCHITECTURE-->
 
 <!--SECTION:DECISION_LOG-->
+
 ## 6. Decision Log
 
 ### D-001 — Свежий scope, agent-cli как донор идей
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** существующий `agent-cli` вне реестра спек, без opencode, с рамкой orchestrator/json; оператор просил не брать наработку целиком только потому, что она есть.
@@ -204,36 +234,42 @@ interface AgentEngine {
 - **Rejected alternatives:** принять agent-cli в реестр и refine; pivot.
 
 ### D-002 — Одноразовый `opencode run`, без сервера
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** вызывающий зовёт команду и получает результат; сервер — лишняя сложность для v1.
 - **Rejected alternatives:** headless `serve` + HTTP.
 
 ### D-003 — Текстовый вывод (Markdown), не JSON
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** потребитель читает текст; агенты лучше всего обмениваются Markdown; opencode и так отдаёт текст по умолчанию.
 - **Rejected alternatives:** `--format json` с разбором событий.
 
 ### D-004 — Ошибки как типизированный контракт (code + hint)
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** потребитель — агент; при сбое нужна машинно-различимая причина и текстовая подсказка для оператора, а не сырой stderr.
 - **Risk accepted:** каталог ошибок будет расти; контракт держим стабильным.
 
 ### D-005 — readonly через профиль прав opencode (`--agent`)
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** у opencode есть permission-движок (видели агентов с `edit/write: deny`); надёжнее, чем разбор флагов.
 - **Risk accepted:** enforcement делегирован opencode — trust boundary (см. 3.4).
 
 ### D-006 — multi-directory через `--dir` + `external_directory`
+
 - **Status:** active
 - **Recorded:** session Discovery, agent-run
 - **Why:** задача не ограничена одним репозиторием; нужно сопоставлять 2-3 папки/репозитория.
 - **Risk accepted:** точная феасибилити доступа к внешним директориям подтверждается спайком на module-decomposition.
 
 ### D-007 — Декомпозиция по слою стабильности: `core` + `opencode`
+
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-run
 - **Why:** граница проходит там, где она реальна — движок-независимое ядро не меняется при добавлении движков, адаптер свой у каждого; ось совпадает с точкой расширения архитектуры.
@@ -241,32 +277,47 @@ interface AgentEngine {
 - **Rejected alternatives:** 3 модуля (`contracts`/`runtime`/`opencode`) — искусственная граница типов и orchestration для v1; один плоский модуль — прячет точку расширения, потребует передекомпозиции при втором движке.
 
 ### D-008 — Оптимистичный запуск вместо pre-flight detect (скорость)
+
 - **Status:** active
 - **Recorded:** session SddCritic, agent-run
 - **Why:** скорость — главное правило, инструмент зовут агенты в цикле; пред-проверка `--version` на каждый запуск = лишний подпроцесс. Запускаем сразу, отсутствие движка ловим по spawn-ошибке (подтверждено спайком: `error.code` ENOENT/EACCES); `detect()` остаётся для явного `listEngines()` и кэшируется. `timeout` (120000 мс) против зависания.
 - **Risk accepted:** TOCTOU-зазор detect↔spawn — закрыт маппингом spawn-ошибки в `AGENT_NOT_INSTALLED`.
 - **Rejected alternatives:** detect-then-run на горячем пути (медленнее). Мульти-движковый фолбэк — отложен (в v1 движок один; порядок реестра его уже поддерживает).
+
+### D-009 — Выбор модели: дефолт deepseek, ошибка-со-списком вместо подмены
+
+- **Status:** active
+- **Recorded:** session SddContinue (refine), agent-run
+- **Why:** оператор: по умолчанию `llm-proxy/deepseek-v4-pro`; если модель недоступна — не подменять молча, а вернуть список доступных, чтобы агент/человек выбрал.
+- **Risk accepted:** список тянется через `opencode models` только на ветке ошибки `MODEL_UNAVAILABLE` (вне горячего пути — скорость сохранена).
+- **Rejected alternatives:** pre-flight проверка модели на каждый запуск (медленно); молчаливый фолбэк на другую модель (скрывает проблему); переиспользовать `MODEL_FORBIDDEN` (другая семантика — 403 vs не-в-списке).
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
+
 ## 7. Scope Dependencies
+
 - **Depends on:** `infra-base` (Node + tsx, node:test, prettier, tsc).
 - **Provides to:** `cli` (команда `run` — тонкий потребитель ядра).
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+
 ## 8. Bootstrap Requirements
 
-| Requirement | Kind | Owner | Resolution |
-|---|---|---|---|
-| opencode CLI в PATH | tool | operator-action | оператор ставит opencode; отсутствие обрабатывается как `AGENT_NOT_INSTALLED` |
-| Папка `services/agent-run/` с `index.ts` | structural | this-scope-task | создать пакет и экспорт через alias `@services/agent-run` |
+| Requirement                              | Kind       | Owner           | Resolution                                                                    |
+| ---------------------------------------- | ---------- | --------------- | ----------------------------------------------------------------------------- |
+| opencode CLI в PATH                      | tool       | operator-action | оператор ставит opencode; отсутствие обрабатывается как `AGENT_NOT_INSTALLED` |
+| Папка `services/agent-run/` с `index.ts` | structural | this-scope-task | создать пакет и экспорт через alias `@services/agent-run`                     |
 
 Новых npm-пакетов не требуется: запуск через встроенный `node:child_process`, типы — TypeScript, тесты — `node --import tsx --test` (всё уже в стеке).
+
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:HANDOFF-->
+
 ## 9. Handoff to module-decomposition
+
 - **Areas requiring decomposition:** контракт `AgentEngine` + DTO (`core/`); opencode-движок (`engines/opencode/`) — запуск, readonly-профиль, multi-dir, env-гигиена; маппинг ошибок (`opencode-error-map`); `registry` (detect + дефолт).
 - **Named abstractions:** `run`, `listEngines`, `AgentRunError`, `RunOptions`, `RunResult`, `EngineStatus`, `ErrorCode`, `AgentEngine`.
 - **Spikes до реализации:** (1) доступ к внешним директориям opencode (`external_directory` + `--dir`); (2) точная разводка readonly-профиля (`opencode agent create` vs готовый файл профиля в изолированной config-директории).
@@ -276,6 +327,7 @@ interface AgentEngine {
 <!--/SECTION:HANDOFF-->
 
 <!--SECTION:MODULE_MAP-->
+
 ## 10. Module Map (post-ModuleDecomposition)
 
 Spec hierarchy is materialized at `specs/agent-run/`. Module specs are at `specs/agent-run/<module>/<module>.spec.md`.
@@ -295,10 +347,12 @@ graph TD
 ```
 
 ### 10.3 Stack Dependencies
+
 - Languages: `typescript`
 - Test frameworks: `node-test`
 
 ### 10.4 Handoff to task-scaffolding
+
 - **Primary input:** `specs/agent-run/agent-run.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`.
 - **Open risks & validation needs:** спайк доступа к внешним директориям opencode (с v1-фолбэком); readonly как trust boundary.

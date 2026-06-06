@@ -1,7 +1,9 @@
 # Task: TSK-52 — Elements module
 
 <!--SECTION:META-->
+
 ## 1. Meta
+
 - **Task-ID:** TSK-52
 - **Status:** [ ] TODO
 - **Purpose:** Реализовать 9 встроенных JSX-примитивов: Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden, Section, List, Code, Bold. Каждый — через definePromptElement с предопределённой ролью и рендер-функциями. Покрыть фикстурами каждый примитив в обоих форматах.
@@ -25,17 +27,22 @@
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
+
 ## 2. Phases Overview
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | — | [ ] |
-| P2 | test | P1 | [ ] |
+
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | test | P1   | [ ]    |
+
 <!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
 
 <!--SECTION:PHASE_P1-->
+
 ### P1 — impl
+
 - **Objective:** Создать 9 примитивов через definePromptElement. Prompt (root, keywords→md заголовок + xml атрибут), PrimaryGoal/BeliefState/HardForbidden (section, includeBoundaryComments: true), Axiom (section, id prop→markdownTitle), Section (section, title + опциональный id), List (list, ordered/title), Code (block, lang/title), Bold (inline). Каждый — в отдельном файле, агрегирующий `index.ts`.
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
@@ -55,7 +62,9 @@
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
+
 ### P2 — test
+
 - **Objective:** Фикстура на каждый примитив: input.tsx → expected.xml + expected.md. Каждый примитив проверяется изолированно через renderPrompt в обоих форматах.
 - **Rules:**
   - [node-test](../../ai/directives/testing/node-test.xml)
@@ -109,17 +118,21 @@
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:BDD-->
+
 ## 4. Acceptance Criteria (BDD)
+
 Contract: see Spec References.
 
 **Feature:** Prompt — корень сообщения
 
 **Scenario:** С keywords [`unit`]
+
 - **Given** `<Prompt keywords="rules, safety">текст</Prompt>`
 - **When** renderPrompt(..., 'md')
 - **Then** вывод: `## KEYWORDS:\nrules, safety\n\nтекст`
 
 **Scenario:** Без keywords [`unit`]
+
 - **Given** `<Prompt>текст</Prompt>`
 - **When** renderPrompt(..., 'xml')
 - **Then** вывод: `<Prompt>\n  текст\n</Prompt>` (без атрибута keywords)
@@ -127,6 +140,7 @@ Contract: see Spec References.
 **Feature:** Axiom — секция с id
 
 **Scenario:** id в заголовке md [`unit`]
+
 - **Given** `<Axiom id="AX_1">текст</Axiom>`
 - **When** renderPrompt(..., 'md')
 - **Then** заголовок: `### AXIOM \`AX_1\`:\n<!--START_AXIOM_AX_1-->\nтекст\n<!--END_AXIOM_AX_1-->`
@@ -134,11 +148,13 @@ Contract: see Spec References.
 **Feature:** List — список
 
 **Scenario:** Ordered list [`unit`]
+
 - **Given** `<List ordered>первый<Bold>второй</Bold></List>`
 - **When** renderPrompt(..., 'md')
 - **Then** ` 1 первый;\n 2 **второй**.`
 
 **Scenario:** Unordered с title [`unit`]
+
 - **Given** `<List title="Приоритеты">a<Bold>b</Bold></List>`
 - **When** renderPrompt(..., 'md')
 - **Then** `**Приоритеты:**\n - a;\n - **b**.`
@@ -146,6 +162,7 @@ Contract: see Spec References.
 **Feature:** Section — универсальная
 
 **Scenario:** С id — якорь [`unit`]
+
 - **Given** `<Section title="HELP" id="help">текст</Section>`
 - **When** renderPrompt(..., 'md')
 - **Then** якорь: `<!--START_SECTION_HELP-->`
@@ -153,6 +170,7 @@ Contract: see Spec References.
 **Feature:** Code — блок кода
 
 **Scenario:** С lang и title [`unit`]
+
 - **Given** `<Code lang="ts" title="Пример">const x = 1</Code>`
 - **When** renderPrompt(..., 'md')
 - **Then** `**Пример:**\n\`\`\`ts\nconst x = 1\n\`\`\``
@@ -160,23 +178,28 @@ Contract: see Spec References.
 **Feature:** Bold — жирный inline
 
 **Scenario:** Bold внутри текста [`unit`]
+
 - **Given** `<Bold>жирный</Bold>`
 - **When** renderPrompt(..., 'md')
 - **Then** `**жирный**`
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+
 ## 5. Verification
-| Command | Required by |
-|---|---|
-| `npm run type-check` | typescript-rules |
-| `node --import tsx --test prompt-kit/elements/__tests__/*.test.ts` | node-test |
+
+| Command                                                            | Required by      |
+| ------------------------------------------------------------------ | ---------------- |
+| `npm run type-check`                                               | typescript-rules |
+| `node --import tsx --test prompt-kit/elements/__tests__/*.test.ts` | node-test        |
 
 - **Completion additions:** Все 14 фикстур должны проходить — каждый примитив рендерится ожидаемо в обоих форматах
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
+
 ## 6. Test Scenario Coverage
+
 - С keywords → `prompt-kit/elements/__tests__/elements-fixtures.test.ts` :: `prompt-basic`
 - Без keywords → `prompt-kit/elements/__tests__/elements-fixtures.test.ts` :: `prompt-no-keywords`
 - id в заголовке md → `prompt-kit/elements/__tests__/elements-fixtures.test.ts` :: `axiom`
@@ -187,21 +210,26 @@ Contract: see Spec References.
 - Bold inline → `prompt-kit/elements/__tests__/elements-fixtures.test.ts` :: `bold`
 
 Все 14 фикстурных кейсов: `prompt-basic`, `prompt-no-keywords`, `primary-goal`, `belief-state`, `axiom`, `hard-forbidden`, `section-basic`, `section-with-id`, `list-ordered`, `list-unordered`, `list-title`, `code-basic`, `code-with-title`, `bold`
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
-*(Round = one execute-then-audit attempt.)*
+
+_(Round = one execute-then-audit attempt.)_
 
 ### Round 1 — <YYYY-MM-DD>, initial
 
 #### P1
+
 - [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
-**Handoff →** artifacts: [9 element files + index.ts]; decisions: [...]; open: [...]
+      **Handoff →** artifacts: [9 element files + index.ts]; decisions: [...]; open: [...]
 
 #### P2
+
 - [ ] `<ts>` ver `node --import tsx --test prompt-kit/elements/__tests__/*.test.ts` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
-**Handoff →** artifacts: [15 fixture sets + 2 test files]; decisions: [...]; open: [...]
+    **Handoff →** artifacts: [15 fixture sets + 2 test files]; decisions: [...]; open: [...]
 <!--/SECTION:EXECUTION_LOG-->

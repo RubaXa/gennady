@@ -913,9 +913,38 @@ $ gennady agents-rules
 
 # exit 0, тот же вывод
 
-```
+````
 
 Команда `agents-rules` читает `cli/cmd/orient/README.md` из пакета gennady и выводит на stdout. `README.md` — канонический источник: виден человеку в GitHub и доступен агенту через команду. Перед чтением проверяется наличие `node_modules/gennady/` в проекте.
+
+### 3.8 run DX
+
+Тонкая обёртка над библиотекой [`@services/agent-run`](../agent-run/agent-run.spec.md): запускает внешний AI-движок (по умолчанию opencode) с заданием и директориями в readonly, печатает текстовый ответ. Потребитель — чаще агент.
+
+```bash
+# happy path — модель по умолчанию берётся из движка (llm-proxy/deepseek-v4-pro); CLI её не задаёт
+$ gennady run "опиши этот репозиторий одним предложением"
+<markdown-ответ движка>
+# exit 0
+
+# несколько директорий + явная модель
+$ gennady run "как связаны эти репозитории?" --dir ../repoA --dir ../repoB --model llm-proxy/glm-4.7
+<markdown-ответ движка>
+# exit 0
+
+# модель недоступна → список, не молчаливая подмена
+$ gennady run "…" --model нет/такой
+✗ Модель «нет/такой» недоступна. Доступные: llm-proxy/deepseek-v4-pro, google/gemini-2.5-pro, …
+  Что сделать: выбери модель из списка через --model.   [MODEL_UNAVAILABLE]
+# exit 1
+
+# движок не установлен
+$ gennady run "…"
+✗ opencode не найден. Что сделать: попроси оператора `brew install opencode`.   [AGENT_NOT_INSTALLED]
+# exit 1
+````
+
+Флаги: позиционный `<задание>` (обязателен); `--dir <path>` (повторяемый, дефолт cwd); `--model <provider/model>` (дефолт `llm-proxy/deepseek-v4-pro`); `--engine <id>` (дефолт opencode); `--timeout <ms>` (дефолт 120000). readonly всегда включён в v1. Успех → markdown в stdout, exit 0. Ошибка → `✗ <причина> [CODE]` + подсказка в stderr, exit 1.
 
 ## 4. Requirements & Constraints
 
@@ -1003,7 +1032,7 @@ $ gennady agents-rules
 | FR-SU-13         | Пропустить проверку в CI-окружениях (`CI`, `CONTINUOUS_INTEGRATION`, `BUILD_NUMBER` env)                                                  |
 | FR-SU-14         | Пропустить проверку если `NODE_ENV === 'test'`                                                                                            |
 | **Версия CLI**   |                                                                                                                                           |
-| FR-SU-15         | `--version` и `-v` выводят текущую версию в stdout и завершаются с exit code 0
+| FR-SU-15         | `--version` и `-v` выводят текущую версию в stdout и завершаются с exit code 0                                                            |
 
 ### 4.1.4 sync Functional Requirements
 
@@ -1089,82 +1118,94 @@ $ gennady agents-rules
 
 ### 4.1.6 sync-skills Functional Requirements
 
-| ID                     | Требование                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Обнаружение пакета** |                                                                                                                                                              |
-| FR-SS-01               | Использовать shared `resolvePackageDir('ai/skills')`: приоритет — `<cwd>/node_modules/gennady/ai/skills/`, fallback — `import.meta.resolve('gennady')` + `/ai/skills/` |
-| FR-SS-02               | Пакет не найден → ошибка `gennady package not found. Install it locally: npm i -D gennady`                                                                    |
-| **Синхронизация**      |                                                                                                                                                              |
-| FR-SS-03               | Source → Target: `<pkg>/ai/skills/` → `<cwd>/.claude/skills/`                                                                                                |
-| FR-SS-04               | Рекурсивное копирование: каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts)                                                                 |
+| ID                     | Требование                                                                                                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Обнаружение пакета** |                                                                                                                                                                                                                                                                          |
+| FR-SS-01               | Использовать shared `resolvePackageDir('ai/skills')`: приоритет — `<cwd>/node_modules/gennady/ai/skills/`, fallback — `import.meta.resolve('gennady')` + `/ai/skills/`                                                                                                   |
+| FR-SS-02               | Пакет не найден → ошибка `gennady package not found. Install it locally: npm i -D gennady`                                                                                                                                                                               |
+| **Синхронизация**      |                                                                                                                                                                                                                                                                          |
+| FR-SS-03               | Source → Target: `<pkg>/ai/skills/` → `<cwd>/.claude/skills/`                                                                                                                                                                                                            |
+| FR-SS-04               | Рекурсивное копирование: каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts)                                                                                                                                                                            |
 | FR-SS-05               | **Orphan-удаление:** файл/директория есть в target, отсутствует в source → удалить. Полная синхронизация (rsync --delete). При фильтрации по позиционным аргументам — orphan-удаление применяется только к указанным скилам; неуказанные скилы в target не затрагиваются |
-| FR-SS-05a              | Ошибка удаления orphan (EACCES, EBUSY) → предупреждение `ERR_CLI_SYNC_SKILLS_DELETE_FAILED` в stderr, скил помечается маркером `!`, синхронизация продолжается |
-| FR-SS-06               | Target-директория `.claude/skills/` создаётся `mkdirSync({ recursive: true })`, если отсутствует                                                              |
-| **Сравнение**          |                                                                                                                                                              |
-| FR-SS-07               | Файлы сравниваются побайтово через shared `compareBytes` (`Buffer.compare`). Скил помечается `updated`, если изменился хотя бы один файл внутри              |
-| FR-SS-08               | При сравнении исключаются: скрытые файлы (`.`-префикс), `.DS_Store`                                                                                          |
-| **Фильтрация**         |                                                                                                                                                              |
-| FR-SS-09               | Без позиционных аргументов — синхронизируются все скилы из `ai/skills/`                                                                                      |
-| FR-SS-10               | Позиционные аргументы — имена скилов (например, `gennady sync-skills sdd-execute alt-opinion`). Синхронизируются только указанные                            |
-| FR-SS-11               | Несуществующий скил → ошибка с перечислением доступных                                                                                                       |
-| **Вывод**              |                                                                                                                                                              |
-| FR-SS-12               | Маркеры: `+` (added), `~` (updated), `-` (deleted/orphan), `=` (unchanged) через shared `SyncFormatter`                                                      |
-| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ sdd-execute/` → `      scripts/verify.sh`. Для `+` показываются все файлы, для `=`/`-` — только имя скила |
-| FR-SS-14               | Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`                                                                                          |
-| FR-SS-15               | `--dry-run` — предпросмотр: маркеры `(would add)` / `(would update)` / `(would delete)` / `(unchanged, skip)`. Итог: `Dry-run: no files written.`            |
-| **Exit codes**         |                                                                                                                                                              |
-| FR-SS-16               | Exit 0 — успех, exit 1 — ошибка (пакет не найден, несуществующий скил)                                                                                       |
+| FR-SS-05a              | Ошибка удаления orphan (EACCES, EBUSY) → предупреждение `ERR_CLI_SYNC_SKILLS_DELETE_FAILED` в stderr, скил помечается маркером `!`, синхронизация продолжается                                                                                                           |
+| FR-SS-06               | Target-директория `.claude/skills/` создаётся `mkdirSync({ recursive: true })`, если отсутствует                                                                                                                                                                         |
+| **Сравнение**          |                                                                                                                                                                                                                                                                          |
+| FR-SS-07               | Файлы сравниваются побайтово через shared `compareBytes` (`Buffer.compare`). Скил помечается `updated`, если изменился хотя бы один файл внутри                                                                                                                          |
+| FR-SS-08               | При сравнении исключаются: скрытые файлы (`.`-префикс), `.DS_Store`                                                                                                                                                                                                      |
+| **Фильтрация**         |                                                                                                                                                                                                                                                                          |
+| FR-SS-09               | Без позиционных аргументов — синхронизируются все скилы из `ai/skills/`                                                                                                                                                                                                  |
+| FR-SS-10               | Позиционные аргументы — имена скилов (например, `gennady sync-skills sdd-execute alt-opinion`). Синхронизируются только указанные                                                                                                                                        |
+| FR-SS-11               | Несуществующий скил → ошибка с перечислением доступных                                                                                                                                                                                                                   |
+| **Вывод**              |                                                                                                                                                                                                                                                                          |
+| FR-SS-12               | Маркеры: `+` (added), `~` (updated), `-` (deleted/orphan), `=` (unchanged) через shared `SyncFormatter`                                                                                                                                                                  |
+| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ sdd-execute/` → `      scripts/verify.sh`. Для `+` показываются все файлы, для `=`/`-` — только имя скила                                                                                             |
+| FR-SS-14               | Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`                                                                                                                                                                                                      |
+| FR-SS-15               | `--dry-run` — предпросмотр: маркеры `(would add)` / `(would update)` / `(would delete)` / `(unchanged, skip)`. Итог: `Dry-run: no files written.`                                                                                                                        |
+| **Exit codes**         |                                                                                                                                                                                                                                                                          |
+| FR-SS-16               | Exit 0 — успех, exit 1 — ошибка (пакет не найден, несуществующий скил)                                                                                                                                                                                                   |
 
 ### 4.1.7 agents-rules Functional Requirements
 
-| ID          | Требование                                                                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Проверка** |                                                                                                                                                              |
-| FR-AR-01    | Проверить, что `gennady` установлен в проекте (`<cwd>/node_modules/gennady/`). Если нет — ошибка: `gennady package not found. Install it locally: npm i -D gennady`, exit 1 |
-| **Вывод**   |                                                                                                                                                              |
-| FR-AR-02    | Прочитать `cli/cmd/orient/README.md` из пакета gennady (резолв через `import.meta.resolve('gennady')` + путь к `cli/cmd/orient/README.md`)                    |
-| FR-AR-03    | Вывести содержимое `README.md` на stdout как есть (markdown)                                                                                                  |
-| FR-AR-04    | Без аргументов, без флагов. Одна точка входа: `gennady agents-rules`                                                                                          |
-| FR-AR-05    | Exit code 0 при успехе, 1 при ошибке (пакет не найден)                                                                                                        |
-| FR-AR-06    | `README.md` — канонический источник контента. При добавлении новой команды в `orient` разработчик обязан обновить `README.md`                                 |
+| ID           | Требование                                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Проверка** |                                                                                                                                                                             |
+| FR-AR-01     | Проверить, что `gennady` установлен в проекте (`<cwd>/node_modules/gennady/`). Если нет — ошибка: `gennady package not found. Install it locally: npm i -D gennady`, exit 1 |
+| **Вывод**    |                                                                                                                                                                             |
+| FR-AR-02     | Прочитать `cli/cmd/orient/README.md` из пакета gennady (резолв через `import.meta.resolve('gennady')` + путь к `cli/cmd/orient/README.md`)                                  |
+| FR-AR-03     | Вывести содержимое `README.md` на stdout как есть (markdown)                                                                                                                |
+| FR-AR-04     | Без аргументов, без флагов. Одна точка входа: `gennady agents-rules`                                                                                                        |
+| FR-AR-05     | Exit code 0 при успехе, 1 при ошибке (пакет не найден)                                                                                                                      |
+| FR-AR-06     | `README.md` — канонический источник контента. При добавлении новой команды в `orient` разработчик обязан обновить `README.md`                                               |
 
 ### 4.1.8 E2E Testing Functional Requirements
 
-| ID               | Требование                                                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Артефакт**     |                                                                                                                                                           |
-| FR-E2E-01        | E2E-тесты работают с локальным артефактом: `npm pack` создаёт `.tgz`, идентичный публикуемому в реестр                                                     |
-| FR-E2E-02        | `setup.ts` запускает `npm run build` первым шагом. Если билд падает — тест падает с ошибкой билда (stderr команды `npm run build`) |
-| **Setup-ошибки**  |                                                                                                                                                           |
-| FR-E2E-02a       | `npm pack` — при падении (npm не установлен, permission denied) тест падает с сообщением `npm pack failed: <stderr>`. BDD: `GIVEN npm pack fails WHEN setupE2e() called THEN test fails with pack error in message` |
-| FR-E2E-02b       | `npm install <tgz>` — при падении (диск заполнен, permission denied) тест падает с сообщением `npm install failed: <stderr>`. BDD: `GIVEN npm install fails WHEN setupE2e() called THEN test fails with install error in message` |
-| FR-E2E-02c       | Создание temp-директории — при падении (EACCES) тест падает с сообщением `failed to create temp directory: <error>`. BDD: `GIVEN os.tmpdir() unavailable WHEN setupE2e() called THEN test fails with directory creation error` |
-| FR-E2E-02d       | Копирование fixture-проекта — при падении (ENOENT, EACCES) тест падает с указанием недостающего файла. BDD: `GIVEN fixtures/ missing WHEN setupE2e() called THEN test fails specifying which fixture file is absent` |
-| **Фикстура**     |                                                                                                                                                           |
-| FR-E2E-03        | Статическая fixture-директория `cli/__tests__/e2e/fixtures/` содержит преднастроенные файлы для каждой тестируемой команды. Для lint: 5 `.ts` файлов с разными типами ошибок. Для orient: 2 `.ts` файла с `@tasks:`, `@consumers:` и экспортируемыми сущностями с `@purpose` |
-| FR-E2E-04        | Fixture-директория исключена из линтинга, форматирования и type-check (`**/__tests__/fixtures/**` уже в `.prettierignore` и `tsconfig.json exclude`)      |
-| FR-E2E-05        | `gennady lint` НЕ линтит файлы из `**/__tests__/fixtures/**` — они исключаются в `resolveTargets` наравне с `node_modules` и `dist`                        |
-| FR-E2E-06        | Один раз перед всеми тестами (`before`) fixture-проект копируется во временную директорию (`os.tmpdir()/gennady-e2e-XXXXX/`), в неё устанавливается `.tgz`. После завершения ВСЕХ тестов (`after`) временная директория удаляется |
-| FR-E2E-06a       | `afterEach` очищает состояние после тестов, модифицирующих fixture: для `sync` — удаляет `ai/directives/`, для `sync-skills` — удаляет `.claude/skills/`. Если очистка падает (EACCES) — ошибка выводится в stderr, но НЕ фейлит тест (ОС чистит `/tmp`) |
-| **Запуск команд** |                                                                                                                                                           |
-| FR-E2E-07        | Команды запускаются как дочерний процесс: `spawn('npx', ['gennady', ...args], { cwd: tempDir, timeout: 30_000 })`. Таймаут 30 секунд на команду            |
-| FR-E2E-07a       | При таймауте `spawn` — тест падает с сообщением `spawn timed out after 30s: gennady <args>`. BDD: `GIVEN CLI command hangs WHEN timeout exceeded THEN test fails with timeout message` |
-| FR-E2E-08        | Тест перехватывает stdout, stderr и exit code дочернего процесса                                                                                          |
-| FR-E2E-09        | Все e2e-тесты запускаются с `GENNADY_NO_UPDATE_CHECK=1` (update-check не релевантен для e2e)                                                               |
-| **Покрытие lint** |                                                                                                                                                           |
-| FR-E2E-10        | `lint`: happy path (чистый файл → exit 0), ошибки (нет @file:, нет @consumers:, непарные anchor), autofix, `--staged` (fixture: `git init && git add -A` в `setup.ts`), передача директории, несуществующий путь |
-| FR-E2E-10a       | Fixture-файлы для lint: `clean.ts` (`@file:` + `@consumers:` валидны, парные anchor), `no-header.ts` (без `@file:`), `no-consumers.ts` (без `@consumers:`), `bad-anchor.ts` (START_X без END_X, но `@file:` и `@consumers:` валидны — anchor-ошибка не должна маскироваться header-ошибкой), `needs-autofix.ts` (валидный header + парные anchor, но DBC-ошибки) |
-| **Покрытие sync** |                                                                                                                                                           |
-| FR-E2E-11        | `sync`: первый запуск (добавление `ai/directives/` из пакета), повторный без изменений (тест сам делает два последовательных `spawn sync` — первый создаёт, второй проверяет "unchanged"), `--dry-run`, фильтр по поддиректориям, несуществующая поддиректория |
-| **Покрытие orient** |                                                                                                                                                        |
-| FR-E2E-12        | `orient`: карта проекта (`orient`), поиск по задаче (`--task=TSK-FIX-01` — fixture-файлы содержат этот task-id), поиск потребителей (`--consumer=FixtureConsumer`), поиск по ключевому слову (`"fixture"` в `@file:`), детальный файл (`--file=src/service.ts`), граф (`--graph`) |
-| FR-E2E-12a       | Fixture-файлы для orient: `service.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureService` с `@purpose`), `helper.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureHelper` с `@purpose`). Эти файлы также имеют валидные header и anchor — они проходят lint |
-| **Покрытие sync-skills** |                                                                                                                                                     |
-| FR-E2E-13        | `sync-skills`: установка (включает повторный `spawn` для проверки "unchanged"), `--dry-run`, фильтр по скилам |
-| **Вывод**        |                                                                                                                                                           |
-| FR-E2E-14        | Отдельная npm-команда: `npm run test:e2e`. Не входит в `npm test`                                                                                         |
-| FR-E2E-15        | При падении теста — вывод stdout/stderr упавшей команды для отладки                                                                                       |
-| FR-E2E-16        | Тесты используют `node:test` (как весь проект, согласно `infra-base`)                                                                                      |
+| ID                       | Требование                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Артефакт**             |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-01                | E2E-тесты работают с локальным артефактом: `npm pack` создаёт `.tgz`, идентичный публикуемому в реестр                                                                                                                                                                                                                                                           |
+| FR-E2E-02                | `setup.ts` запускает `npm run build` первым шагом. Если билд падает — тест падает с ошибкой билда (stderr команды `npm run build`)                                                                                                                                                                                                                               |
+| **Setup-ошибки**         |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-02a               | `npm pack` — при падении (npm не установлен, permission denied) тест падает с сообщением `npm pack failed: <stderr>`. BDD: `GIVEN npm pack fails WHEN setupE2e() called THEN test fails with pack error in message`                                                                                                                                              |
+| FR-E2E-02b               | `npm install <tgz>` — при падении (диск заполнен, permission denied) тест падает с сообщением `npm install failed: <stderr>`. BDD: `GIVEN npm install fails WHEN setupE2e() called THEN test fails with install error in message`                                                                                                                                |
+| FR-E2E-02c               | Создание temp-директории — при падении (EACCES) тест падает с сообщением `failed to create temp directory: <error>`. BDD: `GIVEN os.tmpdir() unavailable WHEN setupE2e() called THEN test fails with directory creation error`                                                                                                                                   |
+| FR-E2E-02d               | Копирование fixture-проекта — при падении (ENOENT, EACCES) тест падает с указанием недостающего файла. BDD: `GIVEN fixtures/ missing WHEN setupE2e() called THEN test fails specifying which fixture file is absent`                                                                                                                                             |
+| **Фикстура**             |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-03                | Статическая fixture-директория `cli/__tests__/e2e/fixtures/` содержит преднастроенные файлы для каждой тестируемой команды. Для lint: 5 `.ts` файлов с разными типами ошибок. Для orient: 2 `.ts` файла с `@tasks:`, `@consumers:` и экспортируемыми сущностями с `@purpose`                                                                                     |
+| FR-E2E-04                | Fixture-директория исключена из линтинга, форматирования и type-check (`**/__tests__/fixtures/**` уже в `.prettierignore` и `tsconfig.json exclude`)                                                                                                                                                                                                             |
+| FR-E2E-05                | `gennady lint` НЕ линтит файлы из `**/__tests__/fixtures/**` — они исключаются в `resolveTargets` наравне с `node_modules` и `dist`                                                                                                                                                                                                                              |
+| FR-E2E-06                | Один раз перед всеми тестами (`before`) fixture-проект копируется во временную директорию (`os.tmpdir()/gennady-e2e-XXXXX/`), в неё устанавливается `.tgz`. После завершения ВСЕХ тестов (`after`) временная директория удаляется                                                                                                                                |
+| FR-E2E-06a               | `afterEach` очищает состояние после тестов, модифицирующих fixture: для `sync` — удаляет `ai/directives/`, для `sync-skills` — удаляет `.claude/skills/`. Если очистка падает (EACCES) — ошибка выводится в stderr, но НЕ фейлит тест (ОС чистит `/tmp`)                                                                                                         |
+| **Запуск команд**        |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-07                | Команды запускаются как дочерний процесс: `spawn('npx', ['gennady', ...args], { cwd: tempDir, timeout: 30_000 })`. Таймаут 30 секунд на команду                                                                                                                                                                                                                  |
+| FR-E2E-07a               | При таймауте `spawn` — тест падает с сообщением `spawn timed out after 30s: gennady <args>`. BDD: `GIVEN CLI command hangs WHEN timeout exceeded THEN test fails with timeout message`                                                                                                                                                                           |
+| FR-E2E-08                | Тест перехватывает stdout, stderr и exit code дочернего процесса                                                                                                                                                                                                                                                                                                 |
+| FR-E2E-09                | Все e2e-тесты запускаются с `GENNADY_NO_UPDATE_CHECK=1` (update-check не релевантен для e2e)                                                                                                                                                                                                                                                                     |
+| **Покрытие lint**        |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-10                | `lint`: happy path (чистый файл → exit 0), ошибки (нет @file:, нет @consumers:, непарные anchor), autofix, `--staged` (fixture: `git init && git add -A` в `setup.ts`), передача директории, несуществующий путь                                                                                                                                                 |
+| FR-E2E-10a               | Fixture-файлы для lint: `clean.ts` (`@file:` + `@consumers:` валидны, парные anchor), `no-header.ts` (без `@file:`), `no-consumers.ts` (без `@consumers:`), `bad-anchor.ts` (START_X без END_X, но `@file:` и `@consumers:` валидны — anchor-ошибка не должна маскироваться header-ошибкой), `needs-autofix.ts` (валидный header + парные anchor, но DBC-ошибки) |
+| **Покрытие sync**        |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-11                | `sync`: первый запуск (добавление `ai/directives/` из пакета), повторный без изменений (тест сам делает два последовательных `spawn sync` — первый создаёт, второй проверяет "unchanged"), `--dry-run`, фильтр по поддиректориям, несуществующая поддиректория                                                                                                   |
+| **Покрытие orient**      |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-12                | `orient`: карта проекта (`orient`), поиск по задаче (`--task=TSK-FIX-01` — fixture-файлы содержат этот task-id), поиск потребителей (`--consumer=FixtureConsumer`), поиск по ключевому слову (`"fixture"` в `@file:`), детальный файл (`--file=src/service.ts`), граф (`--graph`)                                                                                |
+| FR-E2E-12a               | Fixture-файлы для orient: `service.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureService` с `@purpose`), `helper.ts` (`@file:`, `@tasks: TSK-FIX-01`, `@consumers: FixtureConsumer`, экспортирует `FixtureHelper` с `@purpose`). Эти файлы также имеют валидные header и anchor — они проходят lint                   |
+| **Покрытие sync-skills** |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-13                | `sync-skills`: установка (включает повторный `spawn` для проверки "unchanged"), `--dry-run`, фильтр по скилам                                                                                                                                                                                                                                                    |
+| **Вывод**                |                                                                                                                                                                                                                                                                                                                                                                  |
+| FR-E2E-14                | Отдельная npm-команда: `npm run test:e2e`. Не входит в `npm test`                                                                                                                                                                                                                                                                                                |
+| FR-E2E-15                | При падении теста — вывод stdout/stderr упавшей команды для отладки                                                                                                                                                                                                                                                                                              |
+| FR-E2E-16                | Тесты используют `node:test` (как весь проект, согласно `infra-base`)                                                                                                                                                                                                                                                                                            |
+
+### 4.1.9 run Functional Requirements
+
+| ID       | Требование                                                                                                                                                                                                                                                                                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-RUN-1 | `gennady run "<задание>"` зовёт `run()` из `@services/agent-run`, печатает `RunResult.text` в stdout, exit 0.                                                                                                                                                                                                                                                                     |
+| FR-RUN-2 | Флаги: `--dir <path>` (повторяемый → `dirs[]`, дефолт cwd); `--model <provider/model>` (дефолт не задаётся CLI — берётся дефолт движка); `--engine <id>`; `--timeout <ms>`.                                                                                                                                                                                                       |
+| FR-RUN-3 | Пустое/отсутствующее `<задание>` → ошибка использования, exit 1 (не зовёт движок).                                                                                                                                                                                                                                                                                                |
+| FR-RUN-4 | `AgentRunError` → stderr, exit 1. CLI печатает **`e.hint` и `e.code` из библиотеки дословно** (тонкая обёртка, без своего слоя перевода): формат `✗ <e.hint>   [<e.code>]`. `e.message` НЕ печатается (он содержит те же code+hint — `[AgentRunError] <code>: <hint>`). Конструктор: `new AgentRunError(code, hint)`. Читаемость — ответственность `@services/agent-run`, не CLI. |
+| FR-RUN-5 | `MODEL_UNAVAILABLE` → `e.hint` уже содержит список моделей (ядро его сформировало); CLI просто печатает hint, exit 1.                                                                                                                                                                                                                                                             |
+| FR-RUN-6 | readonly всегда включён (v1 не передаёт режим записи).                                                                                                                                                                                                                                                                                                                            |
+| FR-RUN-7 | Команда — тонкая обёртка: вся логика запуска/ошибок в `@services/agent-run`; CLI только парсит флаги и форматирует вывод.                                                                                                                                                                                                                                                         |
 
 ### 4.2 Non-Functional Constraints
 
@@ -1353,7 +1394,7 @@ $ gennady agents-rules
 | Capability                      | Posture        |
 | ------------------------------- | -------------- |
 | Проверка `node_modules/gennady` | `real-runtime` |
-| Чтение `README.md` (FS)        | `real-runtime` |
+| Чтение `README.md` (FS)         | `real-runtime` |
 | Вывод на stdout                 | `real-runtime` |
 
 **e2e:**
@@ -1370,10 +1411,10 @@ $ gennady agents-rules
 
 ### 4.5 Rules
 
-| Rule               | Category | Source                                      |
-| ------------------ | -------- | ------------------------------------------- |
-| `typescript-rules` | coding   | `ai/directives/coding/typescript-rules.xml` |
-| `node-test`        | testing  | `ai/directives/testing/node-test.xml`       |
+| Rule               | Category | Source                                                           |
+| ------------------ | -------- | ---------------------------------------------------------------- |
+| `typescript-rules` | coding   | `ai/directives/coding/typescript-rules.xml`                      |
+| `node-test`        | testing  | `ai/directives/testing/node-test.xml`                            |
 | `readme-per-cmd`   | docs     | `cli/cmd/README.md` — единый README для всех команд (см. NFC-23) |
 
 ## 5. High-Level Architecture
@@ -1629,15 +1670,15 @@ ai/skills/ # 13 скилов (физические артефакты)
 
 ### 5.8 Rejected Alternatives (sync-skills)
 
-| Вариант                                                    | Почему отвергнут                                                                                     |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Флаг `--skills` в команде `sync`                           | Разные доменные модели: файлы vs директории, нет orphan vs есть orphan. Смешивание создало бы раздутый интерфейс |
-| Copypaste кода вместо shared core                          | Дублирование ~100 строк, расхождение формата вывода при независимой эволюции                         |
-| Отдельный npm-пакет для скилов (`@gennady/skills`)         | Overkill для 13 скилов. `ai/skills/` в том же пакете — проще распространение                         |
-| Хеширование (SHA256) для сравнения файлов                  | Избыточно для мелких файлов. `Buffer.compare` из shared — проверено в `sync`                         |
-| Сохранение orphan-файлов (не удалять)                      | Неполная синхронизация — пользователь не может доверять состоянию `.claude/skills/`                  |
-| Синхронизация в поддиректорию `.claude/skills/gennady/`    | Усложняет структуру, Claude Code может не увидеть скилы во вложенной директории                      |
-| Интерактивный prompt перед удалением                       | YAGNI для v1. Git покажет diff — пользователь сам решит                                              |
+| Вариант                                                 | Почему отвергнут                                                                                                 |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Флаг `--skills` в команде `sync`                        | Разные доменные модели: файлы vs директории, нет orphan vs есть orphan. Смешивание создало бы раздутый интерфейс |
+| Copypaste кода вместо shared core                       | Дублирование ~100 строк, расхождение формата вывода при независимой эволюции                                     |
+| Отдельный npm-пакет для скилов (`@gennady/skills`)      | Overkill для 13 скилов. `ai/skills/` в том же пакете — проще распространение                                     |
+| Хеширование (SHA256) для сравнения файлов               | Избыточно для мелких файлов. `Buffer.compare` из shared — проверено в `sync`                                     |
+| Сохранение orphan-файлов (не удалять)                   | Неполная синхронизация — пользователь не может доверять состоянию `.claude/skills/`                              |
+| Синхронизация в поддиректорию `.claude/skills/gennady/` | Усложняет структуру, Claude Code может не увидеть скилы во вложенной директории                                  |
+| Интерактивный prompt перед удалением                    | YAGNI для v1. Git покажет diff — пользователь сам решит                                                          |
 
 ### 5.9 Rejected Alternatives (orient)
 
@@ -1665,7 +1706,7 @@ cli/cmd/agents-rules/
 ├── index.ts # import { run } from './agents-rules.cmd.ts'; run(process.argv)
 └── agents-rules.cmd.ts # проверка node_modules/gennady → readFileSync(README.md) → stdout
 
-````
+```
 
 **Ключевые решения:**
 
@@ -1677,11 +1718,11 @@ cli/cmd/agents-rules/
 
 ### 5.11 Rejected Alternatives (agents-rules)
 
-| Вариант                                                    | Почему отвергнут                                                                                     |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Контент как template literal в коде                        | `README.md` дублируется: один в коде (для команды), один в `cli/cmd/orient/` (для GitHub). Дрифт между ними |
-| Динамический сбор метаданных команд (JSDoc / экспорты)     | YAGNI для v1. `orient` — единственная команда, которую `agents-rules` описывает. Статический README.md проще |
-| Отдельный файл контента вне `orient/`                     | README.md логически принадлежит `orient/` — описывает использование orient. GitHub рендерит его в директории |
+| Вариант                                                | Почему отвергнут                                                                                             |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Контент как template literal в коде                    | `README.md` дублируется: один в коде (для команды), один в `cli/cmd/orient/` (для GitHub). Дрифт между ними  |
+| Динамический сбор метаданных команд (JSDoc / экспорты) | YAGNI для v1. `orient` — единственная команда, которую `agents-rules` описывает. Статический README.md проще |
+| Отдельный файл контента вне `orient/`                  | README.md логически принадлежит `orient/` — описывает использование orient. GitHub рендерит его в директории |
 
 ### D-009 — Команда orient: навигация по file-header и DBC-контрактам
 
@@ -1757,6 +1798,8 @@ cli/cmd/agents-rules/
   // @ts-expect-error: D-042 — abstract class instantiation required by contract test
   // @ts-expect-error — D-042: abstract class instantiation required by contract test
   // eslint-disable-next-line no-explicit-any -- D-017: third-party type definition missing
+  ```
+
 ````
 
 Невалидные (purpose отсутствует или слишком короткий):
@@ -1883,12 +1926,36 @@ cli/__tests__/e2e/
   - `npm link` — быстрее (нет overhead `.tgz`), но создаёт symlink, а не реальную установку. Не проверяет `package.json#files` — файлы, не попавшие в `files`, всё равно будут доступны через symlink. `npm pack + install` — побайтово идентично registry-установке
   - Отдельный npm-пакет для e2e-фикстур — избыточно для 7 тестовых файлов
 
+### 5.13 run
+
+```
+cli/cmd/run/
+├── index.ts      # case 'run' dispatch target: import { run } from './run.cmd.ts'; run(process.argv)
+└── run.cmd.ts    # парсит флаги → зовёт run() из @services/agent-run → печатает text или ✗ code/hint
+```
+
+**Ключевые решения:**
+
+1. **Тонкая обёртка.** Вся логика — в [`@services/agent-run`](../agent-run/agent-run.spec.md). `run.cmd.ts` только: парсит argv (позиционное задание + `--dir`×N + `--model` + `--engine` + `--timeout`), собирает `RunOptions` (опускает `dirs`, если `--dir` не задан — ядро/движок дефолтят на cwd; не задаёт `--model` по умолчанию), зовёт `run(opts)`, печатает `RunResult.text` в stdout (exit 0) либо ловит `AgentRunError` → `✗ <e.hint>   [<e.code>]` в stderr (exit 1).
+2. **Дефолт модели — у движка, не в CLI.** CLI не задаёт `--model` по умолчанию; пустой `model` → ядро/движок берут дефолт (`llm-proxy/deepseek-v4-pro`). CLI лишь пробрасывает явный `--model`.
+3. **Регистрация.** `case 'run': await import('./cmd/run/index.ts'); break` в `cli/gennady.ts`.
+4. **Парсинг флагов** — `node:util` `parseArgs` (повторяемый `--dir` через `multiple: true`), без новых зависимостей.
+
+### 5.14 Rejected Alternatives (run)
+
+| Вариант | Почему отвергнут |
+| --- | --- |
+| Дефолт модели в CLI | Дублирует знание движка; ядро уже знает дефолт. CLI остаётся тонким. |
+| Логика запуска opencode прямо в CLI | Нарушает «ядро переиспользуемо не только из CLI»; вся логика в `@services/agent-run`. |
+| Своя библиотека парсинга аргументов | YAGNI — `node:util parseArgs` достаточно. |
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
   - [`dbc`](../dbc/dbc.spec.md) — `DbcLinter`, `DbcLintError`, `DbcLintReport`; требует `refine` для опции `content`
   - [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier, Vite
   - [`infra-npm-publish`](../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/directives/` в npm-пакете (sync читает из пакета)
+  - [`agent-run`](../agent-run/agent-run.spec.md) — `run`, `listEngines`, `listModels`, `AgentRunError` для команды `run`
 - **Provides to:** AI-агенты (через CLI)
 
 ## 8. Bootstrap Requirements
@@ -1986,6 +2053,14 @@ cli/__tests__/e2e/
 | Обновить `cli/gennady.ts` (case 'agents-rules')                          | file          | this-scope-task       | добавить `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break`                                                  |
 | Обновить `cli/AGENTS.md` (строка agents-rules)                           | file          | this-scope-task       | добавить строку `agents-rules` в таблицу команд                                                                                     |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка agents-rules)                | file          | this-scope-task       | добавить `agents-rules` в вывод help                                                                                                |
+| **run**                                                                  |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/run/index.ts`                                           | file          | this-scope-task       | `import { run } from './run.cmd.ts'; run(process.argv)`                                                                             |
+| Создать `cli/cmd/run/run.cmd.ts`                                         | file          | this-scope-task       | parseArgs (задание + `--dir`×N + `--model` + `--engine` + `--timeout`) → `run()` из `@services/agent-run` → stdout/stderr          |
+| Создать `cli/cmd/run/__tests__/run.cmd.test.ts`                          | file          | this-scope-task       | Integration: happy (stdout=text, exit 0), пустой task → exit 1, AgentRunError → `✗ msg [code]`+hint exit 1, MODEL_UNAVAILABLE hint |
+| Обновить `cli/gennady.ts` (case 'run')                                   | file          | this-scope-task       | добавить `case 'run': await import('./cmd/run/index.ts'); break`                                                                    |
+| Обновить `cli/AGENTS.md` (строка run)                                    | file          | this-scope-task       | добавить строку `run` в таблицу команд                                                                                              |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка run)                         | file          | this-scope-task       | добавить `run` в вывод help                                                                                                         |
+| `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (TSK-62/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
 | **e2e**                                                                  |               |                       |                                                                                                                                     |
 | `"test:e2e"` script в `package.json`                                     | structural    | this-scope-task       | добавить `"test:e2e": "node --import tsx --test cli/__tests__/e2e/e2e.test.ts"`                                                     |
 | Директория `cli/__tests__/e2e/`                                          | structural    | this-scope-task       | создать                                                                                                                             |
@@ -2020,6 +2095,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
+- run — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
 - e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
 
 ### 9.2 Inter-Module Dependency Map
@@ -2034,6 +2110,7 @@ graph TD
     sync -. Runtime .-> npm-package[gennady npm package]
     sync-skills -. Runtime .-> npm-package
     agents-rules -. Runtime .-> npm-package
+    run -. Scope Reference .-> agent-run[agent-run]
     sync --> shared-sync[shared/common/sync/]
     sync-skills --> shared-sync
     e2e -. тестирует .-> lint
@@ -2105,3 +2182,4 @@ graph TD
   - update-check: платформенные пути кеша — требуют верификации на Windows/macOS/Linux
   - sync: `infra-npm-publish` требует refine для включения `ai/directives/` в публикацию — sync неработоспособен без этого
   - orient: Damerau-Levenshtein — своя реализация, требует unit-тестирования
+````
