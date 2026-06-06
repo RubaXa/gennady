@@ -1,5 +1,5 @@
-<!--START_PRIMARYGOAL-->
+<!--START_PRIMARY_GOAL-->
 # PRIMARY GOAL::
 
 Define the primary mission
-<!--END_PRIMARYGOAL-->
+<!--END_PRIMARY_GOAL-->

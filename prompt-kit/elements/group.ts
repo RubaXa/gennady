@@ -17,7 +17,7 @@ export const Group = definePromptElement<GroupProps>({
   tagName: 'Group',
   role: 'section',
   markdown: {
-    title: ({ props }) => (props.is ? `## ${props.is}` : ''),
+    title: ({ props }) => (props.is as string) || 'Group',
     includeBoundaryComments: true,
   },
 });
@@ -37,6 +37,6 @@ export const Node = definePromptElement<NodeProps>({
   tagName: 'Node',
   role: 'section',
   markdown: {
-    title: ({ props }) => `- **${props.is}:**`,
+    title: ({ props }) => (props.is as string) + ':',
   },
 });

@@ -84,11 +84,11 @@ class MdFormatEngine implements TFormatEngine {
   ): string {
     const title =
       element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ?? '';
+    const resolvedTag = (props.is as string) || (element.config.html?.tag) || element.tagName;
+    // PascalCase → SNAKE_CASE: AiKnowledge → AI_KNOWLEDGE, SddSetup → SDD_SETUP
+    const anchorName = resolvedTag.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toUpperCase();
     const anchors = element.config.markdown?.includeBoundaryComments
-      ? {
-          start: `<!--START_${element.tagName.toUpperCase()}-->`,
-          end: `<!--END_${element.tagName.toUpperCase()}-->`,
-        }
+      ? { start: `<!--START_${anchorName}-->`, end: `<!--END_${anchorName}-->` }
       : undefined;
 
     if (ctx.inList) {
