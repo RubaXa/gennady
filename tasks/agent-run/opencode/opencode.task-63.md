@@ -6,6 +6,7 @@
 
 - **Task-ID:** TSK-63
 - **Status:** [x] DONE
+- **Reopens:** 1 (2026-06-06 — readonly: `opencode agent create` оказался AI-генератором → заменён на `OPENCODE_CONFIG` + статичный `readonly.config.json`)
 - **Purpose:** Реализовать адаптер `OpencodeEngine` (запуск `opencode run` в readonly с директориями, оптимистичный запуск, таймаут+SIGKILL, env-гигиена) + `opencodeErrorMap` (exit/stderr → ErrorCode+hint) + `index.ts` composition root (регистрация движка + публичный re-export).
 - **Scope:** agent-run
 - **Module:** opencode
@@ -207,4 +208,19 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 
 - [x] `2026-06-06T16:03:16Z` sync agent-run+root
 - [x] `2026-06-06T16:03:16Z` DONE
+
+### Round 2 — 2026-06-06, fix: readonly mechanism (live e2e discovery)
+
+#### P1 (fix)
+- [x] `2026-06-06T18:10:00Z` discovery `opencode agent create` — это AI-генератор («Generating agent configuration», вызов модели), а не быстрая запись файла → живой `gennady run` зависал
+- [x] `2026-06-06T18:10:00Z` decision readonly-mechanism=OPENCODE_CONFIG+static-config ← заменил генерацию профиля на bundled `readonly.config.json` (agent `readonly`: deny edit/write/patch; bash оставлен) + `OPENCODE_CONFIG` в env подпроцесса + `--agent readonly`
+- [x] `2026-06-06T18:10:00Z` intro `readonly.config.json` ← статичный bundled-конфиг readonly-агента
+- [x] `2026-06-06T18:10:00Z` verified `OPENCODE_CONFIG` дополняет конфиг пользователя (31 llm-proxy модель видна; провайдеры/ключ сохранены)
+- [x] `2026-06-06T18:10:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-06-06T18:20:00Z` ver `gennady run "...pong" --timeout 120000` → pass exit=0 (вывод «pong», без зависания)
+- [x] `2026-06-06T18:10:00Z` DONE
+**Handoff →** artifacts: [services/agent-run/engines/opencode/opencode-engine.ts, services/agent-run/engines/opencode/readonly.config.json, services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts]; decisions: [agent-create→OPENCODE_CONFIG, bash-allowed-per-operator, D-005-superseded-by-D-010]; open: []
+
+#### Round close
+- [x] `2026-06-06T18:25:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

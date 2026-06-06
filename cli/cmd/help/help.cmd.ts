@@ -1,6 +1,6 @@
 // @file: CLI command: help
 // @consumers: N/A
-// @tasks: TSK-45, TSK-55, TSK-57, TSK-59
+// @tasks: TSK-45, TSK-55, TSK-57, TSK-59, TSK-65
 
 console.info('Gennady CLI');
 console.info('');
@@ -37,6 +37,7 @@ console.info(
 console.info(
   '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'
 );
+console.info('  run               Run a task via an AI agent engine (opencode)');
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

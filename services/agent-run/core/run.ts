@@ -1,6 +1,6 @@
-// @file: Public entry points `run` and `listEngines` for the agent-run module.
+// @file: Public entry points `run`, `listEngines`, and `listModels` for the agent-run module.
 // @consumers: index.ts (composition root), CLI commands, agent consumers
-// @tasks: TSK-62
+// @tasks: TSK-62, TSK-64
 
 import { logger } from '#logger';
 import { AgentRunError } from './agent-run-error.ts';
@@ -71,4 +71,28 @@ export async function listEngines(): Promise<EngineStatus[]> {
   const statuses = await detectAll();
   logger.debug(`[listEngines] [probing → done] count=${statuses.length}`);
   return statuses;
+}
+
+/**
+ * @purpose Return the list of models available through the selected or default engine.
+ * @invariant Delegates to `AgentEngine.listModels()`; never throws — returns `[]` on any failure.
+ * @param [engineId] Optional engine id override; absent → registry default.
+ * @returns Array of model identifiers in `provider/model` format; empty on failure or unavailability.
+ */
+export async function listModels(engineId?: string): Promise<string[]> {
+  logger.debug(`[listModels] [idle → retrieving] engine=${engineId ?? 'default'}`);
+  const engine = resolve(engineId);
+
+  // #region START_LIST_MODELS_WITH_DEGRADATION — failure mode: any engine error → [] (caller must not crash)
+  try {
+    const models = await engine.listModels();
+    logger.debug(`[listModels] [retrieving → done] count=${models.length}`);
+    return models;
+  } catch (cause) {
+    logger.error('[listModels] [retrieving → degraded] engine.listModels() threw; returning []', {
+      cause,
+    });
+    return [];
+  }
+  // #endregion END_LIST_MODELS_WITH_DEGRADATION
 }

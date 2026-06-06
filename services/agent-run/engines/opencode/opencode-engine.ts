@@ -1,8 +1,9 @@
 // @file: OpencodeEngine — AgentEngine adapter for opencode subprocess execution.
 // @consumers: index.ts (composition root)
-// @tasks: TSK-63
+// @tasks: TSK-63, TSK-64
 
 import { execFile, spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { logger } from '#logger';
 import { AgentRunError } from '../../core/agent-run-error.ts';
@@ -22,11 +23,28 @@ const PROXY_ENV_VARS = [
   'all_proxy',
 ] as const;
 
-/** @purpose Allow-list of permissions for the readonly opencode agent profile. */
-const READONLY_PERMISSIONS = 'read,glob,grep,webfetch,websearch,lsp';
+/** @purpose Name of the readonly agent defined in the bundled config; passed as `--agent`. */
+const READONLY_AGENT = 'readonly';
+
+/**
+ * @purpose Absolute path to the bundled static opencode config that defines the `readonly` agent
+ *   (denies edit/write/patch; everything else — including bash — stays allowed). Merged into the
+ *   user's opencode config via the `OPENCODE_CONFIG` env var, so providers/credentials are preserved.
+ * @invariant Static file shipped with the package next to this module (no runtime generation, no AI).
+ */
+const READONLY_CONFIG_PATH = fileURLToPath(new URL('./readonly.config.json', import.meta.url));
 
 /** @purpose Grace period in ms between SIGTERM and SIGKILL on timeout. */
 const SIGKILL_GRACE_MS = 5_000;
+
+/**
+ * @purpose Default model identifier used when `RunOptions.model` is absent.
+ * @invariant Must be a valid `provider/model` string recognized by the opencode llm-proxy provider.
+ */
+const DEFAULT_MODEL = 'llm-proxy/deepseek-v4-pro';
+
+// invariant: matches `provider/model` lines emitted by `opencode models`; excludes headers and blank lines
+const MODELS_LINE_PATTERN = /^[^\s/]+\/[^\s]+$/;
 
 /**
  * @purpose Compose subprocess environment without proxy variables.
@@ -38,25 +56,22 @@ function composeCleanEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   for (const key of PROXY_ENV_VARS) {
     delete env[key];
   }
+  // invariant: point opencode at the bundled readonly-agent config; merges with the user's
+  // global config (providers/credentials preserved), adds the `readonly` agent.
+  env.OPENCODE_CONFIG = READONLY_CONFIG_PATH;
   return env;
 }
 
 /**
  * @purpose opencode adapter: executes `opencode run` in readonly mode, maps failures to typed errors.
  * @implements {AgentEngine} in services/agent-run/core/ports/agent-engine.port.ts
- * @invariant Profile generated at most once per process lifetime (lazy singleton cache + promise guard).
+ * @invariant Readonly enforced via the bundled static config (OPENCODE_CONFIG + `--agent readonly`); no runtime profile generation.
  * @invariant Subprocess env never contains proxy variables; subprocess is guaranteed dead when run() settles.
  * @invariant Optimistic launch: `detect()` is NOT called on the hot path; spawn ENOENT/EACCES → AGENT_NOT_INSTALLED.
  */
 export class OpencodeEngine implements AgentEngine {
   /** @purpose Stable engine identifier for registry lookup and result tagging | @invariant 'opencode' */
   readonly id = 'opencode';
-
-  /** @purpose Cached readonly agent profile name; null = not yet generated. */
-  protected _readonlyProfile: string | null = null;
-
-  /** @purpose Promise guard ensuring profile is generated exactly once even under concurrent run() calls. */
-  protected _profileGeneration: Promise<string> | null = null;
 
   /**
    * @purpose Probe whether the opencode binary is installed and retrieve its version.
@@ -90,11 +105,13 @@ export class OpencodeEngine implements AgentEngine {
    * @returns Markdown response text and the engine id that produced it.
    */
   async run(options: RunOptions): Promise<RunResult> {
-    const { task, dirs = [], timeout = 120_000 } = options;
-    logger.debug(`[OpencodeEngine#run] [idle → preparing] timeout=${timeout} dirs=${dirs.length}`);
+    const { task, dirs = [], timeout = 120_000, model = DEFAULT_MODEL } = options;
+    logger.debug(
+      `[OpencodeEngine#run] [idle → preparing] timeout=${timeout} dirs=${dirs.length} model=${model}`
+    );
 
-    // invariant: generated at most once per process (lazy cache + promise guard)
-    const agentProfile = await this._ensureReadonlyProfile();
+    // invariant: readonly enforced via bundled static config (see composeCleanEnv → OPENCODE_CONFIG)
+    const agentProfile = READONLY_AGENT;
 
     // #region START_COMPOSE_TASK
     // non-goal: external_directory deferred to v1+ spike; first dir is --dir, rest appended to task text
@@ -106,7 +123,7 @@ export class OpencodeEngine implements AgentEngine {
         : task;
     // #endregion END_COMPOSE_TASK
 
-    const args: string[] = ['run', taskText, '--agent', agentProfile];
+    const args: string[] = ['run', taskText, '--agent', agentProfile, '--model', model];
     if (primaryDir !== undefined) {
       args.push('--dir', primaryDir);
     }
@@ -172,6 +189,24 @@ export class OpencodeEngine implements AgentEngine {
           `[OpencodeEngine#run] [spawning → failed] exit=${exitCode} code=${mapping.code}`,
           { stderr }
         );
+
+        // #region START_MODEL_UNAVAILABLE_HINT_ENRICHMENT — invariant: enriched async; rejection deferred until list resolves
+        if (mapping.code === 'MODEL_UNAVAILABLE') {
+          this.listModels()
+            .then((models) => {
+              const listText =
+                models.length > 0
+                  ? `Available models:\n${models.map((m) => `  - ${m}`).join('\n')}`
+                  : 'No models available via listModels().';
+              reject(new AgentRunError('MODEL_UNAVAILABLE', `${mapping.hint}\n\n${listText}`));
+            })
+            .catch(() => {
+              reject(new AgentRunError(mapping.code, mapping.hint));
+            });
+          return;
+        }
+        // #endregion END_MODEL_UNAVAILABLE_HINT_ENRICHMENT
+
         reject(new AgentRunError(mapping.code, mapping.hint));
       });
       // #endregion END_PROCESS_EXIT_HANDLING
@@ -208,74 +243,32 @@ export class OpencodeEngine implements AgentEngine {
   }
 
   /**
-   * @purpose Ensure the readonly agent profile exists, generating it at most once per process.
-   * @invariant Promise-guarded: concurrent callers receive the same generation promise.
-   * @throws {AgentRunError} With code `LAUNCH_FAILED` when `opencode agent create` fails.
-   * @returns The agent profile name to pass as `--agent <name>`.
+   * @purpose Retrieve the list of model identifiers available via `opencode models`.
+   * @invariant Never throws; returns `[]` on non-zero exit or any unexpected error.
+   * @returns Array of `provider/model` strings; empty on failure.
+   * @sideEffect Spawns `opencode models` subprocess.
    */
-  protected async _ensureReadonlyProfile(): Promise<string> {
-    if (this._readonlyProfile !== null) {
-      return this._readonlyProfile;
-    }
+  async listModels(): Promise<string[]> {
+    logger.debug('[OpencodeEngine#listModels] [idle → retrieving]');
 
-    // invariant: only one concurrent generation allowed
-    this._profileGeneration ??= this._generateReadonlyProfile();
-
-    // #region START_PROFILE_CACHE_ON_SUCCESS — failure mode: reset promise on error so next call can retry
+    // #region START_LIST_MODELS_PARSE — failure mode: non-zero exit or parse error → [] (degraded)
     try {
-      const name = await this._profileGeneration;
-      this._readonlyProfile = name;
-      return name;
+      const { stdout } = await execFileAsync('opencode', ['models']);
+      const models = stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => MODELS_LINE_PATTERN.test(line));
+      logger.debug(`[OpencodeEngine#listModels] [retrieving → done] count=${models.length}`);
+      return models;
     } catch (cause) {
-      this._profileGeneration = null;
-      throw cause;
-    }
-    // #endregion END_PROFILE_CACHE_ON_SUCCESS
-  }
-
-  /**
-   * @purpose Run `opencode agent create` with the readonly permissions allow-list.
-   * @throws {AgentRunError} With code `LAUNCH_FAILED` on non-zero exit from `agent create`.
-   * @returns The profile name captured from stdout.
-   * @sideEffect Spawns `opencode agent create` subprocess; profile persists for process lifetime.
-   */
-  protected async _generateReadonlyProfile(): Promise<string> {
-    logger.info(
-      '[OpencodeEngine#_generateReadonlyProfile] [idle → creating] readonly agent profile'
-    );
-
-    // #region START_AGENT_CREATE — failure mode: non-zero exit → LAUNCH_FAILED (profile generation failure)
-    try {
-      const { stdout, stderr } = await execFileAsync('opencode', [
-        'agent',
-        'create',
-        '--permissions',
-        READONLY_PERMISSIONS,
-      ]);
-
-      const profileName = stdout.trim();
-      if (!profileName) {
-        const mapping = opencodeErrorMap({ stderr });
-        throw new AgentRunError(mapping.code, mapping.hint);
-      }
-
-      logger.info(
-        `[OpencodeEngine#_generateReadonlyProfile] [creating → created] profile=${profileName}`
+      logger.error(
+        '[OpencodeEngine#listModels] [retrieving → degraded] opencode models failed; returning []',
+        {
+          cause,
+        }
       );
-      return profileName;
-    } catch (cause) {
-      if (cause instanceof AgentRunError) throw cause;
-
-      const execError = cause as { code?: number; stderr?: string; message?: string };
-      const stderrText = execError.stderr ?? '';
-      const mapping = opencodeErrorMap({ exitCode: execError.code, stderr: stderrText });
-      const error = new AgentRunError(
-        mapping.code,
-        `[OpencodeEngine#_generateReadonlyProfile] agent create failed: ${mapping.hint}`
-      );
-      logger.error('[OpencodeEngine#_generateReadonlyProfile] [creating → failed]', { cause });
-      throw error;
+      return [];
     }
-    // #endregion END_AGENT_CREATE
+    // #endregion END_LIST_MODELS_PARSE
   }
 }

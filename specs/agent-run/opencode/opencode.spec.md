@@ -36,13 +36,14 @@ const res = await engine.run({
 
 _Это полный список сущностей модуля `opencode`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name               | Surface | Type    | Purpose                                                                    |
-| ------------------ | ------- | ------- | -------------------------------------------------------------------------- |
-| `OpencodeEngine`     | ⚪      | Adapter      | Реализация `AgentEngine`: запуск `opencode run` в readonly с директориями. |
-| `opencodeErrorMap`   | ⚪      | Utility      | Перевод дескриптора сбоя (spawn/exit/stderr) в `ErrorCode` + `hint`.        |
-| `OpencodeFailure`    | ⚪      | Value Object | Нормализованный дескриптор сбоя на вход `opencodeErrorMap` (`{ spawnErrorCode?, exitCode?, stderr? }`). |
-| `OpencodeErrorMapping` | ⚪    | Value Object | Возвращаемый тип `opencodeErrorMap` (`{ code, hint }`).                     |
-| `composeCleanEnv`    | ⚪      | Utility      | Внутренняя функция: убирает 6 прокси-переменных из env подпроцесса (не экспортируется). |
+| Name                   | Surface | Type         | Purpose                                                                                                 |
+| ---------------------- | ------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| `OpencodeEngine`       | ⚪      | Adapter      | Реализация `AgentEngine`: запуск `opencode run` в readonly с директориями.                              |
+| `opencodeErrorMap`     | ⚪      | Utility      | Перевод дескриптора сбоя (spawn/exit/stderr) в `ErrorCode` + `hint`.                                    |
+| `OpencodeFailure`      | ⚪      | Value Object | Нормализованный дескриптор сбоя на вход `opencodeErrorMap` (`{ spawnErrorCode?, exitCode?, stderr? }`). |
+| `OpencodeErrorMapping` | ⚪      | Value Object | Возвращаемый тип `opencodeErrorMap` (`{ code, hint }`).                                                 |
+| `composeCleanEnv`      | ⚪      | Utility      | Внутренняя функция: убирает 6 прокси-переменных + ставит `OPENCODE_CONFIG` в env подпроцесса.           |
+| `readonly.config.json` | ⚪      | Config asset | Статичный bundled-конфиг: agent `readonly` (deny edit/write/patch); путь в `OPENCODE_CONFIG`.           |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -84,7 +85,7 @@ _Это полный список сущностей модуля `opencode`. Л
 
 - **Implements:** [`AgentEngine`](../core/core.spec.md) (`core/ports/agent-engine.port.ts`)
 - **Purpose:** запуск opencode в readonly с заданием и директориями.
-- **Supporting Artifacts:** readonly agent-профиль через штатную команду `opencode agent create --permissions "read,glob,grep,webfetch,websearch,lsp"` (allow-list прав; `edit`/`write`/`bash`/`task`/`todowrite` вне списка → запрещены движком), передаётся через `--agent`. Механизм подтверждён спайком. **Профиль генерится один раз на процесс (lazy, кэш) и переиспользуется** — не подпроцесс `agent create` на каждый `run()` (скорость) и нет утечки temp-папок на горячем пути. Сбой `agent create` → `LAUNCH_FAILED` (типизированно). Очистка — при выходе процесса (best-effort).
+- **Supporting Artifacts:** статичный файл `readonly.config.json` в пакете (рядом с движком), определяющий agent `readonly` с `permission: { edit: deny, write: deny, patch: deny }` (всё остальное, включая `bash`, остаётся `allow` — агент сохраняет шелл для анализа). Движок ставит `OPENCODE_CONFIG=<путь к файлу>` в окружение подпроцесса и запускает `--agent readonly`. `OPENCODE_CONFIG` **дополняет** конфиг пользователя (провайдеры/ключи сохраняются — проверено: 31 llm-proxy модель видна). Никакой генерации, никакого `/tmp`, ничего не пишем в целевые папки. Путь резолвится через `import.meta.url`.
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `integration`, `e2e`
 - **Deferred Runtime Scope:** доступ к нескольким внешним директориям (`external_directory`) — подтверждается спайком. **v1-фолбэк:** если multi-root окажется ненадёжным — одна `--dir` (первая), остальные пути перечисляются в тексте задания; buildability v1 на спайк не завязана. Стриминг/сессии — не в v1.
@@ -92,7 +93,7 @@ _Это полный список сущностей модуля `opencode`. Л
 **Side Effects:**
 
 - Спавн подпроцесса `opencode run …` **с таймаутом**; при превышении — SIGTERM, затем **SIGKILL после grace-периода 5с**, если процесс не завершился (SIGTERM игнорируем — нужен добивающий SIGKILL, иначе сирота держит pipe и течут fd).
-- Генерация readonly agent-профиля (`opencode agent create`) — **однократно на процесс, кэш**.
+- `OPENCODE_CONFIG` в окружении подпроцесса указывает на bundled `readonly.config.json` (статичный, без генерации).
 - Чтение stdout/stderr подпроцесса.
 - Очистка окружения подпроцесса: снять **весь набор прокси-переменных** — `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy`, `ALL_PROXY`, `all_proxy` (libcurl/Node читают и строчные; иначе корпоративный прокси режет провайдера — урок сессии).
 
@@ -101,7 +102,7 @@ _Это полный список сущностей модуля `opencode`. Л
 - Preconditions: `options.task` непустой.
 - **Оптимистичный запуск:** НЕ делать pre-flight `detect()`; спавнить `opencode run` сразу. Ошибка spawn (`error.code` ENOENT/EACCES) → `AGENT_NOT_INSTALLED` через `opencodeErrorMap`.
 - **Модель:** `options.model` или дефолт `llm-proxy/deepseek-v4-pro` → `--model`. Если модель недоступна (opencode не знает её) → `opencodeErrorMap` даёт `MODEL_UNAVAILABLE`, движок обогащает hint списком из `listModels()` (вне горячего пути; только на ветке этой ошибки). Без молчаливой подмены модели.
-- Postconditions: при успехе `{ text, engine: 'opencode' }`, `text` = stdout движка; **ни один файл в `dirs` не изменён** (readonly). При неуспехе — `AgentRunError` через `opencodeErrorMap`. Превышение `timeout` → `AgentRunError('TIMEOUT')` после SIGTERM (+SIGKILL по grace). Сбой генерации профиля (`agent create` non-zero) → `LAUNCH_FAILED`.
+- Postconditions: при успехе `{ text, engine: 'opencode' }`, `text` = stdout движка; **ни один файл в `dirs` не изменён** (readonly, enforced agent-правами `readonly`). При неуспехе — `AgentRunError` через `opencodeErrorMap`. Превышение `timeout` → `AgentRunError('TIMEOUT')` после SIGTERM (+SIGKILL по grace).
 - Invariants: запуск всегда с readonly-профилем; окружение подпроцесса очищено от прокси-переменных (оба регистра); по завершении (успех/ошибка/таймаут) подпроцесс гарантированно мёртв — не сирота.
 
 ### 5.2 Utility
@@ -123,7 +124,7 @@ _Это полный список сущностей модуля `opencode`. Л
   | `Forbidden` на модель/провайдера                                       | stderr                         | `MODEL_FORBIDDEN`     | проверить ключ и права на модель                                         |
   | `unknown model` / `no such model` / `model not found`                  | stderr                         | `MODEL_UNAVAILABLE`   | базовый hint; `OpencodeEngine` дополнит списком из `listModels()`        |
   | `API key … missing` / пустой ключ                                      | stderr                         | `CREDENTIAL_MISSING`  | задать env-ключ провайдера                                               |
-  | сбой генерации профиля (`agent create` non-zero) или прочее            | exitCode+stderr                | `LAUNCH_FAILED`       | сырой stderr + «причина не распознана»                                   |
+  | нераспознанный stderr / прочий ненулевой exit                          | exitCode+stderr                | `LAUNCH_FAILED`       | сырой stderr + «причина не распознана»                                   |
 
 - Invariants: всегда возвращает валидный `ErrorCode`; никогда не кидает сама. Паттерны `VERSION_MISMATCH` намеренно широкие — текст ошибки opencode хрупок к версиям, узкий матч ловит не всё.
 - `TIMEOUT` живёт вне error-map: `OpencodeEngine` по своему таймеру делает SIGTERM→SIGKILL и кидает `AgentRunError('TIMEOUT')` сам.
@@ -135,7 +136,7 @@ _Это полный список сущностей модуля `opencode`. Л
 
 - Все публичные опции приходят из `RunOptions` (`core`); этот модуль их исполняет:
   - `dirs` → `--dir` (первая) + `external_directory` (остальные); фолбэк — одна `--dir` + пути в тексте задания.
-  - `mode: 'readonly'` → readonly agent через `opencode agent create --permissions` + `--agent`.
+  - `mode: 'readonly'` → bundled `readonly.config.json` через `OPENCODE_CONFIG` + `--agent readonly` (deny edit/write/patch; bash остаётся).
   - `timeout` → потолок подпроцесса; превышение → SIGTERM + `TIMEOUT`.
   - `engine` → не наблюдается здесь (выбор движка — забота реестра).
   - `model` → `--model` (дефолт `llm-proxy/deepseek-v4-pro`); недоступна → `MODEL_UNAVAILABLE` + список.
@@ -204,12 +205,22 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 - **Why:** скорость — главное правило; запускаем `opencode run` сразу, без пред-проверки `--version`. Спайк подтвердил: spawn отдаёт `error.code` (ENOENT/EACCES) → `AGENT_NOT_INSTALLED`. Таймаут (дефолт 120000 мс) + SIGTERM защищают от зависшего подпроцесса.
 - **Risk accepted:** TOCTOU-зазор закрыт маппингом spawn-ошибки.
 
-### D-005 — readonly через `opencode agent create --permissions` (allow-list)
+### D-005 — readonly через `opencode agent create` (superseded)
+
+- **Status:** superseded
+- **Recorded:** session SddCritic, agent-run
+- **Why (на тот момент):** спайк показал команду `opencode agent create --permissions`.
+- **Superseded by:** D-010 — при живом прогоне выяснилось, что `opencode agent create` это **AI-генератор** (крутит «Generating agent configuration», вызов модели), а не быстрая запись файла → запуск зависал.
+
+### D-010 — readonly через статичный config + `OPENCODE_CONFIG` (rework)
 
 - **Status:** active
-- **Recorded:** session SddCritic, agent-run
-- **Why:** спайк показал штатную команду opencode для генерации агента с allow-list прав — надёжнее ручного файла профиля.
-- **Risk accepted:** enforcement делегирован opencode (trust boundary, scope §3.4); v1 исключает `bash` из allow-list, теряя shell-поиск ради гарантированного readonly.
+- **Recorded:** session SddExecute (live e2e discovery), agent-run
+- **Supersedes:** D-005
+- **Was:** `opencode agent create --permissions` генерит профиль per-process.
+- **Now:** статичный `readonly.config.json` в пакете (agent `readonly`, deny edit/write/patch), движок ставит `OPENCODE_CONFIG` в окружение подпроцесса + `--agent readonly`. Детерминированно, мгновенно, без генерации.
+- **Why:** живой `gennady run` завис — `opencode agent create` оказался AI-генератором (вызов модели на каждый запуск). Проверено: `OPENCODE_CONFIG` дополняет конфиг пользователя (провайдеры сохраняются), агент распознаётся, `gennady run` отвечает «pong».
+- **Risk accepted:** `bash` оставлен `allow` (оператор: агенту нужен шелл) → теоретически мутация через шелл возможна; митигация — git + инструкция «только анализ». enforcement делегирован opencode (trust boundary, scope §3.4).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -239,6 +250,6 @@ graph TD
 - **Module Rules Additions:** None
 - **Open risks & validation needs:**
   - **Спайк 1 (multi-dir):** доступ к нескольким внешним директориям (`external_directory` + `--dir`) — не подтверждён. Фолбэк: одна `--dir` + перечисление путей в задании. Buildability v1 НЕ блокируется.
-  - **Спайк 2 (readonly) — ЗАКРЫТ:** механизм подтверждён — `opencode agent create --permissions "read,glob,grep,webfetch,websearch,lsp"` создаёт профиль с allow-list прав; `--agent` его подхватывает.
+  - **Спайк 2 (readonly) — ЗАКРЫТ (механизм пересмотрен на live, D-010):** `opencode agent create` оказался AI-генератором → заменён на статичный `readonly.config.json` + `OPENCODE_CONFIG` + `--agent readonly`. Проверено живым `gennady run` (ответ «pong», без зависания).
   - **Тестируемость без живой модели:** `opencode-error-map.test.ts` — чистый unit на строках stderr + spawn `error.code` (полное покрытие 7 кодов без подпроцесса). `opencode-engine.test.ts` — integration/e2e: требует установленного opencode и снятых прокси-переменных; таймаут проверяется на заведомо долгом задании.
   <!--/SECTION:HANDOFF-->

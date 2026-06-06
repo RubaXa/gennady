@@ -1,6 +1,6 @@
 // @file: Unit tests for opencodeErrorMap — pure mapping function, no subprocess needed.
 // @consumers: CI test suite
-// @tasks: TSK-63
+// @tasks: TSK-63, TSK-64
 
 /**
  * Test Graph:
@@ -11,6 +11,7 @@
  *     - maps schema error to VERSION_MISMATCH
  *     - maps forbidden and missing-key
  *     - maps unknown and agent-create failure to LAUNCH_FAILED
+ *     - maps unknown model to MODEL_UNAVAILABLE
  */
 
 import { describe, it } from 'node:test';
@@ -68,5 +69,20 @@ describe('opencodeErrorMap', () => {
     const noStderr = opencodeErrorMap({ exitCode: 1, stderr: '' });
     assert.strictEqual(noStderr.code, 'LAUNCH_FAILED');
     assert.match(noStderr.hint, /No stderr/i);
+  });
+
+  it('maps unknown model to MODEL_UNAVAILABLE', () => {
+    // contract: stderr patterns "unknown model", "no such model", "model not found" → MODEL_UNAVAILABLE
+    // non-goal: do not assert exact hint text — engine enriches it with listModels() result at call time
+    const unknownModel = opencodeErrorMap({ exitCode: 1, stderr: 'unknown model gpt-99' });
+    assert.strictEqual(unknownModel.code, 'MODEL_UNAVAILABLE');
+
+    // use the real default model id — llm-proxy/deepseek-v4-pro — to prove that MODEL_UNAVAILABLE
+    // is checked before PROXY_PATTERN (the id contains "proxy" which would otherwise match first)
+    const noSuchModel = opencodeErrorMap({ exitCode: 1, stderr: 'no such model: llm-proxy/deepseek-v4-pro' });
+    assert.strictEqual(noSuchModel.code, 'MODEL_UNAVAILABLE');
+
+    const modelNotFound = opencodeErrorMap({ exitCode: 1, stderr: 'model not found' });
+    assert.strictEqual(modelNotFound.code, 'MODEL_UNAVAILABLE');
   });
 });

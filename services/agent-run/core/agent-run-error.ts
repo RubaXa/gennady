@@ -1,10 +1,10 @@
 // @file: Typed error class and error code union for the agent-run module.
 // @consumers: run, registry, AgentEngine implementations, CLI commands
-// @tasks: TSK-62
+// @tasks: TSK-62, TSK-64
 
 /**
  * @purpose Exhaustive set of failure modes in the agent-run module.
- * @invariant Exactly 7 members; adding a new failure mode requires a spec update.
+ * @invariant Exactly 8 members; adding a new failure mode requires a spec update.
  */
 export type ErrorCode =
   | 'AGENT_NOT_INSTALLED'
@@ -13,7 +13,8 @@ export type ErrorCode =
   | 'MODEL_FORBIDDEN'
   | 'CREDENTIAL_MISSING'
   | 'TIMEOUT'
-  | 'LAUNCH_FAILED';
+  | 'LAUNCH_FAILED'
+  | 'MODEL_UNAVAILABLE';
 
 /**
  * @purpose Typed error carrier for agent-run failures — machine `code` for programmatic handling + human `hint` for operator action.

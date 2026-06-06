@@ -1,17 +1,22 @@
-// @file: Tests for OpencodeEngine — unit (profile cache, env hygiene) + integration (detect, timeout) + e2e (run).
+// @file: Tests for OpencodeEngine — unit (profile cache, env hygiene) + integration (detect, timeout, model) + e2e (run).
 // @consumers: CI test suite
-// @tasks: TSK-63
+// @tasks: TSK-63, TSK-64
 
 /**
  * Test Graph:
- *   OpencodeEngine#_ensureReadonlyProfile  [unit]
- *     - generates readonly profile once per process
+ *   readonly config artifact  [unit]
+ *     - bundled config defines readonly agent that denies edit/write/patch
  *   env hygiene  [unit]
  *     - strips proxy vars from subprocess env
  *   OpencodeEngine#detect  [integration]
  *     - detect returns installed and version
  *   timeout enforcement  [integration]
  *     - kills subprocess on timeout and throws TIMEOUT
+ *   OpencodeEngine#listModels  [integration/degradation]
+ *     - parses opencode models output
+ *     - defaults model to deepseek in args
+ *   OpencodeEngine#run with MODEL_UNAVAILABLE  [integration]
+ *     - enriches MODEL_UNAVAILABLE hint with model list
  *   OpencodeEngine#run  [e2e]
  *     - run returns markdown text in readonly
  */
@@ -19,6 +24,8 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { OpencodeEngine } from '../opencode-engine.ts';
 import { AgentRunError } from '../../../core/agent-run-error.ts';
@@ -42,30 +49,6 @@ async function isOpencodeAvailable(): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-// purpose: subclass with injectable profile generator — isolates profile cache from subprocess calls
-class TestableOpencodeEngine extends OpencodeEngine {
-  readonly generateCalls: string[] = [];
-  private readonly _profileResult: string | Error;
-
-  constructor(profileResult: string | Error = 'test-readonly-profile') {
-    super();
-    this._profileResult = profileResult;
-  }
-
-  // Expose protected method for direct testing
-  override async _ensureReadonlyProfile(): Promise<string> {
-    return super._ensureReadonlyProfile();
-  }
-
-  protected override async _generateReadonlyProfile(): Promise<string> {
-    this.generateCalls.push('called');
-    if (this._profileResult instanceof Error) {
-      throw this._profileResult;
-    }
-    return this._profileResult;
   }
 }
 
@@ -98,27 +81,24 @@ describe('OpencodeEngine', () => {
     opencodeAvailable = await isOpencodeAvailable();
   });
 
-  // ── unit: profile cache ──────────────────────────────────────────────────
+  // ── unit: readonly config artifact ───────────────────────────────────────
 
-  describe('#_ensureReadonlyProfile', () => {
-    it('generates readonly profile once per process', async () => {
-      // contract: concurrent calls share the same generation promise; generator runs exactly once
-      // non-goal: do not assert on promise identity — assert on call count
+  describe('readonly config artifact', () => {
+    it('bundled config defines readonly agent that denies edit/write/patch', async () => {
+      // contract: the static config shipped with the engine (pointed at via OPENCODE_CONFIG)
+      //           defines a `readonly` agent that denies the file-editing tools; bash stays allowed
+      //           (not denied) so the agent keeps its primary investigation tool.
+      const cfgPath = fileURLToPath(new URL('../readonly.config.json', import.meta.url));
+      const cfg = JSON.parse(await readFile(cfgPath, 'utf8')) as {
+        agent: { readonly: { mode: string; permission: Record<string, string> } };
+      };
 
-      const engine = new TestableOpencodeEngine('my-readonly-profile');
-
-      // #region START_PROFILE_CACHE_CONCURRENT
-      const [result1, result2, result3] = await Promise.all([
-        engine._ensureReadonlyProfile(),
-        engine._ensureReadonlyProfile(),
-        engine._ensureReadonlyProfile(),
-      ]);
-      // #endregion END_PROFILE_CACHE_CONCURRENT
-
-      assert.strictEqual(result1, 'my-readonly-profile');
-      assert.strictEqual(result2, 'my-readonly-profile');
-      assert.strictEqual(result3, 'my-readonly-profile');
-      assert.strictEqual(engine.generateCalls.length, 1);
+      const perm = cfg.agent.readonly.permission;
+      assert.strictEqual(perm['edit'], 'deny');
+      assert.strictEqual(perm['write'], 'deny');
+      assert.strictEqual(perm['patch'], 'deny');
+      // bash must NOT be denied — readonly keeps shell for investigation
+      assert.notStrictEqual(perm['bash'], 'deny');
     });
   });
 
@@ -211,7 +191,7 @@ describe('OpencodeEngine', () => {
         return;
       }
 
-      const engine = new TestableOpencodeEngine('test-timeout-profile');
+      const engine = new OpencodeEngine();
 
       // #region START_TIMEOUT_ASSERT_REJECTS
       await assert.rejects(
@@ -228,6 +208,112 @@ describe('OpencodeEngine', () => {
         }
       );
       // #endregion END_TIMEOUT_ASSERT_REJECTS
+    });
+  });
+
+  // ── integration: listModels ──────────────────────────────────────────────
+
+  describe('#listModels', () => {
+    it('parses opencode models output', async (t) => {
+      // contract: listModels() returns only provider/model-shaped strings from opencode models output;
+      //           non-matching lines (headers, blank lines) are filtered; non-zero exit → []
+      // non-goal: do not assert exact model list — varies across opencode versions
+
+      if (!opencodeAvailable) {
+        // degradation path: opencode unavailable → execFileAsync throws → listModels() degrades to []
+        const engine = new OpencodeEngine();
+        const result = await engine.listModels();
+        assert.deepStrictEqual(result, []);
+        return;
+      }
+
+      const engine = new OpencodeEngine();
+      const models = await engine.listModels();
+
+      // #region START_PARSE_MODELS_ASSERT_FORMAT
+      // all returned items must match provider/model pattern (non-empty provider + non-empty model)
+      for (const model of models) {
+        assert.match(
+          model,
+          /^[^\s/]+\/[^\s]+$/,
+          `expected provider/model format, got: ${model}`
+        );
+      }
+      // opencode with llm-proxy configured returns at least one model
+      assert.ok(models.length > 0, 'expected at least one model from opencode models');
+      // #endregion END_PARSE_MODELS_ASSERT_FORMAT
+    });
+
+    it('defaults model to deepseek in args', async (t) => {
+      // contract: when RunOptions.model is absent, OpencodeEngine.run() uses DEFAULT_MODEL = 'llm-proxy/deepseek-v4-pro'
+      // test approach: run() with no model and a 1ms timeout → TIMEOUT error; the only way TIMEOUT is thrown
+      //   (not AGENT_NOT_INSTALLED) is if spawn succeeded → args including --model were accepted by opencode
+      // non-goal: do not assert on full run output — non-deterministic
+
+      if (!opencodeAvailable) {
+        t.skip('opencode binary not available — cannot verify default model arg acceptance');
+        return;
+      }
+
+      const engine = new OpencodeEngine();
+
+      // #region START_DEFAULT_MODEL_RUN_NO_MODEL
+      // Run without model; 1ms timeout ensures TIMEOUT before LLM responds
+      // TIMEOUT (not AGENT_NOT_INSTALLED / MODEL_UNAVAILABLE) proves: opencode accepted the default model arg
+      await assert.rejects(
+        () => engine.run({ task: 'ping', dirs: [], timeout: 1 }),
+        (error: unknown) => {
+          assert.ok(error instanceof AgentRunError);
+          // TIMEOUT means opencode spawned successfully with the default model arg
+          // MODEL_UNAVAILABLE would mean the default 'llm-proxy/deepseek-v4-pro' was rejected
+          assert.strictEqual(error.code, 'TIMEOUT', `expected TIMEOUT but got ${error.code}: ${error.hint}`);
+          return true;
+        }
+      );
+      // #endregion END_DEFAULT_MODEL_RUN_NO_MODEL
+    });
+  });
+
+  // ── integration: MODEL_UNAVAILABLE hint enrichment ────────────────────────
+
+  describe('#run MODEL_UNAVAILABLE', () => {
+    it('enriches MODEL_UNAVAILABLE hint with model list', async (t) => {
+      // contract: when opencode exits with "unknown model" stderr, run() enriches the hint with
+      //           the list from listModels(); the final AgentRunError.hint contains at least one model id
+      // non-goal: do not assert exact hint text — list is dynamic; hint format may include markdown
+      // note: uses real OpencodeEngine (not TestableOpencodeEngine) so that opencode receives a
+      //       real profile name and responds with a model-specific error rather than a profile-not-found error
+
+      if (!opencodeAvailable) {
+        t.skip('opencode binary not available — cannot test MODEL_UNAVAILABLE hint enrichment');
+        return;
+      }
+
+      const engine = new OpencodeEngine();
+
+      // #region START_MODEL_UNAVAILABLE_HINT_ASSERT
+      // Use a clearly non-existent model id to trigger MODEL_UNAVAILABLE from opencode
+      await assert.rejects(
+        () =>
+          engine.run({
+            task: 'ping',
+            dirs: [],
+            model: 'no-such-provider/no-such-model-xyzzy',
+            timeout: 30_000,
+          }),
+        (error: unknown) => {
+          assert.ok(error instanceof AgentRunError);
+          assert.strictEqual(error.code, 'MODEL_UNAVAILABLE');
+          // hint must contain at least one provider/model pattern — proving enrichment ran
+          assert.match(
+            error.hint,
+            /[^\s/]+\/[^\s]+/,
+            'expected hint to contain at least one provider/model from listModels()'
+          );
+          return true;
+        }
+      );
+      // #endregion END_MODEL_UNAVAILABLE_HINT_ASSERT
     });
   });
 

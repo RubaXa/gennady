@@ -38,11 +38,11 @@ Edge A→B = «A depends on B». TSK-63 (opencode) → TSK-62 (core). TSK-64 (mo
 
 ## Tracker
 
-| Task-ID                                | Title                     | Module   | Dependencies | Status     | Reopens |
-| -------------------------------------- | ------------------------- | -------- | ------------ | ---------- | ------- |
-| [TSK-62](core/core.task-62.md)         | Implement core module     | core     | None         | `[x]` DONE | 0       |
-| [TSK-63](opencode/opencode.task-63.md) | Implement opencode engine | opencode | TSK-62       | `[x]` DONE | 0       |
-| [TSK-64](agent-run.task-64.md)         | Model selection           | core + opencode | TSK-62, TSK-63 | `[ ]` TODO | 0       |
+| Task-ID                                | Title                     | Module          | Dependencies   | Status     | Reopens |
+| -------------------------------------- | ------------------------- | --------------- | -------------- | ---------- | ------- |
+| [TSK-62](core/core.task-62.md)         | Implement core module     | core            | None           | `[x]` DONE | 0       |
+| [TSK-63](opencode/opencode.task-63.md) | Implement opencode engine | opencode        | TSK-62         | `[x]` DONE | 0       |
+| [TSK-64](agent-run.task-64.md)         | Model selection           | core + opencode | TSK-62, TSK-63 | `[x]` DONE | 0       |
 
 ## Notes
 

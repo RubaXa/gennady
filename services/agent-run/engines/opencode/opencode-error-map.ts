@@ -1,6 +1,6 @@
 // @file: Pure error-mapping utility for opencode subprocess failures.
 // @consumers: OpencodeEngine
-// @tasks: TSK-63
+// @tasks: TSK-63, TSK-64
 
 import type { ErrorCode } from '../../core/agent-run-error.ts';
 
@@ -33,6 +33,9 @@ const PROXY_PATTERN = /ERR_ACCESS_DENIED|403|proxy/i;
 // invariant: intentionally wide — opencode error text is fragile across versions
 const SCHEMA_PATTERN = /constraint failed.*session_message|database schema|migration/i;
 
+// invariant: covers common opencode wording for unknown model identifiers
+const MODEL_UNAVAILABLE_PATTERN = /unknown model|no such model|model not found/i;
+
 /**
  * @purpose Translate a raw opencode subprocess failure descriptor into a typed ErrorCode and operator hint.
  * @invariant Never throws; always returns a valid `ErrorCode`.
@@ -54,6 +57,17 @@ export function opencodeErrorMap(failure: OpencodeFailure): OpencodeErrorMapping
   // #endregion END_SPAWN_ERROR_MAPPING
 
   // #region START_STDERR_PATTERN_MATCHING
+  // ORDER MATTERS: MODEL_UNAVAILABLE must be checked before PROXY_PATTERN.
+  // The default model id "llm-proxy/deepseek-v4-pro" contains the word "proxy",
+  // so an "unknown model: llm-proxy/deepseek-v4-pro" message would mis-classify
+  // as NETWORK_BLOCKED if PROXY_PATTERN were checked first. Specific-before-general.
+  if (MODEL_UNAVAILABLE_PATTERN.test(stderr)) {
+    return {
+      code: 'MODEL_UNAVAILABLE',
+      hint: 'The requested model is not available. Use listModels() to retrieve the list of available models.',
+    };
+  }
+
   if (PROXY_PATTERN.test(stderr)) {
     return {
       code: 'NETWORK_BLOCKED',

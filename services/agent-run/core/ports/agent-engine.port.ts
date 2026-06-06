@@ -1,6 +1,6 @@
 // @file: Port contract for agent engine implementations.
 // @consumers: registry, run
-// @tasks: TSK-62
+// @tasks: TSK-62, TSK-64
 
 import type { RunOptions } from '../run-options.type.ts';
 import type { RunResult } from '../run-options.type.ts';
@@ -24,9 +24,16 @@ export interface AgentEngine {
   /**
    * @purpose Execute the engine with the provided task and return the markdown response.
    * @pre `options.task` is non-empty (enforced by `run()` before dispatch).
-   * @param options Resolved run options including task, dirs, mode, and timeout.
+   * @param options Resolved run options including task, dirs, mode, model, and timeout.
    * @throws {AgentRunError} On any engine failure; does not write to disk (readonly contract).
    * @returns Markdown response text and the engine id that produced it.
    */
   run(options: RunOptions): Promise<RunResult>;
+
+  /**
+   * @purpose Retrieve the list of model identifiers available through this engine.
+   * @invariant Never throws; returns `[]` on any failure (degraded mode).
+   * @returns Array of model identifiers in `provider/model` format; empty on failure.
+   */
+  listModels(): Promise<string[]>;
 }

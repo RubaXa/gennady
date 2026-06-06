@@ -1,6 +1,6 @@
 // @file: Public value object types for the agent-run module API surface.
 // @consumers: run, AgentEngine implementations, CLI commands, agent consumers
-// @tasks: TSK-62
+// @tasks: TSK-62, TSK-64
 
 /**
  * @purpose Input to `run()`: describes the task, working directories, and execution constraints.
@@ -16,6 +16,8 @@ export type RunOptions = {
   mode?: 'readonly';
   /** @purpose Explicit engine id override; absent → registry default (opencode first) */
   engine?: string;
+  /** @purpose Model identifier in `provider/model` format; absent → engine default */
+  model?: string;
   /** @purpose Upper time bound for one engine run in ms | @invariant Default 120000 when absent */
   timeout?: number;
 };
