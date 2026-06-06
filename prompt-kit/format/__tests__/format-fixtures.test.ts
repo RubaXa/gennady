@@ -273,7 +273,7 @@ function trimOne(s: string): string {
 function loadExpected(fixtureName: string): { xml: string; md: string } {
   const dir = join(import.meta.dirname ?? __dirname, 'fixtures', fixtureName);
   return {
-    xml: trimOne(readFileSync(join(dir, 'expected.xml'), 'utf8')),
+    xml: trimOne(readFileSync(join(dir, 'expected.html'), 'utf8')),
     md: trimOne(readFileSync(join(dir, 'expected.md'), 'utf8')),
   };
 }

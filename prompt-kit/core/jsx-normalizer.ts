@@ -25,6 +25,11 @@ export class JSXTreeNormalizer {
     }
     // #endregion END_NORMALIZE_LEAF
 
+    // Flatten nested arrays (React passes array children as-is)
+    if (Array.isArray(node)) {
+      return { type: undefined, props: {}, children: JSXTreeNormalizer._normalizeChildren(node) };
+    }
+
     if (typeof node !== 'object') {
       return { type: undefined, props: {}, children: [] };
     }

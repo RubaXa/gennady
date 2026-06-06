@@ -26,7 +26,7 @@ export class XmlFormatter {
 
     // #region START_SELF_CLOSING_EMPTY — invariant: no children → self-closing tag
     if (!children || children.trim() === '') {
-      return `${indent}<${tag}${attrStr}/>`;
+      return `${indent}<${tag}${attrStr}></${tag}>`;
     }
     // #endregion END_SELF_CLOSING_EMPTY
 
@@ -48,7 +48,7 @@ export class XmlFormatter {
   formatInline(tag: string, props: Record<string, unknown>, children: string): string {
     const attrStr = this._renderAttributes(props);
     if (!children || children.trim() === '') {
-      return `<${tag}${attrStr}/>`;
+      return `<${tag}${attrStr}></${tag}>`;
     }
     return `<${tag}${attrStr}>${children}</${tag}>`;
   }

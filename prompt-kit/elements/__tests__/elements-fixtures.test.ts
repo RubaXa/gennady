@@ -31,7 +31,7 @@ function loadExpected(path: string): string {
 
 function loadFixture(name: string) {
   const dir = join(fixturesDir, name);
-  const expectedXml = loadExpected(join(dir, 'expected.xml'));
+  const expectedXml = loadExpected(join(dir, 'expected.html'));
   const expectedMd = loadExpected(join(dir, 'expected.md'));
   return { expectedXml, expectedMd };
 }

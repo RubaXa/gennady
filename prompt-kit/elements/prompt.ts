@@ -13,5 +13,5 @@ export const Prompt = definePromptElement({
       return kw ? `KEYWORDS:\n${kw}` : '';
     },
   },
-  xml: { tag: 'Prompt' },
+  html: { tag: 'Prompt' },
 });
