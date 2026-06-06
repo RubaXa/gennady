@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Group = definePromptElement({
+export type GroupProps = { is: string; [key: string]: unknown };
+
+export const Group = definePromptElement<GroupProps>({
   tagName: 'Group',
   role: 'section',
   markdown: {
@@ -13,7 +15,9 @@ export const Group = definePromptElement({
   },
 });
 
-export const Node = definePromptElement({
+export type NodeProps = { is: string; id?: string; [key: string]: unknown };
+
+export const Node = definePromptElement<NodeProps>({
   tagName: 'Node',
   role: 'section',
   markdown: {

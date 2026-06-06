@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const HardForbidden = definePromptElement({
+export type HardForbiddenProps = Record<string, never>;
+
+export const HardForbidden = definePromptElement<HardForbiddenProps>({
   tagName: 'HardForbidden',
   role: 'section',
   markdown: { title: () => 'HARD FORBIDDEN:', includeBoundaryComments: true },

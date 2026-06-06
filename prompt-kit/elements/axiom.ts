@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Axiom = definePromptElement({
+export type AxiomProps = { id: string };
+
+export const Axiom = definePromptElement<AxiomProps>({
   tagName: 'Axiom',
   role: 'section',
   markdown: {

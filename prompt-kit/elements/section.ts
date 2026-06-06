@@ -4,11 +4,13 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Section = definePromptElement({
+export type SectionProps = { title: string; id?: string };
+
+export const Section = definePromptElement<SectionProps>({
   tagName: 'Section',
   role: 'section',
   markdown: {
-    title: ({ props }) => props.title as string,
+    title: ({ props }) => props.title,
     includeBoundaryComments: true,
   },
 });

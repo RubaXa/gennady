@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const PrimaryGoal = definePromptElement({
+export type PrimaryGoalProps = Record<string, never>;
+
+export const PrimaryGoal = definePromptElement<PrimaryGoalProps>({
   tagName: 'PrimaryGoal',
   role: 'section',
   markdown: { title: () => 'PRIMARY GOAL:', includeBoundaryComments: true },

@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const BeliefState = definePromptElement({
+export type BeliefStateProps = Record<string, never>;
+
+export const BeliefState = definePromptElement<BeliefStateProps>({
   tagName: 'BeliefState',
   role: 'section',
   markdown: { title: () => 'BELIEF STATE:', includeBoundaryComments: true },

@@ -9,13 +9,15 @@ export const PROMPT_ELEMENT_SYMBOL = Symbol.for('prompt-element');
  * @purpose Configuration for a prompt element: role, format-specific rendering options.
  * @invariant role determines which TFormatEngine method is dispatched by TreeWalker.
  */
-export type PromptElementConfig<Props = Record<string, unknown>> = {
+export type PromptElementConfig<Props extends Record<string, unknown> = Record<string, unknown>> = {
   /** @purpose Role determining which TFormatEngine method is dispatched | @invariant One of root|section|list|block|inline */
   role: 'root' | 'section' | 'list' | 'block' | 'inline';
   tagName?: string;  /** @purpose Markdown-specific rendering options: title extractor, wrapper, ordered flag, lang, boundary comments */
   markdown?: {
     /** @purpose Extract title from props for section heading | @sideEffect none */
-    title?: (props: Record<string, unknown>) => string;
+    title?: (ctx: { tagName: string; props: Props; depth: number }) => string;
+    /** @purpose Render children with custom wrapper for inline elements */
+    renderChildren?: (ctx: { children: string; props: Props }) => string;
     /** @purpose Symmetric wrapper for inline elements (e.g. '**' for bold) */
     wrapper?: string;
     /** @purpose Whether list is ordered | @invariant default false */

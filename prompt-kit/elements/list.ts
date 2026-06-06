@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const List = definePromptElement({
+export type ListProps = { ordered?: boolean; title?: string };
+
+export const List = definePromptElement<ListProps>({
   tagName: 'List',
   role: 'list',
   markdown: {

@@ -4,14 +4,13 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Prompt = definePromptElement({
+export type PromptProps = { keywords?: string };
+
+export const Prompt = definePromptElement<PromptProps>({
   tagName: 'Prompt',
   role: 'root',
-  markdown: {
-    title: ({ props }) => {
-      const kw = props.keywords as string | undefined;
-      return kw ? `KEYWORDS:\n${kw}` : '';
-    },
-  },
   html: { tag: 'Prompt' },
+  markdown: {
+    title: ({ props }) => props.keywords ? `KEYWORDS:\n${props.keywords}` : '',
+  },
 });

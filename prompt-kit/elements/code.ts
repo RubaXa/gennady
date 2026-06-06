@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Code = definePromptElement({
+export type CodeProps = { lang?: string; title?: string };
+
+export const Code = definePromptElement<CodeProps>({
   tagName: 'Code',
   role: 'block',
   markdown: {

@@ -4,7 +4,9 @@
 
 import { definePromptElement } from '../core/define-prompt-element.js';
 
-export const Bold = definePromptElement({
+export type BoldProps = Record<string, never>;
+
+export const Bold = definePromptElement<BoldProps>({
   tagName: 'Bold',
   role: 'inline',
 });
