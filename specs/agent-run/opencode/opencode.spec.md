@@ -57,9 +57,11 @@ _Это полный список сущностей модуля `opencode`. Л
 - **Public Operations:**
   - `id` = `'opencode'`.
   - `detect() -> { installed, version? }` — запустить `opencode --version`.
-  - `run(options) -> RunResult` — собрать аргументы (`run <task> --agent <readonly> --dir <первая>`; остальные директории перечисляются в тексте задания — `external_directory` deferred в v1, Спайк 1), почистить окружение, спавнить, собрать stdout → `{ text, engine: 'opencode' }`.
+  - `listModels() -> Promise<string[]>` — распарсить вывод `opencode models`: разбить по строкам, `trim`, оставить только строки вида `provider/model` (содержат `/`, без пробелов внутри); строки-заголовки/пустые игнорировать; non-zero exit или сбой spawn → `[]` (не кидает). (`opencode models` выводит чистый текст по одной модели в строке — мы это видели; ANSI не ожидается, но `trim` снимает хвосты.)
+  - `run(options) -> RunResult` — собрать аргументы (`run <task> --agent <readonly> --model <model или дефолт> --dir <первая>`; остальные директории перечисляются в тексте задания — `external_directory` deferred в v1, Спайк 1), почистить окружение, спавнить, собрать stdout → `{ text, engine: 'opencode' }`.
+- **Default model:** `llm-proxy/deepseek-v4-pro` (когда `options.model` не задан).
 - **Lifecycle:** singleton, регистрируется в реестре `core` через `index.ts`.
-- **Errors & Degradation:** при ненулевом exit или нераспознанном выводе → `opencodeErrorMap` → кидает `AgentRunError`.
+- **Errors & Degradation:** при ненулевом exit или нераспознанном выводе → `opencodeErrorMap` → кидает `AgentRunError`. На `MODEL_UNAVAILABLE` движок обогащает hint выводом `listModels()` (список доступных).
 - **Consumers:** Internal — реестр `core` (`../core/core.spec.md`); External — N/A (через публичный `run`).
 
 ### `opencodeErrorMap`
@@ -98,6 +100,7 @@ _Это полный список сущностей модуля `opencode`. Л
 
 - Preconditions: `options.task` непустой.
 - **Оптимистичный запуск:** НЕ делать pre-flight `detect()`; спавнить `opencode run` сразу. Ошибка spawn (`error.code` ENOENT/EACCES) → `AGENT_NOT_INSTALLED` через `opencodeErrorMap`.
+- **Модель:** `options.model` или дефолт `llm-proxy/deepseek-v4-pro` → `--model`. Если модель недоступна (opencode не знает её) → `opencodeErrorMap` даёт `MODEL_UNAVAILABLE`, движок обогащает hint списком из `listModels()` (вне горячего пути; только на ветке этой ошибки). Без молчаливой подмены модели.
 - Postconditions: при успехе `{ text, engine: 'opencode' }`, `text` = stdout движка; **ни один файл в `dirs` не изменён** (readonly). При неуспехе — `AgentRunError` через `opencodeErrorMap`. Превышение `timeout` → `AgentRunError('TIMEOUT')` после SIGTERM (+SIGKILL по grace). Сбой генерации профиля (`agent create` non-zero) → `LAUNCH_FAILED`.
 - Invariants: запуск всегда с readonly-профилем; окружение подпроцесса очищено от прокси-переменных (оба регистра); по завершении (успех/ошибка/таймаут) подпроцесс гарантированно мёртв — не сирота.
 
@@ -118,6 +121,7 @@ _Это полный список сущностей модуля `opencode`. Л
   | `403` / proxy / `ERR_ACCESS_DENIED`                                    | stderr                         | `NETWORK_BLOCKED`     | снять прокси-переменные (`HTTPS_PROXY`/`https_proxy`…) или дать доступ   |
   | `constraint failed.*session_message` / `database schema` / `migration` | stderr                         | `VERSION_MISMATCH`    | CLI отстал → `brew upgrade opencode`; App отстал → обновить opencode App |
   | `Forbidden` на модель/провайдера                                       | stderr                         | `MODEL_FORBIDDEN`     | проверить ключ и права на модель                                         |
+  | `unknown model` / `no such model` / `model not found`                  | stderr                         | `MODEL_UNAVAILABLE`   | базовый hint; `OpencodeEngine` дополнит списком из `listModels()`        |
   | `API key … missing` / пустой ключ                                      | stderr                         | `CREDENTIAL_MISSING`  | задать env-ключ провайдера                                               |
   | сбой генерации профиля (`agent create` non-zero) или прочее            | exitCode+stderr                | `LAUNCH_FAILED`       | сырой stderr + «причина не распознана»                                   |
 
@@ -134,7 +138,8 @@ _Это полный список сущностей модуля `opencode`. Л
   - `mode: 'readonly'` → readonly agent через `opencode agent create --permissions` + `--agent`.
   - `timeout` → потолок подпроцесса; превышение → SIGTERM + `TIMEOUT`.
   - `engine` → не наблюдается здесь (выбор движка — забота реестра).
-- Отложено / not consumed in v1: `--format json`, `--model`/`--variant` (выбор модели), стриминг, сессии — см. scope spec §3.3.
+  - `model` → `--model` (дефолт `llm-proxy/deepseek-v4-pro`); недоступна → `MODEL_UNAVAILABLE` + список.
+- Отложено / not consumed in v1: `--format json`, `--variant` (reasoning effort), стриминг, сессии — см. scope spec §3.3.
 <!--/SECTION:PUBLIC_OPTIONS-->
 
 <!--SECTION:FILE_STRUCTURE-->

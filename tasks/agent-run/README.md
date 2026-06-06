@@ -30,9 +30,11 @@ Tier order (low → high priority on collision): `traversed-scopes` → `target-
 ```mermaid
 graph TD
   TSK-63 --> TSK-62
+  TSK-64 --> TSK-62
+  TSK-64 --> TSK-63
 ```
 
-Edge A→B = «A depends on B». TSK-63 (opencode) depends on TSK-62 (core).
+Edge A→B = «A depends on B». TSK-63 (opencode) → TSK-62 (core). TSK-64 (model) → оба.
 
 ## Tracker
 
@@ -40,6 +42,7 @@ Edge A→B = «A depends on B». TSK-63 (opencode) depends on TSK-62 (core).
 | -------------------------------------- | ------------------------- | -------- | ------------ | ---------- | ------- |
 | [TSK-62](core/core.task-62.md)         | Implement core module     | core     | None         | `[x]` DONE | 0       |
 | [TSK-63](opencode/opencode.task-63.md) | Implement opencode engine | opencode | TSK-62       | `[x]` DONE | 0       |
+| [TSK-64](agent-run.task-64.md)         | Model selection           | core + opencode | TSK-62, TSK-63 | `[ ]` TODO | 0       |
 
 ## Notes
 

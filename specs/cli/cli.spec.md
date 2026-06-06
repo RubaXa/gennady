@@ -917,6 +917,35 @@ $ gennady agents-rules
 
 Команда `agents-rules` читает `cli/cmd/orient/README.md` из пакета gennady и выводит на stdout. `README.md` — канонический источник: виден человеку в GitHub и доступен агенту через команду. Перед чтением проверяется наличие `node_modules/gennady/` в проекте.
 
+### 3.8 run DX
+
+Тонкая обёртка над библиотекой [`@services/agent-run`](../agent-run/agent-run.spec.md): запускает внешний AI-движок (по умолчанию opencode) с заданием и директориями в readonly, печатает текстовый ответ. Потребитель — чаще агент.
+
+```bash
+# happy path — модель по умолчанию берётся из движка (llm-proxy/deepseek-v4-pro); CLI её не задаёт
+$ gennady run "опиши этот репозиторий одним предложением"
+<markdown-ответ движка>
+# exit 0
+
+# несколько директорий + явная модель
+$ gennady run "как связаны эти репозитории?" --dir ../repoA --dir ../repoB --model llm-proxy/glm-4.7
+<markdown-ответ движка>
+# exit 0
+
+# модель недоступна → список, не молчаливая подмена
+$ gennady run "…" --model нет/такой
+✗ Модель «нет/такой» недоступна. Доступные: llm-proxy/deepseek-v4-pro, google/gemini-2.5-pro, …
+  Что сделать: выбери модель из списка через --model.   [MODEL_UNAVAILABLE]
+# exit 1
+
+# движок не установлен
+$ gennady run "…"
+✗ opencode не найден. Что сделать: попроси оператора `brew install opencode`.   [AGENT_NOT_INSTALLED]
+# exit 1
+```
+
+Флаги: позиционный `<задание>` (обязателен); `--dir <path>` (повторяемый, дефолт cwd); `--model <provider/model>` (дефолт `llm-proxy/deepseek-v4-pro`); `--engine <id>` (дефолт opencode); `--timeout <ms>` (дефолт 120000). readonly всегда включён в v1. Успех → markdown в stdout, exit 0. Ошибка → `✗ <причина> [CODE]` + подсказка в stderr, exit 1.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -1165,6 +1194,18 @@ $ gennady agents-rules
 | FR-E2E-14        | Отдельная npm-команда: `npm run test:e2e`. Не входит в `npm test`                                                                                         |
 | FR-E2E-15        | При падении теста — вывод stdout/stderr упавшей команды для отладки                                                                                       |
 | FR-E2E-16        | Тесты используют `node:test` (как весь проект, согласно `infra-base`)                                                                                      |
+
+### 4.1.9 run Functional Requirements
+
+| ID | Требование |
+| --- | --- |
+| FR-RUN-1 | `gennady run "<задание>"` зовёт `run()` из `@services/agent-run`, печатает `RunResult.text` в stdout, exit 0. |
+| FR-RUN-2 | Флаги: `--dir <path>` (повторяемый → `dirs[]`, дефолт cwd); `--model <provider/model>` (дефолт не задаётся CLI — берётся дефолт движка); `--engine <id>`; `--timeout <ms>`. |
+| FR-RUN-3 | Пустое/отсутствующее `<задание>` → ошибка использования, exit 1 (не зовёт движок). |
+| FR-RUN-4 | `AgentRunError` → stderr, exit 1. CLI печатает **`e.hint` и `e.code` из библиотеки дословно** (тонкая обёртка, без своего слоя перевода): формат `✗ <e.hint>   [<e.code>]`. `e.message` НЕ печатается (он содержит те же code+hint — `[AgentRunError] <code>: <hint>`). Конструктор: `new AgentRunError(code, hint)`. Читаемость — ответственность `@services/agent-run`, не CLI. |
+| FR-RUN-5 | `MODEL_UNAVAILABLE` → `e.hint` уже содержит список моделей (ядро его сформировало); CLI просто печатает hint, exit 1. |
+| FR-RUN-6 | readonly всегда включён (v1 не передаёт режим записи). |
+| FR-RUN-7 | Команда — тонкая обёртка: вся логика запуска/ошибок в `@services/agent-run`; CLI только парсит флаги и форматирует вывод. |
 
 ### 4.2 Non-Functional Constraints
 
@@ -1883,12 +1924,36 @@ cli/__tests__/e2e/
   - `npm link` — быстрее (нет overhead `.tgz`), но создаёт symlink, а не реальную установку. Не проверяет `package.json#files` — файлы, не попавшие в `files`, всё равно будут доступны через symlink. `npm pack + install` — побайтово идентично registry-установке
   - Отдельный npm-пакет для e2e-фикстур — избыточно для 7 тестовых файлов
 
+### 5.13 run
+
+```
+cli/cmd/run/
+├── index.ts      # case 'run' dispatch target: import { run } from './run.cmd.ts'; run(process.argv)
+└── run.cmd.ts    # парсит флаги → зовёт run() из @services/agent-run → печатает text или ✗ code/hint
+```
+
+**Ключевые решения:**
+
+1. **Тонкая обёртка.** Вся логика — в [`@services/agent-run`](../agent-run/agent-run.spec.md). `run.cmd.ts` только: парсит argv (позиционное задание + `--dir`×N + `--model` + `--engine` + `--timeout`), собирает `RunOptions` (опускает `dirs`, если `--dir` не задан — ядро/движок дефолтят на cwd; не задаёт `--model` по умолчанию), зовёт `run(opts)`, печатает `RunResult.text` в stdout (exit 0) либо ловит `AgentRunError` → `✗ <e.hint>   [<e.code>]` в stderr (exit 1).
+2. **Дефолт модели — у движка, не в CLI.** CLI не задаёт `--model` по умолчанию; пустой `model` → ядро/движок берут дефолт (`llm-proxy/deepseek-v4-pro`). CLI лишь пробрасывает явный `--model`.
+3. **Регистрация.** `case 'run': await import('./cmd/run/index.ts'); break` в `cli/gennady.ts`.
+4. **Парсинг флагов** — `node:util` `parseArgs` (повторяемый `--dir` через `multiple: true`), без новых зависимостей.
+
+### 5.14 Rejected Alternatives (run)
+
+| Вариант | Почему отвергнут |
+| --- | --- |
+| Дефолт модели в CLI | Дублирует знание движка; ядро уже знает дефолт. CLI остаётся тонким. |
+| Логика запуска opencode прямо в CLI | Нарушает «ядро переиспользуемо не только из CLI»; вся логика в `@services/agent-run`. |
+| Своя библиотека парсинга аргументов | YAGNI — `node:util parseArgs` достаточно. |
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
   - [`dbc`](../dbc/dbc.spec.md) — `DbcLinter`, `DbcLintError`, `DbcLintReport`; требует `refine` для опции `content`
   - [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier, Vite
   - [`infra-npm-publish`](../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/directives/` в npm-пакете (sync читает из пакета)
+  - [`agent-run`](../agent-run/agent-run.spec.md) — `run`, `listEngines`, `listModels`, `AgentRunError` для команды `run`
 - **Provides to:** AI-агенты (через CLI)
 
 ## 8. Bootstrap Requirements
@@ -1986,6 +2051,14 @@ cli/__tests__/e2e/
 | Обновить `cli/gennady.ts` (case 'agents-rules')                          | file          | this-scope-task       | добавить `case 'agents-rules': await import('./cmd/agents-rules/index.ts'); break`                                                  |
 | Обновить `cli/AGENTS.md` (строка agents-rules)                           | file          | this-scope-task       | добавить строку `agents-rules` в таблицу команд                                                                                     |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка agents-rules)                | file          | this-scope-task       | добавить `agents-rules` в вывод help                                                                                                |
+| **run**                                                                  |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/run/index.ts`                                           | file          | this-scope-task       | `import { run } from './run.cmd.ts'; run(process.argv)`                                                                             |
+| Создать `cli/cmd/run/run.cmd.ts`                                         | file          | this-scope-task       | parseArgs (задание + `--dir`×N + `--model` + `--engine` + `--timeout`) → `run()` из `@services/agent-run` → stdout/stderr          |
+| Создать `cli/cmd/run/__tests__/run.cmd.test.ts`                          | file          | this-scope-task       | Integration: happy (stdout=text, exit 0), пустой task → exit 1, AgentRunError → `✗ msg [code]`+hint exit 1, MODEL_UNAVAILABLE hint |
+| Обновить `cli/gennady.ts` (case 'run')                                   | file          | this-scope-task       | добавить `case 'run': await import('./cmd/run/index.ts'); break`                                                                    |
+| Обновить `cli/AGENTS.md` (строка run)                                    | file          | this-scope-task       | добавить строку `run` в таблицу команд                                                                                              |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка run)                         | file          | this-scope-task       | добавить `run` в вывод help                                                                                                         |
+| `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (TSK-62/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
 | **e2e**                                                                  |               |                       |                                                                                                                                     |
 | `"test:e2e"` script в `package.json`                                     | structural    | this-scope-task       | добавить `"test:e2e": "node --import tsx --test cli/__tests__/e2e/e2e.test.ts"`                                                     |
 | Директория `cli/__tests__/e2e/`                                          | structural    | this-scope-task       | создать                                                                                                                             |
@@ -2020,6 +2093,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
+- run — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
 - e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
 
 ### 9.2 Inter-Module Dependency Map
@@ -2034,6 +2108,7 @@ graph TD
     sync -. Runtime .-> npm-package[gennady npm package]
     sync-skills -. Runtime .-> npm-package
     agents-rules -. Runtime .-> npm-package
+    run -. Scope Reference .-> agent-run[agent-run]
     sync --> shared-sync[shared/common/sync/]
     sync-skills --> shared-sync
     e2e -. тестирует .-> lint

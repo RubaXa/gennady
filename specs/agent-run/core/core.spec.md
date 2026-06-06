@@ -45,12 +45,13 @@ _Это полный список сущностей модуля `core`. Люб
 | --------------- | ------- | -------------- | --------------------------------------------------------------------------- |
 | `run`           | 🟢      | Service        | Публичная точка входа: выбрать движок, запустить с заданием, вернуть текст. |
 | `listEngines`   | 🟢      | Service        | Список зарегистрированных движков со статусом установки.                    |
-| `RunOptions`    | 🟢      | Value Object   | Вход `run`: task, dirs, mode, engine.                                       |
+| `listModels`    | 🟢      | Service        | Список моделей выбранного движка (вне горячего пути).                       |
+| `RunOptions`    | 🟢      | Value Object   | Вход `run`: task, dirs, mode, engine, timeout, model.                       |
 | `RunResult`     | 🟢      | Value Object   | Выход `run`: text (markdown) + engine (кто отработал).                      |
 | `EngineStatus`  | 🟢      | Value Object   | Статус движка: id, installed, version.                                      |
 | `AgentRunError` | 🟢      | Entity (Error) | Типизированная ошибка: code + hint.                                         |
-| `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (7 классов, включая `TIMEOUT`).                   |
-| `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run. Точка расширения.                            |
+| `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (8 классов, вкл. `TIMEOUT`, `MODEL_UNAVAILABLE`). |
+| `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run + listModels. Точка расширения.               |
 | `registry`      | ⚪      | Service        | Реестр движков: регистрация, detect, выбор дефолта (opencode первым).       |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -77,10 +78,19 @@ _Это полный список сущностей модуля `core`. Люб
 - **Errors & Degradation:** не кидает; сбой `detect()` одного движка → `installed: false`, остальные не страдают.
 - **Consumers:** Internal `index.ts`; External — CLI (подсказка «opencode не установлен»), агенты.
 
+### `listModels`
+
+- **Type:** Service
+- **Purpose:** отдать список моделей движка (для CLI-подсказок и обогащения hint при `MODEL_UNAVAILABLE`).
+- **Public Operations:** `listModels(engine?: string) -> Promise<string[]>` — резолвит движок (явный id или дефолт), зовёт `engine.listModels()`.
+- **Lifecycle:** stateless-функция; вне горячего пути.
+- **Errors & Degradation:** не кидает; сбой движка → `[]`.
+- **Consumers:** Internal `index.ts`, `run` (на ветке `MODEL_UNAVAILABLE`); External — CLI, агенты.
+
 ### `RunOptions`
 
 - **Type:** Value Object
-- **Public Properties:** `task: string` (задание); `dirs?: string[]` (рабочие директории, пусто → cwd); `mode?: 'readonly'` (v1 — только это значение); `engine?: string` (явный выбор движка, иначе дефолт); `timeout?: number` (мс, дефолт 120000 — потолок на один запуск).
+- **Public Properties:** `task: string` (задание); `dirs?: string[]` (рабочие директории, пусто → cwd); `mode?: 'readonly'` (v1 — только это значение); `engine?: string` (явный выбор движка, иначе дефолт); `timeout?: number` (мс, дефолт 120000 — потолок на один запуск); `model?: string` (модель `provider/model`; не задана → дефолт движка).
 - **Consumers:** Internal `run`.
 
 ### `RunResult`
@@ -106,16 +116,17 @@ _Это полный список сущностей модуля `core`. Люб
 ### `ErrorCode`
 
 - **Type:** Value Object (union)
-- **Public Properties:** `'AGENT_NOT_INSTALLED' | 'NETWORK_BLOCKED' | 'VERSION_MISMATCH' | 'MODEL_FORBIDDEN' | 'CREDENTIAL_MISSING' | 'TIMEOUT' | 'LAUNCH_FAILED'`.
+- **Public Properties:** `'AGENT_NOT_INSTALLED' | 'NETWORK_BLOCKED' | 'VERSION_MISMATCH' | 'MODEL_FORBIDDEN' | 'MODEL_UNAVAILABLE' | 'CREDENTIAL_MISSING' | 'TIMEOUT' | 'LAUNCH_FAILED'`.
+- `MODEL_UNAVAILABLE` — запрошенная модель не найдена у движка; hint содержит список доступных моделей (в отличие от `MODEL_FORBIDDEN` — нет прав/403).
 - **Consumers:** Internal `AgentRunError`, движки.
 
 ### `AgentEngine`
 
 - **Type:** Port
 - **Purpose:** контракт, который реализует каждый движок; через него `registry`/`run` работают, не зная конкретики.
-- **Public Operations:** `id: string`; `detect() -> { installed, version? }`; `run(options: RunOptions) -> RunResult`.
+- **Public Operations:** `id: string`; `detect() -> Promise<{ installed, version? }>`; `run(options: RunOptions) -> Promise<RunResult>`; `listModels() -> Promise<string[]>` (доступные модели движка, вне горячего пути).
 - **Lifecycle:** singleton на движок, регистрируется в реестре.
-- **Errors & Degradation:** `run` кидает `AgentRunError`; `detect` не кидает.
+- **Errors & Degradation:** `run` кидает `AgentRunError` (вкл. `MODEL_UNAVAILABLE` со списком в hint); `detect`/`listModels` не кидают (сбой → пустой список).
 - **Consumers:** Internal `registry`, `run`; реализуется в `engines/*` ([`OpencodeEngine`](../opencode/opencode.spec.md)).
 
 ### `registry`
@@ -151,8 +162,11 @@ _Это полный список сущностей модуля `core`. Люб
   - `run` при неуспехе кидает `AgentRunError`; ничего не пишет на диск (readonly).
   - `run` завершается за конечное время: не позже `timeout` либо кидает `AgentRunError('TIMEOUT')`, не оставляя подпроцесс-сироту.
   - `detect` возвращает `{ installed }` без побочных эффектов кроме запуска `--version`-пробы; вызывается вне горячего пути (см. `registry`).
+  - `run` с `options.model`, которой нет у движка → кидает `AgentRunError('MODEL_UNAVAILABLE')`, hint содержит список доступных моделей (движок берёт список только на этой ветке ошибки — вне горячего пути).
+  - `listModels` возвращает список доступных моделей движка; не кидает (сбой → `[]`).
 - Invariants:
   - `id` стабилен и уникален среди зарегистрированных движков.
+  - `model` не задана → движок берёт свой дефолт (не молчаливая подмена при недоступности — а ошибка `MODEL_UNAVAILABLE`).
 
 ### 5.2 Services
 
@@ -178,6 +192,15 @@ _Это полный список сущностей модуля `core`. Люб
 **Contract (DbC):**
 
 - Postconditions: вернуть статус по каждому зарегистрированному движку; сбой `detect` одного → `installed: false`, не роняет вызов (graceful degradation).
+
+#### Service: `listModels`
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`
+
+**Contract (DbC):**
+
+- Postconditions: `listModels(engine?)` резолвит движок (явный id или дефолт) и возвращает `engine.listModels()`; сбой движка → `[]` (не кидает). Вне горячего пути.
 
 #### Service: `registry`
 
@@ -211,7 +234,8 @@ _Это полный список сущностей модуля `core`. Люб
 - `engine?: string` — явный выбор движка; не задан → дефолт реестра (opencode первым).
 - `dirs?: string[]` — рабочие директории; первая = корень, остальные = разрешённые внешние (обрабатывает адаптер); пусто → cwd.
 - `timeout?: number` — потолок на один запуск в мс (дефолт 120000); превышение → `AgentRunError('TIMEOUT')`.
-- Отложено / not consumed in v1: стриминг, сессии, выбор модели, MCP — см. scope spec §3.3.
+- `model?: string` — модель `provider/model`; не задана → дефолт движка; недоступна → `MODEL_UNAVAILABLE` со списком в hint. `listModels()` отдаёт список движка.
+- Отложено / not consumed in v1: стриминг, сессии, `--variant` (reasoning effort), MCP — см. scope spec §3.3.
 <!--/SECTION:PUBLIC_OPTIONS-->
 
 <!--SECTION:FILE_STRUCTURE-->
@@ -224,7 +248,7 @@ services/agent-run/
 └── core/
     ├── ports/
     │   └── agent-engine.port.ts    # AgentEngine (Port)
-    ├── run.ts                      # run(), listEngines()
+    ├── run.ts                      # run(), listEngines(), listModels()
     ├── registry.ts                 # registry: register/resolve/list
     ├── run-options.type.ts         # RunOptions, RunResult, EngineStatus
     ├── agent-run-error.ts          # AgentRunError, ErrorCode
@@ -236,7 +260,7 @@ services/agent-run/
 **File Mapping:**
 
 - `core/ports/agent-engine.port.ts`: `AgentEngine`.
-- `core/run.ts`: `run`, `listEngines`.
+- `core/run.ts`: `run`, `listEngines`, `listModels`.
 - `core/registry.ts`: `registry`.
 - `core/run-options.type.ts`: `RunOptions`, `RunResult`, `EngineStatus`.
 - `core/agent-run-error.ts`: `AgentRunError`, `ErrorCode`.

@@ -53,7 +53,14 @@ try {
 
 ```text
 $ gennady run "как связаны эти репозитории?" --dir ../repoA --dir ../repoB
+<markdown-ответ движка>                       # модель по умолчанию llm-proxy/deepseek-v4-pro
+
+$ gennady run "опиши" --model llm-proxy/glm-4.7
 <markdown-ответ движка>
+
+$ gennady run "…" --model нет/такой
+✗ Модель «нет/такой» недоступна. Доступные: llm-proxy/deepseek-v4-pro, google/gemini-2.5-pro, …
+  Что сделать: выбери модель из списка через --model.   [MODEL_UNAVAILABLE]
 
 $ gennady run "…"
 ✗ Не удалось запустить агента: CLI opencode отстал от версии приложения.
@@ -76,6 +83,7 @@ $ gennady run "…"
 - **F4** — режим readonly: чтение и поиск разрешены, любое редактирование запрещено и проговорено движку в задании.
 - **F5** — вернуть текстовый ответ (Markdown) и идентификатор отработавшего движка.
 - **F6** — при сбое бросить типизированную `AgentRunError` (`code` + `hint`): что не так и что нужно от человека.
+- **F7** — выбор модели: `model?` в `RunOptions`; не задана → дефолт движка (`llm-proxy/deepseek-v4-pro` у opencode). Модель недоступна → `MODEL_UNAVAILABLE` со списком доступных в hint (без молчаливой подмены). `listModels()` отдаёт список движка.
 
 ### 3.2 Non-Functional Constraints
 
@@ -94,6 +102,7 @@ $ gennady run "…"
 - Любое редактирование файлов движком (запись/патч).
 - Провайдеры кроме opencode (claude/codex/cursor — позже).
 - Headless-сервер / демон.
+- `--variant` (reasoning effort) — позже; в v1 только выбор модели (`--model`).
 
 ### 3.4 Runtime Backing & Deferred Scope
 
@@ -122,11 +131,16 @@ export async function run(opts: RunOptions): Promise<RunResult>;
 // --- Лёгкое «что установлено» (для CLI-подсказок и агентов) ---
 export async function listEngines(): Promise<EngineStatus[]>;
 
+// --- Список моделей движка (для CLI-подсказок и при MODEL_UNAVAILABLE) ---
+export async function listModels(engine?: string): Promise<string[]>;
+
 // --- Типизированная ошибка ---
 export class AgentRunError extends Error {
   readonly code: ErrorCode;
   readonly hint: string;
+  constructor(code: ErrorCode, hint: string); // message строится авто: `[AgentRunError] <code>: <hint>`
 }
+// Потребитель печатает hint + code (не message — message содержит их же).
 
 // --- DTO ---
 export type RunOptions = {
@@ -135,6 +149,7 @@ export type RunOptions = {
   mode?: 'readonly'; // v1: только readonly
   engine?: string; // по умолчанию авто (opencode первым)
   timeout?: number; // потолок на запуск, мс (дефолт 120000)
+  model?: string; // 'provider/model'; не задана → дефолт движка (opencode: llm-proxy/deepseek-v4-pro)
 };
 
 export type RunResult = {
@@ -152,7 +167,8 @@ export type ErrorCode =
   | 'AGENT_NOT_INSTALLED' // движок не найден в PATH (spawn ENOENT/EACCES)
   | 'NETWORK_BLOCKED' // прокси/сеть режет доступ к провайдеру
   | 'VERSION_MISMATCH' // CLI движка рассинхронен (напр. schema-ошибка БД)
-  | 'MODEL_FORBIDDEN' // нет прав на модель/провайдера
+  | 'MODEL_FORBIDDEN' // нет прав на модель/провайдера (403)
+  | 'MODEL_UNAVAILABLE' // модель не найдена у движка; hint = список доступных
   | 'CREDENTIAL_MISSING' // не задан ключ провайдера
   | 'TIMEOUT' // запуск превысил timeout, подпроцесс убит
   | 'LAUNCH_FAILED'; // прочее: сырой stderr + «причина не распознана»
@@ -267,6 +283,14 @@ interface AgentEngine {
 - **Why:** скорость — главное правило, инструмент зовут агенты в цикле; пред-проверка `--version` на каждый запуск = лишний подпроцесс. Запускаем сразу, отсутствие движка ловим по spawn-ошибке (подтверждено спайком: `error.code` ENOENT/EACCES); `detect()` остаётся для явного `listEngines()` и кэшируется. `timeout` (120000 мс) против зависания.
 - **Risk accepted:** TOCTOU-зазор detect↔spawn — закрыт маппингом spawn-ошибки в `AGENT_NOT_INSTALLED`.
 - **Rejected alternatives:** detect-then-run на горячем пути (медленнее). Мульти-движковый фолбэк — отложен (в v1 движок один; порядок реестра его уже поддерживает).
+
+### D-009 — Выбор модели: дефолт deepseek, ошибка-со-списком вместо подмены
+
+- **Status:** active
+- **Recorded:** session SddContinue (refine), agent-run
+- **Why:** оператор: по умолчанию `llm-proxy/deepseek-v4-pro`; если модель недоступна — не подменять молча, а вернуть список доступных, чтобы агент/человек выбрал.
+- **Risk accepted:** список тянется через `opencode models` только на ветке ошибки `MODEL_UNAVAILABLE` (вне горячего пути — скорость сохранена).
+- **Rejected alternatives:** pre-flight проверка модели на каждый запуск (медленно); молчаливый фолбэк на другую модель (скрывает проблему); переиспользовать `MODEL_FORBIDDEN` (другая семантика — 403 vs не-в-списке).
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
