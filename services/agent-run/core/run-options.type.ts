@@ -5,7 +5,7 @@
 /**
  * @purpose Input to `run()`: describes the task, working directories, and execution constraints.
  * @invariant `mode` is locked to `'readonly'` in v1 — the type prevents other values at compile time.
- * @invariant `timeout` defaults to 120000 ms when absent; the engine owns actual process termination.
+ * @invariant `timeout` defaults to 1800000 ms (30 min) when absent — real agent work runs long; the engine owns actual process termination.
  */
 export type RunOptions = {
   /** @purpose The task text sent to the agent engine | @invariant Non-empty; enforced by `run()` before dispatch */
@@ -18,7 +18,7 @@ export type RunOptions = {
   engine?: string;
   /** @purpose Model identifier in `provider/model` format; absent → engine default */
   model?: string;
-  /** @purpose Upper time bound for one engine run in ms | @invariant Default 120000 when absent */
+  /** @purpose Upper time bound for one engine run in ms | @invariant Default 1800000 (30 min) when absent */
   timeout?: number;
 };
 

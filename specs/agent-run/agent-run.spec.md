@@ -148,7 +148,7 @@ export type RunOptions = {
   dirs?: string[]; // первая = корень; остальные = разрешённые внешние; пусто = cwd
   mode?: 'readonly'; // v1: только readonly
   engine?: string; // по умолчанию авто (opencode первым)
-  timeout?: number; // потолок на запуск, мс (дефолт 120000)
+  timeout?: number; // потолок на запуск, мс (дефолт 1800000 = 30 мин; реальная работа агента длинная)
   model?: string; // 'provider/model'; не задана → дефолт движка (opencode: llm-proxy/deepseek-v4-pro)
 };
 

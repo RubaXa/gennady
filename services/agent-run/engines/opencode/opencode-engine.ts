@@ -105,7 +105,7 @@ export class OpencodeEngine implements AgentEngine {
    * @returns Markdown response text and the engine id that produced it.
    */
   async run(options: RunOptions): Promise<RunResult> {
-    const { task, dirs = [], timeout = 120_000, model = DEFAULT_MODEL } = options;
+    const { task, dirs = [], timeout = 1_800_000, model = DEFAULT_MODEL } = options;
     logger.debug(
       `[OpencodeEngine#run] [idle → preparing] timeout=${timeout} dirs=${dirs.length} model=${model}`
     );

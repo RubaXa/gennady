@@ -7,13 +7,13 @@ import { AgentRunError } from './agent-run-error.ts';
 import { detectAll, resolve } from './registry.ts';
 import type { EngineStatus, RunOptions, RunResult } from './run-options.type.ts';
 
-/** @purpose Default timeout in ms applied when `options.timeout` is absent. */
-const DEFAULT_TIMEOUT_MS = 120_000;
+/** @purpose Default timeout in ms applied when `options.timeout` is absent. 30 min — real agent work runs long; a hang safety-net, not a work limit. */
+const DEFAULT_TIMEOUT_MS = 1_800_000;
 
 /**
  * @purpose Execute an agent task using the selected or default engine and return the markdown response.
  * @invariant Optimistic dispatch: never calls `detect()` on the hot path; engine absence surfaces via spawn error mapped to AGENT_NOT_INSTALLED.
- * @invariant `timeout` defaults to 120000 ms when absent; the engine owns subprocess termination.
+ * @invariant `timeout` defaults to 1800000 ms (30 min) when absent; the engine owns subprocess termination.
  * @invariant Mode invariant: `mode` is `'readonly'` in v1 — enforced by the `RunOptions` type at compile time.
  * @pre `options.task` must be non-empty after trim; violation throws `AgentRunError('LAUNCH_FAILED')` before dispatch.
  * @param options Task description, working dirs, optional engine override, and timeout.

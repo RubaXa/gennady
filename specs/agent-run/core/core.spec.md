@@ -90,7 +90,7 @@ _Это полный список сущностей модуля `core`. Люб
 ### `RunOptions`
 
 - **Type:** Value Object
-- **Public Properties:** `task: string` (задание); `dirs?: string[]` (рабочие директории, пусто → cwd); `mode?: 'readonly'` (v1 — только это значение); `engine?: string` (явный выбор движка, иначе дефолт); `timeout?: number` (мс, дефолт 120000 — потолок на один запуск); `model?: string` (модель `provider/model`; не задана → дефолт движка).
+- **Public Properties:** `task: string` (задание); `dirs?: string[]` (рабочие директории, пусто → cwd); `mode?: 'readonly'` (v1 — только это значение); `engine?: string` (явный выбор движка, иначе дефолт); `timeout?: number` (мс, дефолт 1800000 = 30 мин — потолок-предохранитель, не лимит работы); `model?: string` (модель `provider/model`; не задана → дефолт движка).
 - **Consumers:** Internal `run`.
 
 ### `RunResult`
