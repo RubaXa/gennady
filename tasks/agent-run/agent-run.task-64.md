@@ -161,7 +161,7 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - [x] `2026-06-06T16:38:05Z` ver `sdd verify` → pass exit=0
 - [x] `2026-06-06T16:38:05Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-06-06T16:38:05Z` DONE
-**Handoff →** artifacts: [services/agent-run/core/run-options.type.ts, services/agent-run/core/agent-run-error.ts, services/agent-run/core/ports/agent-engine.port.ts, services/agent-run/core/run.ts, services/agent-run/engines/opencode/opencode-engine.ts, services/agent-run/engines/opencode/opencode-error-map.ts, services/agent-run/index.ts]; decisions: [MODEL_UNAVAILABLE=added as 8th ErrorCode, DEFAULT_MODEL=llm-proxy/deepseek-v4-pro, listModels-public=exported from index.ts, model-field=RunOptions.model?, listModels-port=AgentEngine.listModels()→Promise<string[]>, hint-enrichment=async via listModels() on MODEL_UNAVAILABLE branch]; open: []
+      **Handoff →** artifacts: [services/agent-run/core/run-options.type.ts, services/agent-run/core/agent-run-error.ts, services/agent-run/core/ports/agent-engine.port.ts, services/agent-run/core/run.ts, services/agent-run/engines/opencode/opencode-engine.ts, services/agent-run/engines/opencode/opencode-error-map.ts, services/agent-run/index.ts]; decisions: [MODEL_UNAVAILABLE=added as 8th ErrorCode, DEFAULT_MODEL=llm-proxy/deepseek-v4-pro, listModels-public=exported from index.ts, model-field=RunOptions.model?, listModels-port=AgentEngine.listModels()→Promise<string[]>, hint-enrichment=async via listModels() on MODEL_UNAVAILABLE branch]; open: []
 
 #### P2
 
@@ -175,7 +175,7 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - [x] `2026-06-06T17:07:38Z` ver `sdd verify services/agent-run/core/__tests__/run.test.ts services/agent-run/engines/opencode/__tests__/opencode-error-map.test.ts services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts` → pass exit=0
 - [x] `2026-06-06T17:07:38Z` ver `npm run test` → pass exit=0
 - [x] `2026-06-06T17:07:38Z` DONE
-**Handoff →** artifacts: [services/agent-run/core/__tests__/run.test.ts, services/agent-run/engines/opencode/__tests__/opencode-error-map.test.ts, services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts]; decisions: [all-BDD-scenarios-covered=true, integration-tests-skip-without-opencode=true, MODEL_UNAVAILABLE-pattern-ordering-insight=llm-proxy-contains-proxy-word]; open: []
+      **Handoff →** artifacts: [services/agent-run/core/__tests__/run.test.ts, services/agent-run/engines/opencode/__tests__/opencode-error-map.test.ts, services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts]; decisions: [all-BDD-scenarios-covered=true, integration-tests-skip-without-opencode=true, MODEL_UNAVAILABLE-pattern-ordering-insight=llm-proxy-contains-proxy-word]; open: []
 
 #### Round close
 
@@ -185,13 +185,15 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 ### Round 2 — 2026-06-06, audit-driven fix: F-01
 
 #### P1 (fix)
+
 - [x] `2026-06-06T17:30:00Z` decision pattern-order=MODEL_UNAVAILABLE-before-PROXY ← F-01: `llm-proxy/` id содержит «proxy», PROXY_PATTERN ловил его раньше → дефолтная модель мис-классифицировалась как NETWORK_BLOCKED
 - [x] `2026-06-06T17:30:00Z` tried проверка `opencodeErrorMap({exitCode:1, stderr:'no such model: llm-proxy/deepseek-v4-pro'})` → теперь `MODEL_UNAVAILABLE` (было `NETWORK_BLOCKED`)
 - [x] `2026-06-06T17:30:00Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-06-06T17:30:00Z` ver `npm run test` → pass exit=0
 - [x] `2026-06-06T17:30:00Z` DONE
-**Handoff →** artifacts: [services/agent-run/engines/opencode/opencode-error-map.ts, services/agent-run/engines/opencode/__tests__/opencode-error-map.test.ts]; decisions: [pattern-order-fixed=specific-before-general, test-uses-real-default-model]; open: []
+      **Handoff →** artifacts: [services/agent-run/engines/opencode/opencode-error-map.ts, services/agent-run/engines/opencode/__tests__/opencode-error-map.test.ts]; decisions: [pattern-order-fixed=specific-before-general, test-uses-real-default-model]; open: []
 
 #### Round close
+
 - [x] `2026-06-06T17:31:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

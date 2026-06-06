@@ -233,11 +233,7 @@ describe('OpencodeEngine', () => {
       // #region START_PARSE_MODELS_ASSERT_FORMAT
       // all returned items must match provider/model pattern (non-empty provider + non-empty model)
       for (const model of models) {
-        assert.match(
-          model,
-          /^[^\s/]+\/[^\s]+$/,
-          `expected provider/model format, got: ${model}`
-        );
+        assert.match(model, /^[^\s/]+\/[^\s]+$/, `expected provider/model format, got: ${model}`);
       }
       // opencode with llm-proxy configured returns at least one model
       assert.ok(models.length > 0, 'expected at least one model from opencode models');
@@ -266,7 +262,11 @@ describe('OpencodeEngine', () => {
           assert.ok(error instanceof AgentRunError);
           // TIMEOUT means opencode spawned successfully with the default model arg
           // MODEL_UNAVAILABLE would mean the default 'llm-proxy/deepseek-v4-pro' was rejected
-          assert.strictEqual(error.code, 'TIMEOUT', `expected TIMEOUT but got ${error.code}: ${error.hint}`);
+          assert.strictEqual(
+            error.code,
+            'TIMEOUT',
+            `expected TIMEOUT but got ${error.code}: ${error.hint}`
+          );
           return true;
         }
       );

@@ -72,8 +72,12 @@ function captureStreams(): {
   return {
     stdout,
     stderr,
-    restoreStdout: () => { process.stdout.write = origStdoutWrite; },
-    restoreStderr: () => { process.stderr.write = origStderrWrite; },
+    restoreStdout: () => {
+      process.stdout.write = origStdoutWrite;
+    },
+    restoreStderr: () => {
+      process.stderr.write = origStderrWrite;
+    },
   };
 }
 
@@ -136,7 +140,21 @@ describe('run.cmd', () => {
     };
 
     try {
-      await runCommand(argv('t', '--dir', 'a', '--dir', 'b', '--model', 'llm-proxy/glm-4.7', '--engine', 'opencode', '--timeout', '5000'));
+      await runCommand(
+        argv(
+          't',
+          '--dir',
+          'a',
+          '--dir',
+          'b',
+          '--model',
+          'llm-proxy/glm-4.7',
+          '--engine',
+          'opencode',
+          '--timeout',
+          '5000'
+        )
+      );
     } catch {
       /* process.exit throws */
     }
@@ -195,7 +213,10 @@ describe('run.cmd', () => {
 
     mockRunImpl = async (_opts) => {
       const { AgentRunError } = await import('../../../../services/agent-run/index.ts');
-      throw new AgentRunError('VERSION_MISMATCH', 'CLI opencode отстал — попроси оператора brew upgrade opencode');
+      throw new AgentRunError(
+        'VERSION_MISMATCH',
+        'CLI opencode отстал — попроси оператора brew upgrade opencode'
+      );
     };
 
     try {
@@ -220,7 +241,10 @@ describe('run.cmd', () => {
 
     mockRunImpl = async (_opts) => {
       const { AgentRunError } = await import('../../../../services/agent-run/index.ts');
-      throw new AgentRunError('MODEL_UNAVAILABLE', 'Модель «нет/такой» недоступна. Доступные: a/b, c/d');
+      throw new AgentRunError(
+        'MODEL_UNAVAILABLE',
+        'Модель «нет/такой» недоступна. Доступные: a/b, c/d'
+      );
     };
 
     try {

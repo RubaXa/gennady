@@ -79,7 +79,10 @@ describe('opencodeErrorMap', () => {
 
     // use the real default model id — llm-proxy/deepseek-v4-pro — to prove that MODEL_UNAVAILABLE
     // is checked before PROXY_PATTERN (the id contains "proxy" which would otherwise match first)
-    const noSuchModel = opencodeErrorMap({ exitCode: 1, stderr: 'no such model: llm-proxy/deepseek-v4-pro' });
+    const noSuchModel = opencodeErrorMap({
+      exitCode: 1,
+      stderr: 'no such model: llm-proxy/deepseek-v4-pro',
+    });
     assert.strictEqual(noSuchModel.code, 'MODEL_UNAVAILABLE');
 
     const modelNotFound = opencodeErrorMap({ exitCode: 1, stderr: 'model not found' });

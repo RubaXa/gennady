@@ -141,7 +141,7 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - [x] `2026-06-06T16:41:00Z` decision dirs-omitted-when-no-flag ← `--dir` не задан → `dirs` не передаётся, дефолт cwd у ядра
 - [x] `2026-06-06T16:41:00Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-06-06T16:41:00Z` DONE
-**Handoff →** artifacts: [cli/cmd/run/run.cmd.ts, cli/cmd/run/index.ts, cli/gennady.ts, cli/AGENTS.md, cli/cmd/help/help.cmd.ts]; decisions: [parseArgs-node:util, thin-wrapper, hint+code-stderr, no-cli-model-default]; open: []
+      **Handoff →** artifacts: [cli/cmd/run/run.cmd.ts, cli/cmd/run/index.ts, cli/gennady.ts, cli/AGENTS.md, cli/cmd/help/help.cmd.ts]; decisions: [parseArgs-node:util, thin-wrapper, hint+code-stderr, no-cli-model-default]; open: []
 
 #### P2
 
@@ -149,7 +149,7 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - [x] `2026-06-06T18:24:15Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-06-06T18:24:15Z` ver `node --import tsx --test --experimental-test-module-mocks cli/cmd/run/__tests__/run.cmd.test.ts` → pass exit=0
 - [x] `2026-06-06T18:24:15Z` DONE
-**Handoff →** artifacts: [cli/cmd/run/__tests__/run.cmd.test.ts]; decisions: [mock-strategy=mock.module(services/agent-run/index.ts), process.exit=throws-stub, streams=write-override, 5-BDD-covered=true]; open: []
+      **Handoff →** artifacts: [cli/cmd/run/__tests__/run.cmd.test.ts]; decisions: [mock-strategy=mock.module(services/agent-run/index.ts), process.exit=throws-stub, streams=write-override, 5-BDD-covered=true]; open: []
 
 #### Round close
 

@@ -43,7 +43,8 @@ export class TreeWalker {
    */
   protected _walkNode(node: JSXNode, ctx: RenderContext): string {
     const category = this._resolver.resolve(node.type);
-    if (category === 'prompt-element') return this._dispatchPromptElement(node.type as PromptElement, node, ctx);
+    if (category === 'prompt-element')
+      return this._dispatchPromptElement(node.type as PromptElement, node, ctx);
     if (category === 'html-tag') return this._dispatchHtmlTag(node.type as string, node, ctx);
     if (category === 'transparent') return this._renderChildren(node.children, ctx);
     if (node.children?.length) return this._renderChildren(node.children, ctx);
@@ -58,7 +59,11 @@ export class TreeWalker {
    * @throws {Error} Unknown role
    * @returns Rendered string
    */
-  protected _dispatchPromptElement(element: PromptElement, node: JSXNode, ctx: RenderContext): string {
+  protected _dispatchPromptElement(
+    element: PromptElement,
+    node: JSXNode,
+    ctx: RenderContext
+  ): string {
     const role = element.config.role;
     let childCtx: RenderContext;
     if (role === 'section') childCtx = { ...ctx, depth: ctx.depth + 1 };
@@ -69,11 +74,15 @@ export class TreeWalker {
       const children = this._renderChildren(node.children, childCtx);
       const cfg = element.config;
       if (ctx.format === 'md' && cfg.markdown?.title) {
-        const title = cfg.markdown.title({ tagName: element.tagName, props: node.props, depth: ctx.depth });
+        const title = cfg.markdown.title({
+          tagName: element.tagName,
+          props: node.props,
+          depth: ctx.depth,
+        });
         return title ? title + '\n\n' + children : children;
       }
       if (ctx.format === 'xml') {
-        const tag = (node.props.is as string) || (cfg.html?.tag) || element.tagName;
+        const tag = (node.props.is as string) || cfg.html?.tag || element.tagName;
         return '<' + tag + '>\n' + children + '\n</' + tag + '>';
       }
       return children;
@@ -98,7 +107,9 @@ export class TreeWalker {
   protected _dispatchHtmlTag(tagName: string, node: JSXNode, ctx: RenderContext): string {
     const renderer = htmlTagRegistry.resolve(tagName);
     if (!renderer) throw new Error(`[TreeWalker#_dispatchHtmlTag] unknown HTML tag: ${tagName}`);
-    return renderer(ctx, node.children, node.props, (children, childCtx) => this._renderChildren(children, childCtx));
+    return renderer(ctx, node.children, node.props, (children, childCtx) =>
+      this._renderChildren(children, childCtx)
+    );
   }
 
   /**
@@ -110,10 +121,13 @@ export class TreeWalker {
   protected _renderChildren(children: JSXNode[] | string[], ctx: RenderContext): string {
     const results: string[] = [];
     for (let i = 0; i < children.length; i++) {
-      if (typeof children[i] === 'string') { results.push(children[i] as string); continue; }
+      if (typeof children[i] === 'string') {
+        results.push(children[i] as string);
+        continue;
+      }
       results.push(this._walkNode(children[i] as JSXNode, ctx));
     }
     const sep = ctx.format === 'md' ? '\n\n' : '\n';
-    return results.filter(r => r.length > 0).join(sep);
+    return results.filter((r) => r.length > 0).join(sep);
   }
 }

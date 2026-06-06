@@ -212,6 +212,7 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 ### Round 2 — 2026-06-06, fix: readonly mechanism (live e2e discovery)
 
 #### P1 (fix)
+
 - [x] `2026-06-06T18:10:00Z` discovery `opencode agent create` — это AI-генератор («Generating agent configuration», вызов модели), а не быстрая запись файла → живой `gennady run` зависал
 - [x] `2026-06-06T18:10:00Z` decision readonly-mechanism=OPENCODE_CONFIG+static-config ← заменил генерацию профиля на bundled `readonly.config.json` (agent `readonly`: deny edit/write/patch; bash оставлен) + `OPENCODE_CONFIG` в env подпроцесса + `--agent readonly`
 - [x] `2026-06-06T18:10:00Z` intro `readonly.config.json` ← статичный bundled-конфиг readonly-агента
@@ -219,8 +220,9 @@ _(Round = one execute-then-audit attempt. Token vocabulary in [tasks/README.md#e
 - [x] `2026-06-06T18:10:00Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-06-06T18:20:00Z` ver `gennady run "...pong" --timeout 120000` → pass exit=0 (вывод «pong», без зависания)
 - [x] `2026-06-06T18:10:00Z` DONE
-**Handoff →** artifacts: [services/agent-run/engines/opencode/opencode-engine.ts, services/agent-run/engines/opencode/readonly.config.json, services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts]; decisions: [agent-create→OPENCODE_CONFIG, bash-allowed-per-operator, D-005-superseded-by-D-010]; open: []
+      **Handoff →** artifacts: [services/agent-run/engines/opencode/opencode-engine.ts, services/agent-run/engines/opencode/readonly.config.json, services/agent-run/engines/opencode/__tests__/opencode-engine.test.ts]; decisions: [agent-create→OPENCODE_CONFIG, bash-allowed-per-operator, D-005-superseded-by-D-010]; open: []
 
 #### Round close
+
 - [x] `2026-06-06T18:25:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

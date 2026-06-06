@@ -16,6 +16,6 @@ export const Prompt = definePromptElement<PromptProps>({
   role: 'root',
   html: { tag: 'Prompt' },
   markdown: {
-    title: ({ props }) => props.keywords ? `KEYWORDS:\n${props.keywords}` : '',
+    title: ({ props }) => (props.keywords ? `KEYWORDS:\n${props.keywords}` : ''),
   },
 });
