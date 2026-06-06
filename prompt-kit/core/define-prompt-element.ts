@@ -10,7 +10,7 @@ import type { PromptElement, PromptElementConfig } from './types.js';
  * @param config Element role and format-specific rendering options
  * @returns Branded PromptElement object usable as JSX node type
  */
-export function definePromptElement(config: PromptElementConfig): PromptElement {
+export function definePromptElement<Props extends Record<string, unknown> = Record<string, unknown>>(config: PromptElementConfig<Props>): PromptElement {
   // purpose: derive a stable kebab-case tag name from the role
   const tagName = (config as any).tagName || config.role;
 

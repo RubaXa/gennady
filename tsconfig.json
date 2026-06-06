@@ -9,6 +9,7 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
@@ -38,6 +39,7 @@
     "cli/**/*",
     "scripts/**/*",
     "assistant/**/*",
+    "prompt-kit/**/*",
     "index.ts",
     "vite.config.ts"
   ],

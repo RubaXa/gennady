@@ -9,7 +9,7 @@ export const PROMPT_ELEMENT_SYMBOL = Symbol.for('prompt-element');
  * @purpose Configuration for a prompt element: role, format-specific rendering options.
  * @invariant role determines which TFormatEngine method is dispatched by TreeWalker.
  */
-export type PromptElementConfig = {
+export type PromptElementConfig<Props = Record<string, unknown>> = {
   /** @purpose Role determining which TFormatEngine method is dispatched | @invariant One of root|section|list|block|inline */
   role: 'root' | 'section' | 'list' | 'block' | 'inline';
   tagName?: string;  /** @purpose Markdown-specific rendering options: title extractor, wrapper, ordered flag, lang, boundary comments */
@@ -37,6 +37,8 @@ export type PromptElementConfig = {
  * @invariant Detected by ElementResolver via PROMPT_ELEMENT_SYMBOL property.
  */
 export type PromptElement = {
+  /** @purpose Call signature — makes the type valid as a JSX element type. Returns React-compatible JSX.Element */
+  (props?: Record<string, unknown>): any;
   /** @purpose Unique brand identifying this object as a prompt element factory */
   readonly [PROMPT_ELEMENT_SYMBOL]: true;
   /** @purpose Kebab-case tag name derived from the role */

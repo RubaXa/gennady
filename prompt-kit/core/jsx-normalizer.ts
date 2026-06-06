@@ -75,7 +75,6 @@ export class JSXTreeNormalizer {
       const propsObj = obj.props as Record<string, unknown>;
       if ('children' in propsObj && propsObj.children !== undefined && propsObj.children !== null) {
         const ch = propsObj.children;
-        delete (obj.props as Record<string, unknown>).children;
         return Array.isArray(ch) ? ch : [ch];
       }
     }
