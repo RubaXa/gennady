@@ -21,6 +21,7 @@ const fixtureNames = [
   'code-basic',
   'code-with-title',
   'bold',
+  'ai-knowledge',
 ];
 
 function loadExpected(path: string): string {
@@ -43,14 +44,15 @@ describe('elements fixtures', () => {
 
       const mod = await import(join(fixturesDir, name, 'input.tsx'));
       const component = mod.default;
+      const props = mod.data || {};
 
       // #region START_FIXTURE_RENDER_XML
-      const xmlResult = renderPrompt(component, {}, 'xml');
+      const xmlResult = renderPrompt(component, props, 'xml');
       assert.strictEqual(xmlResult, expectedXml);
       // #endregion END_FIXTURE_RENDER_XML
 
       // #region START_FIXTURE_RENDER_MD
-      const mdResult = renderPrompt(component, {}, 'md');
+      const mdResult = renderPrompt(component, props, 'md');
       assert.strictEqual(mdResult, expectedMd);
       // #endregion END_FIXTURE_RENDER_MD
     });

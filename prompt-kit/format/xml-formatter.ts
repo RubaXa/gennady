@@ -30,14 +30,12 @@ export class XmlFormatter {
     }
     // #endregion END_SELF_CLOSING_EMPTY
 
-    const childIndent = '  '.repeat(depth + 1);
-    const escaped = children;
-    const indentedChildren = escaped
-      .split('\n')
-      .map((line) => (line ? childIndent + line : ''))
-      .join('\n');
-
-    return `${indent}<${tag}${attrStr}>\n${indentedChildren}\n${indent}</${tag}>`;
+    // leaf text without XML tags or newlines → inline: <tag>text</tag>
+    if (!children.includes('<') && !children.includes('\n')) {
+      return `${indent}<${tag}${attrStr}>${children}</${tag}>`;
+    }
+    // pre-rendered XML children → block with indentation
+    return `${indent}<${tag}${attrStr}>\n${children}\n${indent}</${tag}>`;
   }
 
   /**

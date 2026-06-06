@@ -1,91 +1,61 @@
-// @file: AiKnowledge JSX component — renders knowledge.xml structure via prompt-kit
-// @consumers: ai-knowledge test
-// @tasks: TSK-65
+import React from 'react';
+import { Prompt, Group, Node } from '../../../index.js';
 
-import type { JSXNode } from '../../core/types.js';
+type Item = { file: string; purpose: string; triggers: string; skipWhen: string; preconditions: string };
+type DirGroup = { group: string; items: Item[] };
+type Rule = { id: string; file: string; purpose: string; triggers: string; skipWhen: string; activationHint?: string; checkPhase?: string; requiresVerification?: string; crossRefs?: { id: string; text: string }[] };
+type Cat = { category: string; rules: Rule[] };
+type Props = { ver: string; directives: { group: string; items: DirGroup[] }[]; rules: { checkPhaseOrder: string; categories: Cat[] } };
 
-export type DirectiveItem = {
-  file: string;
-  purpose: string;
-  triggers: string;
-  skipWhen: string;
-  preconditions: string;
-};
+export const data: Props = JSON.parse('{"ver":"2.0","directives":[{"group":"Sdd","items":[{"group":"SddSetup","items":[{"file":"ai/directives/sdd/setup.directive.xml","purpose":"Creates or updates specs/README.md — Vision and Scope Graph. Sole owner of the Portal. Idempotent.","triggers":"new project · add scope · change project vision · register scope after discovery","skipWhen":"designing a specific scope · module decomposition · task scaffolding","preconditions":"None"}]},{"group":"SddDiscovery","items":[{"file":"ai/directives/sdd/discovery.directive.xml","purpose":"Scope-level discovery session. Creates or evolves specs/[scope]/[scope].spec.md. Branches by scope-type: infrastructure, contracts, library, product.","triggers":"design scope · raw idea for service/SDK/CLI/app · bootstrap infra tooling · refine or pivot existing scope","skipWhen":"approved spec exists and operator wants module decomposition · bug fix or local refactor · project-level vision change","preconditions":"greenfield: none. refine/pivot: specs/[scope]/[scope].spec.md exists"}]},{"group":"SddModuleDecomposition","items":[{"file":"ai/directives/sdd/module-decomposition.directive.xml","purpose":"Decomposes a product or library scope into module specs with closed-world entity inventory, public surfaces, DbC contracts (Ports / Adapters / Services).","triggers":"discovery complete · split into modules · build module map · list all entities · produce DbC · Ports and Adapters","skipWhen":"scope spec missing or not approved · discovery still open · scope-type is infrastructure or contracts · tasks already generated","preconditions":"specs/[scope]/[scope].spec.md with scope-type=product or library"}]},{"group":"SddTaskScaffolding","items":[{"file":"ai/directives/sdd/scaffold.directive.xml,"purpose":"Builds DAG of compact task tickets from scope graph. Each ticket includes BDD, Effective Rules, Verification, Execution Log template.","triggers":"all scope specs ready · break into tasks · build DAG · produce execution plan · scaffold tickets","skipWhen":"module specs lack contracts · discovery or module-decomp not closed · tasks already generated","preconditions":"specs/README.md Scope Graph ✅; coding rule files exist for each language"}]},{"group":"SddPhaseExecution","items":[{"file":"ai/directives/sdd/phase-execution-protocol.xml","purpose":"Execute ONE phase of ONE task ticket, dispatched by sdd-execute orchestrator. Read only what the phase needs; write only Target Files; emit typed Handoff for next phase / audit.","triggers":"orchestrator dispatches phase · phase ID + ticket path provided in prompt","skipWhen":"operator invokes directly without orchestrator · no phase ID","preconditions":"ticket has section 2 Phases Overview + section 3 Phases block for target phase ID; prior-phase Handoffs (if any) recorded in current Round"}]},{"group":"SddAudit","items":[{"file":"ai/directives/sdd/audit.directive.xml","purpose":"Post-execution verification. Compares spec ↔ ticket ↔ code. Detects drift, gaps, rules violations. Output: ephemeral findings routed to spec/ticket.","triggers":"audit · drift detection · post-implementation review · verify implementation · end of epic before merge","skipWhen":"no executed tasks · Execution Log empty · no spec to compare","preconditions":"spec exists; ticket with non-empty Execution Log; code committed"}]}]}],"rules":{"checkPhaseOrder":"typecheck test lint format","categories":[{"category":"Coding","rules":[{"id":"result-conventions","file":"ai/directives/coding/result-conventions.xml","purpose":"ESLint enforcement of Result pattern conventions: no second generic, no object literals, no isErr short-circuit, no bare throw unknown.","triggers":"Target Files use Result from @tessell/core/result · task touches error-handling code · task adds new DML / service methods","skipWhen":"Config-only task; no Result usage in target files","activationHint":"Before writing or reviewing any file that returns or propagates Result","checkPhase":"lint","requiresVerification":"check-command","crossRefs":[]},{"id":"typescript-rules","file":"ai/directives/coding/typescript-rules.xml","purpose":"Writing code in the chosen language: typing, DbC, patterns, anti-patterns.","triggers":"Target Files include source code files (not config)","skipWhen":"Config-only task; infra-setup task without code files","activationHint":"Before editing or creating any source code file","checkPhase":"typecheck","requiresVerification":"check-command","crossRefs":[]},{"id":"svelte5-runes","file":"ai/directives/coding/svelte5-runes.xml","purpose":"Writing Svelte 5 components with runes ($state, $derived, $effect, $props, $bindable). Inherits typescript-rules; adds Svelte-specific reactivity, template syntax, component structure. Prevents React-pattern code in .svelte files.","triggers":"creating .svelte file · writing Svelte component · using runes · .svelte.ts module","skipWhen":"pure TypeScript without Svelte · React/Vue project · backend server code","activationHint":"Before editing or creating any .svelte, .svelte.ts, or .svelte.js file. Inherits from typescript-rules — read both.","checkPhase":"typecheck","requiresVerification":"check-command","crossRefs":[{"id":"typescript-rules","text":"Parent directive: inherits all TypeScript rules for language baseline."},{"id":"sveltekit-rules","text":"SvelteKit projects also activate sveltekit-rules (inherits from this directive)."}]},{"id":"sveltekit-rules","file":"ai/directives/coding/sveltekit-rules.xml","purpose":"Writing SvelteKit applications: file-based routing (+page, +layout, +server), server load functions, form actions, hooks, adapters, $app modules. Inherits svelte5-runes + typescript-rules transitively.","triggers":"creating SvelteKit route · load function · form actions · hooks.server.ts · server/client boundary","skipWhen":"standalone Svelte without SvelteKit · pure component library · non-SvelteKit project","activationHint":"Before writing SvelteKit route files or server logic. Inherits from svelte5-runes — read both.","checkPhase":"typecheck","requiresVerification":"check-command","crossRefs":[{"id":"svelte5-runes","text":"Parent directive: inherits all Svelte 5 runes rules."},{"id":"typescript-rules","text":"Transitive parent: inherits TypeScript rules through svelte5-runes."}]}]},{"category":"Testing","rules":[{"id":"testing-common","file":"ai/directives/testing/common.xml","purpose":"Shared testing core inherited by every runner-specific directive: contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget.","triggers":"any runner-specific testing rule activates","skipWhen":"no test files in scope","activationHint":"Auto-read whenever node-test or vitest-rules activates. Runner-specific files only state deltas.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[]},{"id":"vitest-rules","file":"ai/directives/testing/vitest-rules.xml","purpose":"Writing tests on Vitest runner.","triggers":"Target Test Files present AND stack uses Vitest","skipWhen":"Stack uses a different test runner; no test files in scope","activationHint":"Before writing or modifying test files. Inherits testing-common.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"testing-common","text":"Parent directive: read first for case flow, anchors, unified context, BDD mapping."}]},{"id":"node-test","file":"ai/directives/testing/node-test.xml","purpose":"Writing tests on node:test runner.","triggers":"Target Test Files present AND stack uses node:test","skipWhen":"Stack uses a different test runner; no test files in scope","activationHint":"Before writing or modifying test files. Inherits testing-common.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"testing-common","text":"Parent directive: read first for case flow, anchors, unified context, BDD mapping."}]},{"id":"playwright-cli","file":"ai/directives/testing/playwright-cli.xml","purpose":"Exploring web apps through Playwright CLI: AX Tree vision, aria snapshots, screenshots, trace viewer, codegen. Gives the agent eyes and hands for browser exploration.","triggers":"developing UI component · building a page · verifying visual layout · debugging failing e2e test · capturing aria snapshots","skipWhen":"pure backend logic · CLI command implementation · API endpoint without UI","activationHint":"BEFORE writing any e2e test — explore the page first. Also when an e2e test fails and the agent needs to see what rendered.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"playwright-e2e","text":"Transition to playwright-e2e when exploration complete."}]},{"id":"playwright-e2e","file":"ai/directives/testing/playwright-e2e.xml","purpose":"Writing Playwright E2E tests: aria-snapshot-first contracts, role-based locators, fixture-based POM, auth via storageState, network mocking.","triggers":"writing e2e test · creating browser test · adding Playwright spec · testing user flow","skipWhen":"unit test · integration test without browser · exploration not done (use playwright-cli first)","activationHint":"AFTER playwright-cli exploration. Before writing Playwright spec files.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"playwright-cli","text":"MUST run playwright-cli exploration first."}]},{"id":"storybook-usage","file":"ai/directives/testing/storybook-usage.xml","purpose":"Using Storybook MCP tools: reading manifests (component docs, props, stories), writing stories, running tests, self-verifying component rendering.","triggers":"developing UI component · using design system · creating story · fixing component bug · verifying component renders","skipWhen":"pure backend/CLI logic · no Storybook · MCP not installed (use storybook-setup first)","activationHint":"Whenever working with UI components — BEFORE writing code, call MCP tools to check documented props.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"storybook-setup","text":"MUST have Storybook + MCP running. If unreachable, invoke storybook-setup."}]},{"id":"svelte-testing","file":"ai/directives/testing/svelte-testing.xml","purpose":"Testing Svelte 5 components: .svelte.test.ts extension, $effect.root isolation, flushSync for DOM, mount/unmount, @testing-library/svelte. Inherits node-test + vitest-rules.","triggers":"writing Svelte component test · testing runes · mounting Svelte component · Storybook interaction test for Svelte","skipWhen":"pure TS logic test without runes · E2E test with Playwright · non-Svelte project","activationHint":"Before writing .svelte.test.ts. Inherits from node-test.xml and vitest-rules.xml.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"node-test","text":"Inherits general testing rules (phase anchors, learning briefs, contract coverage)."},{"id":"vitest-rules","text":"Inherits Vitest-specific rules (unified context, mock discipline)."},{"id":"svelte5-runes","text":"Runes knowledge required (.svelte.test.ts, $effect.root, flushSync)."}]}]},{"category":"Infra","rules":[{"id":"eslint-setup","file":"ai/directives/infra/eslint-setup.xml","purpose":"Configuring a linter: severity policy, autofix, config format, formatter integration.","triggers":"Task configures linter · installs linter · sets lint rules","skipWhen":"Coding/testing task that only RUNS lint, does not configure it","activationHint":"Before writing linter config or modifying lint rules","checkPhase":"lint","requiresVerification":"check-command","crossRefs":[]},{"id":"git-setup","file":"ai/directives/infra/git-setup.xml","purpose":"Configuring VCS: ignore baseline, branches, commits, hooks, secrets discipline.","triggers":"Task bootstraps repo · configures VCS ignore file · sets up hooks · commit convention","skipWhen":"Task only commits code changes (does not configure VCS itself)","activationHint":"Before writing VCS ignore file or configuring hooks","checkPhase":"","requiresVerification":"","crossRefs":[]},{"id":"nodejs-npm-setup","file":"ai/directives/infra/nodejs-npm-setup.xml","purpose":"Runtime + package manager setup: version pinning, single package manager, module system, mandatory check script.","triggers":"Task writes package manager manifest · runtime version file · sets engines · chooses package manager","skipWhen":"Task does not touch package manager manifest or runtime config","activationHint":"Before writing package manager manifest or runtime version file","checkPhase":"","requiresVerification":"","crossRefs":[]},{"id":"storybook-setup","file":"ai/directives/infra/storybook-setup.xml","purpose":"Installing Storybook + MCP server: agentic init, MCP addon, Vitest addon, agent registration, AGENTS.md update. Bootstraps component development environment.","triggers":"install Storybook · add Storybook to project · configure MCP server · bootstrap UI toolchain","skipWhen":"no UI components · Storybook already installed + MCP confirmed running","activationHint":"When project needs Storybook for first time. Follow agentic init: npx storybook@latest init.","checkPhase":"test","requiresVerification":"check-command","crossRefs":[{"id":"storybook-usage","text":"After setup (MCP running, manifest accessible), transition to storybook-usage."}]}]}]}}');
 
-export type DirectiveGroup = {
-  group: string;
-  items: DirectiveItem[];
-};
-
-export type RuleItem = {
-  id: string;
-  file: string;
-  purpose: string;
-  triggers: string;
-  skipWhen: string;
-  activationHint?: string;
-  checkPhase?: string;
-  requiresVerification?: string;
-};
-
-export type AiKnowledgeProps = {
-  ver: string;
-  directives: { group: string; items: DirectiveGroup[] }[];
-  rules: {
-    checkPhaseOrder?: string;
-    categories: { category: string; rules: RuleItem[] }[];
-  };
-};
-
-// Props type for Group element
-type GroupEl = (props: { is: string; [key: string]: unknown; children?: JSXNode | JSXNode[] }) => JSXNode;
-type NodeEl = (props: { is: string; children?: string | JSXNode | JSXNode[] }) => JSXNode;
-
-export function AiKnowledge(
-  Group: GroupEl,
-  Node: NodeEl,
-  Prompt: GroupEl,
-  props: AiKnowledgeProps
-): JSXNode {
-  const children: JSXNode[] = [
-    Group({ is: 'Directives' },
-      ...props.directives.map(dg =>
-        Group({ is: dg.group },
-          ...dg.items.map(di =>
-            Group({ is: di.group },
-              ...di.items.map(item => [
-                Node({ is: 'File' }, item.file),
-                Node({ is: 'Purpose' }, item.purpose),
-                Node({ is: 'Triggers' }, item.triggers),
-                Node({ is: 'SkipWhen' }, item.skipWhen),
-                Node({ is: 'Preconditions' }, item.preconditions),
-              ]).flat()
-            )
-          )
-        )
-      )
-    ),
-    Group({ is: 'Rules' },
-      props.rules.checkPhaseOrder
-        ? Node({ is: 'CheckPhaseOrder' }, props.rules.checkPhaseOrder)
-        : (null as unknown as JSXNode),
-      ...props.rules.categories.map(cat =>
-        Group({ is: cat.category },
-          ...cat.rules.map(rule => [
-            Group({ is: 'Rule', id: rule.id },
-              Node({ is: 'File' }, rule.file),
-              Node({ is: 'Purpose' }, rule.purpose),
-              Node({ is: 'Triggers' }, rule.triggers),
-              Node({ is: 'SkipWhen' }, rule.skipWhen),
-              rule.activationHint ? Node({ is: 'ActivationHint' }, rule.activationHint) : (null as unknown as JSXNode),
-              rule.checkPhase ? Node({ is: 'CheckPhase' }, rule.checkPhase) : (null as unknown as JSXNode),
-              rule.requiresVerification ? Node({ is: 'RequiresVerification' }, rule.requiresVerification) : (null as unknown as JSXNode),
-            ),
-          ]).flat()
-        )
-      )
-    ),
-  ].filter(Boolean) as JSXNode[];
-
-  return Prompt({ is: 'AiKnowledge', ver: props.ver }, ...children) as JSXNode;
+export default function AiKnowledge(props: Props) {
+  return (
+    <Prompt keywords="knowledge">
+      <Group is="AiKnowledge" ver={props.ver}>
+        <Group is="Directives">
+          {props.directives.map(dg => (
+            <Group is={dg.group}>
+              {dg.items.map(di => (
+                <Group is={di.group}>
+                  {di.items.map(item => (
+                    <React.Fragment key={item.file}>
+                      <Node is="File">{item.file}</Node>
+                      <Node is="Purpose">{item.purpose}</Node>
+                      <Node is="Triggers">{item.triggers}</Node>
+                      <Node is="SkipWhen">{item.skipWhen}</Node>
+                      <Node is="Preconditions">{item.preconditions}</Node>
+                    </React.Fragment>
+                  ))}
+                </Group>
+              ))}
+            </Group>
+          ))}
+        </Group>
+        <Group is="Rules">
+          <Node is="CheckPhaseOrder">{props.rules.checkPhaseOrder}</Node>
+          {props.rules.categories.map(cat => (
+            <Group is={cat.category}>
+              {cat.rules.map(rule => (
+                <React.Fragment key={rule.id}>
+                  <Group is="Rule" id={rule.id}>
+                    <Node is="File">{rule.file}</Node>
+                    <Node is="Purpose">{rule.purpose}</Node>
+                    <Node is="Triggers">{rule.triggers}</Node>
+                    <Node is="SkipWhen">{rule.skipWhen}</Node>
+                    {rule.activationHint && <Node is="ActivationHint">{rule.activationHint}</Node>}
+                    {rule.checkPhase && <Node is="CheckPhase">{rule.checkPhase}</Node>}
+                    {rule.requiresVerification && <Node is="RequiresVerification">{rule.requiresVerification}</Node>}
+                    {rule.crossRefs?.map(ref => (
+                      <Node key={ref.id} is="CrossRef" id={ref.id}>{ref.text}</Node>
+                    ))}
+                  </Group>
+                </React.Fragment>
+              ))}
+            </Group>
+          ))}
+        </Group>
+      </Group>
+    </Prompt>
+  );
 }

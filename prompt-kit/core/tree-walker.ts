@@ -64,6 +64,12 @@ export class TreeWalker {
   }
 
   protected _renderChildren(children: JSXNode[] | string[], ctx: RenderContext): string {
-    return children.map((child) => typeof child === 'string' ? child : this._walkNode(child, ctx)).join('');
+    const results: string[] = [];
+    for (let i = 0; i < children.length; i++) {
+      if (typeof children[i] === 'string') { results.push(children[i] as string); continue; }
+      results.push(this._walkNode(children[i] as JSXNode, ctx));
+    }
+    const sep = ctx.format === 'md' ? '\n\n' : '\n';
+    return results.filter(r => r.length > 0).join(sep);
   }
 }

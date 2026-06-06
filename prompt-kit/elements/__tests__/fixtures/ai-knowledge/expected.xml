@@ -1,0 +1,20 @@
+<Prompt>
+<AiKnowledge ver="2.0">
+  <Directives>
+    <Sdd>
+      <SddSetup>
+        <File>ai/directives/sdd/setup.directive.xml</File>
+        <Purpose>Creates or updates specs/README.md.</Purpose>
+      </SddSetup>
+    </Sdd>
+  </Directives>
+  <Rules>
+    <CheckPhaseOrder>typecheck test lint format</CheckPhaseOrder>
+    <Coding>
+      <Rule id="typescript-rules">
+        <File>ai/directives/coding/typescript-rules.xml</File>
+      </Rule>
+    </Coding>
+  </Rules>
+</AiKnowledge>
+</Prompt>

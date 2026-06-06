@@ -15,8 +15,8 @@ export const Group = definePromptElement({
 
 export const Node = definePromptElement({
   tagName: 'Node',
-  role: 'inline',
+  role: 'section',
   markdown: {
-    renderChildren: ({ children, props }) => `- **${props.is}:** ${children}`,
+    title: ({ props }) => `- **${props.is}:**`,
   },
 });
