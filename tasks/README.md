@@ -131,6 +131,7 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | prompt-kit        | library        | [README](prompt-kit/README.md)        | 4     | 0/4   |
+| agent-run         | library        | [README](agent-run/README.md)         | 2     | 0/2   |
 
 ## Decision Log
 

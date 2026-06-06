@@ -46,7 +46,7 @@ _Это полный список сущностей модуля `opencode`. Л
 - **Public Operations:**
   - `id` = `'opencode'`.
   - `detect() -> { installed, version? }` — запустить `opencode --version`.
-  - `run(options) -> RunResult` — собрать аргументы (`run <task> --agent <readonly> --dir <первая>`, остальные директории через `external_directory`), почистить окружение, спавнить, собрать stdout → `{ text, engine: 'opencode' }`.
+  - `run(options) -> RunResult` — собрать аргументы (`run <task> --agent <readonly> --dir <первая>`; остальные директории перечисляются в тексте задания — `external_directory` deferred в v1, Спайк 1), почистить окружение, спавнить, собрать stdout → `{ text, engine: 'opencode' }`.
 - **Lifecycle:** singleton, регистрируется в реестре `core` через `index.ts`.
 - **Errors & Degradation:** при ненулевом exit или нераспознанном выводе → `opencodeErrorMap` → кидает `AgentRunError`.
 - **Consumers:** Internal — реестр `core` (`../core/core.spec.md`); External — N/A (через публичный `run`).
@@ -54,7 +54,7 @@ _Это полный список сущностей модуля `opencode`. Л
 ### `opencodeErrorMap`
 - **Type:** Utility (pure function)
 - **Purpose:** превратить сырой сбой opencode в типизированную ошибку с подсказкой оператору.
-- **Public Operations:** `mapError(exitCode: number, stderr: string) -> { code: ErrorCode, hint: string }`.
+- **Public Operations:** `mapError(failure: { spawnErrorCode?: string; exitCode?: number; stderr?: string }) -> { code: ErrorCode, hint: string }` — на вход нормализованный дескриптор сбоя: либо spawn `error.code` (ENOENT/EACCES), либо exit-код + stderr запущенного процесса. `TIMEOUT` сюда НЕ приходит — его бросает `OpencodeEngine` напрямую по своему таймеру.
 - **Lifecycle:** чистая функция, без состояния.
 - **Errors & Degradation:** нераспознанный паттерн → `LAUNCH_FAILED` + сырой stderr в hint.
 - **Consumers:** Internal — `OpencodeEngine`.
@@ -92,19 +92,18 @@ _Это полный список сущностей модуля `opencode`. Л
 - **Verification Levels:** `unit`
 
 **Contract (DbC):**
-- Postconditions: вернуть `{ code, hint }`. Маппинг паттернов:
+- Postconditions: вернуть `{ code, hint }`. Маппинг (6 кодов; `TIMEOUT` сюда не входит — его кидает `OpencodeEngine` напрямую):
 
-  | Сигнал opencode | `code` | `hint` |
-  |---|---|---|
-  | spawn `error.code` ENOENT/EACCES (бинарь не в PATH/не запускается) | `AGENT_NOT_INSTALLED` | поставить opencode (`brew install opencode`) |
-  | `403` / proxy / `ERR_ACCESS_DENIED` | `NETWORK_BLOCKED` | снять прокси-переменные (`HTTPS_PROXY`/`https_proxy`…) или дать доступ |
-  | `constraint failed.*session_message` / `database schema` / `migration` | `VERSION_MISMATCH` | CLI отстал → `brew upgrade opencode`; App отстал → обновить opencode App |
-  | `Forbidden` на модель/провайдера | `MODEL_FORBIDDEN` | проверить ключ и права на модель |
-  | `API key … missing` / пустой ключ | `CREDENTIAL_MISSING` | задать env-ключ провайдера |
-  | таймаут запуска (SIGTERM+SIGKILL по `timeout`) | `TIMEOUT` | задание слишком долгое — сузь задачу или увеличь `timeout` |
-  | сбой генерации профиля (`opencode agent create` non-zero) | `LAUNCH_FAILED` | не удалось подготовить readonly-профиль; сырой stderr |
-  | прочее | `LAUNCH_FAILED` | сырой stderr + «причина не распознана» |
+  | Сигнал | вход | `code` | `hint` |
+  |---|---|---|---|
+  | бинарь не в PATH/не запускается | `spawnErrorCode` ENOENT/EACCES | `AGENT_NOT_INSTALLED` | поставить opencode (`brew install opencode`) |
+  | `403` / proxy / `ERR_ACCESS_DENIED` | stderr | `NETWORK_BLOCKED` | снять прокси-переменные (`HTTPS_PROXY`/`https_proxy`…) или дать доступ |
+  | `constraint failed.*session_message` / `database schema` / `migration` | stderr | `VERSION_MISMATCH` | CLI отстал → `brew upgrade opencode`; App отстал → обновить opencode App |
+  | `Forbidden` на модель/провайдера | stderr | `MODEL_FORBIDDEN` | проверить ключ и права на модель |
+  | `API key … missing` / пустой ключ | stderr | `CREDENTIAL_MISSING` | задать env-ключ провайдера |
+  | сбой генерации профиля (`agent create` non-zero) или прочее | exitCode+stderr | `LAUNCH_FAILED` | сырой stderr + «причина не распознана» |
 - Invariants: всегда возвращает валидный `ErrorCode`; никогда не кидает сама. Паттерны `VERSION_MISMATCH` намеренно широкие — текст ошибки opencode хрупок к версиям, узкий матч ловит не всё.
+- `TIMEOUT` живёт вне error-map: `OpencodeEngine` по своему таймеру делает SIGTERM→SIGKILL и кидает `AgentRunError('TIMEOUT')` сам.
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->

@@ -91,7 +91,7 @@ $ gennady run "…"
 
 - **Запуск opencode** — `real-runtime`: реальный подпроцесс `opencode run`.
 - **readonly-enforcement** — `real-runtime`, делегирован opencode. Механизм подтверждён: `opencode agent create --permissions "read,glob,grep,webfetch,websearch,lsp"` + `--agent` (allow-list; `edit`/`write`/`bash` вне списка). **Trust boundary:** ядро не перехватывает файловые операции само — полагается на permission-движок opencode. Если движок нарушит профиль, ядро это не остановит.
-- **multi-directory доступ** — `real-runtime`: первая директория → `--dir`, остальные → `external_directory: allow`. Феасибилити подтверждается спайком на этапе module-decomposition.
+- **multi-directory доступ** — намерение: первая директория → `--dir`, остальные → `external_directory: allow`. **v1: одна `--dir` + остальные пути в тексте задания; `external_directory` deferred** (Спайк 1). Феасибилити подтверждается спайком.
 - **Провайдеры кроме opencode** — `not-implemented` (deferred): контракт `AgentEngine` оставляет точку расширения, реализаций нет.
 
 ### 3.5 Rules
