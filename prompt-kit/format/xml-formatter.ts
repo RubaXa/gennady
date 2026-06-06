@@ -31,7 +31,7 @@ export class XmlFormatter {
     // #endregion END_SELF_CLOSING_EMPTY
 
     const childIndent = '  '.repeat(depth + 1);
-    const escaped = this._escapeText(children);
+    const escaped = children;
     const indentedChildren = escaped
       .split('\n')
       .map((line) => (line ? childIndent + line : ''))
@@ -52,7 +52,7 @@ export class XmlFormatter {
     if (!children || children.trim() === '') {
       return `<${tag}${attrStr}/>`;
     }
-    return `<${tag}${attrStr}>${this._escapeText(children)}</${tag}>`;
+    return `<${tag}${attrStr}>${children}</${tag}>`;
   }
 
   /**

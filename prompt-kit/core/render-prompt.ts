@@ -78,7 +78,7 @@ class MdFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const title = element.config.markdown?.title?.(props) ?? '';
+    const title = element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ?? '';
     const anchors = element.config.markdown?.includeBoundaryComments
       ? {
           start: `<!--START_${element.tagName.toUpperCase()}-->`,
@@ -100,7 +100,7 @@ class MdFormatEngine implements TFormatEngine {
     props: Record<string, unknown>
   ): string {
     const ordered = element.config.markdown?.ordered ?? false;
-    const title = element.config.markdown?.title?.(props);
+    const title = element.config.markdown?.title?.({ tagName: element.tagName, props, depth: _ctx.depth });
     return this._formatter.formatList(children, ordered, title);
   }
 
@@ -112,7 +112,7 @@ class MdFormatEngine implements TFormatEngine {
     props: Record<string, unknown>
   ): string {
     const lang = element.config.markdown?.lang;
-    const title = element.config.markdown?.title?.(props);
+    const title = element.config.markdown?.title?.({ tagName: element.tagName, props, depth: _ctx.depth });
     return this._formatter.formatBlock(children, lang, title);
   }
 
