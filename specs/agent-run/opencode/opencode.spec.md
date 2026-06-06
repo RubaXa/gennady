@@ -95,13 +95,14 @@ _Это полный список сущностей модуля `opencode`. Л
 - Спавн подпроцесса `opencode run …` **с таймаутом**; при превышении — SIGTERM, затем **SIGKILL после grace-периода 5с**, если процесс не завершился (SIGTERM игнорируем — нужен добивающий SIGKILL, иначе сирота держит pipe и течут fd).
 - `OPENCODE_CONFIG` в окружении подпроцесса указывает на bundled `readonly.config.json` (статичный, без генерации).
 - Чтение stdout/stderr подпроцесса.
-- Очистка окружения подпроцесса: снять **весь набор прокси-переменных** — `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy`, `ALL_PROXY`, `all_proxy` (libcurl/Node читают и строчные; иначе корпоративный прокси режет провайдера — урок сессии).
+- Очистка окружения подпроцесса: снять **прокси-переменные** (`HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy`, `ALL_PROXY`, `all_proxy`) **и server-auth opencode** (`OPENCODE_SERVER_PASSWORD`, `OPENCODE_SERVER_USERNAME`). Последние критичны: их выставляет desktop-App для своего sidecar-сервера, они протекают в дочерние процессы, и тогда `opencode run` включает basic-auth, а встроенный клиент создаёт сессию без неё → `Error: Session not found` (баг opencode #8502/#24204). Проверено экспериментом.
+- Изоляция сессии: `OPENCODE_DB=:memory:` в окружении подпроцесса — каждый запуск имеет свою in-memory сессионную БД, без общего состояния и блокировок с запущенным App или другими запусками (по-настоящему «запустился → выполнил → опустился»).
 
 **Contract (DbC):**
 
 - Preconditions: `options.task` непустой.
 - **Оптимистичный запуск:** НЕ делать pre-flight `detect()`; спавнить `opencode run` сразу. Ошибка spawn (`error.code` ENOENT/EACCES) → `AGENT_NOT_INSTALLED` через `opencodeErrorMap`.
-- **Модель:** `options.model` или дефолт `llm-proxy/deepseek-v4-pro` → `--model`. Если модель недоступна (opencode не знает её) → `opencodeErrorMap` даёт `MODEL_UNAVAILABLE`, движок обогащает hint списком из `listModels()` (вне горячего пути; только на ветке этой ошибки). Без молчаливой подмены модели.
+- **Модель:** `options.model` или дефолт `llm-proxy/deepseek-v4-pro` → `--model`. **Явная** модель проверяется заранее против `listModels()`: нет в списке → `AgentRunError('MODEL_UNAVAILABLE')` со списком в hint, **до запуска** (opencode не сообщает о неверной модели в stderr — отдаёт общий `UnknownError`, поэтому детект пост-фактум невозможен; нужна pre-validation). Дефолтная модель не проверяется (доверяем). Без молчаливой подмены.
 - Postconditions: при успехе `{ text, engine: 'opencode' }`, `text` = stdout движка; **ни один файл в `dirs` не изменён** (readonly, enforced agent-правами `readonly`). При неуспехе — `AgentRunError` через `opencodeErrorMap`. Превышение `timeout` → `AgentRunError('TIMEOUT')` после SIGTERM (+SIGKILL по grace).
 - Invariants: запуск всегда с readonly-профилем; окружение подпроцесса очищено от прокси-переменных (оба регистра); по завершении (успех/ошибка/таймаут) подпроцесс гарантированно мёртв — не сирота.
 
@@ -122,7 +123,6 @@ _Это полный список сущностей модуля `opencode`. Л
   | `403` / proxy / `ERR_ACCESS_DENIED`                                    | stderr                         | `NETWORK_BLOCKED`     | снять прокси-переменные (`HTTPS_PROXY`/`https_proxy`…) или дать доступ   |
   | `constraint failed.*session_message` / `database schema` / `migration` | stderr                         | `VERSION_MISMATCH`    | CLI отстал → `brew upgrade opencode`; App отстал → обновить opencode App |
   | `Forbidden` на модель/провайдера                                       | stderr                         | `MODEL_FORBIDDEN`     | проверить ключ и права на модель                                         |
-  | `unknown model` / `no such model` / `model not found`                  | stderr                         | `MODEL_UNAVAILABLE`   | базовый hint; `OpencodeEngine` дополнит списком из `listModels()`        |
   | `API key … missing` / пустой ключ                                      | stderr                         | `CREDENTIAL_MISSING`  | задать env-ключ провайдера                                               |
   | нераспознанный stderr / прочий ненулевой exit                          | exitCode+stderr                | `LAUNCH_FAILED`       | сырой stderr + «причина не распознана»                                   |
 
@@ -221,6 +221,22 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 - **Now:** статичный `readonly.config.json` в пакете (agent `readonly`, deny edit/write/patch), движок ставит `OPENCODE_CONFIG` в окружение подпроцесса + `--agent readonly`. Детерминированно, мгновенно, без генерации.
 - **Why:** живой `gennady run` завис — `opencode agent create` оказался AI-генератором (вызов модели на каждый запуск). Проверено: `OPENCODE_CONFIG` дополняет конфиг пользователя (провайдеры сохраняются), агент распознаётся, `gennady run` отвечает «pong».
 - **Risk accepted:** `bash` оставлен `allow` (оператор: агенту нужен шелл) → теоретически мутация через шелл возможна; митигация — git + инструкция «только анализ». enforcement делегирован opencode (trust boundary, scope §3.4).
+
+### D-011 — Транспортабельность: чистка server-auth + изоляция сессионной БД
+
+- **Status:** active
+- **Recorded:** session SddExecute (research + sandbox), agent-run
+- **Why:** `gennady run` падал у оператора с `Error: Session not found`, у меня работал — гонка/окружение. Ресерч + эксперимент-матрица показали: причина — `OPENCODE_SERVER_PASSWORD` (выставляет desktop-App, протекает в shell) ломает `opencode run` (баг opencode #8502/#24204). Доказано: с переменной → «Session not found»; `env -u` → pong; `OPENCODE_DB=:memory:` → pong. Бинарь opencode при этом один и тот же (brew 1.16.2) в обоих shell.
+- **Решение:** движок снимает `OPENCODE_SERVER_PASSWORD`/`OPENCODE_SERVER_USERNAME` (как и прокси) и ставит `OPENCODE_DB=:memory:` в окружение подпроцесса → запуск независим от любого окружения/клиента/других запусков.
+- **Risk accepted:** None значимых; `:memory:` означает отсутствие переиспользования сессий (для one-shot и не нужно).
+
+### D-012 — `MODEL_UNAVAILABLE` через pre-validation, не через stderr
+
+- **Status:** active
+- **Recorded:** session SddExecute (live discovery), agent-run
+- **Why:** интеграционный тест на реальном opencode показал: для неверной модели opencode отдаёт общий `UnknownError: Unexpected server error`, а НЕ «unknown model» → детект по stderr невозможен.
+- **Решение:** явную `model` валидируем заранее против `listModels()`; нет в списке → `MODEL_UNAVAILABLE` со списком, до запуска. Дефолтную модель не проверяем.
+- **Supersedes:** stderr-паттерн `MODEL_UNAVAILABLE` в error-map убран (не срабатывал).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

@@ -16,7 +16,7 @@
  *     - parses opencode models output
  *     - defaults model to deepseek in args
  *   OpencodeEngine#run with MODEL_UNAVAILABLE  [integration]
- *     - enriches MODEL_UNAVAILABLE hint with model list
+ *     - pre-validates explicit model and rejects MODEL_UNAVAILABLE with the list
  *   OpencodeEngine#run  [e2e]
  *     - run returns markdown text in readonly
  */
@@ -27,12 +27,12 @@ import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { OpencodeEngine } from '../opencode-engine.ts';
+import { OpencodeEngine, composeCleanEnv } from '../opencode-engine.ts';
 import { AgentRunError } from '../../../core/agent-run-error.ts';
 
 const execFileAsync = promisify(execFile);
 
-/** Proxy environment variable names the engine must strip from subprocess env. */
+/** Env variable names the engine must strip from subprocess env (proxy + opencode server-auth). */
 const PROXY_KEYS = [
   'HTTPS_PROXY',
   'https_proxy',
@@ -40,6 +40,8 @@ const PROXY_KEYS = [
   'http_proxy',
   'ALL_PROXY',
   'all_proxy',
+  'OPENCODE_SERVER_PASSWORD',
+  'OPENCODE_SERVER_USERNAME',
 ] as const;
 
 // purpose: detect whether opencode binary is available in this environment
@@ -129,32 +131,29 @@ describe('OpencodeEngine', () => {
       savedValues = {};
     });
 
-    it('strips proxy vars from subprocess env', async () => {
-      // contract: all 6 proxy env variable names (both case variants) are absent from the env
-      //           the engine passes to spawned subprocesses; non-proxy vars survive unchanged
-      // observation: verified by spawning `node -e "..."` with the same cleaned env the engine composes
+    it('strips proxy + opencode server-auth vars and isolates session DB', async () => {
+      // contract: composeCleanEnv (the REAL engine function) strips all proxy vars (both cases) AND
+      //           OPENCODE_SERVER_PASSWORD/USERNAME (the leak that causes "Session not found"), keeps
+      //           non-stripped vars, and sets OPENCODE_CONFIG (readonly) + OPENCODE_DB=:memory: (isolation).
+      // observation: verified at the subprocess boundary via env-echo.
 
-      // #region START_PROXY_STRIP_COMPOSE_ENV
-      // Mirror composeCleanEnv from OpencodeEngine — engine applies this exact algorithm to process.env
-      const cleanedEnv: NodeJS.ProcessEnv = { ...process.env };
-      for (const key of PROXY_KEYS) {
-        delete cleanedEnv[key];
-      }
-      // #endregion END_PROXY_STRIP_COMPOSE_ENV
-
-      // Verify via subprocess: node reports exactly the env we composed
+      const cleanedEnv = composeCleanEnv(process.env);
       const subprocessEnv = await spawnEnvEcho(cleanedEnv);
 
-      // #region START_PROXY_STRIP_ASSERT_ABSENT
+      // #region START_STRIP_ASSERT_ABSENT
       for (const key of PROXY_KEYS) {
-        assert.strictEqual(
-          key in subprocessEnv,
-          false,
-          `${key} must be absent from subprocess env`
-        );
+        assert.strictEqual(key in subprocessEnv, false, `${key} must be absent from subprocess env`);
       }
       assert.strictEqual(subprocessEnv['GENNADY_SAFE'], 'intact');
-      // #endregion END_PROXY_STRIP_ASSERT_ABSENT
+      // #endregion END_STRIP_ASSERT_ABSENT
+
+      // #region START_INJECTED_ENV_ASSERT
+      assert.ok(
+        (subprocessEnv['OPENCODE_CONFIG'] ?? '').endsWith('readonly.config.json'),
+        'OPENCODE_CONFIG must point at the bundled readonly config'
+      );
+      assert.strictEqual(subprocessEnv['OPENCODE_DB'], ':memory:', 'session DB must be isolated per run');
+      // #endregion END_INJECTED_ENV_ASSERT
     });
   });
 
@@ -277,22 +276,22 @@ describe('OpencodeEngine', () => {
   // ── integration: MODEL_UNAVAILABLE hint enrichment ────────────────────────
 
   describe('#run MODEL_UNAVAILABLE', () => {
-    it('enriches MODEL_UNAVAILABLE hint with model list', async (t) => {
-      // contract: when opencode exits with "unknown model" stderr, run() enriches the hint with
-      //           the list from listModels(); the final AgentRunError.hint contains at least one model id
-      // non-goal: do not assert exact hint text — list is dynamic; hint format may include markdown
-      // note: uses real OpencodeEngine (not TestableOpencodeEngine) so that opencode receives a
-      //       real profile name and responds with a model-specific error rather than a profile-not-found error
+    it('pre-validates explicit model and rejects MODEL_UNAVAILABLE with the list', async (t) => {
+      // contract: an EXPLICIT model not in listModels() is rejected up front with MODEL_UNAVAILABLE,
+      //           hint containing the available list — WITHOUT spawning the run. (opencode does not
+      //           surface invalid-model in stderr — it returns a generic UnknownError — so detection
+      //           must happen via pre-validation against listModels(), not post-run mapping.)
+      // non-goal: do not assert exact hint text — list is dynamic.
 
       if (!opencodeAvailable) {
-        t.skip('opencode binary not available — cannot test MODEL_UNAVAILABLE hint enrichment');
+        t.skip('opencode binary not available — cannot list models for pre-validation');
         return;
       }
 
       const engine = new OpencodeEngine();
 
       // #region START_MODEL_UNAVAILABLE_HINT_ASSERT
-      // Use a clearly non-existent model id to trigger MODEL_UNAVAILABLE from opencode
+      // Use a clearly non-existent model id → pre-validation throws MODEL_UNAVAILABLE
       await assert.rejects(
         () =>
           engine.run({
