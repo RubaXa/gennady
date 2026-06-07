@@ -4,7 +4,7 @@
 
 Команда `gennady agents-rules` выводит на stdout markdown-инструкцию по использованию `orient` для AI-агентов. Агент запускает команду, читает вывод, переосмысливает под свою задачу и интегрирует в `AGENTS.md`. Контент — `cli/cmd/orient/README.md` из пакета gennady. Zero runtime dependencies (только Node.js built-in).
 
-→ Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.10 agents-rules). Спецификация контента README.md → parent §3.7 Golden DX.
+→ Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.10 agents-rules). Спецификация контента README.md → parent §3.7 Golden DX.
 
 ## 2. Entity Inventory (Closed-World)
 

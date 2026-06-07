@@ -4,7 +4,7 @@
 
 VCS-клиент для GitLab и GitHub: абстрактные порты + адаптеры. Merge Requests / Pull Requests, Discussions, Repository Files, URL-парсер. Используется CLI-командами gennady для review-пайплайна и `cat --url`.
 
-→ Parent scope: [../../vcs.spec.md](../../vcs.spec.md)
+→ Parent scope: [../vcs.spec.md](../vcs.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

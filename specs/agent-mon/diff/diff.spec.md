@@ -4,7 +4,7 @@
 
 Чистая функция сравнения двух снапшотов сессий. Без зависимостей от провайдеров или монитора.
 
-**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
+**Parent scope:** [`../agent-mon.spec.md`](../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 
@@ -78,7 +78,7 @@ diff/
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `model` (`../../model/model.spec.md`)
+- **Depends on:** `model` (`../model/model.spec.md`)
 - **Provides to:** `observe`, CLI
 
 ```mermaid

@@ -1,6 +1,6 @@
 # Module: skill-contract
 
-→ Parent scope: [`../../ai-skills.spec.md`](../../ai-skills.spec.md)
+→ Parent scope: [`../ai-skills.spec.md`](../ai-skills.spec.md)
 
 <!--SECTION:MODULE_VISION-->
 

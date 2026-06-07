@@ -4,7 +4,7 @@
 
 State manager — принимает `AsyncIterable<SessionChanges>`, мёрджит изменения, преобразует в `ViewModel` для UI. Не зависит от `agent-mon` напрямую — работает с абстрактным потоком изменений. Содержит эвристику `isWaitingForUser`.
 
-**Parent scope:** [`../../agent-mon-cli.spec.md`](../../agent-mon-cli.spec.md)
+**Parent scope:** [`../agent-mon-cli.spec.md`](../agent-mon-cli.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

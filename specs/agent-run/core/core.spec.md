@@ -4,7 +4,7 @@
 
 ## 1. Module Vision
 
-Движок-независимое ядро `agent-run`. Родительский scope: [`../../agent-run.spec.md`](../../agent-run.spec.md).
+Движок-независимое ядро `agent-run`. Родительский scope: [`../agent-run.spec.md`](../agent-run.spec.md).
 
 Владеет контрактом движка (`AgentEngine`), входными/выходными типами, типизированными ошибками, реестром движков и публичными функциями `run` / `listEngines`. Не знает деталей конкретного движка — они живут в модулях-адаптерах (`engines/*`, см. [`../opencode/opencode.spec.md`](../opencode/opencode.spec.md)). При добавлении нового движка этот модуль не меняется.
 

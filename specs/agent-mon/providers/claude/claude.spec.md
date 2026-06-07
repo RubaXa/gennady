@@ -4,7 +4,7 @@
 
 Adapter для Claude Code. Реализует `AgentProvider`: сканирует `~/.claude/sessions/<PID>.json`, проверяет живость через `ps`, извлекает model/title из аргументов процесса и JSONL.
 
-**Parent scope:** [`../../../agent-mon.spec.md`](../../../agent-mon.spec.md)
+**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

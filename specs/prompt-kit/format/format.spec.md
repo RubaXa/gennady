@@ -6,7 +6,7 @@
 
 Движки форматирования: XML-сериализация, Markdown-сериализация, отступы, переносы, якоря, пунктуация списков, рендер таблиц. Вызываются из `core/TreeWalker`, публичной поверхности не имеют.
 
-[Scope spec → `../../prompt-kit.spec.md`](../../prompt-kit.spec.md)
+[Scope spec → `../prompt-kit.spec.md`](../prompt-kit.spec.md)
 
 <!--/SECTION:MODULE_VISION-->
 

@@ -4,9 +4,9 @@
 
 Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
-→ Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.7 sync-skills).
+→ Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.7 sync-skills).
 
-→ Out-of-scope (v1): [`../../cli.spec.md §4.3`](../../cli.spec.md) — авто-проверка обновлений, регистрация в opencode.json, интерактивный режим, --watch, другие источники, миграция форматов.
+→ Out-of-scope (v1): [`../cli.spec.md §4.3`](../cli.spec.md) — авто-проверка обновлений, регистрация в opencode.json, интерактивный режим, --watch, другие источники, миграция форматов.
 
 ## 2. Entity Inventory (Closed-World)
 

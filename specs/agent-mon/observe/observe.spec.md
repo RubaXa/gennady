@@ -4,7 +4,7 @@
 
 Async iterable для непрерывного наблюдения за изменениями сессий. Принимает `AgentMonitor`, каждые N мс делает `scanAll` + `diff`, yield'ит `SessionChanges`.
 
-**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
+**Parent scope:** [`../agent-mon.spec.md`](../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 
@@ -80,7 +80,7 @@ observe/
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `model` (`../../model/model.spec.md`), `monitor` (`../../monitor/monitor.spec.md`), `diff` (`../../diff/diff.spec.md`)
+- **Depends on:** `model` (`../model/model.spec.md`), `monitor` (`../monitor/monitor.spec.md`), `diff` (`../diff/diff.spec.md`)
 - **Provides to:** CLI
 
 ```mermaid

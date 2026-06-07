@@ -16,6 +16,8 @@ graph TD
     agent-mon --> infra-base
     agent-mon-cli --> infra-base
     agent-mon-cli --> agent-mon
+    agent-run --> infra-base
+    cli --> agent-run
     ai-skills --> infra-base
     ai-skills --> cli
     prompt-kit --> infra-base

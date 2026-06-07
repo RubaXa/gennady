@@ -4,7 +4,7 @@
 
 Чистые типы и контракты для всей библиотеки agent-mon. Никакой реализации — только Value Objects и Port `AgentProvider`. Все остальные модули импортируют типы отсюда.
 
-**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
+**Parent scope:** [`../agent-mon.spec.md`](../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

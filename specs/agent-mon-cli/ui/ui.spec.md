@@ -4,7 +4,7 @@
 
 Ink-компоненты для рендеринга дашборда. `AgentMonApp` — корень, подписывается на state manager. `ColumnView` — реализация SessionDashboard (колонки по провайдерам). Все компоненты чисто презентационные.
 
-**Parent scope:** [`../../agent-mon-cli.spec.md`](../../agent-mon-cli.spec.md)
+**Parent scope:** [`../agent-mon-cli.spec.md`](../agent-mon-cli.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 
@@ -105,7 +105,7 @@ None.
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `state` (`../../state/state.spec.md`), `ink`, `react`
+- **Depends on:** `state` (`../state/state.spec.md`), `ink`, `react`
 - **Provides to:** `cmd`
 
 ```mermaid

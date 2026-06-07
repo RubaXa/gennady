@@ -4,7 +4,7 @@
 
 Shared-модуль в `cli/cmd/_shared/`: неблокирующий детект обновлений CLI на старте. Проверяет npm-реестр в фоне, при обнаружении новой версии выводит уведомление в stderr после завершения команды. Zero runtime dependencies (только Node.js built-in). Никогда не блокирует `process.exit`, никогда не бросает исключений.
 
-→ Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.4 Update Check).
+→ Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.4 Update Check).
 
 ## 2. Entity Inventory (Closed-World)
 

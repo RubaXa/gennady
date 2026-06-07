@@ -4,7 +4,7 @@
 
 Единый модуль, содержащий универсальный DBC-контракт парсинга и первую реализацию для JSDoc-подобного синтаксиса. Охватывает всё: типы, интерфейс `DbcParser`, issue-коды, валидацию и JSDoc-парсер.
 
-→ Parent scope: [../../dbc.spec.md](../../dbc.spec.md)
+→ Parent scope: [../dbc.spec.md](../dbc.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

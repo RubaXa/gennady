@@ -4,7 +4,7 @@
 
 Команда `gennady sync` в `cli/cmd/sync/`: синхронизирует `ai/directives/` из npm-пакета gennady в текущий проект. Приоритет у локальной установки (`node_modules/gennady`), fallback — резолв запущенного процесса. Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`ai/directives/...`, `npx gennady`).** Вывод: `+` (added), `~` (updated), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Поддержка `--dry-run`.
 
-→ Parent scope: [`../../cli.spec.md`](../../cli.spec.md) (раздел 5.5 sync).
+→ Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.5 sync).
 
 ## 2. Entity Inventory (Closed-World)
 

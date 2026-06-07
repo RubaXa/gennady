@@ -4,7 +4,7 @@
 
 Ядро библиотеки — Service `AgentMonitor`. Владеет реестром провайдеров, координирует сканирование, делегирует `diff` и `observe` в соответствующие модули.
 
-**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
+**Parent scope:** [`../agent-mon.spec.md`](../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 
@@ -98,7 +98,7 @@ monitor/
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `model` (`../../model/model.spec.md`)
+- **Depends on:** `model` (`../model/model.spec.md`)
 - **Scope Reference (cross-scope):** None
 - **Provides to:** `observe`, CLI
 

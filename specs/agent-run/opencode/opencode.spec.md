@@ -4,7 +4,7 @@
 
 ## 1. Module Vision
 
-Адаптер движка opencode. Родительский scope: [`../../agent-run.spec.md`](../../agent-run.spec.md). Реализует контракт [`AgentEngine`](../core/core.spec.md) из модуля `core`.
+Адаптер движка opencode. Родительский scope: [`../agent-run.spec.md`](../agent-run.spec.md). Реализует контракт [`AgentEngine`](../core/core.spec.md) из модуля `core`.
 
 Знает всё, что специфично для opencode: как запустить `opencode run`, как включить readonly через профиль прав, как отдать рабочие директории, как почистить окружение подпроцесса и как перевести сбой opencode в типизированную `AgentRunError`. Первый из движков; будущие (claude/codex/cursor) — соседи по `engines/`.
 

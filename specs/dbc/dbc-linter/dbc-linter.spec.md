@@ -4,7 +4,7 @@
 
 Модуль линтинга: проверка покрытия кодовых сущностей DBC-контрактами, валидация контрактов через `dbc-parser`, сверка сигнатур контракта с реальным кодом, генерация ESLint-совместимого отчёта и autofix исправимых ошибок.
 
-→ Parent scope: [../../dbc.spec.md](../../dbc.spec.md)
+→ Parent scope: [../dbc.spec.md](../dbc.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

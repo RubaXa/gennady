@@ -4,7 +4,7 @@
 
 Adapter для OpenCode. Реализует `AgentProvider`: запрашивает `opencode.db` через `node:sqlite`, парсит `model` JSON, извлекает `lastMessage`.
 
-**Parent scope:** [`../../../agent-mon.spec.md`](../../../agent-mon.spec.md)
+**Parent scope:** [`../../agent-mon.spec.md`](../../agent-mon.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 

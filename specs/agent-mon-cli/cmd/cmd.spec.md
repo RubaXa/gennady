@@ -4,7 +4,7 @@
 
 CLI entry point — парсинг флагов, создание монитора с провайдерами, запуск ink-приложения. Composition root: связывает `agent-mon` библиотеку с `state` и `ui`.
 
-**Parent scope:** [`../../agent-mon-cli.spec.md`](../../agent-mon-cli.spec.md)
+**Parent scope:** [`../agent-mon-cli.spec.md`](../agent-mon-cli.spec.md)
 
 ## 2. Entity Inventory (Closed-World)
 
@@ -97,7 +97,7 @@ None.
 
 ## 8. Inter-Module Dependencies
 
-- **Depends on:** `agent-mon` (library), `state` (`../../state/state.spec.md`), `ui` (`../../ui/ui.spec.md`)
+- **Depends on:** `agent-mon` (library), `state` (`../state/state.spec.md`), `ui` (`../ui/ui.spec.md`)
 - **Provides to:** `cli/gennady.ts`
 
 ```mermaid

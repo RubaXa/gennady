@@ -6,7 +6,7 @@
 
 Ядро prompt-kit: фабрика элементов, рендер-движок, нормализация JSX-деревьев, разрешение элементов. Не знает про конкретные примитивы и форматы — только инфраструктура.
 
-[Scope spec → `../../prompt-kit.spec.md`](../../prompt-kit.spec.md)
+[Scope spec → `../prompt-kit.spec.md`](../prompt-kit.spec.md)
 
 <!--/SECTION:MODULE_VISION-->
 
