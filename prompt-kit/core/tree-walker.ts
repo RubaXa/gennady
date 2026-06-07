@@ -128,7 +128,6 @@ export class TreeWalker {
       }
       results.push(this._walkNode(children[i] as JSXNode, ctx));
     }
-    const sep = ctx.format === 'md' ? '\n\n' : '\n';
-    return results.filter((r) => r.length > 0).join(sep);
+    return results.filter((r) => r.length > 0).join('\n');
   }
 }
