@@ -60,6 +60,8 @@ _Это полный список сущностей модуля. Любое в
 | `List`          | 🟢      | Element | Список. Роль `list`, пропсы `ordered?: boolean`, `title?: string`           |
 | `Code`          | 🟢      | Element | Блок кода. Роль `block`, пропсы `lang?: string`, `title?: string`           |
 | `Bold`          | 🟢      | Element | Жирный текст. Роль `inline`                                                 |
+| `Group`         | 🟢      | Element | Универсальный контейнер. Роль `section`. Пропс `is: string` — имя HTML-тега (потребляется, удаляется из атрибутов). Доп. пропсы становятся атрибутами |
+| `Node`          | 🟢      | Element | Универсальный листовой элемент ключ-значение. Роль `property`. Пропс `is: string` — имя HTML-тега. `id?: string`. Доп. пропсы — атрибуты. md: `- **is:** text` в одну строку |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -138,6 +140,20 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Element
 - **Purpose:** Жирный текст. Inline.
 - **Public Properties:** N/A (children only)
+- **Consumers:** External — пользовательский код
+
+#### `Group`
+
+- **Type:** Element
+- **Purpose:** Универсальный контейнер. HTML-тег = `props.is`. Пропс `is` потребляется для имени тега и удаляется из атрибутов. Дополнительные пропсы становятся HTML-атрибутами.
+- **Public Properties:** `is: string`, `[key: string]: unknown`
+- **Consumers:** External — пользовательский код
+
+#### `Node`
+
+- **Type:** Element
+- **Purpose:** Универсальный листовой элемент ключ-значение. Роль `property`. HTML-тег = `props.is`. В Markdown: `- **is:** text` в одну строку, без heading-префикса.
+- **Public Properties:** `is: string`, `id?: string`, `[key: string]: unknown`
 - **Consumers:** External — пользовательский код
 <!--/SECTION:ENTITY_SURFACES-->
 
