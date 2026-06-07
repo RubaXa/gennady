@@ -66,6 +66,19 @@ class XmlFormatEngine implements TFormatEngine {
     delete attrs.is;
     return this._formatter.formatInline(tag, attrs, children);
   }
+
+  /** @see {TFormatEngine#formatProperty} in ./types.ts */
+  formatProperty(
+    ctx: RenderContext,
+    children: string,
+    element: PromptElement,
+    props: Record<string, unknown>
+  ): string {
+    const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
+    const attrs = { ...props };
+    delete attrs.is;
+    return this._formatter.formatElement(tag, attrs, children, ctx.depth);
+  }
 }
 
 /**
@@ -138,6 +151,22 @@ class MdFormatEngine implements TFormatEngine {
   ): string {
     const wrapper = element.config.markdown?.wrapper ?? '';
     return this._formatter.formatInline(wrapper, children);
+  }
+
+  /** @see {TFormatEngine#formatProperty} in ./types.ts */
+  formatProperty(
+    _ctx: RenderContext,
+    children: string,
+    element: PromptElement,
+    props: Record<string, unknown>
+  ): string {
+    const title = element.config.markdown?.title?.({
+      tagName: element.tagName,
+      props,
+      depth: _ctx.depth,
+    }) ?? '';
+    // MD: inline key-value — `- **File:** setup.xml`
+    return title ? `- **${title}**` + (children ? ` ${children}` : '') : children;
   }
 }
 

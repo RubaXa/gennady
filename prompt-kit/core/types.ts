@@ -11,7 +11,7 @@ export const PROMPT_ELEMENT_SYMBOL = Symbol.for('prompt-element');
  */
 export type PromptElementConfig<Props extends Record<string, unknown> = Record<string, unknown>> = {
   /** @purpose Role determining which TFormatEngine method is dispatched | @invariant One of root|section|list|block|inline */
-  role: 'root' | 'section' | 'list' | 'block' | 'inline';
+  role: 'root' | 'section' | 'list' | 'block' | 'inline' | 'property';
   /** @purpose Explicit tag name override. Falls back to element role when absent. */
   tagName?: string; /** @purpose Markdown-specific rendering options: title extractor, wrapper, ordered flag, lang, boundary comments */
   markdown?: {
@@ -135,6 +135,20 @@ export interface TFormatEngine {
    * @returns Rendered inline output string
    */
   formatInline(
+    ctx: RenderContext,
+    children: string,
+    element: PromptElement,
+    props: Record<string, unknown>
+  ): string;
+  /**
+   * @purpose Render a property element (key-value leaf). MD: inline `- **key:** value`. HTML: `<tag>value</tag>`.
+   * @param ctx Render context
+   * @param children Pre-rendered children string
+   * @param element PromptElement factory carrying config
+   * @param props Node-level props from the JSX invocation
+   * @returns Rendered property output string
+   */
+  formatProperty(
     ctx: RenderContext,
     children: string,
     element: PromptElement,

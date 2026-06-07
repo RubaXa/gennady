@@ -13,145 +13,85 @@ knowledge
 <!--START_SDD_SETUP-->
 #### SddSetup:
 
-##### File::
+- **File:** ai/directives/sdd/setup.directive.xml
 
-ai/directives/sdd/setup.directive.xml
+- **Purpose:** Creates or updates specs/README.md — Vision and Scope Graph. Sole owner of the Portal. Idempotent.
 
-##### Purpose::
+- **Triggers:** new project · add scope · change project vision · register scope after discovery
 
-Creates or updates specs/README.md — Vision and Scope Graph. Sole owner of the Portal. Idempotent.
+- **SkipWhen:** designing a specific scope · module decomposition · task scaffolding
 
-##### Triggers::
-
-new project · add scope · change project vision · register scope after discovery
-
-##### SkipWhen::
-
-designing a specific scope · module decomposition · task scaffolding
-
-##### Preconditions::
-
-None
+- **Preconditions:** None
 <!--END_SDD_SETUP-->
 
 <!--START_SDD_DISCOVERY-->
 #### SddDiscovery:
 
-##### File::
+- **File:** ai/directives/sdd/discovery.directive.xml
 
-ai/directives/sdd/discovery.directive.xml
+- **Purpose:** Scope-level discovery session. Creates or evolves specs/[scope]/[scope].spec.md. Branches by scope-type: infrastructure, contracts, library, product.
 
-##### Purpose::
+- **Triggers:** design scope · raw idea for service/SDK/CLI/app · bootstrap infra tooling · refine or pivot existing scope
 
-Scope-level discovery session. Creates or evolves specs/[scope]/[scope].spec.md. Branches by scope-type: infrastructure, contracts, library, product.
+- **SkipWhen:** approved spec exists and operator wants module decomposition · bug fix or local refactor · project-level vision change
 
-##### Triggers::
-
-design scope · raw idea for service/SDK/CLI/app · bootstrap infra tooling · refine or pivot existing scope
-
-##### SkipWhen::
-
-approved spec exists and operator wants module decomposition · bug fix or local refactor · project-level vision change
-
-##### Preconditions::
-
-greenfield: none. refine/pivot: specs/[scope]/[scope].spec.md exists
+- **Preconditions:** greenfield: none. refine/pivot: specs/[scope]/[scope].spec.md exists
 <!--END_SDD_DISCOVERY-->
 
 <!--START_SDD_MODULE_DECOMPOSITION-->
 #### SddModuleDecomposition:
 
-##### File::
+- **File:** ai/directives/sdd/module-decomposition.directive.xml
 
-ai/directives/sdd/module-decomposition.directive.xml
+- **Purpose:** Decomposes a product or library scope into module specs with closed-world entity inventory, public surfaces, DbC contracts (Ports / Adapters / Services).
 
-##### Purpose::
+- **Triggers:** discovery complete · split into modules · build module map · list all entities · produce DbC · Ports and Adapters
 
-Decomposes a product or library scope into module specs with closed-world entity inventory, public surfaces, DbC contracts (Ports / Adapters / Services).
+- **SkipWhen:** scope spec missing or not approved · discovery still open · scope-type is infrastructure or contracts · tasks already generated
 
-##### Triggers::
-
-discovery complete · split into modules · build module map · list all entities · produce DbC · Ports and Adapters
-
-##### SkipWhen::
-
-scope spec missing or not approved · discovery still open · scope-type is infrastructure or contracts · tasks already generated
-
-##### Preconditions::
-
-specs/[scope]/[scope].spec.md with scope-type=product or library
+- **Preconditions:** specs/[scope]/[scope].spec.md with scope-type=product or library
 <!--END_SDD_MODULE_DECOMPOSITION-->
 
 <!--START_SDD_TASK_SCAFFOLDING-->
 #### SddTaskScaffolding:
 
-##### File::
+- **File:** ai/directives/sdd/scaffold.directive.xml
 
-ai/directives/sdd/scaffold.directive.xml
+- **Purpose:** Builds DAG of compact task tickets from scope graph. Each ticket includes BDD, Effective Rules, Verification, Execution Log template.
 
-##### Purpose::
+- **Triggers:** all scope specs ready · break into tasks · build DAG · produce execution plan · scaffold tickets
 
-Builds DAG of compact task tickets from scope graph. Each ticket includes BDD, Effective Rules, Verification, Execution Log template.
+- **SkipWhen:** module specs lack contracts · discovery or module-decomp not closed · tasks already generated
 
-##### Triggers::
-
-all scope specs ready · break into tasks · build DAG · produce execution plan · scaffold tickets
-
-##### SkipWhen::
-
-module specs lack contracts · discovery or module-decomp not closed · tasks already generated
-
-##### Preconditions::
-
-specs/README.md Scope Graph ✅; coding rule files exist for each language
+- **Preconditions:** specs/README.md Scope Graph ✅; coding rule files exist for each language
 <!--END_SDD_TASK_SCAFFOLDING-->
 
 <!--START_SDD_PHASE_EXECUTION-->
 #### SddPhaseExecution:
 
-##### File::
+- **File:** ai/directives/sdd/phase-execution-protocol.xml
 
-ai/directives/sdd/phase-execution-protocol.xml
+- **Purpose:** Execute ONE phase of ONE task ticket, dispatched by sdd-execute orchestrator. Read only what the phase needs; write only Target Files; emit typed Handoff for next phase / audit.
 
-##### Purpose::
+- **Triggers:** orchestrator dispatches phase · phase ID + ticket path provided in prompt
 
-Execute ONE phase of ONE task ticket, dispatched by sdd-execute orchestrator. Read only what the phase needs; write only Target Files; emit typed Handoff for next phase / audit.
+- **SkipWhen:** operator invokes directly without orchestrator · no phase ID
 
-##### Triggers::
-
-orchestrator dispatches phase · phase ID + ticket path provided in prompt
-
-##### SkipWhen::
-
-operator invokes directly without orchestrator · no phase ID
-
-##### Preconditions::
-
-ticket has section 2 Phases Overview + section 3 Phases block for target phase ID; prior-phase Handoffs (if any) recorded in current Round
+- **Preconditions:** ticket has section 2 Phases Overview + section 3 Phases block for target phase ID; prior-phase Handoffs (if any) recorded in current Round
 <!--END_SDD_PHASE_EXECUTION-->
 
 <!--START_SDD_AUDIT-->
 #### SddAudit:
 
-##### File::
+- **File:** ai/directives/sdd/audit.directive.xml
 
-ai/directives/sdd/audit.directive.xml
+- **Purpose:** Post-execution verification. Compares spec ↔ ticket ↔ code. Detects drift, gaps, rules violations. Output: ephemeral findings routed to spec/ticket.
 
-##### Purpose::
+- **Triggers:** audit · drift detection · post-implementation review · verify implementation · end of epic before merge
 
-Post-execution verification. Compares spec ↔ ticket ↔ code. Detects drift, gaps, rules violations. Output: ephemeral findings routed to spec/ticket.
+- **SkipWhen:** no executed tasks · Execution Log empty · no spec to compare
 
-##### Triggers::
-
-audit · drift detection · post-implementation review · verify implementation · end of epic before merge
-
-##### SkipWhen::
-
-no executed tasks · Execution Log empty · no spec to compare
-
-##### Preconditions::
-
-spec exists; ticket with non-empty Execution Log; code committed
+- **Preconditions:** spec exists; ticket with non-empty Execution Log; code committed
 <!--END_SDD_AUDIT-->
 <!--END_SDD-->
 <!--END_DIRECTIVES-->
@@ -159,9 +99,7 @@ spec exists; ticket with non-empty Execution Log; code committed
 <!--START_RULES-->
 ## Rules:
 
-### CheckPhaseOrder::
-
-typecheck test lint format
+- **CheckPhaseOrder:** typecheck test lint format
 
 <!--START_CODING-->
 ### Coding:
@@ -169,145 +107,81 @@ typecheck test lint format
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/coding/result-conventions.xml
 
-ai/directives/coding/result-conventions.xml
+- **Purpose:** ESLint enforcement of Result pattern conventions: no second generic, no object literals, no isErr short-circuit, no bare throw unknown.
 
-##### Purpose::
+- **Triggers:** Target Files use Result from @tessell/core/result · task touches error-handling code · task adds new DML / service methods
 
-ESLint enforcement of Result pattern conventions: no second generic, no object literals, no isErr short-circuit, no bare throw unknown.
+- **SkipWhen:** Config-only task; no Result usage in target files
 
-##### Triggers::
+- **ActivationHint:** Before writing or reviewing any file that returns or propagates Result
 
-Target Files use Result from @tessell/core/result · task touches error-handling code · task adds new DML / service methods
+- **CheckPhase:** lint
 
-##### SkipWhen::
-
-Config-only task; no Result usage in target files
-
-##### ActivationHint::
-
-Before writing or reviewing any file that returns or propagates Result
-
-##### CheckPhase::
-
-lint
-
-##### RequiresVerification::
-
-check-command
+- **RequiresVerification:** check-command
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/coding/typescript-rules.xml
 
-ai/directives/coding/typescript-rules.xml
+- **Purpose:** Writing code in the chosen language: typing, DbC, patterns, anti-patterns.
 
-##### Purpose::
+- **Triggers:** Target Files include source code files (not config)
 
-Writing code in the chosen language: typing, DbC, patterns, anti-patterns.
+- **SkipWhen:** Config-only task; infra-setup task without code files
 
-##### Triggers::
+- **ActivationHint:** Before editing or creating any source code file
 
-Target Files include source code files (not config)
+- **CheckPhase:** typecheck
 
-##### SkipWhen::
-
-Config-only task; infra-setup task without code files
-
-##### ActivationHint::
-
-Before editing or creating any source code file
-
-##### CheckPhase::
-
-typecheck
-
-##### RequiresVerification::
-
-check-command
+- **RequiresVerification:** check-command
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/coding/svelte5-runes.xml
 
-ai/directives/coding/svelte5-runes.xml
+- **Purpose:** Writing Svelte 5 components with runes ($state, $derived, $effect, $props, $bindable). Inherits typescript-rules; adds Svelte-specific reactivity, template syntax, component structure. Prevents React-pattern code in .svelte files.
 
-##### Purpose::
+- **Triggers:** creating .svelte file · writing Svelte component · using runes · .svelte.ts module
 
-Writing Svelte 5 components with runes ($state, $derived, $effect, $props, $bindable). Inherits typescript-rules; adds Svelte-specific reactivity, template syntax, component structure. Prevents React-pattern code in .svelte files.
+- **SkipWhen:** pure TypeScript without Svelte · React/Vue project · backend server code
 
-##### Triggers::
+- **ActivationHint:** Before editing or creating any .svelte, .svelte.ts, or .svelte.js file. Inherits from typescript-rules — read both.
 
-creating .svelte file · writing Svelte component · using runes · .svelte.ts module
+- **CheckPhase:** typecheck
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-pure TypeScript without Svelte · React/Vue project · backend server code
+- **CrossRef:** Parent directive: inherits all TypeScript rules for language baseline.
 
-##### ActivationHint::
-
-Before editing or creating any .svelte, .svelte.ts, or .svelte.js file. Inherits from typescript-rules — read both.
-
-##### CheckPhase::
-
-typecheck
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Parent directive: inherits all TypeScript rules for language baseline.
-
-##### CrossRef::
-
-SvelteKit projects also activate sveltekit-rules (inherits from this directive).
+- **CrossRef:** SvelteKit projects also activate sveltekit-rules (inherits from this directive).
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/coding/sveltekit-rules.xml
 
-ai/directives/coding/sveltekit-rules.xml
+- **Purpose:** Writing SvelteKit applications: file-based routing (+page, +layout, +server), server load functions, form actions, hooks, adapters, $app modules. Inherits svelte5-runes + typescript-rules transitively.
 
-##### Purpose::
+- **Triggers:** creating SvelteKit route · load function · form actions · hooks.server.ts · server/client boundary
 
-Writing SvelteKit applications: file-based routing (+page, +layout, +server), server load functions, form actions, hooks, adapters, $app modules. Inherits svelte5-runes + typescript-rules transitively.
+- **SkipWhen:** standalone Svelte without SvelteKit · pure component library · non-SvelteKit project
 
-##### Triggers::
+- **ActivationHint:** Before writing SvelteKit route files or server logic. Inherits from svelte5-runes — read both.
 
-creating SvelteKit route · load function · form actions · hooks.server.ts · server/client boundary
+- **CheckPhase:** typecheck
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-standalone Svelte without SvelteKit · pure component library · non-SvelteKit project
+- **CrossRef:** Parent directive: inherits all Svelte 5 runes rules.
 
-##### ActivationHint::
-
-Before writing SvelteKit route files or server logic. Inherits from svelte5-runes — read both.
-
-##### CheckPhase::
-
-typecheck
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Parent directive: inherits all Svelte 5 runes rules.
-
-##### CrossRef::
-
-Transitive parent: inherits TypeScript rules through svelte5-runes.
+- **CrossRef:** Transitive parent: inherits TypeScript rules through svelte5-runes.
 <!--END_RULE-->
 <!--END_CODING-->
 
@@ -317,257 +191,143 @@ Transitive parent: inherits TypeScript rules through svelte5-runes.
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/common.xml
 
-ai/directives/testing/common.xml
+- **Purpose:** Shared testing core inherited by every runner-specific directive: contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget.
 
-##### Purpose::
+- **Triggers:** any runner-specific testing rule activates
 
-Shared testing core inherited by every runner-specific directive: contract boundary, case flow, phase anchors, unified context + factory, BDD mapping, snapshot operator-confirm, file budget.
+- **SkipWhen:** no test files in scope
 
-##### Triggers::
+- **ActivationHint:** Auto-read whenever node-test or vitest-rules activates. Runner-specific files only state deltas.
 
-any runner-specific testing rule activates
+- **CheckPhase:** test
 
-##### SkipWhen::
-
-no test files in scope
-
-##### ActivationHint::
-
-Auto-read whenever node-test or vitest-rules activates. Runner-specific files only state deltas.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
+- **RequiresVerification:** check-command
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/vitest-rules.xml
 
-ai/directives/testing/vitest-rules.xml
+- **Purpose:** Writing tests on Vitest runner.
 
-##### Purpose::
+- **Triggers:** Target Test Files present AND stack uses Vitest
 
-Writing tests on Vitest runner.
+- **SkipWhen:** Stack uses a different test runner; no test files in scope
 
-##### Triggers::
+- **ActivationHint:** Before writing or modifying test files. Inherits testing-common.
 
-Target Test Files present AND stack uses Vitest
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-Stack uses a different test runner; no test files in scope
-
-##### ActivationHint::
-
-Before writing or modifying test files. Inherits testing-common.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Parent directive: read first for case flow, anchors, unified context, BDD mapping.
+- **CrossRef:** Parent directive: read first for case flow, anchors, unified context, BDD mapping.
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/node-test.xml
 
-ai/directives/testing/node-test.xml
+- **Purpose:** Writing tests on node:test runner.
 
-##### Purpose::
+- **Triggers:** Target Test Files present AND stack uses node:test
 
-Writing tests on node:test runner.
+- **SkipWhen:** Stack uses a different test runner; no test files in scope
 
-##### Triggers::
+- **ActivationHint:** Before writing or modifying test files. Inherits testing-common.
 
-Target Test Files present AND stack uses node:test
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-Stack uses a different test runner; no test files in scope
-
-##### ActivationHint::
-
-Before writing or modifying test files. Inherits testing-common.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Parent directive: read first for case flow, anchors, unified context, BDD mapping.
+- **CrossRef:** Parent directive: read first for case flow, anchors, unified context, BDD mapping.
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/playwright-cli.xml
 
-ai/directives/testing/playwright-cli.xml
+- **Purpose:** Exploring web apps through Playwright CLI: AX Tree vision, aria snapshots, screenshots, trace viewer, codegen. Gives the agent eyes and hands for browser exploration.
 
-##### Purpose::
+- **Triggers:** developing UI component · building a page · verifying visual layout · debugging failing e2e test · capturing aria snapshots
 
-Exploring web apps through Playwright CLI: AX Tree vision, aria snapshots, screenshots, trace viewer, codegen. Gives the agent eyes and hands for browser exploration.
+- **SkipWhen:** pure backend logic · CLI command implementation · API endpoint without UI
 
-##### Triggers::
+- **ActivationHint:** BEFORE writing any e2e test — explore the page first. Also when an e2e test fails and the agent needs to see what rendered.
 
-developing UI component · building a page · verifying visual layout · debugging failing e2e test · capturing aria snapshots
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-pure backend logic · CLI command implementation · API endpoint without UI
-
-##### ActivationHint::
-
-BEFORE writing any e2e test — explore the page first. Also when an e2e test fails and the agent needs to see what rendered.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Transition to playwright-e2e when exploration complete.
+- **CrossRef:** Transition to playwright-e2e when exploration complete.
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/playwright-e2e.xml
 
-ai/directives/testing/playwright-e2e.xml
+- **Purpose:** Writing Playwright E2E tests: aria-snapshot-first contracts, role-based locators, fixture-based POM, auth via storageState, network mocking.
 
-##### Purpose::
+- **Triggers:** writing e2e test · creating browser test · adding Playwright spec · testing user flow
 
-Writing Playwright E2E tests: aria-snapshot-first contracts, role-based locators, fixture-based POM, auth via storageState, network mocking.
+- **SkipWhen:** unit test · integration test without browser · exploration not done (use playwright-cli first)
 
-##### Triggers::
+- **ActivationHint:** AFTER playwright-cli exploration. Before writing Playwright spec files.
 
-writing e2e test · creating browser test · adding Playwright spec · testing user flow
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-unit test · integration test without browser · exploration not done (use playwright-cli first)
-
-##### ActivationHint::
-
-AFTER playwright-cli exploration. Before writing Playwright spec files.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-MUST run playwright-cli exploration first.
+- **CrossRef:** MUST run playwright-cli exploration first.
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/storybook-usage.xml
 
-ai/directives/testing/storybook-usage.xml
+- **Purpose:** Using Storybook MCP tools: reading manifests (component docs, props, stories), writing stories, running tests, self-verifying component rendering.
 
-##### Purpose::
+- **Triggers:** developing UI component · using design system · creating story · fixing component bug · verifying component renders
 
-Using Storybook MCP tools: reading manifests (component docs, props, stories), writing stories, running tests, self-verifying component rendering.
+- **SkipWhen:** pure backend/CLI logic · no Storybook · MCP not installed (use storybook-setup first)
 
-##### Triggers::
+- **ActivationHint:** Whenever working with UI components — BEFORE writing code, call MCP tools to check documented props.
 
-developing UI component · using design system · creating story · fixing component bug · verifying component renders
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-pure backend/CLI logic · no Storybook · MCP not installed (use storybook-setup first)
-
-##### ActivationHint::
-
-Whenever working with UI components — BEFORE writing code, call MCP tools to check documented props.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-MUST have Storybook + MCP running. If unreachable, invoke storybook-setup.
+- **CrossRef:** MUST have Storybook + MCP running. If unreachable, invoke storybook-setup.
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/testing/svelte-testing.xml
 
-ai/directives/testing/svelte-testing.xml
+- **Purpose:** Testing Svelte 5 components: .svelte.test.ts extension, $effect.root isolation, flushSync for DOM, mount/unmount, @testing-library/svelte. Inherits node-test + vitest-rules.
 
-##### Purpose::
+- **Triggers:** writing Svelte component test · testing runes · mounting Svelte component · Storybook interaction test for Svelte
 
-Testing Svelte 5 components: .svelte.test.ts extension, $effect.root isolation, flushSync for DOM, mount/unmount, @testing-library/svelte. Inherits node-test + vitest-rules.
+- **SkipWhen:** pure TS logic test without runes · E2E test with Playwright · non-Svelte project
 
-##### Triggers::
+- **ActivationHint:** Before writing .svelte.test.ts. Inherits from node-test.xml and vitest-rules.xml.
 
-writing Svelte component test · testing runes · mounting Svelte component · Storybook interaction test for Svelte
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-pure TS logic test without runes · E2E test with Playwright · non-Svelte project
+- **CrossRef:** Inherits general testing rules (phase anchors, learning briefs, contract coverage).
 
-##### ActivationHint::
+- **CrossRef:** Inherits Vitest-specific rules (unified context, mock discipline).
 
-Before writing .svelte.test.ts. Inherits from node-test.xml and vitest-rules.xml.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-Inherits general testing rules (phase anchors, learning briefs, contract coverage).
-
-##### CrossRef::
-
-Inherits Vitest-specific rules (unified context, mock discipline).
-
-##### CrossRef::
-
-Runes knowledge required (.svelte.test.ts, $effect.root, flushSync).
+- **CrossRef:** Runes knowledge required (.svelte.test.ts, $effect.root, flushSync).
 <!--END_RULE-->
 <!--END_TESTING-->
 
@@ -577,117 +337,67 @@ Runes knowledge required (.svelte.test.ts, $effect.root, flushSync).
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/infra/eslint-setup.xml
 
-ai/directives/infra/eslint-setup.xml
+- **Purpose:** Configuring a linter: severity policy, autofix, config format, formatter integration.
 
-##### Purpose::
+- **Triggers:** Task configures linter · installs linter · sets lint rules
 
-Configuring a linter: severity policy, autofix, config format, formatter integration.
+- **SkipWhen:** Coding/testing task that only RUNS lint, does not configure it
 
-##### Triggers::
+- **ActivationHint:** Before writing linter config or modifying lint rules
 
-Task configures linter · installs linter · sets lint rules
+- **CheckPhase:** lint
 
-##### SkipWhen::
-
-Coding/testing task that only RUNS lint, does not configure it
-
-##### ActivationHint::
-
-Before writing linter config or modifying lint rules
-
-##### CheckPhase::
-
-lint
-
-##### RequiresVerification::
-
-check-command
+- **RequiresVerification:** check-command
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/infra/git-setup.xml
 
-ai/directives/infra/git-setup.xml
+- **Purpose:** Configuring VCS: ignore baseline, branches, commits, hooks, secrets discipline.
 
-##### Purpose::
+- **Triggers:** Task bootstraps repo · configures VCS ignore file · sets up hooks · commit convention
 
-Configuring VCS: ignore baseline, branches, commits, hooks, secrets discipline.
+- **SkipWhen:** Task only commits code changes (does not configure VCS itself)
 
-##### Triggers::
-
-Task bootstraps repo · configures VCS ignore file · sets up hooks · commit convention
-
-##### SkipWhen::
-
-Task only commits code changes (does not configure VCS itself)
-
-##### ActivationHint::
-
-Before writing VCS ignore file or configuring hooks
+- **ActivationHint:** Before writing VCS ignore file or configuring hooks
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/infra/nodejs-npm-setup.xml
 
-ai/directives/infra/nodejs-npm-setup.xml
+- **Purpose:** Runtime + package manager setup: version pinning, single package manager, module system, mandatory check script.
 
-##### Purpose::
+- **Triggers:** Task writes package manager manifest · runtime version file · sets engines · chooses package manager
 
-Runtime + package manager setup: version pinning, single package manager, module system, mandatory check script.
+- **SkipWhen:** Task does not touch package manager manifest or runtime config
 
-##### Triggers::
-
-Task writes package manager manifest · runtime version file · sets engines · chooses package manager
-
-##### SkipWhen::
-
-Task does not touch package manager manifest or runtime config
-
-##### ActivationHint::
-
-Before writing package manager manifest or runtime version file
+- **ActivationHint:** Before writing package manager manifest or runtime version file
 <!--END_RULE-->
 
 <!--START_RULE-->
 #### Rule:
 
-##### File::
+- **File:** ai/directives/infra/storybook-setup.xml
 
-ai/directives/infra/storybook-setup.xml
+- **Purpose:** Installing Storybook + MCP server: agentic init, MCP addon, Vitest addon, agent registration, AGENTS.md update. Bootstraps component development environment.
 
-##### Purpose::
+- **Triggers:** install Storybook · add Storybook to project · configure MCP server · bootstrap UI toolchain
 
-Installing Storybook + MCP server: agentic init, MCP addon, Vitest addon, agent registration, AGENTS.md update. Bootstraps component development environment.
+- **SkipWhen:** no UI components · Storybook already installed + MCP confirmed running
 
-##### Triggers::
+- **ActivationHint:** When project needs Storybook for first time. Follow agentic init: npx storybook@latest init.
 
-install Storybook · add Storybook to project · configure MCP server · bootstrap UI toolchain
+- **CheckPhase:** test
 
-##### SkipWhen::
+- **RequiresVerification:** check-command
 
-no UI components · Storybook already installed + MCP confirmed running
-
-##### ActivationHint::
-
-When project needs Storybook for first time. Follow agentic init: npx storybook@latest init.
-
-##### CheckPhase::
-
-test
-
-##### RequiresVerification::
-
-check-command
-
-##### CrossRef::
-
-After setup (MCP running, manifest accessible), transition to storybook-usage.
+- **CrossRef:** After setup (MCP running, manifest accessible), transition to storybook-usage.
 <!--END_RULE-->
 <!--END_INFRA-->
 <!--END_RULES-->

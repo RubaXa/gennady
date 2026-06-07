@@ -93,6 +93,7 @@ export class TreeWalker {
     if (role === 'list') return this._engine.formatList(ctx, children, element, node.props);
     if (role === 'block') return this._engine.formatBlock(ctx, children, element, node.props);
     if (role === 'inline') return this._engine.formatInline(ctx, children, element, node.props);
+    if (role === 'property') return this._engine.formatProperty(ctx, children, element, node.props);
     throw new Error(`[TreeWalker#_dispatchPromptElement] unknown role: ${role}`);
   }
 

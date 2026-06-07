@@ -35,7 +35,7 @@ export type NodeProps = {
 /** Universal leaf element. HTML tag = `props.is`. In MD: `- **is:** children`. */
 export const Node = definePromptElement<NodeProps>({
   tagName: 'Node',
-  role: 'section',
+  role: 'property',
   markdown: {
     title: ({ props }) => (props.is as string) + ':',
   },
