@@ -99,6 +99,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/run/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'testcov':
+      await import('./cmd/testcov/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -172,6 +176,10 @@ switch (command) {
 
   case 'run':
     await import('./cmd/run/index.ts');
+    break;
+
+  case 'testcov':
+    await import('./cmd/testcov/index.ts');
     break;
 
   default:

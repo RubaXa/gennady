@@ -1,6 +1,6 @@
 # cli/cmd — Команды CLI
 
-16 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг.
+17 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг, покрытие тестами.
 
 ---
 
@@ -135,6 +135,29 @@ npx gennady agent-mon
 npx gennady agent-mon --once
 ```
 
+### 11. Визуализация покрытия тестами
+
+```bash
+# Дерево директорий с покрытием
+npx gennady testcov
+
+# Дерево с файлами
+npx gennady testcov --files
+
+# Авто-запуск тестов с покрытием
+npx gennady testcov --run
+
+# Диагностика конфигурации
+npx gennady testcov --check
+
+# JSON для CI/агентов
+npx gennady testcov --check --json
+npx gennady testcov --flat --json
+
+# Конкретная директория
+npx gennady testcov src/core --files
+```
+
 ---
 
 ## Все команды
@@ -156,6 +179,7 @@ npx gennady agent-mon --once
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов            |
 | `orient`            | Навигация по file-header и DBC-контрактам               |
 | `agents-rules`      | Инструкция по orient для AI-агентов                     |
+| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)      |
 
 ---
 
@@ -183,3 +207,4 @@ cli/cmd/<name>/
 - `specs/cli/sync-skills/sync-skills.spec.md` — sync-skills
 - `specs/cli/agents-rules/agents-rules.spec.md` — agents-rules
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
+- `specs/cli/testcov/testcov.spec.md` — testcov

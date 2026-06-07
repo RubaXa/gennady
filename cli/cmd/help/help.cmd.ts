@@ -38,6 +38,9 @@ console.info(
   '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'
 );
 console.info('  run               Run a task via an AI agent engine (opencode)');
+console.info(
+  '  testcov           Visual test coverage tree (vitest/jest/node:test auto-detection)'
+);
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');
