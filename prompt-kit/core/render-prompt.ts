@@ -97,9 +97,12 @@ class MdFormatEngine implements TFormatEngine {
   ): string {
     const title =
       element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ?? '';
-    const resolvedTag = (props.is as string) || (element.config.html?.tag) || element.tagName;
+    const resolvedTag = (props.is as string) || element.config.html?.tag || element.tagName;
     // PascalCase → SNAKE_CASE: AiKnowledge → AI_KNOWLEDGE, SddSetup → SDD_SETUP
-    const anchorName = resolvedTag.replace(/([A-Z])/g, '_$1').replace(/^_/, '').toUpperCase();
+    const anchorName = resolvedTag
+      .replace(/([A-Z])/g, '_$1')
+      .replace(/^_/, '')
+      .toUpperCase();
     const anchors = element.config.markdown?.includeBoundaryComments
       ? { start: `<!--START_${anchorName}-->`, end: `<!--END_${anchorName}-->` }
       : undefined;
@@ -160,11 +163,12 @@ class MdFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const title = element.config.markdown?.title?.({
-      tagName: element.tagName,
-      props,
-      depth: _ctx.depth,
-    }) ?? '';
+    const title =
+      element.config.markdown?.title?.({
+        tagName: element.tagName,
+        props,
+        depth: _ctx.depth,
+      }) ?? '';
     // MD: inline key-value — `- **File:** setup.xml`
     return title ? `- **${title}**` + (children ? ` ${children}` : '') : children;
   }

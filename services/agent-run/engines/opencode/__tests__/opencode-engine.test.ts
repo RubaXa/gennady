@@ -142,7 +142,11 @@ describe('OpencodeEngine', () => {
 
       // #region START_STRIP_ASSERT_ABSENT
       for (const key of PROXY_KEYS) {
-        assert.strictEqual(key in subprocessEnv, false, `${key} must be absent from subprocess env`);
+        assert.strictEqual(
+          key in subprocessEnv,
+          false,
+          `${key} must be absent from subprocess env`
+        );
       }
       assert.strictEqual(subprocessEnv['GENNADY_SAFE'], 'intact');
       // #endregion END_STRIP_ASSERT_ABSENT
@@ -152,7 +156,11 @@ describe('OpencodeEngine', () => {
         (subprocessEnv['OPENCODE_CONFIG'] ?? '').endsWith('readonly.config.json'),
         'OPENCODE_CONFIG must point at the bundled readonly config'
       );
-      assert.strictEqual(subprocessEnv['OPENCODE_DB'], ':memory:', 'session DB must be isolated per run');
+      assert.strictEqual(
+        subprocessEnv['OPENCODE_DB'],
+        ':memory:',
+        'session DB must be isolated per run'
+      );
       // #endregion END_INJECTED_ENV_ASSERT
     });
   });

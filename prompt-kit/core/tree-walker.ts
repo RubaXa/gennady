@@ -137,7 +137,7 @@ export class TreeWalker {
         const roleA = nonEmpty[i].role;
         const roleB = nonEmpty[i + 1].role;
         const bothSections = roleA === 'section' && roleB === 'section';
-        out += (bothSections && ctx.format === 'md') ? '\n\n' : '\n';
+        out += bothSections && ctx.format === 'md' ? '\n\n' : '\n';
       }
     }
     return out;
@@ -145,6 +145,8 @@ export class TreeWalker {
 
   /**
    * @purpose Get the role of a child node for separator computation.
+   * @param child Child JSX node to inspect.
+   * @returns Role string if the child is a known prompt element, undefined otherwise.
    */
   private _getChildRole(child: JSXNode): string | undefined {
     try {
@@ -152,7 +154,9 @@ export class TreeWalker {
       if (category === 'prompt-element') {
         return (child.type as PromptElement).config.role;
       }
-    } catch { /* unknown types treated as non-section */ }
+    } catch {
+      /* unknown types treated as non-section */
+    }
     return undefined;
   }
 }
