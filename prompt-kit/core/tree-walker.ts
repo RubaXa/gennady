@@ -114,7 +114,7 @@ export class TreeWalker {
   }
 
   /**
-   * @purpose Render an array of child nodes by recursively walking each, joining with format-appropriate separator.
+   * @purpose Render an array of child nodes by recursively walking each. Separator: `\n\n` between section siblings in MD, `\n` otherwise.
    * @param children Array of child JSXNodes or strings
    * @param ctx Render context for children
    * @returns Concatenated rendered string
@@ -128,6 +128,32 @@ export class TreeWalker {
       }
       results.push(this._walkNode(children[i] as JSXNode, ctx));
     }
-    return results.filter((r) => r.length > 0).join('\n');
+    // role-aware separator: \n\n between sections in MD, \n for properties/other
+    const filtered = results.filter((r) => r.length > 0);
+    let out = '';
+    for (let i = 0; i < filtered.length; i++) {
+      out += filtered[i];
+      if (i < filtered.length - 1) {
+        const roleA = this._getChildRole(children[i]);
+        const roleB = this._getChildRole(children[i + 1]);
+        const bothSections = roleA === 'section' && roleB === 'section';
+        out += (bothSections && ctx.format === 'md') ? '\n\n' : '\n';
+      }
+    }
+    return out;
+  }
+
+  /**
+   * @purpose Get the role of a child node for separator computation.
+   */
+  private _getChildRole(child: JSXNode | string): string | undefined {
+    if (typeof child === 'string') return undefined;
+    try {
+      const category = this._resolver.resolve((child as JSXNode).type);
+      if (category === 'prompt-element') {
+        return ((child as JSXNode).type as PromptElement).config.role;
+      }
+    } catch { /* resolver throws on unknown type */ }
+    return undefined;
   }
 }

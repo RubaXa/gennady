@@ -19,6 +19,7 @@ knowledge
 - **SkipWhen:** designing a specific scope · module decomposition · task scaffolding
 - **Preconditions:** None
 <!--END_SDD_SETUP-->
+
 <!--START_SDD_DISCOVERY-->
 #### SddDiscovery:
 
@@ -28,6 +29,7 @@ knowledge
 - **SkipWhen:** approved spec exists and operator wants module decomposition · bug fix or local refactor · project-level vision change
 - **Preconditions:** greenfield: none. refine/pivot: specs/[scope]/[scope].spec.md exists
 <!--END_SDD_DISCOVERY-->
+
 <!--START_SDD_MODULE_DECOMPOSITION-->
 #### SddModuleDecomposition:
 
@@ -37,6 +39,7 @@ knowledge
 - **SkipWhen:** scope spec missing or not approved · discovery still open · scope-type is infrastructure or contracts · tasks already generated
 - **Preconditions:** specs/[scope]/[scope].spec.md with scope-type=product or library
 <!--END_SDD_MODULE_DECOMPOSITION-->
+
 <!--START_SDD_TASK_SCAFFOLDING-->
 #### SddTaskScaffolding:
 
@@ -46,6 +49,7 @@ knowledge
 - **SkipWhen:** module specs lack contracts · discovery or module-decomp not closed · tasks already generated
 - **Preconditions:** specs/README.md Scope Graph ✅; coding rule files exist for each language
 <!--END_SDD_TASK_SCAFFOLDING-->
+
 <!--START_SDD_PHASE_EXECUTION-->
 #### SddPhaseExecution:
 
@@ -55,6 +59,7 @@ knowledge
 - **SkipWhen:** operator invokes directly without orchestrator · no phase ID
 - **Preconditions:** ticket has section 2 Phases Overview + section 3 Phases block for target phase ID; prior-phase Handoffs (if any) recorded in current Round
 <!--END_SDD_PHASE_EXECUTION-->
+
 <!--START_SDD_AUDIT-->
 #### SddAudit:
 
@@ -66,6 +71,7 @@ knowledge
 <!--END_SDD_AUDIT-->
 <!--END_SDD-->
 <!--END_DIRECTIVES-->
+
 <!--START_RULES-->
 ## Rules:
 
@@ -122,6 +128,7 @@ knowledge
 - **CrossRef:** Transitive parent: inherits TypeScript rules through svelte5-runes.
 <!--END_RULE-->
 <!--END_CODING-->
+
 <!--START_TESTING-->
 ### Testing:
 
@@ -211,6 +218,7 @@ knowledge
 - **CrossRef:** Runes knowledge required (.svelte.test.ts, $effect.root, flushSync).
 <!--END_RULE-->
 <!--END_TESTING-->
+
 <!--START_INFRA-->
 ### Infra:
 
