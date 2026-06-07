@@ -96,8 +96,8 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       helpLoaded = true;
       break;
     case 'run':
-      // purpose: run has no separate help module — reuse root help for now
-      helpLoaded = false;
+      await import('./cmd/run/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
       break;
   }
 

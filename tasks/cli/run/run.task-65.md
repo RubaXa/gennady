@@ -43,6 +43,7 @@
 - **Target Files:**
   - `cli/cmd/run/run.cmd.ts`
   - `cli/cmd/run/index.ts`
+  - `cli/cmd/run/help.ts`
   - `cli/gennady.ts`
   - `cli/AGENTS.md`
   - `cli/cmd/help/help.cmd.ts`
@@ -102,6 +103,11 @@ Contract: see Spec References.
 - **Given** `run()` бросает `new AgentRunError('MODEL_UNAVAILABLE', 'Модель «нет/такой» недоступна. Доступные: a/b, c/d')`
 - **When** `gennady run "t" --model нет/такой`
 - **Then** stderr содержит `[MODEL_UNAVAILABLE]` и список моделей из hint; exit 1
+
+**Scenario:** `--help` печатает справку [`unit`]
+- **Given** команда `gennady run --help` (или `-h`)
+- **When** per-command-help в `gennady.ts` грузит `cli/cmd/run/help.ts` → `printHelp()`
+- **Then** выводятся usage, флаги (`--dir`/`--model`/`--engine`/`--timeout`), readonly и примеры; exit 0; движок не вызывается
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -125,6 +131,7 @@ Contract: see Spec References.
 - Scenario "пустое задание exit 1" → `cli/cmd/run/__tests__/run.cmd.test.ts` :: `errors on empty task without calling run`
 - Scenario "AgentRunError stderr exit 1" → `cli/cmd/run/__tests__/run.cmd.test.ts` :: `prints AgentRunError message+code+hint and exits 1`
 - Scenario "MODEL_UNAVAILABLE hint" → `cli/cmd/run/__tests__/run.cmd.test.ts` :: `prints model list on MODEL_UNAVAILABLE`
+- Scenario "--help печатает справку" → `cli/cmd/run/__tests__/run.cmd.test.ts` :: `printHelp prints usage, flags and examples`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

@@ -259,4 +259,20 @@ describe('run.cmd', () => {
     assert.match(stderrOut, /a\/b, c\/d/);
   });
   // #endregion
+
+  // #region TEST_CASE_RUN_6: printHelp emits usage, flags and examples
+  it('printHelp prints usage, flags and examples', async () => {
+    // contract: `gennady run --help` (dispatched in gennady.ts) calls printHelp() → usage + flags + examples
+    const { printHelp } = await import('../help.ts');
+    printHelp();
+
+    const out = streams.stdout.join('');
+    assert.match(out, /Usage:/);
+    assert.match(out, /gennady run/);
+    assert.match(out, /--dir/);
+    assert.match(out, /--model/);
+    assert.match(out, /--timeout/);
+    assert.match(out, /readonly/);
+  });
+  // #endregion
 });

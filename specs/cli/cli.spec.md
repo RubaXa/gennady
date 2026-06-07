@@ -1206,6 +1206,7 @@ $ gennady run "…"
 | FR-RUN-5 | `MODEL_UNAVAILABLE` → `e.hint` уже содержит список моделей (ядро его сформировало); CLI просто печатает hint, exit 1.                                                                                                                                                                                                                                                             |
 | FR-RUN-6 | readonly всегда включён (v1 не передаёт режим записи).                                                                                                                                                                                                                                                                                                                            |
 | FR-RUN-7 | Команда — тонкая обёртка: вся логика запуска/ошибок в `@services/agent-run`; CLI только парсит флаги и форматирует вывод.                                                                                                                                                                                                                                                         |
+| FR-RUN-8 | `gennady run --help` / `-h` → печатает справку (использование, флаги с дефолтами, readonly, коды ошибок, примеры), exit 0, движок не вызывается. Реализация: `cli/cmd/run/help.ts` `printHelp()`, подхватывается per-command-help диспетчером в `cli/gennady.ts` (`case 'run'`).                                                                                                       |
 
 ### 4.2 Non-Functional Constraints
 
@@ -1931,7 +1932,8 @@ cli/__tests__/e2e/
 ```
 cli/cmd/run/
 ├── index.ts      # case 'run' dispatch target: import { run } from './run.cmd.ts'; run(process.argv)
-└── run.cmd.ts    # парсит флаги → зовёт run() из @services/agent-run → печатает text или ✗ code/hint
+├── run.cmd.ts    # парсит флаги → зовёт run() из @services/agent-run → печатает text или ✗ code/hint
+└── help.ts       # printHelp() для `gennady run --help` (подхватывается per-command-help в gennady.ts)
 ```
 
 **Ключевые решения:**
@@ -1940,6 +1942,7 @@ cli/cmd/run/
 2. **Дефолт модели — у движка, не в CLI.** CLI не задаёт `--model` по умолчанию; пустой `model` → ядро/движок берут дефолт (`llm-proxy/deepseek-v4-pro`). CLI лишь пробрасывает явный `--model`.
 3. **Регистрация.** `case 'run': await import('./cmd/run/index.ts'); break` в `cli/gennady.ts`.
 4. **Парсинг флагов** — `node:util` `parseArgs` (повторяемый `--dir` через `multiple: true`), без новых зависимостей.
+5. **Справка** — `cli/cmd/run/help.ts` `printHelp()`; `case 'run'` в per-command-help switch `gennady.ts` грузит её на `--help`/`-h` (exit 0, движок не вызывается).
 
 ### 5.14 Rejected Alternatives (run)
 
@@ -2056,8 +2059,9 @@ cli/cmd/run/
 | **run**                                                                  |               |                       |                                                                                                                                     |
 | Создать `cli/cmd/run/index.ts`                                           | file          | this-scope-task       | `import { run } from './run.cmd.ts'; run(process.argv)`                                                                             |
 | Создать `cli/cmd/run/run.cmd.ts`                                         | file          | this-scope-task       | parseArgs (задание + `--dir`×N + `--model` + `--engine` + `--timeout`) → `run()` из `@services/agent-run` → stdout/stderr          |
+| Создать `cli/cmd/run/help.ts`                                            | file          | this-scope-task       | `printHelp()` — справка для `gennady run --help`                                                                                    |
 | Создать `cli/cmd/run/__tests__/run.cmd.test.ts`                          | file          | this-scope-task       | Integration: happy (stdout=text, exit 0), пустой task → exit 1, AgentRunError → `✗ msg [code]`+hint exit 1, MODEL_UNAVAILABLE hint |
-| Обновить `cli/gennady.ts` (case 'run')                                   | file          | this-scope-task       | добавить `case 'run': await import('./cmd/run/index.ts'); break`                                                                    |
+| Обновить `cli/gennady.ts` (case 'run')                                   | file          | this-scope-task       | добавить `case 'run': await import('./cmd/run/index.ts'); break` + per-command-help `case 'run'` → `./cmd/run/help.ts`             |
 | Обновить `cli/AGENTS.md` (строка run)                                    | file          | this-scope-task       | добавить строку `run` в таблицу команд                                                                                              |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка run)                         | file          | this-scope-task       | добавить `run` в вывод help                                                                                                         |
 | `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (TSK-62/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
