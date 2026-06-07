@@ -6,7 +6,7 @@
 
 Встроенные примитивы prompt-kit: секции, списки, блоки, inline-элементы. Каждый — результат `definePromptElement` с предопределённой ролью и рендер-функциями.
 
-[Scope spec → `../../prompt-kit.spec.md`](../../prompt-kit.spec.md)
+[Scope spec → `../prompt-kit.spec.md`](../prompt-kit.spec.md)
 
 <!--/SECTION:MODULE_VISION-->
 
@@ -49,18 +49,18 @@ const directive = (
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name            | Surface | Type    | Purpose                                                                     |
-| --------------- | ------- | ------- | --------------------------------------------------------------------------- |
-| `Prompt`        | 🟢      | Element | Корень сообщения. Роль `root`, пропс `keywords`                             |
-| `PrimaryGoal`   | 🟢      | Element | Секция-цель. Роль `section`                                                 |
-| `BeliefState`   | 🟢      | Element | Секция-контейнер для Axiom. Роль `section`                                  |
-| `Axiom`         | 🟢      | Element | Аксиома с id. Роль `section`, пропс `id: string`                            |
-| `HardForbidden` | 🟢      | Element | Секция-запреты. Роль `section`                                              |
-| `Section`       | 🟢      | Element | Универсальная секция. Роль `section`, пропсы `title: string`, `id?: string` |
-| `List`          | 🟢      | Element | Список. Роль `list`, пропсы `ordered?: boolean`, `title?: string`           |
-| `Code`          | 🟢      | Element | Блок кода. Роль `block`, пропсы `lang?: string`, `title?: string`           |
-| `Bold`          | 🟢      | Element | Жирный текст. Роль `inline`                                                 |
-| `Group`         | 🟢      | Element | Универсальный контейнер. Роль `section`. Пропс `is: string` — имя HTML-тега (потребляется, удаляется из атрибутов). Доп. пропсы становятся атрибутами |
+| Name            | Surface | Type    | Purpose                                                                                                                                                                      |
+| --------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Prompt`        | 🟢      | Element | Корень сообщения. Роль `root`, пропс `keywords`                                                                                                                              |
+| `PrimaryGoal`   | 🟢      | Element | Секция-цель. Роль `section`                                                                                                                                                  |
+| `BeliefState`   | 🟢      | Element | Секция-контейнер для Axiom. Роль `section`                                                                                                                                   |
+| `Axiom`         | 🟢      | Element | Аксиома с id. Роль `section`, пропс `id: string`                                                                                                                             |
+| `HardForbidden` | 🟢      | Element | Секция-запреты. Роль `section`                                                                                                                                               |
+| `Section`       | 🟢      | Element | Универсальная секция. Роль `section`, пропсы `title: string`, `id?: string`                                                                                                  |
+| `List`          | 🟢      | Element | Список. Роль `list`, пропсы `ordered?: boolean`, `title?: string`                                                                                                            |
+| `Code`          | 🟢      | Element | Блок кода. Роль `block`, пропсы `lang?: string`, `title?: string`                                                                                                            |
+| `Bold`          | 🟢      | Element | Жирный текст. Роль `inline`                                                                                                                                                  |
+| `Group`         | 🟢      | Element | Универсальный контейнер. Роль `section`. Пропс `is: string` — имя HTML-тега (потребляется, удаляется из атрибутов). Доп. пропсы становятся атрибутами                        |
 | `Node`          | 🟢      | Element | Универсальный листовой элемент ключ-значение. Роль `property`. Пропс `is: string` — имя HTML-тега. `id?: string`. Доп. пропсы — атрибуты. md: `- **is:** text` в одну строку |
 
 <!--/SECTION:ENTITY_INVENTORY-->

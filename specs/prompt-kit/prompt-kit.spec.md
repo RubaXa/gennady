@@ -64,11 +64,13 @@ const md = renderPrompt(directive, {}, 'md');
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:RENDERING_REFERENCE-->
+
 ## 3.5 Rendering Reference (по ролям и контексту)
 
 Ниже — эталонное поведение каждой роли в HTML и Markdown, включая зависимость от вложенности и контекста (внутри list, внутри Group).
 
 **Sibling spacing (разделитель между соседями):** движок выбирает разделитель на основе ролей соседних элементов:
+
 - `section` + `section` → `\n\n` в MD, `\n` в HTML
 - `property` + `property` → `\n` в обоих форматах
 - `property` + `section` / `section` + `property` → `\n`
@@ -78,69 +80,70 @@ const md = renderPrompt(directive, {}, 'md');
 
 Назначение: корень сообщения. Обрамляет содержимое, выводит keywords.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
+| Контекст        | HTML                                           | Markdown                        |
+| --------------- | ---------------------------------------------- | ------------------------------- |
 | Верхний уровень | `<Prompt keywords="a">\n{children}\n</Prompt>` | `## KEYWORDS:\na\n\n{children}` |
-| Без keywords | `<Prompt>\n{children}\n</Prompt>` | `{children}` |
+| Без keywords    | `<Prompt>\n{children}\n</Prompt>`              | `{children}`                    |
 
 ### section
 
 Назначение: заголовок + тело. Влияет на depth. Поддерживает якоря.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
-| Верхний уровень | `<{tag}>\n{indent}{children}\n</{tag}>` | `# {title}:\n<!--START_{ANCHOR}-->\n{children}\n<!--END_{ANCHOR}-->` |
-| depth = N | отступ = N×2 пробела | `{'#'.repeat(N+1)} {title}:` |
-| Внутри list | `<{tag}>...</{tag}>` (без отступа) | `**{title}** — {children}` (строчная форма) |
-| `includeBoundaryComments: false` | — | без якорей |
-| PascalCase → SNAKE_CASE | — | `AiKnowledge` → `AI_KNOWLEDGE`, `SddSetup` → `SDD_SETUP` |
+| Контекст                         | HTML                                    | Markdown                                                             |
+| -------------------------------- | --------------------------------------- | -------------------------------------------------------------------- |
+| Верхний уровень                  | `<{tag}>\n{indent}{children}\n</{tag}>` | `# {title}:\n<!--START_{ANCHOR}-->\n{children}\n<!--END_{ANCHOR}-->` |
+| depth = N                        | отступ = N×2 пробела                    | `{'#'.repeat(N+1)} {title}:`                                         |
+| Внутри list                      | `<{tag}>...</{tag}>` (без отступа)      | `**{title}** — {children}` (строчная форма)                          |
+| `includeBoundaryComments: false` | —                                       | без якорей                                                           |
+| PascalCase → SNAKE_CASE          | —                                       | `AiKnowledge` → `AI_KNOWLEDGE`, `SddSetup` → `SDD_SETUP`             |
 
 ### block
 
 Назначение: блочный элемент (код). Не влияет на depth.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
+| Контекст        | HTML                                              | Markdown                                         |
+| --------------- | ------------------------------------------------- | ------------------------------------------------ |
 | Верхний уровень | `<{tag} lang="ts">\n{indent}{children}\n</{tag}>` | `**{title}:**\n\`\`\`{lang}\n{children}\n\`\`\`` |
-| Без title | `<{tag} lang="ts">...</{tag}>` | `\`\`\`{lang}\n{children}\n\`\`\`` |
-| Без lang | `<{tag}>...</{tag}>` | `\`\`\`\n{children}\n\`\`\`` |
+| Без title       | `<{tag} lang="ts">...</{tag}>`                    | `\`\`\`{lang}\n{children}\n\`\`\``               |
+| Без lang        | `<{tag}>...</{tag}>`                              | `\`\`\`\n{children}\n\`\`\``                     |
 
 ### inline
 
 Назначение: строчное форматирование. Не влияет на depth, не добавляет переносов.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
-| `Bold` | `<bold>text</bold>` | `**text**` |
-| `b` (HTML-тег) | `<b>text</b>` | `**text**` |
-| `em` (HTML-тег) | `<em>text</em>` | `*text*` |
+| Контекст        | HTML                | Markdown   |
+| --------------- | ------------------- | ---------- |
+| `Bold`          | `<bold>text</bold>` | `**text**` |
+| `b` (HTML-тег)  | `<b>text</b>`       | `**text**` |
+| `em` (HTML-тег) | `<em>text</em>`     | `*text*`   |
 
 ### list
 
 Назначение: контейнер списка. Дети — строки списка с авто-пунктуацией.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
-| ordered | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` 1 a;\n 2 b.` |
-| unordered | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` - a;\n - b.` |
-| С title | — | `**{title}:**\n - a;\n - b.` |
-| Пунктуация | — | `;` между элементами, `.` после последнего. Пропуск если уже есть `. ! ? ;` |
+| Контекст   | HTML                                      | Markdown                                                                    |
+| ---------- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| ordered    | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` 1 a;\n 2 b.`                                                              |
+| unordered  | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` - a;\n - b.`                                                              |
+| С title    | —                                         | `**{title}:**\n - a;\n - b.`                                                |
+| Пунктуация | —                                         | `;` между элементами, `.` после последнего. Пропуск если уже есть `. ! ? ;` |
 
 ### property
 
 Назначение: листовой элемент ключ-значение. Не влияет на depth.
 
-| Контекст | HTML | Markdown |
-|---|---|---|
-| Внутри Group (depth=N) | `{'  '.repeat(N)}<{is}>text</{is}>` | `- **{is}:** text` |
-| Верхний уровень (depth=0) | `<{is}>text</{is}>` | `- **{is}:** text` |
-| Соседи | разделены `\n` (HTML), `\n` (MD) | каждый с новой строки |
-| С `id` пропсом | `<{is} id="x">text</{is}>` | `- **{is}:** text` (id не влияет на MD) |
-| Внутри list | как list-item | `- **{is}:** text;` / `- **{is}:** text.` |
+| Контекст                  | HTML                                | Markdown                                  |
+| ------------------------- | ----------------------------------- | ----------------------------------------- |
+| Внутри Group (depth=N)    | `{'  '.repeat(N)}<{is}>text</{is}>` | `- **{is}:** text`                        |
+| Верхний уровень (depth=0) | `<{is}>text</{is}>`                 | `- **{is}:** text`                        |
+| Соседи                    | разделены `\n` (HTML), `\n` (MD)    | каждый с новой строки                     |
+| С `id` пропсом            | `<{is} id="x">text</{is}>`          | `- **{is}:** text` (id не влияет на MD)   |
+| Внутри list               | как list-item                       | `- **{is}:** text;` / `- **{is}:** text.` |
 
 **Пример: Group > Node × 2**
 
 Input:
+
 ```tsx
 <Group is="SddSetup">
   <Node is="File">setup.xml</Node>
@@ -149,6 +152,7 @@ Input:
 ```
 
 HTML:
+
 ```html
 <SddSetup>
   <File>setup.xml</File>
@@ -157,9 +161,12 @@ HTML:
 ```
 
 Markdown:
+
 ```md
 <!--START_SDD_SETUP-->
+
 #### SddSetup:
+
 - **File:** setup.xml
 - **Purpose:** Создаёт спек.
 <!--END_SDD_SETUP-->
@@ -168,11 +175,14 @@ Markdown:
 **Пример: Node на верхнем уровне (depth=0)**
 
 Markdown:
+
 ```md
 - **File:** setup.xml
 - **Purpose:** Создаёт спек.
 ```
+
 (Без heading-префикса `#`, без якорей — property не section)
+
 <!--/SECTION:RENDERING_REFERENCE-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
@@ -301,16 +311,17 @@ type PromptElementConfig<Props> = {
   ```tsx
   <Prompt keywords="rules">
     <Section title="Help">текст</Section>
-    <List><Node is="Rule">не делать X</Node></List>
+    <List>
+      <Node is="Rule">не делать X</Node>
+    </List>
   </Prompt>
   ```
 
   **HTML:**
+
   ```html
   <Prompt>
-    <Section title="Help">
-      текст
-    </Section>
+    <section title="Help">текст</section>
     <List>
       <Node is="Rule">не делать X</Node>
     </List>
@@ -318,17 +329,23 @@ type PromptElementConfig<Props> = {
   ```
 
   **Markdown:**
+
   ```md
   ## KEYWORDS:
+
   rules
 
   <!--START_SECTION-->
+
   # Help:
+
   текст
+
   <!--END_SECTION-->
 
   **Rule:**
-   - не делать X.
+
+  - не делать X.
   ```
 
   **`property` внутри Group (типичный случай для XML-подобных структур):**
@@ -341,6 +358,7 @@ type PromptElementConfig<Props> = {
   ```
 
   **HTML:**
+
   ```html
   <SddSetup>
     <File>setup.xml</File>
@@ -349,9 +367,12 @@ type PromptElementConfig<Props> = {
   ```
 
   **Markdown:**
+
   ```md
   <!--START_SDD_SETUP-->
+
   #### SddSetup:
+
   - **File:** setup.xml
   - **Purpose:** Создаёт спек.
   <!--END_SDD_SETUP-->
@@ -360,26 +381,28 @@ type PromptElementConfig<Props> = {
   **`property` вне группы — на верхнем уровне depth 0:**
 
   **Markdown:**
+
   ```md
   - **File:** setup.xml
   - **Purpose:** Создаёт спек.
   ```
+
   (Без heading-префикса `#`, без якорей — property не является section)
 
 ### Встроенные примитивы (из коробки)
 
-| Элемент         | Роль     | Пропсы                                |
-| --------------- | -------- | ------------------------------------- |
-| `Prompt`        | root     | `keywords?: string`                   |
-| `PrimaryGoal`   | section  | —                                     |
-| `BeliefState`   | section  | —                                     |
-| `Axiom`         | section  | `id: string`                          |
-| `HardForbidden` | section  | —                                     |
-| `Section`       | section  | `title: string`, `id?: string`        |
-| `Group`         | section  | `is: string` — имя HTML-тега. `[key: string]: unknown` — доп. атрибуты |
-| `List`          | list     | `ordered?: boolean`, `title?: string` |
-| `Code`          | block    | `lang?: string`, `title?: string`     |
-| `Bold`          | inline   | —                                     |
+| Элемент         | Роль     | Пропсы                                                                                |
+| --------------- | -------- | ------------------------------------------------------------------------------------- |
+| `Prompt`        | root     | `keywords?: string`                                                                   |
+| `PrimaryGoal`   | section  | —                                                                                     |
+| `BeliefState`   | section  | —                                                                                     |
+| `Axiom`         | section  | `id: string`                                                                          |
+| `HardForbidden` | section  | —                                                                                     |
+| `Section`       | section  | `title: string`, `id?: string`                                                        |
+| `Group`         | section  | `is: string` — имя HTML-тега. `[key: string]: unknown` — доп. атрибуты                |
+| `List`          | list     | `ordered?: boolean`, `title?: string`                                                 |
+| `Code`          | block    | `lang?: string`, `title?: string`                                                     |
+| `Bold`          | inline   | —                                                                                     |
 | `Node`          | property | `is: string` — имя HTML-тега. `id?: string`. `[key: string]: unknown` — доп. атрибуты |
 
 ### Встроенные HTML-теги (распознаются по строковому имени)
@@ -498,6 +521,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** Монолит (всё в одном модуле) — превратится в свалку при добавлении JSON-формата и новых элементов; декомпозиция по ролям (7 модулей) — избыточно для v1.
 
 ### D-010 — Динамический HTML-тег через пропс `is`
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit, refine
 - **Why:** Универсальные элементы `Group` и `Node` должны менять HTML-тег в зависимости от данных (`<Sdd>`, `<File>`). `is` prop решает это без создания отдельного `definePromptElement` для каждого имени тега. `is` потребляется для имени тега и удаляется из атрибутов.
@@ -505,6 +529,7 @@ type PromptElementConfig<Props> = {
 - **Rejected alternatives:** `html.tag: ({props}) => props.is` callback — избыточно, `is` универсальнее.
 
 ### D-011 — Роль `property` для листовых элементов ключ-значение
+
 - **Status:** active
 - **Recorded:** session Discovery, prompt-kit, refine
 - **Why:** Node должен рендериться как `- **File:** setup.xml`, а не как `##### File:\n\nsetup.xml`. Section добавляет heading-префикс и двойной перенос строки, что ломает формат. Новая роль `property` рендерит ключ-значение в одну строку, не влияет на depth, разделяет соседей `\n`. Альтернативные варианты (renderChildren override, inline+spacing fix, list role) отвергнуты через alt-opinion — три независимых эксперта подтвердили, что новая роль архитектурно чище.

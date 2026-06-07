@@ -105,6 +105,7 @@ Contract: see Spec References.
 - **Then** stderr содержит `[MODEL_UNAVAILABLE]` и список моделей из hint; exit 1
 
 **Scenario:** `--help` печатает справку [`unit`]
+
 - **Given** команда `gennady run --help` (или `-h`)
 - **When** per-command-help в `gennady.ts` грузит `cli/cmd/run/help.ts` → `printHelp()`
 - **Then** выводятся usage, флаги (`--dir`/`--model`/`--engine`/`--timeout`), readonly и примеры; exit 0; движок не вызывается
