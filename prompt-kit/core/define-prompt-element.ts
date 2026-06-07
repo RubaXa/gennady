@@ -14,7 +14,7 @@ export function definePromptElement<
   Props extends Record<string, unknown> = Record<string, unknown>,
 >(config: PromptElementConfig<Props>): PromptElement {
   // purpose: derive a stable kebab-case tag name from the role
-  const tagName = (config as any).tagName || config.role;
+  const tagName = config.tagName || config.role;
 
   return {
     [PROMPT_ELEMENT_SYMBOL]: true as const,

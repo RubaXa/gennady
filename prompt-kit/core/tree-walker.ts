@@ -120,22 +120,22 @@ export class TreeWalker {
    * @returns Concatenated rendered string
    */
   protected _renderChildren(children: JSXNode[] | string[], ctx: RenderContext): string {
-    const results: string[] = [];
+    const results: { text: string; role: string | undefined }[] = [];
     for (let i = 0; i < children.length; i++) {
       if (typeof children[i] === 'string') {
-        results.push(children[i] as string);
+        results.push({ text: children[i] as string, role: undefined });
         continue;
       }
-      results.push(this._walkNode(children[i] as JSXNode, ctx));
+      const node = children[i] as JSXNode;
+      results.push({ text: this._walkNode(node, ctx), role: this._getChildRole(node) });
     }
-    // role-aware separator: \n\n between sections in MD, \n for properties/other
-    const filtered = results.filter((r) => r.length > 0);
+    const nonEmpty = results.filter((r) => r.text.length > 0);
     let out = '';
-    for (let i = 0; i < filtered.length; i++) {
-      out += filtered[i];
-      if (i < filtered.length - 1) {
-        const roleA = this._getChildRole(children[i]);
-        const roleB = this._getChildRole(children[i + 1]);
+    for (let i = 0; i < nonEmpty.length; i++) {
+      out += nonEmpty[i].text;
+      if (i < nonEmpty.length - 1) {
+        const roleA = nonEmpty[i].role;
+        const roleB = nonEmpty[i + 1].role;
         const bothSections = roleA === 'section' && roleB === 'section';
         out += (bothSections && ctx.format === 'md') ? '\n\n' : '\n';
       }
@@ -146,14 +146,13 @@ export class TreeWalker {
   /**
    * @purpose Get the role of a child node for separator computation.
    */
-  private _getChildRole(child: JSXNode | string): string | undefined {
-    if (typeof child === 'string') return undefined;
+  private _getChildRole(child: JSXNode): string | undefined {
     try {
-      const category = this._resolver.resolve((child as JSXNode).type);
+      const category = this._resolver.resolve(child.type);
       if (category === 'prompt-element') {
-        return ((child as JSXNode).type as PromptElement).config.role;
+        return (child.type as PromptElement).config.role;
       }
-    } catch { /* resolver throws on unknown type */ }
+    } catch { /* unknown types treated as non-section */ }
     return undefined;
   }
 }
