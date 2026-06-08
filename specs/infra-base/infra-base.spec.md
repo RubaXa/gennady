@@ -10,14 +10,16 @@ infrastructure
 
 ## 2. Tool Stack (minimal bootstrap)
 
-| Category           | Tool      |
-| ------------------ | --------- |
-| vcs                | git       |
-| package-management | npm       |
-| type-check         | tsc       |
-| formatting         | prettier  |
-| test-unit          | node:test |
-| bundler            | vite      |
+| Category           | Tool                                                                       |
+| ------------------ | -------------------------------------------------------------------------- |
+| vcs                | git                                                                        |
+| package-management | npm                                                                        |
+| type-check         | tsc                                                                        |
+| formatting         | prettier                                                                   |
+| linting+formatting | prettier + lint:contracts (tsx cli/gennady.ts lint)                        |
+| git-hooks          | shell-скрипт `.git/hooks/pre-commit`: format → type-check → lint:contracts |
+| test-unit          | node:test                                                                  |
+| bundler            | vite                                                                       |
 
 ### 2.1 Formatter Fixture Exclusion
 
