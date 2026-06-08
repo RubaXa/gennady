@@ -74,7 +74,7 @@ const claudeOnly = await mon.scanOne('claude');
 
 - `node:fs` — чтение Claude session JSON-файлов
 - `node:child_process` — `ps` для проверки PID
-- `node:sqlite` — чтение OpenCode `opencode.db`
+- `node:sqlite` — чтение OpenCode `opencode.db` (**lazy import only** — модуль загружается динамически в `scan()`, не на top-level)
 - `node:os`, `node:path` — построение путей
 
 ### 3.5 Rules
@@ -293,6 +293,15 @@ path            TEXT
 - **Why:** `AgentMonitor.diff()` и `AgentMonitor.observe()` как методы создавали циклическую зависимость в DAG: TSK-36 (monitor) не может реализовать observe без TSK-38, а TSK-38 зависит от TSK-36. Свободные функции `diff()` и `observe(monitor, opts)` разрешают цикл: TSK-38 → TSK-36, без обратного ребра.
 - **Risk accepted:** Изменение Golden DX (было `mon.diff()`, стало `diff()`). Минимальное — consumer всё ещё может использовать оба API.
 - **Rejected alternatives:** DI через `createMonitor({ diff, observe })` — усложняет фабрику без необходимости.
+
+### D-006 — Lazy node:sqlite import (dynamic, not top-level)
+
+- **Status:** active
+- **Recorded:** 2026-06-08, post-release fix (Node 20 crash on `review-issues`)
+- **Why:** Статический `import { DatabaseSync } from 'node:sqlite'` на top-level вызывает `ERR_UNKNOWN_BUILTIN_MODULE` на Node < 22, даже если команда (например `review-issues`) не использует agent-mon. Все провайдеры загружаются в общий `services`-чанк Vite. Динамический `await import('node:sqlite')` внутри `scan()` гарантирует, что модуль загружается только при фактическом вызове agent-mon.
+- **Rule:** Только `import type` на top-level; `DatabaseSync` конструктор — через `await import('node:sqlite')` в `scan()`.
+- **Risk accepted:** Низкий. `scan()` уже async (D-003), оверхед от динамического импорта в рантайме отсутствует.
+- **Rejected alternatives:** Отдельный чанк для agent-mon в Vite — решает симптом, но не защищает от будущих проблем; динамический импорт — защита по контракту.
 
 ## 7. Scope Dependencies
 

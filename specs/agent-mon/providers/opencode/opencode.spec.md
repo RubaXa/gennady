@@ -115,11 +115,12 @@ providers/opencode/
 
 ## 7. Module Decision Log
 
-### D-OC-001 — node:sqlite over sqlite3 CLI
+### D-OC-001 — node:sqlite over sqlite3 CLI (lazy import mandatory)
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-mon
 - **Why:** `node:sqlite` встроен в Node 22.19, не требует внешних зависимостей. Работает без experimental-флага. Быстрее чем spawn `sqlite3`.
+- **Lazy import constraint:** Импорт `node:sqlite` **обязательно динамический** (`await import('node:sqlite')` внутри `scan()`, top-level только `import type`). Статический top-level `import { DatabaseSync }` **запрещён** — он вызывает `ERR_UNKNOWN_BUILTIN_MODULE` на Node < 22 даже для команд, не использующих agent-mon (например `review-issues`).
 - **Risk accepted:** `node:sqlite` experimental — отслеживаем стабилизацию. При удалении из Node — fallback на spawn `sqlite3`.
 - **Rejected alternatives:** spawn `sqlite3` CLI — медленнее, зависит от внешнего бинаря.
 

@@ -36,7 +36,7 @@
   - `services/agent-mon/providers/opencode/model-parser.ts`
   - `services/agent-mon/providers/opencode/index.ts`
 - **Inputs:** none
-- **Exit:** typecheck pass; конструктор принимает `deps?: { dbPath?, querySessions?, queryLastMessage?, parseModelJson? }`; db.close() вызывается; key = 'opencode'; `node:sqlite` используется через `DatabaseSync` (экспериментальный API в Node 22, стабилизирован в Node 24)
+- **Exit:** typecheck pass; конструктор принимает `deps?: { dbPath?, querySessions?, queryLastMessage?, parseModelJson? }`; db.close() вызывается; key = 'opencode'; `node:sqlite` используется через динамический `await import('node:sqlite')` в `scan()` (top-level только `import type { DatabaseSync }`) — см. D-OC-001 lazy import constraint
 
 ### P2 — test
 

@@ -2,7 +2,7 @@
 // @consumers: OpenCodeProvider
 // @tasks: TSK-40
 
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import type { SQLInputValue } from 'node:sqlite';
 import type { ScanOpts } from '../../model/scan-opts.type.js';
 

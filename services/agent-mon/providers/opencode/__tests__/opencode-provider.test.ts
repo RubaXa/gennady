@@ -4,7 +4,7 @@
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { OpenCodeProvider } from '../opencode-provider.ts';
 import type { SessionRow } from '../db.ts';
 

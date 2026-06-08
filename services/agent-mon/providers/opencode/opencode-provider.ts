@@ -2,7 +2,7 @@
 // @consumers: monitor, CLI
 // @tasks: TSK-40
 
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { logger } from '#logger';
@@ -67,7 +67,8 @@ export class OpenCodeProvider implements AgentProvider {
     // #region START_OPEN_DATABASE — invariant: missing db → empty array with warning, per graceful degradation contract
     let db: DatabaseSync;
     try {
-      db = new DatabaseSync(dbPath);
+      const { DatabaseSync: DBSync } = await import('node:sqlite');
+      db = new DBSync(dbPath);
     } catch (cause) {
       this._logger.warn(`[OpenCodeProvider#scan] [opening → not_found] ${dbPath}`, { cause });
       return [];
