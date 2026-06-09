@@ -39,12 +39,12 @@ const result = verifyDirective(
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name | Surface | Type | Purpose |
-|---|---|---|---|
-| `TypeScriptCodingRules` | 🟢 | Directive | TSX-версия `ai/directives/coding/typescript-rules.xml` |
-| `NodeTestRules` | 🟢 | Directive | TSX-версия `ai/directives/testing/node-test.xml` |
-| `renderDirective` | 🟢 | Utility | Обёртка над `renderPrompt`, возвращает HTML-строку |
-| `verifyDirective` | 🟢 | Utility | Рендерит TSX → сравнивает с оригинальным XML через `git diff` |
+| Name                    | Surface | Type      | Purpose                                                       |
+| ----------------------- | ------- | --------- | ------------------------------------------------------------- |
+| `TypeScriptCodingRules` | 🟢      | Directive | TSX-версия `ai/directives/coding/typescript-rules.xml`        |
+| `NodeTestRules`         | 🟢      | Directive | TSX-версия `ai/directives/testing/node-test.xml`              |
+| `renderDirective`       | 🟢      | Utility   | Обёртка над `renderPrompt`, возвращает HTML-строку            |
+| `verifyDirective`       | 🟢      | Utility   | Рендерит TSX → сравнивает с оригинальным XML через `git diff` |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -160,6 +160,7 @@ ai-tsx/
 ```
 
 **File Mapping:**
+
 - `directives/typescript-coding-rules.tsx`: `TypeScriptCodingRules`
 - `directives/node-test-rules.tsx`: `NodeTestRules`
 - `render-directive.ts`: `renderDirective`
@@ -233,4 +234,3 @@ graph TD
 ## Critic Rounds
 
 _Ожидает первого раунда._
-

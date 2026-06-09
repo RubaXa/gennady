@@ -1,0 +1,5 @@
+<AntiPattern id="AP_EXAMPLE">
+  <Bad>console.log(JSON.stringify(obj))</Bad>
+  <WhyBad>console.* forbidden.</WhyBad>
+  <Good language="typescript">logger.debug('ok')</Good>
+</AntiPattern>

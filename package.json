@@ -26,6 +26,11 @@
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
+    "./prompt-kit": "./prompt-kit/index.ts",
+    "./prompt-kit/*": "./prompt-kit/*",
+    "./ai-tsx": "./ai-tsx/index.ts",
+    "./ai-tsx/elements": "./ai-tsx/elements/index.ts",
+    "./ai-tsx/components": "./ai-tsx/components/index.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },

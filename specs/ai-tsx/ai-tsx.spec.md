@@ -31,7 +31,11 @@ import { Pattern, Snippet, Hook, AntiPattern, Good, Definition } from 'gennady/a
 
 // 2. Композиты — module: components
 //    см. [components/usage](./components/components.spec.md#2-module-usage-example)
-import { CodePatternsBlock, AntiPatternsBlock, VerificationHooksBlock } from 'gennady/ai-tsx/components';
+import {
+  CodePatternsBlock,
+  AntiPatternsBlock,
+  VerificationHooksBlock,
+} from 'gennady/ai-tsx/components';
 
 // 3. Директива + рендер — module: directives
 //    см. [directives/usage](./directives/directives.spec.md#2-module-usage-example)
@@ -69,16 +73,16 @@ const result = verifyDirective(
 
 - **FR6 · Простые контейнеры через Group/Node** — `Mission`, `Intent`, `Why`, `Bad`, `WhyBad`, `Purpose`, `Command`, `Expected` реализуются как `<Group is="...">` или `<Node is="...">` без отдельных `definePromptElement`. Group для контейнеров с children, Node для листовых ключ-значение.
 
-  | Контейнер | Примитив | Обоснование |
-  |---|---|---|
-  | `Mission` | Group | Может содержать children (текст + Bold) |
-  | `Intent` | Node | Листовой ключ-значение |
-  | `Why` | Node | Листовой ключ-значение |
-  | `Bad` | Node | Листовой ключ-значение |
-  | `WhyBad` | Node | Листовой ключ-значение |
-  | `Purpose` | Node | Листовой ключ-значение |
-  | `Command` | Node | Листовой ключ-значение |
-  | `Expected` | Node | Листовой ключ-значение |
+  | Контейнер  | Примитив | Обоснование                             |
+  | ---------- | -------- | --------------------------------------- |
+  | `Mission`  | Group    | Может содержать children (текст + Bold) |
+  | `Intent`   | Node     | Листовой ключ-значение                  |
+  | `Why`      | Node     | Листовой ключ-значение                  |
+  | `Bad`      | Node     | Листовой ключ-значение                  |
+  | `WhyBad`   | Node     | Листовой ключ-значение                  |
+  | `Purpose`  | Node     | Листовой ключ-значение                  |
+  | `Command`  | Node     | Листовой ключ-значение                  |
+  | `Expected` | Node     | Листовой ключ-значение                  |
 
   **Формат вывода:** HTML с нестрогой семантикой (без экранирования энтити). Параметр `format: 'xml'` в `renderDirective` указывает на формат вывода, исторически названный `xml` для совместимости с prompt-kit, фактически производящий HTML. Сверка через git diff с XML-оригиналами без изменений содержимого.
 
@@ -101,22 +105,22 @@ const result = verifyDirective(
 
 ### 3.4 Runtime Backing & Deferred Scope
 
-| Capability | Posture | Note |
-|---|---|---|
-| `definePromptElement`-элементы | real-runtime | Чистая фабрика, stateless |
-| Композитные шаблоны | real-runtime | TSX-функции, stateless |
-| Директивы как TSX | real-runtime | Композиция компонент |
-| Рендер в HTML | real-runtime | Через prompt-kit `renderPrompt` |
-| Верификация через diff | real-runtime | `git diff`, stateless |
+| Capability                     | Posture      | Note                            |
+| ------------------------------ | ------------ | ------------------------------- |
+| `definePromptElement`-элементы | real-runtime | Чистая фабрика, stateless       |
+| Композитные шаблоны            | real-runtime | TSX-функции, stateless          |
+| Директивы как TSX              | real-runtime | Композиция компонент            |
+| Рендер в HTML                  | real-runtime | Через prompt-kit `renderPrompt` |
+| Верификация через diff         | real-runtime | `git diff`, stateless           |
 
 Deferred: миграция оставшихся (не-пилотных) директив — v2.
 
 ### 3.5 Rules
 
-| Rule | Category | Source |
-|---|---|---|
-| typescript-rules | coding | ai/directives/coding/typescript-rules.xml |
-| node-test | testing | ai/directives/testing/node-test.xml |
+| Rule             | Category | Source                                    |
+| ---------------- | -------- | ----------------------------------------- |
+| typescript-rules | coding   | ai/directives/coding/typescript-rules.xml |
+| node-test        | testing  | ai/directives/testing/node-test.xml       |
 
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
@@ -130,32 +134,39 @@ Deferred: миграция оставшихся (не-пилотных) дире
 import { Pattern, Snippet, Hook, AntiPattern, Good, Definition } from 'gennady/ai-tsx/elements';
 ```
 
-| Элемент | Роль | Пропсы | Назначение |
-|---|---|---|---|
-| `Pattern` | section | `id: string` | Контейнер паттерна: содержит Intent + Snippet + Why |
-| `Snippet` | block | `language?: string` | Блок кода без фенсов; фенсы — в md-рендере |
-| `Hook` | section | `id: string` | Контейнер верификационного хука: Purpose + Command + Expected |
-| `AntiPattern` | section | `id: string` | Контейнер анти-паттерна: Bad + WhyBad + Good |
-| `Good` | block | `language?: string` | Блок правильного кода (внутри AntiPattern) |
-| `Definition` | section | `id: string` | Контейнер определения: произвольный текст и/или вложенные элементы через children |
+| Элемент       | Роль    | Пропсы              | Назначение                                                                        |
+| ------------- | ------- | ------------------- | --------------------------------------------------------------------------------- |
+| `Pattern`     | section | `id: string`        | Контейнер паттерна: содержит Intent + Snippet + Why                               |
+| `Snippet`     | block   | `language?: string` | Блок кода без фенсов; фенсы — в md-рендере                                        |
+| `Hook`        | section | `id: string`        | Контейнер верификационного хука: Purpose + Command + Expected                     |
+| `AntiPattern` | section | `id: string`        | Контейнер анти-паттерна: Bad + WhyBad + Good                                      |
+| `Good`        | block   | `language?: string` | Блок правильного кода (внутри AntiPattern)                                        |
+| `Definition`  | section | `id: string`        | Контейнер определения: произвольный текст и/или вложенные элементы через children |
 
 ### Композитные шаблоны (ai-tsx/components)
 
 ```ts
-import { CodePatternsBlock, AntiPatternsBlock, VerificationHooksBlock, DefinitionsBlock, DirectiveContextBlock } from 'gennady/ai-tsx/components';
+import {
+  CodePatternsBlock,
+  AntiPatternsBlock,
+  VerificationHooksBlock,
+  DefinitionsBlock,
+  DirectiveContextBlock,
+} from 'gennady/ai-tsx/components';
 ```
 
-| Компонент | Purpose | Дети |
-|---|---|---|
-| `CodePatternsBlock` | Блок `<CodePatterns>` — обёртка для Pattern[] | Pattern |
-| `AntiPatternsBlock` | Блок `<AntiPatterns>` — обёртка для AntiPattern[] | AntiPattern |
-| `VerificationHooksBlock` | Блок `<VerificationHooks>` — обёртка для Hook[] | Hook |
-| `DefinitionsBlock` | Блок `<Definitions>` — обёртка для Definition[] | Definition |
-| `DirectiveContextBlock` | Блок `<DirectiveContext>` — обёртка для Mission. Соответствует структуре всех оригинальных директив (контекст перед BeliefState) | `{ children: JSXNode }` |
+| Компонент                | Purpose                                                                                                                          | Дети                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `CodePatternsBlock`      | Блок `<CodePatterns>` — обёртка для Pattern[]                                                                                    | Pattern                 |
+| `AntiPatternsBlock`      | Блок `<AntiPatterns>` — обёртка для AntiPattern[]                                                                                | AntiPattern             |
+| `VerificationHooksBlock` | Блок `<VerificationHooks>` — обёртка для Hook[]                                                                                  | Hook                    |
+| `DefinitionsBlock`       | Блок `<Definitions>` — обёртка для Definition[]                                                                                  | Definition              |
+| `DirectiveContextBlock`  | Блок `<DirectiveContext>` — обёртка для Mission. Соответствует структуре всех оригинальных директив (контекст перед BeliefState) | `{ children: JSXNode }` |
 
 Все компоненты — прозрачные функции (transparent component). Функция-компонент не имеет собственного тега в выводе (нет `<CodePatternsBlock>`). Вывод формируется через рендер `Group is="CodePatterns"` внутри компонента — тег `<CodePatterns>` исходит от `Group`, не от самого компонента. Набор закрыт для v1.
 
 Пример сигнатуры:
+
 ```tsx
 // Типы элементов — результат definePromptElement
 // PatternElement = ReturnType<typeof Pattern>, и т.д.
@@ -173,8 +184,8 @@ import { renderDirective, verifyDirective } from 'gennady/ai-tsx';
 
 ```ts
 function renderDirective(
-  tree: JSXNode | (() => JSXNode),  // функция вызывается без аргументов: tree()
-  format: 'xml'   // v1: только xml; параметр forward-compatible для md/json в будущем
+  tree: JSXNode | (() => JSXNode), // функция вызывается без аргументов: tree()
+  format: 'xml' // v1: только xml; параметр forward-compatible для md/json в будущем
 ): string;
 ```
 
@@ -184,12 +195,13 @@ function renderDirective(
 type VerifyResult = { match: true } | { match: false; diff: string };
 
 function verifyDirective(
-  tsxPath: string,        // путь относительно корня проекта
-  originalXmlPath: string  // путь относительно корня проекта
+  tsxPath: string, // путь относительно корня проекта
+  originalXmlPath: string // путь относительно корня проекта
 ): VerifyResult;
 ```
 
 **Контракт ошибок:**
+
 - `{ match: false }` возвращается ТОЛЬКО когда оба файла доступны, рендер успешен, и `git diff` показывает непустой diff
 - Все остальные ошибки (файл не найден, ошибка рендера, git недоступен, git crash) → `Error`
 - TSX-файл не найден → `Error('[ai-tsx] tsx file not found: <path>')`
@@ -206,8 +218,17 @@ function verifyDirective(
 ```ts
 // Готовые примитивы
 import {
-  Prompt, PrimaryGoal, BeliefState, Axiom, HardForbidden,
-  Section, List, Code, Bold, Group, Node
+  Prompt,
+  PrimaryGoal,
+  BeliefState,
+  Axiom,
+  HardForbidden,
+  Section,
+  List,
+  Code,
+  Bold,
+  Group,
+  Node,
 } from 'gennady/prompt-kit';
 
 // Простые контейнеры — через Group/Node из prompt-kit
@@ -251,6 +272,7 @@ ai-tsx/
 ### Инкрементальный процесс (BDD-first)
 
 Для каждого элемента:
+
 1. Пишется тест — ожидаемый HTML и Markdown вывод
 2. Определяется `definePromptElement` в `elements/`
 3. Рендерится — сверяется с ожидаемым
@@ -396,13 +418,13 @@ graph TD
 
 ## 9. Bootstrap Requirements
 
-| # | Requirement | Kind | Owner | Resolution |
-|---|---|---|---|---|
-| 1 | prompt-kit в `exports` package.json | structural | external-prereq-scope (prompt-kit) | Добавить `"./prompt-kit": "./prompt-kit/index.ts"`, `"./prompt-kit/*": "./prompt-kit/*"` |
-| 2 | Директория `ai-tsx/` с `elements/`, `components/`, `directives/` | structural | this-scope-task | Создать структуру |
-| 3 | `ai-tsx` в `exports` package.json | structural | this-scope-task | `"./ai-tsx": "./ai-tsx/index.ts"`, `"./ai-tsx/elements": "./ai-tsx/elements/index.ts"`, `"./ai-tsx/components": "./ai-tsx/components/index.ts"` |
-| 4 | `ai-tsx/**/*` в tsconfig `include` | structural | this-scope-task | Добавить в массив |
-| 5 | snake_case → PascalCase в `ai/directives/*.xml` | file | operator-action | ✅ Выполнено (81 тег, 36 файлов) |
+| #   | Requirement                                                      | Kind       | Owner                              | Resolution                                                                                                                                      |
+| --- | ---------------------------------------------------------------- | ---------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | prompt-kit в `exports` package.json                              | structural | external-prereq-scope (prompt-kit) | Добавить `"./prompt-kit": "./prompt-kit/index.ts"`, `"./prompt-kit/*": "./prompt-kit/*"`                                                        |
+| 2   | Директория `ai-tsx/` с `elements/`, `components/`, `directives/` | structural | this-scope-task                    | Создать структуру                                                                                                                               |
+| 3   | `ai-tsx` в `exports` package.json                                | structural | this-scope-task                    | `"./ai-tsx": "./ai-tsx/index.ts"`, `"./ai-tsx/elements": "./ai-tsx/elements/index.ts"`, `"./ai-tsx/components": "./ai-tsx/components/index.ts"` |
+| 4   | `ai-tsx/**/*` в tsconfig `include`                               | structural | this-scope-task                    | Добавить в массив                                                                                                                               |
+| 5   | snake_case → PascalCase в `ai/directives/*.xml`                  | file       | operator-action                    | ✅ Выполнено (81 тег, 36 файлов)                                                                                                                |
 
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
@@ -458,4 +480,3 @@ Module decomposition complete — see §8 Module Map for per-module specs and ha
 - Accepted: 4 — PatternElement type undefined; renderDirective function component props; DirectiveContextBlock children type; prompt-kit import error boundary
 - Rejected: 1 — Architecture process guidance (minor organizational concern)
 - Changes: element instance types comment; renderDirective signature `() => JSXNode`; DirectiveContextBlock children type; NFR1 prompt-kit import error note
-

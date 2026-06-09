@@ -47,13 +47,13 @@ const block = (
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name | Surface | Type | Purpose |
-|---|---|---|---|
-| `CodePatternsBlock` | 🟢 | Component | Блок `<CodePatterns>...</CodePatterns>`, принимает children-Pattern[] |
-| `AntiPatternsBlock` | 🟢 | Component | Блок `<AntiPatterns>...</AntiPatterns>`, принимает children-AntiPattern[] |
-| `VerificationHooksBlock` | 🟢 | Component | Блок `<VerificationHooks>...</VerificationHooks>`, принимает children-Hook[] |
-| `DefinitionsBlock` | 🟢 | Component | Блок `<Definitions>...</Definitions>`, принимает children-Definition[] |
-| `DirectiveContextBlock` | 🟢 | Component | Блок `<DirectiveContext>`, обёртка над `Group is="DirectiveContext"` с Mission |
+| Name                     | Surface | Type      | Purpose                                                                        |
+| ------------------------ | ------- | --------- | ------------------------------------------------------------------------------ |
+| `CodePatternsBlock`      | 🟢      | Component | Блок `<CodePatterns>...</CodePatterns>`, принимает children-Pattern[]          |
+| `AntiPatternsBlock`      | 🟢      | Component | Блок `<AntiPatterns>...</AntiPatterns>`, принимает children-AntiPattern[]      |
+| `VerificationHooksBlock` | 🟢      | Component | Блок `<VerificationHooks>...</VerificationHooks>`, принимает children-Hook[]   |
+| `DefinitionsBlock`       | 🟢      | Component | Блок `<Definitions>...</Definitions>`, принимает children-Definition[]         |
+| `DirectiveContextBlock`  | 🟢      | Component | Блок `<DirectiveContext>`, обёртка над `Group is="DirectiveContext"` с Mission |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -161,6 +161,7 @@ components/
 ```
 
 **File Mapping:**
+
 - `code-patterns-block.tsx`: `CodePatternsBlock`
 - `anti-patterns-block.tsx`: `AntiPatternsBlock`
 - `verification-hooks-block.tsx`: `VerificationHooksBlock`
@@ -230,4 +231,3 @@ graph TD
 ## Critic Rounds
 
 _Ожидает первого раунда._
-

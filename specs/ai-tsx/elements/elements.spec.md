@@ -35,14 +35,14 @@ const block = (
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name | Surface | Type | Purpose |
-|---|---|---|---|
-| `Pattern` | 🟢 | Element | Контейнер паттерна с обязательным `id`. Содержит Intent + Snippet + Why |
-| `Snippet` | 🟢 | Element | Блок кода без markdown-фенсов. Роль `block`. Пропс `language?` |
-| `Hook` | 🟢 | Element | Контейнер хука с обязательным `id`. Содержит Purpose + Command + Expected |
-| `AntiPattern` | 🟢 | Element | Контейнер анти-паттерна с обязательным `id`. Содержит Bad + WhyBad + Good |
-| `Good` | 🟢 | Element | Блок правильного кода. Роль `block`. Пропс `language?` |
-| `Definition` | 🟢 | Element | Контейнер определения с обязательным `id` |
+| Name          | Surface | Type    | Purpose                                                                   |
+| ------------- | ------- | ------- | ------------------------------------------------------------------------- |
+| `Pattern`     | 🟢      | Element | Контейнер паттерна с обязательным `id`. Содержит Intent + Snippet + Why   |
+| `Snippet`     | 🟢      | Element | Блок кода без markdown-фенсов. Роль `block`. Пропс `language?`            |
+| `Hook`        | 🟢      | Element | Контейнер хука с обязательным `id`. Содержит Purpose + Command + Expected |
+| `AntiPattern` | 🟢      | Element | Контейнер анти-паттерна с обязательным `id`. Содержит Bad + WhyBad + Good |
+| `Good`        | 🟢      | Element | Блок правильного кода. Роль `block`. Пропс `language?`                    |
+| `Definition`  | 🟢      | Element | Контейнер определения с обязательным `id`                                 |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -183,6 +183,7 @@ elements/
 ```
 
 **File Mapping:**
+
 - `pattern.ts`: `Pattern`
 - `snippet.ts`: `Snippet`
 - `hook.ts`: `Hook`
@@ -255,4 +256,3 @@ graph TD
 ## Critic Rounds
 
 _Ожидает первого раунда._
-
