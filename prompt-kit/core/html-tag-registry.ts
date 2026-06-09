@@ -54,8 +54,10 @@ export class HTMLTagRegistry {
     }
     // #endregion END_AUTOFILL_INLINE
 
-    // purpose: p renders as paragraph block in MD, element in XML
+    // purpose: p renders transparent in both formats
     this.register('p', this._createParagraphRenderer());
+    // purpose: li renders as Item/Step in XML, transparent in MD
+    this.register('li', this._createLiRenderer());
 
     // #region START_AUTOFILL_TABLE — invariant: table/thead/tbody/tr/th/td delegate to TableRenderer for MD, XmlFormatter for XML
     this.register('table', this._createTableRenderer());
@@ -95,15 +97,33 @@ export class HTMLTagRegistry {
    */
   protected _createParagraphRenderer(): HtmlTagRenderer {
     return (
+      _ctx: RenderContext,
+      children: JSXNode[],
+      _props: Record<string, unknown>,
+      walk: (children: JSXNode[], ctx: RenderContext) => string
+    ): string => {
+      return walk(children, _ctx);
+    };
+  }
+
+  /**
+   * @purpose Create a renderer for li — Item in unordered XML, Step num=N in ordered XML, transparent in MD.
+   * @returns HtmlTagRenderer for list item
+   */
+  protected _createLiRenderer(): HtmlTagRenderer {
+    return (
       ctx: RenderContext,
       children: JSXNode[],
-      props: Record<string, unknown>,
+      _props: Record<string, unknown>,
       walk: (children: JSXNode[], ctx: RenderContext) => string
     ): string => {
       const rendered = walk(children, ctx);
       if (!rendered) return '';
       if (ctx.format === 'xml') {
-        return xmlFormatter.formatElement('p', props, rendered, ctx.depth);
+        if (ctx.listStep !== undefined) {
+          return xmlFormatter.formatInline('Step', { num: ctx.listStep }, rendered);
+        }
+        return xmlFormatter.formatInline('Item', {}, rendered);
       }
       return rendered;
     };

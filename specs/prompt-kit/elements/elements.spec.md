@@ -49,6 +49,8 @@ const directive = (
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
+Все элементы неявно принимают универсальный пропс `forcedFormat?: 'md' | 'xml'` (см. FR15 в scope spec).
+
 | Name            | Surface | Type    | Purpose                                                                                                                                                                      |
 | --------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Prompt`        | 🟢      | Element | Корень сообщения. Роль `root`, пропс `keywords`                                                                                                                              |
@@ -62,6 +64,7 @@ _Это полный список сущностей модуля. Любое в
 | `Bold`          | 🟢      | Element | Жирный текст. Роль `inline`                                                                                                                                                  |
 | `Group`         | 🟢      | Element | Универсальный контейнер. Роль `section`. Пропс `is: string` — имя HTML-тега (потребляется, удаляется из атрибутов). Доп. пропсы становятся атрибутами                        |
 | `Node`          | 🟢      | Element | Универсальный листовой элемент ключ-значение. Роль `property`. Пропс `is: string` — имя HTML-тега. `id?: string`. Доп. пропсы — атрибуты. md: `- **is:** text` в одну строку |
+| `li`            | 🟢      | HtmlTag | Встроенный HTML-тег элемента списка. Рендеринг: XML `<Item>` / `<Step num="N">` в зависимости от ordered, MD transparent (см. FR11, FR17 scope spec)                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -155,6 +158,13 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Универсальный листовой элемент ключ-значение. Роль `property`. HTML-тег = `props.is`. В Markdown: `- **is:** text` в одну строку, без heading-префикса.
 - **Public Properties:** `is: string`, `id?: string`, `[key: string]: unknown`
 - **Consumers:** External — пользовательский код
+
+#### `li`
+
+- **Type:** HtmlTag (встроенный, lowercase)
+- **Purpose:** Элемент списка внутри `<List>`. XML: `<Item>` без ordered, `<Step num="N">` с ordered (N из `ctx.listStep`). MD: transparent (только текст children).
+- **Public Properties:** children only (text / inline elements)
+- **Consumers:** External — пользовательский код, внутри `<List>`
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
@@ -168,6 +178,7 @@ _Это полный список сущностей модуля. Любое в
 - `Section` с `id` генерирует якоря с id в имени. Без `id` — только имя элемента.
 - `List` внутри списка: section-элементы схлопываются в строчную форму в md, сохраняют полный тег в xml.
 - `Axiom.id` обязателен по контракту — отсутствие id при рендере не крашит систему, но семантика теряется (v1 — без валидации).
+- `li` в ordered `<List>`: `num` атрибут `<Step>` берётся из `ctx.listStep` (начиная с 1). Без ordered: `<Item>` без атрибутов. В MD — transparent.
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -193,6 +204,8 @@ elements/
 ├── list.ts
 ├── code.ts
 ├── bold.ts
+├── group.ts
+├── node.ts
 └── index.ts
 ```
 
@@ -207,6 +220,8 @@ elements/
 - `list.ts`: `List`
 - `code.ts`: `Code`
 - `bold.ts`: `Bold`
+- `group.ts`: `Group`
+- `node.ts`: `Node`
 - `index.ts`: агрегирующий экспорт
 <!--/SECTION:FILE_STRUCTURE-->
 
@@ -237,7 +252,7 @@ graph TD
 
 ## 10. Handoff to task scaffolding
 
-- **Implementation files to be created:** `elements/prompt.ts`, `elements/primary-goal.ts`, `elements/belief-state.ts`, `elements/axiom.ts`, `elements/hard-forbidden.ts`, `elements/section.ts`, `elements/list.ts`, `elements/code.ts`, `elements/bold.ts`, `elements/index.ts`
+- **Implementation files to be created:** `elements/prompt.ts`, `elements/primary-goal.ts`, `elements/belief-state.ts`, `elements/axiom.ts`, `elements/hard-forbidden.ts`, `elements/section.ts`, `elements/list.ts`, `elements/code.ts`, `elements/bold.ts`, `elements/group.ts`, `elements/node.ts`, `elements/index.ts`
 - **Test files to be created:** `elements/__tests__/elements.test.ts`
 - **Fixture test files:** каждый встроенный примитив — фикстура.
 
@@ -265,6 +280,12 @@ graph TD
   - `code-basic` — Code с lang
   - `code-with-title` — Code с lang и title
   - `bold` — Bold внутри текста
+  - `group-basic` — Group с is + children
+  - `group-with-attributes` — Group с is + доп. пропсы (атрибуты)
+  - `node-basic` — Node с is + children
+  - `node-with-id` — Node с is + id
+  - `li-ordered` — li внутри ordered List → `<Step num="N">`
+  - `li-unordered` — li внутри unordered List → `<Item>`
 
 - **Stack dependencies:**
   - Language: `TypeScript` (resolves to `ai/directives/coding/typescript-rules.xml`)

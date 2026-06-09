@@ -57,6 +57,34 @@ import { renderPrompt } from 'gennady/prompt-kit';
 
 const xml = renderPrompt(directive, {}, 'xml');
 const md = renderPrompt(directive, {}, 'md');
+
+// 4. forcedFormat — любой элемент форсирует формат поддерева.
+//    В XML-пайплайне <List forcedFormat="md"> рендерит Markdown-список.
+//    <li> — встроенный HTML-тег: XML → <Item>/<Step num="N">, MD → transparent.
+import { Axiom, List } from 'gennady/prompt-kit';
+
+const protocolDirective = (
+  <Axiom id="AX_DIRECT_IMPLEMENTATION_PROTOCOL">
+    <p>Mandatory protocol for direct implementations of a contract.</p>
+    <List ordered forcedFormat="md">
+      <li>Keep the root-level `@purpose` (compressed essence)</li>
+      <li>Add `@implements {ContractName} in path` on the root</li>
+      <li>Add `@see {ContractName#memberName} in path` on every direct member</li>
+    </List>
+    <p>These links are mandatory contract edges, not decoration.</p>
+  </Axiom>
+);
+
+const forcedXml = renderPrompt(protocolDirective, {}, 'xml');
+// <Axiom id="AX_DIRECT_IMPLEMENTATION_PROTOCOL">
+// Mandatory protocol for direct implementations of a contract.
+//
+// 1. Keep the root-level `@purpose` (compressed essence);
+// 2. Add `@implements {ContractName} in path` on the root;
+// 3. Add `@see {ContractName#memberName} in path` on every direct member.
+//
+// These links are mandatory contract edges, not decoration.
+// </Axiom>
 ```
 
 <!--/SECTION:GOLDEN_DX-->
@@ -74,6 +102,7 @@ const md = renderPrompt(directive, {}, 'md');
 - `section` + `section` → `\n\n` в MD, `\n` в HTML
 - `property` + `property` → `\n` в обоих форматах
 - `property` + `section` / `section` + `property` → `\n`
+- `p` + any или any + `p` → `\n\n` в обоих форматах
 - Все остальные комбинации → `\n`
 
 ### root
@@ -117,16 +146,35 @@ const md = renderPrompt(directive, {}, 'md');
 | `b` (HTML-тег)  | `<b>text</b>`       | `**text**` |
 | `em` (HTML-тег) | `<em>text</em>`     | `*text*`   |
 
+### p (paragraph)
+
+Назначение: блок текста. HTML-тег `p`, transparent в обоих форматах (тег не выводится).
+
+| Контекст          | HTML        | Markdown    |
+| ----------------- | ----------- | ----------- |
+| Верхний уровень   | `text`      | `text`      |
+| `p` + `p`         | `\n\n`      | `\n\n`      |
+| `p` + любой сосед | `\n\n`      | `\n\n`      |
+| Внутри list       | transparent | transparent |
+
+**Важно:** `p` не участвует в listStep (не имеет роли), не получает авто-пунктуацию списка. Внутри `<List>` дети `<p>` рендерятся как строки списка.
+
 ### list
 
-Назначение: контейнер списка. Дети — строки списка с авто-пунктуацией.
+Назначение: контейнер списка. Дети — `<li>` или строки списка с авто-пунктуацией.
 
-| Контекст   | HTML                                      | Markdown                                                                    |
-| ---------- | ----------------------------------------- | --------------------------------------------------------------------------- |
-| ordered    | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` 1 a;\n 2 b.`                                                              |
-| unordered  | `<List>\n  <I>a</I>\n  <I>b</I>\n</List>` | ` - a;\n - b.`                                                              |
-| С title    | —                                         | `**{title}:**\n - a;\n - b.`                                                |
-| Пунктуация | —                                         | `;` между элементами, `.` после последнего. Пропуск если уже есть `. ! ? ;` |
+| Контекст             | HTML                                                                                 | Markdown                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| ordered              | `<List ordered="true">\n  <Step num="1">a</Step>\n  <Step num="2">b</Step>\n</List>` | ` 1 a;\n 2 b.`                                                              |
+| unordered            | `<List>\n  <Item>a</Item>\n  <Item>b</Item>\n</List>`                                | ` - a;\n - b.`                                                              |
+| С title              | —                                                                                    | `**{title}:**\n - a;\n - b.`                                                |
+| Пунктуация           | —                                                                                    | `;` между элементами, `.` после последнего. Пропуск если уже есть `. ! ? ;` |
+| `li` в ordered       | `<Step num="N">text</Step>`                                                          | transparent (text)                                                          |
+| `li` в unordered     | `<Item>text</Item>`                                                                  | transparent (text)                                                          |
+| `forcedFormat="md"`  | рендерит MD-список внутри XML                                                        | без эффекта                                                                 |
+| `forcedFormat="xml"` | без эффекта                                                                          | рендерит XML-список внутри MD                                               |
+
+**Контекстный `listStep`:** при входе в ordered `<List>` TreeWalker инициализирует `ctx.listStep = 1` и инкрементирует для каждого ребёнка. Доступен любому вложенному элементу, `<li>` потребляет по умолчанию для `Step num="N"`.
 
 ### property
 
@@ -185,8 +233,6 @@ Markdown:
 
 <!--/SECTION:RENDERING_REFERENCE-->
 
-<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
-
 ## 3. Requirements & Constraints
 
 ### 3.1 Functional Requirements
@@ -201,12 +247,16 @@ Markdown:
 - **FR8 · Контекстный рендер** — поведение элемента зависит от контекста (внутри списка или нет, уровень вложенности).
 - **FR9 · Якоря в Markdown** — секционные элементы с `includeBoundaryComments: true` получают `<!--START_{NAME}-->` / `<!--END_{NAME}-->`. Имя якоря строится из разрешённого имени тега (`props.is || html.tag || element.tagName`), преобразованного из PascalCase в SNAKE*CASE (перед каждой заглавной буквой, кроме первой, вставляется `*`, затем весь результат — upper case). Повторная секция с теми же параметрами — якорь не добавляется.
 - **FR10 · Прозрачные компоненты** — обычная функция-компонент (не созданная через `definePromptElement`) не имеет представления: рендерятся только children, пропсы игнорируются.
-- **FR11 · Встроенные HTML-теги** — `b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td` распознаются движком и рендерятся в соответствии с форматом:
+- **FR11 · Встроенные HTML-теги** — `b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td`, `li` распознаются движком и рендерятся в соответствии с форматом:
   - xml: as-is, с атрибутами. Текстовое содержимое и значения атрибутов экранируются: `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`, `"` → `&quot;`
-  - md: `b` → `**`, `em` → `*`, `table` → markdown-таблица, `p` → пустая строка до и после
+  - md: `b` → `**`, `em` → `*`, `table` → markdown-таблица
+  - `p`: transparent в обоих форматах (тег не выводится). `p` ↔ любой сосед → `\n\n`
+  - `li`: в ordered XML → `<Step num="N">` (N = `ctx.listStep`), unordered XML → `<Item>`. MD — transparent. `listStep` доступен любому вложенному элементу в ordered list (см. FR17)
 - **FR12 · Авто-пунктуация списка** — `;` в конце каждого элемента, `.` в конце последнего. Пропускается, если последний символ текста уже является концевым знаком: `.`, `!`, `?`, `;`.
 - **FR13 · Динамический HTML-тег через `is`** — любой элемент может переопределить HTML-тег через пропс `is`. Значение `props.is` используется как имя тега и удаляется из атрибутов. Позволяет универсальным элементам (`Group`, `Node`) менять тег в зависимости от данных: `<Group is="Sdd">` → `<Sdd>...</Sdd>`.
 - **FR14 · Роль `property`** — листовой элемент ключ-значение. html: `<is>text</is>` в одну строку с отступом по depth. md: `- **is:** text` в одну строку. Не влияет на depth. Соседние property разделяются `\n`. Якоря и heading-префикс не применяются. Внутри list — стандартное поведение list-item.
+- **FR15 · `forcedFormat`** — любой элемент (встроенный, пользовательский, HTML-тег) принимает `forcedFormat="md"|"xml"`. Поддерево рендерится в указанном формате независимо от глобального. TreeWalker: детектит пропс → переопределяет `ctx.format` для детей и engine → стрипает пропс из атрибутов. `XmlFormatEngine` и `MdFormatEngine` умеют делегировать в противоположный форматер при несовпадении `ctx.format`. Вложенный `forcedFormat`: внутренний переопределяет внешний (стековая семантика — последний wins).
+- **FR17 · `listStep` в RenderContext** — целочисленный счётчик `listStep?: number`. TreeWalker: при входе в ordered `<List>` инициализирует `childCtx.listStep = 1`; для каждого ребёнка (включая встроенные HTML-теги, исключая `section`) инкрементирует `listStep`. Потребляется рендерером `<li>` и доступен любому вложенному элементу через `ctx.listStep`.
 
 ### 3.2 Non-Functional Constraints
 
@@ -391,6 +441,8 @@ type PromptElementConfig<Props> = {
 
 ### Встроенные примитивы (из коробки)
 
+Все элементы, а также пользовательские элементы через `definePromptElement`, неявно принимают универсальный пропс `forcedFormat?: 'md' | 'xml'` — см. FR15.
+
 | Элемент         | Роль     | Пропсы                                                                                |
 | --------------- | -------- | ------------------------------------------------------------------------------------- |
 | `Prompt`        | root     | `keywords?: string`                                                                   |
@@ -407,7 +459,7 @@ type PromptElementConfig<Props> = {
 
 ### Встроенные HTML-теги (распознаются по строковому имени)
 
-`b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td`
+`b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td`, `li`
 
 <!--/SECTION:PUBLIC_API_SURFACE-->
 
@@ -428,7 +480,11 @@ type PromptElementConfig<Props> = {
 3. `node.type` — функция без brand → прозрачно, рендерятся только children
 4. `node.type` — не попадает под 1–3 → `Error('[prompt-kit] unknown element type: <type>')`
 
-Движок передаёт контекст: `depth` (уровень секционной вложенности), `inList` (контекст списка). Элемент на основе контекста выбирает полное или компактное представление.
+Движок передаёт контекст: `depth` (уровень секционной вложенности), `inList` (контекст списка), `listStep` (счётчик ordered list). Элемент на основе контекста выбирает полное или компактное представление.
+
+**XML child indentation:** `XmlFormatter.formatElement` добавляет отступ `(depth+1) × 2` пробела к каждой строке children. Инлайн-элементы (`formatInline`) — без отступа. Строчные children (без `\n`) — без отступа, на одной строке с тегом.
+
+**forcedFormat flow:** TreeWalker при обнаружении `forcedFormat` в `props` переопределяет `ctx.format` для всего поддерева. `XmlFormatEngine` и `MdFormatEngine` содержат по два форматера (`XmlFormatter` + `MdFormatter`) и делегируют в противоположный при несовпадении `ctx.format`. Пропс `forcedFormat` удаляется из атрибутов перед передачей в engine.
 
 ### Решения
 
@@ -535,6 +591,14 @@ type PromptElementConfig<Props> = {
 - **Why:** Node должен рендериться как `- **File:** setup.xml`, а не как `##### File:\n\nsetup.xml`. Section добавляет heading-префикс и двойной перенос строки, что ломает формат. Новая роль `property` рендерит ключ-значение в одну строку, не влияет на depth, разделяет соседей `\n`. Альтернативные варианты (renderChildren override, inline+spacing fix, list role) отвергнуты через alt-opinion — три независимых эксперта подтвердили, что новая роль архитектурно чище.
 - **Risk accepted:** Увеличение числа ролей с 5 до 6. Дополнительная ветка в dispatch (TreeWalker + format engines).
 - **Rejected alternatives:** renderChildren override (ломает единую ответственность section), inline+spacing fix (ломает Bold и все inline), list role (контекст списка не должен зависеть от узла).
+
+### D-012 — Универсальный `forcedFormat` и cross-engine delegation
+
+- **Status:** active
+- **Recorded:** session Discovery, prompt-kit, refine
+- **Why:** Пользователь хочет в XML-пайплайне отрендерить отдельный блок (список, код) как Markdown без переключения всего формата. `forcedFormat="md"` на любом элементе решает это без разрыва пайплайна. Оба engine содержат противоположный форматер и делегируют при несовпадении `ctx.format`. Пропс стрипается до передачи в engine.
+- **Risk accepted:** Каждый engine аллоцирует второй форматер (память). Рекурсивный `forcedFormat` передаётся вглубь поддерева — дети наследуют формат родителя с `forcedFormat`.
+- **Rejected alternatives:** Отдельный `renderPrompt` вызов для поддерева — ломает контекст (depth, inList). Формат-переключатель на уровне pipeline — требует два полных прохода.
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -592,28 +656,3 @@ graph TD
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:** полный набор встроенных HTML-тегов уточнить при реализации
 <!--/SECTION:HANDOFF-->
-
-## Critic Rounds
-
-### Round 1 — 2026-06-06
-
-- Verdict: NEEDS_WORK
-- Accepted: 3 — JSXNode тип не определён, нормализация недоописана, дубликат §9.4 с placeholder
-- Rejected: 0
-- Reconcile: N/A
-- Changes: добавлен тип JSXNode + контракт нормализации; удалён дубликат §9.4
-
-### Round 2 — 2026-06-06
-
-- Verdict: NEEDS_WORK
-- Accepted: 3 — PromptElement неотличим от transparent (brand symbol), FR3 противоречит API surface, renderPrompt не обрабатывает throw
-- Rejected: 0
-- Reconcile: N/A
-- Changes: добавлен `Symbol('prompt-element')` brand; FR3 исправлен (Em/Underline/Table → FR11); renderPrompt try/catch + Error; JSXNode тип
-
-### Round 3 — 2026-06-06
-
-- Verdict: NEEDS_WORK
-- Accepted: 6 — renderPrompt сигнатура vs Golden DX, XML escaping, keywords effect, anchor collision, unrecognised node.type, html→xml naming
-- Rejected: 0
-- Changes: renderPrompt принимает JSXNode | Function; XML escaping в FR11; keywords специфицирован; anchor collision → первое вхождение; unrecognised type → Error; html→xml в PromptElementConfig

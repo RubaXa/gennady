@@ -10,6 +10,8 @@ export type ListProps = {
   ordered?: boolean;
   /** Optional title rendered as `**title**:` before list items in MD. */
   title?: string;
+  /** @purpose Force render in `md` or `xml` regardless of pipeline format. */
+  forcedFormat?: 'md' | 'xml';
 };
 
 /** Ordered or unordered list. All children are treated as list items with auto-punctuation. */

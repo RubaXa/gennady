@@ -14,6 +14,8 @@ import type { JSXNode, PromptElement, RenderContext, TFormatEngine } from './typ
  */
 class XmlFormatEngine implements TFormatEngine {
   protected _formatter = new XmlFormatter();
+  /** @purpose MD formatter for forcedFormat="md" subtrees inside XML pipeline. */
+  protected _md = new MdFormatter();
 
   /** @see {TFormatEngine#formatSection} in ./types.ts */
   formatSection(
@@ -22,6 +24,13 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'md') {
+      const title =
+        element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ??
+        '';
+      if (ctx.inList) return this._md.formatSectionInline(title, children);
+      return this._md.formatSection(title, children, ctx.depth);
+    }
     const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
     const attrs = { ...props };
     delete attrs.is;
@@ -35,10 +44,25 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'md') {
+      const ordered =
+        (props.ordered as boolean | undefined) ?? element.config.markdown?.ordered ?? false;
+      const title = element.config.markdown?.title?.({
+        tagName: element.tagName,
+        props,
+        depth: ctx.depth,
+      });
+      return this._md.formatList(children, ordered, title);
+    }
     const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
     const attrs = { ...props };
     delete attrs.is;
-    return this._formatter.formatElement(tag, attrs, children, ctx.depth);
+    const childIndent = '  '.repeat(ctx.depth + 1);
+    const indentedChildren = children
+      .split('\n')
+      .map((ln) => (ln ? childIndent + ln : ln))
+      .join('\n');
+    return this._formatter.formatElement(tag, attrs, indentedChildren, ctx.depth);
   }
 
   /** @see {TFormatEngine#formatBlock} in ./types.ts */
@@ -48,6 +72,15 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'md') {
+      const lang = element.config.markdown?.lang;
+      const title = element.config.markdown?.title?.({
+        tagName: element.tagName,
+        props,
+        depth: ctx.depth,
+      });
+      return this._md.formatBlock(children, lang, title);
+    }
     const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
     const attrs = { ...props };
     delete attrs.is;
@@ -56,11 +89,15 @@ class XmlFormatEngine implements TFormatEngine {
 
   /** @see {TFormatEngine#formatInline} in ./types.ts */
   formatInline(
-    _ctx: RenderContext,
+    ctx: RenderContext,
     children: string,
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'md') {
+      const wrapper = element.config.markdown?.wrapper ?? '';
+      return this._md.formatInline(wrapper, children);
+    }
     const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
     const attrs = { ...props };
     delete attrs.is;
@@ -74,6 +111,12 @@ class XmlFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'md') {
+      const title =
+        element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ??
+        '';
+      return title ? `- **${title}**` + (children ? ` ${children}` : '') : children;
+    }
     const tag = (props.is as string) || (element.config.html?.tag as string) || element.tagName;
     const attrs = { ...props };
     delete attrs.is;
@@ -87,6 +130,8 @@ class XmlFormatEngine implements TFormatEngine {
  */
 class MdFormatEngine implements TFormatEngine {
   protected _formatter = new MdFormatter();
+  /** @purpose XML formatter for forcedFormat="xml" subtrees inside MD pipeline. */
+  protected _xml = new XmlFormatter();
 
   /** @see {TFormatEngine#formatSection} in ./types.ts */
   formatSection(
@@ -95,6 +140,12 @@ class MdFormatEngine implements TFormatEngine {
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'xml') {
+      const tag = (props.is as string) || element.config.html?.tag || element.tagName;
+      const attrs = { ...props };
+      delete attrs.is;
+      return this._xml.formatElement(tag, attrs, children, ctx.depth);
+    }
     const title =
       element.config.markdown?.title?.({ tagName: element.tagName, props, depth: ctx.depth }) ?? '';
     const resolvedTag = (props.is as string) || element.config.html?.tag || element.tagName;
@@ -115,59 +166,94 @@ class MdFormatEngine implements TFormatEngine {
 
   /** @see {TFormatEngine#formatList} in ./types.ts */
   formatList(
-    _ctx: RenderContext,
+    ctx: RenderContext,
     children: string,
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
-    const ordered = element.config.markdown?.ordered ?? false;
+    if (ctx.format === 'xml') {
+      const tag = (props.is as string) || element.config.html?.tag || element.tagName;
+      const attrs = { ...props };
+      delete attrs.is;
+      const childIndent = '  '.repeat(ctx.depth + 1);
+      const indentedChildren = children
+        .split('\n')
+        .map((ln) => (ln ? childIndent + ln : ln))
+        .join('\n');
+      return this._xml.formatElement(tag, attrs, indentedChildren, ctx.depth);
+    }
+    const ordered =
+      (props.ordered as boolean | undefined) ?? element.config.markdown?.ordered ?? false;
     const title = element.config.markdown?.title?.({
       tagName: element.tagName,
       props,
-      depth: _ctx.depth,
+      depth: ctx.depth,
     });
     return this._formatter.formatList(children, ordered, title);
   }
 
   /** @see {TFormatEngine#formatBlock} in ./types.ts */
   formatBlock(
-    _ctx: RenderContext,
+    ctx: RenderContext,
     children: string,
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'xml') {
+      const tag = (props.is as string) || element.config.html?.tag || element.tagName;
+      const attrs = { ...props };
+      delete attrs.is;
+      return this._xml.formatElement(tag, attrs, children, ctx.depth);
+    }
     const lang = element.config.markdown?.lang;
     const title = element.config.markdown?.title?.({
       tagName: element.tagName,
       props,
-      depth: _ctx.depth,
+      depth: ctx.depth,
     });
     return this._formatter.formatBlock(children, lang, title);
   }
 
   /** @see {TFormatEngine#formatInline} in ./types.ts */
   formatInline(
-    _ctx: RenderContext,
+    ctx: RenderContext,
     children: string,
     element: PromptElement,
-    _props: Record<string, unknown>
+    props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'xml') {
+      const tag = (props.is as string) || element.config.html?.tag || element.tagName;
+      const attrs = { ...props };
+      delete attrs.is;
+      const childIndent = '  '.repeat(ctx.depth + 1);
+      const indentedChildren = children
+        .split('\n')
+        .map((ln) => (ln ? childIndent + ln : ln))
+        .join('\n');
+      return this._xml.formatElement(tag, attrs, indentedChildren, ctx.depth);
+    }
     const wrapper = element.config.markdown?.wrapper ?? '';
     return this._formatter.formatInline(wrapper, children);
   }
 
   /** @see {TFormatEngine#formatProperty} in ./types.ts */
   formatProperty(
-    _ctx: RenderContext,
+    ctx: RenderContext,
     children: string,
     element: PromptElement,
     props: Record<string, unknown>
   ): string {
+    if (ctx.format === 'xml') {
+      const tag = (props.is as string) || element.config.html?.tag || element.tagName;
+      const attrs = { ...props };
+      delete attrs.is;
+      return this._xml.formatElement(tag, attrs, children, ctx.depth);
+    }
     const title =
       element.config.markdown?.title?.({
         tagName: element.tagName,
         props,
-        depth: _ctx.depth,
+        depth: ctx.depth,
       }) ?? '';
     // MD: inline key-value — `- **File:** setup.xml`
     return title ? `- **${title}**` + (children ? ` ${children}` : '') : children;

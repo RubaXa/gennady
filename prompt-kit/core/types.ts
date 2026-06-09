@@ -77,6 +77,8 @@ export type RenderContext = {
   inList: boolean;
   /** @purpose Target output format */
   format: 'xml' | 'md';
+  /** @purpose Ordered list item counter | @invariant Initialised to 1 on ordered List entry, incremented per child */
+  listStep?: number;
 };
 
 /**

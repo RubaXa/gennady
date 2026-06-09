@@ -24,11 +24,11 @@ export class XmlFormatter {
     const indent = '  '.repeat(depth);
     const attrStr = this._renderAttributes(props);
 
-    // #region START_SELF_CLOSING_EMPTY — invariant: no children → self-closing tag
+    // #region START_EMPTY_TAG — invariant: no children → opening/closing tag pair
     if (!children || children.trim() === '') {
       return `${indent}<${tag}${attrStr}></${tag}>`;
     }
-    // #endregion END_SELF_CLOSING_EMPTY
+    // #endregion END_EMPTY_TAG
 
     // leaf text without XML tags or newlines → inline: <tag>text</tag>
     if (!children.includes('<') && !children.includes('\n')) {

@@ -49,7 +49,7 @@ _Это полный список сущностей модуля. Любое в
 | `PromptElementConfig` | 🟢      | Type         | Конфиг элемента: роль, markdown._, html._                                                    |
 | `JSXNode`             | ⚪      | Type         | Канонический узел JSX-дерева: `{ type, props, children }`                                    |
 | `JSXTreeNormalizer`   | ⚪      | Utility      | Приводит деревья от разных JSX-рантаймов к `{type, props, children}`                         |
-| `RenderContext`       | ⚪      | Value Object | Контекст рендера: depth, inList, format                                                      |
+| `RenderContext`       | ⚪      | Value Object | Контекст рендера: depth, inList, format, listStep                                            |
 | `TreeWalker`          | ⚪      | Service      | Рекурсивный обход дерева: дети → родитель, разрешение type → рендер                          |
 | `ElementResolver`     | ⚪      | Utility      | По `node.type` определяет стратегию: PromptElement, string (HTML-тег), function (прозрачный) |
 | `HTMLTagRegistry`     | ⚪      | Registry     | Реестр встроенных HTML-тегов (`b`, `em`, `table`, ...) — маппинг имени на рендер             |
@@ -96,7 +96,7 @@ _Это полный список сущностей модуля. Любое в
 
 - **Type:** Value Object (⚪)
 - **Purpose:** Контекст, передаваемый сверху вниз при обходе дерева.
-- **Public Properties:** `depth: number`, `inList: boolean`, `format: 'xml' | 'md'`
+- **Public Properties:** `depth: number`, `inList: boolean`, `format: 'xml' | 'md'`, `listStep?: number`
 - **Consumers:** Internal — `TreeWalker`, `TFormatEngine`
 
 ### `TreeWalker`
@@ -105,15 +105,17 @@ _Это полный список сущностей модуля. Любое в
 - **Purpose:** Рекурсивно обходит нормализованное дерево: сначала рендерит детей, затем передаёт результат родителю. Для каждого узла разрешает тип через `ElementResolver` и вызывает соответствующий метод `TFormatEngine`.
 - **Role→method dispatch (для PromptElement):**
   - `root` → skip (не рендерится)
-  - `section` → `formatSection(ctx, children, element)`
-  - `list` → `formatList(ctx, children, element)`
-  - `block` → `formatBlock(ctx, children, element)`
-  - `inline` → `formatInline(ctx, children, element)`
+  - `section` → `formatSection(ctx, children, element, props)`
+  - `list` → `formatList(ctx, children, element, props)`
+  - `block` → `formatBlock(ctx, children, element, props)`
+  - `inline` → `formatInline(ctx, children, element, props)`
+  - `property` → `formatProperty(ctx, children, element, props)`
 - **Dispatch для других категорий:**
-  - `'html-tag'` → `HTMLTagRegistry.resolve(tagName)`; найден → вызвать рендерер; `null` → `Error`
+  - `'html-tag'` → `HTMLTagRegistry.resolve(tagName)`; найден → вызвать рендерер с сигнатурой `(ctx: RenderContext, children, props, walkChildren) → string`; `null` → `Error`
   - `'transparent'` → вернуть `children` как есть (форматер не вызывается)
   - `'skip'` → вернуть пустую строку
-- **Context propagation:** `section` → `depth + 1` детям. `list` → `inList: true` детям. Остальные роли → контекст без изменений.
+- **Context propagation:** `section` → `depth + 1` детям. `list` → `inList: true` детям. Ordered `list` → `listStep = 1` детям, инкремент для каждого ребёнка кроме: `section` (PromptElement) и transparent-функций. HTML-теги, строковые узлы, property, block, inline, list — инкрементируются. Transparent-функции не потребляют `listStep` — их children обрабатываются с тем же `listStep`-контекстом. Остальные роли → контекст без изменений.
+- **forcedFormat handling:** при наличии `props.forcedFormat` переопределяет `ctx.format` для детей и engine dispatch. Пропс `forcedFormat` удаляется из props перед передачей в engine. При вложенном `forcedFormat` каждый дочерний узел создаёт новый `RenderContext` с переопределённым format — самый глубокий (последний) wins.
 - **Consumers:** Internal — `renderPrompt`
 
 ### `ElementResolver`
@@ -142,17 +144,18 @@ _Это полный список сущностей модуля. Любое в
 - **Толерантность к деревьям**: `JSXTreeNormalizer` принимает любое дерево и нормализует losslessly. Распознанные паттерны (props.children, фрагменты, примитивы) — нормализуются. Нераспознанные — проходят как есть (pass-through), ошибка не бросается.
 - **Прозрачность**: обычная функция без `Symbol('prompt-element')` в `node.type` → рендерятся только children. Пропсы и имя функции игнорируются.
 - **Разрешение типа**: `ElementResolver` ищет: объект с brand-символом → PromptElement, строка → HTMLTagRegistry, функция без brand → transparent. Не найден → `Error`.
-- **Реестр HTML-тегов**: `HTMLTagRegistry` идемпотентен — повторная регистрация перезаписывает. Пользовательский `definePromptElement` с UpperCase-именем не конфликтует с HTML-тегами (lowercase).
+- **Реестр HTML-тегов**: `HTMLTagRegistry` идемпотентен — повторная регистрация перезаписывает. Пользовательский `definePromptElement` с UpperCase-именем не конфликтует с HTML-тегами (lowercase). Встроенные теги: `b`, `em`, `i`, `u`, `strong`, `p`, `table`, `thead`, `tbody`, `tr`, `th`, `td`, `li`.
 - **Форматер-интерфейс**: `TreeWalker` вызывает форматеры через интерфейс:
   ```ts
   interface TFormatEngine {
-    formatSection(ctx: RenderContext, children: string, element: PromptElement<any>) → string
-    formatList(ctx: RenderContext, children: string, element: PromptElement<any>) → string
-    formatBlock(ctx: RenderContext, children: string, element: PromptElement<any>) → string
-    formatInline(ctx: RenderContext, children: string, element: PromptElement<any>) → string
+    formatSection(ctx: RenderContext, children: string, element: PromptElement<any>, props: Record<string, unknown>) → string
+    formatList(ctx: RenderContext, children: string, element: PromptElement<any>, props: Record<string, unknown>) → string
+    formatBlock(ctx: RenderContext, children: string, element: PromptElement<any>, props: Record<string, unknown>) → string
+    formatInline(ctx: RenderContext, children: string, element: PromptElement<any>, props: Record<string, unknown>) → string
+    formatProperty(ctx: RenderContext, children: string, element: PromptElement<any>, props: Record<string, unknown>) → string
   }
   ```
-  Конкретные реализации (`XmlFormatter`, `MdFormatter`) предоставляются модулем `format`.
+  Конкретные реализации (`XmlFormatEngine`, `MdFormatEngine`) предоставляются модулем `format`. Каждый engine содержит оба форматера (`XmlFormatter` + `MdFormatter`) и делегирует в противоположный при несовпадении `ctx.format` (поддержка `forcedFormat`).
 - **renderPrompt try/catch**: `renderPrompt` оборачивает вызов компонента и рекурсивный обход в try/catch. При ошибке → `Error` с исходной ошибкой как `cause` и префиксом `[prompt-kit]`. Частичный вывод не возвращается.
 - **Нормализатор pass-through**: после нормализации каждый узел приводится к форме `{ type: unknown, props: Record<string, unknown>, children?: JSXNode[] }`. Нераспознанные структуры оборачиваются: если у входа нет `type` → `type = undefined` (разрешается как `'skip'`).
 <!--/SECTION:MODULE_CONTRACTS-->
