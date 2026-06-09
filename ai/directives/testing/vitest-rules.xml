@@ -5,11 +5,11 @@
     Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
   </Mission>
 
-  <Inherited_Baseline>
+  <InheritedBaseline>
     All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds Vitest-specific overrides and patterns. Mechanical assertion-API substitutions when the inherited text mentions node:test assertions: `assert.throws()` → `expect(fn).toThrow(...)`; `assert.rejects()` → `await expect(promise).rejects.toThrow(...)`; `assert.match()` → `expect(str).toMatch(regex)`.
-  </Inherited_Baseline>
+  </InheritedBaseline>
 
-  <Belief_State>
+  <BeliefState>
 
     <Axiom id="AX_VITEST_RUN_NOT_WATCH">
       **Primary `test` script MUST invoke `vitest run` (one-shot), never bare `vitest` (defaults to watch in TTY).**
@@ -87,9 +87,9 @@
       Vitest's default `isolate: true` is preserved. Do NOT weaken isolation in `vitest.config` without an architectural justification recorded in the project. Disabling isolation trades determinism for speed and re-introduces inter-test leakage.
     </Axiom>
 
-  </Belief_State>
+  </BeliefState>
 
-  <Test_Patterns>
+  <TestPatterns>
     <Pattern id="PT_UNIFIED_FACTORY_CONTEXT">
       <Intent>Default shape per inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE` + `AX_PREFER_FACTORY_OVER_HOOKS`: ONE context type + ONE factory for the whole file. Two cases differ only by factory overrides, not by structure.</Intent>
       <Snippet language="typescript">
@@ -248,41 +248,41 @@
       </Snippet>
       <Why>No `vi.mock`, no `vi.spyOn`, no `globalThis.fetch` patching: SUT exposes injection seams (`httpRequest`, `store`) and the test passes typed `vi.fn()`s through them. Unified factory reused; case differs only by `response` override.</Why>
     </Pattern>
-  </Test_Patterns>
+  </TestPatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_BEFORE_EACH_LET_PILEUP">
+  <AntiPatterns>
+    <AntiPattern id="AP_BEFORE_EACH_LET_PILEUP">
       <Bad>Describe scope hosts `let sut, saveOrder, publish, order, now`; `beforeEach` assigns them; second case re-assigns shared `sut` to a different config (leaks state).</Bad>
-      <Why_Bad>Pile of `let`-variables (inherited `AX_NO_DESCRIBE_LET_PILEUP`). Per-case data built in `beforeEach` without teardown reason (inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_PREFER_FACTORY_OVER_HOOKS`). No unified context type/factory (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`).</Why_Bad>
+      <WhyBad>Pile of `let`-variables (inherited `AX_NO_DESCRIBE_LET_PILEUP`). Per-case data built in `beforeEach` without teardown reason (inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_PREFER_FACTORY_OVER_HOOKS`). No unified context type/factory (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`).</WhyBad>
       <Good>ONE context type + ONE `createOrderLifecycleContext(overrides)` factory used by every case. Each case destructures the fields it uses; failure case overrides one field. No `beforeEach`, no shared `let`s.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_PARALLEL_FACTORIES">
+    <AntiPattern id="AP_PARALLEL_FACTORIES">
       <Bad>One file declares `createOrderContextHappy()`, `createOrderContextWithDiscount()`, `createOrderContextFailing()`.</Bad>
-      <Why_Bad>Three parallel factories for one SUT (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`). Each drifts independently; structural changes in `OrderLifecycle` require N edits, not one. Reader-agent must learn three shapes instead of one + a set of overrides.</Why_Bad>
+      <WhyBad>Three parallel factories for one SUT (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`). Each drifts independently; structural changes in `OrderLifecycle` require N edits, not one. Reader-agent must learn three shapes instead of one + a set of overrides.</WhyBad>
       <Good>Single `createOrderLifecycleContext(overrides)` factory; happy / discount / failure cases pass different overrides through the same factory.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_UNJUSTIFIED_VI_MOCK">
+    <AntiPattern id="AP_UNJUSTIFIED_VI_MOCK">
       <Bad>`vi.mock('./http-client.ts', () => ({ httpClient: { get: vi.fn(...) } }))` for an in-process module; SUT instantiated as `new CatalogSync()` without injection.</Bad>
-      <Why_Bad>`vi.mock` introduced without operator confirm and without justification (`AX_MOCK_REQUIRES_OPERATOR_CONFIRM`, inherited `AX_MOCK_AS_LAST_RESORT`). `httpClient` is in-process — the SUT could have accepted it as a constructor argument (`AX_HTTP_BOUNDARY_INJECTION`).</Why_Bad>
+      <WhyBad>`vi.mock` introduced without operator confirm and without justification (`AX_MOCK_REQUIRES_OPERATOR_CONFIRM`, inherited `AX_MOCK_AS_LAST_RESORT`). `httpClient` is in-process — the SUT could have accepted it as a constructor argument (`AX_HTTP_BOUNDARY_INJECTION`).</WhyBad>
       <Good>SUT exposes injection seam: `class CatalogSync { constructor(deps: { httpRequest: HttpRequest }) {} }`. Test uses unified factory + `vi.fn()` stub through the seam (see `PT_DI_OVER_MOCK`).</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_LEAKED_LIFECYCLE_AND_GLOBAL_RELIANCE">
+    <AntiPattern id="AP_LEAKED_LIFECYCLE_AND_GLOBAL_RELIANCE">
       <Bad>Test file has no imports (relies on `globals: true`). Inside a case: `vi.useFakeTimers(); vi.setSystemTime(...); vi.stubEnv('TICK', '1000');` without paired teardown.</Bad>
-      <Why_Bad>Reliance on `globals: true` (`AX_EXPLICIT_VITEST_IMPORTS`). Fake timers and env stubs without paired teardown (`AX_TIME_ENV_GLOBAL_LIFECYCLE`). State leaks into subsequent cases → order-dependent flicker.</Why_Bad>
+      <WhyBad>Reliance on `globals: true` (`AX_EXPLICIT_VITEST_IMPORTS`). Fake timers and env stubs without paired teardown (`AX_TIME_ENV_GLOBAL_LIFECYCLE`). State leaks into subsequent cases → order-dependent flicker.</WhyBad>
       <Good>Explicit imports; `beforeEach` enables fake timers + env stubs; `afterEach` calls `vi.useRealTimers()` + `vi.unstubAllEnvs()` (see `PT_LIFECYCLE_CONTEXT_WITH_CLEANUP`).</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_CONTAINS_ON_ERROR_AND_PRIVATE_INSPECTION">
+    <AntiPattern id="AP_CONTAINS_ON_ERROR_AND_PRIVATE_INSPECTION">
       <Bad>`try { await client.reserveStock(''); expect.fail('should have thrown'); } catch (e) { expect((e as Error).message).toContain('idempotency'); }` AND inspecting `client._inflightCount` with `@ts-expect-error`.</Bad>
-      <Why_Bad>Manual `try/catch + expect.fail` instead of `rejects.toThrow` (`AX_VITEST_ASSERT_API_CHOICE`). `toContain` on `error.message` (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Inspecting protected internal field (inherited `AX_CONTRACT_OVER_IMPLEMENTATION`).</Why_Bad>
+      <WhyBad>Manual `try/catch + expect.fail` instead of `rejects.toThrow` (`AX_VITEST_ASSERT_API_CHOICE`). `toContain` on `error.message` (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Inspecting protected internal field (inherited `AX_CONTRACT_OVER_IMPLEMENTATION`).</WhyBad>
       <Good>`await expect(client.reserveStock('')).rejects.toThrow(/idempotency.*empty|empty.*idempotency/i);` and subscribe to public lifecycle event for observation.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_RUN_TESTS">
       <Command>npx vitest run</Command>
       <Expected>Exit 0; no `.only` / `.skip` / `.todo` without a deferred-ownership reference.</Expected>
@@ -322,5 +322,5 @@
       <Command>rg --no-heading -nU "function create\w+Context" -t ts --glob '**/*.test.ts' | awk -F: '{c[$1]++} END {for (f in c) if (c[f] > 1) print c[f], f}'</Command>
       <Expected>No file declares more than one `createXxxContext` factory.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 </VitestRules>

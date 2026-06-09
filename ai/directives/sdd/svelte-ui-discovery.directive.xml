@@ -1,5 +1,5 @@
 <SvelteUiDiscovery keywords="svelte, ui-component, figma, svg, design-tokens, vkui, paradigm, storybook, sdd, component-discovery" type="directive" ver="1.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Провести оператора через создание SDD-спеки Svelte UI-компонента: от Figma SVG-макета до утверждённого `.ui.spec.md`, готового к scaffold.
       
@@ -12,9 +12,9 @@
       
       Как активируется: оператор запускает SDD-сессию с указанием этой директивы — «создать компонент Button по svelte-ui-discovery».
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_TOOLS_AS_HANDS">
       figma-utils — руки агента в SVG, не источник истины. Агент использует команды для извлечения контекста, но решения принимает сам:
       
@@ -91,9 +91,9 @@
     <Axiom id="AX_OPERATOR_LANGUAGE">
       Директивная проза — English. Артефакты и сообщения оператору — Russian.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_EXISTING_CHECK">
       <Goal>Проверить существующие компоненты. Можно ли переиспользовать?</Goal>
       <Action>
@@ -181,18 +181,18 @@
         5. Approval Check. STOP.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_SVG` | SVG-макет не найден в `_figma/` |
     | `H_EXTRACT_FAILED` | `figma:extract` упал — починить инструменты перед продолжением |
     | `H_OPERATOR_REJECT` | Оператор отверг предложение на любом шаге |
     | `H_EXISTING_BETTER` | Существующий компонент покрывает потребность — refine вместо create |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="SPEC_STRUCTURE">
       ```markdown
       # <ComponentName> — спецификация компонента
@@ -259,5 +259,5 @@
       ## 11. Handoff
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SvelteUiDiscovery>

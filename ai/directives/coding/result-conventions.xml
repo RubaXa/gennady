@@ -3,7 +3,7 @@
     Invariants for the Result pattern from @tessell/core/result. Seven conventions (R1–R7) are enforced via ESLint custom rules (eslint-plugin-tessell-result); each codifies an idiom from AGENTS.md that survived code review. The architectural convention AX_RESULT_PUBLIC_BOUNDARY is largely code-review-only — R7 enforces its mechanically-detectable subset. Canonical consumption idiom: `must` + try/catch.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_NO_RESULT_SECOND_GENERIC">
       `Result<T, ConcreteError>` is forbidden. No method can guarantee it only throws one error class — library and runtime code can throw anything. Use `Result<T>` only.
       Exception: when the second arg is a type parameter of the enclosing generic declaration (function / type alias / class) — that is a constraint, not a pinned class. Detection: AST walk up to nearest TSTypeParameterDeclaration; skip if name appears there.
@@ -57,9 +57,9 @@
       Every rule that matches function or type names accepts an options object with configurable identifiers: resultTypeName, isErrFn, isOkFn, successFn, failFn, castFn.
       Defaults match @tessell/core/result exports. On package rename — update config, not the rule.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     - R1 flags `Result<T, DataStorageError>`, autofixes to `Result<T>`. Does NOT flag `Result<T, E>` where E is a type parameter of the enclosing generic.
     - R2 flags `{ ok: true, data: x, error: null }`, autofixes to `success(x)`.
     - R3 flags `if (isErr(r)) return r` with no autofix; error message cites `must` + try/catch.
@@ -69,5 +69,5 @@
     - R7 flags an unguarded `must(...)` (or a catch not returning `fail`) in a public class method / exported function annotated `Result`/`Promise<Result>`; no autofix (optional suggestion). Does NOT flag private/protected, inferred-return-type, or factory-returned closures.
     - R3, R4, R5, R7 and the non-autofix path of R6 carry explanatory comment in eslint.config.ts (per eslint-setup AX_CUSTOM_PLUGINS_OBEY_META_POLICY).
     - Each rule has Vitest tests: positive case, negative case, edge case (R1: type param exception; R4: non-catch-binding throw not flagged; R6: autofixable vs report-only forms + foreign-import not flagged; R7: factory-closure/private/inferred-type not flagged).
-  </Reward_Criteria>
+  </RewardCriteria>
 </ResultConventions>

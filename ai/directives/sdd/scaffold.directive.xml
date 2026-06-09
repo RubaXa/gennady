@@ -1,5 +1,5 @@
 <SddTaskScaffolding keywords="task-scaffolding, dependency-graph, bdd, execution-planning, mandatory-rules-linkage, rules-cascade, rule-activation, hierarchical-tasks, modes, extend-dag, scope-graph, sdd-phase-3" type="directive" ver="3.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Decompose the spec tree into a DAG of compact task tickets ready for autonomous execution by `sdd-execute` orchestrator (which dispatches phase-subagents under `phase-execution-protocol`).
 
@@ -19,9 +19,9 @@
 
       **Glossary.** Orchestrator = agent under `sdd-execute` SKILL. Phase agent = subagent under `phase-execution-protocol`. Auditor = agent under `audit`. Scope = architecturally cohesive unit from scope graph. scope-type ∈ {infrastructure, contracts, library, product}.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_DIRECTIVE_MODE">
       **Two modes, auto-detected from intake:**
       - `initial` — first run, `tasks/` absent or empty.
@@ -95,7 +95,7 @@
       1. Read `ai/directives/knowledge.xml` — the canonical rule registry (`<Rules>` section).
       2. From the scope's Project-Wide Rules, extract the candidate rule set for this scope.
       3. For each candidate rule: evaluate its `<Triggers>` and `<SkipWhen>` against THIS PHASE's `Target Files` and phase `kind`. Include the rule only when `<Triggers>` match AND `<SkipWhen>` does not apply. Signal-based only — no hardcoded language/tool knowledge in this directive.
-      4. **Transitive closure via `<Depends_On>`.** For each included rule, open its file and read its `<Depends_On>` section (optional; lists rule-file paths this rule architecturally extends). Add every dependency to the phase's Rules set. Recurse until the set stops growing. Cycles → halt `H_RULES_CYCLE`. Missing dependency file → halt `H_MISSING_RULES`. This produces the explicit, fully-resolved set; phase-subagent does NOT walk `<Depends_On>` at runtime.
+      4. **Transitive closure via `<DependsOn>`.** For each included rule, open its file and read its `<DependsOn>` section (optional; lists rule-file paths this rule architecturally extends). Add every dependency to the phase's Rules set. Recurse until the set stops growing. Cycles → halt `H_RULES_CYCLE`. Missing dependency file → halt `H_MISSING_RULES`. This produces the explicit, fully-resolved set; phase-subagent does NOT walk `<DependsOn>` at runtime.
       5. For each rule in the resolved set:
          - `<File>` → full path to rule file (`ai/directives/<category>/<rule>.xml`); render as Markdown link in the phase's `Rules:` bullet list.
          - `<RequiresVerification>` → collect aliases for ticket-level Verification table (step 7).
@@ -276,9 +276,9 @@
     <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
       Ticket sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers (grammar: `extract-section.sh`). **Anchor names in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — orchestrator (`sdd-execute`) and auditor query them by exact string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Renaming or omitting a templated anchor breaks programmatic dispatch. Each `### P<N>` phase block under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container itself is NOT wrapped — extraction is per-phase.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Golden_Example>
+  <GoldenExample>
     Concrete ticket — `tasks/backend/payments/payments.task-04.md`. **Pattern: one module-spec → one ticket.** Port + Adapter + Value Objects + module barrel co-edit and travel together. Phases inside the ticket separate `impl` vs `test` cascades. Names of rules in the Activation Plan are project-specific (driven by cascade); the directive itself is language-agnostic.
 
     ```markdown
@@ -334,25 +334,25 @@
     ```
 
     **Anti-pattern (forbidden):** splitting this into `TSK-04 Port + VOs`, `TSK-05 Adapter`, `TSK-06 module barrel`. Sequential split (each depends on prior) without (C) context overflow = pure sub-process overhead per `AX_DAG_AND_TICKET_BOUNDARIES`.
-  </Golden_Example>
+  </GoldenExample>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_SPECS` | No specs/README.md or no scope specs found |
     | `H_AMBIGUOUS_MODE` | `tasks/` present + intake unclear |
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec present but Discovery/required sections incomplete |
-    | `H_MISSING_RULES` | Any cascade source OR transitive `<Depends_On>` references a missing rule file |
-    | `H_RULES_CYCLE` | Transitive `<Depends_On>` closure encounters a cycle between rule files |
+    | `H_MISSING_RULES` | Any cascade source OR transitive `<DependsOn>` references a missing rule file |
+    | `H_RULES_CYCLE` | Transitive `<DependsOn>` closure encounters a cycle between rule files |
     | `H_ID_COLLISION` | Generated `TSK-NN` collides with existing |
     | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
     | `H_VERIFICATION_COMMAND_MISSING` | RequiresVerification alias not found in infra-spec Verification Commands |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | Scope spec lacks Bootstrap Requirements section (spec did not pass discovery STEP_7) |
     | `H_TYPING_SCENARIO_MISSING` | A contract in Spec References has no `contract`-level typing scenario in section 4 per `AX_TICKET_HAS_BDD_AND_TESTS` |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_INTAKE">
       <Goal>Read Specs Portal → detect scopes and graph (`AX_SCOPE_GRAPH_DETECTION`) → detect mode (`AX_MODE_AUTO_DETECT_OR_HALT`).</Goal>
       <Action>
@@ -409,7 +409,7 @@
       <Goal>Emit each ticket per `TASK_TICKET_STRUCTURE`. Project-wide content NOT duplicated.</Goal>
       <Action>
         For each task:
-        1. TRACE_HEADER (STACK `ROOT__TASK_GENERATION__<TASK_ID>`).
+        1. TRACE_HEADER (STACK `ROOT__TASK_GENERATION__<TASKID>`).
         2. Verify ID uniqueness per `AX_TASK_ID_UNIQUENESS`. Collision → `H_ID_COLLISION`.
         3. Decompose into phases per `AX_PHASES_DECLARED_IN_HEADER`. Compute scope-level cascade per `AX_RULES_CASCADE_RESOLUTION`; for each phase, derive `Rules:` list per `AX_RULE_ACTIVATION_PLAN` (per-phase filtering by Target Files + kind).
         4. Determine ticket path:
@@ -431,15 +431,15 @@
         TRACE_HEADER (STACK `ROOT__REVIEW`). List created files with traceability links. Approval Check. STOP.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Frame_Rules>
+  <FrameRules>
     <Rule id="FRAME_PUSH_WHEN">Open nested frame on disputes about granularity, order, BDD scenarios, deferred coverage, per-task detail.</Rule>
     <Rule id="FRAME_POP_WHEN">Close on confirmed conclusion, deferred status, or when local discussion cannot advance.</Rule>
     <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
-  </Frame_Rules>
+  </FrameRules>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
       📋 TS_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
@@ -450,7 +450,7 @@
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — <STEP_NAME>
+      🎯 Phase Progress — <STEPNAME>
         ✅ Closed:    <agreed>
         ⏳ Open:      <under discussion>
         🛑 Blocking:  <if any, else —>
@@ -712,6 +712,6 @@
       [Optional: scope-specific execution notes, deviations, deferred items.]
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 
 </SddTaskScaffolding>

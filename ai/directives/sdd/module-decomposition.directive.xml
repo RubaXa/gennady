@@ -1,5 +1,5 @@
 <SddModuleDecomposition keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, module-rules, rule-activation, modes, add-module, refine-module, sdd-phase-2" type="directive" ver="3.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Turn the approved scope spec into a hierarchy of module specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
 
@@ -12,9 +12,9 @@
 
       **Glossary.** Second scope session. Phase agent = subagent under `phase-execution-protocol` (phase 4, dispatched by `sdd-execute` orchestrator). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs). scope-type ∈ {product, library} — this directive is NOT applicable to infrastructure or contracts scopes.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_DIRECTIVE_MODE">
       **Three modes, auto-detected from intake:**
       - `initial` — first run, only scope spec exists, no module specs.
@@ -186,7 +186,7 @@
     </Axiom>
 
     <Axiom id="AX_Q_IDS">
-      Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
+      Index questions with `Q_<SEMANTICID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
     </Axiom>
 
     <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
@@ -225,9 +225,9 @@
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
 
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or contracts — module-decomposition is not applicable |
@@ -239,9 +239,9 @@
     | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes public entity / weakens postcondition without Decision Log entry |
     | `H_OPERATOR_REJECT` | Operator refuses decomposition, inventory, surface, contract, structure, or final hierarchy |
     | `H_MISSING_RULE_FILE` | Module rule reference does not resolve to existing file (and not `deferred`) |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Golden_Example>
+  <GoldenExample>
     Reference fragment of `specs/backend/payments/payments.spec.md` showing one assembled Port + Adapter pair with Inventory, Surfaces, DbC, Inter-Module Dependencies. Composition reference; individual Output_Contracts describe parts.
 
     ```markdown
@@ -315,9 +315,9 @@
     - **Scope Reference (cross-scope):** `api-contracts` (`../../../api-contracts/api-contracts.spec.md`) — REST API v1.
     - **Provides to:** `orders` (`../../orders/orders.spec.md`).
     ```
-  </Golden_Example>
+  </GoldenExample>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_INTAKE">
       <Goal>Validate scope spec; check scope-type; auto-detect mode; open MODULE_MAP or jump to refinement.</Goal>
       <Action>
@@ -417,16 +417,16 @@
         7. Output for review. STOP.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Frame_Rules>
+  <FrameRules>
     <Rule id="FRAME_PUSH_WHEN">Push frame on: module boundary challenge; alternative entity or Port proposal; questions about contract/lifecycle/runtime hook/trust boundary; sub-topic that cannot close in one sentence.</Rule>
     <Rule id="FRAME_POP_WHEN">Pop on: confirmed local conclusion; DEFERRED non-blocking topic; topic requires separate supporting artifact while main flow continues.</Rule>
     <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
     <Rule id="RETURN_SUMMARY_FORMAT">On pop: `Return Summary` with Confirmed / Changed / New Constraints / Open / Parent Next.</Rule>
-  </Frame_Rules>
+  </FrameRules>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
       🧩 DM_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
@@ -437,8 +437,8 @@
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — <STEP_NAME>
-        🧩 Module:    <CURRENT_MODULE> (or N/A)
+      🎯 Phase Progress — <STEPNAME>
+        🧩 Module:    <CURRENTMODULE> (or N/A)
         ✅ Closed:    <agreed>
         ⏳ Open:      <under discussion>
         🛑 Blocking:  <if any, else —>
@@ -662,5 +662,5 @@
       - **Open risks & validation needs:** <consolidated list across modules>
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddModuleDecomposition>

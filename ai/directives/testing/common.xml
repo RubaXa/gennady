@@ -7,7 +7,7 @@
     **A test is executable learning context.** Title, structural anchors, intent comments must reveal what is under protection, what must not regress, where the scenario is fragile. Tests are CODE — they obey the same machine-first annotation language as production code (`coding/typescript-rules`). The repo reads as one system.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
 
     <!-- ── Contract boundary ──────────────────────────────────────────────── -->
 
@@ -191,7 +191,7 @@
       Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
     </Axiom>
 
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_NON_TRIVIAL_CASE">
@@ -211,7 +211,7 @@
     </Definition>
   </Definitions>
 
-  <BDD_Mapping_Hint>
+  <BDDMappingHint>
     Public contract between `task-scaffolding` and any execution-agent writing tests under a runner-specific directive that inherits this file.
 
     - **`BDD_CANONICAL_CASE_NAME_BINDING`** — canonical case name from ticket MUST be used verbatim as the `it(...)` title. Execution-agent changes a name → MUST update `Test Scenario Coverage` in the ticket BEFORE closing.
@@ -221,14 +221,14 @@
     - **`BDD_ERROR_SCENARIO_BINDING`** — error / rejection scenario → assert-throws / assert-rejects (runner-specific API). Assert message via regex match (`AX_PARTIAL_STRING_VIA_MATCH`). Domain error class → assert both `instanceof` AND message pattern.
     - **`BDD_VERIFICATION_SURFACE_GUARDRAIL`** — `Test Scenario Coverage` carries a `Runtime Fidelity` marker. Tests under this directive cover ONLY `contract-only` and `simulation-backed`. `runtime-hook-required` and `e2e-required` are out of scope; record deferred coverage owner EXPLICITLY in Execution Log.
     - **`BDD_DEFERRED_OWNERSHIP_HONESTY`** — BDD scenario cannot be materialized at this runner level → silent skipping forbidden; add deferred-ownership reference in `Test Scenario Coverage`.
-  </BDD_Mapping_Hint>
+  </BDDMappingHint>
 
-  <Workflow_Outline>
+  <WorkflowOutline>
     <Step id="WF_1_DERIVE_SCENARIOS">Read contract + ticket's `Test Scenario Coverage`. Derive happy-path, boundary, failure scenarios. BDD scenarios are normative source of case names.</Step>
     <Step id="WF_2_DEFINE_UNIFIED_CONTEXT">Define ONE `XxxContext` type and ONE factory at top of file. Teardown required → ONE lifecycle context object in `beforeEach`/`afterEach`. Choose ONE preparation path for the whole file.</Step>
     <Step id="WF_3_BUDGET_CHECK">Estimate file size for planned cases. Projection >300 LOC → plan a split now (by method or scenario family); unified context survives the split.</Step>
     <Step id="WF_4_IMPLEMENT_CASES">For each `it`: decide if title alone conveys intent (skip brief) or not (add brief from closed vocab). Wrap phases ≥2 statements or carrying policy in anchors; skip anchors on one-liners. Pass stubs through injection seams.</Step>
     <Step id="WF_5_CHOOSE_DIAGNOSTIC_ASSERTIONS">Simplest direct assertion first. Aggregate into OBSERVE only when one rich diff beats several isolated assertions.</Step>
     <Step id="WF_6_VERIFY_AND_FINALIZE">Re-check unified context, anchor pairing, snapshot placement, no ungated mocks. Run type-check + tests with coverage. Blocker → declared EXPLICITLY.</Step>
-  </Workflow_Outline>
+  </WorkflowOutline>
 </TestingCommon>

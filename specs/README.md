@@ -21,6 +21,8 @@ graph TD
     ai-skills --> infra-base
     ai-skills --> cli
     prompt-kit --> infra-base
+    ai-tsx --> prompt-kit
+    ai-skills --> ai-tsx
     infra-npm-publish --> infra-base
 ```
 
@@ -38,3 +40,4 @@ graph TD
 | [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅   | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                               |
 | [`prompt-kit`](./prompt-kit/prompt-kit.spec.md)                      | library        | ✅   | JSX-библиотека для сборки промптов из примитивов с рендером в XML/Markdown      |
 | [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | ✅   | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly |
+| [`ai-tsx`](./ai-tsx/ai-tsx.spec.md)                                  | library        | 🚧   | TSX-директивы вместо XML: типизированные элементы, композиты, верификация через diff — ожидает setup sync |

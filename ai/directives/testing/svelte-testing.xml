@@ -9,12 +9,12 @@
     Test files use the `.svelte.test.ts` extension so the Svelte plugin processes their imports.
   </Mission>
 
-  <Depends_On>
+  <DependsOn>
     - ai/directives/testing/vitest-rules.xml
     - ai/directives/coding/svelte5-runes.xml
-  </Depends_On>
+  </DependsOn>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_SVELTE_TEST_FILE_EXTENSION">
       Component test files use the `.svelte.test.ts` extension — the Svelte-aware Vitest convention. Plain `.test.ts` does NOT receive Svelte plugin processing; importing a `.svelte` component from such a file produces opaque compile or runtime errors. Naming is the contract that tells the toolchain «this file must go through the Svelte compiler».
     </Axiom>
@@ -64,7 +64,7 @@
     <Axiom id="AX_SVELTE_TEST_INHERITED_VITEST_RULES">
       All Vitest discipline applies unchanged: single unified context per file, factory-over-hooks for non-lifecycle setup, file-size budget, no `vi.mock` without operator confirm, no auto snapshot updates, explicit imports from `vitest`. This directive only adds Svelte-specific overlays — it does NOT relax inherited rules.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_SVELTE_TEST_FILE">
@@ -75,7 +75,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_SVELTE_TEST_RENDER_AND_ASSERT">
       <Intent>Minimal render + role-based query + assertion. No state mutation, so no `flushSync` needed.</Intent>
       <Snippet language="typescript">
@@ -155,41 +155,41 @@
       </Snippet>
       <Why>`$effect.root` provides the disposal boundary required for `$effect` outside a component; `flushSync` between mutation and assertion; explicit `cleanup()` disposes the root.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_SVELTE_TEST_PLAIN_TS_EXTENSION">
+  <AntiPatterns>
+    <AntiPattern id="AP_SVELTE_TEST_PLAIN_TS_EXTENSION">
       <Bad>File named `Counter.test.ts` imports `Counter.svelte`; Vitest fails with «Cannot find module» or compiles the component as plain TS and explodes at first runtime use.</Bad>
-      <Why_Bad>Plain `.test.ts` extension for a Svelte component test (`AX_SVELTE_TEST_FILE_EXTENSION`). The Svelte plugin's file-pattern rule does not match; the test file bypasses Svelte compilation entirely. The error is opaque because the failure happens during transform, not at a useful assertion point.</Why_Bad>
+      <WhyBad>Plain `.test.ts` extension for a Svelte component test (`AX_SVELTE_TEST_FILE_EXTENSION`). The Svelte plugin's file-pattern rule does not match; the test file bypasses Svelte compilation entirely. The error is opaque because the failure happens during transform, not at a useful assertion point.</WhyBad>
       <Good>Rename to `Counter.svelte.test.ts`. No code change required; the toolchain now routes the file through the Svelte plugin.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SVELTE_TEST_NO_FLUSH">
+    <AntiPattern id="AP_SVELTE_TEST_NO_FLUSH">
       <Bad>`await userEvent.click(button); expect(button).toHaveTextContent('Count: 1');` — assertion immediately after the mutation, no `flushSync`.</Bad>
-      <Why_Bad>Mutation asserted before the effect graph settles (`AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT`). Sometimes green (when the implicit microtask flush happened to run), sometimes red, never trustworthy. Order-dependent flakiness for the next agent to debug.</Why_Bad>
+      <WhyBad>Mutation asserted before the effect graph settles (`AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT`). Sometimes green (when the implicit microtask flush happened to run), sometimes red, never trustworthy. Order-dependent flakiness for the next agent to debug.</WhyBad>
       <Good>`await userEvent.click(button); flushSync(); expect(button).toHaveTextContent('Count: 1');` — explicit boundary makes the assertion deterministic.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SVELTE_TEST_NO_EFFECT_ROOT">
+    <AntiPattern id="AP_SVELTE_TEST_NO_EFFECT_ROOT">
       <Bad>In a `.svelte.test.ts` for a `.svelte.ts` module: `const c = createCounter(); $effect(() => { observed = c.doubled; }); flushSync();` — `$effect` invoked outside any root.</Bad>
-      <Why_Bad>`$effect` without component context AND without `$effect.root` (`AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT`). The runtime throws «effect_orphan» (or equivalent) the moment the effect tries to register. Even if it survives, there is no disposal — the effect leaks into the next test.</Why_Bad>
+      <WhyBad>`$effect` without component context AND without `$effect.root` (`AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT`). The runtime throws «effect_orphan» (or equivalent) the moment the effect tries to register. Even if it survives, there is no disposal — the effect leaks into the next test.</WhyBad>
       <Good>Wrap in `$effect.root`: `const cleanup = $effect.root(() => { ... $effect(...) ... }); flushSync(); cleanup();` — root provides the disposal boundary; explicit `cleanup()` runs after the assertion.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SVELTE_TEST_NO_CLEANUP">
+    <AntiPattern id="AP_SVELTE_TEST_NO_CLEANUP">
       <Bad>Multiple `render(Component, ...)` calls across cases; no `afterEach(() => cleanup())`; testing-library auto-cleanup not enabled in config.</Bad>
-      <Why_Bad>Mount without paired cleanup (`AX_SVELTE_TEST_MOUNT_AND_CLEANUP`). DOM accumulates between cases; `getByRole` starts returning matches from a previous test's mount, producing «works alone, fails in suite» symptoms that are hard to attribute.</Why_Bad>
+      <WhyBad>Mount without paired cleanup (`AX_SVELTE_TEST_MOUNT_AND_CLEANUP`). DOM accumulates between cases; `getByRole` starts returning matches from a previous test's mount, producing «works alone, fails in suite» symptoms that are hard to attribute.</WhyBad>
       <Good>Either enable testing-library auto-cleanup in `vitest.config.ts`, or explicitly `afterEach(() => cleanup())` in the file.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SVELTE_TEST_DIRECT_QUERYSELECTOR">
+    <AntiPattern id="AP_SVELTE_TEST_DIRECT_QUERYSELECTOR">
       <Bad>`const button = container.querySelector('.submit-btn'); expect(button.textContent).toBe('Go');`</Bad>
-      <Why_Bad>Direct DOM query coupled to a CSS class (`AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY`, `AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED`). `.submit-btn` is implementation detail with no contract status. Refactor that renames the class turns the test red without any behavioural change.</Why_Bad>
+      <WhyBad>Direct DOM query coupled to a CSS class (`AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY`, `AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED`). `.submit-btn` is implementation detail with no contract status. Refactor that renames the class turns the test red without any behavioural change.</WhyBad>
       <Good>`expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument();` — role + accessible name, the contract surface a user perceives.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_SVELTE_TEST_RUN">
       <Purpose>Run Svelte component tests via Vitest in one-shot mode.</Purpose>
       <Command>npx vitest run</Command>
@@ -215,9 +215,9 @@
       <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -LE "cleanup\(\)|globals:\s*true.*cleanup" || true</Command>
       <Expected>Empty output (every file has cleanup). Matches indicate files without cleanup wiring; reconcile with `vitest.config.ts` if auto-cleanup is enabled project-wide.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Test files use the `.svelte.test.ts` extension; `.test.ts` is reserved for non-Svelte tests.
     ✅ Components mount via `@testing-library/svelte` `render()`; cleanup paired (explicit `afterEach` or auto-cleanup).
     ✅ State mutation followed by `flushSync()` before any DOM assertion.
@@ -233,5 +233,5 @@
     ❌ `container.querySelector` / `document.getElementById` as the default DOM query.
     ❌ Manual `render()` in a project that already maintains a story counterpart for the scenario.
     ❌ Any inherited Vitest rule relaxed (mock without confirm, hidden snapshot update, oversized file, etc.).
-  </Reward_Criteria>
+  </RewardCriteria>
 </SvelteTestingRules>

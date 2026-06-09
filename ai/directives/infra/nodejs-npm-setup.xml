@@ -9,7 +9,7 @@
     **Base axiom:** one package manager, one module system, one Node version per project. All three committed as files, not assumed.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_SINGLE_PACKAGE_MANAGER">
       One package manager per project: **npm only**. Forbidden alongside npm: yarn, pnpm, bun. `package-lock.json` is the lock; all other lock files must be absent and gitignored.
 
@@ -125,9 +125,9 @@
 
       Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Setup_Steps>
+  <SetupSteps>
     <!-- Ordered actions for initial Node.js/npm project configuration.
          Axioms in Belief_State define the WHY and invariants; these steps define the HOW and sequence. -->
     <Step id="STEP_1_CREATE_NVMRC">
@@ -156,7 +156,7 @@
     <Step id="STEP_8_VERIFY_REPRODUCIBILITY_TRIAD">
       Confirm three files committed: `.nvmrc`, `package.json`, `package-lock.json` (`npm ci` reads all three). Run HOOK_NVMRC_EXACT and HOOK_NPMRC_REGISTRY. Run each primary script — must exit within 2 minutes; hang = watch-mode violation.
     </Step>
-  </Setup_Steps>
+  </SetupSteps>
 
   <Definitions>
     <Definition id="DEF_REPRODUCIBILITY_TRIAD">Three committed files guaranteeing reproducible Node.js environment: `.nvmrc` (Node version), `package.json` (declared deps), `package-lock.json` (resolved dep tree). `npm ci` reads all three.</Definition>
@@ -165,7 +165,7 @@
     <Definition id="DEF_CJS">CommonJS. Default when `"type"` is absent or `"commonjs"`. Syntax: `require`/`module.exports`. Synchronous resolution.</Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_MINIMAL_PACKAGE_JSON">
       <Intent>Minimal valid `package.json`: explicit module system, engines aligned, exact dev-tool pins.</Intent>
       <Snippet language="json">
@@ -237,59 +237,59 @@
       </Snippet>
       <Why>Verification before install prevents silent incompatibilities. Committing lock with package.json closes the reproducibility triad.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_MULTIPLE_LOCK_FILES">
+  <AntiPatterns>
+    <AntiPattern id="AP_MULTIPLE_LOCK_FILES">
       <Bad>Repo has both `package-lock.json` AND `yarn.lock` AND/OR `pnpm-lock.yaml`.</Bad>
-      <Why_Bad>Each manager resolves transitive deps differently. `npm ci` reads `package-lock.json`; developer running `yarn` writes `yarn.lock` with different versions. Builds diverge silently.</Why_Bad>
+      <WhyBad>Each manager resolves transitive deps differently. `npm ci` reads `package-lock.json`; developer running `yarn` writes `yarn.lock` with different versions. Builds diverge silently.</WhyBad>
       <Good>Only `package-lock.json` tracked. Foreign locks deleted + added to `.gitignore`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_NVMRC_ENGINES_MISMATCH">
+    <AntiPattern id="AP_NVMRC_ENGINES_MISMATCH">
       <Bad>`.nvmrc=22.14.0` + `"engines": { "node": ">=18.0.0 <20.0.0" }`.</Bad>
-      <Why_Bad>`.nvmrc` installs Node 22; `engines` rejects Node 22. npm warns; CI may enforce constraint and fail. Local dev and CI run on different Node versions.</Why_Bad>
+      <WhyBad>`.nvmrc` installs Node 22; `engines` rejects Node 22. npm warns; CI may enforce constraint and fail. Local dev and CI run on different Node versions.</WhyBad>
       <Good>`.nvmrc=22.14.0` + `"engines": { "node": ">=22.0.0 <23.0.0" }`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_NVMRC_RANGE">
+    <AntiPattern id="AP_NVMRC_RANGE">
       <Bad>`.nvmrc` contains `22` (range) or `lts/iron` (alias).</Bad>
-      <Why_Bad>`nvm use 22` resolves to whatever the latest 22.x is at install time — different on different machines and at different moments.</Why_Bad>
+      <WhyBad>`nvm use 22` resolves to whatever the latest 22.x is at install time — different on different machines and at different moments.</WhyBad>
       <Good>`.nvmrc` contains `22.14.0` exact.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_NODE_MODULES_COMMITTED">
+    <AntiPattern id="AP_NODE_MODULES_COMMITTED">
       <Bad>`git ls-files | grep '^node_modules/'` returns hits.</Bad>
-      <Why_Bad>10–500 MB bloat. Platform-specific native binaries compiled on macOS won't run on Linux CI. PR diffs become unreadable.</Why_Bad>
+      <WhyBad>10–500 MB bloat. Platform-specific native binaries compiled on macOS won't run on Linux CI. PR diffs become unreadable.</WhyBad>
       <Good>`.gitignore` includes `node_modules/`, `dist/`. `npm ci` restores from `package-lock.json` deterministically.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MIXED_MODULE_SYSTEM">
+    <AntiPattern id="AP_MIXED_MODULE_SYSTEM">
       <Bad>`package.json` has `"type": "module"`, but `src/loader.js` uses `const fs = require('fs'); module.exports = …`.</Bad>
-      <Why_Bad>`"type": "module"` makes all `.js` files ESM. Using `require` in ESM file throws `ReferenceError: require is not defined` at runtime.</Why_Bad>
+      <WhyBad>`"type": "module"` makes all `.js` files ESM. Using `require` in ESM file throws `ReferenceError: require is not defined` at runtime.</WhyBad>
       <Good>ESM project: `import { readFile } from 'node:fs/promises'; export { load };`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_BUILTIN_WITHOUT_PREFIX">
+    <AntiPattern id="AP_BUILTIN_WITHOUT_PREFIX">
       <Bad>`import { readFile } from 'fs/promises';` / `import { join } from 'path';`.</Bad>
-      <Why_Bad>A third-party package named `fs` or `path` would shadow the built-in silently. Intent ambiguous: built-in or dependency?</Why_Bad>
+      <WhyBad>A third-party package named `fs` or `path` would shadow the built-in silently. Intent ambiguous: built-in or dependency?</WhyBad>
       <Good>`import { readFile } from 'node:fs/promises';` / `import { join } from 'node:path';`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_TOOL_RANGE_PIN">
+    <AntiPattern id="AP_TOOL_RANGE_PIN">
       <Bad>`"devDependencies": { "vite": "^5.2.0", "prettier": "3.x" }`.</Bad>
-      <Why_Bad>Semver-compatible update can silently change build output. CI installs 5.2.11 today, 5.2.12 next week — builds diverge.</Why_Bad>
+      <WhyBad>Semver-compatible update can silently change build output. CI installs 5.2.11 today, 5.2.12 next week — builds diverge.</WhyBad>
       <Good>`"devDependencies": { "vite": "5.2.11", "prettier": "3.2.5" }`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_NPMRC_ABSENT">
+    <AntiPattern id="AP_NPMRC_ABSENT">
       <Bad>No `.npmrc` in the repository.</Bad>
-      <Why_Bad>Each developer and CI runner resolves from whatever registry their global `~/.npmrc` points to. Private-registry users silently fall back to public or fail with 404.</Why_Bad>
+      <WhyBad>Each developer and CI runner resolves from whatever registry their global `~/.npmrc` points to. Private-registry users silently fall back to public or fail with 404.</WhyBad>
       <Good>Committed `.npmrc` with `registry=https://registry.npmjs.org/`.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_NVMRC_EXACT">
       <Purpose>`.nvmrc` exists, one line, semver-exact.</Purpose>
       <Command>test -f .nvmrc && [ "$(wc -l < .nvmrc)" -eq 1 ] && grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc && echo "OK"</Command>
@@ -325,9 +325,9 @@
       <Command>node -e "const p=require('./package.json'); console.log('module system:', p.type || 'commonjs (default)')"</Command>
       <Expected>Prints `module system: module` or `module system: commonjs (default)`.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ `.nvmrc` exists, one line, exact semver. `package.json#engines.node` accepts the version in `.nvmrc`.
     ✅ Only `npm` used; `package-lock.json` committed; no foreign lock files. `node_modules/` gitignored.
     ✅ Module system declared once; not mixed. All Node built-in imports use `node:` prefix.
@@ -350,5 +350,5 @@
     ❌ `check` script omits a phase covered by an active rule (e.g., lint active but not in `check`).
     ❌ Any phase sub-command in `check` defaults to watch / persistent mode — agent invocations hang indefinitely.
     ❌ `npm install` without env-prefix in sandbox; modifying operator's `~/.npmrc`; committing project `.npmrc` with corp registry URL.
-  </Reward_Criteria>
+  </RewardCriteria>
 </NodeJSNpmSetup>

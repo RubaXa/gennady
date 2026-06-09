@@ -118,6 +118,10 @@ graph TD
     TSK-51 --> TSK-50
     TSK-52 --> TSK-49
     TSK-52 --> TSK-51
+    TSK-73[TSK-73: Bootstrap ai-tsx] --> prompt-kit-task
+    TSK-74[TSK-74: elements] --> TSK-73
+    TSK-75[TSK-75: components] --> TSK-74
+    TSK-76[TSK-76: directives] --> TSK-75
 ```
 
 ## Tracker Index
@@ -131,6 +135,7 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | prompt-kit        | library        | [README](prompt-kit/README.md)        | 4     | 0/4   |
+| ai-tsx            | library        | [README](ai-tsx/README.md)            | 4     | 0/4   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
 
 ## Decision Log

@@ -7,7 +7,7 @@
     Scope is git itself. Tool choice for hooks runner (lefthook / husky / simple-git-hooks) is the `git-hooks` category in the infrastructure scope discovery session. CI provider is the `ci` category. Both distinct from this rule.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_GITIGNORE_BASELINE">
       `.gitignore` covers three layers.
 
@@ -155,9 +155,9 @@
 
       Git history is forever. Once a secret reaches the remote, assume it's harvested by scanners within minutes. Rotation is mandatory; history rewrite is hygiene, not security.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Setup_Steps>
+  <SetupSteps>
     <!-- Ordered actions for initial git repository configuration.
          Axioms in Belief_State define the WHY and invariants; these steps define the HOW and sequence. -->
     <Step id="STEP_1_INIT_REPO">
@@ -181,41 +181,41 @@
     <Step id="STEP_7_VERIFY">
       Confirm: `git status` clean; `.gitignore` covers all tool-generated paths; hooks fire on test commit; remote branch protection active.
     </Step>
-  </Setup_Steps>
+  </SetupSteps>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_NODE_MODULES_COMMITTED">
+  <AntiPatterns>
+    <AntiPattern id="AP_NODE_MODULES_COMMITTED">
       <Bad>`git add node_modules/` or `node_modules/` not in `.gitignore`</Bad>
-      <Why_Bad>10–500 MB bloat; macOS-compiled native binaries fail on Linux CI; PR diffs become unreadable. Lock file already encodes the dep tree deterministically.</Why_Bad>
+      <WhyBad>10–500 MB bloat; macOS-compiled native binaries fail on Linux CI; PR diffs become unreadable. Lock file already encodes the dep tree deterministically.</WhyBad>
       <Good>`node_modules/` in `.gitignore`. `npm ci` / `pnpm install --frozen-lockfile` restores from lock file.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_FORCE_PUSH_TO_MAIN">
+    <AntiPattern id="AP_FORCE_PUSH_TO_MAIN">
       <Bad>`git push --force origin main`</Bad>
-      <Why_Bad>Silently rewrites history collaborators already pulled. Recovery requires every team member to reset their local branch — error-prone, sometimes impossible if uncommitted work is on top.</Why_Bad>
+      <WhyBad>Silently rewrites history collaborators already pulled. Recovery requires every team member to reset their local branch — error-prone, sometimes impossible if uncommitted work is on top.</WhyBad>
       <Good>Force-push only on personal branches. Shared-branch issues fixed via revert commits.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SECRET_IN_HISTORY">
+    <AntiPattern id="AP_SECRET_IN_HISTORY">
       <Bad>Committed `.env` with real API key, then `git rm` in next commit.</Bad>
-      <Why_Bad>The secret is in history. Anyone can `git log -p` and recover it. Public repos expose to scanners within seconds.</Why_Bad>
+      <WhyBad>The secret is in history. Anyone can `git log -p` and recover it. Public repos expose to scanners within seconds.</WhyBad>
       <Good>Rotate the credential immediately. Then rewrite history with `git filter-repo` and force-push (coordinate with team). Add `.env` to `.gitignore` BEFORE first push.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_NO_VERIFY_AS_HABIT">
+    <AntiPattern id="AP_NO_VERIFY_AS_HABIT">
       <Bad>`git commit --no-verify` because pre-commit hook is «too slow».</Bad>
-      <Why_Bad>Hooks exist to catch mistakes locally. Routinely bypassing shifts mistakes into CI (slower, more expensive) or main (worse). Slow hook = fix the hook, don't skip it.</Why_Bad>
+      <WhyBad>Hooks exist to catch mistakes locally. Routinely bypassing shifts mistakes into CI (slower, more expensive) or main (worse). Slow hook = fix the hook, don't skip it.</WhyBad>
       <Good>Diagnose hook slowness (lint scope too wide? full test suite in pre-commit instead of pre-push?). Optimize. `--no-verify` only with explicit operator authorization, documented in commit body.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_LIGHTWEIGHT_TAG">
+    <AntiPattern id="AP_LIGHTWEIGHT_TAG">
       <Bad>`git tag v1.2.3` (no `-a`).</Bad>
-      <Why_Bad>No tagger / date / message metadata. Looks identical to a branch ref in some tools. Release lineage unrecoverable.</Why_Bad>
+      <WhyBad>No tagger / date / message metadata. Looks identical to a branch ref in some tools. Release lineage unrecoverable.</WhyBad>
       <Good>`git tag -a v1.2.3 -m "Release 1.2.3 — <summary>"`. Always annotated for release tags.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_GITIGNORE_PRESENT">
       <Purpose>Verify `.gitignore` exists and is non-empty.</Purpose>
       <Command>test -s .gitignore && echo "OK"</Command>
@@ -241,9 +241,9 @@
       <Command>for t in $(git tag); do test "$(git cat-file -t $t)" = "tag" || echo "FAIL: $t is lightweight"; done; echo "OK"</Command>
       <Expected>Prints only `OK`; exit 0.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ `.gitignore` covers mandatory + tool-derived layers; first commit only after `.gitignore` in place.
     ✅ Default branch is `main`; remote branch protection prevents direct push, requires PR + green checks.
     ✅ Commits follow chosen convention; subjects ≤72 chars, imperative mood.
@@ -257,5 +257,5 @@
     ❌ `--no-verify` as habit; default branch named `master` in new project.
     ❌ Destructive command run as «let me just reset --hard» reflex without operator authorization.
     ❌ `.claude/settings.local.json` tracked.
-  </Reward_Criteria>
+  </RewardCriteria>
 </GitSetup>

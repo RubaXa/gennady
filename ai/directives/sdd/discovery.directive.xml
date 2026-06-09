@@ -1,5 +1,5 @@
 <SddDiscovery keywords="discovery, scope, vision, golden-dx, design-variants, decision-log, scope-rules, scope-type, infrastructure, contracts, library, product, living-spec, frame-stack, evidence-hygiene, runtime-backing, sdd-scope-discovery" type="directive" ver="3.1">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Turn the operator's intent for a scope into an approved scope spec at `specs/<scope-name>/<scope-name>.spec.md`.
 
@@ -16,9 +16,9 @@
 
       **Glossary.** Scope = architecturally cohesive unit (own runtime / stack / deployment target / UX surface). scope-type ∈ {infrastructure, contracts, library, product}.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_DIRECTIVE_MODE">
       **Three modes, auto-detected:**
       - `greenfield` — scope spec does not exist.
@@ -219,9 +219,9 @@
 
       English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`DSC_R<N>`), `F-NNN` / `D-NNN` / `H_*` IDs, status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_INTAKE` | Empty intake |
@@ -235,9 +235,9 @@
     | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without Pivot Invalidation List |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_7 finished without a Bootstrap Requirements section (even empty must be declared explicitly) |
     | `H_OPERATOR_REJECT` | Operator rejected the spec |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_INTAKE">
       <Goal>Resolve scope name, scope-type, mode. Read Portal and rule registry for context.</Goal>
       <Action>
@@ -359,16 +359,16 @@
         3. Output for review. Approval Check. STOP.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Frame_Rules>
+  <FrameRules>
     <Rule id="FRAME_PUSH_WHEN">Push a frame on: dispute about scope-type; alternative tool / architecture proposal; sub-topic that cannot close in one sentence; uncomfortable-question dive; pivot rationale clarification.</Rule>
     <Rule id="FRAME_POP_WHEN">Pop on: confirmed local conclusion; deferred non-blocking topic; topic requires a separate supporting artifact while main flow continues.</Rule>
     <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
     <Rule id="RETURN_SUMMARY_FORMAT">On pop, emit a Return Summary with: Confirmed / Changed / New Constraints / Open / Parent Next.</Rule>
-  </Frame_Rules>
+  </FrameRules>
 
-  <Example_Patterns>
+  <ExamplePatterns>
     Discovery deliberately avoids one monolithic Golden Example — scope-spec shape varies too much across scope-types. Below are intentionally compact, freeform sketches; treat them as orientation, not templates. The normative shapes live in the SPEC_STRUCTURE contracts.
 
     <Pattern id="EXAMPLE_INFRASTRUCTURE">
@@ -458,9 +458,9 @@
       - Webhook dispatcher: `simulation` в v1 (deferred → TSK-stub до реальной integration).
       ```
     </Pattern>
-  </Example_Patterns>
+  </ExamplePatterns>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
       🦾 DSC_R<N> | SCOPE: <scope-name> | TYPE: <scope-type> | MODE: <greenfield|refine|pivot> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <STATUS> | CONF: <LOW|MEDIUM|HIGH>
@@ -820,5 +820,5 @@
       - **Rules to revisit:** [list]
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddDiscovery>

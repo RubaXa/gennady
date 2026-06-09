@@ -1,5 +1,5 @@
 <SddPhaseExecution keywords="phase-execution, single-phase, scope-discipline, live-log, intro-discipline, blocker-escalation, handoff" type="directive" ver="3.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Execute ONE phase of ONE task ticket, dispatched by `sdd-execute` orchestrator. Read only what this phase needs; write only this phase's Target Files; emit a typed Handoff summary.
 
@@ -23,9 +23,9 @@
       - **Handoff →** line at end of phase block;
       - structured return summary to orchestrator.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_PHASE_SCOPE_LOCK">
       Touch only this phase's `Target Files`. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Writing anywhere outside this phase's Target Files → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or new task.
     </Axiom>
@@ -171,9 +171,9 @@
 
       English regardless of context: code (impl + tests), JSDoc, intent comments, file paths, tool commands, axiom IDs (`AX_*`), IDs (`TSK-NN` / `P<N>` / `F-NNN` / `H_*`), severity / status tokens (`DONE` / `BLOCKED` / `PASS` / `FAIL`), BDD keywords, action tokens (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `ver` / `BLOCKED` / `DONE`).
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_PHASE_NOT_FOUND` | Phase ID from orchestrator does not match any block under `## 3. Phases` |
@@ -185,9 +185,9 @@
     | `H_VERIFICATION_FAIL` | Verification command fails after fix attempts |
     | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: cannot verify current API of installed tool |
     | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Context_Expectation>
+  <ContextExpectation>
     Orchestrator (`sdd-execute`) provides in dispatch prompt:
     - absolute path to this directive (read first);
     - ticket file path;
@@ -202,9 +202,9 @@
     4. Spec anchors cited in section 1 Spec References (only those relevant to this phase).
 
     Tickets and specs carry `<!--SECTION:NAME-->` anchors. Phase agent MAY substitute `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>` for full-file Read (own block `PHASE_P<N>` / `PHASE_P<N>_FIX`; ticket sections `META` / `VERIFICATION` / `TEST_COVERAGE` / `BDD` / `EXECUTION_LOG`; spec sections by canonical name). Read remains the fallback — use it when multiple sections are needed or when extract returns `ANCHOR_NOT_FOUND` (legacy artifact; log a discovery line and proceed).
-  </Context_Expectation>
+  </ContextExpectation>
 
-  <Phase_Procedure>
+  <PhaseProcedure>
     <Step id="STEP_1_PARSE_PHASE_INPUT">
       <Goal>Resolve phase, validate prerequisites, record reason for this run.</Goal>
       <Action>
@@ -267,9 +267,9 @@
         4. Return structured summary to orchestrator (see `RETURN_SUMMARY_FORMAT`).
       </Action>
     </Step>
-  </Phase_Procedure>
+  </PhaseProcedure>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="PHASE_BLOCK_FORMAT">
       Event-driven: optional event lines (0+ each) appear ONLY when their event happened. Mandatory closing lines: `ver` + `DONE` + Handoff.
 
@@ -337,5 +337,5 @@
       ```
       `artifacts` / `decisions` / `open` mirror the **Handoff →** line — orchestrator threads them into the next phase's prompt.
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddPhaseExecution>

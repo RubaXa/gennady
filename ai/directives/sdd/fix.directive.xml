@@ -1,5 +1,5 @@
 <SddFix keywords="fix, remediate, bugfix, code-review, findings, reopen, batch-fix" type="directive" ver="1.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Turn operator findings (code review, audit, sdd-check, bug report) into concrete fixes:
       classify each finding → plan fixes → agree with operator → execute direct edits + spec updates
@@ -8,9 +8,9 @@
       Input: operator context (findings list, code review comments, sdd-check output).
       Output: applied fixes in code/specs/trackers, reopened tasks dispatched through sdd-execute, sdd-check PASS.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_TASK_RESOLUTION">
       BEFORE classification, resolve which task owns each affected file.
 
@@ -106,17 +106,17 @@
       After all tasks complete, run sdd-check. All checks must PASS.
       If sdd-check finds issues → classify them as new findings → ask operator → fix cycle repeats.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | HALT            | Trigger |
     |-----------------|---------|
     | H_NO_FINDINGS   | No findings in context to fix |
     | H_NO_AGREE      | Operator rejects the plan |
     | H_VERIFY_FAIL   | sdd-check fails after fix cycle — operator must decide |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_1_INTAKE">
       Parse findings from the operator's context: code review, sdd-check, audit, bug report.
       Normalize: file path, line, description, severity.
@@ -220,9 +220,9 @@
       All checks must PASS. If not → findings → go to STEP_2 for a second pass.
       Show final summary per FIX_SUMMARY_FORMAT.
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="PLAN_TABLE_FORMAT">
       Shown to operator at STEP_3. Compact table per category. Operator may edit.
     </Contract>
@@ -245,5 +245,5 @@
       🔍 sdd-check: ✅ PASS (N/N checks)
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddFix>

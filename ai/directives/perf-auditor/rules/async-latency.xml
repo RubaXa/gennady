@@ -1,101 +1,101 @@
 <Rulebook id="rulebook_async_latency" type="knowledge_base">
-  <Primary_Goal>
+  <PrimaryGoal>
     Предоставить Аудитору критерии для выявления проблем с конкурентностью, отсутствием обратного давления (Backpressure), блокировками Event Loop и неэффективным управлением сетевыми/дисковыми ресурсами.
-  </Primary_Goal>
-  <Belief_State>
+  </PrimaryGoal>
+  <BeliefState>
     <Axiom id="AX_BACKPRESSURE_IS_LAW">Чтение данных быстрее, чем их может обработать потребитель, накапливает бесконечный буфер в RAM. Игнорирование Backpressure — это прямой путь к OOM на устройствах с 4-8 GB памяти.</Axiom>
     <Axiom id="AX_CONCURRENCY_LIMITS">ОС и железо имеют лимиты на открытые сокеты и дескрипторы. Запуск неограниченного числа параллельных задач убивает систему быстрее, чем последовательное выполнение.</Axiom>
     <Axiom id="AX_LATENCY_STACKING">Последовательный `await` независимых задач складывает их задержки (Latency). Параллельный запуск сводит общую задержку к самой медленной задаче.</Axiom>
-  </Belief_State>
-  <Rules_Registry>
+  </BeliefState>
+  <RulesRegistry>
     <!-- ПРАВИЛО 1: Отсутствие контроля параллелизма -->
     <Rule id="ASYNC_UNBOUNDED_PROMISE_ALL">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Вызов `Promise.all(arr.map(...))` или `Promise.allSettled(...)`, где `arr` — массив неизвестного или потенциально большого размера.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Запуск тысяч промисов одновременно перегружает Event Loop, исчерпывает пул соединений (database/network meltdown) и вызывает пик потребления памяти (все ответы сохраняются в RAM одновременно).
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="KNOWN_SMALL_ARRAY">Если размер массива жестко ограничен бизнес-логикой (например, `['user', 'admin'].map(...)`), игнорировать.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Неограниченный параллелизм. Замени `Promise.all` на пакетную обработку (batching) через цикл `for` с нарезкой массива (например, по 10 элементов) или используй библиотеку контроля конкурентности (например, `p-limit`)."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 2: Лишняя последовательность (Sequential Await) -->
     <Rule id="ASYNC_SEQUENTIAL_AWAIT">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Несколько операторов `await` идут подряд в одном блоке кода.
         - Использование `await` внутри цикла `for...of` при вызове независимых API.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Ожидание завершения первой задачи перед стартом второй удваивает время ответа (Latency) и заставляет CPU простаивать в ожидании I/O.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="DATA_DEPENDENCY">Если второй `await` использует результат первого (например, `const user = await getUser(); const posts = await getPosts(user.id);`), оптимизация невозможна. Отклонить.</Guardrail>
         <Guardrail condition="ORDER_REQUIREMENT">Если важен строгий порядок выполнения на сервере (например, транзакции), отклонить.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Последовательное выполнение независимых задач. Оберни эти вызовы в `Promise.all([...])` для параллельного выполнения и снижения Latency."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 3: Игнорирование Backpressure (Потоки) -->
     <Rule id="ASYNC_NO_BACKPRESSURE">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Чтение файлов целиком: `fs.readFile`, `fs.promises.readFile`, `Buffer.concat()`.
         - Чтение HTTP-ответов целиком: `await response.text()` или `.json()` для огромных payload.
         - Использование `readable.on('data', chunk => writable.write(chunk))` без проверки возвращаемого значения `write()` и вызова `pause()`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Полная буферизация загружает весь объем данных в RAM. В Node.js это может увеличить потребление памяти с 50 MB до 1.5 GB. Потоки (Streams) с Backpressure держат в памяти только один чанк (chunk).
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="SMALL_PAYLOAD">Если файл или ответ гарантированно мал (конфиги, мелкие JSON), `readFile` или `.json()` допустимы. Игнорировать.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Игнорирование Backpressure. Замени чтение файла целиком на `fs.createReadStream` (или Web Streams). Для трансформации используй `stream.pipeline` или асинхронные итераторы `for await...of`."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 4: Утечки ресурсов при отмене (Missing Cancellation) -->
     <Rule id="ASYNC_MISSING_CANCELLATION">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Вызовы `fetch()` без передачи `signal: AbortSignal`.
         - Долгие асинхронные операции, которые не отменяются при размонтировании компонента или таймауте.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Если пользователь ушел со страницы (или запрос отменен логикой), а `fetch` продолжает скачивать данные, это тратит трафик, батарею и CPU. Неотмененные промисы держат в памяти замыкания (Memory Leak).
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="FIRE_AND_FORGET">Если запрос обязан завершиться на сервере в любом случае (например, отправка аналитики или логов), отмена не нужна. Игнорировать.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Отсутствует механизм отмены. Создай `new AbortController()`, передай его `signal` в `fetch` и вызови `.abort()` в функции очистки (cleanup) или по таймауту."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 5: Шторм повторов и высокочастотные события (Retry Storm / Flooding) -->
     <Rule id="ASYNC_HIGH_FREQUENCY_FLOOD">
-      <Trigger_Signals>
+      <TriggerSignals>
         - `catch` блок внутри цикла с немедленным повторным вызовом `await` (retry без задержки).
         - Подписки на события `scroll`, `mousemove`, `resize` без использования debounce/throttle.
         - `setInterval` с очень коротким таймингом для поллинга сервера.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Синхронные или высокочастотные ретраи при падении сервиса создают лавинообразную нагрузку (Retry Storm), окончательно убивая сервер. Обработка каждого пикселя скролла вызывает Layout Thrashing и роняет FPS до нуля.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="ANIMATION_FRAME">Если подписка идет через `requestAnimationFrame` для плавной отрисовки, throttle может испортить анимацию. Игнорировать.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Высокочастотный флуд. Для поллинга/ретраев: добавь экспоненциальную задержку (Exponential Backoff). Для UI-событий: оберни обработчик в функцию `throttle` или `debounce`."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
-  </Rules_Registry>
-  <Verification_Protocol>
+  </RulesRegistry>
+  <VerificationProtocol>
     При получении сигнала от Оркестратора:
     1. Найди `<Rule>`.
     2. Жестко проверь `<Guardrail>`. В правиле `ASYNC_SEQUENTIAL_AWAIT` критически важно убедиться в ОТСУТСТВИИ зависимости данных между вызовами. Если есть малейшее подозрение на зависимость — отбрось триггер.
-    3. Зафиксируй логику в `<Verification_Log>`.
-    4. Сформируй приказ для DevAgent через `<Directive_Template>`.
-  </Verification_Protocol>
+    3. Зафиксируй логику в `<VerificationLog>`.
+    4. Сформируй приказ для DevAgent через `<DirectiveTemplate>`.
+  </VerificationProtocol>
 </Rulebook>

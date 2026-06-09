@@ -5,11 +5,11 @@
     Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
   </Mission>
 
-  <Inherited_Baseline>
+  <InheritedBaseline>
     All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds node:test-specific overrides and patterns.
-  </Inherited_Baseline>
+  </InheritedBaseline>
 
-  <Belief_State>
+  <BeliefState>
 
     <Axiom id="AX_ASSERT_API_CHOICE">
       Pick the simplest direct match by shape (node:test assert API):
@@ -46,9 +46,9 @@
       `t.assert.snapshot()` / `t.assert.fileSnapshot()` outputs live in a dedicated `snapshots/` directory next to the test area. Updates go ONLY through the runner's snapshot-update flow under inherited `AX_SNAPSHOT_OPERATOR_CONFIRM` — manual edits to snapshot files are forbidden (they enable silent contract drift).
     </Axiom>
 
-  </Belief_State>
+  </BeliefState>
 
-  <Test_Patterns>
+  <TestPatterns>
     <Pattern id="PT_DIRECT_SCALAR_CASE">
       <Intent>Trivial scalar case without an opening brief: title + direct input + a single assertion already expose the scenario. Anchors omitted on the one-line TRIGGER and ASSERT phases per `AX_PHASE_ANCHORS`; kept only on SETUP because it has its own intent.</Intent>
       <Snippet language="typescript">
@@ -234,35 +234,35 @@
       </Snippet>
       <Why>Aggregation in OBSERVE justified: a single `deepStrictEqual` shows drift in both text and milestones. SETUP and TRIGGER are one-liners → no anchors; OBSERVE has aggregation policy → anchored. Fixture read allowed, write forbidden (inherited `AX_FIXTURE_IO_POLICY`).</Why>
     </Pattern>
-  </Test_Patterns>
+  </TestPatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_PRIVATE_INSPECTION">
+  <AntiPatterns>
+    <AntiPattern id="AP_PRIVATE_INSPECTION">
       <Bad>Test inspects `client._inflightCount` (protected/internal field) via `@ts-expect-error` to bypass encapsulation.</Bad>
-      <Why_Bad>Violates inherited `AX_CONTRACT_OVER_IMPLEMENTATION`. A refactor renaming `_inflightCount` to `_pending` breaks the test without changing the contract.</Why_Bad>
+      <WhyBad>Violates inherited `AX_CONTRACT_OVER_IMPLEMENTATION`. A refactor renaming `_inflightCount` to `_pending` breaks the test without changing the contract.</WhyBad>
       <Good>Subscribe to `client.on('reservation.requested', e => events.push(e))` and assert `events.length` + `events[0].idempotencyKey`. Public lifecycle event is the observable.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_TRY_CATCH_FLAG_ANTIPATTERN">
+    <AntiPattern id="AP_TRY_CATCH_FLAG_ANTIPATTERN">
       <Bad>`let threw = false; try { await client.reserveStock(''); } catch (e) { threw = true; assert.ok((e as Error).message.includes('idempotency')); } assert.ok(threw);`</Bad>
-      <Why_Bad>Manual try/catch + boolean flag instead of `assert.rejects()` (`AX_ASSERT_API_CHOICE`). `includes()` on error message (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Test can silently pass if the code stops throwing — `threw` stays false, only fallback gate is `assert.ok(threw)`.</Why_Bad>
+      <WhyBad>Manual try/catch + boolean flag instead of `assert.rejects()` (`AX_ASSERT_API_CHOICE`). `includes()` on error message (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Test can silently pass if the code stops throwing — `threw` stays false, only fallback gate is `assert.ok(threw)`.</WhyBad>
       <Good>`await assert.rejects(() => client.reserveStock(''), (error) => { assert.match((error as Error).message, /idempotency.*empty|empty.*idempotency/i); return true; });`</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SHARED_MUTABLE_STATE_AND_NON_ENGLISH_NARRATION">
+    <AntiPattern id="AP_SHARED_MUTABLE_STATE_AND_NON_ENGLISH_NARRATION">
       <Bad>`const cart = new Cart()` shared between tests; test names in Russian («добавляет товар»); `Шаг 1: добавляем` / `Шаг 2: проверяем` comments; second test depends on state from first.</Bad>
-      <Why_Bad>Shared mutable state breaks isolation (inherited `AX_NO_DESCRIBE_LET_PILEUP`); creates order dependency. Non-English names/comments (inherited `AX_ENGLISH_ONLY_NAMES_AND_COMMENTS`). Step-by-step human narration (inherited `AX_TESTS_NO_HUMAN_NARRATION`).</Why_Bad>
+      <WhyBad>Shared mutable state breaks isolation (inherited `AX_NO_DESCRIBE_LET_PILEUP`); creates order dependency. Non-English names/comments (inherited `AX_ENGLISH_ONLY_NAMES_AND_COMMENTS`). Step-by-step human narration (inherited `AX_TESTS_NO_HUMAN_NARRATION`).</WhyBad>
       <Good>Single context factory `createCartContext(overrides?)` called inside each case; English titles like `should expose count = 1 after a single add`; direct assertions.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SNAPSHOT_FOR_SCALAR">
+    <AntiPattern id="AP_SNAPSHOT_FOR_SCALAR">
       <Bad>`it('returns 42', (t) => { const result = compute(); t.assert.snapshot(result); });`</Bad>
-      <Why_Bad>Snapshot for a scalar — violates inherited `AX_SNAPSHOT_USAGE_GATE`. Failure shows diff of snapshot blobs instead of «42 ≠ 41».</Why_Bad>
+      <WhyBad>Snapshot for a scalar — violates inherited `AX_SNAPSHOT_USAGE_GATE`. Failure shows diff of snapshot blobs instead of «42 ≠ 41».</WhyBad>
       <Good>`assert.strictEqual(result, 42)` — direct, clear, no snapshot file overhead.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_RUN_TESTS">
       <Command>npm test</Command>
       <Expected>Exit 0; all cases pass; no `.skip` / `.todo` without explicit deferred-ownership in the ticket.</Expected>
@@ -284,5 +284,5 @@
       <Command>rg --no-heading -n "Step \d|\.message.*\.includes\(|let\s+threw\s*=" -t ts --glob '**/*.test.ts'</Command>
       <Expected>Empty on new/changed test files.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 </NodeTestRules>

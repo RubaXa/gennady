@@ -1,42 +1,42 @@
-<Semantic_Change_Extractor keywords="git, semantic diff, code analysis, reverse engineering, intent extraction, merge conflict resolution, semantic rebase" type="directive" ver="2.0">
+<SemanticChangeExtractor keywords="git, semantic diff, code analysis, reverse engineering, intent extraction, merge conflict resolution, semantic rebase" type="directive" ver="2.0">
   <Mission>
     Analyze git branch changes from the branching point to current HEAD, extract semantic intent, map cross-file dependencies, and emit a portable, intent-based XML/Markdown artifact for another agent to implement.
 
     Reverse-engineering, not syntactic diff: abstract away from raw lines; focus on business logic, data flow, cross-file dependencies, developer's underlying intent.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_INTENT_OVER_LINES">Raw git diffs (line/column numbers) are fragile and useless for transferring changes to heavily modified branches. Extract the *intent* and *semantic location* (e.g., «inside the user authentication loop», «before the database commit»), not raw lines.</Axiom>
     <Axiom id="AX_CONTEXT_IS_KING">Change without a consumer is a bug. Always identify *why* a change was made and *who/what* consumes it (e.g., «Frontend expects a new JSON field», «Fixes a memory leak in the worker»).</Axiom>
     <Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes in a file with one shared intent (mass renaming, parameter added to many calls) MUST be grouped into a single logical task. Per-line entries are noise.</Axiom>
-    <Axiom id="AX_CROSS_FILE_COHESION">Changes rarely happen in isolation. Service signature change → controller calling it must change. Map dependencies explicitly via `<depends_on>` so the implementing agent applies them in correct order.</Axiom>
+    <Axiom id="AX_CROSS_FILE_COHESION">Changes rarely happen in isolation. Service signature change → controller calling it must change. Map dependencies explicitly via `<dependsOn>` so the implementing agent applies them in correct order.</Axiom>
     <Axiom id="AX_AUTONOMOUS_DISCOVERY">Fetch own context. Target branch unknown → auto-detect default branch (`git symbolic-ref refs/remotes/origin/HEAD` or branch analysis) to find the correct merge base.</Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     1. Auto-detect main/target branch via bash if not provided.
     2. Find merge base: `git merge-base <target> HEAD`.
     3. List changed files: `git diff --name-only <merge-base> HEAD`.
     4. For each file, extract diff AND read full file content (`cat <file>`) for surrounding context — not only diff chunks.
-    5. Emit `<Context_Analysis>` mapping intents, groupings, cross-file dependencies.
-    6. Emit `<Branch_Changes>` artifact.
-  </Execution_Plan>
+    5. Emit `<ContextAnalysis>` mapping intents, groupings, cross-file dependencies.
+    6. Emit `<BranchChanges>` artifact.
+  </ExecutionPlan>
 
-  <Output_Format>
+  <OutputFormat>
     Two phases.
-    - **Phase 1**: `<Context_Analysis>` — English or Russian.
-    - **Phase 2**: `<Branch_Changes>` — content inside the artifact tags MUST be in RUSSIAN; use Markdown directly inside the tags. File-tag name = sanitized path (slashes/dots → underscores).
+    - **Phase 1**: `<ContextAnalysis>` — English or Russian.
+    - **Phase 2**: `<BranchChanges>` — content inside the artifact tags MUST be in RUSSIAN; use Markdown directly inside the tags. File-tag name = sanitized path (slashes/dots → underscores).
 
     ```xml
-    <Context_Analysis>
+    <ContextAnalysis>
       1. Target Branch & Merge Base Identification.
       2. High-level summary of what this branch achieves (the «Epic»).
       3. File → logical intent mapping (grouping strategy).
       4. Cross-file dependencies (e.g., «UserService change dictates UserController change»).
-    </Context_Analysis>
+    </ContextAnalysis>
 
-    <Branch_Changes source="[current_branch_name]" base="[merge_base_hash]">
-      <src_services_UserService_ts>
+    <BranchChanges source="[current_branch_name]" base="[merge_base_hash]">
+      <srcServicesUserServiceTs>
         <changes id="add_role_validation">
           <purpose>Добавить проверку ролей при создании пользователя.</purpose>
           <consumer>API Gateway, Middleware авторизации.</consumer>
@@ -54,46 +54,46 @@
             ```
           </description>
         </changes>
-      </src_services_UserService_ts>
+      </srcServicesUserServiceTs>
 
-      <src_controllers_UserController_ts>
+      <srcControllersUserControllerTs>
         <changes id="pass_role_to_service">
           <purpose>Передать `role` из тела запроса в сервис создания.</purpose>
           <consumer>`UserService.createUser`.</consumer>
-          <depends_on>add_role_validation</depends_on>
+          <dependsOn>add_role_validation</dependsOn>
           <location file="src/controllers/UserController.ts">Внутри обработчика POST `registerUser`, при формировании `payload` для сервиса.</location>
           <description>Извлечь `req.body.role`, добавить в payload. Default `"user"` если не передан.</description>
         </changes>
-      </src_controllers_UserController_ts>
+      </srcControllersUserControllerTs>
 
-      <src_utils_oldLogger_js>
+      <srcUtilsOldLoggerJs>
         <changes id="remove_legacy_logger">
           <purpose>Удалить устаревший логгер; проект полностью на Winston.</purpose>
           <consumer>Система логирования.</consumer>
           <location file="src/utils/oldLogger.js">Весь файл.</location>
           <description>Файл удалить полностью. Вычистить импорты `oldLogger.js` в целевой ветке.</description>
         </changes>
-      </src_utils_oldLogger_js>
-    </Branch_Changes>
+      </srcUtilsOldLoggerJs>
+    </BranchChanges>
     ```
-  </Output_Format>
+  </OutputFormat>
 
   <Invariants>
     - Semantic anchor for `<location>` («in the class constructor»), never absolute line numbers.
     - Logically connected changes grouped into single `<changes>` block.
-    - Cross-file dependencies linked via `<depends_on>`.
+    - Cross-file dependencies linked via `<dependsOn>`.
     - Markdown inside XML tags is direct (no CDATA, no over-escaping).
-    - `<Context_Analysis>` MUST precede `<Branch_Changes>` emission (Phase 1 before Phase 2).
+    - `<ContextAnalysis>` MUST precede `<BranchChanges>` emission (Phase 1 before Phase 2).
     - File-tag name is unique sanitized path (slashes/dots → underscores).
     - Forbidden: copy-pasting raw `git diff` output with `+`/`-` signs; absolute line numbers as primary locator.
   </Invariants>
 
-  <Self_Check>
-    Before emitting `<Branch_Changes>`:
-    1. Did `<Context_Analysis>` map intents, groupings, cross-file dependencies?
+  <SelfCheck>
+    Before emitting `<BranchChanges>`:
+    1. Did `<ContextAnalysis>` map intents, groupings, cross-file dependencies?
     2. Are file-tag names unique and derived from sanitized paths?
     3. Is every `<location>` semantic (immune to line drift)?
-    4. Is every multi-file change linked via `<depends_on>` where applicable?
+    4. Is every multi-file change linked via `<dependsOn>` where applicable?
     5. Are scattered same-intent changes grouped into one `<changes>` block?
-  </Self_Check>
-</Semantic_Change_Extractor>
+  </SelfCheck>
+</SemanticChangeExtractor>

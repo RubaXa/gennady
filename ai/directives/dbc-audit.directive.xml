@@ -1,20 +1,20 @@
-<Dbc_Audit keywords="dbc, contract audit, jsdoc audit, ai comments audit, contract compliance, review issues" type="directive" ver="2.0">
+<DbcAudit keywords="dbc, contract audit, jsdoc audit, ai comments audit, contract compliance, review issues" type="directive" ver="2.0">
   <Mission>
     Audit generated TypeScript code for compliance with the live contract standards defined in the project's source-of-truth artifacts. Produce a compact, repair-oriented issue list another agent can apply without re-deriving the standard.
 
     Cognitive role: Contract Auditor + Patch-Safe Reviewer. Resolve the current normative source, audit against that live text, report only actionable issues stable under line drift and safe for AI-assisted patching.
   </Mission>
 
-  <Source_Of_Truth>
+  <SourceOfTruth>
     Primary source: `ai/agents/agent-typescript-devgen.xml`.
 
     Required anchors: `AXIOM_JSDOC_AS_CONTRACTS`, `AXIOM_AI_TO_AI_COMMENTS`.
     Optional anchor: `AXIOM_STRUCTURAL_ANCHORS` (load when control-flow / anchor-comment coupling matters).
 
     **Load order:** read primary source and resolve required anchors BEFORE inspecting target code. Audit started without anchors loaded → `H_ANCHOR_UNRESOLVED`.
-  </Source_Of_Truth>
+  </SourceOfTruth>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_LIVE_SOURCE_ONLY">The standard is a living document. Read the current source files during this run; derive audit criteria from them — never from memory, prior artifacts, or embedded copies.</Axiom>
     <Axiom id="AX_REFERENCE_OVER_COPY">The directive coordinates the audit process; it does NOT duplicate the normative body of source artifacts. Findings cite rule references, not re-host the standard.</Axiom>
     <Axiom id="AX_SEMANTIC_LOCATION_OVER_LINES">Findings use stable semantic locations (declaration name, JSDoc block, anchor, method, branch). Absolute line numbers are secondary evidence, never the primary locator.</Axiom>
@@ -22,28 +22,28 @@
     <Axiom id="AX_MARKUP_SAFETY">Audit output avoids guidance likely to break XML, Markdown, anchor pairing, or agent patch placement.</Axiom>
     <Axiom id="AX_LEARNING_CONTEXT">Treat contracts, anchors, intent comments as learning context embedded into code for future agents. Frame findings as lost recoverable intent, lost patch safety, or lost invariants — NOT as style punishment.</Axiom>
     <Axiom id="AX_FRESHNESS_GUARD">Audit is invalid if the primary source was not read in the current execution context, OR if findings cite copied rules without source reference. If primary source changed since a prior artifact, current source supersedes prior interpretations automatically.</Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Mandatory_Audit_Protocols>
+  <MandatoryAuditProtocols>
     - **`IMPLEMENTATION_EDGE_SCAN`** — root declaration directly implements a named contract → audit BOTH layers: root JSDoc satisfies root implementation rule AND every direct public/protected member checked for member-level `@see` or full explicit override contract. Don't stop after class-level documentation or one representative method.
     - **`COMPLEXITY_GATE_ENFORCEMENT`** — target logic meets live complexity trigger → audit intent-brief coverage and non-trivial anchor coverage even when the method seems self-explanatory.
     - **`HARD_GAP_CLASSIFICATION`** — direct implementation edge semantically established from code → missing root `@implements`, missing member `@see`, or mixed implementation reference style is a contract-completeness failure (NOT cosmetic style preference). Emit a finding when present.
-  </Mandatory_Audit_Protocols>
+  </MandatoryAuditProtocols>
 
-  <Anchor_Resolution_Protocol>
+  <AnchorResolutionProtocol>
     - All normative judgments traceable to a live source anchor or section read during this run.
     - Reference anchors by stable IDs (`AXIOM_JSDOC_AS_CONTRACTS`, `AXIOM_AI_TO_AI_COMMENTS`).
     - Do NOT quote or restate large rule bodies inside the audit artifact; summarize violation minimally + point to source anchor.
-    - Expected anchor cannot be resolved → STOP audit, return `<Audit_Blocked>`. Never continue using recalled or inferred wording.
-  </Anchor_Resolution_Protocol>
+    - Expected anchor cannot be resolved → STOP audit, return `<AuditBlocked>`. Never continue using recalled or inferred wording.
+  </AnchorResolutionProtocol>
 
-  <Audit_Scope>
+  <AuditScope>
     **Include:** Exported types, interfaces, classes, constants, functions, methods (incl. `protected` where source contract requires); JSDoc blocks attached to declarations and members; machine-readable intent comments at complex-function entry and around anchored control-flow blocks; type-kind choices (`type` vs `interface` vs `class` when source governs); contract-to-implementation references (root `@implements`, member `@see` when source requires); implementation edges between exported runtime roots and direct public/protected contract members.
 
     **Exclude:** Pure style preferences not grounded in declared source-of-truth artifacts.
-  </Audit_Scope>
+  </AuditScope>
 
-  <Audit_Dimensions>
+  <AuditDimensions>
     | Dimension | Check |
     |---|---|
     | `contract_completeness` | Required contract components exist for the entity category, including root `@implements` + member-level `@see` coverage |
@@ -55,17 +55,17 @@
     | `intent_comment_quality` | Comments express purpose / consumer / invariant / side effect / failure mode / non-goal — NOT narrate syntax |
     | `anchor_scope_coverage` | Non-trivial control-flow blocks are bounded by anchors; explanatory comments placed in correct relationship |
     | `patch_safety` | Recommended fix is local, no fragile positional targeting, no markup collisions |
-  </Audit_Dimensions>
+  </AuditDimensions>
 
-  <Issue_Taxonomy>
+  <IssueTaxonomy>
     `missing_contract` | `invalid_contract_reference` | `missing_class_implements_reference` | `missing_member_see_reference` | `mixed_implementation_reference_style` | `invalid_tag_order` | `wrong_tag_usage` | `semantic_duplication` | `wrong_abstraction_kind` | `missing_intent_brief` | `missing_block_anchor` | `missing_intent_comment` | `noisy_comment` | `comment_narrates_syntax` | `anchor_comment_misalignment` | `unsafe_fix_location` | `markup_collision_risk`
-  </Issue_Taxonomy>
+  </IssueTaxonomy>
 
-  <Issue_Evidence_Model>
+  <IssueEvidenceModel>
     Each issue includes:
     1. `id` — stable local identifier.
     2. `severity` — `critical` | `high` | `medium` | `low`.
-    3. `type` — one of `<Issue_Taxonomy>` values.
+    3. `type` — one of `<IssueTaxonomy>` values.
     4. `rule_ref` — primary source reference (e.g., `agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS`).
     5. `entity` — audited declaration or code block.
     6. `location` — semantic location (NOT line-only).
@@ -73,19 +73,19 @@
     8. `why_it_matters` — operational / maintenance / auditability risk.
     9. `minimal_fix` — smallest local repair toward compliance.
     10. `safe_rewrite_hint` — patch safely without broad rewrites, positional dependence, markup breakage.
-  </Issue_Evidence_Model>
+  </IssueEvidenceModel>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | ID | Trigger |
     |---|---|
     | `H_PRIMARY_SOURCE_NOT_READ` | `agent-typescript-devgen.xml` was not read in current execution |
     | `H_ANCHOR_UNRESOLVED` | `AXIOM_JSDOC_AS_CONTRACTS` or `AXIOM_AI_TO_AI_COMMENTS` cannot be resolved |
     | `H_TARGET_NOT_FULLY_READ` | Audit target cannot be read in full; semantic locations cannot be established |
 
-    On any halt → return `<Audit_Blocked>` with missing source / anchor / target context. Do NOT continue with memory-based audit.
-  </Halt_Conditions>
+    On any halt → return `<AuditBlocked>` with missing source / anchor / target context. Do NOT continue with memory-based audit.
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     1. Load primary source; resolve required anchors.
     2. Read target file/artifact in full (not fragments).
     3. Map exported declarations, direct implementation edges (root contract owner → implemented contract; public/protected member → inherited contract member), complex functions, decision points, anchor-comment regions in scope.
@@ -93,39 +93,39 @@
     5. Group related violations when one local fix addresses them; keep separate when patch ownership differs.
     6. Write issues with semantic locations + repair-oriented instructions robust under line drift.
     7. Order fixes to minimize patch conflicts and markup damage.
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Output_Format>
+  <OutputFormat>
     Three phases.
-    - **Phase 1**: `<Source_Load_Report>` — confirm which live sources/anchors were read this run.
-    - **Phase 2**: `<Context_Analysis>` — summarize audited entities, contract-sensitive regions, structural risks.
-    - **Phase 3**: `<Audit_Report>` — actionable issue list + fix order.
+    - **Phase 1**: `<SourceLoadReport>` — confirm which live sources/anchors were read this run.
+    - **Phase 2**: `<ContextAnalysis>` — summarize audited entities, contract-sensitive regions, structural risks.
+    - **Phase 3**: `<AuditReport>` — actionable issue list + fix order.
 
     Body may be Russian or English; source references and XML attributes must remain exact and machine-stable.
 
     ```xml
-    <Source_Load_Report>
+    <SourceLoadReport>
       <source file="ai/agents/agent-typescript-devgen.xml">
         <anchor id="AXIOM_JSDOC_AS_CONTRACTS" status="loaded" />
         <anchor id="AXIOM_AI_TO_AI_COMMENTS" status="loaded" />
         <anchor id="AXIOM_STRUCTURAL_ANCHORS" status="optional|loaded|skipped" />
       </source>
-    </Source_Load_Report>
+    </SourceLoadReport>
 
-    <Audit_Report>
+    <AuditReport>
       <Summary>Total issues, dominant issue classes, whether code is safe for automated repair.</Summary>
       <Issues>
         <Issue id="example-id" severity="high" type="missing_contract" rule_ref="agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS">
           <entity>export function buildReviewArtifact</entity>
           <location>JSDoc block directly above the exported declaration</location>
           <problem>Concrete contract gap, no source rule body copied.</problem>
-          <why_it_matters>Why missing/malformed contract weakens maintenance, auditing, downstream generation.</why_it_matters>
-          <minimal_fix>Smallest compliant fix.</minimal_fix>
-          <safe_rewrite_hint>Constrain repair to declaration-local block; avoid broad reformatting.</safe_rewrite_hint>
+          <whyItMatters>Why missing/malformed contract weakens maintenance, auditing, downstream generation.</whyItMatters>
+          <minimalFix>Smallest compliant fix.</minimalFix>
+          <safeRewriteHint>Constrain repair to declaration-local block; avoid broad reformatting.</safeRewriteHint>
         </Issue>
       </Issues>
-      <Fix_Order>Dependency order: structural safety → contract gaps → comment quality → low-risk refinements.</Fix_Order>
-    </Audit_Report>
+      <FixOrder>Dependency order: structural safety → contract gaps → comment quality → low-risk refinements.</FixOrder>
+    </AuditReport>
     ```
-  </Output_Format>
-</Dbc_Audit>
+  </OutputFormat>
+</DbcAudit>

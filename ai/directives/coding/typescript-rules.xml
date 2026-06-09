@@ -9,7 +9,7 @@
     **Base axiom:** code will be read, parsed, and modified ONLY by other AI agents and AI IDEs (AI-to-AI ecosystem). Highest values: absolute predictability, semantic density, code introspectability. Comments are agent-authored machine comments — they expose intent, constraints, refactor hazards that code and types do not encode by themselves. English is for code and intent: all keys, methods, JSDoc, and intent comments strictly in English.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_NO_TRANSPILE_ONLY_CONSTRUCTS">
       Forbid transpile-only syntax. `enum`, `namespace`, and constructor parameter properties (`constructor(private foo: string)`) are forbidden. Native Node.js supports only type stripping; these constructs require AST-to-JS transforms and reliably fail with `SyntaxError` at runtime.
 
@@ -238,7 +238,7 @@
     <Axiom id="AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC">
       Exception handling is mandatory in business logic. Any business method with network/file/process I/O, mutation of external state, or integration with an external system MUST wrap the failure point in `try`/`catch` per `AX_CATCH_LOG_RECOVER`. Missing try/catch on an integration boundary turns any transient failure into an un-traced un-contextualized exception.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_TRACE_PREFIX">Trace-Prefix format: `[ClassName#methodName]` or `[functionName]`. Used in all Error messages and log messages.</Definition>
@@ -250,7 +250,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_MODULE_AND_DATA_TYPE">
       <Intent>Exported data shape: `type`, domain prefix, single-line JSDoc per field, no duplication of TS structure.</Intent>
       <Snippet language="typescript">
@@ -433,12 +433,12 @@
       </Snippet>
       <Why>The equivalent of 6 lines of `if`-nesting is compressed to 2 without loss of semantics. Canonical «high-signal idiomatic TypeScript».</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_ATOMIC_NOISE_ANCHORS">
+  <AntiPatterns>
+    <AntiPattern id="AP_ATOMIC_NOISE_ANCHORS">
       <Bad>Anchors around a single `const`; anchor name `START_CHECK_RETRIES` (names syntax, not intent); comment restates the `if`; `Error("Limit")` without Trace-Prefix or cause.</Bad>
-      <Why_Bad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_COMMENT_VOCABULARY`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</Why_Bad>
+      <WhyBad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_COMMENT_VOCABULARY`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</WhyBad>
       <Good language="typescript">
         ```typescript
         const maxRetries = 3;
@@ -454,11 +454,11 @@
         // #endregion END_ENFORCE_RETRY_POLICY
         ```
       </Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_FALSE_PRIVATE_AND_ENUM">
+    <AntiPattern id="AP_FALSE_PRIVATE_AND_ENUM">
       <Bad>`enum OrderState { NEW, PAID, SHIPPED }`; `class OrderManager { constructor(private repo: OrderRepo) {} #lastState: OrderState = OrderState.NEW; public process(orderId: string) {} }`.</Bad>
-      <Why_Bad>`enum` breaks under native Node TS (`AX_NO_TRANSPILE_ONLY_CONSTRUCTS`). Constructor parameter property `private repo` transpile-only. `#lastState` blocks reflection (`AX_TRUTHFUL_ENCAPSULATION`). `OrderManager` is semantic noise (`AX_TELEOLOGICAL_NAMING`). `process` generic verb (`AX_VERB_PRECISION`). `public` redundant.</Why_Bad>
+      <WhyBad>`enum` breaks under native Node TS (`AX_NO_TRANSPILE_ONLY_CONSTRUCTS`). Constructor parameter property `private repo` transpile-only. `#lastState` blocks reflection (`AX_TRUTHFUL_ENCAPSULATION`). `OrderManager` is semantic noise (`AX_TELEOLOGICAL_NAMING`). `process` generic verb (`AX_VERB_PRECISION`). `public` redundant.</WhyBad>
       <Good language="typescript">
         ```typescript
         // @file: Order lifecycle primitives for checkout domain.
@@ -481,11 +481,11 @@
         }
         ```
       </Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_BARE_CONSOLE_AND_LOST_CAUSE">
+    <AntiPattern id="AP_BARE_CONSOLE_AND_LOST_CAUSE">
       <Bad>`console.log("fetching user " + JSON.stringify({ id }));` then `catch (e) { console.error("failed " + e); throw new Error("fetch failed"); }`.</Bad>
-      <Why_Bad>`console.*` forbidden (`AX_STRUCTURED_LOGGING`). Object serialized into message string (`AX_LOG_MESSAGE_PURITY`). No Trace-Prefix or state transition (`AX_LOG_MESSAGE_FORMAT`). `new Error` without `{ cause }` loses debug chain (`AX_ERROR_CHAINING_CAUSE`). No Trace-Prefix in error (`AX_TRACE_PREFIXED_ERRORS`). `e` concatenated into string — stack lost.</Why_Bad>
+      <WhyBad>`console.*` forbidden (`AX_STRUCTURED_LOGGING`). Object serialized into message string (`AX_LOG_MESSAGE_PURITY`). No Trace-Prefix or state transition (`AX_LOG_MESSAGE_FORMAT`). `new Error` without `{ cause }` loses debug chain (`AX_ERROR_CHAINING_CAUSE`). No Trace-Prefix in error (`AX_TRACE_PREFIXED_ERRORS`). `e` concatenated into string — stack lost.</WhyBad>
       <Good language="typescript">
         ```typescript
         // @file: User retrieval entry point against the primary store.
@@ -513,11 +513,11 @@
         }
         ```
       </Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_REDUNDANT_JSDOC_DUPLICATION">
+    <AntiPattern id="AP_REDUNDANT_JSDOC_DUPLICATION">
       <Bad>`/** @purpose User DTO. @param id The id field, type string. @param name The name field, type string. @returns Returns a User object with id and name. */ export type User = { id: string; name: string; };`.</Bad>
-      <Why_Bad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_FLAT_JSDOC_FOR_PROPERTIES`). `User DTO` carries no business meaning.</Why_Bad>
+      <WhyBad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_FLAT_JSDOC_FOR_PROPERTIES`). `User DTO` carries no business meaning.</WhyBad>
       <Good language="typescript">
         ```typescript
         // @file: Identity shape exposed by session-related APIs.
@@ -532,10 +532,10 @@
         };
         ```
       </Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_TYPECHECK">
       <Purpose>Code has no TS errors and no transpile-only constructs broken under native Node TS.</Purpose>
       <Command>npx tsc --noEmit</Command>
@@ -556,9 +556,9 @@
       <Command>rg --follow --no-heading -n "#(region|endregion)\s+(START|END)_[A-Z0-9_]+" -t ts</Command>
       <Expected>For every `START_NAME` occurrence there is a matching `END_NAME` in the same file; counts equal per file.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ File has `// @file:` line-comment header; `// @consumers:` / `// @tasks:` when applicable; no `@purpose` at file level.
     ✅ Every exported entity has valid JSDoc contract per `AX_BASE_CONTRACT_SHAPE`; tag order preserved.
     ✅ Implementation roots use `@purpose` + `@implements`; member implementations use `@see`; overrides write the full contract.
@@ -585,5 +585,5 @@
     ❌ Mixed implementation reference style (local-relative and project-root-relative `@implements`/`@see` in one module).
     ❌ Premature abstraction: extracting an interface for a single consumer without confirmed variance.
     ❌ Defensive code against states excluded by types or invariants.
-  </Reward_Criteria>
+  </RewardCriteria>
 </TypeScriptCodingRules>

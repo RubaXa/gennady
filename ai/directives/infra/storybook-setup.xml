@@ -7,7 +7,7 @@
     Companion (runtime usage after setup): `ai/directives/testing/storybook-usage.xml`.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_SB_INIT_VIA_OFFICIAL_INSTALLER">
       Storybook installation starts with the official initializer (`npx storybook@latest init`). Manually scaffolding `.storybook/main.*`, `.storybook/preview.*`, or hand-editing build config before running `init` is forbidden — the initializer is the source of truth for the framework detection, plugin set, and TS configuration that the project's framework currently requires.
 
@@ -44,7 +44,7 @@
     <Axiom id="AX_SB_NO_PARALLEL_TEST_HARNESSES">
       Story-level tests use ONE harness — the test addon shipped/recommended with Storybook for the project's framework. Introducing a parallel harness (e.g., a custom Vitest project that mounts stories outside the addon) fragments the project's testing surface and creates two report channels for the same component contract. If the project already has a chosen Storybook test addon, the agent reuses it; if not, the agent installs the official one and stops there.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_SB_MCP_SERVER">
@@ -55,7 +55,7 @@
     </Definition>
   </Definitions>
 
-  <Setup_Steps>
+  <SetupSteps>
     <Step id="STEP_SB_1_RUN_INIT">
       Run `npx storybook@latest init` and answer prompts based on observed project structure. Do NOT pre-scaffold `.storybook/` before this step.
       Ref: AX_SB_INIT_VIA_OFFICIAL_INSTALLER.
@@ -84,35 +84,35 @@
       Add a Storybook section to `AGENTS.md`: MCP tools available, story-file conventions (`*.stories.ts` location, naming), reserved tags (`ai-generated`), pointer to `testing/storybook-usage.xml`.
       Ref: AX_SB_AGENTS_MD_UPDATED_AS_PART_OF_SETUP.
     </Step>
-  </Setup_Steps>
+  </SetupSteps>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_SB_MANUAL_SCAFFOLD_BEFORE_INIT">
+  <AntiPatterns>
+    <AntiPattern id="AP_SB_MANUAL_SCAFFOLD_BEFORE_INIT">
       <Bad>Agent hand-creates `.storybook/main.ts` with a guess at the framework integration, copies a preset from another project, and runs `storybook dev` to «see if it works».</Bad>
-      <Why_Bad>Bypasses the official initializer (`AX_SB_INIT_VIA_OFFICIAL_INSTALLER`). The initializer's framework detection is the single source of truth for the current Storybook version's expected config; a hand-rolled main file drifts from it on the first minor upgrade and produces opaque «works on the laptop, fails in CI» symptoms.</Why_Bad>
+      <WhyBad>Bypasses the official initializer (`AX_SB_INIT_VIA_OFFICIAL_INSTALLER`). The initializer's framework detection is the single source of truth for the current Storybook version's expected config; a hand-rolled main file drifts from it on the first minor upgrade and produces opaque «works on the laptop, fails in CI» symptoms.</WhyBad>
       <Good>Delete the hand-rolled `.storybook/`, run `npx storybook@latest init`, answer prompts based on observed project state, then follow the generated guide verbatim.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_NO_MCP_INTEGRATION">
+    <AntiPattern id="AP_SB_NO_MCP_INTEGRATION">
       <Bad>Agent installs base Storybook, gets `storybook dev` running, and marks the ticket done without installing the test/MCP addon or registering the MCP server.</Bad>
-      <Why_Bad>Storybook present but unreachable by agents (`AX_SB_MCP_IS_MANDATORY`). Every subsequent component task must either rediscover props from source code or fall back to human-driven preview. The integration is structurally incomplete; calling it «done» misrepresents project state.</Why_Bad>
+      <WhyBad>Storybook present but unreachable by agents (`AX_SB_MCP_IS_MANDATORY`). Every subsequent component task must either rediscover props from source code or fall back to human-driven preview. The integration is structurally incomplete; calling it «done» misrepresents project state.</WhyBad>
       <Good>Install the recommended test/MCP addon (`STEP_SB_3_INSTALL_TEST_ADDON`), register the MCP server with the agent runner (`STEP_SB_5_REGISTER_MCP_SERVER`), and verify at least one MCP tool call returns a non-error response.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_VERIFY_SKIPPED">
+    <AntiPattern id="AP_SB_VERIFY_SKIPPED">
       <Bad>Agent finishes the install steps and reports «Storybook configured» based solely on `npm install` exit code, without booting `storybook dev` or running any story test.</Bad>
-      <Why_Bad>Setup declared complete without end-to-end verification (`AX_SB_VERIFY_BEFORE_HANDOFF`). Misses Playwright browser missing, MCP server not registered, addon misconfigured, port conflict — all of which compile fine but break the first real use.</Why_Bad>
+      <WhyBad>Setup declared complete without end-to-end verification (`AX_SB_VERIFY_BEFORE_HANDOFF`). Misses Playwright browser missing, MCP server not registered, addon misconfigured, port conflict — all of which compile fine but break the first real use.</WhyBad>
       <Good>Boot `storybook dev` and confirm preview URL responds; call one MCP tool; run `run-story-tests` on one story. If any fails, surface the exact error to the operator before marking the ticket complete.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_AGENTS_MD_SKIPPED">
+    <AntiPattern id="AP_SB_AGENTS_MD_SKIPPED">
       <Bad>Setup verified end-to-end, but `AGENTS.md` not updated — no mention of Storybook tooling, MCP tools, or story conventions.</Bad>
-      <Why_Bad>Integration becomes tribal knowledge (`AX_SB_AGENTS_MD_UPDATED_AS_PART_OF_SETUP`). Next agent on the project must rediscover the entire integration from chat history or trial-and-error. Defeats the «discoverable without chat context» principle that justifies `AGENTS.md` in the first place.</Why_Bad>
+      <WhyBad>Integration becomes tribal knowledge (`AX_SB_AGENTS_MD_UPDATED_AS_PART_OF_SETUP`). Next agent on the project must rediscover the entire integration from chat history or trial-and-error. Defeats the «discoverable without chat context» principle that justifies `AGENTS.md` in the first place.</WhyBad>
       <Good>Append a Storybook section to `AGENTS.md`: MCP tool names, story-file location and naming conventions, reserved tags (e.g. `ai-generated`), pointer to `testing/storybook-usage.xml`.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_SB_PREVIEW_BOOTS">
       <Purpose>Storybook dev server boots without errors and serves the preview.</Purpose>
       <Command>npx storybook dev --ci --quiet &amp; PID=$!; sleep 8; curl -fsS http://localhost:6006/index.json > /dev/null; STATUS=$?; kill $PID 2>/dev/null; wait $PID 2>/dev/null; exit $STATUS</Command>
@@ -133,9 +133,9 @@
       <Command>npx playwright install --dry-run chromium 2>&amp;1 | grep -E "browser is already installed|is downloaded" || echo MISSING</Command>
       <Expected>Output indicates Chromium is already installed. `MISSING` means the browser still needs `npx playwright install chromium`.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Storybook installed via the official initializer; generated guide applied verbatim.
     ✅ Test/MCP addon installed and present in `.storybook/main.*`.
     ✅ MCP server registered in the agent runner; at least one MCP tool call succeeds.
@@ -149,5 +149,5 @@
     ❌ Setup declared done without booting `storybook dev` or running a story test.
     ❌ `AGENTS.md` not updated; integration left as tribal knowledge.
     ❌ Parallel story-test harness introduced alongside the official addon.
-  </Reward_Criteria>
+  </RewardCriteria>
 </StorybookSetupRules>

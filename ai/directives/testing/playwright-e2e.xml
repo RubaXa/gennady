@@ -7,12 +7,12 @@
     Scope: codification — turning exploration observations into committed test files. Companion (exploration before authoring): `ai/directives/testing/playwright-cli.xml`.
   </Mission>
 
-  <Depends_On>
+  <DependsOn>
     - ai/directives/coding/typescript-rules.xml
     - ai/directives/testing/playwright-cli.xml
-  </Depends_On>
+  </DependsOn>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_E2E_AX_TREE_AS_CONTRACT">
       The accessibility-tree snapshot (`ariaSnapshot()` + `toMatchAriaSnapshot()`) IS the structural contract. It encodes roles, accessible names, and hierarchy — the same surface a screen reader perceives. Textual/structural assertions on the DOM (e.g. `toContainText`) are allowed where AX granularity is insufficient (specific dynamic copy), but they supplement the AX snapshot, not replace it.
     </Axiom>
@@ -74,7 +74,7 @@
     <Axiom id="AX_E2E_SELF_VERIFICATION_LOOP">
       After authoring: `npx playwright test --project=chromium`. Observe output → fix failures (in component or test) → re-run. Loop continues until green. Submitting a red test without an EXPLICIT blocker note in the ticket is forbidden — silent red turns the suite into noise the next agent must reverse-engineer.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_E2E_FIXTURE_POM">
@@ -85,7 +85,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_E2E_AX_SNAPSHOT_BASELINE">
       <Intent>Navigate to a route, assert the structural baseline against the AX snapshot of a named region.</Intent>
       <Snippet language="typescript">
@@ -197,49 +197,49 @@
       </Snippet>
       <Why>`page.route` intercepts at the network layer; component code runs unchanged. Assertion via `getByRole('status')`.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_E2E_CSS_LOCATOR">
+  <AntiPatterns>
+    <AntiPattern id="AP_E2E_CSS_LOCATOR">
       <Bad>`await page.locator('.btn-primary.submit-action').click();` — CSS class chain as the primary locator.</Bad>
-      <Why_Bad>CSS selectors couple the test to implementation (`AX_E2E_ROLE_LOCATORS_ONLY`). Any class rename — even one driven by a refactor that does not change behaviour — turns the test red. The user-facing contract has no concept of `.btn-primary`.</Why_Bad>
+      <WhyBad>CSS selectors couple the test to implementation (`AX_E2E_ROLE_LOCATORS_ONLY`). Any class rename — even one driven by a refactor that does not change behaviour — turns the test red. The user-facing contract has no concept of `.btn-primary`.</WhyBad>
       <Good>`await page.getByRole('button', { name: 'Place Order' }).click();` — role + accessible name, mirroring how the user identifies the element.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_E2E_INLINE_LOGIN">
+    <AntiPattern id="AP_E2E_INLINE_LOGIN">
       <Bad>Every test begins with `await page.goto('/login'); await page.getByLabel('Email').fill(...); await page.getByLabel('Password').fill(...); await page.getByRole('button', { name: 'Sign in' }).click();`.</Bad>
-      <Why_Bad>Inline login per test (`AX_E2E_AUTH_VIA_STORAGE_STATE`). One regression in the login UI cascades into every test going red; the suite spends most of its time logging in instead of exercising the contract being tested.</Why_Bad>
+      <WhyBad>Inline login per test (`AX_E2E_AUTH_VIA_STORAGE_STATE`). One regression in the login UI cascades into every test going red; the suite spends most of its time logging in instead of exercising the contract being tested.</WhyBad>
       <Good>Extract the login flow into a setup project that writes `storageState.json`; configure the test project with `use: { storageState: 'e2e/auth/user.json' }, dependencies: ['setup']`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_E2E_FULL_PAGE_SNAPSHOT">
+    <AntiPattern id="AP_E2E_FULL_PAGE_SNAPSHOT">
       <Bad>`await expect(page).toMatchAriaSnapshot(\`- banner ... - main ... - contentinfo ...\`);` — full-page snapshot for a test that only verifies the checkout region.</Bad>
-      <Why_Bad>Snapshot scope mismatched to test intent (`AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT`). Any change to the unrelated banner / footer / sidebar produces a snapshot diff that has nothing to do with the test's contract. Maintenance cost balloons; signal-to-noise drops.</Why_Bad>
+      <WhyBad>Snapshot scope mismatched to test intent (`AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT`). Any change to the unrelated banner / footer / sidebar produces a snapshot diff that has nothing to do with the test's contract. Maintenance cost balloons; signal-to-noise drops.</WhyBad>
       <Good>Scope to the region under test: `await expect(page.getByRole('region', { name: 'Checkout' })).toMatchAriaSnapshot(\`...\`);`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_E2E_STANDALONE_POM">
+    <AntiPattern id="AP_E2E_STANDALONE_POM">
       <Bad>`class CheckoutPage { constructor(page) { this.page = page; } } ... test('...', async ({ page }) => { const checkout = new CheckoutPage(page); ... });`</Bad>
-      <Why_Bad>Page Object instantiated by the test instead of supplied by a fixture (`AX_E2E_FIXTURE_BASED_POM`). Reintroduces the manual setup/teardown problem fixtures solve; no per-test lifecycle isolation; the page object cannot expose its own fixture-managed state (intercepts, storage, helpers).</Why_Bad>
+      <WhyBad>Page Object instantiated by the test instead of supplied by a fixture (`AX_E2E_FIXTURE_BASED_POM`). Reintroduces the manual setup/teardown problem fixtures solve; no per-test lifecycle isolation; the page object cannot expose its own fixture-managed state (intercepts, storage, helpers).</WhyBad>
       <Good>Define `test = base.extend({ checkout: async ({ page }, use) => use(new CheckoutPage(page)) })`; the test declares `checkout` as an argument and receives a fresh per-test instance.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_E2E_UNMOCKED_NETWORK">
+    <AntiPattern id="AP_E2E_UNMOCKED_NETWORK">
       <Bad>Test exercises `/checkout` against the real backend; flakiness is «accepted» because the backend is «usually up».</Bad>
-      <Why_Bad>External dependency not mocked (`AX_E2E_NETWORK_MOCK_AT_ROUTE`). The test depends on infrastructure state outside the contract under test; one downstream incident turns the suite red and erodes trust. Worse, it cannot exercise failure paths because the real backend will not produce them on demand.</Why_Bad>
+      <WhyBad>External dependency not mocked (`AX_E2E_NETWORK_MOCK_AT_ROUTE`). The test depends on infrastructure state outside the contract under test; one downstream incident turns the suite red and erodes trust. Worse, it cannot exercise failure paths because the real backend will not produce them on demand.</WhyBad>
       <Good>`await page.route('**/api/orders', route => route.fulfill({ status: 200, body: JSON.stringify(fixture) }));` for the happy path; `route.fulfill({ status: 500 })` for the failure path.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Workflow_Outline>
+  <WorkflowOutline>
     <Step id="WF_E2E_1_EXPLORE">Run the exploration loop in `playwright-cli.xml` to capture AX snapshots and confirmed locators against the running app.</Step>
     <Step id="WF_E2E_2_CODIFY">Author the fixture file (if a Page Object is needed) and the test file: AX baseline → interaction via role locator → AX delta.</Step>
     <Step id="WF_E2E_3_MOCK_AND_AUTH">Mock external APIs via `page.route()`; reuse the auth setup project rather than logging in inline.</Step>
     <Step id="WF_E2E_4_SELF_VERIFY">`npx playwright test --project=chromium`; fix failures (component or test); re-run until green.</Step>
     <Step id="WF_E2E_5_FINALIZE">Confirm file under budget; snapshots scoped; no CSS/XPath locators; no inline login; no committed `.only` / `.skip` without deferred-ownership reference.</Step>
-  </Workflow_Outline>
+  </WorkflowOutline>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_E2E_RUN_CHROMIUM">
       <Purpose>Run the e2e suite on Chromium.</Purpose>
       <Command>npx playwright test --project=chromium</Command>
@@ -265,9 +265,9 @@
       <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE '\b(test|describe)\.(only|skip|fixme)\b' || true</Command>
       <Expected>Empty output, or each match accompanied by an inline `TASK-` reference.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ AX snapshot is the structural contract; `toMatchAriaSnapshot` on scoped regions before and after interaction.
     ✅ Locators come from accessible roles, labels, placeholders, text, or stable test IDs — never CSS / XPath / nth-child.
     ✅ Page Objects exposed as fixtures via `test.extend`; one fixture file per business domain.
@@ -288,5 +288,5 @@
     ❌ Committed `test.only` / `test.skip` / `test.fixme` without deferred-ownership reference.
     ❌ Snapshot baselines updated silently via `--update-snapshots`.
     ❌ Red test handed off without an EXPLICIT blocker note.
-  </Reward_Criteria>
+  </RewardCriteria>
 </PlaywrightE2ERules>

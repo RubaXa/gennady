@@ -1,96 +1,96 @@
 <Rulebook id="rulebook_iteration_fusion" type="knowledge_base">
-  <Primary_Goal>
+  <PrimaryGoal>
     Предоставить Аудитору критерии для обнаружения избыточных итераций по коллекциям, пропущенных ранних выходов (Early Exit) и скрытых аллокаций промежуточных массивов.
-  </Primary_Goal>
-  <Belief_State>
+  </PrimaryGoal>
+  <BeliefState>
     <Axiom id="AX_ALLOCATION_IS_ENEMY">Каждый вызов `.map()`, `.filter()`, `.flat()` или `Array.from()` создает в памяти НОВЫЙ массив. На целевом железе (4-8 GB RAM) цепочка из 3 таких методов вызывает 3 аллокации и 3 прохода по данным, провоцируя микропаузы GC.</Axiom>
     <Axiom id="AX_EARLY_EXIT">Сканирование 100% массива, когда для ответа достаточно найти один элемент — это растрата процессорного времени. Ранний выход всегда предпочтительнее полного прохода.</Axiom>
     <Axiom id="AX_AI_READABILITY">Человеческая привычка писать "декларативные цепочки" (chaining) не имеет ценности для ИИ. Однопроходный императивный `for...of` с условиями работает быстрее и потребляет меньше памяти.</Axiom>
-  </Belief_State>
-  <Rules_Registry>
+  </BeliefState>
+  <RulesRegistry>
     <!-- ПРАВИЛО 1: Упущенный ранний выход (Missed Early Exit) -->
     <Rule id="ITER_EARLY_EXIT">
-      <Trigger_Signals>
+      <TriggerSignals>
         - `.filter(predicate)[0]`, `.filter(predicate).at(0)`, `.filter(predicate).slice(0, 1)[0]`.
         - `.filter(predicate).length > 0`, `.filter(predicate).length === 0`.
         - Использование `forEach` с попыткой сделать `return` внутри (что не прерывает цикл).
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         `.filter()` всегда проходит массив до конца и аллоцирует новый массив результатов. Если нужен только один элемент или проверка существования, это пустая трата CPU и RAM. Методы `.find()`, `.some()`, `.every()` останавливают итерацию (Short-circuit) при первом совпадении.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="RESULT_REUSED">Если результат `.filter()` сохраняется в переменную и затем используется ПОЛНОСТЬЮ где-то еще, а не только для получения первого элемента/длины — отклонить.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Упущенный ранний выход. Для поиска элемента замени `.filter(...)[0]` на `.find(...)`. Для проверки наличия замени `.filter(...).length > 0` на `.some(...)` (или `.every(...)`)."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 2: Мусорные возвраты (Unused Array Returns) -->
     <Rule id="ITER_UNUSED_RETURN">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Вызов `.map()`, `.filter()`, `.flatMap()` как самостоятельного выражения (результат не присваивается переменной и не возвращается из функции).
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Эти методы специфицированы так, чтобы всегда создавать и возвращать новый массив. Если результат игнорируется, массив сразу помечается как мусор, перегружая GC.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="NONE">Это 100% антипаттерн. Исключений нет.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Мусорная аллокация. Результат `.map()` / `.filter()` не используется. Замени на `.forEach()` или цикл `for...of` для выполнения побочных эффектов без создания промежуточного массива."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 3: Слияние циклов (Loop Fusion) -->
     <Rule id="ITER_FUSION_CHAINING">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Цепочки вызовов: `.filter(a).map(b)`, `.map(a).filter(b)`, `.filter(a).filter(b)`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Каждый шаг цепочки требует прохода по массиву (O(N)) и создания нового массива в памяти. Слияние (Fusion) этих шагов в один проход снижает сложность с O(K*N) до O(N) и оставляет только 1 аллокацию финального массива.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="INDEX_DEPENDENCY">Если коллбэк во второй функции цепочки использует индекс элемента (например, `.filter(x => x > 0).map((x, i) => ...)`), слияние в один цикл изменит значение `i` (индекс отфильтрованного массива не совпадает с оригинальным). Отклонить или предупредить DevAgent о необходимости ручного инкремента индекса.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Промежуточные аллокации в цепочке. Слей `.filter().map()` в один проход. Используй цикл `for...of` с `if` и `.push()`, либо `.reduce()`, чтобы избежать создания промежуточных массивов."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 4: Оптимизация .map().flat() -->
     <Rule id="ITER_FLATMAP">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Цепочка `.map(fn).flat()` или `.map(fn).flat(1)`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Создает промежуточный массив после `map`, а затем еще один после `flat`. Метод `flatMap` выполняет обе операции за один проход с одной аллокацией.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="DEEP_FLATTEN">Метод `flatMap` сплющивает только на глубину 1. Если в коде используется `.flat(2)` или глубже, замена на `flatMap` сломает структуру. Отклонить.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Избыточная аллокация массива. Замени цепочку `.map(...).flat()` на единый вызов `.flatMap(...)`."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 5: Оптимизация Array.from -->
     <Rule id="ITER_ARRAY_FROM_MAP">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Использование `Array.from(iterable).map(fn)`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Создает массив из итерируемого объекта (например, Set, NodeList), а затем создает ЕЩЕ ОДИН массив через `.map()`. Встроенный маппер `Array.from(iterable, fn)` избегает первой аллокации.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="THIRD_ARGUMENT_USAGE">Функция маппинга в `Array.from` не получает сам массив в качестве третьего аргумента (в отличие от `.map()`). Если `fn` использует 3-й аргумент, замена сломает код. Отклонить.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Двойная аллокация массива. Объедини вызовы: передай функцию маппинга вторым аргументом в `Array.from` (т.е. `Array.from(iterable, fn)`)."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
-  </Rules_Registry>
-  <Verification_Protocol>
+  </RulesRegistry>
+  <VerificationProtocol>
     При получении сигнала от Оркестратора:
     1. Идентифицируй целевое `<Rule>`.
     2. Обязательно проверь `INDEX_DEPENDENCY` при слиянии циклов и `THIRD_ARGUMENT_USAGE` при `Array.from`. Это самые частые причины поломки логики при автоматическом рефакторинге.
-    3. Задокументируй верификацию в `<Verification_Log>`.
-    4. Сформируй приказ для DevAgent через `<Directive_Template>`, указав семантический якорь (например, "Внутри функции calculateMetrics, при обработке массива data").
-  </Verification_Protocol>
+    3. Задокументируй верификацию в `<VerificationLog>`.
+    4. Сформируй приказ для DevAgent через `<DirectiveTemplate>`, указав семантический якорь (например, "Внутри функции calculateMetrics, при обработке массива data").
+  </VerificationProtocol>
 </Rulebook>

@@ -1,103 +1,103 @@
 <Rulebook id="rulebook_data_structures" type="knowledge_base">
-  <Primary_Goal>
+  <PrimaryGoal>
     Предоставить Аудитору строгие критерии, механизмы (Big-O) и предохранители (Guardrails) для оценки эффективности структур данных (Array, Set, Map, Object, WeakMap, TypedArray) в JavaScript/TypeScript.
-  </Primary_Goal>
-  <Belief_State>
+  </PrimaryGoal>
+  <BeliefState>
     <Axiom id="AX_BIG_O_MATTERS">Неправильный выбор структуры данных ведет к O(n^2) сложности. На целевом железе (Mid-range CPU) вложенные сканирования массивов недопустимы.</Axiom>
     <Axiom id="AX_ONE_TIME_COST">Конвертация Array в Set стоит O(n) времени и памяти. Это выгодно ТОЛЬКО если далее следуют множественные проверки (в цикле) или массив очень велик.</Axiom>
     <Axiom id="AX_ENGINE_OPTIMIZATIONS">Массивы в JS оптимизированы для индексов. Объекты — для статических (известных заранее) ключей. Использование их не по назначению разрушает JIT-оптимизации (Hidden Classes / Elements Kinds).</Axiom>
-  </Belief_State>
-  <Rules_Registry>
+  </BeliefState>
+  <RulesRegistry>
     <!-- ПРАВИЛО 1: O(n^2) Membership Lookup -->
     <Rule id="DS_ARRAY_VS_SET_LOOKUP">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Использование `array.includes(val)`, `array.indexOf(val)` внутри циклов (`for`, `while`, `.filter`, `.map`).
         - Ручная дедупликация: `if (!arr.includes(x)) arr.push(x)`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         `.includes()` и `.indexOf()` работают за O(n). Вызов их внутри цикла (который тоже O(n)) дает квадратичную сложность O(n^2). `Set.has()` работает за O(1) (в среднем).
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="TINY_ARRAY">Если искомый массив (needle) гарантированно мал (например, `['a', 'b', 'c'].includes(x)`), оставь Array. Накладные расходы на создание Set не окупятся.</Guardrail>
         <Guardrail condition="MUTATION_IN_LOOP">Если искомый массив изменяется ВНУТРИ самого цикла, вынос `new Set()` перед циклом сломает логику (Set устареет). Отклонить оптимизацию.</Guardrail>
         <Guardrail condition="ORDER_MATTERS">Если важен порядок элементов при возврате или нужны дубликаты (при дедупликации), убедись, что замена на Set не сломает бизнес-логику.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Извлеки массив [ИМЯ] в `new Set([ИМЯ])` до начала цикла. Внутри цикла замени `[ИМЯ].includes(...)` на `[ИМЯ_SET].has(...)`."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 2: Объекты как Словари (Dynamic Maps) -->
     <Rule id="DS_OBJECT_VS_MAP">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Использование `{}` для хранения данных с динамическими ключами (например, ID пользователей).
         - Частые операции `delete obj[key]`.
         - Итерация по ключам через `Object.keys()` в высоконагруженных местах.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Добавление/удаление случайных ключей переводит объект V8 в медленный "dictionary mode", ломая Hidden Classes. Оператор `delete` на объектах деоптимизирует доступ. `Map` изначально спроектирован как хеш-таблица для динамических ключей, `Map.delete()` оптимизирован.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="STATIC_RECORD">Если объект используется как DTO/Record с известным набором полей (даже если некоторые `undefined`), оставь Object.</Guardrail>
         <Guardrail condition="JSON_SERIALIZATION">Если объект сразу передается в `JSON.stringify()`, замена на `Map` сломает сериализацию (Map сериализуется в `{}`). Отклонить, если нет явного маппинга.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Замени инициализацию `{}` на `new Map()`. Замени присвоения `obj[k] = v` на `.set(k, v)`, чтение на `.get(k)`, а удаление на `.delete(k)`."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 3: Очереди и сдвиги массивов -->
     <Rule id="DS_QUEUE_SHIFT">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Использование `array.shift()` или `array.unshift()` внутри циклов (например, при обработке очереди задач или стримов).
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Удаление первого элемента (`shift`) заставляет движок переиндексировать ВЕСЬ массив. Это операция O(n). В цикле это дает O(n^2) и вызывает скачки Garbage Collector'а при росте очереди.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="RARE_CALLS">Если `shift()` вызывается редко или массив мал (менее 100 элементов), игнорировать.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Обнаружено использование `shift()` в цикле (O(n^2)). Замени массив на структуру Ring Buffer (циклический буфер) или используй два массива с `push/pop` для эмуляции очереди."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 4: Утечки памяти в кэшах -->
     <Rule id="DS_WEAKMAP_CACHE">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Кэширование данных, где ключом выступает объект (например, DOM-узел, инстанс класса, req/res объекты). `cache.set(obj, data)`.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Обычный `Map` или `Object` держит сильную ссылку на ключи. Если объект удален из приложения, кэш не даст Garbage Collector'у очистить память (Memory Leak). `WeakMap` позволяет GC удалять ключи.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="PRIMITIVE_KEYS">`WeakMap` поддерживает ТОЛЬКО объекты в качестве ключей. Если ключ — строка или число, замена вызовет TypeError.</Guardrail>
         <Guardrail condition="ITERATION_REQUIRED">`WeakMap` неитерируем (`.keys()`, `.size` недоступны). Если логика требует обхода кэша, отклонить.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Измени `new Map()` на `new WeakMap()`, так как ключами выступают объекты. Это предотвратит утечку памяти, позволив GC собирать удаленные объекты."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
     <!-- ПРАВИЛО 5: Бинарные и числовые вычисления -->
     <Rule id="DS_TYPED_ARRAYS">
-      <Trigger_Signals>
+      <TriggerSignals>
         - Инициализация огромных массивов чисел `new Array(1000000)`.
         - Обработка пикселей, аудио, WebGL, парсинг бинарных протоколов.
-      </Trigger_Signals>
-      <Performance_Mechanism>
+      </TriggerSignals>
+      <PerformanceMechanism>
         Обычные массивы хранят числа как 64-bit float или Smi, но имеют оверхед на структуру. TypedArrays (`Uint8Array`, `Float32Array`) выделяют непрерывный блок памяти (как в C/C++), что радикально ускоряет доступ и снижает потребление RAM.
-      </Performance_Mechanism>
-      <Safety_Guardrails>
+      </PerformanceMechanism>
+      <SafetyGuardrails>
         <Guardrail condition="MIXED_TYPES">Если массив может содержать `null`, `undefined`, строки или объекты — TypedArray вызовет ошибку. Массив должен быть строго гомогенным (только числа).</Guardrail>
         <Guardrail condition="DYNAMIC_SIZE">TypedArray имеет фиксированную длину. Если код активно использует `.push()` или `.pop()`, замена потребует сложного ручного реаллоцирования памяти. Отклонить, если размер не известен заранее.</Guardrail>
-      </Safety_Guardrails>
-      <Directive_Template>
+      </SafetyGuardrails>
+      <DirectiveTemplate>
         "Замени `new Array(size)` на `new [ТИП]Array(size)` (например, Float64Array). Это обеспечит непрерывное выделение памяти и ускорит математические операции."
-      </Directive_Template>
+      </DirectiveTemplate>
     </Rule>
-  </Rules_Registry>
-  <Verification_Protocol>
+  </RulesRegistry>
+  <VerificationProtocol>
     При получении сигнала от Оркестратора:
     1. Найди соответствующее `<Rule>` по ID или описанию.
-    2. Проверь код по КАЖДОМУ `<Guardrail>` в секции `<Safety_Guardrails>`.
+    2. Проверь код по КАЖДОМУ `<Guardrail>` в секции `<SafetyGuardrails>`.
     3. Если хоть один Guardrail срабатывает (нарушается безопасность или профит сомнителен) — немедленно отбрасывай триггер (False Positive).
-    4. Если проверки пройдены, используй `<Directive_Template>` для формулировки указания DevAgent'у.
-  </Verification_Protocol>
+    4. Если проверки пройдены, используй `<DirectiveTemplate>` для формулировки указания DevAgent'у.
+  </VerificationProtocol>
 </Rulebook>

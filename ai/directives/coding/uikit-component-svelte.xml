@@ -1,5 +1,5 @@
 <UiKitComponentSvelte keywords="uikit, svelte-component, data-attributes, css-tokens, file-structure, a11y, token-overrides" type="coding-rules" ver="1.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Canonical rules for implementing a uikit Svelte component. Every execution-agent MUST apply these conventions when creating or modifying a Svelte component for the uikit library. These rules are LAYERED ON TOP of `svelte5-runes.xml` — the base Svelte 5 rules are prerequisites; this directive adds uikit-specific structural, styling, and accessibility constraints derived from the first component (Button).
 
@@ -10,14 +10,14 @@
       - Storybook conventions (delegated to `uikit-component-storybook.xml`);
       - Deriving the component spec (that is `uikit-spec` territory).
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Depends_On>
+  <DependsOn>
     - ai/directives/coding/svelte5-runes.xml
     - ai/directives/coding/uikit-spec-drafting.xml
-  </Depends_On>
+  </DependsOn>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_DATA_ATTRS_NOT_HOST">
       CSS selectors use `data-*` attributes on an inner wrapper element, NOT `:host()` pseudo-class selectors. The outer host element is a simple `display: inline-block` container; all styling and testable selectors target the inner element.
 
@@ -131,7 +131,7 @@
 
       No ID selectors, no tag selectors (except `:root` in tokens), no descendant selectors deeper than 2 levels. Every selector is scoped to the component's root class (`.btn`).
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_COMPONENT_ARTEFACT">
@@ -145,7 +145,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_COMPONENT_SVELTE_TEMPLATE">
       <Intent>Canonical structure of a uikit Svelte component file.</Intent>
       <Snippet language="svelte">
@@ -242,53 +242,53 @@
       </Snippet>
       <Why>Data-attribute selectors for variant-dependent styles; CSS custom properties for all values; `box-sizing: border-box` on counter; no `:host()`, no hardcoded values, no deep nesting.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_HOST_SELECTOR">
+  <AntiPatterns>
+    <AntiPattern id="AP_HOST_SELECTOR">
       <Bad>`.module.css` containing `:host([mode="primary"]) { background: blue; }`.</Bad>
-      <Why_Bad>`:host()` compound selectors fail in headless Chromium (`AX_DATA_ATTRS_NOT_HOST`). Padding returns `0px` from `getComputedStyle`, breaking visual tests. The inner-wrapper approach is the proven alternative.</Why_Bad>
+      <WhyBad>`:host()` compound selectors fail in headless Chromium (`AX_DATA_ATTRS_NOT_HOST`). Padding returns `0px` from `getComputedStyle`, breaking visual tests. The inner-wrapper approach is the proven alternative.</WhyBad>
       <Good>Inner wrapper with data-attribute: `.btn[data-mode="primary"] { background: var(--vkui--color_background_accent); }`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MISSING_DATA_STATE">
+    <AntiPattern id="AP_MISSING_DATA_STATE">
       <Bad>Component relies on CSS `:hover` pseudo-class for hover styling, with no `data-state` attribute.</Bad>
-      <Why_Bad>Headless test environments cannot trigger `:hover` programmatically (`AX_DATA_STATE_FOR_TESTABILITY`). The hover variant is untestable — visual regression tests pass trivially without actually verifying hover appearance.</Why_Bad>
+      <WhyBad>Headless test environments cannot trigger `:hover` programmatically (`AX_DATA_STATE_FOR_TESTABILITY`). The hover variant is untestable — visual regression tests pass trivially without actually verifying hover appearance.</WhyBad>
       <Good>Add `data-state={resolvedState}` attribute and use `.btn[data-state="hover"]` selectors. Tests assert `toHaveAttribute('data-state', 'hover')`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_HARDCODED_PIXELS">
+    <AntiPattern id="AP_HARDCODED_PIXELS">
       <Bad>`.module.css` with `height: 28px;` instead of `var(--vkui--size_button_small_height--compact)`.</Bad>
-      <Why_Bad>Token not consumed via custom property (`AX_CSS_TOKENS_VIA_ROOT`). The value cannot be overridden, themed, or traced back to the VKUI token system. When the design system updates the token, this component silently stays at the old value.</Why_Bad>
+      <WhyBad>Token not consumed via custom property (`AX_CSS_TOKENS_VIA_ROOT`). The value cannot be overridden, themed, or traced back to the VKUI token system. When the design system updates the token, this component silently stays at the old value.</WhyBad>
       <Good>`height: var(--vkui--size_button_small_height--compact);` — the token from `.tokens.css` flows through.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_PASCAL_CASE_FILENAME">
+    <AntiPattern id="AP_PASCAL_CASE_FILENAME">
       <Bad>Component file named `Button.svelte` or `Button.module.css`.</Bad>
-      <Why_Bad>Violates kebab-case convention (`AX_FILE_STRUCTURE_KEBAB_CASE`, D-UC03). Inconsistent with existing project files (`app.svelte`, `app.stories.ts`). Breaks the closed-world `ComponentArtefact` contract.</Why_Bad>
+      <WhyBad>Violates kebab-case convention (`AX_FILE_STRUCTURE_KEBAB_CASE`, D-UC03). Inconsistent with existing project files (`app.svelte`, `app.stories.ts`). Breaks the closed-world `ComponentArtefact` contract.</WhyBad>
       <Good>`button.svelte`, `button.module.css`, `button.tokens.css`, `button.stories.ts`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MISSING_ARIA">
+    <AntiPattern id="AP_MISSING_ARIA">
       <Bad>Button component with `<div class="btn" onclick={handler}>` and no ARIA attributes.</Bad>
-      <Why_Bad>A11y contract not fulfilled (`AX_A11Y_REQUIREMENTS`). Screen readers cannot identify the element as a button, cannot announce its label, cannot report its disabled state. Keyboard users cannot focus or activate it.</Why_Bad>
+      <WhyBad>A11y contract not fulfilled (`AX_A11Y_REQUIREMENTS`). Screen readers cannot identify the element as a button, cannot announce its label, cannot report its disabled state. Keyboard users cannot focus or activate it.</WhyBad>
       <Good>`<div class="btn" role="button" aria-label={label} aria-disabled={disabled} tabindex={disabled ? -1 : 0}>`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_OVERRIDE_WITHOUT_COMMENT">
+    <AntiPattern id="AP_OVERRIDE_WITHOUT_COMMENT">
       <Bad>`.tokens.css` with `--vkui--size_button_tertiary_small_padding_horizontal_icon--regular: 14px;` and no override comment.</Bad>
-      <Why_Bad>Override without audit trail (`AX_TOKEN_OVERRIDE_COMMENT`). Cannot distinguish intentional override from accidental drift. SpecValidator cannot trace the value back to the Token Mapping table.</Why_Bad>
+      <WhyBad>Override without audit trail (`AX_TOKEN_OVERRIDE_COMMENT`). Cannot distinguish intentional override from accidental drift. SpecValidator cannot trace the value back to the Token Mapping table.</WhyBad>
       <Good>`/* override: was 8px */` on the line above the declaration.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_IMG_TAG_ICON">
+    <AntiPattern id="AP_IMG_TAG_ICON">
       <Bad>Icon rendered as `<img src="icon.svg" alt="" />`.</Bad>
-      <Why_Bad>Icon fill cannot be controlled via CSS when using `<img>` (`AX_ICON_SVG_TIGHT_VIEWBOX`). Each appearance/mode combination would need a separate SVG file with hardcoded fill. Inlined SVG with `fill: currentColor` or CSS variable solves this.</Why_Bad>
+      <WhyBad>Icon fill cannot be controlled via CSS when using `<img>` (`AX_ICON_SVG_TIGHT_VIEWBOX`). Each appearance/mode combination would need a separate SVG file with hardcoded fill. Inlined SVG with `fill: currentColor` or CSS variable solves this.</WhyBad>
       <Good>Inline the SVG with tight viewBox; control fill via CSS on the `.icon` container or the SVG paths directly.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_NO_HOST_SELECTOR">
       <Purpose>Detect forbidden `:host()` pseudo-class usage in component CSS.</Purpose>
       <Command>find . -name '*.module.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -n ':host' || true</Command>
@@ -314,9 +314,9 @@
       <Command>find src/ui -name '*.tokens.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -c 'override: was' || true</Command>
       <Expected>Count should match the number of OVERRIDE rows in the component's Token Mapping table. Zero when the spec has zero overrides; positive otherwise.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Component uses `data-*` attribute selectors on inner wrapper; no `:host()` anywhere.
     ✅ CSS custom properties inherited through `:root` in `.tokens.css`; consumed via `var()` in `.module.css`.
     ✅ Four files per component, all kebab-case: `<name>.svelte`, `<name>.module.css`, `<name>.tokens.css`, `<name>.stories.ts`.
@@ -335,5 +335,5 @@
     ❌ Override token without audit comment.
     ❌ Icon as `<img>` tag (not inlined SVG).
     ❌ `disabled` and `state` props conflicting without clear precedence.
-  </Reward_Criteria>
+  </RewardCriteria>
 </UiKitComponentSvelte>

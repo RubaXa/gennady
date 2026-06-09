@@ -1,11 +1,11 @@
 <SddCritic keywords="critic, spec-review, task-review, bdd-audit, blind-spot, autonomous-polish, multi-round, pre-execute, orchestration" type="directive" ver="2.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Autonomous critique loop for SDD artifacts — spec, task, or batch (spec + all tasks). You are the ORCHESTRATOR in the root session. Per round: dispatch one isolated critic subagent, evaluate feedback against full project context, reconcile every introduced entity against existing project surface (reuse > extend > justify > escalate), surgically edit artifact, re-dispatch if edits applied (max 5 rounds). For batch: spec first, then tasks in DAG layers — parallel within layer, sequential between layers. On CLEAN: delete `## Critic Rounds` (temporary scaffolding). Artifact is clean, improvements integrated.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
     <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
     <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
@@ -19,18 +19,18 @@
     <Axiom id="AX_SCRATCH_LOG">`## Critic Rounds` = temporary working memory for orchestrator between rounds. Deleted on final CLEAN.</Axiom>
     <Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>
     <Axiom id="AX_LANG">Directive: English. Artifact prose (Critic Rounds, summary): Russian.</Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | H_NO_ARTIFACT | Path does not resolve to .spec.md / .task-*.md |
     | H_PARENT_SPEC_MISSING | Task scope spec not found |
     | H_DISPATCH_FAILED | Critic subagent dispatch failed twice |
     | H_STRUCTURAL | Artifact needs restructuring beyond surgical edits |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Anti_Patterns>
+  <AntiPatterns>
     <Pattern id="AP_SELF_CRITIQUE">Critiquing artifact yourself. Dispatch isolated critic.</Pattern>
     <Pattern id="AP_NO_RE_DISPATCH">Edits without re-dispatch. Edit invalidates prior verdict.</Pattern>
     <Pattern id="AP_SPIN">Re-dispatch with zero edits. Same input → same verdict.</Pattern>
@@ -38,9 +38,9 @@
     <Pattern id="AP_DISMISS_CONFUSION">Ignoring "I don't understand X". Always fix.</Pattern>
     <Pattern id="AP_VAGUE_REJECT">Rejecting without citing specific context.</Pattern>
     <Pattern id="AP_ENTITY_SPRAWL">Accepting a new entity/type/method without first searching the project for one to reuse or extend. New surface every round = sprawl.</Pattern>
-  </Anti_Patterns>
+  </AntiPatterns>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="0_RESOLVE">
       <Goal>Resolve what to critique.</Goal>
       <Action>
@@ -163,7 +163,7 @@
         ```
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
   <HardForbidden>
     - Self-critique. Dispatch critic.

@@ -1,11 +1,11 @@
-<Dev_Review keywords="dev review, code review orchestration, agent cli, claude cli, kimi, glm, alias fallback, codex fallback" type="directive" ver="2.0">
+<DevReview keywords="dev review, code review orchestration, agent cli, claude cli, kimi, glm, alias fallback, codex fallback" type="directive" ver="2.0">
   <Mission>
     Execute review from a given entrypoint: launch external review methods in the user's shell profile, collect their findings, validate each finding against current code, filter stale/hallucinated items, and emit a result containing only locally-verified facts.
 
     Cognitive role: Review Orchestrator + Finding Verifier. External findings are not trusted on their word — every finding passes local validation against current HEAD before entering the validated list.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_USER_PROFILE_FIRST">External CLIs run in user's profile (`source ~/.zshrc`); otherwise alias-models and environment may be unavailable.</Axiom>
     <Axiom id="AX_REAL_RUN_OVER_PING">No separate ping stages. Availability is confirmed by the actual review-command run.</Axiom>
     <Axiom id="AX_ABSOLUTE_PATHS_ONLY">All entrypoint/spec paths in instructions and report are absolute.</Axiom>
@@ -13,9 +13,9 @@
     <Axiom id="AX_NO_UNVERIFIED_FINDINGS">A finding without successful local validation does NOT enter the validated list.</Axiom>
     <Axiom id="AX_STALE_MUST_BE_REJECTED">If finding's fact no longer holds in current HEAD → mark `rejected-stale`.</Axiom>
     <Axiom id="AX_PROVENANCE_IS_A_PRODUCT">Report explicitly separates external findings from locally-validated findings.</Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Input_Contract>
+  <InputContract>
     - **Required:** `entrypoint` (file or folder).
     - **Optional:** `review_rules` (operator's review rules); `spec_links` (related specs / docs / tickets).
 
@@ -23,47 +23,47 @@
     - No `entrypoint` → request and stop.
     - No `review_rules` → ask one short clarifying question, continue after answer.
     - All target/spec paths converted to absolute before review starts.
-  </Input_Contract>
+  </InputContract>
 
-  <Preflight_Bootstrap>
+  <PreflightBootstrap>
     Mandatory in login shell BEFORE external methods:
     ```
     /bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; type claude; type claude-glm-4-7; type agent'
     ```
     Preflight fixes user's real environment but does NOT replace actual review-method runs.
-  </Preflight_Bootstrap>
+  </PreflightBootstrap>
 
-  <Alias_Discovery_Protocol>
+  <AliasDiscoveryProtocol>
     Deterministic, not heuristic.
     1. In login shell: `compgen -A function | rg '^claude-(kimi|glm)-'`.
     2. If `compgen` unavailable/empty → fallback: `typeset -f | rg '^claude-(kimi|glm)-'`.
     3. If base `claude` returned a list of available alias-commands → use as additional source (not the only one).
     4. **`kimi` family:** prefer `claude-kimi-k2-5` if present.
     5. **`glm` family:** pick the newest available version by number suffix.
-  </Alias_Discovery_Protocol>
+  </AliasDiscoveryProtocol>
 
-  <Dynamic_Instruction_Contract>
+  <DynamicInstructionContract>
     Single dynamic instruction for ALL external methods (eliminates context drift). Includes:
     - `review_rules`, scope boundaries, artifacts in review, spec links, absolute paths.
     - Required structured stdout: `summary`, `findings`, `fix_proposals`.
     - Each finding contains: `severity`, `entity`, `file`, `location` (semantic), `problem`, `proposed_fix`.
-  </Dynamic_Instruction_Contract>
+  </DynamicInstructionContract>
 
-  <Reviewer_Output_Minimum_Schema>
+  <ReviewerOutputMinimumSchema>
     Each usable stdout result has top-level `{ summary, findings, fix_proposals }`.
     - `summary` — string or short markdown block.
     - `findings` — array of objects.
     - Each finding: `severity`, `entity`, `file`, `location`, `problem`, `proposed_fix` (all required).
     - Additional fields allowed; missing any required field → finding unusable for merge.
     - Parseable stdout but incomplete schema → method partially usable; bad findings dropped before validation gate.
-  </Reviewer_Output_Minimum_Schema>
+  </ReviewerOutputMinimumSchema>
 
-  <Prompt_Transport>
+  <PromptTransport>
     Long prompt → env/file (no fragile inline-quoting). Default stdin/stdout; disk artifacts only when necessary.
     Path template: `~/.gennady/<review-name>/<project>/<date-yyyy-mm-dd>/<filename>.md`.
-  </Prompt_Transport>
+  </PromptTransport>
 
-  <Execution_Methods>
+  <ExecutionMethods>
     All external calls in login shell:
     ```
     /bin/zsh -lc 'source ~/.zshrc >/dev/null 2>&1; <command>'
@@ -75,7 +75,7 @@
 
     **`claude`** — `claude -p --output-format json …`. Parseable structured + schema-valid → success. Tells to use alias-commands or shows model-list → extract and proceed to alias-layer. Unusable + no hint → failed, move on.
 
-    **alias-layer** — discovery via `<Alias_Discovery_Protocol>` is the ONLY normative source. Both `kimi` and `glm` families found → run both. One found → run that one. Each alias-method evaluated independently; successful results all kept (not just first); failed alias does NOT block other aliases.
+    **alias-layer** — discovery via `<AliasDiscoveryProtocol>` is the ONLY normative source. Both `kimi` and `glm` families found → run both. One found → run that one. Each alias-method evaluated independently; successful results all kept (not just first); failed alias does NOT block other aliases.
     ```
     claude-kimi-k2-5 -p --output-format json …
     claude-glm-4-7   -p --output-format json …
@@ -86,39 +86,39 @@
     **Response classification:**
     | Status | Meaning |
     |---|---|
-    | `Success` | parseable structured stdout matching `<Reviewer_Output_Minimum_Schema>` |
+    | `Success` | parseable structured stdout matching `<ReviewerOutputMinimumSchema>` |
     | `Failed` | non-zero exit OR unusable output without hint |
     | `Hinted` | response contains an executable hint to switch to alias / другой способ |
     | `Skipped` | not run because earlier layers already produced sufficient results, or queue didn't reach |
-  </Execution_Methods>
+  </ExecutionMethods>
 
-  <Finding_Validation_Gate>
+  <FindingValidationGate>
     After each external report, validate every finding against current HEAD:
     - Open target file; check context with `nl -ba <file> | sed -n …`.
     - Confirm finding's facts via `rg` for the referenced entities/conditions.
     - Fact not confirmed in current code → mark `rejected-stale` automatically.
     - Finding without successful local validation does NOT enter the validated list.
-  </Finding_Validation_Gate>
+  </FindingValidationGate>
 
-  <Finding_Merge_Policy>
+  <FindingMergePolicy>
     Final findings merged by error logic, NOT by text wording.
     - Different models describing the same problem (or complementing it) → merge into one item.
     - Each merged item lists `model_sources` comma-separated.
     - Unique finding without a pair stays separate with one `model_sources` entry.
     - Keep the most precise problem statement; absorb additions from all relevant models.
-  </Finding_Merge_Policy>
+  </FindingMergePolicy>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | ID | Trigger |
     |---|---|
     | `H_NO_ENTRYPOINT` | `entrypoint` not provided |
     | `H_NO_RULES` | After clarification, `review_rules` still not provided |
     | `H_ALL_METHODS_FAILED` | None of `agent` / `claude` / alias-layer gave usable output AND `codex` fallback unavailable |
 
-    On halt → return `<Review_Blocked>` with reason, run attempts, unblock actions.
-  </Halt_Conditions>
+    On halt → return `<ReviewBlocked>` with reason, run attempts, unblock actions.
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     1. Get `entrypoint` and `review_rules` (or ask once for rules).
     2. Convert all paths to absolute.
     3. Run mandatory `Preflight_Bootstrap` in login shell.
@@ -126,23 +126,23 @@
     5. Run `agent` per its protocol.
     6. Run `claude` per its protocol.
     7. If alias-commands discovered (or kimi/glm aliases locally available) → run alias-layer per its protocol. Both kimi and glm available → run both.
-    8. After each external report → pass findings through `<Finding_Validation_Gate>`.
+    8. After each external report → pass findings through `<FindingValidationGate>`.
     9. Merge validated findings by error logic; set `model_sources`; apply decisions; verify.
     10. All external methods unsuccessful → enter `codex` fallback; re-run validation + verify.
     11. Build final report separating external vs validated.
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Output_Format>
+  <OutputFormat>
     Four phases.
 
-    - **Phase 1: `<Tool_Availability_Report>`** — discovered methods; which ran; per method `status=success|failed|skipped`, reason + diagnostic. Alias-layer separately shows commands found via `<Alias_Discovery_Protocol>`.
-    - **Phase 2: `<Dynamic_Instruction_Report>`** — used review_rules; absolute entrypoints/spec-links; scope boundaries passed to executors.
-    - **Phase 3: `<Review_Execution_Report>`** —
-      - `<External_Findings>`: raw findings from external methods.
-      - `<Validated_Findings>`: only findings passing local validation gate. Each item has `model_sources` comma-separated (e.g., `agent, claude-kimi-k2-5, claude-glm-4-7`).
-      - `<Rejected_Findings>`: rejected with reason (`rejected-stale`, `rejected-unverifiable`, etc.).
-    - **Phase 4: `<Verification_Report>`** — what was checked after applying; what passed; what remained and why.
+    - **Phase 1: `<ToolAvailabilityReport>`** — discovered methods; which ran; per method `status=success|failed|skipped`, reason + diagnostic. Alias-layer separately shows commands found via `<AliasDiscoveryProtocol>`.
+    - **Phase 2: `<DynamicInstructionReport>`** — used review_rules; absolute entrypoints/spec-links; scope boundaries passed to executors.
+    - **Phase 3: `<ReviewExecutionReport>`** —
+      - `<ExternalFindings>`: raw findings from external methods.
+      - `<ValidatedFindings>`: only findings passing local validation gate. Each item has `model_sources` comma-separated (e.g., `agent, claude-kimi-k2-5, claude-glm-4-7`).
+      - `<RejectedFindings>`: rejected with reason (`rejected-stale`, `rejected-unverifiable`, etc.).
+    - **Phase 4: `<VerificationReport>`** — what was checked after applying; what passed; what remained and why.
 
-    End with: `<Final_State value="success|partial|fallback-codex|blocked" />`.
-  </Output_Format>
-</Dev_Review>
+    End with: `<FinalState value="success|partial|fallback-codex|blocked" />`.
+  </OutputFormat>
+</DevReview>

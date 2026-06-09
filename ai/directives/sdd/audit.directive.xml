@@ -1,5 +1,5 @@
 <SddAudit keywords="audit, drift-detection, closed-world-fidelity, completeness, runtime-backing, rules-cascade, rule-activation-overrides, rules-compliance, task-id-integrity, stale-after-pivot, insight-backflow, sdd-phase-5" type="directive" ver="3.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Verify alignment between spec, task ticket, and actual code after task execution.
 
@@ -20,9 +20,9 @@
 
       **Glossary.** Phase 5 of SDD. Phase agent = subagent that operated under `phase-execution-protocol` on one of the phase blocks. Orchestrator = `sdd-execute` SKILL agent that dispatched the phases and now dispatches audit. Scaffolder = agent that operated under `task-scaffolding` when the ticket was generated. `phases_to_fix` = list of phase IDs returned by audit on FAIL, mapping finding locations to phases whose `Target Files` contain them.
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_AUDIT_READS_CODE">
       Audit is the only SDD directive allowed to read code. Reading scope is bounded:
       - all files listed in per-phase `Target Files` under ticket section 3 Phases;
@@ -70,7 +70,7 @@
       | `EXECUTION_LOG_INCOMPLETE` | mandatory closing lines missing (`ver` / `DONE` per phase, `DONE` at Round close); OR `intro` line absent for an entity that appears in code but not in module Inventory; OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
       | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |
       | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
-      | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<Belief_State>` / `<Anti_Patterns>` / `<Verification_Hooks>` / `<Reward_Criteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
+      | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
     </Axiom>
 
     <Axiom id="AX_SEVERITY_TAGGING">
@@ -164,13 +164,13 @@
       Compliance is checked against the union of rules listed across all phases of the Round (per each phase block's `<ts> rules <rule-ids>` line — or equivalently the `Rules:` bullet list in section 3 Phases). Not the full cascade — only what phases actually loaded.
 
       **Audit is universal — no embedded knowledge of any language, runtime, or tool.** Every rule file exposes the same checkable surface; audit walks these sections mechanically:
-      - `<Depends_On>` → list of rule-file paths this rule architecturally extends (optional; empty for standalone rules). Used by scaffolder for transitive closure, by audit for cascade verification — NOT walked at runtime.
-      - `<Belief_State>` → `<Axiom AX_*>` constraints
-      - `<Anti_Patterns>` → `<Bad>` shapes that must not appear
-      - `<Verification_Hooks>` → executable check commands
-      - `<Reward_Criteria>` → ✅ invariants / ❌ forbidden states
+      - `<DependsOn>` → list of rule-file paths this rule architecturally extends (optional; empty for standalone rules). Used by scaffolder for transitive closure, by audit for cascade verification — NOT walked at runtime.
+      - `<BeliefState>` → `<Axiom AX_*>` constraints
+      - `<AntiPatterns>` → `<Bad>` shapes that must not appear
+      - `<VerificationHooks>` → executable check commands
+      - `<RewardCriteria>` → ✅ invariants / ❌ forbidden states
 
-      Required sections: `<Belief_State>` / `<Anti_Patterns>` / `<Verification_Hooks>` / `<Reward_Criteria>`. Optional: `<Depends_On>` (only when the rule extends another). Required section missing → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
+      Required sections: `<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`. Optional: `<DependsOn>` (only when the rule extends another). Required section missing → `RULE_FILE_INCOMPLETE` (`MAJOR`); audit proceeds with available sections.
 
       **Per (artifact ∈ Round diff, rule ∈ union of all phases' Rules):**
       1. Apply rule's `<Triggers>` / `<ActivationHint>` from `knowledge.xml` to decide if the rule governs this artifact. No match → skip pair.
@@ -183,7 +183,7 @@
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<Depends_On>`**.
+      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<DependsOn>`**.
 
       Cascade tiers (sources of truth):
 
@@ -194,7 +194,7 @@
       | module | `tasks/<scope>/README.md` module row + module spec 9 Module Rules Additions |
       | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
 
-      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<Depends_On>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once per `AX_RULE_ACTIVATION_PLAN` step 4). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
+      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<DependsOn>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once per `AX_RULE_ACTIVATION_PLAN` step 4). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
 
       Plan rows ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
     </Axiom>
@@ -275,9 +275,9 @@
       - **Confidence explicit.** Every finding has confidence: HIGH (mechanically verifiable), MEDIUM (depends on interpretation), LOW (observation, requires confirmation).
       - **Context budget.** Epic-level audit aggregates findings by type; do not repeat identical ones 50 times.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_SCOPE` | Operator did not provide task-ID or scope |
@@ -285,9 +285,9 @@
     | `H_NO_MODULE_SPEC` | Required module spec or scope spec is missing/inaccessible |
     | `H_LOW_CONFIDENCE` | Findings classified mostly LOW; report cannot mark PASS without operator review |
     | `H_OPERATOR_REJECT` | Operator refuses summary at STEP_8 final approval |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_INTAKE">
       <Goal>Capture audit scope and mode.</Goal>
       <Action>
@@ -429,15 +429,15 @@
         Operator approval → session ends. No files written to `audits/`.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Frame_Rules>
+  <FrameRules>
     <Rule id="FRAME_PUSH_WHEN">Push frame on disputes about specific finding severity, deep-dive into one drift, or when discussing operator acknowledgment.</Rule>
     <Rule id="FRAME_POP_WHEN">Pop on confirmed severity, accepted operator-acknowledged status, or when local discussion cannot advance.</Rule>
     <Rule id="FRAME_STATUS_VALUES">OPEN | BLOCKED | READY_TO_RETURN | READY_TO_ADVANCE | DEFERRED.</Rule>
-  </Frame_Rules>
+  </FrameRules>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
       🔍 AU_R<N> | STACK: ROOT__<FRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
@@ -448,7 +448,7 @@
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — <STEP_NAME>
+      🎯 Phase Progress — <STEPNAME>
         📊 Findings so far: 🔴 <N> · 🟠 <M> · 🟡 <K> · 🔵 <L>
         ⏳ Open:    <under discussion>
         ▶️ Next:    <agent proposal; operator decides>
@@ -482,7 +482,7 @@
 
       ```
       @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
-      F-<NN> | sev=<B|M|m|I> | type=<TYPE_TOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
+      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
       F-<NN> | …
       ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
       ```
@@ -550,5 +550,5 @@
       - `N` increments monotonically across the ticket's lifetime, independent of Execution Round numbers.
       - The fenced code block inside each round is the same compact grammar as `AUDIT_SESSION_SUMMARY_FORMAT` — machines parse it without rewriting.
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddAudit>

@@ -1,5 +1,5 @@
 <UiKitSpecDrafting keywords="uikit, spec-drafting, extraction-result, ui-spec, token-mapping, variant-grouping, bdd-generation, a11y-defaults" type="drafting-rules" ver="1.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Convert an ExtractionResult — the JSON output of `figma-utils extract &lt;component&gt;` — into a draft `.ui.spec.md` (per `spec-format.md`). The draft is a starting point for operator refinement; it must preserve ALL data from the extraction (all variants, all token candidates, all elements) without loss.
 
@@ -10,9 +10,9 @@
       - Validating the draft (SpecValidator is a separate check);
       - Finalising the spec (operator approves after review).
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_EXTRACTION_INPUT">
       The input is an `ExtractionResult` object with shape:
       ```json
@@ -112,9 +112,9 @@
       ```
       This signals to the operator that the spec is machine-generated and requires human approval.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Drafting_Procedure>
+  <DraftingProcedure>
     <Step id="STEP_1_LOAD_EXTRACTION">
       <Goal>Receive and validate the ExtractionResult.</Goal>
       <Action>
@@ -192,35 +192,35 @@
         3. Save as `specs/uikit/components/&lt;component&gt;.ui.spec.md`.
       </Action>
     </Step>
-  </Drafting_Procedure>
+  </DraftingProcedure>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_DROPPED_VARIANTS">
+  <AntiPatterns>
+    <AntiPattern id="AP_DROPPED_VARIANTS">
       <Bad>Пропуск строки в таблице Variants, потому что «этот вариант не в extraction».</Bad>
-      <Why_Bad>Closed-world нарушен. Последующий SpecValidator не сможет отличить «пропущен осознанно» от «забыли».</Why_Bad>
+      <WhyBad>Closed-world нарушен. Последующий SpecValidator не сможет отличить «пропущен осознанно» от «забыли».</WhyBad>
       <Good>Строка присутствует, но состояния помечены `⚠️ not in extraction`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SILENT_MISSING_TOKEN">
+    <AntiPattern id="AP_SILENT_MISSING_TOKEN">
       <Bad>Пропуск строки в Token Mapping, когда токен не найден.</Bad>
-      <Why_Bad>Измерение теряется. SpecValidator не может проверить, что все измерения покрыты.</Why_Bad>
+      <WhyBad>Измерение теряется. SpecValidator не может проверить, что все измерения покрыты.</WhyBad>
       <Good>Строка с `⚠️ no token` в колонке Token и `Action = ⚠️`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_DUPLICATE_BDD_GROUP">
+    <AntiPattern id="AP_DUPLICATE_BDD_GROUP">
       <Bad>Один BDD-заголовок на несколько размеров: `### Primary / Accent (все размеры)`.</Bad>
-      <Why_Bad>Разные размеры имеют разные ожидаемые значения (height, pads). Сгруппированные BDD нельзя верифицировать.</Why_Bad>
+      <WhyBad>Разные размеры имеют разные ожидаемые значения (height, pads). Сгруппированные BDD нельзя верифицировать.</WhyBad>
       <Good>Отдельный BDD-заголовок на каждый (appearance, mode), внутри указывается representative size и конкретные значения.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_FABRICATED_MEASUREMENTS">
+    <AntiPattern id="AP_FABRICATED_MEASUREMENTS">
       <Bad>BDD-сценарий с выдуманными значениями: `background = #0077FF`, когда в extraction нет такого цвета.</Bad>
-      <Why_Bad>SpecValidator обнаружит расхождение. Фабрикация данных подрывает доверие к спекам.</Why_Bad>
+      <WhyBad>SpecValidator обнаружит расхождение. Фабрикация данных подрывает доверие к спекам.</WhyBad>
       <Good>Все Then-значения берутся из `MeasurementSet` соответствующего варианта: `rectFill`, `height`, `borderRadius`, etc.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Draft содержит все 6 обязательных секций (Vision, Variants, Token Mapping, Element Structure, A11y, BDD).
     ✅ Variants — closed-world таблица, все комбинации size × appearance × mode перечислены.
     ✅ Token Mapping — каждая строка имеет валидный VKUI токен или явную пометку `⚠️ no token`.
@@ -234,5 +234,5 @@
     ❌ BDD без реальных данных (фабрикация).
     ❌ Отсутствует a11y-секция.
     ❌ Draft без пометки `DRAFT`.
-  </Reward_Criteria>
+  </RewardCriteria>
 </UiKitSpecDrafting>

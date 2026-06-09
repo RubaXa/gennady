@@ -1,5 +1,5 @@
 <SddSetup keywords="setup, project-init, portal, scope-graph, vision, infra-bootstrap, idempotent, sdd-project-setup" type="directive" ver="1.1">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Primary owner of `specs/README.md` — Project Vision and Scope Graph. Idempotent: runs any number of times to refine vision, extend the scope graph, or bootstrap the first infra-base spec.
 
@@ -12,9 +12,9 @@
 
       **Glossary.** scope-type ∈ {infrastructure, contracts, library, product}. Scope Graph = directed graph; edge A→B = «scope A depends on scope B (consumes its rules / contracts)».
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_PORTAL_PRIMARY_OWNER">
       `setup` is the primary owner of `specs/README.md`. Other directives MUST NOT rewrite this file. Reads are unrestricted.
 
@@ -78,18 +78,18 @@
     <Axiom id="AX_STATELESS_ARTIFACT">
       `specs/README.md` is self-contained. The next session reads only that file, without conversation history.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
-  <Halt_Conditions>
+  <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
     | `H_NO_INTENT` | Operator invoked `setup` with an empty intake against an existing Portal |
     | `H_CYCLE_IN_GRAPH` | Scope Graph contains a cycle |
     | `H_SCOPE_VS_MODULE_AMBIGUITY` | Operator labels as «scope» something that resembles a module — clarification required |
     | `H_OPERATOR_REJECT` | Operator rejected Vision, Scope Graph, or the final Portal |
-  </Halt_Conditions>
+  </HaltConditions>
 
-  <Execution_Plan>
+  <ExecutionPlan>
     <Step id="STEP_0_INTAKE">
       <Goal>Inspect Portal; determine today's change set.</Goal>
       <Action>
@@ -146,9 +146,9 @@
         5. Approval Check. STOP.
       </Action>
     </Step>
-  </Execution_Plan>
+  </ExecutionPlan>
 
-  <Output_Contracts>
+  <OutputContracts>
     <Contract id="TRACE_HEADER_FORMAT">
       ```text
       🗺️ SU_R<N> | STACK: ROOT__<STEP> | <STATUS> | CONF: <LOW|MEDIUM|HIGH>
@@ -209,5 +209,5 @@
       > Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery <scope-name>`.
       ```
     </Contract>
-  </Output_Contracts>
+  </OutputContracts>
 </SddSetup>

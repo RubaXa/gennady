@@ -7,7 +7,7 @@
     Companion (one-time installation): `ai/directives/infra/storybook-setup.xml`.
   </Mission>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_SB_USE_NEVER_HALLUCINATE_PROPS">
       Component props, slot/snippet names, exported events, and tags ALWAYS come from the MCP documentation channel before a story is written or edited. Inferring props from name, by analogy with another component, or from chat history is forbidden — hallucinated props pass TypeScript narrowing if the type is loose and fail silently at story render time, burning the self-healing loop on a problem the MCP would have answered immediately.
     </Axiom>
@@ -45,7 +45,7 @@
     <Axiom id="AX_SB_USE_NO_PARALLEL_RENDER_HARNESS">
       Component rendering for testing goes through the project's chosen Storybook harness, not through a parallel render path (custom Vitest project mounting the component bypassing the addon, ad-hoc puppet scripts). Parallel harnesses duplicate the render contract and drift the first time a decorator is added; the drift surfaces as «works in Storybook, fails in tests» (or vice versa) with no audit trail.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_SB_MCP_TOOLS">
@@ -56,7 +56,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_SB_COMPOSED_STORY_WITH_PLAY">
       <Intent>New variant composes args from an existing story, carries the `ai-generated` tag, and asserts behaviour through `play`.</Intent>
       <Snippet language="typescript">
@@ -93,49 +93,49 @@
       </Snippet>
       <Why>One concept (disabled-click no-op); args composed from `Primary.args`; `ai-generated` tag present; `play` asserts the contract through role-based query.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_SB_HALLUCINATED_PROPS">
+  <AntiPatterns>
+    <AntiPattern id="AP_SB_HALLUCINATED_PROPS">
       <Bad>Agent writes `<Button label="Go" intent="ghost" size="xl">` based on what «buttons usually have», without consulting MCP; story compiles because props are typed as `Record<string, unknown>` but renders as the default variant.</Bad>
-      <Why_Bad>Props guessed instead of retrieved via MCP (`AX_SB_USE_NEVER_HALLUCINATE_PROPS`). Compiles cleanly, fails at render or silently produces the wrong variant — the failure is then chased through the self-healing loop instead of being answered up-front by `get-documentation`.</Why_Bad>
+      <WhyBad>Props guessed instead of retrieved via MCP (`AX_SB_USE_NEVER_HALLUCINATE_PROPS`). Compiles cleanly, fails at render or silently produces the wrong variant — the failure is then chased through the self-healing loop instead of being answered up-front by `get-documentation`.</WhyBad>
       <Good>Call `get-documentation` on `Button`, read the actual prop schema (e.g. `label`, `variant`, `disabled`), write the story using the documented props only. If MCP returns incomplete data, comment in the story noting the gap and fall back to reading source.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_MISSING_PLAY_ON_INTERACTION">
+    <AntiPattern id="AP_SB_MISSING_PLAY_ON_INTERACTION">
       <Bad>Story named `OpensModalOnClick` consists only of `args: { ... }` and no `play` function; the user-flow concept is documentation, not an executable contract.</Bad>
-      <Why_Bad>Interactive story without `play` (`AX_SB_USE_PLAY_FOR_INTERACTION`). The self-verification loop has nothing to assert against; `run-story-tests` will pass trivially without exercising the flow that the story name claims to verify.</Why_Bad>
+      <WhyBad>Interactive story without `play` (`AX_SB_USE_PLAY_FOR_INTERACTION`). The self-verification loop has nothing to assert against; `run-story-tests` will pass trivially without exercising the flow that the story name claims to verify.</WhyBad>
       <Good>Add `play: async ({ canvasElement, step }) => { const canvas = within(canvasElement); await userEvent.click(canvas.getByRole('button', { name: 'Open' })); await expect(canvas.getByRole('dialog')).toBeVisible(); }`.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_MISSING_AI_TAG">
+    <AntiPattern id="AP_SB_MISSING_AI_TAG">
       <Bad>Agent-authored story carries `tags: ['autodocs']` only — no `'ai-generated'`.</Bad>
-      <Why_Bad>Reserved agent-authorship tag missing (`AX_SB_USE_AI_GENERATED_TAG`). Human curators can no longer batch-audit machine output or distinguish it from hand-curated stories; the tag's purpose is to make agent provenance discoverable.</Why_Bad>
+      <WhyBad>Reserved agent-authorship tag missing (`AX_SB_USE_AI_GENERATED_TAG`). Human curators can no longer batch-audit machine output or distinguish it from hand-curated stories; the tag's purpose is to make agent provenance discoverable.</WhyBad>
       <Good>`tags: ['autodocs', 'ai-generated']`. Composition with other tags is fine; omission of `'ai-generated'` from agent-authored stories is not.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_SKIP_SELF_VERIFY">
+    <AntiPattern id="AP_SB_SKIP_SELF_VERIFY">
       <Bad>Agent writes a new story, runs only `npx tsc --noEmit`, sees no type error, and marks the task complete without invoking `run-story-tests`.</Bad>
-      <Why_Bad>Self-verification skipped (`AX_SB_USE_SELF_VERIFY_BEFORE_HANDOFF`). Type-check covers the prop schema but not the runtime render or the `play` assertions; the story may explode at first execution. The MCP-exposed runner is exactly the channel that catches this in seconds.</Why_Bad>
+      <WhyBad>Self-verification skipped (`AX_SB_USE_SELF_VERIFY_BEFORE_HANDOFF`). Type-check covers the prop schema but not the runtime render or the `play` assertions; the story may explode at first execution. The MCP-exposed runner is exactly the channel that catches this in seconds.</WhyBad>
       <Good>After authoring: `run-story-tests` on every story in the affected component file. Green run → handoff. Red run → fix the story or the component, re-run, repeat until green.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SB_REWRITE_INSTEAD_OF_COMPOSE">
+    <AntiPattern id="AP_SB_REWRITE_INSTEAD_OF_COMPOSE">
       <Bad>New `Disabled` story restates the full `args: { label, variant, size, icon, ariaLabel, ... }` map identical to `Primary.args` except for one field.</Bad>
-      <Why_Bad>Args restated instead of composed (`AX_SB_USE_COMPOSE_EXISTING_FIRST`). The duplicated map drifts the first time `Primary.args` gains or renames a field — the `Disabled` story silently falls behind without any test failure pointing at it.</Why_Bad>
+      <WhyBad>Args restated instead of composed (`AX_SB_USE_COMPOSE_EXISTING_FIRST`). The duplicated map drifts the first time `Primary.args` gains or renames a field — the `Disabled` story silently falls behind without any test failure pointing at it.</WhyBad>
       <Good>`args: { ...Primary.args, disabled: true }`. Composition makes the diff visible and keeps the variant aligned with the base.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Workflow_Outline>
+  <WorkflowOutline>
     <Step id="WF_SB_1_RETRIEVE_DOCS">Call `get-documentation` (and `get-documentation-for-story` when extending an existing variant) for the target component. Read prop schema, existing variants, exposed events.</Step>
     <Step id="WF_SB_2_PICK_BASE_OR_NEW">If an existing story matches the base variant, compose args from it. Otherwise author from documented props only.</Step>
     <Step id="WF_SB_3_AUTHOR_ONE_CONCEPT_PER_STORY">One story = one concept. Add `'ai-generated'` tag. Interactive scenarios get a `play` function asserting the post-state.</Step>
     <Step id="WF_SB_4_RUN_STORY_TESTS">Invoke `run-story-tests` for every story in the affected file. Failure → fix component or story, re-run, repeat.</Step>
     <Step id="WF_SB_5_VERIFY_AND_FINALIZE">Before handoff: tests green; props confirmed via MCP; tag present; one concept per story; existing stories not regressed. Environment blocker → declared EXPLICITLY.</Step>
-  </Workflow_Outline>
+  </WorkflowOutline>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_SB_RUN_STORY_TESTS">
       <Purpose>Story tests pass for the affected component file via the project's MCP-exposed runner (script name from `package.json`).</Purpose>
       <Command>npm run test-storybook -- --url http://localhost:6006</Command>
@@ -151,9 +151,9 @@
       <Command>find . -name '*.stories.*' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'export const [A-Z][A-Za-z]*(Click|Submits|Opens|Toggles|Types|Drags)' || true</Command>
       <Expected>Manual review: every match resolves to a story whose body contains `play:`. Matches without `play` are violations.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Props, events, slots/snippets retrieved via MCP before any story is written; source-code fallback annotated when used.
     ✅ Each story expresses one concept; multiple variants live as multiple stories.
     ✅ Interactive stories carry a `play` function asserting the post-interaction state.
@@ -169,5 +169,5 @@
     ❌ Task marked complete without running `run-story-tests`.
     ❌ Story failure silenced by `.skip` or deletion instead of fixed or escalated.
     ❌ Parallel render harness introduced beside the project's chosen Storybook addon.
-  </Reward_Criteria>
+  </RewardCriteria>
 </StorybookUsageRules>

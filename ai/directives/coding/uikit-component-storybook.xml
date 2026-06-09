@@ -1,5 +1,5 @@
 <UiKitComponentStorybook keywords="uikit, storybook, hierarchy, play-function, a11y-audit, ai-generated, spec-mirror" type="testing-rules" ver="1.0">
-  <Directive_Context>
+  <DirectiveContext>
     <Mission>
       Canonical rules for writing Storybook stories for uikit components. Every execution-agent MUST apply these conventions when creating or modifying `.stories.ts` files. These rules are LAYERED ON TOP of `storybook-usage.xml` — the base Storybook rules are prerequisites; this directive adds uikit-specific hierarchy, play-function, and a11y-audit constraints derived from the first component (Button).
 
@@ -10,14 +10,14 @@
       - The Svelte component implementation (delegated to `uikit-component-svelte.xml`);
       - Storybook installation/setup (delegated to `storybook-setup.xml`).
     </Mission>
-  </Directive_Context>
+  </DirectiveContext>
 
-  <Depends_On>
+  <DependsOn>
     - ai/directives/testing/storybook-usage.xml
     - ai/directives/coding/uikit-component-svelte.xml
-  </Depends_On>
+  </DependsOn>
 
-  <Belief_State>
+  <BeliefState>
     <Axiom id="AX_HIERARCHY_MIRRORS_SPEC">
       The Storybook sidebar hierarchy is a direct mirror of the spec's Variants table structure. For Button, the hierarchy is:
 
@@ -152,7 +152,7 @@
 
       Alternative (used in Button spec examples): multiple `export default` in separate files, or named exports with different titles. Either pattern is acceptable as long as the hierarchy matches the spec.
     </Axiom>
-  </Belief_State>
+  </BeliefState>
 
   <Definitions>
     <Definition id="DEF_SPEC_MIRROR_HIERARCHY">
@@ -163,7 +163,7 @@
     </Definition>
   </Definitions>
 
-  <Code_Patterns>
+  <CodePatterns>
     <Pattern id="PT_CANONICAL_STORIES_FILE">
       <Intent>Complete canonical `.stories.ts` file for a uikit Button component.</Intent>
       <Snippet language="typescript">
@@ -257,47 +257,47 @@
       </Snippet>
       <Why>Adds `toHaveStyle` assertion on top of the role+attribute baseline. Background color values come from the spec's BDD scenarios (hex → rgb conversion for jsdom). Only add when the spec specifies an exact color; don't fabricate colors.</Why>
     </Pattern>
-  </Code_Patterns>
+  </CodePatterns>
 
-  <Anti_Patterns>
-    <Anti_Pattern id="AP_ADHOC_HIERARCHY">
+  <AntiPatterns>
+    <AntiPattern id="AP_ADHOC_HIERARCHY">
       <Bad>Story title `'Components/Button'` or `'UI/Button/Primary'` — hierarchy invented by developer.</Bad>
-      <Why_Bad>Hierarchy not derived from spec (`AX_HIERARCHY_MIRRORS_SPEC`). When the spec adds a new appearance, the developer must manually reorganize stories. The spec and Storybook drift apart silently.</Why_Bad>
+      <WhyBad>Hierarchy not derived from spec (`AX_HIERARCHY_MIRRORS_SPEC`). When the spec adds a new appearance, the developer must manually reorganize stories. The spec and Storybook drift apart silently.</WhyBad>
       <Good>Title `'Button/Accent/Primary'` — matches spec's Variants table columns. Adding a new appearance is a mechanical addition of one title group.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MISSING_PLAY">
+    <AntiPattern id="AP_MISSING_PLAY">
       <Bad>Story has `args: { ... }` but no `play` function.</Bad>
-      <Why_Bad>Play function required by `AX_PLAY_FUNCTION_REQUIRED`. Without `play`, `run-story-tests` passes trivially without asserting any contract. The story is documentation, not an executable spec mirror.</Why_Bad>
+      <WhyBad>Play function required by `AX_PLAY_FUNCTION_REQUIRED`. Without `play`, `run-story-tests` passes trivially without asserting any contract. The story is documentation, not an executable spec mirror.</WhyBad>
       <Good>Every story has `play` with `getByRole` + `toHaveAttribute('data-state', ...)` at minimum.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MISSING_A11Y_AUDIT">
+    <AntiPattern id="AP_MISSING_A11Y_AUDIT">
       <Bad>Story or meta lacks `parameters: { a11y: { test: 'error' } }`.</Bad>
-      <Why_Bad>A11y audit not configured (`AX_A11Y_AUDIT_PARAMETERS`). axe-core does not run during `run-story-tests`; a11y violations (missing labels, wrong contrast, invalid roles) pass silently.</Why_Bad>
+      <WhyBad>A11y audit not configured (`AX_A11Y_AUDIT_PARAMETERS`). axe-core does not run during `run-story-tests`; a11y violations (missing labels, wrong contrast, invalid roles) pass silently.</WhyBad>
       <Good>Add `parameters: { a11y: { test: 'error' } }` to `meta` (applies to all stories) or to each individual story.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_RESTATED_ARGS">
+    <AntiPattern id="AP_RESTATED_ARGS">
       <Bad>`SmallHover` story restates all args from `SmallNormal` instead of composing.</Bad>
-      <Why_Bad>Args restated instead of composed (`AX_COMPOSE_FROM_BASE_STORY`). When `SmallNormal` gains a new prop, `SmallHover` silently falls behind without any test pointing at the drift.</Why_Bad>
+      <WhyBad>Args restated instead of composed (`AX_COMPOSE_FROM_BASE_STORY`). When `SmallNormal` gains a new prop, `SmallHover` silently falls behind without any test pointing at the drift.</WhyBad>
       <Good>`args: { ...SmallNormal.args, state: 'hover' }` — composition makes the diff visible.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_MULTIPLE_CONCEPTS_ONE_STORY">
+    <AntiPattern id="AP_MULTIPLE_CONCEPTS_ONE_STORY">
       <Bad>One story named `AccentPrimaryAllSizes` with `play` that loops over sizes and asserts all of them.</Bad>
-      <Why_Bad>Multiple concepts in one story. When a test fails, the failure message says which size broke but the story name doesn't identify which variant the story was testing. The spec demands one story per variant.</Why_Bad>
+      <WhyBad>Multiple concepts in one story. When a test fails, the failure message says which size broke but the story name doesn't identify which variant the story was testing. The spec demands one story per variant.</WhyBad>
       <Good>Separate stories: `AccentPrimarySmallNormal`, `AccentPrimaryMediumNormal`, `AccentPrimaryLargeNormal`. Each fails independently.</Good>
-    </Anti_Pattern>
+    </AntiPattern>
 
-    <Anti_Pattern id="AP_SKIP_INSTEAD_OF_FIX">
+    <AntiPattern id="AP_SKIP_INSTEAD_OF_FIX">
       <Bad>Failing story is marked `.skip` or deleted to make `run-story-tests` green.</Bad>
-      <Why_Bad>Failure silenced instead of fixed. The story was the canary for a real bug — skipping it buries the bug. The self-verification loop is now blind to that variant.</Why_Bad>
+      <WhyBad>Failure silenced instead of fixed. The story was the canary for a real bug — skipping it buries the bug. The self-verification loop is now blind to that variant.</WhyBad>
       <Good>Fix the component or the story, re-run until green. If the failure is environment-dependent, surface as a blocker with deferred-ownership reference.</Good>
-    </Anti_Pattern>
-  </Anti_Patterns>
+    </AntiPattern>
+  </AntiPatterns>
 
-  <Verification_Hooks>
+  <VerificationHooks>
     <Hook id="HOOK_SB_RUN_STORY_TESTS">
       <Purpose>Run all story tests for the component file. Green run = stories pass type-check, render, and their `play` assertions succeed.</Purpose>
       <Command>npm run test-storybook -- --url http://localhost:6006</Command>
@@ -318,9 +318,9 @@
       <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l "'ai-generated'" || echo MISSING_TAG</Command>
       <Expected>Every `.stories.ts` file must appear. `MISSING_TAG` means the reserved tag is absent.</Expected>
     </Hook>
-  </Verification_Hooks>
+  </VerificationHooks>
 
-  <Reward_Criteria>
+  <RewardCriteria>
     ✅ Storybook hierarchy is a 1:1 mirror of the spec's Variants table — `ComponentName / Appearance / Mode`.
     ✅ One story per variant combination (size × state); story name = `<Size><State>`.
     ✅ Every story has a `play` function asserting role via `getByRole` and state via `toHaveAttribute('data-state', ...)`.
@@ -338,5 +338,5 @@
     ❌ Multiple variants collapsed into one story.
     ❌ Failing story skipped or deleted instead of fixed.
     ❌ `run-story-tests` not executed before handoff.
-  </Reward_Criteria>
+  </RewardCriteria>
 </UiKitComponentStorybook>
