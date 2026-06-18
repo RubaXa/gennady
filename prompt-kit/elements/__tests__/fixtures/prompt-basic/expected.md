@@ -1,4 +1,0 @@
-KEYWORDS:
-rules, safety
-
-текст

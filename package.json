@@ -26,11 +26,6 @@
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
-    "./prompt-kit": "./prompt-kit/index.ts",
-    "./prompt-kit/*": "./prompt-kit/*",
-    "./ai-tsx": "./ai-tsx/index.ts",
-    "./ai-tsx/elements": "./ai-tsx/elements/index.ts",
-    "./ai-tsx/components": "./ai-tsx/components/index.ts",
     "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
     "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
   },
@@ -57,7 +52,7 @@
     "format:check": "prettier --check .",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "release": "release-it",
-    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/ prompt-kit/"
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",

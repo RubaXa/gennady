@@ -39,8 +39,6 @@
     "cli/**/*",
     "scripts/**/*",
     "assistant/**/*",
-    "prompt-kit/**/*",
-    "ai-tsx/**/*",
     "index.ts",
     "vite.config.ts"
   ],

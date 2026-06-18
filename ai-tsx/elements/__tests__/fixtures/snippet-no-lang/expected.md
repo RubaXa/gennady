@@ -1,3 +1,0 @@
-```
-code without lang
-```
