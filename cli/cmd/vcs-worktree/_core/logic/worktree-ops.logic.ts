@@ -3,7 +3,8 @@
 // @tasks: N/A
 
 import { execFileSync } from 'node:child_process';
-import { dirname } from 'node:path';
+import { existsSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 /** @purpose Result of preparing a read-only worktree for an MR. */
 export type PreparedWorktree = {
@@ -32,6 +33,9 @@ export function prepareMrWorktree(
   iid: string,
   worktreePath: string
 ): PreparedWorktree {
+  // Collision: a leftover worktree at this path → remove it and prune dangling meta.
+  if (existsSync(worktreePath)) removeWorktreeSafe(worktreePath);
+  git(['-C', clonePath, 'worktree', 'prune']);
   git([
     '-C',
     clonePath,
@@ -85,4 +89,77 @@ export function removeWorktreeAt(worktreePath: string): void {
     '--git-common-dir',
   ]);
   git(['-C', dirname(commonDir), 'worktree', 'remove', '--force', worktreePath]);
+}
+
+/**
+ * @purpose Best-effort removal: proper `git worktree remove`, falling back to a
+ *   plain directory delete when the worktree metadata is broken.
+ * @param worktreePath Worktree to remove.
+ * @sideEffect FS: removes the directory; prunes git metadata when possible.
+ * @consumer worktree GC
+ */
+export function removeWorktreeSafe(worktreePath: string): void {
+  try {
+    removeWorktreeAt(worktreePath);
+  } catch {
+    try {
+      rmSync(worktreePath, { recursive: true, force: true });
+    } catch {
+      /* nothing more we can do */
+    }
+  }
+}
+
+/**
+ * @purpose GC: remove worktrees under `root` whose mtime is older than `ttlMs`.
+ *   Runs on every prepare so leaked worktrees cannot accumulate unbounded.
+ * @param root Worktrees root directory.
+ * @param ttlMs Max age in ms before a worktree is considered stale.
+ * @param nowMs Current time in ms (injected for testability).
+ * @returns Paths that were removed.
+ * @sideEffect FS + git: removes stale worktree directories.
+ * @consumer vcs-worktree.cmd
+ */
+export function gcStaleWorktrees(root: string, ttlMs: number, nowMs: number): string[] {
+  if (!existsSync(root)) return [];
+  const removed: string[] = [];
+  for (const name of readdirSync(root)) {
+    const path = join(root, name);
+    let mtimeMs: number;
+    try {
+      const st = statSync(path);
+      if (!st.isDirectory()) continue;
+      mtimeMs = st.mtimeMs;
+    } catch {
+      continue;
+    }
+    if (nowMs - mtimeMs > ttlMs) {
+      removeWorktreeSafe(path);
+      removed.push(path);
+    }
+  }
+  return removed;
+}
+
+/**
+ * @purpose Remove every worktree under `root` (manual clean slate).
+ * @param root Worktrees root directory.
+ * @returns Paths that were removed.
+ * @sideEffect FS + git: removes all worktree directories.
+ * @consumer vcs-worktree.cmd
+ */
+export function removeAllWorktrees(root: string): string[] {
+  if (!existsSync(root)) return [];
+  const removed: string[] = [];
+  for (const name of readdirSync(root)) {
+    const path = join(root, name);
+    try {
+      if (!statSync(path).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    removeWorktreeSafe(path);
+    removed.push(path);
+  }
+  return removed;
 }

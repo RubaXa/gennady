@@ -22,7 +22,9 @@ export function printHelp(): void {
   console.info('  --ci-all             Show CI/state events for all roles, not only author');
   console.info('  --all                Disable stale/draft/event suppression (role filter stays)');
   console.info('  --no-save            Do not update the seen-registry (read-only run)');
-  console.info('  --reset              Clear registry + drafts (~/.gennady/inbox-out) — clean slate');
+  console.info(
+    '  --reset              Clear registry + drafts (~/.gennady/inbox-out) — clean slate'
+  );
   console.info(
     '  --pick <ref>         Work packet for one MR (group/project!iid): stage + open questions'
   );

@@ -13,6 +13,8 @@ import {
   prepareMrWorktree,
   resolveBaseSha,
   removeWorktreeAt,
+  gcStaleWorktrees,
+  removeAllWorktrees,
 } from './_core/logic/worktree-ops.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 
@@ -23,9 +25,26 @@ function parseValue(argv: string[], flag: string): string | undefined {
   return idx !== -1 ? argv[idx + 1] : undefined;
 }
 
+/** @purpose Root for all MR-review worktrees (single, easy to GC/nuke). */
+function worktreeRoot(): string {
+  return join(homedir(), '.gennady', 'worktrees');
+}
+
+/** @purpose Staleness TTL in ms (env GENNADY_WORKTREE_TTL_H hours, default 3). */
+function worktreeTtlMs(): number {
+  const h = Number(process.env.GENNADY_WORKTREE_TTL_H);
+  return (Number.isFinite(h) && h > 0 ? h : 3) * 60 * 60 * 1000;
+}
+
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
+
+    if (argv.includes('--cleanup-all')) {
+      const removed = removeAllWorktrees(worktreeRoot());
+      console.info(style.gray(`worktrees removed: ${removed.length}`));
+      return 0;
+    }
 
     const cleanup = parseValue(argv, '--cleanup');
     if (cleanup) {
@@ -57,8 +76,12 @@ async function run(): Promise<number> {
 
     const clonePath = ensureClone(project, host, token);
 
-    const root = join(homedir(), '.gennady', 'worktrees');
+    const root = worktreeRoot();
     mkdirSync(root, { recursive: true });
+    // GC safety net: prune leaked worktrees older than TTL on every prepare,
+    // so they cannot grow unbounded even if --cleanup is never called.
+    const gced = gcStaleWorktrees(root, worktreeTtlMs(), Date.now());
+    if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
     const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
     const prepared = prepareMrWorktree(clonePath, iid, worktreePath);

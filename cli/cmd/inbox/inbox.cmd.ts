@@ -21,6 +21,9 @@ import {
   resolveOutDir,
   resetInboxState,
 } from './_core/logic/inbox-registry.logic.ts';
+import { removeAllWorktrees } from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -67,10 +70,19 @@ async function run(): Promise<number> {
     const argv = process.argv.slice(2);
 
     if (argv.includes('--reset') || argv.includes('reset')) {
-      const { registryRemoved, outRemoved } = resetInboxState(resolveRegistryPath(), resolveOutDir());
+      const { registryRemoved, outRemoved } = resetInboxState(
+        resolveRegistryPath(),
+        resolveOutDir()
+      );
+      const worktrees = removeAllWorktrees(join(homedir(), '.gennady', 'worktrees'));
       console.info(style.bold('Inbox reset — чистый лист.'));
-      console.info(`  registry: ${registryRemoved ? style.green('очищен') : style.gray('не было')}`);
-      console.info(`  drafts:   ${outRemoved ? style.green('очищены') : style.gray('не было')}`);
+      console.info(
+        `  registry:  ${registryRemoved ? style.green('очищен') : style.gray('не было')}`
+      );
+      console.info(`  drafts:    ${outRemoved ? style.green('очищены') : style.gray('не было')}`);
+      console.info(
+        `  worktrees: ${worktrees.length > 0 ? style.green(`снесено ${worktrees.length}`) : style.gray('не было')}`
+      );
       return 0;
     }
 
