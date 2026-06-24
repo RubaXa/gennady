@@ -13,6 +13,7 @@ export function printHelp(): void {
   console.info('  npx tsx cli/gennady.ts inbox [options]');
   console.info('');
   console.info('Options:');
+  console.info('  --vcs-source=<host>  GitLab host, disables origin autodetect (e.g. gitlab.example.com)');
   console.info('  --drafts             Include draft MRs (hidden by default)');
   console.info('  --include-stale      Include stale review requests');
   console.info('  --stale-days=<N>     Days before a review request is stale (default 14)');

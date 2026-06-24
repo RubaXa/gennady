@@ -4,12 +4,22 @@
  * @purpose Print CLI help for the vcs-reply command.
  */
 export function printHelp(): void {
-  console.info('gennady vcs-reply — Post replies to GitLab MR discussions');
+  console.info('gennady vcs-reply — Post comments to GitLab MR discussions');
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady vcs-reply --project=<name> --iid=<id> [options]');
   console.info('');
-  console.info('  Reads a JSON array of discussion replies from stdin.');
+  console.info('  Reads a JSON array of items from stdin. Each item is one of:');
+  console.info('   - reply:      {"discussionId":"<id>","body":"..."}');
+  console.info('   - discussion: {"body":"..."}                       (new general thread)');
+  console.info('   - line:       {"body":"...","position":{"baseSha","startSha","headSha",');
+  console.info('                  "newPath","newLine"|"oldLine"}}      (comment on a diff line)');
+  console.info('');
+  console.info('  Line position rules (GitLab):');
+  console.info('   - baseSha/startSha/headSha = MR diff_refs (gennady vcs-worktree prints them)');
+  console.info('   - added line   → newLine set, oldLine omitted');
+  console.info('   - removed line → oldLine set, newLine omitted');
+  console.info('   - context line → BOTH newLine and oldLine required');
   console.info('');
   console.info('Options:');
   console.info('  --project <name>    GitLab project path (e.g. "group/repo")');

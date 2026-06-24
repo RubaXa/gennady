@@ -34,14 +34,14 @@ function parseOptions(argv: string[]): InboxOptions {
   };
 }
 
-function parsePick(argv: string[]): string | undefined {
-  const inline = argv.find((a) => a.startsWith('--pick='));
-  if (inline) return inline.slice('--pick='.length);
-  const idx = argv.indexOf('--pick');
+function parseValue(argv: string[], flag: string): string | undefined {
+  const inline = argv.find((a) => a.startsWith(`${flag}=`));
+  if (inline) return inline.slice(flag.length + 1);
+  const idx = argv.indexOf(flag);
   return idx !== -1 ? argv[idx + 1] : undefined;
 }
 
-async function runPick(ref: string): Promise<number> {
+async function runPick(ref: string, vcsSource?: string): Promise<number> {
   const sep = ref.lastIndexOf('!');
   if (sep === -1) {
     console.error(style.redBright.bold('✖ Ошибка:'), 'Ожидался ref вида group/project!iid');
@@ -50,7 +50,7 @@ async function runPick(ref: string): Promise<number> {
   const project = ref.slice(0, sep);
   const iid = ref.slice(sep + 1);
 
-  const client = buildInboxClient();
+  const client = buildInboxClient(vcsSource);
   const [items, me] = await Promise.all([client.Inbox.getActionable(), client.getCurrentUser()]);
   const mr = items.find((m) => m.project === project && m.iid === iid);
   const discussions = await client.MergeDiscussions.getAll({ project, iid });
@@ -63,13 +63,14 @@ async function runPick(ref: string): Promise<number> {
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
-    const pick = parsePick(argv);
-    if (pick) return await runPick(pick);
+    const vcsSource = parseValue(argv, '--vcs-source');
+    const pick = parseValue(argv, '--pick');
+    if (pick) return await runPick(pick, vcsSource);
 
     const options = parseOptions(argv);
     const persist = !argv.includes('--no-save');
 
-    const client = buildInboxClient();
+    const client = buildInboxClient(vcsSource);
     const items = await client.Inbox.getActionable();
 
     const now = new Date().toISOString();

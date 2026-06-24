@@ -4,6 +4,7 @@
 import {
   VcsClientMergeDiscussions,
   type VcsAddNoteQuery,
+  type VcsCreateDiscussionQuery,
   type VcsDiscussionsListQuery,
 } from '../abstract/vcs-client-merge-discussions.ts';
 
@@ -44,6 +45,34 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: query.body }),
       }
+    );
+  }
+
+  /**
+   * @param query Target project, MR, body, and optional diff position.
+   * @returns Created discussion object from GitLab API.
+   * @sideEffect Network: POST /projects/:project/merge_requests/:iid/discussions
+   * @see {VcsClientMergeDiscussions#createDiscussion} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async createDiscussion(query: VcsCreateDiscussionQuery): Promise<unknown> {
+    const params = new URLSearchParams();
+    params.set('body', query.body);
+    const pos = query.position;
+    if (pos) {
+      params.set('position[position_type]', 'text');
+      params.set('position[base_sha]', pos.baseSha);
+      params.set('position[start_sha]', pos.startSha);
+      params.set('position[head_sha]', pos.headSha);
+      params.set('position[new_path]', pos.newPath);
+      params.set('position[old_path]', pos.oldPath ?? pos.newPath);
+      if (typeof pos.newLine === 'number') params.set('position[new_line]', String(pos.newLine));
+      if (typeof pos.oldLine === 'number') params.set('position[old_line]', String(pos.oldLine));
+    }
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    return this._request(
+      `/projects/${projectId}/merge_requests/${iid}/discussions?${params.toString()}`,
+      { method: 'POST' }
     );
   }
 

@@ -6,14 +6,30 @@
 import fs from 'node:fs';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import type { VcsDiscussionPosition } from '../../../services/vcs-client/abstract/vcs-client-merge-discussions.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
+
+/**
+ * @purpose One posting instruction: reply to a thread, a new discussion, or a
+ *   line-level diff comment.
+ * @invariant `discussionId` → reply; otherwise new discussion (line comment when `position` set).
+ * @consumer vcs-reply main
+ */
+type ReplyItem = {
+  /** @purpose Target discussion to reply into; absent → create a new discussion */
+  discussionId?: string;
+  /** @purpose Comment body (Markdown) */
+  body: string;
+  /** @purpose Diff position for a line-level comment */
+  position?: VcsDiscussionPosition;
+};
 
 type MainOpts = {
   project?: string;
   iid?: string;
   dryRun?: boolean;
-  stdinJsonArray?: { discussionId: string; body: string }[];
+  stdinJsonArray?: ReplyItem[];
   token?: string;
   remote?: { host: string; project: string; scheme: string } | null;
   baseUrl?: string;
@@ -47,7 +63,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
-  let payload: { discussionId: string; body: string }[] | undefined = stdinJsonArray;
+  let payload: ReplyItem[] | undefined = stdinJsonArray;
   if (!payload) {
     let raw = '';
     if (!process.stdin.isTTY) {
@@ -55,12 +71,18 @@ export async function main(opts: MainOpts = {}): Promise<{
     }
     if (!raw || !raw.trim()) {
       console.error(style.redBright.bold('✖ Ошибка:'), 'Пустой stdin. Ожидается JSON-массив.');
-      console.error(style.gray('Пример:'));
-      console.error(style.gray(`  [{"discussionId":"DISC_001","body":"Текст"}]`));
+      console.error(style.gray('Примеры:'));
+      console.error(style.gray(`  [{"discussionId":"DISC_001","body":"ответ в тред"}]`));
+      console.error(style.gray(`  [{"body":"новая дискуссия"}]`));
+      console.error(
+        style.gray(
+          `  [{"body":"коммент на строку","position":{"baseSha":"..","startSha":"..","headSha":"..","newPath":"src/x.ts","newLine":42}}]`
+        )
+      );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
     try {
-      payload = JSON.parse(raw) as { discussionId: string; body: string }[];
+      payload = JSON.parse(raw) as ReplyItem[];
     } catch (e) {
       console.error(
         style.redBright.bold('✖ Ошибка:'),
@@ -78,16 +100,18 @@ export async function main(opts: MainOpts = {}): Promise<{
   const items = payload.filter(
     (x) =>
       x &&
-      typeof x.discussionId === 'string' &&
-      x.discussionId &&
       typeof x.body === 'string' &&
-      x.body
+      x.body &&
+      (x.discussionId === undefined || typeof x.discussionId === 'string')
   );
 
   if (items.length === 0) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'Нет валидных элементов для отправки.');
+    console.error(style.redBright.bold('✖ Ошибка:'), 'Нет валидных элементов (нужен непустой body).');
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
+
+  const kindOf = (it: ReplyItem): string =>
+    it.discussionId ? 'reply' : it.position ? 'line' : 'discussion';
 
   const token = opts.token ?? process.env.GITLAB_PERSONAL_TOKEN;
   const remote = opts.remote ?? getGitRemote();
@@ -137,8 +161,9 @@ export async function main(opts: MainOpts = {}): Promise<{
 
   if (dryRun) {
     for (const it of items) {
+      const tag = it.discussionId ?? kindOf(it);
       console.info(
-        `${style.blue('[DRY]')} ${style.gray(it.discussionId)} → ${it.body.slice(0, 80)}`
+        `${style.blue('[DRY]')} ${style.gray(`${kindOf(it)}:${tag}`)} → ${it.body.slice(0, 80)}`
       );
       sent += 1;
     }
@@ -146,18 +171,28 @@ export async function main(opts: MainOpts = {}): Promise<{
   }
 
   for (const it of items) {
+    const tag = it.discussionId ?? kindOf(it);
     try {
-      await vcs!.MergeDiscussions.addNote({
-        project,
-        iid: String(iid),
-        discussionId: it.discussionId,
-        body: it.body,
-      });
-      console.info(`${style.green('✔')} ${style.gray(it.discussionId)}`);
+      if (it.discussionId) {
+        await vcs!.MergeDiscussions.addNote({
+          project,
+          iid: String(iid),
+          discussionId: it.discussionId,
+          body: it.body,
+        });
+      } else {
+        await vcs!.MergeDiscussions.createDiscussion({
+          project,
+          iid: String(iid),
+          body: it.body,
+          position: it.position,
+        });
+      }
+      console.info(`${style.green('✔')} ${style.gray(`${kindOf(it)}:${tag}`)}`);
       sent += 1;
     } catch (e) {
       console.error(
-        `${style.redBright('✖')} ${style.gray(it.discussionId)} ${(e as Error).message ?? String(e)}`
+        `${style.redBright('✖')} ${style.gray(`${kindOf(it)}:${tag}`)} ${(e as Error).message ?? String(e)}`
       );
       failed += 1;
     }
