@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов).
 
 ## 2. Project Type
 
@@ -946,6 +946,56 @@ $ gennady run "…"
 
 Флаги: позиционный `<задание>` (обязателен); `--dir <path>` (повторяемый, дефолт cwd); `--model <provider/model>` (дефолт `llm-proxy/deepseek-v4-pro`); `--engine <id>` (дефолт opencode); `--timeout <ms>` (дефолт 120000). readonly всегда включён в v1. Успех → markdown в stdout, exit 0. Ошибка → `✗ <причина> [CODE]` + подсказка в stderr, exit 1.
 
+### 3.9 review-issues DX
+
+```bash
+# --- без параметров: авто-детект ветки и проекта из git ---
+$ gennady review-issues
+
+<ReviewArtifact ...>
+  <MergeRequest iid="42" title="feat: add payments" .../>
+  <Discussions>
+    <Discussion id="abc" resolved="false">
+      ...
+    </Discussion>
+  </Discussions>
+</ReviewArtifact>
+
+# exit 0
+
+# --- MR не найден для текущей ветки ---
+$ gennady review-issues
+ℹ Merge Request не найден для ветки: feat/orphan-branch
+
+# exit 0
+
+# --- явный override ветки ---
+$ gennady review-issues --branch feat/payments
+
+# --- по URL ---
+$ gennady review-issues --url https://gitlab.mycompany.com/group/repo/-/merge_requests/42
+
+# --- по ref (позиционно) ---
+$ gennady review-issues group/repo!42
+
+# --- включая resolved дискуссии ---
+$ gennady review-issues --all
+
+# --- нет токена ---
+$ gennady review-issues
+✖ Ошибка: Не найден токен доступа GitLab. Установите GITLAB_PERSONAL_TOKEN и повторите попытку.
+
+# exit 1
+
+# --- нет origin remote ---
+$ gennady review-issues
+✖ Ошибка: Не найден удалённый репозиторий origin.
+
+# exit 1
+```
+
+Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -1208,6 +1258,26 @@ $ gennady run "…"
 | FR-RUN-7 | Команда — тонкая обёртка: вся логика запуска/ошибок в `@services/agent-run`; CLI только парсит флаги и форматирует вывод.                                                                                                                                                                                                                                                         |
 | FR-RUN-8 | `gennady run --help` / `-h` → печатает справку (использование, флаги с дефолтами, readonly, коды ошибок, примеры), exit 0, движок не вызывается. Реализация: `cli/cmd/run/help.ts` `printHelp()`, подхватывается per-command-help диспетчером в `cli/gennady.ts` (`case 'run'`).                                                                                                  |
 
+### 4.1.10 review-issues Functional Requirements
+
+| ID       | Требование                                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                              |
+| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL      |
+| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                               |
+| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                        |
+| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                         |
+| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                       |
+| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                                |
+| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                            |
+| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                |
+| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                      |
+| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                         |
+| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                              |
+| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                     |
+| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                                 |
+| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                                 |
+
 ### 4.2 Non-Functional Constraints
 
 - **NFC-01**: Файл читается один раз, контент передаётся во все три проверки
@@ -1315,6 +1385,13 @@ $ gennady run "…"
 - Интеграция e2e в `npm run release` / CI — отдельный refine после MVP
 - Параллельное выполнение e2e-тестов — sequential в v1 (проще отладка)
 
+**review-issues (v1):**
+
+- GitHub поддержка (deferred — требует `refine vcs` для `VcsGithubMergeDiscussions`)
+- Closed/merged MR (только `state: 'opened'`)
+- Несколько MR на одну ветку (берётся первый найденный)
+- E2E-тесты (требуют GitLab токена и живого MR)
+
 ### 4.4 Runtime Backing & Deferred Scope
 
 **lint:**
@@ -1409,6 +1486,15 @@ $ gennady run "…"
 | `spawn` CLI-команд как дочерний процесс | `real-runtime`               |
 | Очистка temp директории (FS)            | `real-runtime`               |
 | CI-интеграция                           | `not-implemented` (deferred) |
+
+**review-issues:**
+
+| Capability                                | Posture                      |
+| ----------------------------------------- | ---------------------------- |
+| Авто-детект ветки (git)                   | `real-runtime`               |
+| Авто-детект origin remote (git)           | `real-runtime`               |
+| GitLab REST API (MR, Discussions)         | `real-runtime`               |
+| GitHub Discussions                        | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
@@ -1952,6 +2038,52 @@ cli/cmd/run/
 | Логика запуска opencode прямо в CLI | Нарушает «ядро переиспользуемо не только из CLI»; вся логика в `@services/agent-run`. |
 | Своя библиотека парсинга аргументов | YAGNI — `node:util parseArgs` достаточно. |
 
+### 5.15 review-issues
+
+```
+cli/cmd/review-issues/
+└── index.ts   # → import '../review/review-issues.cmd.ts'
+
+cli/cmd/review/
+├── review-issues.cmd.ts      # mode: 'issues' → runReviewCommand
+├── review-verify.cmd.ts      # mode: 'verify' → runReviewCommand
+└── _core/
+    ├── logic/
+    │   ├── run-review-command.logic.ts         # shared pipeline: git ctx → vcs ctx → MR → discussions → output
+    │   ├── parse-review-command-args.logic.ts  # parseArgs (branch/url/ref/project/iid/all)
+    │   ├── resolve-review-intent.logic.ts      # приоритет: url › ref › project+iid › branch
+    │   ├── build-review-context-git.logic.ts   # getGitCurrentBranch + getGitRemote
+    │   ├── build-review-context-vcs.logic.ts   # VcsGitlabClient (GITLAB_PERSONAL_TOKEN)
+    │   └── load-review-context-mr.logic.ts     # getOne(sourceBranch) → getAll(discussions)
+    ├── xml/
+    │   ├── build-review-artifact.xml.ts        # MR + discussions → ReviewArtifactXml
+    │   ├── render-review-issues.xml.ts         # → XML stdout
+    │   └── render-review-verify.xml.ts         # → XML stdout (verify mode)
+    └── types/
+        ├── review-command-args.type.ts
+        ├── review-command-options.type.ts
+        ├── review-command-result.type.ts
+        ├── review-context-git.type.ts
+        ├── review-context-mr.type.ts
+        ├── review-context-vcs.type.ts
+        └── review-intent.type.ts
+```
+
+**Ключевые решения:**
+
+1. **Shared `_core/logic/`**: `review-issues` и `review-verify` разделяют весь pipeline — только `mode` отличается. Изолированы только точки входа (`review-issues.cmd.ts`, `review-verify.cmd.ts`).
+2. **Авто-детект без параметров**: `resolveReviewIntent` fallback → `{ source: 'branch', branch: undefined }` → `buildReviewContextGit` вызывает `getGitCurrentBranch()`. Ни один параметр не обязателен.
+3. **GitLab-only v1**: `buildReviewContextVcs` проверяет host через regex `/gitlab/i`. GitHub → явная ошибка с пояснением.
+4. **Регистрация**: `case 'review-issues': await import('./cmd/review-issues/index.ts'); break` в `cli/gennady.ts`.
+
+### D-014 — Команда review-issues: shared pipeline с review-verify
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (review-issues)
+- **Why:** `review-issues` и `review-verify` используют идентичный pipeline: git context → vcs client → load MR + discussions → build artifact. Отличие только в рендере (issues vs verify). Shared `_core/logic/` устраняет дублирование без premature abstraction — оба потребителя известны с самого начала.
+- **Risk accepted:** GitHub Discussions deferred — при добавлении потребует замены `buildReviewContextVcs` на мульти-провайдерный вариант и одновременного `refine vcs`.
+- **Rejected alternatives:** Две независимые команды с полным дублированием pipeline — копирование ~150 строк логики без обоснования.
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -1959,6 +2091,7 @@ cli/cmd/run/
   - [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier, Vite
   - [`infra-npm-publish`](../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/directives/` в npm-пакете (sync читает из пакета)
   - [`agent-run`](../agent-run/agent-run.spec.md) — `run`, `listEngines`, `listModels`, `AgentRunError` для команды `run`
+  - [`vcs`](../vcs/vcs.spec.md) — `VcsGitlabClient`, `VcsGitlabMergeRequests`, `VcsGitlabMergeDiscussions` для команды `review-issues`
 - **Provides to:** AI-агенты (через CLI)
 
 ## 8. Bootstrap Requirements
@@ -2065,6 +2198,8 @@ cli/cmd/run/
 | Обновить `cli/AGENTS.md` (строка run)                                    | file          | this-scope-task       | добавить строку `run` в таблицу команд                                                                                              |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка run)                         | file          | this-scope-task       | добавить `run` в вывод help                                                                                                         |
 | `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (TSK-62/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
+| **review-issues**                                                        |               |                       |                                                                                                                                     |
+| `GITLAB_PERSONAL_TOKEN`                                                  | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
 | **e2e**                                                                  |               |                       |                                                                                                                                     |
 | `"test:e2e"` script в `package.json`                                     | structural    | this-scope-task       | добавить `"test:e2e": "node --import tsx --test cli/__tests__/e2e/e2e.test.ts"`                                                     |
 | Директория `cli/__tests__/e2e/`                                          | structural    | this-scope-task       | создать                                                                                                                             |
@@ -2100,6 +2235,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 - run — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
+- review-issues — Команда `gennady review-issues`: по текущей ветке (авто-детект) находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов
 - e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
 
 ### 9.2 Inter-Module Dependency Map
@@ -2132,7 +2268,7 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`, `e2e`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`, `run`, `review-issues`, `e2e`
 - **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`, `E2eContext`, `setupE2e`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
