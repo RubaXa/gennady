@@ -63,6 +63,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/review-issues/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'inbox':
+      await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'resolve-conflicts':
       await import('./cmd/resolve-conflicts/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -132,6 +136,10 @@ switch (command) {
 
   case 'review-issues':
     await import('./cmd/review-issues/index.ts');
+    break;
+
+  case 'inbox':
+    await import('./cmd/inbox/index.ts');
     break;
 
   case 'resolve-conflicts':

@@ -32,6 +32,9 @@ export class VcsGithubClient extends VcsClient {
   /** @see {VcsClient#RepositoryFiles} in services/vcs-client/abstract/vcs-client.ts */
   readonly RepositoryFiles: VcsGithubRepositoryFiles;
 
+  /** @see {VcsClient#Inbox} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
+  readonly Inbox = undefined;
+
   /**
    * @purpose Create a GitHub API client bound to a base URL with access token.
    * @param options Connection parameters: base URL and access token.

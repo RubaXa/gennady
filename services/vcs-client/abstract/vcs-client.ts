@@ -5,6 +5,7 @@
 import type { VcsClientMergeDiscussions } from './vcs-client-merge-discussions.ts';
 import type { VcsClientMergeRequests } from './vcs-client-merge-requests.ts';
 import type { VcsClientRepositoryFiles } from './vcs-client-repository-files.ts';
+import type { VcsClientInbox } from './vcs-client-inbox.ts';
 
 /**
  * @purpose Abstract client for working with VCS services (e.g. GitLab, GitHub).
@@ -21,4 +22,7 @@ export abstract class VcsClient {
 
   /** @see {VcsClientRepositoryFiles} in ./vcs-client-repository-files.ts | @deferred GitLab-only in v1 */
   abstract readonly RepositoryFiles?: VcsClientRepositoryFiles;
+
+  /** @see {VcsClientInbox} in ./vcs-client-inbox.ts | @deferred GitLab-only; GitHub adapter does not implement this */
+  abstract readonly Inbox?: VcsClientInbox;
 }

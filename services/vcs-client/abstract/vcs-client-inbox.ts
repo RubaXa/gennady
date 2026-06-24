@@ -1,0 +1,23 @@
+// @file: Contract surface for the actionable inbox — MRs awaiting the user's reaction.
+// @consumers: VcsClient
+// @tasks: N/A
+
+import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
+
+/**
+ * @purpose Access to the authenticated user's actionable inbox: merge requests
+ *   that require their reaction (review requested, mentioned, assigned) and
+ *   their own open MRs (where they await a reaction).
+ * @invariant Error Policy: Network/GraphQL errors are thrown outward.
+ * @invariant Identity: The authenticated token implicitly defines "me"; no
+ *   user id/username is passed in.
+ * @consumer VcsClient
+ */
+export abstract class VcsClientInbox {
+  /**
+   * @purpose Fetch all merge requests awaiting the user's reaction in one round-trip.
+   * @returns Deduplicated actionable MRs with merged reasons; unfiltered (drafts included).
+   * @sideEffect Network: POST /api/graphql (currentUser todos + MR connections)
+   */
+  abstract getActionable(): Promise<VcsActionableMr[]>;
+}
