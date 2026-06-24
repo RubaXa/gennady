@@ -16,7 +16,7 @@ library
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
-13 навыков: 12 SDD (sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-execute, sdd-execute-batch, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-fix, sdd-infra) + 1 non-SDD (alt-opinion).
+14 навыков: 12 SDD (sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-execute, sdd-execute-batch, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-fix, sdd-infra) + 2 non-SDD (alt-opinion, agent-inbox). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык.
 
 <!--/SECTION:VISION-->
 

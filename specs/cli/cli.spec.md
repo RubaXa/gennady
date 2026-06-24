@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа).
 
 ## 2. Project Type
 
@@ -1012,6 +1012,43 @@ $ gennady review-issues
 
 Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления.
 
+### 3.10 inbox DX (agent-inbox)
+
+```text
+$ gennady inbox [--vcs-source=<host>]
+Inbox — 20 actionable  [20 new]  (скрыто: 84 stale, 35 drafts, 5 noise)
+▸ Ждут моё ревью — 17   ▸ Мои MR — 3
+   NEW [ответить] group/proj!510  …      NEW [ревью] group/proj!524  …
+
+$ gennady inbox --pick group/proj!510 [--vcs-source=<host>]   # work packet (стадия + открытые вопросы)
+$ gennady inbox --reset                                       # чистый лист: реестр + черновики + worktrees
+```
+
+`inbox` — продуктовая поверхность скилла `agent-inbox` (см. scope agent-inbox): один GraphQL-запрос (`Inbox.getActionable`), группировка по роли, отсев шума, дельта `NEW`/`↑` через глобальный реестр `~/.gennady/inbox-registry.json`, стадия каждого MR (review_needed/reply_needed/awaiting) через скан обсуждений. Host автодетектится из origin; `--vcs-source=<host>` отключает автодетект.
+
+### 3.11 vcs-worktree DX
+
+```text
+$ gennady vcs-worktree --ref group/proj!510 [--vcs-source=<host>]
+worktree ready — group/proj!510
+path:   ~/.gennady/worktrees/group__proj-510
+diff_refs: base=… start=… head=…    # для line-комментов
+$ gennady vcs-worktree --cleanup <path>     # снести один
+$ gennady vcs-worktree --cleanup-all        # снести все
+```
+
+Готовит read-only git worktree head'а MR (хуки off) для код-ревью: находит клон (`repos.json` → скан `~/Developer` по origin → shallow-клон), не исполняет код MR. Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (`GENNADY_WORKTREE_TTL_H`, дефолт 3ч) → рост ограничен.
+
+### 3.12 vcs-reply DX
+
+```text
+$ echo '[{"discussionId":"abc","body":"..."}]'                  | gennady vcs-reply --project=g/p --iid=42   # ответ в тред
+$ echo '[{"body":"новая дискуссия"}]'                            | gennady vcs-reply --project=g/p --iid=42   # новый тред
+$ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","newLine"}}]' | gennady vcs-reply --project=g/p --iid=42  # line-comment
+```
+
+Постит в GitLab MR: ответ в существующий тред, новую дискуссию или комментарий на строку дифа (`createDiscussion` с `position` из `MR.diff_refs`). `--dry-run` печатает без отправки.
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements
@@ -1296,6 +1333,35 @@ $ gennady review-issues
 | FR-RI-16 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком                       |
 | FR-RI-17 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at`            |
 | FR-RI-18 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"` |
+
+### 4.1.11 inbox Functional Requirements
+
+| ID       | Требование                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-IB-01 | `gennady inbox` — `Inbox.getActionable()` → группировка по роли (reviewer/author/mentioned), отсев (no-role/stale/drafts), CI-события только для author |
+| FR-IB-02 | Реестр `~/.gennady/inbox-registry.json` (глобальный): метки `NEW`/`↑updated` по `updatedAt` vs прошлый прогон; `--no-save` — read-only                  |
+| FR-IB-03 | Стадия каждого видимого MR (review_needed/reply_needed/awaiting_reply/idle) через скан обсуждений + identity; idle берёт стадию из реестра              |
+| FR-IB-04 | `--vcs-source=<host>` отключает автодетект origin; `--pick <ref>` — work packet (стадия + open questions) одного MR                                     |
+| FR-IB-05 | `--reset` — чистый лист: удалить реестр, черновики (`~/.gennady/inbox-out/`) и worktrees                                                                |
+| FR-IB-06 | Флаги отсева: `--drafts`, `--include-stale`, `--stale-days=N`, `--ci-all`, `--all`                                                                      |
+
+### 4.1.12 vcs-worktree Functional Requirements
+
+| ID       | Требование                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-WT-01 | `--ref group/project!iid` → read-only detached worktree head'а MR (`fetch merge-requests/<iid>/head`, хуки off)                                         |
+| FR-WT-02 | Поиск клона: `repos.json` (`~/.gennady/repos.json`) → скан `GENNADY_REPOS_BASE` (default `~/Developer`) по origin → shallow-клон в `~/.gennady/clones/` |
+| FR-WT-03 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                           |
+| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (`GENNADY_WORKTREE_TTL_H`, default 3ч); коллизия — пересоздание                         |
+| FR-WT-05 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                                   |
+
+### 4.1.13 vcs-reply Functional Requirements
+
+| ID       | Требование                                                                                                                                         |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-VR-01 | stdin JSON-массив; элемент: `{discussionId, body}` (ответ в тред) / `{body}` (новая дискуссия) / `{body, position}` (line-comment)                 |
+| FR-VR-02 | line-comment: `position` через `MergeDiscussions.createDiscussion`; `*_sha` из `MR.diff_refs`; правило линий added→new / removed→old / context→оба |
+| FR-VR-03 | `--project --iid` обязательны; `--dry-run` печатает без отправки; `--vcs-source` — override host                                                   |
 
 ### 4.2 Non-Functional Constraints
 
