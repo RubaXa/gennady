@@ -13,13 +13,16 @@ export function printHelp(): void {
   console.info('  npx tsx cli/gennady.ts inbox [options]');
   console.info('');
   console.info('Options:');
-  console.info('  --vcs-source=<host>  GitLab host, disables origin autodetect (e.g. gitlab.example.com)');
+  console.info(
+    '  --vcs-source=<host>  GitLab host, disables origin autodetect (e.g. gitlab.example.com)'
+  );
   console.info('  --drafts             Include draft MRs (hidden by default)');
   console.info('  --include-stale      Include stale review requests');
   console.info('  --stale-days=<N>     Days before a review request is stale (default 14)');
   console.info('  --ci-all             Show CI/state events for all roles, not only author');
   console.info('  --all                Disable stale/draft/event suppression (role filter stays)');
   console.info('  --no-save            Do not update the seen-registry (read-only run)');
+  console.info('  --reset              Clear registry + drafts (~/.gennady/inbox-out) — clean slate');
   console.info(
     '  --pick <ref>         Work packet for one MR (group/project!iid): stage + open questions'
   );

@@ -32,9 +32,27 @@ export function prepareMrWorktree(
   iid: string,
   worktreePath: string
 ): PreparedWorktree {
-  git(['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'fetch', 'origin', `merge-requests/${iid}/head`]);
+  git([
+    '-C',
+    clonePath,
+    '-c',
+    'core.hooksPath=/dev/null',
+    'fetch',
+    'origin',
+    `merge-requests/${iid}/head`,
+  ]);
   const headSha = git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
-  git(['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'worktree', 'add', '--detach', worktreePath, headSha]);
+  git([
+    '-C',
+    clonePath,
+    '-c',
+    'core.hooksPath=/dev/null',
+    'worktree',
+    'add',
+    '--detach',
+    worktreePath,
+    headSha,
+  ]);
   return { worktreePath, headSha };
 }
 

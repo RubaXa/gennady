@@ -29,3 +29,5 @@ coverage
 ai/drafts
 .claude/
 *.tgz
+# agent-inbox runtime state (registry, drafts, worktrees)
+.gennady/

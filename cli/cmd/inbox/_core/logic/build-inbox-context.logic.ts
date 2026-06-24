@@ -15,7 +15,10 @@ import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-g
  * @consumer buildInboxClient
  */
 function resolveHost(vcsSource?: string): string {
-  const explicit = vcsSource?.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const explicit = vcsSource
+    ?.trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/+$/, '');
   if (explicit) return explicit;
 
   const remote = getGitRemote();

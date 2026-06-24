@@ -62,9 +62,7 @@ async function run(): Promise<number> {
     const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
     const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
-    const baseSha = targetBranch
-      ? resolveBaseSha(clonePath, targetBranch, prepared.headSha)
-      : '';
+    const baseSha = targetBranch ? resolveBaseSha(clonePath, targetBranch, prepared.headSha) : '';
 
     console.info(style.bold(`worktree ready — ${ref}`));
     console.info(`path:   ${prepared.worktreePath}`);

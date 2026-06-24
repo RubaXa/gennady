@@ -18,6 +18,8 @@ import {
   loadRegistry,
   saveRegistry,
   resolveRegistryPath,
+  resolveOutDir,
+  resetInboxState,
 } from './_core/logic/inbox-registry.logic.ts';
 
 function parseOptions(argv: string[]): InboxOptions {
@@ -63,6 +65,15 @@ async function runPick(ref: string, vcsSource?: string): Promise<number> {
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
+
+    if (argv.includes('--reset') || argv.includes('reset')) {
+      const { registryRemoved, outRemoved } = resetInboxState(resolveRegistryPath(), resolveOutDir());
+      console.info(style.bold('Inbox reset — чистый лист.'));
+      console.info(`  registry: ${registryRemoved ? style.green('очищен') : style.gray('не было')}`);
+      console.info(`  drafts:   ${outRemoved ? style.green('очищены') : style.gray('не было')}`);
+      return 0;
+    }
+
     const vcsSource = parseValue(argv, '--vcs-source');
     const pick = parseValue(argv, '--pick');
     if (pick) return await runPick(pick, vcsSource);

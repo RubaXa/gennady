@@ -106,7 +106,10 @@ export async function main(opts: MainOpts = {}): Promise<{
   );
 
   if (items.length === 0) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'Нет валидных элементов (нужен непустой body).');
+    console.error(
+      style.redBright.bold('✖ Ошибка:'),
+      'Нет валидных элементов (нужен непустой body).'
+    );
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 

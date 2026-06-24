@@ -6,7 +6,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { loadReposMap, resolveReposMapPath, resolveClonePath } from '../../../inbox/_core/logic/repos-map.logic.ts';
+import {
+  loadReposMap,
+  resolveReposMapPath,
+  resolveClonePath,
+} from '../../../inbox/_core/logic/repos-map.logic.ts';
 
 /**
  * @purpose Extract the project path (group/.../name) from a git remote URL.
@@ -28,7 +32,10 @@ export function projectFromRemoteUrl(url: string): string | null {
       return null;
     }
   }
-  const cleaned = path.replace(/^\/+/, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  const cleaned = path
+    .replace(/^\/+/, '')
+    .replace(/\.git$/i, '')
+    .replace(/\/+$/, '');
   return cleaned || null;
 }
 

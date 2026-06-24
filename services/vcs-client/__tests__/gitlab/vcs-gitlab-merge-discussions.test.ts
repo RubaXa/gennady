@@ -50,9 +50,6 @@ describe('VcsGitlabMergeDiscussions — createDiscussion', () => {
     requestFn.mock.mockImplementationOnce(async () => {
       throw new Error('GitLab request failed: 403 Forbidden');
     });
-    await assert.rejects(
-      () => disc.createDiscussion({ project: 'g/p', iid: 1, body: 'x' }),
-      /403/
-    );
+    await assert.rejects(() => disc.createDiscussion({ project: 'g/p', iid: 1, body: 'x' }), /403/);
   });
 });
