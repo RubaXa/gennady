@@ -57,22 +57,39 @@ function parseHostFromWebUrl(webUrl?: string): string {
   }
 }
 
+function computeCursor(discussions: ReviewContextMrDiscussion[]): string | undefined {
+  let max: string | undefined;
+  for (const d of discussions) {
+    for (const note of d.notes ?? []) {
+      if (note.updated_at && (!max || note.updated_at > max)) max = note.updated_at;
+    }
+  }
+  return max;
+}
+
+function isThreadUpdatedAfter(discussion: ReviewContextMrDiscussion, since: string): boolean {
+  return (discussion.notes ?? []).some((note) => !!note.updated_at && note.updated_at > since);
+}
+
 /**
  * @purpose Build XmlNode tree of the review artifact from MR and discussions.
  * @param mergeRequest MR object (iid, author, web_url, source_branch, title, etc.).
  * @param discussions Array of discussions with notes (body, author, position).
  * @param [showAll] Flag to show all threads, including resolved ones.
+ * @param [since] ISO cursor — skip threads not updated after this timestamp.
  * @returns Root XmlNode (tag: MR_Audit_Context).
  * @consumer buildReviewArtifactXml
  */
 export function createReviewArtifactXmlNode(
   mergeRequest: ReviewContextMr,
   discussions: ReviewContextMrDiscussion[],
-  showAll: boolean = false
+  showAll: boolean = false,
+  since?: string
 ): XmlNode {
   const reviewAuthorUsername = mergeRequest.author?.username;
   const projectPath = parseProjectPathFromWebUrl(mergeRequest.web_url);
   const host = parseHostFromWebUrl(mergeRequest.web_url);
+  const cursor = computeCursor(discussions);
 
   const threads = discussions
     .map((discussion) => {
@@ -82,6 +99,10 @@ export function createReviewArtifactXmlNode(
       }
 
       if (!showAll && (discussion.resolved || firstNote.resolved)) {
+        return null;
+      }
+
+      if (since && !isThreadUpdatedAfter(discussion, since)) {
         return null;
       }
 
@@ -138,6 +159,7 @@ export function createReviewArtifactXmlNode(
       iid: mergeRequest.iid + '',
       host,
       target_repo: projectPath,
+      ...(cursor ? { cursor } : {}),
     },
     children: [
       meta,
@@ -154,14 +176,16 @@ export function createReviewArtifactXmlNode(
  * @param mergeRequest MR object.
  * @param discussions Array of discussions.
  * @param [showAll] Flag to show all threads, including resolved ones.
+ * @param [since] ISO cursor — skip threads not updated after this timestamp.
  * @returns XML string (MR_Audit_Context).
  * @consumer run-review-command.logic
  */
 export function buildReviewArtifactXml(
   mergeRequest: ReviewContextMr,
   discussions: ReviewContextMrDiscussion[],
-  showAll: boolean = false
+  showAll: boolean = false,
+  since?: string
 ): string {
-  const rootNode = createReviewArtifactXmlNode(mergeRequest, discussions, showAll);
+  const rootNode = createReviewArtifactXmlNode(mergeRequest, discussions, showAll, since);
   return serializeXmlNode(rootNode);
 }

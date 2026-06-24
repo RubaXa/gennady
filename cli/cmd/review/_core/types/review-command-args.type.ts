@@ -19,4 +19,6 @@ export type ReviewCommandArgs = {
   iid?: string;
   /** @purpose Review all MRs (for review-verify --all). */
   all?: boolean;
+  /** @purpose ISO cursor from previous run — only threads updated after this timestamp are returned. */
+  since?: string;
 };

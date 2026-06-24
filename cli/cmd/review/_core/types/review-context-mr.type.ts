@@ -44,6 +44,8 @@ export type ReviewContextMrNote = {
   };
   /** @purpose Whether the note is resolvable. */
   resolvable?: boolean;
+  /** @purpose ISO timestamp of the last note update. */
+  updated_at?: string;
   /** @purpose Whether the note is resolved. */
   resolved?: boolean;
   /** @purpose Who resolved the note. */
