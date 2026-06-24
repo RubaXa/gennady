@@ -952,14 +952,30 @@ $ gennady run "…"
 # --- без параметров: авто-детект ветки и проекта из git ---
 $ gennady review-issues
 
-<ReviewArtifact ...>
-  <MergeRequest iid="42" title="feat: add payments" .../>
-  <Discussions>
-    <Discussion id="abc" resolved="false">
+<MR_Audit_Context iid="42" host="gitlab.mycompany.com" target_repo="group/repo"
+  cursor="2024-06-24T10:30:00.000Z"
+  tip-cursor="Rerun with --since &lt;cursor&gt; to receive only threads updated after this fetch">
+  <Meta>...</Meta>
+  <Review_Threads>
+    <Thread fullId="abc123" shortId="abc1" file="src/foo.ts" line="12" resolved="false">
       ...
-    </Discussion>
-  </Discussions>
-</ReviewArtifact>
+    </Thread>
+  </Review_Threads>
+</MR_Audit_Context>
+
+# exit 0
+
+# --- инкрементальный вызов: только треды обновлённые после cursor ---
+$ gennady review-issues --since 2024-06-24T10:30:00.000Z
+
+<MR_Audit_Context iid="42" host="gitlab.mycompany.com" target_repo="group/repo"
+  cursor="2024-06-24T11:45:00.000Z"
+  tip-cursor="Rerun with --since &lt;cursor&gt; to receive only threads updated after this fetch">
+  <Meta>...</Meta>
+  <Review_Threads>
+    <!-- только треды с note.updated_at > 2024-06-24T10:30:00.000Z -->
+  </Review_Threads>
+</MR_Audit_Context>
 
 # exit 0
 
@@ -994,7 +1010,7 @@ $ gennady review-issues
 # exit 1
 ```
 
-Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout.
+Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления.
 
 ## 4. Requirements & Constraints
 
@@ -1260,23 +1276,26 @@ $ gennady review-issues
 
 ### 4.1.10 review-issues Functional Requirements
 
-| ID       | Требование                                                                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                              |
-| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL      |
-| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                               |
-| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                        |
-| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                         |
-| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                       |
-| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                                |
-| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                            |
-| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                |
-| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                      |
-| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                         |
-| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                              |
-| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                     |
-| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                                 |
-| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                                 |
+| ID       | Требование                                                                                                               |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                        |
+| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL |
+| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                          |
+| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                   |
+| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                    |
+| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                  |
+| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                           |
+| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                       |
+| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                          |
+| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                 |
+| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                   |
+| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                        |
+| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                |
+| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                            |
+| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                           |
+| FR-RI-16 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком |
+| FR-RI-17 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at` |
+| FR-RI-18 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"` |
 
 ### 4.2 Non-Functional Constraints
 
@@ -1489,12 +1508,12 @@ $ gennady review-issues
 
 **review-issues:**
 
-| Capability                                | Posture                      |
-| ----------------------------------------- | ---------------------------- |
-| Авто-детект ветки (git)                   | `real-runtime`               |
-| Авто-детект origin remote (git)           | `real-runtime`               |
-| GitLab REST API (MR, Discussions)         | `real-runtime`               |
-| GitHub Discussions                        | `not-implemented` (deferred) |
+| Capability                        | Posture                      |
+| --------------------------------- | ---------------------------- |
+| Авто-детект ветки (git)           | `real-runtime`               |
+| Авто-детект origin remote (git)   | `real-runtime`               |
+| GitLab REST API (MR, Discussions) | `real-runtime`               |
+| GitHub Discussions                | `not-implemented` (deferred) |
 
 ### 4.5 Rules
 
