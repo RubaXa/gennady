@@ -159,7 +159,13 @@ export function createReviewArtifactXmlNode(
       iid: mergeRequest.iid + '',
       host,
       target_repo: projectPath,
-      ...(cursor ? { cursor, 'tip-cursor': 'Rerun with --since <cursor> to receive only threads updated after this fetch' } : {}),
+      ...(cursor
+        ? {
+            cursor,
+            'tip-cursor':
+              'Rerun with --since <cursor> to receive only threads updated after this fetch',
+          }
+        : {}),
     },
     children: [
       meta,
