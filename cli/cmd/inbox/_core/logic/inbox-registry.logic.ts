@@ -3,8 +3,7 @@
 // @tasks: N/A
 
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import type { VcsActionableRole } from '../../../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';
 
 /** @purpose What we remember about one MR across ticks. */
@@ -36,16 +35,6 @@ export type InboxRegistry = {
 const EMPTY: InboxRegistry = { version: 1, entries: {} };
 
 /**
- * @purpose Resolve the registry file path (global; overridable for tests).
- * @returns Absolute path to the registry JSON.
- * @sideEffect Reads env GENNADY_INBOX_REGISTRY / HOME.
- * @consumer inbox.cmd
- */
-export function resolveRegistryPath(): string {
-  return process.env.GENNADY_INBOX_REGISTRY ?? join(homedir(), '.gennady', 'inbox-registry.json');
-}
-
-/**
  * @purpose Load the registry, tolerating a missing or corrupt file.
  * @param path Registry file path.
  * @returns Parsed registry, or an empty one when absent/unreadable.
@@ -74,16 +63,6 @@ export function saveRegistry(path: string, registry: InboxRegistry): void {
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify(registry, null, 2), 'utf8');
   renameSync(tmp, path);
-}
-
-/**
- * @purpose Resolve the drafts output directory (global; overridable for tests).
- * @returns Absolute path to the inbox-out directory.
- * @sideEffect Reads env GENNADY_INBOX_OUT / HOME.
- * @consumer inbox.cmd
- */
-export function resolveOutDir(): string {
-  return process.env.GENNADY_INBOX_OUT ?? join(homedir(), '.gennady', 'inbox-out');
 }
 
 /**

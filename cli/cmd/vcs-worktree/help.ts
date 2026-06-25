@@ -17,13 +17,15 @@ export function printHelp(): void {
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup <worktree-path>');
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup-all');
   console.info('');
-  console.info('Lifecycle: worktrees live in ~/.gennady/worktrees/. Every prepare GCs stale');
-  console.info('ones (older than GENNADY_WORKTREE_TTL_H hours, default 3), so they cannot grow');
-  console.info('unbounded even if --cleanup is skipped. --cleanup-all removes them all.');
+  console.info('Options:');
+  console.info('  --vcs-source=<host>  GitLab host (else from origin)');
+  console.info('  --repos-base=<dir>   Base dir to scan for clones (default ~/Developer)');
+  console.info('  --state-dir=<dir>    State location (worktrees/clones/repos.json), default ~/.gennady');
+  console.info('');
+  console.info('Lifecycle: worktrees live in <state-dir>/worktrees/. Every prepare GCs stale');
+  console.info('ones (older than 3h), so they cannot grow unbounded even if --cleanup is');
+  console.info('skipped. --cleanup-all removes them all.');
   console.info('');
   console.info('Environment:');
-  console.info('  GITLAB_PERSONAL_TOKEN   GitLab token');
-  console.info('  GENNADY_REPOS_BASE      Base dir to scan for clones (default ~/Developer)');
-  console.info('  GENNADY_REPOS_MAP       repos.json override (default ~/.gennady/repos.json)');
-  console.info('  GENNADY_WORKTREE_TTL_H  Stale-worktree TTL in hours (default 3)');
+  console.info('  GITLAB_PERSONAL_TOKEN   GitLab token — the only env var');
 }

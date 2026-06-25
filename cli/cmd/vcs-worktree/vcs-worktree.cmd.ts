@@ -10,6 +10,12 @@ import { style } from '../../../shared/common/style.ts';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
 import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
 import {
+  resolveStateDir,
+  worktreesRoot,
+  clonesRoot,
+  reposMapPath,
+} from '../inbox/_core/logic/state-paths.logic.ts';
+import {
   prepareMrWorktree,
   resolveBaseSha,
   removeWorktreeAt,
@@ -18,6 +24,9 @@ import {
 } from './_core/logic/worktree-ops.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 
+/** @purpose Staleness TTL: worktrees older than this are GC'd on prepare. */
+const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
+
 function parseValue(argv: string[], flag: string): string | undefined {
   const inline = argv.find((a) => a.startsWith(`${flag}=`));
   if (inline) return inline.slice(flag.length + 1);
@@ -25,23 +34,13 @@ function parseValue(argv: string[], flag: string): string | undefined {
   return idx !== -1 ? argv[idx + 1] : undefined;
 }
 
-/** @purpose Root for all MR-review worktrees (single, easy to GC/nuke). */
-function worktreeRoot(): string {
-  return join(homedir(), '.gennady', 'worktrees');
-}
-
-/** @purpose Staleness TTL in ms (env GENNADY_WORKTREE_TTL_H hours, default 3). */
-function worktreeTtlMs(): number {
-  const h = Number(process.env.GENNADY_WORKTREE_TTL_H);
-  return (Number.isFinite(h) && h > 0 ? h : 3) * 60 * 60 * 1000;
-}
-
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
+    const stateDir = resolveStateDir(argv);
 
     if (argv.includes('--cleanup-all')) {
-      const removed = removeAllWorktrees(worktreeRoot());
+      const removed = removeAllWorktrees(worktreesRoot(stateDir));
       console.info(style.gray(`worktrees removed: ${removed.length}`));
       return 0;
     }
@@ -63,6 +62,7 @@ async function run(): Promise<number> {
     const iid = ref.slice(sep + 1);
 
     const vcsSource = parseValue(argv, '--vcs-source');
+    const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
     const token = process.env.GITLAB_PERSONAL_TOKEN ?? '';
     const host = vcsSource ?? getGitRemote()?.host ?? '';
 
@@ -74,13 +74,17 @@ async function run(): Promise<number> {
     const targetBranch = mr?.target_branch ?? '';
     const diffRefs = mr?.diff_refs;
 
-    const clonePath = ensureClone(project, host, token);
+    const clonePath = ensureClone(project, host, token, {
+      reposBase,
+      reposMapPath: reposMapPath(stateDir),
+      clonesRoot: clonesRoot(stateDir),
+    });
 
-    const root = worktreeRoot();
+    const root = worktreesRoot(stateDir);
     mkdirSync(root, { recursive: true });
     // GC safety net: prune leaked worktrees older than TTL on every prepare,
     // so they cannot grow unbounded even if --cleanup is never called.
-    const gced = gcStaleWorktrees(root, worktreeTtlMs(), Date.now());
+    const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
     if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
     const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 

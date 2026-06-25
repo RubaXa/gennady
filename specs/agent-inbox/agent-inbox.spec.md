@@ -59,6 +59,10 @@ gennady inbox --reset                                  # чистый лист
 - **NFC-02:** Код MR — read-only; запуск тестов/сборки (исполнение чужого кода) вне скоупа (нужна docker-изоляция).
 - **NFC-03:** Только GitLab; GitHub — позже. Только роль ревьювер/упомянут; автор своих MR — позже.
 - **NFC-04:** Токен — ENV `GITLAB_PERSONAL_TOKEN`; не коммитить, не логировать.
+- **NFC-05 (конфигурация):** ENV — только секрет (`GITLAB_PERSONAL_TOKEN`). Локации
+  состояния — строгие дефолты под `~/.gennady/` (один флаг `--state-dir` переносит всё);
+  host (`--vcs-source`) и база клонов (`--repos-base`, default `~/Developer`) — флаги;
+  REST path (`/api/v4`) и worktree TTL (3ч) — строгие дефолты. Никаких прочих `GENNADY_*` env.
 
 ### 4.3 Out-of-Scope (этой итерации)
 

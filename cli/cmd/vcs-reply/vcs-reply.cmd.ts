@@ -138,8 +138,7 @@ export async function main(opts: MainOpts = {}): Promise<{
       );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
-    const apiPath = process.env.GITLAB_API_PATH ?? '/api/v4';
-    const baseUrl = opts.baseUrl ?? `https://${remote.host}${apiPath}`;
+    const baseUrl = opts.baseUrl ?? `https://${remote.host}/api/v4`;
     vcs = opts.vcs ?? new VcsGitlabClient({ token, baseUrl });
     hostInfo = remote.host;
   } else {

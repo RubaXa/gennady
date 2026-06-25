@@ -4,13 +4,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
-import {
-  loadReposMap,
-  resolveReposMapPath,
-  resolveClonePath,
-} from '../../../inbox/_core/logic/repos-map.logic.ts';
+import { loadReposMap, resolveClonePath } from '../../../inbox/_core/logic/repos-map.logic.ts';
 
 /**
  * @purpose Extract the project path (group/.../name) from a git remote URL.
@@ -37,15 +32,6 @@ export function projectFromRemoteUrl(url: string): string | null {
     .replace(/\.git$/i, '')
     .replace(/\/+$/, '');
   return cleaned || null;
-}
-
-/**
- * @purpose Base directory where local clones live.
- * @returns Absolute base directory (env GENNADY_REPOS_BASE or ~/Developer).
- * @sideEffect Reads env GENNADY_REPOS_BASE / HOME.
- */
-export function resolveReposBase(): string {
-  return process.env.GENNADY_REPOS_BASE ?? join(homedir(), 'Developer');
 }
 
 function originUrl(dir: string): string | null {
@@ -91,6 +77,16 @@ export function findCloneByRemote(baseDir: string, project: string): string | nu
   return null;
 }
 
+/** @purpose Locations needed to find/clone a project, all resolved by the caller. */
+export type CloneOptions = {
+  /** @purpose Base dir to scan for existing clones (--repos-base, default ~/Developer) */
+  reposBase: string;
+  /** @purpose repos.json path (state dir) */
+  reposMapPath: string;
+  /** @purpose Cache dir for shallow clones (state dir) */
+  clonesRoot: string;
+};
+
 /**
  * @purpose Resolve a local clone for the project: repos.json override → scan base
  *   dir by origin → shallow-clone into the managed cache.
@@ -98,20 +94,25 @@ export function findCloneByRemote(baseDir: string, project: string): string | nu
  * @param project GitLab project path.
  * @param host GitLab host (for the clone URL).
  * @param token GitLab token (used only for the one-off clone of a missing repo).
+ * @param opts Resolved locations (reposBase, reposMapPath, clonesRoot).
  * @returns Absolute path to a usable local clone.
  * @sideEffect FS + network: may clone the repository.
  * @consumer vcs-worktree.cmd
  */
-export function ensureClone(project: string, host: string, token: string): string {
-  const mapped = resolveClonePath(loadReposMap(resolveReposMapPath()), project);
+export function ensureClone(
+  project: string,
+  host: string,
+  token: string,
+  opts: CloneOptions
+): string {
+  const mapped = resolveClonePath(loadReposMap(opts.reposMapPath), project);
   if (mapped && existsSync(mapped)) return mapped;
 
-  const found = findCloneByRemote(resolveReposBase(), project);
+  const found = findCloneByRemote(opts.reposBase, project);
   if (found) return found;
 
-  const cacheRoot = join(homedir(), '.gennady', 'clones');
-  mkdirSync(cacheRoot, { recursive: true });
-  const dest = join(cacheRoot, project.replace(/\//g, '__'));
+  mkdirSync(opts.clonesRoot, { recursive: true });
+  const dest = join(opts.clonesRoot, project.replace(/\//g, '__'));
   if (!existsSync(dest)) {
     const cloneUrl = `https://oauth2:${token}@${host}/${project}.git`;
     execFileSync('git', ['clone', '--depth', '1', '--no-single-branch', cloneUrl, dest], {

@@ -15,16 +15,14 @@ import {
   lastNoteAuthor,
   type MrStage,
 } from './_core/logic/classify-mr-stage.logic.ts';
+import { loadRegistry, saveRegistry, resetInboxState } from './_core/logic/inbox-registry.logic.ts';
 import {
-  loadRegistry,
-  saveRegistry,
-  resolveRegistryPath,
-  resolveOutDir,
-  resetInboxState,
-} from './_core/logic/inbox-registry.logic.ts';
+  resolveStateDir,
+  registryPath,
+  outDir,
+  worktreesRoot,
+} from './_core/logic/state-paths.logic.ts';
 import { removeAllWorktrees } from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -69,13 +67,14 @@ async function runPick(ref: string, vcsSource?: string): Promise<number> {
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
+    const stateDir = resolveStateDir(argv);
 
     if (argv.includes('--reset') || argv.includes('reset')) {
       const { registryRemoved, outRemoved } = resetInboxState(
-        resolveRegistryPath(),
-        resolveOutDir()
+        registryPath(stateDir),
+        outDir(stateDir)
       );
-      const worktrees = removeAllWorktrees(join(homedir(), '.gennady', 'worktrees'));
+      const worktrees = removeAllWorktrees(worktreesRoot(stateDir));
       console.info(style.bold('Inbox reset — чистый лист.'));
       console.info(
         `  registry:  ${registryRemoved ? style.green('очищен') : style.gray('не было')}`
@@ -98,8 +97,8 @@ async function run(): Promise<number> {
     const items = await client.Inbox.getActionable();
 
     const now = new Date().toISOString();
-    const registryPath = resolveRegistryPath();
-    const registry = loadRegistry(registryPath);
+    const regPath = registryPath(stateDir);
+    const registry = loadRegistry(regPath);
     const { deltas, next } = classifyInbox(items, registry, now);
 
     // Stage scan only for visible MRs; for unchanged ones reuse the cached stage.
@@ -165,7 +164,7 @@ async function run(): Promise<number> {
       console.info(renderInboxView(view));
     }
 
-    if (persist) saveRegistry(registryPath, next);
+    if (persist) saveRegistry(regPath, next);
     return 0;
   } catch (error) {
     console.error(style.redBright.bold('✖ Ошибка:'), (error as Error).message ?? String(error));

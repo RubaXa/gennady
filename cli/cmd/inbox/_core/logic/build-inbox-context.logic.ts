@@ -36,7 +36,7 @@ function resolveHost(vcsSource?: string): string {
  * @invariant Error Policy: Throws on missing token, unresolved host, or non-GitLab provider.
  * @param [vcsSource] Explicit host from --vcs-source; disables origin autodetect.
  * @returns Configured GitLab client.
- * @sideEffect Reads env GITLAB_PERSONAL_TOKEN / GITLAB_API_PATH; may run git to read origin.
+ * @sideEffect Reads env GITLAB_PERSONAL_TOKEN; may run git to read origin.
  * @consumer inbox.cmd
  */
 export function buildInboxClient(vcsSource?: string): VcsGitlabClient {
@@ -52,8 +52,7 @@ export function buildInboxClient(vcsSource?: string): VcsGitlabClient {
     throw new Error(`Провайдер "${host}" пока не поддерживается.`);
   }
 
-  const apiPath = process.env.GITLAB_API_PATH ?? '/api/v4';
-  const baseUrl = `https://${host}${apiPath}`;
+  const baseUrl = `https://${host}/api/v4`;
 
   return new VcsGitlabClient({ token, baseUrl });
 }

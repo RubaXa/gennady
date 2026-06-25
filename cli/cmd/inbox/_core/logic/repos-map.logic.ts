@@ -3,21 +3,9 @@
 // @tasks: N/A
 
 import { readFileSync, existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 /** @purpose project full path (group/sub/project) → absolute local clone path. */
 export type ReposMap = Record<string, string>;
-
-/**
- * @purpose Resolve the repos-map file path (global; overridable for tests).
- * @returns Absolute path to repos.json.
- * @sideEffect Reads env GENNADY_REPOS_MAP / HOME.
- * @consumer inbox.cmd
- */
-export function resolveReposMapPath(): string {
-  return process.env.GENNADY_REPOS_MAP ?? join(homedir(), '.gennady', 'repos.json');
-}
 
 /**
  * @purpose Load the project→clone map, tolerating a missing or corrupt file.

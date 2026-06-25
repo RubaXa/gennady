@@ -1037,7 +1037,7 @@ $ gennady vcs-worktree --cleanup <path>     # снести один
 $ gennady vcs-worktree --cleanup-all        # снести все
 ```
 
-Готовит read-only git worktree head'а MR (хуки off) для код-ревью: находит клон (`repos.json` → скан `~/Developer` по origin → shallow-клон), не исполняет код MR. Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (`GENNADY_WORKTREE_TTL_H`, дефолт 3ч) → рост ограничен.
+Готовит read-only git worktree head'а MR (хуки off) для код-ревью: находит клон (`repos.json` → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон), не исполняет код MR. Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч) → рост ограничен.
 
 ### 3.12 vcs-reply DX
 
@@ -1350,9 +1350,9 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 | ID       | Требование                                                                                                                                              |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | FR-WT-01 | `--ref group/project!iid` → read-only detached worktree head'а MR (`fetch merge-requests/<iid>/head`, хуки off)                                         |
-| FR-WT-02 | Поиск клона: `repos.json` (`~/.gennady/repos.json`) → скан `GENNADY_REPOS_BASE` (default `~/Developer`) по origin → shallow-клон в `~/.gennady/clones/` |
+| FR-WT-02 | Поиск клона: `repos.json` (`<state-dir>/repos.json`) → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон в `<state-dir>/clones/` |
 | FR-WT-03 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                           |
-| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (`GENNADY_WORKTREE_TTL_H`, default 3ч); коллизия — пересоздание                         |
+| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч); коллизия — пересоздание                                            |
 | FR-WT-05 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                                   |
 
 ### 4.1.13 vcs-reply Functional Requirements

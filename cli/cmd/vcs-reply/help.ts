@@ -27,8 +27,7 @@ export function printHelp(): void {
   console.info('  --dry-run, --dry    Print what would be sent without posting');
   console.info('');
   console.info('Environment:');
-  console.info('  GITLAB_PERSONAL_TOKEN   GitLab access token (required)');
-  console.info('  GITLAB_API_PATH         API path override (default: /api/v4)');
+  console.info('  GITLAB_PERSONAL_TOKEN   GitLab access token (required) — the only env var');
   console.info('');
   console.info('Examples:');
   console.info(
