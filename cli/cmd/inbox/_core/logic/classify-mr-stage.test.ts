@@ -90,7 +90,11 @@ describe('buildWorkPacket', () => {
 
 describe('lastNoteAuthor', () => {
   it('returns the most recent non-system note author', () => {
-    const notes = [note('alice', '2026-06-01'), note('bob', '2026-06-03'), note('sys', '2026-06-05', true)];
+    const notes = [
+      note('alice', '2026-06-01'),
+      note('bob', '2026-06-03'),
+      note('sys', '2026-06-05', true),
+    ];
     assert.strictEqual(lastNoteAuthor(notes), 'bob');
   });
 
