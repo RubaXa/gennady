@@ -4,7 +4,12 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyMrStage, flattenNotes, buildWorkPacket } from './classify-mr-stage.logic.ts';
+import {
+  classifyMrStage,
+  flattenNotes,
+  buildWorkPacket,
+  lastNoteAuthor,
+} from './classify-mr-stage.logic.ts';
 
 const note = (login: string, at: string, system = false, body = '') => ({
   author: { username: login },
@@ -80,5 +85,16 @@ describe('buildWorkPacket', () => {
     const p = buildWorkPacket(notes, ME, 'reviewer');
     assert.strictEqual(p.stage, 'awaiting_reply');
     assert.strictEqual(p.openNotes.length, 0);
+  });
+});
+
+describe('lastNoteAuthor', () => {
+  it('returns the most recent non-system note author', () => {
+    const notes = [note('alice', '2026-06-01'), note('bob', '2026-06-03'), note('sys', '2026-06-05', true)];
+    assert.strictEqual(lastNoteAuthor(notes), 'bob');
+  });
+
+  it('empty when no real notes', () => {
+    assert.strictEqual(lastNoteAuthor([note('sys', '2026-06-05', true)]), '');
   });
 });

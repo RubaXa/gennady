@@ -86,6 +86,19 @@ export function classifyMrStage(
 }
 
 /**
+ * @purpose Username of the most recent non-system note author (who replied last).
+ * @param notes Flattened discussion notes.
+ * @returns Last author's username, or empty string when there are no real notes.
+ * @consumer inbox.cmd
+ */
+export function lastNoteAuthor(notes: RawNote[]): string {
+  const ts = (n: RawNote) => Date.parse(n.updated_at ?? n.created_at ?? '') || 0;
+  const real = notes.filter((n) => !n.system && n.author?.username);
+  if (real.length === 0) return '';
+  return real.reduce((a, b) => (ts(b) >= ts(a) ? b : a)).author?.username ?? '';
+}
+
+/**
  * @purpose Assemble the context for acting on one MR: stage plus the notes from
  *   others I still have to answer (those after my last note, or all if I never spoke).
  * @param notes Flattened discussion notes.

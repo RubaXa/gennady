@@ -12,6 +12,7 @@ import {
   classifyMrStage,
   buildWorkPacket,
   flattenNotes,
+  lastNoteAuthor,
   type MrStage,
 } from './_core/logic/classify-mr-stage.logic.ts';
 import {
@@ -108,6 +109,7 @@ async function run(): Promise<number> {
     const me = await client.getCurrentUser();
 
     const stages = new Map<string, MrStage>();
+    const details = new Map<string, { openQuestions: number; lastAuthor: string }>();
     await Promise.all(
       [...visibleUrls].map(async (url) => {
         const mr = itemByUrl.get(url);
@@ -116,11 +118,14 @@ async function run(): Promise<number> {
           stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
           return;
         }
-        const discussions = await client.MergeDiscussions.getAll({
-          project: mr.project,
-          iid: mr.iid,
+        const notes = flattenNotes(
+          await client.MergeDiscussions.getAll({ project: mr.project, iid: mr.iid })
+        );
+        stages.set(url, classifyMrStage(notes, me.login, mr.role));
+        details.set(url, {
+          openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
+          lastAuthor: lastNoteAuthor(notes),
         });
-        stages.set(url, classifyMrStage(flattenNotes(discussions), me.login, mr.role));
       })
     );
     for (const [url, stage] of stages) {
@@ -129,7 +134,32 @@ async function run(): Promise<number> {
 
     const view = buildInboxView(items, options, now, deltas, stages);
 
-    if (view.total === 0) {
+    if (argv.includes('--json')) {
+      const out = {
+        total: view.total,
+        hidden: view.hidden,
+        delta: view.delta,
+        groups: view.groups.map((g) => ({
+          role: g.role,
+          items: g.items.map((i) => ({
+            ref: i.project ? `${i.project}!${i.iid}` : `!${i.iid}`,
+            project: i.project,
+            iid: i.iid,
+            webUrl: i.webUrl,
+            title: i.title,
+            role: i.role,
+            stage: i.stage,
+            delta: i.delta,
+            age: i.ageLabel,
+            draft: i.draft,
+            events: i.shownEvents,
+            openQuestions: details.get(i.webUrl)?.openQuestions ?? null,
+            lastAuthor: details.get(i.webUrl)?.lastAuthor ?? null,
+          })),
+        })),
+      };
+      console.info(JSON.stringify(out, null, 2));
+    } else if (view.total === 0) {
       console.info(style.yellow('ℹ Входящих MR, требующих реакции, нет.'));
     } else {
       console.info(renderInboxView(view));

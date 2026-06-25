@@ -28,6 +28,9 @@ export function printHelp(): void {
   console.info(
     '  --pick <ref>         Work packet for one MR (group/project!iid): stage + open questions'
   );
+  console.info(
+    '  --json               Structured output (role/stage/delta/openQuestions/lastAuthor) for the widget'
+  );
   console.info('');
   console.info('Marks new / ↑updated MRs vs the previous run (registry in ~/.gennady).');
   console.info('');
