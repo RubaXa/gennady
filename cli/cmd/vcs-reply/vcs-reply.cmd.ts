@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79
+// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
@@ -34,7 +34,7 @@ type ReplyItem = {
   suggestionRange?: { above: number; below: number };
   /** @purpose Target note to edit or delete | @invariant Mutually exclusive with discussionId/position operations */
   noteId?: string;
-  /** @purpose Delete the note instead of editing | @invariant Requires noteId */
+  /** @purpose Delete the note or the entire discussion | @invariant Requires noteId (delete note) or discussionId (delete entire thread) */
   delete?: boolean;
 };
 
@@ -126,6 +126,7 @@ export async function main(opts: MainOpts = {}): Promise<{
       );
       console.error(style.gray(`  [{"noteId":"12345","body":"исправленный текст"}]`));
       console.error(style.gray(`  [{"noteId":"12345","delete":true}]`));
+      console.error(style.gray(`  [{"discussionId":"DISC_001","delete":true}]`));
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
     try {
@@ -159,9 +160,9 @@ export async function main(opts: MainOpts = {}): Promise<{
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
-  const invalidNoteDelete = payload.find((x) => x && x.delete && !x.noteId);
+  const invalidNoteDelete = payload.find((x) => x && x.delete && !x.noteId && !x.discussionId);
   if (invalidNoteDelete) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'delete требует noteId.');
+    console.error(style.redBright.bold('✖ Ошибка:'), 'delete требует noteId или discussionId.');
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
@@ -176,6 +177,9 @@ export async function main(opts: MainOpts = {}): Promise<{
     if (x.noteId) {
       if (x.delete) return true;
       return typeof x.body === 'string' && x.body.length > 0;
+    }
+    if (x.delete && x.discussionId) {
+      return typeof x.discussionId === 'string' && x.discussionId.length > 0;
     }
     if (x.resolve !== undefined) {
       return typeof x.discussionId === 'string' && x.discussionId.length > 0;
@@ -198,7 +202,9 @@ export async function main(opts: MainOpts = {}): Promise<{
         ? 'delete'
         : 'edit'
       : it.discussionId
-        ? 'reply'
+        ? it.delete
+          ? 'delete-discussion'
+          : 'reply'
         : it.position
           ? 'line'
           : 'discussion';
@@ -278,6 +284,15 @@ export async function main(opts: MainOpts = {}): Promise<{
         continue;
       }
       // #endregion END_DRY_RUN_NOTE
+      // #region START_DRY_RUN_DELETE_DISCUSSION — delete:true with discussionId → delete entire thread
+      if (it.delete && it.discussionId && !it.noteId) {
+        console.info(
+          `${style.blue('[DRY]')} ${style.gray(`Would delete discussion: discussionId=${it.discussionId}`)}`
+        );
+        sent += 1;
+        continue;
+      }
+      // #endregion END_DRY_RUN_DELETE_DISCUSSION
       // #region START_DRY_RUN_RESOLVE — resolve:true shows body then resolve; resolve:false shows reopen
       if (it.resolve === true) {
         if (it.body) {
@@ -347,6 +362,28 @@ export async function main(opts: MainOpts = {}): Promise<{
       continue;
     }
     // #endregion END_DELETE_NOTE
+
+    // #region START_DELETE_DISCUSSION — delete entire discussion thread by discussionId
+    if (it.delete && it.discussionId && !it.noteId) {
+      try {
+        await vcs!.MergeDiscussions.deleteDiscussion({
+          project,
+          iid: String(iid),
+          discussionId: it.discussionId,
+        });
+        console.info(`${style.green('✔')} ${style.gray(`delete-discussion:${it.discussionId}`)}`);
+        sent += 1;
+      } catch (e) {
+        const msg = (e as Error).message ?? String(e);
+        const display = /404/.test(msg) ? `Discussion ${it.discussionId} not found` : msg;
+        console.error(
+          `${style.redBright('✖')} ${style.gray(`delete-discussion:${it.discussionId}`)} ${display}`
+        );
+        failed += 1;
+      }
+      continue;
+    }
+    // #endregion END_DELETE_DISCUSSION
 
     // #region START_RESOLVE_REOPEN — resolve:false → reopen only, body ignored
     if (it.resolve === false) {

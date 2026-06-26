@@ -14,6 +14,8 @@ export function printHelp(): void {
   console.info('   - discussion: {"body":"..."}                       (new general thread)');
   console.info('   - line:       {"body":"...","position":{"baseSha","startSha","headSha",');
   console.info('                  "newPath","newLine"|"oldLine"}}      (comment on a diff line)');
+  console.info('   - delete-note: {"noteId":"<id>","delete":true}      (delete single note)');
+  console.info('   - delete-disc: {"discussionId":"<id>","delete":true} (delete entire thread)');
   console.info('');
   console.info('  Line position rules (GitLab):');
   console.info('   - baseSha/startSha/headSha = MR diff_refs (gennady vcs-worktree prints them)');
