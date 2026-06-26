@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29
+// @tasks: TSK-29, TSK-67
 
 import {
   VcsClientMergeRequests,
@@ -11,8 +11,33 @@ import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
+import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import { logger } from '#logger';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
+
+/** @purpose Machine-readable error codes returned by GitLab MR approve endpoint. */
+export type VcsApproveErrorCode = 'ALREADY_APPROVED' | 'SELF_APPROVE_FORBIDDEN' | 'CANNOT_APPROVE';
+
+/**
+ * @purpose Domain error thrown when MR approve operation fails with a known rejection reason.
+ * @invariant `code` is always one of the known VcsApproveErrorCode values; never undefined.
+ */
+export class VcsApproveError extends Error {
+  /** @purpose Machine-readable error code for programmatic handling */
+  readonly code: VcsApproveErrorCode;
+
+  /**
+   * @purpose Create an approve error with a known code and the original server message.
+   * @param code Machine-readable reason code.
+   * @param message Original error message from the server response.
+   */
+  constructor(code: VcsApproveErrorCode, message: string) {
+    super(message);
+    this.code = code;
+    this.name = 'VcsApproveError';
+  }
+}
 
 /**
  * @purpose Access GitLab Merge Requests.
@@ -131,5 +156,44 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
 
       return entry;
     });
+  }
+
+  /**
+   * @param query Target repository and MR IID.
+   * @returns Resolves on successful approve; rejects with VcsApproveError on known failure.
+   * @sideEffect Network: POST /projects/:id/merge_requests/:iid/approve
+   * @see {VcsClientMergeRequests#approve} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  async approve(query: VcsMergeRequestApproveQuery): Promise<void> {
+    const repoId = encodeURIComponent(query.repository);
+    const iid = encodeURIComponent(String(query.iid));
+
+    // #region START_APPROVE_API_CALL — invariant: error message text from GitLab response body determines VcsApproveErrorCode
+    try {
+      await this._request(`/projects/${repoId}/merge_requests/${iid}/approve`, {
+        method: 'POST',
+      });
+    } catch (cause) {
+      logger.error(`[VcsGitlabMergeRequests#approve] [approving → failed]`, { cause });
+
+      const message = (cause as Error).message ?? '';
+
+      // #region START_MAP_ERROR_TO_DOMAIN
+      // purpose: translate GitLab HTTP error responses into typed domain errors with programmatic codes
+      // failure mode: adding/removing a code branch changes the public error surface; consumers depend on exact codes
+      if (message.includes('already approved')) {
+        throw new VcsApproveError('ALREADY_APPROVED', message);
+      }
+      if (message.includes('its author')) {
+        throw new VcsApproveError('SELF_APPROVE_FORBIDDEN', message);
+      }
+      if (message.includes('cannot be approved')) {
+        throw new VcsApproveError('CANNOT_APPROVE', message);
+      }
+      // #endregion END_MAP_ERROR_TO_DOMAIN
+
+      throw cause;
+    }
+    // #endregion END_APPROVE_API_CALL
   }
 }

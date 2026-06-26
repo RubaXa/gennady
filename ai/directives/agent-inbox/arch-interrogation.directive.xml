@@ -52,8 +52,13 @@
 
     <Axiom id="AX_VISUAL_TRANSPORT">
       HOW to render is chosen by DESTINATION first, then availability, then appropriateness.
-      - **Destination = chat (the operator reads the report in Claude):** interactive widget tool present (`mcp__visualize__show_widget`) → use it; binding for relational findings; icons + colour inside, never emoji. Tool absent → judge appropriateness, do NOT force a diagram: ASCII is often more reliable, compact, renders everywhere; emoji serve as icons in ASCII. Pick what the operator reads fastest, not the richest.
-      - **Destination = GitLab (anything posted into an MR — comment, discussion, line note):** the diagram MUST be a Mermaid fenced block (```mermaid …```). GitLab renders Mermaid natively; SVG widgets and ASCII art do NOT render there. Never paste widget SVG or pixel-art into a GitLab comment. Keep Mermaid small and labelled, same ≤7-node discipline.
+
+      **Destination = chat (the operator reads the report in Claude):** interactive widget tool present (`mcp__visualize__show_widget`) → use it; binding for relational findings; icons + colour inside, never emoji. Tool absent → ASCII tree/graph with emoji-icons (compact, renders everywhere). Pick what the operator reads fastest, not the richest.
+      **Chat anti-rule: NEVER emit a Mermaid fenced block (```mermaid) in chat output — the operator cannot render it.** Mermaid is exclusively for GitLab. If the widget tool is absent, use ASCII + emoji-icons or describe the relationship in a single prose sentence; do NOT fall back to Mermaid in chat.
+
+      **Destination = GitLab (anything posted into an MR — comment, discussion, line note):** the diagram MUST be a Mermaid fenced block (```mermaid …```). GitLab renders Mermaid natively; SVG widgets and ASCII art do NOT render there.
+      **GitLab anti-rule: NEVER paste ASCII art, emoji-tree diagrams, or widget SVG into a GitLab comment.** Only Mermaid in GitLab.
+      Keep diagrams small and labelled, ≤7-node discipline.
     </Axiom>
 
     <Axiom id="AX_CHECKLIST_HYGIENE">

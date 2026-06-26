@@ -5,12 +5,12 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-67
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Добавить метод `approve(query)` на порт `VcsClientMergeRequests` + value object `VcsMergeRequestApproveQuery` + реализацию в `VcsGitlabMergeRequests` (`POST /projects/:id/merge_requests/:iid/approve`)
 - **Scope:** `vcs`
 - **Module:** `vcs-client`
 - **Dependencies:** None (существующие порты и адаптеры уже реализованы)
-- **Reopens:** 0
+- **Reopens:** 1 (2026-06-26 — audit-driven fix: F-02 AX_CATCH_LOG_RECOVER)
 - **Spec References:**
   - Scope spec: [vcs.spec.md §FR-26..FR-29](../../../specs/vcs/vcs.spec.md)
   - Port: [VcsClientMergeRequests](../../../specs/vcs/vcs-client/vcs-client.spec.md#vcsclientmergerequests)
@@ -26,8 +26,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -130,21 +130,51 @@ Contract: `VcsClientMergeRequests.approve(VcsMergeRequestApproveQuery) → Promi
 
 _(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skeleton is minimal.)_
 
-### Round 1 — <YYYY-MM-DD>, initial
+### Round 1 — 2026-06-26, initial
 
 #### P1
 
-- [ ] `<ts>` ver `tsc --noEmit` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [vcs-merge-request-approve-query.type.ts, vcs-client-merge-requests.ts (+approve), vcs-gitlab-merge-requests.ts (+approve)]; decisions: []; open: []
+- [x] `2026-06-26T14:55:25Z` intro `VcsMergeRequestApproveQuery` ← P1: value object для параметров approve MR
+- [x] `2026-06-26T14:55:25Z` intro `VcsApproveErrorCode` ← P1: union-тип кодов ошибок approve
+- [x] `2026-06-26T14:55:25Z` intro `VcsApproveError` ← P1: доменный класс ошибки для отклонённого approve
+- [x] `2026-06-26T14:55:25Z` discovery file `services/vcs-client/github/vcs-github-merge-requests.ts` missing `approve()` — добавлен stub (GitHub approve — deferred per spec)
+- [x] `2026-06-26T14:55:25Z` discovery file `cli/cmd/_shared/vcs-context-resolver.ts` — pre-existing type errors (TS18047, TS2339) и format-расхождения исправлены по правилу ownership
+- [x] `2026-06-26T14:55:25Z` ver `sdd verify → typecheck` → pass exit=0
+- [x] `2026-06-26T14:55:25Z` ver `sdd verify → gennady lint` → pass exit=0
+- [x] `2026-06-26T14:55:25Z` ver `sdd verify → test` → pass exit=0
+- [x] `2026-06-26T14:55:25Z` ver `sdd verify → format` → pass exit=0
+- [x] `2026-06-26T14:55:25Z` ver `npx tsc --noEmit` → pass exit=0
+- [x] `2026-06-26T14:55:25Z` DONE
+      **Handoff →** artifacts: [vcs-merge-request-approve-query.type.ts, vcs-client-merge-requests.ts, vcs-gitlab-merge-requests.ts]; decisions: [VcsApproveError=introduced, VcsApproveErrorCode=ALREADY_APPROVED|SELF_APPROVE_FORBIDDEN|CANNOT_APPROVE, approve-method=POST-/projects/:id/merge_requests/:iid/approve, github-approve=stub-deferred]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `node --import tsx --test services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-requests.approve.test.ts` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [vcs-gitlab-merge-requests.approve.test.ts]; decisions: []; open: []
+- [x] `2026-06-26T14:59:55Z` discovery тесты размещены в `services/vcs-client/gitlab/__tests__/` (как указано в ticket Target Files), в то время как существующие тесты живут в `services/vcs-client/__tests__/gitlab/` — расхождение конвенций
+- [x] `2026-06-26T14:59:55Z` ver `sdd verify → typecheck` → pass exit=0
+- [x] `2026-06-26T14:59:55Z` ver `sdd verify → gennady lint` → pass exit=0
+- [x] `2026-06-26T14:59:55Z` ver `sdd verify → test` → pass exit=0
+- [x] `2026-06-26T14:59:55Z` ver `sdd verify → format` → pass exit=0
+- [x] `2026-06-26T14:59:55Z` ver `node --import tsx --test services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-requests.approve.test.ts` → pass exit=0
+- [x] `2026-06-26T14:59:55Z` DONE
+      **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-requests.approve.test.ts]; decisions: [approve-tests=5-cases, node-test-pass=5/5]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-06-26T15:02:00Z` DONE
+
+### Round 2 — 2026-06-26, fix: address audit finding F-02
+
+#### P1 — re-run: fix: address audit finding F-02 — AX_CATCH_LOG_RECOVER violation in approve() catch block
+
+- [x] `2026-06-26T15:10:00Z` ver `sdd verify → typecheck` → pass exit=0
+- [x] `2026-06-26T15:10:00Z` ver `sdd verify → gennady lint` → pass exit=0
+- [x] `2026-06-26T15:10:00Z` ver `sdd verify → test` → pass exit=0
+- [x] `2026-06-26T15:10:00Z` ver `sdd verify → format` → pass exit=0
+- [x] `2026-06-26T15:10:00Z` ver `npx tsc --noEmit` → pass exit=0
+- [x] `2026-06-26T15:10:00Z` DONE
+      **Handoff →** artifacts: [services/vcs-client/gitlab/vcs-gitlab-merge-requests.ts]; decisions: [logger-import=added, logger.error=added-before-domain-error-mapping]; open: []
+
+#### Round close
+
+- [x] `2026-06-26T15:12:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

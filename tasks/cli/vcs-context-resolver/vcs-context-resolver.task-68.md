@@ -5,12 +5,12 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-68
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Реализовать `resolveVcsContext(args, deps) → VcsCliContext` в `cli/cmd/_shared/` — унифицированный механизм авто-детекта ветки, проекта, хоста и токена для всех VCS-команд
 - **Scope:** `cli`
 - **Module:** `vcs-context-resolver`
 - **Dependencies:** None
-- **Reopens:** 0
+- **Reopens:** 1 (2026-06-26 — audit-driven fix: F-01 @consumers, F-02 env placeholder)
 - **Spec References:**
   - Scope spec: [cli.spec.md §4.1.14, §5.16, D-015](../../../specs/cli/cli.spec.md)
   - Contract: [VcsCliContext, VcsCliArgs, VcsCliDeps](../../../specs/cli/cli.spec.md#4114-vcs-context-resolver-shared)
@@ -25,8 +25,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -153,21 +153,44 @@ Contract: `resolveVcsContext(args, deps?) → VcsCliContext`
 
 _(Round = one execute-then-audit attempt.)_
 
-### Round 1 — <YYYY-MM-DD>, initial
+### Round 1 — 2026-06-26, initial
 
 #### P1
 
-- [ ] `<ts>` ver `tsc --noEmit` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [cli/cmd/_shared/vcs-context-resolver.ts]; decisions: []; open: []
+- [x] `2026-06-26T14:55:33Z` intro VcsCliDeps ← DI-контракт для git и env
+- [x] `2026-06-26T14:55:33Z` intro VcsCliArgs ← входные параметры резолва VCS-контекста
+- [x] `2026-06-26T14:55:33Z` intro VcsCliContext ← результат резолва VCS-контекста
+- [x] `2026-06-26T14:55:33Z` intro VcsResolveError ← ошибка резолва с cause-chain
+- [x] `2026-06-26T14:55:33Z` intro resolveVcsContext ← унифицированный резолв VCS-контекста с DI
+- [x] `2026-06-26T14:55:33Z` ver npm run type-check → pass exit=0
+- [x] `2026-06-26T14:55:33Z` ver npx tsx cli/gennady.ts lint cli/cmd/\_shared/vcs-context-resolver.ts → pass exit=0
+- [x] `2026-06-26T14:55:33Z` ver npm run test → pass exit=0
+- [x] `2026-06-26T14:55:33Z` ver npm run format:check → pass exit=0
+- [x] `2026-06-26T14:55:33Z` ver tsc --noEmit → pass exit=0
+- [x] `2026-06-26T14:55:33Z` DONE
+      **Handoff →** artifacts: [cli/cmd/_shared/vcs-context-resolver.ts]; decisions: [priority=ref>project+iid>branch, provider-check=/gitlab/i, di-pattern=git+env-injection, ref-format=group/repo!iid]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `node --import tsx --test cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [vcs-context-resolver.test.ts]; decisions: []; open: []
+- [x] `2026-06-26T15:00:27Z` ver npx tsc --noEmit → pass exit=0
+- [x] `2026-06-26T15:00:27Z` ver node --import tsx --test cli/cmd/\_shared/**tests**/vcs-context-resolver.test.ts → pass exit=0
+- [x] `2026-06-26T15:00:27Z` DONE
+      **Handoff →** artifacts: [cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts]; decisions: [canonical-case-names=from-ticket§6, test-runner=node:test, mock-pattern=mock.fn-via-di-seam]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-06-26T15:02:00Z` DONE
+
+### Round 2 — 2026-06-26, fix: address audit findings F-01 and F-02
+
+#### P2 — re-run: fix: address audit findings F-01 and F-02
+
+- [x] `2026-06-26T15:08:46Z` ver ~/.config/opencode/skills/sdd-execute/scripts/sdd verify cli/cmd/\_shared/**tests**/vcs-context-resolver.test.ts → pass exit=0 (4/4 gates: typecheck, gennady lint, tests, format:check)
+- [x] `2026-06-26T15:08:46Z` ver node --import tsx --test cli/cmd/\_shared/**tests**/vcs-context-resolver.test.ts → pass exit=0
+- [x] `2026-06-26T15:08:46Z` DONE
+      **Handoff →** artifacts: [cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts]; decisions: [f01-fix=removed-@consumers-no-entity-consumers-for-test-file, f02-fix=env-empty-object-for-no-token-test]; open: []
+
+#### Round close
+
+- [x] `2026-06-26T15:12:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

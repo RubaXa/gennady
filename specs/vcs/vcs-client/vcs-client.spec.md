@@ -32,6 +32,8 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestByIidQuery`   | Value Object    | Параметры получения MR по IID                                             |
 | `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage? |
 | `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                     |
+| `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                            |
+| `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                          |
 | `parseVcsUrl`                 | Function        | Pure-функция разбора VCS URL → `VcsUrl \| null`                           |
 

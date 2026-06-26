@@ -1,11 +1,12 @@
 // @file: Contract surface for merge request / pull request operations.
 // @consumers: VcsClient
-// @tasks: TSK-28
+// @tasks: TSK-28, TSK-67
 
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
+import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
 
 /**
  * @purpose Parameters for querying Merge Request list: project, branch, state, pagination.
@@ -72,4 +73,12 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: GitLab GET /projects/:id/merge_requests/:iid/changes | GitHub GET /repos/:owner/:repo/pulls/:number/files
    */
   abstract getChanges(query: VcsMergeRequestChangesQuery): Promise<VcsMergeRequestChanges[]>;
+
+  /**
+   * @purpose Approve a merge request.
+   * @param query Parameters: { repository, iid }.
+   * @throws {VcsApproveError} When GitLab rejects the approve operation with a known code.
+   * @sideEffect Network: POST /projects/:id/merge_requests/:iid/approve
+   */
+  abstract approve(query: VcsMergeRequestApproveQuery): Promise<void>;
 }
