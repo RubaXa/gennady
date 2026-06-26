@@ -1,11 +1,12 @@
 // @file: GitLab REST API client — HTTP adapter implementing VcsClient contract.
 // @consumers: cli/review-verify, cli/cat
-// @tasks: TSK-29
+// @tasks: TSK-29, TSK-84
 
 import { VcsGitlabMergeRequests } from './vcs-gitlab-merge-requests.ts';
 import { VcsGitlabMergeDiscussions } from './vcs-gitlab-merge-discussions.ts';
 import { VcsGitlabRepositoryFiles } from './vcs-gitlab-repository-files.ts';
 import { VcsGitlabInbox } from './vcs-gitlab-inbox.ts';
+import { VcsGitlabPipeline } from './vcs-gitlab-pipeline.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 import type { VcsUser } from '../entities/vcs-user.type.ts';
 
@@ -40,6 +41,9 @@ export class VcsGitlabClient extends VcsClient {
 
   /** @see {VcsClient#Inbox} in services/vcs-client/abstract/vcs-client.ts */
   readonly Inbox: VcsGitlabInbox;
+
+  /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts */
+  readonly Pipeline: VcsGitlabPipeline;
 
   /** @purpose Bound REST request fn for ad-hoc endpoints (e.g. /user) */
   protected _request: RequestFn;
@@ -102,6 +106,7 @@ export class VcsGitlabClient extends VcsClient {
     this.MergeDiscussions = new VcsGitlabMergeDiscussions(request);
     this.RepositoryFiles = new VcsGitlabRepositoryFiles(options.baseUrl, options.token);
     this.Inbox = new VcsGitlabInbox(graphql);
+    this.Pipeline = new VcsGitlabPipeline(request);
   }
 
   /**

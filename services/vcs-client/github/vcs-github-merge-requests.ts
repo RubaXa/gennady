@@ -1,6 +1,6 @@
 // @file: GitHub-specific implementation of pull request file operations.
 // @consumers: VcsGithubClient
-// @tasks: TSK-30, TSK-67, TSK-73, TSK-82
+// @tasks: TSK-30, TSK-67, TSK-73, TSK-82, TSK-84
 
 import {
   VcsClientMergeRequests,
@@ -11,7 +11,7 @@ import type {
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
-import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
+import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
@@ -83,7 +83,7 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
    * @throws Error that the operation is not implemented.
    * @returns Never resolves — always throws Error.
    */
-  async getPipeline(_query: VcsPipelineQuery): Promise<VcsPipeline> {
+  async getPipeline(_query: VcsPipelineQuery): Promise<VcsPipelineStatus> {
     throw new Error('GitHub getPipeline not implemented');
   }
 

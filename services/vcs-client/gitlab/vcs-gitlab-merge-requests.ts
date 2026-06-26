@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29, TSK-67, TSK-73, TSK-82
+// @tasks: TSK-29, TSK-67, TSK-73, TSK-82, TSK-84
 
 import {
   VcsClientMergeRequests,
@@ -13,7 +13,7 @@ import type {
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
-import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
+import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts';
 import { logger } from '#logger';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
@@ -249,7 +249,7 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
    * @sideEffect Network: GraphQL POST /api/graphql (headPipeline)
    * @see {VcsClientMergeRequests#getPipeline} in services/vcs-client/abstract/vcs-client-merge-requests.ts
    */
-  async getPipeline(query: VcsPipelineQuery): Promise<VcsPipeline> {
+  async getPipeline(query: VcsPipelineQuery): Promise<VcsPipelineStatus> {
     logger.debug(
       `[VcsGitlabMergeRequests#getPipeline] [idle → querying] ${query.project}!${query.iid}`
     );
@@ -266,6 +266,7 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
               status
               jobs {
                 nodes {
+                  id
                   name
                   status
                 }
@@ -296,6 +297,7 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
     const jobs = (headPipeline?.jobs?.nodes ?? [])
       .filter((n) => n != null)
       .map((n) => ({
+        id: String((n as Record<string, unknown>).id ?? ''),
         name: n.name ?? '',
         status: n.status ?? '',
       }));

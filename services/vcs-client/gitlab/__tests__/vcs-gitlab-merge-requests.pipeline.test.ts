@@ -1,11 +1,11 @@
 // @file: Unit tests for VcsGitlabMergeRequests.getPipeline — happy path, absent pipeline, type contract, missing graphql transport.
 // @consumers: node:test runner
-// @tasks: TSK-82
+// @tasks: TSK-82, TSK-84
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { VcsGitlabMergeRequests } from '../vcs-gitlab-merge-requests.ts';
-import type { VcsPipeline } from '../../entities/vcs-pipeline.type.ts';
+import type { VcsPipelineStatus } from '../../entities/vcs-pipeline-status.type.ts';
 import type { VcsPipelineQuery } from '../../abstract/vcs-client-merge-requests.ts';
 
 type GraphqlFn = ReturnType<typeof mock.fn>;
@@ -56,8 +56,8 @@ describe('VcsGitlabMergeRequests — getPipeline', () => {
 
     assert.strictEqual(result.status, 'success');
     assert.strictEqual(result.jobs.length, 2);
-    assert.deepStrictEqual(result.jobs[0], { name: 'lint', status: 'success' });
-    assert.deepStrictEqual(result.jobs[1], { name: 'test', status: 'failed' });
+    assert.deepStrictEqual(result.jobs[0], { id: '', name: 'lint', status: 'success' });
+    assert.deepStrictEqual(result.jobs[1], { id: '', name: 'test', status: 'failed' });
     // #endregion END_PIPELINE_HAPPY_ASSERT_INTERACTIONS
   });
 
@@ -94,14 +94,15 @@ describe('VcsGitlabMergeRequests — getPipeline', () => {
     );
   });
 
-  it('satisfies VcsPipeline type contract', () => {
+  it('satisfies VcsPipelineStatus type contract', () => {
     // #region START_TYPE_CONTRACT_ASSERT_SHAPE
-    // contract: VcsPipeline.status: string, jobs: {name, status}[]
-    const pipeline: VcsPipeline = { status: 'running', jobs: [] };
+    // contract: VcsPipelineStatus.status: string, jobs: {id, name, status}[]
+    const pipeline: VcsPipelineStatus = { status: 'running', jobs: [] };
     assert.strictEqual(typeof pipeline.status, 'string');
     assert.ok(Array.isArray(pipeline.jobs));
 
-    pipeline.jobs = [{ name: 'build', status: 'pending' }];
+    pipeline.jobs = [{ id: '1', name: 'build', status: 'pending' }];
+    assert.strictEqual(typeof pipeline.jobs[0].id, 'string');
     assert.strictEqual(typeof pipeline.jobs[0].name, 'string');
     assert.strictEqual(typeof pipeline.jobs[0].status, 'string');
     // #endregion END_TYPE_CONTRACT_ASSERT_SHAPE

@@ -1,13 +1,13 @@
 // @file: Contract surface for merge request / pull request operations.
 // @consumers: VcsClient
-// @tasks: TSK-28, TSK-67, TSK-82
+// @tasks: TSK-28, TSK-67, TSK-82, TSK-84
 
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
-import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
+import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts';
 
 /**
  * @purpose Parameters for querying Merge Request list: project, branch, state, pagination.
@@ -109,5 +109,5 @@ export abstract class VcsClientMergeRequests {
    * @returns Pipeline with overall status and job list.
    * @sideEffect Network: GraphQL headPipeline query (GitLab)
    */
-  abstract getPipeline(query: VcsPipelineQuery): Promise<VcsPipeline>;
+  abstract getPipeline(query: VcsPipelineQuery): Promise<VcsPipelineStatus>;
 }

@@ -6,7 +6,7 @@
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import type { VcsPipeline } from '../../../services/vcs-client/entities/vcs-pipeline.type.ts';
+import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vcs-pipeline-status.type.ts';
 import type { VcsMergeRequestsQuery } from '../../../services/vcs-client/abstract/vcs-client-merge-requests.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
@@ -122,7 +122,7 @@ async function locateMrByBranch(
  * @returns Pipeline with status and job list.
  * @throws Propagates network/API errors from the GitLab client.
  */
-async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPipeline> {
+async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPipelineStatus> {
   const client = new VcsGitlabClient({
     baseUrl: `https://${context.host}/api/v4`,
     token: context.token,
@@ -148,7 +148,7 @@ async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPi
  * @param deps Injected dependencies.
  * @sideEffect Console: writes pipeline summary to stdout.
  */
-function outputPipeline(pipeline: VcsPipeline, deps: VcsPipelineDeps): void {
+function outputPipeline(pipeline: VcsPipelineStatus, deps: VcsPipelineDeps): void {
   deps.stdout.write(`Pipeline status: ${pipeline.status || 'none'}\n`);
 
   const failedJobs = pipeline.jobs.filter((j) => j.status !== 'success');

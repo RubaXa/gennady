@@ -1,6 +1,6 @@
 // @file: GitHub REST API client — HTTP adapter implementing VcsClient contract (minimal, no MergeDiscussions).
 // @consumers: cli/cat
-// @tasks: TSK-30
+// @tasks: TSK-30, TSK-84
 
 import { VcsGithubMergeRequests } from './vcs-github-merge-requests.ts';
 import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
@@ -34,6 +34,9 @@ export class VcsGithubClient extends VcsClient {
 
   /** @see {VcsClient#Inbox} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
   readonly Inbox = undefined;
+
+  /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
+  readonly Pipeline = undefined;
 
   /**
    * @purpose Create a GitHub API client bound to a base URL with access token.
