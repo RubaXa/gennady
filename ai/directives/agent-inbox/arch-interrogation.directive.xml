@@ -51,14 +51,20 @@
     </Axiom>
 
     <Axiom id="AX_VISUAL_TRANSPORT">
-      HOW to render is chosen by DESTINATION first, then availability, then appropriateness.
+      **Mandatory protocol — executed at STEP_5 action 1 BEFORE any output.** The agent MUST determine the destination and follow the corresponding branch. No exceptions, no fallback to the wrong format.
 
-      **Destination = chat (the operator reads the report in Claude):** interactive widget tool present (`mcp__visualize__show_widget`) → use it; binding for relational findings; icons + colour inside, never emoji. Tool absent → ASCII tree/graph with emoji-icons (compact, renders everywhere). Pick what the operator reads fastest, not the richest.
-      **Chat anti-rule: NEVER emit a Mermaid fenced block (```mermaid) in chat output — the operator cannot render it.** Mermaid is exclusively for GitLab. If the widget tool is absent, use ASCII + emoji-icons or describe the relationship in a single prose sentence; do NOT fall back to Mermaid in chat.
+      **Branch CHAT (operator reads the report in a chat UI):**
+      1. Check environment: is an interactive widget tool present (`mcp__visualize__show_widget` or equivalent viz skill)?
+      2. IF tool present → MUST render relational diagrams with it. Icons + colour inside; no emoji in rendered graphics.
+      3. IF tool absent → ASCII tree/graph with emoji-icons (compact, renders everywhere).
+      4. **CHAT ANTI-RULE: Mermaid fenced blocks (```mermaid) are FORBIDDEN in chat output.** The operator cannot render them. Violation = invalid output.
 
-      **Destination = GitLab (anything posted into an MR — comment, discussion, line note):** the diagram MUST be a Mermaid fenced block (```mermaid …```). GitLab renders Mermaid natively; SVG widgets and ASCII art do NOT render there.
-      **GitLab anti-rule: NEVER paste ASCII art, emoji-tree diagrams, or widget SVG into a GitLab comment.** Only Mermaid in GitLab.
-      Keep diagrams small and labelled, ≤7-node discipline.
+      **Branch GITLAB (posting to MR — comment, discussion, line note):**
+      Agent MUST load and apply `ai/directives/agent-inbox/posting-rules.directive.xml`. That directive governs: Mermaid-only diagram format, 🤖 prefix, comment granularity (spec→file-line-1, code→per-line, reply→existing-thread), and vcs-reply syntax.
+
+      **Cross-reference:** this axiom is invoked at STEP_5 action 1. The posting branch ALWAYS delegates to posting-rules.directive.xml — never handled inline.
+
+      Keep diagrams ≤7 nodes regardless of transport.
     </Axiom>
 
     <Axiom id="AX_CHECKLIST_HYGIENE">
@@ -86,7 +92,49 @@
       1. **Не дублируй.** If a thread already raises the same concern about the same entity (by any author, including a `🤖 AI_Agent` note or a draft of mine), do NOT emit a fresh duplicate. Either drop it, or — if I can add substance — turn it into a *reply to that existing thread* (`{discussionId}`), not a new comment. State that it is a reply to an existing thread.
       2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_1` rationale harvest; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
       3. **Лови упоминания меня.** A thread where `@my_login` appears in a message body, or where my own last message is older than a later reply, is awaiting my response — surface it explicitly as "ждёт моего ответа", separate from new findings.
-      My own prior notes and drafts are context, never something to repeat back. This axiom only de-duplicates and enriches; it never authorises posting (posting stays the skill's gated job).
+       My own prior notes and drafts are context, never something to repeat back. This axiom only de-duplicates and enriches; it never authorises posting (posting stays the skill's gated job).
+    </Axiom>
+
+    <Axiom id="AX_STABLE_FINDING_IDS">
+      Every finding (entity verdict, relational problem, risk flag) receives a **stable, unique ID** that persists across the entire report. IDs are the backbone of cross-referencing — other sections link to them, never retell the finding.
+
+      ID namespaces:
+      | Prefix | Scope | Example |
+      |---|---|---|
+      | `E` | Entity verdict (justified / weak / unjustified per VerdictModel) | `E1`, `E2` |
+      | `R` | Relational finding (dependency cycle, fan-in/out, truth-vs-cache) | `R1` |
+      | `Q` | Open question (unresolved doubt, "почему не альтернатива") | `Q1` |
+
+      IDs are sequential within namespace (E1, E2, E3…). The ID stays with the finding even when sections reorder content — it is a logical anchor, not a positional index.
+
+      Format in output: `[E1]` — square-bracketed, clickable as an anchor within the report when the medium supports it.
+
+      This axiom is referenced by AX_SAY_IT_ONCE (cross-section dedup) and OutputFormat §5–§7 (entity cards, relationships, verdict).
+    </Axiom>
+
+    <Axiom id="AX_SAY_IT_ONCE">
+      Each problem is described in full exactly ONCE — in the section where it is introduced (entity card for E-IDs, relationships section for R-IDs, open questions for Q-IDs). Every other section that mentions the same problem **references the ID** and adds only the new angle specific to that section's purpose — never retells the original description.
+
+      Examples of correct cross-referencing:
+      - Relationship section: «Цикл: AuthService → TokenValidator → AuthService [R1]» — one line, references R1.
+      - Verdict summary: «3 сущности обоснованы, 2 слабо ([E3], [E5]), 1 не обоснована ([E7])» — IDs only, no retelling.
+      - Risk section: «Blast-radius: широкий — см. [R1], [E4]» — pointer, not duplicate.
+
+      Violation: the same problem's full description appearing in two different sections. This is the primary cause of bloated, unreadable reports. Any section that needs to mention an existing finding MUST use the ID-reference form, not prose retelling.
+    </Axiom>
+
+    <Axiom id="AX_SCANNABLE_OUTPUT">
+      The report is read by a human operator in a chat UI with limited vertical space. Structure beats prose.
+
+      Binding rules for every output section:
+      1. **Emoji icons for verdicts** — ✅ justified · ⚠️ weak · ❌ unjustified (never bare text tokens).
+      2. **Emoji icons for risk level** — 🟢 low · 🟡 medium · 🔴 high.
+      3. **Section separators** — `---` on its own line between every top-level section.
+      4. **Compact tables over prose** — entity inventory, verdict summary, risk sub-items, comment candidates: table first, prose explanation after (if needed).
+      5. **Details only for critical** — full prose explanation only for ❌ unjustified entities and 🔴 high-risk items. For ✅ justified / ⚠️ weak / 🟢🟡 risk: one line suffices.
+      6. **Stable IDs as anchors** — every finding carries its ID in square brackets ([E1], [R2]), making the report navigable by search.
+
+      Machine-readable bonus: the combination of stable IDs, fixed table columns, and predictable separators means the report can be parsed by a script to extract findings, map references, and verify completeness — without relying on the agent's natural-language output alone.
     </Axiom>
   </BeliefState>
 
@@ -181,39 +229,77 @@
 
     <Step id="STEP_5_SYNTHESIZE">
       <Goal>Emit the helicopter-view report.</Goal>
+      <Precondition>
+        **MANDATORY DESTINATION CHECK** — execute BEFORE any output. Per `AX_VISUAL_TRANSPORT`:
+        1. Determine destination: is this output going to **chat** (operator reads in Claude/terminal) or **GitLab** (posting to MR)?
+        2. IF chat → per AX_VISUAL_TRANSPORT Branch CHAT: check for viz tool → use it OR ASCII/emoji-icons. Mermaid FORBIDDEN.
+        3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`. All diagram conversion and posting format governed by that directive. This directive never posts inline.
+        4. State the chosen destination and format in the first micro-summary: «Вывод: чат, ASCII» or «Вывод: чат, widget» or «Постинг: GitLab, Mermaid».
+      </Precondition>
       <Action>
-        1. Choose visual transport per `AX_VISUAL_TRANSPORT` (widget tool if present — then use it; else ASCII + emoji-icons by appropriateness).
-        2. Emit the mandatory scope summary first (headline line + by-category table + file map) from the STEP_0 metrics, per `AX_CHANGESET_SCALE` / `<OutputFormat>` §2. The file map is rendered for every MR size, never skipped.
-        3. Render the context/container diagram (C4-style: system boundary zone, internal containers, external systems as black boxes, legend outside the diagram).
-        4. Add flow diagrams only for non-trivial scenarios.
-        5. Emit per-entity cards (role · reconstructed rationale · verdict · open questions).
-        6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; keep single-judgement findings as prose.
-        7. Reconcile every candidate against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert "already-raised but I can add substance" into a reply-to-thread candidate, mark another reviewer's wrong claim as a correction-reply candidate, and list threads that mention me / await my reply separately.
-        8. Produce the verdict summary and the candidate list for the skill: each candidate tagged new-line-comment / reply-to-thread (`discussionId`) / awaiting-my-reply.
+        1. Choose visual transport per the destination check above (see Precondition). Per `AX_VISUALIZE_WHEN_RELATIONAL`: relational findings → picture; single judgements → prose. Per `AX_SCANNABLE_OUTPUT`: use emoji verdict icons (✅⚠️❌) and risk colours (🟢🟡🔴).
+        2. Emit the mandatory scope summary first per `AX_CHANGESET_SCALE` / `<OutputFormat>` §2: headline line + by-category table + file map. The file map is rendered for every MR size, never skipped.
+        3. Render the context/container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (C4-style: system boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside the diagram).
+        4. Add flow diagrams only for non-trivial scenarios; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
+        5. Emit per-entity cards ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first): name · role · reconstructed rationale · verdict with emoji per `AX_SCANNABLE_OUTPUT` · stable ID per `AX_STABLE_FINDING_IDS` · open question (Q-ID if unresolved). Prose for ❌ unjustified; one line for ✅⚠️.
+        6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
+        7. Reconcile candidates against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert already-raised into reply-to-thread candidate, mark correction-replies, list awaiting-my-reply threads.
+        8. Produce verdict summary per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table format per `AX_SCANNABLE_OUTPUT`.
+        9. Produce comment candidate table per `<OutputFormat>` §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
       </Action>
     </Step>
   </ExecutionPlan>
 
   <OutputFormat>
-    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT`. The report uses Russian section headings (below); the bracketed English names are for the author, NOT printed. No `STEP_*` / `Block N` / axis-ID scaffolding appears in the rendered report.
+    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over prose, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
 
     Document structure, top to bottom:
 
     1. **Шапка [header] — mandatory.** First line: `ref` as a clickable link to `webUrl`, then `title`. One click from GitLab before any content.
+    ---
     2. **Обзор [overview] — mandatory scope first.** Open with the quantified scope per `AX_CHANGESET_SCALE`, never just prose:
        - one headline line — `**Размер:** {малый/средний/крупный} · N файлов · +X / −Y строк · M новых файлов · K новых сущностей` — plus a half-sentence read: expansion (new files/entities) or churn, and the dominant category;
        - a by-category table (rows: Код · Тесты · Доки/спеки · Конфиг · Ассеты; columns: Файлов · +строк · −строк · новых), so a big `+X` driven by assets/generated files is not misread as logic;
        - a **file map** (mandatory, every size): touched files grouped by folder/module, each with change-type icon (🆕 added · ✏️ modified · 🗑️ deleted · ↪︎ renamed) and ± lines — a few-line list for a tiny MR, a grouped tree for a large one;
-       Then 2–4 sentences: what the MR introduces and the verdict tally (N обоснованы / N слабо / N не обоснованы). No findings yet — just the shape and the scale.
-    3. **Архитектура [helicopter].** The C4-style container diagram (boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside). One caption sentence under it.
+       Then 2–4 sentences: what the MR introduces and the verdict tally per `AX_STABLE_FINDING_IDS` (N ✅ justified, N ⚠️ weak, N ❌ unjustified). No findings yet — just the shape and the scale.
+    ---
+    3. **Архитектура [helicopter].** The C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone, internal containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend outside). One caption sentence under it.
+    ---
     4. **Потоки [flows].** Flow diagram(s) for non-trivial scenarios only; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
-    5. **Разбор сущностей [entities].** One subsection per entity, ordered by reversibility (one-way doors first): name · role (one sentence) · reconstructed rationale incl. "почему не альтернатива" · verdict (`justified`/`weak`/`unjustified`) · open question. Prose, full sentences — not a bullet dump.
-    6. **Связи и риски [relationships].** Cross-entity findings, visualized where relational (dependency direction, cycles, truth-vs-cache, fan-in/out) per `AX_VISUALIZE_WHEN_RELATIONAL`; one caption each.
-    7. **Итог и рекомендации [verdict + extraction].** What is solid, what is `weak`/`unjustified` and why, package-extraction recommendations, the explicit app↔framework boundary line.
-    8. **Существующее обсуждение [prior discussion] — only when `prior_threads`/`my_drafts` supplied.** Brief: what other reviewers have already raised (so it is clear what is NOT re-raised below), which threads mention me or await my reply, and which of my own notes/drafts already cover a point. Omit the section entirely when no prior discussion was supplied, and say once in «Обзор» that the analysis ran without prior-discussion context.
-    9. **Кандидаты в замечания [comment candidates].** Table: each candidate → `{ file, location, problem, axis, kind }`, where `kind` is new-line-comment / reply-to-thread (`discussionId`) / correction-reply / awaiting-my-reply per `AX_PRIOR_DISCUSSION_AWARENESS`. Posting shape depends on the artifact (the skill enforces it): a spec / design-doc → ONE consolidated comment at the top of the file (this whole report, with Mermaid diagrams), since a spec is reworked wholesale; code → per-line comments; a reply goes into its existing thread, not a new comment. Every posted body is prefixed with 🤖.
-    10. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
+    ---
+    5. **Разбор сущностей [entities].** One subsection per entity, ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first). Each card:
+       - **Stable ID** — `[E1]`, `[E2]`… per `AX_STABLE_FINDING_IDS`.
+       - **Role** — one sentence.
+       - **Verdict** — emoji icon per `AX_SCANNABLE_OUTPUT`: ✅ justified / ⚠️ weak / ❌ unjustified + one-line reason.
+       - **Rationale** — reconstructed per `AX_RECONSTRUCT_RATIONALE`, incl. «почему не альтернатива».
+       - **Open question** — `[Q1]` if unresolved, per `AX_STABLE_FINDING_IDS`.
+       Prose for ❌ unjustified; one compact line for ✅⚠️ per `AX_SCANNABLE_OUTPUT` rule 5.
+    ---
+    6. **Связи и риски [relationships].** Cross-entity findings with R-IDs per `AX_STABLE_FINDING_IDS`. Visualized where relational per `AX_VISUALIZE_WHEN_RELATIONAL`; one caption each. Single-judgement findings stay prose.
 
-    This directive NEVER posts; posting stays the skill's gated responsibility.
+       Risk assessment — fixed sub-items adapted for architecture review, in this order:
+       - 🎯 **Концентрация изменений** — где сосредоточены изменения (файлы/модули с наибольшим churn).
+       - 🧪 **Покрытие тестами** — есть ли тесты у затронутых файлов; поведение изменено без тестов = риск.
+       - 💥 **Blast-radius** — кто зависит от изменённых сущностей (см. [R-IDs]).
+       - 🖐 **Проверить руками** — затронутые флоу, критические границы/условия.
+       - 🚀 **Риски релиза** — миграции, обратная совместимость, смена API, деп-бамп, env/конфиг.
+       - 📊 **Уровень риска** — 🟢 low / 🟡 medium / 🔴 high (mandatory conclusion, ссылается на [E-IDs] и [R-IDs] выше).
+    ---
+    7. **Итог и рекомендации [verdict + extraction].** Per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table: verdict summary (✅ N / ⚠️ N / ❌ N), package-extraction recommendations per `AX_PACKAGE_EXTRACTION_PROBE`, explicit app↔framework boundary line.
+    ---
+    8. **Существующее обсуждение [prior discussion] — only when `prior_threads`/`my_drafts` supplied.** Per `AX_PRIOR_DISCUSSION_AWARENESS`: what other reviewers have already raised (so it is clear what is NOT re-raised below), which threads mention me or await my reply, and which of my own notes/drafts already cover a point. Omit the section entirely when no prior discussion was supplied, and say once in «Обзор» that the analysis ran without prior-discussion context.
+    ---
+    9. **Кандидаты в замечания [comment candidates].** Per `AX_PRIOR_DISCUSSION_AWARENESS`. Compact table per `AX_SCANNABLE_OUTPUT`:
+
+       | ID | Файл | Строка | Проблема | Ось | Kind |
+       |----|------|--------|-----------|-----|------|
+       | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment |
+       | [E5] | path/to/file.ts | L15 | краткая суть | A | reply-to-thread (discussionId: abc123) |
+
+       Kind values per `AX_PRIOR_DISCUSSION_AWARENESS`: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply`.
+
+       **IMPORTANT:** This directive produces the candidate list ONLY. Posting format (Mermaid, 🤖 prefix, vcs-reply syntax, line-comment position fields, granularity by artifact type) is governed by `ai/directives/agent-inbox/posting-rules.directive.xml`. When the skill proceeds to posting, it MUST load that directive.
+    ---
+    10. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
   </OutputFormat>
 </ArchInterrogation>

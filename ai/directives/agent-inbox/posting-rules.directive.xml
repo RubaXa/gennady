@@ -1,0 +1,107 @@
+<PostingRules keywords="gitlab posting, mermaid, vcs-reply, bot prefix, comment format, line comment, discussion reply" type="directive" ver="1.0">
+  <Mission>
+    Rules for posting review results to GitLab MR. Loaded ONLY when posting — never during analysis or chat output. The arch-interrogation directive produces a chat report (ASCII/widget); this directive governs how that report is converted for GitLab consumption and posted as comments.
+    Cognitive role: Posting Formatter. Takes comment candidates from arch-interrogation, converts diagrams to Mermaid (GitLab-native format), applies 🤖 prefix, and emits JSON for vcs-reply.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_POSTING_MERMAID_ONLY">
+      ALL diagrams posted to GitLab MUST be Mermaid fenced blocks (```mermaid …```). GitLab renders Mermaid natively. ASCII art, emoji-tree diagrams, widget SVG, and inline images do NOT render in GitLab comments — they are FORBIDDEN.
+    </Axiom>
+
+    <Axiom id="AX_POSTING_BOT_PREFIX">
+      Every posted message body MUST start with 🤖 — so readers immediately recognise it as an automated note.
+    </Axiom>
+
+    <Axiom id="AX_POSTING_GRANULARITY">
+      Posting shape depends on the artifact type, per arch-interrogation OutputFormat §9:
+      - **Spec / design-doc** → ONE consolidated comment attached to file line 1 (the whole report, with Mermaid diagrams).
+      - **Code** → per-line comments at the specific changed lines (diff_refs from vcs-worktree).
+      - **Reply** → into the existing discussion thread (discussionId), never a new comment.
+    </Axiom>
+
+    <Axiom id="AX_POSTING_NO_DUPLICATES">
+      Before posting, re-check arch-interrogation's prior discussion awareness (AX_PRIOR_DISCUSSION_AWARENESS): drop any candidate already covered by an existing thread. Only post what is genuinely new.
+    </Axiom>
+  </BeliefState>
+
+  <DiagramConversion>
+    <Goal>Convert chat-format diagrams (ASCII/widget) to GitLab-native Mermaid.</Goal>
+    <Rules>
+      1. ASCII tree/graph → Mermaid flowchart LR or TD (whichever fits the relationship direction).
+      2. Widget visualization → Mermaid equivalent (flowchart for entity maps, sequenceDiagram for flows).
+      3. Keep ≤7 nodes per diagram (same discipline as arch-interrogation AX_VISUALIZE_WHEN_RELATIONAL).
+      4. Use fixed classDef for entity state — COPY AS-IS from arch-interrogation entity-map convention:
+         - new → green fill (#dafbe1), green stroke (#2da44e)
+         - modified → yellow fill (#fff8c5), yellow stroke (#bf8700)
+         - deleted → red fill (#ffebe9), red stroke (#cf222e)
+         - related/outside MR → gray fill (#f6f8fa), gray dashed stroke (#999)
+      5. Solid edges for in-change connections, dashed edges for outside-MR connections.
+      6. Every diagram gets a one-line caption in Russian.
+    </Rules>
+  </DiagramConversion>
+
+  <CommentFormat>
+    <Section name="general-comment">
+      A standalone discussion (new thread, not tied to a code line). JSON shape:
+      ```json
+      {"body": "🤖 …content with Mermaid diagrams…"}
+      ```
+    </Section>
+    <Section name="reply-to-thread">
+      A reply inside an existing discussion thread. JSON shape:
+      ```json
+      {"discussionId": "<full GitLab discussion ID>", "body": "🤖 …reply content…"}
+      ```
+    </Section>
+    <Section name="line-comment">
+      A comment attached to a specific code line in the diff. JSON shape:
+      ```json
+      {
+        "body": "🤖 …comment…",
+        "position": {
+          "baseSha": "<base_sha>",
+          "startSha": "<start_sha>",
+          "headSha": "<head_sha>",
+          "newPath": "<file_path>",
+          "newLine": <line_number>
+        }
+      }
+      ```
+      Line rules (per arch-interrogation diff_refs from vcs-worktree):
+      - added line → `newLine`
+      - removed line → `oldLine`
+      - context line → BOTH `oldLine` and `newLine`
+      - `oldPath` = `newPath` unless file was renamed.
+    </Section>
+  </CommentFormat>
+
+  <CandidateTagging>
+    Each candidate from arch-interrogation OutputFormat §9 carries a `kind`:
+    | kind | Meaning | Posting action |
+    |---|---|---|
+    | `new-line-comment` | New finding, not raised before | Post as line-comment on the relevant code line |
+    | `reply-to-thread` | Already raised by another reviewer; I add substance | Post as reply-to-thread with the given discussionId |
+    | `correction-reply` | Another reviewer's claim is wrong per AX_GROUNDED_IN_REPO | Post as reply-to-thread with correction |
+    | `awaiting-my-reply` | Thread where @my_login is mentioned or my last message got a reply | Post as reply-to-thread; operator sees this separately in the report |
+  </CandidateTagging>
+
+  <VcsReplySyntax>
+    <Command>
+      # Dry-run (nothing posted — verify output first):
+      gennady vcs-reply --project=&lt;group/project&gt; --iid=&lt;iid&gt; --vcs-source=&lt;host&gt; --dry-run &lt; comments.json
+
+      # Live post:
+      gennady vcs-reply --project=&lt;group/project&gt; --iid=&lt;iid&gt; --vcs-source=&lt;host&gt; &lt; comments.json
+    </Command>
+    <Requirement>GITLAB_PERSONAL_TOKEN environment variable.</Requirement>
+    <Requirement>host from --vcs-source; project and iid from the MR ref (group/project!iid).</Requirement>
+  </VcsReplySyntax>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_NO_TOKEN` | GITLAB_PERSONAL_TOKEN not set |
+    | `H_NO_CANDIDATES` | No comment candidates to post (all dropped by dedup or operator skip) |
+  </HaltConditions>
+</PostingRules>
