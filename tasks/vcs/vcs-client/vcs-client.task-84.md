@@ -8,10 +8,10 @@
 
 ## 2. Phases
 
-| ID  | Kind | Status      | Deps |
-| --- | ---- | ----------- | ---- |
-| P1  | impl | [x]         | —    |
-| P2  | test | [x]          | P1   |
+| ID  | Kind | Status | Deps |
+| --- | ---- | ------ | ---- |
+| P1  | impl | [x]    | —    |
+| P2  | test | [x]    | P1   |
 
 ## 3. P1 — impl
 
@@ -36,8 +36,8 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario              | Test file                                                          |
-| --------------------- | ------------------------------------------------------------------ |
+| Scenario              | Test file                                                            |
+| --------------------- | -------------------------------------------------------------------- |
 | getJob → 200→VcsJob   | services/vcs-client/gitlab/\_\_tests\_\_/vcs-gitlab-pipeline.test.ts |
 | playJob → retry alias | services/vcs-client/gitlab/\_\_tests\_\_/vcs-gitlab-pipeline.test.ts |
 | cancelJob             | services/vcs-client/gitlab/\_\_tests\_\_/vcs-gitlab-pipeline.test.ts |
@@ -72,7 +72,7 @@
 - [x] `2026-06-26T19:34:57Z` ver npm run type-check → pass exit=0
 - [x] `2026-06-26T19:34:57Z` ver npm run format:check → pass exit=0
 - [x] `2026-06-26T19:34:57Z` DONE
-**Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-pipeline.test.ts]; decisions: []; open: []
+      **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-pipeline.test.ts]; decisions: []; open: []
 
 ## 3. P2 — test
 

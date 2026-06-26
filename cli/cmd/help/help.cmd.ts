@@ -1,6 +1,6 @@
 // @file: CLI command: help
 // @consumers: N/A
-// @tasks: TSK-45, TSK-55, TSK-57, TSK-59, TSK-65
+// @tasks: TSK-45, TSK-55, TSK-57, TSK-59, TSK-65, TSK-85
 
 console.info('Gennady CLI');
 console.info('');
