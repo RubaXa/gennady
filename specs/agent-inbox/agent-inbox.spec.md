@@ -41,17 +41,18 @@ gennady inbox --reset                                  # чистый лист
 
 ### 4.1 Functional Requirements (сводка; полный EARS — в README §4)
 
-| ID    | Требование                                                                                           |
-| ----- | ---------------------------------------------------------------------------------------------------- |
-| AI-01 | Источник actionable MR — `vcs-client.Inbox.getActionable()` (один GraphQL-запрос; роль + события)    |
-| AI-02 | Группировка по роли, отсев шума (no-role/stale/drafts), CI-события только для author                 |
-| AI-03 | Реестр `~/.gennady/inbox-registry.json` — дельта `NEW`/`↑` и кэш стадии (глобальный, не пер-репо)    |
-| AI-04 | Стадия MR (review_needed/reply_needed/awaiting/idle) через скан обсуждений + identity                |
-| AI-05 | Код-ревью — read-only worktree клона (`vcs-worktree`), сабагент `code-review`, код MR не исполняется |
-| AI-06 | reply (ревьювер) — честный факт-чек собеседника (прав/не прав) по треду+коду + один краткий ответ    |
-| AI-07 | Постинг (стадия B) — `vcs-reply` ТОЛЬКО после Ask-согласования каждого ответа                        |
-| AI-08 | Вывод-черновики и итоги — `~/.gennady/inbox-out/`; `inbox --reset` — чистый лист                     |
-| AI-09 | Жизненный цикл worktree ограничен: GC по TTL на каждом prepare + `--cleanup`/`--cleanup-all`         |
+| ID    | Требование                                                                                                                                                                                                                                  |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI-01 | Источник actionable MR — `vcs-client.Inbox.getActionable()` (один GraphQL-запрос; роль + события)                                                                                                                                           |
+| AI-02 | Группировка по роли, отсев шума (no-role/stale/drafts/merged-closed), CI-события только для author. Влитые/закрытые MR (приходят через незакрытый pending-todo GitLab) отсекаются всегда, даже под `--all`                                  |
+| AI-03 | Реестр `~/.gennady/inbox-registry.json` — дельта `NEW`/`↑` и кэш стадии (глобальный, не пер-репо)                                                                                                                                           |
+| AI-04 | Стадия MR (review_needed/reply_needed/awaiting/idle) через скан обсуждений + identity                                                                                                                                                       |
+| AI-05 | Код-ревью — read-only worktree клона (`vcs-worktree`), сабагент `code-review`, код MR не исполняется                                                                                                                                        |
+| AI-06 | reply (ревьювер) — честный факт-чек собеседника (прав/не прав) по треду+коду + один краткий ответ                                                                                                                                           |
+| AI-07 | Постинг (стадия B) — `vcs-reply` ТОЛЬКО после Ask-согласования каждого ответа                                                                                                                                                               |
+| AI-08 | Вывод-черновики и итоги — `~/.gennady/inbox-out/`; `inbox --reset` — чистый лист                                                                                                                                                            |
+| AI-09 | Жизненный цикл worktree ограничен: GC по TTL на каждом prepare + `--cleanup`/`--cleanup-all`                                                                                                                                                |
+| AI-10 | Перед ревью подтягиваются существующие треды (`review-issues --all`) и мои черновики (`--draft`): чужие доводы учитываются, уже сказанное (Reviewer/Author/AI_Agent/мой draft) не дублируется, упоминания меня помечаются как ждущие ответа |
 
 ### 4.2 Non-Functional Constraints
 
@@ -92,7 +93,8 @@ gennady inbox --reset                                  # чистый лист
                                                       │ Ask «что берём»
                                                       ▼
             [vcs-worktree: read-only код + diff_refs] + [inbox --pick: open questions]
-                                                      │ факт-чек / code-review субагент
+                              + [review-issues --all/--draft: существующие треды + мои черновики]
+                                                      │ факт-чек / code-review субагент (дедуп против тредов)
                                                       ▼ Ask-согласование (per answer)
                                             [vcs-reply: reply / discussion / line-comment]
 ```

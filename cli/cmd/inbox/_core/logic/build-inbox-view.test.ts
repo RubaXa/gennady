@@ -24,6 +24,7 @@ const raw = (over: Partial<VcsActionableMr> & { iid: string }): VcsActionableMr 
   title: `t${over.iid}`,
   updatedAt: '2026-06-23T00:00:00Z',
   draft: false,
+  state: 'opened',
   role: 'reviewer',
   events: [],
   directlyAddressed: false,
@@ -35,6 +36,17 @@ describe('buildInboxView', () => {
     const view = buildInboxView([raw({ iid: '1', role: null, events: ['ci_failed'] })], opt(), NOW);
     assert.strictEqual(view.total, 0);
     assert.strictEqual(view.hidden.noise, 1);
+  });
+
+  it('hides merged/closed MRs even under --all (only open is actionable)', () => {
+    const items = [
+      raw({ iid: '1', role: 'reviewer', state: 'merged' }),
+      raw({ iid: '2', role: 'author', state: 'closed' }),
+      raw({ iid: '3', role: 'reviewer', state: 'opened' }),
+    ];
+    const view = buildInboxView(items, opt({ all: true }), NOW);
+    assert.strictEqual(view.total, 1);
+    assert.strictEqual(view.hidden.closed, 2);
   });
 
   it('hides drafts by default and shows them with --drafts', () => {

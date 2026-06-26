@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
 
 ## 2. Project Type
 
@@ -1022,12 +1022,12 @@ $ gennady review-issues
 # exit 1
 ```
 
-Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления. Флаг `--draft` переключает источник на неопубликованные draft notes текущего пользователя (`GET /merge_requests/:iid/draft_notes`): каждая черновая заметка маппится в отдельный `Thread` (роль Reviewer), что позволяет работать со своими черновыми замечаниями до их публикации.
+Использует `vcs-context-resolver` (см. §4.1.14) для авто-детекта ветки, проекта и хоста. Скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления. Флаг `--draft` переключает источник на неопубликованные draft notes текущего пользователя (`GET /merge_requests/:iid/draft_notes`): каждая черновая заметка маппится в отдельный `Thread` (роль Reviewer), что позволяет работать со своими черновыми замечаниями до их публикации.
 
 ### 3.10 inbox DX (agent-inbox)
 
 ```text
-$ gennady inbox [--vcs-source=<host>]
+$ gennady inbox [--host=<host>]                                # --vcs-source как алиас
 Inbox — 20 actionable  [20 new]  (скрыто: 84 stale, 35 drafts, 5 noise)
 ▸ Ждут моё ревью — 17   ▸ Мои MR — 3
    NEW [ответить] group/proj!510  …      NEW [ревью] group/proj!524  …
@@ -1049,7 +1049,7 @@ $ gennady vcs-worktree --cleanup <path>     # снести один
 $ gennady vcs-worktree --cleanup-all        # снести все
 ```
 
-Готовит read-only git worktree head'а MR (хуки off) для код-ревью: находит клон (`repos.json` → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон), не исполняет код MR. Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч) → рост ограничен.
+Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Готовит read-only git worktree head'а MR (хуки off) для код-ревью: находит клон (`repos.json` → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон), не исполняет код MR. Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч) → рост ограничен.
 
 ### 3.12 vcs-reply DX
 
@@ -1059,7 +1059,43 @@ $ echo '[{"body":"новая дискуссия"}]'                            |
 $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","newLine"}}]' | gennady vcs-reply --project=g/p --iid=42  # line-comment
 ```
 
-Постит в GitLab MR: ответ в существующий тред, новую дискуссию или комментарий на строку дифа (`createDiscussion` с `position` из `MR.diff_refs`). `--dry-run` печатает без отправки.
+Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Постит в GitLab MR: ответ в существующий тред, новую дискуссию или комментарий на строку дифа (`createDiscussion` с `position` из `MR.diff_refs`). `--dry-run` печатает без отправки.
+
+### 3.13 vcs-approve DX
+
+```text
+$ gennady vcs-approve                                          # авто-детект → approve
+✓ MR !42 approved: https://gitlab.mycompany.com/group/repo/-/merge_requests/42
+
+$ gennady vcs-approve --ref group/repo!99                      # явный ref
+$ gennady vcs-approve --project group/repo --iid 42            # project + iid
+$ gennady vcs-approve --branch feat/payments                   # override ветки
+$ gennady vcs-approve --host gitlab.internal.company.com       # self-hosted
+$ gennady vcs-approve --dry-run                                # без вызова API
+Would approve: group/repo!42  host=gitlab.mycompany.com        # [DRY-RUN] no request sent
+
+# --- ошибки резолва (vcs-context-resolver) ---
+$ gennady vcs-approve                                          # нет токена
+✖ Ошибка: Не найден токен доступа GitLab. Установите GITLAB_PERSONAL_TOKEN.  # exit 1
+
+$ gennady vcs-approve                                          # нет origin
+✖ Ошибка: Не найден удалённый репозиторий origin.             # exit 1
+
+$ gennady vcs-approve                                          # нет MR на ветке
+ℹ Merge Request не найден для ветки: feat/orphan-branch        # exit 0
+
+# --- ошибки API ---
+$ gennady vcs-approve                                          # уже approved
+ℹ MR !42 already approved                                     # idempotent, exit 0
+
+$ gennady vcs-approve                                          # self-approve запрещён
+✖ GitLab API error [403]: Self-approval is not permitted.      # exit 1
+
+$ gennady vcs-approve                                          # merge conflict
+✖ GitLab API error [409]: Merge request cannot be approved.    # exit 1
+```
+
+Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Выставляет approve через `POST /projects/:id/merge_requests/:iid/approve`. `--dry-run` печатает что было бы отправлено без реального вызова API. GitHub — deferred.
 
 ## 4. Requirements & Constraints
 
@@ -1327,25 +1363,18 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 
 | ID       | Требование                                                                                                                                                                                                                                                                               |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                                                                                                                                                                                        |
-| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL                                                                                                                                                                 |
-| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                                                                                                                                                                                          |
-| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                                                                                                                                                                                   |
-| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                                                                                                                                    |
-| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                                                                                                                                  |
-| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                                                                                                                                                                                           |
-| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                                                                                                                                                                                       |
-| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                                                                                                                                                                          |
-| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                                                                                                                                                                                 |
-| FR-RI-18 | `--draft` — вместо дискуссий загружает неопубликованные draft notes текущего пользователя (`MergeDiscussions.listDraftNotes` → `GET /merge_requests/:iid/draft_notes`, постранично); каждая черновая заметка маппится в отдельный одно-нотный `Thread` (роль Reviewer, `resolved=false`) |
-| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                                                                                                                                                                                   |
-| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                                                                                                                                                                                        |
-| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                                                                                                                                                                                |
-| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                                                                                                                                                                                            |
-| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                                                                                                                                                                                           |
-| FR-RI-16 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком                                                                                                           |
-| FR-RI-17 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at`                                                                                                |
-| FR-RI-18 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"`                                                                                     |
+| FR-RI-01 | Использует `vcs-context-resolver` (см. §4.1.14) для определения ветки, проекта, хоста и токена (заменяет inline-логику: старые git rev-parse/git config/проверки токена)                                                                                                                 |
+| FR-RI-02 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`); пробрасывается в `vcs-context-resolver` как `ref`                                                                                                                                |
+| FR-RI-03 | Приоритет источника: `ref › project+iid › branch (auto)` — делегирован в `vcs-context-resolver`                                                                                                                                                                                          |
+| FR-RI-04 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                                                                                                                                                                                       |
+| FR-RI-05 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                                                                                                                                                                          |
+| FR-RI-06 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                                                                                                                                                                                 |
+| FR-RI-07 | `--draft` — вместо дискуссий загружает неопубликованные draft notes текущего пользователя (`MergeDiscussions.listDraftNotes` → `GET /merge_requests/:iid/draft_notes`, постранично); каждая черновая заметка маппится в отдельный одно-нотный `Thread` (роль Reviewer, `resolved=false`) |
+| FR-RI-08 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                                                                                                                                                                                   |
+| FR-RI-09 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                                                                                                                                                                                        |
+| FR-RI-10 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком                                                                                                           |
+| FR-RI-11 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at`                                                                                                |
+| FR-RI-12 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"`                                                                                     |
 
 ### 4.1.11 inbox Functional Requirements
 
@@ -1360,21 +1389,75 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 
 ### 4.1.12 vcs-worktree Functional Requirements
 
-| ID       | Требование                                                                                                                                          |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-WT-01 | `--ref group/project!iid` → read-only detached worktree head'а MR (`fetch merge-requests/<iid>/head`, хуки off)                                     |
-| FR-WT-02 | Поиск клона: `repos.json` (`<state-dir>/repos.json`) → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон в `<state-dir>/clones/` |
-| FR-WT-03 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                       |
-| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч); коллизия — пересоздание                                        |
-| FR-WT-05 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                               |
+| ID       | Требование                                                                                                                                                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-WT-01 | Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста                                                                                                                                                                     |
+| FR-WT-02 | `--ref group/project!iid` → read-only detached worktree head'а MR; `git fetch origin refs/merge-requests/<iid>/head` (GitLab создаёт этот ref автоматически)                                                                                   |
+| FR-WT-03 | Поиск клона: `repos.json` (`<state-dir>/repos.json`) → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон в `<state-dir>/clones/`                                                                                            |
+| FR-WT-04 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                                                                                                                  |
+| FR-WT-05 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч). Worktree для того же ref и age < TTL → переиспользовать (вывести path). Age ≥ TTL → удалить и пересоздать. Разные ref, одинаковый sanitized path → ошибка |
+| FR-WT-06 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                                                                                                                          |
 
 ### 4.1.13 vcs-reply Functional Requirements
 
-| ID       | Требование                                                                                                                                         |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-VR-01 | stdin JSON-массив; элемент: `{discussionId, body}` (ответ в тред) / `{body}` (новая дискуссия) / `{body, position}` (line-comment)                 |
-| FR-VR-02 | line-comment: `position` через `MergeDiscussions.createDiscussion`; `*_sha` из `MR.diff_refs`; правило линий added→new / removed→old / context→оба |
-| FR-VR-03 | `--project --iid` обязательны; `--dry-run` печатает без отправки; `--vcs-source` — override host                                                   |
+| ID       | Требование                                                                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-VR-01 | stdin JSON-массив; элемент: `{discussionId, body}` (ответ в тред) / `{body}` (новая дискуссия) / `{body, position}` (line-comment)                           |
+| FR-VR-02 | line-comment: `position` через `MergeDiscussions.createDiscussion`; `*_sha` из `MR.diff_refs`; правило линий added→new / removed→old / context→оба           |
+| FR-VR-03 | Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста; `--dry-run` печатает без отправки; `--host` пробрасывается в `resolveVcsContext` |
+
+### 4.1.14 vcs-context-resolver (shared)
+
+| ID        | Требование                                                                                                                                                 |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-CTX-01 | Авто-детект текущей ветки: `git rev-parse --abbrev-ref HEAD`                                                                                               |
+| FR-CTX-02 | Авто-детект project + host из `git config remote.origin.url` (HTTP и SSH форматы)                                                                          |
+| FR-CTX-03 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                      |
+| FR-CTX-04 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                    |
+| FR-CTX-05 | `--branch/-b <name>` — явный override ветки                                                                                                                |
+| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-source` для обратной совместимости с inbox                                             |
+| FR-CTX-07 | Приоритет источника: `ref › project+iid › branch (auto)`. `--ref` и `--branch` одновременно → ошибка: «--ref и --branch взаимоисключающие»                 |
+| FR-CTX-08 | Токен: `GITLAB_PERSONAL_TOKEN` env var                                                                                                                     |
+| FR-CTX-09 | Если ветка не найдена И нет явного ref/project+iid → `VcsResolveError` с понятным сообщением (не exit — resolver возвращает значение, exit решает команда) |
+| FR-CTX-10 | Токен не найден → `VcsResolveError`, exit решает команда                                                                                                   |
+| FR-CTX-11 | Git-ошибки (нет origin, нет репозитория) → `VcsResolveError` с понятным сообщением                                                                         |
+| FR-CTX-12 | Модуль размещается в `cli/cmd/_shared/vcs-context-resolver.ts`                                                                                             |
+| FR-CTX-13 | Возвращает `VcsCliContext: { provider: 'gitlab', host, project, iid?, branch?, token }`. `provider` — для будущей поддержки GitHub                         |
+| FR-CTX-14 | `resolveVcsContext(args, deps)` — чистая async-функция с DI (`git`, `env`), тестируема без monkey-patching                                                 |
+| FR-CTX-15 | `VcsCliArgs: { ref?, project?, iid?, branch?, host? }` — входные параметры                                                                                 |
+| FR-CTX-16 | `VcsCliDeps: { git(cmd: string[]): Promise<string>, env(name: string): string \| undefined }`                                                              |
+| FR-CTX-17 | Проверка провайдера: host валидируется через `/gitlab/i`. Не-GitLab → `VcsResolveError` с сообщением, что GitHub — deferred                                |
+
+### 4.1.15 vcs-approve Functional Requirements
+
+| ID        | Требование                                                                                                                                                                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-VA-01  | Выставляет approve на GitLab MR через `VcsClientMergeRequests.approve()` (порт, реализация — см. `vcs.spec.md`)                                                                                                                                                          |
+| FR-VA-02  | Использует `vcs-context-resolver` (см. §4.1.14) для определения хоста/проекта/токена. При авто-детекте из ветки (без явного `--ref`/`--project --iid`) — запрашивает MR через `VcsClientMergeRequests.getOne(sourceBranch, state:'opened')` → извлекает iid              |
+| FR-VA-02a | MR не найден по ветке → info-сообщение `ℹ Merge Request не найден для ветки: <branch>`, exit 0 (аналогично review-issues FR-RI-08)                                                                                                                                       |
+| FR-VA-03  | `--dry-run` — печатает `Would approve: <project>!<iid>  host=<host>` на stdout, затем `[DRY-RUN] no request sent`, без реального вызова API. Резолв контекста (vcs-context-resolver) выполняется всегда; при ошибке резолва → ошибка резолва, Would approve не выводится |
+| FR-VA-04  | MR уже approved → info-сообщение `ℹ MR !<iid> already approved`, exit 0 (idempotent). Дифференциация: если тело ответа GitLab содержит признак "already approved" → exit 0; если "cannot be approved" / merge conflict → exit 1 по FR-VA-06                              |
+| FR-VA-05  | Self-approve → GitLab API возвращает 403 с сообщением о запрете self-approve. Дифференциация: если тело ответа содержит "its author" / "author of this merge request" → сообщение `Self-approval is not permitted`, exit 1; иначе — общая ошибка 403 по FR-VA-06         |
+| FR-VA-06  | Прочие ошибки API (401, 403 general, 404, 409 merge conflict) → сообщение `✖ GitLab API error [<status>]: <message>`, exit 1                                                                                                                                             |
+| FR-VA-07  | Успех → `✓ MR !<iid> approved: <web_url>` в stdout, exit 0                                                                                                                                                                                                               |
+| FR-VA-08  | CLI вызывает `VcsClientMergeRequests.approve(query)` из `services/vcs-client`; порт, реализация и value objects — см. `vcs.spec.md`                                                                                                                                      |
+
+### 4.1.16 Рефакторинг существующих команд на vcs-context-resolver
+
+| ID       | Требование                                                                                                                                                                                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-RF-01 | `review-issues`: заменить inline-логику `getGitCurrentBranch()` + `getGitRemote()` + проверку токена на вызов `resolveVcsContext(args)`. Путь: `parseArgs` извлекает `ref/branch/project/iid/host` → `resolveVcsContext` → использовать `VcsCliContext` вместо прямых git-вызовов |
+| FR-RF-02 | `vcs-reply`: заменить inline-резолв project/host на `resolveVcsContext` (FR-VR-03). `--project --iid --host` пробрасываются в resolver                                                                                                                                            |
+| FR-RF-03 | `vcs-worktree`: заменить inline-резолв project/host на `resolveVcsContext` (FR-WT-01). `--ref` пробрасывается в resolver                                                                                                                                                          |
+
+**BDD для рефакторинга:**
+
+- GIVEN команда вызвана с `--ref group/repo!42` WHEN резолв успешен THEN команда использует `VcsCliContext.host`, `.project`, `.iid` без прямых вызовов `git`
+- GIVEN команда вызвана без аргументов WHEN resolver находит ветку/проект через git THEN поведение идентично старому, но через resolver
+- GIVEN команда вызвана WHEN resolver возвращает `VcsResolveError` THEN команда выводит `VcsResolveError.message` в stderr и завершается с exit 1
+- GIVEN `git remote origin.url` = `git@gitlab.company.com:group/repo.git` (SSH) WHEN resolver извлекает THEN `host=gitlab.company.com`, `project=group/repo`
+
+> **Примечание:** FR-RI-01, FR-WT-01, FR-VR-03 в таблицах выше описывают **целевое** (desired) состояние после рефакторинга. До рефакторинга команды используют inline-логику. Миграция описана в D-017.
 
 ### 4.2 Non-Functional Constraints
 
@@ -1406,6 +1489,8 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 - **NFC-E2E-03**: `npm pack` вызывается через `child_process.spawn` (не shell) — платформо-независимо
 - **NFC-E2E-04**: Zero новых npm-зависимостей: `child_process`, `fs`, `os`, `path` — только Node.js built-in. Требуется `npm` CLI для `npm pack`/`npm install` на этапе setup'a
 - **NFC-E2E-05**: `spawn` имеет таймаут 30 секунд на команду. При превышении — тест падает с сообщением `spawn timed out after 30s`
+- **NFC-24 (vcs-context-resolver)**: Zero runtime dependencies — только `child_process` (git) и `fs`. Чистая async-функция `resolveVcsContext(args, deps)` с DI — тестируема без monkey-patching
+- **NFC-25 (vcs-approve)**: Zero runtime dependencies — только Node.js built-in `fetch`. Использует `vcs-context-resolver` для определения MR
 
 ### 4.3 Out-of-Scope
 
@@ -1483,11 +1568,25 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 - Интеграция e2e в `npm run release` / CI — отдельный refine после MVP
 - Параллельное выполнение e2e-тестов — sequential в v1 (проще отладка)
 
+**vcs-context-resolver (v1):**
+
+- GitHub-провайдер (deferred — resolver проверяет `/gitlab/i`, не-GitLab → `VcsResolveError`)
+- Кеширование результата резолва (deferred — каждый вызов делает свежие git-запросы)
+- Сетевые вызовы (deferred — только локальные git-команды и env)
+- MR-лукап (resolver предоставляет контекст, поиск MR — ответственность команды)
+
 **review-issues (v1):**
 
 - GitHub поддержка (deferred — требует `refine vcs` для `VcsGithubMergeDiscussions`)
 - Closed/merged MR (только `state: 'opened'`)
 - Несколько MR на одну ветку (берётся первый найденный)
+- E2E-тесты (требуют GitLab токена и живого MR)
+
+**vcs-approve (v1):**
+
+- GitHub approve (deferred — GitHub использует pull request reviews, а не отдельный approve endpoint)
+- `--unapprove` (deferred)
+- Approve с SHA (гарантия ревизии) — deferred
 - E2E-тесты (требуют GitLab токена и живого MR)
 
 ### 4.4 Runtime Backing & Deferred Scope
@@ -1585,14 +1684,32 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 | Очистка temp директории (FS)            | `real-runtime`               |
 | CI-интеграция                           | `not-implemented` (deferred) |
 
+**vcs-context-resolver:**
+
+| Capability                   | Posture                                  |
+| ---------------------------- | ---------------------------------------- |
+| `git rev-parse --abbrev-ref` | `real-runtime`                           |
+| `git config remote.origin`   | `real-runtime`                           |
+| SSH/HTTP remote URL parsing  | `real-runtime`                           |
+| `GITLAB_PERSONAL_TOKEN` env  | `real-runtime`                           |
+| GitHub provider detection    | `not-implemented` (deferred)             |
+| MR-лукап (API-вызов)         | `not-implemented` (не в скоупе resolver) |
+
 **review-issues:**
 
-| Capability                        | Posture                      |
-| --------------------------------- | ---------------------------- |
-| Авто-детект ветки (git)           | `real-runtime`               |
-| Авто-детект origin remote (git)   | `real-runtime`               |
-| GitLab REST API (MR, Discussions) | `real-runtime`               |
-| GitHub Discussions                | `not-implemented` (deferred) |
+| Capability                        | Posture                                       |
+| --------------------------------- | --------------------------------------------- |
+| VCS-контекст (ветка, хост, token) | `real-runtime` (через `vcs-context-resolver`) |
+| GitLab REST API (MR, Discussions) | `real-runtime`                                |
+| GitHub Discussions                | `not-implemented` (deferred)                  |
+
+**vcs-approve:**
+
+| Capability                        | Posture                                       |
+| --------------------------------- | --------------------------------------------- |
+| VCS-контекст (ветка, хост, token) | `real-runtime` (через `vcs-context-resolver`) |
+| GitLab Approve API                | `real-runtime`                                |
+| GitHub Approve                    | `not-implemented` (deferred)                  |
 
 ### 4.5 Rules
 
@@ -2170,8 +2287,8 @@ cli/cmd/review/
 **Ключевые решения:**
 
 1. **Shared `_core/logic/`**: `review-issues` и `review-verify` разделяют весь pipeline — только `mode` отличается. Изолированы только точки входа (`review-issues.cmd.ts`, `review-verify.cmd.ts`).
-2. **Авто-детект без параметров**: `resolveReviewIntent` fallback → `{ source: 'branch', branch: undefined }` → `buildReviewContextGit` вызывает `getGitCurrentBranch()`. Ни один параметр не обязателен.
-3. **GitLab-only v1**: `buildReviewContextVcs` проверяет host через regex `/gitlab/i`. GitHub → явная ошибка с пояснением.
+2. **VCS-контекст через `vcs-context-resolver`**: `resolveVcsContext` из `cli/cmd/_shared/` (см. §5.16). Авто-детект ветки, project, host, token — унифицирован с `vcs-reply`, `vcs-worktree`, `vcs-approve`.
+3. **GitLab-only v1**: проверка провайдера делегирована в `vcs-context-resolver` (см. FR-CTX-17).
 4. **Регистрация**: `case 'review-issues': await import('./cmd/review-issues/index.ts'); break` в `cli/gennady.ts`.
 
 ### D-014 — Команда review-issues: shared pipeline с review-verify
@@ -2182,6 +2299,70 @@ cli/cmd/review/
 - **Risk accepted:** GitHub Discussions deferred — при добавлении потребует замены `buildReviewContextVcs` на мульти-провайдерный вариант и одновременного `refine vcs`.
 - **Rejected alternatives:** Две независимые команды с полным дублированием pipeline — копирование ~150 строк логики без обоснования.
 
+### D-015 — vcs-context-resolver: унифицированный механизм резолва VCS-контекста
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (vcs-approve)
+- **Why:** Четыре VCS-команды (`review-issues`, `vcs-reply`, `vcs-worktree`, `vcs-approve`) дублировали логику авто-детекта ветки, проекта, хоста и токена. `vcs-context-resolver` в `cli/cmd/_shared/` унифицирует этот механизм: `resolveVcsContext(args, deps)` → `VcsCliContext { host, project, iid?, branch?, token }`. Приоритет: `ref › project+iid › branch (auto)`. DI через `deps: { git, env }` — тестируем без monkey-patching.
+- **Risk accepted:** Общий знаменатель для всех VCS-команд. При добавлении GitHub потребуется расширить `VcsCliContext.provider` — но сигнатура уже позволяет добавить поле без ломающего изменения.
+- **Rejected alternatives:** Оставить дублирование в каждой команде — 4× копирование ~50 строк логики, риск расхождения поведения.
+
+### D-016 — Команда vcs-approve: approve GitLab MR через API
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (vcs-approve)
+- **Why:** Агентам нужна возможность выставлять approve на GitLab MR из CLI. Команда использует `vcs-context-resolver` для определения MR, вызывает `POST /projects/:id/merge_requests/:iid/approve` через `VcsClientMergeRequests.approve()`. Idempotent: если MR уже approved → info, exit 0. `--dry-run` печатает payload без реального вызова. GitHub — deferred (другая модель review).
+- **Risk accepted:** Self-approve запрещён GitLab API — команда транслирует ошибку 403 с понятным сообщением. Нет гарантии ревизии (approve without SHA) — deferred. Дифференциация 409-ответов GitLab (already-approved vs merge-conflict) — через string-matching тела ответа; хрупко при смене версии GitLab. Смягчается: предпочтение structured error fields при их появлении в API.
+- **Rejected alternatives:** Approve без отдельной команды (через `vcs-reply` с魔法-синтаксисом) — смешивает ортогональные операции (постинг vs approve), нарушает принцип единственной ответственности команды.
+
+### D-017 — Рефакторинг VCS-команд на vcs-context-resolver
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (vcs-approve)
+- **Why:** `review-issues`, `vcs-reply`, `vcs-worktree` переводятся на унифицированный `vcs-context-resolver`. Их старые блоки авто-детекта (ветка, origin, токен) заменяются вызовом `resolveVcsContext`. Поведение не меняется, только механизм.
+- **Risk accepted:** Рефакторинг трёх команд одновременно — требует аккуратного тестирования каждой после миграции. Смягчается тем, что `vcs-context-resolver` тестируется независимо.
+- **Rejected alternatives:** Постепенная миграция (одна команда за раз) — временный период с двумя механизмами резолва, хуже поддерживаемость.
+
+### 5.16 vcs-context-resolver (shared)
+
+```
+cli/cmd/_shared/
+├── vcs-context-resolver.ts     # NEW: resolveVcsContext(args, deps) → VcsCliContext
+└── vcs-context-resolver.test.ts
+```
+
+**Ключевые решения:**
+
+1. **Чистая async-функция с DI**: `resolveVcsContext(args: VcsCliArgs, deps?: VcsCliDeps) → VcsCliContext`. `deps = { git(cmd: string[]): Promise<string>, env(name: string): string | undefined }`.
+2. **Приоритет**: `ref › project+iid › branch (auto)`. `ref` парсится как `group/repo!iid`.
+3. **Git-операции**: `git rev-parse --abbrev-ref HEAD`, `git config remote.origin.url`. Поддержка HTTP и SSH форматов.
+4. **Токен**: `GITLAB_PERSONAL_TOKEN` из env.
+5. **Zero runtime deps**: только `child_process` (git) и `process.env`.
+
+### 5.17 vcs-approve
+
+```
+cli/cmd/vcs-approve/
+├── index.ts                    # NEW: import { run } from './vcs-approve.cmd.ts'; run(process.argv)
+├── vcs-approve.cmd.ts          # NEW: resolveVcsContext → vcsClient.approve → вывод
+└── vcs-approve.test.ts
+
+services/vcs-client/
+├── entities/
+│   └── vcs-merge-request-approve-query.type.ts   # NEW: { repository, iid }
+├── abstract/
+│   └── vcs-client-merge-requests.ts              # + approve(query): Promise<void>
+└── gitlab/
+    └── vcs-gitlab-merge-requests.ts              # + approve impl → POST /projects/:id/merge_requests/:iid/approve
+```
+
+**Ключевые решения:**
+
+1. **Pattern C (DI)**: `run(rawArgs, deps?: VcsApproveDeps)` — инжектится `vcsClient`, `resolveVcsContext`, `stdout`, `stderr`.
+2. **VCS-клиент**: новый метод `approve(query: VcsMergeRequestApproveQuery)` на порте `VcsClientMergeRequests`. Реализация в `VcsGitlabMergeRequests`.
+3. **Idempotent**: 409 (already approved) → info, exit 0. 403 (self-approve) → понятная ошибка, exit 1.
+4. **Регистрация**: `case 'vcs-approve': await import('./cmd/vcs-approve/index.ts'); break` в `cli/gennady.ts`.
+
 ## 7. Scope Dependencies
 
 - **Depends on:**
@@ -2189,7 +2370,7 @@ cli/cmd/review/
   - [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test, prettier, Vite
   - [`infra-npm-publish`](../infra-npm-publish/infra-npm-publish.spec.md) — публикация `ai/directives/` в npm-пакете (sync читает из пакета)
   - [`agent-run`](../agent-run/agent-run.spec.md) — `run`, `listEngines`, `listModels`, `AgentRunError` для команды `run`
-  - [`vcs`](../vcs/vcs.spec.md) — `VcsGitlabClient`, `VcsGitlabMergeRequests`, `VcsGitlabMergeDiscussions` для команды `review-issues`
+  - [`vcs`](../vcs/vcs.spec.md) — `VcsGitlabClient`, `VcsGitlabMergeRequests`, `VcsGitlabMergeDiscussions` для команд `review-issues`, `vcs-reply`, `vcs-worktree`, `vcs-approve`
 - **Provides to:** AI-агенты (через CLI)
 
 ## 8. Bootstrap Requirements
@@ -2317,6 +2498,21 @@ cli/cmd/review/
 | `cli/__tests__/e2e/fixtures/src/helper.ts`                               | file          | this-scope-task       | Файл для orient: @file:, @tasks: TSK-FIX-01, @consumers: FixtureConsumer, exports FixtureHelper with @purpose                       |
 | `*.tgz` в `.gitignore`                                                   | structural    | this-scope-task       | добавить строку `*.tgz`                                                                                                             |
 | `resolveTargets` — исключение `**/__tests__/fixtures/**`                 | file          | this-scope-task       | добавить паттерн в `EXCLUDE_PATTERNS` (наравне с `node_modules`, `dist`, etc.)                                                      |
+| **vcs-approve**                                                          |               |                       |                                                                                                                                     |
+| Создать `cli/cmd/_shared/vcs-context-resolver.ts`                        | file          | this-scope-task       | `resolveVcsContext(args, deps?) → VcsCliContext`                                                                                     |
+| Создать `cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts`         | file          | this-scope-task       | Unit: авто-детект, явные override, приоритет, ошибки                                                                                 |
+| Создать `cli/cmd/vcs-approve/index.ts`                                   | file          | this-scope-task       | `import { run } from './vcs-approve.cmd.ts'; run(process.argv)`                                                                      |
+| Создать `cli/cmd/vcs-approve/vcs-approve.cmd.ts`                         | file          | this-scope-task       | CLI-обвязка: resolveVcsContext → vcsClient.approve → вывод                                                                            |
+| Создать `cli/cmd/vcs-approve/__tests__/vcs-approve.test.ts`              | file          | this-scope-task       | Integration: happy, dry-run, already-approved, self-approve, api errors                                                               |
+| Создать `services/vcs-client/entities/vcs-merge-request-approve-query.type.ts` | file     | this-scope-task       | `{ repository: string, iid: string \| number }`                                                                                       |
+| Обновить `services/vcs-client/abstract/vcs-client-merge-requests.ts`     | file          | this-scope-task       | добавить метод `approve(query: VcsMergeRequestApproveQuery): Promise<void>`                                                           |
+| Обновить `services/vcs-client/gitlab/vcs-gitlab-merge-requests.ts`       | file          | this-scope-task       | реализовать `approve` → `POST /projects/:id/merge_requests/:iid/approve`                                                              |
+| Обновить `cli/gennady.ts` (case 'vcs-approve')                           | file          | this-scope-task       | добавить `case 'vcs-approve': await import('./cmd/vcs-approve/index.ts'); break`                                                      |
+| Обновить `cli/AGENTS.md` (строка vcs-approve)                            | file          | this-scope-task       | добавить строку `vcs-approve` в таблицу команд                                                                                        |
+| Обновить `cli/cmd/help/help.cmd.ts` (строка vcs-approve)                 | file          | this-scope-task       | добавить `vcs-approve` в вывод help                                                                                                    |
+| Рефакторинг `review-issues` (vcs-context-resolver)                       | file          | this-scope-task       | заменить inline-логику авто-детекта на вызов `resolveVcsContext`                                                                       |
+| Рефакторинг `vcs-reply` (vcs-context-resolver)                           | file          | this-scope-task       | заменить inline-логику авто-детекта на вызов `resolveVcsContext`                                                                       |
+| Рефакторинг `vcs-worktree` (vcs-context-resolver)                        | file          | this-scope-task       | заменить inline-логику авто-детекта на вызов `resolveVcsContext`                                                                       |
 
 ## 9. Module Map
 
@@ -2335,6 +2531,11 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - run — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
 - review-issues — Команда `gennady review-issues`: по текущей ветке (авто-детект) находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов
 - e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
+- vcs-context-resolver — Shared-модуль в `cli/cmd/_shared/`: унифицированный механизм резолва VCS-контекста (ветка, проект, хост, токен) для всех VCS-команд
+- vcs-approve — Команда `gennady vcs-approve`: выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта и `--dry-run`
+- inbox — Команда `gennady inbox`: CLI-поверхность ассистента входящих GitLab MR; реализация делегирована в scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md)
+- vcs-worktree — Команда `gennady vcs-worktree`: read-only git worktree head'а MR для код-ревью, с GC жизненного цикла
+- vcs-reply — Команда `gennady vcs-reply`: постинг в GitLab MR (ответ в тред / новая дискуссия / line-comment)
 
 ### 9.2 Inter-Module Dependency Map
 
@@ -2349,6 +2550,14 @@ graph TD
     sync-skills -. Runtime .-> npm-package
     agents-rules -. Runtime .-> npm-package
     run -. Scope Reference .-> agent-run[agent-run]
+    review-issues --> vcs-context-resolver[vcs-context-resolver]
+    vcs-worktree --> vcs-context-resolver
+    vcs-reply --> vcs-context-resolver
+    vcs-approve --> vcs-context-resolver
+    vcs-context-resolver -. Runtime .-> git
+    vcs-approve -. Runtime .-> vcs[vcs-client]
+    vcs-reply -. Runtime .-> vcs
+    review-issues -. Runtime .-> vcs
     sync --> shared-sync[shared/common/sync/]
     sync-skills --> shared-sync
     e2e -. тестирует .-> lint
@@ -2366,8 +2575,8 @@ graph TD
 
 - **Primary input:** `specs/cli/cli.spec.md` (this file).
 - **Required directives:** `ai/directives/coding/typescript-rules.xml`, `ai/directives/testing/node-test.xml`
-- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`, `run`, `review-issues`, `e2e`
-- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`, `E2eContext`, `setupE2e`
+- **Areas requiring decomposition:** `lint`, `alt-opinion`, `update-check`, `sync`, `orient`, `sync-skills`, `agents-rules`, `run`, `review-issues`, `e2e`, `vcs-approve`, `vcs-context-resolver`
+- **Named abstractions:** `LintCommand`, `LintError`, `LintOptions`, `LintReport`, `FileHeaderCheck`, `AnchorCheck`, `DbcContractCheck`, `AltOpinionCommand`, `AltOpinionModel`, `AltOpinionResult`, `AltOpinionReport`, `AltOpinionRunner`, `AltOpinionModelPort`, `UpdateCheck`, `UpdateCheckWorker`, `UpdateCheckCache`, `UpdateCheckOptions`, `SyncCommand`, `SyncOptions`, `SyncFileEntry`, `SyncResult`, `SyncSkillsCommand`, `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`, `OrientCommand`, `OrientOptions`, `OrientResult`, `FileIndexEntry`, `IndexMatch`, `FileWordRef`, `AgentsRulesCommand`, `E2eContext`, `setupE2e`, `VcsCliContext`, `resolveVcsContext`, `VcsApproveCommand`, `VcsMergeRequestApproveQuery`
 - **Bootstrap tickets ready for cascade:** see 8
 - **Open risks:**
   - `refine` dbc должен быть выполнен до реализации `dbc-contract.check.ts`
@@ -2390,6 +2599,39 @@ graph TD
   - e2e: кроссплатформенное поведение не верифицировано — CI пока только на macOS/Linux. Windows — deferred
   - e2e: Vite-чанки с хешами в именах — `npm pack` включает хешированные имена в `.tgz`. При изменении структуры чанков fixture-проект должен быть пересоздан (но тесты копируют fixture заново при каждом запуске)
   - e2e: `npm` и `npx` должны быть доступны в системе. Минимальные Docker-образы (alpine) могут не включать npm. Для CI-интеграции потребуется явная установка Node.js с npm
+  - vcs-approve: рефакторинг трёх существующих команд на vcs-context-resolver — требует аккуратного тестирования каждой после миграции
+
+## Critic Rounds
+
+### Round 1 — 2026-06-26
+- Verdict: CRITICAL
+- Accepted: 11 — phantom FR-IDs в FR-RI-01, FR-CTX-09 ответственность resolver vs команда, out-of-scope resolver, --host vs --vcs-source naming, provider в VcsCliContext, runtime backing resolver, BDD для рефакторинга, temporal ambiguity, VcsCliArgs/VcsCliDeps, --ref + --branch конфликт, provider check в FR
+- Rejected: 1 — "Missing DX for resolver-propagated errors" → покрыто FR-CTX-10/CTX-11, компактный DX по запросу оператора
+- Changes: FR-RI-01 cleaned, FR-CTX-07..CTX-17 expanded, flag naming unified, out-of-scope/runtime backing added, refactoring BDD + temporal note added
+
+### Round 2 — 2026-06-26
+- Verdict: NEEDS_WORK
+- Accepted: 11 — service-layer boundary (FR-VA-08..11 → reference vcs.spec.md), missing modules in §9.1 (inbox/vcs-worktree/vcs-reply), vcs-worktree fetch mechanism clarified, vcs-worktree GC collision clarified, inbox --vcs-source → --host, e2e agents-rules contradiction resolved, agents-rules package resolution harmonized, tombstone FR-VR-04 removed
+- Rejected: 2 — "inbox concrete DX" → delegated to agent-inbox; "--draft pagination unspecified" → vcs-client handles pagination transparently
+- Changes: FR-VA-08 simplified, §9.1 expanded, FR-WT-02/FR-WT-05 clarified, inbox flag unified, agents-rules FR-AR-01 + architecture harmonized
+
+### Round 3 — 2026-06-26
+- Verdict: CRITICAL (1 pre-existing, 2 mine)
+- Accepted: 1 — phantom FR-VR-04 in FR-RF-02 removed
+- Rejected: 4 — "D-007 DisablesCheck no FR" (pre-existing, вне скоупа), "review-verify undefined" (pre-existing), "lint --staged --autofix" (pre-existing), "E2E BDD missing" (pre-existing, BDD в e2e.spec.md)
+- Changes: FR-RF-02 cleaned
+
+### Round 4 — 2026-06-26
+- Verdict: NEEDS_WORK
+- Accepted: 5 — missing MR lookup in auto-detect (FR-VA-02a), 403 differentiation (FR-VA-05), HTTP detail removed from FR-VA-01, dry-run format FR, 409 differentiation (FR-VA-04)
+- Rejected: 1 — "FR-CTX-17 duplicates FR-CTX-13" → functional redundancy, безвредно
+- Changes: FR-VA-01..FR-VA-07 expanded with concrete API differentiation rules, auto-detect MR lookup step added
+
+### Round 5 — 2026-06-26 (MAX_ROUNDS)
+- Verdict: NEEDS_WORK
+- Accepted: 5 — MR-not-found error path (FR-VA-02a), DX resolver-error scenarios, dry-run resolver interaction clarified, SSH URL BDD, 409 string-matching fragility documented
+- Rejected: 0
+- Changes: FR-VA-02a added, FR-VA-03 clarified, vcs-approve DX expanded with resolver errors, SSH BDD added, D-016 risk updated
 
 ## 10. Execution Insights
 

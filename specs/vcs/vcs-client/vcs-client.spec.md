@@ -31,6 +31,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestsQuery`       | Value Object    | Параметры поиска MR                                                       |
 | `VcsMergeRequestByIidQuery`   | Value Object    | Параметры получения MR по IID                                             |
 | `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage? |
+| `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                     |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                          |
 | `parseVcsUrl`                 | Function        | Pure-функция разбора VCS URL → `VcsUrl \| null`                           |
 
@@ -75,6 +76,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `getList(query) → Promise<VcsMergeRequest[]>` — список MR
   - `getByIid(query) → Promise<VcsMergeRequest | null>` — MR по IID
   - `getChanges(query) → Promise<VcsMergeRequestChanges[]>` — изменённые файлы MR/PR
+  - `approve(query) → Promise<void>` — approve MR (GitLab; GitHub — deferred)
 
 ### `VcsClientMergeDiscussions`
 
@@ -108,6 +110,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestsQuery`       | `project: string`, `sourceBranch?: string`, `state?: string`, `perPage?: number`, `page?: number` |
 | `VcsMergeRequestByIidQuery`   | `project: string`, `iid: string\|number`                                                          |
 | `VcsMergeRequestChangesQuery` | `repository: string`, `iid: string\|number`, `page?: number`, `perPage?: number`                  |
+| `VcsMergeRequestApproveQuery` | `repository: string`, `iid: string\|number`                                                       |
 | `VcsFileContentQuery`         | `repository: string`, `path: string`, `ref: string`                                               |
 
 ## 6. File Structure

@@ -5,6 +5,7 @@
 import { VcsClientInbox } from '../abstract/vcs-client-inbox.ts';
 import type {
   VcsActionableMr,
+  VcsActionableMrState,
   VcsActionableRole,
   VcsActionableEvent,
 } from '../entities/vcs-actionable-mr.type.ts';
@@ -25,15 +26,15 @@ const ACTIONABLE_QUERY = `{
         action
         target {
           __typename
-          ... on MergeRequest { iid title webUrl updatedAt draft project { fullPath } }
+          ... on MergeRequest { iid title webUrl updatedAt draft state project { fullPath } }
         }
       }
     }
     reviewRequestedMergeRequests(state: opened) {
-      nodes { iid title webUrl updatedAt draft project { fullPath } }
+      nodes { iid title webUrl updatedAt draft state project { fullPath } }
     }
     authoredMergeRequests(state: opened) {
-      nodes { iid title webUrl updatedAt draft project { fullPath } }
+      nodes { iid title webUrl updatedAt draft state project { fullPath } }
     }
   }
 }`;
@@ -69,6 +70,7 @@ type MrNode = {
   webUrl?: string;
   updatedAt?: string;
   draft?: boolean;
+  state?: string;
   project?: { fullPath?: string } | null;
 };
 
@@ -87,7 +89,10 @@ type ActionableData = {
 
 /** @purpose Mutable accumulator merging one MR's facts across sources. */
 type Accumulator = {
-  base: Pick<VcsActionableMr, 'iid' | 'project' | 'webUrl' | 'title' | 'updatedAt' | 'draft'>;
+  base: Pick<
+    VcsActionableMr,
+    'iid' | 'project' | 'webUrl' | 'title' | 'updatedAt' | 'draft' | 'state'
+  >;
   role: VcsActionableRole | null;
   events: Set<VcsActionableEvent>;
   directlyAddressed: boolean;
@@ -136,6 +141,10 @@ export class VcsGitlabInbox extends VcsClientInbox {
             title: node.title ?? '',
             updatedAt: node.updatedAt ?? '',
             draft: node.draft ?? false,
+            // `state` is queried on the todos target so merged/closed MRs (whose
+            // pending todo GitLab never auto-clears) can be filtered downstream.
+            // The connection-based sources are already `state: opened`.
+            state: (node.state as VcsActionableMrState) ?? 'opened',
           },
           role: null,
           events: new Set(),

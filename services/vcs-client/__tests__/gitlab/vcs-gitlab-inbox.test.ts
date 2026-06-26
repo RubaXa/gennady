@@ -121,6 +121,33 @@ describe('VcsGitlabInbox — getActionable', () => {
     assert.strictEqual(result.length, 0);
   });
 
+  it('carries the MR state so non-open MRs can be filtered downstream', async () => {
+    graphql.mock.mockImplementationOnce(async () =>
+      data({
+        todos: {
+          nodes: [
+            {
+              action: 'review_requested',
+              target: { __typename: 'MergeRequest', ...mr('7', { state: 'merged' }) },
+            },
+          ],
+        },
+      })
+    );
+
+    const result = await inbox.getActionable();
+    assert.strictEqual(result[0].state, 'merged');
+  });
+
+  it('defaults missing state to opened', async () => {
+    graphql.mock.mockImplementationOnce(async () =>
+      data({ authoredMergeRequests: { nodes: [mr('8')] } })
+    );
+
+    const result = await inbox.getActionable();
+    assert.strictEqual(result[0].state, 'opened');
+  });
+
   it('preserves the draft flag for later filtering', async () => {
     graphql.mock.mockImplementationOnce(async () =>
       data({ authoredMergeRequests: { nodes: [mr('6', { draft: true })] } })

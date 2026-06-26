@@ -10,6 +10,14 @@
 export type VcsActionableRole = 'reviewer' | 'author' | 'mentioned';
 
 /**
+ * @purpose MR lifecycle state. Only `opened` is actionable; `merged`/`closed`/`locked`
+ *   reach the inbox only via stale pending todos (GitLab does not auto-clear them).
+ * @invariant Filtering of non-open MRs is the consumer's policy, not the adapter's.
+ * @consumer VcsClientInbox
+ */
+export type VcsActionableMrState = 'opened' | 'closed' | 'locked' | 'merged';
+
+/**
  * @purpose State events attached to an MR. They never create an inbox entry on
  *   their own — only decorate an MR that already has a role.
  * @consumer VcsClientInbox
@@ -39,6 +47,8 @@ export type VcsActionableMr = {
   updatedAt: string;
   /** @purpose Whether the MR is a draft | @invariant Filtering left to the caller */
   draft: boolean;
+  /** @purpose MR lifecycle state | @invariant Only `opened` is actionable; non-open filtered by the caller */
+  state: VcsActionableMrState;
   /** @purpose My role; null when only state events point here (no relationship) */
   role: VcsActionableRole | null;
   /** @purpose State events decorating the MR; do not create entries by themselves */

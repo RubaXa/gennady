@@ -56,8 +56,8 @@ export type InboxView = {
   groups: { role: VcsActionableRole; items: InboxItem[] }[];
   /** @purpose Number of visible rows across all groups */
   total: number;
-  /** @purpose Counts of rows suppressed by policy, by reason */
-  hidden: { stale: number; drafts: number; noise: number };
+  /** @purpose Counts of rows suppressed by policy, by reason (closed = merged/closed/locked) */
+  hidden: { stale: number; drafts: number; noise: number; closed: number };
   /** @purpose Counts of visible rows that are new / updated since last tick */
   delta: { new: number; updated: number };
 };
@@ -98,7 +98,7 @@ export function buildInboxView(
 ): InboxView {
   const nowMs = Date.parse(nowIso);
   const staleMs = options.staleDays * 24 * 60 * 60 * 1000;
-  const hidden = { stale: 0, drafts: 0, noise: 0 };
+  const hidden = { stale: 0, drafts: 0, noise: 0, closed: 0 };
   const buckets: Record<VcsActionableRole, InboxItem[]> = {
     reviewer: [],
     author: [],
@@ -106,6 +106,14 @@ export function buildInboxView(
   };
 
   for (const mr of items) {
+    // Hard rule: only open MRs are actionable. A merged/closed/locked MR reaches
+    // here only via a stale pending todo GitLab never cleared — there is nothing
+    // to act on, so drop it even under --all.
+    if (mr.state !== 'opened') {
+      hidden.closed++;
+      continue;
+    }
+
     // Hard rule: an MR without a role is just a state event pointing at someone
     // else's work — never an inbox entry, even under --all.
     if (!mr.role) {

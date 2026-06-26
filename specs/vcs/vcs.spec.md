@@ -54,7 +54,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Существующие** |                                                                                                                                                                                                                                                          |
 | FR-01            | `VcsClient` — абстрактный порт с опциональными подобъектами: `MergeRequests`, `MergeDiscussions?`, `RepositoryFiles?`                                                                                                                                    |
-| FR-02            | `VcsClientMergeRequests` — порт: `getList`, `getByIid`, `getChanges`                                                                                                                                                                                     |
+| FR-02            | `VcsClientMergeRequests` — порт: `getList`, `getByIid`, `getChanges`, `approve`                                                                                                                                                                          |
 | FR-03            | `VcsClientMergeDiscussions` — порт: `getList`, `getAll`, `addNote`, `createDiscussion`, `listDraftNotes`                                                                                                                                                 |
 | FR-04            | `VcsGitlabClient` — adapter: GitLab REST API через fetch                                                                                                                                                                                                 |
 | FR-05            | `VcsGitlabMergeRequests` — adapter: GitLab MR API (включая getChanges)                                                                                                                                                                                   |
@@ -79,6 +79,11 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | FR-23            | `VcsClientMergeDiscussions.createDiscussion({project, iid, body, position?})` — порт: новая дискуссия (общая или line-comment)                                                                                                                           |
 | FR-24            | `VcsGitlabMergeDiscussions.createDiscussion` — `POST /discussions`; для line-comment `position[*_sha]` берутся из `MR.diff_refs`, `position[new_line]`/`[old_line]` по правилу added→new / removed→old / context→оба; `position_type=text`               |
 | FR-25            | `VcsClientMergeDiscussions.listDraftNotes({project, iid})` — порт: неопубликованные draft notes текущего пользователя. `VcsGitlabMergeDiscussions.listDraftNotes` — `GET /projects/:id/merge_requests/:iid/draft_notes`, постранично (`per_page`/`page`) |
+| **vcs-approve**  |                                                                                                                                                                                                                                                          |
+| FR-26            | `VcsClientMergeRequests.approve({repository, iid})` — порт: approve MR/PR. GitHub — deferred                                                                                                                                                             |
+| FR-27            | `VcsGitlabMergeRequests.approve` — `POST /projects/:id/merge_requests/:iid/approve`                                                                                                                                                                      |
+| FR-28            | `VcsMergeRequestApproveQuery` — value object: `{ repository: string, iid: string \| number }`                                                                                                                                                            |
+| FR-29            | При approve, если MR уже approved — GitLab возвращает 409; адаптер пробрасывает ошибку как `VcsApproveError` с кодом `ALREADY_APPROVED`                                                                                                                  |
 
 ### 4.2 Non-Functional Constraints
 
@@ -98,6 +103,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 - Batch-загрузка файлов (каждый `getFileContent` — отдельный запрос)
 - Bitbucket адаптер
 - `getChangesWithDiff` (получение diff-контента) — deferred
+- GitHub Approve (v2 — GitHub использует pull request reviews, отдельный endpoint)
 
 ### 4.4 Runtime Backing
 
@@ -112,6 +118,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | Переименование Discussions → Threads | `not-implemented` (deferred) |
 | GitLab GraphQL API (`currentUser`)   | `real-runtime`               |
 | GitLab `/user`, create discussion    | `real-runtime`               |
+| GitLab Approve API                   | `real-runtime`               |
 | Inbox-порт для GitHub                | `not-implemented` (deferred) |
 
 ### 4.5 Rules
@@ -215,10 +222,18 @@ services/vcs-client/
 - **Risk accepted:** Бинарные файлы — `encoding: 'base64'`, контент не декодируется (возвращается как есть в base64). Потребитель фильтрует по `encoding`.
 - **Rejected alternatives:** Возвращать сырой base64 и требовать от потребителя декодировать (перекладывание ответственности наружу).
 
+### D-007 — Метод approve на MergeRequests порте
+
+- **Status:** active
+- **Recorded:** session Discovery, vcs, refine (vcs-approve)
+- **Why:** CLI-команда `vcs-approve` требует вызова GitLab approve API. Метод `approve({repository, iid})` на порте `VcsClientMergeRequests` — естественное расширение: approve — операция над MR, а не над репозиторием или дискуссиями.
+- **Risk accepted:** GitHub approve отложен (pull request reviews — другой API-паттерн). При добавлении GitHub — метод на порте уже есть, нужна только реализация в `VcsGithubMergeRequests`.
+- **Rejected alternatives:** Отдельный порт `VcsClientApprove` — избыточно для одного метода, атомарная операция approve — часть жизненного цикла MR.
+
 ## 7. Scope Dependencies
 
 - **Depends on:** [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test
-- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply, **cat**)
+- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply, vcs-approve, **cat**)
 
 ## 8. Bootstrap Requirements
 
@@ -226,6 +241,7 @@ services/vcs-client/
 | ----------------------------------------- | ---------- | --------------- | --------------------------------- |
 | Существующий код в `services/vcs-client/` | structural | this-scope-task | ✅ уже существует                 |
 | `GITHUB_PERSONAL_TOKEN` env var           | env        | operator-action | Оператор устанавливает переменную |
+| `vcs-merge-request-approve-query.type.ts` | file       | this-scope-task | Создать value object для approve  |
 
 ## 9. Module Map
 

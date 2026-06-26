@@ -40,6 +40,7 @@ function hiddenSummary(hidden: InboxView['hidden']): string {
   if (hidden.stale > 0) parts.push(`${hidden.stale} stale`);
   if (hidden.drafts > 0) parts.push(`${hidden.drafts} drafts`);
   if (hidden.noise > 0) parts.push(`${hidden.noise} noise`);
+  if (hidden.closed > 0) parts.push(`${hidden.closed} merged/closed`);
   return parts.length > 0 ? `  ${style.gray(`(скрыто: ${parts.join(', ')})`)}` : '';
 }
 

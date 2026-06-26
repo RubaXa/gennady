@@ -13,8 +13,9 @@
 
   <InputContract>
     Supplied by the consumer (the `agent-inbox` skill):
-    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see `<OutputFormat>`). `diff_refs` + worktree `path` for grounded reading.
+    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see `<OutputFormat>`). `diff_refs` + worktree `path` + `base` for grounded reading. `base` + `path` make the change stats computable (`git -C <path> diff --numstat <base>..HEAD` for per-file +/− lines; `--name-status` for added/deleted/renamed) — the source for the scope summary required by `AX_CHANGESET_SCALE`.
     - **Optional:** `title`, `spec_links` (linked spec/ticket/design-doc URLs).
+    - **Optional:** `prior_threads` — existing discussion already on the MR (the `<Review_Threads>` artifact from `review-issues --all`: per-thread `file`/`line`/`resolved` and messages tagged `Reviewer` / `Author` / `AI_Agent`, each with `uid`), plus `my_login` (my GitLab username) and `my_drafts` (my unpublished notes from `review-issues --draft`). When supplied, they feed `AX_PRIOR_DISCUSSION_AWARENESS`: the interrogation reads them as context and de-duplicates against them. When absent, proceed without prior-discussion awareness and say so in the report.
     No `webUrl` → render the bookend from `ref` as plain text and note the missing link; do not invent a URL.
   </InputContract>
 
@@ -33,6 +34,12 @@
 
     <Axiom id="AX_REVERSIBILITY_MODULATES_SCRUTINY">
       Scrutiny depth scales with cost-to-undo (one-way vs two-way door). One-way doors — shared-package extraction, data-ownership / source-of-truth choice, public contract or bridge event, persisted schema — get the full battery and the strictest verdict bar. Two-way doors — a local helper, a private method, an in-app type — get a light pass. Spend interrogation budget where reversal is expensive.
+    </Axiom>
+
+    <Axiom id="AX_CHANGESET_SCALE">
+      Size sets the level of attention before any verdict: the bigger the changeset, the more scrutiny it earns. The report MUST open with a quantified, honest scope summary so the reviewer sizes the MR at a glance — never just a link and a title. Measure from the review diff (`base..HEAD` in the worktree): total files changed, lines added / removed, and — counted separately — **new files** and **new entities**, because added surface area (not churn in existing files) is the signal that the system is *expanding* and the strictest reviewing applies. Break the volume down **by category** — code, tests, docs/specs, config, assets (images/binaries) — so a large `+N` is not misread: 4000 lines of images is not 4000 lines of logic. Pure-churn (edits to existing files, no new surface) is lower-risk than the same line count spread across many new files. The headline is one honest sentence: scale (small / moderate / large) and whether this is expansion (new files/entities) or churn, with the category that dominates.
+
+      **Always render a file map — even for a one-file change.** Beyond the category counts, show the touched files themselves as a compact visual: grouped by folder/module, each with its change type (added / modified / deleted / renamed) and magnitude (± lines). This is unconditional — a tiny MR gets a few-line map, a large one gets a grouped tree — so the operator sees *what and how* changed straight from the report without opening the MR. Never reduce a changeset to a bare link and a sentence.
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
@@ -59,7 +66,7 @@
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
       **Directive prose (axioms, halt names, step procedures, axis IDs, structural section headings) — English.**
-      **Operator-facing output — Russian.** Russian applies to: the context briefing, per-entity card text (role, reconstructed rationale, verdict reason), relationship narrative, verdict summary, diagram captions and labels' descriptive text.
+      **Operator-facing output — Russian, unconditionally.** Everything the operator sees is written in Russian regardless of the language of the MR, the diff, the discussion thread, or this directive's own prose — that English context never carries over into the answer. Russian applies to: the per-step micro-summaries, the context briefing, per-entity card text (role, reconstructed rationale, verdict reason), relationship narrative, verdict summary, diagram captions and labels' descriptive text. When in doubt, write Russian.
       English regardless of context: file paths, axiom IDs (`AX_*`), axis IDs (`A`–`G`), halt IDs (`H_*`), verdict tokens (`justified` / `weak` / `unjustified`), code symbols, status tokens.
 
       **Register — binding.** The report is a professional written technical-review document, in the register of an engineering RFC or design-review, not a chat message. Full grammatical sentences. NO slang, NO colloquialisms, NO anthropomorphism ("UI врёт" → "UI показывает значение, расходящееся с backend"), NO English calques or transliterations where a normal Russian term exists ("новьё", "докрутить", "обстукать" are forbidden; write "новых паттернов нет", "доработать", "проверить"). Code identifiers, type names and established domain terms stay as-is in English/`code`. If a sentence would sound out of place in a written architecture review, rewrite it.
@@ -67,6 +74,14 @@
 
     <Axiom id="AX_REPORT_ASSEMBLY">
       Working steps (`STEP_0`–`STEP_4`) run internally. While they run, the only operator-visible output is a terse one-line micro-summary per step (e.g. "Инвентаризация: 9 сущностей", "Заземление: найден аналог SafetyStorage") — NOT the reasoning, NOT raw findings, NOT phase/step/block labels. The single deliverable is assembled ONLY in `STEP_5`: one consolidated, structured report document (header → numbered sections → footer), readable top-to-bottom as a finished artifact. Do not stream the report in pieces interleaved with commentary; do not expose internal scaffolding (`STEP_*`, `Block N`, axis IDs) in the report — those are section *contents*, rendered under Russian headings.
+    </Axiom>
+
+    <Axiom id="AX_PRIOR_DISCUSSION_AWARENESS">
+      The MR is not a blank page — other reviewers, the author, the bot (`AI_Agent`), and I myself may have written already. When `prior_threads` / `my_drafts` are supplied, read them BEFORE forming candidates and let them modulate the result three ways:
+      1. **Не дублируй.** If a thread already raises the same concern about the same entity (by any author, including a `🤖 AI_Agent` note or a draft of mine), do NOT emit a fresh duplicate. Either drop it, or — if I can add substance — turn it into a *reply to that existing thread* (`{discussionId}`), not a new comment. State that it is a reply to an existing thread.
+      2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_1` rationale harvest; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
+      3. **Лови упоминания меня.** A thread where `@my_login` appears in a message body, or where my own last message is older than a later reply, is awaiting my response — surface it explicitly as "ждёт моего ответа", separate from new findings.
+      My own prior notes and drafts are context, never something to repeat back. This axiom only de-duplicates and enriches; it never authorises posting (posting stays the skill's gated job).
     </Axiom>
   </BeliefState>
 
@@ -116,17 +131,18 @@
     <Step id="STEP_0_INVENTORY">
       <Goal>Enumerate what is on the table.</Goal>
       <Action>
-        1. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config.
-        2. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
-        3. Zero elements → `H_EMPTY_INVENTORY`.
+        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C <path> diff --numstat <base>..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / `<OutputFormat>` §2.
+        2. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config. Record the count of *new* entities (expansion signal).
+        3. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
+        4. Zero elements → `H_EMPTY_INVENTORY`.
       </Action>
     </Step>
 
     <Step id="STEP_1_RATIONALE_HARVEST">
       <Goal>Find the author's stated justification per element.</Goal>
       <Action>
-        1. Search, in priority order: MR description, design doc in the diff, linked spec/ticket, neighbouring ADRs/docs, commit messages.
-        2. Mark each element `rationale: stated` (with location) or `rationale: absent`.
+        1. Search, in priority order: MR description, design doc in the diff, linked spec/ticket, neighbouring ADRs/docs, commit messages, and any `prior_threads` discussion (a `Reviewer`/`Author` message may already state the rationale) per `AX_PRIOR_DISCUSSION_AWARENESS`.
+        2. Mark each element `rationale: stated` (with location — cite the thread when the source is a discussion) or `rationale: absent`.
         3. For `absent`, reconstruct a one-line implied ADR (context → decision → rejected alternative) per `AX_RECONSTRUCT_RATIONALE`.
       </Action>
     </Step>
@@ -162,11 +178,13 @@
       <Goal>Emit the helicopter-view report.</Goal>
       <Action>
         1. Choose visual transport per `AX_VISUAL_TRANSPORT` (widget tool if present — then use it; else ASCII + emoji-icons by appropriateness).
-        2. Render the context/container diagram (C4-style: system boundary zone, internal containers, external systems as black boxes, legend outside the diagram).
-        3. Add flow diagrams only for non-trivial scenarios.
-        4. Emit per-entity cards (role · reconstructed rationale · verdict · open questions).
-        5. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; keep single-judgement findings as prose.
-        6. Produce the verdict summary and the line-comment candidate list for the skill.
+        2. Emit the mandatory scope summary first (headline line + by-category table + file map) from the STEP_0 metrics, per `AX_CHANGESET_SCALE` / `<OutputFormat>` §2. The file map is rendered for every MR size, never skipped.
+        3. Render the context/container diagram (C4-style: system boundary zone, internal containers, external systems as black boxes, legend outside the diagram).
+        4. Add flow diagrams only for non-trivial scenarios.
+        5. Emit per-entity cards (role · reconstructed rationale · verdict · open questions).
+        6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; keep single-judgement findings as prose.
+        7. Reconcile every candidate against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert "already-raised but I can add substance" into a reply-to-thread candidate, mark another reviewer's wrong claim as a correction-reply candidate, and list threads that mention me / await my reply separately.
+        8. Produce the verdict summary and the candidate list for the skill: each candidate tagged new-line-comment / reply-to-thread (`discussionId`) / awaiting-my-reply.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -177,14 +195,19 @@
     Document structure, top to bottom:
 
     1. **Шапка [header] — mandatory.** First line: `ref` as a clickable link to `webUrl`, then `title`. One click from GitLab before any content.
-    2. **Обзор [overview].** 2–4 sentences: what the MR introduces and the verdict tally (N обоснованы / N слабо / N не обоснованы). No findings yet — just the shape.
+    2. **Обзор [overview] — mandatory scope first.** Open with the quantified scope per `AX_CHANGESET_SCALE`, never just prose:
+       - one headline line — `**Размер:** {малый/средний/крупный} · N файлов · +X / −Y строк · M новых файлов · K новых сущностей` — plus a half-sentence read: expansion (new files/entities) or churn, and the dominant category;
+       - a by-category table (rows: Код · Тесты · Доки/спеки · Конфиг · Ассеты; columns: Файлов · +строк · −строк · новых), so a big `+X` driven by assets/generated files is not misread as logic;
+       - a **file map** (mandatory, every size): touched files grouped by folder/module, each with change-type icon (🆕 added · ✏️ modified · 🗑️ deleted · ↪︎ renamed) and ± lines — a few-line list for a tiny MR, a grouped tree for a large one;
+       Then 2–4 sentences: what the MR introduces and the verdict tally (N обоснованы / N слабо / N не обоснованы). No findings yet — just the shape and the scale.
     3. **Архитектура [helicopter].** The C4-style container diagram (boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside). One caption sentence under it.
     4. **Потоки [flows].** Flow diagram(s) for non-trivial scenarios only; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
     5. **Разбор сущностей [entities].** One subsection per entity, ordered by reversibility (one-way doors first): name · role (one sentence) · reconstructed rationale incl. "почему не альтернатива" · verdict (`justified`/`weak`/`unjustified`) · open question. Prose, full sentences — not a bullet dump.
     6. **Связи и риски [relationships].** Cross-entity findings, visualized where relational (dependency direction, cycles, truth-vs-cache, fan-in/out) per `AX_VISUALIZE_WHEN_RELATIONAL`; one caption each.
     7. **Итог и рекомендации [verdict + extraction].** What is solid, what is `weak`/`unjustified` and why, package-extraction recommendations, the explicit app↔framework boundary line.
-    8. **Кандидаты в замечания [line-comment candidates].** Table: each `weak`/`unjustified` verdict → `{ file, location, problem, axis }`. Posting shape depends on the artifact (the skill enforces it): a spec / design-doc → ONE consolidated comment at the top of the file (this whole report, with Mermaid diagrams), since a spec is reworked wholesale; code → per-line comments. Every posted body is prefixed with 🤖.
-    9. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
+    8. **Существующее обсуждение [prior discussion] — only when `prior_threads`/`my_drafts` supplied.** Brief: what other reviewers have already raised (so it is clear what is NOT re-raised below), which threads mention me or await my reply, and which of my own notes/drafts already cover a point. Omit the section entirely when no prior discussion was supplied, and say once in «Обзор» that the analysis ran without prior-discussion context.
+    9. **Кандидаты в замечания [comment candidates].** Table: each candidate → `{ file, location, problem, axis, kind }`, where `kind` is new-line-comment / reply-to-thread (`discussionId`) / correction-reply / awaiting-my-reply per `AX_PRIOR_DISCUSSION_AWARENESS`. Posting shape depends on the artifact (the skill enforces it): a spec / design-doc → ONE consolidated comment at the top of the file (this whole report, with Mermaid diagrams), since a spec is reworked wholesale; code → per-line comments; a reply goes into its existing thread, not a new comment. Every posted body is prefixed with 🤖.
+    10. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
 
     This directive NEVER posts; posting stays the skill's gated responsibility.
   </OutputFormat>
