@@ -31,6 +31,8 @@ type MainOpts = {
   dryRun?: boolean;
   stdinJsonArray?: ReplyItem[];
   token?: string;
+  /** @purpose Explicit GitLab host (`--vcs-source`); overrides the host derived from `origin`. */
+  host?: string;
   remote?: { host: string; project: string; scheme: string } | null;
   baseUrl?: string;
   vcs?: VcsGitlabClient;
@@ -118,6 +120,13 @@ export async function main(opts: MainOpts = {}): Promise<{
 
   const token = opts.token ?? process.env.GITLAB_PERSONAL_TOKEN;
   const remote = opts.remote ?? getGitRemote();
+  // `--vcs-source` wins over the host derived from `origin`, so vcs-reply can target a
+  // GitLab MR regardless of the current working directory's remote. Resolved here (as in
+  // vcs-worktree) rather than only in index.ts, so it works however the command is invoked.
+  const cliSource =
+    (parseArgs(process.argv, { 'vcs-source': ['vcs-source'] })['vcs-source'] as string) ||
+    undefined;
+  const host = opts.host ?? cliSource ?? remote?.host ?? '';
   let vcs: VcsGitlabClient | null = null;
   let hostInfo = '';
   if (!dryRun) {
@@ -127,22 +136,25 @@ export async function main(opts: MainOpts = {}): Promise<{
       console.error(style.cyan('  export GITLAB_PERSONAL_TOKEN="your_token_here"'));
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
-    if (!remote) {
-      console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден удалённый репозиторий origin.');
-      return { ok: false, sent: 0, failed: 0, code: 1 };
-    }
-    if (!/gitlab/i.test(remote.host)) {
+    if (!host) {
       console.error(
         style.redBright.bold('✖ Ошибка:'),
-        `Провайдер "${style.blue(remote.host)}" пока не поддерживается.`
+        'Не определён GitLab-host. Укажите --vcs-source=<host> или запустите из репозитория с origin.'
       );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
-    const baseUrl = opts.baseUrl ?? `https://${remote.host}/api/v4`;
+    if (!/gitlab/i.test(host)) {
+      console.error(
+        style.redBright.bold('✖ Ошибка:'),
+        `Провайдер "${style.blue(host)}" пока не поддерживается.`
+      );
+      return { ok: false, sent: 0, failed: 0, code: 1 };
+    }
+    const baseUrl = opts.baseUrl ?? `https://${host}/api/v4`;
     vcs = opts.vcs ?? new VcsGitlabClient({ token, baseUrl });
-    hostInfo = remote.host;
+    hostInfo = host;
   } else {
-    hostInfo = remote?.host ?? '';
+    hostInfo = host;
   }
 
   console.info(
