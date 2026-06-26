@@ -1,5 +1,6 @@
 // @file: GitLab-specific implementation of merge request discussion operations.
 // @consumers: VcsGitlabClient
+// @tasks: TSK-71
 
 import {
   VcsClientMergeDiscussions,
@@ -7,6 +8,7 @@ import {
   type VcsCreateDiscussionQuery,
   type VcsDiscussionsListQuery,
 } from '../abstract/vcs-client-merge-discussions.ts';
+import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
@@ -143,5 +145,22 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
     }
 
     return all;
+  }
+
+  /**
+   * @param query Target project, MR, discussion, and resolved flag.
+   * @throws {VcsError} on 403/404 status from GitLab API.
+   * @returns void on success.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/discussions/:discussion_id?resolved=true|false
+   * @see {VcsClientMergeDiscussions#resolveDiscussion} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async resolveDiscussion(query: VcsResolveDiscussionQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const discussionId = encodeURIComponent(query.discussionId);
+    await this._request(
+      `/projects/${projectId}/merge_requests/${iid}/discussions/${discussionId}?resolved=${query.resolved}`,
+      { method: 'PUT' }
+    );
   }
 }

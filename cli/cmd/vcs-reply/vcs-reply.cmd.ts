@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70
+// @tasks: N/A, TSK-70, TSK-72
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
@@ -12,18 +12,21 @@ import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 
 /**
- * @purpose One posting instruction: reply to a thread, a new discussion, or a
- *   line-level diff comment.
+ * @purpose One posting instruction: reply to a thread, resolve/reopen a discussion,
+ *   or start a new discussion / line-level diff comment.
  * @invariant `discussionId` → reply; otherwise new discussion (line comment when `position` set).
+ * @invariant `resolve` requires `discussionId`; `resolve:false` ignores `body`.
  * @consumer vcs-reply main
  */
 type ReplyItem = {
   /** @purpose Target discussion to reply into; absent → create a new discussion */
   discussionId?: string;
-  /** @purpose Comment body (Markdown) */
-  body: string;
+  /** @purpose Comment body (Markdown); required unless resolve is set with discussionId */
+  body?: string;
   /** @purpose Diff position for a line-level comment */
   position?: VcsDiscussionPosition;
+  /** @purpose Resolve (true) or reopen (false) the discussion | @invariant Requires discussionId when set */
+  resolve?: boolean;
 };
 
 type MainOpts = {
@@ -97,24 +100,34 @@ export async function main(opts: MainOpts = {}): Promise<{
     }
   }
 
-  if (!Array.isArray(payload) || payload.length === 0) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'Ожидается непустой JSON-массив объектов.');
+  if (!Array.isArray(payload)) {
+    console.error(style.redBright.bold('✖ Ошибка:'), 'Ожидается JSON-массив.');
+    return { ok: false, sent: 0, failed: 0, code: 1 };
+  }
+  if (payload.length === 0) {
+    return { ok: true, sent: 0, failed: 0, code: 0 };
+  }
+
+  const invalidResolve = payload.find((x) => x && x.resolve !== undefined && !x.discussionId);
+  if (invalidResolve) {
+    console.error(style.redBright.bold('✖ Ошибка:'), 'resolve требует discussionId.');
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
-  const items = payload.filter(
-    (x) =>
-      x &&
+  const items = payload.filter((x) => {
+    if (!x) return false;
+    if (x.resolve !== undefined) {
+      return typeof x.discussionId === 'string' && x.discussionId.length > 0;
+    }
+    return (
       typeof x.body === 'string' &&
-      x.body &&
+      x.body.length > 0 &&
       (x.discussionId === undefined || typeof x.discussionId === 'string')
-  );
+    );
+  });
 
   if (items.length === 0) {
-    console.error(
-      style.redBright.bold('✖ Ошибка:'),
-      'Нет валидных элементов (нужен непустой body).'
-    );
+    console.error(style.redBright.bold('✖ Ошибка:'), 'Нет валидных элементов.');
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
@@ -181,9 +194,26 @@ export async function main(opts: MainOpts = {}): Promise<{
   if (dryRun) {
     for (const it of items) {
       const tag = it.discussionId ?? kindOf(it);
-      console.info(
-        `${style.blue('[DRY]')} ${style.gray(`${kindOf(it)}:${tag}`)} → ${it.body.slice(0, 80)}`
-      );
+      // #region START_DRY_RUN_RESOLVE — resolve:true shows body then resolve; resolve:false shows reopen
+      if (it.resolve === true) {
+        if (it.body) {
+          console.info(
+            `${style.blue('[DRY]')} ${style.gray(`reply:${tag}`)} → ${it.body.slice(0, 80)}`
+          );
+        }
+        console.info(
+          `${style.blue('[DRY]')} ${style.gray(`Would resolve: discussionId=${it.discussionId}`)}`
+        );
+      } else if (it.resolve === false) {
+        console.info(
+          `${style.blue('[DRY]')} ${style.gray(`Would reopen: discussionId=${it.discussionId}`)}`
+        );
+      } else {
+        console.info(
+          `${style.blue('[DRY]')} ${style.gray(`${kindOf(it)}:${tag}`)} → ${it.body!.slice(0, 80)}`
+        );
+      }
+      // #endregion END_DRY_RUN_RESOLVE
       sent += 1;
     }
     return { ok: true, sent, failed, code: 0 };
@@ -191,22 +221,88 @@ export async function main(opts: MainOpts = {}): Promise<{
 
   for (const it of items) {
     const tag = it.discussionId ?? kindOf(it);
+
+    // #region START_RESOLVE_REOPEN — resolve:false → reopen only, body ignored
+    if (it.resolve === false) {
+      try {
+        await vcs!.MergeDiscussions.resolveDiscussion({
+          project,
+          iid: String(iid),
+          discussionId: it.discussionId!,
+          resolved: false,
+        });
+        console.info(`${style.green('✔')} ${style.gray(`reopen:${tag}`)}`);
+        sent += 1;
+      } catch (e) {
+        console.error(
+          `${style.redBright('✖')} ${style.gray(`reopen:${tag}`)} ${(e as Error).message ?? String(e)}`
+        );
+        failed += 1;
+      }
+      continue;
+    }
+    // #endregion END_RESOLVE_REOPEN
+
+    // #region START_RESOLVE_ONLY — resolve:true without body → resolve only
+    if (it.resolve === true && !it.body) {
+      try {
+        await vcs!.MergeDiscussions.resolveDiscussion({
+          project,
+          iid: String(iid),
+          discussionId: it.discussionId!,
+          resolved: true,
+        });
+        console.info(`${style.green('✔')} ${style.gray(`resolve:${tag}`)}`);
+        sent += 1;
+      } catch (e) {
+        console.error(
+          `${style.redBright('✖')} ${style.gray(`resolve:${tag}`)} ${(e as Error).message ?? String(e)}`
+        );
+        failed += 1;
+      }
+      continue;
+    }
+    // #endregion END_RESOLVE_ONLY
+
+    // #region START_POST_NOTE — reply or new discussion, optionally followed by resolve
     try {
       if (it.discussionId) {
         await vcs!.MergeDiscussions.addNote({
           project,
           iid: String(iid),
           discussionId: it.discussionId,
-          body: it.body,
+          body: it.body!,
         });
       } else {
         await vcs!.MergeDiscussions.createDiscussion({
           project,
           iid: String(iid),
-          body: it.body,
+          body: it.body!,
           position: it.position,
         });
       }
+
+      // #region START_POST_RESOLVE — resolve discussion after successful note
+      // failure mode: note posted but resolve fails → warn, count as failed
+      if (it.resolve === true) {
+        try {
+          await vcs!.MergeDiscussions.resolveDiscussion({
+            project,
+            iid: String(iid),
+            discussionId: it.discussionId!,
+            resolved: true,
+          });
+        } catch (resolveErr) {
+          const msg = (resolveErr as Error).message ?? String(resolveErr);
+          console.error(
+            `${style.redBright('✖')} ${style.gray(`reply:${tag}`)} Note posted but resolve failed: ${msg}`
+          );
+          failed += 1;
+          continue;
+        }
+      }
+      // #endregion END_POST_RESOLVE
+
       console.info(`${style.green('✔')} ${style.gray(`${kindOf(it)}:${tag}`)}`);
       sent += 1;
     } catch (e) {
@@ -215,6 +311,7 @@ export async function main(opts: MainOpts = {}): Promise<{
       );
       failed += 1;
     }
+    // #endregion END_POST_NOTE
   }
 
   const ok = failed === 0;

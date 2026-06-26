@@ -1,5 +1,8 @@
 // @file: Contract surface for merge request discussion operations.
 // @consumers: VcsClient
+// @tasks: TSK-71
+
+import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
 
 /**
  * @purpose Parameters for creating a note in an MR discussion: project, MR IID, discussion ID, text.
@@ -113,4 +116,13 @@ export abstract class VcsClientMergeDiscussions {
    * @sideEffect Network: GET /projects/:project/merge_requests/:iid/draft_notes (paginated).
    */
   abstract listDraftNotes(query: { project: string; iid: string | number }): Promise<unknown[]>;
+
+  /**
+   * @purpose Resolve or reopen a discussion by setting the resolved flag.
+   * @param query Parameters: { project, iid, discussionId, resolved }.
+   * @throws {VcsError} on 403/404 status from GitLab API.
+   * @returns void on success.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/discussions/:discussion_id?resolved=true|false
+   */
+  abstract resolveDiscussion(query: VcsResolveDiscussionQuery): Promise<void>;
 }

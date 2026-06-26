@@ -39,4 +39,4 @@ graph TD
 | [TSK-29](vcs-client/vcs-client.task-29.md) | GitLab adapters (RepositoryFiles + getChanges)                            | vcs-client | TSK-28       | `[x]` DONE | 0       |
 | [TSK-30](vcs-client/vcs-client.task-30.md) | GitHub adapters (Client + MergeRequests + RepositoryFiles)                | vcs-client | TSK-28       | `[x]` DONE | 0       |
 | [TSK-67](vcs-client/vcs-client.task-67.md) | Метод approve: VO + порт + GitLab-адаптер                                 | vcs-client | None         | `[x]` DONE | 0       |
-| [TSK-71](vcs-client/vcs-client.task-71.md) | Метод resolveDiscussion: VO + порт + GitLab-адаптер                       | vcs-client | None         | `[ ]` TODO | 0       |
+| [TSK-71](vcs-client/vcs-client.task-71.md) | Метод resolveDiscussion: VO + порт + GitLab-адаптер                       | vcs-client | None         | `[x]` DONE | 0       |

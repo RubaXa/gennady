@@ -134,14 +134,14 @@ graph TD
 | [TSK-55](orient/orient.task-55.md)                             | orient: file-header + DBC навигация (S1-S9)                                | orient               | None                           | `[x]` DONE | 1       |
 | [TSK-56](sync-skills/cli-sync-skills.task-56.md)               | Extract shared sync core + refactor sync                                   | sync-skills          | TSK-53, TSK-54                 | `[x]` DONE | 1       |
 | [TSK-57](sync-skills/cli-sync-skills.task-57.md)               | sync-skills command (types, core, fmt, CLI, tests)                         | sync-skills          | TSK-56                         | `[x]` DONE | 1       |
-| [TSK-58](sync-skills/cli-sync-skills.task-58.md)               | ai/skills bootstrap (13 SDD skills)                                        | sync-skills          | TSK-57                         | `[ ]` TODO | 1       |
+| [TSK-58](sync-skills/cli-sync-skills.task-58.md)               | ai/skills bootstrap (13 SDD skills)                                        | sync-skills          | TSK-57                         | `[x]` DONE | 1       |
 | [TSK-59](agents-rules/agents-rules.task-59.md)                 | agents-rules: команда документации orient для агентов                      | agents-rules         | None                           | `[x]` DONE | 0       |
 | [TSK-60](e2e/e2e.task-60.md)                                   | E2E-тесты CLI-команд через npm pack                                        | e2e                  | None                           | `[x]` DONE | 3       |
 | [TSK-65](run/run.task-65.md)                                   | run: команда-обёртка над agent-run                                         | run                  | TSK-64                         | `[x]` DONE | 0       |
 | [TSK-68](vcs-context-resolver/vcs-context-resolver.task-68.md) | vcs-context-resolver: унифицированный резолв VCS-контекста                 | vcs-context-resolver | None                           | `[x]` DONE | 0       |
 | [TSK-69](vcs-approve/vcs-approve.task-69.md)                   | vcs-approve: команда approve GitLab MR через API                           | vcs-approve          | TSK-67, TSK-68                 | `[x]` DONE | 0       |
 | [TSK-70](vcs-refactor/vcs-refactor.task-70.md)                 | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A                  | TSK-68                         | `[x]` DONE | 0       |
-| [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md)       | vcs-reply: resolve/reopen discussion через stdin JSON                      | vcs-reply            | TSK-71                         | `[ ]` TODO | 0       |
+| [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md)       | vcs-reply: resolve/reopen discussion через stdin JSON                      | vcs-reply            | TSK-71                         | `[x]` DONE | 0       |
 
 ## Notes
 

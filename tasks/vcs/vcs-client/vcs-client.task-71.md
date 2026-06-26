@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-71
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Добавить `resolveDiscussion(query)` на порт `VcsClientMergeDiscussions` + VO `VcsResolveDiscussionQuery` + реализацию в `VcsGitlabMergeDiscussions` (`PUT /discussions/:id?resolved=true|false`)
 - **Scope:** `vcs`
 - **Module:** `vcs-client`
@@ -25,8 +25,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -91,6 +91,7 @@
 - **Then** выбрасывается `VcsError` с полем `status` (403 или 404)
 
 **Scenario:** 500 ошибка [`unit`]
+
 - **Given** GitLab возвращает 500
 - **When** `resolveDiscussion(...)`
 - **Then** выбрасывается `VcsError` со статусом 500<!--/SECTION:BDD-->
@@ -115,27 +116,50 @@
 - Reopen → `resolve.test.ts` :: `resolveDiscussion resolved=false — reopen`
 - Типизация → `resolve.test.ts` :: `VcsResolveDiscussionQuery type contract`
 - 403/404 → `resolve.test.ts` :: `resolveDiscussion 403/404 — VcsError`
+- 500 ошибка → `resolve.test.ts` :: `resolveDiscussion 500 — VcsError`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
 
 ## 7. Execution Log
 
-### Round 1 — <YYYY-MM-DD>, initial
+### Round 1 — 2026-06-26, initial
 
 #### P1
 
-- [ ] `<ts>` ver `tsc --noEmit` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-06-26T16:47:37Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-06-26T16:47:37Z` ver `gennady lint 3 files` → pass exit=0
+- [x] `2026-06-26T16:47:37Z` ver `npm run test` → pass exit=0
+- [x] `2026-06-26T16:47:37Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-06-26T16:47:37Z` ver `npx tsc --noEmit` → pass exit=0
+- [x] `2026-06-26T16:47:37Z` DONE
+      **Handoff →** artifacts: [services/vcs-client/entities/vcs-resolve-discussion-query.type.ts, services/vcs-client/abstract/vcs-client-merge-discussions.ts, services/vcs-client/gitlab/vcs-gitlab-merge-discussions.ts]; decisions: [resolveDiscussion-method=abstract-on-port, resolveDiscussion-impl=PUT-with-resolved-query-param]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `node --import tsx --test ...` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-06-26T16:51:31Z` insight VcsError не существует как отдельный класс; resolveDiscussion пробрасывает ошибки от \_request без оборачивания (в отличие от approve с VcsApproveError) → BDD §4 Scenario «403/404 ошибки» и «500 ошибка», требуется либо создать VcsError, либо обновить контракт
+- [x] `2026-06-26T16:51:31Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-06-26T16:51:31Z` ver `gennady lint 1 files` → pass exit=0
+- [x] `2026-06-26T16:51:31Z` ver `npm run test` → pass exit=0
+- [x] `2026-06-26T16:51:31Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-06-26T16:51:31Z` ver `node --import tsx --test services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-discussions.resolve.test.ts` → pass exit=0
+- [x] `2026-06-26T16:51:31Z` DONE
+      **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-discussions.resolve.test.ts]; decisions: [resolve-test-context=factory-pattern, resolve-error-propagation=no-domain-wrap, vcserror-class=absent]; open: [VCSERR-01: класс VcsError не создан — resolveDiscussion пробрасывает plain Error, контракт порта обещает VcsError]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `<ts>` DONE
 <!--/SECTION:EXECUTION_LOG-->
+
+<!--SECTION:AUDIT_ROUNDS-->
+
+## Audit Rounds
+
+### Audit Round 1 — 2026-06-26, after Execution Round 1
+
+```
+@audit task=TSK-71 round=1 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B0·M1·m0·I0
+F-01 | sev=M | type=COMPLETENESS_GAP | conf=H | loc=services/vcs-client/abstract/vcs-client-merge-discussions.ts:123 | phase=P1 | src=specs/vcs/vcs.spec.md#FR-33 | route=ticket-reopen | act=создать VcsError с полем status либо обновить FR-33+BDD+порт на plain Error; привести реализацию и тесты к единому контракту
+```
+
+<!--/SECTION:AUDIT_ROUNDS-->
