@@ -100,6 +100,26 @@ describe('buildInboxView', () => {
     assert.strictEqual(all.hidden.waiting, 0);
   });
 
+  it('keeps an author idle MR (needs my self-review summary) but hides reviewer idle', () => {
+    const items = [
+      raw({ iid: '1', role: 'author' }),
+      raw({ iid: '2', role: 'reviewer' }),
+    ];
+    const stages = stageMap({ '1': 'idle', '2': 'idle' });
+    const view = buildInboxView(items, opt(), NOW, new Map(), stages);
+    assert.strictEqual(view.total, 1);
+    assert.strictEqual(view.groups[0].items[0].iid, '1');
+    assert.strictEqual(view.hidden.waiting, 1);
+  });
+
+  it('still hides an author MR that is awaiting_reply (summary already posted)', () => {
+    const items = [raw({ iid: '1', role: 'author' })];
+    const stages = stageMap({ '1': 'awaiting_reply' });
+    const view = buildInboxView(items, opt(), NOW, new Map(), stages);
+    assert.strictEqual(view.total, 0);
+    assert.strictEqual(view.hidden.waiting, 1);
+  });
+
   it('does not stage-filter on the pre-scan pass (empty stages map)', () => {
     const items = [raw({ iid: '1', role: 'reviewer' })];
     const view = buildInboxView(items, opt(), NOW);

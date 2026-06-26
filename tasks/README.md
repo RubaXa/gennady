@@ -129,7 +129,7 @@ graph TD
 | Scope | Type    | Tracker                 | Tasks | Done  |
 | ----- | ------- | ----------------------- | ----- | ----- |
 | dbc   | library | [README](dbc/README.md) | 14    | 14/14 |
-| cli               | product        | [README](cli/README.md)               | 24    | 23/24 |
+| cli   | product | [README](cli/README.md) | 24    | 23/24 |
 
 | vcs | product | [README](vcs/README.md) | 7 | 7/7 |
 

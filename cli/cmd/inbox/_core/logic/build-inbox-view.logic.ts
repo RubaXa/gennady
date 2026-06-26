@@ -150,9 +150,12 @@ export function buildInboxView(
     }
 
     // Stage filter (only once stages are scanned): awaiting_reply = I spoke last
-    // and wait on others; idle = nothing to do. Neither needs a reaction from me.
+    // and wait on others; idle = nothing to do. Neither needs a reaction from me —
+    // EXCEPT an author's idle MR, which still needs my self-review summary for the
+    // reviewers, so every outgoing MR passes through the inbox at least once.
     const stage = stages.get(mr.webUrl) ?? 'idle';
-    if (!options.all && stagesKnown && (stage === 'awaiting_reply' || stage === 'idle')) {
+    const reactionless = stage === 'awaiting_reply' || (stage === 'idle' && mr.role !== 'author');
+    if (!options.all && stagesKnown && reactionless) {
       hidden.waiting++;
       continue;
     }
