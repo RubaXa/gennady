@@ -68,7 +68,8 @@ export async function runReviewCommand(
     const reviewContextMr = await loadReviewContextMr(
       reviewIntent,
       reviewContextVcs,
-      reviewContextGit
+      reviewContextGit,
+      options.args.draft
     );
 
     if (!reviewContextMr) {

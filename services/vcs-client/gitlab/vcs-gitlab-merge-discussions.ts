@@ -114,4 +114,34 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
 
     return all;
   }
+
+  /**
+   * @param query Target project and MR.
+   * @returns The current user's draft notes (unpublished), across all pages.
+   * @sideEffect Network: GET /projects/:project/merge_requests/:iid/draft_notes
+   * @see {VcsClientMergeDiscussions#listDraftNotes} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async listDraftNotes(query: { project: string; iid: string | number }): Promise<unknown[]> {
+    const perPage = 100;
+    let page = 1;
+    const all: unknown[] = [];
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+
+    while (true) {
+      const params = new URLSearchParams();
+      params.set('per_page', String(perPage));
+      params.set('page', String(page));
+      const result = await this._request(
+        `/projects/${projectId}/merge_requests/${iid}/draft_notes?${params.toString()}`
+      );
+      const chunk = Array.isArray(result) ? result : [];
+      if (chunk.length === 0) break;
+      all.push(...chunk);
+      if (chunk.length < perPage) break;
+      page += 1;
+    }
+
+    return all;
+  }
 }

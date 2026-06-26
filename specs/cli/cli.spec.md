@@ -997,6 +997,18 @@ $ gennady review-issues group/repo!42
 # --- включая resolved дискуссии ---
 $ gennady review-issues --all
 
+# --- только мои черновики (неопубликованные draft notes) ---
+$ gennady review-issues --draft
+
+<MR_Audit_Context iid="42" host="gitlab.mycompany.com" target_repo="group/repo">
+  <Meta>...</Meta>
+  <Review_Threads>
+    <!-- по одному Thread на каждую мою черновую заметку (роль Reviewer) -->
+  </Review_Threads>
+</MR_Audit_Context>
+
+# exit 0
+
 # --- нет токена ---
 $ gennady review-issues
 ✖ Ошибка: Не найден токен доступа GitLab. Установите GITLAB_PERSONAL_TOKEN и повторите попытку.
@@ -1010,7 +1022,7 @@ $ gennady review-issues
 # exit 1
 ```
 
-Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления.
+Команда работает без параметров: определяет текущую ветку через `git rev-parse --abbrev-ref HEAD`, host и project через `git config remote.origin.url`, ищет открытый MR с `sourceBranch = currentBranch`, скачивает все дискуссии, выводит XML в stdout. Атрибут `cursor` на корневом элементе = `max(note.updated_at)` по всем нотам; при повторном вызове AI передаёт его через `--since` для инкрементального обновления. Флаг `--draft` переключает источник на неопубликованные draft notes текущего пользователя (`GET /merge_requests/:iid/draft_notes`): каждая черновая заметка маппится в отдельный `Thread` (роль Reviewer), что позволяет работать со своими черновыми замечаниями до их публикации.
 
 ### 3.10 inbox DX (agent-inbox)
 
@@ -1313,26 +1325,27 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 
 ### 4.1.10 review-issues Functional Requirements
 
-| ID       | Требование                                                                                                                                                                                           |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                                                                                                    |
-| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL                                                                             |
-| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                                                                                                      |
-| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                                                                                               |
-| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                                                |
-| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                                              |
-| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                                                                                                       |
-| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                                                                                                   |
-| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                                                                                      |
-| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                                                                                             |
-| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                                                                                               |
-| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                                                                                                    |
-| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                                                                                            |
-| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                                                                                                        |
-| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                                                                                                       |
-| FR-RI-16 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком                       |
-| FR-RI-17 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at`            |
-| FR-RI-18 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"` |
+| ID       | Требование                                                                                                                                                                                                                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-RI-01 | Без аргументов: авто-детект текущей ветки через `git rev-parse --abbrev-ref HEAD`                                                                                                                                                                                                        |
+| FR-RI-02 | Авто-детект project + host из origin remote (`git config remote.origin.url`); поддерживает HTTP и SSH форматы remote URL                                                                                                                                                                 |
+| FR-RI-03 | `--branch/-b <name>` — явный override ветки вместо авто-детекта                                                                                                                                                                                                                          |
+| FR-RI-04 | `--url <gitlab-url>` / позиционный http-аргумент — GitLab MR URL (`https://host/.../merge_requests/N`)                                                                                                                                                                                   |
+| FR-RI-05 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                                                                                                                                    |
+| FR-RI-06 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                                                                                                                                  |
+| FR-RI-07 | Приоритет источника: `url › ref › project+iid › branch (auto)`                                                                                                                                                                                                                           |
+| FR-RI-08 | Поиск MR по sourceBranch: только `state: 'opened'`                                                                                                                                                                                                                                       |
+| FR-RI-09 | Скачать все дискуссии найденного MR (`MergeDiscussions.getAll`)                                                                                                                                                                                                                          |
+| FR-RI-10 | `--all` — передаётся в `buildReviewArtifactXml`; влияет на фильтрацию resolved дискуссий                                                                                                                                                                                                 |
+| FR-RI-18 | `--draft` — вместо дискуссий загружает неопубликованные draft notes текущего пользователя (`MergeDiscussions.listDraftNotes` → `GET /merge_requests/:iid/draft_notes`, постранично); каждая черновая заметка маппится в отдельный одно-нотный `Thread` (роль Reviewer, `resolved=false`) |
+| FR-RI-11 | MR не найден → info-сообщение в stdout (ветка или project+iid), exit 0                                                                                                                                                                                                                   |
+| FR-RI-12 | Вывод: XML в stdout через `renderReviewIssuesXml`                                                                                                                                                                                                                                        |
+| FR-RI-13 | Только GitLab v1; host не содержит `gitlab` → ошибка с пояснением, exit 1                                                                                                                                                                                                                |
+| FR-RI-14 | `GITLAB_PERSONAL_TOKEN` обязателен; отсутствие → ошибка с инструкцией, exit 1                                                                                                                                                                                                            |
+| FR-RI-15 | Ошибки git (нет origin, нет репозитория) → stderr + понятное сообщение, exit 1                                                                                                                                                                                                           |
+| FR-RI-16 | `--since <iso>` — фильтр по `note.updated_at`: возвращаются только треды, в которых хотя бы одна нота имеет `updated_at > since`; тред без подходящих нот пропускается целиком                                                                                                           |
+| FR-RI-17 | XML-атрибут `cursor` на корневом элементе `MR_Audit_Context` = `max(note.updated_at)` по всем нотам ДО применения фильтра `--since`; отсутствует, если ни одна нота не имеет `updated_at`                                                                                                |
+| FR-RI-18 | XML-атрибут `tip-cursor` на `MR_Audit_Context` (присутствует вместе с `cursor`) — краткая инструкция на английском: `"Rerun with --since <cursor> to receive only threads updated after this fetch"`                                                                                     |
 
 ### 4.1.11 inbox Functional Requirements
 
@@ -1347,13 +1360,13 @@ $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","new
 
 ### 4.1.12 vcs-worktree Functional Requirements
 
-| ID       | Требование                                                                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-WT-01 | `--ref group/project!iid` → read-only detached worktree head'а MR (`fetch merge-requests/<iid>/head`, хуки off)                                         |
+| ID       | Требование                                                                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-WT-01 | `--ref group/project!iid` → read-only detached worktree head'а MR (`fetch merge-requests/<iid>/head`, хуки off)                                     |
 | FR-WT-02 | Поиск клона: `repos.json` (`<state-dir>/repos.json`) → скан `--repos-base` (default `~/Developer`) по origin → shallow-клон в `<state-dir>/clones/` |
-| FR-WT-03 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                           |
-| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч); коллизия — пересоздание                                            |
-| FR-WT-05 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                                   |
+| FR-WT-03 | Печатает `path`, `base` (merge-base для локального дифа) и `diff_refs` (base/start/head — для line-комментов)                                       |
+| FR-WT-04 | Жизненный цикл: GC на каждом prepare сносит worktree старше TTL (строгий дефолт 3ч); коллизия — пересоздание                                        |
+| FR-WT-05 | `--cleanup <path>` / `--cleanup-all` — ручной снос; read-only (код MR не исполняется)                                                               |
 
 ### 4.1.13 vcs-reply Functional Requirements
 

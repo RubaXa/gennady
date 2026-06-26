@@ -105,4 +105,12 @@ export abstract class VcsClientMergeDiscussions {
    * @sideEffect Network: Multiple GET requests for paginated loading.
    */
   abstract getAll(query: { project: string; iid: string | number }): Promise<unknown[]>;
+
+  /**
+   * @purpose Collect the authenticated user's unpublished draft notes for an MR.
+   * @param query Parameters: { project, iid }.
+   * @returns Complete list of draft notes (only the current user's own drafts).
+   * @sideEffect Network: GET /projects/:project/merge_requests/:iid/draft_notes (paginated).
+   */
+  abstract listDraftNotes(query: { project: string; iid: string | number }): Promise<unknown[]>;
 }

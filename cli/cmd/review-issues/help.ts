@@ -16,8 +16,12 @@ export function printHelp(): void {
   console.info('  --project <name>    VCS project path (e.g. "group/repo")');
   console.info('  --iid <id>          MR internal ID');
   console.info('  --all               Include all discussions, not only unresolved');
+  console.info('  --draft             Fetch your unpublished draft notes instead of discussions');
   console.info('');
   console.info('Examples:');
   console.info('  npx gennady review-issues --url="https://gitlab.com/g/name/-/merge_requests/42"');
   console.info('  npx gennady review-issues https://github.com/owner/repo/pull/10');
+  console.info(
+    '  npx gennady review-issues --draft        # only your draft notes on the current branch MR'
+  );
 }
