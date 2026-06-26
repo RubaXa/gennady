@@ -88,10 +88,9 @@
 
   <VcsReplySyntax>
     <Command>
-      # Dry-run (nothing posted — verify output first):
-      gennady vcs-reply --project=&lt;group/project&gt; --iid=&lt;iid&gt; --vcs-source=&lt;host&gt; --dry-run &lt; comments.json
-
-      # Live post:
+      # Post live — the operator's checkbox approval in the skill's action menu IS the
+      # confirmation, so we post directly. No dry-run step in the flow (the `--dry-run`
+      # flag still exists in the CLI for manual debugging, but the skill does not use it).
       gennady vcs-reply --project=&lt;group/project&gt; --iid=&lt;iid&gt; --vcs-source=&lt;host&gt; &lt; comments.json
     </Command>
     <Requirement>GITLAB_PERSONAL_TOKEN environment variable.</Requirement>

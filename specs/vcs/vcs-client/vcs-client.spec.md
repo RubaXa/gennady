@@ -32,6 +32,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestByIidQuery`   | Value Object    | Параметры получения MR по IID                                             |
 | `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage? |
 | `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                     |
+| `VcsResolveDiscussionQuery`   | Value Object    | Параметры resolve discussion: project, iid, discussionId, resolved        |
 | `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                            |
 | `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                          |
@@ -88,6 +89,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `getList(query) → Promise<VcsDiscussion[]>` — список дискуссий
   - `getAll(query) → Promise<VcsDiscussion[]>` — все дискуссии
   - `addNote(query) → Promise<void>` — добавить заметку
+  - `resolveDiscussion(query) → Promise<void>` — резолв/реопен дискуссии (GitLab: `PUT /discussions/:id?resolved=true\|false`)
 
 ### `VcsClientRepositoryFiles`
 
@@ -113,6 +115,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestByIidQuery`   | `project: string`, `iid: string\|number`                                                          |
 | `VcsMergeRequestChangesQuery` | `repository: string`, `iid: string\|number`, `page?: number`, `perPage?: number`                  |
 | `VcsMergeRequestApproveQuery` | `repository: string`, `iid: string\|number`                                                       |
+| `VcsResolveDiscussionQuery`   | `project: string`, `iid: string\|number`, `discussionId: string`, `resolved: boolean`             |
 | `VcsFileContentQuery`         | `repository: string`, `path: string`, `ref: string`                                               |
 
 ## 6. File Structure

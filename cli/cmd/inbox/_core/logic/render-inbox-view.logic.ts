@@ -37,11 +37,24 @@ function eventMarks(item: InboxItem): string {
 
 function hiddenSummary(hidden: InboxView['hidden']): string {
   const parts: string[] = [];
+  if (hidden.waiting > 0) parts.push(`${hidden.waiting} жду ответа`);
+  if (hidden.approved > 0) parts.push(`${hidden.approved} approved`);
   if (hidden.stale > 0) parts.push(`${hidden.stale} stale`);
   if (hidden.drafts > 0) parts.push(`${hidden.drafts} drafts`);
   if (hidden.noise > 0) parts.push(`${hidden.noise} noise`);
   if (hidden.closed > 0) parts.push(`${hidden.closed} merged/closed`);
   return parts.length > 0 ? `  ${style.gray(`(скрыто: ${parts.join(', ')})`)}` : '';
+}
+
+/** @purpose One-line snippet of an MR description for a card (first line, clipped). */
+function descSnippet(description: string, max = 100): string {
+  const firstLine =
+    description
+      .split('\n')
+      .find((l) => l.trim().length > 0)
+      ?.trim() ?? '';
+  if (firstLine === '') return '';
+  return firstLine.length > max ? `${firstLine.slice(0, max - 1)}…` : firstLine;
 }
 
 function deltaSummary(delta: InboxView['delta']): string {
@@ -74,6 +87,13 @@ export function renderInboxView(view: InboxView): string {
       lines.push(
         `    ${deltaMark(item)}${stageTag(item)}${style.cyan(ref)}${eventMarks(item)}  ${item.title}  ${age}`
       );
+      const meta: string[] = [];
+      if (item.author) meta.push(`автор @${item.author}`);
+      if (item.reviewers.length > 0)
+        meta.push(`ревью: ${item.reviewers.map((r) => '@' + r).join(' ')}`);
+      if (meta.length > 0) lines.push(`      ${style.gray(meta.join(' · '))}`);
+      const snippet = descSnippet(item.description);
+      if (snippet) lines.push(`      ${style.gray(snippet)}`);
       lines.push(`      ${style.gray(item.webUrl)}`);
     }
   }
@@ -81,19 +101,49 @@ export function renderInboxView(view: InboxView): string {
   return lines.join('\n');
 }
 
+/** @purpose Extra MR context for the work-packet header (optional, from the inbox row). */
+export type WorkPacketMeta = {
+  /** @purpose Author of the merge request. */
+  author?: string;
+  /** @purpose List of reviewer names assigned to the MR. */
+  reviewers?: string[];
+  /** @purpose MR description text. */
+  description?: string;
+  /** @purpose List of users who approved the MR. */
+  approvedBy?: string[];
+};
+
 /**
  * @purpose Render a single-MR work packet (stage + what I must answer) for the
  *   in-session agent to act on.
  * @param ref MR reference, e.g. group/project!123.
  * @param title MR title.
  * @param packet Assembled work packet.
+ * @param [meta] Author / reviewers / description / approvers for the header.
  * @returns Multi-line string ready to print.
  * @consumer inbox.cmd
  */
-export function renderWorkPacket(ref: string, title: string, packet: WorkPacket): string {
+export function renderWorkPacket(
+  ref: string,
+  title: string,
+  packet: WorkPacket,
+  meta: WorkPacketMeta = {}
+): string {
   const lines: string[] = [];
   lines.push(style.bold(`Work packet — ${ref}`) + `  ${style.gray(title)}`);
   lines.push(`stage: ${style.cyan(packet.stage)} · role: ${packet.role ?? '—'}`);
+
+  const head: string[] = [];
+  if (meta.author) head.push(`автор @${meta.author}`);
+  if (meta.reviewers && meta.reviewers.length > 0) {
+    head.push(`ревью: ${meta.reviewers.map((r) => '@' + r).join(' ')}`);
+  }
+  if (meta.approvedBy && meta.approvedBy.length > 0) {
+    head.push(`approved: ${meta.approvedBy.map((r) => '@' + r).join(' ')}`);
+  }
+  if (head.length > 0) lines.push(style.gray(head.join(' · ')));
+  const snippet = descSnippet(meta.description ?? '', 200);
+  if (snippet) lines.push(style.gray(snippet));
 
   if (packet.needsReview) {
     lines.push(style.yellow('→ Первый ревью: посмотри диф и оставь замечания.'));

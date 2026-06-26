@@ -6,7 +6,7 @@ product
 
 ## 1. Vision & Primary Goal
 
-CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
+CLI-модуль с командами для AI-агентов. Команды: `lint` (трёхслойная валидация TypeScript-файлов и директорий с рекурсивным обходом), `alt-opinion` (альтернативные мнения от AI-моделей на переданный артефакт с опциональным синтезом), `cat` (сбор содержимого файлов в XML/MD для AI-агентов с поддержкой локальных файлов и удалённых через `--url`), `sync` (синхронизация `ai/directives/` из npm-пакета в текущий проект), `sync-skills` (синхронизация SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением), `orient` (ориентация по file-header и DBC-контрактам — карта проекта, поиск по задачам, потребителям, сущностям и ключевым словам, граф зависимостей), `agents-rules` (выводит инструкцию по использованию `orient` для AI-агентов — когда и какую команду вызывать для навигации по репозиторию), `review-issues` (по текущей ветке находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов), `inbox` (поверхность ассистента входящих GitLab MR: список со стадиями, дельта, `--pick`, `--reset` — см. scope agent-inbox), `vcs-worktree` (read-only git worktree head'а MR для код-ревью, с GC жизненного цикла), `vcs-reply` (постинг в MR: ответ в тред / новая дискуссия / комментарий на строку дифа + резолв/реопен дискуссий), `vcs-approve` (выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта).
 
 ## 2. Project Type
 
@@ -1057,9 +1057,21 @@ $ gennady vcs-worktree --cleanup-all        # снести все
 $ echo '[{"discussionId":"abc","body":"..."}]'                  | gennady vcs-reply --project=g/p --iid=42   # ответ в тред
 $ echo '[{"body":"новая дискуссия"}]'                            | gennady vcs-reply --project=g/p --iid=42   # новый тред
 $ echo '[{"body":"...","position":{"baseSha","startSha","headSha","newPath","newLine"}}]' | gennady vcs-reply --project=g/p --iid=42  # line-comment
+$ echo '[{"discussionId":"abc","body":"fixed","resolve":true}]'  | gennady vcs-reply --project=g/p --iid=42   # ответ + резолв
+$ echo '[{"discussionId":"abc","resolve":true}]'                 | gennady vcs-reply --project=g/p --iid=42   # только резолв
+$ echo '[{"discussionId":"abc","resolve":false}]'                | gennady vcs-reply --project=g/p --iid=42   # reopen
+$ echo '[{"discussionId":"abc","resolve":true}]'                 | gennady vcs-reply ... --dry-run             # dry-run
+Would resolve: discussionId=abc                   # [DRY-RUN] no request sent
+
+# ошибки резолва
+$ echo '[{"discussionId":"abc","body":"ok","resolve":true}]' | gennady vcs-reply --project=g/p --iid=42
+⚠ Note posted but resolve failed: 403 Forbidden     # addNote прошёл, resolve упал — предупреждение, exit 1
+
+$ echo '[{"body":"hi","resolve":true}]'              | gennady vcs-reply --project=g/p --iid=42
+✖ resolve требует discussionId                      # validation error, exit 1
 ```
 
-Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Постит в GitLab MR: ответ в существующий тред, новую дискуссию или комментарий на строку дифа (`createDiscussion` с `position` из `MR.diff_refs`). `--dry-run` печатает без отправки.
+Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Постит в GitLab MR: ответ в существующий тред, новую дискуссию или комментарий на строку дифа (`createDiscussion` с `position` из `MR.diff_refs`). Поле `resolve: true` в stdin-JSON — после поста ответа (или без ответа) резолвит/реопенит discussion через `resolveDiscussion`. `--dry-run` печатает без отправки.
 
 ### 3.13 vcs-approve DX
 
@@ -1400,11 +1412,18 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1.13 vcs-reply Functional Requirements
 
-| ID       | Требование                                                                                                                                                   |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| FR-VR-01 | stdin JSON-массив; элемент: `{discussionId, body}` (ответ в тред) / `{body}` (новая дискуссия) / `{body, position}` (line-comment)                           |
-| FR-VR-02 | line-comment: `position` через `MergeDiscussions.createDiscussion`; `*_sha` из `MR.diff_refs`; правило линий added→new / removed→old / context→оба           |
-| FR-VR-03 | Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста; `--dry-run` печатает без отправки; `--host` пробрасывается в `resolveVcsContext` |
+| ID       | Требование                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-VR-01 | stdin JSON-массив; элемент: `{discussionId, body}` (ответ в тред) / `{body}` (новая дискуссия) / `{body, position}` (line-comment)                                                                                                                                |
+| FR-VR-02 | line-comment: `position` через `MergeDiscussions.createDiscussion`; `*_sha` из `MR.diff_refs`; правило линий added→new / removed→old / context→оба                                                                                                                |
+| FR-VR-03 | Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста; `--dry-run` печатает без отправки; `--host` пробрасывается в `resolveVcsContext`                                                                                                      |
+| FR-VR-04 | `resolve: true` без `discussionId` → ошибка валидации: «resolve требует discussionId», exit 1                                                                                                                                                                     |
+| FR-VR-05 | `resolve: true` + `discussionId` + `body` → `addNote` → при успехе `resolveDiscussion({discussionId, resolved: true})`. Если addNote упал — resolve не вызывается. Если addNote прошёл, а resolve упал — предупреждение «Note posted but resolve failed: <error>» |
+| FR-VR-06 | `resolve: true` + `discussionId` без `body` → только `resolveDiscussion({discussionId, resolved: true})`                                                                                                                                                          |
+| FR-VR-07 | `resolve: false` + `discussionId` → `resolveDiscussion({discussionId, resolved: false})` (reopen)                                                                                                                                                                 |
+| FR-VR-08 | `resolve` отсутствует → поведение без изменений                                                                                                                                                                                                                   |
+| FR-VR-09 | `--dry-run` для resolve: печатает `Would resolve: discussionId=<id>`; для reopen: `Would reopen: discussionId=<id>`; затем `[DRY-RUN] no request sent`. Для addNote: `Would post note to discussion: <id>`                                                        |
+| FR-VR-10 | Массив из N элементов обрабатывается последовательно; ошибка на одном не прерывает остальные. Exit code: 0 если все элементы успешны или массив пуст; 1 если ≥1 элемент упал                                                                                      |
 
 ### 4.1.14 vcs-context-resolver (shared)
 
@@ -2322,6 +2341,14 @@ cli/cmd/review/
 - **Why:** `review-issues`, `vcs-reply`, `vcs-worktree` переводятся на унифицированный `vcs-context-resolver`. Их старые блоки авто-детекта (ветка, origin, токен) заменяются вызовом `resolveVcsContext`. Поведение не меняется, только механизм.
 - **Risk accepted:** Рефакторинг трёх команд одновременно — требует аккуратного тестирования каждой после миграции. Смягчается тем, что `vcs-context-resolver` тестируется независимо.
 - **Rejected alternatives:** Постепенная миграция (одна команда за раз) — временный период с двумя механизмами резолва, хуже поддерживаемость.
+
+### D-018 — vcs-reply: resolve discussion при ответе или без
+
+- **Status:** active
+- **Recorded:** session Discovery, cli, refine (vcs-reply resolve)
+- **Why:** vcs-reply должен уметь резолвить/реопенить discussion через GitLab API. Поле `resolve: true|false` в stdin JSON — минимальное расширение: работает и с `body` (ответ + резолв), и без `body` (чистый резолв). Не требует отдельной команды или флага. Метод `resolveDiscussion` на порте `VcsClientMergeDiscussions`.
+- **Risk accepted:** `resolve: false` (reopen) реализован тем же механизмом. GitHub — deferred.
+- **Rejected alternatives:** Отдельная команда `vcs-resolve` — дублирует инфраструктуру. Флаг `--resolve` у всей команды — не позволяет выборочно резолвить одни дискуссии и не резолвить другие в одном вызове.
 
 ### 5.16 vcs-context-resolver (shared)
 

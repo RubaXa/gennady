@@ -1,0 +1,50 @@
+<CodeInterrogation type="directive" ver="1.0"
+  keywords="native stdlib analog, modern idioms, magic literal, constant vs dependency, global dependency, testability, security, business goal alignment, code review checklist">
+  <Mission>
+    Second battery, loaded by `arch-interrogation` on the `review_needed` stage. The axes A–G of
+    arch-interrogation judge whether an entity should EXIST; these probes judge whether the CODE
+    inside it is written well — seen through the architecture / testability prism, NOT as a linter.
+    Applied per changed unit: entity / module / function / literal. DO-CONFIRM: each probe reports
+    `confirmed` or `flagged`; only `flagged` reaches the operator. We are not a linter and never
+    restate what a compiler/linter already catches.
+  </Mission>
+
+  <ScopeGuard>
+    Skip everything tsc / ESLint / the formatter already enforces in this repository. Raise only
+    logical and architectural judgements tools cannot make: WHY a literal is (or is not) a constant,
+    WHY a dependency is global, whether the code is testable, whether it serves the business goal.
+    Scope strictly to the diff. One `flag` = one real problem, attached to a finding ID (E/R/Q) in
+    the parent directive — never a parallel report. If a probe is inconclusive, say so; do not invent.
+  </ScopeGuard>
+
+  <Probes>
+    Each probe is one question applied where relevant; report only flags. Codes appear in the «Ось»
+    column of arch-interrogation OutputFormat §9.
+
+    | Code     | Проба (один вопрос) | Flag когда |
+    |----------|---------------------|------------|
+    | `NAT`    | Есть ли в stdlib языка готовый аналог тому, что написано руками? (промис-комбинаторы, `structuredClone`, `Intl`, `URL`, `crypto`, методы Array/Map) | Ручная реализация того, что уже есть в стандартной библиотеке |
+    | `IDIOM`  | Используются ли современные конструкции языка? (`?.`, `??`, деструктуризация, ранний return) | Многословная форма там, где короткая читается лучше — только если снижает ветвление/читаемость, не косметика |
+    | `LIT`    | Литерал, похожий на конфиг/константу — обоснуй ОДНО: (a) нужна именованная константа; (b) намеренно локальна и очевидна | Вынесли бездумно ИЛИ захардкодили смысл/повтор/конфиг — без обоснования любой из сторон |
+    | `DEP`    | Константа или зависимость? То, что конфигурируется снаружи (URL, таймаут, лимит, путь) — параметр, не `const` | Конфигурация зашита литералом/`const` вместо параметра/инъекции |
+    | `GLOBAL` | Почему зависимость берётся глобально (singleton-import, env, `Date.now`, random, fs), а не аргументом? | Необоснованный global — бьёт по тестируемости; нет причины, почему именно глобально |
+    | `TEST`   | Можно ли вызвать это в тесте без сети/времени/фс/случайности? | Скрытый сайд-эффект, который нельзя подменить; логика сцеплена с источником данных |
+    | `SEC`    | Недоверенный вход (юзер/сеть/файл) валидируется? секрет в коде/логе? инъекция (SQL/shell/path)? | Есть вектор; строгость оценивать через бизнес-цель — что и зачем защищаем |
+    | `BIZ`    | Понятна ли из MR бизнес-цель и служит ли ей код? | Цель НЕ ясна из описания → не угадывать: кандидат «попросить автора дописать цель». Код расходится с заявленной целью |
+  </Probes>
+
+  <WebSearchGuard>
+    Web-search — дорогая операция, по умолчанию ВЫКЛЮЧЕНА. Сначала репозиторий + знание stdlib.
+    Допустима ТОЛЬКО когда: (1) вердикт реально зависит от внешнего факта, которого нет ни в репо,
+    ни в знании языка — конкретная версия/поведение API, актуальность подхода, известная
+    CVE/deprecation; И (2) один точечный запрос закрывает вопрос. Сначала назови, какой вердикт
+    зависит от запроса; без этого не искать. Не использовать для общих вопросов и того, что и так знаешь.
+  </WebSearchGuard>
+
+  <Output>
+    Каждый flag — кандидат в таблицу §9 основной директивы, код пробы в колонке «Ось»
+    (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`). `BIZ`-неясность даёт ОДИН кандидат
+    уровня MR («попросить автора описать бизнес-цель»), а не шум на каждую сущность. Отдельного
+    отчёта нет — пробы кормят существующие карточки сущностей и таблицу кандидатов arch-interrogation.
+  </Output>
+</CodeInterrogation>

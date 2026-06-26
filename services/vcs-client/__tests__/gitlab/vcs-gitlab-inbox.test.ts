@@ -148,6 +148,41 @@ describe('VcsGitlabInbox — getActionable', () => {
     assert.strictEqual(result[0].state, 'opened');
   });
 
+  it('normalizes description, author, reviewers and approvedBy for context cards', async () => {
+    graphql.mock.mockImplementationOnce(async () =>
+      data({
+        authoredMergeRequests: {
+          nodes: [
+            mr('9', {
+              description: 'adds X',
+              author: { username: 'a.author' },
+              reviewers: { nodes: [{ username: 'r.one' }, { username: 'r.two' }, null] },
+              approvedBy: { nodes: [{ username: 'r.one' }] },
+            }),
+          ],
+        },
+      })
+    );
+
+    const result = await inbox.getActionable();
+    assert.strictEqual(result[0].description, 'adds X');
+    assert.strictEqual(result[0].author, 'a.author');
+    assert.deepStrictEqual(result[0].reviewers, ['r.one', 'r.two']);
+    assert.deepStrictEqual(result[0].approvedBy, ['r.one']);
+  });
+
+  it('defaults missing context fields to empty', async () => {
+    graphql.mock.mockImplementationOnce(async () =>
+      data({ authoredMergeRequests: { nodes: [mr('10')] } })
+    );
+
+    const result = await inbox.getActionable();
+    assert.strictEqual(result[0].description, '');
+    assert.strictEqual(result[0].author, '');
+    assert.deepStrictEqual(result[0].reviewers, []);
+    assert.deepStrictEqual(result[0].approvedBy, []);
+  });
+
   it('preserves the draft flag for later filtering', async () => {
     graphql.mock.mockImplementationOnce(async () =>
       data({ authoredMergeRequests: { nodes: [mr('6', { draft: true })] } })

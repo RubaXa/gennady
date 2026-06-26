@@ -34,6 +34,12 @@ export type InboxItem = {
   webUrl: string;
   /** @purpose Merge request title */
   title: string;
+  /** @purpose MR description (full; consumer truncates for display) */
+  description: string;
+  /** @purpose Author's username */
+  author: string;
+  /** @purpose Reviewer usernames assigned to the MR */
+  reviewers: string[];
   /** @purpose Resolved role (group this row belongs to) */
   role: VcsActionableRole;
   /** @purpose Whether I was directly addressed (affects sort) */
@@ -56,8 +62,19 @@ export type InboxView = {
   groups: { role: VcsActionableRole; items: InboxItem[] }[];
   /** @purpose Number of visible rows across all groups */
   total: number;
-  /** @purpose Counts of rows suppressed by policy, by reason (closed = merged/closed/locked) */
-  hidden: { stale: number; drafts: number; noise: number; closed: number };
+  /**
+   * @purpose Counts of rows suppressed by policy, by reason.
+   *   closed = merged/closed/locked · approved = I already approved ·
+   *   waiting = stage awaiting_reply/idle (no reaction needed from me).
+   */
+  hidden: {
+    stale: number;
+    drafts: number;
+    noise: number;
+    closed: number;
+    approved: number;
+    waiting: number;
+  };
   /** @purpose Counts of visible rows that are new / updated since last tick */
   delta: { new: number; updated: number };
 };
@@ -85,7 +102,10 @@ function humanizeAge(updatedAt: string, nowMs: number): string {
  * @param options Filtering toggles.
  * @param nowIso Current time as ISO string (injected for testability).
  * @param [deltas] Per-MR change since the last tick, keyed by webUrl (defaults to empty).
- * @param [stages] Per-MR actionable stage, keyed by webUrl (defaults to empty).
+ * @param [stages] Per-MR actionable stage, keyed by webUrl (defaults to empty). When
+ *   non-empty, MRs at `awaiting_reply`/`idle` are dropped as needing no reaction from me
+ *   (unless `--all`); when empty (the pre-scan pass) no stage filtering happens.
+ * @param [myLogin] My username; MRs I have already approved are dropped (unless `--all`).
  * @returns Grouped inbox view with hidden-counts.
  * @consumer inbox.cmd
  */
@@ -94,11 +114,13 @@ export function buildInboxView(
   options: InboxOptions,
   nowIso: string,
   deltas: Map<string, InboxDelta> = new Map(),
-  stages: Map<string, MrStage> = new Map()
+  stages: Map<string, MrStage> = new Map(),
+  myLogin = ''
 ): InboxView {
   const nowMs = Date.parse(nowIso);
   const staleMs = options.staleDays * 24 * 60 * 60 * 1000;
-  const hidden = { stale: 0, drafts: 0, noise: 0, closed: 0 };
+  const hidden = { stale: 0, drafts: 0, noise: 0, closed: 0, approved: 0, waiting: 0 };
+  const stagesKnown = stages.size > 0;
   const buckets: Record<VcsActionableRole, InboxItem[]> = {
     reviewer: [],
     author: [],
@@ -118,6 +140,20 @@ export function buildInboxView(
     // else's work — never an inbox entry, even under --all.
     if (!mr.role) {
       hidden.noise++;
+      continue;
+    }
+
+    // I already approved it → my job is done; drop it (revealed under --all).
+    if (!options.all && myLogin && mr.approvedBy.includes(myLogin)) {
+      hidden.approved++;
+      continue;
+    }
+
+    // Stage filter (only once stages are scanned): awaiting_reply = I spoke last
+    // and wait on others; idle = nothing to do. Neither needs a reaction from me.
+    const stage = stages.get(mr.webUrl) ?? 'idle';
+    if (!options.all && stagesKnown && (stage === 'awaiting_reply' || stage === 'idle')) {
+      hidden.waiting++;
       continue;
     }
 
@@ -147,13 +183,16 @@ export function buildInboxView(
       project: mr.project,
       webUrl: mr.webUrl,
       title: mr.title,
+      description: mr.description,
+      author: mr.author,
+      reviewers: mr.reviewers,
       role: mr.role,
       directlyAddressed: mr.directlyAddressed,
       draft: mr.draft,
       shownEvents,
       ageLabel: humanizeAge(mr.updatedAt, nowMs),
       delta: deltas.get(mr.webUrl) ?? 'idle',
-      stage: stages.get(mr.webUrl) ?? 'idle',
+      stage,
     });
   }
 

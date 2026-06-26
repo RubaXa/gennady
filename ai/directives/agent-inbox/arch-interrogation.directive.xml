@@ -57,7 +57,8 @@
       1. Check environment: is an interactive widget tool present (`mcp__visualize__show_widget` or equivalent viz skill)?
       2. IF tool present → MUST render relational diagrams with it. Icons + colour inside; no emoji in rendered graphics.
       3. IF tool absent → ASCII tree/graph with emoji-icons (compact, renders everywhere).
-      4. **CHAT ANTI-RULE: Mermaid fenced blocks (```mermaid) are FORBIDDEN in chat output.** The operator cannot render them. Violation = invalid output.
+      4. **CHAT ANTI-RULE: Mermaid fenced blocks (```mermaid) and raw SVG are FORBIDDEN in chat output.** The operator cannot render them. Violation = invalid output.
+      5. **Render guarantee:** every chat artifact MUST be in a form the chat client actually shows — a visual widget tool, or plain-text ASCII/emoji; operator choices go through `AskUserQuestion`. Nothing reaches the operator as markup the chat cannot draw. "Visualised" means the operator SEES it, not that a diagram string exists.
 
       **Branch GITLAB (posting to MR — comment, discussion, line note):**
       Agent MUST load and apply `ai/directives/agent-inbox/posting-rules.directive.xml`. That directive governs: Mermaid-only diagram format, 🤖 prefix, comment granularity (spec→file-line-1, code→per-line, reply→existing-thread), and vcs-reply syntax.
@@ -96,45 +97,15 @@
     </Axiom>
 
     <Axiom id="AX_STABLE_FINDING_IDS">
-      Every finding (entity verdict, relational problem, risk flag) receives a **stable, unique ID** that persists across the entire report. IDs are the backbone of cross-referencing — other sections link to them, never retell the finding.
-
-      ID namespaces:
-      | Prefix | Scope | Example |
-      |---|---|---|
-      | `E` | Entity verdict (justified / weak / unjustified per VerdictModel) | `E1`, `E2` |
-      | `R` | Relational finding (dependency cycle, fan-in/out, truth-vs-cache) | `R1` |
-      | `Q` | Open question (unresolved doubt, "почему не альтернатива") | `Q1` |
-
-      IDs are sequential within namespace (E1, E2, E3…). The ID stays with the finding even when sections reorder content — it is a logical anchor, not a positional index.
-
-      Format in output: `[E1]` — square-bracketed, clickable as an anchor within the report when the medium supports it.
-
-      This axiom is referenced by AX_SAY_IT_ONCE (cross-section dedup) and OutputFormat §5–§7 (entity cards, relationships, verdict).
+      Every finding gets a **stable, unique, sequential ID** that persists across the whole report — a logical anchor other sections link to, not a positional index. Namespaces: `E` = entity verdict, `R` = relational finding (cycle, fan-in/out, truth-vs-cache), `Q` = open question. Output format `[E1]` / `[R2]` / `[Q3]` — square-bracketed, clickable where the medium supports it. Referenced by `AX_SAY_IT_ONCE` and OutputFormat §5–§9.
     </Axiom>
 
     <Axiom id="AX_SAY_IT_ONCE">
-      Each problem is described in full exactly ONCE — in the section where it is introduced (entity card for E-IDs, relationships section for R-IDs, open questions for Q-IDs). Every other section that mentions the same problem **references the ID** and adds only the new angle specific to that section's purpose — never retells the original description.
-
-      Examples of correct cross-referencing:
-      - Relationship section: «Цикл: AuthService → TokenValidator → AuthService [R1]» — one line, references R1.
-      - Verdict summary: «3 сущности обоснованы, 2 слабо ([E3], [E5]), 1 не обоснована ([E7])» — IDs only, no retelling.
-      - Risk section: «Blast-radius: широкий — см. [R1], [E4]» — pointer, not duplicate.
-
-      Violation: the same problem's full description appearing in two different sections. This is the primary cause of bloated, unreadable reports. Any section that needs to mention an existing finding MUST use the ID-reference form, not prose retelling.
+      Each problem is described in full exactly ONCE — in the section that introduces it (entity card for `E`, relationships for `R`, open questions for `Q`). Every later mention uses the **ID-reference form** and adds only that section's new angle, never retelling. E.g. verdict summary: «2 слабо ([E3], [E5]), 1 не обоснована ([E7])» — IDs only. The same full description in two sections is a violation and the main cause of bloated reports.
     </Axiom>
 
     <Axiom id="AX_SCANNABLE_OUTPUT">
-      The report is read by a human operator in a chat UI with limited vertical space. Structure beats prose.
-
-      Binding rules for every output section:
-      1. **Emoji icons for verdicts** — ✅ justified · ⚠️ weak · ❌ unjustified (never bare text tokens).
-      2. **Emoji icons for risk level** — 🟢 low · 🟡 medium · 🔴 high.
-      3. **Section separators** — `---` on its own line between every top-level section.
-      4. **Compact tables over prose** — entity inventory, verdict summary, risk sub-items, comment candidates: table first, prose explanation after (if needed).
-      5. **Details only for critical** — full prose explanation only for ❌ unjustified entities and 🔴 high-risk items. For ✅ justified / ⚠️ weak / 🟢🟡 risk: one line suffices.
-      6. **Stable IDs as anchors** — every finding carries its ID in square brackets ([E1], [R2]), making the report navigable by search.
-
-      Machine-readable bonus: the combination of stable IDs, fixed table columns, and predictable separators means the report can be parsed by a script to extract findings, map references, and verify completeness — without relying on the agent's natural-language output alone.
+      Operator reads in a chat UI with limited vertical space — structure beats prose. Binding for every section: verdict icons ✅ justified · ⚠️ weak · ❌ unjustified and risk icons 🟢 low · 🟡 medium · 🔴 high (never bare tokens); `---` between top-level sections; compact tables before prose; full prose ONLY for ❌ and 🔴, one line for ✅⚠️🟢🟡; every finding carries its `[ID]`. Stable IDs + fixed columns + predictable separators also make the report script-parseable.
     </Axiom>
   </BeliefState>
 
@@ -150,6 +121,13 @@
     | `E` Data ownership | Who owns this data — source of truth or cache? Does anyone else write it (dual-write / shared store)? Lifecycle, scope (perUser) correct? | DDIA system-of-record vs derived; Database-per-Service; DDD Aggregate |
     | `F` Flow / coupling | How do elements talk (sync/async) and why? Which way does the dependency point — toward stability? Cycles? High fan-in/fan-out hub? Failure mode on each edge? | Connascence taxonomy; Acyclic + Stable Dependencies; fan-in/out (Henry-Kafura); Clean/Hexagonal dependency rule |
     | `G` Reversibility | One-way or two-way door? How expensive to undo if wrong? | Amazon Type-1/Type-2; ATAM risk classification — gates scrutiny depth per `AX_REVERSIBILITY_MODULATES_SCRUTINY` |
+
+    Axes A–G interrogate whether an entity should EXIST. A **second battery** — code-level hygiene
+    through the same architecture/testability prism (native-stdlib analog, modern idioms, literal vs
+    constant vs dependency, global-dependency justification, testability, security, business-goal
+    alignment) — lives in `ai/directives/agent-inbox/code-interrogation.directive.xml` to keep this
+    directive bounded. It is loaded and applied per changed unit at `STEP_2`; its flags feed the same
+    entity cards and §9 candidate table (probe codes in the «Ось» column).
   </InterrogationBattery>
 
   <PackageExtractionGate>
@@ -206,7 +184,8 @@
         1. For each element apply axes `A`–`G` at the depth set by its reversibility tag.
         2. Axes `B` and `D` REQUIRE repo search (analogs, prior examples) — record path+symbol or "inconclusive". Never assert a convention without a reference (`AX_GROUNDED_IN_REPO`).
         3. Apply `AX_QUALITY_ATTRIBUTE_TRADEOFF`: name served attribute + tradeoff; for new service/store probe observability, migration/rollback, error path.
-        4. Assign a verdict per `<VerdictModel>`; default `unjustified` until disproven (`AX_ADVERSARIAL_DEFAULT`).
+        4. Load `ai/directives/agent-inbox/code-interrogation.directive.xml` and run its code-level battery (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`) per changed unit; honour its `ScopeGuard` (no linter-duplication) and `WebSearchGuard` (web-search off by default). Flags attach to the unit's entity card and become §9 candidates with the probe code in «Ось».
+        5. Assign a verdict per `<VerdictModel>`; default `unjustified` until disproven (`AX_ADVERSARIAL_DEFAULT`).
       </Action>
     </Step>
 
@@ -294,8 +273,9 @@
        | ID | Файл | Строка | Проблема | Ось | Kind |
        |----|------|--------|-----------|-----|------|
        | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment |
-       | [E5] | path/to/file.ts | L15 | краткая суть | A | reply-to-thread (discussionId: abc123) |
+       | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) |
 
+       «Ось» — либо архитектурная ось `A`–`G`, либо код-проба из `code-interrogation.directive.xml` (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`).
        Kind values per `AX_PRIOR_DISCUSSION_AWARENESS`: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply`.
 
        **IMPORTANT:** This directive produces the candidate list ONLY. Posting format (Mermaid, 🤖 prefix, vcs-reply syntax, line-comment position fields, granularity by artifact type) is governed by `ai/directives/agent-inbox/posting-rules.directive.xml`. When the skill proceeds to posting, it MUST load that directive.

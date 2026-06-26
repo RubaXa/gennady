@@ -60,7 +60,14 @@ async function runPick(ref: string, vcsSource?: string): Promise<number> {
   const discussions = await client.MergeDiscussions.getAll({ project, iid });
   const packet = buildWorkPacket(flattenNotes(discussions), me.login, mr?.role ?? null);
 
-  console.info(renderWorkPacket(ref, mr?.title ?? '', packet));
+  console.info(
+    renderWorkPacket(ref, mr?.title ?? '', packet, {
+      author: mr?.author,
+      reviewers: mr?.reviewers,
+      description: mr?.description,
+      approvedBy: mr?.approvedBy,
+    })
+  );
   return 0;
 }
 
@@ -101,11 +108,13 @@ async function run(): Promise<number> {
     const registry = loadRegistry(regPath);
     const { deltas, next } = classifyInbox(items, registry, now);
 
+    const me = await client.getCurrentUser();
+
     // Stage scan only for visible MRs; for unchanged ones reuse the cached stage.
-    const visible = buildInboxView(items, options, now, deltas);
+    // Pre-scan pass: no stages yet, but drop approved-by-me so we never scan them.
+    const visible = buildInboxView(items, options, now, deltas, new Map(), me.login);
     const visibleUrls = new Set(visible.groups.flatMap((g) => g.items.map((i) => i.webUrl)));
     const itemByUrl = new Map(items.map((m) => [m.webUrl, m]));
-    const me = await client.getCurrentUser();
 
     const stages = new Map<string, MrStage>();
     const details = new Map<string, { openQuestions: number; lastAuthor: string }>();
@@ -131,7 +140,7 @@ async function run(): Promise<number> {
       if (next.entries[url]) next.entries[url].stage = stage;
     }
 
-    const view = buildInboxView(items, options, now, deltas, stages);
+    const view = buildInboxView(items, options, now, deltas, stages, me.login);
 
     if (argv.includes('--json')) {
       const out = {
@@ -146,6 +155,9 @@ async function run(): Promise<number> {
             iid: i.iid,
             webUrl: i.webUrl,
             title: i.title,
+            description: i.description,
+            author: i.author,
+            reviewers: i.reviewers,
             role: i.role,
             stage: i.stage,
             delta: i.delta,

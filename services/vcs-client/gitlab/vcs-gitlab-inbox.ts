@@ -19,6 +19,13 @@ type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => 
  * @invariant `type: [MERGEREQUEST]` and `state: [pending]` are list enums on
  *   the todos connection (verified against the live instance).
  */
+const MR_FIELDS = `iid title webUrl updatedAt draft state
+  description
+  author { username }
+  reviewers { nodes { username } }
+  approvedBy { nodes { username } }
+  project { fullPath }`;
+
 const ACTIONABLE_QUERY = `{
   currentUser {
     todos(state: [pending], type: [MERGEREQUEST]) {
@@ -26,15 +33,15 @@ const ACTIONABLE_QUERY = `{
         action
         target {
           __typename
-          ... on MergeRequest { iid title webUrl updatedAt draft state project { fullPath } }
+          ... on MergeRequest { ${MR_FIELDS} }
         }
       }
     }
     reviewRequestedMergeRequests(state: opened) {
-      nodes { iid title webUrl updatedAt draft state project { fullPath } }
+      nodes { ${MR_FIELDS} }
     }
     authoredMergeRequests(state: opened) {
-      nodes { iid title webUrl updatedAt draft state project { fullPath } }
+      nodes { ${MR_FIELDS} }
     }
   }
 }`;
@@ -63,6 +70,13 @@ const ROLE_PRIORITY: Record<VcsActionableRole, number> = {
   mentioned: 1,
 };
 
+/** @purpose A GraphQL `{ nodes: [{ username }] }` user connection. */
+type UserConn = { nodes?: ({ username?: string } | null)[] | null };
+
+/** @purpose Pluck usernames from a GraphQL user connection, dropping blanks. */
+const usernames = (conn: UserConn | null | undefined): string[] =>
+  (conn?.nodes ?? []).map((n) => n?.username ?? '').filter(Boolean);
+
 /** @purpose Raw MergeRequest node shape returned by the GraphQL query. */
 type MrNode = {
   iid?: string;
@@ -71,6 +85,10 @@ type MrNode = {
   updatedAt?: string;
   draft?: boolean;
   state?: string;
+  description?: string;
+  author?: { username?: string } | null;
+  reviewers?: UserConn | null;
+  approvedBy?: UserConn | null;
   project?: { fullPath?: string } | null;
 };
 
@@ -91,7 +109,17 @@ type ActionableData = {
 type Accumulator = {
   base: Pick<
     VcsActionableMr,
-    'iid' | 'project' | 'webUrl' | 'title' | 'updatedAt' | 'draft' | 'state'
+    | 'iid'
+    | 'project'
+    | 'webUrl'
+    | 'title'
+    | 'updatedAt'
+    | 'draft'
+    | 'state'
+    | 'description'
+    | 'author'
+    | 'reviewers'
+    | 'approvedBy'
   >;
   role: VcsActionableRole | null;
   events: Set<VcsActionableEvent>;
@@ -145,6 +173,11 @@ export class VcsGitlabInbox extends VcsClientInbox {
             // pending todo GitLab never auto-clears) can be filtered downstream.
             // The connection-based sources are already `state: opened`.
             state: (node.state as VcsActionableMrState) ?? 'opened',
+            // Context for cards/header; raw fact — "did I approve" is the caller's check.
+            description: node.description ?? '',
+            author: node.author?.username ?? '',
+            reviewers: usernames(node.reviewers),
+            approvedBy: usernames(node.approvedBy),
           },
           role: null,
           events: new Set(),

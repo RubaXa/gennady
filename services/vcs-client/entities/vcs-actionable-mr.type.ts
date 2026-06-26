@@ -43,6 +43,14 @@ export type VcsActionableMr = {
   webUrl: string;
   /** @purpose Merge request title */
   title: string;
+  /** @purpose MR description (may be long/empty); consumer truncates for cards */
+  description: string;
+  /** @purpose Author's username, e.g. `i.petrov`; empty when unknown */
+  author: string;
+  /** @purpose Reviewer usernames assigned to the MR (for context cards) */
+  reviewers: string[];
+  /** @purpose Usernames who approved the MR | @invariant "Did I approve" = caller checks own login here */
+  approvedBy: string[];
   /** @purpose ISO timestamp of the last update | @invariant Used as polling cursor and staleness basis */
   updatedAt: string;
   /** @purpose Whether the MR is a draft | @invariant Filtering left to the caller */
