@@ -109,7 +109,12 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | **pipeline**          |                                                                                                                                                                                                                                                          |
 | FR-48                 | `VcsClientMergeRequests.getPipeline(query: { project, iid }) → Promise<VcsPipeline>` — порт                                                                                                                                                              |
 | FR-49                 | `VcsGitlabMergeRequests.getPipeline` — GraphQL `mergeRequest.headPipeline { status jobs { nodes { name status } } }`                                                                                                                                     |
-| FR-50                 | `VcsPipeline` — value object: `{ status: string, jobs: { name: string, status: string }[] }`                                                                                                                                                             |
+| FR-50            | `VcsPipelineStatus` — value object (переименован из `VcsPipeline`): `{ status: string, jobs: { name: string, status: string }[] }` |
+| **job management** |                                                                                                                                                                                                                                                          |
+| FR-51            | `VcsClientPipeline` — опциональный порт на `VcsClient`: `getJob`, `playJob`, `cancelJob`, `getJobLog`                                                                                                                         |
+| FR-52            | `VcsGitlabJobAdapter` — REST-адаптер: `GET /projects/:id/jobs/:job_id`, `POST .../play`, `POST .../cancel`, `GET .../trace`                                                                                              |
+| FR-53            | `VcsJob` VO: `{ id: string, name: string, status: string, stage: string, ref: string, webUrl: string }`                                                                                                                                                |
+| FR-54            | `VcsJobQuery` VO: `{ project: string, jobId: string }`                                                                                                                                                                                                  |
 
 ### 4.2 Non-Functional Constraints
 

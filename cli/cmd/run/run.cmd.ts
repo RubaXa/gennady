@@ -61,6 +61,7 @@ function parseRunArgs(argv: string[]): {
  * @purpose Entry point for `gennady run`: validates task, invokes run(), prints result or error.
  * @invariant Empty/absent task → exit 1 without calling run().
  * @invariant AgentRunError → stderr `✗ <e.hint>   [<e.code>]`, exit 1. e.message is NOT printed.
+ * @invariant Non-AgentRunError → stderr `✗ Unexpected error: ...`, exit 1.
  * @invariant RunResult.text → stdout, exit 0.
  * @param argv Raw process.argv array.
  * @throws Never — all errors are caught and reported via stderr + process.exit.
@@ -89,21 +90,21 @@ export async function runCommand(argv: string[]): Promise<void> {
     ...(opts.timeout !== undefined && { timeout: opts.timeout }),
   };
 
-  // #region START_INVOKE_RUN — invariant: AgentRunError is the only typed failure path; all others re-throw
+  // #region START_INVOKE_RUN — invariant: AgentRunError is the only typed failure path; process.exit is outside try so the test mock throw doesn't leak into the catch
+  let exitCode = 1;
   try {
     logger.debug('[RunCommand#runCommand] [parsing → running]');
     const result = await run(runOptions);
     logger.debug(`[RunCommand#runCommand] [running → done] engine=${result.engine}`);
     process.stdout.write(result.text + '\n');
-    process.exit(0);
+    exitCode = 0;
   } catch (cause) {
     if (cause instanceof AgentRunError) {
       process.stderr.write(`✗ ${cause.hint}   [${cause.code}]\n`);
-      process.exit(1);
+    } else {
+      process.stderr.write(`✗ Unexpected error: ${String(cause)}\n`);
     }
-    // failure mode: unexpected error — log and exit; @throws contract says never throw
-    process.stderr.write(`✗ Unexpected error: ${String(cause)}\n`);
-    process.exit(1);
   }
+  process.exit(exitCode);
   // #endregion END_INVOKE_RUN
 }

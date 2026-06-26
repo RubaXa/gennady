@@ -39,7 +39,9 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsUpdateNoteQuery`          | Value Object    | Параметры редактирования заметки: project, iid, noteId, body              |
 | `VcsDeleteNoteQuery`          | Value Object    | Параметры удаления заметки: project, iid, noteId, discussionId?           |
 | `VcsPipelineQuery`            | Value Object    | Параметры запроса пайплайна: project, iid                                 |
-| `VcsPipeline`                 | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}]                         |
+| `VcsPipelineStatus`           | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}] (переименован из `VcsPipeline`) |
+| `VcsClientPipeline`           | Port (optional) | Абстракция управления джобами пайплайна                                       |
+| `VcsJob`                      | Value Object    | Джоба пайплайна: id, name, status, stage, ref, webUrl                        |
 | `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                            |
 | `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                          |
@@ -76,7 +78,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 
 - **Type:** Port
 - **Purpose:** Абстрактный VCS-клиент — точка входа для merge requests, discussions, repository files.
-- **Public Properties:** `MergeRequests: VcsClientMergeRequests`, `MergeDiscussions?: VcsClientMergeDiscussions`, `RepositoryFiles?: VcsClientRepositoryFiles`
+- **Public Properties:** `MergeRequests: VcsClientMergeRequests`, `MergeDiscussions?: VcsClientMergeDiscussions`, `RepositoryFiles?: VcsClientRepositoryFiles`, `Pipeline?: VcsClientPipeline`
 
 ### `VcsClientMergeRequests`
 
@@ -117,11 +119,21 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `getActionable() → Promise<VcsActionableMr[]>` — нормализованные MR, требующие реакции
   - `markTodoDone(query: { todoId: string }) → Promise<void>` — закрыть один todo (GraphQL `todoMarkDone`)
 
-### `VcsPipeline`
+### `VcsPipelineStatus`
 
 - **Type:** Value Object
 - **Purpose:** Результат запроса статуса CI-пайплайна MR.
 - **Public Properties:** `status: string`, `jobs: { name: string, status: string }[]`
+
+### `VcsClientPipeline`
+
+- **Type:** Port (optional)
+- **Purpose:** Управление джобами CI-пайплайна GitLab.
+- **Public Operations:**
+  - `getJob(query) → Promise<VcsJob>` — статус джобы
+  - `playJob(query) → Promise<VcsJob>` — запуск/retry джобы
+  - `cancelJob(query) → Promise<VcsJob>` — отмена джобы
+  - `getJobLog(query) → Promise<string>` — сырой лог (trace)
 
 ### `parseVcsUrl`
 

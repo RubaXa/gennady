@@ -1515,7 +1515,25 @@ $ gennady vcs-approve                                          # merge conflict
 | -------- | --------------------------------------------------------------------------------------------------- |
 | FR-VP-01 | `gennady vcs-pipeline --ref <ref>` — статус пайплайна + список упавших джобов через `getPipeline()` |
 | FR-VP-02 | Нет пайплайна → «No pipeline found for this MR», exit 0                                             |
-| FR-VP-03 | Использует `vcs-context-resolver`; `--host`; `--dry-run`                                            |
+| FR-VP-03 | Использует `vcs-context-resolver`; `--host`; `--dry-run` |
+
+### 4.1.20 vcs-job Functional Requirements
+
+| ID | Требование |
+|----|-----------|
+| FR-VJ-01 | `gennady vcs-job --ref <ref> --job <name\|id> [--action status\|play\|cancel\|retry]` |
+| FR-VJ-02 | `--action` по умолчанию `status` |
+| FR-VJ-03 | `--action status` → статус джобы (name, status, stage, ref, webUrl) |
+| FR-VJ-04 | `--action play` → запуск/retry джобы; `cancel` → отмена |
+| FR-VJ-05 | Использует `vcs-context-resolver`; `--host`; `--dry-run` |
+
+### 4.1.21 vcs-job-log Functional Requirements
+
+| ID | Требование |
+|----|-----------|
+| FR-VL-01 | `gennady vcs-job-log --ref <ref> --job <name\|id>` |
+| FR-VL-02 | Печатает сырой лог (trace) джобы в stdout |
+| FR-VL-03 | Использует `vcs-context-resolver`; `--host` |
 
 ### 4.2 Non-Functional Constraints
 
