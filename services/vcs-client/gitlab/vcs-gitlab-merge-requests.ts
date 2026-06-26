@@ -1,20 +1,25 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29, TSK-67, TSK-73
+// @tasks: TSK-29, TSK-67, TSK-73, TSK-82
 
 import {
   VcsClientMergeRequests,
   type VcsMergeRequestByIidQuery,
   type VcsMergeRequestsQuery,
+  type VcsPipelineQuery,
 } from '../abstract/vcs-client-merge-requests.ts';
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
 import { logger } from '#logger';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
+
+/** @purpose GraphQL request adapter: runs a query, returns the `data` payload. */
+type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
 
 /** @purpose Machine-readable error codes returned by GitLab MR approve endpoint. */
 export type VcsApproveErrorCode = 'ALREADY_APPROVED' | 'SELF_APPROVE_FORBIDDEN' | 'CANNOT_APPROVE';
@@ -48,13 +53,18 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   /** @purpose Bound HTTP request function injected for GitLab API calls */
   protected _request: RequestFn;
 
+  /** @purpose Bound GraphQL request function for pipeline queries */
+  protected _graphql: GraphqlRequestFn | undefined;
+
   /**
-   * @purpose Wire the HTTP request adapter for GitLab merge request endpoints.
+   * @purpose Wire the HTTP and optional GraphQL request adapters for GitLab merge request endpoints.
    * @param request Authenticated HTTP request function targeting GitLab API.
+   * @param [graphql] Optional authenticated GraphQL request function for pipeline queries.
    */
-  constructor(request: RequestFn) {
+  constructor(request: RequestFn, graphql?: GraphqlRequestFn) {
     super();
     this._request = request;
+    this._graphql = graphql;
   }
 
   /**
@@ -231,5 +241,69 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
       throw cause;
     }
     // #endregion END_UNAPPROVE_API_CALL
+  }
+
+  /**
+   * @param query Target project and MR IID.
+   * @returns Pipeline status and job list; null when no pipeline exists.
+   * @sideEffect Network: GraphQL POST /api/graphql (headPipeline)
+   * @see {VcsClientMergeRequests#getPipeline} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  async getPipeline(query: VcsPipelineQuery): Promise<VcsPipeline> {
+    logger.debug(
+      `[VcsGitlabMergeRequests#getPipeline] [idle → querying] ${query.project}!${query.iid}`
+    );
+
+    if (!this._graphql) {
+      throw new Error('[VcsGitlabMergeRequests#getPipeline] GraphQL transport not configured');
+    }
+
+    const graphqlQuery = `
+      query($project: ID!, $iid: String!) {
+        project(fullPath: $project) {
+          mergeRequest(iid: $iid) {
+            headPipeline {
+              status
+              jobs {
+                nodes {
+                  name
+                  status
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    // #region START_PIPELINE_GRAPHQL_AND_NORMALIZE — invariant: headPipeline may be null when no pipeline exists; empty result returned
+    const data = (await this._graphql(graphqlQuery, {
+      project: query.project,
+      iid: String(query.iid),
+    })) as {
+      project?: {
+        mergeRequest?: {
+          headPipeline?: {
+            status?: string;
+            jobs?: { nodes?: { name?: string; status?: string }[] };
+          } | null;
+        } | null;
+      } | null;
+    };
+
+    const headPipeline = data?.project?.mergeRequest?.headPipeline;
+    const status = headPipeline?.status ?? '';
+    const jobs = (headPipeline?.jobs?.nodes ?? [])
+      .filter((n) => n != null)
+      .map((n) => ({
+        name: n.name ?? '',
+        status: n.status ?? '',
+      }));
+
+    logger.info(
+      `[VcsGitlabMergeRequests#getPipeline] [querying → retrieved] status=${status || 'none'} jobs=${jobs.length}`
+    );
+    return { status, jobs };
+    // #endregion END_PIPELINE_GRAPHQL_AND_NORMALIZE
   }
 }

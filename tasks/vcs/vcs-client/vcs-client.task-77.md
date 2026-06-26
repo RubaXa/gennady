@@ -48,11 +48,12 @@
 - [x] 2026-06-26T18:03:01Z ver npm run test → pass exit=0
 - [x] 2026-06-26T18:03:01Z ver npm run format:check → pass exit=0
 - [x] 2026-06-26T18:03:01Z DONE
-**Handoff →** artifacts: [services/vcs-client/entities/vcs-update-note-query.type.ts, services/vcs-client/entities/vcs-delete-note-query.type.ts, services/vcs-client/abstract/vcs-client-merge-discussions.ts, services/vcs-client/gitlab/vcs-gitlab-merge-discussions.ts, cli/cmd/review/_core/xml/build-review-artifact.xml.ts]; decisions: [guard=_verifyNoteOwnership via GET note + GET /user]; open: []
+      **Handoff →** artifacts: [services/vcs-client/entities/vcs-update-note-query.type.ts, services/vcs-client/entities/vcs-delete-note-query.type.ts, services/vcs-client/abstract/vcs-client-merge-discussions.ts, services/vcs-client/gitlab/vcs-gitlab-merge-discussions.ts, cli/cmd/review/_core/xml/build-review-artifact.xml.ts]; decisions: [guard=_verifyNoteOwnership via GET note + GET /user]; open: []
 
 #### P2
+
 - [x] 2026-06-26T18:25:51Z ver npm run type-check → pass exit=0
 - [x] 2026-06-26T18:25:51Z ver npm run test → pass exit=0
 - [x] 2026-06-26T18:25:51Z ver npm run format:check → pass exit=0
 - [x] 2026-06-26T18:25:51Z DONE
-**Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-discussions.edit.test.ts]; decisions: []; open: []
+      **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-discussions.edit.test.ts]; decisions: []; open: []

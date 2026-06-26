@@ -1,13 +1,17 @@
 // @file: GitHub-specific implementation of pull request file operations.
 // @consumers: VcsGithubClient
-// @tasks: TSK-30, TSK-67, TSK-73
+// @tasks: TSK-30, TSK-67, TSK-73, TSK-82
 
-import { VcsClientMergeRequests } from '../abstract/vcs-client-merge-requests.ts';
+import {
+  VcsClientMergeRequests,
+  type VcsPipelineQuery,
+} from '../abstract/vcs-client-merge-requests.ts';
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
@@ -71,6 +75,16 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
    */
   async unapprove(_query: VcsMergeRequestApproveQuery): Promise<void> {
     throw new Error('GitHub unapprove not implemented');
+  }
+
+  /**
+   * @purpose GitHub getPipeline not implemented — deferred per scope spec.
+   * @param _query Parameters: { project, iid }.
+   * @throws Error that the operation is not implemented.
+   * @returns Never resolves — always throws Error.
+   */
+  async getPipeline(_query: VcsPipelineQuery): Promise<VcsPipeline> {
+    throw new Error('GitHub getPipeline not implemented');
   }
 
   /**

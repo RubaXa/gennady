@@ -1,12 +1,13 @@
 // @file: Contract surface for merge request / pull request operations.
 // @consumers: VcsClient
-// @tasks: TSK-28, TSK-67
+// @tasks: TSK-28, TSK-67, TSK-82
 
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import type { VcsPipeline } from '../entities/vcs-pipeline.type.ts';
 
 /**
  * @purpose Parameters for querying Merge Request list: project, branch, state, pagination.
@@ -30,6 +31,17 @@ export type VcsMergeRequestsQuery = {
  * @consumer VcsClientMergeRequests
  */
 export type VcsMergeRequestByIidQuery = {
+  /** @purpose GitLab project path or ID */
+  project: string;
+  /** @purpose Merge request internal ID */
+  iid: string | number;
+};
+
+/**
+ * @purpose Parameters for querying an MR pipeline status.
+ * @consumer VcsClientMergeRequests
+ */
+export type VcsPipelineQuery = {
   /** @purpose GitLab project path or ID */
   project: string;
   /** @purpose Merge request internal ID */
@@ -90,4 +102,12 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: POST /projects/:id/merge_requests/:iid/unapprove
    */
   abstract unapprove(query: VcsMergeRequestApproveQuery): Promise<void>;
+
+  /**
+   * @purpose Get the pipeline status and jobs for an MR.
+   * @param query Parameters: { project, iid }.
+   * @returns Pipeline with overall status and job list.
+   * @sideEffect Network: GraphQL headPipeline query (GitLab)
+   */
+  abstract getPipeline(query: VcsPipelineQuery): Promise<VcsPipeline>;
 }
