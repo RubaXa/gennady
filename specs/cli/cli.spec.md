@@ -1424,6 +1424,13 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-VR-08 | `resolve` отсутствует → поведение без изменений                                                                                                                                                                                                                   |
 | FR-VR-09 | `--dry-run` для resolve: печатает `Would resolve: discussionId=<id>`; для reopen: `Would reopen: discussionId=<id>`; затем `[DRY-RUN] no request sent`. Для addNote: `Would post note to discussion: <id>`                                                        |
 | FR-VR-10 | Массив из N элементов обрабатывается последовательно; ошибка на одном не прерывает остальные. Exit code: 0 если все элементы успешны или массив пуст; 1 если ≥1 элемент упал                                                                                      |
+| FR-VR-11 | stdin JSON: `{ noteId, body }` → правка своей заметки через `updateNote`. `noteId` из `review-issues` артефакта                                                                                                                                                   |
+| FR-VR-12 | stdin JSON: `{ noteId, delete: true }` → удаление своей заметки через `deleteNote`                                                                                                                                                                                 |
+| FR-VR-13 | Guard: чужая заметка → ошибка «Cannot edit/delete someone else's note», exit 1                                                                                                                                                                                      |
+| FR-VR-14 | `review-issues` артефакт: каждая реплика содержит `noteId` (новый атрибут в XML)                                                                                                                                                                                    |
+| FR-VR-15 | line-item: поле `suggestion: string` и `suggestionRange?: { above: number, below: number }` (default `0/0`)                                                                                                                                                          |
+| FR-VR-16 | Команда собирает ```` ```suggestion:-A+B\n<suggestion>\n``` ```` блок и добавляет в `body` перед постингом. Диапазон: `A = above`, `B = below`                                                                                                                       |
+| FR-VR-17 | `--dry-run` показывает итоговый body с suggestion-блоком                                                                                                                                                                                                            |
 
 ### 4.1.14 vcs-context-resolver (shared)
 
@@ -1459,7 +1466,10 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-VA-05  | Self-approve → GitLab API возвращает 403 с сообщением о запрете self-approve. Дифференциация: если тело ответа содержит "its author" / "author of this merge request" → сообщение `Self-approval is not permitted`, exit 1; иначе — общая ошибка 403 по FR-VA-06         |
 | FR-VA-06  | Прочие ошибки API (401, 403 general, 404, 409 merge conflict) → сообщение `✖ GitLab API error [<status>]: <message>`, exit 1                                                                                                                                             |
 | FR-VA-07  | Успех → `✓ MR !<iid> approved: <web_url>` в stdout, exit 0                                                                                                                                                                                                               |
-| FR-VA-08  | CLI вызывает `VcsClientMergeRequests.approve(query)` из `services/vcs-client`; порт, реализация и value objects — см. `vcs.spec.md`                                                                                                                                      |
+| FR-VA-08 | CLI вызывает `VcsClientMergeRequests.approve(query)` из `services/vcs-client`; порт, реализация и value objects — см. `vcs.spec.md` |
+| FR-VA-09 | `--revoke` / `--unapprove` — отзывает свой approve через `unapprove(query)` |
+| FR-VA-10 | Успех → `✓ MR !<iid> unapproved`, exit 0 |
+| FR-VA-11 | `--dry-run` → `Would unapprove: <project>!<iid>  host=<host>` |
 
 ### 4.1.16 Рефакторинг существующих команд на vcs-context-resolver
 
@@ -1477,6 +1487,31 @@ $ gennady vcs-approve                                          # merge conflict
 - GIVEN `git remote origin.url` = `git@gitlab.company.com:group/repo.git` (SSH) WHEN resolver извлекает THEN `host=gitlab.company.com`, `project=group/repo`
 
 > **Примечание:** FR-RI-01, FR-WT-01, FR-VR-03 в таблицах выше описывают **целевое** (desired) состояние после рефакторинга. До рефакторинга команды используют inline-логику. Миграция описана в D-017.
+
+### 4.1.17 vcs-todo Functional Requirements
+
+| ID       | Требование |
+| -------- | ---------- |
+| FR-TD-01 | `gennady vcs-todo --done <ref>` — получает `todoIds` из `getActionable` → вызывает `Inbox.markTodoDone()` по каждому |
+| FR-TD-02 | `--id <todoId>` — закрыть конкретный todo напрямую |
+| FR-TD-03 | Нет todo → info-сообщение «No pending todos for this MR», exit 0 |
+| FR-TD-04 | Использует `vcs-context-resolver`; `--dry-run` (`Would mark todo done: <todoId>`); `--host` |
+
+### 4.1.18 vcs-diff Functional Requirements
+
+| ID       | Требование |
+| -------- | ---------- |
+| FR-VD-01 | `gennady vcs-diff --ref <ref>` — печатает изменения MR через `getChanges`: список файлов (path, status, additions, deletions) |
+| FR-VD-02 | `--path <file>` — фильтр по файлу; показывает через `getFileContent` содержимое |
+| FR-VD-03 | Использует `vcs-context-resolver`; `--host` |
+
+### 4.1.19 vcs-pipeline Functional Requirements
+
+| ID       | Требование |
+| -------- | ---------- |
+| FR-VP-01 | `gennady vcs-pipeline --ref <ref>` — статус пайплайна + список упавших джобов через `getPipeline()` |
+| FR-VP-02 | Нет пайплайна → «No pipeline found for this MR», exit 0 |
+| FR-VP-03 | Использует `vcs-context-resolver`; `--host` |
 
 ### 4.2 Non-Functional Constraints
 

@@ -14,10 +14,12 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsUrl`                      | Value Object    | Результат парсинга VCS URL: provider, host, repository, iid               |
 | `VcsMergeRequestChanges`      | Value Object    | Изменённые файлы MR/PR: path, status, ref, additions, deletions           |
 | `VcsFileContent`              | Value Object    | Содержимое файла из репозитория: path, content, encoding                  |
+| `VcsActionableMr`             | Value Object    | MR требующий реакции: role, events, webUrl, todoIds                       |
 | `VcsClient`                   | Port            | Абстрактный VCS-клиент с опциональными портами                            |
 | `VcsClientMergeRequests`      | Port            | Абстракция работы с Merge Requests / Pull Requests                        |
 | `VcsClientMergeDiscussions`   | Port (optional) | Абстракция работы с Discussions                                           |
 | `VcsClientRepositoryFiles`    | Port            | Абстракция работы с файлами репозитория                                   |
+| `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                             |
 | `VcsGitlabClient`             | Adapter         | GitLab-реализация VcsClient                                               |
 | `VcsGitlabClientOptions`      | Value Object    | Опции подключения: baseUrl, token                                         |
 | `VcsGitlabMergeRequests`      | Adapter         | GitLab-реализация MR API (включая getChanges)                             |
@@ -33,6 +35,10 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage? |
 | `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                     |
 | `VcsResolveDiscussionQuery`   | Value Object    | Параметры resolve discussion: project, iid, discussionId, resolved        |
+| `VcsUpdateNoteQuery`          | Value Object    | Параметры редактирования заметки: project, iid, noteId, body              |
+| `VcsDeleteNoteQuery`          | Value Object    | Параметры удаления заметки: project, iid, noteId, discussionId?           |
+| `VcsPipelineQuery`            | Value Object    | Параметры запроса пайплайна: project, iid                                 |
+| `VcsPipeline`                 | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}]                         |
 | `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                            |
 | `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                          |
@@ -80,6 +86,8 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `getByIid(query) → Promise<VcsMergeRequest | null>` — MR по IID
   - `getChanges(query) → Promise<VcsMergeRequestChanges[]>` — изменённые файлы MR/PR
   - `approve(query) → Promise<void>` — approve MR (GitLab; GitHub — deferred)
+  - `unapprove(query) → Promise<void>` — отозвать approve (GitLab; GitHub — deferred; переиспользует `VcsMergeRequestApproveQuery`)
+  - `getPipeline(query) → Promise<VcsPipeline>` — статус CI-пайплайна
 
 ### `VcsClientMergeDiscussions`
 
@@ -90,6 +98,8 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `getAll(query) → Promise<VcsDiscussion[]>` — все дискуссии
   - `addNote(query) → Promise<void>` — добавить заметку
   - `resolveDiscussion(query) → Promise<void>` — резолв/реопен дискуссии (GitLab: `PUT /discussions/:id?resolved=true\|false`)
+  - `updateNote(query) → Promise<void>` — редактировать свою заметку (PUT /notes/:note_id)
+  - `deleteNote(query) → Promise<void>` — удалить свою заметку (DELETE /notes/:note_id)
 
 ### `VcsClientRepositoryFiles`
 
@@ -97,6 +107,20 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 - **Purpose:** Абстракция работы с содержимым файлов репозитория.
 - **Public Operations:**
   - `getFileContent(query) → Promise<VcsFileContent | null>` — содержимое файла (null если файл не найден)
+
+### `VcsClientInbox`
+
+- **Type:** Port (optional)
+- **Purpose:** Абстракция работы с actionable-инбоксом GitLab.
+- **Public Operations:**
+  - `getActionable() → Promise<VcsActionableMr[]>` — нормализованные MR, требующие реакции
+  - `markTodoDone(query: { todoId: string }) → Promise<void>` — закрыть один todo (GraphQL `todoMarkDone`)
+
+### `VcsPipeline`
+
+- **Type:** Value Object
+- **Purpose:** Результат запроса статуса CI-пайплайна MR.
+- **Public Properties:** `status: string`, `jobs: { name: string, status: string }[]`
 
 ### `parseVcsUrl`
 
@@ -116,6 +140,9 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestChangesQuery` | `repository: string`, `iid: string\|number`, `page?: number`, `perPage?: number`                  |
 | `VcsMergeRequestApproveQuery` | `repository: string`, `iid: string\|number`                                                       |
 | `VcsResolveDiscussionQuery`   | `project: string`, `iid: string\|number`, `discussionId: string`, `resolved: boolean`             |
+| `VcsUpdateNoteQuery`          | `project: string`, `iid: string\|number`, `noteId: string`, `body: string`                        |
+| `VcsDeleteNoteQuery`          | `project: string`, `iid: string\|number`, `noteId: string`, `discussionId?: string`               |
+| `VcsPipelineQuery`            | `project: string`, `iid: string\|number`                                                          |
 | `VcsFileContentQuery`         | `repository: string`, `path: string`, `ref: string`                                               |
 
 ## 6. File Structure
