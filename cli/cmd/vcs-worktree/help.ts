@@ -20,7 +20,9 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --vcs-source=<host>  GitLab host (else from origin)');
   console.info('  --repos-base=<dir>   Base dir to scan for clones (default ~/Developer)');
-  console.info('  --state-dir=<dir>    State location (worktrees/clones/repos.json), default ~/.gennady');
+  console.info(
+    '  --state-dir=<dir>    State location (worktrees/clones/repos.json), default ~/.gennady'
+  );
   console.info('');
   console.info('Lifecycle: worktrees live in <state-dir>/worktrees/. Every prepare GCs stale');
   console.info('ones (older than 3h), so they cannot grow unbounded even if --cleanup is');

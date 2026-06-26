@@ -31,12 +31,16 @@ export function printHelp(): void {
   console.info(
     '  --json               Structured output (role/stage/delta/openQuestions/lastAuthor) for the widget'
   );
-  console.info('  --state-dir <dir>    State location (registry/drafts/worktrees), default ~/.gennady');
+  console.info(
+    '  --state-dir <dir>    State location (registry/drafts/worktrees), default ~/.gennady'
+  );
   console.info('');
   console.info('Marks new / ↑updated MRs vs the previous run (registry in <state-dir>).');
   console.info('');
   console.info('Environment:');
-  console.info('  GITLAB_PERSONAL_TOKEN  GitLab token (read_api scope is enough) — the only env var');
+  console.info(
+    '  GITLAB_PERSONAL_TOKEN  GitLab token (read_api scope is enough) — the only env var'
+  );
   console.info('');
   console.info('Host is auto-detected from the origin remote (override with --vcs-source).');
 }
