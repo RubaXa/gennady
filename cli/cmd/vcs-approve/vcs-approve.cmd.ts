@@ -226,11 +226,11 @@ export async function run(
   logger.debug('[run] [idle → parsing]');
 
   const args = parseArgs(rawArgs, {
-    ref: ['ref'],
-    project: ['project'],
-    iid: ['iid'],
-    branch: ['branch'],
-    host: ['host'],
+    ref: { aliases: ['ref'], takesValue: true },
+    project: { aliases: ['project'], takesValue: true },
+    iid: { aliases: ['iid'], takesValue: true },
+    branch: { aliases: ['branch'], takesValue: true },
+    host: { aliases: ['host'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 

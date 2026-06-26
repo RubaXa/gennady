@@ -3,6 +3,8 @@
 // @tasks: TSK-71
 
 import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
+import type { VcsUpdateNoteQuery } from '../entities/vcs-update-note-query.type.ts';
+import type { VcsDeleteNoteQuery } from '../entities/vcs-delete-note-query.type.ts';
 
 /**
  * @purpose Parameters for creating a note in an MR discussion: project, MR IID, discussion ID, text.
@@ -125,4 +127,22 @@ export abstract class VcsClientMergeDiscussions {
    * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/discussions/:discussion_id?resolved=true|false
    */
   abstract resolveDiscussion(query: VcsResolveDiscussionQuery): Promise<void>;
+
+  /**
+   * @purpose Edit the body of an existing discussion note. Only the note author may edit.
+   * @param query Parameters: { project, iid, noteId, body }.
+   * @returns void on success.
+   * @throws {Error} When the note belongs to a different author.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/notes/:note_id
+   */
+  abstract updateNote(query: VcsUpdateNoteQuery): Promise<void>;
+
+  /**
+   * @purpose Delete an existing discussion note. Only the note author may delete.
+   * @param query Parameters: { project, iid, noteId, discussionId? }.
+   * @returns void on success.
+   * @throws {Error} When the note belongs to a different author.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/notes/:note_id
+   */
+  abstract deleteNote(query: VcsDeleteNoteQuery): Promise<void>;
 }

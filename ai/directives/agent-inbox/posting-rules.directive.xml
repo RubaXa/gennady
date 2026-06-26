@@ -44,18 +44,23 @@
   <CommentFormat>
     <Section name="general-comment">
       A standalone discussion (new thread, not tied to a code line). JSON shape:
+      <![CDATA[
       ```json
       {"body": "🤖 …content with Mermaid diagrams…"}
       ```
+      ]]>
     </Section>
     <Section name="reply-to-thread">
       A reply inside an existing discussion thread. JSON shape:
+      <![CDATA[
       ```json
       {"discussionId": "<full GitLab discussion ID>", "body": "🤖 …reply content…"}
       ```
+      ]]>
     </Section>
     <Section name="line-comment">
       A comment attached to a specific code line in the diff. JSON shape:
+      <![CDATA[
       ```json
       {
         "body": "🤖 …comment…",
@@ -68,11 +73,30 @@
         }
       }
       ```
+      ]]>
       Line rules (per arch-interrogation diff_refs from vcs-worktree):
       - added line → `newLine`
       - removed line → `oldLine`
       - context line → BOTH `oldLine` and `newLine`
       - `oldPath` = `newPath` unless file was renamed.
+    </Section>
+    <Section name="suggestion">
+      A code suggestion to replace one line with another (TYPO probe → suggestion candidate). JSON shape is a line-comment with the body following the suggestion format:
+      <![CDATA[
+      ```json
+      {
+        "body": "🤖 suggestion:-A+B",
+        "position": {
+          "baseSha": "<base_sha>",
+          "startSha": "<start_sha>",
+          "headSha": "<head_sha>",
+          "newPath": "<file_path>",
+          "newLine": <line_number>
+        }
+      }
+      ```
+      ]]>
+      Where `-A` is the existing text to replace and `+B` is the suggested replacement. Posted as a line-comment on the relevant code line.
     </Section>
   </CommentFormat>
 
@@ -84,6 +108,7 @@
     | `reply-to-thread` | Already raised by another reviewer; I add substance | Post as reply-to-thread with the given discussionId |
     | `correction-reply` | Another reviewer's claim is wrong per AX_GROUNDED_IN_REPO | Post as reply-to-thread with correction |
     | `awaiting-my-reply` | Thread where @my_login is mentioned or my last message got a reply | Post as reply-to-thread; operator sees this separately in the report |
+    | `suggestion` | TYPO probe found a typo or style issue | Post as line-comment with ```suggestion:-A+B format (see §suggestion) |
   </CandidateTagging>
 
   <VcsReplySyntax>

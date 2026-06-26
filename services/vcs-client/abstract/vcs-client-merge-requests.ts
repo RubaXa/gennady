@@ -81,4 +81,13 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: POST /projects/:id/merge_requests/:iid/approve
    */
   abstract approve(query: VcsMergeRequestApproveQuery): Promise<void>;
+
+  /**
+   * @purpose Remove approval from a merge request.
+   * @invariant 409 Not Approved response is idempotent — treated as success.
+   * @param query Parameters: { repository, iid }.
+   * @throws {Error} When GitLab rejects the unapprove operation (e.g. 403 self-unapprove forbidden).
+   * @sideEffect Network: POST /projects/:id/merge_requests/:iid/unapprove
+   */
+  abstract unapprove(query: VcsMergeRequestApproveQuery): Promise<void>;
 }

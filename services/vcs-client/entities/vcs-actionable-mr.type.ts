@@ -1,6 +1,6 @@
 // @file: Normalized "merge request awaiting my reaction" shape for the inbox port.
 // @consumers: VcsClient
-// @tasks: N/A
+// @tasks: TSK-75
 
 /**
  * @purpose My relationship to a merge request — the axis the inbox groups by.
@@ -63,4 +63,6 @@ export type VcsActionableMr = {
   events: VcsActionableEvent[];
   /** @purpose Whether I was directly addressed in a discussion (sorts to the top) */
   directlyAddressed: boolean;
+  /** @purpose GitLab todo IDs linked to this MR from the todo source | @invariant Empty for connection-only sources (reviewRequested/authored) */
+  todoIds: string[];
 };

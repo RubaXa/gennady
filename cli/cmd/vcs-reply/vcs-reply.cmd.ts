@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72
+// @tasks: N/A, TSK-70, TSK-72, TSK-79
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
@@ -27,7 +27,39 @@ type ReplyItem = {
   position?: VcsDiscussionPosition;
   /** @purpose Resolve (true) or reopen (false) the discussion | @invariant Requires discussionId when set */
   resolve?: boolean;
+  /** @purpose Code suggestion text to embed in a ```suggestion block | @invariant Requires `position` */
+  suggestion?: string;
+  /** @purpose Range of lines for the suggestion diff context | @invariant Default { above: 0, below: 0 } */
+  suggestionRange?: { above: number; below: number };
 };
+
+/**
+ * @purpose Compose a ```suggestion:-A+B code block from suggestion text and range.
+ * @param suggestion Code suggestion text
+ * @param range Optional line range above/below the diff line
+ * @returns Markdown-fenced suggestion block
+ */
+function composeSuggestionBody(
+  suggestion: string,
+  range?: { above: number; below: number }
+): string {
+  const above = range?.above ?? 0;
+  const below = range?.below ?? 0;
+  return ['```suggestion:-', above, '+', below, '\n', suggestion, '\n```'].join('');
+}
+
+/**
+ * @purpose Resolve the final body for a ReplyItem: append suggestion block when present.
+ * @param it ReplyItem with optional suggestion
+ * @returns Final body string with suggestion block appended (or suggestion-only body)
+ */
+function resolveBody(it: ReplyItem): string {
+  if (it.suggestion !== undefined) {
+    const block = composeSuggestionBody(it.suggestion, it.suggestionRange);
+    return it.body ? `${it.body}\n${block}` : block;
+  }
+  return it.body!;
+}
 
 type MainOpts = {
   project?: string;
@@ -114,16 +146,22 @@ export async function main(opts: MainOpts = {}): Promise<{
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
+  const invalidSuggestion = payload.find((x) => x && x.suggestion !== undefined && !x.position);
+  if (invalidSuggestion) {
+    console.error(style.redBright.bold('✖ Ошибка:'), 'suggestion требует position.');
+    return { ok: false, sent: 0, failed: 0, code: 1 };
+  }
+
   const items = payload.filter((x) => {
     if (!x) return false;
     if (x.resolve !== undefined) {
       return typeof x.discussionId === 'string' && x.discussionId.length > 0;
     }
-    return (
-      typeof x.body === 'string' &&
-      x.body.length > 0 &&
-      (x.discussionId === undefined || typeof x.discussionId === 'string')
-    );
+    const hasBody = typeof x.body === 'string' && x.body.length > 0;
+    const hasSuggestion =
+      typeof x.suggestion === 'string' && x.suggestion.length > 0 && !!x.position;
+    const validDiscussionId = x.discussionId === undefined || typeof x.discussionId === 'string';
+    return (hasBody || hasSuggestion) && validDiscussionId;
   });
 
   if (items.length === 0) {
@@ -139,7 +177,9 @@ export async function main(opts: MainOpts = {}): Promise<{
   const host: string =
     vcsContext?.host ??
     opts.host ??
-    ((parseArgs(process.argv, { 'vcs-source': ['vcs-source'] })['vcs-source'] as string) ||
+    ((parseArgs(process.argv, { 'vcs-source': { aliases: ['vcs-source'], takesValue: true } })[
+      'vcs-source'
+    ] as string) ||
       undefined) ??
     '';
   const token = opts.token ?? vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
@@ -198,7 +238,7 @@ export async function main(opts: MainOpts = {}): Promise<{
       if (it.resolve === true) {
         if (it.body) {
           console.info(
-            `${style.blue('[DRY]')} ${style.gray(`reply:${tag}`)} → ${it.body.slice(0, 80)}`
+            `${style.blue('[DRY]')} ${style.gray(`reply:${tag}`)} → ${resolveBody(it).slice(0, 80)}`
           );
         }
         console.info(
@@ -210,7 +250,7 @@ export async function main(opts: MainOpts = {}): Promise<{
         );
       } else {
         console.info(
-          `${style.blue('[DRY]')} ${style.gray(`${kindOf(it)}:${tag}`)} → ${it.body!.slice(0, 80)}`
+          `${style.blue('[DRY]')} ${style.gray(`${kindOf(it)}:${tag}`)} → ${resolveBody(it).slice(0, 80)}`
         );
       }
       // #endregion END_DRY_RUN_RESOLVE
@@ -271,13 +311,13 @@ export async function main(opts: MainOpts = {}): Promise<{
           project,
           iid: String(iid),
           discussionId: it.discussionId,
-          body: it.body!,
+          body: resolveBody(it),
         });
       } else {
         await vcs!.MergeDiscussions.createDiscussion({
           project,
           iid: String(iid),
-          body: it.body!,
+          body: resolveBody(it),
           position: it.position,
         });
       }
@@ -322,10 +362,10 @@ export async function main(opts: MainOpts = {}): Promise<{
 }
 
 const args = parseArgs(process.argv, {
-  project: ['project'],
-  iid: ['iid'],
+  project: { aliases: ['project'], takesValue: true },
+  iid: { aliases: ['iid'], takesValue: true },
   'dry-run': ['dry-run', 'dry'],
-  'vcs-source': ['vcs-source'],
+  'vcs-source': { aliases: ['vcs-source'], takesValue: true },
 });
 
 const vcsCliArgs: VcsCliArgs = {

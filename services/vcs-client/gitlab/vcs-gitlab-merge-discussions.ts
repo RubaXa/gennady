@@ -9,6 +9,8 @@ import {
   type VcsDiscussionsListQuery,
 } from '../abstract/vcs-client-merge-discussions.ts';
 import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
+import type { VcsUpdateNoteQuery } from '../entities/vcs-update-note-query.type.ts';
+import type { VcsDeleteNoteQuery } from '../entities/vcs-delete-note-query.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
@@ -162,5 +164,70 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
       `/projects/${projectId}/merge_requests/${iid}/discussions/${discussionId}?resolved=${query.resolved}`,
       { method: 'PUT' }
     );
+  }
+
+  /**
+   * @purpose Verify the current authenticated user is the note author; throw otherwise.
+   * @param project Target project path.
+   * @param iid MR internal ID.
+   * @param noteId Target note ID.
+   * @returns void on success.
+   * @sideEffect Network: GET /projects/:id/merge_requests/:iid/notes/:note_id + GET /user
+   */
+  protected async _verifyNoteOwnership(
+    project: string,
+    iid: string,
+    noteId: string
+  ): Promise<void> {
+    const note = (await this._request(
+      `/projects/${encodeURIComponent(project)}/merge_requests/${iid}/notes/${noteId}`
+    )) as { author?: { username?: string } };
+    const currentUser = (await this._request('/user')) as { username?: string };
+
+    if (note.author?.username !== currentUser.username) {
+      throw new Error(
+        `[VcsGitlabMergeDiscussions#_verifyNoteOwnership] Cannot modify another user's note`
+      );
+    }
+  }
+
+  /**
+   * @param query Target project, MR, note, and new body.
+   * @throws {Error} When the note belongs to a different author.
+   * @returns void on success.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/notes/:note_id
+   * @see {VcsClientMergeDiscussions#updateNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async updateNote(query: VcsUpdateNoteQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const noteId = encodeURIComponent(String(query.noteId));
+
+    await this._verifyNoteOwnership(query.project, String(query.iid), String(query.noteId));
+
+    await this._request(`/projects/${projectId}/merge_requests/${iid}/notes/${noteId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: query.body }),
+    });
+  }
+
+  /**
+   * @param query Target project, MR, and note.
+   * @throws {Error} When the note belongs to a different author.
+   * @returns void on success.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/notes/:note_id
+   * @see {VcsClientMergeDiscussions#deleteNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async deleteNote(query: VcsDeleteNoteQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const noteId = encodeURIComponent(String(query.noteId));
+
+    await this._verifyNoteOwnership(query.project, String(query.iid), String(query.noteId));
+
+    await this._request(`/projects/${projectId}/merge_requests/${iid}/notes/${noteId}`, {
+      method: 'DELETE',
+    });
   }
 }

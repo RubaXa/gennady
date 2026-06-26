@@ -119,6 +119,7 @@ export function createReviewArtifactXmlNode(
             tag,
             attrs: {
               uid: note.author?.username ?? '',
+              noteId: String(note.id ?? ''),
             },
             children: { cdata: note.body ?? '' },
           } as XmlNode;

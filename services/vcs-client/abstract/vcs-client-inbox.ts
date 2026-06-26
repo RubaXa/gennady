@@ -1,6 +1,6 @@
 // @file: Contract surface for the actionable inbox — MRs awaiting the user's reaction.
 // @consumers: VcsClient
-// @tasks: N/A
+// @tasks: TSK-75
 
 import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
 
@@ -20,4 +20,12 @@ export abstract class VcsClientInbox {
    * @sideEffect Network: POST /api/graphql (currentUser todos + MR connections)
    */
   abstract getActionable(): Promise<VcsActionableMr[]>;
+
+  /**
+   * @purpose Mark a single todo as done.
+   * @param query Identifies the todo to mark as completed.
+   * @returns Promise that resolves when the operation completes.
+   * @sideEffect Network: POST /api/graphql (todoMarkDone mutation)
+   */
+  abstract markTodoDone(query: { todoId: string }): Promise<void>;
 }

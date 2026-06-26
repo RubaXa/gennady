@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29, TSK-67
+// @tasks: TSK-29, TSK-67, TSK-73
 
 import {
   VcsClientMergeRequests,
@@ -195,5 +195,41 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
       throw cause;
     }
     // #endregion END_APPROVE_API_CALL
+  }
+
+  /**
+   * @param query Target repository and MR IID.
+   * @throws {Error} When GitLab rejects the unapprove operation (e.g. 403 self-unapprove forbidden).
+   * @returns Resolves on successful unapprove; resolves silently on 409 Not Approved.
+   * @sideEffect Network: POST /projects/:id/merge_requests/:iid/unapprove
+   * @see {VcsClientMergeRequests#unapprove} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  async unapprove(query: VcsMergeRequestApproveQuery): Promise<void> {
+    const repoId = encodeURIComponent(query.repository);
+    const iid = encodeURIComponent(String(query.iid));
+
+    // #region START_UNAPPROVE_API_CALL — invariant: 409 Not Approved is idempotent (informs caller, returns void); 403 is a domain error
+    try {
+      await this._request(`/projects/${repoId}/merge_requests/${iid}/unapprove`, {
+        method: 'POST',
+      });
+    } catch (cause) {
+      const message = (cause as Error).message ?? '';
+
+      // #region START_HANDLE_IDEMPOTENT_409
+      // purpose: 409 Not Approved is not a failure — the desired state (unapproved) is already achieved
+      if (message.includes('409')) {
+        logger.info(
+          `[VcsGitlabMergeRequests#unapprove] [unapproving → idempotent] MR not approved`
+        );
+        return;
+      }
+      // #endregion END_HANDLE_IDEMPOTENT_409
+
+      logger.error(`[VcsGitlabMergeRequests#unapprove] [unapproving → failed]`, { cause });
+
+      throw cause;
+    }
+    // #endregion END_UNAPPROVE_API_CALL
   }
 }

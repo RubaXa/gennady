@@ -1,6 +1,6 @@
 // @file: GitLab GraphQL implementation of the actionable inbox port.
 // @consumers: VcsGitlabClient
-// @tasks: N/A
+// @tasks: TSK-75
 
 import { VcsClientInbox } from '../abstract/vcs-client-inbox.ts';
 import type {
@@ -30,6 +30,7 @@ const ACTIONABLE_QUERY = `{
   currentUser {
     todos(state: [pending], type: [MERGEREQUEST]) {
       nodes {
+        id
         action
         target {
           __typename
@@ -93,6 +94,7 @@ type MrNode = {
 };
 
 type TodoNode = {
+  id?: string;
   action?: string;
   target?: ({ __typename?: string } & MrNode) | null;
 };
@@ -124,6 +126,7 @@ type Accumulator = {
   role: VcsActionableRole | null;
   events: Set<VcsActionableEvent>;
   directlyAddressed: boolean;
+  todoIds: string[];
 };
 
 /**
@@ -182,6 +185,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
           role: null,
           events: new Set(),
           directlyAddressed: false,
+          todoIds: [],
         };
         merged.set(node.webUrl, entry);
       }
@@ -196,6 +200,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
       if (todo?.target?.__typename !== 'MergeRequest') continue;
       const entry = ensure(todo.target);
       if (!entry) continue;
+      if (todo.id) entry.todoIds.push(todo.id);
       const action = todo.action ?? '';
       const role = ACTION_ROLE[action];
       if (role) upgradeRole(entry, role);
@@ -217,6 +222,21 @@ export class VcsGitlabInbox extends VcsClientInbox {
       role: entry.role,
       events: [...entry.events],
       directlyAddressed: entry.directlyAddressed,
+      todoIds: entry.todoIds,
     }));
+  }
+
+  /**
+   * @param query Identifies the todo to mark as completed.
+   * @returns Promise that resolves when the mutation completes.
+   * @see {VcsClientInbox#markTodoDone} in services/vcs-client/abstract/vcs-client-inbox.ts
+   */
+  async markTodoDone(query: { todoId: string }): Promise<void> {
+    const mutation = `mutation ($input: TodoMarkDoneInput!) {
+      todoMarkDone(input: $input) {
+        errors
+      }
+    }`;
+    await this._graphql(mutation, { input: { id: query.todoId } });
   }
 }

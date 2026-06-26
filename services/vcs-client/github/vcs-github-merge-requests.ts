@@ -1,6 +1,6 @@
 // @file: GitHub-specific implementation of pull request file operations.
 // @consumers: VcsGithubClient
-// @tasks: TSK-30, TSK-67
+// @tasks: TSK-30, TSK-67, TSK-73
 
 import { VcsClientMergeRequests } from '../abstract/vcs-client-merge-requests.ts';
 import type {
@@ -61,6 +61,16 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
    */
   async approve(_query: VcsMergeRequestApproveQuery): Promise<void> {
     throw new Error('GitHub approve not implemented');
+  }
+
+  /**
+   * @purpose GitHub unapprove not implemented — deferred per scope spec.
+   * @param _query Parameters: { repository, iid }.
+   * @throws Error that the operation is not implemented.
+   * @returns Never resolves — always throws Error.
+   */
+  async unapprove(_query: VcsMergeRequestApproveQuery): Promise<void> {
+    throw new Error('GitHub unapprove not implemented');
   }
 
   /**
