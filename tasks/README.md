@@ -119,6 +119,9 @@ graph TD
     TSK-67 --> TSK-69
     TSK-69[TSK-69: vcs-approve (cli)]
     TSK-70[TSK-70: refactor VCS commands (cli)]
+    TSK-71[TSK-71: resolveDiscussion port+adapter (vcs)]
+    TSK-71 --> TSK-72
+    TSK-72[TSK-72: vcs-reply resolve/reopen (cli)]
 ```
 
 ## Tracker Index
@@ -126,8 +129,10 @@ graph TD
 | Scope             | Type           | Tracker                               | Tasks | Done  |
 | ----------------- | -------------- | ------------------------------------- | ----- | ----- |
 | dbc               | library        | [README](dbc/README.md)               | 14    | 14/14 |
-| cli               | product        | [README](cli/README.md)               | 23    | 22/23 |
-| vcs               | product        | [README](vcs/README.md)               | 6     | 6/6   |
+| cli               | product        | [README](cli/README.md)               | 24    | 22/24 |
+
+| vcs               | product        | [README](vcs/README.md)               | 7     | 6/7   |
+
 | agent-mon         | library        | [README](agent-mon/README.md)         | 7     | 7/7   |
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |

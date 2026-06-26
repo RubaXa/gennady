@@ -101,6 +101,9 @@ graph TD
     TSK-67 --> TSK-69
     TSK-69[TSK-69: vcs-approve command]
     TSK-70[TSK-70: refactor VCS commands to resolver]
+    TSK-71[TSK-71: resolveDiscussion port+adapter (vcs)]
+    TSK-71 --> TSK-72
+    TSK-72[TSK-72: vcs-reply resolve/reopen]
 ```
 
 ## Tracker
@@ -137,7 +140,8 @@ graph TD
 | [TSK-65](run/run.task-65.md)                                   | run: команда-обёртка над agent-run                                         | run                  | TSK-64                         | `[x]` DONE | 0       |
 | [TSK-68](vcs-context-resolver/vcs-context-resolver.task-68.md) | vcs-context-resolver: унифицированный резолв VCS-контекста                 | vcs-context-resolver | None                           | `[x]` DONE | 0       |
 | [TSK-69](vcs-approve/vcs-approve.task-69.md)                   | vcs-approve: команда approve GitLab MR через API                           | vcs-approve          | TSK-67, TSK-68                 | `[x]` DONE | 0       |
-| [TSK-70](vcs-refactor/vcs-refactor.task-70.md)                 | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A                  | TSK-68                         | `[x]` DONE | 0       |
+| [TSK-70](vcs-refactor/vcs-refactor.task-70.md)  | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A | TSK-68              | `[x]` DONE | 0       |
+| [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md) | vcs-reply: resolve/reopen discussion через stdin JSON | vcs-reply | TSK-71              | `[ ]` TODO | 0       |
 
 ## Notes
 
