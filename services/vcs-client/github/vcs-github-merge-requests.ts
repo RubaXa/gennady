@@ -56,8 +56,8 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   /**
    * @purpose GitHub approve not implemented — deferred per scope spec.
    * @param _query Parameters: { repository, iid }.
-   * @returns Never resolves — always throws Error.
    * @throws Error that the operation is not implemented.
+   * @returns Never resolves — always throws Error.
    */
   async approve(_query: VcsMergeRequestApproveQuery): Promise<void> {
     throw new Error('GitHub approve not implemented');

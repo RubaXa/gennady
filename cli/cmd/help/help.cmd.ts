@@ -12,6 +12,7 @@ console.info('  commit            Generate commit message from staged changes');
 console.info('  cat               Display file contents as XML or Markdown');
 console.info('  review            Review staged changes using AI models');
 console.info('  vcs-reply         Post replies to GitLab MR discussions from stdin');
+console.info('  vcs-approve       Approve GitLab merge request via API');
 console.info('  review-verify     Build verification prompt from open GitLab MR or GitHub PR');
 console.info(
   '  review-issues     Build XML issues artifact from GitLab MR or GitHub PR discussions'

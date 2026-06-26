@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-worktree — prepare/cleanup a read-only worktree for MR review.
 // @consumers: N/A
-// @tasks: N/A
+// @tasks: N/A, TSK-70
 
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
-import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
-import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
+import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import {
   resolveStateDir,
   worktreesRoot,
@@ -23,6 +22,8 @@ import {
   removeAllWorktrees,
 } from './_core/logic/worktree-ops.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
+import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
+import type { VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
 
 /** @purpose Staleness TTL: worktrees older than this are GC'd on prepare. */
 const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
@@ -57,16 +58,26 @@ async function run(): Promise<number> {
       console.error(style.redBright.bold('✖ Ошибка:'), 'Укажите --ref group/project!iid');
       return 1;
     }
-    const sep = ref.lastIndexOf('!');
-    const project = ref.slice(0, sep);
-    const iid = ref.slice(sep + 1);
 
     const vcsSource = parseValue(argv, '--vcs-source');
     const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
-    const token = process.env.GITLAB_PERSONAL_TOKEN ?? '';
-    const host = vcsSource ?? getGitRemote()?.host ?? '';
 
-    const client = buildInboxClient(vcsSource);
+    // #region START_RESOLVE_VCS_CONTEXT
+    const vcsCliArgs: VcsCliArgs = {
+      ref,
+      host: vcsSource,
+    };
+
+    const context = await resolveVcsContext(vcsCliArgs);
+    const project = context.project;
+    const iid = String(context.iid);
+    const host = context.host;
+    const token = context.token;
+
+    const baseUrl = `https://${host}/api/v4`;
+    const client = new VcsGitlabClient({ token, baseUrl });
+    // #endregion END_RESOLVE_VCS_CONTEXT
+
     const mr = (await client.MergeRequests.getByIid({ project, iid })) as {
       target_branch?: string;
       diff_refs?: { base_sha?: string; start_sha?: string; head_sha?: string };

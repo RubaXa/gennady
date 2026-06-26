@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-70
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Перевести `review-issues`, `vcs-reply`, `vcs-worktree` на унифицированный `vcs-context-resolver` — заменить inline-логику авто-детекта ветки/проекта/хоста/токена на вызов `resolveVcsContext`
 - **Scope:** `cli`
 - **Module:** N/A (рефакторинг 3 команд)
@@ -25,8 +25,8 @@
 
 | ID  | Kind     | Deps | Status |
 | --- | -------- | ---- | ------ |
-| P1  | refactor | —    | [ ]    |
-| P2  | test     | P1   | [ ]    |
+| P1  | refactor | —    | [x]    |
+| P2  | test     | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -133,6 +133,7 @@ Contract: `review-issues`, `vcs-reply`, `vcs-worktree` → используют 
 - vcs-reply --project --iid → `vcs-reply` :: `project+iid passed to resolveVcsContext`
 - vcs-worktree --ref → `vcs-worktree` :: `ref passed to resolveVcsContext`
 - Resolver error → `review-issues` :: `VcsResolveError — error message, exit 1`
+- Resolver error → `vcs-worktree` :: `VcsResolveError — error message, exit 1`
 - Existing tests → all 3 commands :: `existing tests still pass after refactoring`
 <!--/SECTION:TEST_COVERAGE-->
 
@@ -142,21 +143,52 @@ Contract: `review-issues`, `vcs-reply`, `vcs-worktree` → используют 
 
 _(Round = one execute-then-audit attempt.)_
 
-### Round 1 — <YYYY-MM-DD>, initial
+### Round 1 — 2026-06-26, initial
 
 #### P1
 
-- [ ] `<ts>` ver `tsc --noEmit` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [review-issues, vcs-reply.cmd.ts, vcs-worktree.cmd.ts — refactored]; decisions: []; open: []
+- [x] `<ts>` discovery Для рефакторинга review-issues на resolveVcsContext потребовалась модификация `ReviewCommandOptions` и `run-review-command.logic` — эти файлы не перечислены в Target Files фазы P1.
+- [x] `<ts>` ver npm run type-check → pass exit=0
+- [x] `<ts>` ver npm run lint:contracts → pass exit=0
+- [x] `<ts>` ver npm run test → pass exit=0
+- [x] `<ts>` ver npm run format:check → pass exit=0
+- [x] `<ts>` ver tsc --noEmit → pass exit=0
+- [x] `<ts>` DONE
+      **Handoff →** artifacts: [cli/cmd/review/review-issues.cmd.ts, cli/cmd/vcs-reply/vcs-reply.cmd.ts, cli/cmd/vcs-worktree/vcs-worktree.cmd.ts, cli/cmd/review/_core/types/review-command-options.type.ts, cli/cmd/review/_core/logic/run-review-command.logic.ts]; decisions: [vcsContext-injected-into-ReviewCommandOptions, vcs-reply-main-opts-extended, vcs-worktree-uses-resolveVcsContext-directly, review-issues-wraps-resolveVcsContext-in-cmd-file]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `node --import tsx --test ...` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [tests for all 3 commands]; decisions: []; open: []
+- [x] `<ts>` intro `cli/cmd/review/__tests__/review-issues.cmd.test.ts` ← unit-тест контракта взаимодействия review-issues с resolveVcsContext
+- [x] `<ts>` intro `cli/cmd/vcs-reply/__tests__/vcs-reply.cmd.test.ts` ← unit-тест инъекции vcsContext в main() и контракта взаимодействия vcs-reply с resolveVcsContext
+- [x] `<ts>` intro `cli/cmd/vcs-worktree/__tests__/vcs-worktree.cmd.test.ts` ← unit-тест контракта взаимодействия vcs-worktree с resolveVcsContext
+- [x] `<ts>` insight тесты используют `mock.module` (требует `--experimental-test-module-mocks`) — §5 команды без флага падают с `TypeError: mock.module is not a function` → VERIFICATION, команды `node --import tsx --test` должны включать `--experimental-test-module-mocks` как в `npm run test`
+- [x] `<ts>` discovery путь `cli/cmd/review-issues/__tests__/` в §5 не существует — тесты размещены в `cli/cmd/review/__tests__/` (review-issues.cmd.ts находится в cmd/review/)
+- [x] `<ts>` tried `node --import tsx --test <path>` без флага → fail (mock.module not a function)
+- [x] `<ts>` ver npx tsc --noEmit → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/review/**tests**/review-issues.cmd.test.ts → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/vcs-reply/**tests**/vcs-reply.cmd.test.ts → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/vcs-worktree/**tests**/vcs-worktree.cmd.test.ts → pass exit=0
+- [x] `<ts>` ver sdd verify → pass (all 4 gates: typecheck, lint, test, format)
+- [x] `<ts>` DONE
+      **Handoff →** artifacts: [cli/cmd/review/__tests__/review-issues.cmd.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.cmd.test.ts, cli/cmd/vcs-worktree/__tests__/vcs-worktree.cmd.test.ts]; decisions: [test-framework-needs-experimental-test-module-mocks, review-issues-tests-in-cmd-review-dir]; open: [TSK-70-ver: §5 Verification commands need `--experimental-test-module-mocks` flag; path `cli/cmd/review-issues/__tests__/` should be `cli/cmd/review/__tests__/` or review-issues.cmd.ts moved to own dir]
+
+#### P2 — re-run: fix: address audit findings F-01, F-02, F-03
+
+- [x] `<ts>` intro `cli/cmd/review/__tests__/review-issues.cmd.error.test.ts` ← unit-тест обработки VcsResolveError в review-issues (F-02)
+- [x] `<ts>` intro `cli/cmd/vcs-worktree/__tests__/vcs-worktree.cmd.error.test.ts` ← unit-тест обработки VcsResolveError в vcs-worktree (F-03)
+- [x] `<ts>` tried `node --import tsx --test cli/cmd/review-issues/__tests__/` → fail (path not found — известная проблема, тесты в review/**tests**/)
+- [x] `<ts>` tried `node --import tsx --test cli/cmd/vcs-reply/__tests__/` → fail (ERR_MODULE_NOT_FOUND index.json — нужен --experimental-test-module-mocks)
+- [x] `<ts>` tried `node --import tsx --test cli/cmd/vcs-worktree/__tests__/` → fail (ERR_MODULE_NOT_FOUND index.json — нужен --experimental-test-module-mocks)
+- [x] `<ts>` ver npx tsc --noEmit → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/review/**tests**/review-issues.cmd.test.ts → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/review/**tests**/review-issues.cmd.error.test.ts → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/vcs-worktree/**tests**/vcs-worktree.cmd.test.ts → pass exit=0
+- [x] `<ts>` ver node --experimental-test-module-mocks --import tsx --test cli/cmd/vcs-worktree/**tests**/vcs-worktree.cmd.error.test.ts → pass exit=0
+- [x] `<ts>` ver sdd verify → pass exit=0 (4/4: typecheck, lint, test, format)
+- [x] `<ts>` DONE
+      **Handoff →** artifacts: [cli/cmd/review/__tests__/review-issues.cmd.test.ts, cli/cmd/review/__tests__/review-issues.cmd.error.test.ts, cli/cmd/vcs-worktree/__tests__/vcs-worktree.cmd.test.ts, cli/cmd/vcs-worktree/__tests__/vcs-worktree.cmd.error.test.ts]; decisions: [F-01-structural-plus-parser-verification, F-02-error-test-in-separate-file, F-03-error-test-in-separate-file]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-06-26T15:35:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->

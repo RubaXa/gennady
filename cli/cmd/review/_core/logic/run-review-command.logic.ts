@@ -1,8 +1,9 @@
 // @file: Execute common review command pipeline and return the final output.
 // @consumers: review-issues.cmd, review-verify.cmd
-// @tasks: N/A
+// @tasks: N/A, TSK-70
 
 import { style } from '../../../../../shared/common/style.ts';
+import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { buildReviewContextGit } from './build-review-context-git.logic.ts';
 import { buildReviewContextVcs } from './build-review-context-vcs.logic.ts';
 import { loadReviewContextMr } from './load-review-context-mr.logic.ts';
@@ -14,6 +15,7 @@ import type { ReviewCommandOptions } from '../types/review-command-options.type.
 import type { ReviewCommandResult } from '../types/review-command-result.type.ts';
 import type { ReviewIntent } from '../types/review-intent.type.ts';
 import type { ReviewContextGit } from '../types/review-context-git.type.ts';
+import type { ReviewContextVcs } from '../types/review-context-vcs.type.ts';
 
 function resolveReviewHost(
   reviewIntent: ReviewIntent,
@@ -56,15 +58,45 @@ export async function runReviewCommand(
 ): Promise<ReviewCommandResult> {
   try {
     const reviewIntent = resolveReviewIntent(options.args);
-    const shouldLoadGitContext = reviewIntent.source !== 'url';
-    const reviewContextGit = shouldLoadGitContext
-      ? buildReviewContextGit(options.args.branch)
-      : undefined;
 
-    const host = resolveReviewHost(reviewIntent, reviewContextGit);
-    const project = resolveReviewProject(reviewIntent, reviewContextGit);
+    // #region START_RESOLVE_CONTEXT
+    let host: string;
+    let project: string;
+    let reviewContextVcs: ReviewContextVcs;
+    let reviewContextGit: ReviewContextGit | undefined;
 
-    const reviewContextVcs = buildReviewContextVcs(host, project);
+    if (options.vcsContext) {
+      // purpose: use pre-resolved VCS context to skip git auto-detection
+      host = options.vcsContext.host;
+      project = options.vcsContext.project;
+      reviewContextGit = options.vcsContext.branch
+        ? { branch: options.vcsContext.branch, remote: { host, project, scheme: 'https' } }
+        : undefined;
+
+      if (!/gitlab/i.test(host)) {
+        throw new Error(`Провайдер "${host}" пока не поддерживается.`);
+      }
+
+      const apiPath = process.env.GITLAB_API_PATH ?? '/api/v4';
+      const baseUrl = `https://${host}${apiPath}`;
+      reviewContextVcs = {
+        host,
+        project,
+        vcs: new VcsGitlabClient({ token: options.vcsContext.token, baseUrl }),
+      };
+    } else {
+      const shouldLoadGitContext = reviewIntent.source !== 'url';
+      reviewContextGit = shouldLoadGitContext
+        ? buildReviewContextGit(options.args.branch)
+        : undefined;
+
+      host = resolveReviewHost(reviewIntent, reviewContextGit);
+      project = resolveReviewProject(reviewIntent, reviewContextGit);
+
+      reviewContextVcs = buildReviewContextVcs(host, project);
+    }
+    // #endregion END_RESOLVE_CONTEXT
+
     const reviewContextMr = await loadReviewContextMr(
       reviewIntent,
       reviewContextVcs,

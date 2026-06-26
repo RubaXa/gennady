@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI entry point — dispatches commands, runs update check on startup.
 // @consumers: CLI users (gennady <command>)
-// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59, TSK-65
+// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59, TSK-65, TSK-69
 
 import { checkForUpdates } from './cmd/_shared/update-check.ts';
 import { readFileSync } from 'node:fs';
@@ -107,6 +107,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/run/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'vcs-approve':
+      await import('./cmd/vcs-approve/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'testcov':
       await import('./cmd/testcov/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -192,6 +196,10 @@ switch (command) {
 
   case 'run':
     await import('./cmd/run/index.ts');
+    break;
+
+  case 'vcs-approve':
+    await import('./cmd/vcs-approve/index.ts');
     break;
 
   case 'testcov':

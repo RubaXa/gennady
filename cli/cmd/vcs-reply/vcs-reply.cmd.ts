@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A
+// @tasks: N/A, TSK-70
 
 import fs from 'node:fs';
-import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { VcsDiscussionPosition } from '../../../services/vcs-client/abstract/vcs-client-merge-discussions.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
+import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
+import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 
 /**
  * @purpose One posting instruction: reply to a thread, a new discussion, or a
@@ -36,6 +37,8 @@ type MainOpts = {
   remote?: { host: string; project: string; scheme: string } | null;
   baseUrl?: string;
   vcs?: VcsGitlabClient;
+  /** @purpose Pre-resolved VCS context — when set, skips git auto-detection. */
+  vcsContext?: VcsCliContext;
 };
 
 /**
@@ -118,15 +121,17 @@ export async function main(opts: MainOpts = {}): Promise<{
   const kindOf = (it: ReplyItem): string =>
     it.discussionId ? 'reply' : it.position ? 'line' : 'discussion';
 
-  const token = opts.token ?? process.env.GITLAB_PERSONAL_TOKEN;
-  const remote = opts.remote ?? getGitRemote();
-  // `--vcs-source` wins over the host derived from `origin`, so vcs-reply can target a
-  // GitLab MR regardless of the current working directory's remote. Resolved here (as in
-  // vcs-worktree) rather than only in index.ts, so it works however the command is invoked.
-  const cliSource =
-    (parseArgs(process.argv, { 'vcs-source': ['vcs-source'] })['vcs-source'] as string) ||
-    undefined;
-  const host = opts.host ?? cliSource ?? remote?.host ?? '';
+  // #region START_RESOLVE_VCS_CONTEXT
+  const vcsContext = opts.vcsContext;
+  const host: string =
+    vcsContext?.host ??
+    opts.host ??
+    ((parseArgs(process.argv, { 'vcs-source': ['vcs-source'] })['vcs-source'] as string) ||
+      undefined) ??
+    '';
+  const token = opts.token ?? vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
+  // #endregion END_RESOLVE_VCS_CONTEXT
+
   let vcs: VcsGitlabClient | null = null;
   let hostInfo = '';
   if (!dryRun) {
@@ -223,12 +228,28 @@ const args = parseArgs(process.argv, {
   project: ['project'],
   iid: ['iid'],
   'dry-run': ['dry-run', 'dry'],
+  'vcs-source': ['vcs-source'],
 });
 
-const run = await main({
-  project: args.project as string,
-  iid: args.iid as string,
-  dryRun: !!args['dry-run'],
-});
+const vcsCliArgs: VcsCliArgs = {
+  project: args.project as string | undefined,
+  iid: args.iid ? Number(args.iid) : undefined,
+  host: args['vcs-source'] as string | undefined,
+};
 
-process.exit(run.code);
+try {
+  const vcsContext = await resolveVcsContext(vcsCliArgs);
+
+  const run = await main({
+    project: args.project as string,
+    iid: args.iid as string,
+    dryRun: !!args['dry-run'],
+    vcsContext,
+  });
+
+  process.exit(run.code);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`✖ Ошибка: ${message}`);
+  process.exit(1);
+}
