@@ -275,8 +275,8 @@
        | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment |
        | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) |
 
-       «Ось» — либо архитектурная ось `A`–`G`, либо код-проба из `code-interrogation.directive.xml` (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`).
-       Kind values per `AX_PRIOR_DISCUSSION_AWARENESS`: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply`.
+       «Ось» — либо архитектурная ось `A`–`G`, либо код-проба из `code-interrogation.directive.xml` (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`).
+       Kind values: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply` (per `AX_PRIOR_DISCUSSION_AWARENESS`) / `suggestion` (точная механическая правка — apply-able ```suggestion-блок, posting-rules).
 
        **IMPORTANT:** This directive produces the candidate list ONLY. Posting format (Mermaid, 🤖 prefix, vcs-reply syntax, line-comment position fields, granularity by artifact type) is governed by `ai/directives/agent-inbox/posting-rules.directive.xml`. When the skill proceeds to posting, it MUST load that directive.
     ---
