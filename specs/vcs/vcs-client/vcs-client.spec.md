@@ -40,9 +40,9 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsDeleteNoteQuery`          | Value Object    | Параметры удаления заметки: project, iid, noteId, discussionId?                   |
 | `VcsPipelineQuery`            | Value Object    | Параметры запроса пайплайна: project, iid                                         |
 | `VcsPipelineStatus`           | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}] (переименован из `VcsPipeline`) |
-| `VcsClientPipeline`           | Port (optional) | Абстракция управления джобами пайплайна                                       |
-| `VcsGitlabPipeline`           | Adapter         | GitLab-реализация VcsClientPipeline (REST)                                       |
-| `VcsJob`                      | Value Object    | Джоба пайплайна: id, name, status, stage, ref, webUrl                        |
+| `VcsClientPipeline`           | Port (optional) | Абстракция управления джобами пайплайна                                           |
+| `VcsGitlabPipeline`           | Adapter         | GitLab-реализация VcsClientPipeline (REST)                                        |
+| `VcsJob`                      | Value Object    | Джоба пайплайна: id, name, status, stage, ref, webUrl                             |
 | `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                                    |
 | `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE         |
 | `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                                  |
