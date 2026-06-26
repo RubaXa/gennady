@@ -140,8 +140,8 @@ graph TD
 | [TSK-65](run/run.task-65.md)                                   | run: команда-обёртка над agent-run                                         | run                  | TSK-64                         | `[x]` DONE | 0       |
 | [TSK-68](vcs-context-resolver/vcs-context-resolver.task-68.md) | vcs-context-resolver: унифицированный резолв VCS-контекста                 | vcs-context-resolver | None                           | `[x]` DONE | 0       |
 | [TSK-69](vcs-approve/vcs-approve.task-69.md)                   | vcs-approve: команда approve GitLab MR через API                           | vcs-approve          | TSK-67, TSK-68                 | `[x]` DONE | 0       |
-| [TSK-70](vcs-refactor/vcs-refactor.task-70.md)  | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A | TSK-68              | `[x]` DONE | 0       |
-| [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md) | vcs-reply: resolve/reopen discussion через stdin JSON | vcs-reply | TSK-71              | `[ ]` TODO | 0       |
+| [TSK-70](vcs-refactor/vcs-refactor.task-70.md)                 | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A                  | TSK-68                         | `[x]` DONE | 0       |
+| [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md)       | vcs-reply: resolve/reopen discussion через stdin JSON                      | vcs-reply            | TSK-71                         | `[ ]` TODO | 0       |
 
 ## Notes
 
