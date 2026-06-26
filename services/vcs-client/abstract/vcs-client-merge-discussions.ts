@@ -1,7 +1,9 @@
 // @file: Contract surface for merge request discussion operations.
 // @consumers: VcsClient
-// @tasks: TSK-71
+// @tasks: TSK-71, TSK-86
 
+import type { VcsDraftNote } from '../entities/vcs-draft-note.type.ts';
+import type { VcsDeleteDiscussionQuery } from '../entities/vcs-delete-discussion-query.type.ts';
 import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
 import type { VcsUpdateNoteQuery } from '../entities/vcs-update-note-query.type.ts';
 import type { VcsDeleteNoteQuery } from '../entities/vcs-delete-note-query.type.ts';
@@ -71,6 +73,64 @@ export type VcsDiscussionsListQuery = {
   perPage?: number;
   /** @purpose Page number starting from 1 */
   page?: number;
+};
+
+/**
+ * @purpose Parameters for creating a draft note in an MR.
+ * @consumer VcsClientMergeDiscussions
+ */
+export type VcsCreateDraftNoteQuery = {
+  /** @purpose GitLab project path or ID */
+  project: string;
+  /** @purpose Merge request internal ID */
+  iid: string | number;
+  /** @purpose Draft note body in Markdown */
+  body: string;
+  /** @purpose Diff position for a line-level comment | @invariant General MR draft note when absent */
+  position?: VcsDiscussionPosition;
+};
+
+/**
+ * @purpose Parameters for updating an existing draft note.
+ * @consumer VcsClientMergeDiscussions
+ */
+export type VcsUpdateDraftNoteQuery = {
+  /** @purpose GitLab project path or ID */
+  project: string;
+  /** @purpose Merge request internal ID */
+  iid: string | number;
+  /** @purpose Target draft note identifier */
+  draftNoteId: string | number;
+  /** @purpose Updated draft note body in Markdown */
+  body: string;
+  /** @purpose Updated diff position | @invariant Kept unchanged when absent */
+  position?: VcsDiscussionPosition;
+};
+
+/**
+ * @purpose Parameters for deleting an unpublished draft note.
+ * @consumer VcsClientMergeDiscussions
+ */
+export type VcsDeleteDraftNoteQuery = {
+  /** @purpose GitLab project path or ID */
+  project: string;
+  /** @purpose Merge request internal ID */
+  iid: string | number;
+  /** @purpose Target draft note identifier */
+  draftNoteId: string | number;
+};
+
+/**
+ * @purpose Parameters for publishing a draft note (turning it into a regular note).
+ * @consumer VcsClientMergeDiscussions
+ */
+export type VcsPublishDraftNoteQuery = {
+  /** @purpose GitLab project path or ID */
+  project: string;
+  /** @purpose Merge request internal ID */
+  iid: string | number;
+  /** @purpose Target draft note identifier */
+  draftNoteId: string | number;
 };
 
 /**
@@ -145,4 +205,44 @@ export abstract class VcsClientMergeDiscussions {
    * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/notes/:note_id
    */
   abstract deleteNote(query: VcsDeleteNoteQuery): Promise<void>;
+
+  /**
+   * @purpose Delete an entire discussion (thread) from an MR.
+   * @param query Parameters: { project, iid, discussionId }.
+   * @returns void on success.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/discussions/:discussion_id
+   */
+  abstract deleteDiscussion(query: VcsDeleteDiscussionQuery): Promise<void>;
+
+  /**
+   * @purpose Create a new draft note (unpublished comment) on an MR.
+   * @param query Parameters: { project, iid, body, position? }.
+   * @returns Created draft note object.
+   * @sideEffect Network: POST /projects/:project/merge_requests/:iid/draft_notes
+   */
+  abstract createDraftNote(query: VcsCreateDraftNoteQuery): Promise<VcsDraftNote>;
+
+  /**
+   * @purpose Update the body and/or position of an existing draft note.
+   * @param query Parameters: { project, iid, draftNoteId, body, position? }.
+   * @returns Updated draft note object.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id
+   */
+  abstract updateDraftNote(query: VcsUpdateDraftNoteQuery): Promise<VcsDraftNote>;
+
+  /**
+   * @purpose Delete an unpublished draft note.
+   * @param query Parameters: { project, iid, draftNoteId }.
+   * @returns void on success.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id
+   */
+  abstract deleteDraftNote(query: VcsDeleteDraftNoteQuery): Promise<void>;
+
+  /**
+   * @purpose Publish a draft note, turning it into a regular discussion note.
+   * @param query Parameters: { project, iid, draftNoteId }.
+   * @returns void on success.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id/publish
+   */
+  abstract publishDraftNote(query: VcsPublishDraftNoteQuery): Promise<void>;
 }

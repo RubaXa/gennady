@@ -1,13 +1,19 @@
 // @file: GitLab-specific implementation of merge request discussion operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-71
+// @tasks: TSK-71, TSK-86
 
 import {
   VcsClientMergeDiscussions,
   type VcsAddNoteQuery,
   type VcsCreateDiscussionQuery,
   type VcsDiscussionsListQuery,
+  type VcsCreateDraftNoteQuery,
+  type VcsUpdateDraftNoteQuery,
+  type VcsDeleteDraftNoteQuery,
+  type VcsPublishDraftNoteQuery,
 } from '../abstract/vcs-client-merge-discussions.ts';
+import type { VcsDraftNote } from '../entities/vcs-draft-note.type.ts';
+import type { VcsDeleteDiscussionQuery } from '../entities/vcs-delete-discussion-query.type.ts';
 import type { VcsResolveDiscussionQuery } from '../entities/vcs-resolve-discussion-query.type.ts';
 import type { VcsUpdateNoteQuery } from '../entities/vcs-update-note-query.type.ts';
 import type { VcsDeleteNoteQuery } from '../entities/vcs-delete-note-query.type.ts';
@@ -229,5 +235,93 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
     await this._request(`/projects/${projectId}/merge_requests/${iid}/notes/${noteId}`, {
       method: 'DELETE',
     });
+  }
+
+  /**
+   * @param query Target project, MR, and discussion.
+   * @returns void on success.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/discussions/:discussion_id
+   * @see {VcsClientMergeDiscussions#deleteDiscussion} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async deleteDiscussion(query: VcsDeleteDiscussionQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const discussionId = encodeURIComponent(query.discussionId);
+    await this._request(
+      `/projects/${projectId}/merge_requests/${iid}/discussions/${discussionId}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
+   * @param query Target project, MR, draft note body, and optional diff position.
+   * @returns Created draft note object.
+   * @sideEffect Network: POST /projects/:project/merge_requests/:iid/draft_notes
+   * @see {VcsClientMergeDiscussions#createDraftNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async createDraftNote(query: VcsCreateDraftNoteQuery): Promise<VcsDraftNote> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const body: Record<string, unknown> = { note: query.body };
+    if (query.position) {
+      body.position = query.position;
+    }
+    return this._request(`/projects/${projectId}/merge_requests/${iid}/draft_notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }) as Promise<VcsDraftNote>;
+  }
+
+  /**
+   * @param query Target project, MR, draft note ID, new body, and optional diff position.
+   * @returns Updated draft note object.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id
+   * @see {VcsClientMergeDiscussions#updateDraftNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async updateDraftNote(query: VcsUpdateDraftNoteQuery): Promise<VcsDraftNote> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const noteId = encodeURIComponent(String(query.draftNoteId));
+    const body: Record<string, unknown> = { note: query.body };
+    if (query.position) {
+      body.position = query.position;
+    }
+    return this._request(`/projects/${projectId}/merge_requests/${iid}/draft_notes/${noteId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }) as Promise<VcsDraftNote>;
+  }
+
+  /**
+   * @param query Target project, MR, and draft note.
+   * @returns void on success.
+   * @sideEffect Network: DELETE /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id
+   * @see {VcsClientMergeDiscussions#deleteDraftNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async deleteDraftNote(query: VcsDeleteDraftNoteQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const noteId = encodeURIComponent(String(query.draftNoteId));
+    await this._request(`/projects/${projectId}/merge_requests/${iid}/draft_notes/${noteId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * @param query Target project, MR, and draft note.
+   * @returns void on success.
+   * @sideEffect Network: PUT /projects/:project/merge_requests/:iid/draft_notes/:draft_note_id/publish
+   * @see {VcsClientMergeDiscussions#publishDraftNote} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
+  async publishDraftNote(query: VcsPublishDraftNoteQuery): Promise<void> {
+    const projectId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const noteId = encodeURIComponent(String(query.draftNoteId));
+    await this._request(
+      `/projects/${projectId}/merge_requests/${iid}/draft_notes/${noteId}/publish`,
+      { method: 'PUT' }
+    );
   }
 }
