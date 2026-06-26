@@ -104,6 +104,12 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
   - `resolveDiscussion(query) → Promise<void>` — резолв/реопен дискуссии (GitLab: `PUT /discussions/:id?resolved=true\|false`)
   - `updateNote(query) → Promise<void>` — редактировать свою заметку (PUT /notes/:note_id)
   - `deleteNote(query) → Promise<void>` — удалить свою заметку (DELETE /notes/:note_id)
+  - `deleteDiscussion(query) → Promise<void>` — удалить тред целиком (DELETE /discussions/:discussion_id)
+  - `listDraftNotes(query) → Promise<VcsDraftNote[]>` — список черновиков
+  - `createDraftNote(query) → Promise<VcsDraftNote>` — создать черновик (POST /draft_notes)
+  - `updateDraftNote(query) → Promise<VcsDraftNote>` — обновить черновик (PUT /draft_notes/:id)
+  - `deleteDraftNote(query) → Promise<void>` — удалить черновик (DELETE /draft_notes/:id)
+  - `publishDraftNote(query) → Promise<void>` — опубликовать черновик (PUT /draft_notes/:id/publish)
 
 ### `VcsClientRepositoryFiles`
 

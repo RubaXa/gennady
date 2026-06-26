@@ -1432,7 +1432,8 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-VR-14  | `review-issues` артефакт: каждая реплика содержит `noteId` (новый атрибут в XML)                                                                                                                                                                                  |
 | FR-VR-15  | stdin JSON top-level поле `suggestion: string` и `suggestionRange?: { above: number, below: number }` (default `0/0`). Только для line-comment (требует `position`). `suggestion` с `body` → блок добавляется к body; без `body` → тело = только блок             |
 | FR-VR-16  | Команда собирает ` ```suggestion:-A+B\n<suggestion>\n``` ` блок: A=above, B=below. `above=0, below=0` → `:-0+0`                                                                                                                                                   |
-| FR-VR-17  | `--dry-run` показывает итоговый body с suggestion-блоком                                                                                                                                                                                                          |
+| FR-VR-17 | `--dry-run` показывает итоговый body с suggestion-блоком |
+| FR-VR-18 | stdin JSON: `{discussionId, delete: true}` без `noteId` → удаление треда целиком через `deleteDiscussion` |
 
 ### 4.1.14 vcs-context-resolver (shared)
 
@@ -1533,7 +1534,18 @@ $ gennady vcs-approve                                          # merge conflict
 | -------- | -------------------------------------------------- |
 | FR-VL-01 | `gennady vcs-job-log --ref <ref> --job <name\|id>` |
 | FR-VL-02 | Печатает сырой лог (trace) джобы в stdout          |
-| FR-VL-03 | Использует `vcs-context-resolver`; `--host`        |
+| FR-VL-03 | Использует `vcs-context-resolver`; `--host` |
+
+### 4.1.22 vcs-draft Functional Requirements
+
+| ID | Требование |
+|----|-----------|
+| FR-VD-01 | `gennady vcs-draft --ref <ref>` — список черновиков на MR (`listDraftNotes`, по умолчанию) |
+| FR-VD-02 | `--create <text> [--file <path>]` — создать черновик (`createDraftNote`) |
+| FR-VD-03 | `--update <id> <text>` — обновить черновик (`updateDraftNote`) |
+| FR-VD-04 | `--delete <id>` — удалить черновик (`deleteDraftNote`) |
+| FR-VD-05 | `--publish <id>` — опубликовать черновик (`publishDraftNote`) |
+| FR-VD-06 | Использует `vcs-context-resolver`; `--host`; `--dry-run` |
 
 ### 4.2 Non-Functional Constraints
 
