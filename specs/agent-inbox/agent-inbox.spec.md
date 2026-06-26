@@ -80,9 +80,10 @@ gennady inbox --reset                                  # чистый лист
 
 ### 4.5 Rules
 
-| Rule               | Category | Source                                      |
-| ------------------ | -------- | ------------------------------------------- |
-| `typescript-rules` | coding   | `ai/directives/coding/typescript-rules.xml` |
+| Rule                 | Category    | Source                                                       |
+| -------------------- | ----------- | ------------------------------------------------------------ |
+| `typescript-rules`   | coding      | `ai/directives/coding/typescript-rules.xml`                  |
+| `arch-interrogation` | agent-inbox | `ai/directives/agent-inbox/arch-interrogation.directive.xml` |
 
 ## 5. High-Level Architecture
 
