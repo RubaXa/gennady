@@ -15,11 +15,12 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestChanges`      | Value Object    | Изменённые файлы MR/PR: path, status, ref, additions, deletions           |
 | `VcsFileContent`              | Value Object    | Содержимое файла из репозитория: path, content, encoding                  |
 | `VcsActionableMr`             | Value Object    | MR требующий реакции: role, events, webUrl, todoIds                       |
+| `VcsDiscussionNote`           | Value Object    | Заметка в дискуссии: noteId, author, body                                 |
 | `VcsClient`                   | Port            | Абстрактный VCS-клиент с опциональными портами                            |
 | `VcsClientMergeRequests`      | Port            | Абстракция работы с Merge Requests / Pull Requests                        |
 | `VcsClientMergeDiscussions`   | Port (optional) | Абстракция работы с Discussions                                           |
 | `VcsClientRepositoryFiles`    | Port            | Абстракция работы с файлами репозитория                                   |
-| `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                             |
+| `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                            |
 | `VcsGitlabClient`             | Adapter         | GitLab-реализация VcsClient                                               |
 | `VcsGitlabClientOptions`      | Value Object    | Опции подключения: baseUrl, token                                         |
 | `VcsGitlabMergeRequests`      | Adapter         | GitLab-реализация MR API (включая getChanges)                             |

@@ -104,9 +104,10 @@
 
   `:-0+0` — диапазон: сколько строк выше/ниже закомментированной заменить. Одна строка = `-0+0`;
   замена 3 строк начиная с текущей = `-0+2`; захват строки выше = `-1+0`.
+
 - **CLI:** у line-item `vcs-reply` добавить необязательное поле `suggestion` (строка/массив строк
   заменяющего текста) и `suggestionRange?: { above: number, below: number }` (default `0/0`) —
-  команда сама собирает корректный ```` ```suggestion:-A+B ````-блок. Либо: разрешить готовый блок
+  команда сама собирает корректный ` ```suggestion:-A+B `-блок. Либо: разрешить готовый блок
   в `body` и задокументировать синтаксис. Рекомендуется структурированное поле `suggestion`
   (меньше шансов ошибиться в разметке).
 - **Позиция:** как у обычного line-комментария (`newPath`, `newLine`/`oldLine`, sha из `diff_refs`).
@@ -144,7 +145,7 @@
 
 ## TOOL-6 — Pipeline / CI-статус · Tier 3
 
-**Зачем:** событие `ci_failed` говорит «красный», но не *почему*. Для автор-флоу и решения
+**Зачем:** событие `ci_failed` говорит «красный», но не _почему_. Для автор-флоу и решения
 «можно ли апрувить» нужен статус и упавшие джобы.
 
 - **Порт:** `MergeRequests.getPipeline(query: { project, iid }): Promise<{ status, jobs: {name,status}[] }>`.
@@ -158,15 +159,15 @@
 
 - Полный автор-цикл: merge, rebase, draft↔ready, добавление/снятие ревьюеров.
 - GitHub (только GitLab сейчас).
-- Применение suggestion **со стороны ревьюера** (Apply жмёт автор; нам нужно только корректно их *постить*).
+- Применение suggestion **со стороны ревьюера** (Apply жмёт автор; нам нужно только корректно их _постить_).
 
 ## Сводка приоритетов
 
-| ID | Инструмент | Tier | Новый метод порта? |
-|----|-----------|------|--------------------|
-| TOOL-1 | unapprove (`vcs-approve --revoke`) | 1 | да |
-| TOOL-2 | todo done (`vcs-todo --done`) + `todoIds` в getActionable | 1 | да |
-| TOOL-3 | edit/delete своей заметки (`vcs-reply`) + `noteId` в review-issues | 2 | да |
-| TOOL-4 | suggestion-блоки + проба `TYPO` + правило «точная правка → suggestion» | 2 (приоритет) | нет (расширение) |
-| TOOL-5 | `vcs-diff` / `vcs-cat` (CLI над getChanges/getFileContent) | 3 | нет |
-| TOOL-6 | `vcs-pipeline` (CI-статус) | 3 | да |
+| ID     | Инструмент                                                             | Tier          | Новый метод порта? |
+| ------ | ---------------------------------------------------------------------- | ------------- | ------------------ |
+| TOOL-1 | unapprove (`vcs-approve --revoke`)                                     | 1             | да                 |
+| TOOL-2 | todo done (`vcs-todo --done`) + `todoIds` в getActionable              | 1             | да                 |
+| TOOL-3 | edit/delete своей заметки (`vcs-reply`) + `noteId` в review-issues     | 2             | да                 |
+| TOOL-4 | suggestion-блоки + проба `TYPO` + правило «точная правка → suggestion» | 2 (приоритет) | нет (расширение)   |
+| TOOL-5 | `vcs-diff` / `vcs-cat` (CLI над getChanges/getFileContent)             | 3             | нет                |
+| TOOL-6 | `vcs-pipeline` (CI-статус)                                             | 3             | да                 |
