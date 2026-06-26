@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Approve a GitLab merge request via CLI — resolve context, locate MR, call approve API.
 // @consumers: vcs-approve
-// @tasks: TSK-69
+// @tasks: TSK-69, TSK-74
 
 import {
   resolveVcsContext,
@@ -99,6 +99,38 @@ function handleApproveError(error: VcsApproveError, iid: number, deps: VcsApprov
   }
 }
 // #endregion END_HANDLE_APPROVE_ERROR
+
+// #region START_HANDLE_UNAPPROVE_ERROR
+/**
+ * @purpose Translate an unapprove error into user-facing output and exit.
+ * @invariant 409 Not Approved is idempotent — info message, exit 0.
+ * @param cause Raw error from unapprove API call.
+ * @param iid MR internal ID for message formatting.
+ * @param deps Injected dependencies for output and exit.
+ * @sideEffect Console: writes info or error messages to stdout/stderr; exits process.
+ */
+function handleUnapproveError(cause: unknown, iid: number, deps: VcsApproveDeps): never {
+  const msg = (cause as Error).message ?? 'неизвестная ошибка';
+  const status = extractGitlabStatus(msg);
+  const body = extractGitlabBody(msg);
+
+  logger.error(`[handleUnapproveError] [unapproving → failed] MR !${iid}`, { cause });
+
+  if (msg.includes('409')) {
+    logger.info(`[handleUnapproveError] idempotent: MR !${iid} is not approved`);
+    deps.stdout.write(`ℹ MR !${iid} is not approved\n`);
+    deps.exit(0);
+  }
+
+  if (msg.includes('403')) {
+    deps.stderr.write(`✖ GitLab API error [403]: ${body}\n`);
+    deps.exit(1);
+  }
+
+  deps.stderr.write(`✖ GitLab API error [${status}]: ${body}\n`);
+  deps.exit(1);
+}
+// #endregion END_HANDLE_UNAPPROVE_ERROR
 
 // #region START_RESOLVE_CONTEXT_OR_FAIL
 /**
@@ -208,6 +240,40 @@ async function approveMr(
 }
 // #endregion END_CALL_APPROVE_API
 
+// #region START_CALL_UNAPPROVE_API
+/**
+ * @purpose Send unapprove request to GitLab and write success message to stdout.
+ * @param context Resolved VCS context.
+ * @param iid MR internal ID.
+ * @param webUrl Optional MR web URL — computed from host/project/iid when absent.
+ * @param deps Injected dependencies.
+ * @sideEffect Network: POST /projects/:id/merge_requests/:iid/unapprove; Console: success message.
+ */
+async function unapproveMr(
+  context: VcsCliContext,
+  iid: number,
+  webUrl: string | undefined,
+  deps: VcsApproveDeps
+): Promise<void> {
+  const client = new VcsGitlabClient({
+    baseUrl: `https://${context.host}/api/v4`,
+    token: context.token,
+  });
+
+  const query: VcsMergeRequestApproveQuery = {
+    repository: context.project,
+    iid,
+  };
+
+  logger.info(`[unapproveMr] [idle → unapproving] ${context.project}!${iid}`);
+  await client.MergeRequests.unapprove(query);
+  logger.info(`[unapproveMr] [unapproving → unapproved] ${context.project}!${iid}`);
+
+  const url = webUrl || `https://${context.host}/${context.project}/-/merge_requests/${iid}`;
+  deps.stdout.write(`✓ MR !${iid} unapproved: ${url}\n`);
+}
+// #endregion END_CALL_UNAPPROVE_API
+
 /**
  * @purpose Execute vcs-approve command: resolve context, locate MR, send approve or dry-run.
  * @invariant Idempotent: already-approved MR yields info message and exit 0.
@@ -232,6 +298,7 @@ export async function run(
     branch: { aliases: ['branch'], takesValue: true },
     host: { aliases: ['host'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
+    revoke: ['revoke', 'unapprove'],
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
@@ -243,8 +310,9 @@ export async function run(
   };
 
   const dryRun = !!args['dry-run'];
+  const revoke = !!args['revoke'];
   logger.debug(
-    `[run] [parsing → parsed] dryRun=${dryRun} ref=${vcsArgs.ref ?? ''} project=${vcsArgs.project ?? ''} iid=${vcsArgs.iid ?? ''}`
+    `[run] [parsing → parsed] dryRun=${dryRun} revoke=${revoke} ref=${vcsArgs.ref ?? ''} project=${vcsArgs.project ?? ''} iid=${vcsArgs.iid ?? ''}`
   );
 
   const context = await resolveContextOrFail(vcsArgs, deps);
@@ -286,29 +354,39 @@ export async function run(
   }
   // #endregion END_DETERMINE_IID
 
-  // #region START_DRY_RUN_OR_APPROVE
+  // #region START_DRY_RUN_OR_EXECUTE
   if (dryRun) {
-    deps.stdout.write(`Would approve: ${context.project}!${iid}  host=${context.host}\n`);
+    const action = revoke ? 'unapprove' : 'approve';
+    deps.stdout.write(`Would ${action}: ${context.project}!${iid}  host=${context.host}\n`);
     deps.stdout.write('[DRY-RUN] no request sent\n');
     logger.info(`[run] [ready → dry-run-complete] ${context.project}!${iid}`);
     deps.exit(0);
   }
 
-  try {
-    await approveMr(context, iid, webUrl, deps);
-    deps.exit(0);
-  } catch (cause) {
-    if (cause instanceof VcsApproveError) {
-      handleApproveError(cause, iid, deps);
+  if (revoke) {
+    try {
+      await unapproveMr(context, iid, webUrl, deps);
+      deps.exit(0);
+    } catch (cause) {
+      handleUnapproveError(cause, iid, deps);
     }
+  } else {
+    try {
+      await approveMr(context, iid, webUrl, deps);
+      deps.exit(0);
+    } catch (cause) {
+      if (cause instanceof VcsApproveError) {
+        handleApproveError(cause, iid, deps);
+      }
 
-    const msg = (cause as Error).message ?? 'неизвестная ошибка';
-    const status = extractGitlabStatus(msg);
-    const body = extractGitlabBody(msg);
-    const error = new Error(`[run] Approve failed for ${context.project}!${iid}`, { cause });
-    logger.error(`[run] [approving → failed]`, { error });
-    deps.stderr.write(`✖ GitLab API error [${status}]: ${body}\n`);
-    deps.exit(1);
+      const msg = (cause as Error).message ?? 'неизвестная ошибка';
+      const status = extractGitlabStatus(msg);
+      const body = extractGitlabBody(msg);
+      const error = new Error(`[run] Approve failed for ${context.project}!${iid}`, { cause });
+      logger.error(`[run] [approving → failed]`, { error });
+      deps.stderr.write(`✖ GitLab API error [${status}]: ${body}\n`);
+      deps.exit(1);
+    }
   }
-  // #endregion END_DRY_RUN_OR_APPROVE
+  // #endregion END_DRY_RUN_OR_EXECUTE
 }

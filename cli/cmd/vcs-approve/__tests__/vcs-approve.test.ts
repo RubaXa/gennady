@@ -1,6 +1,6 @@
-// @file: Unit tests for vcs-approve CLI command — happy path, dry-run, error cases.
+// @file: Unit tests for vcs-approve CLI command — happy path, dry-run, error cases, revoke path.
 // @consumers: CI
-// @tasks: TSK-69
+// @tasks: TSK-69, TSK-74
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 
 let mockGetOneImpl: (...args: any[]) => Promise<any>;
 let mockApproveImpl: (...args: any[]) => Promise<void>;
+let mockUnapproveImpl: (...args: any[]) => Promise<void>;
 
 // ── Register module mock BEFORE importing SUT ─────────────────────────────────
 
@@ -19,6 +20,9 @@ mock.module('../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts', {
         getOne: async (...args: any[]) => mockGetOneImpl(...args),
         approve: async (...args: any[]) => {
           await mockApproveImpl(...args);
+        },
+        unapprove: async (...args: any[]) => {
+          await mockUnapproveImpl(...args);
         },
       };
     },
@@ -122,6 +126,9 @@ describe('vcs-approve run', () => {
       throw new Error('unexpected getOne call in this scenario');
     };
     mockApproveImpl = async () => {};
+    mockUnapproveImpl = async () => {
+      throw new Error('unexpected unapprove call in this scenario');
+    };
   });
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -300,5 +307,152 @@ describe('vcs-approve run', () => {
 
     assert.match(result.stderr, /✖ Ошибка: no GITLAB_PERSONAL_TOKEN/);
     assert.strictEqual(result.exitCode, 1);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Revoke — success
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('revoke success', async () => {
+    // contract: --revoke sends unapprove API call → success output → exit 0
+
+    // #region START_REVOKE_SUCCESS_SETUP_MOCKS
+    mockUnapproveImpl = async (query: any) => {
+      assert.strictEqual(query.repository, 'group/repo');
+      assert.strictEqual(query.iid, 42);
+    };
+
+    const result = await captureRun([...BASE_ARGS, '--revoke', '--ref', 'group/repo!42'], () => ({
+      ...DEFAULT_CONTEXT,
+      iid: 42,
+    }));
+    // #endregion END_REVOKE_SUCCESS_SETUP_MOCKS
+
+    assert.match(
+      result.stdout,
+      /✓ MR !42 unapproved: https:\/\/gitlab.company.com\/group\/repo\/-\/merge_requests\/42/
+    );
+    assert.strictEqual(result.exitCode, 0);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Revoke — idempotent (not approved)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('revoke idempotent — already not approved', async () => {
+    // contract: MR not approved → info message, exit 0 — idempotent
+    // invariant: 409 error with "not approved" semantics is non-fatal
+
+    // #region START_REVOKE_IDEMPOTENT_SETUP_MOCKS
+    mockUnapproveImpl = async () => {
+      throw new Error('GitLab request failed: 409 Conflict {"message":"Not approved"}');
+    };
+
+    const result = await captureRun([...BASE_ARGS, '--revoke', '--ref', 'group/repo!42'], () => ({
+      ...DEFAULT_CONTEXT,
+      iid: 42,
+    }));
+    // #endregion END_REVOKE_IDEMPOTENT_SETUP_MOCKS
+
+    assert.match(result.stdout, /ℹ MR !42 is not approved/);
+    assert.strictEqual(result.exitCode, 0);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Revoke — dry-run
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('revoke dry-run', async () => {
+    // contract: --revoke --dry-run prints intent, does not call API, exits 0
+    // invariant: unapprove() is never invoked
+
+    let unapproveCalled = false;
+    mockUnapproveImpl = async () => {
+      unapproveCalled = true;
+    };
+
+    const result = await captureRun(
+      [...BASE_ARGS, '--revoke', '--dry-run', '--ref', 'group/repo!42'],
+      () => ({
+        ...DEFAULT_CONTEXT,
+        iid: 42,
+      })
+    );
+
+    assert.match(result.stdout, /Would unapprove: group\/repo!42 +host=gitlab\.company\.com/);
+    assert.match(result.stdout, /\[DRY-RUN\] no request sent/);
+    assert.strictEqual(unapproveCalled, false);
+    assert.strictEqual(result.exitCode, 0);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Revoke — 403 forbidden
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('revoke 403 forbidden', async () => {
+    // contract: 403 response from unapprove API → stderr message → exit 1
+
+    // #region START_REVOKE_403_SETUP_MOCKS
+    mockUnapproveImpl = async () => {
+      throw new Error('GitLab request failed: 403 Forbidden {"message":"Forbidden"}');
+    };
+
+    const result = await captureRun([...BASE_ARGS, '--revoke', '--ref', 'group/repo!42'], () => ({
+      ...DEFAULT_CONTEXT,
+      iid: 42,
+    }));
+    // #endregion END_REVOKE_403_SETUP_MOCKS
+
+    assert.match(result.stderr, /✖ GitLab API error \[403\]:/);
+    assert.strictEqual(result.exitCode, 1);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Revoke — 409 non-idempotent (generic API error via unapprove path)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('revoke 409 conflict', async () => {
+    // contract: non-409/non-403 unapprove error is treated as failure → exit 1
+
+    // #region START_REVOKE_GENERIC_ERROR_SETUP_MOCKS
+    mockUnapproveImpl = async () => {
+      throw new Error('GitLab request failed: 500 Internal Server Error {"message":"oops"}');
+    };
+
+    const result = await captureRun([...BASE_ARGS, '--revoke', '--ref', 'group/repo!42'], () => ({
+      ...DEFAULT_CONTEXT,
+      iid: 42,
+    }));
+    // #endregion END_REVOKE_GENERIC_ERROR_SETUP_MOCKS
+
+    assert.match(result.stderr, /✖ GitLab API error \[500\]:/);
+    assert.strictEqual(result.exitCode, 1);
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Approve — unchanged (no --revoke flag)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  it('approve unchanged', async () => {
+    // contract: without --revoke, approve path is untouched
+    // invariant: approve() is called, unapprove() is never called
+
+    // #region START_APPROVE_UNCHANGED_SETUP_MOCKS
+    mockApproveImpl = async (query: any) => {
+      assert.strictEqual(query.repository, 'group/repo');
+      assert.strictEqual(query.iid, 42);
+    };
+
+    const result = await captureRun([...BASE_ARGS, '--ref', 'group/repo!42'], () => ({
+      ...DEFAULT_CONTEXT,
+      iid: 42,
+    }));
+    // #endregion END_APPROVE_UNCHANGED_SETUP_MOCKS
+
+    assert.match(
+      result.stdout,
+      /✓ MR !42 approved: https:\/\/gitlab.company.com\/group\/repo\/-\/merge_requests\/42/
+    );
+    assert.strictEqual(result.exitCode, 0);
   });
 });

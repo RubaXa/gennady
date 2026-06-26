@@ -35,12 +35,12 @@
 
 ## 6. Test Scenario Coverage
 
-| #   | Case name                                                                  | Scenario kind | Binds to BDD # | Runtime Fidelity |
-| --- | -------------------------------------------------------------------------- | ------------- | -------------- | ---------------- |
-| 1   | returns pipeline status and jobs from GraphQL headPipeline query           | happy-path    | 1              | contract-only    |
-| 2   | returns empty status and empty jobs when headPipeline is absent            | boundary      | 2              | contract-only    |
-| 3   | throws when GraphQL transport is not configured                            | failure-path  | —              | contract-only    |
-| 4   | satisfies VcsPipeline type contract                                        | type-contract | 3              | contract-only    |
+| #   | Case name                                                        | Scenario kind | Binds to BDD # | Runtime Fidelity |
+| --- | ---------------------------------------------------------------- | ------------- | -------------- | ---------------- |
+| 1   | returns pipeline status and jobs from GraphQL headPipeline query | happy-path    | 1              | contract-only    |
+| 2   | returns empty status and empty jobs when headPipeline is absent  | boundary      | 2              | contract-only    |
+| 3   | throws when GraphQL transport is not configured                  | failure-path  | —              | contract-only    |
+| 4   | satisfies VcsPipeline type contract                              | type-contract | 3              | contract-only    |
 
 ## 7. Execution Log
 
@@ -68,4 +68,4 @@
 - [x] `2026-06-26T18:34:05Z` ver npm run test → pass exit=0
 - [x] `2026-06-26T18:34:05Z` ver npm run format:check → pass exit=0
 - [x] `2026-06-26T18:34:05Z` DONE
-  **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-requests.pipeline.test.ts]; decisions: []; open: [WIRE_GRAPHQL: vcs-gitlab-client.ts must pass graphql to VcsGitlabMergeRequests constructor for getPipeline to work at runtime]
+      **Handoff →** artifacts: [services/vcs-client/gitlab/__tests__/vcs-gitlab-merge-requests.pipeline.test.ts]; decisions: []; open: [WIRE_GRAPHQL: vcs-gitlab-client.ts must pass graphql to VcsGitlabMergeRequests constructor for getPipeline to work at runtime]

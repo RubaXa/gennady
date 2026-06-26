@@ -1,6 +1,6 @@
 // @file: Build XmlNode tree of the review artifact from MR and discussions.
 // @consumers: run-review-command.logic
-// @tasks: N/A
+// @tasks: N/A, TSK-78
 
 import { serializeXmlNode } from '../../../../../shared/common/xml.ts';
 import type { XmlNode } from '../../../../../shared/common/xml.ts';

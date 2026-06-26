@@ -101,8 +101,9 @@ export async function runCommand(argv: string[]): Promise<void> {
       process.stderr.write(`✗ ${cause.hint}   [${cause.code}]\n`);
       process.exit(1);
     }
-    // failure mode: unexpected error — rethrow to expose stack; CLI wrapper in gennady.ts can catch
-    throw cause;
+    // failure mode: unexpected error — log and exit; @throws contract says never throw
+    process.stderr.write(`✗ Unexpected error: ${String(cause)}\n`);
+    process.exit(1);
   }
   // #endregion END_INVOKE_RUN
 }

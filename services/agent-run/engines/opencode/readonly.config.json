@@ -5,9 +5,7 @@
       "mode": "primary",
       "description": "Readonly investigator launched by gennady run: may read, search and run shell, but must not edit files.",
       "permission": {
-        "edit": "deny",
-        "write": "deny",
-        "patch": "deny"
+        "edit": "deny"
       }
     }
   }

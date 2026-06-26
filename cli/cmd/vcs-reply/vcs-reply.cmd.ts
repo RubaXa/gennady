@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72, TSK-79
+// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
@@ -13,15 +13,16 @@ import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.
 
 /**
  * @purpose One posting instruction: reply to a thread, resolve/reopen a discussion,
- *   or start a new discussion / line-level diff comment.
- * @invariant `discussionId` → reply; otherwise new discussion (line comment when `position` set).
+ *   start a new discussion / line-level diff comment, or edit/delete an existing note.
+ * @invariant `discussionId` → reply; `noteId` → edit or delete; otherwise new discussion (line comment when `position` set).
  * @invariant `resolve` requires `discussionId`; `resolve:false` ignores `body`.
+ * @invariant `delete` requires `noteId`.
  * @consumer vcs-reply main
  */
 type ReplyItem = {
   /** @purpose Target discussion to reply into; absent → create a new discussion */
   discussionId?: string;
-  /** @purpose Comment body (Markdown); required unless resolve is set with discussionId */
+  /** @purpose Comment body (Markdown); required unless resolve/delete/edit is set */
   body?: string;
   /** @purpose Diff position for a line-level comment */
   position?: VcsDiscussionPosition;
@@ -31,6 +32,10 @@ type ReplyItem = {
   suggestion?: string;
   /** @purpose Range of lines for the suggestion diff context | @invariant Default { above: 0, below: 0 } */
   suggestionRange?: { above: number; below: number };
+  /** @purpose Target note to edit or delete | @invariant Mutually exclusive with discussionId/position operations */
+  noteId?: string;
+  /** @purpose Delete the note instead of editing | @invariant Requires noteId */
+  delete?: boolean;
 };
 
 /**
@@ -119,6 +124,8 @@ export async function main(opts: MainOpts = {}): Promise<{
           `  [{"body":"коммент на строку","position":{"baseSha":"..","startSha":"..","headSha":"..","newPath":"src/x.ts","newLine":42}}]`
         )
       );
+      console.error(style.gray(`  [{"noteId":"12345","body":"исправленный текст"}]`));
+      console.error(style.gray(`  [{"noteId":"12345","delete":true}]`));
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
     try {
@@ -152,8 +159,24 @@ export async function main(opts: MainOpts = {}): Promise<{
     return { ok: false, sent: 0, failed: 0, code: 1 };
   }
 
+  const invalidNoteDelete = payload.find((x) => x && x.delete && !x.noteId);
+  if (invalidNoteDelete) {
+    console.error(style.redBright.bold('✖ Ошибка:'), 'delete требует noteId.');
+    return { ok: false, sent: 0, failed: 0, code: 1 };
+  }
+
+  const invalidNoteEdit = payload.find((x) => x && x.noteId && !x.delete && !x.body);
+  if (invalidNoteEdit) {
+    console.error(style.redBright.bold('✖ Ошибка:'), 'edit note требует body.');
+    return { ok: false, sent: 0, failed: 0, code: 1 };
+  }
+
   const items = payload.filter((x) => {
     if (!x) return false;
+    if (x.noteId) {
+      if (x.delete) return true;
+      return typeof x.body === 'string' && x.body.length > 0;
+    }
     if (x.resolve !== undefined) {
       return typeof x.discussionId === 'string' && x.discussionId.length > 0;
     }
@@ -170,7 +193,15 @@ export async function main(opts: MainOpts = {}): Promise<{
   }
 
   const kindOf = (it: ReplyItem): string =>
-    it.discussionId ? 'reply' : it.position ? 'line' : 'discussion';
+    it.noteId
+      ? it.delete
+        ? 'delete'
+        : 'edit'
+      : it.discussionId
+        ? 'reply'
+        : it.position
+          ? 'line'
+          : 'discussion';
 
   // #region START_RESOLVE_VCS_CONTEXT
   const vcsContext = opts.vcsContext;
@@ -234,6 +265,19 @@ export async function main(opts: MainOpts = {}): Promise<{
   if (dryRun) {
     for (const it of items) {
       const tag = it.discussionId ?? kindOf(it);
+      // #region START_DRY_RUN_NOTE — noteId: show edit / delete intent
+      if (it.noteId) {
+        if (it.delete) {
+          console.info(`${style.blue('[DRY]')} ${style.gray(`Would delete: noteId=${it.noteId}`)}`);
+        } else {
+          console.info(
+            `${style.blue('[DRY]')} ${style.gray(`edit:${it.noteId}`)} → ${resolveBody(it).slice(0, 80)}`
+          );
+        }
+        sent += 1;
+        continue;
+      }
+      // #endregion END_DRY_RUN_NOTE
       // #region START_DRY_RUN_RESOLVE — resolve:true shows body then resolve; resolve:false shows reopen
       if (it.resolve === true) {
         if (it.body) {
@@ -261,6 +305,48 @@ export async function main(opts: MainOpts = {}): Promise<{
 
   for (const it of items) {
     const tag = it.discussionId ?? kindOf(it);
+
+    // #region START_EDIT_NOTE — update existing note body
+    if (it.noteId && !it.delete) {
+      try {
+        await vcs!.MergeDiscussions.updateNote({
+          project,
+          iid: String(iid),
+          noteId: it.noteId,
+          body: resolveBody(it),
+        });
+        console.info(`${style.green('✔')} ${style.gray(`edit:${it.noteId}`)}`);
+        sent += 1;
+      } catch (e) {
+        const msg = (e as Error).message ?? String(e);
+        const display = /404/.test(msg) ? `Note ${it.noteId} not found` : msg;
+        console.error(`${style.redBright('✖')} ${style.gray(`edit:${it.noteId}`)} ${display}`);
+        failed += 1;
+      }
+      continue;
+    }
+    // #endregion END_EDIT_NOTE
+
+    // #region START_DELETE_NOTE — delete existing note
+    if (it.noteId && it.delete) {
+      try {
+        await vcs!.MergeDiscussions.deleteNote({
+          project,
+          iid: String(iid),
+          noteId: it.noteId,
+          discussionId: it.discussionId,
+        });
+        console.info(`${style.green('✔')} ${style.gray(`delete:${it.noteId}`)}`);
+        sent += 1;
+      } catch (e) {
+        const msg = (e as Error).message ?? String(e);
+        const display = /404/.test(msg) ? `Note ${it.noteId} not found` : msg;
+        console.error(`${style.redBright('✖')} ${style.gray(`delete:${it.noteId}`)} ${display}`);
+        failed += 1;
+      }
+      continue;
+    }
+    // #endregion END_DELETE_NOTE
 
     // #region START_RESOLVE_REOPEN — resolve:false → reopen only, body ignored
     if (it.resolve === false) {
