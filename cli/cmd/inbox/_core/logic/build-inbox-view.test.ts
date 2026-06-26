@@ -101,10 +101,7 @@ describe('buildInboxView', () => {
   });
 
   it('keeps an author idle MR (needs my self-review summary) but hides reviewer idle', () => {
-    const items = [
-      raw({ iid: '1', role: 'author' }),
-      raw({ iid: '2', role: 'reviewer' }),
-    ];
+    const items = [raw({ iid: '1', role: 'author' }), raw({ iid: '2', role: 'reviewer' })];
     const stages = stageMap({ '1': 'idle', '2': 'idle' });
     const view = buildInboxView(items, opt(), NOW, new Map(), stages);
     assert.strictEqual(view.total, 1);

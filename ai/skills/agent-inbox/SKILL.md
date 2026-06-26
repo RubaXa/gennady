@@ -303,8 +303,10 @@ Host: если запуск не из GitLab-репозитория — доба
    я уже видел — повторно не переспрашиваешь и dry-run не гоняешь. Загрузи
    `ai/directives/agent-inbox/posting-rules.directive.xml` (Mermaid-only диаграммы, префикс 🤖,
    гранулярность: спека → один комментарий к строке 1; код → per-line; ответ → в существующий
-   тред; синтаксис `vcs-reply`). Затем по отмеченному:
-   - замечания/ответы → `gennady vcs-reply --project=<group/project> --iid=<iid> [--vcs-source=<host>]`
+   тред; синтаксис `vcs-reply`). Затем по отмеченному (всё через `vcs-reply`, один JSON-массив):
+   - замечания/ответы/сводка → элементы `reply` / `line` / `discussion`;
+   - закрыть треды → элементы `{"discussionId":"…","resolve":true}` (или reply+resolve);
+   - всё это: `gennady vcs-reply --project=<group/project> --iid=<iid> [--vcs-source=<host>]`
      (JSON-массив на stdin), **без `--dry-run`**;
    - approve → `gennady vcs-approve --project=<group/project> --iid=<iid> [--vcs-source=<host>]`,
      **без `--dry-run`**. Команда недоступна — сообщи мне.
