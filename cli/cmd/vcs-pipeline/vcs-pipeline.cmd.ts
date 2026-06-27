@@ -142,25 +142,58 @@ async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPi
 // #endregion END_FETCH_PIPELINE
 
 // #region START_OUTPUT_PIPELINE
-/**
- * @purpose Format and write pipeline status + failed jobs to stdout.
- * @param pipeline Fetched pipeline data.
- * @param deps Injected dependencies.
- * @sideEffect Console: writes pipeline summary to stdout.
- */
-function outputPipeline(pipeline: VcsPipelineStatus, deps: VcsPipelineDeps): void {
-  deps.stdout.write(`Pipeline status: ${pipeline.status || 'none'}\n`);
+/** @purpose Filter jobs by status: 'failed' = not success, otherwise exact match. */
+function filterJobs(pipeline: VcsPipelineStatus, statusFilter?: string) {
+  if (!statusFilter || statusFilter === 'all') return pipeline.jobs;
+  if (statusFilter === 'failed')
+    return pipeline.jobs.filter((j) => j.status.toLowerCase() !== 'success');
+  return pipeline.jobs.filter((j) => j.status.toLowerCase() === statusFilter.toLowerCase());
+}
 
-  const failedJobs = pipeline.jobs.filter((j) => j.status !== 'success');
-  if (failedJobs.length === 0 && pipeline.jobs.length > 0) {
-    deps.stdout.write('All jobs passed.\n');
-  } else if (failedJobs.length > 0) {
-    deps.stdout.write('Failed jobs:\n');
-    for (const job of failedJobs) {
-      deps.stdout.write(`  ${job.name} (${job.status})\n`);
-    }
+/** @purpose Strip ANSI and keep error-relevant lines from job log. */
+function filterLog(raw: string): string {
+  const ansiRe =
+    /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
+  const clean = raw.replace(ansiRe, '');
+  const patterns = [
+    /\b(ERROR|FAIL|FAILED)\b/i, /\b(error|fail|failed)\b/,
+    /\b(assert|assertion)\b/i, /\b(exception|throw|crash|fatal|abort)\b/i,
+    /\b(cannot|unable|invalid|unexpected)\b/i, /^\s*\d+:\d+\s+error\b/i,
+    /^\[ERROR\]/i, /^\s*at\s+/i, /^\s*\d+\s*\|\s*/i,
+    /^Error:/i, /^\s*✖/, /^\s*⚠/, /^\s*❌/,
+  ];
+  const lines = clean.split('\n').filter((l) => {
+    const t = l.trim();
+    return t && patterns.some((p) => p.test(t));
+  });
+  return lines.length > 0 ? lines.join('\n') : clean.slice(0, 2000) + '\n... [no error lines detected]';
+}
+
+/** @purpose Extract numeric REST job ID from GraphQL global ID. */
+function extractJobId(gid: string): string {
+  const m = gid.match(/(\d+)$/);
+  return m ? m[1] : gid;
+}
+
+/** @purpose Format pipeline as JSON for machine consumption. */
+function outputJson(pipeline: VcsPipelineStatus, jobs: typeof pipeline.jobs, deps: VcsPipelineDeps): void {
+  deps.stdout.write(JSON.stringify({
+    status: pipeline.status,
+    jobs: jobs.map((j) => ({ name: j.name, status: j.status, id: extractJobId(j.id) })),
+  }, null, 2));
+  deps.stdout.write('\n');
+}
+
+/** @purpose Format pipeline as human-readable text. */
+function outputText(pipeline: VcsPipelineStatus, jobs: typeof pipeline.jobs, deps: VcsPipelineDeps): void {
+  deps.stdout.write(`Pipeline status: ${pipeline.status || 'none'}\n`);
+  if (jobs.length === 0) {
+    deps.stdout.write('No matching jobs.\n');
+  } else {
+    for (const job of jobs) deps.stdout.write(`  ${job.name} (${job.status})\n`);
   }
 }
+
 // #endregion END_OUTPUT_PIPELINE
 
 /**
@@ -183,7 +216,10 @@ export async function run(
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
     host: { aliases: ['host'], takesValue: true },
+    status: { aliases: ['status'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
+    json: ['json'],
+    logs: ['logs'],
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
@@ -192,6 +228,9 @@ export async function run(
   };
 
   const dryRun = !!args['dry-run'];
+  const jsonMode = !!args['json'];
+  const logsMode = !!args['logs'];
+  const statusFilter = (args.status as string | undefined) || 'failed';
 
   logger.debug(
     `[run] [parsing → parsed] dryRun=${dryRun} ref=${vcsArgs.ref ?? ''} host=${vcsArgs.host ?? ''}`
@@ -252,7 +291,32 @@ export async function run(
       deps.exit(0);
     }
 
-    outputPipeline(pipeline, deps);
+    const jobs = filterJobs(pipeline, statusFilter);
+
+    if (logsMode && jobs.length > 0) {
+      const client = new VcsGitlabClient({
+        baseUrl: `https://${context.host}/api/v4`,
+        token: context.token,
+      });
+      for (const job of jobs) {
+        try {
+          const trace = await client.Pipeline!.getJobLog({ project: context.project, jobId: extractJobId(job.id) });
+          deps.stdout.write(`\n── ${job.name} (${job.status}) ──\n`);
+          deps.stdout.write(filterLog(trace));
+          deps.stdout.write('\n');
+        } catch (e) {
+          deps.stdout.write(`\n── ${job.name} (${job.status}) ──\n`);
+          deps.stdout.write(`  [log unavailable: ${(e as Error).message}]\n`);
+        }
+      }
+      deps.exit(0);
+    }
+
+    if (jsonMode) {
+      outputJson(pipeline, jobs, deps);
+    } else {
+      outputText(pipeline, jobs, deps);
+    }
     logger.info(`[run] [output → complete] status=${pipeline.status}`);
     deps.exit(0);
   } catch (cause) {

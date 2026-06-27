@@ -19,8 +19,10 @@ export class VcsGitlabPipeline extends VcsClientPipeline {
   /** @purpose Bound HTTP request function injected for GitLab API calls */
   protected _request: RequestFn;
 
-  /** @purpose Wire the HTTP request adapter for GitLab job endpoints.
-   * @param request Authenticated HTTP request function targeting GitLab API. */
+  /**
+ * @purpose Wire the HTTP request adapter for GitLab job endpoints.
+   * @param request Authenticated HTTP request function targeting GitLab API.
+   */
   constructor(request: RequestFn) {
     super();
     this._request = request;
