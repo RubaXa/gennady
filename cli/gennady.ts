@@ -135,8 +135,8 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/vcs-job-log/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
-    case 'vcs-draft':
-      await import('./cmd/vcs-draft/help.ts').then((m) => m.printHelp());
+    case 'vcs-draft-note':
+      await import('./cmd/vcs-draft-note/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
   }
@@ -250,8 +250,8 @@ switch (command) {
     await import('./cmd/vcs-job-log/index.ts');
     break;
 
-  case 'vcs-draft':
-    await import('./cmd/vcs-draft/index.ts');
+  case 'vcs-draft-note':
+    await import('./cmd/vcs-draft-note/index.ts');
     break;
 
   default:

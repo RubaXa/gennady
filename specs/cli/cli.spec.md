@@ -1536,11 +1536,11 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-VL-02 | Печатает сырой лог (trace) джобы в stdout          |
 | FR-VL-03 | Использует `vcs-context-resolver`; `--host`        |
 
-### 4.1.22 vcs-draft Functional Requirements
+### 4.1.22 vcs-draft-note Functional Requirements
 
 | ID       | Требование                                                                                 |
 | -------- | ------------------------------------------------------------------------------------------ |
-| FR-VD-01 | `gennady vcs-draft --ref <ref>` — список черновиков на MR (`listDraftNotes`, по умолчанию) |
+| FR-VD-01 | `gennady vcs-draft-note --ref <ref>` — список черновиков на MR (`listDraftNotes`, по умолчанию) |
 | FR-VD-02 | `--create <text> [--file <path>]` — создать черновик (`createDraftNote`)                   |
 | FR-VD-03 | `--update <id> <text>` — обновить черновик (`updateDraftNote`)                             |
 | FR-VD-04 | `--delete <id>` — удалить черновик (`deleteDraftNote`)                                     |

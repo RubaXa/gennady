@@ -13,8 +13,8 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
 
 /**
- * @purpose Injectable dependencies for the vcs-draft command — defaults to real implementations.
- * @consumer vcs-draft run()
+ * @purpose Injectable dependencies for the vcs-draft-note command — defaults to real implementations.
+ * @consumer vcs-draft-note run()
  */
 export type VcsDraftDeps = {
   /** @purpose VCS context resolution function */
@@ -269,7 +269,7 @@ function countActions(args: Record<string, unknown>): number {
 // #endregion END_COUNT_ACTIONS
 
 /**
- * @purpose Execute vcs-draft command: resolve context, dispatch to the selected draft-note action.
+ * @purpose Execute vcs-draft-note command: resolve context, dispatch to the selected draft-note action.
  * @invariant Exactly one action flag must be supplied; iid must be resolved from ref or explicit args.
  * @param rawArgs CLI arguments (process.argv).
  * @param [deps] Injectable dependencies — defaults to real process implementations.

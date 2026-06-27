@@ -1,4 +1,4 @@
-// @file: Unit tests for vcs-draft command — CLI draft-note lifecycle via run().
+// @file: Unit tests for vcs-draft-note command — CLI draft-note lifecycle via run().
 // @consumers: N/A
 // @tasks: TSK-87
 
@@ -60,7 +60,7 @@ function restoreFetch(): void {
 
 // ── Import SUT ───────────────────────────────────────────────────────────
 
-const cmdModule = await import('../vcs-draft.cmd.ts');
+const cmdModule = await import('../vcs-draft-note.cmd.ts');
 const { run } = cmdModule;
 
 // ── Output capture helpers ───────────────────────────────────────────────
@@ -123,9 +123,9 @@ async function runDraft(args: string[], depsOverrides?: Partial<VcsDraftDeps>) {
   });
 }
 
-// ── BDD: vcs-draft --list → listDraftNotes ───────────────────────────────
+// ── BDD: vcs-draft-note --list → listDraftNotes ───────────────────────────────
 
-describe('vcs-draft --list', () => {
+describe('vcs-draft-note --list', () => {
   it('should call listDraftNotes and print drafts', async () => {
     mockFetchResponse({
       body: [
@@ -134,7 +134,7 @@ describe('vcs-draft --list', () => {
       ],
     });
 
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--iid=42', '--list']);
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--list']);
 
     // #region START_LIST_DRAFTS_ASSERT
     assert.strictEqual(exitCodes[0], 0);
@@ -149,23 +149,23 @@ describe('vcs-draft --list', () => {
   it('should print "Нет черновиков" when list is empty', async () => {
     mockFetchResponse({ body: [] });
 
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--iid=42', '--list']);
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--list']);
 
     const joined = stdoutLines.join('');
     assert.match(joined, /Нет черновиков для этого MR/);
   });
 });
 
-// ── BDD: vcs-draft --create ──────────────────────────────────────────────
+// ── BDD: vcs-draft-note --create ──────────────────────────────────────────────
 
-describe('vcs-draft --create', () => {
+describe('vcs-draft-note --create', () => {
   it('should call createDraftNote with project/iid/body', async () => {
     mockFetchResponse({ body: { id: 77 } });
 
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--create',
@@ -181,16 +181,16 @@ describe('vcs-draft --create', () => {
   });
 });
 
-// ── BDD: vcs-draft --update ──────────────────────────────────────────────
+// ── BDD: vcs-draft-note --update ──────────────────────────────────────────────
 
-describe('vcs-draft --update', () => {
+describe('vcs-draft-note --update', () => {
   it('should call updateDraftNote with project/iid/draftNoteId/body', async () => {
     mockFetchResponse({ body: { id: 55 } });
 
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--update',
@@ -208,7 +208,7 @@ describe('vcs-draft --update', () => {
   });
 
   it('should reject --update without --body', async () => {
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--iid=42', '--update', '55']);
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--update', '55']);
 
     assert.strictEqual(exitCodes[0], 1);
     const joined = stderrLines.join('');
@@ -216,13 +216,13 @@ describe('vcs-draft --update', () => {
   });
 });
 
-// ── BDD: vcs-draft --delete ──────────────────────────────────────────────
+// ── BDD: vcs-draft-note --delete ──────────────────────────────────────────────
 
-describe('vcs-draft --delete', () => {
+describe('vcs-draft-note --delete', () => {
   it('should call deleteDraftNote with project/iid/draftNoteId', async () => {
     mockFetchResponse({ status: 200 });
 
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--iid=42', '--delete', '99']);
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--delete', '99']);
 
     assert.strictEqual(exitCodes[0], 0);
     const joined = stdoutLines.join('');
@@ -230,16 +230,16 @@ describe('vcs-draft --delete', () => {
   });
 });
 
-// ── BDD: vcs-draft --publish ─────────────────────────────────────────────
+// ── BDD: vcs-draft-note --publish ─────────────────────────────────────────────
 
-describe('vcs-draft --publish', () => {
+describe('vcs-draft-note --publish', () => {
   it('should call publishDraftNote with project/iid/draftNoteId', async () => {
     mockFetchResponse({ status: 200 });
 
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--publish',
@@ -254,12 +254,12 @@ describe('vcs-draft --publish', () => {
 
 // ── BDD: dry-run ─────────────────────────────────────────────────────────
 
-describe('vcs-draft dry-run', () => {
+describe('vcs-draft-note dry-run', () => {
   it('should print dry-run intent and skip API call for --list', async () => {
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--list',
@@ -275,7 +275,7 @@ describe('vcs-draft dry-run', () => {
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--create',
@@ -291,7 +291,7 @@ describe('vcs-draft dry-run', () => {
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--update',
@@ -308,9 +308,9 @@ describe('vcs-draft dry-run', () => {
 
 // ── Validation: no action / multiple actions ─────────────────────────────
 
-describe('vcs-draft validation', () => {
+describe('vcs-draft-note validation', () => {
   it('should reject when no action flag is given', async () => {
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--iid=42']);
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42']);
 
     assert.strictEqual(exitCodes[0], 1);
     const joined = stderrLines.join('');
@@ -321,7 +321,7 @@ describe('vcs-draft validation', () => {
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--list',
@@ -344,7 +344,7 @@ describe('vcs-draft validation', () => {
       })
     );
 
-    await runDraft(['node', 'gennady', 'vcs-draft', '--project=g/p', '--list'], {
+    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--list'], {
       resolveVcsContext: resolveNoIid,
     });
 
@@ -356,14 +356,14 @@ describe('vcs-draft validation', () => {
 
 // ── API error propagation ────────────────────────────────────────────────
 
-describe('vcs-draft API errors', () => {
+describe('vcs-draft-note API errors', () => {
   it('should propagate createDraftNote error to stderr and exit 1', async () => {
     mockFetchResponse({ status: 403, body: 'Forbidden' });
 
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--create',
@@ -381,7 +381,7 @@ describe('vcs-draft API errors', () => {
     await runDraft([
       'node',
       'gennady',
-      'vcs-draft',
+      'vcs-draft-note',
       '--project=g/p',
       '--iid=42',
       '--delete',

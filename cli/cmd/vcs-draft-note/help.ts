@@ -1,20 +1,20 @@
-// @file: vcs-draft command help output.
+// @file: vcs-draft-note command help output.
 // @consumers: help command
 // @tasks: TSK-87
 
 /**
- * @purpose Print CLI help for the vcs-draft command.
+ * @purpose Print CLI help for the vcs-draft-note command.
  * @sideEffect Console: writes help text to stdout.
  */
 export function printHelp(): void {
-  console.info('gennady vcs-draft — Управление черновиками (draft notes) GitLab MR');
+  console.info('gennady vcs-draft-note — Управление черновиками (draft notes) GitLab MR');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady vcs-draft --list  [--ref <ref>]');
-  console.info('  npx gennady vcs-draft --create "<text>" [--ref <ref>]');
-  console.info('  npx gennady vcs-draft --update <id> --body "<text>" [--ref <ref>]');
-  console.info('  npx gennady vcs-draft --delete <id> [--ref <ref>]');
-  console.info('  npx gennady vcs-draft --publish <id> [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --list  [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --create "<text>" [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --update <id> --body "<text>" [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --delete <id> [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --publish <id> [--ref <ref>]');
   console.info('');
   console.info('Options:');
   console.info('  --ref <group/repo!iid>   MR ref (определяет project + iid)');
@@ -33,12 +33,12 @@ export function printHelp(): void {
   console.info('  GITLAB_PERSONAL_TOKEN    GitLab access token (required)');
   console.info('');
   console.info('Examples:');
-  console.info('  npx gennady vcs-draft --ref group/repo!42 --list');
-  console.info('  npx gennady vcs-draft --ref group/repo!42 --create "Надо поправить"');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --list');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --create "Надо поправить"');
   console.info(
-    '  npx gennady vcs-draft --ref group/repo!42 --update 123 --body "Обновлённый текст"'
+    '  npx gennady vcs-draft-note --ref group/repo!42 --update 123 --body "Обновлённый текст"'
   );
-  console.info('  npx gennady vcs-draft --ref group/repo!42 --delete 123');
-  console.info('  npx gennady vcs-draft --ref group/repo!42 --publish 123');
-  console.info('  npx gennady vcs-draft --ref group/repo!42 --list --dry-run');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --delete 123');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --publish 123');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --list --dry-run');
 }
