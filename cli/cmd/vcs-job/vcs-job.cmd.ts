@@ -81,11 +81,15 @@ async function resolveContextOrFail(vcsArgs: VcsCliArgs, deps: VcsJobDeps): Prom
  * @throws {Error} When job is not found in the pipeline.
  */
 function resolveJobId(pipeline: VcsPipelineStatus, jobSpec: string): string {
-  const byId = pipeline.jobs.find((j) => j.id === jobSpec);
-  if (byId) return byId.id;
+  const extractId = (gid: string) => {
+    const m = gid.match(/(\d+)$/);
+    return m ? m[1] : gid;
+  };
+  const byId = pipeline.jobs.find((j) => extractId(j.id) === jobSpec);
+  if (byId) return extractId(byId.id);
 
   const byName = pipeline.jobs.find((j) => j.name === jobSpec);
-  if (byName) return byName.id;
+  if (byName) return extractId(byName.id);
 
   throw new Error(`[resolveJobId] Job not found: ${jobSpec}`);
 }

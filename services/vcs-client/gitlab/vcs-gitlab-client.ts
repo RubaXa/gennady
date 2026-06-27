@@ -56,16 +56,20 @@ export class VcsGitlabClient extends VcsClient {
     super();
 
     const request = async (path: string, init: RequestInit = {}): Promise<unknown> => {
+      const { responseType, ...fetchInit } = init as RequestInit & { responseType?: string };
       const response = await fetch(`${options.baseUrl}${path}`, {
-        ...init,
+        ...fetchInit,
         headers: {
           'PRIVATE-TOKEN': options.token,
-          ...(init.headers ?? {}),
+          ...(fetchInit.headers ?? {}),
         },
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         throw new Error(`GitLab request failed: ${response.status} ${response.statusText} ${text}`);
+      }
+      if (responseType === 'text') {
+        return response.text();
       }
       return response.json();
     };
@@ -102,7 +106,7 @@ export class VcsGitlabClient extends VcsClient {
     };
 
     this._request = request;
-    this.MergeRequests = new VcsGitlabMergeRequests(request);
+    this.MergeRequests = new VcsGitlabMergeRequests(request, graphql);
     this.MergeDiscussions = new VcsGitlabMergeDiscussions(request);
     this.RepositoryFiles = new VcsGitlabRepositoryFiles(options.baseUrl, options.token);
     this.Inbox = new VcsGitlabInbox(graphql);

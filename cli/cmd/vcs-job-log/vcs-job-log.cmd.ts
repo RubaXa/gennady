@@ -8,7 +8,61 @@ import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vcs-pipeline-status.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { logger } from '#logger';
+
+// #region START_ANSI_STRIP
+/** @purpose Regular expression matching ANSI escape sequences (colors, cursor movements, etc.). */
+const ANSI_RE =
+  /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
+
+/** @purpose Strip ANSI escape sequences from a string. */
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_RE, '');
+}
+// #endregion END_ANSI_STRIP
+
+// #region START_FILTER_LOG
+/** @purpose Lines that signal errors or important diagnostic information. */
+const ERROR_PATTERNS = [
+  /\b(ERROR|FAIL|FAILED|FAILURE)\b/i,
+  /\b(error|fail|failed|failure)\b/,
+  /\b(assert|assertion)\b/i,
+  /\b(exception|throw|crash|fatal|abort)\b/i,
+  /\b(cannot|unable|invalid|unexpected|undefined|null pointer)\b/i,
+  /^\s*\d+:\d+\s+error\b/i,
+  /^\[ERROR\]/i,
+  /^\s*at\s+/i,
+  /^\s*\d+\s*\|\s*/i,
+  /^Error:/i,
+  /^\s*✖/,
+  /^\s*⚠/,
+  /^\s*❌/,
+  /^\s*🛑/,
+  /^\s*💥/,
+];
+
+/** @purpose Filter log lines: strip ANSI, keep only error-relevant lines. */
+function filterLog(rawLog: string): string {
+  const clean = stripAnsi(rawLog);
+  const lines = clean.split('\n');
+  const filtered = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    return ERROR_PATTERNS.some((p) => p.test(trimmed));
+  });
+
+  if (filtered.length === 0) {
+    return (
+      clean.slice(0, 2000) + '\n... [no error lines detected, showing first 2000 chars of raw log]'
+    );
+  }
+
+  return filtered.join('\n');
+}
+// #endregion END_FILTER_LOG
 
 /** @purpose Injectable dependencies for the vcs-job-log command. */
 export type VcsJobLogDeps = {
@@ -79,12 +133,19 @@ async function resolveContextOrFail(
  * @returns Resolved job id string.
  * @throws {Error} When job is not found in the pipeline.
  */
+/** @purpose Extract numeric REST job ID from a GraphQL global ID (gid://gitlab/Ci::Build/12345 → 12345). */
+function extractJobId(gid: string): string {
+  const match = gid.match(/(\d+)$/);
+  if (!match) return gid;
+  return match[1];
+}
+
 function resolveJobId(pipeline: VcsPipelineStatus, jobSpec: string): string {
-  const byId = pipeline.jobs.find((j) => j.id === jobSpec);
-  if (byId) return byId.id;
+  const byId = pipeline.jobs.find((j) => extractJobId(j.id) === jobSpec);
+  if (byId) return extractJobId(byId.id);
 
   const byName = pipeline.jobs.find((j) => j.name === jobSpec);
-  if (byName) return byName.id;
+  if (byName) return extractJobId(byName.id);
 
   throw new Error(`[resolveJobId] Job not found: ${jobSpec}`);
 }
@@ -110,6 +171,7 @@ export async function run(
     ref: { aliases: ['ref'], takesValue: true },
     host: { aliases: ['host'], takesValue: true },
     job: { aliases: ['job'], takesValue: true },
+    raw: { aliases: ['raw'] },
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
@@ -118,6 +180,7 @@ export async function run(
   };
 
   const jobSpec = args.job as string | undefined;
+  const rawMode = Boolean(args.raw);
 
   if (!jobSpec) {
     deps.stderr.write('✖ Ошибка: --job <name|id> обязателен\n');
@@ -172,7 +235,27 @@ export async function run(
     const trace = await client.Pipeline.getJobLog({ project: context.project, jobId });
     logger.info(`[run] [fetching-log → fetched] ${jobId} length=${trace.length}`);
 
-    deps.stdout.write(trace);
+    if (rawMode) {
+      deps.stdout.write(trace);
+      deps.exit(0);
+    }
+
+    // Smart mode: save to temp → filter → output
+    const tmpDir = mkdtempSync(join(tmpdir(), 'gennady-job-log-'));
+    const tmpFile = join(tmpDir, 'raw.log');
+    writeFileSync(tmpFile, trace, 'utf-8');
+    logger.debug(`[run] [raw-log → saved] ${tmpFile}`);
+
+    const filtered = filterLog(trace);
+
+    if (!filtered.trim()) {
+      deps.stdout.write('(empty — no error lines detected)\n');
+    } else {
+      deps.stdout.write(filtered);
+      deps.stdout.write('\n');
+    }
+
+    deps.stdout.write(`\n📁 Полный лог: ${tmpFile}  (--raw для вывода без фильтрации)\n`);
     deps.exit(0);
   } catch (cause) {
     const error = new Error(`[run] Fetch failed for ${context.project}!${iid} job=${jobSpec}`, {

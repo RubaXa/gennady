@@ -6,7 +6,9 @@ import { VcsClientPipeline } from '../abstract/vcs-client-pipeline.ts';
 import type { VcsJob } from '../entities/vcs-job.type.ts';
 import type { VcsJobQuery } from '../entities/vcs-job-query.type.ts';
 
-type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
+/** @purpose Custom init options extending standard RequestInit with response type control. */
+type RequestInit_ = RequestInit & { responseType?: 'json' | 'text' };
+type RequestFn = (path: string, init?: RequestInit_) => Promise<unknown>;
 
 /**
  * @purpose GitLab REST adapter for pipeline job management.
@@ -17,10 +19,8 @@ export class VcsGitlabPipeline extends VcsClientPipeline {
   /** @purpose Bound HTTP request function injected for GitLab API calls */
   protected _request: RequestFn;
 
-  /**
-   * @purpose Wire the HTTP request adapter for GitLab job endpoints.
-   * @param request Authenticated HTTP request function targeting GitLab API.
-   */
+  /** @purpose Wire the HTTP request adapter for GitLab job endpoints.
+   * @param request Authenticated HTTP request function targeting GitLab API. */
   constructor(request: RequestFn) {
     super();
     this._request = request;
@@ -102,7 +102,9 @@ export class VcsGitlabPipeline extends VcsClientPipeline {
   async getJobLog(query: VcsJobQuery): Promise<string> {
     const projectId = encodeURIComponent(query.project);
     const jobId = encodeURIComponent(query.jobId);
-    const raw = await this._request(`/projects/${projectId}/jobs/${jobId}/trace`);
+    const raw = await this._request(`/projects/${projectId}/jobs/${jobId}/trace`, {
+      responseType: 'text',
+    });
     return String(raw ?? '');
   }
 }
