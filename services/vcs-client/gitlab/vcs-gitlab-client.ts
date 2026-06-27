@@ -87,6 +87,7 @@ export class VcsGitlabClient extends VcsClient {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');

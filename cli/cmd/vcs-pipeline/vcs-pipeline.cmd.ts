@@ -156,17 +156,27 @@ function filterLog(raw: string): string {
     /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
   const clean = raw.replace(ansiRe, '');
   const patterns = [
-    /\b(ERROR|FAIL|FAILED)\b/i, /\b(error|fail|failed)\b/,
-    /\b(assert|assertion)\b/i, /\b(exception|throw|crash|fatal|abort)\b/i,
-    /\b(cannot|unable|invalid|unexpected)\b/i, /^\s*\d+:\d+\s+error\b/i,
-    /^\[ERROR\]/i, /^\s*at\s+/i, /^\s*\d+\s*\|\s*/i,
-    /^Error:/i, /^\s*✖/, /^\s*⚠/, /^\s*❌/,
+    /\b(ERROR|FAIL|FAILED)\b/i,
+    /\b(error|fail|failed)\b/,
+    /\b(assert|assertion)\b/i,
+    /\b(exception|throw|crash|fatal|abort)\b/i,
+    /\b(cannot|unable|invalid|unexpected)\b/i,
+    /^\s*\d+:\d+\s+error\b/i,
+    /^\[ERROR\]/i,
+    /^\s*at\s+/i,
+    /^\s*\d+\s*\|\s*/i,
+    /^Error:/i,
+    /^\s*✖/,
+    /^\s*⚠/,
+    /^\s*❌/,
   ];
   const lines = clean.split('\n').filter((l) => {
     const t = l.trim();
     return t && patterns.some((p) => p.test(t));
   });
-  return lines.length > 0 ? lines.join('\n') : clean.slice(0, 2000) + '\n... [no error lines detected]';
+  return lines.length > 0
+    ? lines.join('\n')
+    : clean.slice(0, 2000) + '\n... [no error lines detected]';
 }
 
 /** @purpose Extract numeric REST job ID from GraphQL global ID. */
@@ -176,16 +186,30 @@ function extractJobId(gid: string): string {
 }
 
 /** @purpose Format pipeline as JSON for machine consumption. */
-function outputJson(pipeline: VcsPipelineStatus, jobs: typeof pipeline.jobs, deps: VcsPipelineDeps): void {
-  deps.stdout.write(JSON.stringify({
-    status: pipeline.status,
-    jobs: jobs.map((j) => ({ name: j.name, status: j.status, id: extractJobId(j.id) })),
-  }, null, 2));
+function outputJson(
+  pipeline: VcsPipelineStatus,
+  jobs: typeof pipeline.jobs,
+  deps: VcsPipelineDeps
+): void {
+  deps.stdout.write(
+    JSON.stringify(
+      {
+        status: pipeline.status,
+        jobs: jobs.map((j) => ({ name: j.name, status: j.status, id: extractJobId(j.id) })),
+      },
+      null,
+      2
+    )
+  );
   deps.stdout.write('\n');
 }
 
 /** @purpose Format pipeline as human-readable text. */
-function outputText(pipeline: VcsPipelineStatus, jobs: typeof pipeline.jobs, deps: VcsPipelineDeps): void {
+function outputText(
+  pipeline: VcsPipelineStatus,
+  jobs: typeof pipeline.jobs,
+  deps: VcsPipelineDeps
+): void {
   deps.stdout.write(`Pipeline status: ${pipeline.status || 'none'}\n`);
   if (jobs.length === 0) {
     deps.stdout.write('No matching jobs.\n');
@@ -300,7 +324,10 @@ export async function run(
       });
       for (const job of jobs) {
         try {
-          const trace = await client.Pipeline!.getJobLog({ project: context.project, jobId: extractJobId(job.id) });
+          const trace = await client.Pipeline!.getJobLog({
+            project: context.project,
+            jobId: extractJobId(job.id),
+          });
           deps.stdout.write(`\n── ${job.name} (${job.status}) ──\n`);
           deps.stdout.write(filterLog(trace));
           deps.stdout.write('\n');
