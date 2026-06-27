@@ -1538,14 +1538,14 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1.22 vcs-draft-note Functional Requirements
 
-| ID       | Требование                                                                                 |
-| -------- | ------------------------------------------------------------------------------------------ |
+| ID       | Требование                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------------- |
 | FR-VD-01 | `gennady vcs-draft-note --ref <ref>` — список черновиков на MR (`listDraftNotes`, по умолчанию) |
-| FR-VD-02 | `--create <text> [--file <path>]` — создать черновик (`createDraftNote`)                   |
-| FR-VD-03 | `--update <id> <text>` — обновить черновик (`updateDraftNote`)                             |
-| FR-VD-04 | `--delete <id>` — удалить черновик (`deleteDraftNote`)                                     |
-| FR-VD-05 | `--publish <id>` — опубликовать черновик (`publishDraftNote`)                              |
-| FR-VD-06 | Использует `vcs-context-resolver`; `--host`; `--dry-run`                                   |
+| FR-VD-02 | `--create <text> [--file <path>]` — создать черновик (`createDraftNote`)                        |
+| FR-VD-03 | `--update <id> <text>` — обновить черновик (`updateDraftNote`)                                  |
+| FR-VD-04 | `--delete <id>` — удалить черновик (`deleteDraftNote`)                                          |
+| FR-VD-05 | `--publish <id>` — опубликовать черновик (`publishDraftNote`)                                   |
+| FR-VD-06 | Использует `vcs-context-resolver`; `--host`; `--dry-run`                                        |
 
 ### 4.2 Non-Functional Constraints
 

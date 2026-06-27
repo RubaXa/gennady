@@ -10,7 +10,7 @@
 | cat               | [cmd/cat/](cmd/cat/)                             | Вывод файлов XML/MD → cli/utils/cat-gen                                             |
 | review            | [cmd/review/](cmd/review/)                       | Ревью staged изменений через AI-модели                                              |
 | vcs-reply         | [cmd/vcs-reply/](cmd/vcs-reply/)                 | Постинг ответов в GitLab MR discussions                                             |
-| vcs-draft-note         | [cmd/vcs-draft-note/](cmd/vcs-draft-note/)                 | Управление черновиками (draft notes) в GitLab MR                                    |
+| vcs-draft-note    | [cmd/vcs-draft-note/](cmd/vcs-draft-note/)       | Управление черновиками (draft notes) в GitLab MR                                    |
 | vcs-approve       | [cmd/vcs-approve/](cmd/vcs-approve/)             | Approve GitLab MR через API                                                         |
 | review-verify     | [cmd/review-verify/](cmd/review-verify/)         | Верификация по MR (общий core: [cmd/review/](cmd/review/))                          |
 | review-issues     | [cmd/review-issues/](cmd/review-issues/)         | XML-артефакт issues по MR (общий core: [cmd/review/](cmd/review/))                  |

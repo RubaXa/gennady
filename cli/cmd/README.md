@@ -170,7 +170,7 @@ npx gennady testcov src/core --files
 | `review-verify`     | Сборка промпта для верификации MR/PR discussions        |
 | `review-issues`     | XML-артефакт issues из MR/PR                            |
 | `vcs-reply`         | Постинг ответов в GitLab MR discussions                 |
-| `vcs-draft-note`         | Управление черновиками (draft notes) в GitLab MR        |
+| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR        |
 | `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов               |
 | `remote-console`    | Зеркалирование браузерной консоли в stdout              |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants |

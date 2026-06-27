@@ -208,7 +208,15 @@ describe('vcs-draft-note --update', () => {
   });
 
   it('should reject --update without --body', async () => {
-    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--update', '55']);
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--update',
+      '55',
+    ]);
 
     assert.strictEqual(exitCodes[0], 1);
     const joined = stderrLines.join('');
@@ -222,7 +230,15 @@ describe('vcs-draft-note --delete', () => {
   it('should call deleteDraftNote with project/iid/draftNoteId', async () => {
     mockFetchResponse({ status: 200 });
 
-    await runDraft(['node', 'gennady', 'vcs-draft-note', '--project=g/p', '--iid=42', '--delete', '99']);
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete',
+      '99',
+    ]);
 
     assert.strictEqual(exitCodes[0], 0);
     const joined = stdoutLines.join('');

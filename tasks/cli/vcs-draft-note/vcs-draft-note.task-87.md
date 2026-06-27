@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-87 | **Status:** [ ] TODO | **Scope:** cli | **Module: vcs-draft-note | **Deps:** TSK-86
+- **Task-ID:** TSK-87 | **Status:** [ ] TODO | **Scope:** cli | **Module: vcs-draft-note | **Deps:\*\* TSK-86
 - **Purpose:** A) vcs-reply: `{discussionId, delete:true}` без noteId → deleteDiscussion. B) vcs-draft-note: --list|--create|--update|--delete|--publish. vcs-context-resolver.
 - **Spec:** cli.spec.md §FR-VR-18, §4.1.22 | **Runtime:** real-runtime | **Verify:** unit
 
