@@ -1,6 +1,6 @@
 // @file: TypeScript tree-sitter adapter implementing DbcAstAdapter for parsing .ts files.
 // @consumers: DbcTsLinter
-// @tasks: TSK-08, TSK-11
+// @tasks: TSK-08, TSK-11, TSK-88
 
 import { readFileSync } from 'node:fs';
 import type { default as Parser } from 'tree-sitter';
@@ -33,12 +33,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   /** @purpose Lazy-initialized tree-sitter parser instance */
   protected _parser: Parser | undefined;
 
-  /**
-   * @param filePath Absolute path to the TypeScript source file.
-   * @param [content] Optional pre-loaded file content, bypasses disk read.
-   * @returns Parse result with exported entities or an error.
-   * @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts
-   */
+  /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts */
   async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
     // --- PARSE_FILE
     try {
@@ -196,7 +191,8 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     const name = this._extractName(declaration, source, isDefault);
     const signature = this._extractSignature(declaration, source);
     const members = this._extractMembers(declaration, source, kind);
-    const implementsInterfaces = kind === 'class' ? this._hasImplements(declaration) : undefined;
+    const implementsInterfaces =
+      kind === 'class' ? this._extractImplementsInterfaces(declaration, source) : undefined;
 
     const contract = pendingContract
       ? {
@@ -793,14 +789,25 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   }
 
   /**
-   * @purpose Checks if a class_declaration node has an implements clause.
+   * @purpose Extracts interface names from the implements clause of a class_declaration.
    * @param node class_declaration node.
-   * @returns True if the class has `implements` clause.
+   * @param source Full source text for slicing names.
+   * @returns Names of interfaces the class implements, or empty array.
    */
-  protected _hasImplements(node: SyntaxNode): boolean {
+  protected _extractImplementsInterfaces(node: SyntaxNode, source: string): string[] {
     const heritage = this._findChild(node, 'class_heritage');
-    if (!heritage) return false;
-    return this._findChild(heritage, 'implements_clause') !== null;
+    if (!heritage) return [];
+    const implementsClause = this._findChild(heritage, 'implements_clause');
+    if (!implementsClause) return [];
+
+    const interfaces: string[] = [];
+    for (let i = 0; i < implementsClause.childCount; i += 1) {
+      const child = implementsClause.child(i);
+      if (child && child.type === 'type_identifier') {
+        interfaces.push(source.slice(child.startIndex, child.endIndex));
+      }
+    }
+    return interfaces;
   }
 
   /**

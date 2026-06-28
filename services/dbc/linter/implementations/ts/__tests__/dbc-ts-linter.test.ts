@@ -1,6 +1,6 @@
 // @file: Comprehensive test suite for DbcTsLinter covering all 88 test cases from the coverage matrix.
 // @consumers: DbcTsLinter
-// @tasks: TSK-10, TSK-11, TSK-20
+// @tasks: TSK-10, TSK-11, TSK-20, TSK-88
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,6 +29,7 @@ import {
   ERR_DBC_LINT_RETURNS_UNEXPECTED,
   ERR_DBC_LINT_TYPE_REDUNDANT,
   ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
+  ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS,
 } from '../../../dbc-linter.types.ts';
 import type { DbcEntrySchema } from '../../../../parser/dbc-parser.types.ts';
 import type { DbcParamInfo, DbcSignatureInfo } from '../../../dbc-ast-adapter.types.ts';
@@ -1479,6 +1480,281 @@ describe('DbcTsLinter', () => {
   });
 
   // #endregion END_GROUP_N_CONTENT_OPTION
+
+  // #region START_GROUP_O_REDUNDANT_IN_IMPLEMENTS
+
+  describe('Group O — ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS (TSK-88)', () => {
+    it('N1 — should detect redundant params and returns in implements+see method', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/happy.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 2);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N2 — should treat implements method without @see as normal method', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/no-see.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N3 — should NOT flag extends-class method with @see as redundant', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/extends-not-redundant.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N4 — should NOT flag override method with changed signature as redundant', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/override-not-redundant.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N5 — should detect redundant params when implements matches even with extends', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/extends-and-implements.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 2);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N6 — should NOT flag redundant when @see points to extends-class, not implements', async () => {
+      const { dir, filePath } = setupTempFromFixture(
+        'implements-see/see-on-extends-not-implements.ts'
+      );
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N7 — should detect redundant when @see matches one of multiple implemented interfaces', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/multiple-implements.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 2);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N8 — should NOT flag redundant when @see points to non-implemented interface', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/see-wrong-interface.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N9 — should NOT flag redundant when @see methodName differs from member name', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/see-wrong-method.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N10 — should detect only @param as redundant in void implements+see method', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/only-param-redundant.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 1);
+        // no ERR_DBC_LINT_RETURNS_UNEXPECTED because void with no @returns
+        const returnsErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
+        );
+        assert.strictEqual(returnsErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N11 — should detect all @params and @returns as redundant', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/multiple-params.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 3);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N12 — should remove @param and @returns via autofix', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/autofix.ts');
+      try {
+        const linter = createLinter();
+        const initialReport = await linter.lint(filePath);
+        const initialCount = initialReport.errors.length;
+        assert.ok(initialCount >= 2, `expected >= 2 errors, got ${initialCount}`);
+
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.ok(fixReport.autoFixed >= 2, `expected autoFixed >= 2, got ${fixReport.autoFixed}`);
+        const redundantRemaining = fixReport.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantRemaining.length, 0);
+
+        const fixedContent = readFileSync(filePath, 'utf8');
+        assert.ok(!fixedContent.includes('@param x'));
+        assert.ok(!fixedContent.includes('@returns'));
+        assert.ok(fixedContent.includes('@see {Agent#scan}'));
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N13 — should be idempotent on repeated autofix', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/autofix-idempotent.ts');
+      try {
+        const linter = createLinter();
+        const initialReport = await linter.lint(filePath);
+        assert.strictEqual(initialReport.errors.length, 0);
+
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.strictEqual(fixReport.autoFixed, 0);
+        assert.strictEqual(fixReport.errors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N14 — should preserve non-param tags (@purpose) during autofix', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/autofix-preserves-purpose.ts');
+      try {
+        const linter = createLinter();
+        const initialReport = await linter.lint(filePath);
+        assert.ok(
+          initialReport.errors.length >= 2,
+          `expected >= 2 errors, got ${initialReport.errors.length}`
+        );
+
+        const fixReport = await linter.lintAndFix(filePath);
+        assert.ok(fixReport.autoFixed >= 2, `expected autoFixed >= 2, got ${fixReport.autoFixed}`);
+
+        const fixedContent = readFileSync(filePath, 'utf8');
+        assert.ok(fixedContent.includes('@purpose Scans the area'));
+        assert.ok(fixedContent.includes('@see {Agent#scan}'));
+        assert.ok(!fixedContent.includes('@param x'));
+        assert.ok(!fixedContent.includes('@returns'));
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N15 — should treat extends method without @see as normal method', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/extends-no-see.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N16 — should treat non-implements class method with @see as normal method', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/see-no-implements.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('N17 — should emit only ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS, not RETURNS_UNEXPECTED', async () => {
+      const { dir, filePath } = setupTempFromFixture('implements-see/priority-returns-only.ts');
+      try {
+        const linter = createLinter();
+        const report = await linter.lint(filePath);
+        const redundantErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
+        );
+        assert.strictEqual(redundantErrors.length, 1);
+        const returnsErrors = report.errors.filter(
+          (e) => e.code === ERR_DBC_LINT_RETURNS_UNEXPECTED
+        );
+        assert.strictEqual(returnsErrors.length, 0);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  // #endregion END_GROUP_O_REDUNDANT_IN_IMPLEMENTS
 });
 
 // #endregion END_DBC_TS_LINTER_TESTS

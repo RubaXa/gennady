@@ -1,6 +1,6 @@
 // @file: Port DbcAstAdapter and AST-related Value Objects for the dbc-linter module.
 // @consumers: DbcTsAstAdapter
-// @tasks: TSK-07, TSK-11
+// @tasks: TSK-07, TSK-11, TSK-88
 
 /** @purpose Describes a single parameter in a function or method signature. */
 export type DbcParamInfo = {
@@ -62,8 +62,8 @@ export type DbcExportedEntity = {
   contract?: DbcContractInfo;
   /** @purpose Extracted signature information for callable entities */
   signature: DbcSignatureInfo;
-  /** @purpose Whether the class declaration has `implements` clause */
-  implementsInterfaces?: boolean;
+  /** @purpose Names of interfaces the class implements via `implements` clause */
+  implementsInterfaces?: string[];
 };
 
 /** @purpose Result of parsing a source file: either a list of exported entities or a parse error. */

@@ -143,10 +143,9 @@ describe('vcs-pipeline run', () => {
     // #endregion END_REF_PIPELINE_FAILED_SETUP_MOCKS
 
     assert.match(result.stdout, /Pipeline status: failed/);
-    assert.match(result.stdout, /Failed jobs:/);
-    assert.match(result.stdout, /test \(failed\)/);
-    assert.match(result.stdout, /lint \(failed\)/);
-    assert.match(result.stdout, /deploy \(canceled\)/);
+    assert.match(result.stdout, /✖ test \(failed\)/);
+    assert.match(result.stdout, /✖ lint \(failed\)/);
+    assert.match(result.stdout, /✖ deploy \(canceled\)/);
     assert.strictEqual(result.exitCode, 0);
   });
 
@@ -155,7 +154,7 @@ describe('vcs-pipeline run', () => {
   // ────────────────────────────────────────────────────────────────────────────
 
   it('--ref group/repo!42 — all jobs passed', async () => {
-    // contract: pipeline with all jobs success → All jobs passed message → exit 0
+    // contract: pipeline with all jobs success → No matching jobs (default failed filter) → exit 0
     // failure mode: do not assert on job count in output
 
     // #region START_REF_PIPELINE_ALL_PASSED_SETUP_MOCKS
@@ -168,7 +167,7 @@ describe('vcs-pipeline run', () => {
     // #endregion END_REF_PIPELINE_ALL_PASSED_SETUP_MOCKS
 
     assert.match(result.stdout, /Pipeline status: success/);
-    assert.match(result.stdout, /All jobs passed\./);
+    assert.match(result.stdout, /No matching jobs\./);
     assert.strictEqual(result.exitCode, 0);
   });
 

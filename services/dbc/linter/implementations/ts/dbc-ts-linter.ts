@@ -1,6 +1,6 @@
 // @file: DbcContractMatchValidator (pure validation) and DbcTsLinter adapter implementing DbcLinter with autofix chain.
 // @consumers: DbcLinter
-// @tasks: TSK-09, TSK-11, TSK-20, TSK-21
+// @tasks: TSK-09, TSK-11, TSK-20, TSK-21, TSK-88
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
@@ -19,6 +19,7 @@ import type {
   DbcLintError,
   DbcLintOptions,
   DbcLintIssueCode,
+  DbcValidateContext,
 } from '../../dbc-linter.types.ts';
 import {
   ERR_DBC_LINT_MISSING_CONTRACT,
@@ -30,6 +31,7 @@ import {
   ERR_DBC_LINT_RETURNS_UNEXPECTED,
   ERR_DBC_LINT_TYPE_REDUNDANT,
   ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH,
+  ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS,
 } from '../../dbc-linter.types.ts';
 
 // --- KIND_CLASSIFICATION
@@ -115,23 +117,64 @@ function blankError(code: DbcLintIssueCode | DbcIssueCode, message: string): Dbc
 // --- DBC_CONTRACT_MATCH_VALIDATOR
 
 /**
- * @purpose Pure-function validator that compares parsed contract entries against | a code signature and returns structural mismatches.
+ * @purpose Pure-function validator that compares parsed contract entries against a code signature and returns structural mismatches.
  * @invariant Never throws. Unknown `kind` returns an empty error array.
- * @invariant Errors are returned in stable order: PARAM_MISSING → PARAM_EXTRA → | PARAM_ORDER → RETURNS_MISSING → RETURNS_UNEXPECTED → TYPE_REDUNDANT.
+ * @invariant Errors are returned in stable order: PARAM_REDUNDANT_IN_IMPLEMENTS → PARAM_MISSING → PARAM_EXTRA → PARAM_ORDER → RETURNS_MISSING → RETURNS_UNEXPECTED → TYPE_REDUNDANT.
  * @param entries Parsed contract entries from `DbcParser.parse()`.
  * @param signature Signature information extracted from AST.
  * @param kind Entity or member kind — drives the validation matrix (FR-24).
+ * @param [context] Implements-method context: carries implementsInterfaces and memberName for redundancy detection.
  * @returns Array of lint errors (empty when contract matches signature).
  */
 export function validate(
   entries: DbcEntrySchema[],
   signature: DbcSignatureInfo,
-  kind: string
+  kind: string,
+  context?: DbcValidateContext
 ): DbcLintError[] {
   // Unknown kind → no validation (FR-24 safety valve)
   if (!ALL_KNOWN_KINDS.has(kind)) {
     return [];
   }
+
+  // --- IMPLEMENTS_REDUNDANCY_CHECK
+  // purpose: if member's entity implements an interface referenced by @see, @param/@returns are redundant
+  if (context && context.implementsInterfaces.length > 0) {
+    const seeEntry = entries.find((e) => e.type === 'see');
+    if (seeEntry) {
+      const seeSpecifier = seeEntry.specifier ?? '';
+      const seeMatch = seeSpecifier.match(/^(\w+)#(\w+)$/);
+      if (seeMatch) {
+        const [, interfaceName, methodName] = seeMatch;
+        if (
+          context.implementsInterfaces.includes(interfaceName) &&
+          methodName === context.memberName
+        ) {
+          const errors: DbcLintError[] = [];
+          const paramEntries = entries.filter((e) => e.type === 'param');
+          for (const pe of paramEntries) {
+            errors.push(
+              blankError(
+                ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS,
+                `@param '${pe.specifier ?? ''}' is redundant in implements method`
+              )
+            );
+          }
+          const returnsEntry = entries.find((e) => e.type === 'returns');
+          if (returnsEntry) {
+            errors.push(
+              blankError(
+                ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS,
+                '@returns is redundant in implements method'
+              )
+            );
+          }
+          return errors;
+        }
+      }
+    }
+  }
+  // --- END IMPLEMENTS_REDUNDANCY_CHECK
 
   const errors: DbcLintError[] = [];
   const paramEntries = entries.filter((e) => e.type === 'param');
@@ -305,12 +348,7 @@ export class DbcTsLinter implements DbcLinter {
     this._astAdapter = astAdapter;
   }
 
-  /**
-   * @param filePath Path to the source file to check.
-   * @param [options] Optional lint configuration.
-   * @returns Full lint report with errors and a formatting function.
-   * @see {DbcLinter#lint} in ../../dbc-linter.types.ts
-   */
+  /** @see {DbcLinter#lint} in ../../dbc-linter.types.ts */
   async lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport> {
     logger.debug(`[DbcTsLinter#lint] [idle → parsing] ${filePath}`);
 
@@ -357,12 +395,7 @@ export class DbcTsLinter implements DbcLinter {
     }
   }
 
-  /**
-   * @param filePath Path to the source file to check.
-   * @param [options] Optional lint configuration.
-   * @returns Combined report with errors and count of auto-fixed issues.
-   * @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts
-   */
+  /** @see {DbcLinter#lintAndFix} in ../../dbc-linter.types.ts */
   async lintAndFix(filePath: string, options?: DbcLintOptions): Promise<DbcLintFixReport> {
     logger.debug(`[DbcTsLinter#lintAndFix] [idle → linting] ${filePath}`);
 
@@ -399,22 +432,29 @@ export class DbcTsLinter implements DbcLinter {
         // Chain step 1: remove {type} annotations
         fixed = this._removeRedundantTypes(fixed);
 
-        // Chain step 2: normalize param brackets to match signature optionality
+        // Chain step 2: remove redundant @param/@returns in implements methods
+        fixed = this._removeRedundantInImplements(
+          fixed,
+          block.implementsInterfaces,
+          block.memberName
+        );
+
+        // Chain step 3: normalize param brackets to match signature optionality
         fixed = this._normalizeParamBrackets(fixed, block.signature);
 
-        // Chain step 3: remove extra @param
+        // Chain step 4: remove extra @param
         fixed = this._removeExtraParams(fixed, block.signature);
 
-        // Chain step 4: remove unexpected @returns
+        // Chain step 5: remove unexpected @returns
         fixed = this._removeUnexpectedReturns(fixed, block.kind, block.signature);
 
-        // Chain step 5: reorder @param to match signature
+        // Chain step 6: reorder @param to match signature
         fixed = this._reorderParams(fixed, block.signature);
 
-        // Chain step 6: reorder tags to canonical order
+        // Chain step 7: reorder tags to canonical order
         fixed = this._reorderTags(fixed);
 
-        // Chain step 7: normalize multi-line format (always, even on clean)
+        // Chain step 8: normalize multi-line format (always, even on clean)
         fixed = this._normalizeMultiLine(fixed);
 
         if (fixed !== original) {
@@ -532,13 +572,21 @@ export class DbcTsLinter implements DbcLinter {
             )
           );
         } else {
+          const memberContext: DbcValidateContext | undefined =
+            entity.implementsInterfaces && entity.implementsInterfaces.length > 0
+              ? {
+                  implementsInterfaces: entity.implementsInterfaces,
+                  memberName: member.name,
+                }
+              : undefined;
           const memberErrors = this._validateContract(
             member.contract.text,
             member.signature,
             member.kind,
             filePath,
             member.contract.startLine,
-            member.contract.startCol
+            member.contract.startCol,
+            memberContext
           );
           errors.push(...memberErrors);
         }
@@ -563,6 +611,7 @@ export class DbcTsLinter implements DbcLinter {
    * @param filePath Source file path for error attribution.
    * @param startLine Contract start line in source for error position.
    * @param startCol Contract start column in source for error position.
+   * @param [context] Implements-method context for redundancy detection.
    * @returns Array of lint errors from parser issues and structural mismatches.
    */
   protected _validateContract(
@@ -571,7 +620,8 @@ export class DbcTsLinter implements DbcLinter {
     kind: string,
     filePath: string,
     startLine: number,
-    startCol: number
+    startCol: number,
+    context?: DbcValidateContext
   ): DbcLintError[] {
     const errors: DbcLintError[] = [];
 
@@ -606,7 +656,7 @@ export class DbcTsLinter implements DbcLinter {
     // --- END PARSER_VALIDATION
 
     // --- SIGNATURE_VALIDATION
-    const matchErrors = validate(flatEntries, signature, kind);
+    const matchErrors = validate(flatEntries, signature, kind, context);
     for (const me of matchErrors) {
       errors.push({
         ...me,
@@ -629,10 +679,22 @@ export class DbcTsLinter implements DbcLinter {
     text: string;
     kind: string;
     signature: DbcSignatureInfo;
-    constructor(text: string, kind: string, signature: DbcSignatureInfo) {
+    /** @purpose Interfaces the enclosing class implements — used by implements-redundancy autofix */
+    implementsInterfaces: string[];
+    /** @purpose Member name for @see method matching in implements-redundancy autofix */
+    memberName: string;
+    constructor(
+      text: string,
+      kind: string,
+      signature: DbcSignatureInfo,
+      implementsInterfaces: string[],
+      memberName: string
+    ) {
       this.text = text;
       this.kind = kind;
       this.signature = signature;
+      this.implementsInterfaces = implementsInterfaces;
+      this.memberName = memberName;
     }
   };
 
@@ -649,11 +711,27 @@ export class DbcTsLinter implements DbcLinter {
 
     for (const entity of entities) {
       if (entity.contract) {
-        blocks.push(new this._ContractBlock(entity.contract.text, entity.kind, entity.signature));
+        blocks.push(
+          new this._ContractBlock(
+            entity.contract.text,
+            entity.kind,
+            entity.signature,
+            entity.implementsInterfaces ?? [],
+            ''
+          )
+        );
       }
       for (const member of entity.members) {
         if (member.contract) {
-          blocks.push(new this._ContractBlock(member.contract.text, member.kind, member.signature));
+          blocks.push(
+            new this._ContractBlock(
+              member.contract.text,
+              member.kind,
+              member.signature,
+              entity.implementsInterfaces ?? [],
+              member.name
+            )
+          );
         }
       }
     }
@@ -700,6 +778,71 @@ export class DbcTsLinter implements DbcLinter {
     // Remove {type} right after @param or @returns (optionally preceded by `* `):
     // `* @param {string} name` → `* @param name`
     return jsdocText.replace(/(\*?\s*)@(param|returns)\s+\{[^}]*\}\s+/g, '$1@$2 ');
+  }
+
+  /**
+   * @purpose Remove redundant @param and @returns tags from an implements-method contract.
+   * When a class implements an interface and a member's @see references that interface with the same method name, | @param/@returns are described in the interface — they are redundant in the implementation.
+   * @param jsdocText Raw JSDoc comment text.
+   * @param implementsInterfaces Names of interfaces the enclosing class implements.
+   * @param memberName Name of the member whose contract is being processed.
+   * @returns JSDoc text with redundant @param/@returns removed, or original if conditions not met.
+   */
+  protected _removeRedundantInImplements(
+    jsdocText: string,
+    implementsInterfaces: string[],
+    memberName: string
+  ): string {
+    if (implementsInterfaces.length === 0 || !memberName) return jsdocText;
+
+    const schema: DbcSchema = this._parser.parse(jsdocText);
+    const flatEntries: DbcEntrySchema[] = [];
+    for (const entry of schema.entries) {
+      flatEntries.push(entry);
+      if (entry.inline) {
+        for (const ie of entry.inline) flatEntries.push(ie);
+      }
+    }
+
+    const seeEntry = flatEntries.find((e) => e.type === 'see');
+    if (!seeEntry) return jsdocText;
+
+    const seeSpecifier = seeEntry.specifier ?? '';
+    const seeMatch = seeSpecifier.match(/^(\w+)#(\w+)$/);
+    if (!seeMatch) return jsdocText;
+
+    const [, interfaceName, seeMethodName] = seeMatch;
+    if (!implementsInterfaces.includes(interfaceName) || seeMethodName !== memberName) {
+      return jsdocText;
+    }
+
+    const lines = jsdocText.split('\n');
+    const result: string[] = [];
+    let skipMode = false;
+
+    for (const line of lines) {
+      let trimmed = line.trim();
+      if (trimmed === '*/' || trimmed === '*/ ') {
+        skipMode = false;
+        result.push(line);
+        continue;
+      }
+      if (trimmed.startsWith('* ')) {
+        trimmed = trimmed.slice(2).trimStart();
+      } else if (trimmed.startsWith('*')) {
+        trimmed = trimmed.slice(1).trimStart();
+      }
+      if (/^@param\s/.test(trimmed) || /^@returns\b/.test(trimmed)) {
+        skipMode = true;
+      } else if (/^@\w/.test(trimmed)) {
+        skipMode = false;
+        result.push(line);
+      } else if (!skipMode) {
+        result.push(line);
+      }
+    }
+
+    return result.join('\n');
   }
 
   /**

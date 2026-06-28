@@ -1,6 +1,6 @@
 // @file: Port DbcLinter, Value Objects, and lint error constants for the dbc-linter module.
 // @consumers: DbcTsLinter
-// @tasks: TSK-07, TSK-09, TSK-11
+// @tasks: TSK-07, TSK-09, TSK-11, TSK-88
 
 import type { DbcIssueCode } from '../parser/dbc-parser.types.ts';
 
@@ -70,6 +70,14 @@ export type DbcLintError = {
   code: DbcLintIssueCode | DbcIssueCode;
   /** @purpose Human-readable description of the error */
   message: string;
+};
+
+/** @purpose Context for validate(): carries parent-entity data so implements-method redundancy can be detected. */
+export type DbcValidateContext = {
+  /** @purpose Names of interfaces the enclosing class implements */
+  implementsInterfaces: string[];
+  /** @purpose Name of the member being validated — matched against @see method name */
+  memberName: string;
 };
 
 /**
