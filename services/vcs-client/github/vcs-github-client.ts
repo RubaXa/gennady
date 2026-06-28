@@ -3,6 +3,7 @@
 // @tasks: TSK-30, TSK-84
 
 import { VcsGithubMergeRequests } from './vcs-github-merge-requests.ts';
+import { VcsGithubMergeDiscussions } from './vcs-github-merge-discussions.ts';
 import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
@@ -27,7 +28,7 @@ export class VcsGithubClient extends VcsClient {
   readonly MergeRequests: VcsGithubMergeRequests;
 
   /** @see {VcsClient#MergeDiscussions} in services/vcs-client/abstract/vcs-client.ts */
-  readonly MergeDiscussions = undefined;
+  readonly MergeDiscussions: VcsGithubMergeDiscussions;
 
   /** @see {VcsClient#RepositoryFiles} in services/vcs-client/abstract/vcs-client.ts */
   readonly RepositoryFiles: VcsGithubRepositoryFiles;
@@ -63,6 +64,7 @@ export class VcsGithubClient extends VcsClient {
     };
 
     this.MergeRequests = new VcsGithubMergeRequests(request);
+    this.MergeDiscussions = new VcsGithubMergeDiscussions(request);
     this.RepositoryFiles = new VcsGithubRepositoryFiles(options.baseUrl, options.token);
   }
 }

@@ -111,12 +111,8 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
 
   try {
     const client = createClient(context);
-    if (!client.MergeDiscussions) {
-      deps.stderr.write('✖ Merge discussions not available for this host\n');
-      deps.exit(1);
-    }
 
-    const discussions = (await client.MergeDiscussions.getAll({
+    const discussions = (await client.MergeDiscussions!.getAll({
       project: context.project,
       iid: resolvedIid,
     })) as Array<Record<string, unknown>>;
