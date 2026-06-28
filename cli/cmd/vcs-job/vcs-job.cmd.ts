@@ -193,9 +193,10 @@ export async function run(
   }
   // #endregion END_DRY_RUN
 
-  const client: VcsClient = context.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-    : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   if (!client.Pipeline) {
     deps.stderr.write('✖ Ошибка: Pipeline API не поддерживается данным VCS-клиентом\n');

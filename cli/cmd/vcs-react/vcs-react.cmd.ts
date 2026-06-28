@@ -82,21 +82,29 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const project = args.project as string | undefined;
   const iidRaw = args.iid as string | undefined;
   const commentId = args.comment as string | undefined;
-  const emojiInput = (args.emoji as string) || ((args._ as string[])[0]);
+  const emojiInput = (args.emoji as string) || (args._ as string[])[0];
   const remove = !!args.remove;
   const host = args.host as string | undefined;
   const dryRun = !!args['dry-run'];
 
-  if (!commentId) { deps.stderr.write('✖ --comment <id> is required\n'); deps.exit(1); }
-  if (!emojiInput) { deps.stderr.write('✖ --emoji <name> is required\n'); deps.exit(1); }
-
-  const mapping = EMOJI_MAP[emojiInput];
-  if (!mapping) {
-    deps.stderr.write(`✖ Unknown emoji: ${emojiInput}. Supported: ${Object.keys(EMOJI_MAP).join(', ')}\n`);
+  if (!commentId) {
+    deps.stderr.write('✖ --comment <id> is required\n');
+    deps.exit(1);
+  }
+  if (!emojiInput) {
+    deps.stderr.write('✖ --emoji <name> is required\n');
     deps.exit(1);
   }
 
-  const iid = ref ? Number(ref.split('!').pop()) : (iidRaw ? Number(iidRaw) : undefined);
+  const mapping = EMOJI_MAP[emojiInput];
+  if (!mapping) {
+    deps.stderr.write(
+      `✖ Unknown emoji: ${emojiInput}. Supported: ${Object.keys(EMOJI_MAP).join(', ')}\n`
+    );
+    deps.exit(1);
+  }
+
+  const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
   const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };

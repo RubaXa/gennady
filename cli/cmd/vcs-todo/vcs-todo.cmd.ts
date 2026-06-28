@@ -71,9 +71,10 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
 
   const provider = opts.vcsContext?.provider ?? (/github/i.test(host!) ? 'github' : 'gitlab');
   const baseUrl = provider === 'github' ? 'https://api.github.com' : `https://${host}/api/v4`;
-  const vcs: VcsClient = provider === 'github'
-    ? new VcsGithubClient({ token, baseUrl })
-    : new VcsGitlabClient({ token, baseUrl });
+  const vcs: VcsClient =
+    provider === 'github'
+      ? new VcsGithubClient({ token, baseUrl })
+      : new VcsGitlabClient({ token, baseUrl });
 
   // #region START_MARK_TODO_BY_ID — --id <todoId>: direct markTodoDone call
   if (opts.todoId) {

@@ -16,7 +16,9 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --ref <group/repo!iid>   MR ref');
   console.info('  --comment <id>           Comment/note ID to react to');
-  console.info('  --emoji <name>           Emoji: 👍 👎 😄 🎉 😕 ❤️ 🚀 👀 🤡 or word: thumbsup, rocket, heart');
+  console.info(
+    '  --emoji <name>           Emoji: 👍 👎 😄 🎉 😕 ❤️ 🚀 👀 🤡 or word: thumbsup, rocket, heart'
+  );
   console.info('  --remove                 Remove own reaction (instead of adding)');
   console.info('  --host <hostname>        VCS host');
   console.info('  --dry-run                Print without calling API');

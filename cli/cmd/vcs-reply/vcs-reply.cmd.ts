@@ -241,10 +241,13 @@ export async function main(opts: MainOpts = {}): Promise<{
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
     const provider = vcsContext?.provider ?? (/github/i.test(host) ? 'github' : 'gitlab');
-    const baseUrl = opts.baseUrl ?? (provider === 'github' ? 'https://api.github.com' : `https://${host}/api/v4`);
-    vcs = opts.vcs ?? (provider === 'github'
-      ? new VcsGithubClient({ baseUrl, token })
-      : new VcsGitlabClient({ baseUrl, token }));
+    const baseUrl =
+      opts.baseUrl ?? (provider === 'github' ? 'https://api.github.com' : `https://${host}/api/v4`);
+    vcs =
+      opts.vcs ??
+      (provider === 'github'
+        ? new VcsGithubClient({ baseUrl, token })
+        : new VcsGitlabClient({ baseUrl, token }));
     hostInfo = host;
   } else {
     hostInfo = host;

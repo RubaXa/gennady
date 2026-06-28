@@ -222,9 +222,9 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
     if (query.draft !== undefined) body.draft = query.draft;
 
     if (query.addLabels?.length || query.removeLabels?.length) {
-      const pr = (await this._request(
-        `/repos/${query.project}/pulls/${String(query.iid)}`
-      )) as { labels?: Array<{ name: string }> };
+      const pr = (await this._request(`/repos/${query.project}/pulls/${String(query.iid)}`)) as {
+        labels?: Array<{ name: string }>;
+      };
       const currentLabels = (pr.labels ?? []).map((l) => l.name);
       const added = query.addLabels ?? [];
       const removed = query.removeLabels ?? [];
@@ -234,14 +234,11 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
       body.labels = newLabels;
     }
 
-    const result = (await this._request(
-      `/repos/${query.project}/pulls/${String(query.iid)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    )) as Record<string, unknown>;
+    const result = (await this._request(`/repos/${query.project}/pulls/${String(query.iid)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })) as Record<string, unknown>;
 
     return {
       webUrl: result.html_url ?? '',

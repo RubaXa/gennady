@@ -104,9 +104,10 @@ async function locateMrByBranch(
   host: string,
   provider: 'gitlab' | 'github'
 ): Promise<{ iid: number } | null> {
-  const client: VcsClient = provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
-    : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
+  const client: VcsClient =
+    provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
+      : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
 
   const query: VcsMergeRequestsQuery = {
     project,
@@ -141,9 +142,10 @@ async function fetchChanges(
   context: VcsCliContext,
   iid: number
 ): Promise<VcsMergeRequestChanges[]> {
-  const client: VcsClient = context.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-    : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   logger.info(`[fetchChanges] [idle → fetching] ${context.project}!${iid}`);
   const changes = await client.MergeRequests.getChanges({
@@ -170,9 +172,10 @@ async function fetchFileContent(
   path: string,
   ref: string
 ): Promise<string | null> {
-  const client: VcsClient = context.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-    : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   logger.debug(`[fetchFileContent] [idle → fetching] ${context.project} path=${path} ref=${ref}`);
   const result = await client.RepositoryFiles!.getFileContent({

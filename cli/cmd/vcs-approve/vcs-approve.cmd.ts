@@ -182,9 +182,10 @@ async function locateMrByBranch(
   host: string,
   provider: 'gitlab' | 'github'
 ): Promise<{ iid: number; webUrl: string } | null> {
-  const client: VcsClient = provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
-    : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
+  const client: VcsClient =
+    provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
+      : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
 
   const query: VcsMergeRequestsQuery = {
     project,
@@ -223,9 +224,10 @@ async function approveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient = context.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-    : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,
@@ -256,9 +258,10 @@ async function unapproveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient = context.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-    : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,

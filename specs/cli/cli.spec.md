@@ -1442,24 +1442,24 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1.14 vcs-context-resolver (shared)
 
-| ID        | Требование                                                                                                                                                 |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FR-CTX-01 | Авто-детект текущей ветки: `git rev-parse --abbrev-ref HEAD`                                                                                               |
-| FR-CTX-02 | Авто-детект project + host из `git config remote.origin.url` (HTTP и SSH форматы)                                                                          |
-| FR-CTX-03 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                      |
-| FR-CTX-04 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                    |
-| FR-CTX-05 | `--branch/-b <name>` — явный override ветки                                                                                                                |
-| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-source` для обратной совместимости с inbox                                             |
-| FR-CTX-07 | Приоритет источника: `ref › project+iid › branch (auto)`. `--ref` и `--branch` одновременно → ошибка: «--ref и --branch взаимоисключающие»                 |
-| FR-CTX-08 | Токен: `GITLAB_PERSONAL_TOKEN` env var                                                                                                                     |
-| FR-CTX-09 | Если ветка не найдена И нет явного ref/project+iid → `VcsResolveError` с понятным сообщением (не exit — resolver возвращает значение, exit решает команда) |
-| FR-CTX-10 | Токен не найден → `VcsResolveError`, exit решает команда                                                                                                   |
-| FR-CTX-11 | Git-ошибки (нет origin, нет репозитория) → `VcsResolveError` с понятным сообщением                                                                         |
-| FR-CTX-12 | Модуль размещается в `cli/cmd/_shared/vcs-context-resolver.ts`                                                                                             |
-| FR-CTX-13 | Возвращает `VcsCliContext: { provider: 'gitlab', host, project, iid?, branch?, token }`. `provider` — для будущей поддержки GitHub                         |
-| FR-CTX-14 | `resolveVcsContext(args, deps)` — чистая async-функция с DI (`git`, `env`), тестируема без monkey-patching                                                 |
-| FR-CTX-15 | `VcsCliArgs: { ref?, project?, iid?, branch?, host? }` — входные параметры                                                                                 |
-| FR-CTX-16 | `VcsCliDeps: { git(cmd: string[]): Promise<string>, env(name: string): string \| undefined }`                                                              |
+| ID        | Требование                                                                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-CTX-01 | Авто-детект текущей ветки: `git rev-parse --abbrev-ref HEAD`                                                                                                                    |
+| FR-CTX-02 | Авто-детект project + host из `git config remote.origin.url` (HTTP и SSH форматы)                                                                                               |
+| FR-CTX-03 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                           |
+| FR-CTX-04 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                         |
+| FR-CTX-05 | `--branch/-b <name>` — явный override ветки                                                                                                                                     |
+| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-source` для обратной совместимости с inbox                                                                  |
+| FR-CTX-07 | Приоритет источника: `ref › project+iid › branch (auto)`. `--ref` и `--branch` одновременно → ошибка: «--ref и --branch взаимоисключающие»                                      |
+| FR-CTX-08 | Токен: `GITLAB_PERSONAL_TOKEN` env var                                                                                                                                          |
+| FR-CTX-09 | Если ветка не найдена И нет явного ref/project+iid → `VcsResolveError` с понятным сообщением (не exit — resolver возвращает значение, exit решает команда)                      |
+| FR-CTX-10 | Токен не найден → `VcsResolveError`, exit решает команда                                                                                                                        |
+| FR-CTX-11 | Git-ошибки (нет origin, нет репозитория) → `VcsResolveError` с понятным сообщением                                                                                              |
+| FR-CTX-12 | Модуль размещается в `cli/cmd/_shared/vcs-context-resolver.ts`                                                                                                                  |
+| FR-CTX-13 | Возвращает `VcsCliContext: { provider: 'gitlab', host, project, iid?, branch?, token }`. `provider` — для будущей поддержки GitHub                                              |
+| FR-CTX-14 | `resolveVcsContext(args, deps)` — чистая async-функция с DI (`git`, `env`), тестируема без monkey-patching                                                                      |
+| FR-CTX-15 | `VcsCliArgs: { ref?, project?, iid?, branch?, host? }` — входные параметры                                                                                                      |
+| FR-CTX-16 | `VcsCliDeps: { git(cmd: string[]): Promise<string>, env(name: string): string \| undefined }`                                                                                   |
 | FR-CTX-17 | Определение провайдера: host содержит `github` → `'github'`, иначе → `'gitlab'`. Токен: `GITHUB_PERSONAL_TOKEN` / `GITHUB_TOKEN` для GitHub, `GITLAB_PERSONAL_TOKEN` для GitLab |
 
 ### 4.1.15 vcs-approve Functional Requirements
