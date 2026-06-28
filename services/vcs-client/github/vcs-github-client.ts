@@ -5,6 +5,7 @@
 import { VcsGithubMergeRequests } from './vcs-github-merge-requests.ts';
 import { VcsGithubMergeDiscussions } from './vcs-github-merge-discussions.ts';
 import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
+import { VcsGithubReactions } from './vcs-github-reactions.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
@@ -39,6 +40,9 @@ export class VcsGithubClient extends VcsClient {
   /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
   readonly Pipeline = undefined;
 
+  /** @see {VcsClient#Reactions} in services/vcs-client/abstract/vcs-client.ts */
+  readonly Reactions: VcsGithubReactions;
+
   /**
    * @purpose Create a GitHub API client bound to a base URL with access token.
    * @param options Connection parameters: base URL and access token.
@@ -66,5 +70,6 @@ export class VcsGithubClient extends VcsClient {
     this.MergeRequests = new VcsGithubMergeRequests(request);
     this.MergeDiscussions = new VcsGithubMergeDiscussions(request);
     this.RepositoryFiles = new VcsGithubRepositoryFiles(options.baseUrl, options.token);
+    this.Reactions = new VcsGithubReactions(request);
   }
 }

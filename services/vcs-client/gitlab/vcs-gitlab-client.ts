@@ -7,6 +7,7 @@ import { VcsGitlabMergeDiscussions } from './vcs-gitlab-merge-discussions.ts';
 import { VcsGitlabRepositoryFiles } from './vcs-gitlab-repository-files.ts';
 import { VcsGitlabInbox } from './vcs-gitlab-inbox.ts';
 import { VcsGitlabPipeline } from './vcs-gitlab-pipeline.ts';
+import { VcsGitlabReactions } from './vcs-gitlab-reactions.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 import type { VcsUser } from '../entities/vcs-user.type.ts';
 
@@ -44,6 +45,9 @@ export class VcsGitlabClient extends VcsClient {
 
   /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts */
   readonly Pipeline: VcsGitlabPipeline;
+
+  /** @see {VcsClient#Reactions} in services/vcs-client/abstract/vcs-client.ts */
+  readonly Reactions: VcsGitlabReactions;
 
   /** @purpose Bound REST request fn for ad-hoc endpoints (e.g. /user) */
   protected _request: RequestFn;
@@ -112,6 +116,7 @@ export class VcsGitlabClient extends VcsClient {
     this.RepositoryFiles = new VcsGitlabRepositoryFiles(options.baseUrl, options.token);
     this.Inbox = new VcsGitlabInbox(graphql);
     this.Pipeline = new VcsGitlabPipeline(request);
+    this.Reactions = new VcsGitlabReactions(request);
   }
 
   /**
