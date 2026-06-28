@@ -146,8 +146,9 @@ Host: если запуск не из GitLab-репозитория — доба
 | Рабочая копия | `gennady vcs-worktree --ref <ref>` · `--cleanup <path>` | read-only код + `diff_refs` для line-комментов; снять после разбора |
 | Дифф/файл по API | `gennady vcs-diff --ref <ref> [--path <file>]` | быстрый просмотр без клона: список изменённых файлов или содержимое файла на head |
 | Существующие треды | `gennady review-issues --ref <ref> --all` · `--draft` | перед ревью: что уже писали / мои черновики |
-| CI / пайплайн | `gennady vcs-pipeline --ref <ref>` · `vcs-job --ref --job <name> --action status\|play\|cancel\|retry` · `vcs-job-log --ref --job <name>` | статус пайплайна и упавшие джобы; разобрать/перезапустить джоб; сырой лог (для `ci_failed`, особенно на своём MR) |
+| CI / пайплайн | `gennady vcs-pipeline --ref <ref> [--all] [--logs] [--json] [--status <s>]` · `vcs-job --ref <ref> --job <name> --action status\|play\|cancel\|retry` · `vcs-job-log --ref <ref> --job <name>` | **Быстрая сводка:** `--all --logs` = полный отчёт (✓ passed + ✖ failed + фильтрованные логи упавших). `--all` без `--logs` = список всех джоб с иконками. `--json` = машиночитаемый вывод. `--status failed` (по умолчанию). Управление джобами: перезапуск/отмена. Сырой лог без фильтра: `vcs-job-log ... --raw`. |
 | Постинг | `gennady vcs-reply --project=<g/p> --iid=<iid>` (JSON-массив на stdin) | ответы/замечания/треды/резолв/правка/удаление/suggestion — виды ниже |
+| Черновики | `gennady vcs-draft-note --ref <ref> [--list] [--create --body "..."] [--update <id> --body "..."] [--delete <id>] [--publish <id>]` | список/создать/обновить/удалить/опубликовать черновики в MR |
 | Approve / отзыв | `gennady vcs-approve --project=<g/p> --iid=<iid> [--revoke]` | approve, когда нет блокирующих замечаний; `--revoke` — снять свой approve |
 | Закрыть todo | `gennady vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo GitLab после реакции (финализация) |
 

@@ -38,8 +38,6 @@ const CONTRACT_ORDER_INDEX = new Map<string, number>(
  */
 export class DbcJsDocParser implements DbcParser {
   /**
-   * @param inputContract Raw contract text to parse.
-   * @returns Parsed DBC schema with entries and format metadata.
    * @see {DbcParser#parse} in ../../dbc-parser.types.ts
    */
   parse(inputContract: string): DbcSchema {

@@ -1,6 +1,6 @@
 # cli/cmd — Команды CLI
 
-17 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг, покрытие тестами.
+26 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг, покрытие тестами, VCS-операции (GitLab MR).
 
 ---
 
@@ -171,6 +171,15 @@ npx gennady testcov src/core --files
 | `review-issues`     | XML-артефакт issues из MR/PR                            |
 | `vcs-reply`         | Постинг ответов в GitLab MR discussions                 |
 | `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR        |
+| `vcs-approve`       | Approve / отзыв approve GitLab MR через API             |
+| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR      |
+| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)           |
+| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших          |
+| `vcs-job`           | Управление джобой (status/play/cancel/retry)            |
+| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна             |
+| `vcs-worktree`      | Подготовка read-only git worktree для MR review         |
+| `inbox`             | Интерактивный разбор входящих GitLab MR                 |
+| `run`               | Запуск задания через AI-движок (opencode)               |
 | `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов               |
 | `remote-console`    | Зеркалирование браузерной консоли в stdout              |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants |

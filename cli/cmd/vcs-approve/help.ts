@@ -19,6 +19,7 @@ export function printHelp(): void {
   console.info('  --branch <name>          Override auto-detected branch');
   console.info('  --host <hostname>        GitLab host (else from origin)');
   console.info('  --dry-run, --dry         Print what would be sent without calling API');
+  console.info('  --revoke, --unapprove    Remove previous approval');
   console.info('');
   console.info('Environment:');
   console.info('  GITLAB_PERSONAL_TOKEN    GitLab access token (required)');
@@ -27,7 +28,7 @@ export function printHelp(): void {
   console.info(
     '  npx gennady vcs-approve                                      # auto-detect → approve'
   );
-  console.info('  npx gennady vcs-approve --ref group/repo!99                  # explicit ref');
+  console.info('  npx gennady vcs-approve --ref group/repo!99 --revoke            # remove approval');
   console.info('  npx gennady vcs-approve --project group/repo --iid 42        # project + iid');
   console.info('  npx gennady vcs-approve --dry-run                            # dry-run');
   console.info('  npx gennady vcs-approve --host gitlab.internal.company.com   # self-hosted');

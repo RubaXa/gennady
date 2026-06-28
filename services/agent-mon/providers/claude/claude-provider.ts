@@ -69,8 +69,6 @@ export class ClaudeProvider implements AgentProvider {
   }
 
   /**
-   * @param [opts] Optional scan filtering parameters.
-   * @returns Parsed agent sessions array.
    * @see {AgentProvider#scan} in ../../model/agent-provider.type.ts
    */
   async scan(opts?: ScanOpts): Promise<AgentSession[]> {

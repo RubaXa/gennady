@@ -12,6 +12,13 @@
 | vcs-reply         | [cmd/vcs-reply/](cmd/vcs-reply/)                 | Постинг ответов в GitLab MR discussions                                             |
 | vcs-draft-note    | [cmd/vcs-draft-note/](cmd/vcs-draft-note/)       | Управление черновиками (draft notes) в GitLab MR                                    |
 | vcs-approve       | [cmd/vcs-approve/](cmd/vcs-approve/)             | Approve GitLab MR через API                                                         |
+| vcs-diff          | [cmd/vcs-diff/](cmd/vcs-diff/)                   | Список изменённых файлов MR или содержимое файла на head                            |
+| vcs-todo          | [cmd/vcs-todo/](cmd/vcs-todo/)                   | Закрытие pending-todo GitLab (финализация MR)                                       |
+| vcs-pipeline      | [cmd/vcs-pipeline/](cmd/vcs-pipeline/)           | Статус пайплайна MR: сводка джоб, логи упавших                                      |
+| vcs-job           | [cmd/vcs-job/](cmd/vcs-job/)                     | Управление джобой пайплайна (status/play/cancel/retry)                              |
+| vcs-job-log       | [cmd/vcs-job-log/](cmd/vcs-job-log/)             | Сырой/фильтрованный лог джобы пайплайна                                             |
+| vcs-worktree      | [cmd/vcs-worktree/](cmd/vcs-worktree/)           | Подготовка read-only git worktree для MR review                                     |
+| inbox             | [cmd/inbox/](cmd/inbox/)                         | Интерактивный разбор входящих GitLab MR                                             |
 | review-verify     | [cmd/review-verify/](cmd/review-verify/)         | Верификация по MR (общий core: [cmd/review/](cmd/review/))                          |
 | review-issues     | [cmd/review-issues/](cmd/review-issues/)         | XML-артефакт issues по MR (общий core: [cmd/review/](cmd/review/))                  |
 | resolve-conflicts | [cmd/resolve-conflicts/](cmd/resolve-conflicts/) | Генерация prompt для confidence-aware разрешения merge-конфликтов                   |
