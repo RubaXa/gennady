@@ -25,9 +25,10 @@ _Это полный список сущностей модуля. Любое в
 | `DbcLintReport`             | Value Object | Результат `lint()`: ошибки + `format()`                                                                                          |
 | `DbcLintFixReport`          | Value Object | Результат `lintAndFix()`: оставшиеся ошибки + `autoFixed` + `format()`                                                           |
 | `DbcLintError`              | Value Object | Одна ошибка: file, line, col, severity, code, message                                                                            |
-| `DbcLintIssueCode`          | Value Object | Union 10 констант кодов ошибок линтера                           |
-| `ERR_DBC_LINT_*` ×10        | Constant     | Стабильные строковые коды ошибок линтера                         |
-| `DbcContractMatchValidator` | Service      | Сервис сверки контракта с сигнатурой: проверка param-ов, returns, порядка, избыточных типов                                      |
+| `DbcLintIssueCode`          | Value Object | Union 10 констант кодов ошибок линтера                                                                                           |
+| `ERR_DBC_LINT_*` ×10        | Constant     | Стабильные строковые коды ошибок линтера                                                                                         |
+| `DbcContractMatchValidator` | Service      | Сервис сверки контракта с сигнатурой: проверка param-ов, returns, порядка, избыточных типов, implements+@see redundancy                                      |
+| `DbcValidateContext`        | Value Object | Контекст для `validate()`: `implementsInterfaces?: string[]` (имена интерфейсов), `hasSeeTag?: boolean` (caller pre-resolved: @see match), `seeSpecifier?: string` (информационное — для сообщений об ошибках) |
 
 ## 3. Entity Surfaces
 
@@ -92,10 +93,10 @@ _Это полный список сущностей модуля. Любое в
 ### `DbcContractMatchValidator`
 
 - **Type:** Service
-- **Purpose:** Сверка контракта (`DbcEntrySchema[]`) с сигнатурой кода (`DbcSignatureInfo`). Определяет несоответствия по param-ам, returns, порядку, избыточным `{type}`. **Реализован как экспортируемая чистая функция `validate(entries, signature, kind) → DbcLintError[]` (не класс), сигнатура совпадает со спекой.**
+- **Purpose:** Сверка контракта (`DbcEntrySchema[]`) с сигнатурой кода (`DbcSignatureInfo`). Определяет несоответствия по param-ам, returns, порядку, избыточным `{type}`, implements+@see redundancy. **Реализован как экспортируемая чистая функция (не класс).**
 - **Public Properties:** N/A
 - **Public Operations:**
-  - `validate(entries: DbcEntrySchema[], signature: DbcSignatureInfo, kind: string) → DbcLintError[]` — вернуть массив ошибок несоответствия (пустой если всё ок)
+  - `validate(entries: DbcEntrySchema[], signature: DbcSignatureInfo, kind: string, context?: DbcValidateContext) → DbcLintError[]` — вернуть массив ошибок несоответствия (пустой если всё ок). `context` — опциональный контекст implements+@see (caller pre-resolves match). Без context — проверка без implements-логики.
 - **Lifecycle:** stateless; pure function, не зависит от внешнего состояния
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Не кидает исключений. Неизвестный `kind` сущности → пустой массив ошибок.
@@ -105,18 +106,19 @@ _Это полный список сущностей модуля. Любое в
 
 ### Value Objects
 
-| Name                | Key Properties                                                                                                                    |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `DbcParseResult`    | discriminated: `{ ok: true, exported: DbcExportedEntity[] }` \| `{ ok: false, error: string }`                                    |
-| `DbcExportedEntity` | `name: string`, `kind: string`, `members: DbcMember[]`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`, `implementsInterfaces?: boolean` |
-| `DbcMember`         | `name: string`, `kind: string`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`                         |
-| `DbcSignatureInfo`  | `params: DbcParamInfo[]`, `returnType: string`                                                                                    |
-| `DbcParamInfo`      | `name: string`, `type: string`, `optional: boolean`, `isRest: boolean`                                                            |
-| `DbcLintOptions`    | `strategy?: 'full'`, `content?: string`                                                                                           |
-| `DbcLintReport`     | `errors: DbcLintError[]`, `format(): string`                                                                                      |
-| `DbcLintFixReport`  | `errors: DbcLintError[]`, `autoFixed: number`, `format(): string`                                                                 |
-| `DbcLintError`      | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                             |
+| Name                | Key Properties                                                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DbcParseResult`    | discriminated: `{ ok: true, exported: DbcExportedEntity[] }` \| `{ ok: false, error: string }`                                                                                                 |
+| `DbcExportedEntity` | `name: string`, `kind: string`, `members: DbcMember[]`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`, `implementsInterfaces?: string[]` (имена реализуемых интерфейсов, извлекаются AST-адаптером из `implements` clause; `[]`/`undefined` = не implements) |
+| `DbcMember`         | `name: string`, `kind: string`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`                                                                                      |
+| `DbcSignatureInfo`  | `params: DbcParamInfo[]`, `returnType: string`                                                                                                                                                 |
+| `DbcParamInfo`      | `name: string`, `type: string`, `optional: boolean`, `isRest: boolean`                                                                                                                         |
+| `DbcLintOptions`    | `strategy?: 'full'`, `content?: string`                                                                                                                                                        |
+| `DbcLintReport`     | `errors: DbcLintError[]`, `format(): string`                                                                                                                                                   |
+| `DbcLintFixReport`  | `errors: DbcLintError[]`, `autoFixed: number`, `format(): string`                                                                                                                              |
+| `DbcLintError`      | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                                                          |
 | `DbcLintIssueCode`  | Union: `typeof ERR_DBC_LINT_MISSING_CONTRACT \| ... \| typeof ERR_DBC_LINT_TYPE_REDUNDANT \| typeof ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH \| typeof ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` |
+| `DbcValidateContext` | `implementsInterfaces?: string[]`, `hasSeeTag?: boolean`, `seeSpecifier?: string`                                                                                                               |
 
 ### Constants
 
@@ -228,13 +230,18 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 **Autofix chain (приватные):**
 
 1. `_expandToMultiline(source, signature) → string` — разворачивает pipe-формат в multi-line для вызываемых сущностей и контрактов с >3 тегами
-2. `_removeRedundantTypes(source) → string` — удаляет избыточные `{type}` в `@param` и `@returns`
-3. `_normalizeParamBrackets(source, signature) → string` — добавляет/убирает `[]` в `@param` для соответствия опциональности сигнатуры
-4. `_removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
-5. `_removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
-6. `_reorderParams(source, signature) → string` — пересортировывает @param в порядке сигнатуры
-7. `_reorderTags(source) → string` — пересортировывает теги в канонический порядок (implements → invariant → pre → param → throws → returns → post → sideEffect)
-8. `_normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*/` и контент на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare `/**`, bare ` */`, `* content`) проходят без изменений.
+2. `_removeRedundantInImplements(source, entry, member) → string` **(@deferred — будет реализован отдельной задачей; спецификация актуализирована, реализация через sdd-scaffold + sdd-critic + sdd-execute)** — удаляет `@param`/`@returns` в методах класса с `implements Interface` + `@see {Interface#method}` (см. BDD-сценарии в parent spec FR-24).
+   - **Сигнатура:** `(source: string, entry: DbcExportedEntity, member: DbcMember) → string`
+   - **Контекст:** `entry.implementsInterfaces` содержит имена интерфейсов; `member.contract.text` — JSDoc метода; функция сама парсит `@see` из контракта и сравнивает `specifier` с `entry.implementsInterfaces` и `methodName` с `member.name`. При совпадении — удаляет строки `@param`/`@returns` из `member.contract.text`.
+   - **Локализация:** `source` — полный текст файла. Функция находит JSDoc-блок по `member.contract.startLine/startCol`, модифицирует его, собирает файл обратно.
+   - **Data-flow:** `DbcTsLinter.lintAndFix()` (pass 4) вызывает `_removeRedundantInImplements` для каждого method-члена, у которого `entry.implementsInterfaces.length > 0` И `member.contract.text` содержит `@see`. Валидатор (`validate()`) независимо проверяет этот же condition с тем же `context` — единый detection logic, дублирование нежелательно (см. решение D-019 ниже).
+3. `_removeRedundantTypes(source) → string` — удаляет избыточные `{type}` в `@param` и `@returns`
+4. `_normalizeParamBrackets(source, signature) → string` — добавляет/убирает `[]` в `@param` для соответствия опциональности сигнатуры
+5. `_removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
+6. `_removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
+7. `_reorderParams(source, signature) → string` — пересортировывает @param в порядке сигнатуры
+8. `_reorderTags(source) → string` — пересортировывает теги в канонический порядок (implements → invariant → pre → param → throws → returns → post → sideEffect)
+9. `_normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*/` и контент на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare `/**`, bare ` */`, `* content`) проходят без изменений.
 
 ### 4.3 Services
 
@@ -254,13 +261,15 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
   - `entries` — результат `DbcParser.parse()` (всегда массив)
   - `signature` — извлечён из AST
   - `kind` — валидный kind экспортируемой сущности
+  - `context?: DbcValidateContext` — опциональный контекст implements+@see. **Caller (DbcTsLinter) pre-resolves match**: если класс имеет `implements Interface` И контракт метода содержит `@see {T#methodName}` где T ∈ implementsInterfaces И methodName === member.name → `context.hasSeeTag = true`. Без context — проверка без implements-логики.
 - Postconditions:
   - Возвращает `DbcLintError[]` (пустой если контракт соответствует сигнатуре)
   - Каждая ошибка содержит `code` из `DbcLintIssueCode`
+  - При `context.hasSeeTag && context.implementsInterfaces.length > 0`: `@param`/`@returns` → `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` (валидатор НЕ генерирует `ERR_DBC_LINT_RETURNS_UNEXPECTED` для того же @returns — приоритет у redundancy). Если `@see` не содержит валидный `{specifier}` (например, `ERR_DBC_SEE_FORMAT_INVALID`) — implements+@see redundancy не срабатывает, метод проверяется как обычный.
 - Invariants:
   - Не кидает исключений
   - Не мутирует входные данные
-  - Ошибки возвращаются в порядке: `PARAM_MISSING` → `PARAM_EXTRA` → `PARAM_ORDER` → `RETURNS_MISSING` → `RETURNS_UNEXPECTED` → `TYPE_REDUNDANT`
+  - Ошибки возвращаются в порядке: `PARAM_REDUNDANT_IN_IMPLEMENTS` → `PARAM_MISSING` → `PARAM_EXTRA` → `PARAM_OPTIONAL_MISMATCH` → `PARAM_ORDER` → `RETURNS_MISSING` → `RETURNS_UNEXPECTED` → `TYPE_REDUNDANT`
 
 ## 5. Public Options & Policies
 
@@ -343,6 +352,16 @@ services/dbc/linter/
 - **Rejected alternatives:** Реконструкция JSDoc с нуля без сохранения отступов — теряет форматирование в IDE.
 - **Risk accepted:** Многотеговые контракты с `|` разделителем становятся длинными строками — допустимо для v1.
 - **Rejected alternatives:** Инлайнить многотеговые через `|` — невалидный JSDoc, ломает подсветку в IDE.
+
+### D-019 — Data-flow `removeRedundantInImplements`: shared detection, autofix reuses validator context
+
+- **Status:** active
+- **Recorded:** session sdd-critic, dbc-linter, 2026-06-28
+- **Why:** Detection logic для implements+@see должна быть единой. Валидатор (`validate()`) проверяет condition и генерирует `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS`. Autofix-функция `_removeRedundantInImplements` **самостоятельно** определяет redundant-теги (не получает ошибки от валидатора), используя те же данные: `entry.implementsInterfaces`, `member.contract.text`, `member.name`. Это гарантирует что autofix-шаг работает даже при запуске без предварительного lint-прохода (lintAndFix вызывает оба).
+- **Why autofix не получает `DbcLintError[]`:** autofix-функции не должны зависеть от результатов валидации — это позволяет запускать autofix изолированно (в тестах) и гарантирует идемпотентность (повторный autofix = no-op, даже если lint-проход был пропущен).
+- **Shared data:** `DbcExportedEntity.implementsInterfaces: string[]` — единый источник для валидатора и autofix.
+- **Risk accepted:** Дублирование detection-логики между `validate()` и `_removeRedundantInImplements`. Принято осознанно: autofix-функции — приватные, покрываются теми же тестовыми фикстурами. Изменение detection-логики → обновляются обе функции → тесты ловят расхождение.
+- **Rejected alternatives:** Передавать `DbcLintError[]` в autofix → coupling autofix к lint-проходу, усложняет тестирование; autofix должен работать standalone.
 
 ## 8. Inter-Module Dependencies
 
@@ -554,4 +573,26 @@ graph TD
   | S19 | multiple-blocks | 2 функции в файле |
   | S20 | trailing-spaces | пробелы в конце строк |
 
-  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 8 autofix-combined + 11 edge + 20 unit-validator + 20 snapshots = 116 тестовый случай.**
+  **N. ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS (@deferred — включается в отдельную TSK для `removeRedundantInImplements`):**
+
+  | #   | Fixture                                   | Что проверяется                                                                                     |
+  | --- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+  | N1  | `implements-see/happy.ts`                 | `class Impl implements Agent`, method с `@see {Agent#scan}`, `@param x`, `@returns` → оба `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` (2 ошибки). Autofix: удалены `@param x` и `@returns`, остальные теги сохранены |
+  | N2  | `implements-see/no-see.ts`                | `class Impl implements Agent`, method без `@see` → обычный method, ошибок `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` нет |
+  | N3  | `implements-see/see-no-implements.ts`     | `class Helper` (без implements), method с `@see {Agent#scan}` → обычный method, ошибок нет            |
+  | N4  | `implements-see/see-wrong-interface.ts`   | `class Impl implements Agent`, method `scan` с `@see {Other#scan}` → `Other` не в implements → обычный method, ошибок нет |
+  | N5  | `implements-see/see-wrong-method.ts`      | `class Impl implements Agent`, method `scan` с `@see {Agent#otherMethod}` → methodName не совпадает → обычный method, ошибок нет |
+  | N6  | `implements-see/only-param-redundant.ts`  | `class Impl implements Agent`, void-method `getInfo` с `@see {Agent#getInfo}`, `@param id` → 1 ошибка `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS`, @returns отсутствует — без ошибки |
+  | N7  | `implements-see/multiple-params.ts`       | `class Impl implements Agent`, method с `@see {Agent#scan}`, `@param x`, `@param y`, `@returns` → 3 ошибки. Autofix: удалены все три тега |
+  | N8  | `implements-see/autofix.ts`               | `class Impl implements Agent`, method с `@see {Agent#scan}`, `@param x`, `@returns`. Autofix удаляет оба тега, сохраняя `@see` и прочие теги на месте. `format()` содержит 2 исправленные ошибки с кодом `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` |
+  | N9  | `implements-see/autofix-idempotent.ts`    | Повторный autofix после N8: ошибок нет, файл не изменился (идемпотентность)                           |
+  | N10 | `implements-see/extends-not-redundant.ts`  | `class Child extends Base`, method с `@see {Base#calculate}`, `@param x`, `@returns` → extends ≠ implements, НЕ redundant. Проверяется как обычный method |
+  | N11 | `implements-see/override-not-redundant.ts` | `class Child extends Base`, method с ключевым словом `override`, `@see {Base#calculate}`, изменённая сигнатура (добавлен параметр) → НЕ redundant, свой контракт |
+  | N12 | `implements-see/extends-and-implements.ts` | `class Impl extends Base implements Agent`, method с `@see {Agent#scan}` → implements срабатывает, несмотря на extends. `@param x` → redundant |
+  | N13 | `implements-see/see-on-extends-not-implements.ts` | `class Impl extends Base implements Agent`, method с `@see {Base#scan}` → Base не в implements, НЕ redundant. Обычный method |
+  | N14 | `implements-see/multiple-implements.ts`    | `class Impl implements Agent, Stoppable`, method с `@see {Agent#scan}` → Agent в списке implements, redundant |
+  | N15 | `implements-see/extends-no-see.ts`         | `class Child extends Base`, method с контрактом `@param x | @returns r` (без @see) → обычный method, implementsInterfaces пуст |
+  | N16 | `implements-see/autofix-preserves-purpose.ts` | `class Impl implements Agent`, method с `@see {Agent#scan}`, `@purpose Сканирует`, `@param x`, `@returns r` → autofix удаляет @param/@returns, сохраняет @purpose |
+  | N17 | `implements-see/priority-returns-only.ts` | `class Impl implements Agent`, method с `@see {Agent#scan}`, только `@returns result` (без @param) → 1 ошибка `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS`. `ERR_DBC_LINT_RETURNS_UNEXPECTED` НЕ генерируется (приоритет у redundancy) |
+
+  **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 8 autofix-combined + 11 edge + 20 unit-validator + 20 snapshots + 17 implements-redundant (@deferred) = 133 тестовых случая.**

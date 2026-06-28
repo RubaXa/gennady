@@ -41,18 +41,18 @@ try {
 
 _Это полный список сущностей модуля `core`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name            | Surface | Type           | Purpose                                                                     |
-| --------------- | ------- | -------------- | --------------------------------------------------------------------------- |
-| `run`           | 🟢      | Service        | Публичная точка входа: выбрать движок, запустить с заданием, вернуть текст. |
-| `listEngines`   | 🟢      | Service        | Список зарегистрированных движков со статусом установки.                    |
-| `listModels`    | 🟢      | Service        | Список моделей выбранного движка (вне горячего пути).                       |
-| `RunOptions`    | 🟢      | Value Object   | Вход `run`: task, dirs, mode, engine, timeout, model.                       |
-| `RunResult`     | 🟢      | Value Object   | Выход `run`: text (markdown) + engine (кто отработал).                      |
-| `EngineStatus`  | 🟢      | Value Object   | Статус движка: id, installed, version.                                      |
-| `AgentRunError` | 🟢      | Entity (Error) | Типизированная ошибка: code + hint.                                         |
-| `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (8 классов, вкл. `TIMEOUT`, `MODEL_UNAVAILABLE`). |
-| `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run + listModels. Точка расширения.               |
-| `registry`      | ⚪      | Service        | Реестр движков: регистрация, detect, выбор дефолта (opencode первым).       |
+| Name            | Surface | Type           | Purpose                                                                          |
+| --------------- | ------- | -------------- | -------------------------------------------------------------------------------- |
+| `run`           | 🟢      | Service        | Публичная точка входа: выбрать движок, запустить с заданием, вернуть текст.      |
+| `listEngines`   | 🟢      | Service        | Список зарегистрированных движков со статусом установки.                         |
+| `listModels`    | 🟢      | Service        | Список моделей выбранного движка (вне горячего пути).                            |
+| `RunOptions`    | 🟢      | Value Object   | Вход `run`: task, dirs, mode, engine, timeout, model.                            |
+| `RunResult`     | 🟢      | Value Object   | Выход `run`: text (markdown) + engine (кто отработал).                           |
+| `EngineStatus`  | 🟢      | Value Object   | Статус движка: id, installed, version.                                           |
+| `AgentRunError` | 🟢      | Entity (Error) | Типизированная ошибка: code + hint.                                              |
+| `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (8 классов, вкл. `TIMEOUT`, `MODEL_UNAVAILABLE`).      |
+| `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run + listModels. Точка расширения.                    |
+| `registry`      | ⚪      | Service        | Реестр движков: регистрация, detect, выбор дефолта (opencode первым).            |
 | `_resetForTest` | 🔴      | Utility        | Внутренняя функция для сброса состояния реестра между тестами (только в тестах). |
 
 <!--/SECTION:ENTITY_INVENTORY-->

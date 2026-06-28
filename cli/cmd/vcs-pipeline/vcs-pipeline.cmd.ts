@@ -229,7 +229,7 @@ export async function run(
   const jsonMode = !!args['json'];
   const logsMode = !!args['logs'];
   const allMode = !!args['all'];
-  const statusFilter = allMode ? 'all' : ((args.status as string | undefined) || 'failed');
+  const statusFilter = allMode ? 'all' : (args.status as string | undefined) || 'failed';
 
   logger.debug(
     `[run] [parsing → parsed] dryRun=${dryRun} ref=${vcsArgs.ref ?? ''} host=${vcsArgs.host ?? ''}`

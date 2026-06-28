@@ -8,45 +8,45 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name                          | Type            | Purpose                                                                           |
-| ----------------------------- | --------------- | --------------------------------------------------------------------------------- |
-| `VcsUser`                     | Value Object    | Пользователь VCS: name, login                                                     |
-| `VcsUrl`                      | Value Object    | Результат парсинга VCS URL: provider, host, repository, iid                       |
-| `VcsMergeRequestChanges`      | Value Object    | Изменённые файлы MR/PR: path, status, ref, additions, deletions                   |
-| `VcsFileContent`              | Value Object    | Содержимое файла из репозитория: path, content, encoding                          |
-| `VcsActionableMr`             | Value Object    | MR требующий реакции: role, events, webUrl, todoIds                               |
+| Name                          | Type            | Purpose                                                                                                                                               |
+| ----------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VcsUser`                     | Value Object    | Пользователь VCS: name, login                                                                                                                         |
+| `VcsUrl`                      | Value Object    | Результат парсинга VCS URL: provider, host, repository, iid                                                                                           |
+| `VcsMergeRequestChanges`      | Value Object    | Изменённые файлы MR/PR: path, status, ref, additions, deletions                                                                                       |
+| `VcsFileContent`              | Value Object    | Содержимое файла из репозитория: path, content, encoding                                                                                              |
+| `VcsActionableMr`             | Value Object    | MR требующий реакции: role, events, webUrl, todoIds                                                                                                   |
 | `VcsDiscussionNote`           | Value Object    | Заметка в дискуссии: noteId, author, body **(@deferred — возвращается как `unknown` из `addNote`/`createDiscussion`, отдельный type-файл не создан)** |
-| `VcsClient`                   | Port            | Абстрактный VCS-клиент с опциональными портами                                    |
-| `VcsClientMergeRequests`      | Port            | Абстракция работы с Merge Requests / Pull Requests                                |
-| `VcsClientMergeDiscussions`   | Port (optional) | Абстракция работы с Discussions                                                   |
-| `VcsClientRepositoryFiles`    | Port            | Абстракция работы с файлами репозитория                                           |
-| `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                                    |
-| `VcsGitlabClient`             | Adapter         | GitLab-реализация VcsClient                                                       |
-| `VcsGitlabClientOptions`      | Value Object    | Опции подключения: baseUrl, token                                                 |
-| `VcsGitlabMergeRequests`      | Adapter         | GitLab-реализация MR API (включая getChanges)                                     |
-| `VcsGitlabMergeDiscussions`   | Adapter         | GitLab-реализация Discussions API                                                 |
-| `VcsGitlabRepositoryFiles`    | Adapter         | GitLab-реализация Repository Files API                                            |
-| `VcsGithubClient`             | Adapter         | GitHub-реализация VcsClient (минимальная)                                         |
-| `VcsGithubMergeRequests`      | Adapter         | GitHub-реализация PR API (getChanges)                                             |
-| `VcsGithubRepositoryFiles`    | Adapter         | GitHub-реализация Contents API                                                    |
-| `VcsAddNoteQuery`             | Value Object    | Параметры создания заметки                                                        |
-| `VcsDiscussionsListQuery`     | Value Object    | Параметры запроса списка дискуссий                                                |
-| `VcsMergeRequestsQuery`       | Value Object    | Параметры поиска MR                                                               |
-| `VcsMergeRequestByIidQuery`   | Value Object    | Параметры получения MR по IID                                                     |
-| `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage?         |
-| `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                             |
-| `VcsResolveDiscussionQuery`   | Value Object    | Параметры resolve discussion: project, iid, discussionId, resolved                |
-| `VcsUpdateNoteQuery`          | Value Object    | Параметры редактирования заметки: project, iid, noteId, body                      |
-| `VcsDeleteNoteQuery`          | Value Object    | Параметры удаления заметки: project, iid, noteId, discussionId?                   |
-| `VcsPipelineQuery`            | Value Object    | Параметры запроса пайплайна: project, iid                                         |
-| `VcsPipelineStatus`           | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}] (переименован из `VcsPipeline`) |
-| `VcsClientPipeline`           | Port (optional) | Абстракция управления джобами пайплайна                                           |
-| `VcsGitlabPipeline`           | Adapter         | GitLab-реализация VcsClientPipeline (REST)                                        |
-| `VcsJob`                      | Value Object    | Джоба пайплайна: id, name, status, stage, ref, webUrl                             |
-| `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                                    |
-| `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE         |
-| `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                                  |
-| `parseVcsUrl`                 | Function        | Pure-функция разбора VCS URL → `VcsUrl \| null`                                   |
+| `VcsClient`                   | Port            | Абстрактный VCS-клиент с опциональными портами                                                                                                        |
+| `VcsClientMergeRequests`      | Port            | Абстракция работы с Merge Requests / Pull Requests                                                                                                    |
+| `VcsClientMergeDiscussions`   | Port (optional) | Абстракция работы с Discussions                                                                                                                       |
+| `VcsClientRepositoryFiles`    | Port            | Абстракция работы с файлами репозитория                                                                                                               |
+| `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                                                                                                        |
+| `VcsGitlabClient`             | Adapter         | GitLab-реализация VcsClient                                                                                                                           |
+| `VcsGitlabClientOptions`      | Value Object    | Опции подключения: baseUrl, token                                                                                                                     |
+| `VcsGitlabMergeRequests`      | Adapter         | GitLab-реализация MR API (включая getChanges)                                                                                                         |
+| `VcsGitlabMergeDiscussions`   | Adapter         | GitLab-реализация Discussions API                                                                                                                     |
+| `VcsGitlabRepositoryFiles`    | Adapter         | GitLab-реализация Repository Files API                                                                                                                |
+| `VcsGithubClient`             | Adapter         | GitHub-реализация VcsClient (минимальная)                                                                                                             |
+| `VcsGithubMergeRequests`      | Adapter         | GitHub-реализация PR API (getChanges)                                                                                                                 |
+| `VcsGithubRepositoryFiles`    | Adapter         | GitHub-реализация Contents API                                                                                                                        |
+| `VcsAddNoteQuery`             | Value Object    | Параметры создания заметки                                                                                                                            |
+| `VcsDiscussionsListQuery`     | Value Object    | Параметры запроса списка дискуссий                                                                                                                    |
+| `VcsMergeRequestsQuery`       | Value Object    | Параметры поиска MR                                                                                                                                   |
+| `VcsMergeRequestByIidQuery`   | Value Object    | Параметры получения MR по IID                                                                                                                         |
+| `VcsMergeRequestChangesQuery` | Value Object    | Параметры получения изменений MR: repository, iid/number, page?, perPage?                                                                             |
+| `VcsMergeRequestApproveQuery` | Value Object    | Параметры approve MR: repository, iid                                                                                                                 |
+| `VcsResolveDiscussionQuery`   | Value Object    | Параметры resolve discussion: project, iid, discussionId, resolved                                                                                    |
+| `VcsUpdateNoteQuery`          | Value Object    | Параметры редактирования заметки: project, iid, noteId, body                                                                                          |
+| `VcsDeleteNoteQuery`          | Value Object    | Параметры удаления заметки: project, iid, noteId, discussionId?                                                                                       |
+| `VcsPipelineQuery`            | Value Object    | Параметры запроса пайплайна: project, iid                                                                                                             |
+| `VcsPipelineStatus`           | Value Object    | Статус CI-пайплайна: status, jobs[{name, status}] (переименован из `VcsPipeline`)                                                                     |
+| `VcsClientPipeline`           | Port (optional) | Абстракция управления джобами пайплайна                                                                                                               |
+| `VcsGitlabPipeline`           | Adapter         | GitLab-реализация VcsClientPipeline (REST)                                                                                                            |
+| `VcsJob`                      | Value Object    | Джоба пайплайна: id, name, status, stage, ref, webUrl                                                                                                 |
+| `VcsApproveError`             | Value Object    | Доменная ошибка approve: code, status, message                                                                                                        |
+| `VcsApproveErrorCode`         | Value Object    | Коды ошибок: ALREADY_APPROVED \| SELF_APPROVE_FORBIDDEN \| CANNOT_APPROVE                                                                             |
+| `VcsFileContentQuery`         | Value Object    | Параметры получения файла: repository, path, ref                                                                                                      |
+| `parseVcsUrl`                 | Function        | Pure-функция разбора VCS URL → `VcsUrl \| null`                                                                                                       |
 
 ## 3. Entity Surfaces
 

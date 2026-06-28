@@ -8,17 +8,17 @@ Adapter для Claude Code. Реализует `AgentProvider`: сканируе
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name               | Type     | Purpose                                                                                         |
-| ------------------ | -------- | ----------------------------------------------------------------------------------------------- |
-| `ClaudeProvider`   | Adapter  | Реализует `AgentProvider` для Claude Code                                                       |
-| `psInfo`           | Function | Батчевый `ps -p pid1,pid2,... -o pid=,pcpu=,rss=,args=` → `Map<number, PsInfoEntry>` |
-| `parseClaudeArgs`  | Function | Парсинг `--model`, `--effort` из строки аргументов процесса                                     |
-| `parseContextHint` | Function | Парсинг `path/line` из строки аргументов (флаг @-context)                                       |
-| `readActiveTaskTitle` | Function | Чтение активного task-title из `<sessionDir>/active-task-title`                              |
-| `readSessionJson`  | Function | Парсинг `<PID>.json` из `~/.claude/sessions/`                                                   |
-| `readSessionTitle` | Function | Поиск `ai-title` в `~/.claude/projects/<project>/<sessionId>.jsonl`                             |
-| `PsInfoEntry`      | Type     | Результат батчевого ps: `{ pid: number, cpuPercent: number, memoryMb: number, args: string }`   |
-| `SessionJsonData`  | Type     | Распарсенный session JSON: `{ pid: number, sessionId: string, cwd: string, startedAt: number }` |
+| Name                  | Type     | Purpose                                                                                         |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `ClaudeProvider`      | Adapter  | Реализует `AgentProvider` для Claude Code                                                       |
+| `psInfo`              | Function | Батчевый `ps -p pid1,pid2,... -o pid=,pcpu=,rss=,args=` → `Map<number, PsInfoEntry>`            |
+| `parseClaudeArgs`     | Function | Парсинг `--model`, `--effort` из строки аргументов процесса                                     |
+| `parseContextHint`    | Function | Парсинг `path/line` из строки аргументов (флаг @-context)                                       |
+| `readActiveTaskTitle` | Function | Чтение активного task-title из `<sessionDir>/active-task-title`                                 |
+| `readSessionJson`     | Function | Парсинг `<PID>.json` из `~/.claude/sessions/`                                                   |
+| `readSessionTitle`    | Function | Поиск `ai-title` в `~/.claude/projects/<project>/<sessionId>.jsonl`                             |
+| `PsInfoEntry`         | Type     | Результат батчевого ps: `{ pid: number, cpuPercent: number, memoryMb: number, args: string }`   |
+| `SessionJsonData`     | Type     | Распарсенный session JSON: `{ pid: number, sessionId: string, cwd: string, startedAt: number }` |
 
 ## 3. Entity Surfaces
 
@@ -32,12 +32,11 @@ Adapter для Claude Code. Реализует `AgentProvider`: сканируе
   - `scan(opts?) → Promise<AgentSession[]>`:
     1. readdir `~/.claude/sessions/` → `*.json`
     2. Для каждого: `readSessionJson()` → `pid`, `sessionId`, `cwd`, `startedAt`
-  3. `psInfo(pids)` — если pid отсутствует в Map → `status: 'completed'`
-     4. Если active: `parseClaudeArgs(args)` → model, effort
-    5. `readSessionTitle(cwd, sessionId)` → title
-    6. `lastActivityAt` = mtime файла `<PID>.json`
-    7. `cpuPercent`, `memoryMb` = `psInfo(pids).get(pid)` если alive
-    8. Фильтр `opts.since` → по `startedAt`
+  3. `psInfo(pids)` — если pid отсутствует в Map → `status: 'completed'` 4. Если active: `parseClaudeArgs(args)` → model, effort
+  4. `readSessionTitle(cwd, sessionId)` → title
+  5. `lastActivityAt` = mtime файла `<PID>.json`
+  6. `cpuPercent`, `memoryMb` = `psInfo(pids).get(pid)` если alive
+  7. Фильтр `opts.since` → по `startedAt`
 - **Lifecycle:** Stateless — каждый `scan()` независим
 - **Events Emitted:** N/A
 - **Errors & Degradation:**

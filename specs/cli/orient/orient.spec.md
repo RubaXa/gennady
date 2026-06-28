@@ -8,28 +8,28 @@
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name                  | Type         | Purpose                                                              |
-| --------------------- | ------------ | -------------------------------------------------------------------- |
-| `orientCommand`       | Function     | Точка входа CLI: парсинг аргументов → диспатч хендлера → рендеринг   |
-| `OrientOptions`       | Type         | Опции orient: task, consumer, file, entity, graph, specs, spec, etc. |
-| `OrientContext`       | Value Object | Контекст orient: scanResults, dbcIndex, buildIndex                  |
-| `buildIndex`          | Function     | Построение индекса: сканирование файлов → FileEntry[]                |
-| `scanFiles`           | Function     | Рекурсивное сканирование `.ts` файлов в проекте                      |
-| `extractHeader`       | Function     | Извлечение file-header из исходного кода                             |
-| `queryTask`           | Function     | S2: Поиск файлов по `@tasks:` ID                                    |
-| `queryConsumer`       | Function     | S3: Поиск файлов по `@consumers:` имени                              |
-| `queryKeyword`        | Function     | S4: Поиск файлов по ключевому слову в `@file:` описании              |
-| `queryEntity`         | Function     | S6: Поиск экспортируемой сущности (с fuzzy через Дамерау-Левенштейна)|
-| `queryGraph`          | Function     | S7: Построение графа зависимостей (кто что потребляет)               |
-| `querySpec`           | Function     | S9: Поиск по конкретной спеке                                        |
-| `damerauLevenshtein`  | Function     | Расстояние Дамерау-Левенштейна для fuzzy-поиска сущностей            |
-| `hints`               | Function     | Генерация контекстных подсказок (что делать дальше)                  |
-| `renderTree`          | Function     | S1: Рендеринг карты проекта (дерево директорий + файлы)              |
-| `renderFileList`      | Function     | Рендеринг списка файлов с аннотациями                                |
-| `renderDetail`        | Function     | S5: Детальный рендеринг файла (header + exports + DBC-контракты)    |
-| `renderSearch`        | Function     | Рендеринг результатов поиска (keyword/entity)                        |
-| `renderGraph`         | Function     | Рендеринг графа зависимостей                                         |
-| `renderSpecs`         | Function     | S8: Рендеринг обзора всех спек и их задач                            |
+| Name                 | Type         | Purpose                                                               |
+| -------------------- | ------------ | --------------------------------------------------------------------- |
+| `orientCommand`      | Function     | Точка входа CLI: парсинг аргументов → диспатч хендлера → рендеринг    |
+| `OrientOptions`      | Type         | Опции orient: task, consumer, file, entity, graph, specs, spec, etc.  |
+| `OrientContext`      | Value Object | Контекст orient: scanResults, dbcIndex, buildIndex                    |
+| `buildIndex`         | Function     | Построение индекса: сканирование файлов → FileEntry[]                 |
+| `scanFiles`          | Function     | Рекурсивное сканирование `.ts` файлов в проекте                       |
+| `extractHeader`      | Function     | Извлечение file-header из исходного кода                              |
+| `queryTask`          | Function     | S2: Поиск файлов по `@tasks:` ID                                      |
+| `queryConsumer`      | Function     | S3: Поиск файлов по `@consumers:` имени                               |
+| `queryKeyword`       | Function     | S4: Поиск файлов по ключевому слову в `@file:` описании               |
+| `queryEntity`        | Function     | S6: Поиск экспортируемой сущности (с fuzzy через Дамерау-Левенштейна) |
+| `queryGraph`         | Function     | S7: Построение графа зависимостей (кто что потребляет)                |
+| `querySpec`          | Function     | S9: Поиск по конкретной спеке                                         |
+| `damerauLevenshtein` | Function     | Расстояние Дамерау-Левенштейна для fuzzy-поиска сущностей             |
+| `hints`              | Function     | Генерация контекстных подсказок (что делать дальше)                   |
+| `renderTree`         | Function     | S1: Рендеринг карты проекта (дерево директорий + файлы)               |
+| `renderFileList`     | Function     | Рендеринг списка файлов с аннотациями                                 |
+| `renderDetail`       | Function     | S5: Детальный рендеринг файла (header + exports + DBC-контракты)      |
+| `renderSearch`       | Function     | Рендеринг результатов поиска (keyword/entity)                         |
+| `renderGraph`        | Function     | Рендеринг графа зависимостей                                          |
+| `renderSpecs`        | Function     | S8: Рендеринг обзора всех спек и их задач                             |
 
 ## 3. Entity Surfaces
 
@@ -91,21 +91,21 @@
 
 ### Аргументы
 
-| Флаг                 | Кратко | Описание                                                              |
-| -------------------- | ------ | --------------------------------------------------------------------- |
-| `<keyword>`          | —      | Поиск по ключевому слову в `@file:` описании (позиционный)            |
-| `--task=<id>`        | —      | Поиск файлов по ID задачи; repeatable для нескольких ID               |
-| `--consumer=<name>`  | —      | Поиск файлов, потребляющих указанный модуль                           |
-| `--file=<path>`      | —      | Детальный просмотр файла (header + exports + DBC); repeatable         |
-| `--entity=<name>`    | —      | Поиск экспортируемой сущности по имени                                |
-| `--graph`            | —      | Показать граф зависимостей (кто что потребляет)                       |
-| `--recursive`        | —      | Для `--graph`: показать транзитивные зависимости                      |
-| `--specs`            | —      | Обзор всех спек и связанных с ними задач                              |
-| `--spec=<path>`      | —      | Поиск файлов, связанных с конкретной спекой                           |
-| `--detail`           | —      | Показать экспорты для каждого файла (в карте проекта и поиске)        |
-| `--fuzzy`            | —      | Включить fuzzy-поиск для `--entity` (Дамерау-Левенштейн)              |
-| `--dir=<path>`       | —      | Фильтровать результаты по директории                                  |
-| `--max-results=<n>`  | —      | Ограничить количество результатов                                     |
+| Флаг                | Кратко | Описание                                                       |
+| ------------------- | ------ | -------------------------------------------------------------- |
+| `<keyword>`         | —      | Поиск по ключевому слову в `@file:` описании (позиционный)     |
+| `--task=<id>`       | —      | Поиск файлов по ID задачи; repeatable для нескольких ID        |
+| `--consumer=<name>` | —      | Поиск файлов, потребляющих указанный модуль                    |
+| `--file=<path>`     | —      | Детальный просмотр файла (header + exports + DBC); repeatable  |
+| `--entity=<name>`   | —      | Поиск экспортируемой сущности по имени                         |
+| `--graph`           | —      | Показать граф зависимостей (кто что потребляет)                |
+| `--recursive`       | —      | Для `--graph`: показать транзитивные зависимости               |
+| `--specs`           | —      | Обзор всех спек и связанных с ними задач                       |
+| `--spec=<path>`     | —      | Поиск файлов, связанных с конкретной спекой                    |
+| `--detail`          | —      | Показать экспорты для каждого файла (в карте проекта и поиске) |
+| `--fuzzy`           | —      | Включить fuzzy-поиск для `--entity` (Дамерау-Левенштейн)       |
+| `--dir=<path>`      | —      | Фильтровать результаты по директории                           |
+| `--max-results=<n>` | —      | Ограничить количество результатов                              |
 
 ### Golden DX
 
@@ -183,6 +183,7 @@ cli/cmd/orient/
 ```
 
 **Поток выполнения (общий):**
+
 1. `gennady.ts` → динамический импорт `cmd/orient/index.ts`
 2. `index.ts` → `orientCommand(process.argv)`
 3. `parseArgs(argv)` → `OrientOptions`
@@ -194,15 +195,18 @@ cli/cmd/orient/
 9. stdout/stderr + exit code
 
 **S1 (карта проекта):**
+
 1. `renderTree(ctx.files, opts)` → дерево директорий + файлы с аннотациями
 2. `hints('tree')` → подсказки для `--detail`, `--task`, `--consumer`
 
 **S2 (поиск по задаче):**
+
 1. `queryTask(ctx.taskIndex, opts.task)` → FileEntry[]
 2. `renderFileList(results, opts)` → список файлов
 3. `hints('task')` → подсказки
 
 **S5 (детальный файл):**
+
 1. `extractHeader(file)` → header-аннотации
 2. DBC-парсер → экспортируемые сущности с контрактами
 3. `renderDetail(file, header, dbcExports)` → полный вывод
@@ -211,36 +215,42 @@ cli/cmd/orient/
 ## 6. Decision Log
 
 ### D-001 — Единый `OrientContext` вместо N запросов к ФС
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** Все S1-S9 хендлеры работают с одним и тем же набором данных. `buildIndex` делает один проход по ФС, строит все индексы. Без этого каждый хендлер сканировал бы ФС заново.
 - **Rejected alternatives:** Ленивая загрузка по требованию (проще код, но O(N×M) чтений ФС для нескольких запросов).
 
 ### D-002 — Дамерау-Левенштейн для fuzzy-поиска сущностей
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** Дамерау-Левенштейн лучше учитывает опечатки (транспозиции соседних символов) чем классический Левенштейн. `DbcJdocParsr` → `DbcJsDocParser` — транспозиция `od` → `do`.
 - **Rejected alternatives:** Левенштейн (хуже для опечаток-перестановок), Soundex/Metaphone (для фонетического поиска, не для имён).
 
 ### D-003 — Разделение query/render слоёв
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** Query-функции (`query*`) — pure: получают данные, возвращают результаты. Render-функции (`render*`) — форматируют вывод. Разделение позволяет тестировать логику поиска отдельно от форматирования.
 - **Rejected alternatives:** Монолитные хендлеры (query + render в одной функции — сложнее тестировать).
 
 ### D-004 — `--graph` и `<keyword>` — взаимоисключающие
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** `--graph` задаёт режим графа зависимостей, `<keyword>` — режим текстового поиска. Одновременное использование не имеет семантики.
 - **Rejected alternatives:** Разрешить оба (неясно, что показывать).
 
 ### D-005 — `--file` и `--dir` — взаимоисключающие
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** `--file` указывает конкретные файлы, `--dir` — фильтр по директории для поискового режима. Семантически несовместимы.
 - **Rejected alternatives:** Разрешить оба (конфликт: показать конкретный файл ИЛИ отфильтровать поиск по директории).
 
 ### D-006 — Hints как контекстные подсказки «что дальше»
+
 - **Status:** active
 - **Recorded:** session Discovery, cli/orient
 - **Why:** После каждого режима orient выводит релевантные подсказки: например, после S1 — `--detail`, `--task=<id>`, `<keyword>`. Это направляет пользователя (человека или агента) к следующему действию.
@@ -277,11 +287,11 @@ cli/cmd/orient/
 
 ## 8. Bootstrap Requirements
 
-| Requirement       | Kind          | Owner                   | Resolution                          |
-| ----------------- | ------------- | ----------------------- | ----------------------------------- |
-| DBC-парсер        | external-fn   | services/dbc/parser     | ✅ `@services/dbc/parser`           |
-| `logger`          | external-fn   | shared/common           | ✅ `#logger`                        |
-| `readFile`        | external-fn   | shared/common/files     | ✅ `#logger` / shared               |
+| Requirement | Kind        | Owner               | Resolution                |
+| ----------- | ----------- | ------------------- | ------------------------- |
+| DBC-парсер  | external-fn | services/dbc/parser | ✅ `@services/dbc/parser` |
+| `logger`    | external-fn | shared/common       | ✅ `#logger`              |
+| `readFile`  | external-fn | shared/common/files | ✅ `#logger` / shared     |
 
 ## 9. Handoff to Task Scaffolding
 

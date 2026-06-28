@@ -153,10 +153,10 @@ _Это полный список сущностей модуля. Любое в
 
 ### Value Objects
 
-| Name          | Key Properties                                                                                                                   |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `LintError`   | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                            |
-| `LintOptions` | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                      |
+| Name          | Key Properties                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintError`   | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                 |
+| `LintOptions` | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                                           |
 | `LintReport`  | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `guidance?: string`, `format(): string` |
 
 ### Error Codes

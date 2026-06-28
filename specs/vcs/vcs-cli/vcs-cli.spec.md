@@ -58,42 +58,49 @@ gennady vcs-worktree --cleanup-all
 ## 3. Entity Inventory (Closed-World)
 
 ### VcsApproveCommand
+
 - **Type:** Command
 - **Purpose:** Approve или отозвать approve GitLab MR. Идемпотентен: уже approved → info + exit 0.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout: NodeJS.WriteStream`, `stderr: NodeJS.WriteStream`, `exit: ExitFn`
 - **Options:** `--ref`, `--project`, `--iid`, `--branch`, `--host`, `--dry-run/--dry`, `--revoke/--unapprove`
 
 ### VcsDiffCommand
+
 - **Type:** Command
 - **Purpose:** Показать список изменённых файлов MR через `getChanges`; опционально — содержимое файла через `getFileContent`.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout`, `stderr`, `exit`
 - **Options:** `--ref`, `--path`, `--host`, `--dry-run/--dry`
 
 ### VcsDraftNoteCommand
+
 - **Type:** Command
 - **Purpose:** CRUD + publish черновиков (draft notes) GitLab MR. Ровно один action-флаг обязателен.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout`, `stderr`, `exit`
 - **Options:** `--ref`, `--project`, `--iid`, `--host`, `--list`, `--create <body>`, `--update <id>`, `--body <text>`, `--delete <id>`, `--publish <id>`, `--dry-run/--dry`
 
 ### VcsJobCommand
+
 - **Type:** Command
 - **Purpose:** Просмотр статуса или управление CI-джобой (play, cancel, retry). `retry` — алиас `play`.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout`, `stderr`, `exit`
 - **Options:** `--ref` (обязателен с iid), `--job` (обязателен), `--action` (status/play/cancel/retry), `--host`, `--dry-run/--dry`
 
 ### VcsJobLogCommand
+
 - **Type:** Command
 - **Purpose:** Получение сырого лога (trace) CI-джобы. Smart-режим: фильтрация ошибок через `filterLog`. `--raw` — без фильтрации.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout`, `stderr`, `exit`
 - **Options:** `--ref` (обязателен с iid), `--job` (обязателен), `--host`, `--raw`
 
 ### VcsPipelineCommand
+
 - **Type:** Command
 - **Purpose:** Статус CI-пайплайна MR. По умолчанию — только упавшие джобы. `--all`, `--status`, `--logs`, `--json`.
 - **DI deps:** `resolveVcsContext: VcsContextResolver`, `stdout`, `stderr`, `exit`
 - **Options:** `--ref`, `--host`, `--all`, `--status`, `--logs`, `--json`, `--dry-run/--dry`
 
 ### VcsReplyCommand
+
 - **Type:** Command
 - **Purpose:** Постинг в GitLab MR: reply в тред, новая дискуссия, line-comment, resolve/reopen, code suggestion, edit/delete заметок. Читает JSON-массив из stdin.
 - **DI:** Принимает `MainOpts` напрямую: vcs, token, project, iid, dryRun, stdinJsonArray, host.
@@ -101,18 +108,21 @@ gennady vcs-worktree --cleanup-all
 - **Item types:** `reply`, `discussion`, `line`, `delete-note`, `delete-discussion`, `resolve`, `reopen`, `edit-note`, `suggestion`
 
 ### VcsTodoCommand
+
 - **Type:** Command
 - **Purpose:** Отметка GitLab Todo как done: все todo для MR (`--done <ref>`) или конкретный todo по id (`--id`).
 - **DI:** Принимает `MainOpts` напрямую: doneRef, todoId, dryRun, host, vcsContext.
 - **Options:** `--done <ref>`, `--id <todoId>`, `--dry-run/--dry`, `--vcs-source/--host`
 
 ### VcsWorktreeCommand
+
 - **Type:** Command
 - **Purpose:** Подготовка read-only detached git worktree для MR-ревью. GC старых worktree (TTL=3h) на каждом prepare. Clone-кеширование.
 - **DI:** Использует `resolveVcsContext` напрямую, `VcsGitlabClient`, и локальные модули логики.
 - **Options:** `--ref` (обязателен для prepare), `--vcs-source`, `--repos-base`, `--state-dir`, `--cleanup <path>`, `--cleanup-all`
 
 ### VcsContextResolver
+
 - **Type:** Function (shared)
 - **Purpose:** Авто-детект project/host/iid/token из CLI-аргументов, git remote, env-переменных.
 - **Signature:** `(args: Record<string, unknown>, gitDir?: string) => Promise<VcsResolvedContext>`
@@ -120,18 +130,18 @@ gennady vcs-worktree --cleanup-all
 
 ## 4. Functional Requirements
 
-| ID    | Требование |
-|-------|------------|
-| FR-01 | Все VCS CLI-команды используют `resolveVcsContext` для авто-детекта контекста |
-| FR-02 | `VcsClient` создаётся инлайн: `new VcsGitlabClient({ baseUrl, token })` |
-| FR-03 | Парсинг аргументов через `parseArgs` из `shared/common/parse-args.ts` |
-| FR-04 | Все мутирующие команды поддерживают `--dry-run`/`--dry` |
-| FR-05 | Все команды зарегистрированы в `cli/gennady.ts` через `switch(command)` |
-| FR-06 | Каждая команда имеет `help.ts` с `printHelp()` и `index.ts` с entry point |
-| FR-07 | Exit code: `0` — успех (включая идемпотентные кейсы), `1` — ошибка |
-| FR-08 | Токен: `GITLAB_PERSONAL_TOKEN` из env; fallback — ошибка с Usage |
+| ID    | Требование                                                                                |
+| ----- | ----------------------------------------------------------------------------------------- |
+| FR-01 | Все VCS CLI-команды используют `resolveVcsContext` для авто-детекта контекста             |
+| FR-02 | `VcsClient` создаётся инлайн: `new VcsGitlabClient({ baseUrl, token })`                   |
+| FR-03 | Парсинг аргументов через `parseArgs` из `shared/common/parse-args.ts`                     |
+| FR-04 | Все мутирующие команды поддерживают `--dry-run`/`--dry`                                   |
+| FR-05 | Все команды зарегистрированы в `cli/gennady.ts` через `switch(command)`                   |
+| FR-06 | Каждая команда имеет `help.ts` с `printHelp()` и `index.ts` с entry point                 |
+| FR-07 | Exit code: `0` — успех (включая идемпотентные кейсы), `1` — ошибка                        |
+| FR-08 | Токен: `GITLAB_PERSONAL_TOKEN` из env; fallback — ошибка с Usage                          |
 | FR-09 | `--vcs-source`/`--host` позволяет указать self-hosted GitLab (переопределяет авто-детект) |
-| FR-10 | Логирование через `#logger` (алиас на `service/logger/logger.ts`) |
+| FR-10 | Логирование через `#logger` (алиас на `service/logger/logger.ts`)                         |
 
 ## 5. Non-Functional Constraints
 

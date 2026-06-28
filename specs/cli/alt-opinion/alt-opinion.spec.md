@@ -109,11 +109,11 @@ cli/cmd/alt-opinion/
 
 ### 5.1 Environment Variables
 
-| Variable                  | Provider   | Required | Default |
-| ------------------------- | ---------- | -------- | ------- |
-| `LLM_PROXY_API_KEY`      | llmproxy   | Yes      | —       |
-| `LLM_PROXY_BASE_URL`      | llmproxy   | Yes      | —       |
-| `OPENROUTER_API_KEY`      | openrouter | Yes      | —       |
+| Variable             | Provider   | Required | Default |
+| -------------------- | ---------- | -------- | ------- |
+| `LLM_PROXY_API_KEY`  | llmproxy   | Yes      | —       |
+| `LLM_PROXY_BASE_URL` | llmproxy   | Yes      | —       |
+| `OPENROUTER_API_KEY` | openrouter | Yes      | —       |
 
 - `LLM_PROXY_BASE_URL` — OpenAI-совместимый endpoint (например `https://llm-proxy.example.com/v1`)
 - При отсутствии любого из ключей `createOpenAI` бросит ошибку "API key is required"
