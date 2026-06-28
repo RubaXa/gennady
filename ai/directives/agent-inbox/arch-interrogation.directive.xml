@@ -214,8 +214,8 @@
         2. IF chat → per AX_VISUAL_TRANSPORT Branch CHAT: check for viz tool → use it OR ASCII/emoji-icons. Mermaid FORBIDDEN.
         3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`. All diagram conversion and posting format governed by that directive. This directive never posts inline.
         4. State the chosen destination and format in the first micro-summary: «Вывод: чат, ASCII» or «Вывод: чат, widget» or «Постинг: GitLab, Mermaid».
-      </Precondition>
-      <Action>
+       </Precondition>
+       <Action>
         1. Choose visual transport per the destination check above (see Precondition). Per `AX_VISUALIZE_WHEN_RELATIONAL`: relational findings → picture; single judgements → prose. Per `AX_SCANNABLE_OUTPUT`: use emoji verdict icons (✅⚠️❌) and risk colours (🟢🟡🔴).
         2. Emit the mandatory scope summary first per `AX_CHANGESET_SCALE` / `<OutputFormat>` §2: headline line + by-category table + file map. The file map is rendered for every MR size, never skipped.
         3. Render the context/container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (C4-style: system boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside the diagram).
@@ -224,9 +224,22 @@
         6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
         7. Reconcile candidates against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert already-raised into reply-to-thread candidate, mark correction-replies, list awaiting-my-reply threads.
         8. Produce verdict summary per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table format per `AX_SCANNABLE_OUTPUT`.
-        9. Produce comment candidate table per `<OutputFormat>` §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
-      </Action>
-    </Step>
+         9. Produce comment candidate table per `<OutputFormat>` §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
+       </Action>
+       <SelfCheck>
+         **После сборки отчёта, перед отправкой оператору — пройди этот список. Если любой пункт ✗ — вернись и добавь пропущенное. Не выдавай неполный отчёт.**
+
+         0. `<IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/>` — прочитай эталон структуры. Сверяй свой отчёт с ним.
+         1. **Шапка** — первая строка: `ref` как кликабельная ссылка на `webUrl`, затем `title`. ✗/✓
+         2. **Обзор** — строка «Размер: …», таблица категорий (Код/Тесты/Доки/Конфиг/Ассеты), карта файлов с иконками (🆕/✏️/🗑️/↪︎) и ± строками. ✗/✓
+         3. **C4-диаграмма** — контейнеры с вердикт-цветом (✅⚠️❌), внешние системы, легенда. ASCII или виджет. ✗/✓
+         4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
+         5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Kind. ✗/✓
+         6. **Подвал** — повтор ссылки на `webUrl`. ✗/✓
+
+         Если все пункты ✓ — отдавай отчёт оператору.
+       </SelfCheck>
+     </Step>
   </ExecutionPlan>
 
   <OutputFormat>

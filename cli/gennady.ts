@@ -67,6 +67,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'inbox-context':
+      await import('./cmd/inbox-context/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'vcs-worktree':
       await import('./cmd/vcs-worktree/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -188,6 +192,10 @@ switch (command) {
 
   case 'inbox':
     await import('./cmd/inbox/index.ts');
+    break;
+
+  case 'inbox-context':
+    await import('./cmd/inbox-context/index.ts');
     break;
 
   case 'vcs-worktree':

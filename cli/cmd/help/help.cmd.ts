@@ -12,6 +12,9 @@ console.info('  commit            Generate commit message from staged changes');
 console.info('  cat               Display file contents as XML or Markdown');
 console.info('  review            Review staged changes using AI models');
 console.info('  vcs-reply         Post replies to GitLab MR discussions from stdin');
+console.info('  inbox             List actionable GitLab merge requests with delta tracking');
+console.info('  inbox-context     Gather full MR context (worktree, changeset, threads) as JSON');
+console.info('  vcs-worktree      Prepare a read-only git worktree for MR review');
 console.info('  vcs-approve       Approve GitLab merge request via API');
 console.info('  review-verify     Build verification prompt from open GitLab MR or GitHub PR');
 console.info(
