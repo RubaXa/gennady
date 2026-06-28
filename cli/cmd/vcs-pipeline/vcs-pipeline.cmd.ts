@@ -6,6 +6,8 @@
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vcs-pipeline-status.type.ts';
 import type { VcsMergeRequestsQuery } from '../../../services/vcs-client/abstract/vcs-client-merge-requests.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -87,12 +89,13 @@ async function locateMrByBranch(
   project: string,
   branch: string | undefined,
   token: string,
-  host: string
+  host: string,
+  provider: 'gitlab' | 'github'
 ): Promise<{ iid: number } | null> {
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${host}/api/v4`,
-    token,
-  });
+  const client: VcsClient =
+    provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
+      : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
 
   const query: VcsMergeRequestsQuery = {
     project,
@@ -124,10 +127,10 @@ async function locateMrByBranch(
  * @throws Propagates network/API errors from the GitLab client.
  */
 async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPipelineStatus> {
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${context.host}/api/v4`,
-    token: context.token,
-  });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   logger.info(`[fetchPipeline] [idle → fetching] ${context.project}!${iid}`);
   const pipeline = await client.MergeRequests.getPipeline({
@@ -249,7 +252,8 @@ export async function run(
         context.project,
         context.branch,
         context.token,
-        context.host
+        context.host,
+        context.provider
       );
 
       if (!mr) {
@@ -294,10 +298,13 @@ export async function run(
 
     if (logsMode && jobs.length > 0) {
       deps.stdout.write(`Pipeline status: ${pipeline.status}\n\n`);
-      const client = new VcsGitlabClient({
-        baseUrl: `https://${context.host}/api/v4`,
-        token: context.token,
-      });
+      const client: VcsClient =
+        context.provider === 'github'
+          ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+          : new VcsGitlabClient({
+              baseUrl: `https://${context.host}/api/v4`,
+              token: context.token,
+            });
       for (const job of jobs) {
         const failed = job.status.toLowerCase() !== 'success';
         deps.stdout.write(`${failed ? '✖' : '✓'} ${job.name} (${job.status})\n`);

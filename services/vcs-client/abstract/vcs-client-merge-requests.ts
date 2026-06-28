@@ -1,12 +1,14 @@
 // @file: Contract surface for merge request / pull request operations.
 // @consumers: VcsClient
-// @tasks: TSK-28, TSK-67, TSK-82, TSK-84
+// @tasks: TSK-28, TSK-67, TSK-82, TSK-84, TSK-88
 
 import type {
   VcsMergeRequestChanges,
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import type { VcsMergeRequestCreateQuery } from '../entities/vcs-merge-request-create-query.type.ts';
+import type { VcsMergeRequestUpdateQuery } from '../entities/vcs-merge-request-update-query.type.ts';
 import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts';
 
 /**
@@ -110,4 +112,49 @@ export abstract class VcsClientMergeRequests {
    * @sideEffect Network: GraphQL headPipeline query (GitLab)
    */
   abstract getPipeline(query: VcsPipelineQuery): Promise<VcsPipelineStatus>;
+
+  /**
+   * @purpose Create a new Merge Request / Pull Request.
+   * @param query Parameters: { project, title, sourceBranch, ... }.
+   * @returns Created MR/PR with at least { webUrl, iid, title }.
+   * @sideEffect Network: POST to provider API.
+   */
+  abstract create(query: VcsMergeRequestCreateQuery): Promise<unknown>;
+
+  /**
+   * @purpose Edit an existing Merge Request / Pull Request.
+   * @invariant At least one optional field (besides project + iid) must be provided.
+   *   Validation happens here — adapters receive a guaranteed-non-empty query.
+   * @param query Parameters to update: { project, iid } + optional fields.
+   * @returns Updated MR/PR with at least { webUrl, iid, title }.
+   * @throws {Error} When no optional fields are provided besides project + iid.
+   * @sideEffect Network: PUT/PATCH to provider API (delegated to _doUpdate).
+   */
+  async update(query: VcsMergeRequestUpdateQuery): Promise<unknown> {
+    const hasOptional = [
+      query.title,
+      query.description,
+      query.draft,
+      query.addLabels,
+      query.removeLabels,
+      query.assigneeIds,
+      query.reviewerIds,
+      query.targetBranch,
+      query.milestoneId,
+    ].some((v) => v !== undefined);
+
+    if (!hasOptional) {
+      throw new Error('At least one field to update is required');
+    }
+
+    return this._doUpdate(query);
+  }
+
+  /**
+   * @purpose Provider-specific implementation of MR/PR update.
+   * @param query Guaranteed-non-empty validated update query.
+   * @returns Updated MR/PR.
+   * @sideEffect Network: PUT/PATCH to provider API.
+   */
+  protected abstract _doUpdate(query: VcsMergeRequestUpdateQuery): Promise<unknown>;
 }

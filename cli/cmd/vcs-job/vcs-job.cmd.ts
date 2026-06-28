@@ -6,6 +6,8 @@
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vcs-pipeline-status.type.ts';
 import type { VcsJob } from '../../../services/vcs-client/entities/vcs-job.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -191,10 +193,10 @@ export async function run(
   }
   // #endregion END_DRY_RUN
 
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${context.host}/api/v4`,
-    token: context.token,
-  });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   if (!client.Pipeline) {
     deps.stderr.write('✖ Ошибка: Pipeline API не поддерживается данным VCS-клиентом\n');

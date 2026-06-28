@@ -6,6 +6,8 @@
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsMergeRequestChanges } from '../../../services/vcs-client/entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestsQuery } from '../../../services/vcs-client/abstract/vcs-client-merge-requests.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -99,12 +101,13 @@ async function locateMrByBranch(
   project: string,
   branch: string | undefined,
   token: string,
-  host: string
+  host: string,
+  provider: 'gitlab' | 'github'
 ): Promise<{ iid: number } | null> {
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${host}/api/v4`,
-    token,
-  });
+  const client: VcsClient =
+    provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token })
+      : new VcsGitlabClient({ baseUrl: `https://${host}/api/v4`, token });
 
   const query: VcsMergeRequestsQuery = {
     project,
@@ -139,10 +142,10 @@ async function fetchChanges(
   context: VcsCliContext,
   iid: number
 ): Promise<VcsMergeRequestChanges[]> {
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${context.host}/api/v4`,
-    token: context.token,
-  });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   logger.info(`[fetchChanges] [idle → fetching] ${context.project}!${iid}`);
   const changes = await client.MergeRequests.getChanges({
@@ -169,13 +172,13 @@ async function fetchFileContent(
   path: string,
   ref: string
 ): Promise<string | null> {
-  const client = new VcsGitlabClient({
-    baseUrl: `https://${context.host}/api/v4`,
-    token: context.token,
-  });
+  const client: VcsClient =
+    context.provider === 'github'
+      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
+      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
 
   logger.debug(`[fetchFileContent] [idle → fetching] ${context.project} path=${path} ref=${ref}`);
-  const result = await client.RepositoryFiles.getFileContent({
+  const result = await client.RepositoryFiles!.getFileContent({
     repository: context.project,
     path,
     ref,
@@ -241,7 +244,8 @@ export async function run(
         context.project,
         context.branch,
         context.token,
-        context.host
+        context.host,
+        context.provider
       );
 
       if (!mr) {

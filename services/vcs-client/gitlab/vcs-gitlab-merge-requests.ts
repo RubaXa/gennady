@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request operations.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29, TSK-67, TSK-73, TSK-82, TSK-84
+// @tasks: TSK-29, TSK-67, TSK-73, TSK-82, TSK-84, TSK-88, TSK-89
 
 import {
   VcsClientMergeRequests,
@@ -13,6 +13,8 @@ import type {
   VcsMergeRequestChangesQuery,
 } from '../entities/vcs-merge-request-changes.type.ts';
 import type { VcsMergeRequestApproveQuery } from '../entities/vcs-merge-request-approve-query.type.ts';
+import type { VcsMergeRequestCreateQuery } from '../entities/vcs-merge-request-create-query.type.ts';
+import type { VcsMergeRequestUpdateQuery } from '../entities/vcs-merge-request-update-query.type.ts';
 import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts';
 import { logger } from '#logger';
 
@@ -307,5 +309,94 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
     );
     return { status, jobs };
     // #endregion END_PIPELINE_GRAPHQL_AND_NORMALIZE
+  }
+
+  /**
+   * @purpose Create a new GitLab Merge Request.
+   * @param query Parameters: { project, title, sourceBranch, ... }.
+   * @returns Created MR object.
+   * @sideEffect Network: POST /projects/:id/merge_requests
+   * @see {VcsClientMergeRequests#create} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  async create(query: VcsMergeRequestCreateQuery): Promise<unknown> {
+    const repoId = encodeURIComponent(query.project);
+    const body: Record<string, unknown> = {
+      source_branch: query.sourceBranch,
+      title: query.title,
+    };
+    if (query.targetBranch) body.target_branch = query.targetBranch;
+    if (query.description) body.description = query.description;
+    if (query.draft) body.draft = true;
+    if (query.labels?.length) body.labels = query.labels.join(',');
+    if (query.assigneeIds?.length) body.assignee_ids = query.assigneeIds;
+    if (query.reviewerIds?.length) body.reviewer_ids = query.reviewerIds;
+    if (query.milestoneId) body.milestone_id = query.milestoneId;
+
+    const result = (await this._request(`/projects/${repoId}/merge_requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })) as Record<string, unknown>;
+
+    return {
+      webUrl: result.web_url ?? '',
+      iid: result.iid ?? 0,
+      title: result.title ?? '',
+    };
+  }
+
+  /**
+   * @purpose Update an existing GitLab Merge Request.
+   * @param query Guaranteed-non-empty validated update query from abstract port.
+   * @returns Updated MR object.
+   * @sideEffect Network: PUT /projects/:id/merge_requests/:iid
+   * @see {VcsClientMergeRequests#_doUpdate} in services/vcs-client/abstract/vcs-client-merge-requests.ts
+   */
+  protected async _doUpdate(query: VcsMergeRequestUpdateQuery): Promise<unknown> {
+    const repoId = encodeURIComponent(query.project);
+    const iid = encodeURIComponent(String(query.iid));
+    const body: Record<string, unknown> = {};
+
+    if (query.title !== undefined) {
+      let title = query.title;
+      if (query.draft === true && !/^(?:Draft|WIP):\s/.test(title)) {
+        title = `Draft: ${title}`;
+      } else if (query.draft === false) {
+        title = title.replace(/^(?:Draft|WIP):\s/, '');
+      }
+      body.title = title;
+    } else if (query.draft !== undefined) {
+      const mr = (await this._request(`/projects/${repoId}/merge_requests/${iid}`)) as {
+        title?: string;
+      };
+      const currentTitle = mr.title ?? '';
+      if (query.draft) {
+        body.title = /^(?:Draft|WIP):\s/.test(currentTitle)
+          ? currentTitle
+          : `Draft: ${currentTitle}`;
+      } else {
+        body.title = currentTitle.replace(/^(?:Draft|WIP):\s/, '');
+      }
+    }
+
+    if (query.description !== undefined) body.description = query.description;
+    if (query.targetBranch) body.target_branch = query.targetBranch;
+    if (query.addLabels?.length) body.add_labels = query.addLabels.join(',');
+    if (query.removeLabels?.length) body.remove_labels = query.removeLabels.join(',');
+    if (query.assigneeIds) body.assignee_ids = query.assigneeIds;
+    if (query.reviewerIds) body.reviewer_ids = query.reviewerIds;
+    if (query.milestoneId !== undefined) body.milestone_id = query.milestoneId;
+
+    const result = (await this._request(`/projects/${repoId}/merge_requests/${iid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })) as Record<string, unknown>;
+
+    return {
+      webUrl: result.web_url ?? '',
+      iid: result.iid ?? 0,
+      title: result.title ?? '',
+    };
   }
 }

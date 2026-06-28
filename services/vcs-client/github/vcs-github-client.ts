@@ -3,7 +3,9 @@
 // @tasks: TSK-30, TSK-84
 
 import { VcsGithubMergeRequests } from './vcs-github-merge-requests.ts';
+import { VcsGithubMergeDiscussions } from './vcs-github-merge-discussions.ts';
 import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
+import { VcsGithubReactions } from './vcs-github-reactions.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
 
 /**
@@ -27,7 +29,7 @@ export class VcsGithubClient extends VcsClient {
   readonly MergeRequests: VcsGithubMergeRequests;
 
   /** @see {VcsClient#MergeDiscussions} in services/vcs-client/abstract/vcs-client.ts */
-  readonly MergeDiscussions = undefined;
+  readonly MergeDiscussions: VcsGithubMergeDiscussions;
 
   /** @see {VcsClient#RepositoryFiles} in services/vcs-client/abstract/vcs-client.ts */
   readonly RepositoryFiles: VcsGithubRepositoryFiles;
@@ -37,6 +39,9 @@ export class VcsGithubClient extends VcsClient {
 
   /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
   readonly Pipeline = undefined;
+
+  /** @see {VcsClient#Reactions} in services/vcs-client/abstract/vcs-client.ts */
+  readonly Reactions: VcsGithubReactions;
 
   /**
    * @purpose Create a GitHub API client bound to a base URL with access token.
@@ -63,6 +68,8 @@ export class VcsGithubClient extends VcsClient {
     };
 
     this.MergeRequests = new VcsGithubMergeRequests(request);
+    this.MergeDiscussions = new VcsGithubMergeDiscussions(request);
     this.RepositoryFiles = new VcsGithubRepositoryFiles(options.baseUrl, options.token);
+    this.Reactions = new VcsGithubReactions(request);
   }
 }
