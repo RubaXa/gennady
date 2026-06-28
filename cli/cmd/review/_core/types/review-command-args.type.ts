@@ -23,4 +23,6 @@ export type ReviewCommandArgs = {
   since?: string;
   /** @purpose Draft mode — fetch the current user's unpublished draft notes instead of discussions. */
   draft?: boolean;
+  /** @purpose Explicit VCS host override (e.g. gitlab.corp.mail.ru). */
+  host?: string;
 };

@@ -15,6 +15,7 @@ const vcsCliArgs: VcsCliArgs = {
   branch: reviewCommandArgs.branch,
   project: reviewCommandArgs.project,
   iid: reviewCommandArgs.iid ? Number(reviewCommandArgs.iid) : undefined,
+  host: reviewCommandArgs.host,
 };
 
 try {

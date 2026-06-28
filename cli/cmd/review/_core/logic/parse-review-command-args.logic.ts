@@ -21,6 +21,7 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
     all: ['all'],
     since: ['since'],
     draft: ['draft'],
+    host: { aliases: ['host'], takesValue: true },
   });
 
   const positional = args._.filter((entry) => typeof entry === 'string') as string[];
@@ -42,5 +43,6 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
     all: args.all as boolean | undefined,
     since: args.since as string | undefined,
     draft: args.draft as boolean | undefined,
+    host: typeof args.host === 'string' ? args.host : undefined,
   };
 }
