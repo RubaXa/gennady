@@ -28,7 +28,9 @@ export function printHelp(): void {
   console.info(
     '  npx gennady vcs-approve                                      # auto-detect → approve'
   );
-  console.info('  npx gennady vcs-approve --ref group/repo!99 --revoke            # remove approval');
+  console.info(
+    '  npx gennady vcs-approve --ref group/repo!99 --revoke            # remove approval'
+  );
   console.info('  npx gennady vcs-approve --project group/repo --iid 42        # project + iid');
   console.info('  npx gennady vcs-approve --dry-run                            # dry-run');
   console.info('  npx gennady vcs-approve --host gitlab.internal.company.com   # self-hosted');
