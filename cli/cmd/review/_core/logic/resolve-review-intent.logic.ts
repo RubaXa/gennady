@@ -61,7 +61,7 @@ export function resolveReviewIntent(args: ReviewCommandArgs): ReviewIntent {
     };
   }
 
-  if (args.ref) {
+  if (typeof args.ref === 'string') {
     const parsedRef = parseReviewRef(args.ref);
     if (!parsedRef) {
       throw new Error('Некорректный --ref. Ожидается формат <PROJECT>!<IID>.');

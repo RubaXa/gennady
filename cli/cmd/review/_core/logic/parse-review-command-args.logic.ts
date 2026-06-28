@@ -27,8 +27,8 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
   const positionalUrl = positional.find((entry) => entry.startsWith('http'));
   const positionalRef = positional.find((entry) => entry.includes('!'));
 
-  const explicitUrl = args.url as string | undefined;
-  const explicitRef = args.ref as string | undefined;
+  const explicitUrl = typeof args.url === 'string' ? args.url : undefined;
+  const explicitRef = typeof args.ref === 'string' ? args.ref : undefined;
 
   const derivedUrl = !explicitUrl ? positionalUrl : undefined;
   const derivedRef = !explicitRef ? positionalRef : undefined;

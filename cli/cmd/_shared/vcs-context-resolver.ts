@@ -136,7 +136,7 @@ export async function resolveVcsContext(
   logger.debug('[resolveVcsContext] [idle → resolving]');
 
   // #region START_VALIDATE_MUTUAL_EXCLUSIVITY
-  if (args.ref && args.branch) {
+  if (typeof args.ref === 'string' && args.branch) {
     const msg = '[resolveVcsContext] ref и branch не могут быть указаны одновременно';
     logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
     throw new VcsResolveError('ref и branch не могут быть указаны одновременно');
@@ -144,8 +144,8 @@ export async function resolveVcsContext(
   // #endregion END_VALIDATE_MUTUAL_EXCLUSIVITY
 
   // #region START_PARSE_REF
-  const parsedRef = args.ref ? parseGitlabRef(args.ref) : null;
-  if (args.ref && !parsedRef) {
+  const parsedRef = typeof args.ref === 'string' ? parseGitlabRef(args.ref) : null;
+  if (typeof args.ref === 'string' && !parsedRef) {
     const msg = `[resolveVcsContext] Некорректный формат ref: ${args.ref}`;
     logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
     throw new VcsResolveError(`Некорректный формат ref: ${args.ref}`);
