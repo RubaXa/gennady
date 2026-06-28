@@ -8,7 +8,7 @@ const ANSI_RE =
 
 /** @purpose Structural patterns for error/test-runner/linter output across all tools. */
 const PATTERNS: RegExp[] = [
-  /^\s*(✖|❌|⚠|🛑|× |✗ |FAIL |●|▶|✓)/,
+  /^\s*(✖|❌|⚠|🛑|× |✗ |FAIL |●|▶)/,
   /:\d+:\d+:\s+(error|warning)/i,
   /^\s+at\s+/,
   /ERR_[A-Z_]+/,
@@ -21,7 +21,7 @@ const PATTERNS: RegExp[] = [
   /^\s*\d+\)\s/,
   /(FAIL|PASS)\s{2,}/,
   /^TAP version/i,
-  /^\s*(not\s+)?ok\s+\d+/i,
+  /^\s*not\s+ok\s+\d+/i,
 ];
 
 /**

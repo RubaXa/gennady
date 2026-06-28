@@ -176,7 +176,7 @@ function outputJson(
   deps.stdout.write('\n');
 }
 
-/** @purpose Format pipeline as human-readable text. */
+/** @purpose Format pipeline as human-readable text with ✓/✖ status icons. */
 function outputText(
   pipeline: VcsPipelineStatus,
   jobs: typeof pipeline.jobs,
@@ -186,7 +186,8 @@ function outputText(
   if (jobs.length === 0) {
     deps.stdout.write('No matching jobs.\n');
   } else {
-    for (const job of jobs) deps.stdout.write(`  ${job.name} (${job.status})\n`);
+    for (const job of jobs)
+      deps.stdout.write(`  ${job.status === 'success' ? '✓' : '✖'} ${job.name} (${job.status})\n`);
   }
 }
 
@@ -216,6 +217,7 @@ export async function run(
     'dry-run': ['dry-run', 'dry'],
     json: ['json'],
     logs: ['logs'],
+    all: ['all'],
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
@@ -226,7 +228,8 @@ export async function run(
   const dryRun = !!args['dry-run'];
   const jsonMode = !!args['json'];
   const logsMode = !!args['logs'];
-  const statusFilter = (args.status as string | undefined) || 'failed';
+  const allMode = !!args['all'];
+  const statusFilter = allMode ? 'all' : ((args.status as string | undefined) || 'failed');
 
   logger.debug(
     `[run] [parsing → parsed] dryRun=${dryRun} ref=${vcsArgs.ref ?? ''} host=${vcsArgs.host ?? ''}`
@@ -290,22 +293,24 @@ export async function run(
     const jobs = filterJobs(pipeline, statusFilter);
 
     if (logsMode && jobs.length > 0) {
+      deps.stdout.write(`Pipeline status: ${pipeline.status}\n\n`);
       const client = new VcsGitlabClient({
         baseUrl: `https://${context.host}/api/v4`,
         token: context.token,
       });
       for (const job of jobs) {
-        try {
-          const trace = await client.Pipeline!.getJobLog({
-            project: context.project,
-            jobId: extractJobId(job.id),
-          });
-          deps.stdout.write(`\n── ${job.name} (${job.status}) ──\n`);
-          deps.stdout.write(filterLog(trace));
-          deps.stdout.write('\n');
-        } catch (e) {
-          deps.stdout.write(`\n── ${job.name} (${job.status}) ──\n`);
-          deps.stdout.write(`  [log unavailable: ${(e as Error).message}]\n`);
+        const failed = job.status.toLowerCase() !== 'success';
+        deps.stdout.write(`${failed ? '✖' : '✓'} ${job.name} (${job.status})\n`);
+        if (failed) {
+          try {
+            const trace = await client.Pipeline!.getJobLog({
+              project: context.project,
+              jobId: extractJobId(job.id),
+            });
+            deps.stdout.write(`${filterLog(trace)}\n`);
+          } catch (e) {
+            deps.stdout.write(`  [log unavailable: ${(e as Error).message}]\n`);
+          }
         }
       }
       deps.exit(0);
