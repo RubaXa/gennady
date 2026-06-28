@@ -54,7 +54,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Существующие**      |                                                                                                                                                                                                                                                          |
 | FR-01                 | `VcsClient` — абстрактный порт с опциональными подобъектами: `MergeRequests`, `MergeDiscussions?`, `RepositoryFiles?`                                                                                                                                    |
-| FR-02                 | `VcsClientMergeRequests` — порт: `getList`, `getByIid`, `getChanges`, `approve`                                                                                                                                                                          |
+| FR-02                 | `VcsClientMergeRequests` — порт: `getList`, `getOne`, `getByIid`, `getChanges`, `approve`, `unapprove`, `getPipeline`                                                                                                                                   |
 | FR-03                 | `VcsClientMergeDiscussions` — порт: `getList`, `getAll`, `addNote`, `createDiscussion`, `listDraftNotes`                                                                                                                                                 |
 | FR-04                 | `VcsGitlabClient` — adapter: GitLab REST API через fetch                                                                                                                                                                                                 |
 | FR-05                 | `VcsGitlabMergeRequests` — adapter: GitLab MR API (включая getChanges)                                                                                                                                                                                   |
@@ -67,7 +67,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | FR-12                 | `VcsGithubMergeRequests.getChanges` — `GET /repos/:owner/:repo/pulls/:number/files` с пагинацией                                                                                                                                                         |
 | FR-13                 | `VcsGithubRepositoryFiles.getFileContent` — `GET /repos/:owner/:repo/contents/:path?ref=` (декодирование base64 → utf-8)                                                                                                                                 |
 | FR-14                 | `parseVcsUrl(url)` — pure-функция: разбор URL → `{ provider, host, repository, iid }`                                                                                                                                                                    |
-| FR-15                 | Все возвращаемые типы для новых методов — типизированы (`VcsMergeRequestChanges`, `VcsFileContent`)                                                                                                                                                      |
+| FR-15                 | Все возвращаемые типы — value objects с явными интерфейсами. `getList`/`getOne`/`getByIid` возвращают `unknown[]`/`unknown` (формат задаётся API-провайдером), остальные методы возвращают типизированные VOs (`VcsMergeRequestChanges`, `VcsFileContent`, `VcsPipelineStatus`, `VcsJob`, `VcsDraftNote`) |
 | FR-16                 | Адаптер `getFileContent` возвращает **декодированный** контент (`string`); `encoding` — информационное поле                                                                                                                                              |
 | FR-17                 | `VcsMergeRequestChanges` содержит `ref` (source branch / head SHA) для использования в `getFileContent`                                                                                                                                                  |
 | **agent-inbox**       |                                                                                                                                                                                                                                                          |
@@ -88,7 +88,7 @@ const parsed = parseVcsUrl('https://gitlab.com/group/project/-/merge_requests/42
 | FR-30                 | `VcsClientMergeDiscussions.resolveDiscussion({project, iid, discussionId, resolved})` — порт: резолв/реопен дискуссии                                                                                                                                    |
 | FR-31                 | `VcsGitlabMergeDiscussions.resolveDiscussion` — `PUT /projects/:id/merge_requests/:iid/discussions/:discussion_id?resolved=true\|false`                                                                                                                  |
 | FR-32                 | `VcsResolveDiscussionQuery` — value object: `{ project: string, iid: string \| number, discussionId: string, resolved: boolean }`                                                                                                                        |
-| FR-33                 | Успех (200) → void. Ошибка (403/404) → VcsError                                                                                                                                                                                                          |
+| FR-33                 | Успех (200) → void. Ошибка (403/404) → `Error` с сообщением, содержащим HTTP-статус и тело ответа                                                                                                                                                        |
 | FR-34                 | GitHub — deferred (stub выбрасывает «not implemented»)                                                                                                                                                                                                   |
 | **unapprove**         |                                                                                                                                                                                                                                                          |
 | FR-35                 | `VcsClientMergeRequests.unapprove(query: VcsMergeRequestApproveQuery)` — порт; переиспользует тип запроса от `approve`                                                                                                                                   |
@@ -174,20 +174,32 @@ Ports & Adapters с опциональными портами на `VcsClient`:
 services/vcs-client/
 ├── entities/
 │   ├── vcs-user.type.ts
-│   ├── vcs-merge-request-changes.type.ts    (NEW)
-│   ├── vcs-actionable-mr.type.ts            (NEW: agent-inbox)
-│   └── vcs-file-content.type.ts             (NEW)
+│   ├── vcs-url.type.ts
+│   ├── vcs-merge-request-changes.type.ts
+│   ├── vcs-actionable-mr.type.ts
+│   ├── vcs-file-content.type.ts
+│   ├── vcs-merge-request-approve-query.type.ts
+│   ├── vcs-resolve-discussion-query.type.ts
+│   ├── vcs-update-note-query.type.ts
+│   ├── vcs-delete-note-query.type.ts
+│   ├── vcs-delete-discussion-query.type.ts
+│   ├── vcs-draft-note.type.ts
+│   ├── vcs-pipeline-status.type.ts
+│   ├── vcs-job.type.ts
+│   └── vcs-job-query.type.ts
 ├── abstract/
-│   ├── vcs-client.ts                        (MergeDiscussions/Inbox → optional)
-│   ├── vcs-client-merge-requests.ts         (+ getChanges)
-│   ├── vcs-client-merge-discussions.ts      (+ createDiscussion)
+│   ├── vcs-client.ts                        (MergeDiscussions/Inbox/Pipeline → optional)
+│   ├── vcs-client-merge-requests.ts         (+ getOne, getChanges, approve, unapprove, getPipeline)
+│   ├── vcs-client-merge-discussions.ts      (+ createDiscussion, resolve, update, delete, draft CRUD)
 │   ├── vcs-client-inbox.ts                  (NEW: agent-inbox)
+│   ├── vcs-client-pipeline.ts               (NEW: job management)
 │   └── vcs-client-repository-files.ts       (NEW)
 ├── gitlab/
 │   ├── vcs-gitlab-client.ts                 (+ GraphQL transport, getCurrentUser, Inbox)
-│   ├── vcs-gitlab-merge-requests.ts         (+ getChanges)
-│   ├── vcs-gitlab-merge-discussions.ts      (+ createDiscussion)
+│   ├── vcs-gitlab-merge-requests.ts         (+ getChanges, approve, unapprove, getPipeline)
+│   ├── vcs-gitlab-merge-discussions.ts      (+ createDiscussion, resolve, draft CRUD, edit/delete)
 │   ├── vcs-gitlab-inbox.ts                  (NEW: GraphQL actionable inbox)
+│   ├── vcs-gitlab-pipeline.ts               (NEW: job management — status, play, cancel, trace)
 │   └── vcs-gitlab-repository-files.ts       (NEW)
 └── github/                                   (NEW dir)
     ├── vcs-github-client.ts                  (NEW)
@@ -280,7 +292,7 @@ services/vcs-client/
 ## 7. Scope Dependencies
 
 - **Depends on:** [`infra-base`](../infra-base/infra-base.spec.md) — TypeScript, node:test
-- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply, vcs-approve, **cat**)
+- **Provides to:** CLI-команды gennady (review-verify, review-issues, vcs-reply, vcs-approve, vcs-diff, vcs-pipeline, vcs-job, vcs-job-log, vcs-todo, vcs-draft-note, vcs-worktree, **cat**)
 
 ## 8. Bootstrap Requirements
 
@@ -295,6 +307,7 @@ services/vcs-client/
 ### 9.1 Modules
 
 - [vcs-client](./vcs-client/vcs-client.spec.md) — VCS-клиент: Ports, Adapters, Value Objects для GitLab + GitHub API
+- [vcs-cli](./vcs-cli/vcs-cli.spec.md) — CLI-команды VCS: vcs-approve, vcs-diff, vcs-draft-note, vcs-job, vcs-job-log, vcs-pipeline, vcs-reply, vcs-todo, vcs-worktree
 
 ### 9.4 Handoff to Task Scaffolding
 

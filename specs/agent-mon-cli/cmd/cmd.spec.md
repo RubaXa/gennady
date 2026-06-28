@@ -22,7 +22,7 @@ CLI entry point — парсинг флагов, создание монитор
 - **Public Properties:** N/A
 - **Public Operations:**
   - `(argv: string[]) → void`
-  - Флаги: `--once` (snapshot + exit), `--interval <ms>` (default 5000), `--provider <claude|opencode|all>` (default all), `--view <column|compact>` (default column)
+  - Флаги: `--once` (snapshot + exit), `--interval <ms>` (default 5000), `--provider <claude|opencode|all>` (default all), `--view <column|compact>` (default column; compact **@deferred V2**), `--limit <N>` (max sessions per provider, default 10)
   - Создаёт `createProviders(opts)` → `AgentMonitor`
   - Создаёт `observe(monitor, { interval })` → `AsyncIterable<SessionChanges>`
   - Создаёт `createStateManager(changes)` → state manager
@@ -75,7 +75,7 @@ CLI entry point — парсинг флагов, создание монитор
 
 ## 5. Public Options & Policies
 
-CLI flags: `--once`, `--interval`, `--provider`, `--view`. Defaults: interval=5000, provider=all, view=column.
+CLI flags: `--once`, `--interval`, `--provider`, `--view`, `--limit`. Defaults: interval=5000, provider=all, view=column, limit=10.
 
 ## 6. File Structure
 

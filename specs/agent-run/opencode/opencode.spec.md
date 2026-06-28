@@ -202,7 +202,7 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 
 - **Status:** active
 - **Recorded:** session SddCritic, agent-run
-- **Why:** скорость — главное правило; запускаем `opencode run` сразу, без пред-проверки `--version`. Спайк подтвердил: spawn отдаёт `error.code` (ENOENT/EACCES) → `AGENT_NOT_INSTALLED`. Таймаут (дефолт 120000 мс) + SIGTERM защищают от зависшего подпроцесса.
+- **Why:** скорость — главное правило; запускаем `opencode run` сразу, без пред-проверки `--version`. Спайк подтвердил: spawn отдаёт `error.code` (ENOENT/EACCES) → `AGENT_NOT_INSTALLED`. Таймаут (дефолт 1800000 мс = 30 мин) + SIGTERM защищают от зависшего подпроцесса.
 - **Risk accepted:** TOCTOU-зазор закрыт маппингом spawn-ошибки.
 
 ### D-005 — readonly через `opencode agent create` (superseded)
@@ -237,6 +237,7 @@ Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` н
 - **Why:** интеграционный тест на реальном opencode показал: для неверной модели opencode отдаёт общий `UnknownError: Unexpected server error`, а НЕ «unknown model» → детект по stderr невозможен.
 - **Решение:** явную `model` валидируем заранее против `listModels()`; нет в списке → `MODEL_UNAVAILABLE` со списком, до запуска. Дефолтную модель не проверяем.
 - **Supersedes:** stderr-паттерн `MODEL_UNAVAILABLE` в error-map убран (не срабатывал).
+- **Примечание:** паттерн `MODEL_UNAVAILABLE` оставлен в error-map как safety net (post-run fallback). Основной механизм — pre-validation через `listModels()` перед запуском.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

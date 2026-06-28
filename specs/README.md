@@ -11,6 +11,7 @@ graph TD
     cli --> dbc
     cli --> infra-base
     cli --> vcs
+    cli --> shared
     dbc --> infra-base
     vcs --> infra-base
     agent-mon --> infra-base
@@ -25,6 +26,7 @@ graph TD
     agent-inbox --> vcs
     agent-inbox --> cli
     agent-inbox --> ai-skills
+    shared --> infra-base
 ```
 
 ## Scopes
@@ -32,8 +34,9 @@ graph TD
 | Scope                                                                | Type           | Spec | Description                                                                                     |
 | -------------------------------------------------------------------- | -------------- | ---- | ----------------------------------------------------------------------------------------------- |
 | [`infra-base`](./infra-base/infra-base.spec.md)                      | infrastructure | ✅   | Node.js 22+, npm, tsc, prettier, git-hooks (pre-commit), node:test, vite                        |
-| [`cli`](./cli/cli.spec.md)                                           | product        | ✅   | CLI-модуль: lint, alt-opinion, cat, sync, review-issues, inbox, vcs-worktree, vcs-reply         |
-| [`vcs`](./vcs/vcs.spec.md)                                           | product        | ✅   | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files, Inbox (GraphQL)    |
+| [`shared`](./shared/shared.spec.md)                                   | infrastructure | ✅   | Фундаментальный слой: logger, parse-args, exec, files, style, xml, tokens, think, git-core      |
+| [`cli`](./cli/cli.spec.md)                                           | product        | ✅   | CLI-модуль: lint, alt-opinion, cat, review, run, help, orient, sync, e2e, agents-rules           |
+| [`vcs`](./vcs/vcs.spec.md)                                           | product        | ✅   | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files, Inbox (GraphQL). CLI: vcs-approve, vcs-diff, vcs-draft-note, vcs-job, vcs-job-log, vcs-pipeline, vcs-reply, vcs-todo, vcs-worktree |
 | [`dbc`](./dbc/dbc.spec.md)                                           | library        | ✅   | DBC-фреймворк: парсинг и валидация текстовых контрактов                                         |
 | [`agent-mon`](./agent-mon/agent-mon.spec.md)                         | library        | ✅   | Пассивный мониторинг активных сессий AI-агентов через провайдеры                                |
 | [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md)             | product        | ✅   | TUI-дашборд для мониторинга сессий агентов (ink + React)                                        |

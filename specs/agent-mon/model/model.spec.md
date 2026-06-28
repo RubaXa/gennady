@@ -34,6 +34,7 @@ _Это полный список сущностей модуля. Любое в
   - `title: string` — название сессии
   - `slug?: string` — human-readable id (OpenCode)
   - `cwd: string` — рабочая директория
+  - `project: string` — basename от cwd
   - `model?: string` — модель (`claude-opus-4-7`, `deepseek-v4-pro`)
   - `agent?: string` — тип агента (`build`, `general`, `alt-opinion-kimi`)
   - `status: 'active' | 'idle' | 'completed'`

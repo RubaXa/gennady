@@ -25,7 +25,7 @@ _Это полный список сущностей модуля. Любое в
 | `SyncSkillsFormatter`         | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов              |
 | `SyncSkillsFormatOptions`     | Type         | Опции форматирования: `{ dryRun?: boolean }`                                                        |
 | `PathNormalizer`              | Service      | Нормализация путей: заменяет dev-пути (`~/Developer/gennady/...`) на продуктовые (shared с `sync`)  |
-| `SYNC_SKILLS_PATH_RULES`      | Constant     | Правила замены путей для sync-skills: 6 регекс-правил                                               |
+| `SYNC_SKILLS_PATH_RULES`      | Constant     | Правила замены путей для sync-skills: 8 регекс-правил                                               |
 | `SyncCmdDeps`                 | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
 | `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code   | Source directory not found                                                                          |
 | `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code   | Skill name not found in source                                                                      |
@@ -150,6 +150,7 @@ _Это полный список сущностей модуля. Любое в
   5. `~/Developer/gennady/ai/directives/` → `ai/directives/` (пути к директивам)
   6. `/Users/k.lebedev/Developer/gennady/ai/` → `ai/` (абсолютные dev-пути → относительные)
   7. `/Users/k.lebedev/Developer/gennady/cli/gennady.ts` → `npx gennady` (абсолютный путь к CLI)
+  8. `$HOME/Developer/gennady/cli/gennady.ts` → `~/Developer/gennady/cli/gennady.ts` (нормализация `$HOME` в тильду, `RULE_CLI_HOME`)
 - **Lifecycle:** Константа в `sync-skills-core.ts`. Передаётся в `PathNormalizer.normalize()`
 - **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 

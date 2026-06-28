@@ -111,7 +111,7 @@ cli/cmd/alt-opinion/
 
 | Variable                  | Provider   | Required | Default |
 | ------------------------- | ---------- | -------- | ------- |
-| `LLM_PROXY___SECRET_11__` | llmproxy   | Yes      | —       |
+| `LLM_PROXY_API_KEY`      | llmproxy   | Yes      | —       |
 | `LLM_PROXY_BASE_URL`      | llmproxy   | Yes      | —       |
 | `OPENROUTER_API_KEY`      | openrouter | Yes      | —       |
 

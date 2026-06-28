@@ -100,7 +100,7 @@ $ npm run test:e2e
   $ npx gennady orient --graph
   ✓ exit 0
 
-# === sync (5 тестов) ===
+# === sync (6 тестов) ===
 ▶ sync first run
   $ npx gennady sync
   ✓ exit 0
@@ -121,7 +121,11 @@ $ npm run test:e2e
   $ npx gennady sync nonexistent/
   ✓ exit 1
 
-# === sync skills (3 теста) ===
+▶ should not contain dev-machine paths in synced directives
+  $ npx gennady sync
+  ✓ exit 0
+
+# === sync skills (4 теста) ===
 # [afterEach: rm -rf ai/directives/]
 ▶ sync-skills install + repeat
   $ npx gennady sync-skills
@@ -141,7 +145,7 @@ $ npm run test:e2e
   ✓ exit 0
 
 # === итог ===
-✓ 23 passed (14.2s)
+✓ 25 passed (14.2s)
 ```
 
 Альтернативный путь — при падении setup:
@@ -311,8 +315,8 @@ cli/__tests__/e2e/
 ├── setup.ts                 # setupE2e(): npm run build → npm pack → git init && git add -A → cp fixture → npm install → E2eContext
 ├── lint.e2e.test.ts         # describe('lint', ...) — 8 тестов
 ├── orient.e2e.test.ts       # describe('orient', ...) — 6 тестов
-├── sync.e2e.test.ts         # describe('sync', ...) — 5 тестов
-├── sync-skills.e2e.test.ts  # describe('sync-skills', ...) — 3 теста
+├── sync.e2e.test.ts         # describe('sync', ...) — 6 тестов
+├── sync-skills.e2e.test.ts  # describe('sync-skills', ...) — 4 теста
 └── fixtures/
     ├── package.json          # { "name": "gennady-e2e-fixture", "private": true }
     └── src/
@@ -331,8 +335,8 @@ cli/__tests__/e2e/
 - `setup.ts`: `setupE2e()` — build, pack, git init, fixture copy, npm install, возврат `E2eContext`
 - `lint.e2e.test.ts`: 8 тестов lint — описаны в FR-E2E-10/10a scope spec
 - `orient.e2e.test.ts`: 6 тестов orient — описаны в FR-E2E-12/12a scope spec
-- `sync.e2e.test.ts`: 5 тестов sync — описаны в FR-E2E-11 scope spec
-- `sync-skills.e2e.test.ts`: 3 теста sync-skills — описаны в FR-E2E-13 scope spec
+- `sync.e2e.test.ts`: 6 тестов sync — описаны в FR-E2E-11 scope spec
+- `sync-skills.e2e.test.ts`: 4 теста sync-skills — описаны в FR-E2E-13 scope spec
 - `fixtures/`: Статическая фикстура — 7 `.ts` файлов + `package.json`
 <!--/SECTION:FILE_STRUCTURE-->
 

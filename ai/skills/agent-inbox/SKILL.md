@@ -2,6 +2,7 @@
 name: agent-inbox
 description: Интерактивный ассистент по входящим GitLab MR, где я ревьювер/упомянут. Интенты list/tick/loop/reset. list — интерактивный разбор (Ask, диалог, постинг через vcs-reply после согласования). tick (=once/sync) — один проход без диалога, показывает дельту (что нового). loop — повторение tick планировщиком (частота задаётся снаружи). reset — чистый лист. Use when пользователь говорит «agent-inbox», «разбери входящие», «inbox list», «inbox tick», «что от меня ждут по ревью».
 license: MIT
+compatibility: opencode
 ---
 
 # agent-inbox — интерактивный ассистент входящих (стадия B)

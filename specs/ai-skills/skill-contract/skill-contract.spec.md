@@ -305,7 +305,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Контракт уже существует в виде 13 навыков; код не требуется — это спецификация формата.
+- **Implementation files to be created:** Контракт уже существует в виде 17 навыков; код не требуется — это спецификация формата.
 - **Test files to be created:** Валидация frontmatter (unit-тесты в sync-skills скоупе)
 - **Stack dependencies:**
   - Language: TypeScript (для валидации в sync-skills)

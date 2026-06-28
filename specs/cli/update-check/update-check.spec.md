@@ -13,7 +13,7 @@ _Это полный список сущностей модуля. Любое в
 | Name                 | Type                      | Purpose                                                                                              |
 | -------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `UpdateCheck`        | Service                   | Точка входа: читает кеш, решает — нужна ли проверка, spawn worker, регистрирует deferred-уведомление |
-| `UpdateCheckWorker`  | Command (fire-and-forget) | Detached `child_process.spawn`: HTTPS GET к `registry.npmjs.org/<pkg>/latest`, атомарная запись кеша |
+| `UpdateCheckWorker`  | Command (fire-and-forget) | Detached `child_process.spawn`: `fetch()` к `registry.npmjs.org/<pkg>/latest`, атомарная запись кеша |
 | `UpdateCheckCache`   | Value Object              | Структура кеша: `{ lastCheck: string (ISO8601), latestVersion: string }`                             |
 | `UpdateCheckOptions` | Value Object              | Конфигурация: `pkg`, `interval` (default 24h), `skipNotificationIfNoTty` (default true), `cacheDir`  |
 
@@ -36,7 +36,7 @@ _Это полный список сущностей модуля. Любое в
 ### `UpdateCheckWorker`
 
 - **Type:** Command (fire-and-forget, process-level)
-- **Purpose:** Изолированный процесс: HTTPS GET к npm-реестру с таймаутом, атомарная запись результата в кеш
+- **Purpose:** Изолированный процесс: `fetch()` к npm-реестру с таймаутом, атомарная запись результата в кеш
 - **Public Properties:** N/A (аргументы командной строки)
 - **Public Operations:**
   - Запускается: `spawn(process.execPath, [workerScript, pkgName, pkgVersion, cachePath, timeoutMs], { stdio: 'ignore' }).unref()`
@@ -126,7 +126,7 @@ None.
 
 **Side Effects:**
 
-- HTTPS GET к `https://registry.npmjs.org/<pkgName>/latest` с `AbortController` (таймаут 3с)
+- `fetch()` к `https://registry.npmjs.org/<pkgName>/latest` с `AbortController` (таймаут 3с)
 - Атомарная запись `{ lastCheck, latestVersion }` в кеш (temp file + `fs.renameSync`)
 
 **Contract (DbC):**
@@ -161,7 +161,7 @@ All options bound. No deferred.
 
 ```
 cli/cmd/_shared/
-├── update-check.ts              # UpdateCheck Service (~90 lines)
+├── update-check.ts              # UpdateCheck Service (~206 lines)
 ├── update-check-worker.ts       # UpdateCheckWorker Command (~60 lines)
 └── __tests__/
     ├── update-check.test.ts     # Unit: cache logic, opt-out, CI skip, TTY guard, deferred notify (~130 lines)

@@ -1,6 +1,7 @@
 ---
 name: workspace-permission-setup
 description: Configure .claude/settings.json so the agent works autonomously inside the current repository while being auto-denied access to anything outside it (home directory, system paths, network, secrets). Use when the user wants to enable AI-first development with minimal permission prompts, scope the agent to a workspace, set up safe autonomy for a project, stop the agent from leaving the repo, reduce repetitive approval requests, or harden permissions for a codebase.
+compatibility: opencode
 ---
 
 # Workspace Permission Setup

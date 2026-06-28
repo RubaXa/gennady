@@ -84,6 +84,11 @@ $ gennady lint src/foo.ts restricted/
 ERR_CLI_LINT_RESOLVE_FAILED: restricted/: EACCES: permission denied
 
 # exit 0 (если src/foo.ts чист) или exit 1 (если есть ошибки линтинга)
+
+# --- с кастомными порогами ---
+$ gennady lint --max-words 15 --max-region-comments 3 --max-invariants 5
+
+# exit 0
 ```
 
 Файл читается один раз, контент передаётся во все три проверки. Сообщения об ошибках содержат: что сломано → указание на место → конкретное действие по исправлению. При передаче директорий — рекурсивный обход с фильтрацией по поддерживаемым расширениям (`.ts`, `.tsx`). Ошибки резолвинга целей (ENOENT, EACCES) выводятся в stderr и не прерывают линтинг остальных файлов.
@@ -2618,19 +2623,18 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [lint](./lint/lint.spec.md) — Команда `gennady lint`: file header + DBC-контракты + anchor-разметка
 - [alt-opinion](./alt-opinion/alt-opinion.spec.md) — Команда `gennady alt-opinion`: альтернативные мнения от AI-моделей с опциональным синтезом
 - [cat](./cat/cat.spec.md) — Команда `gennady cat`: сбор файлов (локальных и удалённых через --url) в XML/MD для AI-агентов
+- [review](./review/review.spec.md) — Команды `gennady review`/`review-issues`/`review-verify`: AI-ревью staged изменений и GitLab MR
+- [run](./run/run.spec.md) — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
+- [help](./help/help.spec.md) — Команда `gennady help`: статическая таблица всех CLI-команд
+- [orient](./orient/orient.spec.md) — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
 - [sync](./sync/sync.spec.md) — Команда `gennady sync`: синхронизация `ai/directives/` из npm-пакета в текущий проект
 - [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
-- orient — Команда `gennady orient`: навигация по file-header и DBC-контрактам (карта, поиск, граф зависимостей)
-- run — Команда `gennady run`: тонкая обёртка над `@services/agent-run` — запуск внешнего AI-движка (opencode) с заданием/директориями/моделью в readonly
-- review-issues — Команда `gennady review-issues`: по текущей ветке (авто-детект) находит открытый MR на GitLab, скачивает дискуссии, выводит XML для AI-агентов
-- e2e — [E2E-тесты CLI-команд](./e2e/e2e.spec.md): `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
+- [e2e](./e2e/e2e.spec.md) — E2E-тесты CLI-команд: `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
 - vcs-context-resolver — Shared-модуль в `cli/cmd/_shared/`: унифицированный механизм резолва VCS-контекста (ветка, проект, хост, токен) для всех VCS-команд
-- vcs-approve — Команда `gennady vcs-approve`: выставляет approve на GitLab MR через API, с авто-детектом ветки/проекта и `--dry-run`
+- VCS CLI-команды — [vcs-approve](../vcs/vcs-cli/vcs-cli.spec.md), vcs-diff, vcs-draft-note, vcs-job, vcs-job-log, vcs-pipeline, vcs-reply, vcs-todo, vcs-worktree: тонкие обёртки над `vcs-client`, специфицированы в umbrella-спеке `vcs-cli`
 - inbox — Команда `gennady inbox`: CLI-поверхность ассистента входящих GitLab MR; реализация делегирована в scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md)
-- vcs-worktree — Команда `gennady vcs-worktree`: read-only git worktree head'а MR для код-ревью, с GC жизненного цикла
-- vcs-reply — Команда `gennady vcs-reply`: постинг в GitLab MR (ответ в тред / новая дискуссия / line-comment)
 
 ### 9.2 Inter-Module Dependency Map
 

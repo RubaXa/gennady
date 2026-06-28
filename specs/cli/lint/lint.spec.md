@@ -14,7 +14,7 @@ _Это полный список сущностей модуля. Любое в
 | ---------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате                                                                                                                                                                                                                                                                                                                                                                                      |
 | `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `LintOptions`          | Value Object | Опции запуска: `targets` (файлы + директории), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `LintOptions`          | Value Object | Опции запуска: `files` (абсолютные пути после `resolveTargets`), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -63,7 +63,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Value Object
 - **Purpose:** Конфигурация одного запуска линтинга.
 - **Public Properties:**
-  - `targets: string[]` — список путей (`.ts`/`.tsx` файлы и/или директории)
+  - `files: string[]` — абсолютные пути после `resolveTargets`
   - `autofix: boolean` — включить autofix (dbc)
   - `gitMode?: 'staged'` — режим сбора файлов из git
 - **Lifecycle:** immutable value object; создаётся `LintCommand` из аргументов
@@ -81,8 +81,9 @@ _Это полный список сущностей модуля. Любое в
   - `taskPaths: string[]` — пути к task-файлам, связанным с ошибочными файлами
   - `specPaths: string[]` — пути к spec-файлам, связанным с ошибочными файлами
   - `exitCode: 0 | 1`
+  - `guidance?: string` — agent guidance, генерируется `buildGuidance()`
 - **Public Operations:**
-  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`. Если есть ошибки — также выводит блок `Relevant specs & tasks for errors above:` с путями к связанным spec/task файлам. Если `autoFixed > 0` — первую строку `Auto-fixed: N error(s)`. | `LintReport` | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `format(): string` |
+  - `format() → string` — ESLint-формат: `file:line:col: severity: code: message`. Если есть ошибки — также выводит блок `Relevant specs & tasks for errors above:` с путями к связанным spec/task файлам. Если `autoFixed > 0` — первую строку `Auto-fixed: N error(s)`. | `LintReport` | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `guidance?: string`, `format(): string` |
 - **Lifecycle:** immutable value object
 - **Consumers:**
   - Internal: `LintCommand` (вывод в stdout)
@@ -155,8 +156,8 @@ _Это полный список сущностей модуля. Любое в
 | Name          | Key Properties                                                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `LintError`   | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                            |
-| `LintOptions` | `targets: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                    |
-| `LintReport`  | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `format(): string` |
+| `LintOptions` | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                      |
+| `LintReport`  | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1`, `guidance?: string`, `format(): string` |
 
 ### Error Codes
 

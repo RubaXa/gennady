@@ -25,8 +25,8 @@ _Это полный список сущностей модуля. Любое в
 | `DbcLintReport`             | Value Object | Результат `lint()`: ошибки + `format()`                                                                                          |
 | `DbcLintFixReport`          | Value Object | Результат `lintAndFix()`: оставшиеся ошибки + `autoFixed` + `format()`                                                           |
 | `DbcLintError`              | Value Object | Одна ошибка: file, line, col, severity, code, message                                                                            |
-| `DbcLintIssueCode`          | Value Object | Union 8 констант кодов ошибок линтера                                                                                            |
-| `ERR_DBC_LINT_*` ×8         | Constant     | Стабильные строковые коды ошибок линтера                                                                                         |
+| `DbcLintIssueCode`          | Value Object | Union 10 констант кодов ошибок линтера                           |
+| `ERR_DBC_LINT_*` ×10        | Constant     | Стабильные строковые коды ошибок линтера                         |
 | `DbcContractMatchValidator` | Service      | Сервис сверки контракта с сигнатурой: проверка param-ов, returns, порядка, избыточных типов                                      |
 
 ## 3. Entity Surfaces
@@ -92,7 +92,7 @@ _Это полный список сущностей модуля. Любое в
 ### `DbcContractMatchValidator`
 
 - **Type:** Service
-- **Purpose:** Сверка контракта (`DbcEntrySchema[]`) с сигнатурой кода (`DbcSignatureInfo`). Определяет несоответствия по param-ам, returns, порядку, избыточным `{type}`.
+- **Purpose:** Сверка контракта (`DbcEntrySchema[]`) с сигнатурой кода (`DbcSignatureInfo`). Определяет несоответствия по param-ам, returns, порядку, избыточным `{type}`. **Реализован как экспортируемая чистая функция `validate(entries, signature, kind) → DbcLintError[]` (не класс), сигнатура совпадает со спекой.**
 - **Public Properties:** N/A
 - **Public Operations:**
   - `validate(entries: DbcEntrySchema[], signature: DbcSignatureInfo, kind: string) → DbcLintError[]` — вернуть массив ошибок несоответствия (пустой если всё ок)
@@ -108,7 +108,7 @@ _Это полный список сущностей модуля. Любое в
 | Name                | Key Properties                                                                                                                    |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `DbcParseResult`    | discriminated: `{ ok: true, exported: DbcExportedEntity[] }` \| `{ ok: false, error: string }`                                    |
-| `DbcExportedEntity` | `name: string`, `kind: string`, `members: DbcMember[]`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo` |
+| `DbcExportedEntity` | `name: string`, `kind: string`, `members: DbcMember[]`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`, `implementsInterfaces?: boolean` |
 | `DbcMember`         | `name: string`, `kind: string`, `contract?: { text, startLine, startCol }`, `signature: DbcSignatureInfo`                         |
 | `DbcSignatureInfo`  | `params: DbcParamInfo[]`, `returnType: string`                                                                                    |
 | `DbcParamInfo`      | `name: string`, `type: string`, `optional: boolean`, `isRest: boolean`                                                            |
@@ -116,7 +116,7 @@ _Это полный список сущностей модуля. Любое в
 | `DbcLintReport`     | `errors: DbcLintError[]`, `format(): string`                                                                                      |
 | `DbcLintFixReport`  | `errors: DbcLintError[]`, `autoFixed: number`, `format(): string`                                                                 |
 | `DbcLintError`      | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                             |
-| `DbcLintIssueCode`  | Union: `typeof ERR_DBC_LINT_MISSING_CONTRACT \| ... \| typeof ERR_DBC_LINT_TYPE_REDUNDANT`                                        |
+| `DbcLintIssueCode`  | Union: `typeof ERR_DBC_LINT_MISSING_CONTRACT \| ... \| typeof ERR_DBC_LINT_TYPE_REDUNDANT \| typeof ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH \| typeof ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` |
 
 ### Constants
 
@@ -126,6 +126,8 @@ ERR_DBC_LINT_PARSE_FAILED     = 'ERR_DBC_LINT_PARSE_FAILED'
 ERR_DBC_LINT_PARAM_MISSING    = 'ERR_DBC_LINT_PARAM_MISSING'
 ERR_DBC_LINT_PARAM_EXTRA      = 'ERR_DBC_LINT_PARAM_EXTRA'
 ERR_DBC_LINT_PARAM_ORDER      = 'ERR_DBC_LINT_PARAM_ORDER'
+ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH = 'ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH'
+ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS = 'ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS'
 ERR_DBC_LINT_RETURNS_MISSING  = 'ERR_DBC_LINT_RETURNS_MISSING'
 ERR_DBC_LINT_RETURNS_UNEXPECTED = 'ERR_DBC_LINT_RETURNS_UNEXPECTED'
 ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
@@ -225,13 +227,14 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 
 **Autofix chain (приватные):**
 
-1. `removeRedundantTypes(source) → string`
-2. `removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
-3. `removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
-4. `reorderParams(source, signature) → string`
-5. `reorderTags(source) → string`
-6. `normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*`/`контент`_/`на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare`/\*\*`, bare `_/`, `\* content`) проходят без изменений.
-7. `inlineIfSafe(source, parser) → string` — dry-run через `DbcParser.parse()`. Инлайнятся только однотеговые контракты (ровно один `@tag`); многотеговые (2+ тегов) остаются multi-line. Сохраняет исходные отступы.
+1. `_expandToMultiline(source, signature) → string` — разворачивает pipe-формат в multi-line для вызываемых сущностей и контрактов с >3 тегами
+2. `_removeRedundantTypes(source) → string` — удаляет избыточные `{type}` в `@param` и `@returns`
+3. `_normalizeParamBrackets(source, signature) → string` — добавляет/убирает `[]` в `@param` для соответствия опциональности сигнатуры
+4. `_removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
+5. `_removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
+6. `_reorderParams(source, signature) → string` — пересортировывает @param в порядке сигнатуры
+7. `_reorderTags(source) → string` — пересортировывает теги в канонический порядок (implements → invariant → pre → param → throws → returns → post → sideEffect)
+8. `_normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*/` и контент на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare `/**`, bare ` */`, `* content`) проходят без изменений.
 
 ### 4.3 Services
 
@@ -298,7 +301,7 @@ services/dbc/linter/
 
 **File Mapping:**
 
-- `dbc-linter.types.ts`: `DbcLinter`, `DbcLintReport`, `DbcLintFixReport`, `DbcLintError`, `DbcLintOptions`, `DbcLintIssueCode`, 8 × `ERR_DBC_LINT_*`
+- `dbc-linter.types.ts`: `DbcLinter`, `DbcLintReport`, `DbcLintFixReport`, `DbcLintError`, `DbcLintOptions`, `DbcLintIssueCode`, 10 × `ERR_DBC_LINT_*`
 - `dbc-ast-adapter.types.ts`: `DbcAstAdapter`, `DbcParseResult`, `DbcExportedEntity`, `DbcMember`, `DbcSignatureInfo`, `DbcParamInfo`
 - `dbc-ts-linter.ts`: `DbcTsLinter`, `DbcContractMatchValidator` + autofix chain (приватные)
 - `dbc-ts-ast-adapter.ts`: `DbcTsAstAdapter` + tree-sitter инициализация

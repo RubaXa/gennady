@@ -78,7 +78,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 - **Public Operations:**
   - `(session: AgentSession, patterns?: RegExp[]) → boolean`
   - Default patterns: `/[?]$/`, `/choose|select|pick|вариант|выбери/i`
-  - Конфигурируется через `--wait-heuristic strict|off|regex=...`
+  - Конфигурируется через `--wait-heuristic strict|off|regex=...` **(@deferred — V2)**. В V1 используются дефолтные паттерны без CLI-конфигурации.
 - **Lifecycle:** Stateless — чистая функция
 - **Errors & Degradation:** N/A
 - **Consumers:** Internal — `state/create-state-manager.ts`
@@ -127,7 +127,7 @@ State manager — принимает `AsyncIterable<SessionChanges>`, мёрдж
 
 ## 5. Public Options & Policies
 
-`isWaitingForUser` patterns конфигурируемы через `--wait-heuristic`. Default patterns: `?`, `choose`, `select`, `pick`, `вариант`, `выбери`.
+`isWaitingForUser` patterns конфигурируемы через `--wait-heuristic` **(@deferred — V2)**. Default patterns: `?`, `choose`, `select`, `pick`, `вариант`, `выбери`.
 
 ## 6. File Structure
 
@@ -153,7 +153,7 @@ state/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-mon-cli
-- **Why:** Эвристика на основе паттернов в lastMessage покрывает 90% случаев без LLM-зависимости. Конфигурируема через `--wait-heuristic`.
+- **Why:** Эвристика на основе паттернов в lastMessage покрывает 90% случаев без LLM-зависимости. Конфигурируема через `--wait-heuristic` **(@deferred — V2)**.
 - **Risk accepted:** False positives (вопрос в коде) и false negatives (ожидание без `?`). Приемлемо для V1.
 - **Rejected alternatives:** AI-классификация — тянет LLM, избыточно для CLI-монитора.
 

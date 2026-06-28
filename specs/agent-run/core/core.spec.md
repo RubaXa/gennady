@@ -53,6 +53,7 @@ _Это полный список сущностей модуля `core`. Люб
 | `ErrorCode`     | 🟢      | Value Object   | Перечисление кодов ошибок (8 классов, вкл. `TIMEOUT`, `MODEL_UNAVAILABLE`). |
 | `AgentEngine`   | ⚪      | Port           | Контракт движка: detect + run + listModels. Точка расширения.               |
 | `registry`      | ⚪      | Service        | Реестр движков: регистрация, detect, выбор дефолта (opencode первым).       |
+| `_resetForTest` | 🔴      | Utility        | Внутренняя функция для сброса состояния реестра между тестами (только в тестах). |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -137,6 +138,15 @@ _Это полный список сущностей модуля `core`. Люб
 - **Lifecycle:** один экземпляр на процесс; наполняется в `index.ts` (composition root).
 - **Errors & Degradation:** `resolve()` при пустом реестре (нет зарегистрированных движков вообще) → сигнал для `run` бросить `AGENT_NOT_INSTALLED`. Установленность движка здесь НЕ проверяется — `detect()` на горячем пути не вызывается (см. §5.2), отсутствие реально установленного движка ловится по spawn-ошибке при запуске.
 - **Consumers:** Internal `run`, `listEngines`, `index.ts`.
+
+### `_resetForTest`
+
+- **Type:** Utility
+- **Purpose:** сбросить внутреннее состояние реестра (кэш detect, список движков) для изоляции тестов.
+- **Public Operations:** `_resetForTest()` — сбрасывает кэш `detect` и внутренний список движков к начальному состоянию.
+- **Lifecycle:** вызывается только в `__tests__/`; в production-коде не используется.
+- **Errors & Degradation:** не кидает.
+- **Consumers:** Internal — тесты (`core/__tests__/registry.test.ts`).
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
@@ -180,7 +190,7 @@ _Это полный список сущностей модуля `core`. Люб
 - Preconditions: `options.task` непустой. **Пустой/пробельный `task` → `run` кидает `AgentRunError('LAUNCH_FAILED', hint: 'task пустой')` до диспетчеризации движку** (защита от ошибки вызывающего; типизированно, не сырой краш).
 - Postconditions: вернуть `RunResult` отработавшего движка ИЛИ кинуть `AgentRunError`.
 - **Оптимистичный запуск (скорость):** `run` НЕ делает pre-flight `detect()` на горячем пути — резолвит дефолтный движок по порядку реестра (без подпроцесса) и сразу запускает. Отсутствие движка распознаётся по ошибке запуска (spawn `error.code` ENOENT/EACCES → `AGENT_NOT_INSTALLED`), а не предварительной проверкой.
-- **Таймаут:** `run` подставляет дефолт `timeout` (120000 мс), если не задан, и прокидывает его в `engine.run`. **Само прерывание — забота движка** (он владеет подпроцессом): движок по таймеру убивает процесс и кидает `AgentRunError('TIMEOUT')`. `core` гарантию конечного времени делегирует движку (Port postcondition).
+- **Таймаут:** `run` подставляет дефолт `timeout` (1800000 мс = 30 мин), если не задан, и прокидывает его в `engine.run`. **Само прерывание — забота движка** (он владеет подпроцессом): движок по таймеру убивает процесс и кидает `AgentRunError('TIMEOUT')`. `core` гарантию конечного времени делегирует движку (Port postcondition).
 - Invariants: `mode` в v1 всегда `readonly` (тип `RunOptions.mode` ограничен `'readonly'` — нарушение ловит компилятор).
 - **Будущий фолбэк:** при ≥2 движках `run` может на `AGENT_NOT_INSTALLED` пробовать следующий по порядку реестра. В v1 движок один → фолбэк = вернуть типизированную ошибку. Порядок реестра это уже поддерживает.
 
@@ -233,7 +243,7 @@ _Это полный список сущностей модуля `core`. Люб
 - `mode: 'readonly'` — единственное допустимое значение в v1; связано с контрактом движка (readonly enforcement в адаптере).
 - `engine?: string` — явный выбор движка; не задан → дефолт реестра (opencode первым).
 - `dirs?: string[]` — рабочие директории; первая = корень, остальные = разрешённые внешние (обрабатывает адаптер); пусто → cwd.
-- `timeout?: number` — потолок на один запуск в мс (дефолт 120000); превышение → `AgentRunError('TIMEOUT')`.
+- `timeout?: number` — потолок на один запуск в мс (дефолт 1800000 = 30 мин); превышение → `AgentRunError('TIMEOUT')`.
 - `model?: string` — модель `provider/model`; не задана → дефолт движка; недоступна → `MODEL_UNAVAILABLE` со списком в hint. `listModels()` отдаёт список движка.
 - Отложено / not consumed in v1: стриминг, сессии, `--variant` (reasoning effort), MCP — см. scope spec §3.3.
 <!--/SECTION:PUBLIC_OPTIONS-->
@@ -290,7 +300,7 @@ services/agent-run/
 
 - **Status:** active
 - **Recorded:** session SddCritic, agent-run
-- **Why:** скорость — главное правило; pre-flight `detect()` на каждый `run()` = лишний подпроцесс. `run` запускает сразу, отсутствие движка ловит по spawn-ошибке; `detect()`/`listEngines()` кэшируются и живут вне горячего пути; `timeout` (дефолт 120000 мс) защищает от зависания.
+- **Why:** скорость — главное правило; pre-flight `detect()` на каждый `run()` = лишний подпроцесс. `run` запускает сразу, отсутствие движка ловит по spawn-ошибке; `detect()`/`listEngines()` кэшируются и живут вне горячего пути; `timeout` (дефолт 1800000 мс = 30 мин) защищает от зависания.
 - **Risk accepted:** между «нет detect» и spawn есть TOCTOU-зазор — закрыт маппингом spawn-ошибки (ENOENT/EACCES) в `AGENT_NOT_INSTALLED`.
 - **Rejected alternatives:** detect-then-run (медленнее на горячем пути).
 <!--/SECTION:MODULE_DECISION_LOG-->

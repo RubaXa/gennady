@@ -15,7 +15,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsMergeRequestChanges`      | Value Object    | Изменённые файлы MR/PR: path, status, ref, additions, deletions                   |
 | `VcsFileContent`              | Value Object    | Содержимое файла из репозитория: path, content, encoding                          |
 | `VcsActionableMr`             | Value Object    | MR требующий реакции: role, events, webUrl, todoIds                               |
-| `VcsDiscussionNote`           | Value Object    | Заметка в дискуссии: noteId, author, body                                         |
+| `VcsDiscussionNote`           | Value Object    | Заметка в дискуссии: noteId, author, body **(@deferred — возвращается как `unknown` из `addNote`/`createDiscussion`, отдельный type-файл не создан)** |
 | `VcsClient`                   | Port            | Абстрактный VCS-клиент с опциональными портами                                    |
 | `VcsClientMergeRequests`      | Port            | Абстракция работы с Merge Requests / Pull Requests                                |
 | `VcsClientMergeDiscussions`   | Port (optional) | Абстракция работы с Discussions                                                   |
@@ -79,7 +79,7 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 
 - **Type:** Port
 - **Purpose:** Абстрактный VCS-клиент — точка входа для merge requests, discussions, repository files.
-- **Public Properties:** `MergeRequests: VcsClientMergeRequests`, `MergeDiscussions?: VcsClientMergeDiscussions`, `RepositoryFiles?: VcsClientRepositoryFiles`, `Pipeline?: VcsClientPipeline`
+- **Public Properties:** `MergeRequests: VcsClientMergeRequests`, `MergeDiscussions?: VcsClientMergeDiscussions`, `RepositoryFiles?: VcsClientRepositoryFiles`, `Inbox?: VcsClientInbox`, `Pipeline?: VcsClientPipeline`
 
 ### `VcsClientMergeRequests`
 
@@ -100,7 +100,8 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 - **Public Operations:**
   - `getList(query) → Promise<VcsDiscussion[]>` — список дискуссий
   - `getAll(query) → Promise<VcsDiscussion[]>` — все дискуссии
-  - `addNote(query) → Promise<void>` — добавить заметку
+  - `addNote(query) → Promise<void>` — добавить заметку в существующую дискуссию
+  - `createDiscussion(query) → Promise<unknown>` — создать новую дискуссию (общую или line-comment)
   - `resolveDiscussion(query) → Promise<void>` — резолв/реопен дискуссии (GitLab: `PUT /discussions/:id?resolved=true\|false`)
   - `updateNote(query) → Promise<void>` — редактировать свою заметку (PUT /notes/:note_id)
   - `deleteNote(query) → Promise<void>` — удалить свою заметку (DELETE /notes/:note_id)
@@ -178,24 +179,38 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 services/vcs-client/
 ├── entities/
 │   ├── vcs-user.type.ts
-│   ├── vcs-url.type.ts                  (NEW)
-│   ├── vcs-merge-request-changes.type.ts (NEW)
-│   └── vcs-file-content.type.ts         (NEW)
+│   ├── vcs-url.type.ts
+│   ├── vcs-merge-request-changes.type.ts
+│   ├── vcs-actionable-mr.type.ts
+│   ├── vcs-file-content.type.ts
+│   ├── vcs-merge-request-approve-query.type.ts
+│   ├── vcs-resolve-discussion-query.type.ts
+│   ├── vcs-update-note-query.type.ts
+│   ├── vcs-delete-note-query.type.ts
+│   ├── vcs-delete-discussion-query.type.ts
+│   ├── vcs-draft-note.type.ts
+│   ├── vcs-pipeline-status.type.ts
+│   ├── vcs-job.type.ts
+│   └── vcs-job-query.type.ts
 ├── abstract/
-│   ├── vcs-client.ts                    (MergeDiscussions → optional)
-│   ├── vcs-client-merge-requests.ts     (+ getChanges contract)
-│   ├── vcs-client-merge-discussions.ts
-│   └── vcs-client-repository-files.ts   (NEW)
+│   ├── vcs-client.ts                    (MergeDiscussions/Inbox/Pipeline → optional)
+│   ├── vcs-client-merge-requests.ts     (+ getOne, getChanges, approve, unapprove, getPipeline)
+│   ├── vcs-client-merge-discussions.ts  (+ createDiscussion, resolve, updateNote, deleteNote, deleteDiscussion, draft CRUD)
+│   ├── vcs-client-inbox.ts              (GitLab-only: actionable inbox)
+│   ├── vcs-client-pipeline.ts           (GitLab-only: job management)
+│   └── vcs-client-repository-files.ts
 ├── gitlab/
-│   ├── vcs-gitlab-client.ts
-│   ├── vcs-gitlab-merge-requests.ts     (+ getChanges impl)
-│   ├── vcs-gitlab-merge-discussions.ts
-│   └── vcs-gitlab-repository-files.ts   (NEW)
-├── github/                               (NEW dir)
-│   ├── vcs-github-client.ts             (NEW: fetch adapter, Bearer auth)
-│   ├── vcs-github-merge-requests.ts     (NEW: getChanges)
-│   └── vcs-github-repository-files.ts   (NEW: getFileContent)
-└── parse-vcs-url.ts                     (NEW: pure function)
+│   ├── vcs-gitlab-client.ts             (+ GraphQL transport, getCurrentUser, Inbox)
+│   ├── vcs-gitlab-merge-requests.ts     (+ getChanges, approve, unapprove, getPipeline)
+│   ├── vcs-gitlab-merge-discussions.ts  (+ createDiscussion, resolve, draft CRUD, edit/delete notes)
+│   ├── vcs-gitlab-inbox.ts              (GraphQL actionable inbox)
+│   ├── vcs-gitlab-pipeline.ts           (job: status, play, cancel, trace)
+│   └── vcs-gitlab-repository-files.ts
+├── github/
+│   ├── vcs-github-client.ts
+│   ├── vcs-github-merge-requests.ts     (getChanges only; getList/getOne/getByIid — stubs)
+│   └── vcs-github-repository-files.ts   (getFileContent only)
+└── parse-vcs-url.ts
 ```
 
 ## 7. Module Decision Log

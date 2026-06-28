@@ -34,7 +34,7 @@ $ gennady agent-mon
 │  ║    ❓ last: "Choose variant?"    ║ ║                          ║ │
 │  ╚══════════════════════════════════╝ ╚══════════════════════════╝ │
 │                                                                     │
-│  q=quit  r=refresh  ↑↓=scroll  Enter=expand card                   │
+│  q=quit  ↑↓=scroll  Enter=expand card                              │
 └─────────────────────────────────────────────────────────────────────┘
 
 # One-shot snapshot (печать и выход)
@@ -62,7 +62,7 @@ $ gennady agent-mon --interval 2000
 | F5  | Идентификация ожидания оператора: lastMessage содержит `?` или `choose`/`select` → `isWaitingForOperator: true`            |
 | F6  | Карточка сессии: title, model, status, elapsed, lastMessage (1 строка), tokens (in/out), задачи (Claude), CPU/RAM (Claude) |
 | F7  | Автообновление через `observe()` из agent-mon; флаг `--interval` (default 5000ms)                                          |
-| F8  | Клавиатура: `q`/`Ctrl+C` — выход, `r` — форсировать refresh                                                                |
+| F8  | Клавиатура: `q`/`Ctrl+C` — выход; `r` — форсировать refresh **(@deferred — V2)**                                            |
 | F9  | Флаг `--provider` для фильтрации (claude, opencode, all)                                                                   |
 | F10 | Режим `--once` — snapshot + выход                                                                                          |
 | F11 | State manager: transform `AgentSession[]` → `ViewModel` (group by provider, detect waiting)                                |
@@ -113,7 +113,7 @@ cli/cmd/agent-mon/
 ├── view.ts                     // View contract
 ├── views/
 │   ├── column-view.tsx         // View A: колонки по провайдерам
-│   └── compact-view.tsx        // View B: компактная таблица (будущее)
+│   └── compact-view.tsx        // View B: компактная таблица **(@deferred — V2)**
 └── ui/
     ├── app.tsx                  // Root ink component: useInput + observe loop
     ├── session-card.tsx         // Card: title, model, status, tokens, lastMsg
@@ -134,7 +134,7 @@ agent-mon library → observe(monitor, {interval}) → SessionChanges
 
 | Что                              | Почему                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------- |
-| View как интерфейс               | Замена дизайна без переписывания core логики; `--view column                                 | compact` выбирает реализацию |
+| View как интерфейс               | Замена дизайна без переписывания core логики; `--view column` выбирает реализацию (compact **@deferred V2**) |
 | State manager отдельно           | Трансформация AgentSession → ViewModel изолирована от UI; тестируется без ink                |
 | `isWaitingForOperator` heuristic | lastMessage содержит `?` или ключевые слова `choose`/`select`/`вариант` — программно, без AI |
 | ink + React                      | 38.5k звёзд, используют Claude Code, Gemini CLI, Copilot CLI; Flexbox для колонок            |

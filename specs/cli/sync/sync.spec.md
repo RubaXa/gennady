@@ -29,7 +29,7 @@ _Это полный список сущностей модуля. Любое в
 | `compareBytes`          | Function     | `(a: Buffer, b: Buffer) => boolean` — побайтовое сравнение (shared)                          |
 | `PathNormalizer`        | Function     | `(content: string, rules: PathNormalizationRule[]) => string` — нормализация путей (shared)  |
 | `PathNormalizationRule` | Value Object | `{ from: RegExp; to: string }` — одно правило замены (shared)                                |
-| `SYNC_PATH_RULES`       | Constant     | Правила замены для sync: 6 регекс-правил (все из path-normalizer.ts кроме RULE_SKILLS_TILDE) |
+| `SYNC_PATH_RULES`       | Constant     | Правила замены для sync: 7 регекс-правил (все из path-normalizer.ts кроме RULE_SKILLS_TILDE) |
 | `formatSyncOutput`      | Function     | `(entries: SyncFormatEntry[], opts: SyncFormatOptions) => string[]` — форматтер (shared)     |
 | `SyncFormatEntry`       | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)      |
 | `SyncFormatOptions`     | Value Object | `{ dryRun?: boolean }` (shared)                                                              |
@@ -277,7 +277,7 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 
 - **Status:** active
 - **Recorded:** session Discovery, cli, sync, refine
-- **Why:** Директивы в исходниках (`ai/directives/`) могут содержать dev-пути (`~/Developer/gennady/...`, `/Users/k.lebedev/...`, `npx tsx ~/Developer/gennady/cli/...`). При синхронизации в пользовательский проект эти пути должны заменяться на продуктовые эквиваленты (`ai/directives/...`, `npx gennady ...`). Shared `PathNormalizer` из `shared/common/sync/path-normalizer.ts` (D-M007 в sync-skills.spec.md). `SYNC_PATH_RULES` — подмножество правил, релевантных для XML-директив (только `ai/` и CLI-пути, без `~/Developer/gennady/ai/skills/` → `.claude/skills/`).
+- **Why:** Директивы в исходниках (`ai/directives/`) могут содержать dev-пути (`~/Developer/gennady/...`, `/Users/k.lebedev/...`, `npx tsx ~/Developer/gennady/cli/...`). При синхронизации в пользовательский проект эти пути должны заменяться на продуктовые эквиваленты (`ai/directives/...`, `npx gennady ...`). Shared `PathNormalizer` из `shared/common/sync/path-normalizer.ts` (D-M007 в sync-skills.spec.md). `SYNC_PATH_RULES` — подмножество правил, релевантных для XML-директив (только `ai/` и CLI-пути, без `~/Developer/gennady/ai/skills/` → `.claude/skills/`). Включает `RULE_CLI_HOME`: нормализация `$HOME/Developer/gennady/cli/gennady.ts` → `~/Developer/gennady/cli/gennady.ts`.
 - **Risk accepted:** Регекс-замена внутри XML может задеть CDATA или атрибуты. Практика показывает что dev-пути встречаются только в prose-тексте между тегами. При появлении в атрибутах — правила нужно расширить.
 - **Rejected alternatives:**
   - Не нормализовать директивы — в директивах есть ссылки на `~/.claude/skills/...` и `npx gennady`; dev-версии этих путей будут битые в продакшене

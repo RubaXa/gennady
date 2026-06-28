@@ -125,7 +125,7 @@ broken.errors[0].code; // 'ERR_DBC_LINT_PARSE_FAILED'
 | FR-23 | Комментарий есть → `DbcParser.parse()` → `issues` транслируются в ошибки линтера с исходными кодами (`ERR_DBC_ORDER`, `ERR_DBC_PURPOSE_CONFLICT`, `ERR_DBC_PARAM_NAME_MISSING`, `ERR_DBC_SEE_FORMAT_INVALID`)                                                                                                                                                                                         |
 | FR-24 | Соответствие контракта сигнатуре кода — см. матрицу проверок ниже                                                                                                                                                                                                                                                                                                                                     |
 | FR-25 | Отчёт в ESLint-формате: `file:line:col: severity: code: message`. Все ошибки — `severity: error`                                                                                                                                                                                                                                                                                                      |
-| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы. Цепочка шагов: `expandToMultiline` → `removeRedundantInImplements` → `removeRedundantTypes` → `normalizeParamBrackets` → `removeExtraParams` → `removeUnexpectedReturns` → `reorderParams` → `reorderTags` → `normalizeMultiLine`. Каждый шаг — чистая функция `(text, context) → text`. Идемпотентность: повторный autofix не меняет результат. |
+| FR-26 | Autofix: мутирует файл, исправляя ошибки из таблицы. Цепочка шагов: `expandToMultiline` → `removeRedundantInImplements` **(@deferred — будет реализован отдельной задачей; спецификация актуализирована, реализация через sdd-scaffold + sdd-critic + sdd-execute)** → `removeRedundantTypes` → `normalizeParamBrackets` → `removeExtraParams` → `removeUnexpectedReturns` → `reorderParams` → `reorderTags` → `normalizeMultiLine`. Каждый шаг — чистая функция `(text, context) → text`. Идемпотентность: повторный autofix не меняет результат. |
 | FR-27 | Пустой или без экспортов файл → пустой отчёт                                                                                                                                                                                                                                                                                                                                                          |
 | FR-28 | Для типизированного языка `{dataType}` в тегах `@param` и `@returns` — ошибка `ERR_DBC_LINT_TYPE_REDUNDANT`                                                                                                                                                                                                                                                                                           |
 | FR-29 | Fixture-покрытие: каждый случай линтинга покрыт отдельным fixture-файлом                                                                                                                                                                                                                                                                                                                              |
@@ -267,20 +267,21 @@ export interface DbcParser {
 // --- dbc-linter types ---
 
 export interface DbcAstAdapter {
-  parseFile(filePath: string, content?: string): Promise<ParseResult>;
+  parseFile(filePath: string, content?: string): Promise<DbcParseResult>;
 }
 
-export type ParseResult = { ok: true; exported: ExportedEntity[] } | { ok: false; error: string };
+export type DbcParseResult = { ok: true; exported: DbcExportedEntity[] } | { ok: false; error: string };
 
-export interface ExportedEntity {
+export interface DbcExportedEntity {
   name: string;
   kind: 'const' | 'function' | 'class' | 'interface' | 'type' | 'enum' | 'export-default';
-  members: Member[];
+  members: DbcMember[];
   contract?: { text: string; startLine: number; startCol: number };
-  signature: SignatureInfo;
+  signature: DbcSignatureInfo;
+  implementsInterfaces?: boolean;
 }
 
-export interface Member {
+export interface DbcMember {
   name: string;
   kind:
     | 'field'
@@ -292,15 +293,15 @@ export interface Member {
     | 'interface-property'
     | 'enum-member';
   contract?: { text: string; startLine: number; startCol: number };
-  signature: SignatureInfo;
+  signature: DbcSignatureInfo;
 }
 
-export interface SignatureInfo {
-  params: ParamInfo[];
+export interface DbcSignatureInfo {
+  params: DbcParamInfo[];
   returnType: string;
 }
 
-export interface ParamInfo {
+export interface DbcParamInfo {
   name: string;
   type: string;
   optional: boolean;
@@ -308,11 +309,11 @@ export interface ParamInfo {
 }
 
 export interface DbcLinter {
-  lint(filePath: string, options?: LintOptions): Promise<DbcLintReport>;
-  lintAndFix(filePath: string, options?: LintOptions): Promise<DbcLintFixReport>;
+  lint(filePath: string, options?: DbcLintOptions): Promise<DbcLintReport>;
+  lintAndFix(filePath: string, options?: DbcLintOptions): Promise<DbcLintFixReport>;
 }
 
-export type LintOptions = {
+export type DbcLintOptions = {
   /** @purpose Linting strategy — only 'full' is supported in v1 */
   strategy?: 'full';
   /** @purpose Pre-read file content. When passed, use this instead of reading from disk. filePath still required — used in error messages. */
@@ -345,6 +346,8 @@ export type DbcLintIssueCode =
   | typeof ERR_DBC_LINT_PARAM_MISSING
   | typeof ERR_DBC_LINT_PARAM_EXTRA
   | typeof ERR_DBC_LINT_PARAM_ORDER
+  | typeof ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH
+  | typeof ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS
   | typeof ERR_DBC_LINT_RETURNS_MISSING
   | typeof ERR_DBC_LINT_RETURNS_UNEXPECTED
   | typeof ERR_DBC_LINT_TYPE_REDUNDANT;
@@ -354,6 +357,8 @@ export const ERR_DBC_LINT_PARSE_FAILED = 'ERR_DBC_LINT_PARSE_FAILED';
 export const ERR_DBC_LINT_PARAM_MISSING = 'ERR_DBC_LINT_PARAM_MISSING';
 export const ERR_DBC_LINT_PARAM_EXTRA = 'ERR_DBC_LINT_PARAM_EXTRA';
 export const ERR_DBC_LINT_PARAM_ORDER = 'ERR_DBC_LINT_PARAM_ORDER';
+export const ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH = 'ERR_DBC_LINT_PARAM_OPTIONAL_MISMATCH';
+export const ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS = 'ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS';
 export const ERR_DBC_LINT_RETURNS_MISSING = 'ERR_DBC_LINT_RETURNS_MISSING';
 export const ERR_DBC_LINT_RETURNS_UNEXPECTED = 'ERR_DBC_LINT_RETURNS_UNEXPECTED';
 export const ERR_DBC_LINT_TYPE_REDUNDANT = 'ERR_DBC_LINT_TYPE_REDUNDANT';
