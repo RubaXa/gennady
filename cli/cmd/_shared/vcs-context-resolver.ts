@@ -196,9 +196,7 @@ export async function resolveVcsContext(
   }
   // #endregion END_RESOLVE_HOST_AND_PROJECT
 
-  // #region START_PROVIDER_CHECK
   const provider: VcsCliContext['provider'] = /github/i.test(host) ? 'github' : 'gitlab';
-  // #endregion END_PROVIDER_CHECK
 
   // #region START_RESOLVE_BRANCH
   let branch: string | undefined = args.branch;
@@ -226,7 +224,8 @@ export async function resolveVcsContext(
       ? (deps.env('GITHUB_PERSONAL_TOKEN') ?? deps.env('GITHUB_TOKEN'))
       : deps.env('GITLAB_PERSONAL_TOKEN');
   if (!token) {
-    const envVar = provider === 'github' ? 'GITHUB_PERSONAL_TOKEN or GITHUB_TOKEN' : 'GITLAB_PERSONAL_TOKEN';
+    const envVar =
+      provider === 'github' ? 'GITHUB_PERSONAL_TOKEN or GITHUB_TOKEN' : 'GITLAB_PERSONAL_TOKEN';
     const msg = `[resolveVcsContext] Не найден токен доступа. Установите ${envVar}.`;
     logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
     throw new VcsResolveError(`Не найден токен доступа. Установите ${envVar}.`);

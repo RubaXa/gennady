@@ -19,6 +19,14 @@ import type { VcsPipelineStatus } from '../entities/vcs-pipeline-status.type.ts'
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
+function normalizePr(pr: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...pr,
+    iid: pr.number,
+    webUrl: pr.html_url,
+  };
+}
+
 /**
  * @purpose Access to Pull Request files via GitHub API.
  * @invariant Error Policy: Network/status errors are thrown outward from request().
@@ -52,10 +60,8 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
     if (query.perPage) params.set('per_page', String(query.perPage));
     if (query.page) params.set('page', String(query.page));
 
-    const result = await this._request(
-      `/repos/${query.project}/pulls?${params.toString()}`
-    );
-    return Array.isArray(result) ? result : [];
+    const result = await this._request(`/repos/${query.project}/pulls?${params.toString()}`);
+    return (Array.isArray(result) ? result : []).map(normalizePr);
   }
 
   /**
@@ -79,9 +85,10 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
    */
   async getByIid(query: VcsMergeRequestByIidQuery): Promise<unknown | null> {
     try {
-      return await this._request(
-        `/repos/${query.project}/pulls/${encodeURIComponent(String(query.iid))}`
-      );
+      const pr = (await this._request(
+        `/repos/${query.project}/pulls/${String(query.iid)}`
+      )) as Record<string, unknown>;
+      return normalizePr(pr);
     } catch (error) {
       if ((error as Error).message?.includes('404')) return null;
       throw error;
@@ -126,8 +133,8 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
     const params = new URLSearchParams();
     if (query?.perPage) params.set('per_page', String(query.perPage));
     if (query?.page) params.set('page', String(query.page));
-    const repo = encodeURIComponent(query.repository);
-    const number = encodeURIComponent(String(query.iid));
+    const repo = query.repository;
+    const number = String(query.iid);
 
     const [prData, filesData] = await Promise.all([
       this._request(`/repos/${repo}/pulls/${number}`) as Promise<Record<string, unknown>>,
@@ -216,7 +223,7 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
 
     if (query.addLabels?.length || query.removeLabels?.length) {
       const pr = (await this._request(
-        `/repos/${query.project}/pulls/${encodeURIComponent(String(query.iid))}`
+        `/repos/${query.project}/pulls/${String(query.iid)}`
       )) as { labels?: Array<{ name: string }> };
       const currentLabels = (pr.labels ?? []).map((l) => l.name);
       const added = query.addLabels ?? [];
@@ -228,7 +235,7 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
     }
 
     const result = (await this._request(
-      `/repos/${query.project}/pulls/${encodeURIComponent(String(query.iid))}`,
+      `/repos/${query.project}/pulls/${String(query.iid)}`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

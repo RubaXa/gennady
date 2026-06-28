@@ -69,7 +69,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     deps.exit(1);
   }
 
-  const iid = ref ? Number(ref.split('!').pop()) : (iidRaw ? Number(iidRaw) : undefined);
+  const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
   const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
@@ -88,7 +88,10 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
 
   if ((!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) && context.branch) {
     const client = createClient(context);
-    const mr = (await client.MergeRequests.getOne({ project: context.project, sourceBranch: context.branch })) as {
+    const mr = (await client.MergeRequests.getOne({
+      project: context.project,
+      sourceBranch: context.branch,
+    })) as {
       iid?: number;
     } | null;
     if (mr?.iid) resolvedIid = mr.iid;

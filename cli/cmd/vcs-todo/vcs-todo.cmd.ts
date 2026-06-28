@@ -4,6 +4,8 @@
 // @tasks: TSK-76
 
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -67,8 +69,11 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
     return { ok: false, code: 1 };
   }
 
-  const baseUrl = `https://${host}/api/v4`;
-  const vcs = new VcsGitlabClient({ token, baseUrl });
+  const provider = opts.vcsContext?.provider ?? (/github/i.test(host!) ? 'github' : 'gitlab');
+  const baseUrl = provider === 'github' ? 'https://api.github.com' : `https://${host}/api/v4`;
+  const vcs: VcsClient = provider === 'github'
+    ? new VcsGithubClient({ token, baseUrl })
+    : new VcsGitlabClient({ token, baseUrl });
 
   // #region START_MARK_TODO_BY_ID — --id <todoId>: direct markTodoDone call
   if (opts.todoId) {
@@ -78,7 +83,7 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
       return { ok: true, code: 0 };
     }
     try {
-      await vcs.Inbox.markTodoDone({ todoId: opts.todoId });
+      await vcs.Inbox!.markTodoDone({ todoId: opts.todoId });
       console.info(`${style.green('✔')} Todo marked done: ${opts.todoId}`);
       logger.info(`[vcs-todo] [marking → done] ${opts.todoId}`);
       return { ok: true, code: 0 };
@@ -103,7 +108,7 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
 
     try {
       logger.debug(`[vcs-todo] [idle → fetching] ${opts.doneRef}`);
-      const items = await vcs.Inbox.getActionable();
+      const items = await vcs.Inbox!.getActionable();
       const mr = items.find((m) => m.project === project && m.iid === iid);
 
       if (!mr || mr.todoIds.length === 0) {
@@ -118,7 +123,7 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
         if (dryRun) {
           console.info(`Would mark todo done: ${todoId}`);
         } else {
-          await vcs.Inbox.markTodoDone({ todoId });
+          await vcs.Inbox!.markTodoDone({ todoId });
           console.info(`${style.green('✔')} Todo marked done: ${todoId}`);
         }
       }

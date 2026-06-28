@@ -5,6 +5,8 @@
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
+import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsDiscussionPosition } from '../../../services/vcs-client/abstract/vcs-client-merge-discussions.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
@@ -76,7 +78,7 @@ type MainOpts = {
   host?: string;
   remote?: { host: string; project: string; scheme: string } | null;
   baseUrl?: string;
-  vcs?: VcsGitlabClient;
+  vcs?: VcsClient;
   /** @purpose Pre-resolved VCS context — when set, skips git auto-detection. */
   vcsContext?: VcsCliContext;
 };
@@ -222,7 +224,7 @@ export async function main(opts: MainOpts = {}): Promise<{
   const token = opts.token ?? vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
   // #endregion END_RESOLVE_VCS_CONTEXT
 
-  let vcs: VcsGitlabClient | null = null;
+  let vcs: VcsClient | null = null;
   let hostInfo = '';
   if (!dryRun) {
     if (!token) {
@@ -238,15 +240,11 @@ export async function main(opts: MainOpts = {}): Promise<{
       );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
-    if (!/gitlab/i.test(host)) {
-      console.error(
-        style.redBright.bold('✖ Ошибка:'),
-        `Провайдер "${style.blue(host)}" пока не поддерживается.`
-      );
-      return { ok: false, sent: 0, failed: 0, code: 1 };
-    }
-    const baseUrl = opts.baseUrl ?? `https://${host}/api/v4`;
-    vcs = opts.vcs ?? new VcsGitlabClient({ token, baseUrl });
+    const provider = vcsContext?.provider ?? (/github/i.test(host) ? 'github' : 'gitlab');
+    const baseUrl = opts.baseUrl ?? (provider === 'github' ? 'https://api.github.com' : `https://${host}/api/v4`);
+    vcs = opts.vcs ?? (provider === 'github'
+      ? new VcsGithubClient({ baseUrl, token })
+      : new VcsGitlabClient({ baseUrl, token }));
     hostInfo = host;
   } else {
     hostInfo = host;
@@ -324,7 +322,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_EDIT_NOTE — update existing note body
     if (it.noteId && !it.delete) {
       try {
-        await vcs!.MergeDiscussions.updateNote({
+        await vcs!.MergeDiscussions!.updateNote({
           project,
           iid: String(iid),
           noteId: it.noteId,
@@ -345,7 +343,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_DELETE_NOTE — delete existing note
     if (it.noteId && it.delete) {
       try {
-        await vcs!.MergeDiscussions.deleteNote({
+        await vcs!.MergeDiscussions!.deleteNote({
           project,
           iid: String(iid),
           noteId: it.noteId,
@@ -366,7 +364,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_DELETE_DISCUSSION — delete entire discussion thread by discussionId
     if (it.delete && it.discussionId && !it.noteId) {
       try {
-        await vcs!.MergeDiscussions.deleteDiscussion({
+        await vcs!.MergeDiscussions!.deleteDiscussion({
           project,
           iid: String(iid),
           discussionId: it.discussionId,
@@ -388,7 +386,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_RESOLVE_REOPEN — resolve:false → reopen only, body ignored
     if (it.resolve === false) {
       try {
-        await vcs!.MergeDiscussions.resolveDiscussion({
+        await vcs!.MergeDiscussions!.resolveDiscussion({
           project,
           iid: String(iid),
           discussionId: it.discussionId!,
@@ -409,7 +407,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_RESOLVE_ONLY — resolve:true without body → resolve only
     if (it.resolve === true && !it.body) {
       try {
-        await vcs!.MergeDiscussions.resolveDiscussion({
+        await vcs!.MergeDiscussions!.resolveDiscussion({
           project,
           iid: String(iid),
           discussionId: it.discussionId!,
@@ -430,14 +428,14 @@ export async function main(opts: MainOpts = {}): Promise<{
     // #region START_POST_NOTE — reply or new discussion, optionally followed by resolve
     try {
       if (it.discussionId) {
-        await vcs!.MergeDiscussions.addNote({
+        await vcs!.MergeDiscussions!.addNote({
           project,
           iid: String(iid),
           discussionId: it.discussionId,
           body: resolveBody(it),
         });
       } else {
-        await vcs!.MergeDiscussions.createDiscussion({
+        await vcs!.MergeDiscussions!.createDiscussion({
           project,
           iid: String(iid),
           body: resolveBody(it),
@@ -449,7 +447,7 @@ export async function main(opts: MainOpts = {}): Promise<{
       // failure mode: note posted but resolve fails → warn, count as failed
       if (it.resolve === true) {
         try {
-          await vcs!.MergeDiscussions.resolveDiscussion({
+          await vcs!.MergeDiscussions!.resolveDiscussion({
             project,
             iid: String(iid),
             discussionId: it.discussionId!,
