@@ -12,57 +12,7 @@ import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { logger } from '#logger';
-
-// #region START_ANSI_STRIP
-/** @purpose Regular expression matching ANSI escape sequences (colors, cursor movements, etc.). */
-const ANSI_RE =
-  /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
-
-/** @purpose Strip ANSI escape sequences from a string. */
-function stripAnsi(text: string): string {
-  return text.replace(ANSI_RE, '');
-}
-// #endregion END_ANSI_STRIP
-
-// #region START_FILTER_LOG
-/** @purpose Lines that signal errors or important diagnostic information. */
-const ERROR_PATTERNS = [
-  /\b(ERROR|FAIL|FAILED|FAILURE)\b/i,
-  /\b(error|fail|failed|failure)\b/,
-  /\b(assert|assertion)\b/i,
-  /\b(exception|throw|crash|fatal|abort)\b/i,
-  /\b(cannot|unable|invalid|unexpected|undefined|null pointer)\b/i,
-  /^\s*\d+:\d+\s+error\b/i,
-  /^\[ERROR\]/i,
-  /^\s*at\s+/i,
-  /^\s*\d+\s*\|\s*/i,
-  /^Error:/i,
-  /^\s*✖/,
-  /^\s*⚠/,
-  /^\s*❌/,
-  /^\s*🛑/,
-  /^\s*💥/,
-];
-
-/** @purpose Filter log lines: strip ANSI, keep only error-relevant lines. */
-function filterLog(rawLog: string): string {
-  const clean = stripAnsi(rawLog);
-  const lines = clean.split('\n');
-  const filtered = lines.filter((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return false;
-    return ERROR_PATTERNS.some((p) => p.test(trimmed));
-  });
-
-  if (filtered.length === 0) {
-    return (
-      clean.slice(0, 2000) + '\n... [no error lines detected, showing first 2000 chars of raw log]'
-    );
-  }
-
-  return filtered.join('\n');
-}
-// #endregion END_FILTER_LOG
+import { filterLog } from '../_shared/log-filter.ts';
 
 /** @purpose Injectable dependencies for the vcs-job-log command. */
 export type VcsJobLogDeps = {

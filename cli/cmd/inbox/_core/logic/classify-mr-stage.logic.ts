@@ -99,8 +99,7 @@ export function lastNoteAuthor(notes: RawNote[]): string {
 }
 
 /**
- * @purpose Assemble the context for acting on one MR: stage plus the notes from
- *   others I still have to answer (those after my last note, or all if I never spoke).
+ * @purpose Assemble context for acting on MR: stage plus notes from others I must answer (after my last note, or all if I never spoke).
  * @param notes Flattened discussion notes.
  * @param myLogin My GitLab username.
  * @param role My role on the MR.

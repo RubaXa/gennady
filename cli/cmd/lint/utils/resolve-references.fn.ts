@@ -14,8 +14,7 @@ export type ResolvedReference = {
 };
 
 /**
- * @purpose Scan all task .md files in tasks/ directory and build a map of taskId -> ResolvedReference.
- * Walks the directory tree recursively, parses each task file for Task-ID and Spec References.
+ * @purpose Scan task .md files in tasks/, build map of taskId -> ResolvedReference. Recursively walks directory, parses each task file for Task-ID and Spec References.
  * @param projectRoot Absolute path to the project root (where tasks/ lives).
  * @param [taskDir] Relative path to the tasks directory (default: 'tasks').
  * @returns Map from task ID string (e.g. 'TSK-21') to its ResolvedReference.
@@ -55,9 +54,7 @@ export function loadTaskReferences(
 }
 
 /**
- * @purpose Extract spec file paths from a task file's Spec References section.
- * Parses markdown links, extracts the spec filename, and searches the specs/
- * directory tree to find the actual file (no relative path resolution).
+ * @purpose Extract spec paths from task file's Spec References. Parses markdown links, extracts spec filename, searches specs/ tree for actual file (no relative path resolution).
  * @param content Raw content of the task file.
  * @param projectRoot Absolute project root path.
  * @returns Deduplicated, sorted array of relative spec file paths.

@@ -10,6 +10,7 @@ import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vc
 import type { VcsMergeRequestsQuery } from '../../../services/vcs-client/abstract/vcs-client-merge-requests.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
+import { filterLog } from '../_shared/log-filter.ts';
 
 /** @purpose Injectable dependencies for the vcs-pipeline command — defaults to real implementations. */
 export type VcsPipelineDeps = {
@@ -148,35 +149,6 @@ function filterJobs(pipeline: VcsPipelineStatus, statusFilter?: string) {
   if (statusFilter === 'failed')
     return pipeline.jobs.filter((j) => j.status.toLowerCase() !== 'success');
   return pipeline.jobs.filter((j) => j.status.toLowerCase() === statusFilter.toLowerCase());
-}
-
-/** @purpose Strip ANSI and keep error-relevant lines from job log. */
-function filterLog(raw: string): string {
-  const ansiRe =
-    /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
-  const clean = raw.replace(ansiRe, '');
-  const patterns = [
-    /\b(ERROR|FAIL|FAILED)\b/i,
-    /\b(error|fail|failed)\b/,
-    /\b(assert|assertion)\b/i,
-    /\b(exception|throw|crash|fatal|abort)\b/i,
-    /\b(cannot|unable|invalid|unexpected)\b/i,
-    /^\s*\d+:\d+\s+error\b/i,
-    /^\[ERROR\]/i,
-    /^\s*at\s+/i,
-    /^\s*\d+\s*\|\s*/i,
-    /^Error:/i,
-    /^\s*✖/,
-    /^\s*⚠/,
-    /^\s*❌/,
-  ];
-  const lines = clean.split('\n').filter((l) => {
-    const t = l.trim();
-    return t && patterns.some((p) => p.test(t));
-  });
-  return lines.length > 0
-    ? lines.join('\n')
-    : clean.slice(0, 2000) + '\n... [no error lines detected]';
 }
 
 /** @purpose Extract numeric REST job ID from GraphQL global ID. */

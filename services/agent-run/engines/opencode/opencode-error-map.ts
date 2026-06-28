@@ -57,10 +57,8 @@ export function opencodeErrorMap(failure: OpencodeFailure): OpencodeErrorMapping
   // #endregion END_SPAWN_ERROR_MAPPING
 
   // #region START_STDERR_PATTERN_MATCHING
-  // ORDER MATTERS: MODEL_UNAVAILABLE must be checked before PROXY_PATTERN.
-  // The default model id "llm-proxy/deepseek-v4-pro" contains the word "proxy",
-  // so an "unknown model: llm-proxy/deepseek-v4-pro" message would mis-classify
-  // as NETWORK_BLOCKED if PROXY_PATTERN were checked first. Specific-before-general.
+  // ORDER MATTERS: MODEL_UNAVAILABLE before PROXY_PATTERN. Default model id contains "proxy",
+  // so "unknown model: llm-proxy/deepseek-v4-pro" would mis-classify as NETWORK_BLOCKED if PROXY_PATTERN were checked first.
   if (MODEL_UNAVAILABLE_PATTERN.test(stderr)) {
     return {
       code: 'MODEL_UNAVAILABLE',

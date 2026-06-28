@@ -98,11 +98,7 @@ function formatModelBlock(result: AltOpinionResult): string {
 }
 
 /**
- * @purpose CLI entry point for the alt-opinion command.
- * *
- * Parses CLI arguments, creates AI SDK providers from environment variables,
- * builds a Map of AltOpinionModelPort keyed by "provider/model", calls the core runner,
- * and formats the results to stdout with anchor-wrapped blocks or synthesis output.
+ * @purpose CLI entry point for alt-opinion. Parses args, builds providers from env vars, AltOpinionModelPort map by "provider/model", invokes core runner, outputs to stdout.
  * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
  * @param [deps] Optional injectable dependencies for testing.

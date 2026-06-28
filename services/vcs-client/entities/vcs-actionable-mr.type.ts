@@ -18,8 +18,7 @@ export type VcsActionableRole = 'reviewer' | 'author' | 'mentioned';
 export type VcsActionableMrState = 'opened' | 'closed' | 'locked' | 'merged';
 
 /**
- * @purpose State events attached to an MR. They never create an inbox entry on
- *   their own — only decorate an MR that already has a role.
+ * @purpose State events attached to an MR. Never create inbox entry on their own — only decorate MR that already has a role.
  * @consumer VcsClientInbox
  */
 export type VcsActionableEvent =

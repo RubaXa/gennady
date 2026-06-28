@@ -17,9 +17,7 @@ export type ClassifyResult = {
 };
 
 /**
- * @purpose Compare the current actionable set against the registry: an MR is new
- *   when unseen, updated when its updatedAt advanced, idle otherwise. Past entries
- *   are kept (a returning MR reads as updated, not new).
+ * @purpose Compare current set against registry: MR is new when unseen, updated when updatedAt advanced, idle otherwise. Past entries kept (returning MR reads as updated).
  * @param items Current actionable MRs from the VCS client.
  * @param registry Previously persisted registry.
  * @param nowIso Current time as ISO string (injected for testability).

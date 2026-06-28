@@ -38,24 +38,29 @@ export class LintReport {
   readonly taskPaths: string[];
   /** @purpose Deduplicated spec file paths resolved from task files. */
   readonly specPaths: string[];
+  /** @purpose Agent guidance hint shown at the end of the report when relevant error families are present. */
+  readonly guidance?: string;
 
   /**
-   * @purpose Creates a LintReport with collected errors, autoFixed count, and resolved references.
+   * @purpose Creates a LintReport with collected errors, autoFixed count, resolved references, and optional guidance.
    * @param errors Collected lint errors.
    * @param [autoFixed] Count of auto-fixed errors, defaults to 0.
    * @param [taskPaths] Resolved task file paths (deduplicated).
    * @param [specPaths] Resolved spec file paths (deduplicated).
+   * @param [guidance] Agent guidance hint, defaults to undefined.
    */
   constructor(
     errors: LintError[],
     autoFixed = 0,
     taskPaths: string[] = [],
-    specPaths: string[] = []
+    specPaths: string[] = [],
+    guidance?: string
   ) {
     this.errors = errors;
     this.autoFixed = autoFixed;
     this.taskPaths = taskPaths;
     this.specPaths = specPaths;
+    this.guidance = guidance;
   }
 
   /** @purpose Returns 0 when no errors, 1 otherwise — ESLint convention. | @returns 0 for clean, 1 for errors. */
@@ -91,6 +96,12 @@ export class LintReport {
         lines.push(`  ${tp}`);
       }
     }
+    // Append guidance block when present
+    if (this.guidance) {
+      lines.push('');
+      lines.push('---');
+      lines.push(this.guidance);
+    }
     return lines.join('\n');
   }
 }
@@ -119,7 +130,7 @@ export const ERR_CLI_LINT_STAGED_CONFLICT = 'ERR_CLI_LINT_STAGED_CONFLICT' as co
 /** @purpose TypeScript / linter disable comment without a Decision Log reference (D-NNN) in the same line. | @invariant Implements policy D-007 (cli.spec.md): every @ts-ignore / @ts-nocheck / @ts-expect-error / eslint-disable* must cite D-NNN in the same comment. */
 export const ERR_CLI_LINT_UNAUTHORIZED_DISABLE = 'ERR_CLI_LINT_UNAUTHORIZED_DISABLE' as const;
 
-/** @purpose TypeScript / linter disable comment has a D-NNN reference but lacks a purpose explanation. | @invariant Implements D-007 contract tightening (TSK-52): >= 8 non-whitespace characters of purpose must remain after stripping the comment opener, the marker, and the D-NNN token. */
+/** @purpose TypeScript / linter disable comment has a D-NNN reference but lacks a purpose explanation. | @invariant Implements D-007 tightening (TSK-52): >= 8 non-whitespace chars of purpose must remain after stripping comment opener, marker, and D-NNN token. */
 export const ERR_CLI_LINT_DISABLE_MISSING_PURPOSE = 'ERR_CLI_LINT_DISABLE_MISSING_PURPOSE' as const;
 
 /** @purpose Entity has more invariants than the configured threshold — contract may be overloaded. | @invariant Counts both @invariant JSDoc tags and invariant: in region comments. */
@@ -134,3 +145,14 @@ export const ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START =
 
 /** @purpose Region contains fewer than 2 meaningful lines — region is too thin. Keep any comment and remove the region wrapper. */
 export const ERR_CLI_LINT_ANCHOR_TOO_THIN = 'ERR_CLI_LINT_ANCHOR_TOO_THIN' as const;
+
+/** @purpose JSDoc tag or file-header line exceeds the maximum word count. | @invariant Applies to @param, @returns, @purpose, @implements, @invariant, @sideEffect, @consumer, @see and // @file:, // @consumers:. */
+export const ERR_CLI_LINT_TAG_TOO_MANY_WORDS = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS' as const;
+
+/** @purpose Region body contains more comments (// or /*) than the configured limit. */
+export const ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS =
+  'ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS' as const;
+
+/** @purpose #region START annotation text exceeds the maximum word count. */
+export const ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG =
+  'ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG' as const;

@@ -65,7 +65,7 @@ export type InboxView = {
   /**
    * @purpose Counts of rows suppressed by policy, by reason.
    *   closed = merged/closed/locked · approved = I already approved ·
-   *   waiting = stage awaiting_reply/idle (no reaction needed from me).
+   *   waiting = awaiting_reply/idle (no reaction needed).
    */
   hidden: {
     stale: number;
@@ -102,9 +102,7 @@ function humanizeAge(updatedAt: string, nowMs: number): string {
  * @param options Filtering toggles.
  * @param nowIso Current time as ISO string (injected for testability).
  * @param [deltas] Per-MR change since the last tick, keyed by webUrl (defaults to empty).
- * @param [stages] Per-MR actionable stage, keyed by webUrl (defaults to empty). When
- *   non-empty, MRs at `awaiting_reply`/`idle` are dropped as needing no reaction from me
- *   (unless `--all`); when empty (the pre-scan pass) no stage filtering happens.
+ * @param [stages] Per-MR stage, keyed by webUrl (defaults to empty). Non-empty: MRs at `awaiting_reply`/`idle` dropped (needing no reaction unless `--all`). Empty (pre-scan): no stage filtering.
  * @param [myLogin] My username; MRs I have already approved are dropped (unless `--all`).
  * @returns Grouped inbox view with hidden-counts.
  * @consumer inbox.cmd

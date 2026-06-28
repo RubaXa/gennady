@@ -8,7 +8,7 @@ import {
   ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
 } from '../lint.types.ts';
 
-/** @purpose Minimum non-whitespace characters of purpose text required after stripping the marker and D-NNN token. Set to 8 — filters trivial placeholders like `fix`/`todo`/`.` while accepting real rationales. */
+/** @purpose Minimum non-whitespace chars of purpose text after stripping marker and D-NNN token. Set to 8 — filters trivial placeholders (`fix`/`todo`/`.`) while accepting real rationales. */
 const MIN_PURPOSE_NON_WS_CHARS = 8;
 
 /** @purpose Regex matching one disable marker name (without comment opener). The opener is detected separately via a string-aware state machine. */
@@ -20,7 +20,7 @@ const D_REF_RE = /\bd-\d+\b/i;
 
 /**
  * @purpose Find the column where a `//` or `/*` comment opens on the given line, ignoring openers inside string literals.
- * @invariant Tracks single-quote, double-quote, and backtick string state with a simple escape rule (`\` cancels the next char). Does NOT model template-literal interpolation `${...}` — acceptable MVP simplification.
+ * @invariant Tracks single-quote, double-quote, backtick string state with simple escape rule (`\` cancels next char). Does NOT model template-literal interpolation `${...}` — acceptable MVP simplification.
  * @param line Source line to scan.
  * @returns 0-based index of the comment opener, or `-1` if none outside a string.
  */
@@ -105,8 +105,8 @@ export function check(content: string, filePath: string): LintError[] {
 
 /**
  * @purpose Count non-whitespace characters of purpose text remaining after the marker and the D-NNN token are stripped from the comment segment.
- * @invariant Removes ONE occurrence of the marker (first match) and ONE occurrence of the D-NNN token (first match) — both are required structural tokens, the rest is treated as purpose.
- * @invariant Counts all non-whitespace characters in the residual; does not distinguish punctuation from alphanum (acceptable MVP simplification — `:`/`—`/`--` separators count toward purpose length but realistic purposes always exceed the threshold).
+ * @invariant Removes ONE occurrence of marker (first match) and ONE occurrence of D-NNN token (first match) — both required structural tokens, rest is purpose.
+ * @invariant Counts non-whitespace chars in residual; does not distinguish punctuation from alphanum (acceptable MVP simplification — `:`/`—`/`--` separators count but realistic purposes always exceed threshold).
  * @param segment Comment content from the opener onwards (`//`-prefixed or `/*`-prefixed text).
  * @param marker The disable marker token found in this segment.
  * @param dRef The D-NNN token found in the source line.

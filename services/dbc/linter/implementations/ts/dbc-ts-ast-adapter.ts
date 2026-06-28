@@ -554,8 +554,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   }
 
   /**
-   * @purpose Extracts members from a type alias with an object type literal body.
-   * Delegates to the same logic as interface members since object_type ≡ interface body.
+   * @purpose Extracts members from type alias with object type literal body. Delegates to same logic as interface members since object_type ≡ interface body.
    * @param node type_alias_declaration node.
    * @param source Full source text.
    * @returns Array of object type members.

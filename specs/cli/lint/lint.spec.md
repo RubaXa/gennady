@@ -10,20 +10,22 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                   | Type         | Purpose                                                                                                                                                                                                                                                                                                                               |
-| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате                                                                                                                            |
-| `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                               |
-| `LintOptions`          | Value Object | Опции запуска: `targets` (файлы + директории), `autofix`, `gitMode`                                                                                                                                                                                                                                                                   |
-| `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                           |
-| `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                |
-| `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                 |
-| `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                |
-| `DbcContractCheck`     | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                                                                                                                                                                                                                  |
-| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`. |
-| `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                             |
-| `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                               |
-| `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.  |
+| Name                   | Type         | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintCommand`          | Service      | CLI-обвязка: parseArgs, сбор файлов из директорий (рекурсивно), git scan (`--staged`), цикл по файлам, агрегация ошибок, резолвинг связанных spec/task файлов для ошибочных файлов, вывод в ESLint-формате                                                                                                                                                                                                                                                                                                                                                                                      |
+| `LintError`            | Value Object | Единый тип ошибки: `file`, `line`, `col`, `severity`, `code`, `message`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `LintOptions`          | Value Object | Опции запуска: `targets` (файлы + директории), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `DbcContractCheck`     | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`.                                                                                                                                                                                                                                                           |
+| `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                                                                                                                                                                                                                                                                                       |
+| `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                                                                                                                                                                                                                                                                                         |
+| `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.                                                                                                                                                                                                                                                            |
+| `WordCountCheck`       | Service      | Проверка длины описаний JSDoc-тегов и file-header строк: считает слова (split по пробелам) в `@param`, `@returns`, `@purpose`, `@implements`, `@invariant`, `@sideEffect`, `@consumer`, `@see` и `// @file:`, `// @consumers:`. Описание = текст от тега до следующего тега или `*/`. Превышение порога → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`. Порог по умолчанию: 25 слов, настраивается через `--max-words <n>`.                                                                                                                                                                                |
+| `RegionCommentCheck`   | Service      | Проверка количества комментариев в теле региона и длины START-аннотации. Считает любые `//` и `/*` строки внутри региона (исключая маркеры `#region`/`#endregion`). Аннотация на START-строке проверяется на лимит слов (по умолчанию 30, не настраивается). Комментарии в теле — абсолютный лимит (по умолчанию 3), настраивается через `--max-region-comments <n>`. Нарушения → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`, `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`. Вложенные регионы: комментарии внутренних регионов засчитываются внешним. Дополняет `AnchorThinCheck`, не заменяет. |
 
 ## 3. Entity Surfaces
 
@@ -174,6 +176,9 @@ ERR_CLI_LINT_TOO_MANY_INVARIANTS     = 'ERR_CLI_LINT_TOO_MANY_INVARIANTS'
 ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY    = 'ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY'
 ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START = 'ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START'
 ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
+ERR_CLI_LINT_TAG_TOO_MANY_WORDS      = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS'
+ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS = 'ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS'
+ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG = 'ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -431,15 +436,74 @@ ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
   - Internal: `LintCommand`
   - External: N/A
 
+### `WordCountCheck`
+
+- **Type:** Service
+- **Purpose:** Проверка длины описаний JSDoc-тегов и file-header строк. Считает слова (split по пробелам) в описании каждого тега. Граница описания — от имени тега до следующего тега или закрывающего `*/`. File-header строки (`// @file:`, `// @consumers:`) проверяются до первого `import`.
+- **Public Operations:**
+  - `check(content: string, filePath: string, maxWords: number) → LintError[]` — проверить файл на превышение лимита слов
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Превышение `maxWords` → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `content` — непустая строка
+  - `filePath` — путь к файлу (для сообщений об ошибках)
+  - `maxWords` — целое число ≥ 1 (порог, по умолчанию 25)
+- Postconditions:
+  - Возвращает `LintError[]` (пустой — все описания в пределах лимита)
+  - Каждый JSDoc-тег (`@param`, `@returns`, `@purpose`, `@implements`, `@invariant`, `@sideEffect`, `@consumer`, `@see`) с описанием > `maxWords` слов → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`
+  - Каждая file-header строка (`// @file:`, `// @consumers:`) с > `maxWords` слов → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`
+- Invariants:
+  - Слова считаются split по пробелам, непустые токены
+  - Граница описания JSDoc-тега: от имени тега до следующего `@`-тега или закрытия `*/`
+  - File-header: проверяет только строки до первого `import`
+  - Чистая функция, не зависит от внешнего состояния
+  - Не кидает исключений
+
+### `RegionCommentCheck`
+
+- **Type:** Service
+- **Purpose:** Проверка количества комментариев в теле региона и длины аннотации на START-строке. Комментарий = любая строка, начинающаяся с `//` или `/*`, не являющаяся маркером региона. Аннотация = текст после `#region START_<NAME>` на той же строке.
+- **Public Operations:**
+  - `check(content: string, filePath: string, maxComments: number) → LintError[]` — проверить файл на превышение лимита комментариев в регионах
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Превышение `maxComments` в теле региона → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`. Превышение 30 слов в аннотации START → `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `content` — непустая строка
+  - `filePath` — путь к файлу (для сообщений об ошибках)
+  - `maxComments` — целое число ≥ 0 (порог, по умолчанию 3)
+- Postconditions:
+  - Возвращает `LintError[]` (пустой — все регионы в пределах лимитов)
+  - Регион с > `maxComments` комментариев в теле → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`
+  - START-аннотация с > 30 слов → `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`
+- Invariants:
+  - Только корректно закрытые регионы проверяются; непарные START/END делегируются в `AnchorCheck`
+  - Вложенные регионы: комментарии внутренних регионов засчитываются внешним
+  - Чистая функция, не зависит от внешнего состояния
+  - Не кидает исключений
+
 ## 5. Public Options & Policies
 
-| Option             | Bound to                                    | Status        |
-| ------------------ | ------------------------------------------- | ------------- |
-| `--autofix`        | `LintCommand.run()` → `DbcContractCheck`    | active (v1)   |
-| `--staged`         | `LintCommand.run()` → git scan              | active (v1)   |
-| `--max-invariants` | `LintCommand.run()` → `InvariantCountCheck` | active (v1)   |
-| `--exclude`        | `LintCommand.run()` → file filtering        | active (v1)   |
-| `--changed`        | —                                           | deferred (v2) |
+| Option                  | Bound to                                    | Status        |
+| ----------------------- | ------------------------------------------- | ------------- |
+| `--autofix`             | `LintCommand.run()` → `DbcContractCheck`    | active (v1)   |
+| `--staged`              | `LintCommand.run()` → git scan              | active (v1)   |
+| `--max-invariants`      | `LintCommand.run()` → `InvariantCountCheck` | active (v1)   |
+| `--exclude`             | `LintCommand.run()` → file filtering        | active (v1)   |
+| `--max-words`           | `LintCommand.run()` → `WordCountCheck`      | active (v1)   |
+| `--max-region-comments` | `LintCommand.run()` → `RegionCommentCheck`  | active (v1)   |
+| `--changed`             | —                                           | deferred (v2) |
 
 **`--max-invariants` contract:**
 
@@ -464,6 +528,22 @@ ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
 - Пользовательские паттерны добавляются поверх дефолтных
 - Фильтрация применяется после сбора файлов (`resolveTargets` / `--staged`), перед линтингом
 - Glob-синтаксис: `*` (кроме `/`), `**` (включая `/`), `?` (один символ), `[...]` (класс символов)
+
+**`--max-words` contract:**
+
+- Тип: `number`, целое ≥ 1
+- По умолчанию: `25`
+- Назначение: максимальное количество слов в описании JSDoc-тега или file-header строки
+- Передаётся в `WordCountCheck.check(content, filePath, maxWords)`
+- Слова считаются split по пробелам
+
+**`--max-region-comments` contract:**
+
+- Тип: `number`, целое ≥ 0
+- По умолчанию: `3`
+- Назначение: максимальное количество комментариев (`//` или `/*`) в теле одного `#region` блока
+- Передаётся в `RegionCommentCheck.check(content, filePath, maxComments)`
+- START-аннотация проверяется отдельно с фиксированным лимитом 30 слов (не настраивается через CLI)
 
 ### Supported Extensions
 
@@ -522,6 +602,8 @@ cli/cmd/lint/
 │   ├── invariant-count.check.ts # InvariantCountCheck.check()
 │   ├── anchor-class-body.check.ts # AnchorClassBodyCheck.check()
 │   └── anchor-thin.check.ts       # AnchorThinCheck.check()
+│   ├── word-count.check.ts        # WordCountCheck.check()
+│   └── region-comment.check.ts    # RegionCommentCheck.check()
 ├── utils/
 │   └── resolve-references.fn.ts # loadTaskReferences(), extractTaskIdsFromHeader(), resolveReferencesForTasks()
 └── __tests__/
@@ -548,6 +630,8 @@ cli/cmd/lint/
 - `checks/invariant-count.check.ts`: `InvariantCountCheck`
 - `checks/anchor-class-body.check.ts`: `AnchorClassBodyCheck`
 - `checks/anchor-thin.check.ts`: `AnchorThinCheck`
+- `checks/word-count.check.ts`: `WordCountCheck`
+- `checks/region-comment.check.ts`: `RegionCommentCheck`
 - `utils/resolve-references.fn.ts`: `ResolvedReference`, `loadTaskReferences()`, `extractTaskIdsFromHeader()`, `resolveReferencesForTasks()`
 
 ## 6.1 Test Scenarios

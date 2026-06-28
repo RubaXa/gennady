@@ -43,10 +43,7 @@ function formatAndWrite(
 // #endregion END_FORMAT_AND_WRITE
 
 /**
- * @purpose CLI entry point for the sync command.
- * *
- * Parses CLI arguments, resolves the package source directory,
- * compares source with target, and outputs the result.
+ * @purpose CLI entry point for sync. Parses args, resolves package source directory, compares source with target, outputs result.
  * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
  * @param [deps] Optional injectable dependencies for testing.

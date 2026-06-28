@@ -49,12 +49,7 @@ function parseModelArg(raw: string, flag: string): AltOpinionModel {
 }
 
 /**
- * @purpose Parse CLI arguments for the alt-opinion command.
- * *
- * Parses repeated --model, optional --synthModel, --file, --modelPrompt, --synthPrompt, --strict.
- * Validates provider names, mutual exclusion of stdin/--file, :: syntax for per-model prompts,
- * and minimum model count.
- * *
+ * @purpose Parse alt-opinion CLI arguments — --model (repeatable), --synthModel, --file, --modelPrompt, --synthPrompt, --strict. Enforces provider names, stdin/--file exclusion, :: per-model prompt syntax, minimum model count.
  * @param rawArgs Raw CLI arguments (typically process.argv).
  * @param [opts] Options bag carrying pre-read stdin content for test injection.
  *   When omitted and stdin is not a TTY, the parser reads stdin synchronously.

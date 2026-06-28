@@ -15,8 +15,16 @@ import { check as checkLanguage } from './checks/language.check.ts';
 import { check as checkInvariantCount } from './checks/invariant-count.check.ts';
 import { check as checkAnchorClassBody } from './checks/anchor-class-body.check.ts';
 import { check as checkAnchorThin } from './checks/anchor-thin.check.ts';
+import { check as checkWordCount } from './checks/word-count.check.ts';
+import { check as checkRegionComment } from './checks/region-comment.check.ts';
 import { LintReport } from './lint.types.ts';
-import { ERR_CLI_LINT_STAGED_CONFLICT, ERR_CLI_LINT_RESOLVE_FAILED } from './lint.types.ts';
+import {
+  ERR_CLI_LINT_STAGED_CONFLICT,
+  ERR_CLI_LINT_RESOLVE_FAILED,
+  ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
+  ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS,
+  ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG,
+} from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 import {
   loadTaskReferences,
@@ -36,8 +44,10 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     autofix: ['autofix'],
     staged: ['staged'],
     verbose: ['verbose', 'v'],
-    maxInvariants: ['max-invariants'],
-    exclude: ['exclude'],
+    maxInvariants: { aliases: ['max-invariants'], takesValue: true },
+    exclude: { aliases: ['exclude'], takesValue: true },
+    maxWords: { aliases: ['max-words'], takesValue: true },
+    maxRegionComments: { aliases: ['max-region-comments'], takesValue: true },
   });
 
   const positional = (args._ as string[]).filter(
@@ -49,6 +59,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const verbose = args.verbose === true || args.verbose === 'true';
   const maxInvariants =
     typeof args.maxInvariants === 'string' ? parseInt(args.maxInvariants, 10) : 3;
+  const maxWords = typeof args.maxWords === 'string' ? parseInt(args.maxWords, 10) : 25;
+  const maxRegionComments =
+    typeof args.maxRegionComments === 'string' ? parseInt(args.maxRegionComments, 10) : 3;
 
   // Default exclude patterns — always active
   const DEFAULT_EXCLUDES = [
@@ -172,6 +185,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkAnchorClassBody(content, filePath));
     allErrors.push(...checkAnchorThin(content, filePath));
     allErrors.push(...checkInvariantCount(content, filePath, maxInvariants));
+    allErrors.push(...checkWordCount(content, filePath, maxWords));
+    allErrors.push(...checkRegionComment(content, filePath, maxRegionComments));
 
     const dbcResult = await checkDbcContracts(content, filePath, autofix);
     allErrors.push(...dbcResult.errors);
@@ -188,7 +203,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   // #region START_RESOLVE_REFS_OUTPUT — invariant: resolve references from collected task IDs
   const { taskPaths, specPaths } = resolveReferencesForTasks([...foundTaskIds], taskRefMap);
-  const report = new LintReport(allErrors, totalAutoFixed, taskPaths, specPaths);
+  const guidance = buildGuidance(allErrors);
+  const report = new LintReport(allErrors, totalAutoFixed, taskPaths, specPaths, guidance);
   // #endregion END_RESOLVE_REFS_OUTPUT
 
   // #region START_OUTPUT — invariant: ESLint format when errors present
@@ -297,6 +313,40 @@ function walkDir(dir: string, fileSet: Set<string>): void {
 }
 // #endregion END_WALK_DIR
 // #endregion END_RESOLVE_TARGETS
+
+// #region START_BUILD_GUIDANCE — invariant: emits holistic agent hints based on error code families present
+const GUIDANCE_WORD_COUNT =
+  'WORD_COUNT errors found — consider reviewing each affected contract as a whole. Tag-by-tag truncation risks breaking cross-tag consistency. Technique: (1) remove filler words, (2) compress overlapping @purpose/@param/@returns, (3) keep entity names and spec refs.';
+
+const GUIDANCE_REGION_COMMENTS =
+  'REGION_COMMENT errors found — reduce comment density inside #region blocks. Merge adjacent comment lines, move descriptive text outside the region, or split the region. Verify the region still has ≥2 meaningful code lines after cleanup (see AnchorThinCheck).';
+
+/**
+ * @purpose Builds a consolidated guidance hint based on which error code families are present in the report.
+ * @param errors Collected lint errors.
+ * @returns Guidance string, or undefined when no guidance-relevant errors found.
+ */
+function buildGuidance(errors: LintError[]): string | undefined {
+  const codes = new Set(errors.map((e) => e.code));
+
+  const parts: string[] = [];
+
+  if (
+    codes.has(ERR_CLI_LINT_TAG_TOO_MANY_WORDS) ||
+    codes.has(ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG)
+  ) {
+    parts.push(GUIDANCE_WORD_COUNT);
+  }
+
+  if (codes.has(ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS)) {
+    parts.push(GUIDANCE_REGION_COMMENTS);
+  }
+
+  if (parts.length === 0) return undefined;
+
+  return parts.join('\n\n');
+}
+// #endregion END_BUILD_GUIDANCE
 
 // Self-executing for CLI: gennady lint <args>
 const report = await run(process.argv);

@@ -18,8 +18,7 @@ type StackEntry = {
 };
 
 /**
- * @purpose Detects #region START / #endregion END blocks with fewer than 2 meaningful lines
- *         of code. Regions wrapping only comments should be replaced with plain comments.
+ * @purpose Detects #region START / #endregion END blocks with fewer than 2 meaningful code lines. Regions wrapping only comments should be plain comments.
  * @invariant Meaningful line = non-empty, non-`//`-comment, non-region-marker.
  * @invariant Nested regions: code inside inner regions counts toward outer region totals.
  * @param content Source text to validate.

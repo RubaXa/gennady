@@ -9,10 +9,7 @@ import { stripStringsAndComments } from './utils/strip-strings-comments.ts';
 const ANCHOR_RE = /\/\/ #(region|endregion)\s+(START|END)_([A-Z0-9_]+)/;
 
 /**
- * @purpose Detects #region START / #endregion END at class body level.
- *         Regions are allowed only inside method bodies (brace depth >= 2 inside a class)
- *         and at top-level (no enclosing class). Regions at class body level (between
- *         member declarations) are forbidden.
+ * @purpose Detects #region/#endregion at class body level. Allowed only inside method bodies (brace depth >= 2) or top-level. Class-body-level forbidden.
  * @param content Source text to validate.
  * @param filePath File path for error messages.
  * @returns List of lint errors, empty when all regions are correctly placed.

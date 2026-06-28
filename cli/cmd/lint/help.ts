@@ -17,6 +17,8 @@ export function printHelp(): void {
   );
   console.info('  --verbose, -v       Enable debug logging output');
   console.info('  --max-invariants <n>  Max invariants per exported entity (default: 3)');
+  console.info('  --max-words <n>       Max words per JSDoc tag / file-header line (default: 25)');
+  console.info('  --max-region-comments <n>  Max comment lines per #region block (default: 3)');
   console.info('  --exclude <glob>      Exclude files matching glob pattern (repeatable)');
   console.info('');
   console.info('  Default exclude patterns (always active):');

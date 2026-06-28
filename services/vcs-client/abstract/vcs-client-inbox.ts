@@ -5,9 +5,7 @@
 import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
 
 /**
- * @purpose Access to the authenticated user's actionable inbox: merge requests
- *   that require their reaction (review requested, mentioned, assigned) and
- *   their own open MRs (where they await a reaction).
+ * @purpose Access authenticated user's actionable inbox: MRs requiring their reaction (review requested, mentioned, assigned) and own open MRs (awaiting reaction).
  * @invariant Error Policy: Network/GraphQL errors are thrown outward.
  * @invariant Identity: The authenticated token implicitly defines "me"; no
  *   user id/username is passed in.

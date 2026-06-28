@@ -16,10 +16,7 @@ const execFileAsync = promisify(execFile);
 /**
  * @purpose Env variables to strip from the subprocess so `opencode run` is portable across environments.
  * @invariant Proxy vars (both case variants) — a corporate proxy returns 403 for the provider.
- * @invariant `OPENCODE_SERVER_PASSWORD`/`OPENCODE_SERVER_USERNAME` — when present (the desktop app exports
- *   them for its sidecar server and they leak into child shells), `opencode run`'s in-process server enables
- *   basic auth but the embedded client creates the session unauthenticated → `Error: Session not found`
- *   (opencode bug anomalyco/opencode#8502, #24204). Stripping them is the reliable fix.
+ * @invariant `OPENCODE_SERVER_PASSWORD`/`OPENCODE_SERVER_USERNAME` — when present in env, opencode enables basic auth but unauthenticated session creation fails (#8502, #24204). Stripping them fixes it.
  */
 const STRIPPED_ENV_VARS = [
   'HTTPS_PROXY',
@@ -36,9 +33,7 @@ const STRIPPED_ENV_VARS = [
 const READONLY_AGENT = 'readonly';
 
 /**
- * @purpose Absolute path to the bundled static opencode config that defines the `readonly` agent
- *   (denies edit/write/patch; everything else — including bash — stays allowed). Merged into the
- *   user's opencode config via the `OPENCODE_CONFIG` env var, so providers/credentials are preserved.
+ * @purpose Absolute path to bundled static opencode config defining readonly agent (denies edit/write/patch; bash stays allowed). Merged via `OPENCODE_CONFIG` env var.
  * @invariant Static file shipped with the package next to this module (no runtime generation, no AI).
  */
 const READONLY_CONFIG_PATH = fileURLToPath(new URL('./readonly.config.json', import.meta.url));
@@ -58,9 +53,7 @@ const MODELS_LINE_PATTERN = /^[^\s/]+\/[^\s]+$/;
 /**
  * @purpose Compose an isolated, portable subprocess environment for `opencode run`.
  * @param base Source environment record (typically `process.env`).
- * @returns New env record: stripped of proxy + opencode server-auth vars; OPENCODE_CONFIG → readonly
- *   agent config; OPENCODE_DB → :memory: so each run uses its own session store (no contention with a
- *   running desktop app or other runs — truly stateless launch→execute→exit).
+ * @returns New env record: proxy + server-auth vars stripped; OPENCODE_CONFIG → readonly agent config; OPENCODE_DB → :memory: (isolated session store, no contention — stateless).
  */
 export function composeCleanEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env = { ...base };
@@ -125,9 +118,7 @@ export class OpencodeEngine implements AgentEngine {
     );
 
     // #region START_MODEL_PREVALIDATION
-    // failure mode: opencode does NOT surface an invalid model in stderr (it returns a generic
-    // "UnknownError: Unexpected server error"), so MODEL_UNAVAILABLE cannot be detected post-run.
-    // Validate an EXPLICIT model against listModels() up front → reliable MODEL_UNAVAILABLE with the list.
+    // failure mode: opencode does NOT surface an invalid model in stderr (returns generic UnknownError). Validate explicit model against listModels() up front → reliable MODEL_UNAVAILABLE.
     // Only on explicit model (default is trusted); skip if listing degrades to [] (don't block the run).
     if (options.model !== undefined) {
       const available = await this.listModels();
@@ -166,8 +157,7 @@ export class OpencodeEngine implements AgentEngine {
     // #region START_SUBPROCESS_RUN — invariant: process guaranteed dead when promise settles (SIGTERM→SIGKILL on timeout)
     return new Promise<RunResult>((resolve, reject) => {
       let settled = false;
-      // invariant: set before SIGTERM; prevents close handler from winning the rejection race
-      let timedOut = false;
+      let timedOut = false; // invariant: set before SIGTERM; prevents close handler from winning rejection race
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];
 
@@ -222,8 +212,7 @@ export class OpencodeEngine implements AgentEngine {
         );
 
         // note: MODEL_UNAVAILABLE is detected up front via model pre-validation (opencode does not
-        // surface invalid-model in stderr — it returns a generic UnknownError), so post-run mapping
-        // here covers the other failure codes only.
+        // surface invalid-model in stderr), so post-run mapping here covers other failure codes only.
         reject(new AgentRunError(mapping.code, mapping.hint));
       });
       // #endregion END_PROCESS_EXIT_HANDLING

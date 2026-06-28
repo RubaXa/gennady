@@ -284,7 +284,7 @@ function formatErrors(errors: DbcLintError[]): string {
 // --- DBC_TS_LINTER
 
 /**
- * @purpose TypeScript adapter implementing the DbcLinter contract. | Pass 1: AST extraction. Pass 2: contract validation + signature matching. | Pass 3: ESLint report. Pass 4: autofix chain.
+ * @purpose TypeScript DbcLinter adapter. Pass 1: AST extraction. Pass 2: contract validation + signature matching. Pass 3: ESLint report. Pass 4: autofix chain.
  * @implements {DbcLinter} in ../../dbc-linter.types.ts
  * @invariant Never throws — all errors are returned via report objects.
  * @invariant Error order is stable (top-to-bottom by entity position).
@@ -1011,7 +1011,7 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /**
-   * @purpose Reorder contract tags to canonical DBC order. | Order: description → purpose → implements → invariant → pre → param(*) → | throws → returns → post → sideEffect → other tags.
+   * @purpose Reorder contract tags to DBC order: description→purpose→implements→invariant→pre→param→throws→returns→post→sideEffect.
    * @param jsdocText Raw JSDoc comment text.
    * @returns JSDoc text with tags in canonical order.
    */
@@ -1101,7 +1101,7 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /**
-   * @purpose Normalize multi-line JSDoc format: ensure closing marker is on its own line | and opening marker is bare (no content after it). | Preserves original indentation by patching specific format issues | rather than reconstructing the entire block.
+   * @purpose Normalize multi-line JSDoc format: closing marker on own line, opening marker bare (no content after). Preserves original indentation, patches specific issues not full reconstruction.
    * @invariant Single-line contracts pass through unchanged.
    * @param jsdocText Raw JSDoc comment text.
    * @returns Normalized JSDoc text.
@@ -1153,7 +1153,7 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /**
-   * @purpose Detect the indentation pattern used by content lines. | Returns the whitespace prefix before `*` on the first content line, | or the indent of the opening line as fallback.
+   * @purpose Detect indentation pattern of content lines. Returns whitespace prefix before `*` on first content line, or opening line indent as fallback.
    * @param lines All lines of the JSDoc block (may be mutated by Step 1).
    * @returns Indent string for `*`-prefixed content lines.
    */
@@ -1170,7 +1170,7 @@ export class DbcTsLinter implements DbcLinter {
   }
 
   /**
-   * @purpose Attempt to convert a multi-line JSDoc comment to single-line format. | Inlines only single-tag contracts (1 @tag); multi-tag contracts stay multi-line. | Performs a dry-run through the parser: if the inline version introduces new | parse errors, the original multi-line text is returned unchanged.
+   * @purpose Convert multi-line JSDoc to single-line when safe. Only single-tag contracts inlined; multi-tag stay multi-line. Dry-run parser: if inline version introduces parse errors, original returned.
    * @param jsdocText Raw JSDoc comment text.
    * @returns Inline text if safe, otherwise the original text.
    */
