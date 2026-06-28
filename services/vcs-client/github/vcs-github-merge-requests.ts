@@ -46,7 +46,6 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose List pull requests by repository and optional filters.
    * @param query Parameters: { project (owner/repo), sourceBranch? (head), state?, perPage?, page? }.
    * @returns List of pull requests matching filters.
    * @sideEffect Network: GET /repos/:owner/:repo/pulls
@@ -65,7 +64,6 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Get first pull request matching filters.
    * @param query Query object.
    * @returns First found PR or null.
    * @sideEffect Network: Delegates to getList() with per_page=1 limit.
@@ -77,7 +75,6 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Get pull request by number within a repository.
    * @param query Parameters: { project (owner/repo), iid (PR number) }.
    * @returns Pull request object or null on 404.
    * @sideEffect Network: GET /repos/:owner/:repo/pulls/:number
@@ -98,7 +95,7 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   /**
    * @purpose GitHub approve not implemented — deferred per scope spec.
    * @param _query Parameters: { repository, iid }.
-   * @throws Error that the operation is not implemented.
+   * @returns Nothing; throws Error that the operation is not implemented.
    */
   async approve(_query: VcsMergeRequestApproveQuery): Promise<void> {
     throw new Error('GitHub approve not implemented');
@@ -107,7 +104,7 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   /**
    * @purpose GitHub unapprove not implemented — deferred per scope spec.
    * @param _query Parameters: { repository, iid }.
-   * @throws Error that the operation is not implemented.
+   * @returns Nothing; throws Error that the operation is not implemented.
    */
   async unapprove(_query: VcsMergeRequestApproveQuery): Promise<void> {
     throw new Error('GitHub unapprove not implemented');
@@ -116,14 +113,13 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   /**
    * @purpose GitHub getPipeline not implemented — deferred per scope spec.
    * @param _query Parameters: { project, iid }.
-   * @throws Error that the operation is not implemented.
+   * @returns Nothing; throws Error that the operation is not implemented.
    */
   async getPipeline(_query: VcsPipelineQuery): Promise<VcsPipelineStatus> {
     throw new Error('GitHub getPipeline not implemented');
   }
 
   /**
-   * @purpose Get list of changed files in a pull request.
    * @param query Target repository and PR number, optional pagination.
    * @returns List of changed files with metadata.
    * @sideEffect Network: GET /repos/:owner/:repo/pulls/:number/files
@@ -175,7 +171,6 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Create a new GitHub Pull Request.
    * @param query Parameters: { project (owner/repo), title, sourceBranch (head), ... }.
    * @returns Created PR object.
    * @sideEffect Network: POST /repos/:owner/:repo/pulls
@@ -208,7 +203,6 @@ export class VcsGithubMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Update an existing GitHub Pull Request.
    * @param query Guaranteed-non-empty validated update query from abstract port.
    * @returns Updated PR object.
    * @sideEffect Network: PATCH /repos/:owner/:repo/pulls/:number

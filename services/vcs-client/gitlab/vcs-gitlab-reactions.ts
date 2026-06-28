@@ -12,16 +12,21 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
  * @consumer VcsGitlabClient
  */
 export class VcsGitlabReactions extends VcsClientReactions {
+  /** @purpose Bound HTTP request function injected for GitLab API calls */
   protected _request: RequestFn;
 
+  /**
+   * @purpose Wire the HTTP request adapter for GitLab reaction endpoints.
+   * @param request Authenticated HTTP request function targeting GitLab API.
+   */
   constructor(request: RequestFn) {
     super();
     this._request = request;
   }
 
   /**
-   * @purpose Add an emoji award to a note.
    * @param query Parameters: { project, iid, noteId, emoji }.
+   * @returns Nothing; void operation.
    * @sideEffect Network: POST /projects/:id/merge_requests/:iid/notes/:note_id/award_emoji?name=<emoji>
    * @see {VcsClientReactions#add} in services/vcs-client/abstract/vcs-client-reactions.ts
    */
@@ -36,8 +41,8 @@ export class VcsGitlabReactions extends VcsClientReactions {
   }
 
   /**
-   * @purpose Remove own emoji award from a note.
    * @param query Parameters: { project, iid, noteId, emoji }.
+   * @returns Nothing; void operation.
    * @sideEffect Network: DELETE /projects/:id/merge_requests/:iid/notes/:note_id/award_emoji/<award_id>
    * @see {VcsClientReactions#remove} in services/vcs-client/abstract/vcs-client-reactions.ts
    */

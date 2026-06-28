@@ -12,16 +12,21 @@ type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
  * @consumer VcsGithubClient
  */
 export class VcsGithubReactions extends VcsClientReactions {
+  /** @purpose Bound HTTP request function injected for GitHub API calls */
   protected _request: RequestFn;
 
+  /**
+   * @purpose Wire the HTTP request adapter for GitHub reaction endpoints.
+   * @param request Authenticated HTTP request function targeting GitHub API.
+   */
   constructor(request: RequestFn) {
     super();
     this._request = request;
   }
 
   /**
-   * @purpose Add a reaction to a comment (issue comment or PR review comment).
    * @param query Parameters: { project, iid, noteId, emoji }.
+   * @returns Nothing; void operation.
    * @sideEffect Network: POST /repos/:owner/:repo/issues/comments/:comment_id/reactions
    * @see {VcsClientReactions#add} in services/vcs-client/abstract/vcs-client-reactions.ts
    */
@@ -34,8 +39,8 @@ export class VcsGithubReactions extends VcsClientReactions {
   }
 
   /**
-   * @purpose Remove own reaction from a comment.
    * @param query Parameters: { project, iid, noteId, emoji }.
+   * @returns Nothing; void operation.
    * @sideEffect Network: DELETE /repos/:owner/:repo/issues/comments/:comment_id/reactions/<reaction_id>
    * @see {VcsClientReactions#remove} in services/vcs-client/abstract/vcs-client-reactions.ts
    */

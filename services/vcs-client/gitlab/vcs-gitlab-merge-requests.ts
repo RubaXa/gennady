@@ -312,7 +312,6 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Create a new GitLab Merge Request.
    * @param query Parameters: { project, title, sourceBranch, ... }.
    * @returns Created MR object.
    * @sideEffect Network: POST /projects/:id/merge_requests
@@ -346,7 +345,6 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
   }
 
   /**
-   * @purpose Update an existing GitLab Merge Request.
    * @param query Guaranteed-non-empty validated update query from abstract port.
    * @returns Updated MR object.
    * @sideEffect Network: PUT /projects/:id/merge_requests/:iid

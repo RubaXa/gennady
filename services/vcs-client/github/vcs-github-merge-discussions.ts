@@ -66,13 +66,24 @@ function normalizeComment(
  * @consumer VcsGithubClient
  */
 export class VcsGithubMergeDiscussions extends VcsClientMergeDiscussions {
+  /** @purpose Bound HTTP request function injected for GitHub API calls */
   protected _request: RequestFn;
 
+  /**
+   * @purpose Wire the HTTP request adapter for GitHub discussion endpoints.
+   * @param request Authenticated HTTP request function targeting GitHub API.
+   */
   constructor(request: RequestFn) {
     super();
     this._request = request;
   }
 
+  /**
+   * @param query Target repo, PR number.
+   * @returns Normalized discussion list — issue comments + review comments.
+   * @sideEffect Network: GET /repos/:repo/issues/:iid/comments + /repos/:repo/pulls/:iid/comments
+   * @see {VcsClientMergeDiscussions#getList} in services/vcs-client/abstract/vcs-merge-discussions.ts
+   */
   async getList(query: VcsDiscussionsListQuery): Promise<unknown[]> {
     const repo = query.project;
     const iid = String(query.iid);
@@ -91,10 +102,22 @@ export class VcsGithubMergeDiscussions extends VcsClientMergeDiscussions {
     return [...general, ...review];
   }
 
+  /**
+   * @param query Target repo, PR number.
+   * @returns All discussions for the PR.
+   * @sideEffect Network: delegates to getList.
+   * @see {VcsClientMergeDiscussions#getAll} in services/vcs-client/abstract/vcs-merge-discussions.ts
+   */
   async getAll(query: { project: string; iid: string | number }): Promise<unknown[]> {
     return this.getList({ project: query.project, iid: query.iid });
   }
 
+  /**
+   * @param query Target repo, PR number, and note body.
+   * @returns Created comment object from GitHub API.
+   * @sideEffect Network: POST /repos/:repo/issues/:iid/comments
+   * @see {VcsClientMergeDiscussions#addNote} in services/vcs-client/abstract/vcs-merge-discussions.ts
+   */
   async addNote(query: VcsAddNoteQuery): Promise<unknown> {
     const result = (await this._request(
       `/repos/${query.project}/issues/${String(query.iid)}/comments`,
@@ -107,6 +130,12 @@ export class VcsGithubMergeDiscussions extends VcsClientMergeDiscussions {
     return result;
   }
 
+  /**
+   * @param query Target repo, PR number, optional position and body.
+   * @returns Created discussion object.
+   * @sideEffect Network: POST /repos/:repo/pulls/:iid/comments (line) or delegates to addNote (general).
+   * @see {VcsClientMergeDiscussions#createDiscussion} in services/vcs-client/abstract/vcs-client-merge-discussions.ts
+   */
   async createDiscussion(query: VcsCreateDiscussionQuery): Promise<unknown> {
     if (query.position) {
       const result = (await this._request(
@@ -126,38 +155,83 @@ export class VcsGithubMergeDiscussions extends VcsClientMergeDiscussions {
     return this.addNote({ ...query, discussionId: '' });
   }
 
+  /**
+   * @param _query Resolve parameters — not applicable to GitHub PRs.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async resolveDiscussion(_query: VcsResolveDiscussionQuery): Promise<void> {
     throw new Error('GitHub resolve discussion not implemented');
   }
 
+  /**
+   * @param _query Update parameters — not applicable to GitHub PRs.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async updateNote(_query: VcsUpdateNoteQuery): Promise<void> {
     throw new Error('GitHub update note not implemented');
   }
 
+  /**
+   * @param _query Delete parameters — not applicable to GitHub PRs.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async deleteNote(_query: VcsDeleteNoteQuery): Promise<void> {
     throw new Error('GitHub delete note not implemented');
   }
 
+  /**
+   * @param _query Delete parameters — not applicable to GitHub PRs.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async deleteDiscussion(_query: VcsDeleteDiscussionQuery): Promise<void> {
     throw new Error('GitHub delete discussion not implemented');
   }
 
+  /**
+   * @param _query Target repo and PR number.
+   * @returns Empty list — GitHub does not have draft notes.
+   * @sideEffect None.
+   */
   async listDraftNotes(_query: { project: string; iid: string | number }): Promise<unknown[]> {
     return [];
   }
 
+  /**
+   * @param _query Draft note creation parameters.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async createDraftNote(_query: VcsCreateDraftNoteQuery): Promise<VcsDraftNote> {
     throw new Error('GitHub draft notes not implemented');
   }
 
+  /**
+   * @param _query Draft note update parameters.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async updateDraftNote(_query: VcsUpdateDraftNoteQuery): Promise<VcsDraftNote> {
     throw new Error('GitHub draft notes not implemented');
   }
 
+  /**
+   * @param _query Draft note delete parameters.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async deleteDraftNote(_query: VcsDeleteDraftNoteQuery): Promise<void> {
     throw new Error('GitHub draft notes not implemented');
   }
 
+  /**
+   * @param _query Draft note publish parameters.
+   * @returns Nothing; throws not-implemented error.
+   * @sideEffect None.
+   */
   async publishDraftNote(_query: VcsPublishDraftNoteQuery): Promise<void> {
     throw new Error('GitHub draft notes not implemented');
   }
