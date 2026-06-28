@@ -1112,7 +1112,7 @@ $ gennady vcs-approve                                          # merge conflict
 ✖ GitLab API error [409]: Merge request cannot be approved.    # exit 1
 ```
 
-Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Выставляет approve через `POST /projects/:id/merge_requests/:iid/approve`. `--dry-run` печатает что было бы отправлено без реального вызова API. GitHub — deferred.
+Использует `vcs-context-resolver` (см. §4.1.14) для определения MR и хоста. Выставляет approve через `POST /projects/:id/merge_requests/:iid/approve`. `--dry-run` печатает что было бы отправлено без реального вызова API. GitHub approve — deferred (stub).
 
 ## 4. Requirements & Constraints
 
@@ -1460,7 +1460,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-CTX-14 | `resolveVcsContext(args, deps)` — чистая async-функция с DI (`git`, `env`), тестируема без monkey-patching                                                 |
 | FR-CTX-15 | `VcsCliArgs: { ref?, project?, iid?, branch?, host? }` — входные параметры                                                                                 |
 | FR-CTX-16 | `VcsCliDeps: { git(cmd: string[]): Promise<string>, env(name: string): string \| undefined }`                                                              |
-| FR-CTX-17 | Проверка провайдера: host валидируется через `/gitlab/i`. Не-GitLab → `VcsResolveError` с сообщением, что GitHub — deferred                                |
+| FR-CTX-17 | Определение провайдера: host содержит `github` → `'github'`, иначе → `'gitlab'`. Токен: `GITHUB_PERSONAL_TOKEN` / `GITHUB_TOKEN` для GitHub, `GITLAB_PERSONAL_TOKEN` для GitLab |
 
 ### 4.1.15 vcs-approve Functional Requirements
 
