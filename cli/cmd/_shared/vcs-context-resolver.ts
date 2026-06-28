@@ -40,9 +40,9 @@ export type VcsCliArgs = {
 
 /** @purpose Fully resolved VCS context for API calls. */
 export type VcsCliContext = {
-  /** @purpose VCS provider identifier | @invariant Currently always 'gitlab' */
-  provider: 'gitlab';
-  /** @purpose VCS host (e.g. gitlab.company.com) */
+  /** @purpose VCS provider identifier */
+  provider: 'gitlab' | 'github';
+  /** @purpose VCS host (e.g. gitlab.company.com, github.com) */
   host: string;
   /** @purpose Project path (group/repo) */
   project: string;
@@ -50,7 +50,7 @@ export type VcsCliContext = {
   iid?: number;
   /** @purpose Current git branch when auto-detected */
   branch?: string;
-  /** @purpose GitLab personal access token */
+  /** @purpose Personal access token */
   token: string;
 };
 
@@ -122,7 +122,7 @@ function parseGitRemoteUrl(url: string): { host: string; project: string } | nul
 /**
  * @purpose Resolve VCS context from CLI args, git state, and environment.
  * @implements {VcsCliContext} in specs/cli/cli.spec.md#VcsCliContext
- * @invariant Priority: ref > project+iid > branch (auto). Provider check via /gitlab/i.
+ * @invariant Priority: ref > project+iid > branch (auto). Provider detected from host.
  * @param args CLI input arguments.
  * @param [deps] Injectable dependencies — defaults to real child_process and process.env.
  * @throws {VcsResolveError} On mutual exclusion, missing token, non-GitLab host, missing git remote, or branch not found.
@@ -197,11 +197,7 @@ export async function resolveVcsContext(
   // #endregion END_RESOLVE_HOST_AND_PROJECT
 
   // #region START_PROVIDER_CHECK
-  if (!/gitlab/i.test(host)) {
-    const msg = '[resolveVcsContext] GitHub is deferred';
-    logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
-    throw new VcsResolveError('GitHub is deferred');
-  }
+  const provider: VcsCliContext['provider'] = /github/i.test(host) ? 'github' : 'gitlab';
   // #endregion END_PROVIDER_CHECK
 
   // #region START_RESOLVE_BRANCH
@@ -225,17 +221,20 @@ export async function resolveVcsContext(
   // #endregion END_RESOLVE_BRANCH
 
   // #region START_RESOLVE_TOKEN
-  const token = deps.env('GITLAB_PERSONAL_TOKEN');
+  const token =
+    provider === 'github'
+      ? (deps.env('GITHUB_PERSONAL_TOKEN') ?? deps.env('GITHUB_TOKEN'))
+      : deps.env('GITLAB_PERSONAL_TOKEN');
   if (!token) {
-    const msg =
-      '[resolveVcsContext] Не найден токен доступа GitLab. Установите GITLAB_PERSONAL_TOKEN.';
+    const envVar = provider === 'github' ? 'GITHUB_PERSONAL_TOKEN or GITHUB_TOKEN' : 'GITLAB_PERSONAL_TOKEN';
+    const msg = `[resolveVcsContext] Не найден токен доступа. Установите ${envVar}.`;
     logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
-    throw new VcsResolveError('Не найден токен доступа GitLab. Установите GITLAB_PERSONAL_TOKEN.');
+    throw new VcsResolveError(`Не найден токен доступа. Установите ${envVar}.`);
   }
   // #endregion END_RESOLVE_TOKEN
 
   const context: VcsCliContext = {
-    provider: 'gitlab',
+    provider,
     host,
     project,
     iid: explicitIid,

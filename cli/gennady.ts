@@ -139,6 +139,18 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/vcs-draft-note/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'vcs-mr-create':
+      await import('./cmd/vcs-mr-create/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'vcs-mr-edit':
+      await import('./cmd/vcs-mr-edit/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'vcs-discussions':
+      await import('./cmd/vcs-discussions/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -252,6 +264,18 @@ switch (command) {
 
   case 'vcs-draft-note':
     await import('./cmd/vcs-draft-note/index.ts');
+    break;
+
+  case 'vcs-mr-create':
+    await import('./cmd/vcs-mr-create/index.ts');
+    break;
+
+  case 'vcs-mr-edit':
+    await import('./cmd/vcs-mr-edit/index.ts');
+    break;
+
+  case 'vcs-discussions':
+    await import('./cmd/vcs-discussions/index.ts');
     break;
 
   default:

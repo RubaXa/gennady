@@ -12,6 +12,10 @@
 | vcs-reply         | [cmd/vcs-reply/](cmd/vcs-reply/)                 | Постинг ответов в GitLab MR discussions                                             |
 | vcs-draft-note    | [cmd/vcs-draft-note/](cmd/vcs-draft-note/)       | Управление черновиками (draft notes) в GitLab MR                                    |
 | vcs-approve       | [cmd/vcs-approve/](cmd/vcs-approve/)             | Approve GitLab MR через API                                                         |
+| vcs-mr-create     | [cmd/vcs-mr-create/](cmd/vcs-mr-create/)         | Создание MR/PR из текущей ветки (GitLab + GitHub)                                   |
+| vcs-mr-edit       | [cmd/vcs-mr-edit/](cmd/vcs-mr-edit/)             | Редактирование MR/PR (title, draft/ready, labels)                                   |
+| vcs-discussions   | [cmd/vcs-discussions/](cmd/vcs-discussions/)     | Человекочитаемый вывод дискуссий MR/PR                                              |
+| vcs-react         | [cmd/vcs-react/](cmd/vcs-react/)                 | Emoji реакции на комментарии (👍 🚀 ❤️)                                             |
 | vcs-diff          | [cmd/vcs-diff/](cmd/vcs-diff/)                   | Список изменённых файлов MR или содержимое файла на head                            |
 | vcs-todo          | [cmd/vcs-todo/](cmd/vcs-todo/)                   | Закрытие pending-todo GitLab (финализация MR)                                       |
 | vcs-pipeline      | [cmd/vcs-pipeline/](cmd/vcs-pipeline/)           | Статус пайплайна MR: сводка джоб, логи упавших                                      |
