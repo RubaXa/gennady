@@ -12,7 +12,7 @@ export function printHelp(): void {
   console.info('');
   console.info(style.bold('Флаги:'));
   console.info('  --ref <ref>              MR ref (обязателен)');
-  console.info('  --vcs-source=<host>      GitLab host (автодетект из origin)');
+  console.info('  --vcs-host=<host>      GitLab host (автодетект из origin)');
   console.info('  --skip-worktree          Без клона — changeset и worktree пусты');
   console.info('  --skip-threads           Без обсуждений — threads/stage пусты');
   console.info('  --repos-base=<dir>       База поиска клонов (default ~/Developer)');

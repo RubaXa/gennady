@@ -18,6 +18,7 @@ export function printHelp(): void {
   console.info('  --iid <id>               Merge request internal ID');
   console.info('  --branch <name>          Override auto-detected branch');
   console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run, --dry         Print what would be sent without calling API');
   console.info('  --revoke, --unapprove    Remove previous approval');
   console.info('');

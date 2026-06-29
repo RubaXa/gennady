@@ -174,7 +174,7 @@ async function run(): Promise<number> {
       return 1;
     }
 
-    const vcsSource = parseValue(argv, '--vcs-source');
+    const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
     const vcsCliArgs: VcsCliArgs = { ref, host: vcsSource };
     const context = await resolveVcsContext(vcsCliArgs);
     const project = context.project;

@@ -27,6 +27,7 @@ export function printHelp(): void {
   console.info('  --reviewer <id>          Reviewer user ID');
   console.info('  --milestone <id>         Milestone ID');
   console.info('  --host <hostname>        GitLab host');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run, --dry         Print without calling API');
   console.info('');
   console.info('Examples:');

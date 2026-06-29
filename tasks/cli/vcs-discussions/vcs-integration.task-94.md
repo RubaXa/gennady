@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-94
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Зарегистрировать три новые команды (`vcs-mr-create`, `vcs-mr-edit`, `vcs-discussions`) в `cli/gennady.ts` (switch + help), обновить `cli/cmd/README.md` (таблица команд + use cases), обновить `cli/AGENTS.md` (таблица команд).
 - **Scope:** `vcs-mr-management`
 - **Module:** `integration`
@@ -21,7 +21,7 @@
 
 | ID  | Kind | Deps                   | Status   |
 | --- | ---- | ---------------------- | -------- |
-| P1  | impl | TSK-91, TSK-92, TSK-93 | [ ] TODO |
+| P1  | impl | TSK-91, TSK-92, TSK-93 | [x] DONE |
 
 ### P1 — impl
 
@@ -41,4 +41,6 @@
 
 ## 7. Execution Log
 
-_(Round = один execute-then-audit цикл.)_
+| Round | Date | Status | Notes |
+|-------|------|--------|-------|
+| R1 | 2025-06-29 | PASS | All 3 commands registered in gennady.ts switch, AGENTS.md table, cmd/README.md. |

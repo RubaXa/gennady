@@ -290,7 +290,7 @@ export async function run(
     ref: { aliases: ['ref'], takesValue: true },
     project: { aliases: ['project'], takesValue: true },
     iid: { aliases: ['iid'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     create: { aliases: ['create'], takesValue: true },
     update: { aliases: ['update'], takesValue: true },
     delete: { aliases: ['delete'], takesValue: true },

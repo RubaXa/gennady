@@ -104,7 +104,7 @@ gennady vcs-worktree --cleanup-all
 - **Type:** Command
 - **Purpose:** Постинг в GitLab MR: reply в тред, новая дискуссия, line-comment, resolve/reopen, code suggestion, edit/delete заметок. Читает JSON-массив из stdin.
 - **DI:** Принимает `MainOpts` напрямую: vcs, token, project, iid, dryRun, stdinJsonArray, host.
-- **Options:** `--project` (обязателен), `--iid` (обязателен), `--dry-run/--dry`, `--vcs-source`
+- **Options:** `--project` (обязателен), `--iid` (обязателен), `--dry-run/--dry`, `--vcs-host`
 - **Item types:** `reply`, `discussion`, `line`, `delete-note`, `delete-discussion`, `resolve`, `reopen`, `edit-note`, `suggestion`
 
 ### VcsTodoCommand
@@ -112,14 +112,14 @@ gennady vcs-worktree --cleanup-all
 - **Type:** Command
 - **Purpose:** Отметка GitLab Todo как done: все todo для MR (`--done <ref>`) или конкретный todo по id (`--id`).
 - **DI:** Принимает `MainOpts` напрямую: doneRef, todoId, dryRun, host, vcsContext.
-- **Options:** `--done <ref>`, `--id <todoId>`, `--dry-run/--dry`, `--vcs-source/--host`
+- **Options:** `--done <ref>`, `--id <todoId>`, `--dry-run/--dry`, `--vcs-host/--host`
 
 ### VcsWorktreeCommand
 
 - **Type:** Command
 - **Purpose:** Подготовка read-only detached git worktree для MR-ревью. GC старых worktree (TTL=3h) на каждом prepare. Clone-кеширование.
 - **DI:** Использует `resolveVcsContext` напрямую, `VcsGitlabClient`, и локальные модули логики.
-- **Options:** `--ref` (обязателен для prepare), `--vcs-source`, `--repos-base`, `--state-dir`, `--cleanup <path>`, `--cleanup-all`
+- **Options:** `--ref` (обязателен для prepare), `--vcs-host`, `--repos-base`, `--state-dir`, `--cleanup <path>`, `--cleanup-all`
 
 ### VcsContextResolver
 
@@ -140,7 +140,7 @@ gennady vcs-worktree --cleanup-all
 | FR-06 | Каждая команда имеет `help.ts` с `printHelp()` и `index.ts` с entry point                 |
 | FR-07 | Exit code: `0` — успех (включая идемпотентные кейсы), `1` — ошибка                        |
 | FR-08 | Токен: `GITLAB_PERSONAL_TOKEN` из env; fallback — ошибка с Usage                          |
-| FR-09 | `--vcs-source`/`--host` позволяет указать self-hosted GitLab (переопределяет авто-детект) |
+| FR-09 | `--vcs-host`/`--host` позволяет указать self-hosted GitLab (переопределяет авто-детект) |
 | FR-10 | Логирование через `#logger` (алиас на `service/logger/logger.ts`)                         |
 
 ## 5. Non-Functional Constraints

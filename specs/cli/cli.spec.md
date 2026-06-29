@@ -1032,21 +1032,21 @@ $ gennady review-issues
 ### 3.10 inbox DX (agent-inbox)
 
 ```text
-$ gennady inbox [--host=<host>]                                # --vcs-source как алиас
+$ gennady inbox [--host=<host>]                                # --vcs-host как алиас
 Inbox — 20 actionable  [20 new]  (скрыто: 84 stale, 35 drafts, 5 noise)
 ▸ Ждут моё ревью — 17   ▸ Мои MR — 3
    NEW [ответить] group/proj!510  …      NEW [ревью] group/proj!524  …
 
-$ gennady inbox --pick group/proj!510 [--vcs-source=<host>]   # work packet (стадия + открытые вопросы)
+$ gennady inbox --pick group/proj!510 [--vcs-host=<host>]   # work packet (стадия + открытые вопросы)
 $ gennady inbox --reset                                       # чистый лист: реестр + черновики + worktrees
 ```
 
-`inbox` — продуктовая поверхность скилла `agent-inbox` (см. scope agent-inbox): один GraphQL-запрос (`Inbox.getActionable`), группировка по роли, отсев шума, дельта `NEW`/`↑` через глобальный реестр `~/.gennady/inbox-registry.json`, стадия каждого MR (review_needed/reply_needed/awaiting) через скан обсуждений. Host автодетектится из origin; `--vcs-source=<host>` отключает автодетект.
+`inbox` — продуктовая поверхность скилла `agent-inbox` (см. scope agent-inbox): один GraphQL-запрос (`Inbox.getActionable`), группировка по роли, отсев шума, дельта `NEW`/`↑` через глобальный реестр `~/.gennady/inbox-registry.json`, стадия каждого MR (review_needed/reply_needed/awaiting) через скан обсуждений. Host автодетектится из origin; `--vcs-host=<host>` отключает автодетект.
 
 ### 3.11 vcs-worktree DX
 
 ```text
-$ gennady vcs-worktree --ref group/proj!510 [--vcs-source=<host>]
+$ gennady vcs-worktree --ref group/proj!510 [--vcs-host=<host>]
 worktree ready — group/proj!510
 path:   ~/.gennady/worktrees/group__proj-510
 diff_refs: base=… start=… head=…    # для line-комментов
@@ -1400,7 +1400,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-IB-01 | `gennady inbox` — `Inbox.getActionable()` → группировка по роли (reviewer/author/mentioned), отсев (no-role/stale/drafts), CI-события только для author |
 | FR-IB-02 | Реестр `~/.gennady/inbox-registry.json` (глобальный): метки `NEW`/`↑updated` по `updatedAt` vs прошлый прогон; `--no-save` — read-only                  |
 | FR-IB-03 | Стадия каждого видимого MR (review_needed/reply_needed/awaiting_reply/idle) через скан обсуждений + identity; idle берёт стадию из реестра              |
-| FR-IB-04 | `--vcs-source=<host>` отключает автодетект origin; `--pick <ref>` — work packet (стадия + open questions) одного MR                                     |
+| FR-IB-04 | `--vcs-host=<host>` отключает автодетект origin; `--pick <ref>` — work packet (стадия + open questions) одного MR                                     |
 | FR-IB-05 | `--reset` — чистый лист: удалить реестр, черновики (`~/.gennady/inbox-out/`) и worktrees                                                                |
 | FR-IB-06 | Флаги отсева: `--drafts`, `--include-stale`, `--stale-days=N`, `--ci-all`, `--all`                                                                      |
 
@@ -1449,7 +1449,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-CTX-03 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                           |
 | FR-CTX-04 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                         |
 | FR-CTX-05 | `--branch/-b <name>` — явный override ветки                                                                                                                                     |
-| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-source` для обратной совместимости с inbox                                                                  |
+| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-host` для обратной совместимости с inbox                                                                  |
 | FR-CTX-07 | Приоритет источника: `ref › project+iid › branch (auto)`. `--ref` и `--branch` одновременно → ошибка: «--ref и --branch взаимоисключающие»                                      |
 | FR-CTX-08 | Токен: `GITLAB_PERSONAL_TOKEN` env var                                                                                                                                          |
 | FR-CTX-09 | Если ветка не найдена И нет явного ref/project+iid → `VcsResolveError` с понятным сообщением (не exit — resolver возвращает значение, exit решает команда)                      |
@@ -2704,13 +2704,13 @@ graph TD
 
 ### Round 1 — 2026-06-26
 - Verdict: CRITICAL
-- Accepted: 11 — phantom FR-IDs в FR-RI-01, FR-CTX-09 ответственность resolver vs команда, out-of-scope resolver, --host vs --vcs-source naming, provider в VcsCliContext, runtime backing resolver, BDD для рефакторинга, temporal ambiguity, VcsCliArgs/VcsCliDeps, --ref + --branch конфликт, provider check в FR
+- Accepted: 11 — phantom FR-IDs в FR-RI-01, FR-CTX-09 ответственность resolver vs команда, out-of-scope resolver, --host vs --vcs-host naming, provider в VcsCliContext, runtime backing resolver, BDD для рефакторинга, temporal ambiguity, VcsCliArgs/VcsCliDeps, --ref + --branch конфликт, provider check в FR
 - Rejected: 1 — "Missing DX for resolver-propagated errors" → покрыто FR-CTX-10/CTX-11, компактный DX по запросу оператора
 - Changes: FR-RI-01 cleaned, FR-CTX-07..CTX-17 expanded, flag naming unified, out-of-scope/runtime backing added, refactoring BDD + temporal note added
 
 ### Round 2 — 2026-06-26
 - Verdict: NEEDS_WORK
-- Accepted: 11 — service-layer boundary (FR-VA-08..11 → reference vcs.spec.md), missing modules in §9.1 (inbox/vcs-worktree/vcs-reply), vcs-worktree fetch mechanism clarified, vcs-worktree GC collision clarified, inbox --vcs-source → --host, e2e agents-rules contradiction resolved, agents-rules package resolution harmonized, tombstone FR-VR-04 removed
+- Accepted: 11 — service-layer boundary (FR-VA-08..11 → reference vcs.spec.md), missing modules in §9.1 (inbox/vcs-worktree/vcs-reply), vcs-worktree fetch mechanism clarified, vcs-worktree GC collision clarified, inbox --vcs-host → --host, e2e agents-rules contradiction resolved, agents-rules package resolution harmonized, tombstone FR-VR-04 removed
 - Rejected: 2 — "inbox concrete DX" → delegated to agent-inbox; "--draft pagination unspecified" → vcs-client handles pagination transparently
 - Changes: FR-VA-08 simplified, §9.1 expanded, FR-WT-02/FR-WT-05 clarified, inbox flag unified, agents-rules FR-AR-01 + architecture harmonized
 

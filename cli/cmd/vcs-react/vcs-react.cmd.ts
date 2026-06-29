@@ -73,7 +73,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     iid: { aliases: ['iid'], takesValue: true },
     comment: { aliases: ['comment'], takesValue: true },
     emoji: { aliases: ['emoji'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     remove: ['remove'],
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;

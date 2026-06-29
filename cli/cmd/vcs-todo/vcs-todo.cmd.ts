@@ -31,7 +31,7 @@ type MainOpts = {
 /**
  * @purpose Resolve the GitLab host for --id path: explicit host overrides
  *   git remote autodetect.
- * @param [host] Explicit host from --vcs-source.
+ * @param [host] Explicit host from --vcs-host.
  * @returns GitLab host without scheme, e.g. gitlab.example.com.
  */
 function resolveHost(host?: string): string | undefined {
@@ -64,7 +64,7 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
   if (!host) {
     console.error(
       style.redBright.bold('✖ Ошибка:'),
-      'Не определён GitLab-host. Укажите --vcs-source=<host> или запустите из репозитория с origin.'
+      'Не определён GitLab-host. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
     );
     return { ok: false, code: 1 };
   }
@@ -156,11 +156,11 @@ export async function run(rawArgs: string[] = process.argv): Promise<number> {
       done: { aliases: ['done'], takesValue: true },
       id: { aliases: ['id'], takesValue: true },
       'dry-run': ['dry-run', 'dry'],
-      'vcs-source': { aliases: ['vcs-source', 'host'], takesValue: true },
+      'vcs-host': { aliases: ['vcs-host', 'host', 'vcs-source'], takesValue: true },
     });
 
     const vcsCliArgs: VcsCliArgs = {
-      host: (args['vcs-source'] as string) || undefined,
+      host: (args['vcs-host'] as string) || undefined,
     };
 
     const vcsContext = await resolveVcsContext(vcsCliArgs);
@@ -169,7 +169,7 @@ export async function run(rawArgs: string[] = process.argv): Promise<number> {
       doneRef: args.done as string | undefined,
       todoId: args.id as string | undefined,
       dryRun: !!args['dry-run'],
-      host: (args['vcs-source'] as string) || undefined,
+      host: (args['vcs-host'] as string) || undefined,
       vcsContext,
     });
 

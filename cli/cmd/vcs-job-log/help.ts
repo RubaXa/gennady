@@ -16,6 +16,7 @@ export function printHelp(): void {
   console.info('  --ref <group/repo!iid>   Explicit MR ref');
   console.info('  --job <name|id>          Job name or numeric id');
   console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --raw                    Unfiltered raw output (default: structural filter)');
   console.info('');
   console.info('Examples:');

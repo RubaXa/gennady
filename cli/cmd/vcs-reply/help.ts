@@ -26,7 +26,7 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --project <name>     GitLab project path (e.g. "group/repo")');
   console.info('  --iid <id>           Merge request internal ID');
-  console.info('  --vcs-source=<host>  GitLab host (else from origin of the current repo)');
+  console.info('  --vcs-host=<host>  GitLab host (else from origin of the current repo)');
   console.info('  --dry-run, --dry     Print what would be sent without posting');
   console.info('');
   console.info('Environment:');

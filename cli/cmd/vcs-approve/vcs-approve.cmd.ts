@@ -299,7 +299,7 @@ export async function run(
     project: { aliases: ['project'], takesValue: true },
     iid: { aliases: ['iid'], takesValue: true },
     branch: { aliases: ['branch'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
     revoke: ['revoke', 'unapprove'],
   }) as Record<string, unknown>;

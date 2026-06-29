@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-93
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** CLI-команда `gennady vcs-discussions` — человекочитаемый вывод дискуссий GitLab MR. Тонкая обёртка над существующим `VcsClientMergeDiscussions.getAll()`.
 - **Scope:** `vcs-mr-management`
 - **Module:** `cli/vcs-discussions`
@@ -21,8 +21,8 @@
 
 | ID  | Kind | Deps | Status   |
 | --- | ---- | ---- | -------- |
-| P1  | impl | —    | [ ] TODO |
-| P2  | test | P1   | [ ]      |
+| P1  | impl | —    | [x] DONE |
+| P2  | test | P1   | [x] DONE |
 
 ### P1 — impl
 
@@ -48,3 +48,7 @@
 ## 7. Execution Log
 
 _(Round = один execute-then-audit цикл.)_
+
+| Round | Date | Status | Notes |
+|-------|------|--------|-------|
+| R1 | 2025-06-29 | PASS | Command created per spec: getAll() wrapper, human/JSON output. Later enhanced: --draft (draft notes), --since (cursor filter), --vcs-host alias, fullId in human output. |

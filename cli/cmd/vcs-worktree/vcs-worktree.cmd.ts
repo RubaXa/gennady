@@ -59,7 +59,7 @@ async function run(): Promise<number> {
       return 1;
     }
 
-    const vcsSource = parseValue(argv, '--vcs-source');
+    const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
     const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
 
     // #region START_RESOLVE_VCS_CONTEXT

@@ -214,7 +214,7 @@ export async function run(
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
     path: { aliases: ['path'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 

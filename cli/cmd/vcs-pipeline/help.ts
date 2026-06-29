@@ -15,6 +15,7 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --ref <group/repo!iid>   Explicit MR ref (overrides branch auto-detect)');
   console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --all                    Show all jobs (default: failed only)');
   console.info('  --status <status>        Filter by job status (failed, success, running, ...)');
   console.info('  --logs                   Show filtered job logs');

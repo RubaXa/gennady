@@ -18,7 +18,7 @@ export function printHelp(): void {
   console.info('  --id <todoId>         Mark a specific todo done directly');
   console.info('  --dry-run             Print would-mark messages without executing the mutation');
   console.info(
-    '  --vcs-source=<host>   GitLab host, disables origin autodetect (e.g. gitlab.example.com)'
+    '  --vcs-host=<host>     GitLab host, disables origin autodetect (e.g. gitlab.example.com)'
   );
   console.info('');
   console.info('Examples:');

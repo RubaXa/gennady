@@ -21,6 +21,7 @@ export function printHelp(): void {
   );
   console.info('  --remove                 Remove own reaction (instead of adding)');
   console.info('  --host <hostname>        VCS host');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run                Print without calling API');
   console.info('');
   console.info('Examples:');

@@ -21,7 +21,7 @@ export function parseReviewCommandArgs(argv: string[]): ReviewCommandArgs {
     all: ['all'],
     since: ['since'],
     draft: ['draft'],
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
   });
 
   const positional = args._.filter((entry) => typeof entry === 'string') as string[];

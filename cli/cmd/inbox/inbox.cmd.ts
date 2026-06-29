@@ -93,7 +93,7 @@ async function run(): Promise<number> {
       return 0;
     }
 
-    const vcsSource = parseValue(argv, '--vcs-source');
+    const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
     const pick = parseValue(argv, '--pick');
     if (pick) return await runPick(pick, vcsSource);
 

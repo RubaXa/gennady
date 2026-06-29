@@ -21,6 +21,7 @@ export function printHelp(): void {
   console.info('  --project <group/repo>   Путь к проекту (явно)');
   console.info('  --iid <id>               MR internal ID (явно)');
   console.info('  --host <hostname>        GitLab хост (иначе из origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --list                   Показать список черновиков');
   console.info('  --create "<text>"        Создать черновик с указанным текстом');
   console.info('  --update <id>            Обновить черновик (требует --body)');

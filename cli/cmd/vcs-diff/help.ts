@@ -16,6 +16,7 @@ export function printHelp(): void {
   console.info('  --ref <group/repo!iid>   Explicit MR ref (overrides branch auto-detect)');
   console.info('  --path <file>            Show file content at MR head (filters changes)');
   console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run, --dry         Print what would be fetched without calling API');
   console.info('');
   console.info('Examples:');

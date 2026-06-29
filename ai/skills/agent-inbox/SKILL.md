@@ -40,11 +40,11 @@ compatibility: opencode
   `~/.gennady/inbox-registry.json` (показывает только дельту).
 - `reset` — `gennady inbox --reset` (сносит реестр, черновики, worktrees).
 
-Не из GitLab-репозитория → `--vcs-source=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
+Не из GitLab-репозитория → `--vcs-host=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
 
 ## Презентация инбокса
 
-Данные — `gennady inbox --json [--vcs-source=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
+Данные — `gennady inbox --json [--vcs-host=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
 `author`/`reviewers`/`role`/`stage`/`delta`/`age`/`openQuestions`/`lastAuthor`/`events`; сверху
 `total`/`hidden`/`delta`.
 

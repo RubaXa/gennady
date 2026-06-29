@@ -12,13 +12,13 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info(
-    '  npx tsx cli/gennady.ts vcs-worktree --ref group/project!iid [--vcs-source=<host>]'
+    '  npx tsx cli/gennady.ts vcs-worktree --ref group/project!iid [--vcs-host=<host>]'
   );
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup <worktree-path>');
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup-all');
   console.info('');
   console.info('Options:');
-  console.info('  --vcs-source=<host>  GitLab host (else from origin)');
+  console.info('  --vcs-host=<host>    GitLab host (else from origin)');
   console.info('  --repos-base=<dir>   Base dir to scan for clones (default ~/Developer)');
   console.info(
     '  --state-dir=<dir>    State location (worktrees/clones/repos.json), default ~/.gennady'

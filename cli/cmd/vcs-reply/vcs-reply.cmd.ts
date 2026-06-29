@@ -74,7 +74,7 @@ type MainOpts = {
   dryRun?: boolean;
   stdinJsonArray?: ReplyItem[];
   token?: string;
-  /** @purpose Explicit GitLab host (`--vcs-source`); overrides the host derived from `origin`. */
+  /** @purpose Explicit GitLab host (`--vcs-host`); overrides the host derived from `origin`. */
   host?: string;
   remote?: { host: string; project: string; scheme: string } | null;
   baseUrl?: string;
@@ -216,8 +216,8 @@ export async function main(opts: MainOpts = {}): Promise<{
   const host: string =
     vcsContext?.host ??
     opts.host ??
-    ((parseArgs(process.argv, { 'vcs-source': { aliases: ['vcs-source'], takesValue: true } })[
-      'vcs-source'
+    ((parseArgs(process.argv, { 'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true } })[
+      'vcs-host'
     ] as string) ||
       undefined) ??
     '';
@@ -236,7 +236,7 @@ export async function main(opts: MainOpts = {}): Promise<{
     if (!host) {
       console.error(
         style.redBright.bold('✖ Ошибка:'),
-        'Не определён GitLab-host. Укажите --vcs-source=<host> или запустите из репозитория с origin.'
+        'Не определён GitLab-host. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
       );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
@@ -489,13 +489,13 @@ const args = parseArgs(process.argv, {
   project: { aliases: ['project'], takesValue: true },
   iid: { aliases: ['iid'], takesValue: true },
   'dry-run': ['dry-run', 'dry'],
-  'vcs-source': { aliases: ['vcs-source'], takesValue: true },
+  'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
 });
 
 const vcsCliArgs: VcsCliArgs = {
   project: args.project as string | undefined,
   iid: args.iid ? Number(args.iid) : undefined,
-  host: args['vcs-source'] as string | undefined,
+  host: args['vcs-host'] as string | undefined,
 };
 
 try {

@@ -54,7 +54,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     title: { aliases: ['title'], takesValue: true },
     description: { aliases: ['description'], takesValue: true },
     'target-branch': { aliases: ['target-branch'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     label: { aliases: ['label'], takesValue: true },
     unlabel: { aliases: ['unlabel'], takesValue: true },
     assignee: { aliases: ['assignee'], takesValue: true },

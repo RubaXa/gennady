@@ -19,6 +19,7 @@ export function printHelp(): void {
   console.info('  --job <name|id>          Job name or numeric id');
   console.info('  --action <action>        status (default), play, cancel, retry');
   console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run, --dry         Print what would be done without calling API');
   console.info('');
   console.info('Examples:');

@@ -215,7 +215,7 @@ export async function run(
 
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
-    host: { aliases: ['host'], takesValue: true },
+    host: { aliases: ['host', 'vcs-host'], takesValue: true },
     status: { aliases: ['status'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
     json: ['json'],
