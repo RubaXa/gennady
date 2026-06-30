@@ -140,6 +140,15 @@ for (const file of skillFiles()) {
   skills.push(tree);
 }
 
+// Supported (XML/HTML-form) skills first, unsupported sink to the bottom; alphabetical within each
+// group. The UI selects index 0 by default — so it lands on the first supported skill, not a stub.
+const isUnsupported = (s: TraceNode) => s.attrs?.unsupported === 'true';
+skills.sort((a, b) => {
+  const ua = isUnsupported(a) ? 1 : 0;
+  const ub = isUnsupported(b) ? 1 : 0;
+  return ua - ub || a.label.localeCompare(b.label);
+});
+
 if (!existsSync(dirname(outFile))) mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, JSON.stringify({ repoRoot, skills }, null, 2), 'utf8');
 console.log(`[inspector] ${skills.length} skill(s) → ${outFile.slice(repoRoot.length + 1)}`);

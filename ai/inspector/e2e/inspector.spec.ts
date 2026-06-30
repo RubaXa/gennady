@@ -14,6 +14,14 @@ test('lists skills and descends the sdd-execute trace', async ({ page }) => {
   expect(await skills.count()).toBeGreaterThanOrEqual(9);
   await expect(page.locator('.skill-btn.unsupported').first()).toBeVisible();
 
+  // ordering: supported skills on top (the first is auto-selected), unsupported sink to the bottom
+  await expect(skills.first()).not.toHaveClass(/unsupported/);
+  await expect(skills.first()).toHaveClass(/active/);
+  const classes = await skills.evaluateAll((els) => els.map((e) => e.className));
+  const firstUnsupported = classes.findIndex((c) => c.includes('unsupported'));
+  const lastSupported = classes.map((c) => c.includes('unsupported')).lastIndexOf(false);
+  expect(firstUnsupported).toBeGreaterThan(lastSupported); // no supported skill appears after an unsupported one
+
   // pick sdd-execute
   await page.getByRole('button', { name: '/sdd-execute' }).click();
   await expect(page.locator('.structure .row[data-kind="skill"]').first()).toBeVisible();
