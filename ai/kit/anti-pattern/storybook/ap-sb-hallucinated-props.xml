@@ -1,6 +1,6 @@
 <!-- source: ai/directives/testing/storybook-usage.xml -->
 <AntiPattern id="AP_SB_HALLUCINATED_PROPS">
-  <Bad>Agent writes props inferred from component-name conventions rather than retrieved via MCP, without consulting MCP; story compiles because props are typed as `Record<string, unknown>` but renders as the default variant.</Bad>
+  <Bad>Agent writes `<Button label="Go" intent="ghost" size="xl">` based on what «buttons usually have», without consulting MCP; story compiles because props are typed as `Record<string, unknown>` but renders as the default variant.</Bad>
   <WhyBad>Props guessed instead of retrieved via MCP (`AX_SB_USE_NEVER_HALLUCINATE_PROPS`). Compiles cleanly, fails at render or silently produces the wrong variant — the failure is then chased through the self-healing loop instead of being answered up-front by `get-documentation`.</WhyBad>
   <Good>Call `get-documentation` on `Button`, read the actual prop schema (e.g. `label`, `variant`, `disabled`), write the story using the documented props only. If MCP returns incomplete data, comment in the story noting the gap and fall back to reading source.</Good>
 </AntiPattern>
