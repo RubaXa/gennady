@@ -30,6 +30,15 @@
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
     </Axiom>
 
+    <Axiom id="AX_TOOL_INVOCATION">
+      The SDD mechanical tools are `gennady` CLI commands. Invoke them as
+      `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
+      repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
+      synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      `sdd-sync`, `sdd-check`, `orient`. The `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`,
+      `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
+    </Axiom>
+
     <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
