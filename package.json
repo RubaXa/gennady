@@ -63,6 +63,7 @@
     "@types/react": "^19.2.15",
     "ai": "^6.0.116",
     "fast-glob": "^3.3.3",
+    "handlebars": "^4.7.9",
     "open": "^11.0.0",
     "prettier": "^3.4.2",
     "qrcode": "^1.5.4",
