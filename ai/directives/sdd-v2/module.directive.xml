@@ -159,7 +159,7 @@
       - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`.
       - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime).
 
-      Simulation must not masquerade as runtime: declaring `real-runtime` while the implementation is simulation-only without explicit `Deferred Runtime Scope` is forbidden.
+      Simulation must not be declared as runtime: marking `real-runtime` while the implementation is simulation-only, without an explicit `Deferred Runtime Scope`, is forbidden.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_OPTION_DROP">

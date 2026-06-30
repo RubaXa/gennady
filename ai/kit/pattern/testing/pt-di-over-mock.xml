@@ -1,1 +1,53 @@
-      <Intent>Preferred posture: SUT designed with injection seams is exercised against real `vi.fn()` stubs. No `vi.mock`, no operator confirm-gate triggered, no global patching — yet the test is fully isolated from the network.</Intent>
+<!-- source: testing/vitest-rules.xml -->
+<Pattern id="PT_DI_OVER_MOCK">
+      <Intent>Preferred approach: SUT designed with injection seams is exercised against real `vi.fn()` stubs. No `vi.mock`, no operator confirm-gate triggered, no global patching — yet the test is fully isolated from the network.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi } from 'vitest';
+        import { CatalogSync } from './catalog-sync.ts';
+        import type { HttpRequest, CatalogStore } from './ports.ts';
+
+        type CatalogSyncContext = {
+            sut: CatalogSync;
+            httpRequest: ReturnType<typeof vi.fn<HttpRequest>>;
+            store: CatalogStore;
+        };
+
+        function createCatalogSyncContext(
+            overrides: Partial<{
+                response: Awaited<ReturnType<HttpRequest>>;
+                store: CatalogStore;
+            }> = {},
+        ): CatalogSyncContext {
+            const httpRequest = vi.fn<HttpRequest>(async () =>
+                overrides.response ?? { status: 200, body: { items: [] } },
+            );
+            const store = overrides.store ?? { replaceAll: vi.fn(async () => {}) };
+            const sut = new CatalogSync({ httpRequest, store });
+            return { sut, httpRequest, store };
+        }
+
+        describe('CatalogSync#pull', () => {
+            it('should request the catalog endpoint and replace the store with normalized items', async () => {
+                // observation focus: the URL pulled + the items written, not transport internals
+                const { sut, httpRequest, store } = createCatalogSyncContext({
+                    response: {
+                        status: 200,
+                        body: { items: [{ id: '1', title: 'Keyboard ', stock: 3 }] },
+                    },
+                });
+
+                await sut.pull();
+
+                // #region START_PULL_ASSERT_BOUNDARY
+                expect(httpRequest).toHaveBeenCalledWith({ method: 'GET', url: '/v1/catalog' });
+                expect(store.replaceAll).toHaveBeenCalledWith([
+                    { id: '1', title: 'Keyboard', stock: 3 },
+                ]);
+                // #endregion END_PULL_ASSERT_BOUNDARY
+            });
+        });
+        ```
+      </Snippet>
+      <Why>No `vi.mock`, no `vi.spyOn`, no `globalThis.fetch` patching: SUT exposes injection seams (`httpRequest`, `store`) and the test passes typed `vi.fn()`s through them. Unified factory reused; case differs only by `response` override.</Why>
+    </Pattern>

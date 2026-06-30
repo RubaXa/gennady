@@ -63,7 +63,7 @@
       - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
       - For product service-module-sdk: API DX at the transport boundary.
 
-      DX is the empathic anchor for downstream design; without it Design Variants drift into solution-space gymnastics.
+      DX is the consumer-driven baseline for downstream design; without it, Design Variants accumulate accidental complexity (over-engineering, speculative surface).
 
       For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
     </Axiom>
