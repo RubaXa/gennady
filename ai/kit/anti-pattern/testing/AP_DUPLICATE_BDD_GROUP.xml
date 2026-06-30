@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<AntiPattern id="AP_DUPLICATE_BDD_GROUP">
+      <Bad>Один BDD-заголовок на несколько размеров: `### Primary / Accent (все размеры)`.</Bad>
+      <WhyBad>Разные размеры имеют разные ожидаемые значения (height, pads). Сгруппированные BDD нельзя верифицировать.</WhyBad>
+      <Good>Отдельный BDD-заголовок на каждый (appearance, mode), внутри указывается representative size и конкретные значения.</Good>
+</AntiPattern>

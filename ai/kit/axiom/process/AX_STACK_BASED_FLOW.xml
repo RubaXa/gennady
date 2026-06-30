@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_STACK_BASED_FLOW">
+      Discovery dialogue runs on an explicit frame stack. Main path: `INTAKE → SCOPE_TYPE_CONFIRM → INTENT_CAPTURE → TYPE_SPECIFIC_A → TYPE_SPECIFIC_B → TYPE_SPECIFIC_C → (TYPE_SPECIFIC_D) → FINAL_SPEC`. Disputes / dives / sub-topics open a nested frame; the stack is visible in TRACE_HEADER's `STACK` field. A sub-topic never silently stalls the parent frame.
+    </Axiom>

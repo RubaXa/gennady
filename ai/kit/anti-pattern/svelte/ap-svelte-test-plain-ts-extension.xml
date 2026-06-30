@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<AntiPattern id="AP_SVELTE_TEST_PLAIN_TS_EXTENSION">
+  <Bad>File named `Counter.test.ts` imports `Counter.svelte`; Vitest fails with «Cannot find module» or compiles the component as plain TS and explodes at first runtime use.</Bad>
+  <WhyBad>Plain `.test.ts` extension for a Svelte component test (`AX_SVELTE_TEST_FILE_EXTENSION`). The Svelte plugin's file-pattern rule does not match; the test file bypasses Svelte compilation entirely. The error is opaque because the failure happens during transform, not at a useful assertion point.</WhyBad>
+  <Good>Rename to `Counter.svelte.test.ts`. No code change required; the toolchain now routes the file through the Svelte plugin.</Good>
+</AntiPattern>

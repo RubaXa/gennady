@@ -1,0 +1,4 @@
+<!-- source: testing/svelte-testing.xml -->
+<Definition id="DEF_SVELTE_TEST_FILE">
+      A file matching `*.svelte.test.ts` — processed by the Svelte plugin during Vitest's transform stage. Plain `.test.ts` is not a Svelte test file.
+    </Definition>

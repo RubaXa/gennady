@@ -1,0 +1,2 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Definition id="DEF_REPRODUCIBILITY_TRIAD">Three committed files guaranteeing reproducible Node.js environment: `.nvmrc` (Node version), `package.json` (declared deps), `package-lock.json` (resolved dep tree). `npm ci` reads all three.</Definition>

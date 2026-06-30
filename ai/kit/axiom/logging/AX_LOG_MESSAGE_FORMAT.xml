@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_LOG_MESSAGE_FORMAT">
+Message format: `[Trace-Prefix] [stateA → stateB] Description`. State transitions are mandatory at entry, branches, exit, and errors. Description adds NEW information and does not duplicate state.
+
+A state machine in the log makes module behavior reconstructable along a timeline; raw messages without state break recovery.
+</Axiom>

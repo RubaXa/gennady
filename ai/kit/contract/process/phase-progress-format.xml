@@ -1,0 +1,13 @@
+<!-- source: sdd/module-decomposition + scaffold + audit (converged to skeleton; directives may add domain lines) -->
+<Contract id="PHASE_PROGRESS_FORMAT">
+  ```markdown
+  🎯 Phase Progress — <STEPNAME>
+    ✅ Closed:    <agreed>
+    ⏳ Open:      <under discussion>
+    🛑 Blocking:  <if any, else —>
+    ▶️ Next:      <agent proposal; operator decides>
+    📊 Counters:  <domain-specific, e.g. "3/7 entities approved" · "14/18 tickets" · findings "🔴 N · 🟠 M · 🟡 K">
+  ```
+  Directives may add domain-specific lines (e.g. `🧩 Module: <name>` in module-decomposition,
+  findings-by-severity in audit).
+</Contract>

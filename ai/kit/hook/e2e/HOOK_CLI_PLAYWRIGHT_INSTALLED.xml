@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Hook id="HOOK_CLI_PLAYWRIGHT_INSTALLED">
+      <Purpose>Playwright + Chromium are installed and reachable.</Purpose>
+      <Command>npx playwright --version &amp;&amp; npx playwright install --dry-run chromium</Command>
+      <Expected>Version string printed; Chromium reported as already installed (or installed by the command).</Expected>
+    </Hook>

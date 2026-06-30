@@ -1,0 +1,9 @@
+<!-- source: sdd-v2 tool-invocation convention -->
+<Axiom id="AX_TOOL_INVOCATION">
+  The SDD mechanical tools are `gennady` CLI commands. Invoke them as
+  `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
+  repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
+  synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+  `sdd-sync`, `sdd-check`, `orient`. The `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`,
+  `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
+</Axiom>

@@ -1,0 +1,6 @@
+<!-- source: coding/typescript-rules.xml + infra/eslint-setup.xml (merged) -->
+<Hook id="HOOK_TYPECHECK">
+  <Purpose>Code has no TS errors and no transpile-only constructs broken under native Node TS.</Purpose>
+  <Command>npx tsc --noEmit</Command>
+  <Expected>Exit 0; empty stdout/stderr.</Expected>
+</Hook>

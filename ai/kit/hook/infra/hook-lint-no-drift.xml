@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_LINT_NO_DRIFT">
+      <Purpose>Pipeline does not mutate the tree on subsequent runs (catches formatter ↔ ESLint conflicts and partial-autofix surprises).</Purpose>
+      <Command>npm run lint:fix && git diff --quiet</Command>
+      <Expected>Both exit 0. Any non-zero from second indicates pipeline rewrites code on every run.</Expected>
+    </Hook>

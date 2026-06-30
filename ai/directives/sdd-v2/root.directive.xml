@@ -1,0 +1,207 @@
+<SddRoot keywords="root, portal, vision, scope-graph, idempotent, project-setup, infra-bootstrap" type="directive" ver="2.0">
+  <Mission>
+    Owner of `specs/README.md` — the Project Portal: Vision + Scope Graph + Scopes table.
+    Idempotent: runs any number of times to refine vision, extend the graph, or bootstrap the
+    first infra-base spec. Loaded lazily by the router; the router-core beliefs it relies on are
+    declared in `BeliefState deps` (inherited, not repeated).
+
+    Input — operator intent at project level. Output:
+    - `specs/README.md` with Vision + Scope Graph + Scopes table.
+    - Optional minimal `specs/infra-base/infra-base.spec.md` when the operator declared tooling.
+
+    When the portal is absent, root first probes the repo (`sdd-state --probe`): a greenfield repo (no
+    code) is initialized here; a repo that already holds code is handed to the from-code recovery branch
+    (`discover-from-code`) — root never invents a vision over code that already exists.
+
+    Out of scope: design of any individual scope (its vision, architecture, requirements,
+    modules) — that is the scope branch. Root writes only the project-level map.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    <Axiom id="AX_PORTAL_PRIMARY_OWNER">
+      The `root` flow is the primary owner of `specs/README.md`. Other flows MUST NOT rewrite this file. Reads are unrestricted.
+
+      Explicit, narrow exceptions (append-only edits permitted, no rewrites):
+      - The `scope` flow creating a brand-new scope MAY append a placeholder row to the Scopes table tagged `🚧 (awaiting root sync)` so the new scope is visible in the Portal before the next `root` run.
+      - The `module` flow MUST NOT touch this file; its Portal-level summaries are appended only to its scope spec.
+
+      Any other edit by another flow → audit finding `STALE_AFTER_PIVOT` or `EXECUTION_LOG_INCOMPLETE` depending on context. The next `root` run reconciles placeholders into full rows.
+    </Axiom>
+
+    <Axiom id="AX_IDEMPOTENT_MODES">
+      `setup` has no hard modes (no greenfield / extension / pivot).
+      - Portal absent → create from scratch.
+      - Portal present → read and propose updates derived from intake; operator dictates what to change.
+
+      No silent assumptions: empty intake against an existing Portal → HALT `H_NO_INTENT` («what are we changing today?»).
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_GRAPH_DISCIPLINE">
+      Scope Graph is a directed dependency graph. Rules:
+      - Edge A→B means «scope A depends-on scope B»: A inherits B's effective rules in the cascade and may consume B's contracts.
+      - Cycle in the graph → `H_CYCLE_IN_GRAPH` (abort).
+      - scope-type constraints: `infrastructure` and `contracts` scopes are typically leaves (depend only on other infra / contracts). `product` and `library` scopes depend on infra + contracts.
+      - The graph is rendered as a Mermaid `graph TD` block inside the Portal.
+    </Axiom>
+
+    <Axiom id="AX_INFRA_BASE_BOOTSTRAP">
+      If the operator declares basic tooling (package manager, type-checker, linter) in intake, the `root` flow materializes a minimal `specs/infra-base/infra-base.spec.md` with scope-type=infrastructure: Vision (one sentence) + Tool Stack (table with tool names only, no Decision Log yet). The full Decision Log appears when the operator runs the `infra` flow on infra-base.
+
+      The minimal bootstrap intentionally bypasses the full `infra` flow — it only locks the tool choice without the Design Variants ritual.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_TABLE_FORMAT">
+      Scopes table in the Portal: each row = link to the scope spec + scope-type + status emoji + one-line description.
+      - ✅ — spec exists and is approved.
+      - 🚧 — spec being authored / `discovery` not yet run.
+      - Status is derived purely from the presence of `specs/<scope>/<scope>.spec.md`.
+    </Axiom>
+
+    <Axiom id="AX_VISION_ONLY_FOR_APPLICATION">
+      The `## Vision` section in the Portal is present only when the project contains at least one product or library scope. For tooling-only repos (sandboxes, infra repos) the Vision section is omitted.
+    </Axiom>
+
+    <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
+      A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTENT` | Operator invoked the root flow with empty intake against an existing Portal |
+    | `H_CYCLE_IN_GRAPH` | Scope Graph contains a cycle (detected by `sdd-check`) |
+    | `H_SCOPE_VS_MODULE_AMBIGUITY` | Operator labels as «scope» something that resembles a module |
+    | `H_OPERATOR_REJECT` | Operator rejected Vision, Scope Graph, or the final Portal |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Determine today's change set from state.</Goal>
+      <Action>
+        State from the router (`sdd-state`) already reports whether `specs/README.md` exists.
+        - Absent → no portal yet: run `sdd-state --probe` to learn whether the repo is greenfield or
+          already holds code (`AX_TOOL_INVOCATION`; probe only now that it is needed — not at flow start).
+          - `CODE=absent` (empty / only package.json) → **greenfield init**. Ask (Russian): «Как называется
+            проект? Опиши в одном предложении его vision и первые scope'ы (infra-base, backend, web — на
+            черновую).»
+          - `CODE=present` → **from-code recovery** — do NOT invent a vision over existing code:
+            `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")`.
+        - Present → empty intake → `H_NO_INTENT`; otherwise classify the change:
+          vision / add scope / update graph / infra bootstrap.
+      </Action>
+    </Step>
+    <Step id="STEP_1_VISION">
+      <Goal>Lock the project-level Vision.</Goal>
+      <Action>
+        No product / library scope → skip Vision (`AX_VISION_ONLY_FOR_APPLICATION`). Else propose
+        a one-sentence Vision: what we build and which problem it solves. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_SCOPE_GRAPH">
+      <Goal>Place each scope by its relationships first, then its edges.</Goal>
+      <Action>
+        For each scope the relationship question comes FIRST (`AX_OPERATOR_SAFEGUARD`): who will depend
+        on it, what it depends on, and whether it is cross-cutting (used by ≥2 scopes). Probe narrow
+        framing — «авторизация только для web? а API / будущие клиенты?». The answer drives three things:
+        the «scope vs module» test (a thing used inside one scope may be a module, not a scope →
+        `H_SCOPE_VS_MODULE_AMBIGUITY`); the `depends-on` edges; and, when it is cross-cutting, a note that
+        cross-scope scenarios or a contracts scope may be needed. If the change REMOVES or RENAMES a
+        scope, first surface what it orphans — its `specs/<scope>/…` spec, tasks, and inbound references
+        — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
+        propose scope-type with rationale and render the Mermaid `graph TD`. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_INFRA_BOOTSTRAP">
+      <Goal>Materialize the minimal infra-base spec if tooling was declared.</Goal>
+      <Action>
+        No tooling declared → skip. Else `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`
+        and write `specs/infra-base/infra-base.spec.md` to that format (scope-type infrastructure,
+        one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
+        Decision Log). Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_PORTAL_WRITE">
+      <Goal>Write / update `specs/README.md`.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
+        Portal to that format. Scope status (✅ / 🚧) comes from `sdd-state` (presence of
+        `specs/<scope>/<scope>.spec.md`), not a manual stat. Reconcile any placeholder rows left by the
+        scope flow into full rows. Write the file. Then run `sdd-check --all .` to verify portal integrity —
+        graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
+        resolve any finding before finishing. Approval Check. STOP.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🗺️ ROOT_R<N> · <project> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones for this
+    flow (per `BREADCRUMB_FORMAT`): Vision · Scope Graph · Infra · Portal.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Contract id="BREADCRUMB_FORMAT">
+      One line under the service line: this session's milestones, each with a status marker — `✅` done
+      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
+      «where are we», and it replaces a verbose run-on of finished steps.
+
+      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+    </Contract>
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+      explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the
+      assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > квинтэссенция — что считаю главным.
+      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос Q`<N>`.
+    </Contract>
+
+    <Contract id="SIDE_DIVE_FORMAT">
+      A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
+
+      → ушли в `<тема>`
+      ← `<итог одной фразой>`
+    </Contract>
+
+    <Contract id="FLOW_DIAGRAM_WHEN">
+      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
+      a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
+      allowed inside an operator message (alignment matters). Keep it small.
+
+      ```
+      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+              ▲                                  │
+              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+      ```
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+
+  <!-- Artifact formats (portal-structure, infra-base-minimal-spec) load lazily at their write step — see ExecutionPlan. -->
+</SddRoot>

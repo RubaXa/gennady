@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
+      **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
+      - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
+      - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
+      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0).
+      - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
+    </Axiom>

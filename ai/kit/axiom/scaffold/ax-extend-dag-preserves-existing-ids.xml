@@ -1,0 +1,11 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
+      **In `extend-dag`, existing Task-IDs and ticket files are immutable.**
+
+      - New tasks get next sequential `TSK-NN` after max existing.
+      - Existing tickets are NOT regenerated even if upstream specs changed — that is the orchestrator's reopen scenario via `sdd-execute`, not regeneration.
+      - `add-scope` upstream → scaffold only for the new scope.
+      - `add-module` or `refine-module` upstream → scaffold only for the new/changed surface; unchanged-surface tickets untouched.
+      - Per-scope Cascade Table may update; existing tickets keep their old per-phase `Rules:` lists — orchestrator re-derives on reopen if the operator opts in.
+      - DAG edges/IDs preserved; new tasks appended.
+    </Axiom>

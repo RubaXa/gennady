@@ -1,0 +1,21 @@
+<!-- source: sdd/phase-execution-protocol.xml -->
+<Contract id="PHASE_BLOCK_FORMAT">
+      Event-driven: optional event lines (0+ each) appear ONLY when their event happened. Mandatory closing lines: `ver` + `DONE` + Handoff.
+
+      ```markdown
+      #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
+      <!-- Event lines (optional; appended as events happen, in chronological order): -->
+      - [x] `<ts>` intro `<Entity>` ← <reason>
+      - [x] `<ts>` decision <key>=<value> ← <reason>
+      - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
+      - [x] `<ts>` discovery <fact>
+      - [x] `<ts>` insight <observation> → <spec-section>, <change>
+      - [x] `<ts>` verified <tool>@<version> <one-line summary>    <!-- config kind only -->
+      <!-- Closing lines (mandatory): -->
+      - [x] `<ts>` ver <cmd> → pass|fail exit=<N>
+      - [x] `<ts>` DONE
+      **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]
+      ```
+
+      Trivial phase (no events worth logging): 2 lines (`ver` + `DONE`) + Handoff. That is valid and preferred over padding.
+    </Contract>

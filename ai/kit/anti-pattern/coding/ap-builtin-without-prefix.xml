@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_BUILTIN_WITHOUT_PREFIX">
+  <Bad>`import { readFile } from 'fs/promises';` / `import { join } from 'path';`.</Bad>
+  <WhyBad>A third-party package named `fs` or `path` would shadow the built-in silently. Intent ambiguous: built-in or dependency?</WhyBad>
+  <Good>`import { readFile } from 'node:fs/promises';` / `import { join } from 'node:path';`.</Good>
+</AntiPattern>

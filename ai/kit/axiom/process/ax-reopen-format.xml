@@ -1,0 +1,15 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_REOPEN_FORMAT">
+      When reopening a task ticket, append to section 7 Execution Log:
+
+      ```
+      ### Round N — <YYYY-MM-DD>, fix: <one-line reason>
+
+      | Phase | Kind  | Status | Target Files | Deps |
+      |-------|-------|--------|-------------|------|
+      | P1    | fix   | [ ]    | <paths>     | —    |
+      ```
+
+      Set ticket Meta Status → `[ ] TODO`. Update `Reopens: <new count>`.
+      Sync tracker: `tasks/<scope>/README.md` row → `[ ] TODO`, `tasks/README.md` index → adjust counts.
+    </Axiom>

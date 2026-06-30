@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery + scaffold + module-decomposition (thin kernel; concrete mode set is directive-specific) -->
+<Axiom id="AX_DIRECTIVE_MODE">
+  Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
+  step branching and which axioms apply. The concrete mode set is directive-specific
+  (e.g. `greenfield` / `refine` / `pivot`; `initial` / `extend-dag`; `initial` / `add-module` / `refine-module`).
+</Axiom>

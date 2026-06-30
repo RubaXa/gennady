@@ -1,0 +1,10 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_VARIANT_GROUPING">
+      Variants are grouped hierarchically: `size → appearance → mode`. Each leaf group contains all 4 states (normal, hover, active, disabled). The result is a closed-world table — every combination is listed explicitly, no «и т.д.» allowed.
+
+      Procedure:
+      1. Collect all unique triples `(size, appearance, mode)` from `ExtractionResult.variants`.
+      2. Sort: size (s, m, l) → appearance (accent, neutral, contrary) → mode (primary, secondary, tertiary, outline).
+      3. For each triple, list states: `normal, hover, active, disabled`.
+      4. If a state is missing from the extraction data, mark it as `⚠️ not in extraction` — do NOT omit the row.
+</Axiom>

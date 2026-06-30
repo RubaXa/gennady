@@ -1,0 +1,13 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_ELEMENT_STRUCTURE_FROM_EXTRACTION">
+      The Element Structure section is derived from `ExtractionResult.elements` — the list of element names discovered in the SVG.
+
+      Procedure:
+      1. Map each element name to a semantic description:
+         - `icon` → "SVG-иконка (обрезанный viewBox до tight path bounds)"
+         - `label` → "текстовая метка"
+         - `counter` → "числовой счётчик (box-sizing: border-box)"
+         - `indicator` → "шеврон (стрелка вправо)"
+      2. For unknown element names: infer from context, mark with `⚠️ requires clarification`.
+      3. Order elements: icon, label, counter, indicator (visual left-to-right).
+</Axiom>

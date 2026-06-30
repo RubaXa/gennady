@@ -1,0 +1,450 @@
+<SddScaffold keywords="task-scaffolding, dependency-graph, dag, bdd, rules-cascade, rule-activation, tickets, modes, extend-dag, isolated, cheap-model, sdd-scaffold" type="directive" ver="2.0">
+  <Mission>
+    Decompose the approved spec tree into a DAG of compact, self-contained task tickets ready for
+    autonomous execution by a cheaper model in isolation. A separate door (`/sdd-scaffold`), run in
+    its own process; the operator sees only two gates — the breakdown and the test plan — everything
+    else is mechanical.
+
+    Input — `specs/README.md` Scope Graph (+ each scope / module spec). Output — per-module ticket
+    files + the task-index hierarchy (`<module>.3-tasks.md`, scope, project). Next — the execute
+    orchestrator consumes one ticket at a time.
+
+    Out of scope: writing code, running tests — that is execute. Spec authoring — that is the `/sdd`
+    flow. This directive does not interview; it converges existing specs into tickets.
+
+    **Glossary.** Modes: initial · extend-dag. Cascade = the set of rule files effective for a scope,
+    computed from the Scope Graph (root → scope → module → phase).
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      Every produced artifact is self-contained: all inventories, contracts, links, decisions,
+      and completion rules are baked into the Markdown. Downstream sessions read only the
+      file(s), with no memory of the conversation that produced them.
+    </Axiom>
+
+    <Axiom id="AX_DIRECTIVE_MODE">
+      Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
+      step branching and which axioms apply. The concrete mode set is directive-specific
+      (e.g. `greenfield` / `refine` / `pivot`; `initial` / `extend-dag`; `initial` / `add-module` / `refine-module`).
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
+      Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
+      where possible). The detection table is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      Phase reads specs only, never code; no project-wide search (grep / find / ripgrep)
+      outside the reads explicitly listed by the directive. `audit` is the only directive
+      permitted to read code; it alone resolves spec/code mismatch.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_GRAPH_DETECTION">
+      Detection is driven by `specs/README.md` Scope Graph (Mermaid `graph TD`) and Scopes table. Portal absent → no specs → HALT.
+
+      From Portal extract:
+      - All scope names and their scope-types (from Scopes table).
+      - Dependency edges A→B (from Mermaid graph or Scopes table `depends-on`).
+      - For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
+
+      Cascade computation requires full scope graph traversal:
+      - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).
+      - **Cascade** = union of Effective Rules from traversed-scopes + target-scope rules + (module rules if product/library) + task additions.
+
+      | Scopes present | Result |
+      |---|---|
+      | Only infrastructure scopes | scaffold infra tasks only; no module trackers |
+      | Mix of product/library + infra/contracts | full project; infra tasks = DAG roots |
+      | No scopes at all | HALT: no spec input |
+    </Axiom>
+
+    <Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
+      **In `extend-dag`, existing Task-IDs and ticket files are immutable.**
+
+      - New tasks get next sequential `TSK-NN` after max existing.
+      - Existing tickets are NOT regenerated even if upstream specs changed — that is the orchestrator's reopen scenario via `sdd-execute`, not regeneration.
+      - `add-scope` upstream → scaffold only for the new scope.
+      - `add-module` or `refine-module` upstream → scaffold only for the new/changed surface; unchanged-surface tickets untouched.
+      - Per-scope Cascade Table may update; existing tickets keep their old per-phase `Rules:` lists — orchestrator re-derives on reopen if the operator opts in.
+      - DAG edges/IDs preserved; new tasks appended.
+    </Axiom>
+
+    <Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
+      **All rule references must resolve; missing rule = abort.** Sources: scope spec (5 Effective Rules for infra; 4.5 Rules for product/library), module spec (9 Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
+    </Axiom>
+
+    <Axiom id="AX_RULES_CASCADE_RESOLUTION">
+      **Effective rule-set per task = union of 5 tiers; later tier overrides earlier on collision.**
+
+      Tier order (low → high):
+      1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
+      2. **target-scope** — scope spec 5 Effective Rules (infra) or 4.5 Rules (product/library).
+      3. **module:<name>** — module spec 9 Handoff Module Rules Additions (when modules exist).
+      4. **task** — operator-supplied during ticket generation.
+
+      Materialization:
+      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`. Generated from scope graph automatically.
+      - **Per-phase `Rules:` bullet list** inside each ticket's section 3 Phases block: derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × THAT PHASE's Target Files + kind. Rules are NOT declared at ticket level — only per phase.
+      - Auditor recomputes effective set per-phase from sources and compares with each phase block.
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION_PLAN">
+      Rules are resolved per phase, not per ticket. For each phase declared in the ticket's section 2 Phases Overview:
+
+      1. Read `ai/directives/knowledge.xml` — the canonical rule registry (`<Rules>` section).
+      2. From the scope's Project-Wide Rules, extract the candidate rule set for this scope.
+      3. For each candidate rule: evaluate its `<Triggers>` and `<SkipWhen>` against THIS PHASE's `Target Files` and phase `kind`. Include the rule only when `<Triggers>` match AND `<SkipWhen>` does not apply. Signal-based only — no hardcoded language/tool knowledge in this directive.
+      4. **Transitive closure via `<DependsOn>`.** For each included rule, open its file and read its `<DependsOn>` section (optional; lists rule-file paths this rule architecturally extends). Add every dependency to the phase's Rules set. Recurse until the set stops growing. Cycles → halt `H_RULES_CYCLE`. Missing dependency file → halt `H_MISSING_RULES`. This produces the explicit, fully-resolved set; phase-subagent does NOT walk `<DependsOn>` at runtime.
+      5. For each rule in the resolved set:
+         - `<File>` → full path to rule file (`ai/directives/<category>/<rule>.xml`); render as Markdown link in the phase's `Rules:` bullet list.
+         - `<RequiresVerification>` → collect aliases for ticket-level Verification table (step 7).
+      6. Write the phase's `Rules:` bullet list with one `[<rule-id>](<rule-file-path>)` per included rule (direct + transitive, all explicit).
+      7. After all phases are processed, collect the union of all `<RequiresVerification>` aliases across all phases of this ticket. Group rules by alias (multiple rules may share `check-command`). Resolve each unique alias from infra-spec Verification Commands.
+         - Alias present in spec → use its invocation.
+         - Alias absent → halt: H_VERIFICATION_COMMAND_MISSING (alias, ticket ID).
+      8. Write ticket section 5 Verification table (ticket-level, single table):
+         | Command | Required by |
+         One row per unique alias. "Required by" = comma-separated rule IDs that declared it. Phase-subagent runs only the rows whose Required-by intersects with its phase's `Rules`.
+    </Axiom>
+
+    <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / contracts scope → one ticket per discrete capability.
+
+      DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
+
+      **Split one ticket into N only when BOTH conditions hold:**
+      - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
+      - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
+
+      **NOT a reason to split:** audit milestone granularity (audit runs once per ticket regardless of size); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+
+      Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
+
+      Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
+    </Axiom>
+
+    <Axiom id="AX_BOOTSTRAP_TICKET_DERIVATION">
+      **Bootstrap Requirements rows with Owner=`this-scope-task` aggregate into the minimum number of tickets per `AX_DAG_AND_TICKET_BOUNDARIES`.** Default — group by Resolution affinity (all `package` rows → one «install deps» ticket; all `structural` rows editing the same config file → one ticket); subdivide only when (P) parallel-executable or (C) context overflow. Source: scope spec Bootstrap Requirements (infrastructure 9, contracts 7, library 8, product 8).
+      - Rows with Owner=`external-prereq-scope` → cross-scope dependency edge, not a ticket here.
+      - Rows with Owner=`operator-action` → noted in tracker index as a blocking external prerequisite, not a ticket.
+      - Bootstrap tickets must be DONE before any non-bootstrap ticket of the same scope (e.g. `install package` precedes `wire config that uses package`).
+      - Bootstrap tickets carry Verification populated from the Resolution column (e.g. `npm ls <pkg>` exit 0).
+      - If Bootstrap Requirements is absent from the spec → abort with `H_BOOTSTRAP_REQUIREMENTS_MISSING` (the spec did not pass discovery STEP_7).
+    </Axiom>
+
+    <Axiom id="AX_TICKET_HAS_BDD_AND_TESTS">
+      **Ticket carries BDD scenarios mapped to concrete tests.**
+
+      - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
+      - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in section 6 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
+      - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
+      - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
+      - BDD describes behavior, not language-specific syntax.
+      - For every DbC contract in Spec References (Port / Adapter / Value Object / branded type / discriminated union): one `contract`-level typing scenario MUST exist — covers input/output shape, branded-type rejection at boundary, union exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
+    </Axiom>
+
+    <Axiom id="AX_TICKET_DEDUPLICATION">
+      **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `tasks/<scope>/README.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
+    </Axiom>
+
+    <Axiom id="AX_TASK_ID_UNIQUENESS">
+      **Task-ID `<ACR>-<slug>` is unique, semantic, and immutable.** The slug names the feature, not a
+      sequence number.
+
+      - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
+        branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
+      - The ID never changes — even if the ticket file moves between scopes.
+      - Code references via file headers (`@tasks:`) point to IDs, not paths.
+      - `sdd-check` cross-checks integrity; a genuine collision → abort, operator resolves.
+    </Axiom>
+
+    <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
+      **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
+
+      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in section 2 Phases Overview. Each block contains ONLY the closing lines:
+        ```
+        #### P<N>
+        - [ ] `<ts>` ver <cmd from section 5> → <pass|fail> exit=<code>
+        - [ ] `<ts>` DONE
+        ```
+        No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / section 6 / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
+      - **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
+      - Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
+      - Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
+      - **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
+      - Append-only by Rounds.
+
+      A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
+    </Axiom>
+
+    <Axiom id="AX_CROSS_SCOPE_TASK_PLACEMENT">
+      Cross-scope integration tasks belong to the scope that **initiates or owns** the integration. If both sides have equal weight, create a dedicated `integration` scope in the Scope Graph and register it in `specs/README.md`. Never scatter pieces of one integration across multiple scope folders. `tasks/_integration/` is deprecated — do not create it.
+    </Axiom>
+
+    <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
+      Every ticket declares its work as an ordered list of phases in `## 2. Phases Overview` (compact table) and `## 3. Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
+
+      One phase = one focused unit of work for one subagent. Cross-phase dependencies (`Deps:`) are explicit. The orchestrator dispatches phases sequentially; the phase-subagent reads ONLY its phase's block, its phase's Rules, and prior-phase Handoff payloads.
+
+      Phase emission rules during scaffolding:
+      - Default mapping per Target Files content:
+        - production source files (e.g. `*.ts`, `*.py` excluding tests) → `impl` phase.
+        - test files (`*.test.*`, `*.spec.*`) → `test` phase, depends on the corresponding `impl`.
+        - third-party tool config files (`eslint.config.*`, `vitest.config.*`, `lefthook.yml`, etc.) → `config` phase.
+        - markdown docs → `doc` phase.
+        - package install + foundational config (from Bootstrap Requirements) → `bootstrap` phase, no Deps.
+        - trivial wiring files (module barrel `index.ts`, parent re-export update, single-line type-alias re-export) → NOT a separate ticket and NOT a separate phase. They are added to the `Target Files` of the `impl` phase that creates the symbols they re-export.
+      - Each phase carries its own `Rules:` list — subset of cascade-derived rules whose `<Triggers>` apply to its file class.
+      - Each phase carries its own `Target Files:` bullet list (NO ticket-level `Target Files` outside phases).
+      - Each phase carries `Inputs:` (`none` or list of prior phase IDs whose Handoff it consumes) and `Exit:` (one-line verifiable criterion).
+
+      Forbidden: emitting a ticket without `## 2. Phases Overview` and `## 3. Phases`; collapsing impl + test into one phase (they have different rule sets and different verification commands); emitting Target Files at ticket level instead of per-phase.
+    </Axiom>
+
+    <Axiom id="AX_SSOT_TRACEABILITY">
+      **No contract duplication.** Tickets link to spec sections via Markdown anchors. Module spec for contracts/consumers/invariants; scope spec 4 only for cross-cutting constraints.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
+      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
+      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
+      the entry are specified per directive.
+    </Axiom>
+
+    <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
+      Ticket sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers (grammar: `extract-section.sh`). **Anchor names in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — orchestrator (`sdd-execute`) and auditor query them by exact string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Renaming or omitting a templated anchor breaks programmatic dispatch. Each `### P<N>` phase block under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container itself is NOT wrapped — extraction is per-phase.
+    </Axiom>
+
+    <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
+      A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
+    | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | An in-scope spec lacks a Bootstrap Requirements section (did not pass the scope flow) |
+    | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
+    | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
+    | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
+      <Action>
+        Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
+        module specs. Detect the graph (`AX_SCOPE_GRAPH_DETECTION`) and mode
+        (`AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
+        (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_CASCADE">
+      <Goal>Resolve the rules cascade. (auto)</Goal>
+      <Action>
+        Read the rule registry. Per scope, take the transitive closure of depends-on edges and collect
+        rule refs (`AX_RULES_CASCADE_RESOLUTION`); every ref must resolve to a file
+        (`AX_RULES_RESOLUTION_HARD_FAIL`, else `H_MISSING_RULE_FILE`). Build per-scope Cascade Tables. No
+        operator stop — mechanical.
+      </Action>
+    </Step>
+    <Step id="STEP_2_DAG">
+      <Goal>Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN.</Goal>
+      <Action>
+        Bootstrap Requirements per spec → Phase-0 bootstrap tickets (`AX_BOOTSTRAP_TICKET_DERIVATION`);
+        missing section → `H_BOOTSTRAP_REQUIREMENTS_MISSING`. Form tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
+        context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
+        (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
+        get operator approval — this is the one gate on structure.** STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_TASK_GENERATION">
+      <Goal>Generate tickets + test plan. (auto)</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per ticket:
+        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate); per-phase
+        `Rules:` links via `AX_RULE_ACTIVATION_PLAN`; draft BDD with the mandatory `contract`-level
+        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
+        (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
+        clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
+        corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
+        reviewed checklist in the ticket Decision Log. Validate every contract has its typing scenario
+        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). No operator stop — automated.
+      </Action>
+    </Step>
+    <Step id="STEP_4_TEST_PLAN_REVIEW">
+      <Goal>GATE 2: operator approves the TEST PLAN.</Goal>
+      <Action>
+        Present the test plan as a decision card: each BDD scenario as a use-case, tagged
+        `[<ACRONYM>-REQ-N]`, traced up to the scope Vision / goal it protects, plus coverage (every
+        contract has a typing scenario, every scenario maps to a test). The operator approves **what is
+        tested, which use-cases are covered, and that this guarantees the vision** — the one gate on
+        substance. Out-of-scope proposals the subagent surfaced are raised here. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_FINALIZE">
+      <Goal>Write the index hierarchy; hand off. (auto)</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-tasks-index.xml")` and write each
+        `<module>.3-tasks.md` (Tracker, Slug Registry, intra-module DAG, shared content per
+        `AX_TICKET_DEDUPLICATION`). Roll up the scope tracker
+        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")`) and
+        the project index (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`).
+        Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
+        phase graph; exec-log) and resolve or consciously defer every finding per
+        `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.
+        Emit a created-files summary with traceability links. Hand off to execute (isolated, cheaper
+        model). No operator stop.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, kept silent (per `AX_NO_PROCESS_NARRATION`):
+    `📋 TS_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Intake · Cascade · DAG · Tickets · Tests · Done. Only two milestones are
+    operator gates — DAG (breakdown) and Tests (test plan).
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Contract id="BREADCRUMB_FORMAT">
+      One line under the service line: this session's milestones, each with a status marker — `✅` done
+      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
+      «where are we», and it replaces a verbose run-on of finished steps.
+
+      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+    </Contract>
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+      explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the
+      assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > квинтэссенция — что считаю главным.
+      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос Q`<N>`.
+    </Contract>
+
+    <Contract id="SIDE_DIVE_FORMAT">
+      A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
+
+      → ушли в `<тема>`
+      ← `<итог одной фразой>`
+    </Contract>
+
+    <Contract id="FLOW_DIAGRAM_WHEN">
+      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
+      a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
+      allowed inside an operator message (alignment matters). Keep it small.
+
+      ```
+      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+              ▲                                  │
+              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+      ```
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- ticket / module-index / scope+project trackers load lazily at STEP_3 / STEP_5 — see ExecutionPlan. -->
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      ```markdown
+      ### D-NNN — <short title>
+      - **Status:** active | superseded | rejected | deferred
+      - **Recorded:** session <DirectiveName>, <scope-name>
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list with brief reasons>
+      - **Supersedes:** D-NNN (when superseding a prior decision)
+      ```
+    </Contract>
+  </ArtifactOutput>
+</SddScaffold>

@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_CONSUMERS_TAG_SEMANTICS">
+      `@consumers:` names the entity (class, function, interface) that depends on this file's primary exports — not a file path, not a folder name. Name MUST match the consuming entity as named in the spec.
+    </Axiom>

@@ -1,0 +1,183 @@
+<SddMigrationV1V2 keywords="migration, v1, v2, upgrade, tasks-to-specs, task-id, slug, anchors, compression, decision-merge, restructure, plan-first, sdd-migration" type="directive" ver="2.0">
+  <Mission>
+    Migrate a repo from the SDD v1 layout to v2 — interactively, plan-first, under git (baseline first —
+    every step is revertible). Entered when
+    `sdd-state` reports `FLOW_VERSION=v1` (a `tasks/` directory), from the router preflight or any door.
+    This is a SPECIFIC v1→v2 directive; a later `v2→v3` is its own sibling. Self-sufficient: it may run
+    without the router core, so it repeats the operator-facing axioms it needs.
+
+    Not a mechanical copy. Changing decisions changes their references in code, so the migration reads and
+    touches code, and it compresses: decisions and discussion threads that converged on the same thing
+    during the document's evolution are collapsed (the compression protocol is loaded lazily). The
+    operator first sees the whole plan — current → target, how many passes, what moves where, which IDs
+    change, which decisions merge, which files are touched, what gets optimized — and acknowledges it
+    before anything is written.
+
+    Input — a v1 repo + the `sdd-migrate` / `sdd-state` / `sdd-check` tools. Output — a v2 repo
+    (co-located `specs/`, slug Task-IDs, anchored tickets, compressed decisions, flat-Russian prose)
+    that passes `sdd-state` v2 + `sdd-check` clean. Out of scope: authoring new specs (the scope/module
+    branches) — migration only transforms what already exists.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-tool-invocation"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-dialogue-discipline"}}
+
+    {{> "axiom/process/ax-operator-safeguard"}}
+
+    {{> "axiom/process/ax-operator-agreement"}}
+
+    {{> "axiom/process/ax-no-process-narration"}}
+
+    {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+  </BeliefState>
+
+  <KernelGrammar>
+    {{> "definition/process/def-read-and-use-directive"}}
+  </KernelGrammar>
+
+  <ChatProtocol>
+    {{> "contract/process/question-format"}}
+
+    {{> "contract/process/halt-format"}}
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_OPERATOR_REJECTS_PLAN` | Operator declines the migration plan — stop; nothing is written |
+    | `H_NOT_V1` | `sdd-state` does not report `FLOW_VERSION=v1` — there is nothing to migrate; return control |
+    | `H_VERIFICATION_FAIL` | Final verification cannot reach v2 + clean and the gap is not recoverable in-flow — stop, report state, leave git baseline for rollback |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_SCAN">
+      <Goal>Inventory the v1 repo deterministically — the raw material for the plan.</Goal>
+      <Action>
+        Confirm `FLOW_VERSION=v1` via `sdd-state` (else `H_NOT_V1`). Gather, with tools, not by eye:
+        `sdd-migrate anchors --all` (DRY-RUN — which tickets would be anchored / already are); the ticket
+        set under `tasks/<scope>/<module>/*.task-*.md`; the Task-ID families and their counts
+        (`TSK-NN` / `<ACR>-NNN`); the decision IDs (`D-NNN`) and where they repeat; the scope/module
+        shape from the `tasks/` tree + portal. No writes here.
+      </Action>
+    </Step>
+    <Step id="STEP_1_PLAN">
+      <Goal>Show the operator the whole migration before touching anything.</Goal>
+      <Action>
+        Build and present the plan, in plain Russian (`AX_OPERATOR_LANGUAGE`), across as many messages as
+        it needs to be clear:
+        - **Current → target:** v1 (`tasks/`, bare `## N.`, `TSK-NN`, operator-prose) → v2 (co-located
+          `specs/`, anchored sections, `<ACR>-<slug>` IDs, compressed decisions, flat-Russian).
+        - **Passes:** how many iterations the run will take.
+        - **Move map:** each `tasks/<scope>/<module>/…` → its co-located `specs/<scope>/<module>/…`
+          destination + the `*.3-tasks.md` indexes to be built.
+        - **ID map (preview):** `TSK-NN → <ACR>-<slug>` for every ticket (drafted from `Meta.Purpose`).
+        - **Decision compression:** which `D-NNN` / discussion threads converged and will be merged.
+        - **Files touched:** specs, tickets, AND code (ID/decision references), with a count.
+        - **Optimizations:** what gets collapsed / simplified beyond a 1:1 copy.
+        Then an acknowledgement check — the operator confirms «ознакомился» or adds a custom instruction
+        (a scope to skip, a naming preference, a decision to keep). `H_OPERATOR_REJECTS_PLAN` on decline. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ANCHORS">
+      <Goal>Make v1 tickets visible to the v2 tools.</Goal>
+      <Action>
+        Run `sdd-migrate anchors --all --write` (deterministic — wraps canonical sections in
+        `<!--SECTION:-->` markers; idempotent, skips already-anchored). Verify with `sdd-check` (anchor
+        balance clean).
+      </Action>
+    </Step>
+    <Step id="STEP_3_SLUG_MAP">
+      <Goal>Draft the semantic ID map and get approval.</Goal>
+      <Action>
+        For each Task-ID, read its `Meta.Purpose` and propose `<ACR>-<slug>` — `<ACR>` the scope/module
+        acronym, `<slug>` a short kebab feature name, unique within the scope (a Slug Registry; the same
+        slug twice = «one feature»). Present the full map for approval; fold in any custom instruction
+        from STEP_1. STOP for approval.
+      </Action>
+    </Step>
+    <Step id="STEP_4_ID_REPLACE">
+      <Goal>Replace IDs across specs, tickets, and code — safely.</Goal>
+      <Action>
+        Apply the approved map ONLY: replace each exact old ID on a word boundary, across
+        `specs / tasks / cli / shared / services / ai`. Never blind-replace a general `TSK-[0-9]+`
+        pattern; never touch what is not an ID — `D-NNN` (spec-local, kept), `FR-NN` / `NFC-NN` /
+        scope-prefixed requirement IDs (kept), and non-IDs like `UTF-8` / `UTF-16`. Verify: zero original
+        Task-IDs remain (per family) and `sdd-check` clean.
+      </Action>
+    </Step>
+    <Step id="STEP_5_RESTRUCTURE">
+      <Goal>Move tickets co-located and build the indexes (destructive — gated).</Goal>
+      <Action>
+        With approval (this moves files): `git mv` each anchored, slug-named ticket from
+        `tasks/<scope>/<module>/` to co-located `specs/<scope>/<module>/`; assemble the
+        `*.3-tasks.md` indexes from the old `tasks/<scope>/README.md` trackers
+        (`SCOPE_TASKS_INDEX_STRUCTURE` / `MODULE_TASKS_INDEX_STRUCTURE`); remove the emptied `tasks/`.
+        Verify `sdd-state` → `FLOW_VERSION=v2`.
+      </Action>
+    </Step>
+    <Step id="STEP_6_COMPRESS">
+      <Goal>Collapse redundant decisions and discussions (not a mechanical copy).</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/compression.directive.xml")` over the migrated
+        specs/tickets: cluster decisions (`D-NNN`) and discussion threads, merge those that converged on
+        the same conclusion into one current statement (superseded marked per
+        `AX_PIVOT_REQUIRES_SUPERSESSION`, never silently dropped), and propagate the merges to code
+        references. Agent drafts, operator approves.
+      </Action>
+    </Step>
+    <Step id="STEP_7_LANGUAGE">
+      <Goal>Operator-prose → flat engineering Russian.</Goal>
+      <Action>
+        Rewrite Vision, ticket prose, reports, halt messages, and BDD scenario bodies to flat
+        engineering Russian: no metaphors, no English calques («подтверждение» not «аппрув»; «текст» not
+        «проза»); code, IDs, status tokens, BDD keywords, and paths stay English. Agent drafts the
+        candidate list (transliterated anglicisms), operator approves the rewrite.
+      </Action>
+    </Step>
+    <Step id="STEP_8_VERIFY">
+      <Goal>Prove the migration is complete.</Goal>
+      <Action>
+        Final gate: `sdd-state` → `FLOW_VERSION=v2`; `sdd-check --all` clean; zero original Task-IDs /
+        `*.task-*.md` names remain. All three green → done, return control to the caller (script readiness
+        is the router's separate gate — the readiness flow handles it next). Otherwise `H_VERIFICATION_FAIL` —
+        report the gap, leave the git baseline for rollback.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ReferenceData>
+    **What changes:** `tasks/<scope>/<module>/<m>.task-NN.md` → co-located `specs/<scope>/<module>/` +
+    `*.3-tasks.md` indexes · `TSK-NN` (or `<ACR>-NNN`) → `<ACR>-<slug>` · tickets gain `<!--SECTION:-->`
+    anchors · operator-prose → flat Russian · redundant decisions collapsed.
+
+    **What is NOT touched:** `D-NNN` (decision IDs, spec-local) stay · `FR-NN` / `NFC-NN` and
+    scope-prefixed requirement/scenario IDs stay (optional later reformat to BDD `<ACR>-REQ-N`) ·
+    `UTF-8` / `UTF-16` and similar are NOT IDs — never replaced.
+
+    **Tooling state:** anchoring is a real tool (`sdd-migrate anchors`). ID-replace and move are done by
+    safe, deterministic recipes today (exact IDs from the approved map, on word boundaries, UTF-safe);
+    `sdd-migrate ids --map` / `move` tool-modes will replace those recipes when built — the procedure
+    and its safety constraints do not change.
+  </ReferenceData>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🔁 MIG_R<N> · v1→v2 · step=<id> · tickets=<n> · ready=<yes|no>`.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+</SddMigrationV1V2>

@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_PARTIAL_STRING_VIA_MATCH">
+Partial string / error-message checks go through regex match (`assert.match` / `toMatch`), never through boolean fold (`includes`, `toContain`). Match shows the real value in the failure output; boolean fold loses context.
+</Axiom>

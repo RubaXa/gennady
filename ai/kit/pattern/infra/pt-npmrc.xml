@@ -1,0 +1,10 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Pattern id="PT_NPMRC">
+      <Intent>`.npmrc` with explicit registry; credentials excluded.</Intent>
+      <Snippet language="plaintext">
+        registry=https://registry.npmjs.org/
+        audit=true
+        legacy-peer-deps=false
+      </Snippet>
+      <Why>Registry explicit. Audit on by default. No auth tokens — those go in env vars or per-user `~/.npmrc`.</Why>
+    </Pattern>

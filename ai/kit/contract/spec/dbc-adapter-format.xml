@@ -1,0 +1,15 @@
+<!-- source: sdd/module-decomposition.directive.xml -->
+<Contract id="DBC_ADAPTER_FORMAT">
+      ```markdown
+      #### Adapter: `<AdapterName>`
+      - **Implements:** `<PortName>` (`<path/to/port-file>`)
+      - **Purpose:** <1 sentence>
+      - **Supporting Artifacts:** <if any>
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+      - **Deferred Runtime Scope:** <None or description>
+
+      **Side Effects:**
+      - <external HTTP, IO, observability, mutation of shared state, ...>
+      ```
+    </Contract>

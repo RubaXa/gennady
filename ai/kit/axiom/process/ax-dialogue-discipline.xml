@@ -1,0 +1,10 @@
+<!-- model: proceed-unless-stopped, gated by confidence + stakes (from sdd-opt-v1) -->
+<Axiom id="AX_DIALOGUE_DISCIPLINE">
+  Move forward unless stopped — gated by confidence and stakes:
+  - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+  - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+  The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+  Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
+</Axiom>

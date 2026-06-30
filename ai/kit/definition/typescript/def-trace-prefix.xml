@@ -1,0 +1,2 @@
+<!-- source: coding/typescript-rules.xml -->
+<Definition id="DEF_TRACE_PREFIX">Trace-Prefix format: `[ClassName#methodName]` or `[functionName]`. Used in all Error messages and log messages.</Definition>

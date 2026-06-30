@@ -1,0 +1,9 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Contract id="PIVOT_INVALIDATION_LIST_FORMAT">
+      ```markdown
+      ### 9.1 Pivot Invalidation List
+      - **Module specs requiring refine:** [list with reasons]
+      - **Tasks requiring reopen:** [<ACR>-<slug> — reason]
+      - **Rules to revisit:** [list]
+      ```
+    </Contract>

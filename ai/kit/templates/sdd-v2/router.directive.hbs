@@ -1,0 +1,117 @@
+<SddRouter keywords="sdd, router, entry, intent, route, logic-switch, lazy-load, state" type="directive" ver="2.0">
+  <Mission>
+    Single entry to SDD spec-authoring. On invocation I (1) obtain project state, (2) classify
+    operator intent, (3) route to exactly ONE branch directive via LOGIC_SWITCH, loading it
+    lazily. I carry the cross-cutting core every branch inherits: how to talk to the operator and
+    how to read routes. The per-branch rendering (breadcrumb, decision card) and the artifact
+    format live on the branch, loaded when its route fires.
+
+    Input — operator intent. Output — control handed to one branch directive; the router writes no
+    artifact and prints no formatted trace itself.
+
+    **Glossary.** scope-type ∈ {infrastructure, contracts, library, product}. Scope Graph =
+    directed graph; edge A→B = «scope A depends on scope B».
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-dialogue-discipline"}}
+
+    {{> "axiom/process/ax-operator-safeguard"}}
+
+    {{> "axiom/process/ax-diverge-before-recommend"}}
+
+    {{> "axiom/process/ax-no-process-narration"}}
+
+    {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/process/ax-cross-scope-change"}}
+
+    {{> "axiom/spec/ax-stateless-artifact"}}
+  </BeliefState>
+
+  <KernelGrammar>
+    {{> "definition/process/def-logic-switch"}}
+
+    {{> "definition/process/def-read-and-use-directive"}}
+  </KernelGrammar>
+
+  <SessionState>
+    {{> "contract/process/session-file-format"}}
+  </SessionState>
+
+  <ChatProtocol>
+    {{> "contract/process/question-format"}}
+
+    {{> "contract/process/halt-format"}}
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_STATE">
+      <Goal>Obtain project state and clear the preflight gates before any routing.</Goal>
+      <Action>
+        Call `sdd-state` (deterministic) — one call returns everything routing needs: `FLOW_VERSION`,
+        `READINESS` (exact required scripts: typecheck / test / test:coverage / lint+gennady / format),
+        portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
+        and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
+
+        Then clear each preflight gate inline via the switch below. After any embedded
+        flow (migration / readiness) returns, re-run `sdd-state` and re-evaluate on the FRESH snapshot —
+        that flow changed the project, so the first snapshot is stale. Only a `v2` + ready repo proceeds.
+        Update the session scratch after each loaded branch.
+
+        <LogicSwitch on="FLOW_VERSION · READINESS">
+        - WHEN `FLOW_VERSION=v1`     -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+        - WHEN `READINESS=not-ready` -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
+        - DEFAULT                    -> repo is `v2` + ready — proceed to STEP_1_CLASSIFY
+        </LogicSwitch>
+      </Action>
+    </Step>
+    <Step id="STEP_1_CLASSIFY">
+      <Goal>Classify operator intent and scope-type against state.</Goal>
+      <Action>
+        From state + operator message derive intent: project-setup · new-scope · evolve-scope ·
+        module-decomposition · multi-scope. When the intent concerns a scope, also resolve its
+        scope-type — for a new scope from the operator, for an existing one from `sdd-state` (the
+        Scopes table). A change spanning several scopes (cross-platform) is normal
+        (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
+        in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
+        looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only when state and message agree.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ROUTE">
+      <Goal>Hand control to exactly one branch.</Goal>
+      <Action>Evaluate the LOGIC_SWITCH below and follow the first matching case.</Action>
+    </Step>
+  </ExecutionPlan>
+
+  <LogicSwitch>
+    ```
+    LOGIC_SWITCH (on sdd-state + intent + scope-type):
+      - WHEN specs/README.md is absent OR intent = project-setup
+          (vision / scope graph / register scope / bootstrap infra)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type ∈ {product, library}
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = infrastructure
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = contracts
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/contracts.directive.xml")
+      - WHEN intent = module-decomposition (scope spec approved, product / library)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+      - DEFAULT
+          -> ask the operator which intent applies (message in Russian); route only on a confirmed intent
+    ```
+    > The multi-scope route arrives in its own slice (UC5). Each is one more
+    > `WHEN … -> READ_AND_USE_DIRECTIVE(...)` line here.
+  </LogicSwitch>
+</SddRouter>

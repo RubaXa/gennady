@@ -1,0 +1,4 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Definition id="DEF_SERVER_LOAD">
+      A `load` function exported from `+page.server.ts` / `+layout.server.ts`. Runs ONLY on the server. Has access to `cookies`, `locals`, private env, filesystem.
+    </Definition>

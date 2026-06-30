@@ -1,0 +1,6 @@
+<!-- source: testing/node-test.xml -->
+<Hook id="HOOK_NO_FORBIDDEN_TEST_PATTERNS">
+  <Purpose>Smoke-grep for forbidden idioms: human narration `Step N`, `includes(` on error message, manual try-catch flag.</Purpose>
+  <Command>rg --no-heading -n "Step \d|\.message.*\.includes\(|let\s+threw\s*=" -t ts --glob '**/*.test.ts'</Command>
+  <Expected>Empty on new/changed test files.</Expected>
+</Hook>

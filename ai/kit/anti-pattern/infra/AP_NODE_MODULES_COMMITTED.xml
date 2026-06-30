@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<AntiPattern id="AP_NODE_MODULES_COMMITTED">
+  <Bad>`git add node_modules/` or `node_modules/` not in `.gitignore`</Bad>
+  <WhyBad>10–500 MB bloat; macOS-compiled native binaries fail on Linux CI; PR diffs become unreadable. Lock file already encodes the dep tree deterministically.</WhyBad>
+  <Good>`node_modules/` in `.gitignore`. `npm ci` / `pnpm install --frozen-lockfile` restores from lock file.</Good>
+</AntiPattern>

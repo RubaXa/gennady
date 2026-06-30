@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_PROJECT_LAYOUT">
+Canonical layout: `src/routes/` for routes, `src/lib/` for shared client+server code, `src/lib/server/` for server-only code, `src/hooks.server.ts` / `src/hooks.client.ts` for hooks, `src/app.html` for the HTML shell, `src/app.d.ts` for ambient types, `static/` for unprocessed assets. The `$lib` alias points to `src/lib`; `$lib/server` is automatically server-only.
+</Axiom>

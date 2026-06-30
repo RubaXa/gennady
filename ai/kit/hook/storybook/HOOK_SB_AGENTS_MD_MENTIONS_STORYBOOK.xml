@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<Hook id="HOOK_SB_AGENTS_MD_MENTIONS_STORYBOOK">
+  <Purpose>`AGENTS.md` mentions Storybook so the integration is discoverable.</Purpose>
+  <Command>test -f AGENTS.md &amp;&amp; grep -nE 'Storybook|storybook' AGENTS.md || echo MISSING</Command>
+  <Expected>At least one match in `AGENTS.md`. `MISSING` (file absent) or empty output is a setup gap.</Expected>
+</Hook>

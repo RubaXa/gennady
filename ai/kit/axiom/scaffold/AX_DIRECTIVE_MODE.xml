@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_DIRECTIVE_MODE">
+      **Three modes, auto-detected:**
+      - `greenfield` — scope spec does not exist.
+      - `refine` — extension or tightening of an existing spec (new requirements, new tools, new contracts) without replacing architecture.
+      - `pivot` — replacement of foundational decisions (architecture swap, scope-type swap, tool stack swap). Triggers supersession in the Decision Log.
+
+      Discriminator: if the old decision remains valid in parallel with the new one → `refine`. If the old decision is replaced by an incompatible one → `pivot`.
+    </Axiom>

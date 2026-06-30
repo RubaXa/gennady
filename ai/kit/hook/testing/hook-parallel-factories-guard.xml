@@ -1,0 +1,5 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<Hook id="HOOK_PARALLEL_FACTORIES_GUARD">
+  <Command>rg --no-heading -nU "function create\w+Context" -t ts --glob '**/*.test.ts' | awk -F: '{c[$1]++} END {for (f in c) if (c[f] > 1) print c[f], f}'</Command>
+  <Expected>No file declares more than one `createXxxContext` factory.</Expected>
+</Hook>

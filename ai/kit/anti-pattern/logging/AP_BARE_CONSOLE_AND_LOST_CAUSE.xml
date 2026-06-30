@@ -1,0 +1,32 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<AntiPattern id="AP_BARE_CONSOLE_AND_LOST_CAUSE">
+<Bad>`console.log("fetching user " + JSON.stringify({ id }));` then `catch (e) { console.error("failed " + e); throw new Error("fetch failed"); }`.</Bad>
+<WhyBad>`console.*` forbidden (`AX_STRUCTURED_LOGGING`). Object serialized into message string (`AX_LOG_MESSAGE_PURITY`). No Trace-Prefix or state transition (`AX_LOG_MESSAGE_FORMAT`). `new Error` without `{ cause }` loses debug chain (`AX_ERROR_CHAINING_CAUSE`). No Trace-Prefix in error (`AX_TRACE_PREFIXED_ERRORS`). `e` concatenated into string — stack lost.</WhyBad>
+<Good language="typescript">
+```typescript
+// @file: User retrieval entry point against the primary store.
+// @consumers: SessionRouter
+
+import { logger } from '#logger';
+
+/**
+ * @purpose Retrieve a user record by id from the primary store.
+ * @invariant Storage failure is preserved as `cause` (not transformed); state-transition logs emitted on both success and failure paths.
+ * @throws {Error} Wraps any storage failure with cause-chain.
+ * @sideEffect Storage: SELECT from users by id.
+ */
+export async function retrieveUser(id: string): Promise<User> {
+    try {
+        logger.debug(`[retrieveUser] [idle → retrieving] ${id}`);
+        const user = await db.find(id);
+        logger.info(`[retrieveUser] [retrieving → retrieved] ${id}`);
+        return user;
+    } catch (cause) {
+        const error = new Error(`[retrieveUser] Storage retrieval failed for ${id}`, { cause });
+        logger.error(`[retrieveUser] [retrieving → failed] ${id}`, { error });
+        throw error;
+    }
+}
+```
+</Good>
+</AntiPattern>

@@ -1,0 +1,12 @@
+<!-- source: sdd/module-decomposition + discovery (converged; session name is directive-specific) -->
+<Contract id="DECISION_LOG_ENTRY_FORMAT">
+  ```markdown
+  ### D-NNN — <short title>
+  - **Status:** active | superseded | rejected | deferred
+  - **Recorded:** session <DirectiveName>, <scope-name>
+  - **Why:** <operator's own wording>
+  - **Risk accepted:** <if any>
+  - **Rejected alternatives:** <list with brief reasons>
+  - **Supersedes:** D-NNN (when superseding a prior decision)
+  ```
+</Contract>

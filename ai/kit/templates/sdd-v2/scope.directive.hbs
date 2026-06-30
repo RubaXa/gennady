@@ -1,0 +1,189 @@
+<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.0">
+  <Mission>
+    Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
+    Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
+    Rules, Bootstrap Requirements, Handoff to the `module` flow. Loaded lazily by the router;
+    inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) — not
+    repeated here.
+
+    Input — scope name + intent (raw idea, or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md`. scope-type is already `product` or `library` (the router sends
+    `infrastructure` to the infra branch and `contracts` to the contracts branch).
+
+    Out of scope: module decomposition, entity inventory, DbC — those belong to
+    the `module` flow. The project portal belongs to the root branch.
+
+    **Glossary.** Scope = architecturally cohesive unit (own runtime / stack / deployment / UX
+    surface). Modes: greenfield (no spec) · refine (extend) · pivot (replace decisions, keep the trail) · rewrite (v0 clean-slate, no trail — `AX_PIVOT_REQUIRES_SUPERSESSION`).
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
+
+    {{> "axiom/spec/ax-living-spec"}}
+
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/spec/ax-dx-first"}}
+
+    {{> "axiom/spec/ax-runtime-backing-explicit"}}
+
+    {{> "axiom/spec/ax-product-library-flow"}}
+
+    {{> "axiom/scaffold/ax-stack-based-flow"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/scaffold/ax-scope-rules-declaration"}}
+
+    {{> "axiom/scaffold/ax-rule-activation"}}
+
+    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+
+    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
+
+    {{> "axiom/spec/ax-scope-stays-thin"}}
+
+    {{> "axiom/spec/ax-handoff-to-module-decomposition"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_AMBIGUOUS_PRODUCT_LIBRARY` | Operator intent leaves product vs library unclear after STEP_1_CONFIRM |
+    | `H_LOW_CONFIDENCE` | Confidence `LOW` while locking architecture |
+    | `H_REQ_NOT_APPROVED` | Design Variants attempted without a closed Requirements Gate |
+    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Golden DX |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs / tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_7 finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode; gather context.</Goal>
+      <Action>
+        State from the router already gives the portal + scope-type (product / library). Resolve the
+        scope name from intake (or ask). Stat `specs/<scope>/<scope>.spec.md`: absent → `greenfield`;
+        present → mode per `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry for available rules
+        (per `AX_SCOPE_RULES_DECLARATION`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm product vs library and outline the section set.</Goal>
+      <Action>Confirm the scope-type, outline which sections the spec will carry. Approval Check. STOP.</Action>
+    </Step>
+    <Step id="STEP_2_INTENT_CAPTURE">
+      <Goal>Lock the scope's goal and primary constraints.</Goal>
+      <Action>
+        Intent Candidate (1–3 bullets). Evidence Hygiene per `AX_EVIDENCE_HYGIENE` (Facts /
+        Assumptions / Hypotheses, separated). Interview the operator per `AX_OPERATOR_SAFEGUARD`
+        (find and name the holes, ask developing questions — what should and should NOT exist) —
+        this interview IS the substance of the step, not chatter. Capture the initial Runtime Backing
+        posture per `AX_RUNTIME_BACKING_EXPLICIT`. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_REQUIREMENTS_GATE">
+      <Goal>Close the requirements.</Goal>
+      <Action>
+        Functional · Non-Functional · Out-of-Scope. For product: + Runtime Backing (per
+        `AX_RUNTIME_BACKING_EXPLICIT`) + Project-Wide Rules (per `AX_SCOPE_RULES_DECLARATION`).
+        Interview per `AX_OPERATOR_SAFEGUARD`. Approval Check (this gate must close before Design
+        Variants, else `H_REQ_NOT_APPROVED`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_GOLDEN_DX">
+      <Goal>Lock the Golden DX example (mandatory before architecture).</Goal>
+      <Action>
+        Per `AX_DX_FIRST`, write a real-code usage example: library → Public API DX; product →
+        UX-flow or CLI DX (depth per Project Type). Approval Check (else `H_GOLDEN_NOT_APPROVED`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_ARCHITECTURE">
+      <Goal>Lock the architecture.</Goal>
+      <Action>
+        library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
+        product → Design Variants (2–3) per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
+        option into the tail; judge each against THIS scope, do not collapse to the modal design.
+        Under `LOW` confidence do not lock (`H_LOW_CONFIDENCE`). Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_6_ARCHITECTURE_CHOICE">
+      <Goal>Product only: pick a variant.</Goal>
+      <Action>
+        library → skip to STEP_7. product → operator picks a variant; record a Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_7_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Reconcile the drafted spec with repository reality; materialize Bootstrap Requirements.</Goal>
+      <Action>
+        Walk the drafted spec; extract every external assumption (packages, workspace links, tools,
+        pre-existing files, cross-scope types, env / services, structural prerequisites). Classify each
+        `exists` | `missing` | `unknown` — narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`
+        and `AX_SPEC_IS_SOLE_SOURCE` (no reading app source for design). Resolve every `missing` /
+        `unknown` with the operator (source · version · owner), each a Decision Log entry. Materialize
+        the Bootstrap Requirements table `| Requirement | Kind | Owner | Resolution |`. Gate: empty list
+        only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. This step
+        does not revisit design; a finding that invalidates a decision pops back as `pivot`.
+      </Action>
+    </Step>
+    <Step id="STEP_8_FINAL_SPEC">
+      <Goal>Emit the scope spec.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE` the matching format — `ai/directives/sdd-v2/formats/product-spec-structure.xml`
+        (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library) — and assemble
+        `specs/<scope>/<scope>.spec.md` to it; Bootstrap Requirements is part of every spec. In `pivot`
+        mode also `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` (Pivot
+        Invalidation List + rework entries) per `AX_PIVOT_REQUIRES_SUPERSESSION`; in `rewrite` mode write
+        fresh — no supersession, no invalidation list. Write in review-state per `AX_SPEC_LIFECYCLE` —
+        prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`)
+        and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
+        master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor
+        balance + required sections + links) and resolve any finding. Then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
+        publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
+        hand off to the `module` flow per `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Approval Check. STOP.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🦾 DSC_R<N> · <scope> · <scope-type> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones
+    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Golden DX · Architecture · Spec.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/understanding-block-format"}}
+
+    {{> "contract/process/side-dive-format"}}
+
+    {{> "contract/process/flow-diagram-when"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- spec-structure + pivot formats load lazily at STEP_8 (used only when writing) — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddScope>

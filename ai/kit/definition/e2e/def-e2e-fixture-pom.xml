@@ -1,0 +1,4 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Definition id="DEF_E2E_FIXTURE_POM">
+      A Page Object exposed as a Playwright fixture: `const test = base.extend&lt;{ checkout: CheckoutPage }&gt;({ checkout: async ({ page }, use) => { await use(new CheckoutPage(page)); } });`. Tests then declare `checkout` in their argument list and receive a fresh per-test instance.
+    </Definition>

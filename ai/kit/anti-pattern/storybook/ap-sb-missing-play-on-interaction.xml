@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<AntiPattern id="AP_SB_MISSING_PLAY_ON_INTERACTION">
+  <Bad>Story named `OpensModalOnClick` consists only of `args: { ... }` and no `play` function; the user-flow concept is documentation, not an executable contract.</Bad>
+  <WhyBad>Interactive story without `play` (`AX_SB_USE_PLAY_FOR_INTERACTION`). The self-verification loop has nothing to assert against; `run-story-tests` will pass trivially without exercising the flow that the story name claims to verify.</WhyBad>
+  <Good>Add `play: async ({ canvasElement, step }) => { const canvas = within(canvasElement); await userEvent.click(canvas.getByRole('button', { name: 'Open' })); await expect(canvas.getByRole('dialog')).toBeVisible(); }`.</Good>
+</AntiPattern>

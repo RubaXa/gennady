@@ -1,0 +1,13 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_SEVERITY_TAGGING">
+      Every finding carries a severity:
+
+      | Severity | Meaning |
+      |---|---|
+      | `BLOCKER` | task cannot be considered complete; merge forbidden |
+      | `MAJOR` | protocol violation; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
+      | `MINOR` | stylistic or secondary discrepancy |
+      | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
+
+      Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
+    </Axiom>

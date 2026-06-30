@@ -1,0 +1,9 @@
+<!-- source: sdd/phase-execution-protocol.xml -->
+<Contract id="BLOCKER_FORMAT">
+      ```markdown
+      - 🛑 `<ts>` BLOCKED: <one-line cause>
+        - 🔗 axiom: AX_<NAME>
+        - 💬 unblock: <concrete operator action>
+      ```
+      After this entry: phase Status → `[!] BLOCKED`; return BLOCKED to orchestrator. Stop.
+    </Contract>

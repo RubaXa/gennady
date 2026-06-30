@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_TYPES_FROM_GENERATED">
+Route-specific types come from generated `./$types` modules: `PageServerLoad`, `Actions`, `PageLoad`, `LayoutData`, etc. Hand-rolling these types is forbidden — they drift the first time the route signature changes. `App.Locals`, `App.PageData`, `App.Error`, `App.Platform` are declared in `src/app.d.ts` and are the only place to extend per-app surfaces.
+</Axiom>

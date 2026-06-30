@@ -1,0 +1,364 @@
+<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.0">
+  <Mission>
+    Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
+    Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
+    Rules, Bootstrap Requirements, Handoff to the `module` flow. Loaded lazily by the router;
+    inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) — not
+    repeated here.
+
+    Input — scope name + intent (raw idea, or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md`. scope-type is already `product` or `library` (the router sends
+    `infrastructure` to the infra branch and `contracts` to the contracts branch).
+
+    Out of scope: module decomposition, entity inventory, DbC — those belong to
+    the `module` flow. The project portal belongs to the root branch.
+
+    **Glossary.** Scope = architecturally cohesive unit (own runtime / stack / deployment / UX
+    surface). Modes: greenfield (no spec) · refine (extend) · pivot (replace decisions, keep the trail) · rewrite (v0 clean-slate, no trail — `AX_PIVOT_REQUIRES_SUPERSESSION`).
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    <Axiom id="AX_DIRECTIVE_MODE">
+      Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
+      step branching and which axioms apply. The concrete mode set is directive-specific
+      (e.g. `greenfield` / `refine` / `pivot`; `initial` / `extend-dag`; `initial` / `add-module` / `refine-module`).
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
+      Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
+      where possible). The detection table is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION">
+      The `scope` flow reads `specs/README.md` for project context (vision, scope graph, sibling scopes). It MUST NOT rewrite the file. The narrow exception (per the `root` flow's `AX_PORTAL_PRIMARY_OWNER`): when the `scope` flow creates a brand-new scope, it MAY append one placeholder row to the Scopes table tagged `🚧 (awaiting root sync)`. Any other edit is forbidden — run the `root` flow instead.
+    </Axiom>
+
+    <Axiom id="AX_LIVING_SPEC">
+      The scope spec is a living document. In `refine` mode any section may be updated in place. There is no frozen 7 Handoff — the Handoff section evolves as modules are added.
+
+      `pivot` uses Decision Log supersession: the old entry → `status: superseded`, body preserved; the new entry carries `Supersedes: D-NNN` and `Was → Now`. The spec body is rewritten in place; git history is the full predecessor.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_LIFECYCLE">
+      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with a temporary `CHANGE_MANIFEST` (`CHANGE_MANIFEST_FORMAT`) at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+
+      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+
+      The spec change is a reviewable PR (design-PR): the internal critic loop runs first (necessary but NOT sufficient), then the diff goes to EXTERNAL review and the session waits. **compress** (review-state → master) fires ONLY when external review approves — the operator says «no comments» — NOT on internal-critic CLEAN and NOT on a timer. On approval: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay), resolve any ID collisions in one commit, and for `pivot` mark superseded decisions; then merge. Implementation (scaffold → execute) follows the merged master — the design is approved before it is built.
+
+      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      Phase reads specs only, never code; no project-wide search (grep / find / ripgrep)
+      outside the reads explicitly listed by the directive. `audit` is the only directive
+      permitted to read code; it alone resolves spec/code mismatch.
+    </Axiom>
+
+    <Axiom id="AX_DX_FIRST">
+      For product / library scopes the Golden DX Example precedes Design Variants. DX shape:
+      - For library: the public-API DX (init / happy path / error path with commentary).
+      - For product app / spa / mobile / desktop: UX-flow DX.
+      - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
+      - For product service-module-sdk: API DX at the transport boundary.
+
+      DX is the empathic anchor for downstream design; without it Design Variants drift into solution-space gymnastics.
+
+      For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
+    </Axiom>
+
+    <Axiom id="AX_RUNTIME_BACKING_EXPLICIT">
+      For product / library scope specs, runtime backing is declared at the scope level inside Requirements & Constraints under «Runtime Backing & Deferred Scope»:
+      - Backing per major capability: `not-implemented` | `simulation` | `real-runtime`.
+      - Deferred scope: parts whose real runtime is intentionally not delivered in v1, with reason.
+      - Trust boundaries that require a real runtime hook (auth, payments, persistence) are listed explicitly.
+
+      Declaring backing early prevents `module-decomposition` and `task-scaffolding` from misclassifying simulation seams as real implementations.
+    </Axiom>
+
+    <Axiom id="AX_PRODUCT_LIBRARY_FLOW">
+      For scope-type=product and scope-type=library:
+
+      **Requirements gate before design.** Architecture variants are forbidden until REQUIREMENTS_GATE is closed. Required: Functional Requirements, Non-Functional Constraints, Out-of-Scope, Project-Wide Rules (Rules).
+
+      **Golden DX example gate.** A Golden DX Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
+
+      **Project Type scales depth** (product only):
+      - `app` (mobile / desktop / spa): 2–3 architectural variants.
+      - `service-module-sdk`: 2–3 variants across transport + persistence.
+      - `cli-utility`: 1–2 variants (minimal depth).
+
+      **YAGNI guard.** Only abstractions needed for v1. Future-proof extensions without a confirmed consumer are forbidden.
+    </Axiom>
+
+    <Axiom id="AX_STACK_BASED_FLOW">
+      The directive runs on an explicit frame stack with a defined main path of phases. Disputes /
+      dives / sub-topics open a nested frame; the stack is visible in the trace header. A sub-topic
+      never silently stalls the parent frame. The concrete main path is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
+      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
+      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
+      the entry are specified per directive.
+    </Axiom>
+
+    <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
+      In `pivot` mode every replaced decision: the old D-NNN → `status: superseded`. The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List (Pivot Invalidation List) enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_RULES_DECLARATION">
+      Scope-wide rules are declared in spec Rules. Categories with directory mapping:
+      - coding → `ai/directives/coding/<rule>.xml`
+      - testing → `ai/directives/testing/<rule>.xml`
+      - architecture → `ai/directives/architecture/<rule>.xml`
+      - infra → `ai/directives/infra/<rule>.xml`
+
+      Every rule reference must resolve to an existing file. Missing → operator picks resolution IN-SESSION (never a halt, never an autonomous task):
+      - **skip** — tool's own defaults are the discipline; record in Decision Log.
+      - **research-and-author** — agent WebFetches authoritative docs (official source from `package.json#homepage` or operator-supplied URL), drafts rule file, operator approves before write to `ai/directives/<category>/<name>.xml`. Drafts capture TIMELESS engineering practice only — discipline, trade-offs, anti-pattern categories, binary invariants. NOT captured: version numbers, CLI flags, config-syntax snippets, plugin lists (those churn between releases; they live in `package.json` / config files).
+      - **defer** — record as Open Risk in Handoff with `Owner: operator-action`; proceed.
+
+      Operator refuses to choose → `H_MISSING_RULE_FILE`. Otherwise no halt.
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION">
+      **Two stages: pick rules, then walk through axioms. Never activate silently.**
+
+      - **Stage A — Relevance per category.** Shortlist "recommend activate" + "considered, recommend skip", each with one-line rationale scoped to context. Operator agree / expand / contract → list locked; deviations → Decision Log.
+      - **Stage B — Per-rule axiom walk-through (infra/* and architecture/* rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
+
+      **Loading defaults.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`. Activation outcomes recorded in the relevant Decision Log.
+    </Axiom>
+
+    <Axiom id="AX_CROSS_SCOPE_DEPENDENCIES">
+      Scope spec declares `depends-on` edges in Scope Dependencies. These edges feed cascade computation in the `scaffold` flow. Cross-scope contracts are sourced from `contracts`-type scopes — never described inside a product scope spec.
+    </Axiom>
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
+      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Hypotheses** — conjectures that require operator validation before they are promoted to requirements.
+
+      Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
+    </Axiom>
+
+    <Axiom id="AX_BOOTSTRAP_NARROW_READ">
+      Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside STEP_7 (External Dependencies Audit), where narrow Read is permitted **only for inventory verification** — confirming whether a referenced package, file, scope, or tool physically exists.
+      Permitted reads in STEP_7: `package.json` and equivalents, `tsconfig.json` and equivalents, `specs/README.md`, sibling scope manifests, filesystem existence checks.
+      Forbidden in STEP_7: reading application source code to influence design decisions; revisiting Vision / Requirements / Architecture / Contracts based on what was found. If a finding genuinely invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot`.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_STAYS_THIN">
+      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Golden DX, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
+
+      Two representations:
+      - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
+      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Golden DX linking to each module's usage example; the detail lives in the modules.
+
+      Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
+
+      First decomposition is a migration: the `initial` module session moves entity-level detail out of the scope spec into the new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
+    </Axiom>
+
+    <Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
+      For product / library scope: the spec carries Handoff with primary input for the `module` flow, named abstractions, open risks.
+    </Axiom>
+
+    <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
+      A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_AMBIGUOUS_PRODUCT_LIBRARY` | Operator intent leaves product vs library unclear after STEP_1_CONFIRM |
+    | `H_LOW_CONFIDENCE` | Confidence `LOW` while locking architecture |
+    | `H_REQ_NOT_APPROVED` | Design Variants attempted without a closed Requirements Gate |
+    | `H_GOLDEN_NOT_APPROVED` | Design Variants attempted without an approved Golden DX |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has module specs / tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | STEP_7 finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode; gather context.</Goal>
+      <Action>
+        State from the router already gives the portal + scope-type (product / library). Resolve the
+        scope name from intake (or ask). Stat `specs/<scope>/<scope>.spec.md`: absent → `greenfield`;
+        present → mode per `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry for available rules
+        (per `AX_SCOPE_RULES_DECLARATION`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm product vs library and outline the section set.</Goal>
+      <Action>Confirm the scope-type, outline which sections the spec will carry. Approval Check. STOP.</Action>
+    </Step>
+    <Step id="STEP_2_INTENT_CAPTURE">
+      <Goal>Lock the scope's goal and primary constraints.</Goal>
+      <Action>
+        Intent Candidate (1–3 bullets). Evidence Hygiene per `AX_EVIDENCE_HYGIENE` (Facts /
+        Assumptions / Hypotheses, separated). Interview the operator per `AX_OPERATOR_SAFEGUARD`
+        (find and name the holes, ask developing questions — what should and should NOT exist) —
+        this interview IS the substance of the step, not chatter. Capture the initial Runtime Backing
+        posture per `AX_RUNTIME_BACKING_EXPLICIT`. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_REQUIREMENTS_GATE">
+      <Goal>Close the requirements.</Goal>
+      <Action>
+        Functional · Non-Functional · Out-of-Scope. For product: + Runtime Backing (per
+        `AX_RUNTIME_BACKING_EXPLICIT`) + Project-Wide Rules (per `AX_SCOPE_RULES_DECLARATION`).
+        Interview per `AX_OPERATOR_SAFEGUARD`. Approval Check (this gate must close before Design
+        Variants, else `H_REQ_NOT_APPROVED`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_GOLDEN_DX">
+      <Goal>Lock the Golden DX example (mandatory before architecture).</Goal>
+      <Action>
+        Per `AX_DX_FIRST`, write a real-code usage example: library → Public API DX; product →
+        UX-flow or CLI DX (depth per Project Type). Approval Check (else `H_GOLDEN_NOT_APPROVED`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_ARCHITECTURE">
+      <Goal>Lock the architecture.</Goal>
+      <Action>
+        library → Architecture: public surface structure, key patterns, briefly-rejected alternatives.
+        product → Design Variants (2–3) per `AX_DIVERGE_BEFORE_RECOMMEND` — reach past the obvious
+        option into the tail; judge each against THIS scope, do not collapse to the modal design.
+        Under `LOW` confidence do not lock (`H_LOW_CONFIDENCE`). Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_6_ARCHITECTURE_CHOICE">
+      <Goal>Product only: pick a variant.</Goal>
+      <Action>
+        library → skip to STEP_7. product → operator picks a variant; record a Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_7_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Reconcile the drafted spec with repository reality; materialize Bootstrap Requirements.</Goal>
+      <Action>
+        Walk the drafted spec; extract every external assumption (packages, workspace links, tools,
+        pre-existing files, cross-scope types, env / services, structural prerequisites). Classify each
+        `exists` | `missing` | `unknown` — narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`
+        and `AX_SPEC_IS_SOLE_SOURCE` (no reading app source for design). Resolve every `missing` /
+        `unknown` with the operator (source · version · owner), each a Decision Log entry. Materialize
+        the Bootstrap Requirements table `| Requirement | Kind | Owner | Resolution |`. Gate: empty list
+        only if explicitly «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`. This step
+        does not revisit design; a finding that invalidates a decision pops back as `pivot`.
+      </Action>
+    </Step>
+    <Step id="STEP_8_FINAL_SPEC">
+      <Goal>Emit the scope spec.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE` the matching format — `ai/directives/sdd-v2/formats/product-spec-structure.xml`
+        (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library) — and assemble
+        `specs/<scope>/<scope>.spec.md` to it; Bootstrap Requirements is part of every spec. In `pivot`
+        mode also `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` (Pivot
+        Invalidation List + rework entries) per `AX_PIVOT_REQUIRES_SUPERSESSION`; in `rewrite` mode write
+        fresh — no supersession, no invalidation list. Write in review-state per `AX_SPEC_LIFECYCLE` —
+        prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`)
+        and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
+        master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor
+        balance + required sections + links) and resolve any finding. Then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
+        publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
+        hand off to the `module` flow per `AX_HANDOFF_TO_MODULE_DECOMPOSITION`. Approval Check. STOP.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🦾 DSC_R<N> · <scope> · <scope-type> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones
+    (per `BREADCRUMB_FORMAT`): Intent · Requirements · Golden DX · Architecture · Spec.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Contract id="BREADCRUMB_FORMAT">
+      One line under the service line: this session's milestones, each with a status marker — `✅` done
+      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
+      «where are we», and it replaces a verbose run-on of finished steps.
+
+      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+    </Contract>
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+      explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the
+      assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > квинтэссенция — что считаю главным.
+      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос Q`<N>`.
+    </Contract>
+
+    <Contract id="SIDE_DIVE_FORMAT">
+      A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
+
+      → ушли в `<тема>`
+      ← `<итог одной фразой>`
+    </Contract>
+
+    <Contract id="FLOW_DIAGRAM_WHEN">
+      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
+      a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
+      allowed inside an operator message (alignment matters). Keep it small.
+
+      ```
+      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+              ▲                                  │
+              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+      ```
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- spec-structure + pivot formats load lazily at STEP_8 (used only when writing) — see ExecutionPlan. -->
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      ```markdown
+      ### D-NNN — <short title>
+      - **Status:** active | superseded | rejected | deferred
+      - **Recorded:** session <DirectiveName>, <scope-name>
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list with brief reasons>
+      - **Supersedes:** D-NNN (when superseding a prior decision)
+      ```
+    </Contract>
+  </ArtifactOutput>
+</SddScope>

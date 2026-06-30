@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_ENTITY_SPRAWL">Accepting a new entity/type/method without first searching the project for one to reuse or extend. New surface every round = sprawl.</Pattern>

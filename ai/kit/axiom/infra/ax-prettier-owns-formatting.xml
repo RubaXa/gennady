@@ -1,0 +1,12 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_PRETTIER_OWNS_FORMATTING">
+      **Formatting (whitespace, quotes, semicolons, line width, trailing commas, JSX wrapping, import-statement layout when purely stylistic) is owned by ONE dedicated formatter — Prettier by default — and NEVER enforced by ESLint stylistic rules.**
+
+      ESLint stylistic rules (`indent`, `quotes`, `semi`, `comma-dangle`, `max-len`, `space-*`, `arrow-spacing`, `keyword-spacing`, etc.) explicitly disabled in `eslint.config.ts` via `eslint-config-prettier` (flat-config equivalent), appended LAST in the config array so it overrides any rule that drifted in from a preset.
+
+      Formatter pipeline runs BEFORE `eslint --fix`: `prettier --write .` then `eslint --fix .`. Both must exit 0.
+
+      The full mechanical quality pass is a fixed two-step sequence exposed as ONE script (`npm run lint:fix` or equivalent) so agents and humans run the same command. Pre-commit hook runs the same script on staged files; CI runs the read-only variant (`prettier --check . && eslint .`) and fails on any drift.
+
+      Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
+    </Axiom>

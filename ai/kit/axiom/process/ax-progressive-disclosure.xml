@@ -1,0 +1,8 @@
+<!-- source: sdd-opt-v1 PROGRESSIVE_DISCLOSURE -->
+<Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+  Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+  read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+  derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+  questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+  the operator BECOME the questions — never list them twice.
+</Axiom>

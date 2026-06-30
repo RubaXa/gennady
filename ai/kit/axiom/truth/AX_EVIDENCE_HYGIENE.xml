@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      - **Facts** — directly observable from input artifacts (Portal, sibling specs, rule files).
+      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Hypotheses** — conjectures requiring operator validation before they harden into requirements.
+
+      Conflating the three is the most common path to false confidence; surface them in distinct lists.
+    </Axiom>

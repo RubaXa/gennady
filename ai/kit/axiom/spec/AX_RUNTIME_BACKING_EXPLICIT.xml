@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_RUNTIME_BACKING_EXPLICIT">
+      For product / library scope specs, runtime backing posture is declared at the scope level inside Requirements & Constraints under «Runtime Backing & Deferred Scope»:
+      - Posture per major capability: `not-implemented` | `simulation` | `real-runtime`.
+      - Deferred scope: parts whose real runtime is intentionally not delivered in v1, with reason.
+      - Trust boundaries that require a real runtime hook (auth, payments, persistence) are listed explicitly.
+
+      Establishing posture early prevents `module-decomposition` and `task-scaffolding` from misclassifying simulation seams as real implementations.
+    </Axiom>

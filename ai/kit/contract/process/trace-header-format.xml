@@ -1,0 +1,11 @@
+<!-- source: sdd/setup + module-decomposition + scaffold + discovery + audit (converged to template) -->
+<Contract id="TRACE_HEADER_FORMAT">
+  ```text
+  <glyph> <PREFIX>_R<N> | STACK: ROOT__<FRAME>__<SUBFRAME> | FRAME: F_<KEY>_R<N> | <📂|🚧|↩️|⏭️|💤> <STATUS> | CONF: <LOW|MEDIUM|HIGH>
+  🎯 GOAL: <local goal>
+  ⏭️ EXIT: <exit condition>
+  ```
+  Each directive supplies its own glyph + anchor prefix (e.g. `🦾 DSC_`, `🧩 DM_`, `📋 TS_`,
+  `🔍 AU_`, `🗺️ SU_`) per `AX_TRACE_ANCHORS`. Discovery additionally carries
+  `SCOPE: <name> | TYPE: <scope-type> | MODE: <mode>`. Setup omits the `FRAME` field.
+</Contract>

@@ -1,0 +1,19 @@
+<!-- source: sdd/fix.directive.xml -->
+<Contract id="FIX_SUMMARY_FORMAT">
+      ```
+      ## ✅ sdd-fix complete
+
+      Direct fixes: N applied
+        ✅ <what> → <file>
+        ✅ <what> → <file>
+
+      Spec updates: N applied
+        ✅ <what> → <file>
+
+      Tasks reopened: N
+        🔄 TSK-NN — Round N: <reason> → dispatched
+        🔄 TSK-MM — Round N: <reason> → dispatched
+
+      🔍 sdd-check: ✅ PASS (N/N checks)
+      ```
+    </Contract>

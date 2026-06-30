@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_DERIVED_WITH_SIDE_EFFECT">
+  <Bad>`let label = $derived((() => { logger.info('recomputing'); return count > 0 ? 'positive' : 'non-positive'; })());`</Bad>
+  <WhyBad>Side effect (logging) inside `$derived` (`AX_DERIVED_IS_PURE`). `$derived` re-runs whenever any tracked dependency changes; the side effect fires on every recomputation, producing log spam and obscuring real state transitions.</WhyBad>
+  <Good>`let label = $derived(count > 0 ? 'positive' : 'non-positive');` for the pure derivation; `$effect(() => { logger.debug('[Component] [label-changed]', { label }); });` for the observability side effect.</Good>
+</AntiPattern>

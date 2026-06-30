@@ -1,0 +1,4 @@
+<!-- source: testing/playwright-cli.xml -->
+<Definition id="DEF_CLI_AX_SNAPSHOT">
+      Output of `locator.ariaSnapshot()` — YAML representation of the accessibility subtree rooted at `locator`. Default scope is partial (a region or named role), not full page.
+    </Definition>

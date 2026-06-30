@@ -1,0 +1,17 @@
+<!-- new for sdd-v2: the per-session working-set scratch file -->
+<Contract id="SESSION_FILE_FORMAT">
+  A single temporary scratch file for the current SDD session — `specs/.sdd-session.md`, gitignored, not
+  a deliverable. It lets a multi-step or multi-scope flow survive a context squeeze or a session break
+  within the same piece of work; it is NOT carried between unrelated sessions. The kernel reads it on
+  entry and updates it after each loaded directive. On the work finishing, it is discarded.
+
+  ```markdown
+  # SDD session — <YYYY-MM-DD>
+  intent: <classified intent>
+  working set:
+    - <scope / module spec path> — <why touched> — <status>
+  journal:
+    - <step / loaded directive> → <what it produced>
+  open: <unresolved decisions / questions>
+  ```
+</Contract>

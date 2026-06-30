@@ -1,0 +1,4 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Definition id="DEF_UNIVERSAL_LOAD">
+      A `load` function exported from `+page.ts` / `+layout.ts`. Runs on the server during SSR AND in the client during navigation. MUST stay safe to bundle for the browser — no private env, no Node-only APIs.
+    </Definition>

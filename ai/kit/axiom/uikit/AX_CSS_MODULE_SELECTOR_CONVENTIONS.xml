@@ -1,0 +1,10 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_CSS_MODULE_SELECTOR_CONVENTIONS">
+CSS module selectors follow the data-attribute pattern consistently:
+- `.btn[data-size="s"]` for size-dependent styles.
+- `.btn[data-mode="primary"][data-appearance="accent"]` for mode × appearance combinations.
+- `.btn[data-state="hover"]` for state-dependent styles.
+- Child elements use class selectors: `.icon`, `.label`, `.counter`, `.indicator`.
+
+No ID selectors, no tag selectors (except `:root` in tokens), no descendant selectors deeper than 2 levels. Every selector is scoped to the component's root class (`.btn`).
+</Axiom>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<AntiPattern id="AP_FORMATTING_DUPLICATION">
+      <Bad>`eslint.config.ts` enables `'indent'`, `'quotes'`, `'semi'`, `'comma-dangle'`, `'max-len'` while `.prettierrc.json` disagrees on tabWidth/printWidth. ESLint rewrites what Prettier wrote, then Prettier rewrites it back.</Bad>
+      <WhyBad>ESLint stylistic rules enabled while Prettier owns the same dimensions (`AX_PRETTIER_OWNS_FORMATTING`). Two tools disagree → each `--fix` undoes the other → CI bounces, agents waste cycles. Config also lacks `eslint-config-prettier` at the end.</WhyBad>
+      <Good>`eslint-config-prettier/flat` appended LAST in flat config — disables stylistic rules from any preset. Formatting lives entirely in Prettier.</Good>
+    </AntiPattern>

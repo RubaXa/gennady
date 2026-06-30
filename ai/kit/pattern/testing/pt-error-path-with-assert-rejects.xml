@@ -1,0 +1,35 @@
+<!-- source: testing/node-test.xml -->
+<Pattern id="PT_ERROR_PATH_WITH_ASSERT_REJECTS">
+      <Intent>Error-path scenario: focused assertions via `assert.rejects()` + `assert.match()` on a stable message fragment; no `try/catch + flag` antipatterns.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it } from 'node:test';
+        import assert from 'node:assert/strict';
+
+        describe('VendorClient#reserveStock', () => {
+            it('should reject with VendorStockError when upstream reports OUT_OF_STOCK', async () => {
+                // contract: domain error class + recognizable message preserves cause-chain
+                // failure mode: do NOT assert full error.message — it carries a dynamic correlation id
+
+                // #region START_RESERVE_STOCK_SETUP_MOCKS
+                const idempotencyKey = '550e8400-e29b-41d4-a716-446655440000';
+                mockEnv.interceptOnce('POST', '/v2/reservations', () => ({
+                    status: 409,
+                    body: { code: 'OUT_OF_STOCK' },
+                }));
+                // #endregion END_RESERVE_STOCK_SETUP_MOCKS
+
+                await assert.rejects(
+                    () => client.reserveStock(idempotencyKey),
+                    (error: unknown) => {
+                        assert.ok(error instanceof VendorStockError);
+                        assert.match((error as Error).message, /\[VendorClient#reserveStock\] .*OUT_OF_STOCK/);
+                        return true;
+                    }
+                );
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Combined TRIGGER+ASSERT via `assert.rejects` is intentional — forced phase split would yield an empty TRIGGER. The single `rejects` call needs no anchor; SETUP has multiple lines + interception policy → anchored.</Why>
+    </Pattern>

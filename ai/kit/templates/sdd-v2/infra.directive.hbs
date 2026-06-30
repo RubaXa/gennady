@@ -1,0 +1,153 @@
+<SddInfra keywords="infra, infrastructure, tooling, tool-stack, dev-workflow, verification-commands, decision-log, sdd-infra" type="directive" ver="2.0">
+  <Mission>
+    Author or evolve an `infrastructure` scope spec — the project's tooling: package manager,
+    type-checker, linter, formatter, test runner, git hooks, CI. A self-contained living spec:
+    Vision, Tool Stack (Decision Log per tool), Dev Workflow Example, File Structure, Effective
+    Rules, Verification Commands, Bootstrap Requirements, Handoff to scaffold. Loaded lazily by the
+    router; inherits the router core (language, dialogue, safeguard, diverge, no-narration,
+    stateless) — not repeated here.
+
+    Input — scope name + intent (or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md` (scope-type infrastructure). The router sends product / library
+    to the scope branch and contracts to the contracts branch.
+
+    Out of scope: product / library design, module decomposition. The project portal is the root branch.
+
+    **Glossary.** Modes: greenfield · refine · pivot · rewrite. Mandatory tool categories: vcs,
+    package-management, git-hooks. Optional: type-check, linting, formatting, test-unit, test-e2e,
+    bundler, ci, monorepo-tool, docs.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
+
+    {{> "axiom/spec/ax-living-spec"}}
+
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/infra/ax-infrastructure-flow"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/scaffold/ax-scope-rules-declaration"}}
+
+    {{> "axiom/scaffold/ax-rule-activation"}}
+
+    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+
+    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_MANDATORY_CATEGORY_DROPPED` | A mandatory category (vcs / package-management / git-hooks) was dropped |
+    | `H_TOOL_LOCKED_WITHOUT_DECISION` | A tool locked without a Decision Log entry |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | External-deps step finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode.</Goal>
+      <Action>
+        State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
+        stat the spec → `greenfield` or mode per `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry
+        (per `AX_SCOPE_RULES_DECLARATION`) — it maps tools to rule files.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm infrastructure and outline the section set.</Goal>
+      <Action>Confirm scope-type, outline sections. Approval Check. STOP.</Action>
+    </Step>
+    <Step id="STEP_2_TOOL_CATEGORIES">
+      <Goal>Declare the tool categories.</Goal>
+      <Action>
+        Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`. Mandatory categories
+        (vcs / package-management / git-hooks) cannot be dropped (`H_MANDATORY_CATEGORY_DROPPED`).
+        Interview per `AX_OPERATOR_SAFEGUARD` — this is the substance, not chatter. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_TOOL_CHOICES">
+      <Goal>Choose a tool per category.</Goal>
+      <Action>
+        Per category, 2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND` (reach past the
+        obvious default; judge against THIS project). Operator picks → Mandatory Rationale Pull →
+        Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`); no tool locked
+        without one (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter,
+        runner vs type-check, CI vs package manager). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_DEV_WORKFLOW">
+      <Goal>Write the Developer Workflow Example.</Goal>
+      <Action>Shell-script shape: how a developer installs, checks, tests, commits. STOP.</Action>
+    </Step>
+    <Step id="STEP_5_FILE_STRUCTURE_AND_RULES">
+      <Goal>Lock file layout, Effective Rules, Verification Commands.</Goal>
+      <Action>
+        Repo root layout + config-file mapping. Effective Rules: look up each chosen tool in the rule
+        registry per `AX_SCOPE_RULES_DECLARATION` / `AX_RULE_ACTIVATION`, record matched rule file
+        paths. Verification Commands table — one row per active tool command. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_6_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Materialize Bootstrap Requirements.</Goal>
+      <Action>
+        Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`); resolve with the operator;
+        materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
+        else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+      </Action>
+    </Step>
+    <Step id="STEP_7_FINAL_SPEC">
+      <Goal>Emit the infrastructure spec.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")` and
+        assemble `specs/<scope>/<scope>.spec.md` to it. In `pivot` mode also
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (infra scopes have no modules).
+        Approval Check. STOP.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🛠️ INF_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Tool Categories · Tool Choices · Dev Workflow · File Structure · Spec.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/understanding-block-format"}}
+
+    {{> "contract/process/side-dive-format"}}
+
+    {{> "contract/process/flow-diagram-when"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- spec-structure + pivot formats load lazily at STEP_7 (used only when writing) — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddInfra>

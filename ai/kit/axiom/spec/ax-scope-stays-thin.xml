@@ -1,0 +1,12 @@
+<!-- source: SDD v2 — scope/module boundary discipline -->
+<Axiom id="AX_SCOPE_STAYS_THIN">
+      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Golden DX, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
+
+      Two representations:
+      - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
+      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Golden DX linking to each module's usage example; the detail lives in the modules.
+
+      Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
+
+      First decomposition is a migration: the `initial` module session moves entity-level detail out of the scope spec into the new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
+    </Axiom>

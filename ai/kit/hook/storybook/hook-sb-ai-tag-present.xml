@@ -1,0 +1,6 @@
+<!-- source: testing/storybook-usage.xml + coding/uikit-component-storybook.xml (merged) -->
+<Hook id="HOOK_SB_AI_TAG_PRESENT">
+  <Purpose>Every story file modified by the agent has at least one story tagged `'ai-generated'`.</Purpose>
+  <Command>find . -name '*.stories.*' -not -path '*/node_modules/*' -print0 | xargs -0 grep -lE "tags:\s*\[[^]]*'ai-generated'" || echo MISSING</Command>
+  <Expected>For agent-touched story files, the path appears in output. `MISSING` after an agent-authored story task means the reserved tag was not applied.</Expected>
+</Hook>

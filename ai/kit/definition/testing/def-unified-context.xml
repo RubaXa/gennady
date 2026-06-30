@@ -1,0 +1,4 @@
+<!-- source: testing/common.xml -->
+<Definition id="DEF_UNIFIED_CONTEXT">
+      The single per-file `XxxContext` type plus its single factory `createXxxContext(overrides?)` (or the single `beforeEach`/`afterEach`-managed lifecycle object). Every case in the file uses this one shape. New scenarios extend it via optional fields and overrides rather than introducing parallel structures.
+    </Definition>

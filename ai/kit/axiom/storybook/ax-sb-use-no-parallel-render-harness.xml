@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Axiom id="AX_SB_USE_NO_PARALLEL_RENDER_HARNESS">
+  Component rendering for testing goes through the project's chosen Storybook harness, not through a parallel render path (custom Vitest project mounting the component bypassing the addon, ad-hoc puppet scripts). Parallel harnesses duplicate the render contract and drift the first time a decorator is added; the drift surfaces as «works in Storybook, fails in tests» (or vice versa) with no audit trail.
+</Axiom>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Hook id="HOOK_NO_LEGACY_PROP_SYNTAX">
+  <Purpose>Smoke-grep for forbidden Svelte 4 prop syntax `export let` in `.svelte` files.</Purpose>
+  <Command>find . -name '*.svelte' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '^\s*export\s+let\s+' || true</Command>
+  <Expected>Empty output. Any match is a legacy prop declaration that must be migrated to `$props()` destructuring.</Expected>
+</Hook>

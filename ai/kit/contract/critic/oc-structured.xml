@@ -1,0 +1,2 @@
+<!-- source: sdd/critic-protocol.xml -->
+<Contract id="OC_STRUCTURED">Exact headers: "## What I understood", "## What I did NOT understand", "## Problems found", "## Verdict". No greetings, no sign-off. Machine-parseable.</Contract>

@@ -1,0 +1,10 @@
+<!-- source: messenger/draft/ai/sdd-authoring-{core A11, lifecycle L1-L5} -->
+<Axiom id="AX_SPEC_LIFECYCLE">
+      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with a temporary `CHANGE_MANIFEST` (`CHANGE_MANIFEST_FORMAT`) at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+
+      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+
+      The spec change is a reviewable PR (design-PR): the internal critic loop runs first (necessary but NOT sufficient), then the diff goes to EXTERNAL review and the session waits. **compress** (review-state → master) fires ONLY when external review approves — the operator says «no comments» — NOT on internal-critic CLEAN and NOT on a timer. On approval: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay), resolve any ID collisions in one commit, and for `pivot` mark superseded decisions; then merge. Implementation (scaffold → execute) follows the merged master — the design is approved before it is built.
+
+      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
+    </Axiom>

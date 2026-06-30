@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<AntiPattern id="AP_SB_NO_MCP_INTEGRATION">
+  <Bad>Agent installs base Storybook, gets `storybook dev` running, and marks the ticket done without installing the test/MCP addon or registering the MCP server.</Bad>
+  <WhyBad>Storybook present but unreachable by agents (`AX_SB_MCP_IS_MANDATORY`). Every subsequent component task must either rediscover props from source code or fall back to human-driven preview. The integration is structurally incomplete; calling it «done» misrepresents project state.</WhyBad>
+  <Good>Install the recommended test/MCP addon (`STEP_SB_3_INSTALL_TEST_ADDON`), register the MCP server with the agent runner (`STEP_SB_5_REGISTER_MCP_SERVER`), and verify at least one MCP tool call returns a non-error response.</Good>
+</AntiPattern>

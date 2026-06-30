@@ -1,0 +1,12 @@
+<!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
+<Axiom id="AX_TOOLS_AS_HANDS">
+      figma-utils — руки агента в SVG, не источник истины. Агент использует команды для извлечения контекста, но решения принимает сам:
+
+      - `figma:extract <name>` — полный JSON со всеми вариантами, измерениями, токен-кандидатами
+      - `figma:inspect <name> <pattern>` — точечный зум в конкретный вариант: размеры, элементы, fill/stroke
+      - `figma:tokens find <pattern>` — grep по именам токенов дизайн-системы
+      - `figma:tokens near <value> [delta]` — найти токены, близкие к измеренному значению
+      - `figma:tokens groups` — категории токенов
+
+      Агент НЕ должен полагаться только на extract. Если данные неполны или противоречивы — запустить inspect для конкретных вариантов, найти токены near, перепроверить.
+    </Axiom>

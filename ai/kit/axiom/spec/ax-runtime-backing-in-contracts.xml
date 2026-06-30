@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_RUNTIME_BACKING_IN_CONTRACTS">
+      Runtime backing and verification levels in every contract that depends on platform/runtime hooks. Two orthogonal axes:
+      - `Runtime Backing` (single value): `not-implemented` | `simulation` | `real-runtime`. What's actually behind the public surface in production code.
+      - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`.
+      - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime).
+
+      Simulation must not masquerade as runtime: declaring `real-runtime` while the implementation is simulation-only without explicit `Deferred Runtime Scope` is forbidden.
+    </Axiom>

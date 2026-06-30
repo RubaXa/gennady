@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Axiom id="AX_LEGACY_PATTERNS_FORBIDDEN">
+  Forbidden Svelte 4 patterns in new components: `export let prop`, `$:` reactive statements, `on:event` directives, `<slot>` and `$$slots`, `$$props` / `$$restProps`, `createEventDispatcher`, `dispatch`. Each has a Svelte 5 replacement (`$props()`, `$derived` / `$effect`, attribute handlers, `{#snippet}` + `{@render}`, callback props).
+</Axiom>

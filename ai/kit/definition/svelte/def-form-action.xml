@@ -1,0 +1,4 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Definition id="DEF_FORM_ACTION">
+      A handler exported under `actions` in `+page.server.ts`. Receives `request`, `cookies`, `locals`, `fetch`. Returns success payload or `fail(status, payload)`; may `redirect(status, location)`.
+    </Definition>

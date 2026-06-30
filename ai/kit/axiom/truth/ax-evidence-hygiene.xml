@@ -1,0 +1,9 @@
+<!-- source: sdd/discovery + module-decomposition + svelte-ui-discovery (converged to principle) -->
+<Axiom id="AX_EVIDENCE_HYGIENE">
+  Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+  - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
+  - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+  - **Hypotheses** — conjectures that require operator validation before they are promoted to requirements.
+
+  Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
+</Axiom>

@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_INSIGHT_BACKFLOW_CAPTURE">
+      Insights flow back into the spec. If Execution Log or code analysis shows:
+      - real complexity of contract turned out higher or lower than spec;
+      - new edge cases discovered, not in Requirements & Constraints;
+      - spec assumptions turned out incorrect;
+      - new dependency emerged, not in Inter-Module Dependencies,
+
+      → `INSIGHT_BACKFLOW` finding with proposed spec-update diff.
+    </Axiom>

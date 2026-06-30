@@ -1,13 +1,37 @@
 ---
 name: sdd-scaffold
-description: Decompose specs (root + domain + infra) into a DAG of compact task tickets ready for autonomous execution by sdd-execute orchestrator. Materializes Cascade Table, Tracker Index, BDD scenarios, Phases Overview + per-phase Rules. Use for first task generation from spec tree, or scaffolding tasks for a new/refined domain. Modes auto-detected: initial, extend-dag.
+description: Decompose the approved spec tree into a DAG of compact task tickets (+ the task-index hierarchy) ready for the execute orchestrator. Use for "scaffold", "разбить спеки на задачи", "decompose specs to tickets", "generate tasks", "/sdd-scaffold". Modes auto-detected — initial · extend-dag.
 compatibility: opencode
 ---
 
-1. **Extract intent.** Operator wants to scaffold tasks for {scope | all scopes}. Mode: `initial` (no `tasks/` yet) or `extend-dag` (`tasks/` exists, adding to it).
+<SddDoor door="scaffold">
+  <Mission>Converge the approved specs into a DAG of self-contained task tickets + the task-index hierarchy. Gather state, embody the scaffold directive, hand off. No interview, no code — that is `/sdd` and execute.</Mission>
 
-2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml`
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddScaffold`
-   You ARE this directive now.
+  <Priming>
+    SDD doors are thin directive-loaders. Files under `ai/directives/sdd-v2/` are PROMPT directives, not
+    data: the XML-ish tags only mark sections — `<Mission>` goal, `<BeliefState>` axioms, `<ExecutionPlan>`
+    steps, `<HaltConditions>` stop-rules. The body is markdown read as instruction — you EMBODY the
+    directive, you do not parse it.
+  </Priming>
 
-3. **Apply directive to intent.** Mode auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`. Follow Execution_Plan end-to-end. Do not deviate.
+  <ExecutionPlan>
+    <Step id="GATHER">
+      One parallel batch (do NOT serialize): run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state`
+      (flow version · readiness · portal · scopes) AND read in full
+      `~/Developer/gennady/ai/directives/sdd-v2/scaffold.directive.xml`.
+    </Step>
+    <Step id="PREFLIGHT">
+      Gate on sdd-state before scaffolding: `FLOW_VERSION=v1` → do NOT stop: read & embody `ai/directives/sdd-v2/migration-v1-v2.directive.xml`
+      (the live v1→v2 migration; scaffolding assumes v2), then resume once `sdd-state` reports v2. `READINESS=not-ready`
+      → do NOT stop: read & embody `ai/directives/sdd-v2/readiness.directive.xml` (the live setup flow — it
+      forces the missing scripts, writes TODO stubs where a tool is not yet chosen, and hands proxy-blocked
+      installs to the operator without looping), then resume scaffolding once `sdd-state` reports ready.
+      Only a v2 repo proceeds.
+    </Step>
+    <Step id="EMBODY">
+      You ARE the scaffold directive now. Mode (initial / extend-dag) auto-detects from existing tickets.
+      Input is the approved `specs/` tree; converge it into tickets, surfacing only the two operator gates
+      (the breakdown and the test plan).
+    </Step>
+  </ExecutionPlan>
+</SddDoor>

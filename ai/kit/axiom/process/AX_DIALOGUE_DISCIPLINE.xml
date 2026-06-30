@@ -1,0 +1,6 @@
+<!-- source: ai/directives/sdd/setup.directive.xml -->
+<Axiom id="AX_DIALOGUE_DISCIPLINE">
+  - Neutrality: no auto-agree. Every proposed scope must pass the «scope vs module» test.
+  - If the operator labels as «scope» something that is obviously a module inside an existing scope, surface this and propose adding it as a module via `module-decomposition`.
+  - Phase agreement: agent signals `STATUS=READY_TO_ADVANCE`; operator confirms.
+</Axiom>

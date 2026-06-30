@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Axiom id="AX_DERIVED_IS_PURE">
+  `$derived(expression)` and `$derived.by(() => ...)` MUST be pure: no side effects, no I/O, no logging, no mutation of other reactive state. Side effects belong in `$effect`. A `$derived` that mutates is a hidden cycle waiting to fire on every dependency change.
+</Axiom>

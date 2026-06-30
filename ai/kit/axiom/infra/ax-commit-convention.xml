@@ -1,0 +1,18 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Axiom id="AX_COMMIT_CONVENTION">
+  Default: Conventional Commits format `<type>(<scope>): <subject>`. Alternatives acceptable with documented rationale.
+
+  Conventional Commits:
+  - Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`, `style`, `revert`.
+  - Subject: imperative mood, ≤72 chars, no trailing period.
+  - Body (optional): wraps at 100 chars, blank line between subject and body.
+  - Footer: `BREAKING CHANGE: …`, issue refs, sign-off.
+
+  Example: `feat(auth): add OAuth2 PKCE flow for native clients`.
+
+  Acceptable alternatives (Decision Log entry required):
+  - **plain** — no type prefix, just imperative subject.
+  - **DCO sign-off** — `Signed-off-by: Name <email>` mandatory for licensing/legal; compatible with conventional commits.
+
+  Conventional Commits enables auto-changelog, semantic-release, machine-readable history.
+</Axiom>

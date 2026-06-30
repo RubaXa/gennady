@@ -1,0 +1,54 @@
+<!-- source: coding/uikit-component-svelte.xml -->
+<Pattern id="PT_COMPONENT_SVELTE_TEMPLATE">
+      <Intent>Canonical structure of a uikit Svelte component file.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <!-- @file: Button component — uikit conventions: data-attributes, a11y, CSS tokens. -->
+        <script lang="ts">
+          let {
+              appearance = 'accent',
+              mode = 'primary',
+              size = 's',
+              state = 'normal',
+              icon = false,
+              label = '',
+              counter = undefined,
+              indicator = false,
+              disabled = false,
+          }: Props = $props();
+
+          let resolvedState = $derived(disabled ? 'disabled' : state);
+        </script>
+
+        <div
+          class="btn"
+          data-appearance={appearance}
+          data-mode={mode}
+          data-size={size}
+          data-state={resolvedState}
+          role="button"
+          aria-label={label}
+          aria-disabled={disabled}
+          tabindex={disabled ? -1 : 0}
+        >
+          {#if icon}
+            <span class="icon">
+              <!-- Inlined SVG with tight viewBox -->
+            </span>
+          {/if}
+          {#if label}
+            <span class="label">{label}</span>
+          {/if}
+          {#if counter !== undefined}
+            <span class="counter">{counter}</span>
+          {/if}
+          {#if indicator}
+            <span class="indicator">
+              <!-- Chevron SVG -->
+            </span>
+          {/if}
+        </div>
+        ```
+      </Snippet>
+      <Why>Single `$props()` destructure with all variant props; `$derived` resolves state vs disabled; inner wrapper carries all data-attributes and ARIA; child elements conditionally rendered; no `:host()`, no `<slot>`, no legacy patterns.</Why>
+    </Pattern>

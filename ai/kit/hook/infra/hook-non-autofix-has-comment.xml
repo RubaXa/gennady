@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_NON_AUTOFIX_HAS_COMMENT">
+      <Purpose>Every non-autofix rule enabled at `'error'` carries an explanatory comment immediately above it.</Purpose>
+      <Command>rg --no-heading -n -B1 "^\s*'[^']+'\s*:\s*'error'" eslint.config.ts</Command>
+      <Expected>Manual review: for every `'error'` entry, preceding line is either inert config syntax (rule is autofix per `HOOK_AUDIT_NEW_RULE`) or a comment naming the bug class and why nothing else covers it. Entries with no preceding comment AND no autofix are violations.</Expected>
+    </Hook>

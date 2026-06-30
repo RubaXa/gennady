@@ -1,0 +1,6 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_BOOTSTRAP_NARROW_READ">
+      Discovery is design-blind to repository code (per `AX_SPEC_IS_SOLE_SOURCE`) **except** inside STEP_7 (External Dependencies Audit), where narrow Read is permitted **only for inventory verification** — confirming whether a referenced package, file, scope, or tool physically exists.
+      Permitted reads in STEP_7: `package.json` and equivalents, `tsconfig.json` and equivalents, `specs/README.md`, sibling scope manifests, filesystem existence checks.
+      Forbidden in STEP_7: reading application source code to influence design decisions; revisiting Vision / Requirements / Architecture / Contracts based on what was found. If a finding genuinely invalidates a design decision, pop back to the relevant STEP_3–STEP_6 explicitly and treat as `pivot`.
+    </Axiom>

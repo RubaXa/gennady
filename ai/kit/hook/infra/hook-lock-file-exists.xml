@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_LOCK_FILE_EXISTS">
+  <Purpose>`package-lock.json` present.</Purpose>
+  <Command>test -f package-lock.json && echo "OK"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

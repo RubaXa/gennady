@@ -1,0 +1,114 @@
+<SddAudit keywords="audit, drift-detection, closed-world, runtime-backing, insight-backflow, findings-routing, semantic, fresh-eyes, sdd-audit" type="directive" ver="2.0">
+  <Mission>
+    Verify that the code a Round produced matches its spec and ticket — and nothing more.
+    Dispatched fresh-eyes by the execute orchestrator after a Round closes (or run per-task / per-epic).
+    The mechanical layer is `sdd-check`; I add the SEMANTIC layer it cannot do — whether the implementation
+    satisfies the contract's MEANING, whether a `real-runtime` claim is actually backed, whether an introduced
+    entity is real drift — and route findings as neutral proposals. Findings only; routing only.
+
+    Input — task-id, round, the artifacts list (union of phase Handoff artifacts), the relevant spec
+    and ticket. Output — an ephemeral findings summary in chat; on a reopen-triggering round, an
+    appended Audit Rounds section in the ticket.
+
+    **Glossary.** Drift = code / ticket / spec disagree. Finding = a neutral, routed proposal — a
+    proposal, MUST stay a proposal. Modes: per-task · per-epic.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-read-per-manifest"}}
+
+    {{> "axiom/audit/ax-mechanical-via-sdd-check"}}
+
+    {{> "axiom/audit/ax-audit-reads-code"}}
+
+    {{> "axiom/audit/ax-git-diff-scan"}}
+
+    {{> "axiom/audit/ax-closed-world-primary-check"}}
+
+    {{> "axiom/audit/ax-runtime-backing-verification"}}
+
+    {{> "axiom/audit/ax-insight-backflow-capture"}}
+
+    {{> "axiom/audit/ax-drift-taxonomy"}}
+
+    {{> "axiom/audit/ax-severity-tagging"}}
+
+    {{> "axiom/audit/ax-findings-as-proposals"}}
+
+    {{> "axiom/audit/ax-finding-routing"}}
+
+    {{> "axiom/audit/ax-neutral-findings"}}
+
+    {{> "axiom/audit/ax-no-auto-fix"}}
+
+    {{> "axiom/audit/ax-ephemeral-output"}}
+
+    {{> "axiom/audit/ax-reopen-rounds-in-ticket"}}
+
+    {{> "axiom/audit/ax-audit-modes"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NOTHING_TO_AUDIT` | No completed Round / no committed code to compare |
+    | `H_SPEC_MISSING` | The spec the ticket references does not exist |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_MECHANICAL">
+      <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
+      <Action>
+        Run `sdd-check --task <ticket-path>` (and `--all` for an epic) per `AX_MECHANICAL_VIA_SDD_CHECK`
+        — it reports the deterministic findings: structure / anchors / Task-ID + Status, fabricated-DONE,
+        the phase graph, Execution-Log completeness, the task DAG, and tracker↔ticket coherence. Take these
+        as given — the tool owns them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
+        `gennady lint --spec=<module-spec>` (cast + closed-world inventory over the changed files), and
+        `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
+        Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
+        here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
+        When the audit closes a WHOLE module
+        (its last task — every sibling DONE), add the reverse closed-world sweep over the module's code root:
+        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the
+        inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
+        / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
+        and would false-positive. BDD↔test substance, rules-cascade resolution, and
+        stale-after-pivot belong to STEP_2 (semantic), not the tool.
+      </Action>
+    </Step>
+    <Step id="STEP_2_SEMANTIC">
+      <Goal>Add the layer the tool cannot — meaning.</Goal>
+      <Action>
+        Read the artifacts (per `AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec
+        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`). Judge
+        what is irreducibly semantic: does the implementation satisfy the contract's postconditions /
+        invariants in substance; is a `real-runtime` claim actually backed or a stub
+        (`AX_RUNTIME_BACKING_VERIFICATION`); does the implementation's public surface match the
+        closed-world inventory (`AX_CLOSED_WORLD_PRIMARY_CHECK`); capture spec gaps as insights
+        (`AX_INSIGHT_BACKFLOW_CAPTURE`). Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
+      </Action>
+    </Step>
+    <Step id="STEP_3_ROUTE">
+      <Goal>Route findings; summarize. Route only — leave the fix to its owner.</Goal>
+      <Action>
+        Emit each finding as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`,
+        `FINDING_FORMAT`) routed to its home (`AX_FINDING_ROUTING`: phase-fix / ticket-update / spec-edit
+        / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
+        (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If the round triggers a reopen, append an
+        Audit Rounds section to the ticket (`AX_REOPEN_ROUNDS_IN_TICKET`) —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format. Return the
+        verdict (PASS / PASS_WITH_ACKNOWLEDGED_RISKS / FAIL + `phases_to_fix`) to the orchestrator.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <OutputContracts>
+    {{> "contract/audit/finding-format"}}
+
+    {{> "contract/audit/audit-session-summary-format"}}
+  </OutputContracts>
+</SddAudit>

@@ -1,0 +1,10 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_ONE_UNIFIED_CONTEXT_PER_FILE">
+**Each test file defines exactly ONE context shape** — a single `XxxContext` type and a single factory `createXxxContext(overrides?)` (or, when teardown required, a single lifecycle context object built in `beforeEach` and disposed in `afterEach`).
+
+Every case in the file consumes this same context. New requirements extend the existing shape and factory through optional fields and overrides; they do NOT spawn parallel `createOrderContextHappy` / `createOrderContextFailing` factories or sibling `let`s in the describe.
+
+A nested `describe` MAY introduce its own narrower context only when its sub-group has lifecycle needs that cannot be expressed as overrides on the parent; the exception must be obvious from the diff.
+
+Why: test files stay small and predictable — one shape applies to every case, new tests almost always add an override, marginal cost per case stays flat.
+</Axiom>

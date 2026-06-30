@@ -1,0 +1,67 @@
+<!-- source: sdd/svelte-ui-discovery.directive.xml -->
+<Contract id="SPEC_STRUCTURE">
+      ```markdown
+      # <ComponentName> — спецификация компонента
+
+      ## 1. Vision & Purpose
+      [Назначение, контекст использования, отличия от похожих компонентов.]
+
+      ## 2. Anatomy
+      [ASCII-дерево слотов.]
+      
+      | Слот | Назначение | Обязательность |
+      |---|---|---|
+      | `<name>` | `<purpose>` | yes / no |
+      
+      [Нюансы реализации.]
+
+      ## 3. Variant Axes
+      ### `size` — размер
+      | Значение | Высота | Padding X | Gap | Описание |
+      |---|---|---|---|---|
+      
+      ### `appearance` — цветовая тема
+      ### `mode` — степень акцента
+      
+      [Невалидные комбинации, если есть.]
+
+      ## 4. States
+      | Состояние | Поведение |
+      |---|---|
+      | default | ... |
+      | hover | ... |
+      | active | ... |
+      | disabled | ... |
+      | loading | ... |
+
+      ## 5. Design Tokens
+      | Роль | VKUI-токен | Значение SVG | Значение токена | Diff | Решение |
+      |---|---|---|---|---|---|
+      
+      [Override-токены с комментариями.]
+      [Новые токены: `--paradigm--<component>-*`.]
+
+      ## 6. API
+      | Проп | Тип | По умолчанию | Описание |
+      |---|---|---|---|
+
+      ## 7. Accessibility
+      - Role: button
+      - aria-label: ...
+      - Keyboard: Enter, Space
+
+      ## 8. Storybook Plan
+      [Иерархия: Component / Appearance / Mode / Size × State.]
+      [Количество stories.]
+
+      ## 9. BDD Scenarios
+      ### <appearance> / <mode> / <state>
+      - **Given** ...
+      - **When** ...
+      - **Then** ...
+
+      ## 10. Decision Log
+      ### D-001 — ...
+      ## 11. Handoff
+      ```
+    </Contract>

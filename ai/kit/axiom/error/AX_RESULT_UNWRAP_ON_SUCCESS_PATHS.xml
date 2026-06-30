@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_RESULT_UNWRAP_ON_SUCCESS_PATHS">
+If the SUT returns `Result<T>`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
+</Axiom>

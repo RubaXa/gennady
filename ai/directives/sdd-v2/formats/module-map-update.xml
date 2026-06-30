@@ -1,0 +1,2 @@
+### 8.2 Inter-Module Dependency Map
+Per-scope module graph. Edge A→B = «module A depends on module B's public surface». Cross-scope edges (to `contracts`-type scopes) shown with `Scope Reference` label.

@@ -1,0 +1,16 @@
+<!-- source: sdd-opt-v1 MESSAGE_LAYOUT -->
+<Contract id="MESSAGE_LAYOUT">
+  A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+  this order. Skip any section empty for this step. During free dialogue inside a step the agent
+  does NOT print this layout — it just talks.
+
+  `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+  `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+  ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+  ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+  ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+  ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+  ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+</Contract>

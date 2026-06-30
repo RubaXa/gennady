@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_NVMRC_EXACT">
+  <Purpose>`.nvmrc` exists, one line, semver-exact.</Purpose>
+  <Command>test -f .nvmrc && [ "$(wc -l < .nvmrc)" -eq 1 ] && grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' .nvmrc && echo "OK"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

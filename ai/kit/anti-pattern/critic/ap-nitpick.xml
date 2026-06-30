@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_NITPICK">Minor wording flagged as CRITICAL. Focus on what breaks downstream agent.</Pattern>

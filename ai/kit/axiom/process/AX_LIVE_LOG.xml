@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_LIVE_LOG">
+      Token vocabulary lives in `scaffold.directive.xml` Execution Log Template — single source of truth, do not duplicate here. Only those tokens may appear in log lines; nothing outside the table is logged.
+
+      Mechanics: replace placeholders in scaffolder's pre-filled `ver` + `DONE` lines with real values; toggle `[ ]` → `[x]`. Append event lines (intro / decision / tried / discovery / insight / verified / BLOCKED) BEFORE the closing block as events happen; never retrofit, never batch.
+
+      Forbidden: toggling `[x]` with any unreplaced `<…>` literal (fabricated done → `EXECUTION_LOG_INCOMPLETE` BLOCKER); padding with empty lines to «look thorough».
+    </Axiom>

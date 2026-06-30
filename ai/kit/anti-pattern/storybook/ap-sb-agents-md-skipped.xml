@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<AntiPattern id="AP_SB_AGENTS_MD_SKIPPED">
+  <Bad>Setup verified end-to-end, but `AGENTS.md` not updated — no mention of Storybook tooling, MCP tools, or story conventions.</Bad>
+  <WhyBad>Integration is undocumented: there is no machine-readable or file-level record of the tooling contract, so the next agent has no deterministic discovery path (`AX_SB_AGENTS_MD_UPDATED_AS_PART_OF_SETUP`). Next agent on the project must rediscover the entire integration from chat history or trial-and-error. Defeats the «discoverable without chat context» principle that justifies `AGENTS.md` in the first place.</WhyBad>
+  <Good>Append a Storybook section to `AGENTS.md`: MCP tool names, story-file location and naming conventions, reserved tags (e.g. `ai-generated`), pointer to `testing/storybook-usage.xml`.</Good>
+</AntiPattern>

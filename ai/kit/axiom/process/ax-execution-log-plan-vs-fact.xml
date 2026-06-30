@@ -1,0 +1,18 @@
+<Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
+**Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
+
+- **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in section 2 Phases Overview. Each block contains ONLY the closing lines:
+  ```
+  #### P<N>
+  - [ ] `<ts>` ver <cmd from section 5> → <pass|fail> exit=<code>
+  - [ ] `<ts>` DONE
+  ```
+  No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / section 6 / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
+- **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
+- Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
+- Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
+- **Forbidden**: `[x]` line containing any unreplaced `<…>` literal = fabricated done.
+- Append-only by Rounds.
+
+A trivial phase with no surprises has 2 lines (`ver`, `DONE`) + Handoff. A phase with real engineering content (decisions, discoveries, intros) has those lines too — but they earn their place by carrying information that isn't elsewhere.
+</Axiom>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Axiom id="AX_RUNES_LOCATION_RESTRICTION">
+  Runes appear ONLY inside Svelte compiler context: `.svelte` files, or `.svelte.js` / `.svelte.ts` modules. Using a rune in a plain `.ts` file produces a compile error; the rune does NOT silently degrade to a function call.
+
+  Cross-file shared reactive state belongs in a `.svelte.ts` module exporting runes-backed values, or in classic stores. Mixing the two for the same value is forbidden.
+</Axiom>

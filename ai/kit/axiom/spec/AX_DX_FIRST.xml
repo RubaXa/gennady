@@ -1,0 +1,12 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_DX_FIRST">
+      For product / library scopes the Golden DX Example precedes Design Variants. DX shape:
+      - For library: the public-API DX (init / happy path / error path with commentary).
+      - For product app / spa / mobile / desktop: UX-flow DX.
+      - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
+      - For product service-module-sdk: API DX at the transport boundary.
+
+      DX is the empathic anchor for downstream design; without it Design Variants drift into solution-space gymnastics.
+
+      For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
+    </Axiom>

@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_INTRODUCED_DISCIPLINE">
+      Every entity introduced beyond the module Entity Inventory MUST be logged: `<ts> intro <EntityName> ← <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `intro` line, the entity is closed-world drift and audit blocks the task.
+    </Axiom>

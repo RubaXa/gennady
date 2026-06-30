@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_NO_FOCUSED_OR_SKIPPED_TESTS_ON_MERGE">
+`it.only` / `describe.only` / `it.skip` / `describe.skip` / `it.todo` MUST NOT be present in committed code unless paired with an inline reference to a tracked deferred-ownership task. A focused `.only` silently disables the rest of the suite; a stray `.skip` rots into a coverage hole.
+</Axiom>

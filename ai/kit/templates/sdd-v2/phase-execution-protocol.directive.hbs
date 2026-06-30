@@ -1,0 +1,156 @@
+<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated" type="directive" ver="2.0">
+  <Mission>
+    Execute ONE phase of ONE task ticket, dispatched by the execute orchestrator. Read only what this
+    phase needs; write only this phase's Target Files; run the verification gate; emit a typed Handoff.
+    A worker directive — runs in isolation on a cheaper model, returns to the orchestrator, stays silent
+    to the operator (no decision cards here).
+
+    The orchestrator owns all of: selecting the next phase · running audit · re-running prior phases ·
+    syncing the project trackers.
+
+    Phase = atomic unit declared in the ticket `## 3. Phases`. Kind ∈ bootstrap | impl | test | config
+    | doc | refactor | fix.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-phase-scope-lock"}}
+
+    {{> "axiom/boundary/ax-ticket-write-scope"}}
+
+    {{> "axiom/boundary/ax-spec-never-edited"}}
+
+    {{> "axiom/process/ax-narrow-recon"}}
+
+    {{> "axiom/process/ax-read-per-manifest"}}
+
+    {{> "axiom/scaffold/ax-rules-load-from-phase-block"}}
+
+    {{> "axiom/coding/ax-introduced-discipline"}}
+
+    {{> "axiom/coding/ax-no-silent-escape-hatch"}}
+
+    {{> "axiom/coding/ax-file-header-append-only"}}
+
+    {{> "axiom/testing/ax-bdd-name-discipline"}}
+
+    {{> "axiom/infra/ax-third-party-tool-current-api"}}
+
+    {{> "axiom/process/ax-verification-before-handoff"}}
+
+    {{> "axiom/process/ax-permitted-bash-commands"}}
+
+    {{> "axiom/process/ax-live-log"}}
+
+    {{> "axiom/process/ax-halt-vs-fail-distinction"}}
+
+    {{> "axiom/process/ax-blocker-escalation"}}
+
+    {{> "axiom/process/ax-blocker-resolution-trail"}}
+
+    {{> "axiom/process/ax-handoff-typed"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_PHASE_NOT_FOUND` | Phase ID from the orchestrator matches no block under `## 3. Phases` |
+    | `H_PHASE_ALREADY_DONE` | Phase Status is `[x]` and no `fix` reason was passed |
+    | `H_RECON_DIVERGENCE` | Recon shows Target Files inconsistent with the phase plan |
+    | `H_MISSING_RULE_FILE` | A rule cited in the phase Rules list does not resolve |
+    | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent in the current Round |
+    | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files or outside `AX_TICKET_WRITE_SCOPE` |
+    | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
+    | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` |
+  </HaltConditions>
+
+  <ContextExpectation>
+    The orchestrator's dispatch prompt provides: the path to this directive; the ticket path; the target
+    phase ID; a `fix` reason if this is a re-run; prior-phase Handoff payloads (current Round); and the
+    **read-manifest** for this phase from `sdd-task` — the exact set to read (rule anchors, spec anchors,
+    ticket sections, Target Files) plus a "do not read" boundary and a rough line budget.
+
+    Per `AX_READ_PER_MANIFEST`: read EXACTLY the manifest, nothing beyond it. Pull each cited block by
+    anchor (`sdd-extract <file> <ANCHOR>`), not whole files. Something needed but absent from the
+    manifest → emit a `discovery` line and surface it; keep the read within the manifest.
+  </ContextExpectation>
+
+  <PhaseProcedure>
+    <Step id="STEP_1_PARSE_PHASE_INPUT">
+      <Goal>Resolve the phase, validate prerequisites, record the reason for this run.</Goal>
+      <Action>
+        Read Meta + Phases Overview + the target phase block. Missing block → `H_PHASE_NOT_FOUND`; Status
+        `[x]` without a `fix` reason → `H_PHASE_ALREADY_DONE`. For each Input, locate the prior phase's
+        `**Handoff →**` line in the current Round (missing → `H_INPUT_HANDOFF_MISSING`). Append the phase
+        header to the current Round: `#### <PhaseID>` (or `… — re-run: <reason>` for `fix`).
+      </Action>
+    </Step>
+    <Step id="STEP_2_NARROW_RECON">
+      <Goal>Verify ground truth before writing — log only on divergence.</Goal>
+      <Action>
+        Per `AX_NARROW_RECON`: log a recon line ONLY on divergence; when state matches the plan, stay
+        silent. On divergence emit a `discovery` line; if it breaks the phase contract → `H_RECON_DIVERGENCE`, else proceed.
+      </Action>
+    </Step>
+    <Step id="STEP_3_LOAD_RULES">
+      <Goal>Internalize the rules governing this phase. No log line.</Goal>
+      <Action>
+        Read the rule anchors in the manifest (`AX_RULES_LOAD_FROM_PHASE_BLOCK` + `AX_READ_PER_MANIFEST`) —
+        the bounded set already filtered by phase kind + Target Files, by anchor not whole file. A cited
+        anchor that fails to resolve → `H_MISSING_RULE_FILE`. Skip the `rules` log line — the manifest declares them.
+      </Action>
+    </Step>
+    <Step id="STEP_4_EXECUTE">
+      <Goal>Produce the artifacts the phase Objective demands, within Target Files.</Goal>
+      <Action>
+        Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
+        `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind honors
+        `AX_THIRD_PARTY_TOOL_CURRENT_API` before writing config. Append event lines per `AX_LIVE_LOG`; a
+        spec gap goes to an `insight` line and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
+      </Action>
+    </Step>
+    <Step id="STEP_5_VERIFY">
+      <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
+      <Action>
+        Run `sdd-verify --profile <by kind>` (the deterministic gate, exact `npm run` scripts, mutating
+        first, run-all, brief on pass, details on fail). Profile by phase kind: `impl` / `refactor` /
+        `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck — a code phase skips tests);
+        `test` → `test` (format · typecheck · test:coverage); a `fix` phase takes the profile of
+        the kind it repairs. The full set runs once at the end (orchestrator close, not here). For
+        `impl` / `refactor` / `test` phases also run `gennady lint --spec=<this module's spec> <Target Files>`
+        — closed-world inventory sync (`ERR_CLI_LINT_INVENTORY_UNDECLARED`) + cast safety
+        (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift
+        (`AX_CLOSED_WORLD_INVENTORY`): remove it, or — if genuinely needed — log an `intro <name> ← <reason>`
+        line (`AX_INTRODUCED_DISCIPLINE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
+        line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error`.
+        Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
+        exactly as written. **Error ownership:** this session MUST fix every failure the gate surfaces —
+        edited or not, in scope or not, pre-existing or not. Treat each as an error still to fix. Fix all,
+        re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
+        breaks the phase contract → `H_BLOCKED`; missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST
+        reflect a command actually run verbatim; logging one otherwise is fabricated verification (audit BLOCKER).
+      </Action>
+    </Step>
+    <Step id="STEP_6_EMIT_HANDOFF">
+      <Goal>Close the phase block with a typed Handoff and DONE.</Goal>
+      <Action>
+        Append `<ts> DONE`; append the `**Handoff →**` line per `HANDOFF_FORMAT`; flip this phase's Status
+        in Phases Overview `[ ]` → `[x]`; return the structured summary per `RETURN_SUMMARY_FORMAT` to the
+        orchestrator.
+      </Action>
+    </Step>
+  </PhaseProcedure>
+
+  <OutputContracts>
+    {{> "contract/process/phase-block-format"}}
+
+    {{> "contract/process/handoff-format"}}
+
+    {{> "contract/process/blocker-format"}}
+
+    {{> "contract/process/return-summary-format"}}
+  </OutputContracts>
+</SddPhaseExecution>

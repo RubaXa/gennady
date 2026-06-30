@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_IMPLEMENTATION_HIDING_IN_PUBLIC">
+Public methods do not leak implementation. Forbidden infrastructure words in public APIs: `Db`, `Sql`, `Http` (exception: serializer layers, where this IS the contract). Leaking transport into a public name breaks Ports & Adapters and binds consumers to a concrete implementation.
+</Axiom>

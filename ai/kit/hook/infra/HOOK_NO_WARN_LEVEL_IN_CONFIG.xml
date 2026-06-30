@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_NO_WARN_LEVEL_IN_CONFIG">
+      <Purpose>Every enabled rule has severity `'error'`. No `'warn'` / `1` survives, including after preset spreads.</Purpose>
+      <Command>npx eslint --print-config . | jq '.rules | to_entries | map(select(.value == "warn" or .value == 1 or (.value | type == "array" and (.[0] == "warn" or .[0] == 1)))) | length'</Command>
+      <Expected>Output is `0`. Any non-zero count is a violation.</Expected>
+    </Hook>

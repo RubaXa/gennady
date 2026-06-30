@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<AntiPattern id="AP_PARALLEL_FACTORIES">
+  <Bad>One file declares `createOrderContextHappy()`, `createOrderContextWithDiscount()`, `createOrderContextFailing()`.</Bad>
+  <WhyBad>Three parallel factories for one SUT (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`). Each drifts independently; structural changes in `OrderLifecycle` require N edits, not one. Reader-agent must learn three shapes instead of one + a set of overrides.</WhyBad>
+  <Good>Single `createOrderLifecycleContext(overrides)` factory; happy / discount / failure cases pass different overrides through the same factory.</Good>
+</AntiPattern>

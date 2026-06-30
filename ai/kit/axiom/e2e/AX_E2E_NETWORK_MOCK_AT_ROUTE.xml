@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_NETWORK_MOCK_AT_ROUTE">
+      External API calls are mocked via `page.route()` / `context.route()` at the network boundary. Mocking at the component level or hand-patching `window.fetch` is forbidden — it bypasses the request flow the production code actually exercises and routinely misses headers, CORS, or retries.
+
+      If the project standardises on a network-mocking harness (MSW, in-house helper), tests reuse it consistently rather than introducing a parallel mocking path per test.
+    </Axiom>

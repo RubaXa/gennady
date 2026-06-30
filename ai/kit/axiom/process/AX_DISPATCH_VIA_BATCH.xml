@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_DISPATCH_VIA_BATCH">
+      After all reopens are prepared, dispatch sdd-execute-batch on the reopened tasks.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers.
+
+      Audit flag: pass `skip-audit` to batch — audit was already done by sdd-check at the end of this fix session.
+      (The batch should still run phases but skip the per-task audit dispatch.)
+    </Axiom>

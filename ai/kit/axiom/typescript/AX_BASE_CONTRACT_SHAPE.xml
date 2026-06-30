@@ -1,0 +1,25 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_BASE_CONTRACT_SHAPE">
+Base JSDoc contract shape for all types, interfaces, methods, fields, properties, getters, setters, functions (incl. `protected`):
+
+- **Default root contract:** `@purpose` (compressed essence). Do NOT replace a root definition or implementation owner with `@see`.
+- **Root implementation rule:** exported class or const directly implementing an existing named contract keeps its own `@purpose` AND adds `@implements {InterfaceName} in path`.
+- **Member implementation rule:** `@see {InterfaceName#memberName} in path` allowed only for direct public/protected implementation or inheritance edge where behavior matches.
+- **Override rule:** override / redefinition (behavior/contract change) → write the full contract explicitly; do not rely only on `@see`.
+- **Clarification rule:** if an implementation needs its own `@consumers`, `@invariant`, `@pre`, `@throws`, `@returns`, `@post`, or `@sideEffect` because the inherited contract is being tightened/specialized/extended → treat as override; write the full explicit contract instead of mixing extra tags into a `@see`-only stub.
+- **Single-line:** `/** @purpose Verb Object Context */` or `/** @see {InterfaceName#memberName} in ./path */`.
+- **Multi-line:** for complex entities, exported implementation roots, or entities with optional tags. Strict order mandatory.
+
+**Optional JSDoc tags (order MANDATORY):**
+1. `@consumers` — who consumes the API.
+2. `@implements` — the contract root implemented.
+3. `@invariant` — constraints, SLA, retry / error policies, ordering guarantees, implementation strategy guarantees that modifying agents must preserve.
+4. `@pre` — hidden preconditions before the call.
+5. `@param` — one coherent role description. Do NOT duplicate field structure from the type.
+6. `@throws` — reason for throw / Promise rejection.
+7. `@returns` — business purpose of a successful result / Promise resolution.
+8. `@post` — state guarantees after the call.
+9. `@sideEffect` — I/O, network, logs, etc.
+
+A strict order and closed vocabulary let a reader-agent parse the JSDoc contract deterministically. File-level tags (`@file:`, `@consumers:`, `@tasks:`) live in `// @tag:` line-comments at file head — never inside entity JSDoc (see `AX_FILE_LEVEL_CONTEXT`).
+</Axiom>

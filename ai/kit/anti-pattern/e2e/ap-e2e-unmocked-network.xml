@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<AntiPattern id="AP_E2E_UNMOCKED_NETWORK">
+      <Bad>Test exercises `/checkout` against the real backend; flakiness is «accepted» because the backend is «usually up».</Bad>
+      <WhyBad>External dependency not mocked (`AX_E2E_NETWORK_MOCK_AT_ROUTE`). The test depends on infrastructure state outside the contract under test; one downstream incident turns the suite red and erodes trust. Worse, it cannot exercise failure paths because the real backend will not produce them on demand.</WhyBad>
+      <Good>`await page.route('**/api/orders', route => route.fulfill({ status: 200, body: JSON.stringify(fixture) }));` for the happy path; `route.fulfill({ status: 500 })` for the failure path.</Good>
+    </AntiPattern>

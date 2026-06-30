@@ -1,0 +1,21 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Pattern id="PT_MINIMAL_PACKAGE_JSON">
+      <Intent>Minimal valid `package.json`: explicit module system, engines aligned, exact dev-tool pins.</Intent>
+      <Snippet language="json">
+        ```json
+        {
+          "name": "my-project",
+          "version": "1.0.0",
+          "type": "module",
+          "engines": { "node": ">=22.0.0 <23.0.0" },
+          "scripts": {
+            "build": "vite build",
+            "test": "node --test"
+          },
+          "dependencies": { "some-lib": "^3.1.0" },
+          "devDependencies": { "vite": "5.2.11" }
+        }
+        ```
+      </Snippet>
+      <Why>`"type": "module"` makes ESM explicit. `engines` bounds Node version. `vite` exact-pinned (build tool); `some-lib` uses range (runtime dep).</Why>
+    </Pattern>

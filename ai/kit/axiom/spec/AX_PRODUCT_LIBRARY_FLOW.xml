@@ -1,0 +1,15 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_PRODUCT_LIBRARY_FLOW">
+      For scope-type=product and scope-type=library:
+
+      **Requirements gate before design.** Architecture variants are forbidden until REQUIREMENTS_GATE is closed. Required: Functional Requirements, Non-Functional Constraints, Out-of-Scope, Project-Wide Rules (Rules).
+
+      **Golden DX example gate.** A Golden DX Example is mandatory before Design Variants. library → Public API DX. product → UX-flow DX or CLI DX depending on Project Type.
+
+      **Project Type scales depth** (product only):
+      - `app` (mobile / desktop / spa): 2–3 architectural variants.
+      - `service-module-sdk`: 2–3 variants across transport + persistence.
+      - `cli-utility`: 1–2 variants (minimal depth).
+
+      **YAGNI guard.** Only abstractions needed for v1. Future-proof extensions without a confirmed consumer are forbidden.
+    </Axiom>

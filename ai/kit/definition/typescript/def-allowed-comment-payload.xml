@@ -1,0 +1,4 @@
+<!-- source: coding/typescript-rules.xml -->
+<Definition id="DEF_ALLOWED_COMMENT_PAYLOAD">
+      Closed vocabulary for machine comments: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`. Inside tests, additionally allowed: `contract` and `observation focus` (per directive `testing/common` `DEF_TEST_PAYLOAD_VOCAB`).
+    </Definition>

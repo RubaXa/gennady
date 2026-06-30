@@ -1,0 +1,20 @@
+<!-- source: sdd/audit.directive.xml -->
+<Contract id="FINDING_FORMAT">
+      ```markdown
+      ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
+      - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
+      - **Confidence:** HIGH | MEDIUM | LOW
+      - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
+      - 📍 **Location:** `<path>:<line>` if applicable
+      - 💬 **Detail:** <factual description, no value words>
+      - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
+      - 📝 **Proposed Remediation:**
+        - Type: `code-fix` | `spec-update` | `ticket-update`
+        - Action: <concrete proposal, with diff if possible>
+        - Routing: <per AX_FINDING_ROUTING — where this change goes>
+      ```
+      F-NNN IDs unique per audit session; do not reuse.
+
+      Usage: this verbose form is for in-session discussion / deep dive only. The canonical machine-readable record at session end is the compact `AUDIT_SESSION_SUMMARY_FORMAT`. Do NOT emit `FINDING_FORMAT` blocks in the final summary.
+    </Contract>

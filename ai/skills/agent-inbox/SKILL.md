@@ -33,18 +33,18 @@ compatibility: opencode
 
 - **(по умолчанию / `list` / «разбери входящие»)** — интерактивный разбор: actionable-список →
   предложить ≤5 задач галочками → вести по одной. Я рулю, ты ведёшь.
-- `tick` (=`once`/`sync`) — ОДИН немой проход для планировщика: `gennady inbox`, показать дельту,
+- `tick` (=`once`/`sync`) — ОДИН немой проход для планировщика: `npx tsx ~/Developer/gennady/cli/gennady.ts inbox`, показать дельту,
   стоп. Без Ask и постинга.
 - `loop` — планировщик повторяет `tick`; частота задаётся снаружи (`/loop 10m` — пока сессия;
   launchd `StartInterval`/cron — фоном). Скилл частоту не задаёт; `tick` идемпотентен через реестр
   `~/.gennady/inbox-registry.json` (показывает только дельту).
-- `reset` — `gennady inbox --reset` (сносит реестр, черновики, worktrees).
+- `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (сносит реестр, черновики, worktrees).
 
 Не из GitLab-репозитория → `--vcs-host=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
 
 ## Презентация инбокса
 
-Данные — `gennady inbox --json [--vcs-host=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
+Данные — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json [--vcs-host=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
 `author`/`reviewers`/`role`/`stage`/`delta`/`age`/`openQuestions`/`lastAuthor`/`events`; сверху
 `total`/`hidden`/`delta`.
 
@@ -84,16 +84,16 @@ compatibility: opencode
 
 | Инструмент | Команда | Когда |
 |---|---|---|
-| Список | `gennady inbox [--json] [--all] [--pick <ref>] [--reset]` | старт; `--pick` — пакет одного MR; `--all` — снять фильтр |
-| **Контекст MR** | `gennady inbox-context --ref <ref> [--skip-worktree] [--skip-threads]` | **ОДИН вызов вместо 4:** worktree + changeset + stage + threads + drafts + package |
-| Рабочая копия | `gennady vcs-worktree --ref <ref>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
-| Дифф/файл | `gennady vcs-diff --ref <ref> [--path <file>]` | список файлов или содержимое файла без клона |
-| Треды | `gennady review-issues --ref <ref> --all` · `--draft` | что уже писали / мои черновики |
-| CI | `gennady vcs-pipeline --ref <ref> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
-| Постинг | `gennady vcs-reply --project=<g/p> --iid=<iid>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
-| Черновики | `gennady vcs-draft-note --ref <ref> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
-| Approve | `gennady vcs-approve --project=<g/p> --iid=<iid> [--revoke]` | approve / `--revoke` снять |
-| Todo | `gennady vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
+| Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--pick <ref>] [--reset]` | старт; `--pick` — пакет одного MR; `--all` — снять фильтр |
+| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref> [--skip-worktree] [--skip-threads]` | **ОДИН вызов вместо 4:** worktree + changeset + stage + threads + drafts + package |
+| Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --ref <ref>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
+| Дифф/файл | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-diff --ref <ref> [--path <file>]` | список файлов или содержимое файла без клона |
+| Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts review-issues --ref <ref> --all` · `--draft` | что уже писали / мои черновики |
+| CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --ref <ref> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
+| Постинг | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --project=<g/p> --iid=<iid>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
+| Черновики | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --ref <ref> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
+| Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --project=<g/p> --iid=<iid> [--revoke]` | approve / `--revoke` снять |
+| Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
 
 **`vcs-reply` (JSON-массив).** Формы reply/line/suggestion — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Только в этом скилле:
 - `{"noteId":…,"body":…}` править / `{"noteId":…,"delete":true}` удалить — **свою** заметку;
@@ -149,17 +149,17 @@ compatibility: opencode
 
 ## Процедура `tick`
 
-`gennady inbox --json` → подача по «Презентации» (дельта → виджет; пусто → `😴`-строка). Без Ask и
+`npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → подача по «Презентации» (дельта → виджет; пусто → `😴`-строка). Без Ask и
 постинга — ровно то, что повторяет loop.
 
 ## Процедура интерактивного разбора (по умолчанию)
 
-1. **Инбокс.** `gennady inbox --json` → виджет/дашборд (список уже actionable).
+1. **Инбокс.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → виджет/дашборд (список уже actionable).
 2. **Выбор задачи — ТОЛЬКО если я не назвал.** Сказал «возьми первую/эту» (или дал задачу через
    tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
    контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
    (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
-3. **Контекст одним вызовом.** `gennady inbox-context --ref <ref>` → `path`/`base`/`diff_refs` +
+3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref>` → `path`/`base`/`diff_refs` +
    changeset + stage + треды (`Reviewer`/`Author`/`AI_Agent`, `uid`=логин) + мои черновики + package.
    (Если нужно по отдельности — `vcs-worktree` / `inbox --pick` / `review-issues --all`/`--draft`.)
 4. **Анализ (сразу, без вопросов — правило 7).** Карта изменений (инвариант 1), затем:
@@ -192,8 +192,8 @@ compatibility: opencode
    `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`. Через `vcs-reply`
    (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
    `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
-9. **Закрытие.** `vcs-todo --done <ref>` (гасит pending-todo, чтобы MR не всплыл снова) →
-   `vcs-worktree --cleanup <path>`. Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
+9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (гасит pending-todo, чтобы MR не всплыл снова) →
+   `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --cleanup <path>`. Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
    следующий MR.
 
 ## Когда НЕ пропускать

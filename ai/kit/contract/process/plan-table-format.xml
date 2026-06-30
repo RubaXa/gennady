@@ -1,0 +1,4 @@
+<!-- source: sdd/fix.directive.xml -->
+<Contract id="PLAN_TABLE_FORMAT">
+      Shown to operator at STEP_3. Compact table per category. Operator may edit.
+    </Contract>

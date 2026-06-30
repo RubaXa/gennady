@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<AntiPattern id="AP_E2E_FULL_PAGE_SNAPSHOT">
+      <Bad>`await expect(page).toMatchAriaSnapshot(\`- banner ... - main ... - contentinfo ...\`);` — full-page snapshot for a test that only verifies the checkout region.</Bad>
+      <WhyBad>Snapshot scope mismatched to test intent (`AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT`). Any change to the unrelated banner / footer / sidebar produces a snapshot diff that has nothing to do with the test's contract. Maintenance cost balloons; signal-to-noise drops.</WhyBad>
+      <Good>Scope to the region under test: `await expect(page.getByRole('region', { name: 'Checkout' })).toMatchAriaSnapshot(\`...\`);`.</Good>
+    </AntiPattern>

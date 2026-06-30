@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Hook id="HOOK_CLI_DEV_SERVER_REACHABLE">
+      <Purpose>Dev server is reachable at the expected URL before exploration.</Purpose>
+      <Command>curl -fsS -o /dev/null -w "%{http_code}\n" "${BASE_URL:-http://localhost:5173}"</Command>
+      <Expected>HTTP 200 (or the project's known boot-complete status). Non-2xx means dev server is not ready; start it before exploring.</Expected>
+    </Hook>

@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_REOPEN_ROUNDS_IN_TICKET">
+      When an audit round triggers a ticket reopen, the round's audit summary is appended to the ticket file under a new `## Audit Rounds` section so the reopen history lives next to the Execution Log rounds it caused. Format per `TICKET_AUDIT_ROUND_FORMAT`. Append-only: prior audit rounds in the ticket are immutable.
+
+      Rationale: full ephemeral output loses reopen-causation between rounds; `audits/<task-id>.audit.md` separate-tree was overkill. Co-locating the audit round with the Execution Log it caused keeps history reviewable in one file.
+
+      Per-task audits that PASS without triggering a reopen do not write to the ticket — they remain ephemeral.
+
+      Epic-level audits never touch ticket files; their consolidated output is ephemeral OR routed to a scope-spec Decision Log entry.
+    </Axiom>

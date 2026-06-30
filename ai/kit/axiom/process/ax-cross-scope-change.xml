@@ -1,0 +1,10 @@
+<!-- new for sdd-v2: cross-scope / cross-platform changes are normal; structure shared-first -->
+<Axiom id="AX_CROSS_SCOPE_CHANGE">
+  A single change may legitimately span several scopes or modules — this is normal, especially for
+  cross-platform work. The shape: the shared / cross-cutting part lives in the scope it belongs to (a
+  `contracts` or shared `library` scope), and platform / consumer scopes depend on it and add only
+  their specifics. So author the shared scope FIRST, then detail each dependent scope — the order is
+  the Scope Graph's dependency order (a dependency is authored before its dependents). Track the
+  working set of touched specs in the session so the change stays coherent across a pause; it is a
+  mode of the normal flow, not a separate branch.
+</Axiom>

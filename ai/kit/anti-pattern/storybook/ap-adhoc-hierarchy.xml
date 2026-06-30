@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_ADHOC_HIERARCHY">
+      <Bad>Story title `'Components/Button'` or `'UI/Button/Primary'` — hierarchy invented by developer.</Bad>
+      <WhyBad>Hierarchy not derived from spec (`AX_HIERARCHY_MIRRORS_SPEC`). When the spec adds a new appearance, the developer must manually reorganize stories. The spec and Storybook drift apart silently.</WhyBad>
+      <Good>Title `'Button/Accent/Primary'` — matches spec's Variants table columns. Adding a new appearance is a mechanical addition of one title group.</Good>
+    </AntiPattern>

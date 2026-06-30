@@ -1,0 +1,242 @@
+<SddCodeReview keywords="code-review, bug-hunt, correctness, edge-cases, security, fresh-eyes, isolated, sdd-code-review" type="directive" ver="2.0">
+  <Mission>
+    Review the code a Round produced for BUGS — correctness against the contract, edge cases, error
+    handling, resource / concurrency, security. Fresh-eyes and isolated, loaded lazily by the execute
+    orchestrator at the very end, after all phases pass and the audit confirms fidelity. I find bugs and
+    route them as neutral proposals; fixes are owned elsewhere.
+
+    Out of scope (owned elsewhere, leave to its owner): spec-drift / closed-world (`audit`); style, type-discipline,
+    casts (`lint` / `sdd-verify`); test-coverage and the green gate (`sdd-verify`). I add the one lens none
+    of them have — is the code actually CORRECT.
+
+    Input — task-id, round, artifacts (the Round's diff + changed files), relevant contract anchors.
+    Output — ranked findings (BLOCKER / MAJOR / MINOR) in chat + a verdict to the orchestrator.
+
+    **Glossary.** Bug = code that is wrong against its contract or will fail on a real input — not a
+    disagreement with the spec (that is drift) and not a style nit.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+    </Axiom>
+
+    <Axiom id="AX_TOOL_INVOCATION">
+      The SDD mechanical tools are `gennady` CLI commands. Invoke them as
+      `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
+      repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
+      synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      `sdd-sync`, `sdd-check`, `orient`. The `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`,
+      `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+    </Axiom>
+
+    <Axiom id="AX_READ_PER_MANIFEST">
+      When a tool hands a read-manifest for the current step — the exact rule anchors, spec anchors,
+      ticket sections, and Target Files to read — read EXACTLY that, nothing beyond it. The manifest's
+      "do not read" list and line budget are binding.
+
+      - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file
+        end-to-end for one section clogs context and degrades a cheaper model on long input.
+      - Need something the manifest does not list? That signals the ticket or manifest is wrong — log a
+        `discovery` line and surface it; never silently widen the read.
+    </Axiom>
+
+    <Axiom id="AX_AUDIT_READS_CODE">
+      Audit is the only SDD directive allowed to read code. Reading scope is bounded:
+      - all files listed in per-phase `Target Files` under ticket section 3 Phases;
+      - artifacts list passed by orchestrator (union of phase Handoffs);
+      - related ports/adapters/services in `Spec References`;
+      - files flagged in Execution Log `intro <X> ← <Y>` lines;
+      - **all files modified during ticket execution** (see `AX_GIT_DIFF_SCAN`).
+
+      Reading unrelated parts of the project is forbidden — derails focus, consumes context.
+    </Axiom>
+
+    <Axiom id="AX_GIT_DIFF_SCAN">
+      Audit widens its read scope via git diff. Per-phase `Target Files` alone is insufficient for reliable closed-world detection: a phase agent could create a helper in `src/utils/`, modify shared types, add a migration without mentioning it. Without diff scan, audit relies on log honesty — contradicting audit's mission.
+
+      Mechanics:
+      - `git diff <round-start-ref>..<round-done-ref>` (or `git diff` against last pre-round commit if refs unavailable);
+      - collect modified / added / deleted files;
+      - in-scope set = union(all phases' `Target Files`, diff files, `intro` log).
+
+      Files in diff but absent from ticket declaration + Execution Log → candidates for `CLOSED_WORLD_DRIFT` (public entities) or `EXECUTION_LOG_INCOMPLETE` (utility-only changes).
+    </Axiom>
+
+    <Axiom id="AX_SEVERITY_TAGGING">
+      Every finding carries a severity:
+
+      | Severity | Meaning |
+      |---|---|
+      | `BLOCKER` | task cannot be considered complete; merge forbidden |
+      | `MAJOR` | protocol violation; requires fix; allows merge only with explicit operator acceptance + Decision Log entry |
+      | `MINOR` | stylistic or secondary discrepancy |
+      | `INFO` | observation without mandatory action (often `INSIGHT_BACKFLOW`) |
+
+      Severity does not depend on agent's mood. Closed-world drift = `BLOCKER` by default; coding-rules violation = `MAJOR`; stylistic deviation = `MINOR`.
+    </Axiom>
+
+    <Axiom id="AX_FINDINGS_AS_PROPOSALS">
+      Every finding contains a proposed remediation. Agent does not modify code. Three remediation types:
+      - `code-fix` — concrete change in code (with location).
+      - `spec-update` — concrete spec update (module or scope) with proposed diff.
+      - `ticket-update` — ticket update (canonical case names, deferred scope, etc.).
+    </Axiom>
+
+    <Axiom id="AX_NEUTRAL_FINDINGS">
+      Findings are objective, free of value judgments. No «bad», «should be better», «ugly». Use «X is missing from Y», «Z contradicts W», «case name `foo` in ticket does not match `bar` in test». Criticism appeals to an axiom or rule: «violates `AX_CLOSED_WORLD_INVENTORY` of module spec».
+    </Axiom>
+
+    <Axiom id="AX_NO_AUTO_FIX">
+      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_EPHEMERAL_OUTPUT">
+      The audit summary itself does not create files in `audits/`. Output is an ephemeral session-summary emitted in chat per `AUDIT_SESSION_SUMMARY_FORMAT`: counts by severity + findings table + proposed changes per `AX_FINDING_ROUTING`.
+
+      Reopen-history of a ticket is persisted *inside the ticket file* — see `AX_REOPEN_ROUNDS_IN_TICKET`. Long-term audit history = git history of the affected spec and ticket files.
+
+      Epic-level audit: cross-task findings (e.g., two modules with conflicting contracts) → Decision Log entry in the relevant scope spec.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NOTHING_TO_REVIEW` | No diff / no changed code in the Round to review |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_READ_DIFF">
+      <Goal>See exactly what changed.</Goal>
+      <Action>
+        Read the Round's git diff (`AX_GIT_DIFF_SCAN`, `AX_AUDIT_READS_CODE`) and the changed files, plus
+        the contract anchors for what they SHOULD do (per `AX_READ_PER_MANIFEST` — the bounded artifacts
+        list, not the whole repo). Empty diff → `H_NOTHING_TO_REVIEW`.
+      </Action>
+    </Step>
+    <Step id="STEP_2_HUNT">
+      <Goal>Hunt bugs against the contract and real inputs.</Goal>
+      <Action>
+        Judge correctness, not conformance: do the postconditions / invariants actually hold on real
+        inputs; what breaks at the edges (empty / null / boundary / overflow); are error and exception
+        paths handled or swallowed; resource / concurrency hazards; security (unsafe input, injection,
+        auth, secrets). Rank each `BLOCKER` / `MAJOR` / `MINOR` per `AX_SEVERITY_TAGGING`. Lead with the
+        few that matter — report bugs only; leave style nits to lint and drift to the audit.
+      </Action>
+    </Step>
+    <Step id="STEP_3_ROUTE">
+      <Goal>Route findings; return a verdict. (no edits)</Goal>
+      <Action>
+        Emit each as a neutral proposal (`AX_FINDINGS_AS_PROPOSALS`, `AX_NEUTRAL_FINDINGS`, `FINDING_FORMAT`)
+        routed to a phase-fix; leave every fix to the phase-fix (`AX_NO_AUTO_FIX`). Present the ephemeral summary
+        (`AX_EPHEMERAL_OUTPUT`). Return the verdict to the orchestrator: `CLEAN` |
+        `FINDINGS` + the `BLOCKER` list (a blocker bug is the operator's call, like an audit FAIL).
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <HardForbidden>
+    - Auto-fixing or editing code / specs / tickets — findings are proposals only.
+    - Re-doing spec-drift / closed-world (audit), style / types / casts (lint), or coverage (gate).
+    - Reading the whole repo — stay within the diff + the manifest's contract anchors.
+  </HardForbidden>
+
+  <OutputContracts>
+    <Contract id="FINDING_FORMAT">
+      ```markdown
+      ### <🔴|🟠|🟡|🔵> F-NNN — <short title>
+      - **Type:** CLOSED_WORLD_DRIFT | COMPLETENESS_GAP | RUNTIME_BACKING_VIOLATION | RULES_COMPLIANCE_VIOLATION | RULES_CASCADE_MISMATCH | TASK_ID_DRIFT | BDD_COVERAGE_MISMATCH | EXECUTION_LOG_INCOMPLETE | STALE_AFTER_PIVOT | INSIGHT_BACKFLOW
+      - **Severity:** 🔴 BLOCKER | 🟠 MAJOR | 🟡 MINOR | 🔵 INFO
+      - **Confidence:** HIGH | MEDIUM | LOW
+      - **Status:** 📂 open | ⚠️ operator-acknowledged | ✅ resolved
+      - 📍 **Location:** `<path>:<line>` if applicable
+      - 💬 **Detail:** <factual description, no value words>
+      - 🔗 **Source-of-truth:** link to spec section / ticket section / rule axiom
+      - 📝 **Proposed Remediation:**
+        - Type: `code-fix` | `spec-update` | `ticket-update`
+        - Action: <concrete proposal, with diff if possible>
+        - Routing: <per AX_FINDING_ROUTING — where this change goes>
+      ```
+      F-NNN IDs unique per audit session; do not reuse.
+
+      Usage: this verbose form is for in-session discussion / deep dive only. The canonical machine-readable record at session end is the compact `AUDIT_SESSION_SUMMARY_FORMAT`. Do NOT emit `FINDING_FORMAT` blocks in the final summary.
+    </Contract>
+
+    <Contract id="AUDIT_SESSION_SUMMARY_FORMAT">
+      **Compact AI-to-AI inline format.** Ephemeral output at session end. One header line + one line per finding + optional applied-changes lines. No markdown tables, no decorative prose. Designed so the next agent (or operator's tooling) parses it in one pass.
+
+      Grammar (one logical record per line, EOL-terminated; fields separated by ` | `):
+
+      ```
+      @audit task=<Task-ID> round=<N> mode=<per-task|epic> status=<PASS|PASS_RISK|FAIL> counts=B<n>·M<n>·m<n>·I<n> phases_to_fix=[<P<N>>,...]
+      F-<NN> | sev=<B|M|m|I> | type=<TYPETOKEN> | conf=<H|M|L> | loc=<path:line|—> | phase=<P<N>|—> | src=<spec/ticket/rule anchor|—> | route=<spec-edit|ticket-reopen|ticket-update|decision-log|code-fix> | act=<one-line action, no newlines>
+      F-<NN> | …
+      ~applied | <target> | <one-line description of inline change>   (optional, repeat per applied change)
+      ```
+
+      Token vocabulary:
+      - `sev`: `B`=BLOCKER, `M`=MAJOR, `m`=MINOR, `I`=INFO.
+      - `conf`: `H`=HIGH, `M`=MEDIUM, `L`=LOW.
+      - `type`: one of `CLOSED_WORLD_DRIFT` | `COMPLETENESS_GAP` | `RUNTIME_BACKING_VIOLATION` | `RULES_COMPLIANCE_VIOLATION` | `RULES_CASCADE_MISMATCH` | `TASK_ID_DRIFT` | `BDD_COVERAGE_MISMATCH` | `EXECUTION_LOG_INCOMPLETE` | `STALE_AFTER_PIVOT` | `INSIGHT_BACKFLOW`.
+      - `route`: one of `spec-edit` | `ticket-reopen` | `ticket-update` | `decision-log` | `code-fix` (per `AX_FINDING_ROUTING`).
+      - `act` text: Russian operator-facing per `AX_OPERATOR_LANGUAGE` (this is operator-facing artifact prose), single line, no pipe character.
+      - `status` `PASS_RISK` = PASS_WITH_ACKNOWLEDGED_RISKS.
+
+      Example:
+      ```
+      @audit task=TSK-04 round=3 mode=per-task status=FAIL counts=B1·M2·m0·I1
+      F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory модуля payments
+      F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
+      F-03 | sev=M | type=BDD_COVERAGE_MISMATCH | conf=H | loc=src/payments/adapter.test.ts:55 | src=tasks/backend/payments/payments.task-04.md#4 | route=ticket-update | act=переименовать тест-кейс в `should reject non-positive amount with InvalidAmountError`
+      F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=src/payments/adapter.ts:88 | src=specs/backend/payments/payments.spec.md#4 | route=spec-edit | act=зафиксировать retry-budget в DbC postcondition
+      ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
+      ```
+
+      Rules:
+      - First line MUST be the `@audit` header. No prose preamble.
+      - Findings ordered by descending severity, then by `F-NN`.
+      - No empty lines inside the block.
+      - If `loc` or `src` is N/A, emit literal `—` (em-dash) — do not omit the field.
+      - `act` is operator-facing prose (Russian per policy); everything else is English tokens.
+    </Contract>
+  </OutputContracts>
+</SddCodeReview>

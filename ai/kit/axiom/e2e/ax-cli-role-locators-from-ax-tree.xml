@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Axiom id="AX_CLI_ROLE_LOCATORS_FROM_AX_TREE">
+      Every locator used during exploration is derived from the AX tree just observed (`getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, `getByTestId`). CSS classes, ID selectors, and XPath expressions are forbidden as the primary locator strategy — they bind the test to implementation details that have no contract status.
+    </Axiom>

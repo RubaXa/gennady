@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<AntiPattern id="AP_BEFORE_EACH_LET_PILEUP">
+  <Bad>Describe scope hosts `let sut, saveOrder, publish, order, now`; `beforeEach` assigns them; second case re-assigns shared `sut` to a different config (leaks state).</Bad>
+  <WhyBad>Pile of `let`-variables (inherited `AX_NO_DESCRIBE_LET_PILEUP`). Per-case data built in `beforeEach` without teardown reason (inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_PREFER_FACTORY_OVER_HOOKS`). No unified context type/factory (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`).</WhyBad>
+  <Good>ONE context type + ONE `createOrderLifecycleContext(overrides)` factory used by every case. Each case destructures the fields it uses; failure case overrides one field. No `beforeEach`, no shared `let`s.</Good>
+</AntiPattern>

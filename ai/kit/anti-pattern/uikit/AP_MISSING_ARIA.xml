@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_MISSING_ARIA">
+<Bad>Button component with `<div class="btn" onclick={handler}>` and no ARIA attributes.</Bad>
+<WhyBad>A11y contract not fulfilled (`AX_A11Y_REQUIREMENTS`). Screen readers cannot identify the element as a button, cannot announce its label, cannot report its disabled state. Keyboard users cannot focus or activate it.</WhyBad>
+<Good>`<div class="btn" role="button" aria-label={label} aria-disabled={disabled} tabindex={disabled ? -1 : 0}>`.</Good>
+</AntiPattern>

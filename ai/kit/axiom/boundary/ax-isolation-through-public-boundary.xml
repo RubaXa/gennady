@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_ISOLATION_THROUGH_PUBLIC_BOUNDARY">
+Isolate the SUT by stubbing its external dependencies and exercising it through its public surface. Determinism comes from controlling inputs at the boundary, not from reaching past the boundary to set internal state.
+</Axiom>

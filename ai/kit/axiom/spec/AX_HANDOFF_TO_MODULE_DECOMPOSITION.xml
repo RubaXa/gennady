@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">
+      For product / library scope: the spec carries Handoff with primary input for `module-decomposition`, named abstractions, open risks.
+    </Axiom>

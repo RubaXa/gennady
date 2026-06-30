@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Hook id="HOOK_SVELTE_TEST_RUN">
+  <Purpose>Run Svelte component tests via Vitest in one-shot mode.</Purpose>
+  <Command>npx vitest run</Command>
+  <Expected>Exit 0; all `.svelte.test.ts` files pass.</Expected>
+</Hook>

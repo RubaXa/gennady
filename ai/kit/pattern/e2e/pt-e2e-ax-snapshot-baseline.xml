@@ -1,0 +1,21 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Pattern id="PT_E2E_AX_SNAPSHOT_BASELINE">
+      <Intent>Navigate to a route, assert the structural baseline against the AX snapshot of a named region.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { expect, test } from '@playwright/test';
+
+        test('should render checkout form', async ({ page }) => {
+          await page.goto('/checkout');
+          await expect(
+            page.getByRole('region', { name: 'Checkout' }),
+          ).toMatchAriaSnapshot(`
+            - heading "Checkout" [level=1]
+            - textbox "Email"
+            - button "Place Order"
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Scoped to the `Checkout` region — not the full page. AX literal expresses the contract in role/name terms only.</Why>
+    </Pattern>

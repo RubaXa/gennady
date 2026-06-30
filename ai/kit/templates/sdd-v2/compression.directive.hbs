@@ -1,0 +1,106 @@
+<SddCompression keywords="compression, decisions, discussions, collapse, merge, supersession, dedup, evolution, audit-trail, sdd-compression" type="directive" ver="2.0">
+  <Mission>
+    Collapse redundant decisions and discussion threads in an SDD artifact set after a document has
+    evolved — without losing information. Over a spec's life the same question gets answered more than
+    once and later answers supersede earlier ones; this protocol merges entries that converged on the
+    same conclusion into one current statement, marks superseded ones (never silently deletes), and keeps
+    every reference resolving. Loaded lazily — by the v1→v2 migration today, reusable by any evolution
+    flow that asks «schлопни решения, которые про одно и то же». Self-sufficient; repeats the
+    operator-facing axioms it needs.
+
+    Input — an artifact set (specs / tickets) plus the caller's intent. Output — the same set with
+    redundant decisions/discussions merged, superseded entries marked, code references repointed, and
+    `sdd-check` still clean. Out of scope: changing what a decision DECIDED — compression preserves
+    meaning, it does not re-decide (that is a pivot, the scope branch's job).
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-safeguard"}}
+
+    {{> "axiom/process/ax-dialogue-discipline"}}
+
+    {{> "axiom/process/ax-no-process-narration"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+  </BeliefState>
+
+  <OperatingRules>
+    1. **Preserve meaning, not just size.** The goal is fewer, clearer entries — never a smaller file at
+       the cost of a lost rationale. If two entries differ in any substantive way, they do NOT merge.
+    2. **Merge only genuine duplicates / supersessions.** Two decisions that reached the same conclusion,
+       or a later one that replaced an earlier one, collapse into one current statement.
+    3. **Keep the audit trail.** Superseded content is marked superseded (`AX_PIVOT_REQUIRES_SUPERSESSION`),
+       not erased — the history of why stays readable.
+    4. **References must keep resolving.** When a `D-NNN` is merged away, repoint every reference to it
+       (specs AND code) to the surviving ID; leave nothing dangling.
+    5. **Operator approves the merge set.** The agent drafts; nothing collapses without an approval check.
+  </OperatingRules>
+
+  <ChatProtocol>
+    {{> "contract/process/question-format"}}
+
+    {{> "contract/process/halt-format"}}
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NOTHING_TO_COMPRESS` | No redundant or superseded entries found — report and return control |
+    | `H_OPERATOR_REJECTS_MERGE` | Operator declines the proposed merge set — leave the artifacts untouched |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INVENTORY">
+      <Goal>Collect the decisions and discussion threads in scope.</Goal>
+      <Action>
+        Gather every decision (`D-NNN`) and discussion thread across the target artifact set, with its
+        location and the conclusion it reached. Read-only.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CLUSTER">
+      <Goal>Find what actually overlaps.</Goal>
+      <Action>
+        Cluster entries by topic. Flag a cluster only when entries reached the SAME conclusion (duplicate)
+        or a later one replaced an earlier one (supersession). Entries that merely touch the same area but
+        differ in substance are NOT a cluster. No redundancy anywhere → `H_NOTHING_TO_COMPRESS`.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PROPOSE">
+      <Goal>Draft the merge set for approval.</Goal>
+      <Action>
+        Per flagged cluster, draft one merged current statement that keeps every unique rationale, names
+        which IDs collapse into which survivor, and marks the superseded ones. Present the full merge set
+        (before → after) + Approval Check. `H_OPERATOR_REJECTS_MERGE` on decline. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_APPLY">
+      <Goal>Apply the approved merges and repoint references.</Goal>
+      <Action>
+        Rewrite the surviving entries, mark superseded ones, and repoint every reference to a collapsed
+        `D-NNN` (specs AND code) to the survivor. Nothing dangling.
+      </Action>
+    </Step>
+    <Step id="STEP_4_VERIFY">
+      <Goal>Prove nothing broke.</Goal>
+      <Action>
+        `sdd-check` clean; no dangling decision references; the audit trail (superseded entries) is
+        present. Return control to the caller.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🗜️ CMP_R<N> · clusters=<n> · merged=<n> · superseded=<n>`.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+</SddCompression>

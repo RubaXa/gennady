@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_HIERARCHICAL_SPECS">
+      Hierarchy, not flat list. Sub-modules → nested structure: `specs/<scope>/<module>/<sub-module>/<sub-module>.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
+    </Axiom>

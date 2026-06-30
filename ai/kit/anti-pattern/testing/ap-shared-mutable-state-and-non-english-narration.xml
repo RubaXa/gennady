@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<AntiPattern id="AP_SHARED_MUTABLE_STATE_AND_NON_ENGLISH_NARRATION">
+      <Bad>`const cart = new Cart()` shared between tests; test names in Russian («добавляет товар»); `Шаг 1: добавляем` / `Шаг 2: проверяем` comments; second test depends on state from first.</Bad>
+      <WhyBad>Shared mutable state breaks isolation (inherited `AX_NO_DESCRIBE_LET_PILEUP`); creates order dependency. Non-English names/comments (inherited `AX_ENGLISH_ONLY_NAMES_AND_COMMENTS`). Step-by-step human narration (inherited `AX_TESTS_NO_HUMAN_NARRATION`).</WhyBad>
+      <Good>Single context factory `createCartContext(overrides?)` called inside each case; English titles like `should expose count = 1 after a single add`; direct assertions.</Good>
+    </AntiPattern>

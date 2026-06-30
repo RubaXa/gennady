@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_ERROR_CHAINING_CAUSE">
+Preserve original context via `{ cause }`. Create and rethrow via `new Error("[Trace-Prefix] ...", { cause })`. NEVER transform `cause` — it can be any value. `cause` is a lossless channel for the root cause; any transform breaks the debug chain.
+</Axiom>

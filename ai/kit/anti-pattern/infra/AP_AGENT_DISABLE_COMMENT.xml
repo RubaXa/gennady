@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<AntiPattern id="AP_AGENT_DISABLE_COMMENT">
+      <Bad>Agent commits `// eslint-disable-next-line @typescript-eslint/no-floating-promises` above `void doWork(input)` to silence a finding.</Bad>
+      <WhyBad>Agent silenced finding instead of fixing it (`AX_NO_DISABLE_COMMENTS_BY_AGENT`). The explanatory comment for the rule in `eslint.config.ts` exists exactly to point the agent at the right fix (`await`, `.catch`, or explicit logger). The agent skipped that. No `--` justification accompanies the disable, so the form is also non-compliant.</WhyBad>
+      <Good>Agent fixes the floating promise per the rule's motivation: `export async function adapt(input) { await doWork(input); }`. OR if the rule is genuinely wrong here, agent stops and surfaces it for a config change. No source-level disable.</Good>
+    </AntiPattern>

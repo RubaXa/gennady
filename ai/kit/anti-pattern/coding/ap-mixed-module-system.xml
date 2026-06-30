@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_MIXED_MODULE_SYSTEM">
+  <Bad>`package.json` has `"type": "module"`, but `src/loader.js` uses `const fs = require('fs'); module.exports = …`.</Bad>
+  <WhyBad>`"type": "module"` makes all `.js` files ESM. Using `require` in ESM file throws `ReferenceError: require is not defined` at runtime.</WhyBad>
+  <Good>ESM project: `import { readFile } from 'node:fs/promises'; export { load };`.</Good>
+</AntiPattern>

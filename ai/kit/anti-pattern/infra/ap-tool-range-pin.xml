@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_TOOL_RANGE_PIN">
+  <Bad>`"devDependencies": { "vite": "^5.2.0", "prettier": "3.x" }`.</Bad>
+  <WhyBad>Semver-compatible update can silently change build output. CI installs 5.2.11 today, 5.2.12 next week — builds diverge.</WhyBad>
+  <Good>`"devDependencies": { "vite": "5.2.11", "prettier": "3.2.5" }`.</Good>
+</AntiPattern>

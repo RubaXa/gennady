@@ -1,0 +1,25 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<Axiom id="AX_HIERARCHY_MIRRORS_SPEC">
+      The Storybook sidebar hierarchy is a direct mirror of the spec's Variants table structure. For Button, the hierarchy is:
+
+      ```
+      Button / Appearance / Mode
+      ├── Accent
+      │   ├── Primary
+      │   │   ├── Small Normal
+      │   │   ├── Small Hover
+      │   │   ├── Small Active
+      │   │   ├── Small Disabled
+      │   │   ├── Medium Normal
+      │   │   └── ...
+      │   ├── Secondary
+      │   ├── Tertiary
+      │   └── Outline
+      ├── Neutral
+      └── Contrary
+      ```
+
+      Title format: `ComponentName/Appearance/Mode` (e.g. `Button/Accent/Primary`). The spec's Variants table is the single source of truth for the hierarchy — every `(appearance, mode, size, state)` combination maps to exactly one story. No "convenience" groupings that collapse size or state, no ad-hoc categories.
+
+      The `title` field in `export default` sets the hierarchy root: `title: 'Button/Accent/Primary'` groups all stories for that appearance+mode under that sidebar node. Each size×state combination becomes a named export within that group.
+    </Axiom>

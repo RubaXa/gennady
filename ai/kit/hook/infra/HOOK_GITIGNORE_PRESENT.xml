@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Hook id="HOOK_GITIGNORE_PRESENT">
+  <Purpose>Verify `.gitignore` exists and is non-empty.</Purpose>
+  <Command>test -s .gitignore && echo "OK"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

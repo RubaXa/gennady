@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<AntiPattern id="AP_SB_MANUAL_SCAFFOLD_BEFORE_INIT">
+  <Bad>Agent hand-creates `.storybook/main.ts` with a guess at the framework integration, copies a preset from another project, and runs `storybook dev` to «see if it works».</Bad>
+  <WhyBad>Bypasses the official initializer (`AX_SB_INIT_VIA_OFFICIAL_INSTALLER`). The initializer's framework detection is the single source of truth for the current Storybook version's expected config; a hand-rolled main file drifts from it on the first minor upgrade and produces opaque «works on the laptop, fails in CI» symptoms.</WhyBad>
+  <Good>Delete the hand-rolled `.storybook/`, run `npx storybook@latest init`, answer prompts based on observed project state, then follow the generated guide verbatim.</Good>
+</AntiPattern>

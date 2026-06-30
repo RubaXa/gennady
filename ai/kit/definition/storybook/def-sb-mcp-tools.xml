@@ -1,0 +1,4 @@
+<!-- source: testing/storybook-usage.xml -->
+<Definition id="DEF_SB_MCP_TOOLS">
+      MCP tools exposed by the Storybook integration (canonical naming subject to addon version): `list-all-documentation`, `get-documentation`, `get-documentation-for-story`, `get-storybook-story-instructions`, `preview-stories`, `run-story-tests`. Exact names live in `AGENTS.md` per `storybook-setup`.
+    </Definition>

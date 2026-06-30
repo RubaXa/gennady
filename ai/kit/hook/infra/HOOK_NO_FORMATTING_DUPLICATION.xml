@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_NO_FORMATTING_DUPLICATION">
+      <Purpose>Detect ESLint stylistic rules overlapping the formatter.</Purpose>
+      <Command>npx eslint --print-config . | jq '.rules | to_entries | map(select(.key | test("^(indent|quotes|semi|comma-dangle|max-len|space-|arrow-spacing|keyword-spacing|object-curly-spacing|no-multi-spaces|no-trailing-spaces|eol-last)"))) | map(select(.value != "off" and .value[0] != "off"))'</Command>
+      <Expected>Empty array. Any entry means a stylistic rule enabled while formatter owns it — fix by appending `eslint-config-prettier` last, or turning off explicitly.</Expected>
+    </Hook>

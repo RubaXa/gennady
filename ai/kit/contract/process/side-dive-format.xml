@@ -1,0 +1,7 @@
+<!-- source: sdd-opt-v1 SIDE_DIVE_FORMAT -->
+<Contract id="SIDE_DIVE_FORMAT">
+  A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
+
+  → ушли в `<тема>`
+  ← `<итог одной фразой>`
+</Contract>

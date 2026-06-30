@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_REUSE_BLIND">Claiming an entity duplicates something "in the project". You see only artifact + parent spec — judge redundancy ONLY within that scope. Project-wide dedup is the orchestrator's job.</Pattern>

@@ -1,0 +1,1 @@
+      <Intent>Preferred posture: SUT designed with injection seams is exercised against real `vi.fn()` stubs. No `vi.mock`, no operator confirm-gate triggered, no global patching — yet the test is fully isolated from the network.</Intent>

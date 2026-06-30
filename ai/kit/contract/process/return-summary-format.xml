@@ -1,0 +1,17 @@
+<!-- source: sdd/phase-execution-protocol.xml -->
+<Contract id="RETURN_SUMMARY_FORMAT">
+      JSON-like return to orchestrator:
+      ```
+      {
+        "status": "DONE" | "BLOCKED" | "FAIL",
+        "task_id": "<TSK-NN>",
+        "phase_id": "<P<N>>",
+        "kind": "<kind>",
+        "artifacts": ["<path>", ...],
+        "decisions": ["<key=value>", ...],
+        "open": ["<id: text>", ...],
+        "blocker_reason": "<if BLOCKED>"
+      }
+      ```
+      `artifacts` / `decisions` / `open` mirror the **Handoff →** line — orchestrator threads them into the next phase's prompt.
+    </Contract>

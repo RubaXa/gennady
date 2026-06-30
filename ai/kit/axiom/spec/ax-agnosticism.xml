@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_AGNOSTICISM">
+      Contracts are language-agnostic. No language-specific syntax in DbC. Vocabulary: Port, Adapter, Entity, Command, Query, Event. Concrete signatures belong to Executor.
+    </Axiom>

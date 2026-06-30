@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_EFFECT_WITHOUT_TEARDOWN">
+  <Bad>`$effect(() => { const id = setInterval(poll, 1000); });` — no return value.</Bad>
+  <WhyBad>Allocating effect without teardown (`AX_EFFECT_OWNERSHIP_AND_CLEANUP`). The interval keeps firing across re-runs and after component destroy, leaking handlers and leaking handlers and issuing unintended outbound requests after component teardown.</WhyBad>
+  <Good>`$effect(() => { const id = setInterval(poll, 1000); return () => clearInterval(id); });` — the returned cleanup runs before the next effect invocation and on destroy.</Good>
+</AntiPattern>

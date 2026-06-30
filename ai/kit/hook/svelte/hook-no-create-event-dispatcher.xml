@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Hook id="HOOK_NO_CREATE_EVENT_DISPATCHER">
+  <Purpose>Detect forbidden `createEventDispatcher` imports.</Purpose>
+  <Command>find . \( -name '*.svelte' -o -name '*.ts' \) -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -n 'createEventDispatcher' || true</Command>
+  <Expected>Empty output. Replace with callback props declared through `$props()`.</Expected>
+</Hook>

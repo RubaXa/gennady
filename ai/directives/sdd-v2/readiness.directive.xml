@@ -1,0 +1,282 @@
+<SddReadiness keywords="readiness, setup, bootstrap, tooling, package-json, npm-scripts, gennady, stub, not-ready, proxy-handoff, sdd-readiness" type="directive" ver="2.0">
+  <Mission>
+    Bring a not-ready repo to the point where the SDD flow can run: a `package.json` exists and
+    declares the five exact scripts `sdd-state` checks — `typecheck` · `test` · `test:coverage` ·
+    `lint` (reaching `gennady`) · `format` — gennady is installed, and `READINESS` flips to `ready`.
+    This is the minimal mechanical bootstrap, NOT the tooling design: a real command where a tool is
+    already installed, else a visible TODO stub that points at the infra flow. Entered when
+    `sdd-state` reports `READINESS=not-ready` — from the router preflight or from any door's preflight.
+    Self-sufficient: it may run without the router core in context, so it repeats the operator-facing
+    axioms it needs.
+
+    Input — the `sdd-state` readiness verdict. Output — a `package.json` patched toward `ready`, plus a
+    handed-over command list for anything that FAILED when the agent tried it (typically dependency
+    installs the corporate proxy 403s).
+
+    Out of scope: choosing the real tool stack with a Decision Log (the infra branch), and the project
+    portal (the root branch). This flow only makes the commands EXIST and runnable.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+    </Axiom>
+
+    <Axiom id="AX_TOOL_INVOCATION">
+      The SDD mechanical tools are `gennady` CLI commands. Invoke them as
+      `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
+      repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
+      synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      `sdd-sync`, `sdd-check`, `orient`. The `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`,
+      `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_SAFEGUARD">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
+
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_AGREEMENT">
+      Every fix must be operator-approved before execution. The plan is shown as a table.
+      No edits are made before explicit operator "yes" / "go" / "ok".
+      Operator may edit the plan (remove items, change classification, add notes).
+    </Axiom>
+
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+  </BeliefState>
+
+  <ChatProtocol>
+    <Contract id="QUESTION_FORMAT">
+      Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
+      section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
+      signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
+      into one; do not pad the count.
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      ### ❓ Вопросы — реши <N>
+      «годится» = беру все рекомендации, или поправь по номерам.
+
+      **Q1 · <вопрос?>**
+      ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+      Иначе:
+      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win.
+
+      A plain binary question needs no list — recommendation + inline alternative:
+
+      **Q2 · <вопрос?>**
+      ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+    </Contract>
+
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_OPERATOR_REJECTS_SETUP` | Operator declines to set the project up. Without the required scripts no SDD branch can run — state that plainly and stop |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_ASSESS">
+      <Goal>State the honest readiness gap, straight from sdd-state.</Goal>
+      <Action>
+        Take everything from `sdd-state`'s `[READINESS]` block — `package.json` present/absent, each
+        required script declared/not, `lint→gennady`, `gennady-installed` — plus the `missing` list.
+        That tool is the single source of state (`AX_TOOL_INVOCATION`); do not re-derive it by hand.
+        Tell the operator, in plain Russian (`AX_OPERATOR_LANGUAGE`), exactly what is present and what is
+        missing. No narration, just the gap. Flow into the plan (no STOP).
+      </Action>
+    </Step>
+    <Step id="STEP_1_PLAN">
+      <Goal>Lay out the fix and get a go-ahead.</Goal>
+      <Action>
+        From the `missing` list, lay out what will be done: patch `package.json` (real command where
+        the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, and install the
+        missing dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
+        formatter, type-checker), offer 2–3 options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`);
+        otherwise stub it and defer the choice to the infra flow. Present the plan + Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_APPLY">
+      <Goal>Do everything the agent can — edits and installs.</Goal>
+      <Action>
+        With approval: create `package.json` if absent (name + `scripts`); add the five exact scripts —
+        real command where the tool exists, else the TODO stub (see Reference Data); `lint` always
+        reaches `gennady`; AND run the dependency installs the project needs (`npm i -D …`, gennady) —
+        try them — the corporate proxy often blocks installs, but not always. Re-run `sdd-state`.
+        Anything that failed goes to STEP_3.
+      </Action>
+    </Step>
+    <Step id="STEP_3_REPORT_FAILURES">
+      <Goal>Report any failed command and hand it to the operator — once, no loop.</Goal>
+      <Action>
+        For each command that FAILED in STEP_2 (typically an install the proxy 403'd), immediately tell
+        the operator the EXACT command that did not work and the error — once, no retry, no
+        environment-fixing. Hand it over to run themselves. Present the
+        failed-command block and wait (`HALT_FORMAT`-style). STOP until the operator runs them and says
+        done («готово / дальше»).
+      </Action>
+    </Step>
+    <Step id="STEP_4_VERIFY_AND_CONTINUE">
+      <Goal>Confirm ready, then return control.</Goal>
+      <Action>
+        Re-run `sdd-state`. `READINESS=ready` → setup is done; return control to the caller (the
+        router's classify/route step, or the door's own flow). Still `not-ready` → state the remaining
+        gap and resume at `STEP_1` for the leftover items only — a fresh assessment, never a blind
+        re-run of a command that already failed.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ReferenceData>
+    The five exact script names `sdd-state` checks (exact match — no `type-check` / `tsc` aliasing):
+
+    | script | purpose | stubbable until infra flow? |
+    |---|---|---|
+    | `typecheck` | type-check, no emit | yes |
+    | `test` | run tests | yes |
+    | `test:coverage` | tests with coverage | yes |
+    | `lint` | lint chain that reaches `gennady` (DbC) | **no — must wire gennady** |
+    | `format` | formatter that fixes, not just checks | yes |
+
+    A minimal `package.json` that reads as `ready` once gennady is installed — real `lint`, the rest
+    stubbed until the infra flow locks real tools (point `lint` at the project's own source dirs):
+    ```json
+    {
+      "scripts": {
+        "typecheck": "echo 'TODO: настроить инфраструктуру (typecheck — tsc --noEmit)' >&2",
+        "test": "echo 'TODO: настроить инфраструктуру (test runner)' >&2",
+        "test:coverage": "echo 'TODO: настроить инфраструктуру (coverage)' >&2",
+        "lint": "gennady lint src/",
+        "format": "echo 'TODO: настроить инфраструктуру (formatter)' >&2"
+      }
+    }
+    ```
+    `lint` may reach `gennady` directly or through an `npm run <x>` chain — either satisfies the
+    `lint→gennady` check. The stubs print a warning to stderr but **exit 0 — by design they pass**, so
+    the gate stays green while the warning keeps the gap visible until the infra flow replaces them with
+    real commands.
+  </ReferenceData>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🧰 SETUP_R<N> · package.json=<created|patched|present> · ready=<yes|no>`.
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+</SddReadiness>

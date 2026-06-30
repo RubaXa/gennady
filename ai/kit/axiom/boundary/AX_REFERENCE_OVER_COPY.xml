@@ -1,0 +1,2 @@
+<!-- source: ai/directives/dbc-audit.directive.xml -->
+<Axiom id="AX_REFERENCE_OVER_COPY">The directive coordinates the audit process; it does NOT duplicate the normative body of source artifacts. Findings cite rule references, not re-host the standard.</Axiom>

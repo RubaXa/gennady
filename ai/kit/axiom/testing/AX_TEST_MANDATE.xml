@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_TEST_MANDATE">
+      Every Category C fix (code change) REQUIRES a test phase.
+      The test phase adds a unit test that:
+      - Reproduces the exact bug/finding that triggered the fix (red → green)
+      - Covers the edge case or missing scenario
+      - Uses the canonical test name format from the original task's BDD section
+
+      A fix without a regression test is incomplete and must not be dispatched.
+    </Axiom>

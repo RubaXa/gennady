@@ -1,0 +1,10 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Axiom id="AX_CLI_EXPLORE_LOOP_HAS_FOUR_STEPS">
+      The exploration loop is fixed at four steps and runs to completion before any test file is touched:
+      1. **Explore** — `page.goto(url)`; `page.ariaSnapshot()`; read structure.
+      2. **Interact** — `page.getByRole(...).click()` / `.fill()` / `.press()`; re-capture `ariaSnapshot()`; observe delta.
+      3. **Verify** — compare observed structure against expected intent; if mismatch, fix the component first, restart, re-explore.
+      4. **Capture** — record the final AX snapshot and any required screenshots as the basis for the committed test.
+
+      Skipping a step (e.g. interacting without re-snapshotting) hides the contract drift the loop exists to surface.
+    </Axiom>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>

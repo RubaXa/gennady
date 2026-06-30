@@ -1,0 +1,103 @@
+<!-- source: sdd/module-decomposition.directive.xml -->
+<Contract id="MODULE_SPEC_MARKDOWN_STRUCTURE">
+      Each `specs/<scope>/<module>/<module>.spec.md`. Every top-level `## N.` section wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` (open before header, close before next same-level header or EOF). Sub-sections and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary; the template below shows idiomatic choices. Grammar source of truth: `~/.claude/skills/sdd-execute/scripts/extract-section.sh`. DbC subsection shape is flexible per `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`.
+
+      ```markdown
+      # Module: <ModuleName>
+
+      <!--SECTION:MODULE_VISION-->
+      ## 1. Module Vision
+      [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
+      <!--/SECTION:MODULE_VISION-->
+
+      <!--SECTION:MODULE_USAGE_EXAMPLE-->
+      ## 2. Module Usage Example
+      [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
+      <!--/SECTION:MODULE_USAGE_EXAMPLE-->
+
+      <!--SECTION:ENTITY_INVENTORY-->
+      ## 3. Entity Inventory (Closed-World)
+      [Per `ENTITY_INVENTORY_FORMAT`.]
+      <!--/SECTION:ENTITY_INVENTORY-->
+
+      <!--SECTION:ENTITY_SURFACES-->
+      ## 4. Entity Surfaces
+      [Each entity per `ENTITY_SURFACE_FORMAT`.]
+      <!--/SECTION:ENTITY_SURFACES-->
+
+      <!--SECTION:MODULE_CONTRACTS-->
+      ## 5. Module Contracts (DbC)
+
+      <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
+           Numbering optional (`### 5.0`, `### 5.1`, …, or unnumbered like `### OperationDef Pattern`). -->
+
+      ### 5.1 Ports
+      [Per `DBC_PORT_FORMAT`. Omit if this module has no Ports.]
+
+      ### 5.2 Adapters
+      [Per `DBC_ADAPTER_FORMAT`. Omit if this module has no Adapters.]
+      <!--/SECTION:MODULE_CONTRACTS-->
+
+      <!--SECTION:PUBLIC_OPTIONS-->
+      ## 6. Public Options & Policies
+      [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
+      <!--/SECTION:PUBLIC_OPTIONS-->
+
+      <!--SECTION:FILE_STRUCTURE-->
+      ## 7. File Structure
+      ```
+      <module>/
+      ├── ports/
+      │   └── <name>-<port>.<ext>
+      ├── adapters/
+      │   └── <platform>-<name>-<adapter>.<ext>
+      └── ...
+      ```
+
+      **File Mapping:**
+      - `<path>`: <component>
+      <!--/SECTION:FILE_STRUCTURE-->
+
+      <!--SECTION:MODULE_DECISION_LOG-->
+      ## 8. Module Decision Log
+      [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+      <!--/SECTION:MODULE_DECISION_LOG-->
+
+      <!--SECTION:INTER_MODULE_DEPENDENCIES-->
+      ## 9. Inter-Module Dependencies
+      - **Depends on:** <list of modules within this scope with links>
+      - **Scope Reference (cross-scope):** <contracts-type scope with link if any>
+      - **Provides to:** <list of modules within this scope>
+
+      ```mermaid
+      graph TD
+        <this-module> --> <sibling-1>
+        <this-module> --> <sibling-2>
+        <this-module> -. Scope Reference .-> <contracts-scope>
+        <consumer> --> <this-module>
+      ```
+      <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+      <!--SECTION:HANDOFF-->
+      ## 10. Handoff to task-scaffolding
+      - **Implementation files to be created:** <list from 7>
+      - **Test files to be created:** <list>
+      - **Stack dependencies:**
+        - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
+        - Test framework: `<framework>` (resolves to `ai/directives/testing/<framework>.xml`)
+      - **Module Rules Additions:** (additions on top of scope-wide baseline; `None` if no module-specific rules)
+
+        | Rule | Category | Source |
+        |------|----------|--------|
+        | <rule-name> | coding \| testing \| architecture \| quality | `ai/directives/<category>/<rule>.xml` |
+
+      - **Open risks & validation needs:** <not-closed items>
+      <!--/SECTION:HANDOFF-->
+
+      <!-- Optional appendix — include only when the module has non-trivial post-impl learnings worth preserving. -->
+      <!--SECTION:IMPLEMENTATION_INSIGHTS-->
+      ## 11. Implementation Insights
+      [Library wrap patterns, transaction subtleties, fake-runtime pitfalls, etc. Authored after audit-cycle compaction; immutable contract for future readers.]
+      <!--/SECTION:IMPLEMENTATION_INSIGHTS-->
+      ```
+    </Contract>

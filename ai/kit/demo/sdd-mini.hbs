@@ -1,0 +1,11 @@
+<SddMini generated="{{generatedAt}}" scope="{{scope}}">
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+    {{#if stack.svelte}}
+    {{> "axiom/svelte/ax-runes-are-compiler-keywords"}}
+    {{/if}}
+    {{#each rules}}
+    {{> (lookup this "brick")}}
+    {{/each}}
+  </BeliefState>
+</SddMini>

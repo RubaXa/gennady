@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_TRUTHFUL_ENCAPSULATION">
+Truthful encapsulation, not false. Native private fields (`#field`) and the `private` modifier are forbidden. For internal state use `protected` with `_` prefix (`protected _logger`). Omit the `public` modifier.
+
+`#` blocks reflection and decorators. `private` creates false sense of encapsulation: erased at compile time, misleads readers and runtime tooling. `protected _foo` truthfully reflects runtime behavior and preserves metaprogramming hooks.
+</Axiom>

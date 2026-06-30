@@ -1,0 +1,27 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<AntiPattern id="AP_FALSE_PRIVATE_AND_ENUM">
+<Bad>`enum OrderState { NEW, PAID, SHIPPED }`; `class OrderManager { constructor(private repo: OrderRepo) {} #lastState: OrderState = OrderState.NEW; public process(orderId: string) {} }`.</Bad>
+<WhyBad>`enum` breaks under native Node TS (`AX_NO_TRANSPILE_ONLY_CONSTRUCTS`). Constructor parameter property `private repo` transpile-only. `#lastState` blocks reflection (`AX_TRUTHFUL_ENCAPSULATION`). `OrderManager` is semantic noise (`AX_TELEOLOGICAL_NAMING`). `process` generic verb (`AX_VERB_PRECISION`). `public` redundant.</WhyBad>
+<Good language="typescript">
+```typescript
+// @file: Order lifecycle primitives for checkout domain.
+// @consumers: CheckoutPipeline
+
+/** @purpose Lifecycle states an order traverses from creation to fulfillment. */
+export type OrderState = 'NEW' | 'PAID' | 'SHIPPED';
+
+/** @purpose Coordinates order lifecycle transitions for the checkout flow. */
+export class OrderLifecycle {
+    protected _repo: OrderRepo;
+    protected _lastState: OrderState = 'NEW';
+
+    constructor(repo: OrderRepo) {
+        this._repo = repo;
+    }
+
+    /** @purpose Transition the order to PAID after successful charge. */
+    settleCharge(orderId: string): Promise<void> { /* ... */ }
+}
+```
+</Good>
+</AntiPattern>

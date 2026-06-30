@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Hook id="HOOK_E2E_NO_CSS_LOCATORS">
+      <Purpose>Smoke-grep for forbidden CSS / XPath locator forms in test files.</Purpose>
+      <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE "page\.locator\(['\"]([.#]|\.\\.|//|xpath=)" || true</Command>
+      <Expected>Empty output. Matches must be rewritten as `getByRole` / `getByLabel` / `getByTestId` derived from the AX tree.</Expected>
+    </Hook>

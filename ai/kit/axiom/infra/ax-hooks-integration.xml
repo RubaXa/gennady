@@ -1,0 +1,4 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Axiom id="AX_HOOKS_INTEGRATION">
+  Hooks fire on every commit/push. Required hooks: `pre-commit` (lint + typecheck on staged, <5s), `commit-msg` (conventional-commits validator), `pre-push` (full test suite). Optional: `prepare-commit-msg` (prepend issue ID), `post-merge` (reinstall if lock changed). Hook config committed to repo; one onboarding command registers them (e.g. `lefthook install`).
+</Axiom>

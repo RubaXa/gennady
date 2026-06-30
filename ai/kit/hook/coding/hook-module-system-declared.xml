@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_MODULE_SYSTEM_DECLARED">
+  <Purpose>Report declared module system.</Purpose>
+  <Command>node -e "const p=require('./package.json'); console.log('module system:', p.type || 'commonjs (default)')"</Command>
+  <Expected>Prints `module system: module` or `module system: commonjs (default)`.</Expected>
+</Hook>

@@ -1,0 +1,4 @@
+<!-- source: testing/playwright-cli.xml -->
+<Definition id="DEF_CLI_TRACE">
+      Output of `playwright test --trace=on` — a `.zip` containing DOM snapshots at each test step, network entries, console logs, and a timeline. Inspected via `npx playwright show-trace trace.zip`.
+    </Definition>

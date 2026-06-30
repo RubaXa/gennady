@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_NO_SILENT_OPTION_DROP">
+      Public options cannot be silently forgotten. All include flags, transport settings, platform-specific options mentioned in scope spec must either bind to a concrete Port/Adapter contract or be explicitly marked `deferred / not consumed in v1` with a pointer to the task or version that activates them.
+    </Axiom>

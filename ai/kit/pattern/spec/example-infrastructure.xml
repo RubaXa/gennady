@@ -1,0 +1,28 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Pattern id="EXAMPLE_INFRASTRUCTURE">
+      ```markdown
+      # infra-base: Infrastructure Specification
+
+      ## 1. Vision
+      Минимальный TS-стек: быстрый CI, deterministic install, zero-config formatter.
+
+      ## 2. Tool Stack
+      | Category | Tool | Rationale |
+      |---|---|---|
+      | package-management | pnpm | D-001 (lockfile determinism vs npm) |
+      | type-check | tsc | D-002 (no transpiler — esbuild на bundler-этапе) |
+      | linting+formatting | biome | D-003 (один tool вместо eslint+prettier) |
+
+      ## 3. Dev Workflow Example
+      ```bash
+      pnpm install
+      pnpm typecheck && pnpm test && pnpm lint
+      ```
+
+      ## 5. Effective Rules (cascade)
+      | Rule | Category | File | Source |
+      |---|---|---|---|
+      | <rule-id> | coding | ai/directives/coding/<rule>.xml | infra (D-NNN) |
+      | <rule-id> | infra | ai/directives/infra/<rule>.xml | infra (D-NNN) |
+      ```
+    </Pattern>

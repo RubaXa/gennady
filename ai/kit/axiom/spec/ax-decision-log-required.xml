@@ -1,0 +1,7 @@
+<!-- source: sdd/discovery + scaffold + module-decomposition (converged to principle) -->
+<Axiom id="AX_DECISION_LOG_REQUIRED">
+  Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
+  (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
+  alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
+  the entry are specified per directive.
+</Axiom>

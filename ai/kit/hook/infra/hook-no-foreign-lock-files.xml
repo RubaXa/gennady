@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_NO_FOREIGN_LOCK_FILES">
+  <Purpose>No foreign lock files exist.</Purpose>
+  <Command>for f in yarn.lock pnpm-lock.yaml bun.lockb; do test -f "$f" && echo "FAIL: $f present"; done; echo "OK"</Command>
+  <Expected>Prints only `OK`; exit 0.</Expected>
+</Hook>

@@ -1,0 +1,12 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<Axiom id="AX_VITEST_ASSERT_API_CHOICE">
+  Pick the simplest direct matcher by shape:
+  - `expect(x).toBe(y)` — scalars and reference identity (NOT for structural equality).
+  - `expect(x).toEqual(y)` — deep structural equality; ignores `undefined` properties on the actual side.
+  - `expect(x).toStrictEqual(y)` — deep equality including `undefined`, prototype, sparse arrays. Prefer over `toEqual` when contract distinguishes «absent» from `undefined`.
+  - `expect(fn).toThrow(...)` / `await expect(promise).rejects.toThrow(...)` — thrown failures.
+  - `expect(str).toMatch(regex)` — partial string / error-message checks (inherited `AX_PARTIAL_STRING_VIA_MATCH`).
+  - `expect(x).toMatchInlineSnapshot(...)` — only under inherited `AX_SNAPSHOT_USAGE_GATE`.
+
+  Forbidden idioms: `toContain` on `error.message` (use `toMatch`); `toBeTruthy` / `toBeFalsy` to fold a structured assertion into a boolean (use the structured form); `try/catch + expect.fail` instead of `rejects.toThrow`.
+</Axiom>

@@ -1,0 +1,21 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Pattern id="PT_DEPENDENCY_ADDITION">
+      <Intent>Correct workflow for adding a new package.</Intent>
+      <Snippet language="bash">
+        ```bash
+        # 1 — Node compatibility
+        npm view express engines
+
+        # 2 — module system (look for "exports", "type")
+        npm view express main exports
+
+        # 3 — install with correct pinning
+        npm install express                          # runtime dep — range ok
+        npm install --save-exact --save-dev vite     # build tool — exact pin
+
+        # 4 — commit both files
+        git add package.json package-lock.json
+        ```
+      </Snippet>
+      <Why>Verification before install prevents silent incompatibilities. Committing lock with package.json closes the reproducibility triad.</Why>
+    </Pattern>

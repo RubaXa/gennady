@@ -1,0 +1,11 @@
+<!-- new for sdd-v2 tooling lens: bound worker context to the tool's read-manifest -->
+<Axiom id="AX_READ_PER_MANIFEST">
+  When a tool hands a read-manifest for the current step — the exact rule anchors, spec anchors,
+  ticket sections, and Target Files to read — read EXACTLY that, nothing beyond it. The manifest's
+  "do not read" list and line budget are binding.
+
+  - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file
+    end-to-end for one section clogs context and degrades a cheaper model on long input.
+  - Need something the manifest does not list? That signals the ticket or manifest is wrong — log a
+    `discovery` line and surface it; never silently widen the read.
+</Axiom>

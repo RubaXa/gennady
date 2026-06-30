@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/memory-gc.xml -->
+<Axiom id="AX_GC_PRESSURE">На устройствах с малым объемом RAM высокая скорость выделения памяти (Allocation Rate) заставляет GC работать непрерывно. Это блокирует главный поток (Main Thread) и вызывает лаги.</Axiom>

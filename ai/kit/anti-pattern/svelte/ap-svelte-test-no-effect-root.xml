@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<AntiPattern id="AP_SVELTE_TEST_NO_EFFECT_ROOT">
+  <Bad>In a `.svelte.test.ts` for a `.svelte.ts` module: `const c = createCounter(); $effect(() => { observed = c.doubled; }); flushSync();` — `$effect` invoked outside any root.</Bad>
+  <WhyBad>`$effect` without component context AND without `$effect.root` (`AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT`). The runtime throws «effect_orphan» (or equivalent) the moment the effect tries to register. Even if it survives, there is no disposal — the effect leaks into the next test.</WhyBad>
+  <Good>Wrap in `$effect.root`: `const cleanup = $effect.root(() => { ... $effect(...) ... }); flushSync(); cleanup();` — root provides the disposal boundary; explicit `cleanup()` runs after the assertion.</Good>
+</AntiPattern>

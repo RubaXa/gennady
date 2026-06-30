@@ -1,0 +1,19 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Contract id="REWORK_DECISION_LOG_ENTRY_FORMAT">
+      Used in `pivot` mode for each replaced decision. Self-contained: a future reader of the spec at this git ref must understand the rework without external context.
+
+      ```markdown
+      ### D-NNN — <short title> (rework)
+      - **Status:** active
+      - **Recorded:** session Discovery, <scope-name>, pivot
+      - **Supersedes:** D-MMM
+      - **Pre-rework state:** git ref `<sha-or-tag>` (snapshot of spec immediately before this pivot)
+      - **Was:** <one-sentence summary of the prior decision>
+      - **Now:** <one-sentence summary of the replacement>
+      - **Why:** <operator's own wording — what forced the rework>
+      - **Risk accepted:** <if any>
+      - **Downstream invalidation:** see Pivot Invalidation List
+      ```
+
+      Paired with Pivot Invalidation List entries that enumerate concrete downstream artifacts (`refine-module` targets, ticket reopens, rule revisits) for `audit` (`AX_STALE_AFTER_PIVOT_VERIFICATION`).
+    </Contract>

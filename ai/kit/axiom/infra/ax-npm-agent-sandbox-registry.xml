@@ -1,0 +1,28 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Axiom id="AX_NPM_AGENT_SANDBOX_REGISTRY">
+  **Sandboxed agents force npm to use the public registry via inline POSIX env-prefix on every invocation. This bypasses any corporate `~/.npmrc` config that the sandbox cannot reach.**
+
+  The problem: operator's `~/.npmrc` typically points at a corporate registry/proxy reachable only from inside corp network. A sandboxed agent doesn't have access → `npm install` hangs on `ENOTFOUND` / `EAI_AGAIN` or fails.
+
+  **Solution — force public registry per command:**
+  ```bash
+  npm_config_registry=https://registry.npmjs.org/ npm install
+  npm_config_registry=https://registry.npmjs.org/ npm view <pkg>
+  npm_config_registry=https://registry.npmjs.org/ npm ci
+  ```
+
+  Why inline prefix:
+  - Bypasses corp `~/.npmrc` without modifying it (operator's local setup intact).
+  - No persistent state in shell env — nothing leaks between commands.
+  - Self-documenting in logs — operator sees exactly which registry was used.
+  - Sandbox-friendly — no dependency on inherited env from launch context.
+
+  Mechanism: npm config priority — CLI flags > `npm_config_*` env vars > project `.npmrc` > `~/.npmrc` > `/etc/npmrc` > defaults. POSIX `VAR=value command` makes the variable visible to the spawned process only.
+
+  **When corp registry IS required** (project legitimately depends on private corp packages):
+  - Explicit deviation, declared at infrastructure scope discovery time, recorded in Decision Log.
+  - Agent halts with `[!] BLOCKED` per `AX_BLOCKER_ESCALATION`; operator handles install in their full-network shell, OR explicit network-access grant for the sandbox.
+  - Auth for corp registry is out of scope — environment concern, not agent's responsibility.
+
+  **Forbidden:** `npm install` without env-prefix in sandbox (routes through corp `~/.npmrc`, hangs); modifying operator's `~/.npmrc` (breaks operator's other work); committing project `.npmrc` with corp registry URL; silent failure / partial install when registry unreachable (operator must see explicit error).
+</Axiom>

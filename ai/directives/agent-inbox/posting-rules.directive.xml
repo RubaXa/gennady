@@ -23,7 +23,42 @@
     <Axiom id="AX_POSTING_NO_DUPLICATES">
       Before posting, re-check arch-interrogation's prior discussion awareness (AX_PRIOR_DISCUSSION_AWARENESS): drop any candidate already covered by an existing thread. Only post what is genuinely new.
     </Axiom>
+
+    <Axiom id="AX_POSTING_SILENT_RESOLVE">
+      When the author has applied a fix (system note "changed this line" or explicit confirmation like "исправил", "поправил", "fixed"):
+      - Do NOT post a text reply ("принято", "резолвлю", "ок").
+      - Add ONE reaction emoji (👍 / 💯 / 🚀 — any single expressive reaction) to the author's last note in the thread.
+      - Resolve the thread silently: `{"discussionId":"…","resolve":true}` (no body).
+
+      When agreeing with a peer AND the thread's goal is achieved (fix applied, explanation accepted):
+      - Add 💯 reaction + resolve silently.
+
+      When agreeing with a peer but the thread is still open (goal not yet achieved):
+      - 💯 reaction only — no resolve, no text.
+
+      This keeps the MR clean: reaction = acknowledgement, resolve = closure. No noise.
+    </Axiom>
   </BeliefState>
+
+  <PreFlight>
+    Each candidate, ask in order — STOP on first match:
+    1. Diagram better than text?
+        → add Mermaid  (AX_VISUALIZE_WHEN_RELATIONAL)
+    2. Author fixed the issue?
+        → 👍 + resolve (AX_POSTING_SILENT_RESOLVE)
+    3. Agree with peer's reasoning AND thread's goal achieved?
+        → 💯 + resolve (AX_POSTING_SILENT_RESOLVE)
+    4. Agree with peer, thread still open?
+        → 💯 only       (AX_POSTING_SILENT_RESOLVE)
+    5. Thread exhausted, nothing to add?
+        → resolve only
+
+    else → post reply as-is (disagree / need to add substance)
+
+    **Before any reply/comment — CHECK:** does body start with 🤖? If not, prepend.
+    Applies to: reply-to-thread, new-line-comment, suggestion, general-comment.
+    Does NOT apply to: reaction-only, silent resolve (no body).
+  </PreFlight>
 
   <DiagramConversion>
     <Goal>Convert chat-format diagrams (ASCII/widget) to GitLab-native Mermaid.</Goal>
@@ -116,7 +151,7 @@
       # Post live — the operator's checkbox approval in the skill's action menu IS the
       # confirmation, so we post directly. No dry-run step in the flow (the `--dry-run`
       # flag still exists in the CLI for manual debugging, but the skill does not use it).
-      gennady vcs-reply --project=&lt;group/project&gt; --iid=&lt;iid&gt; --vcs-source=&lt;host&gt; &lt; comments.json
+      npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --project=<group/project> --iid=<iid> --vcs-source=<host> < comments.json
     </Command>
     <Requirement>GITLAB_PERSONAL_TOKEN environment variable.</Requirement>
     <Requirement>host from --vcs-source; project and iid from the MR ref (group/project!iid).</Requirement>

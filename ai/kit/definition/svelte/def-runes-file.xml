@@ -1,0 +1,4 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Definition id="DEF_RUNES_FILE">
+      A file in which runes are valid syntax: `.svelte`, `.svelte.js`, `.svelte.ts`. Plain `.ts` is NOT a runes file.
+    </Definition>

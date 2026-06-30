@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_EPHEMERAL_OUTPUT">
+      The audit summary itself does not create files in `audits/`. Output is an ephemeral session-summary emitted in chat per `AUDIT_SESSION_SUMMARY_FORMAT`: counts by severity + findings table + proposed changes per `AX_FINDING_ROUTING`.
+
+      Reopen-history of a ticket is persisted *inside the ticket file* — see `AX_REOPEN_ROUNDS_IN_TICKET`. Long-term audit history = git history of the affected spec and ticket files.
+
+      Epic-level audit: cross-task findings (e.g., two modules with conflicting contracts) → Decision Log entry in the relevant scope spec.
+    </Axiom>

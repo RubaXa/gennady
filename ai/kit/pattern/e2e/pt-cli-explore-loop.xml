@@ -1,0 +1,29 @@
+<!-- source: testing/playwright-cli.xml -->
+<Pattern id="PT_CLI_EXPLORE_LOOP">
+      <Intent>Canonical four-step exploration loop captured as a script before any test file is touched.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // explore.session.ts — throwaway exploration script, NOT committed as a test.
+        import { chromium } from 'playwright';
+
+        const browser = await chromium.launch();
+        const context = await browser.newContext();
+        const page = await context.newPage();
+
+        // 1. Explore
+        await page.goto('http://localhost:5173/checkout');
+        console.log(await page.getByRole('region', { name: 'Checkout' }).ariaSnapshot());
+
+        // 2. Interact
+        await page.getByRole('textbox', { name: 'Email' }).fill('user@test.com');
+        await page.getByRole('button', { name: 'Place Order' }).click();
+
+        // 3. Verify — snapshot after interaction; compare delta against intent
+        console.log(await page.getByRole('region', { name: 'Checkout' }).ariaSnapshot());
+
+        // 4. Capture — final snapshot is the seed for the committed test's toMatchAriaSnapshot
+        await browser.close();
+        ```
+      </Snippet>
+      <Why>One concrete URL, role-based locators derived from the previous snapshot, two snapshots framing the interaction so the delta is observable. The script itself is not committed — it is the audit trail for the committed test's contract.</Why>
+    </Pattern>

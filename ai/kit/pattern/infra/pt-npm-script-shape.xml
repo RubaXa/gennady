@@ -1,0 +1,18 @@
+<!-- source: infra/eslint-setup.xml -->
+<Pattern id="PT_NPM_SCRIPT_SHAPE">
+      <Intent>Single canonical script binds the unified format pipeline. Agents, humans, CI, pre-commit run the same name.</Intent>
+      <Snippet language="json">
+        ```json
+        {
+            "scripts": {
+                "format": "prettier --write .",
+                "lint": "eslint --fix .",
+                "lint:fix": "npm run format && npm run lint",
+                "lint:check": "prettier --check . && eslint .",
+                "typecheck": "tsc --noEmit"
+            }
+        }
+        ```
+      </Snippet>
+      <Why>`lint:fix` is agent's default (mechanical, mutating); `lint:check` is CI's default (read-only, fails on drift). `typecheck` is its own script — type-aware concerns are routed to TS, not lint.</Why>
+    </Pattern>

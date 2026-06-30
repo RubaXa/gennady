@@ -1,0 +1,37 @@
+<!-- source: testing/storybook-usage.xml -->
+<Pattern id="PT_SB_COMPOSED_STORY_WITH_PLAY">
+      <Intent>New variant composes args from an existing story, carries the `ai-generated` tag, and asserts behaviour through `play`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import type { Meta, StoryObj } from '@storybook/svelte';
+        import { expect, userEvent, within } from '@storybook/test';
+        import Button from './Button.svelte';
+
+        const meta: Meta<typeof Button> = {
+          component: Button,
+          tags: ['autodocs'],
+        };
+        export default meta;
+
+        type Story = StoryObj<typeof meta>;
+
+        export const Primary: Story = {
+          args: { label: 'Submit', variant: 'primary' },
+        };
+
+        export const DisabledClickDoesNothing: Story = {
+          args: { ...Primary.args, disabled: true },
+          tags: ['ai-generated'],
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            const button = canvas.getByRole('button', { name: 'Submit' });
+            await step('Click is a no-op when disabled', async () => {
+              await userEvent.click(button);
+              await expect(button).toBeDisabled();
+            });
+          },
+        };
+        ```
+      </Snippet>
+      <Why>One concept (disabled-click no-op); args composed from `Primary.args`; `ai-generated` tag present; `play` asserts the contract through role-based query.</Why>
+    </Pattern>

@@ -1,0 +1,20 @@
+<!-- source: testing/node-test.xml -->
+<Pattern id="PT_DIRECT_SCALAR_CASE">
+      <Intent>Trivial scalar case without an opening brief: title + direct input + a single assertion already expose the scenario. Anchors omitted on the one-line TRIGGER and ASSERT phases per `AX_PHASE_ANCHORS`; kept only on SETUP because it has its own intent.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it } from 'node:test';
+        import assert from 'node:assert/strict';
+        import { unwrap } from '#shared/result.ts';
+
+        describe('SlugBuilder', () => {
+            it('should build a lowercase slug from the title', async () => {
+                const input = { title: 'Hello World', separator: '-' };
+                const slug = await unwrap(builder.build(input));
+                assert.strictEqual(slug, 'hello-world');
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Title + direct input + single `strictEqual` make the scenario self-evident → brief skipped. Each phase is one statement with no hidden policy → anchors skipped. Phase grammar still readable for the next agent because the three lines naturally map SETUP/TRIGGER/ASSERT.</Why>
+    </Pattern>

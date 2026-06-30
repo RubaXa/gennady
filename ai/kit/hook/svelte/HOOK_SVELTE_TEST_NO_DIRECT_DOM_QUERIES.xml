@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Hook id="HOOK_SVELTE_TEST_NO_DIRECT_DOM_QUERIES">
+  <Purpose>Detect direct DOM queries in component tests.</Purpose>
+  <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE '(container|document)\.(querySelector|getElementById)' || true</Command>
+  <Expected>Empty output. Matches must migrate to `screen.getByRole` / `getByLabelText` / `getByText`, or carry a comment naming the missing semantic that forced a selector fallback.</Expected>
+</Hook>

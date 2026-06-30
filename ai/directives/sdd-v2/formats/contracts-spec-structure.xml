@@ -1,0 +1,59 @@
+<Contract id="CONTRACTS_SPEC_STRUCTURE">
+  ```markdown
+  # <scope-name>: Contracts Specification
+
+  <!--SECTION:SCOPE_TYPE-->
+  ## scope-type
+  contracts
+  <!--/SECTION:SCOPE_TYPE-->
+
+  <!--SECTION:VISION-->
+  ## 1. Vision
+  [Что контракт определяет и для кого.]
+  <!--/SECTION:VISION-->
+
+  <!--SECTION:INTERFACE_DECLARATION-->
+  ## 2. Interface Declaration
+  - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
+  - **Versioning scheme:** semver | date-based (YYYY-MM-DD) | none
+  - **Namespace:** <api prefix / package name>
+  - **Interfaces:** [список endpoint groups / message types / operations]
+  <!--/SECTION:INTERFACE_DECLARATION-->
+
+  <!--SECTION:VERSIONING_POLICY-->
+  ## 3. Versioning Policy
+  [Semver rules / breaking-change protocol / deprecation window.]
+  <!--/SECTION:VERSIONING_POLICY-->
+
+  <!--SECTION:COMPATIBILITY_MATRIX-->
+  ## 4. Compatibility Matrix
+  | Consumer scope | Min compatible version | Breaking change protocol |
+  |---|---|---|
+  <!--/SECTION:COMPATIBILITY_MATRIX-->
+
+  <!--SECTION:DECISION_LOG-->
+  ## 5. Decision Log
+  [D-NNN entries.]
+  <!--/SECTION:DECISION_LOG-->
+
+  <!--SECTION:SCOPE_DEPENDENCIES-->
+  ## 6. Scope Dependencies
+  - **Depends on:** [infra scopes if any]
+  - **Provides contracts to:** [product/library scopes]
+  <!--/SECTION:SCOPE_DEPENDENCIES-->
+
+  <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+  ## 7. Bootstrap Requirements
+  | Requirement | Kind | Owner | Resolution |
+  |---|---|---|---|
+  <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+  <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+  <!--SECTION:HANDOFF-->
+  ## 8. Handoff
+  - **Contract files to scaffold:** [schema files, codegen configs]
+  - **Bootstrap tickets ready for cascade:** see 7
+  - **Open risks:** [versioning gaps, unconfirmed consumers]
+  <!--/SECTION:HANDOFF-->
+  ```
+</Contract>

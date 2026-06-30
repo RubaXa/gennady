@@ -1,0 +1,161 @@
+<SddExecuteOrchestrator keywords="execute, orchestrator, dispatch, phases, round, audit, fix, model-by-load, isolated, sdd-execute" type="directive" ver="2.0">
+  <Mission>
+    Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
+    intent decides which): plan phases, dispatch one worker-subagent per phase,
+    thread typed Handoff, close the Round, dispatch a fresh-eyes audit, and on audit FAIL re-run only
+    the failing phases as `fix` (≤ 2 audit attempts). A separate door (`/sdd-execute`), run isolated.
+    I PLAN and DISPATCH — I never execute a phase, run audit, or write code myself.
+
+    Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
+    execution map via `sdd-task` with no Task-ID (the pickable set + blockers, computed from the trackers —
+    not eyeballed), then the switch routes. Per ticket I read only the planning surface via `sdd-task <id>`
+    (Meta + Phases Overview + per-phase read-manifests + gates). Workers read phase bodies, specs, and
+    code, each bounded by its manifest.
+
+    **Glossary.** Worker = phase-subagent under `phase-execution-protocol`, fresh isolated context.
+    **Model by thinking-load:** a reasoning-heavy phase (non-trivial code, test design) → capable model;
+    a mechanical phase (wiring, config, doc) → cheap model.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/spec/ax-stateless-artifact"}}
+
+    {{> "axiom/process/ax-owner"}}
+
+    {{> "axiom/process/ax-task-resolution"}}
+
+    {{> "axiom/process/ax-execution-order"}}
+
+    {{> "axiom/process/ax-handoff-typed"}}
+
+    {{> "axiom/process/ax-blocker-resolution-trail"}}
+
+    {{> "axiom/process/ax-audit-hook"}}
+
+    {{> "axiom/process/ax-re-dispatch"}}
+
+    {{> "axiom/process/ax-verify-and-finalize"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_TASKS` | No task index / no pickable task |
+    | `H_AMBIGUOUS_TASK` | "next" / "pick" matches more than one pickable task — shortlist for the operator |
+    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs |
+    | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
+    | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_RESOLVE">
+      <Goal>Resolve the task.</Goal>
+      <Action>
+        FIRST run `sdd-task` (no Task-ID) for the deterministic execution map — the pickable set
+        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers, `AX_TASK_RESOLUTION`) and
+        the blocked tickets. Then route on intent:
+
+        <LogicSwitch on="intent">
+        - WHEN intent is a specific Task-ID / ticket path -> run that ticket (STEP_1–8)
+        - WHEN intent = `next` / `pick`                   -> the first pickable from the map (none → H_NO_TASKS; several + ambiguous → H_AMBIGUOUS_TASK, shortlist for the operator)
+        - WHEN intent = `batch` / `all` / `queue`         -> EVERY pickable ticket in DAG order (parallel ONLY across tickets whose Target-File sets are disjoint, `AX_DAG_AND_TICKET_BOUNDARIES`; sequential otherwise)
+        </LogicSwitch>
+
+        The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
+        map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
+        pauses (`H_PAUSED_AWAITING_OPERATOR`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_PLAN">
+      <Goal>Get the plan; detect state; open the Round. (one tool call, no broad ticket read)</Goal>
+      <Action>
+        `sdd-task <id>` returns Meta + Phases Overview + per-phase read-manifests + gates — the only
+        ticket read I do. Preflight blocker scan (`sdd-check`, per `AX_BLOCKER_RESOLUTION_TRAIL`):
+        unresolved → `H_PAUSED_AWAITING_OPERATOR`. State from Phases Overview: all `[ ]` → fresh (all
+        phases by `Deps`); mixed → resume (remaining); all `[x]` + no audit → audit only; any `[!]` →
+        pause. Open a new Round in the log via `sdd-log`.
+      </Action>
+    </Step>
+    <Step id="STEP_2_DISPATCH">
+      <Goal>Dispatch workers, one phase at a time (sequential by `Deps`, `AX_EXECUTION_ORDER`).</Goal>
+      <Action>
+        Per phase: pick the worker model by thinking-load — default by kind (`impl` / `test` → capable;
+        `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase. Dispatch a fresh worker with: read `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`;
+        ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
+        Handoff verbatim (`AX_HANDOFF_TYPED`); the phase read-manifest from `sdd-task`; sdd tooling
+        (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line per transition
+        (`ORCHESTRATOR_PROGRESS_FORMAT`). Branch: `BLOCKED` / `FAIL` → stop, no audit, `H_PAUSED_AWAITING_OPERATOR`;
+        `DONE` → record Handoff, thread it into the next phase's Inputs.
+      </Action>
+    </Step>
+    <Step id="STEP_3_CLOSE_ROUND">
+      <Goal>Close the Round.</Goal>
+      <Action>Append Round close via `sdd-log` (`ROUND_CLOSE_FORMAT`); set Meta Status `[x] DONE`.</Action>
+    </Step>
+    <Step id="STEP_4_SYNC">
+      <Goal>Sync trackers. (mechanical → tool)</Goal>
+      <Action>`sdd-sync <task-id>` updates the scope + project trackers and verifies the write (`AX_VERIFY_AND_FINALIZE`).</Action>
+    </Step>
+    <Step id="STEP_5_AUDIT">
+      <Goal>Dispatch fresh-eyes audit (mandatory, `AX_AUDIT_HOOK`).</Goal>
+      <Action>
+        Dispatch ONE audit-subagent on a cheap model (audit is mechanical verification): read
+        `ai/directives/sdd-v2/audit.directive.xml`; task-id; round; artifacts = union of phase Handoff
+        artifacts; mode per-task. Wait for the verdict.
+      </Action>
+    </Step>
+    <Step id="STEP_6_BRANCH">
+      <Goal>Branch on the audit verdict.</Goal>
+      <Action>
+        <LogicSwitch on="audit verdict + attempt">
+        - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` -> STEP_7B_CODE_REVIEW
+        - WHEN `FAIL` + attempt 1                      -> STEP_7_RESOLVE (one retry)
+        - WHEN `FAIL` + attempt 2                      -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
+        </LogicSwitch>
+      </Action>
+    </Step>
+    <Step id="STEP_7_RESOLVE">
+      <Goal>Resolve audit findings (one retry).</Goal>
+      <Action>
+        Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
+        (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec / decision-log
+        only: apply them directly (the orchestrator owns trackers and may make administrative edits), no
+        new Round, then re-dispatch audit (R2). Either way return to STEP_6.
+      </Action>
+    </Step>
+    <Step id="STEP_7B_CODE_REVIEW">
+      <Goal>Dispatch fresh-eyes code-review for bugs (lazy, after the audit passes).</Goal>
+      <Action>
+        Dispatch ONE code-review subagent (isolated): read `ai/directives/sdd-v2/code-review.directive.xml`;
+        task-id; round; artifacts = union of phase Handoff artifacts (the Round's diff); the relevant
+        contract anchors. It scopes to bugs only (correctness / edge / error-path / security), leaving drift and style out.
+        Verdict: `CLEAN` → STEP_8; `FINDINGS` with a `BLOCKER` → `H_CODE_REVIEW_BLOCKER` (pause for the
+        operator); `FINDINGS` non-blocking → carry into the summary as routed proposals, STEP_8.
+      </Action>
+    </Step>
+    <Step id="STEP_8_SUMMARY">
+      <Goal>Summarize for the operator.</Goal>
+      <Action>Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`.</Action>
+    </Step>
+  </ExecutionPlan>
+
+  <HardForbidden>
+    - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not.
+    - Always run audit after all phases DONE, and code-review after the audit passes.
+    - Thread only typed Handoff payloads between subagents; keep their contexts separate.
+    - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
+  </HardForbidden>
+
+  <ChatOutput>
+    {{> "contract/process/orchestrator-progress-format"}}
+
+    {{> "contract/process/execute-summary-format"}}
+  </ChatOutput>
+</SddExecuteOrchestrator>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/dbc-audit.directive.xml -->
+<Axiom id="AX_LIVE_SOURCE_ONLY">The standard is a living document. Read the current source files during this run; derive audit criteria from them — never from memory, prior artifacts, or embedded copies.</Axiom>

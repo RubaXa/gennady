@@ -1,0 +1,87 @@
+<Contract id="TASKS_README_STRUCTURE">
+  Project-level tracker. High-level DAG = cross-scope edges only; intra-scope edges live in scope READMEs. No Cascade Table here.
+
+  ```markdown
+  # Project Tasks
+
+  ## Entry Points
+  - [Specs Portal](../specs/README.md) — Scope Graph + all scope specs.
+  - Tickets are executed ONLY via `sdd-execute` SKILL (single ticket) or `sdd-execute-batch` SKILL (queue). The orchestrator dispatches phase-subagents per ticket's Phases Overview, then `sdd-audit` automatically — operator does not invoke audit manually.
+
+  ## Project-Wide Conventions
+
+  ### File-header Convention
+  Per `AX_FILE_HEADER_TASK_TRACEABILITY` — canonical format, rules, and lang-agnostic note defined there.
+
+  ### Completion Rule (baseline)
+  A task cannot transition to `[x] DONE` until ALL of (per `AX_DONE_REQUIRES_EVIDENCE`):
+  1. Every phase declared in section 2 Phases Overview has Status `[x]`.
+  2. Every BDD scenario mapped to test ownership in section 6 OR has `Deferred Test Ownership: <task-id>`.
+  3. Verification commands relevant to each phase executed; results + exit codes recorded in that phase's Execution Log block.
+  4. Canonical case names match real test cases or ticket updated.
+  5. `Deferred Runtime Scope` recorded if applicable.
+  6. Every introduced-beyond-Inventory entity logged as `<ts> intro <Name> ← <reason>` in the relevant phase block.
+  7. Every phase block ends with a typed **Handoff →** line.
+
+  Task-specific additions live in each ticket's section 5.
+
+  ### Execution Log Template
+  Canonical token vocabulary (single source of truth; phase-protocol and audit reference this table, do not redefine):
+
+  | Token | Tail | Mandatory when |
+  |---|---|---|
+  | `intro` | `<Entity> ← <reason>` | new entity appears in code beyond module Entity Inventory |
+  | `decision` | `<key>=<value> ← <reason>` | typed choice that affected output |
+  | `tried` | `<approach> → <result>` | approach attempted then abandoned (failed path worth recording) |
+  | `discovery` | `<fact>` | reality diverged from spec / assumption |
+  | `insight` | `<observation> → <spec-section>, <change>` | spec gap detected |
+  | `verified` | `<tool>@<version> <summary>` | `config` kind: third-party API confirmed |
+  | `ver` | `<cmd> → pass|fail exit=<N>` | once per phase, closing run (always present) |
+  | `BLOCKED` | `<cause>` | phase ended `[!] BLOCKED` |
+  | `DONE` | (no tail) | terminal line of phase or Round close (always present) |
+
+  Round structure:
+  ```markdown
+  ### Round <N> — <YYYY-MM-DD>, <reason>
+
+  #### P1
+  <!-- event lines (0+, from the table above) appended as events happen -->
+  - [x] `<ts>` ver <cmd> → pass exit=0
+  - [x] `<ts>` DONE
+  **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+  #### Round close
+  - [x] `<ts>` DONE
+  ```
+
+  Trivial phase with no events → 2 lines (`ver` + `DONE`) + Handoff. Padding with empty lines is forbidden.
+
+  ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done → `EXECUTION_LOG_INCOMPLETE` (BLOCKER).
+
+  ### Post-task Hook
+  Per `AX_AUDIT_HOOK`. After last phase of a Round closes, the orchestrator dispatches `sdd-audit`. Until audit returns PASS, Round is closed-but-unverified and dependents are blocked.
+
+  ## High-Level DAG
+  Cross-scope edges + integration tickets only. Intra-scope DAGs live in per-scope READMEs.
+
+  ```mermaid
+  graph TD
+    backend --> infra-base
+    web --> infra-base
+    web --> backend
+    TSK-13[Cross-scope integration] -.-> web
+  ```
+
+  ## Tracker Index
+  | Scope | Type | Tracker | Tasks | Done |
+  |---|---|---|---|---|
+  | infra-base | infrastructure | [README](infra-base/README.md) | 6 | 0/6 |
+  | api-contracts | contracts | [README](api-contracts/README.md) | 2 | 0/2 |
+  | backend | product | [README](backend/README.md) | 12 | 0/12 |
+  | web | product | [README](web/README.md) | 8 | 0/8 |
+  | integration | integration | [README](integration/README.md) | 1 | 0/1 |
+
+  ## Decision Log (task-scaffolding-level)
+  [D-NNN entries when operator made non-default choices.]
+  ```
+</Contract>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/semantic-change-extractor.directive.xml -->
+<Axiom id="AX_CONTEXT_IS_KING">Change without a consumer is a bug. Always identify *why* a change was made and *who/what* consumes it (e.g., «Frontend expects a new JSON field», «Fixes a memory leak in the worker»).</Axiom>

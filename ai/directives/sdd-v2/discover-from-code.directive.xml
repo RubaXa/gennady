@@ -1,0 +1,160 @@
+<SddDiscoverFromCode keywords="discover, from-code, reverse-engineer, brownfield, recover-specs, general-picture, understanding-block, incremental, lazy, align-code, sdd-discover-from-code" type="directive" ver="2.0">
+  <Mission>
+    Recover the GENERAL PICTURE of an existing codebase as SDD specs — project-scale, brownfield.
+    Entered from `root` when the portal is absent but `sdd-state --probe` reports `CODE=present`: the
+    repo already holds code, so we do not invent a vision over it — we read what is there and formalize
+    the big picture first. Loaded by `root` (which runs only after the router); the router-core beliefs it
+    relies on are declared in `BeliefState deps` (inherited, not repeated).
+
+    The primary deliverable is the portal: an operator-confirmed Vision + Scope Graph + a recovered infra
+    scope. That is a complete, valid outcome on its own. Deep elaboration — module specs, rule extraction,
+    contract/style alignment tasks — is INCREMENTAL: done per scope, only when the operator asks to go
+    deeper, with the flow loading spec-elaboration only for that part. We recover the map first; we do not
+    recover the whole repo at once, and we do not overload the operator.
+
+    Key interaction rule: the vision is not fully in the code, so the agent does not ask the operator to
+    supply it from scratch — it presents what it understood (coarse first, marking how confident it is in
+    each item) and the operator agrees, augments, or corrects in free text. This is a review, not a
+    multiple-choice question.
+
+    Reuses the branches — portal via the portal format, infra via `infra`, modules via `module`, tasks
+    via `scaffold`; it does NOT re-enter `root` (which routed here — re-entry would loop). Distinct from
+    `reconcile-from-code` (one change/module against an existing spec triangle).
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT">
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
+      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Hypotheses** — conjectures that require operator validation before they are promoted to requirements.
+
+      Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
+    </Axiom>
+  </BeliefState>
+
+  <KernelGrammar>
+    <Definition id="DEF_READ_AND_USE_DIRECTIVE">
+      `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+      of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+      - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+        stateless) and carries only its own deltas; it MUST NOT repeat the core.
+      - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+        context is not polluted by branches that do not apply.
+      - The reference is a file path on purpose — a directive delivered as a file keeps full
+        instruction priority, unlike command stdout.
+    </Definition>
+  </KernelGrammar>
+
+  <ChatProtocol>
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_CODE` | `sdd-state --probe` reports `CODE=absent` — wrong branch; return to `root` greenfield init |
+    | `H_OPERATOR_REJECT` | Operator rejects the recovered picture outright — stop; nothing is written |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_CARTOGRAPHY">
+      <Goal>Read the COARSE picture — cheap, write nothing.</Goal>
+      <Action>
+        From `sdd-state --probe` (`code-dirs`, `configs`) + a coarse read — `package.json` (name,
+        workspaces, deps), entry points, top-level layout — infer **candidate scopes** (workspace
+        packages, else top-level domain dirs) and a rough module list, the toolchain, and a light read of
+        conventions + a contract signal. Do NOT deep-read every module; the goal here is the map, not the
+        detail. Read-only.
+      </Action>
+    </Step>
+    <Step id="STEP_1_PICTURE">
+      <Goal>Show the general picture; let the operator steer.</Goal>
+      <Action>
+        Present the **general picture** (`UNDERSTANDING_BLOCK_FORMAT`), plain Russian, coarse first:
+        inferred **vision** (what the code does — but marked operator-owned: «зачем и куда — твоё»),
+        the **scope graph**, the **infra/toolchain**, and a short note on conventions + contract state.
+        Mark **confidence** per item — read-for-sure vs guessed vs «не смог отнести к scope/модулю, реши
+        ты» — and steer the operator's attention to the unsure spots. Frame: «вот общая картина как я
+        понял — согласись, дополни, поправь». Open free-text — NOT a multiple-choice question.
+        Fold corrections into the locked picture. Outright rejection → `H_OPERATOR_REJECT`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PERSIST_PICTURE">
+      <Goal>Persist the picture — the primary, self-sufficient outcome.</Goal>
+      <Action>
+        Assemble the portal (Vision + Scope Graph + Scopes table) directly via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` — do NOT re-enter
+        `root` (it routed here — re-entry would loop). Recover the infra scope from the configs via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`. The repo now has a portal —
+        a valid place to stop.
+      </Action>
+    </Step>
+    <Step id="STEP_3_DEEPEN">
+      <Goal>Go deeper — by parts, only what the operator picks (optional, incremental).</Goal>
+      <Action>
+        Offer to elaborate; the picture already stands, so this is opt-in and incremental. For each
+        scope the operator chooses: recover its module specs via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` (behavioral truth — what the
+        code does); record the de-facto rules + the contract gap; and, when the operator wants the code
+        aligned, scaffold **behavior-preserving** alignment tasks via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")` — prioritized, not one per
+        gap (contract alignment on pre-DbC code is a large effort — scope it). Loop per chosen scope; the
+        operator can stop anytime. Load these branches only for the part being deepened.
+      </Action>
+    </Step>
+    <Step id="STEP_4_VERIFY">
+      <Goal>Prove what was produced is coherent.</Goal>
+      <Action>
+        Whatever exists now (at minimum portal + infra; plus any deepened scopes) is coherent;
+        `sdd-check --all` clean. Return control.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🧭 DFC_R<N> · scopes=<n> · deepened=<n> · step=<id>`.
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+      explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the
+      assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > квинтэссенция — что считаю главным.
+      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос Q`<N>`.
+    </Contract>
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+</SddDiscoverFromCode>

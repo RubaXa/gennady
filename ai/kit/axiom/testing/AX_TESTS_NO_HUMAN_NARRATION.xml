@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_TESTS_NO_HUMAN_NARRATION">
+Never write step-by-step narration like `Step 1`, `Step 2` inside a case. Phase anchors already make the steps machine-visible. Comments only where they increase recoverable intent; do not duplicate the title, assertion text, or obvious setup facts.
+</Axiom>

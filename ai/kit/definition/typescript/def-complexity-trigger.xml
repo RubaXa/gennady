@@ -1,0 +1,4 @@
+<!-- source: coding/typescript-rules.xml -->
+<Definition id="DEF_COMPLEXITY_TRIGGER">
+      Complex (triggers non-trivial anchors + full JSDoc optional-tag set) if any: network/file/process I/O; shared-state mutation; retry/fallback/error translation; concurrency, locking, batching. OR any two of: multiple decision points, hidden pre/postconditions, nested control flow, non-local refactor hazard.
+    </Definition>

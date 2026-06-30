@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
+      Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket §5 Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute **verbatim — exactly as listed in ticket §5**; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>` where `<cmd>` is the literal string from §5. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
+
+      **MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Running an "equivalent" command (e.g. `npx vitest run` instead of `npm run check`, or `tsc --noEmit` instead of the ticket's `npm run typecheck`) and then logging the §5 command as `ver` is **fabricated verification** — treated by audit as `EXECUTION_LOG_INCOMPLETE` (BLOCKER severity, tag `fabricated-verification`). The log line `ver <cmd>` MUST be the exact string of the command that was actually executed, never a paraphrase.
+
+      Supplemental tools (`<sdd-path> verify`, `tsc --noEmit`, `npx vitest run <file>`) MAY run additionally for narrower diagnostics, but they NEVER replace ticket §5 commands. If a §5 command requires more time/scope than the supplemental tool, run the §5 command anyway — it is the contract.
+
+      Phase kind `doc` typically has no verification — empty section is acceptable.
+    </Axiom>

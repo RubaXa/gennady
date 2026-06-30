@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<AntiPattern id="AP_SB_VERIFY_SKIPPED">
+  <Bad>Agent finishes the install steps and reports «Storybook configured» based solely on `npm install` exit code, without booting `storybook dev` or running any story test.</Bad>
+  <WhyBad>Setup declared complete without end-to-end verification (`AX_SB_VERIFY_BEFORE_HANDOFF`). Misses Playwright browser missing, MCP server not registered, addon misconfigured, port conflict — all of which compile fine but break the first real use.</WhyBad>
+  <Good>Boot `storybook dev` and confirm preview URL responds; call one MCP tool; run `run-story-tests` on one story. If any fails, surface the exact error to the operator before marking the ticket complete.</Good>
+</AntiPattern>

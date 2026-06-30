@@ -1,0 +1,16 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_PHASE_ANCHORS">
+**Wrap each present phase that carries ≥2 statements OR encodes local policy** (retry, fallback, aggregation, fixture build) in paired anchors:
+
+```
+// #region START_[CASE]_[PHASE]_[INTENT]
+...phase body...
+// #endregion END_[CASE]_[PHASE]_[INTENT]
+```
+
+PHASE ∈ {`SETUP`, `TRIGGER`, `OBSERVE`, `ASSERT`, `CLEANUP`}.
+
+**Skip anchors when the phase is a single statement with no hidden policy.** A one-line `await assert.rejects(...)` covering both TRIGGER and ASSERT does NOT need an anchor — title + the call already expose intent. Anchors around trivial one-liners are ritual noise that erodes the signal of anchors on truly non-trivial phases.
+
+Anchors are machine grammar for refactoring: they let the next agent cut and replace phases by pairs without an AST.
+</Axiom>

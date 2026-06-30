@@ -1,0 +1,16 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_DATA_ATTRS_NOT_HOST">
+CSS selectors use `data-*` attributes on an inner wrapper element, NOT `:host()` pseudo-class selectors. The outer host element is a simple `display: inline-block` container; all styling and testable selectors target the inner element.
+
+Reasoning (D-UC01): `:host([attr="value"])` compound selectors fail in headless Chromium — `getComputedStyle` returns `0px` for padding. The inner-wrapper approach with `data-*` attributes is proven in the Button PoC and works consistently across all test environments.
+
+Correct pattern:
+```css
+.btn[data-mode="primary"] { ... }
+.btn[data-appearance="accent"] { ... }
+.btn[data-size="s"] { height: var(--vkui--size_button_small_height--compact); }
+.btn[data-state="hover"] { /* hover styles */ }
+```
+
+Forbidden: `:host([mode="primary"])`, `:host(.primary)`, any `:host()` usage.
+</Axiom>

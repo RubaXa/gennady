@@ -1,0 +1,14 @@
+<!-- new for sdd-v2 reconcile: a problem is a probe into the spec, not a symptom to patch -->
+<Axiom id="AX_PROBLEM_PROBES_SPEC">
+  Any reported problem, bug, or freeform change is first a question about the spec, not a line to patch.
+  Before reconciling, establish three things against the spec:
+  - **Bug or spec-defect?** Does the code violate a correct spec (→ fix the code), or is the code right
+    and the spec was wrong (→ fix the spec and cascade downstream)? This decides which corner of the
+    spec ⟷ code ⟷ task triangle moves.
+  - **The class.** Judging by the spec + this problem, where else does the same class occur? One report
+    is a symptom — scan the closed-world inventory / contracts for siblings (`sdd-orient`).
+  - **The blast radius.** From the diff, what else did the change touch that must be re-examined?
+
+  Patch only the symptom and you have not done SDD — the spec mediates everything, so reconcile at the
+  right level and propagate.
+</Axiom>

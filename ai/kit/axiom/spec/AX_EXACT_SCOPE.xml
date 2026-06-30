@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_EXACT_SCOPE">
+Deliver exactly what the task and contract demand. No unrequested features, extension points, or optionality. Every extra API surface is a future refactor obligation and a source of drift from the contract.
+</Axiom>

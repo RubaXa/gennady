@@ -1,0 +1,10 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_NO_DATA_LOSS">
+      The draft MUST preserve ALL data from `ExtractionResult`:
+      - All `variants[]` are reflected in the Variants table.
+      - All unique `(element, metric)` pairs from all `Measurements` are reflected in Token Mapping.
+      - All `elements[]` are listed in Element Structure.
+      - Every state for every (size, appearance, mode) combination has a BDD scenario.
+
+      Missing data (state not in extraction, token not found) → mark explicitly with `⚠️`, never silently omit.
+</Axiom>

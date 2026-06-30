@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<AntiPattern id="AP_E2E_STANDALONE_POM">
+      <Bad>`class CheckoutPage { constructor(page) { this.page = page; } } ... test('...', async ({ page }) => { const checkout = new CheckoutPage(page); ... });`</Bad>
+      <WhyBad>Page Object instantiated by the test instead of supplied by a fixture (`AX_E2E_FIXTURE_BASED_POM`). Reintroduces the manual setup/teardown problem fixtures solve; no per-test lifecycle isolation; the page object cannot expose its own fixture-managed state (intercepts, storage, helpers).</WhyBad>
+      <Good>Define `test = base.extend({ checkout: async ({ page }, use) => use(new CheckoutPage(page)) })`; the test declares `checkout` as an argument and receives a fresh per-test instance.</Good>
+    </AntiPattern>

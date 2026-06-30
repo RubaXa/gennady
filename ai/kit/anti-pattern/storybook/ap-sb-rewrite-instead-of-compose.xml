@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<AntiPattern id="AP_SB_REWRITE_INSTEAD_OF_COMPOSE">
+  <Bad>New `Disabled` story restates the full `args: { label, variant, size, icon, ariaLabel, ... }` map identical to `Primary.args` except for one field.</Bad>
+  <WhyBad>Args restated instead of composed (`AX_SB_USE_COMPOSE_EXISTING_FIRST`). The duplicated map drifts the first time `Primary.args` gains or renames a field — the `Disabled` story silently falls behind without any test failure pointing at it.</WhyBad>
+  <Good>`args: { ...Primary.args, disabled: true }`. Composition makes the diff visible and keeps the variant aligned with the base.</Good>
+</AntiPattern>

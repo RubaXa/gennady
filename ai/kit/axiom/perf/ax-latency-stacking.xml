@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/async-latency.xml -->
+<Axiom id="AX_LATENCY_STACKING">Последовательный `await` независимых задач складывает их задержки (Latency). Параллельный запуск сводит общую задержку к самой медленной задаче.</Axiom>

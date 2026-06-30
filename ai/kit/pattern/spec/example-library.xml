@@ -1,0 +1,21 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Pattern id="EXAMPLE_LIBRARY">
+      ```markdown
+      # logger-core: Library Specification
+
+      ## 2. Approved Golden DX Example
+      ```ts
+      // happy path
+      const log = createLogger({ name: 'payments', level: 'info' })
+      log.info({ orderId }, 'charge succeeded')
+
+      // degradation: transport unavailable
+      log.transport.on('error', (err) => log.warn({ err }, 'fallback to stdout'))
+      ```
+
+      ## 4. Public API Surface
+      - `createLogger(config) → Logger`
+      - `Logger.{ trace, debug, info, warn, error, fatal }(payload, message)`
+      - `Logger.child(bindings) → Logger`
+      ```
+    </Pattern>

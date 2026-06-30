@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_MINIMAL_ERROR_SURFACE">
+Minimal error surface. Handle only reachable errors. Do not defend against states proven impossible by types, preconditions, or invariants. Defense against the impossible is dead code — simulates reliability and obstructs reasoning about real failure paths.
+</Axiom>

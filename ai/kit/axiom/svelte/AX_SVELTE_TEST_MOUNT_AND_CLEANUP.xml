@@ -1,0 +1,8 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Axiom id="AX_SVELTE_TEST_MOUNT_AND_CLEANUP">
+  Every component mount MUST be paired with cleanup. Either:
+  - rely on testing-library's auto-cleanup (when the Vitest config enables it), OR
+  - register `afterEach(() => cleanup())` explicitly.
+
+  Skipping cleanup leaves mounted components in the document between cases; subsequent queries return stale matches and inter-test isolation collapses.
+</Axiom>

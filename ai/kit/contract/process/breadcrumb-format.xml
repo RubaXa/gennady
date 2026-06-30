@@ -1,0 +1,8 @@
+<!-- source: sdd-opt-v1 BREADCRUMB_FORMAT -->
+<Contract id="BREADCRUMB_FORMAT">
+  One line under the service line: this session's milestones, each with a status marker — `✅` done
+  · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
+  «where are we», and it replaces a verbose run-on of finished steps.
+
+  `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+</Contract>

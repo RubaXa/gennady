@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Hook id="HOOK_SK_NO_GLOBAL_FETCH_IN_LOAD">
+<Purpose>Smoke-grep for likely global `fetch(` in server load files (manual review of matches).</Purpose>
+<Command>find src/routes -type f \( -name '+page.server.ts' -o -name '+layout.server.ts' \) -print0 | xargs -0 grep -nE '(^|[^.])fetch\(' || true</Command>
+<Expected>For each match: confirm it is the SDK-provided `fetch` destructured from the load event, not the global `fetch`.</Expected>
+</Hook>

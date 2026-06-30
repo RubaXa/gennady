@@ -1,0 +1,20 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<AntiPattern id="AP_ATOMIC_NOISE_ANCHORS">
+<Bad>Anchors around a single `const`; anchor name `START_CHECK_RETRIES` (names syntax, not intent); comment restates the `if`; `Error("Limit")` without Trace-Prefix or cause.</Bad>
+<WhyBad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_COMMENT_VOCABULARY`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</WhyBad>
+<Good language="typescript">
+```typescript
+const maxRetries = 3;
+
+// #region START_ENFORCE_RETRY_POLICY
+// purpose: stop retry fan-out before a degraded upstream turns one request into cascading load
+// failure mode: removing this guard converts transient upstream latency into duplicate pressure
+if (attempts > maxRetries) {
+    throw new TessellError(ErrKind.ERR_CHECKOUT_CHARGE_UPSTREAM_UNRESPONSIVE, "[Checkout#charge] Upstream provider unresponsive", {
+      cause: { attempts, maxRetries }
+    });
+}
+// #endregion END_ENFORCE_RETRY_POLICY
+```
+</Good>
+</AntiPattern>

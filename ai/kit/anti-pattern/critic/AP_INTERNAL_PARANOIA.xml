@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_INTERNAL_PARANOIA">Flagging type violations at internal boundaries. Type system prevents these.</Pattern>

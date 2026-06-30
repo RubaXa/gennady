@@ -1,0 +1,10 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_CONFIG_AUDITABLE_BY_AGENT">
+      `eslint.config.ts` is structured so an agent can audit it mechanically:
+      - One config object (or explicit array spread) per logical concern (language options, plugins, file overrides), commented with the concern name.
+      - Every `'error'` rule is either trivially autofixable OR carries the explanatory comment (per `AX_AUTOFIX_PREFERRED`).
+      - Every `'off'` after a preset spread carries a one-line reason.
+      - File globs use the project-wide convention; do not invent ad-hoc patterns inside `overrides`.
+
+      The config itself is the source of truth for the lint contract.
+    </Axiom>

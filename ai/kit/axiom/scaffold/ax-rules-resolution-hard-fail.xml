@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
+      **All rule references must resolve; missing rule = abort.** Sources: scope spec (5 Effective Rules for infra; 4.5 Rules for product/library), module spec (9 Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
+    </Axiom>

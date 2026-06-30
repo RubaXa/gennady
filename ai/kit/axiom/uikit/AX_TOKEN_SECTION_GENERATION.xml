@@ -1,0 +1,13 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_TOKEN_SECTION_GENERATION">
+      The Token Mapping section populates measurements from `ExtractionResult.variants[].measurements` and maps them to VKUI tokens from `TokenCandidate[]`.
+
+      Procedure:
+      1. Collect all unique `(element, metric)` pairs across all variants. The `element` prefix is derived from `MeasurementSet` fields: `icon-padding-left` (from leftPad of icon element), `height`, `border-radius`, etc.
+      2. For each pair, find the corresponding `TokenCandidate` where exists. If not found → mark as `⚠️ no token`.
+      3. Compute `diff = |svgValue - tokenValue|`.
+      4. If `diff ≤ 1` → Action = `OK`. If `diff > 1` → Action = `OVERRIDE: &lt;svgValue&gt;px`.
+      5. Sort rows: element name alphabetically.
+
+      Note: `ExtractionResult.tokenOverrides` contains only candidates where `match: false`. For the full Token Mapping table, you need ALL measurements — both matched and unmatched. If `tokenOverrides` is the only source, the table will be incomplete. Prefer deriving measurements from `variants[].measurements` and cross-referencing with token mappings.
+</Axiom>

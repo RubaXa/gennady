@@ -1,0 +1,8 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_DRAFT_READY_FOR_REVIEW">
+      The output is a DRAFT — marked with a header comment:
+      ```markdown
+      &lt;!-- DRAFT: generated from figma-utils extract. Review and finalise before scaffold. --&gt;
+      ```
+      This signals to the operator that the spec is machine-generated and requires human approval.
+</Axiom>

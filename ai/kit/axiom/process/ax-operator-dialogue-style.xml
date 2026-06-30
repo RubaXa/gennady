@@ -1,0 +1,27 @@
+<!-- merged: draft sdd-authoring-core A3 (principle) + sdd-opt-v1 AX_PLAIN_SPEECH (ban-list) -->
+<Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+  The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+  read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+  sharp is the failure mode, not the goal. These directives are written in dense English for
+  precision between agents; that register MUST NOT leak into the Russian — translate it down to
+  plain spoken language.
+
+  Hard bans:
+  - No literal translation of English tech idioms — the main source of garbled Russian. There is
+    always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+    seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+    hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+  - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+    «когерентный», «расхождение» not «дивергенция».
+  - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+    тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+  - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+    English word dropped mid-sentence («basically», «particularly»).
+  - No ornamental adjectives, no aphorisms.
+
+  Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+  `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+  Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+  like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+</Axiom>

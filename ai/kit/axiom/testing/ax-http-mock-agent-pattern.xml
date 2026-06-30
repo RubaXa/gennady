@@ -1,0 +1,1 @@
+      Default posture (per inherited `AX_MOCK_AS_LAST_RESORT`): inject an HTTP client / `request` port into the SUT and stub it with `mock.fn()`. Mock-agent harness is for code that already exists without an injection seam.

@@ -1,0 +1,10 @@
+<!-- source: sdd-execute skill ProgressReporting -->
+<Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
+  Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
+
+  `[<bar>] <pct>% | <Task-ID> | <stage>`
+
+  Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
+  Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.
+  Pause path (NOT a failure — awaiting the operator): `✋ PAUSED — <unresolved blocker | phase BLOCKED>`; the operator marks resolution in the Execution Log, then re-runs.
+</Contract>

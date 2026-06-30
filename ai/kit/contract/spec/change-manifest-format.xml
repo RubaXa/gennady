@@ -1,0 +1,31 @@
+<!-- source: messenger/draft/ai/sdd-authoring-lifecycle.md L2.2 -->
+<Contract id="CHANGE_MANIFEST_FORMAT">
+      Temporary review-state section at the TOP of the spec (right after the intro block), removed whole by compress. Marker carries NO colon so `extract-section.sh` extracts it.
+
+      ```markdown
+      <!--SECTION:CHANGE_MANIFEST-->
+      ## ⟢ Change Manifest — review-state · удаляется при compress
+
+      ТИП ИЗМЕНЕНИЯ: <refine | pivot | greenfield> · <короткое имя>
+      СВЯЗЬ С МИРОМ: <1–2 строки: какой внешний сценарий или потребность это закрывает>
+
+      ЧТО МЕНЯЕТСЯ:
+        ✚ <ACR>-REQ-N — <одна строка>
+        ✚ <ACR>-D-N   — <одна строка>
+        ~ <сущность / секция> — <что именно меняется>
+
+      НЕ ТРОНУТО (границы):
+        · <что осталось как было — явные границы изменения>
+
+      ФАЙЛЫ (только реальные файлы кода; спеки не перечислять):
+        · <path> — <что меняется в этом файле, 1–2 строки>
+
+      ЗАЧЕМ: <почему это нужно, 1–2 строки>
+
+      ЧЕК-ЛИСТ РЕВЬЮЕРА:
+        [ ] <конкретные вопросы, которые проверяет ревьюер>
+      <!--/SECTION:CHANGE_MANIFEST-->
+      ```
+
+      Rules: compress ALWAYS removes this section whole. «ЧТО МЕНЯЕТСЯ» lists the delta with the same `✚`/`~` marks used in the body and references the new IDs. «ФАЙЛЫ» = code files only — spec changes are already visible in the diff. «НЕ ТРОНУТО» = explicit boundaries the reviewer need not re-check. greenfield: keep the manifest but drop the per-line `✚`/`~` marks (everything is new) — «СВЯЗЬ С МИРОМ» carries the weight.
+    </Contract>

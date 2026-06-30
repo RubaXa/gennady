@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SDD Inspector</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="title">SDD Inspector</div>
+    <div class="sub">как реально работают скилы и директивы — читается из ai/skills + ai/directives</div>
+    <label class="editor-pick">↗ редактор:
+      <select id="editor">
+        <option value="vscode">VS Code</option>
+        <option value="cursor">Cursor</option>
+        <option value="vscode-insiders">VS Code Insiders</option>
+        <option value="windsurf">Windsurf</option>
+        <option value="zed">Zed</option>
+      </select>
+    </label>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-head">Скилы</div>
+      <nav id="skills" class="skills"></nav>
+    </aside>
+    <main class="content">
+      <div id="legend" class="legend"></div>
+      <div id="trace" class="trace"></div>
+    </main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_CONTRACTUAL_NAMING">
+Method name is a self-contained contract. Method names must be readable as a full contract outside the owner class (`verifyRegistrationData`, not just `validate` inside `UserValidator`). A reading agent often sees a method call without the owner class in focus (import, traceability grep). The name must carry meaning in isolation.
+</Axiom>

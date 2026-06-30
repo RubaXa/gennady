@@ -51,21 +51,10 @@
     </Axiom>
 
     <Axiom id="AX_VISUAL_TRANSPORT">
-      **Mandatory protocol — executed at STEP_5 action 1 BEFORE any output.** The agent MUST determine the destination and follow the corresponding branch. No exceptions, no fallback to the wrong format.
-
-      **Branch CHAT (operator reads the report in a chat UI):**
-      1. Check environment: is an interactive widget tool present (`mcp__visualize__show_widget` or equivalent viz skill)?
-      2. IF tool present → MUST render relational diagrams with it. Icons + colour inside; no emoji in rendered graphics.
-      3. IF tool absent → ASCII tree/graph with emoji-icons (compact, renders everywhere).
-      4. **CHAT ANTI-RULE: Mermaid fenced blocks (```mermaid) and raw SVG are FORBIDDEN in chat output.** The operator cannot render them. Violation = invalid output.
-      5. **Render guarantee:** every chat artifact MUST be in a form the chat client actually shows — a visual widget tool, or plain-text ASCII/emoji; operator choices go through `AskUserQuestion`. Nothing reaches the operator as markup the chat cannot draw. "Visualised" means the operator SEES it, not that a diagram string exists.
-
-      **Branch GITLAB (posting to MR — comment, discussion, line note):**
-      Agent MUST load and apply `ai/directives/agent-inbox/posting-rules.directive.xml`. That directive governs: Mermaid-only diagram format, 🤖 prefix, comment granularity (spec→file-line-1, code→per-line, reply→existing-thread), and vcs-reply syntax.
-
-      **Cross-reference:** this axiom is invoked at STEP_5 action 1. The posting branch ALWAYS delegates to posting-rules.directive.xml — never handled inline.
-
-      Keep diagrams ≤7 nodes regardless of transport.
+      Belief about the medium — NOT a procedure. "Visualised" means the operator SEES the diagram, not that a diagram string exists; a finding is shown in whatever form the destination can actually RENDER. The executable procedure (probe for the tool, pick the medium, declare the choice) lives in STEP_5 action 0 — this axiom only states what is true so the step can act on it.
+      - **Chat is the destination:** when an interactive widget tool is present, it IS the medium — relational diagrams are rendered with it, not described. Plain-text ASCII/emoji is the FALLBACK, used only when no widget tool exists — never the default chosen because it is easier or because the example happens to show it. Mermaid fenced blocks and raw SVG are markup a chat client cannot draw → never sent to chat.
+      - **GitLab is the destination:** Mermaid is the medium (GitLab renders it natively); ASCII and widget output do not survive there. Posting format is owned by `posting-rules.directive.xml`, never handled inline here.
+      A diagram delivered in the wrong transport — ASCII chosen while a widget tool exists, Mermaid sent to chat, ASCII posted to GitLab — is invalid output. Diagrams stay ≤7 nodes in every transport.
     </Axiom>
 
     <Axiom id="AX_CHECKLIST_HYGIENE">
@@ -209,11 +198,11 @@
     <Step id="STEP_5_SYNTHESIZE">
       <Goal>Emit the helicopter-view report.</Goal>
       <Precondition>
-        **MANDATORY DESTINATION CHECK** — execute BEFORE any output. Per `AX_VISUAL_TRANSPORT`:
-        1. Determine destination: is this output going to **chat** (operator reads in Claude/terminal) or **GitLab** (posting to MR)?
-        2. IF chat → per AX_VISUAL_TRANSPORT Branch CHAT: check for viz tool → use it OR ASCII/emoji-icons. Mermaid FORBIDDEN.
-        3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`. All diagram conversion and posting format governed by that directive. This directive never posts inline.
-        4. State the chosen destination and format in the first micro-summary: «Вывод: чат, ASCII» or «Вывод: чат, widget» or «Постинг: GitLab, Mermaid».
+        **STEP_5 action 0 — transport decision, performed BEFORE any output. This step OWNS the procedure; `AX_VISUAL_TRANSPORT` is its rationale, not its substitute.**
+        1. Name the destination: **chat** (operator reads in Claude/terminal) or **GitLab** (posting to MR).
+        2. IF chat → actively probe the environment for a widget tool (`mcp__visualize__show_widget` or an equivalent viz skill). Tool present → you MUST render relational diagrams with it; tool genuinely absent → ASCII/emoji-icons. ASCII is the fallback, never the default chosen for convenience or copied from the example. Mermaid/SVG never go to chat.
+        3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`; it governs all diagram conversion and posting format. This directive never posts inline.
+        4. **Declare the decision as the first visible line, stating whether a widget tool was found:** «Вывод: чат, widget (инструмент найден)» / «Вывод: чат, ASCII (виджет недоступен)» / «Постинг: GitLab, Mermaid». This declaration is mandatory output; its absence is a SelfCheck failure.
        </Precondition>
        <Action>
         1. Choose visual transport per the destination check above (see Precondition). Per `AX_VISUALIZE_WHEN_RELATIONAL`: relational findings → picture; single judgements → prose. Per `AX_SCANNABLE_OUTPUT`: use emoji verdict icons (✅⚠️❌) and risk colours (🟢🟡🔴).
@@ -229,7 +218,8 @@
        <SelfCheck>
          **После сборки отчёта, перед отправкой оператору — пройди этот список. Если любой пункт ✗ — вернись и добавь пропущенное. Не выдавай неполный отчёт.**
 
-         0. `<IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/>` — прочитай эталон структуры. Сверяй свой отчёт с ним.
+         0. `<IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/>` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
+         0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
          1. **Шапка** — первая строка: `ref` как кликабельная ссылка на `webUrl`, затем `title`. ✗/✓
          2. **Обзор** — строка «Размер: …», таблица категорий (Код/Тесты/Доки/Конфиг/Ассеты), карта файлов с иконками (🆕/✏️/🗑️/↪︎) и ± строками. ✗/✓
          3. **C4-диаграмма** — контейнеры с вердикт-цветом (✅⚠️❌), внешние системы, легенда. ASCII или виджет. ✗/✓

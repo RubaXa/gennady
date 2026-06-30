@@ -1,0 +1,17 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Pattern id="PT_EFFECT_WITH_TEARDOWN">
+      <Intent>`$effect` allocating a resource MUST return a teardown.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <script lang="ts">
+          let { tickMs = 1000, onTick } = $props();
+
+          $effect(() => {
+            const handle = setInterval(() => onTick?.(), tickMs);
+            return () => clearInterval(handle);
+          });
+        </script>
+        ```
+      </Snippet>
+      <Why>Return value is the teardown — runs before next effect invocation and on destroy. Forgetting it leaks the interval.</Why>
+    </Pattern>

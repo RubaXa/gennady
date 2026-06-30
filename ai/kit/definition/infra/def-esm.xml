@@ -1,0 +1,2 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Definition id="DEF_ESM">ECMAScript Modules. Activated by `"type": "module"`. Syntax: `import`/`export`. Local imports require explicit extensions.</Definition>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_DATA_VIA_LOAD">
+Data needed to render a route is fetched in `load()` — universal in `+page.ts` / `+layout.ts`, server-only in `+page.server.ts` / `+layout.server.ts`. The return shape becomes `data` on the page (`let { data } = $props()`).
+
+Forbidden as default: calling `fetch` from a component `<script>` to populate initial state. Component-level fetch loses SSR, breaks invalidation, and bypasses the server's privileged access. Reserved exception: client-only progressive updates that have NO server data dependency.
+</Axiom>

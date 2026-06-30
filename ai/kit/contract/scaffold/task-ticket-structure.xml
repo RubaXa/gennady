@@ -1,0 +1,117 @@
+<!-- source: sdd/scaffold + draft sdd-authoring-task (reconciled to v2) -->
+<Contract id="TASK_TICKET_STRUCTURE">
+  Anchor names are normative per `AX_TICKET_SECTION_NAMES_NORMATIVE`. Shared per-module content
+  (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
+  once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
+
+  ```markdown
+  # Task: <ACRONYM>-<slug> — <Task Title>
+
+  <!--SECTION:META-->
+  ## 1. Meta
+  - **Task-ID:** <ACRONYM>-<slug>   <!-- semantic slug; same slug across branches = same feature (see Slug Registry) -->
+  - **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->
+  - **Purpose:** <semantic goal one-liner>
+  - **Scope:** <scope-name>
+  - **Module:** <module-name or N/A>
+  - **Dependencies:** <comma-separated Task-IDs or None>
+  - **Reopens:** <count> (<YYYY-MM-DD> — <last reason>)   <!-- omit when 0 -->
+  - **Spec References:**   <!-- one anchor PER contract — makes the contract set enumerable for the typing-scenario check -->
+    - Contract: [<PortName>](<spec anchor>)
+    - Adapter: [<AdapterName>](<spec anchor>)
+    - Consumer: [<ConsumerName>](<spec anchor>)
+    - Constraints (if applicable): [<scope spec §>](<path>)
+  - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+  - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+  - **Deferred Runtime Scope:** None | <description>
+  <!--/SECTION:META-->
+
+  <!--SECTION:PHASES_OVERVIEW-->
+  ## 2. Phases Overview
+  | ID | Kind | Deps | Status |
+  |----|------|------|--------|
+  | P1 | <kind> | — | [ ] |
+  | P2 | <kind> | P1 | [ ] |
+
+  <!-- Kind ∈ bootstrap | impl | test | config | doc | refactor (fix only on execution). impl and test are ALWAYS separate phases. Orchestrator reads this table to plan. -->
+  <!--/SECTION:PHASES_OVERVIEW-->
+
+  ## 3. Phases
+
+  <!--SECTION:PHASE_P1-->
+  ### P1 — <kind>
+  - **Objective:** <one-line>
+  - **Rules:**   <!-- links only, resolved from the cascade; rule content is never inlined -->
+    - [ai/directives/<category>/<rule>.xml](<relative-path>)
+  - **Target Files:**
+    - <path>
+  - **Inputs:** none   <!-- or "P1 handoff" -->
+  - **Exit:** <verifiable criterion>
+  <!--/SECTION:PHASE_P1-->
+
+  <!--SECTION:PHASE_P2-->
+  ### P2 — <kind>
+  - **Objective:** <one-line>
+  - **Rules:**
+    - [ai/directives/<category>/<rule>.xml](<relative-path>)
+  - **Target Files:**
+    - <path>
+  - **Inputs:** P1 handoff
+  - **Exit:** <verifiable criterion>
+  <!--/SECTION:PHASE_P2-->
+
+  <!--SECTION:BDD-->
+  ## 4. Acceptance Criteria (BDD)
+  Each scenario is tagged with the requirement it proves and its verification level — this is the
+  use-case → `[<ACRONYM>-REQ-N]` → vision chain the operator reviews at scaffold.
+
+  **Feature:** <component behavior>
+
+  **Scenario:** <name> [`<level>`] `[<ACRONYM>-REQ-N]`
+  - **Given** <precondition>
+  - **When** <command / query>
+  - **Then** <postcondition>
+  - **And** <side effect>
+
+  <!-- BLOCKER: every DbC contract in Spec References has at least one `contract`-level typing scenario; Deferred Test Ownership is forbidden for typing scenarios. -->
+  <!--/SECTION:BDD-->
+
+  <!--SECTION:VERIFICATION-->
+  ## 5. Verification
+  | Command | Required by |
+  |---------|-------------|
+  | <resolved invocation> | <rule-id>, <rule-id> |
+
+  <!-- One row per unique check-command alias. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
+
+  - **Task-specific Completion additions:** <list or "none beyond project baseline">
+  <!--/SECTION:VERIFICATION-->
+
+  <!--SECTION:TEST_COVERAGE-->
+  ## 6. Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
+  - Scenario <name> → `<test-file>` :: `<canonical case name>`   <!-- or: Deferred Test Ownership: <Task-ID> -->
+  <!--/SECTION:TEST_COVERAGE-->
+
+  <!--SECTION:EXECUTION_LOG-->
+  ## 7. Execution Log
+  *(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `<module>.3-tasks.md`. A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)*
+
+  ### Round 1 — <YYYY-MM-DD>, initial
+
+  #### P1
+  - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+  - [ ] `<ts>` DONE
+  **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+  #### Round close
+  - [ ] `<ts>` DONE
+  <!--/SECTION:EXECUTION_LOG-->
+
+  <!--SECTION:DECISION_LOG-->
+  ## 8. Decision Log
+  <!-- local decisions taken during execution, ADR-compact (`<ACRONYM>-D-N · <statement>` → why ↳ rejected). Omit if none beyond the spec. -->
+  <!--/SECTION:DECISION_LOG-->
+
+  <!-- AUDIT_ROUNDS appended only after the first reopen-triggering audit (per the audit directive). -->
+  ```
+</Contract>

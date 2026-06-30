@@ -1,0 +1,5 @@
+<!-- source: testing/vitest-rules.xml -->
+<Hook id="HOOK_RUN_TESTS">
+  <Command>npx vitest run</Command>
+  <Expected>Exit 0; no `.only` / `.skip` / `.todo` without a deferred-ownership reference.</Expected>
+</Hook>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_ON_EVENT_DIRECTIVE">
+  <Bad>`<button on:click={increment}>` in the template; `createEventDispatcher` + `dispatch('confirm', payload)` for component output.</Bad>
+  <WhyBad>Svelte 4 event model (`AX_EVENT_HANDLERS_AS_ATTRIBUTES`). `on:click` and `dispatch` are removed concepts in the Svelte 5 mental model; keeping them in new components fragments the project's event syntax and confuses tooling that targets the new model.</WhyBad>
+  <Good>`<button type="button" onclick={increment}>` for DOM; `onConfirm?.(payload)` callback prop for component output (declared in `$props()`).</Good>
+</AntiPattern>

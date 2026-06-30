@@ -1,0 +1,11 @@
+<!-- source: ai/directives/sdd/setup.directive.xml -->
+<Axiom id="AX_OPERATOR_LANGUAGE">
+  **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
+  **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
+  - Portal body text inside `specs/README.md` (Vision, Scope descriptions in the table, Notes).
+  - Minimal infra-base spec body (Vision sentence, table cell content beyond identifiers).
+  - Halt messages emitted to the operator.
+  - Phase Progress free-text fields.
+
+  English regardless of context: file paths, axiom IDs (`AX_*`), Trace anchors (`SU_R<N>`), status tokens, scope-type tokens, section identifiers (`Vision`), Mermaid graph IDs.
+</Axiom>

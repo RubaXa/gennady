@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Axiom id="AX_STOP_NO_EDITS">Zero edits → stop. Unchanged input → unchanged verdict → infinite loop.</Axiom>

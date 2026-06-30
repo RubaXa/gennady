@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_FLAT_CONFIG">
+      Project uses ESLint flat config (`eslint.config.ts` or `eslint.config.js`). Legacy `.eslintrc*` files are not introduced; pre-existing ones are scheduled for migration.
+
+      `eslint-config-prettier` (flat variant) appended LAST in the config array so it disables stylistic rules that may have leaked in from earlier presets. Mixing flat and legacy creates resolution surprises and makes audit scripts harder to write.
+    </Axiom>

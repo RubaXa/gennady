@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Hook id="HOOK_NO_RUNES_IN_PLAIN_TS">
+  <Purpose>Detect runes used in plain `.ts` files (not `.svelte.ts`).</Purpose>
+  <Command>find . -name '*.ts' -not -name '*.svelte.ts' -not -name '*.d.ts' -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '\$(state|derived|effect|props|bindable|inspect)\b' || true</Command>
+  <Expected>Empty output. Files containing runes must be renamed to `.svelte.ts`.</Expected>
+</Hook>

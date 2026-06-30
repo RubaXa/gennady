@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-trivial decision → Decision Log entry. Format: D-NNN, Status, Recorded, Why (operator's wording), Risk accepted, Rejected alternatives. IDs are stable.
+    </Axiom>

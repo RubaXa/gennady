@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_BDD_COVERAGE_VERIFICATION">
+      BDD ↔ test code must align.
+      - Every Acceptance Scenario from ticket has a corresponding test case in the specified test file.
+      - Canonical case name from `Test Scenario Coverage` matches actual `it` / `test` name verbatim.
+
+      Mismatch → `BDD_COVERAGE_MISMATCH` with proposal: update test or update ticket.
+    </Axiom>

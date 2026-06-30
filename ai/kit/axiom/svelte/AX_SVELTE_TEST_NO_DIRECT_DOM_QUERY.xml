@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Axiom id="AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY">
+  `container.querySelector('.some-class')` and `document.getElementById(...)` are forbidden as the default DOM query. They couple the test to CSS class names and DOM structure — neither of which is part of the component contract. The accessibility-aware testing-library queries are the contract surface.
+</Axiom>

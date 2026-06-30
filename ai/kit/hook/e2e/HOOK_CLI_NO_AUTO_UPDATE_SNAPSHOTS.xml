@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Hook id="HOOK_CLI_NO_AUTO_UPDATE_SNAPSHOTS">
+      <Purpose>Detect that the agent did not run `--update-snapshots` silently against an existing baseline.</Purpose>
+      <Command>git log -1 --name-only --pretty=format: | grep -E '\.snap$|snapshots/' || true</Command>
+      <Expected>If snapshot files appear in the last commit, the commit message MUST reference operator confirmation; uncomfirmed updates are a violation.</Expected>
+    </Hook>

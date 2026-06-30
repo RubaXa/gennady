@@ -1,0 +1,20 @@
+<!-- source: coding/typescript-rules.xml -->
+<Pattern id="PT_MODULE_AND_DATA_TYPE">
+      <Intent>Exported data shape: `type`, domain prefix, single-line JSDoc per field, no duplication of TS structure.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // @file: ERP catalog item shape shared across the synchronization pipeline.
+        // @consumers: ErpSynchronizationWorker
+        // @tasks: TASK-4231
+
+        /** @purpose Normalized response from an external ERP catalog. */
+        export type ErpCatalogItem = {
+            /** @purpose Unique item identifier in ERP | @invariant Format: 'ERP-12345' */
+            id: string;
+            /** @purpose Timestamp of the last synchronization | @invariant Unix epoch milliseconds */
+            syncedAt: number;
+        };
+        ```
+      </Snippet>
+      <Why>Data shape with no runtime behavior → `type` + entity `@purpose`. Shared context declared once in file-level `// @file:` / `// @consumers:` header; entity does NOT redeclare `@consumers`.</Why>
+    </Pattern>

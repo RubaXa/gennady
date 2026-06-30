@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>

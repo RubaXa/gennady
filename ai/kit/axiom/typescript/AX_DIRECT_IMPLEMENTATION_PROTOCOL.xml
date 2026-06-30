@@ -1,0 +1,9 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_DIRECT_IMPLEMENTATION_PROTOCOL">
+Mandatory protocol for direct implementations of a contract. For every exported runtime root that directly implements a named contract:
+1. Keep the root-level `@purpose` (compressed essence).
+2. Add `@implements {ContractName} in path` on the root.
+3. Add `@see {ContractName#memberName} in path` on every direct public/protected implementation member, unless that member is a true override with a full explicit contract.
+
+Do not stop at the TS `implements` keyword, owner-level class JSDoc, or method «obviousness». These links are mandatory contract edges, not decoration. Without them a reader-agent does not see the implementation→contract link without grep; a member without `@see` is indistinguishable from an override.
+</Axiom>

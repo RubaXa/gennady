@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_MODULE_BOUNDARY_BY_OPERATOR">
+      Module boundaries are decided by the operator. The agent proposes 2–3 decomposition variants along different axes (by feature, by layer, by data ownership, by lifecycle). No unilateral pick. Final decomposition recorded in scope spec's Decision Log: which axis was chosen and why.
+    </Axiom>

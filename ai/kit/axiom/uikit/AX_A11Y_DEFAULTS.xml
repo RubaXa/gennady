@@ -1,0 +1,12 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<Axiom id="AX_A11Y_DEFAULTS">
+      Default a11y requirements for common component types. Apply the template matching the component type.
+
+      For **button:**
+      - **Role:** button
+      - **aria-label:** формируется из label + counter (если есть)
+      - **aria-disabled:** при state=disabled
+      - **Keyboard:** Enter, Space активируют кнопку
+
+      For **other interactive components** (checkbox, radio, link, input): infer role from component name and visual structure; apply standard WAI-ARIA patterns.
+</Axiom>

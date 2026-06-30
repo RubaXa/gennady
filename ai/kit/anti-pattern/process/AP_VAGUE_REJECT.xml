@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_VAGUE_REJECT">Rejecting without citing specific context.</Pattern>

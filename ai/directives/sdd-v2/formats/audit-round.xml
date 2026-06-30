@@ -1,0 +1,37 @@
+<Contract id="TICKET_AUDIT_ROUND_FORMAT">
+  Appended to the ticket file as a `## Audit Rounds` section (created on first reopen-triggering audit; subsequent audits append `### Audit Round N` entries). Same compact AI-to-AI inline grammar as `AUDIT_SESSION_SUMMARY_FORMAT` — the ticket carries the canonical audit record machines can re-parse later.
+
+  Shape inside the ticket:
+
+  ```markdown
+  ## Audit Rounds
+
+  ### Audit Round <N> — <YYYY-MM-DD>, after Execution Round <M>
+  ```
+  @audit task=<Task-ID> round=<N> after-exec-round=<M> triggered-reopen=<Round-M+1|none> status=<FAIL|PASS_RISK> counts=B<n>·M<n>·m<n>·I<n>
+  F-NN | sev=… | type=… | conf=… | loc=… | src=… | route=… | act=…
+  …
+  ~applied | <target> | <one-line description>
+  ```
+  ```
+
+  Concrete example (inside a ticket file):
+
+  ```markdown
+  ## Audit Rounds
+
+  ### Audit Round 1 — 2026-05-12, after Execution Round 1
+  ```
+  @audit task=TSK-04 round=1 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B1·M1·m0·I0
+  F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory
+  F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
+  ~applied | specs/backend/payments/payments.spec.md2 | добавлен `IdempotencyKey` в Entity Inventory
+  ```
+  ```
+
+  Constraints:
+  - Append-only. Prior `### Audit Round` entries are immutable (mirrors Round-immutability in `phase-execution-protocol`).
+  - PASS audits without reopen are NOT written here — output stays ephemeral.
+  - `N` increments monotonically across the ticket's lifetime, independent of Execution Round numbers.
+  - The fenced code block inside each round is the same compact grammar as `AUDIT_SESSION_SUMMARY_FORMAT` — machines parse it without rewriting.
+</Contract>

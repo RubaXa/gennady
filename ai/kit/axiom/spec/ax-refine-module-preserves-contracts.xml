@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
+      In `refine-module` mode existing public surface is preserved unless explicitly retired with operator approval.
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
+
+      Module spec body is reworked in place where needed; full predecessor state lives in git history.
+    </Axiom>

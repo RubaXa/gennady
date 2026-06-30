@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_REACTIVE_DOLLAR_COLON">
+  <Bad>`$: doubled = count * 2;` and `$: console.log(count);` inside a `<script>`.</Bad>
+  <WhyBad>Svelte 4 reactive statements (`AX_LEGACY_PATTERNS_FORBIDDEN`). The first form is a derivation (belongs in `$derived`), the second is a side effect (belongs in `$effect`). Mixing the two intents under one syntax was exactly why `$:` was retired.</WhyBad>
+  <Good>`let doubled = $derived(count * 2);` for the derivation; `$effect(() => { logger.debug('[Counter] [state-changed]', { count }); });` for the side effect.</Good>
+</AntiPattern>

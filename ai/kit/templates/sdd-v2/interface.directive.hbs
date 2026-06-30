@@ -1,0 +1,16 @@
+        Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`); resolve with the operator;
+        materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
+        else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+      </Action>
+    </Step>
+    <Step id="STEP_6_FINAL_SPEC">
+      <Goal>Emit the interface spec.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")` and
+        assemble `specs/<scope>/<scope>.spec.md` to it. In `pivot` mode also
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`). Handoff is to scaffold (interface scopes have no modules).
+        Approval Check. STOP.
+      </Action>
+    </Step>

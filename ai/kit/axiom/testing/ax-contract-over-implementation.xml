@@ -1,0 +1,10 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_CONTRACT_OVER_IMPLEMENTATION">
+Test the public contract; never inspect protected/private state of the SUT. A refactor that preserves behavior must not break the test suite. Applies uniformly to:
+- state-returning methods → assert returned value;
+- emitters / subscriptions → assert emitted event payload via a public listener; do NOT inspect listener arrays or registration mechanics;
+- cancellation APIs → assert observable signal (`aborted`, `reason`, downstream reaction); do NOT inspect controller wiring;
+- lifecycle hooks → assert the side effect at the public boundary, not internal counters.
+
+Tests bound to internals become an obligation for every refactor and lose the ability to catch real regressions.
+</Axiom>

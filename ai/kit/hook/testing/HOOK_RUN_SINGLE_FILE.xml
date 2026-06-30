@@ -1,0 +1,5 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<Hook id="HOOK_RUN_SINGLE_FILE">
+      <Command>node --test path/to/subject.test.ts</Command>
+      <Expected>Exit 0; targeted file passes.</Expected>
+    </Hook>

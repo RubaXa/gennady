@@ -1,0 +1,27 @@
+<!-- source: sdd-opt-v1 QUESTION_FORMAT, adjusted for AX_DIVERGE_BEFORE_RECOMMEND -->
+<Contract id="QUESTION_FORMAT">
+  Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
+  section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
+  signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
+  into one; do not pad the count.
+
+  Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+  (not the first typical answer):
+
+  ### ❓ Вопросы — реши <N>
+  «годится» = беру все рекомендации, или поправь по номерам.
+
+  **Q1 · <вопрос?>**
+  ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+  Иначе:
+  - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+
+  High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+  non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+  only alongside its strongest alternative and the reason it might win.
+
+  A plain binary question needs no list — recommendation + inline alternative:
+
+  **Q2 · <вопрос?>**
+  ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+</Contract>

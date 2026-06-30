@@ -1,0 +1,34 @@
+<Contract id="LIBRARY_SPEC_STRUCTURE">
+  ```markdown
+  # <scope-name>: Library Specification
+
+  <!--SECTION:SCOPE_TYPE-->
+  ## scope-type
+  library
+  <!--/SECTION:SCOPE_TYPE-->
+
+  <!--SECTION:VISION-->
+  ## 1. Vision & Primary Goal
+  [Что library делает; главная проблема, которую решает.]
+  <!--/SECTION:VISION-->
+
+  <!--SECTION:GOLDEN_DX-->
+  ## 2. Approved Golden DX Example
+  [Публичный API DX: init/setup + happy path + error path. Комментарии раскрывают намерение.]
+  <!--/SECTION:GOLDEN_DX-->
+
+  <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+  ## 3. Requirements & Constraints
+
+  ### 3.1 Functional Requirements
+
+  ### 3.2 Non-Functional Constraints
+
+  ### 3.3 Out-of-Scope
+
+  ### 3.4 Runtime Backing & Deferred Scope
+  [Per `AX_RUNTIME_BACKING_EXPLICIT`. Posture per major capability + deferred parts.]
+
+  ### 3.5 Rules
+  | Rule | Category | Source |
+|---|---|---|

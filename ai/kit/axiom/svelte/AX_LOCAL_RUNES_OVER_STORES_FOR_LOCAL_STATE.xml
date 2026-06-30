@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Axiom id="AX_LOCAL_RUNES_OVER_STORES_FOR_LOCAL_STATE">
+  Local component state uses `$state` / `$derived` / `$effect`. Classic stores (`writable`, `readable`, `derived` from `svelte/store`) remain available for cross-component shared state but MUST NOT be used as a substitute for local state when a rune suffices. A store introduces a subscription lifecycle that local runes do not need.
+
+  The `$store` auto-subscription syntax in templates is unchanged from Svelte 4 and remains supported.
+</Axiom>

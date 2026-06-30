@@ -1,0 +1,19 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Pattern id="EXAMPLE_PRODUCT">
+      ```markdown
+      # backend: Scope Specification
+
+      ## 2. Project Type
+      - Type: service-module-sdk
+      - Why: IMAP backend, без UI; transport — long-lived TCP + outbound HTTP.
+
+      ## 3. Approved Golden DX Example (UX-flow)
+      Сценарий «новое письмо»: IMAP IDLE keep-alive ловит EXISTS → forward to consumer → ack;
+      degradation: server reset → exponential backoff + restore по UIDVALIDITY.
+
+      ## 4.4 Runtime Backing & Deferred Scope
+      - IMAP IDLE: `real-runtime` (production-critical).
+      - OAuth refresh: `real-runtime`.
+      - Webhook dispatcher: `simulation` в v1 (deferred → TSK-stub до реальной integration).
+      ```
+    </Pattern>

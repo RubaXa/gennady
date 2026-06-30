@@ -1,0 +1,27 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Pattern id="PT_BASIC_COMPONENT_WITH_RUNES">
+      <Intent>Minimal component using `$props`, `$state`, `$derived`, `$effect`, and an attribute event handler.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <!-- @file: Counter component demonstrating the core rune set. -->
+        <script lang="ts">
+          let { initial = 0, label = 'Count', onChange } = $props();
+          let count = $state(initial);
+          let doubled = $derived(count * 2);
+
+          $effect(() => {
+            onChange?.(count);
+          });
+
+          function increment() {
+            count += 1;
+          }
+        </script>
+
+        <button type="button" onclick={increment}>
+          {label}: {count} (x2: {doubled})
+        </button>
+        ```
+      </Snippet>
+      <Why>One `$props()` destructure with defaults; `$state` for the mutable value; `$derived` pure; `$effect` mediates the outgoing side-channel; attribute `onclick`, not `on:click`.</Why>
+    </Pattern>

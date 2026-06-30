@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<Hook id="HOOK_SB_PLAY_PRESENT">
+      <Purpose>Verify every exported story has a `play` function.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l 'play:' || echo MISSING_PLAY</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_PLAY` means some file has no `play` function.</Expected>
+    </Hook>

@@ -1,0 +1,407 @@
+<SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.0">
+  <Mission>
+    Turn an approved `product` / `library` scope spec into a hierarchy of module specs: a
+    closed-world entity inventory, an explicit public surface per entity, strict DbC contracts
+    (Ports / Adapters / Services), and a designed file structure. Loaded lazily by the router;
+    inherits the router core (language, dialogue, safeguard, diverge, no-narration, stateless) —
+    not repeated here.
+
+    Input — `specs/<scope>/<scope>.spec.md`. Output — `specs/<scope>/<module>/<module>.spec.md`
+    (nesting allowed) + the scope spec Module Map updated (append-only per module). Only for
+    scope-type product / library.
+
+    Out of scope: task tickets, BDD, execution plans, rules linkage — those belong to scaffold.
+    The canonical worked example lives in the étalon (referenced at the write step), not inlined here.
+
+    **Glossary.** Modes: initial · add-module · refine-module. Port = abstraction introduced ONLY on
+    confirmed variability (≥2 impls) or an explicit test seam; a single impl without that is a
+    Service, not a Port.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    <Axiom id="AX_DIRECTIVE_MODE">
+      Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
+      step branching and which axioms apply. The concrete mode set is directive-specific
+      (e.g. `greenfield` / `refine` / `pivot`; `initial` / `extend-dag`; `initial` / `add-module` / `refine-module`).
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
+      Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
+      where possible). The detection table is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_TYPE_GATE">
+      Module decomposition applies ONLY to scope-type=product and scope-type=library.
+      - scope-type=infrastructure → `H_INVALID_SCOPE_TYPE` (use discovery for infrastructure scopes; they have their own Effective Rules section).
+      - scope-type=contracts → `H_INVALID_SCOPE_TYPE` (contracts scopes define interfaces, not modules).
+    </Axiom>
+
+    <Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+      Phase reads specs only, never code; no project-wide search (grep / find / ripgrep)
+      outside the reads explicitly listed by the directive. `audit` is the only directive
+      permitted to read code; it alone resolves spec/code mismatch.
+    </Axiom>
+
+    <Axiom id="AX_RULE_ACTIVATION">
+      **Two stages: pick rules, then walk through axioms. Never activate silently.**
+
+      - **Stage A — Relevance per category.** Shortlist "recommend activate" + "considered, recommend skip", each with one-line rationale scoped to context. Operator agree / expand / contract → list locked; deviations → Decision Log.
+      - **Stage B — Per-rule axiom walk-through (infra/* and architecture/* rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
+
+      **Loading defaults.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`. Activation outcomes recorded in the relevant Decision Log.
+    </Axiom>
+
+    <Axiom id="AX_MODULE_BOUNDARY_BY_OPERATOR">
+      Module boundaries are decided by the operator. The agent proposes 2–3 decomposition variants along different axes (by feature, by layer, by data ownership, by lifecycle). No unilateral pick. Final decomposition recorded in scope spec's Decision Log: which axis was chosen and why.
+    </Axiom>
+
+    <Axiom id="AX_HIERARCHICAL_SPECS">
+      Hierarchy, not flat list. Sub-modules → nested structure: `specs/<scope>/<module>/<sub-module>/<sub-module>.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
+      The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
+
+      - **Module Map** (`## 8. Module Map`) — append-only rows per module.
+      - **Golden DX Example** (`## 2.` library / `## 3.` product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `## 2. Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+
+      **Bidirectional consistency check** before session close — both directions must pass:
+      - (→) every named abstraction in scope-spec Golden DX has a home in some module's `## 3. Entity Inventory`;
+      - (←) every module with public surface (≥1 entry in `## 4. Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `## 8. Module Decision Log`.
+
+      Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
+
+      All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `## 9. Inter-Module Dependencies`, never a direct reference to another product scope's modules.
+
+      The `module` flow does NOT write to `specs/README.md` (that is the `root` flow's sole property).
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_STAYS_THIN">
+      A scope spec has a bounded role: Vision, Requirements, Architecture decisions, Decision Log, Module Map, composition Golden DX, Handoff, Bootstrap Requirements. Entity inventory, public surfaces, DbC contracts, and file layout are module-level — they live ONLY in module specs (`AX_HIERARCHICAL_SPECS`), never inline in the scope spec.
+
+      Two representations:
+      - **monolithic** — no modules yet; the scope spec may hold design inline (early / small scope).
+      - **index** — once decomposed, the scope spec is a thin composition over its modules: Module Map + Golden DX linking to each module's usage example; the detail lives in the modules.
+
+      Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
+
+      First decomposition is a migration: the `initial` module session moves entity-level detail out of the scope spec into the new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
+    </Axiom>
+
+    <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
+      In `add-module` mode existing module specs are NOT touched. Only:
+      - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
+      - scope spec 8 Module Map: APPEND new module row (append at end). Other rows untouched;
+      - scope spec Golden DX Example: rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
+
+      Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run the `module` flow again in `refine-module` mode for that specific module.
+    </Axiom>
+
+    <Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
+      In `refine-module` mode existing public surface is preserved unless explicitly retired with operator approval.
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
+
+      Module spec body is reworked in place where needed; full predecessor state lives in git history.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_LIFECYCLE">
+      A spec lives in two states. **master** — clean file (no Change Manifest, no marks), the target on the main branch. **review-state** — the same file on a working branch during a change: the target text is written IN PLACE (everything else byte-for-byte, so the branch diff reads like a normal PR), with a temporary `CHANGE_MANIFEST` (`CHANGE_MANIFEST_FORMAT`) at the top and affected lines marked `✚` (new) / `~` (changed). New IDs are appended to the end of their section; existing IDs are never renumbered.
+
+      `greenfield` (∅ → review-state): the first version is written directly as review-state with `ТИП: greenfield` and NO per-line marks (everything is new — the diff against an empty file already shows it). `refine` / `pivot` edit an existing master in place WITH marks.
+
+      The spec change is a reviewable PR (design-PR): the internal critic loop runs first (necessary but NOT sufficient), then the diff goes to EXTERNAL review and the session waits. **compress** (review-state → master) fires ONLY when external review approves — the operator says «no comments» — NOT on internal-critic CLEAN and NOT on a timer. On approval: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay), resolve any ID collisions in one commit, and for `pivot` mark superseded decisions; then merge. Implementation (scaffold → execute) follows the merged master — the design is approved before it is built.
+
+      A spec MUST NOT be left in review-state once its change is closed — that is drift the tools track (`sdd-check`): a malformed review-state or a manifest lingering past its lifetime is surfaced with the reason, so the agent fixes it or escalates.
+    </Axiom>
+
+    <Axiom id="AX_CLOSED_WORLD_INVENTORY">
+      Entity inventory is a closed world. For every module the agent lists ALL entities explicitly. Phrases like «и т.д.», «etc.», «and similar» are forbidden. Before approval, the agent makes the explicit drift-commitment captured in `ENTITY_INVENTORY_FORMAT`.
+    </Axiom>
+
+    <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
+      Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
+    </Axiom>
+
+    <Axiom id="AX_CONSUMER_DRIVEN">
+      No consumer — no component (YAGNI). Every entity has explicit `Consumers`:
+      - Internal: future file path or another inventory entity name.
+      - External: textual description (CLI, External API, Browser, OS Event Bus, …).
+
+      Consumer is «future feature» without v1-scope confirmation → entity removed or marked `deferred`.
+    </Axiom>
+
+    <Axiom id="AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE">
+      - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
+      - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
+      - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
+      - **DbC section shape is flexible.** `## 5. Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsection numbering is optional (`### 5.0`, `### 5.1`, …, or unnumbered `### OperationDef Pattern`).
+    </Axiom>
+
+    <Axiom id="AX_CONTEXT_TO_CONTRACT">
+      DbC is derived from context, not only from DX code. Scope spec 4 Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+    </Axiom>
+
+    <Axiom id="AX_CONTRACTS_REAL_LANGUAGE">
+      Write signatures and DbC contracts in the project's real language (for us, TypeScript), not in an
+      agnostic pseudo-form. For a single-language project this is deliberate: exact signatures in the spec
+      remove ambiguity for the implementer and let the typing scenario check them directly. This supersedes
+      the former DbC-agnosticism rule. A genuinely cross-language contract still belongs in a `contracts`
+      scope, expressed in its own interface language (schema / proto / IDL), not here.
+    </Axiom>
+
+    <Axiom id="AX_RUNTIME_BACKING_IN_CONTRACTS">
+      Runtime backing and verification levels in every contract that depends on platform/runtime hooks. Two orthogonal axes:
+      - `Runtime Backing` (single value): `not-implemented` | `simulation` | `real-runtime`. What's actually behind the public surface in production code.
+      - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`.
+      - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime).
+
+      Simulation must not masquerade as runtime: declaring `real-runtime` while the implementation is simulation-only without explicit `Deferred Runtime Scope` is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_NO_SILENT_OPTION_DROP">
+      Public options cannot be silently forgotten. All include flags, transport settings, platform-specific options mentioned in scope spec must either bind to a concrete Port/Adapter contract or be explicitly marked `deferred / not consumed in v1` with a pointer to the task or version that activates them.
+    </Axiom>
+
+    <Axiom id="AX_NAMESPACE_NAMING">
+      Single namespace for grepability. Module-wide: `<name>` / `<Name>`. Files: `<name>-*.<ext>`. Types/classes/constants: `<Name>*`. Platform-specific: `<platform>-<name>-*.<ext>`, `<Platform><Name>*`. Goal: `rg <name>` or `rg <platform>-<name>` finds all related code.
+    </Axiom>
+
+    <Axiom id="AX_MODULARITY_LIMITS">
+      No God Objects. File size ≤1500 lines. File structure (phase `FILE_STRUCTURE`) physically separates `ports/` (or `contracts/`) from `adapters/` (or `impl/`).
+    </Axiom>
+
+    <Axiom id="AX_YAGNI_OVERENGINEERING_GUARD">
+      YAGNI. Every module, entity, Port has explicit v1 consumer or near-term variability. Future-proofing without a confirmed consumer is forbidden.
+    </Axiom>
+
+    <Axiom id="AX_STACK_BASED_FLOW">
+      The directive runs on an explicit frame stack with a defined main path of phases. Disputes /
+      dives / sub-topics open a nested frame; the stack is visible in the trace header. A sub-topic
+      never silently stalls the parent frame. The concrete main path is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
+      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
+      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
+      the entry are specified per directive.
+    </Axiom>
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
+      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Hypotheses** — conjectures that require operator validation before they are promoted to requirements.
+
+      Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
+    </Axiom>
+
+    <Axiom id="AX_Q_IDS">
+      Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
+    </Axiom>
+
+    <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
+      Final hierarchy contains:
+      - per-module spec 10 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
+      - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
+    </Axiom>
+
+    <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
+      A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_INVALID_SCOPE_TYPE` | scope-type = infrastructure or interface — module-decomposition not applicable |
+    | `H_SCOPE_SPEC_MISSING` | `specs/<scope>/<scope>.spec.md` does not exist — run the scope flow first |
+    | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec missing required sections (Vision, Architecture, Golden DX) |
+    | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
+    | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
+    | `H_INVENTORY_NOT_APPROVED` | Entered the surface step without all-module inventories approved |
+    | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes a public entity / weakens a postcondition without a Decision Log entry |
+    | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
+    | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
+    | `H_OPERATOR_REJECT` | Operator refused decomposition, inventory, surface, contract, structure, or final hierarchy |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope, mode; gate scope-type.</Goal>
+      <Action>
+        Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Missing →
+        `H_SCOPE_SPEC_MISSING`; incomplete → `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
+        product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
+        `AX_MODE_AUTO_DETECT_OR_HALT` (initial / add-module / refine-module). On `add-module` /
+        `refine-module`, run `sdd-check --all specs/<scope>` first — an over-budget module
+        (`SDD_MODULE_OVERSIZED` → decompose, `SDD_MODULE_SPEC_VERBOSE` → compress) is surfaced to the
+        operator BEFORE new work, per `AX_HIERARCHICAL_SPECS`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_MODULE_MAP">
+      <Goal>Lock module boundaries; update the scope Module Map.</Goal>
+      <Action>
+        Propose module boundaries; the operator confirms (`AX_MODULE_BOUNDARY_BY_OPERATOR`). Update
+        the scope spec Module Map append-only (`AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`) —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-map-update.xml")`. `add-module`
+        appends only (`AX_APPEND_ONLY_MODULE_ADD`). On `initial` this is the monolith→index migration
+        (`AX_SCOPE_STAYS_THIN`): move entity / contract / file-level detail out of the scope spec into
+        the new module specs, leaving the scope spec as the thin index (Module Map + composition Golden
+        DX). Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ENTITY_INVENTORY">
+      <Goal>Closed-world inventory per module.</Goal>
+      <Action>
+        List every entity of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
+        execution agent adds beyond it is drift. Interview per `AX_OPERATOR_SAFEGUARD` (find the
+        missing entity, the unowned responsibility) — the substance, not chatter.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")`. If a
+        module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
+        PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
+        the operator decides) — do not silently let one module absorb a sub-system. All module
+        inventories must be approved before the surface step (else `H_INVENTORY_NOT_APPROVED`).
+        Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_ENTITY_SURFACE">
+      <Goal>Public surface per entity.</Goal>
+      <Action>
+        Define each entity's public surface (`AX_ENTITY_SURFACE_COMPLETENESS`). No consumer → no entity
+        (`AX_CONSUMER_DRIVEN`): an entity without a confirmed v1 consumer is dropped or `deferred`.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-surface-format.xml")`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_CONTRACTS_DBC">
+      <Goal>DbC contract per entity.</Goal>
+      <Action>
+        Preconditions / postconditions / invariants per entity. A Port is introduced ONLY on confirmed
+        variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
+        design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port). Each abstraction
+        carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated per contract
+        (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_FILE_STRUCTURE">
+      <Goal>Design the file structure.</Goal>
+      <Action>
+        Repo layout; physically split `ports/` (or `contracts/`) from `adapters/` (or `impl/`). No God
+        objects, file size ≤ 1500 lines (`AX_MODULARITY_LIMITS`); single grep namespace
+        (`AX_NAMESPACE_NAMING`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_6_FINAL_HIERARCHY">
+      <Goal>Emit the module spec hierarchy.</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-spec-structure.xml")` and assemble
+        each `specs/<scope>/<module>/<module>.spec.md` to it; link back to `../../<scope>.spec.md`;
+        reconcile the scope Module Map. In `pivot` / breaking `refine-module` also
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
+        (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
+        `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
+        `## 9` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
+        `H_REFINE_BREAKING_NO_IMPACT_LIST`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
+        `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
+        mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
+        master downstream after the change ships. Then run
+        `sdd-check --all specs/<scope>` (anchor balance + required sections + links + size budget:
+        `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding. Then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
+        publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
+        hand off to scaffold (`AX_HANDOFF_TO_TASK_SCAFFOLDING`). Approval Check. STOP.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🧩 DM_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Question
+    IDs are semantic per `AX_Q_IDS` (`Q_MM` / `Q_EI` / `Q_ES` / `Q_DBC` / `Q_FS`).
+
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — per `UNDERSTANDING_BLOCK_FORMAT` (goes at the TOP)
+      ### главное решение          — the crux in plain words; add a diagram per `FLOW_DIAGRAM_WHEN` if it is a flow
+      ### ❓ Вопросы — реши N        — per `QUESTION_FORMAT`
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+    </Contract>
+
+    <Contract id="BREADCRUMB_FORMAT">
+      One line under the service line: this session's milestones, each with a status marker — `✅` done
+      · `▶️` now · `░` not yet. Delta only; never re-list everything already settled. This is the
+      «where are we», and it replaces a verbose run-on of finished steps.
+
+      `<Веха>` ✅ · `<Веха>` ✅ · `<Веха>` ▶️ · `<Веха>` ░ · `<Веха>` ░
+    </Contract>
+
+    <Contract id="UNDERSTANDING_BLOCK_FORMAT">
+      The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+      catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+      explicitly optional, 2–3 sentences: the essence + the single riskiest assumption, with the
+      assumption linked to the question it maps to. Never a restate of settled content.
+
+      ### 🤔 Как я понял задачу
+      > _Можно не читать, если доверяешь._
+      > квинтэссенция — что считаю главным.
+      > **Где могу ошибаться:** самое хрупкое допущение — это вопрос Q`<N>`.
+    </Contract>
+
+    <Contract id="SIDE_DIVE_FORMAT">
+      A sub-topic dive inside a step collapses to two lines, not a five-field Return Summary:
+
+      → ушли в `<тема>`
+      ← `<итог одной фразой>`
+    </Contract>
+
+    <Contract id="FLOW_DIAGRAM_WHEN">
+      When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
+      a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
+      allowed inside an operator message (alignment matters). Keep it small.
+
+      ```
+      [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+              ▲                                  │
+              └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+      ```
+    </Contract>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- entity-inventory / entity-surface / dbc-contracts / module-spec-structure / module-map-update
+         load lazily at their steps (used only there) — see ExecutionPlan. decision-log stays inline. -->
+    <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      ```markdown
+      ### D-NNN — <short title>
+      - **Status:** active | superseded | rejected | deferred
+      - **Recorded:** session <DirectiveName>, <scope-name>
+      - **Why:** <operator's own wording>
+      - **Risk accepted:** <if any>
+      - **Rejected alternatives:** <list with brief reasons>
+      - **Supersedes:** D-NNN (when superseding a prior decision)
+      ```
+    </Contract>
+  </ArtifactOutput>
+</SddModule>

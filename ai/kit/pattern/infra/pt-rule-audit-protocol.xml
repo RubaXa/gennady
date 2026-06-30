@@ -1,0 +1,40 @@
+<!-- source: infra/eslint-setup.xml -->
+<Pattern id="PT_RULE_AUDIT_PROTOCOL">
+      <Intent>Protocol the agent follows BEFORE proposing a config change. Produces evidence for `AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM` and decides autofix vs motivated-non-autofix branch.</Intent>
+      <Snippet language="bash">
+        ```bash
+        # 1. Inspect rule metadata: does it have a real fix?
+        node -e "
+            import('@typescript-eslint/eslint-plugin').then((m) => {
+                const rule = m.default.rules['no-floating-promises'];
+                console.log(JSON.stringify({
+                    fixable: rule.meta.fixable ?? null,
+                    hasSuggestions: !!rule.meta.hasSuggestions,
+                }));
+            });
+        "
+        # → { "fixable": null, "hasSuggestions": false }  → non-autofix branch.
+
+        # 2. Channel-coverage check (AX_NON_AUTOFIX_PREFER_DELEGATION):
+        # tsc --strict cover floating promises?  No (return type 'void' is legal).
+        # testing directive cover it?            No (this is production code shape).
+        # code review reliably catches it?       Not at scale.
+        # → Justification: nothing else owns this concern. Comment drafted (plain prose):
+        #   "No autofix. Catches floating promises that lose errors and break ordering.
+        #    tsc allows void-returning calls, so this gap is unique to the lint layer."
+
+        # 3. Dry-run impact:
+        npx eslint --rule '{"@typescript-eslint/no-floating-promises":"error"}' --format json . \
+            | jq '[.[] | .messages[]] | length'
+        # → e.g. 7 findings. Operator sees count and list before approving.
+
+        # 4. Autofix rules: verify --fix actually closes every reported instance:
+        npx eslint --rule '{"<plugin>/<rule-name>":"error"}' --fix . \
+            && npx eslint --rule '{"<plugin>/<rule-name>":"error"}' .
+        # → second call must exit 0 with no findings.
+
+        # 5. Show operator the resulting diff (autofix) or finding list (non-autofix).
+        ```
+      </Snippet>
+      <Why>Routes the rule into one of two branches: autofix (verify 100% coverage) or motivated non-autofix (verify channel-coverage gap, draft the explanatory comment, list findings the operator owns). Either branch ends with operator-visible evidence.</Why>
+    </Pattern>

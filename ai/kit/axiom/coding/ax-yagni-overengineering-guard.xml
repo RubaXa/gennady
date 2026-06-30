@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_YAGNI_OVERENGINEERING_GUARD">
+      YAGNI. Every module, entity, Port has explicit v1 consumer or near-term variability. Future-proofing without a confirmed consumer is forbidden.
+    </Axiom>

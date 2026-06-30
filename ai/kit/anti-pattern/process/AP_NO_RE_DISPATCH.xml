@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_NO_RE_DISPATCH">Edits without re-dispatch. Edit invalidates prior verdict.</Pattern>

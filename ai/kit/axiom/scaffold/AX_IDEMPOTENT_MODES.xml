@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/setup.directive.xml -->
+<Axiom id="AX_IDEMPOTENT_MODES">
+  `setup` has no hard modes (no greenfield / extension / pivot).
+  - Portal absent → create from scratch.
+  - Portal present → read and propose updates derived from intake; operator dictates what to change.
+
+  No silent assumptions: empty intake against an existing Portal → HALT `H_NO_INTENT` («what are we changing today?»).
+</Axiom>

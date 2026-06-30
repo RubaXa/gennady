@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery + module-decomposition (thin kernel; concrete main path is directive-specific) -->
+<Axiom id="AX_STACK_BASED_FLOW">
+  The directive runs on an explicit frame stack with a defined main path of phases. Disputes /
+  dives / sub-topics open a nested frame; the stack is visible in the trace header. A sub-topic
+  never silently stalls the parent frame. The concrete main path is directive-specific.
+</Axiom>

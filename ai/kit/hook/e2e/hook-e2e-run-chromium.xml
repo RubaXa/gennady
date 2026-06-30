@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Hook id="HOOK_E2E_RUN_CHROMIUM">
+      <Purpose>Run the e2e suite on Chromium.</Purpose>
+      <Command>npx playwright test --project=chromium</Command>
+      <Expected>Exit 0; all tests pass.</Expected>
+    </Hook>

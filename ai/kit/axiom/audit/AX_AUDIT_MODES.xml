@@ -1,0 +1,6 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_AUDIT_MODES">
+      Per-task vs epic-level.
+      - **Per-task** (default): operator passes single task-ID. Audit bounded to its scope.
+      - **Epic-level**: operator passes a list of task-IDs or a general scope (e.g., «everything in scope payments»). Audit produces aggregated summary + checks cross-task consistency (Decision Log entries, absence of conflicting contracts between tasks of one module).
+    </Axiom>

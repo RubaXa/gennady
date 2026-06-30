@@ -1,0 +1,70 @@
+<SddReviewLifecycle keywords="review-lifecycle, master, review-state, compress, publish, MR, external-review, git, gh, sdd-review-lifecycle" type="directive" ver="2.0">
+  <Mission>
+    Drive a spec from review-state to merged master through EXTERNAL review. Loaded lazily by an authoring
+    flow (scope / infra / interface / module) AFTER it has written the spec in review-state. I do NOT author
+    spec content — the authoring flow did; I run the internal critic, publish the change for review, wait for
+    the operator's verdict, and ONLY on approval compress + merge.
+
+    Git is native `git` + `gh` via bash — no separate VCS client. Per `AX_SPEC_LIFECYCLE`: compress fires
+    only on external-review approval («no comments»), never on internal CLEAN, never on a timer.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE">
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/process/ax-permitted-bash-commands"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_AWAITING_EXTERNAL_REVIEW` | Change published — session waits for the operator's verdict (feedback or «no comments»). A PAUSE, not a failure. |
+    | `H_DIRTY_TREE_NOT_THIS_CHANGE` | The git working tree carries changes unrelated to this spec change — operator resolves before publish |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_INTERNAL_CRITIC">
+      <Goal>Internal review until CLEAN — necessary, not sufficient.</Goal>
+      <Action>
+        Dispatch the critic (isolated) on the review-state spec — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")`
+        (product / design lenses: completeness · implementation-autonomy · understanding · product-value). Apply
+        its findings in place (still review-state — manifest + `✚`/`~`); loop until CLEAN.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PUBLISH">
+      <Goal>Publish the change for external review.</Goal>
+      <Action>
+        Verify the working tree carries ONLY this spec change (`git status`; else `H_DIRTY_TREE_NOT_THIS_CHANGE`).
+        Commit the review-state spec on the working branch (`git add <spec>` → `git commit`), `git push`, open the
+        MR/PR (`gh pr create`) and capture its link. Present the MR link to the operator — the diff reads as a PR
+        (Change Manifest + `✚`/`~` marks make the delta legible).
+      </Action>
+    </Step>
+    <Step id="STEP_3_AWAIT">
+      <Goal>Wait for the external verdict.</Goal>
+      <Action>`H_AWAITING_EXTERNAL_REVIEW` — pause. The operator reviews the MR and returns with feedback or «no comments».</Action>
+    </Step>
+    <Step id="STEP_4_ON_RESUME">
+      <Goal>Branch on the verdict.</Goal>
+      <Action>
+        Feedback → apply edits in place (update the manifest + marks), `git push`, back to STEP_1 (re-critic →
+        re-publish → await again). «no comments» (approved) → STEP_5.
+      </Action>
+    </Step>
+    <Step id="STEP_5_COMPRESS">
+      <Goal>Compress to master and merge.</Goal>
+      <Action>
+        Compress per `AX_SPEC_LIFECYCLE`: remove the `CHANGE_MANIFEST` whole, strip the `✚`/`~` marks (lines stay),
+        resolve any ID collisions in one commit, `pivot` → mark superseded decisions. `git commit` → `gh pr merge`.
+        Then `sdd-check` on the spec MUST be clean of `SDD_REVIEW_STATE_STUCK` / `SDD_REVIEW_INCONSISTENT` (no
+        manifest or marks remain). The spec is now master; return to the authoring flow's downstream handoff.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <HardForbidden>
+    - Compressing on internal-critic CLEAN — compress waits for external approval (`AX_SPEC_LIFECYCLE`).
+    - Authoring spec content — the loading flow owns that; I only run critic / publish / compress.
+    - Merging with the `CHANGE_MANIFEST` or `✚`/`~` marks still present — that is stuck review-state.
+  </HardForbidden>
+</SddReviewLifecycle>

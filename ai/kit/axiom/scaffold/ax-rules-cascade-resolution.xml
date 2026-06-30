@@ -1,0 +1,15 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_RULES_CASCADE_RESOLUTION">
+      **Effective rule-set per task = union of 5 tiers; later tier overrides earlier on collision.**
+
+      Tier order (low → high):
+      1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
+      2. **target-scope** — scope spec 5 Effective Rules (infra) or 4.5 Rules (product/library).
+      3. **module:<name>** — module spec 9 Handoff Module Rules Additions (when modules exist).
+      4. **task** — operator-supplied during ticket generation.
+
+      Materialization:
+      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`. Generated from scope graph automatically.
+      - **Per-phase `Rules:` bullet list** inside each ticket's section 3 Phases block: derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × THAT PHASE's Target Files + kind. Rules are NOT declared at ticket level — only per phase.
+      - Auditor recomputes effective set per-phase from sources and compares with each phase block.
+    </Axiom>

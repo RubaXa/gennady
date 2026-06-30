@@ -1,0 +1,36 @@
+<!-- source: sdd/scaffold SCOPE_TASKS_README_STRUCTURE, reconciled to co-located 3-tasks (draft T15) -->
+<Contract id="SCOPE_TASKS_INDEX_STRUCTURE">
+  `specs/<scope>/<scope>.3-tasks.md` — scope task index, co-located with the scope spec. Holds the
+  scope's Cascade Table, the inter-module DAG, and a tracker (module rollup + any scope-level tickets
+  for infra / contracts scopes that have no modules). Project-wide conventions are inherited from
+  `specs/3-tasks.md`, not repeated.
+
+  ```markdown
+  # Tasks: <scope>
+
+  ## Scope Spec
+  - [Scope spec](./<scope>.spec.md)
+
+  ## Cascade Table
+  Effective rules for this scope, from the Scope Graph (depends-on transitive closure). Tier order (low → high on collision): traversed-scopes → target-scope → module → phase.
+  | Tier | coding | testing | architecture | infra |
+  |------|--------|---------|--------------|-------|
+  | infra-base (traversed) | typescript-rules | vitest-rules | | eslint-setup |
+  | <scope> (target) | | | ports-adapters | |
+  | module:<m> | | node-test | | |
+
+  ## Inter-Module DAG
+  ```mermaid
+  graph TD
+    A[<module-a>] --> B[<module-b>]
+  ```
+
+  ## Tracker
+  | Task-ID | Title | Module | Dependencies | Status | Reopens |
+  |---------|-------|--------|--------------|--------|---------|
+  | <ACR>-<slug> | <title> | <module> | <deps> | [ ] TODO | — |
+
+  ## Decision Log (scope task level)
+  [D-NNN for scope-level decomposition / planning choices.]
+  ```
+</Contract>

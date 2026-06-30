@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<AntiPattern id="AP_SB_SKIP_SELF_VERIFY">
+  <Bad>Agent writes a new story, runs only `npx tsc --noEmit`, sees no type error, and marks the task complete without invoking `run-story-tests`.</Bad>
+  <WhyBad>Self-verification skipped (`AX_SB_USE_SELF_VERIFY_BEFORE_HANDOFF`). Type-check covers the prop schema but not the runtime render or the `play` assertions; the story may explode at first execution. The MCP-exposed runner is exactly the channel that catches this in seconds.</WhyBad>
+  <Good>After authoring: `run-story-tests` on every story in the affected component file. Green run → handoff. Red run → fix the story or the component, re-run, repeat until green.</Good>
+</AntiPattern>

@@ -1,0 +1,7 @@
+<!-- source: ai/directives/sdd/setup.directive.xml -->
+<Axiom id="AX_SCOPE_TABLE_FORMAT">
+  Scopes table in the Portal: each row = link to the scope spec + scope-type + status emoji + one-line description.
+  - ✅ — spec exists and is approved.
+  - 🚧 — spec being authored / `discovery` not yet run.
+  - Status is derived purely from the presence of `specs/<scope>/<scope>.spec.md`.
+</Axiom>

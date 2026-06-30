@@ -1,0 +1,8 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Axiom id="AX_LFS_SUBMODULES">
+  LFS for large binaries. Submodules discouraged.
+
+  **Git LFS** — required when tracking binary files >100MB (GitHub hard limit; other hosts vary). Configure `.gitattributes`: `*.psd filter=lfs diff=lfs merge=lfs -text`. LFS adds infrastructure cost (storage, bandwidth quota) — use only when binaries are necessary.
+
+  **Submodules** — discouraged in favor of monorepo or package dependencies. If unavoidable: pin to specific commit (not branch); document in README why; expect fragile workflow (`git submodule update --init --recursive` after every checkout).
+</Axiom>

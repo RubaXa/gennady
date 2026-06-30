@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<Hook id="HOOK_SB_A11Y_AUDIT_CONFIG">
+      <Purpose>Verify a11y audit is configured at `error` level.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l "a11y.*test.*error" || echo MISSING_A11Y</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_A11Y` means a11y audit is not configured.</Expected>
+    </Hook>

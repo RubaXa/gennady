@@ -1,0 +1,3 @@
+<Axiom id="AX_PHASE_SCOPE_LOCK">
+Touch only this phase's `Target Files`. Reading other files (specs, sibling-phase code, rule files cited in this phase's Rules list) is allowed and expected. Writing anywhere outside this phase's Target Files → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning or new task.
+</Axiom>

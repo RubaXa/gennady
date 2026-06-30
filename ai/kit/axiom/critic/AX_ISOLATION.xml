@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Axiom id="AX_ISOLATION">Only artifact + parent spec. No other files. Confusion → underspecification.</Axiom>

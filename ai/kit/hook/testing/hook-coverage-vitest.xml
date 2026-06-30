@@ -1,0 +1,5 @@
+<!-- source: testing/vitest-rules.xml -->
+<Hook id="HOOK_COVERAGE">
+  <Command>npx vitest run --coverage</Command>
+  <Expected>Exit 0; coverage report generated.</Expected>
+</Hook>

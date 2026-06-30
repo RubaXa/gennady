@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_TICKET_WRITE_SCOPE">
+      Phase agent may edit ticket file ONLY in:
+      - this phase's block under `## 7. Execution Log` current Round;
+      - `## 6. Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
+      - `## 2. Phases Overview` Status column for THIS phase ID only.
+
+      Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
+    </Axiom>

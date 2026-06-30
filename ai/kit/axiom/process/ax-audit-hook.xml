@@ -1,0 +1,3 @@
+<Axiom id="AX_AUDIT_HOOK">
+128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>

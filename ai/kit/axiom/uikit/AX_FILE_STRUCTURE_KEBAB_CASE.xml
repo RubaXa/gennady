@@ -1,0 +1,13 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_FILE_STRUCTURE_KEBAB_CASE">
+Every uikit component consists of EXACTLY four files, all in kebab-case, all in a single directory `src/ui/<name>/`:
+
+| File                     | Purpose                                        |
+|--------------------------|------------------------------------------------|
+| `<name>.svelte`           | Svelte component (data-attributes, a11y)       |
+| `<name>.module.css`       | CSS module (data-attribute selectors)          |
+| `<name>.tokens.css`       | `:root` + override tokens                      |
+| `<name>.stories.ts`       | Storybook stories (mirror of spec)             |
+
+No PascalCase (`Button.svelte`), no camelCase (`buttonModule.css`), no additional files (`button.utils.ts` belongs elsewhere or doesn't exist). The four-file set is the closed-world contract per `ComponentArtefact`.
+</Axiom>

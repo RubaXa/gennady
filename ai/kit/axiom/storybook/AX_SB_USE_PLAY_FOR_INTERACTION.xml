@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Axiom id="AX_SB_USE_PLAY_FOR_INTERACTION">
+  Any story that exercises user behaviour (click, type, drag, navigation) MUST attach a `play` function asserting the resulting state. A story without `play` for an interactive scenario is documentation only — it provides no executable contract and the self-verification loop has nothing to assert against. `play` uses the project's chosen interaction API (`userEvent`, `step`, framework-provided utilities) consistently.
+</Axiom>

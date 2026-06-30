@@ -1,0 +1,17 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Pattern id="PT_SNIPPET_AND_RENDER">
+      <Intent>Reusable template fragment via `{#snippet}` and `{@render}` — the Svelte 5 replacement for slots.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        {#snippet card(title, body)}
+          <article class="card">
+            <h2>{title}</h2>
+            <p>{body}</p>
+          </article>
+        {/snippet}
+
+        {@render card('Hello', 'World')}
+        ```
+      </Snippet>
+      <Why>Snippets are reactive and re-render when arguments change. No `<slot>`, no `$$slots`.</Why>
+    </Pattern>

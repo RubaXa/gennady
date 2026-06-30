@@ -1,0 +1,16 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
+      **Files carry a unified file-header contract; IDs only, never paths; append-only for `@tasks`.**
+
+      Required file-level fields in execution profile:
+      - `@file` — mandatory; what the file holds.
+      - `@consumers` — mandatory; one or more consumers (see `AX_CONSUMERS_TAG_SEMANTICS`).
+      - `@tasks` — mandatory; associated `TSK-NN` list.
+
+      Canonical header shape:
+      ```
+      // @file: <what the file holds>
+      // @consumers: <consumer-1, consumer-2, ...>
+      // @tasks: TSK-04, TSK-12
+      ```
+    </Axiom>

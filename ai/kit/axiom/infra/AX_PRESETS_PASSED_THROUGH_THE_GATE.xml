@@ -1,0 +1,8 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_PRESETS_PASSED_THROUGH_THE_GATE">
+      Importing a third-party preset (`@typescript-eslint/recommended`, `unicorn/recommended`, framework configs) does NOT bypass meta-principles. After the spread:
+      - Every rule set to `'warn'` overridden to `'error'` (kept on, with motivation if non-autofix) or `'off'` (with one-line reason). No `'warn'` survives.
+      - Every non-autofix rule enabled by preset is either kept with explicit explanatory comment, or turned off with one-line reason citing the channel.
+
+      Presets are a frequent backdoor for warnings and undocumented non-autofix rules. Treating them as opaque blobs would defeat both meta-principles.
+    </Axiom>

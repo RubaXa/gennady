@@ -1,0 +1,136 @@
+<SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.0">
+  <Mission>
+    Restore the spec ⟷ code ⟷ task triangle after it desynced, then verify. A separate door
+    (`/sdd-reconcile`). Two auto-detected modes converge on the same tail:
+    - **fix** — a finding / bug / review drove it: the spec is (presumed) right, the code is wrong.
+    - **from-code** — freeform code ran ahead of the spec: the code is the new reality, the spec is stale.
+
+    The heart is not the patch — it is the probe (`AX_PROBLEM_PROBES_SPEC`): is this a bug or a
+    spec-defect, what is the problem's class, what is the blast radius. Both modes end with the SAME
+    tail: back-sync specs / tasks, then verify. Patching the symptom alone is not SDD.
+
+    Input — findings / a bug / a review, OR "I changed code, formalize it". Output — code and/or spec
+    moved to agreement, tasks reopened / created, trackers synced, gates green.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-dialogue-discipline"}}
+
+    {{> "axiom/process/ax-operator-safeguard"}}
+
+    {{> "axiom/process/ax-problem-probes-spec"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/process/ax-task-resolution"}}
+
+    {{> "axiom/process/ax-fix-classification"}}
+
+    {{> "axiom/audit/ax-finding-routing"}}
+
+    {{> "axiom/truth/ax-reuse-first"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/process/ax-operator-agreement"}}
+
+    {{> "axiom/process/ax-execution-order"}}
+
+    {{> "axiom/process/ax-dispatch-via-batch"}}
+
+    {{> "axiom/process/ax-handoff-typed"}}
+
+    {{> "axiom/process/ax-reopen-format"}}
+
+    {{> "axiom/process/ax-verify-at-end"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INPUT` | Neither findings / bug nor a code change to reconcile |
+    | `H_AMBIGUOUS_MODE` | Cannot tell fix from from-code — ask the operator |
+    | `H_OPERATOR_REJECT` | Operator rejected the reconcile plan |
+    | `H_VERIFICATION_FAIL` | Gates still fail after the reconcile |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Detect the mode.</Goal>
+      <Action>
+        Findings / bug / review present → `fix`. Code already changed / "formalize what I coded" / drift
+        → `from-code` (`AX_MODE_AUTO_DETECT_OR_HALT`; ambiguous → `H_AMBIGUOUS_MODE`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_PICTURE">
+      <Goal>Map the affected area. (mechanical → tools)</Goal>
+      <Action>
+        Intent-search the specs for the area in play + read the git diff; map which specs / tasks own it
+        (`sdd-orient` for the entity / contract surface, `sdd-check` for the link / tracker state). This
+        is the bounded read — not the whole repo.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PROBE">
+      <Goal>Probe the spec against the problem — the critical step (`AX_PROBLEM_PROBES_SPEC`).</Goal>
+      <Action>
+        Dispatch the critic on the affected spec, seeded with the problem, to judge: **bug or spec-defect**
+        (`AX_FIX_CLASSIFICATION` — code violates a right spec, or the spec was wrong); **the class** (where
+        else the same class occurs, via `sdd-orient` over the closed-world); **the blast radius** (what
+        else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point.
+      </Action>
+    </Step>
+    <Step id="STEP_3_PLAN">
+      <Goal>Plan what moves.</Goal>
+      <Action>
+        From the probe, decide per item what moves: code → spec (fix the code via execution) or
+        spec → code (`AX_PIVOT_REQUIRES_SUPERSESSION` + cascade downstream) or both; reopen / create the
+        affected tasks (`AX_REOPEN_FORMAT`), including the class siblings; reconcile any new entity via
+        `sdd-orient` (`AX_REUSE_FIRST`). Present the plan (`PLAN_TABLE_FORMAT`).
+      </Action>
+    </Step>
+    <Step id="STEP_4_AGREE">
+      <Goal>Operator agreement (`AX_OPERATOR_AGREEMENT`).</Goal>
+      <Action>Ask via `QUESTION_FORMAT`; warn about the class / blast the operator may not have seen (`AX_OPERATOR_SAFEGUARD`). Rejected → `H_OPERATOR_REJECT`. STOP.</Action>
+    </Step>
+    <Step id="STEP_5_APPLY">
+      <Goal>Apply the changes.</Goal>
+      <Action>
+        Apply spec edits (defect / from-code); reopen / create tasks (`AX_TASK_RESOLUTION` maps each finding
+        to its owning task via `@tasks:`); dispatch the reopened tasks through execute as a BATCH with per-task
+        audit skipped (`AX_DISPATCH_VIA_BATCH`) — one reconcile-level verify runs at STEP_7 instead
+        (`AX_EXECUTION_ORDER`, `AX_HANDOFF_TYPED`, route per `AX_FINDING_ROUTING`).
+      </Action>
+    </Step>
+    <Step id="STEP_6_SYNC">
+      <Goal>Back-sync — mandatory in BOTH modes.</Goal>
+      <Action>`sdd-sync` brings specs / tasks / trackers into agreement with the final code. This tail is the same whether we entered as fix or from-code.</Action>
+    </Step>
+    <Step id="STEP_7_VERIFY">
+      <Goal>Verify mechanically AND semantically (`AX_VERIFY_AT_END`).</Goal>
+      <Action>
+        `sdd-check` + `sdd-verify --profile full` must pass (else `H_VERIFICATION_FAIL`). Then — because
+        per-task audit was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net ONCE at
+        the reconcile level: dispatch a fresh-eyes epic audit
+        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/audit.directive.xml")`, per-epic — drift code↔spec over
+        the reconciled set) and a code-review
+        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/code-review.directive.xml")` — bugs in the reconciled
+        diff). A `BLOCKER` from either MUST pause and surface to the operator. Present the reconcile summary
+        (`FIX_SUMMARY_FORMAT`).
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    {{> "contract/process/question-format"}}
+
+    {{> "contract/process/plan-table-format"}}
+
+    {{> "contract/process/fix-summary-format"}}
+  </ChatOutput>
+</SddReconcile>

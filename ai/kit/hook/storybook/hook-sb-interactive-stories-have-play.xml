@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Hook id="HOOK_SB_INTERACTIVE_STORIES_HAVE_PLAY">
+  <Purpose>Stories whose name implies an interaction (`OnClick`, `OpensModal`, `Submits`, `Toggles`) carry a `play` function.</Purpose>
+  <Command>find . -name '*.stories.*' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'export const [A-Z][A-Za-z]*(Click|Submits|Opens|Toggles|Types|Drags)' || true</Command>
+  <Expected>Manual review: every match resolves to a story whose body contains `play:`. Matches without `play` are violations.</Expected>
+</Hook>

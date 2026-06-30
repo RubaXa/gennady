@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/iteration-fusion.xml -->
+<Axiom id="AX_ALLOCATION_IS_ENEMY">Каждый вызов `.map()`, `.filter()`, `.flat()` или `Array.from()` создает в памяти НОВЫЙ массив. На целевом железе (4-8 GB RAM) цепочка из 3 таких методов вызывает 3 аллокации и 3 прохода по данным, провоцируя микропаузы GC.</Axiom>

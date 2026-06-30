@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Hook id="HOOK_SVELTE_TEST_HAS_FLUSH_AFTER_USEREVENT">
+  <Purpose>Smoke-grep for likely flush gaps — `userEvent` immediately followed by an assertion with no `flushSync`.</Purpose>
+  <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'userEvent\.|fireEvent\.' || true</Command>
+  <Expected>Manual review: each match is followed within a few lines by `flushSync()` (or by an `await` on an async helper that documents its own flush).</Expected>
+</Hook>

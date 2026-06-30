@@ -1,0 +1,16 @@
+<!-- source: sdd/module-decomposition.directive.xml -->
+<Contract id="ENTITY_SURFACE_FORMAT">
+      ```markdown
+      ### `<EntityName>`
+      - **Type:** Port | Adapter | Entity | Value Object | Service | Command | Query | Event
+      - **Purpose:** <1 sentence>
+      - **Public Properties:** <list or N/A>
+      - **Public Operations:** <intent-level list, no language signatures>
+      - **Lifecycle:** <who creates, who owns, when terminates>
+      - **Events Emitted:** <list or N/A>
+      - **Errors & Degradation:** <error behavior>
+      - **Consumers:**
+        - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
+        - External: <CLI / External API / Browser / OS Event Bus / ...>
+      ```
+    </Contract>

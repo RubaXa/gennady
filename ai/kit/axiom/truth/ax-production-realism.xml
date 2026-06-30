@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Axiom id="AX_PRODUCTION_REALISM">
+      Test: would this gap cause user-visible failure or data loss within one month of deployment? Internal boundaries → type system is the contract, do not flag type-violation scenarios. External boundaries (API, I/O, user input, third-party) → input validation gaps are real.
+    </Axiom>

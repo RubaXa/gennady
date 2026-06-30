@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_NO_PREMATURE_ABSTRACTIONS">
+Forbid premature abstractions. Do not abstract logic that has ONE consumer and ONE concrete realization. Abstraction is justified only by confirmed variance or an explicit second consumer; otherwise it complicates grep and reading without payoff.
+</Axiom>

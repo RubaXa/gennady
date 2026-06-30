@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Hook id="HOOK_KEBAB_CASE_FILES">
+<Purpose>Verify all component files are in kebab-case.</Purpose>
+<Command>find src/ui -type f \( -name '*.svelte' -o -name '*.module.css' -o -name '*.tokens.css' -o -name '*.stories.ts' \) -not -path '*/node_modules/*' | while read f; do basename "$f"; done | grep -E '[A-Z]' || true</Command>
+<Expected>Empty output. Any match is a PascalCase/camelCase filename violation.</Expected>
+</Hook>

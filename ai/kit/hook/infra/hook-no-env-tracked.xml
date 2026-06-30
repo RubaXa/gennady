@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Hook id="HOOK_NO_ENV_TRACKED">
+  <Purpose>Verify no `.env*` (except `.env.example`) is tracked.</Purpose>
+  <Command>git ls-files | grep -E '^\.env($|\.)' | grep -v '^\.env\.example$' | head -1 | grep -q . && echo "FAIL: .env tracked" || echo "OK"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

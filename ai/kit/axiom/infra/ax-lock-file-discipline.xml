@@ -1,0 +1,10 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Axiom id="AX_LOCK_FILE_DISCIPLINE">
+  `package-lock.json` always committed. `node_modules/` never committed.
+
+  `.nvmrc` + `package.json` + `package-lock.json` is the **reproducibility triad**. Without lock file, transitive deps re-resolve on every `npm install` → environment drift.
+
+  Usage split: `npm install` locally (may update lock when `package.json` changes); `npm ci` in any automated context (reads lock as law, never updates).
+
+  `.gitignore` MUST contain: `node_modules/`, `dist/`.
+</Axiom>

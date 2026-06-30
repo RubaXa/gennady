@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<AntiPattern id="AP_SK_COMPONENT_FETCH_FOR_INITIAL_DATA">
+<Bad>Inside `+page.svelte`: `$effect(() => { fetch('/api/products').then(r => r.json()).then(items => products = items); });` to populate the initial product list.</Bad>
+<WhyBad>Component-level fetch for initial data (`AX_SK_DATA_VIA_LOAD`). Loses SSR (page renders empty, then flickers), bypasses framework `invalidate()` / `depends()`, runs in the browser only — server-side rendering benefit gone. Cannot use private credentials or `locals`.</WhyBad>
+<Good>Move fetch into `+page.server.ts`: `export const load: PageServerLoad = async ({ fetch }) => ({ products: await (await fetch('/api/products')).json() });`. Component reads `data.products` via `$props()`.</Good>
+</AntiPattern>

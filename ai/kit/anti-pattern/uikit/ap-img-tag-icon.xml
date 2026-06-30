@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_IMG_TAG_ICON">
+<Bad>Icon rendered as `<img src="icon.svg" alt="" />`.</Bad>
+<WhyBad>Icon fill cannot be controlled via CSS when using `<img>` (`AX_ICON_SVG_TIGHT_VIEWBOX`). Each appearance/mode combination would need a separate SVG file with hardcoded fill. Inlined SVG with `fill: currentColor` or CSS variable solves this.</WhyBad>
+<Good>Inline the SVG with tight viewBox; control fill via CSS on the `.icon` container or the SVG paths directly.</Good>
+</AntiPattern>

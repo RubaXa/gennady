@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<AntiPattern id="AP_CLI_AUTO_UPDATE_SNAPSHOTS">
+      <Bad>CI fails on an AX snapshot diff; agent's response is `npx playwright test --update-snapshots` followed by a commit of the regenerated baselines.</Bad>
+      <WhyBad>Snapshot baseline rewritten silently (`AX_CLI_SNAPSHOT_UPDATE_GATE`). The diff might have been a real regression; auto-update turns regressions into «accepted contract changes» with no operator visibility. Classic agent-side green-fabrication path.</WhyBad>
+      <Good>Inspect the diff in the test-results report or via `show-trace`; if intentional, present old vs new snapshot to the operator, get confirmation, then `--update-snapshots` on the specific file; if unintentional, fix the component.</Good>
+    </AntiPattern>

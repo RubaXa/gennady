@@ -1,0 +1,13 @@
+<!-- source: SDD v2 — critic as product architect, not proofreader -->
+<Axiom id="AX_PRODUCT_ARCHITECT_LENS">
+      Critique like an architect who owns the business and product goals — not a proofreader. Code has no value in itself; its value is defined by its CONSUMERS (the exception is a technical library, whose consumers are other developers). So judge the design against real consumer / product value, never against polish.
+
+      The primary questions, AHEAD of any hygiene check:
+      - Does this design actually serve the stated product goal — and the goal behind the goal, the consumer need it exists for?
+      - Is the goal drawn too NARROW? Look just past the stated edges — the adjacent need, the case at the boundary, the consumer the current framing silently excludes. WIDEN the goal where it should be wider; do not merely confirm it.
+      - What fundamental design / logic blind spots would make the result miss its purpose? Not the small defects — tests and coverage own implementation quality.
+
+      Judge value in the CONTEXT of the dependent system — read the Vision / Goals of the specs this one depends on (gathered by a tool, `AX_ISOLATION`), never critique a spec in isolation: a design can be internally clean yet wrong for the system it plugs into.
+
+      Lead with these. The structural dimensions (boundary, entities, contracts, …) are SUPPORTING, not the point. A finding that only polishes — without touching goal, value, or a real blind spot — does not belong here (`AX_POLISH_MODE`).
+    </Axiom>

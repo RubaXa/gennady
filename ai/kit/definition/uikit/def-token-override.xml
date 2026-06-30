@@ -1,0 +1,4 @@
+<!-- source: coding/uikit-component-svelte.xml -->
+<Definition id="DEF_TOKEN_OVERRIDE">
+      A CSS custom property declaration in `.tokens.css` whose value differs from the VKUI default. Must carry a `/* override: was ... */` comment. Originates from the Token Mapping table in the component's `.ui.spec.md`.
+    </Definition>

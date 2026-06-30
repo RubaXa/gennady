@@ -1,0 +1,6 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_EXECUTION_ORDER">
+      Fixes execute in category order: A (direct) → B (spec) → C (reopen + dispatch).
+      Within each category, trackers and logs first, then spec, then code tasks.
+      Rationale: direct fixes are fast and unblock spec updates; task reopens are slow and go last.
+    </Axiom>

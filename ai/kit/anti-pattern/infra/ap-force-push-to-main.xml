@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<AntiPattern id="AP_FORCE_PUSH_TO_MAIN">
+  <Bad>`git push --force origin main`</Bad>
+  <WhyBad>Silently rewrites history collaborators already pulled. Recovery requires every team member to reset their local branch — error-prone, sometimes impossible if uncommitted work is on top.</WhyBad>
+  <Good>Force-push only on personal branches. Shared-branch issues fixed via revert commits.</Good>
+</AntiPattern>

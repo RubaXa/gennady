@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_RUNES_IN_PLAIN_TS">
+  <Bad>`// utils.ts` containing `export const counter = $state(0);`.</Bad>
+  <WhyBad>`utils.ts` is not a runes file (`AX_RUNES_LOCATION_RESTRICTION`). The Svelte compiler does not process it; `$state` is undefined at runtime and TypeScript reports it as an unknown identifier.</WhyBad>
+  <Good>Rename to `utils.svelte.ts` so the compiler treats it as a runes module: `export const counter = $state(0);` then works. Importers stay unchanged.</Good>
+</AntiPattern>

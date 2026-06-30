@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_AUDIT_NEW_RULE">
+      <Purpose>Mechanical evidence for `AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM`: does the rule have a real `fix`?</Purpose>
+      <Command>npx eslint --rule '{"<plugin>/<rule-name>":"error"}' --fix-dry-run --format json . | jq '.[] | select(.messages | length > 0) | {file: .filePath, fixed: (.output != null), messages: [.messages[] | {ruleId, fix: (.fix != null), suggestions: (.suggestions | length > 0)}]}'</Command>
+      <Expected>For every reported message: `fix` truthy → autofix branch; `fix` null → motivated-non-autofix branch (must be paired with explanatory comment in config).</Expected>
+    </Hook>

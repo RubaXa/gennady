@@ -1,0 +1,3 @@
+<Axiom id="AX_LIVE_LOG">
+**Fill the Execution Log line-by-line as actions happen, not in batch at the end.** Each meaningful action (file created, command run, scenario verified, entity introduced) gets its own timestamped line in the current round. Batched logs at the end lose causality and become unreliable evidence for audit.
+</Axiom>

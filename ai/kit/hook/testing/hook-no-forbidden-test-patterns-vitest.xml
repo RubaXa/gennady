@@ -1,0 +1,5 @@
+<!-- source: testing/vitest-rules.xml -->
+<Hook id="HOOK_NO_FORBIDDEN_TEST_PATTERNS">
+  <Command>rg --no-heading -n "\b(it|describe)\.(only|skip|todo)\b|Step \d|\.message\)?\.toContain\(|expect\.fail\(" -t ts --glob '**/*.test.ts'</Command>
+  <Expected>Empty on new/changed test files (or matches carry explicit deferred-ownership reference).</Expected>
+</Hook>

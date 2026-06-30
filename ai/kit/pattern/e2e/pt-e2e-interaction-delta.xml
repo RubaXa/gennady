@@ -1,0 +1,19 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Pattern id="PT_E2E_INTERACTION_DELTA">
+      <Intent>Interact via role locator; assert the AX delta after the interaction.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        test('should show validation error on empty submit', async ({ page }) => {
+          await page.goto('/checkout');
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await expect(
+            page.getByRole('region', { name: 'Checkout' }),
+          ).toMatchAriaSnapshot(`
+            - textbox "Email" [invalid=true]
+            - text: "Email is required"
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Interaction via `getByRole`; delta asserted as a second AX snapshot of the same scoped region.</Why>
+    </Pattern>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Hook id="HOOK_DEFAULT_BRANCH_MAIN">
+  <Purpose>Verify default branch is `main`.</Purpose>
+  <Command>git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | grep -q 'main$' && echo "OK" || echo "FAIL: default branch not main"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

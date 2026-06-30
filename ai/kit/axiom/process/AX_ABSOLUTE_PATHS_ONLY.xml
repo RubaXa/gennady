@@ -1,0 +1,2 @@
+<!-- source: ai/directives/dev-review.directive.xml -->
+<Axiom id="AX_ABSOLUTE_PATHS_ONLY">All entrypoint/spec paths in instructions and report are absolute.</Axiom>

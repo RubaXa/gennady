@@ -1,0 +1,177 @@
+<SddScaffold keywords="task-scaffolding, dependency-graph, dag, bdd, rules-cascade, rule-activation, tickets, modes, extend-dag, isolated, cheap-model, sdd-scaffold" type="directive" ver="2.0">
+  <Mission>
+    Decompose the approved spec tree into a DAG of compact, self-contained task tickets ready for
+    autonomous execution by a cheaper model in isolation. A separate door (`/sdd-scaffold`), run in
+    its own process; the operator sees only two gates — the breakdown and the test plan — everything
+    else is mechanical.
+
+    Input — `specs/README.md` Scope Graph (+ each scope / module spec). Output — per-module ticket
+    files + the task-index hierarchy (`<module>.3-tasks.md`, scope, project). Next — the execute
+    orchestrator consumes one ticket at a time.
+
+    Out of scope: writing code, running tests — that is execute. Spec authoring — that is the `/sdd`
+    flow. This directive does not interview; it converges existing specs into tickets.
+
+    **Glossary.** Modes: initial · extend-dag. Cascade = the set of rule files effective for a scope,
+    computed from the Scope Graph (root → scope → module → phase).
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-no-process-narration"}}
+
+    {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/spec/ax-stateless-artifact"}}
+
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/spec/ax-scope-graph-detection"}}
+
+    {{> "axiom/scaffold/ax-extend-dag-preserves-existing-ids"}}
+
+    {{> "axiom/scaffold/ax-rules-resolution-hard-fail"}}
+
+    {{> "axiom/scaffold/ax-rules-cascade-resolution"}}
+
+    {{> "axiom/scaffold/ax-rule-activation-plan"}}
+
+    {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
+
+    {{> "axiom/scaffold/ax-bootstrap-ticket-derivation"}}
+
+    {{> "axiom/scaffold/ax-ticket-has-bdd-and-tests"}}
+
+    {{> "axiom/scaffold/ax-ticket-deduplication"}}
+
+    {{> "axiom/process/ax-task-id-uniqueness"}}
+
+    {{> "axiom/process/ax-execution-log-plan-vs-fact"}}
+
+    {{> "axiom/scaffold/ax-cross-scope-task-placement"}}
+
+    {{> "axiom/scaffold/ax-phases-declared-in-header"}}
+
+    {{> "axiom/boundary/ax-ssot-traceability"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/process/ax-ticket-section-names-normative"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
+    | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | An in-scope spec lacks a Bootstrap Requirements section (did not pass the scope flow) |
+    | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
+    | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
+    | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
+      <Action>
+        Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
+        module specs. Detect the graph (`AX_SCOPE_GRAPH_DETECTION`) and mode
+        (`AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
+        (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_CASCADE">
+      <Goal>Resolve the rules cascade. (auto)</Goal>
+      <Action>
+        Read the rule registry. Per scope, take the transitive closure of depends-on edges and collect
+        rule refs (`AX_RULES_CASCADE_RESOLUTION`); every ref must resolve to a file
+        (`AX_RULES_RESOLUTION_HARD_FAIL`, else `H_MISSING_RULE_FILE`). Build per-scope Cascade Tables. No
+        operator stop — mechanical.
+      </Action>
+    </Step>
+    <Step id="STEP_2_DAG">
+      <Goal>Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN.</Goal>
+      <Action>
+        Bootstrap Requirements per spec → Phase-0 bootstrap tickets (`AX_BOOTSTRAP_TICKET_DERIVATION`);
+        missing section → `H_BOOTSTRAP_REQUIREMENTS_MISSING`. Form tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
+        context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
+        (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
+        get operator approval — this is the one gate on structure.** STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_TASK_GENERATION">
+      <Goal>Generate tickets + test plan. (auto)</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per ticket:
+        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate); per-phase
+        `Rules:` links via `AX_RULE_ACTIVATION_PLAN`; draft BDD with the mandatory `contract`-level
+        typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
+        (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
+        clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
+        corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
+        reviewed checklist in the ticket Decision Log. Validate every contract has its typing scenario
+        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). No operator stop — automated.
+      </Action>
+    </Step>
+    <Step id="STEP_4_TEST_PLAN_REVIEW">
+      <Goal>GATE 2: operator approves the TEST PLAN.</Goal>
+      <Action>
+        Present the test plan as a decision card: each BDD scenario as a use-case, tagged
+        `[<ACRONYM>-REQ-N]`, traced up to the scope Vision / goal it protects, plus coverage (every
+        contract has a typing scenario, every scenario maps to a test). The operator approves **what is
+        tested, which use-cases are covered, and that this guarantees the vision** — the one gate on
+        substance. Out-of-scope proposals the subagent surfaced are raised here. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_FINALIZE">
+      <Goal>Write the index hierarchy; hand off. (auto)</Goal>
+      <Action>
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-tasks-index.xml")` and write each
+        `<module>.3-tasks.md` (Tracker, Slug Registry, intra-module DAG, shared content per
+        `AX_TICKET_DEDUPLICATION`). Roll up the scope tracker
+        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")`) and
+        the project index (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`).
+        Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
+        phase graph; exec-log) and resolve or consciously defer every finding per
+        `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.
+        Emit a created-files summary with traceability links. Hand off to execute (isolated, cheaper
+        model). No operator stop.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, kept silent (per `AX_NO_PROCESS_NARRATION`):
+    `📋 TS_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Intake · Cascade · DAG · Tickets · Tests · Done. Only two milestones are
+    operator gates — DAG (breakdown) and Tests (test plan).
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/understanding-block-format"}}
+
+    {{> "contract/process/side-dive-format"}}
+
+    {{> "contract/process/flow-diagram-when"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- ticket / module-index / scope+project trackers load lazily at STEP_3 / STEP_5 — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddScaffold>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_MISSING_A11Y_AUDIT">
+      <Bad>Story or meta lacks `parameters: { a11y: { test: 'error' } }`.</Bad>
+      <WhyBad>A11y audit not configured (`AX_A11Y_AUDIT_PARAMETERS`). axe-core does not run during `run-story-tests`; a11y violations (missing labels, wrong contrast, invalid roles) pass silently.</WhyBad>
+      <Good>Add `parameters: { a11y: { test: 'error' } }` to `meta` (applies to all stories) or to each individual story.</Good>
+    </AntiPattern>

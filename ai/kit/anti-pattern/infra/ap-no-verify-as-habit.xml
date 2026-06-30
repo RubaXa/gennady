@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<AntiPattern id="AP_NO_VERIFY_AS_HABIT">
+  <Bad>`git commit --no-verify` because pre-commit hook is «too slow».</Bad>
+  <WhyBad>Hooks exist to catch mistakes locally. Routinely bypassing shifts mistakes into CI (slower, more expensive) or main (worse). Slow hook = fix the hook, don't skip it.</WhyBad>
+  <Good>Diagnose hook slowness (lint scope too wide? full test suite in pre-commit instead of pre-push?). Optimize. `--no-verify` only with explicit operator authorization, documented in commit body.</Good>
+</AntiPattern>

@@ -1,0 +1,13 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<Axiom id="AX_ASSERT_API_CHOICE">
+      Pick the simplest direct match by shape (node:test assert API):
+      - `assert.strictEqual(actual, expected)` — scalars and reference identity.
+      - `assert.deepStrictEqual(actual, expected)` — structured results (deep, type-strict).
+      - `assert.throws(fn, matcher)` / `await assert.rejects(promise, matcher)` — thrown failures.
+      - `assert.match(str, regex)` — partial string / error-message checks (per inherited `AX_PARTIAL_STRING_VIA_MATCH`).
+      - `t.assert.snapshot(value)` / `t.assert.fileSnapshot(value, path)` — ONLY for large stable serializable outputs (per inherited `AX_SNAPSHOT_USAGE_GATE`).
+
+      Each function has a unique diagnostic signature. A mismatched choice (snapshot for a scalar, `includes` on a message) degrades the failure report.
+
+      Forbidden idioms: `assert.ok(x.includes(y))` on error messages → use `assert.match`. Manual `let threw = false; try {...} catch {...} assert.ok(threw)` → use `assert.throws` / `assert.rejects`.
+    </Axiom>

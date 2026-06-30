@@ -1,0 +1,7 @@
+<Axiom id="AX_PERMITTED_BASH_COMMANDS">
+--- ax-phase-scope-lock.xml ---
+<Axiom id="AX_PHASE_SCOPE_LOCK">
+--- ax-q-ids.xml ---
+<Axiom id="AX_Q_IDS">
+--- ax-re-dispatch.xml ---
+<Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>

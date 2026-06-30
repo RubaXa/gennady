@@ -1,0 +1,40 @@
+<!-- source: coding/typescript-rules.xml -->
+<Pattern id="PT_ASYNC_OPERATION_WITH_TIMING">
+      <Intent>Async operation with `performance.now()` timing, state transitions in logs, Catch-Log-Recover.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // @file: Timed execution helper for long-running async action.
+        // @consumers: TaskOrchestrator
+
+        import { performance } from 'node:perf_hooks';
+        import { logger } from '#logger';
+
+        /**
+         * @purpose Performs an atomic action with performance measurement and state tracing.
+         * @invariant On failure: emit `logger.error` with elapsed time, then recover via rethrow with cause-chain (or `return fail(error)` in Result-style APIs) — both steps mandatory per Catch-Log-Recover.
+         * @param specifier Unique identifier of the target resource or action.
+         * @throws {Error} When the action fails (wraps the original cause).
+         * @returns Status of successful execution.
+         */
+        export async function performAction(specifier: string): Promise<string> {
+          const startedAt = performance.now();
+          try {
+            logger.debug(`[performAction] [idle → processing] ${specifier}`);
+            // ...work...
+            const time = performance.now() - startedAt;
+            logger.info(`[performAction] [processing → completed] ${specifier} (${time.toFixed(2)}ms)`);
+            return 'ok';
+          } catch (cause) {
+            const time = performance.now() - startedAt;
+            const error = new Error('[performAction] Action failed', { cause });
+            logger.error(
+              `[performAction] [processing → failed] Other error: ${specifier} (${time.toFixed(2)}ms)`,
+              { error }
+            );
+            throw error;
+          }
+        }
+        ```
+      </Snippet>
+      <Why>Timing justified — operation is long. State transitions explicit. Error path loses neither context (Trace-Prefix + detail) nor cause-chain.</Why>
+    </Pattern>

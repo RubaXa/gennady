@@ -1,0 +1,258 @@
+<SddExecuteOrchestrator keywords="execute, orchestrator, dispatch, phases, round, audit, fix, model-by-load, isolated, sdd-execute" type="directive" ver="2.0">
+  <Mission>
+    Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
+    intent decides which): plan phases, dispatch one worker-subagent per phase,
+    thread typed Handoff, close the Round, dispatch a fresh-eyes audit, and on audit FAIL re-run only
+    the failing phases as `fix` (≤ 2 audit attempts). A separate door (`/sdd-execute`), run isolated.
+    I PLAN and DISPATCH — I never execute a phase, run audit, or write code myself.
+
+    Input — a specific Task-ID, or `next` / `pick`, or `batch` / `all`. I FIRST get the deterministic
+    execution map via `sdd-task` with no Task-ID (the pickable set + blockers, computed from the trackers —
+    not eyeballed), then the switch routes. Per ticket I read only the planning surface via `sdd-task <id>`
+    (Meta + Phases Overview + per-phase read-manifests + gates). Workers read phase bodies, specs, and
+    code, each bounded by its manifest.
+
+    **Glossary.** Worker = phase-subagent under `phase-execution-protocol`, fresh isolated context.
+    **Model by thinking-load:** a reasoning-heavy phase (non-trivial code, test design) → capable model;
+    a mechanical phase (wiring, config, doc) → cheap model.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      Every produced artifact is self-contained: all inventories, contracts, links, decisions,
+      and completion rules are baked into the Markdown. Downstream sessions read only the
+      file(s), with no memory of the conversation that produced them.
+    </Axiom>
+
+    <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
+
+    <Axiom id="AX_TASK_RESOLUTION">
+      BEFORE classification, resolve which task owns each affected file.
+
+      For every finding whose location is a `.ts` or `.spec.md` file:
+      1. Read the file's header (first lines before `import` / first `#`).
+      2. Extract `@tasks: <ACR>-<slug>[, ...]` — the task(s) that created / own this file.
+      3. Build map: file → [Task-IDs].
+      4. No `@tasks:` header → still classify the finding (the fix IS adding the header), but note "no task" for the plan.
+
+      Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the Task-ID is in the filename.
+      Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a scope, not a single task. (One document per scope / module — design folded into the spec; no separate `2-design`.)
+      Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` / `specs/3-tasks.md`) — no task, global artifacts.
+
+      This map is used by `AX_FIX_CLASSIFICATION` to route fixes to the correct task.
+    </Axiom>
+
+    <Axiom id="AX_EXECUTION_ORDER">
+      110:    <Axiom id="AX_HANDOFF_TYPED">
+      114:    <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      120:      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
+      127:    <Axiom id="AX_AUDIT_HOOK">
+      128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+    131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+
+    <Axiom id="AX_HANDOFF_TYPED">
+      114:    <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      120:      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
+      127:    <Axiom id="AX_AUDIT_HOOK">
+      128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+    131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+
+    <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      120:      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
+      127:    <Axiom id="AX_AUDIT_HOOK">
+      128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+    131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+
+    <Axiom id="AX_AUDIT_HOOK">
+      128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
+    131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+
+    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+
+    <Axiom id="AX_VERIFY_AND_FINALIZE">
+      Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_TASKS` | No task index / no pickable task |
+    | `H_AMBIGUOUS_TASK` | "next" / "pick" matches more than one pickable task — shortlist for the operator |
+    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs |
+    | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
+    | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_RESOLVE">
+      <Goal>Resolve the task.</Goal>
+      <Action>
+        FIRST run `sdd-task` (no Task-ID) for the deterministic execution map — the pickable set
+        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers, `AX_TASK_RESOLUTION`) and
+        the blocked tickets. Then route on intent:
+
+        <LogicSwitch on="intent">
+        - WHEN intent is a specific Task-ID / ticket path -> run that ticket (STEP_1–8)
+        - WHEN intent = `next` / `pick`                   -> the first pickable from the map (none → H_NO_TASKS; several + ambiguous → H_AMBIGUOUS_TASK, shortlist for the operator)
+        - WHEN intent = `batch` / `all` / `queue`         -> EVERY pickable ticket in DAG order (parallel ONLY across tickets whose Target-File sets are disjoint, `AX_DAG_AND_TICKET_BOUNDARIES`; sequential otherwise)
+        </LogicSwitch>
+
+        The single-ticket flow (STEP_1–8) runs per selected ticket; in `batch` it loops, re-fetching the
+        map after each ticket (statuses change as tickets finish), until the map is empty or a ticket
+        pauses (`H_PAUSED_AWAITING_OPERATOR`).
+      </Action>
+    </Step>
+    <Step id="STEP_1_PLAN">
+      <Goal>Get the plan; detect state; open the Round. (one tool call, no broad ticket read)</Goal>
+      <Action>
+        `sdd-task <id>` returns Meta + Phases Overview + per-phase read-manifests + gates — the only
+        ticket read I do. Preflight blocker scan (`sdd-check`, per `AX_BLOCKER_RESOLUTION_TRAIL`):
+        unresolved → `H_PAUSED_AWAITING_OPERATOR`. State from Phases Overview: all `[ ]` → fresh (all
+        phases by `Deps`); mixed → resume (remaining); all `[x]` + no audit → audit only; any `[!]` →
+        pause. Open a new Round in the log via `sdd-log`.
+      </Action>
+    </Step>
+    <Step id="STEP_2_DISPATCH">
+      <Goal>Dispatch workers, one phase at a time (sequential by `Deps`, `AX_EXECUTION_ORDER`).</Goal>
+      <Action>
+        Per phase: pick the worker model by thinking-load — default by kind (`impl` / `test` → capable;
+        `bootstrap` / `config` / `doc` → cheap), escalate to capable on LOW confidence or a reasoning-heavy phase. Dispatch a fresh worker with: read `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`;
+        ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
+        Handoff verbatim (`AX_HANDOFF_TYPED`); the phase read-manifest from `sdd-task`; sdd tooling
+        (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line per transition
+        (`ORCHESTRATOR_PROGRESS_FORMAT`). Branch: `BLOCKED` / `FAIL` → stop, no audit, `H_PAUSED_AWAITING_OPERATOR`;
+        `DONE` → record Handoff, thread it into the next phase's Inputs.
+      </Action>
+    </Step>
+    <Step id="STEP_3_CLOSE_ROUND">
+      <Goal>Close the Round.</Goal>
+      <Action>Append Round close via `sdd-log` (`ROUND_CLOSE_FORMAT`); set Meta Status `[x] DONE`.</Action>
+    </Step>
+    <Step id="STEP_4_SYNC">
+      <Goal>Sync trackers. (mechanical → tool)</Goal>
+      <Action>`sdd-sync <task-id>` updates the scope + project trackers and verifies the write (`AX_VERIFY_AND_FINALIZE`).</Action>
+    </Step>
+    <Step id="STEP_5_AUDIT">
+      <Goal>Dispatch fresh-eyes audit (mandatory, `AX_AUDIT_HOOK`).</Goal>
+      <Action>
+        Dispatch ONE audit-subagent on a cheap model (audit is mechanical verification): read
+        `ai/directives/sdd-v2/audit.directive.xml`; task-id; round; artifacts = union of phase Handoff
+        artifacts; mode per-task. Wait for the verdict.
+      </Action>
+    </Step>
+    <Step id="STEP_6_BRANCH">
+      <Goal>Branch on the audit verdict.</Goal>
+      <Action>
+        <LogicSwitch on="audit verdict + attempt">
+        - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` -> STEP_7B_CODE_REVIEW
+        - WHEN `FAIL` + attempt 1                      -> STEP_7_RESOLVE (one retry)
+        - WHEN `FAIL` + attempt 2                      -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
+        </LogicSwitch>
+      </Action>
+    </Step>
+    <Step id="STEP_7_RESOLVE">
+      <Goal>Resolve audit findings (one retry).</Goal>
+      <Action>
+        Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
+        (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec / decision-log
+        only: apply them directly (the orchestrator owns trackers and may make administrative edits), no
+        new Round, then re-dispatch audit (R2). Either way return to STEP_6.
+      </Action>
+    </Step>
+    <Step id="STEP_7B_CODE_REVIEW">
+      <Goal>Dispatch fresh-eyes code-review for bugs (lazy, after the audit passes).</Goal>
+      <Action>
+        Dispatch ONE code-review subagent (isolated): read `ai/directives/sdd-v2/code-review.directive.xml`;
+        task-id; round; artifacts = union of phase Handoff artifacts (the Round's diff); the relevant
+        contract anchors. It scopes to bugs only (correctness / edge / error-path / security), leaving drift and style out.
+        Verdict: `CLEAN` → STEP_8; `FINDINGS` with a `BLOCKER` → `H_CODE_REVIEW_BLOCKER` (pause for the
+        operator); `FINDINGS` non-blocking → carry into the summary as routed proposals, STEP_8.
+      </Action>
+    </Step>
+    <Step id="STEP_8_SUMMARY">
+      <Goal>Summarize for the operator.</Goal>
+      <Action>Aggregate phase + audit telemetry; present per `EXECUTE_SUMMARY_FORMAT`.</Action>
+    </Step>
+  </ExecutionPlan>
+
+  <HardForbidden>
+    - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not.
+    - Always run audit after all phases DONE, and code-review after the audit passes.
+    - Thread only typed Handoff payloads between subagents; keep their contexts separate.
+    - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.
+  </HardForbidden>
+
+  <ChatOutput>
+    <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
+      Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
+
+      `[<bar>] <pct>% | <Task-ID> | <stage>`
+
+      Stages: `⏳ resolving + planning` · `🔧 phase <P<N>> (<kind>, <model>) executing` · `✅ phase <P<N>> done → next` · `✅ all phases done → 🔍 audit` · `✅ audit PASS`.
+      Retry path: `❌ audit FAIL → 🔄 re-run <phases> as fix` · `✅ re-run done → 🔍 audit R2`.
+      Pause path (NOT a failure — awaiting the operator): `✋ PAUSED — <unresolved blocker | phase BLOCKED>`; the operator marks resolution in the Execution Log, then re-runs.
+    </Contract>
+
+    <Contract id="EXECUTE_SUMMARY_FORMAT">
+      Final operator summary once audit settles. Plain, scannable:
+
+      📊 Task `<Task-ID>` — Execute + Audit
+      🔧 Round 1: `P1 (impl, sonnet) ✅` · `P2 (test, haiku) ✅` · …
+      🔍 Round 1 audit: `✅ PASS` | `❌ FAIL (🔴 N · 🟠 M)`
+      🔄 Round 2 (if any): `P2 (fix) ✅` · audit R2 `✅`
+      📊 Final: `✅ PASS` | `⚠️ PASS_WITH_ACKNOWLEDGED_RISKS` | `❌ FAIL`
+      ⏱️ wall total · 📍 files touched · ⚠️ problems encountered
+    </Contract>
+  </ChatOutput>
+</SddExecuteOrchestrator>

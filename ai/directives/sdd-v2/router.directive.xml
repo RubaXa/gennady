@@ -1,0 +1,273 @@
+<SddRouter keywords="sdd, router, entry, intent, route, logic-switch, lazy-load, state" type="directive" ver="2.0">
+  <Mission>
+    Single entry to SDD spec-authoring. On invocation I (1) obtain project state, (2) classify
+    operator intent, (3) route to exactly ONE branch directive via LOGIC_SWITCH, loading it
+    lazily. I carry the cross-cutting core every branch inherits: how to talk to the operator and
+    how to read routes. The per-branch rendering (breadcrumb, decision card) and the artifact
+    format live on the branch, loaded when its route fires.
+
+    Input — operator intent. Output — control handed to one branch directive; the router writes no
+    artifact and prints no formatted trace itself.
+
+    **Glossary.** scope-type ∈ {infrastructure, contracts, library, product}. Scope Graph =
+    directed graph; edge A→B = «scope A depends on scope B».
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact prose and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+    </Axiom>
+
+    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+      Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_SAFEGUARD">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
+
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
+    </Axiom>
+
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_CROSS_SCOPE_CHANGE">
+      A single change may legitimately span several scopes or modules — this is normal, especially for
+      cross-platform work. The shape: the shared / cross-cutting part lives in the scope it belongs to (a
+      `contracts` or shared `library` scope), and platform / consumer scopes depend on it and add only
+      their specifics. So author the shared scope FIRST, then detail each dependent scope — the order is
+      the Scope Graph's dependency order (a dependency is authored before its dependents). Track the
+      working set of touched specs in the session so the change stays coherent across a pause; it is a
+      mode of the normal flow, not a separate branch.
+    </Axiom>
+
+    <Axiom id="AX_STATELESS_ARTIFACT">
+      Every produced artifact is self-contained: all inventories, contracts, links, decisions,
+      and completion rules are baked into the Markdown. Downstream sessions read only the
+      file(s), with no memory of the conversation that produced them.
+    </Axiom>
+  </BeliefState>
+
+  <KernelGrammar>
+    <Definition id="DEF_LOGIC_SWITCH">
+      `LOGIC_SWITCH` is the routing construct of a kernel directive. The agent — as the
+      interpreter — reads its cases top-to-bottom and acts on the FIRST whose condition holds.
+
+      Authoring rules (a switch that breaks them is a kernel defect):
+      - Every `WHEN` condition resolves from data ALREADY in context — `sdd-state` output and the
+        classified operator intent — never from a fact the agent would have to guess.
+      - Cases are mutually exclusive; if two could match, the one listed first wins.
+      - A `DEFAULT` case is mandatory, so the agent never stalls on "nothing matched".
+      - A case body is exactly one action — normally a single `READ_AND_USE_DIRECTIVE`.
+    </Definition>
+
+    <Definition id="DEF_READ_AND_USE_DIRECTIVE">
+      `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+      of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+      - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+        stateless) and carries only its own deltas; it MUST NOT repeat the core.
+      - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+        context is not polluted by branches that do not apply.
+      - The reference is a file path on purpose — a directive delivered as a file keeps full
+        instruction priority, unlike command stdout.
+    </Definition>
+  </KernelGrammar>
+
+  <SessionState>
+    <Contract id="SESSION_FILE_FORMAT">
+      A single temporary scratch file for the current SDD session — `specs/.sdd-session.md`, gitignored, not
+      a deliverable. It lets a multi-step or multi-scope flow survive a context squeeze or a session break
+      within the same piece of work; it is NOT carried between unrelated sessions. The kernel reads it on
+      entry and updates it after each loaded directive. On the work finishing, it is discarded.
+
+      ```markdown
+      # SDD session — <YYYY-MM-DD>
+      intent: <classified intent>
+      working set:
+        - <scope / module spec path> — <why touched> — <status>
+      journal:
+        - <step / loaded directive> → <what it produced>
+      open: <unresolved decisions / questions>
+      ```
+    </Contract>
+  </SessionState>
+
+  <ChatProtocol>
+    <Contract id="QUESTION_FORMAT">
+      Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
+      section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
+      signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
+      into one; do not pad the count.
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      ### ❓ Вопросы — реши <N>
+      «годится» = беру все рекомендации, или поправь по номерам.
+
+      **Q1 · <вопрос?>**
+      ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+      Иначе:
+      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win.
+
+      A plain binary question needs no list — recommendation + inline alternative:
+
+      **Q2 · <вопрос?>**
+      ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+    </Contract>
+
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_STATE">
+      <Goal>Obtain project state and clear the preflight gates before any routing.</Goal>
+      <Action>
+        Call `sdd-state` (deterministic) — one call returns everything routing needs: `FLOW_VERSION`,
+        `READINESS` (exact required scripts: typecheck / test / test:coverage / lint+gennady / format),
+        portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
+        and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
+
+        Then clear each preflight gate inline via the switch below. After any embedded
+        flow (migration / readiness) returns, re-run `sdd-state` and re-evaluate on the FRESH snapshot —
+        that flow changed the project, so the first snapshot is stale. Only a `v2` + ready repo proceeds.
+        Update the session scratch after each loaded branch.
+
+        <LogicSwitch on="FLOW_VERSION · READINESS">
+        - WHEN `FLOW_VERSION=v1`     -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+        - WHEN `READINESS=not-ready` -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")        (live setup: forces missing scripts, hands proxy-blocked installs to the operator; returns once ready)
+        - DEFAULT                    -> repo is `v2` + ready — proceed to STEP_1_CLASSIFY
+        </LogicSwitch>
+      </Action>
+    </Step>
+    <Step id="STEP_1_CLASSIFY">
+      <Goal>Classify operator intent and scope-type against state.</Goal>
+      <Action>
+        From state + operator message derive intent: project-setup · new-scope · evolve-scope ·
+        module-decomposition · multi-scope. When the intent concerns a scope, also resolve its
+        scope-type — for a new scope from the operator, for an existing one from `sdd-state` (the
+        Scopes table). A change spanning several scopes (cross-platform) is normal
+        (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
+        in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
+        looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only when state and message agree.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ROUTE">
+      <Goal>Hand control to exactly one branch.</Goal>
+      <Action>Evaluate the LOGIC_SWITCH below and follow the first matching case.</Action>
+    </Step>
+  </ExecutionPlan>
+
+  <LogicSwitch>
+    ```
+    LOGIC_SWITCH (on sdd-state + intent + scope-type):
+      - WHEN specs/README.md is absent OR intent = project-setup
+          (vision / scope graph / register scope / bootstrap infra)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type ∈ {product, library}
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = infrastructure
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = contracts
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/contracts.directive.xml")
+      - WHEN intent = module-decomposition (scope spec approved, product / library)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+      - DEFAULT
+          -> ask the operator which intent applies (message in Russian); route only on a confirmed intent
+    ```
+    > The multi-scope route arrives in its own slice (UC5). Each is one more
+    > `WHEN … -> READ_AND_USE_DIRECTIVE(...)` line here.
+  </LogicSwitch>
+</SddRouter>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/result-conventions.xml -->
+<Axiom id="AX_NO_BARE_THROW_UNKNOWN">
+      `throw catchBinding` without wrapping in `TessellError.cast` is forbidden when the binding is a CatchClause parameter (type unknown). Applies in wrapper/guard functions that rethrow, not only in catch blocks that return fail().
+      Detection: scope analysis — ThrowStatement whose argument resolves to a CatchClause parameter, regardless of variable name (cause, err, e, error).
+      No autofix: the fallback message is context-dependent.
+    </Axiom>

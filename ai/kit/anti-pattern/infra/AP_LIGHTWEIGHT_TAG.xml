@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<AntiPattern id="AP_LIGHTWEIGHT_TAG">
+  <Bad>`git tag v1.2.3` (no `-a`).</Bad>
+  <WhyBad>No tagger / date / message metadata. Looks identical to a branch ref in some tools. Release lineage unrecoverable.</WhyBad>
+  <Good>`git tag -a v1.2.3 -m "Release 1.2.3 — <summary>"`. Always annotated for release tags.</Good>
+</AntiPattern>

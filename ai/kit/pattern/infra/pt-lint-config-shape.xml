@@ -1,0 +1,104 @@
+<!-- source: infra/eslint-setup.xml -->
+<Pattern id="PT_LINT_CONFIG_SHAPE">
+      <Intent>Flat config where every enabled rule is either trivially autofixable or carries the explanatory comment. Severity always `'error'` — never `'warn'`. Stylistic rules off-loaded to Prettier; type-aware rules off-loaded to `tsc`. Auditable by grep.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // eslint.config.ts
+        import tseslint from 'typescript-eslint';
+        import unicorn from 'eslint-plugin-unicorn';
+        import importPlugin from 'eslint-plugin-import';
+        import prettierConfig from 'eslint-config-prettier/flat';
+
+        export default tseslint.config(
+            // --- language options ---
+            {
+                files: ['**/*.{ts,tsx}'],
+                languageOptions: {
+                    parserOptions: {
+                        project: './tsconfig.json',
+                        tsconfigRootDir: import.meta.dirname,
+                    },
+                },
+            },
+
+            // --- preset: typescript-eslint ---
+            // Preset 'warn' entries normalized: every kept rule is 'error'; the rest are 'off'.
+            ...tseslint.configs.recommended,
+            {
+                rules: {
+                    // Off — duplicates tsc --strict.
+                    '@typescript-eslint/no-unused-vars': 'off',
+
+                    // Autofix; trivially kept:
+                    '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+                    '@typescript-eslint/no-import-type-side-effects': 'error',
+                    '@typescript-eslint/prefer-as-const': 'error',
+
+                    // No autofix. Catches `await` on non-Promise values, which silently resolves to itself
+                    // and is almost always a bug. tsc allows it because the type is legal.
+                    '@typescript-eslint/await-thenable': 'error',
+
+                    // No autofix. Catches floating promises that lose errors and break ordering.
+                    // tsc allows void-returning calls, so this gap is unique to the lint layer.
+                    '@typescript-eslint/no-floating-promises': 'error',
+                },
+            },
+
+            // --- preset: unicorn (autofix-capable subset only) ---
+            unicorn.configs['flat/recommended'],
+            {
+                rules: {
+                    // Off — opinionated naming, owned by code review.
+                    'unicorn/filename-case': 'off',
+                    'unicorn/prevent-abbreviations': 'off',
+
+                    // Autofix; kept:
+                    'unicorn/prefer-node-protocol': 'error',
+                    'unicorn/prefer-string-starts-ends-with': 'error',
+                    'unicorn/prefer-array-some': 'error',
+                },
+            },
+
+            // --- import order (autofixable) ---
+            {
+                plugins: { import: importPlugin },
+                rules: {
+                    'import/order': ['error', {
+                        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+                        'newlines-between': 'always',
+                        alphabetize: { order: 'asc' },
+                    }],
+                },
+            },
+
+            // --- core ESLint rules ---
+            {
+                rules: {
+                    // Autofix; kept:
+                    'prefer-const': 'error',
+                    'no-var': 'error',
+                    'object-shorthand': ['error', 'always'],
+                    'prefer-template': 'error',
+                    'arrow-body-style': ['error', 'as-needed'],
+
+                    // Off — duplicates tsc.
+                    'no-unused-vars': 'off',
+                    'no-undef': 'off',
+                    'consistent-return': 'off',
+
+                    // Off — structural/design concerns owned by review and other directives.
+                    'complexity': 'off',
+                    'max-lines': 'off',
+                    'max-lines-per-function': 'off',
+                    'no-magic-numbers': 'off',
+                },
+            },
+
+            // --- formatting boundary: must be LAST so it overrides any leaks ---
+            // Disables every stylistic rule that may have entered via presets. Formatting owned by Prettier.
+            prettierConfig,
+        );
+        ```
+      </Snippet>
+      <Why>Every rule is `'error'` or `'off'` — never `'warn'`. Autofix rules trivially `'error'`. Two non-autofix rules (`await-thenable`, `no-floating-promises`) earn their place via plain-prose comments naming the bug class and channel-coverage gap. Type-aware concerns delegated; stylistic rules universally disabled at the end via `eslint-config-prettier`.</Why>
+    </Pattern>

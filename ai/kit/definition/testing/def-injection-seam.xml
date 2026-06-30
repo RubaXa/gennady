@@ -1,0 +1,4 @@
+<!-- source: testing/common.xml -->
+<Definition id="DEF_INJECTION_SEAM">
+      A constructor parameter, function argument, or factory option of the SUT through which a collaborator can be supplied from outside. Tests use injection seams to pass test doubles without resorting to module-level mocks.
+    </Definition>

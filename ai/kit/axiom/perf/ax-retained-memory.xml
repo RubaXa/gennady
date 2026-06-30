@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/memory-gc.xml -->
+<Axiom id="AX_RETAINED_MEMORY">Данные, до которых можно добраться от глобального объекта (window/global) или активного замыкания (таймер/событие), никогда не будут удалены GC. Это прямая утечка памяти.</Axiom>

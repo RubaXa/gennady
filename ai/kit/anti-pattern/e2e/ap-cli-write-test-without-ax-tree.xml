@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<AntiPattern id="AP_CLI_WRITE_TEST_WITHOUT_AX_TREE">
+      <Bad>Agent reads the design doc, writes `await page.locator('.submit-btn').click()` straight into a committed test file without ever running `page.ariaSnapshot()` against a live page.</Bad>
+      <WhyBad>Locator never resolved against ground truth (`AX_CLI_EXPLORE_BEFORE_AUTHOR`). `.submit-btn` is a CSS class — implementation-coupled, with no contract status (`AX_CLI_ROLE_LOCATORS_FROM_AX_TREE`). First run fails or, worse, matches a different element with the same class and produces a misleading green.</WhyBad>
+      <Good>Run the exploration loop, observe `- button "Place Order"` in the AX snapshot, then write `await page.getByRole('button', { name: 'Place Order' }).click()` in the committed test.</Good>
+    </AntiPattern>

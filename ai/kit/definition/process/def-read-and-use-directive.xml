@@ -1,0 +1,12 @@
+<!-- source: new for sdd-v2 router kernel -->
+<Definition id="DEF_READ_AND_USE_DIRECTIVE">
+  `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+  of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+  - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+    stateless) and carries only its own deltas; it MUST NOT repeat the core.
+  - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+    context is not polluted by branches that do not apply.
+  - The reference is a file path on purpose — a directive delivered as a file keeps full
+    instruction priority, unlike command stdout.
+</Definition>

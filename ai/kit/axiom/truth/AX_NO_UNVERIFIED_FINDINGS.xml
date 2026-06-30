@@ -1,0 +1,2 @@
+<!-- source: ai/directives/dev-review.directive.xml -->
+<Axiom id="AX_NO_UNVERIFIED_FINDINGS">A finding without successful local validation does NOT enter the validated list.</Axiom>

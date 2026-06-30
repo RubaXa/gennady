@@ -1,0 +1,2 @@
+<!-- source: ai/directives/dbc-audit.directive.xml -->
+<Axiom id="AX_MARKUP_SAFETY">Audit output avoids guidance likely to break XML, Markdown, anchor pairing, or agent patch placement.</Axiom>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Axiom id="AX_UNCERTAINTY_IS_SIGNAL">"I don't understand X" is valid output. Uncertainty = underspecification.</Axiom>

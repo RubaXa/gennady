@@ -1,0 +1,4 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<Axiom id="AX_SB_BROWSER_PREREQ_HANDLED">
+  Story tests run in a real browser (typically Chromium via Playwright). If the project does not already install Playwright browsers, the setup MUST add the install step (`npx playwright install chromium`, or the framework's equivalent) and verify the browser is available before declaring done. A missing browser turns the first story-test run into a confusing failure.
+</Axiom>
