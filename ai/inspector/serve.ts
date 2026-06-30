@@ -9,7 +9,12 @@ import { fileURLToPath } from 'node:url';
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), 'web');
 const PORT = Number(process.env.PORT) || 4173;
-const MIME: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+};
 
 createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0] as string);

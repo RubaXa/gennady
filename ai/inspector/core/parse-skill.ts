@@ -3,7 +3,14 @@
 // directive refs become 'run' nodes that resolve.ts expands into the directive's own tree.
 
 import type { TraceNode } from './model.ts';
-import { clean, firstSentence, nextElement, parseAttrs, scanRefsAndTools, topLevelElements } from './scan.ts';
+import {
+  clean,
+  firstSentence,
+  nextElement,
+  parseAttrs,
+  scanRefsAndTools,
+  topLevelElements,
+} from './scan.ts';
 
 interface Frontmatter {
   name?: string;
@@ -28,7 +35,14 @@ function parseSkillSteps(inner: string): TraceNode[] {
   for (const m of inner.matchAll(/<Step\b([^>]*)>([\s\S]*?)<\/Step>/g)) {
     const attrs = parseAttrs(m[1] as string);
     const body = m[2] as string;
-    steps.push({ kind: 'step', label: `<Step ${attrs.id ?? ''}>`, attrs, note: firstSentence(body), detail: clean(body), children: scanRefsAndTools(body) });
+    steps.push({
+      kind: 'step',
+      label: `<Step ${attrs.id ?? ''}>`,
+      attrs,
+      note: firstSentence(body),
+      detail: clean(body),
+      children: scanRefsAndTools(body),
+    });
   }
   return steps;
 }
@@ -44,16 +58,31 @@ export function parseSkill(path: string, md: string): TraceNode {
   const children: TraceNode[] = [];
   if (root) {
     for (const el of topLevelElements(root.inner)) {
-      if (el.name === 'ExecutionPlan') children.push({ kind: 'section', label: '<ExecutionPlan>', note: 'шаги загрузчика', children: parseSkillSteps(el.inner) });
-      else children.push({ kind: 'section', label: `<${el.name}>`, note: firstSentence(el.inner), detail: clean(el.inner) });
+      if (el.name === 'ExecutionPlan')
+        children.push({
+          kind: 'section',
+          label: '<ExecutionPlan>',
+          note: 'шаги загрузчика',
+          children: parseSkillSteps(el.inner),
+        });
+      else
+        children.push({
+          kind: 'section',
+          label: `<${el.name}>`,
+          note: firstSentence(el.inner),
+          detail: clean(el.inner),
+        });
     }
   }
+  const attrs: Record<string, string> = {};
+  if (fm.name) attrs.name = fm.name;
+  if (root?.name) attrs.root = root.name; // корневой тег (<SddSkill> или иной)
   return {
     kind: 'skill',
     label: `/${fm.name ?? path}`,
     note: firstSentence(fm.description ?? ''),
     detail: fm.description,
-    attrs: fm.name ? { name: fm.name } : {},
+    attrs,
     ref: path,
     children,
   };

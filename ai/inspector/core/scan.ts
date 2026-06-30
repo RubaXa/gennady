@@ -13,16 +13,25 @@ const DIRECTIVE_REF_RE = /[\w./~-]*\.directive\.xml/g;
 /** Содержимое тега для показа: срезать HTML-комментарии (но НЕ внутри `code`-спанов, там это literal-контент), dedent, схлопнуть пустые строки, обрезать. */
 export function clean(s: string): string {
   // odd parts (index % 2 === 1) are `code spans` — keep them verbatim, strip comments only outside
-  const noComments = s.split(/(`[^`]+`)/).map((p, i) => (i % 2 ? p : p.replace(/<!--[\s\S]*?-->/g, ''))).join('');
+  const noComments = s
+    .split(/(`[^`]+`)/)
+    .map((p, i) => (i % 2 ? p : p.replace(/<!--[\s\S]*?-->/g, '')))
+    .join('');
   const lines = noComments.replace(/\n{3,}/g, '\n\n').split('\n');
   const indents = lines.filter((l) => l.trim()).map((l) => (/^[ \t]*/.exec(l)?.[0] ?? '').length);
   const min = indents.length ? Math.min(...indents) : 0;
-  return lines.map((l) => l.slice(min)).join('\n').trim();
+  return lines
+    .map((l) => l.slice(min))
+    .join('\n')
+    .trim();
 }
 
 /** Первое предложение: убрать комментарии, схлопнуть пробелы, обрезать. */
 export function firstSentence(s: string): string {
-  const t = s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = s
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const m = /^(.*?[.!?])(\s|$)/.exec(t);
   return (m ? (m[1] as string) : t).slice(0, 180);
 }
@@ -30,7 +39,8 @@ export function firstSentence(s: string): string {
 /** Атрибуты открывающего тега → map. */
 export function parseAttrs(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const m of raw.matchAll(/([a-zA-Z_:][\w:-]*)\s*=\s*"([^"]*)"/g)) out[m[1] as string] = m[2] as string;
+  for (const m of raw.matchAll(/([a-zA-Z_:][\w:-]*)\s*=\s*"([^"]*)"/g))
+    out[m[1] as string] = m[2] as string;
   return out;
 }
 
@@ -57,11 +67,18 @@ export function nextElement(s: string, from: number): RawEl | null {
   if (m[3] === '/') return { name, attrsRaw: m[2] as string, inner: '', end: openEnd };
   const cm = new RegExp('</' + name + '>').exec(s.slice(openEnd));
   if (!cm) return { name, attrsRaw: m[2] as string, inner: s.slice(openEnd), end: s.length };
-  return { name, attrsRaw: m[2] as string, inner: s.slice(openEnd, openEnd + cm.index), end: openEnd + cm.index + cm[0].length };
+  return {
+    name,
+    attrsRaw: m[2] as string,
+    inner: s.slice(openEnd, openEnd + cm.index),
+    end: openEnd + cm.index + cm[0].length,
+  };
 }
 
 /** Все элементы верхнего уровня строки в порядке появления. */
-export function topLevelElements(inner: string): { name: string; attrs: Record<string, string>; inner: string }[] {
+export function topLevelElements(
+  inner: string
+): { name: string; attrs: Record<string, string>; inner: string }[] {
   const out: { name: string; attrs: Record<string, string>; inner: string }[] = [];
   let cursor = 0;
   while (cursor < inner.length) {
@@ -78,7 +95,8 @@ export function scanRefsAndTools(text: string): TraceNode[] {
   const out: TraceNode[] = [];
   const refs = new Set<string>();
   for (const m of text.matchAll(DIRECTIVE_REF_RE)) refs.add(normalizeDirectivePath(m[0]));
-  for (const ref of refs) out.push({ kind: 'run', label: ref, ref, note: 'активировать директиву' });
+  for (const ref of refs)
+    out.push({ kind: 'run', label: ref, ref, note: 'активировать директиву' });
   // Тул считается ВЫЗОВОМ только внутри inline-code (`...`) — команды пишут в обратных кавычках;
   // голое упоминание в прозе («state — from sdd-state») вызовом не является и не попадает в дерево.
   const code = Array.from(text.matchAll(/`([^`]+)`/g), (m) => m[1] as string).join('\n');

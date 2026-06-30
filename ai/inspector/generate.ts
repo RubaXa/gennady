@@ -28,7 +28,10 @@ function toolHelp(cmd: string): string {
   if (cached !== undefined) return cached;
   let out: string;
   try {
-    out = execSync(`npx tsx ${JSON.stringify(gennady)} ${cmd} --help`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    out = execSync(`npx tsx ${JSON.stringify(gennady)} ${cmd} --help`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     out = `(нет вывода --help для ${cmd})`;
   }
@@ -55,7 +58,7 @@ function tokenFor(node: TraceNode): string | null {
     case 'switch':
       return 'LogicSwitch';
     case 'skill':
-      return '<SddSkill';
+      return node.attrs?.root ? `<${node.attrs.root}` : null;
     case 'section':
     case 'directive':
       return node.label.replace(/[<>]/g, '').split(/\s/)[0] ?? null; // tag name
@@ -70,7 +73,10 @@ function attachLoc(node: TraceNode, file: string, content: string): void {
   let c = content;
   if ((node.kind === 'directive' || node.kind === 'skill') && node.ref) {
     const got = read(node.ref);
-    if (got != null) { f = node.ref; c = got; }
+    if (got != null) {
+      f = node.ref;
+      c = got;
+    }
   }
   const ln = lineOf(c, tokenFor(node));
   if (ln) node.loc = { file: f, line: ln };
@@ -86,21 +92,51 @@ function annotateTools(node: TraceNode): void {
   (node.children ?? []).forEach(annotateTools);
 }
 
-/** SDD-скилы: SKILL.md с корнем <SddSkill> (не-SDD скилы — не наш предмет). */
+/** Все скилы: каждый каталог ai/skills/* с SKILL.md. */
 function skillFiles(): string[] {
   return readdirSync(skillsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => join(skillsDir, d.name, 'SKILL.md'))
-    .filter((p) => existsSync(p) && readFileSync(p, 'utf8').includes('<SddSkill'));
+    .filter((p) => existsSync(p));
+}
+
+/**
+ * Инспектор разбирает только скилы с XML/HTML-формой (корневой элемент после frontmatter).
+ * Markdown-скилы показываем в списке, но помечаем «не поддерживается».
+ */
+function isMarkupSkill(md: string): boolean {
+  const body = md.replace(/^---\n[\s\S]*?\n---\n?/, ''); // срезать frontmatter
+  const t = body.replace(/^\s*(?:<!--[\s\S]*?-->\s*)*/, ''); // и ведущие комментарии/пробелы
+  return /^<[A-Za-z][\w-]*[\s>/]/.test(t);
+}
+
+/** Узел-заглушка для скила, который инспектор не разбирает (не XML/HTML). */
+function unsupportedSkill(rel: string, md: string): TraceNode {
+  const name = (/^name:\s*(.+)$/m.exec(md)?.[1] ?? rel).trim();
+  const desc = (/^description:\s*(.+)$/m.exec(md)?.[1] ?? '').trim();
+  return {
+    kind: 'skill',
+    label: `/${name}`,
+    note: 'не поддерживается — не XML/HTML-форма',
+    detail: desc || undefined,
+    attrs: { name, unsupported: 'true' },
+    ref: rel,
+    children: [],
+  };
 }
 
 const skills: TraceNode[] = [];
 for (const file of skillFiles()) {
   const rel = file.slice(repoRoot.length + 1);
-  const tree = parseSkill(rel, readFileSync(file, 'utf8'));
+  const md = readFileSync(file, 'utf8');
+  if (!isMarkupSkill(md)) {
+    skills.push(unsupportedSkill(rel, md));
+    continue;
+  }
+  const tree = parseSkill(rel, md);
   resolveTree(tree, read);
   annotateTools(tree);
-  attachLoc(tree, rel, readFileSync(file, 'utf8'));
+  attachLoc(tree, rel, md);
   skills.push(tree);
 }
 

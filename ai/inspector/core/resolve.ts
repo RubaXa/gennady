@@ -18,14 +18,21 @@ export type DirectiveReader = (ref: string) => string | null;
  * @param seen Ссылки на текущем пути сверху вниз (для детекта циклов).
  * @param depth Текущая глубина вложенности директив.
  */
-export function resolveTree(node: TraceNode, read: DirectiveReader, seen: Set<string> = new Set(), depth = 0): TraceNode {
+export function resolveTree(
+  node: TraceNode,
+  read: DirectiveReader,
+  seen: Set<string> = new Set(),
+  depth = 0
+): TraceNode {
   if (node.kind === 'run' && node.ref && node.ref.endsWith('.directive.xml')) {
     if (depth >= MAX_DEPTH) {
       node.children = [{ kind: 'unparsed', label: 'предел глубины', note: node.ref }];
       return node;
     }
     if (seen.has(node.ref)) {
-      node.children = [{ kind: 'unparsed', label: '↻ цикл', note: `${node.ref} уже выше по ветке` }];
+      node.children = [
+        { kind: 'unparsed', label: '↻ цикл', note: `${node.ref} уже выше по ветке` },
+      ];
       return node;
     }
     const content = read(node.ref);

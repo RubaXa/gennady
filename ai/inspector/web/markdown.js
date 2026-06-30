@@ -3,7 +3,8 @@
 // Callers depend ONLY on renderMarkdown(text) -> HTML string; everything else here is private.
 
 // Path tokens (group 1) vs word tokens (group 2). Each gets a per-class colour so the eye separates them.
-const TOKEN = /([\w./-]+\.(?:directive\.xml|spec\.md|task-\d+\.md))|\b(AX_[A-Z0-9_]+|STEP_[A-Z0-9_]+|H_[A-Z0-9_]+|sdd-(?:state|task|extract|verify|log|sync|check)|orient|READ_AND_USE_DIRECTIVE|LOGIC_SWITCH|FLOW_VERSION|READINESS|WHEN|DEFAULT)\b/g;
+const TOKEN =
+  /([\w./-]+\.(?:directive\.xml|spec\.md|task-\d+\.md))|\b(AX_[A-Z0-9_]+|STEP_[A-Z0-9_]+|H_[A-Z0-9_]+|sdd-(?:state|task|extract|verify|log|sync|check)|orient|READ_AND_USE_DIRECTIVE|LOGIC_SWITCH|FLOW_VERSION|READINESS|WHEN|DEFAULT)\b/g;
 
 function classify(word) {
   if (word.startsWith('AX_')) return 'tok-axiom';
@@ -19,7 +20,10 @@ function escapeHtml(s) {
 
 /** Wrap recognised tokens in per-class spans (runs on already-escaped text). */
 function highlight(t) {
-  return t.replace(TOKEN, (m, path, word) => '<span class="' + (path ? 'tok-path' : classify(word)) + '">' + m + '</span>');
+  return t.replace(
+    TOKEN,
+    (m, path, word) => '<span class="' + (path ? 'tok-path' : classify(word)) + '">' + m + '</span>'
+  );
 }
 
 /** Inline transforms: `code`, **bold**, per-class token highlight (also inside code spans). */
@@ -46,13 +50,26 @@ export function renderMarkdown(text) {
   let html = '';
   let inList = false;
   let para = [];
-  const flushPara = () => { if (para.length) { html += '<p>' + inline(para.join(' ')) + '</p>'; para = []; } };
-  const flushList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  const flushPara = () => {
+    if (para.length) {
+      html += '<p>' + inline(para.join(' ')) + '</p>';
+      para = [];
+    }
+  };
+  const flushList = () => {
+    if (inList) {
+      html += '</ul>';
+      inList = false;
+    }
+  };
   for (const raw of lines) {
     const line = raw.replace(/\s+$/, '');
     if (/^\s*[-•]\s+/.test(line)) {
       flushPara();
-      if (!inList) { html += '<ul>'; inList = true; }
+      if (!inList) {
+        html += '<ul>';
+        inList = true;
+      }
       html += '<li>' + inline(line.replace(/^\s*[-•]\s+/, '')) + '</li>';
     } else if (!line.trim()) {
       flushPara();

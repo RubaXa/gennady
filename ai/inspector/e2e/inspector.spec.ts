@@ -9,30 +9,40 @@ const shotDir = dirname(fileURLToPath(import.meta.url));
 test('lists skills and descends the sdd-execute trace', async ({ page }) => {
   await page.goto('/');
 
-  // entry: only SDD skills
+  // entry: every skill under ai/skills is listed (XML-form parsed, markdown marked unsupported)
   const skills = page.locator('.skill-btn');
-  await expect(skills).toHaveCount(7);
+  expect(await skills.count()).toBeGreaterThanOrEqual(9);
+  await expect(page.locator('.skill-btn.unsupported').first()).toBeVisible();
 
   // pick sdd-execute
   await page.getByRole('button', { name: '/sdd-execute' }).click();
   await expect(page.locator('.structure .row[data-kind="skill"]').first()).toBeVisible();
 
   // its loader steps are present
-  await expect(page.locator('.structure .lab .tag', { hasText: '<ExecutionPlan>' }).first()).toBeVisible();
+  await expect(
+    page.locator('.structure .lab .tag', { hasText: '<ExecutionPlan>' }).first()
+  ).toBeVisible();
   await expect(page.locator('.structure .lab .tag', { hasText: '<Step GATHER>' })).toBeVisible();
 
   // descend the flow: GATHER → run(execute.directive) → directive root → its BeliefState
   await page.locator('.structure .lab .tag', { hasText: '<Step GATHER>' }).click();
   await page.locator('.structure .lab .tag', { hasText: 'execute.directive.xml' }).first().click();
   await page.locator('.structure .lab .tag', { hasText: '<SddExecuteOrchestrator>' }).click();
-  await expect(page.locator('.structure .lab .tag', { hasText: '<BeliefState>' }).first()).toBeVisible();
+  await expect(
+    page.locator('.structure .lab .tag', { hasText: '<BeliefState>' }).first()
+  ).toBeVisible();
 
   // nodes with a source location carry an "open in editor" control (title = file:line)
-  await expect(page.locator('.structure .opensrc').first()).toHaveAttribute('href', /^\w[\w-]*:\/\/file\/.+:\d+$/);
+  await expect(page.locator('.structure .opensrc').first()).toHaveAttribute(
+    'href',
+    /^\w[\w-]*:\/\/file\/.+:\d+$/
+  );
 
   // sdd-state is a bash command: opening it shows its captured --help
   await page.locator('.structure .lab .tag', { hasText: 'sdd-state' }).first().click();
-  await expect(page.locator('.structure .detail', { hasText: 'npx gennady sdd-state' }).first()).toBeVisible();
+  await expect(
+    page.locator('.structure .detail', { hasText: 'npx gennady sdd-state' }).first()
+  ).toBeVisible();
 
   await page.screenshot({ path: join(shotDir, 'screen-execute.png'), fullPage: true });
 });
@@ -52,7 +62,9 @@ test('the /sdd router LOGIC_SWITCH descends into branch directives', async ({ pa
   // open the switch, then its first branch — which carries a run node into another directive
   await sw.click();
   await page.locator('.structure .lab .tag', { hasText: 'project-setup' }).first().click();
-  await expect(page.locator('.structure .lab .tag', { hasText: 'root.directive.xml' }).first()).toBeVisible();
+  await expect(
+    page.locator('.structure .lab .tag', { hasText: 'root.directive.xml' }).first()
+  ).toBeVisible();
 
   await page.screenshot({ path: join(shotDir, 'screen-router-switch.png'), fullPage: true });
 });
@@ -79,7 +91,19 @@ test('debug mode: step into a directive and advance the flow', async ({ page }) 
   await expect(page.locator('.dbg-stack')).toContainText('SddMigrationV1V2');
   // entered directive sits collapsed right under the entry divider, no extra frame
   await expect(dbg.locator('.dbg-div', { hasText: 'ветка → загружена' }).first()).toBeVisible();
-  await expect(dbg.locator('.row[data-kind="directive"]:visible .tag', { hasText: 'SddMigrationV1V2' }).first()).toBeVisible();
+  await expect(
+    dbg.locator('.row[data-kind="directive"]:visible .tag', { hasText: 'SddMigrationV1V2' }).first()
+  ).toBeVisible();
 
   await page.screenshot({ path: join(shotDir, 'screen-debug.png'), fullPage: true });
+});
+
+test('a non-XML skill is listed but marked unsupported (no tree/debugger)', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.skill-btn.unsupported').first().click();
+  await expect(page.locator('.unsupported-panel')).toBeVisible();
+  await expect(page.locator('.unsupported-title')).toContainText('не поддерживается');
+  // no structure tree / debugger for unsupported skills
+  await expect(page.locator('.structure')).toHaveCount(0);
+  await expect(page.locator('.dbg')).toHaveCount(0);
 });

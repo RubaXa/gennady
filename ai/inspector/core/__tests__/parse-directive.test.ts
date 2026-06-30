@@ -12,7 +12,8 @@ import type { TraceNode } from '../model.ts';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const xml = readFileSync(join(repoRoot, 'ai/directives/sdd-v2/execute.directive.xml'), 'utf8');
 const tree = parseDirective('ai/directives/sdd-v2/execute.directive.xml', xml);
-const section = (label: string): TraceNode | undefined => tree.children?.find((c) => c.label === label);
+const section = (label: string): TraceNode | undefined =>
+  tree.children?.find((c) => c.label === label);
 const deepRun = (n: TraceNode): string[] =>
   (n.children ?? []).flatMap((c) => (c.kind === 'run' && c.ref ? [c.ref] : []).concat(deepRun(c)));
 
@@ -24,7 +25,14 @@ test('root tag is the directive element', () => {
 
 test('top-level sections appear in document order', () => {
   const labels = (tree.children ?? []).map((c) => c.label);
-  assert.deepEqual(labels, ['<Mission>', '<BeliefState>', '<HaltConditions>', '<ExecutionPlan>', '<HardForbidden>', '<ChatOutput>']);
+  assert.deepEqual(labels, [
+    '<Mission>',
+    '<BeliefState>',
+    '<HaltConditions>',
+    '<ExecutionPlan>',
+    '<HardForbidden>',
+    '<ChatOutput>',
+  ]);
 });
 
 test('BeliefState carries 13 axioms with id + summary', () => {
@@ -39,7 +47,13 @@ test('BeliefState carries 13 axioms with id + summary', () => {
 test('HaltConditions carries the 5 halts', () => {
   const h = section('<HaltConditions>');
   const ids = (h?.children ?? []).map((c) => c.label).sort();
-  assert.deepEqual(ids, ['H_AMBIGUOUS_TASK', 'H_AUDIT_FAIL_AFTER_RETRY', 'H_CODE_REVIEW_BLOCKER', 'H_NO_TASKS', 'H_PAUSED_AWAITING_OPERATOR']);
+  assert.deepEqual(ids, [
+    'H_AMBIGUOUS_TASK',
+    'H_AUDIT_FAIL_AFTER_RETRY',
+    'H_CODE_REVIEW_BLOCKER',
+    'H_NO_TASKS',
+    'H_PAUSED_AWAITING_OPERATOR',
+  ]);
 });
 
 test('ExecutionPlan carries the 10 steps with ids', () => {
@@ -51,9 +65,18 @@ test('ExecutionPlan carries the 10 steps with ids', () => {
 
 test('READ_AND_USE targets are captured as run nodes', () => {
   const refs = deepRun(tree);
-  assert.ok(refs.some((r) => r.includes('phase-execution-protocol')), 'phase-execution');
-  assert.ok(refs.some((r) => r.includes('audit.directive')), 'audit');
-  assert.ok(refs.some((r) => r.includes('code-review.directive')), 'code-review');
+  assert.ok(
+    refs.some((r) => r.includes('phase-execution-protocol')),
+    'phase-execution'
+  );
+  assert.ok(
+    refs.some((r) => r.includes('audit.directive')),
+    'audit'
+  );
+  assert.ok(
+    refs.some((r) => r.includes('code-review.directive')),
+    'code-review'
+  );
 });
 
 test('a step exposes its Action with tools / switches', () => {
@@ -96,7 +119,10 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
   const step0 = ep?.children?.[0];
   const findSwitch = (n: TraceNode): TraceNode | null => {
     if (n.kind === 'switch') return n;
-    for (const c of n.children ?? []) { const r = findSwitch(c); if (r) return r; }
+    for (const c of n.children ?? []) {
+      const r = findSwitch(c);
+      if (r) return r;
+    }
     return null;
   };
   const sw = findSwitch(step0 as TraceNode);

@@ -12,9 +12,12 @@ import type { TraceNode } from '../model.ts';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const md = readFileSync(join(repoRoot, 'ai/skills/sdd-execute/SKILL.md'), 'utf8');
 const skill = parseSkill('ai/skills/sdd-execute/SKILL.md', md);
-const plan = (n: TraceNode): TraceNode | undefined => n.children?.find((c) => c.label === '<ExecutionPlan>');
-const stepById = (n: TraceNode, id: string): TraceNode | undefined => plan(n)?.children?.find((s) => s.attrs?.id === id);
-const refsOf = (n: TraceNode | undefined): string[] => (n?.children ?? []).filter((c) => c.kind === 'run').map((c) => c.ref ?? '');
+const plan = (n: TraceNode): TraceNode | undefined =>
+  n.children?.find((c) => c.label === '<ExecutionPlan>');
+const stepById = (n: TraceNode, id: string): TraceNode | undefined =>
+  plan(n)?.children?.find((s) => s.attrs?.id === id);
+const refsOf = (n: TraceNode | undefined): string[] =>
+  (n?.children ?? []).filter((c) => c.kind === 'run').map((c) => c.ref ?? '');
 
 test('skill node carries name + description', () => {
   assert.equal(skill.kind, 'skill');
@@ -29,8 +32,14 @@ test('ExecutionPlan exposes GATHER / PREFLIGHT / EMBODY in order', () => {
 
 test('GATHER reads the main directive and runs sdd-state', () => {
   const g = stepById(skill, 'GATHER');
-  assert.ok(refsOf(g).some((r) => r === 'ai/directives/sdd-v2/execute.directive.xml'), 'execute.directive ref normalized');
-  assert.ok((g?.children ?? []).some((c) => c.kind === 'tool' && c.label === 'sdd-state'), 'sdd-state tool');
+  assert.ok(
+    refsOf(g).some((r) => r === 'ai/directives/sdd-v2/execute.directive.xml'),
+    'execute.directive ref normalized'
+  );
+  assert.ok(
+    (g?.children ?? []).some((c) => c.kind === 'tool' && c.label === 'sdd-state'),
+    'sdd-state tool'
+  );
 });
 
 test('PREFLIGHT references the migration + readiness directives', () => {
@@ -40,8 +49,13 @@ test('PREFLIGHT references the migration + readiness directives', () => {
 });
 
 test('resolveTree expands a run node into the referenced directive tree', () => {
-  const tree: TraceNode = { kind: 'skill', label: '/x', children: [{ kind: 'run', label: 'a', ref: 'a.directive.xml' }] };
-  const read = (ref: string): string | null => (ref === 'a.directive.xml' ? '<RootA ver="1"><Mission>hi.</Mission></RootA>' : null);
+  const tree: TraceNode = {
+    kind: 'skill',
+    label: '/x',
+    children: [{ kind: 'run', label: 'a', ref: 'a.directive.xml' }],
+  };
+  const read = (ref: string): string | null =>
+    ref === 'a.directive.xml' ? '<RootA ver="1"><Mission>hi.</Mission></RootA>' : null;
   resolveTree(tree, read);
   const run = tree.children?.[0];
   assert.equal(run?.children?.[0]?.kind, 'directive');
@@ -50,7 +64,8 @@ test('resolveTree expands a run node into the referenced directive tree', () => 
 
 test('resolveTree marks a cycle instead of looping forever', () => {
   const tree: TraceNode = { kind: 'run', label: 'a', ref: 'a.directive.xml' };
-  const read = (): string => '<RootA><ExecutionPlan><Step id="S"><Action>read a.directive.xml</Action></Step></ExecutionPlan></RootA>';
+  const read = (): string =>
+    '<RootA><ExecutionPlan><Step id="S"><Action>read a.directive.xml</Action></Step></ExecutionPlan></RootA>';
   resolveTree(tree, read);
   // descend until the self-reference is caught
   const json = JSON.stringify(tree);

@@ -19,7 +19,9 @@ test('renders a code span and keeps following text', () => {
 });
 
 test('classifies tokens by kind', () => {
-  const h = renderMarkdown('AX_AUDIT_HOOK STEP_1_PLAN H_NO_TASKS sdd-check ai/x/y.directive.xml FLOW_VERSION');
+  const h = renderMarkdown(
+    'AX_AUDIT_HOOK STEP_1_PLAN H_NO_TASKS sdd-check ai/x/y.directive.xml FLOW_VERSION'
+  );
   assert.match(h, /class="tok-axiom">AX_AUDIT_HOOK/);
   assert.match(h, /class="tok-step">STEP_1_PLAN/);
   assert.match(h, /class="tok-halt">H_NO_TASKS/);
@@ -62,12 +64,42 @@ test('clean still strips a standalone authoring comment (outside code)', () => {
 
 // --- fuzz / property tests: highlighting must be tolerant of ANY input ---
 const stripTags = (h: string): string => h.replace(/<[^>]*>/g, '');
-const unescape = (h: string): string => h.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const unescape = (h: string): string =>
+  h.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const norm = (x: string): string => x.replace(/[`*]/g, ''); // markdown markers are consumed; ignore them
 const balanced = (h: string, tag: string): boolean =>
-  (h.match(new RegExp('<' + tag + '[ >]', 'g')) ?? []).length === (h.match(new RegExp('</' + tag + '>', 'g')) ?? []).length;
+  (h.match(new RegExp('<' + tag + '[ >]', 'g')) ?? []).length ===
+  (h.match(new RegExp('</' + tag + '>', 'g')) ?? []).length;
 
-const ATOMS = ['a', 'B', '7', ' ', '`', '*', '<', '>', '&', '/', '.', '-', '_', ':', '(', ')', '\n', '→', '->', 'AX_X', 'STEP_Y', 'H_Z', 'sdd-task', 'x.directive.xml', 'LOGIC_SWITCH', '**', '``'];
+const ATOMS = [
+  'a',
+  'B',
+  '7',
+  ' ',
+  '`',
+  '*',
+  '<',
+  '>',
+  '&',
+  '/',
+  '.',
+  '-',
+  '_',
+  ':',
+  '(',
+  ')',
+  '\n',
+  '→',
+  '->',
+  'AX_X',
+  'STEP_Y',
+  'H_Z',
+  'sdd-task',
+  'x.directive.xml',
+  'LOGIC_SWITCH',
+  '**',
+  '``',
+];
 function randInput(): string {
   let s = '';
   const n = Math.floor(Math.random() * 26);
@@ -77,11 +109,21 @@ function randInput(): string {
 
 function assertInvariants(s: string): void {
   let h = '';
-  assert.doesNotThrow(() => { h = renderInline(s); }, `threw on ${JSON.stringify(s)}`);
+  assert.doesNotThrow(
+    () => {
+      h = renderInline(s);
+    },
+    `threw on ${JSON.stringify(s)}`
+  );
   const noTags = stripTags(h);
   assert.ok(!/[<>]/.test(noTags), `raw <> leaked for ${JSON.stringify(s)} -> ${h}`);
-  for (const tag of ['span', 'code', 'strong']) assert.ok(balanced(h, tag), `unbalanced <${tag}> for ${JSON.stringify(s)} -> ${h}`);
-  assert.equal(norm(unescape(noTags)), norm(s), `text changed for ${JSON.stringify(s)} -> ${JSON.stringify(unescape(noTags))}`);
+  for (const tag of ['span', 'code', 'strong'])
+    assert.ok(balanced(h, tag), `unbalanced <${tag}> for ${JSON.stringify(s)} -> ${h}`);
+  assert.equal(
+    norm(unescape(noTags)),
+    norm(s),
+    `text changed for ${JSON.stringify(s)} -> ${JSON.stringify(unescape(noTags))}`
+  );
 }
 
 test('fuzz: renderInline holds invariants on 2000 random inputs', () => {
@@ -89,7 +131,26 @@ test('fuzz: renderInline holds invariants on 2000 random inputs', () => {
 });
 
 test('fuzz: adversarial fixed cases', () => {
-  for (const s of ['', '`', '``', '```', 'a`b', 'a``b', '`a``b`', '**', '*** x ***', '<script>', '<>&', 'AX_<b>', '`<!--x-->`', 'sdd-task`', 'x.directive.xml.directive.xml', '→->`*`<', '`'.repeat(9), '**`AX_X`**']) {
+  for (const s of [
+    '',
+    '`',
+    '``',
+    '```',
+    'a`b',
+    'a``b',
+    '`a``b`',
+    '**',
+    '*** x ***',
+    '<script>',
+    '<>&',
+    'AX_<b>',
+    '`<!--x-->`',
+    'sdd-task`',
+    'x.directive.xml.directive.xml',
+    '→->`*`<',
+    '`'.repeat(9),
+    '**`AX_X`**',
+  ]) {
     assertInvariants(s);
   }
 });
@@ -99,16 +160,23 @@ test('fuzz: renderMarkdown (block) keeps word-chars + escapes + balances on 1500
   for (let i = 0; i < 1500; i++) {
     const s = randInput();
     let h = '';
-    assert.doesNotThrow(() => { h = renderMarkdown(s); }, `threw on ${JSON.stringify(s)}`);
+    assert.doesNotThrow(
+      () => {
+        h = renderMarkdown(s);
+      },
+      `threw on ${JSON.stringify(s)}`
+    );
     const noTags = stripTags(h);
     assert.ok(!/[<>]/.test(noTags), `raw <> leaked for ${JSON.stringify(s)} -> ${h}`);
-    for (const tag of ['span', 'code', 'strong', 'p', 'ul', 'li']) assert.ok(balanced(h, tag), `unbalanced <${tag}> for ${JSON.stringify(s)}`);
+    for (const tag of ['span', 'code', 'strong', 'p', 'ul', 'li'])
+      assert.ok(balanced(h, tag), `unbalanced <${tag}> for ${JSON.stringify(s)}`);
     assert.equal(words(unescape(noTags)), words(s), `word-chars changed for ${JSON.stringify(s)}`);
   }
 });
 
 test('clean → renderMarkdown: SECTION marker survives end-to-end (regression)', () => {
-  const src = 'Run `sdd-migrate anchors --all --write` (wraps sections in `<!--SECTION:-->` markers). Verify with `sdd-check`.';
+  const src =
+    'Run `sdd-migrate anchors --all --write` (wraps sections in `<!--SECTION:-->` markers). Verify with `sdd-check`.';
   const h = renderMarkdown(clean(src));
   assert.match(h, /<code>&lt;!--SECTION:--&gt;<\/code>/);
   assert.match(h, /Verify with/);
