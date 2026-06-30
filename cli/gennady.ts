@@ -159,6 +159,38 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/vcs-react/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'sdd-state':
+      await import('./cmd/sdd-state/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-check':
+      await import('./cmd/sdd-check/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-extract':
+      await import('./cmd/sdd-extract/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-verify':
+      await import('./cmd/sdd-verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-log':
+      await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-sync':
+      await import('./cmd/sdd-sync/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-task':
+      await import('./cmd/sdd-task/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-migrate':
+      await import('./cmd/sdd-migrate/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -292,6 +324,38 @@ switch (command) {
 
   case 'vcs-react':
     await import('./cmd/vcs-react/index.ts');
+    break;
+
+  case 'sdd-state':
+    await import('./cmd/sdd-state/index.ts');
+    break;
+
+  case 'sdd-check':
+    await import('./cmd/sdd-check/index.ts');
+    break;
+
+  case 'sdd-extract':
+    await import('./cmd/sdd-extract/index.ts');
+    break;
+
+  case 'sdd-verify':
+    await import('./cmd/sdd-verify/index.ts');
+    break;
+
+  case 'sdd-log':
+    await import('./cmd/sdd-log/index.ts');
+    break;
+
+  case 'sdd-sync':
+    await import('./cmd/sdd-sync/index.ts');
+    break;
+
+  case 'sdd-task':
+    await import('./cmd/sdd-task/index.ts');
+    break;
+
+  case 'sdd-migrate':
+    await import('./cmd/sdd-migrate/index.ts');
     break;
 
   default:
