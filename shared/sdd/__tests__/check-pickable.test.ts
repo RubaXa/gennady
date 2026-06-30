@@ -16,7 +16,10 @@ const ids = (refs: TicketRef[]): string[] => refs.map((r) => r.taskId ?? '');
 
 describe('pickableTasks', () => {
   it('a TODO ticket whose deps are all DONE is pickable', () => {
-    assert.deepStrictEqual(ids(pickableTasks([ref('A', '[x] DONE'), ref('B', '[ ] TODO', ['A'])])), ['B']);
+    assert.deepStrictEqual(
+      ids(pickableTasks([ref('A', '[x] DONE'), ref('B', '[ ] TODO', ['A'])])),
+      ['B']
+    );
   });
 
   it('a TODO ticket with a not-yet-DONE dep is blocked', () => {
@@ -33,6 +36,9 @@ describe('pickableTasks', () => {
   });
 
   it('a placeholder "None (…)" dependency is treated as no dependency', () => {
-    assert.deepStrictEqual(ids(pickableTasks([ref('A', '[ ] TODO', ['None (via scope cascade)'])])), ['A']);
+    assert.deepStrictEqual(
+      ids(pickableTasks([ref('A', '[ ] TODO', ['None (via scope cascade)'])])),
+      ['A']
+    );
   });
 });

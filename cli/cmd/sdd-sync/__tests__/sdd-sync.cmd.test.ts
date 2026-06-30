@@ -126,7 +126,11 @@ describe('SddSyncCommand', () => {
     assert.strictEqual(missing.ok === false && missing.exitCode, 1);
 
     const noMeta = join(dir, 'nometa.md');
-    writeFileSync(noMeta, '# t\n<!--SECTION:META-->\n- nothing useful\n<!--/SECTION:META-->\n', 'utf-8');
+    writeFileSync(
+      noMeta,
+      '# t\n<!--SECTION:META-->\n- nothing useful\n<!--/SECTION:META-->\n',
+      'utf-8'
+    );
     const meta = await mod.run(argv(noMeta));
     assert.strictEqual(meta.ok === false && meta.exitCode, 2);
   });

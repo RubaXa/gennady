@@ -81,7 +81,10 @@ describe('SddLogCommand', () => {
   it('appends the round-close block', async () => {
     const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
     assert.strictEqual(outcome.ok, true);
-    assert.match(readFileSync(ticket, 'utf-8'), /#### Round close\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE/);
+    assert.match(
+      readFileSync(ticket, 'utf-8'),
+      /#### Round close\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE/
+    );
   });
 
   it('is append-only — prior sections are untouched', async () => {

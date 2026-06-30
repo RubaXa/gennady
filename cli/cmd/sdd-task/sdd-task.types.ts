@@ -60,7 +60,9 @@ export function formatPlan(
 
   lines.push('', 'Phases Overview:');
   for (const p of phases) {
-    lines.push(`  ${p.id} ${p.kind}  deps=${p.deps.length ? p.deps.join(',') : '—'}  status=${p.status}`);
+    lines.push(
+      `  ${p.id} ${p.kind}  deps=${p.deps.length ? p.deps.join(',') : '—'}  status=${p.status}`
+    );
   }
 
   lines.push('', 'Per-phase read-manifest (AX_READ_PER_MANIFEST):');
@@ -80,7 +82,9 @@ export function formatPlan(
     const pg = gatesForPhase(d, gates);
     lines.push(`  gates:       ${pg.length ? pg.map((g) => g.command).join(' · ') : '—'}`);
     lines.push(`  inputs:      ${d.inputs ?? 'none'}`);
-    lines.push('  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above');
+    lines.push(
+      '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+    );
   }
 
   if (gates.length) {

@@ -41,7 +41,8 @@ export function injectAnchors(content: string): { text: string; injected: string
   const headers: { idx: number; level: number; name: string | null }[] = [];
   lines.forEach((line, i) => {
     const m = /^(#{2,3})\s+(.+?)\s*$/.exec(line);
-    if (m && m[1] && m[2]) headers.push({ idx: i, level: m[1].length, name: canonicalName(m[1].length, m[2]) });
+    if (m && m[1] && m[2])
+      headers.push({ idx: i, level: m[1].length, name: canonicalName(m[1].length, m[2]) });
   });
   // #endregion END_HEADERS
 

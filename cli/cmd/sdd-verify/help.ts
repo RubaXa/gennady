@@ -20,9 +20,13 @@ export function printHelp(): void {
   console.info('');
   console.info('Output:');
   console.info('  success → [verify] ✅ ALL PASS (N/N), then ✅ <gate> (<duration>) per gate');
-  console.info('  failure → only failed gates dump exit code + captured output; passed gates stay ✅');
+  console.info(
+    '  failure → only failed gates dump exit code + captured output; passed gates stay ✅'
+  );
   console.info('');
   console.info('Exit codes: 0 all gates pass · 1 a gate failed');
   console.info('');
-  console.info('Required scripts are verified by gennady sdd-state (readiness); sdd-verify assumes they exist.');
+  console.info(
+    'Required scripts are verified by gennady sdd-state (readiness); sdd-verify assumes they exist.'
+  );
 }

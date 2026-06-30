@@ -6,11 +6,15 @@
  * @purpose Print CLI help for the sdd-check command.
  */
 export function printHelp(): void {
-  console.info('gennady sdd-check — Mechanical audit of SDD artifacts (the deterministic half of audit)');
+  console.info(
+    'gennady sdd-check — Mechanical audit of SDD artifacts (the deterministic half of audit)'
+  );
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
-  console.info('  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/');
+  console.info(
+    '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
+  );
   console.info('');
   console.info('Mechanical checks (per ticket):');
   console.info('  - anchor balance · required sections (META, EXECUTION_LOG)');
@@ -19,7 +23,9 @@ export function printHelp(): void {
   console.info('  - DONE with an unresolved BLOCKED · DONE with leftover placeholders');
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
   console.info('');
-  console.info('  Deferred to the audit agent (semantic): closed-world symbol-diff, BDD↔test mapping,');
+  console.info(
+    '  Deferred to the audit agent (semantic): closed-world symbol-diff, BDD↔test mapping,'
+  );
   console.info('  rules-cascade resolution, stale-after-pivot.');
   console.info('');
   console.info('Output: ESLint-style `file: severity: code  message` + summary.');

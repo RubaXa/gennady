@@ -45,17 +45,17 @@ $ npx gennady sdd-sync ticket.md module.3-tasks.md scope.3-tasks.md
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                  | Type         | Purpose                                                                |
-| --------------------- | ------------ | ---------------------------------------------------------------------- |
-| `run`                 | Command      | Точка входа CLI: Meta → Task-ID/Status, обнаружение индексов, синк, verify |
-| `discoverIndexes`     | Utility      | Сбор `*.3-tasks.md` от каталога тикета вверх (cap 8)                     |
-| `parseMeta`           | Utility      | (`shared/sdd/tracker`) Task-ID + Status из тела Meta                     |
-| `updateTrackerStatus` | Utility      | (`shared/sdd/tracker`) хирургическая правка ячейки Status по Task-ID      |
-| `extractSection`      | Utility      | (`shared/sdd/section`) извлечение Meta                                   |
-| `badInvocation` / `fileError` / `metaError` | Utility | Билдеры диагностик                              |
-| `TicketMeta`          | Value Object | `{ taskId, status }` (оба nullable)                                     |
-| `TrackerUpdate`       | Type         | ok(text, changed) либо fail(`no_table`/`task_not_found`)                 |
-| `SyncOutcome`         | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                 |
+| Name                                        | Type         | Purpose                                                                    |
+| ------------------------------------------- | ------------ | -------------------------------------------------------------------------- |
+| `run`                                       | Command      | Точка входа CLI: Meta → Task-ID/Status, обнаружение индексов, синк, verify |
+| `discoverIndexes`                           | Utility      | Сбор `*.3-tasks.md` от каталога тикета вверх (cap 8)                       |
+| `parseMeta`                                 | Utility      | (`shared/sdd/tracker`) Task-ID + Status из тела Meta                       |
+| `updateTrackerStatus`                       | Utility      | (`shared/sdd/tracker`) хирургическая правка ячейки Status по Task-ID       |
+| `extractSection`                            | Utility      | (`shared/sdd/section`) извлечение Meta                                     |
+| `badInvocation` / `fileError` / `metaError` | Utility      | Билдеры диагностик                                                         |
+| `TicketMeta`                                | Value Object | `{ taskId, status }` (оба nullable)                                        |
+| `TrackerUpdate`                             | Type         | ok(text, changed) либо fail(`no_table`/`task_not_found`)                   |
+| `SyncOutcome`                               | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                   |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -86,10 +86,10 @@ $ npx gennady sdd-sync ticket.md module.3-tasks.md scope.3-tasks.md
 
 ## 5. Public Options & Policies
 
-| Argument        | Type   | Description                                              |
-| --------------- | ------ | -------------------------------------------------------- |
-| `<ticket>`      | string | Тикет-источник статуса (читается Meta)                   |
-| `[index ...]`   | string | Явные трекеры; без них — авто-обход вверх по `*.3-tasks.md` |
+| Argument      | Type   | Description                                                 |
+| ------------- | ------ | ----------------------------------------------------------- |
+| `<ticket>`    | string | Тикет-источник статуса (читается Meta)                      |
+| `[index ...]` | string | Явные трекеры; без них — авто-обход вверх по `*.3-tasks.md` |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -110,6 +110,7 @@ shared/sdd/tracker.ts    # parseMeta + updateTrackerStatus (header-located, surg
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **E2E:** отложен (прокси-блок в песочнице). Покрытие: unit (pure + run) + lint + typecheck.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

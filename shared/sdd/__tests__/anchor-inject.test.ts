@@ -39,7 +39,16 @@ describe('injectAnchors', () => {
     const { injected } = injectAnchors(V1);
     assert.deepStrictEqual(
       [...injected].sort(),
-      ['BDD', 'EXECUTION_LOG', 'META', 'PHASES_OVERVIEW', 'PHASE_P1', 'PHASE_P2', 'TEST_COVERAGE', 'VERIFICATION'].sort()
+      [
+        'BDD',
+        'EXECUTION_LOG',
+        'META',
+        'PHASES_OVERVIEW',
+        'PHASE_P1',
+        'PHASE_P2',
+        'TEST_COVERAGE',
+        'VERIFICATION',
+      ].sort()
     );
   });
 

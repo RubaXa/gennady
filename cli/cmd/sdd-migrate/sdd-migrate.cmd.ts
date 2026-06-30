@@ -46,7 +46,8 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
     (a: string) => typeof a === 'string' && a !== 'sdd-migrate'
   );
   const mode = positional[0];
-  if (mode !== 'anchors') return badInvocation(`unknown mode "${mode ?? ''}" — only "anchors" is supported`);
+  if (mode !== 'anchors')
+    return badInvocation(`unknown mode "${mode ?? ''}" — only "anchors" is supported`);
 
   const write = args.write === true || args.write === 'true';
   const all = args.all === true || args.all === 'true';
@@ -87,7 +88,9 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
   }
   // #endregion END_APPLY
 
-  logger.debug(`[SddMigrateCommand#run] anchors ${write ? 'write' : 'dry-run'} over ${targets.length} ticket(s)`);
+  logger.debug(
+    `[SddMigrateCommand#run] anchors ${write ? 'write' : 'dry-run'} over ${targets.length} ticket(s)`
+  );
   const header = `[sdd-migrate anchors] ${write ? 'WRITE' : 'DRY-RUN'} · ${targets.length} ticket(s)`;
   const footer = write
     ? `\n${changed} written. Verify: gennady sdd-check --all`

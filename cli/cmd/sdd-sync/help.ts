@@ -13,13 +13,19 @@ export function printHelp(): void {
   console.info('');
   console.info('Behaviour:');
   console.info('  Reads Task-ID + Status from the ticket Meta, then for each tracker:');
-  console.info('    - finds the row by Task-ID, rewrites only its Status cell (column found by header)');
+  console.info(
+    '    - finds the row by Task-ID, rewrites only its Status cell (column found by header)'
+  );
   console.info('    - verifies the write persisted before reporting "updated"');
-  console.info('  With no explicit indexes, every *.3-tasks.md from the ticket dir upward is synced');
+  console.info(
+    '  With no explicit indexes, every *.3-tasks.md from the ticket dir upward is synced'
+  );
   console.info('  (module → scope → project).');
   console.info('');
   console.info('Report lines: updated / in-sync / no-row / no-table / unreadable per index.');
   console.info('');
   console.info('Exit codes:');
-  console.info('  0 synced (report)   1 ticket unreadable / verify failed   2 Meta unparseable   4 bad invocation');
+  console.info(
+    '  0 synced (report)   1 ticket unreadable / verify failed   2 Meta unparseable   4 bad invocation'
+  );
 }

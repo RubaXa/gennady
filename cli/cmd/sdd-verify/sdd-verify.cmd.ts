@@ -4,7 +4,15 @@
 
 import { spawnSync } from 'node:child_process';
 import { logger } from '#logger';
-import { gatesFor, verdict, type GateResult, type GateRunResult, type GateRunner, type Profile, type VerifyOutcome } from './sdd-verify.types.ts';
+import {
+  gatesFor,
+  verdict,
+  type GateResult,
+  type GateRunResult,
+  type GateRunner,
+  type Profile,
+  type VerifyOutcome,
+} from './sdd-verify.types.ts';
 
 /**
  * @purpose Default gate runner — spawn `command args` without a shell, capturing exit code and combined output.

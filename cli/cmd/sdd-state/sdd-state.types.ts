@@ -77,7 +77,9 @@ export function formatSnapshot(s: StateSnapshot): string {
     lines.push('# (portal present, no scopes listed yet)');
   } else {
     for (const sc of s.scopes) {
-      lines.push(`${sc.name}\t${sc.type}\t${sc.status}\t${sc.description || '—'}\t${sc.specPath ?? '-'}`);
+      lines.push(
+        `${sc.name}\t${sc.type}\t${sc.status}\t${sc.description || '—'}\t${sc.specPath ?? '-'}`
+      );
     }
   }
 
@@ -86,7 +88,9 @@ export function formatSnapshot(s: StateSnapshot): string {
 
   if (s.probe) {
     lines.push('', '[PROBE]');
-    lines.push(`CODE=${s.probe.codePresent ? 'present' : 'absent'}\t${s.probe.codeFileCount} file(s)`);
+    lines.push(
+      `CODE=${s.probe.codePresent ? 'present' : 'absent'}\t${s.probe.codeFileCount} file(s)`
+    );
     if (s.probe.codeDirs.length > 0) lines.push(`code-dirs\t${s.probe.codeDirs.join(', ')}`);
     lines.push(`INFRA=${s.probe.infraPresent ? 'present' : 'absent'}`);
     if (s.probe.configFiles.length > 0) lines.push(`configs\t${s.probe.configFiles.join(', ')}`);

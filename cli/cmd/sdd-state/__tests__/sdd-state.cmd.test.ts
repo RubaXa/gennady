@@ -68,7 +68,11 @@ describe('SddStateCommand', () => {
     writeFileSync(join(ready, 'tsconfig.json'), '{}\n', 'utf-8');
 
     noPortal = mkdtempSync(join(tmpdir(), 'sdd-state-none-'));
-    writeFileSync(join(noPortal, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }), 'utf-8');
+    writeFileSync(
+      join(noPortal, 'package.json'),
+      JSON.stringify({ scripts: { test: 'node --test' } }),
+      'utf-8'
+    );
 
     bare = mkdtempSync(join(tmpdir(), 'sdd-state-bare-'));
 

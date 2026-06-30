@@ -3,7 +3,14 @@
 // @tasks: N/A
 
 /** @purpose Every class a script can be tagged with; `umbrella`/`unknown` are never selectable gates. */
-export type ScriptClass = 'typecheck' | 'gennady' | 'lint' | 'test' | 'format' | 'umbrella' | 'unknown';
+export type ScriptClass =
+  | 'typecheck'
+  | 'gennady'
+  | 'lint'
+  | 'test'
+  | 'format'
+  | 'umbrella'
+  | 'unknown';
 
 /** @purpose The selectable gate classes — the subset a verify gate actually runs. */
 export type GateClass = Exclude<ScriptClass, 'umbrella' | 'unknown'>;
@@ -64,7 +71,9 @@ export function classifyScript(name: string, body: string): ScriptClass[] {
   )
     classes.push('typecheck');
 
-  const lintName = /^(lint|lint:all|lint-check|eslint|mc:eslint|stylist:lint|stylelint)$/.test(name);
+  const lintName = /^(lint|lint:all|lint-check|eslint|mc:eslint|stylist:lint|stylelint)$/.test(
+    name
+  );
   const lintBody = hasCategory(body, 'lint');
   if (
     (lintName || lintBody) &&

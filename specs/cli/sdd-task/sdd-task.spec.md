@@ -58,18 +58,18 @@ Gates (all):
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                  | Type         | Purpose                                                                |
-| --------------------- | ------------ | ---------------------------------------------------------------------- |
-| `run`                 | Command      | Точка входа CLI: извлечение планировочных секций, сборка, формат         |
-| `formatPlan`          | Utility      | Рендер планировочной поверхности + per-phase manifest + DO-NOT-READ      |
-| `ruleId`              | Utility      | rule-link → rule-id (basename без `.xml`) для матчинга gate                |
-| `parseMetaInfo`       | Utility      | (`shared/sdd/ticket`) Meta → taskId/status/purpose/scope/module/deps/specRefs |
-| `parsePhasesOverview` | Utility      | (`shared/sdd/ticket`) таблица фаз → `PhaseOverview[]`                     |
-| `parsePhaseDetail`    | Utility      | (`shared/sdd/ticket`) тело фазы → objective/rules/targetFiles/inputs/exit  |
-| `parseVerification`   | Utility      | (`shared/sdd/ticket`) таблица gate → `Gate[]`                             |
-| `badInvocation` / `fileError` / `notATicket` | Utility | Билдеры диагностик                            |
-| `MetaInfo` / `SpecRef` / `PhaseOverview` / `PhaseDetail` / `Gate` | Value Object | Структуры тикета (`shared/sdd/ticket`) |
-| `TaskOutcome`         | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                 |
+| Name                                                              | Type         | Purpose                                                                       |
+| ----------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| `run`                                                             | Command      | Точка входа CLI: извлечение планировочных секций, сборка, формат              |
+| `formatPlan`                                                      | Utility      | Рендер планировочной поверхности + per-phase manifest + DO-NOT-READ           |
+| `ruleId`                                                          | Utility      | rule-link → rule-id (basename без `.xml`) для матчинга gate                   |
+| `parseMetaInfo`                                                   | Utility      | (`shared/sdd/ticket`) Meta → taskId/status/purpose/scope/module/deps/specRefs |
+| `parsePhasesOverview`                                             | Utility      | (`shared/sdd/ticket`) таблица фаз → `PhaseOverview[]`                         |
+| `parsePhaseDetail`                                                | Utility      | (`shared/sdd/ticket`) тело фазы → objective/rules/targetFiles/inputs/exit     |
+| `parseVerification`                                               | Utility      | (`shared/sdd/ticket`) таблица gate → `Gate[]`                                 |
+| `badInvocation` / `fileError` / `notATicket`                      | Utility      | Билдеры диагностик                                                            |
+| `MetaInfo` / `SpecRef` / `PhaseOverview` / `PhaseDetail` / `Gate` | Value Object | Структуры тикета (`shared/sdd/ticket`)                                        |
+| `TaskOutcome`                                                     | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                      |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -100,10 +100,10 @@ Gates (all):
 
 ## 5. Public Options & Policies
 
-| Argument         | Type   | Description                          |
-| ---------------- | ------ | ------------------------------------ |
-| `<ticket-path>`  | string | Путь к тикету → планировочная поверхность одного тикета |
-| _(без аргумента)_ | —     | **Карта исполнения**: pickable-набор + заблокированные (детерминированно из трекеров) |
+| Argument          | Type   | Description                                                                           |
+| ----------------- | ------ | ------------------------------------------------------------------------------------- |
+| `<ticket-path>`   | string | Путь к тикету → планировочная поверхность одного тикета                               |
+| _(без аргумента)_ | —      | **Карта исполнения**: pickable-набор + заблокированные (детерминированно из трекеров) |
 
 `<ticket-path>` → поверхность одного тикета. Без аргумента → карта исполнения (что готово сейчас + что чем заблокировано), `pickableTasks` (D-TK004) — оркестратор берёт её тулом, не глазами.
 
@@ -126,6 +126,7 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **E2E:** отложен (прокси-блок в песочнице). Покрытие: unit (parsers + run) + lint + typecheck + ручной smoke.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

@@ -53,18 +53,18 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                | Type         | Purpose                                                                |
-| ------------------- | ------------ | ---------------------------------------------------------------------- |
-| `run`               | Command      | Точка входа CLI: парс режима, чтение, валидация, append, запись          |
-| `findSectionBounds` | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки           |
-| `hasPlaceholder`    | Utility      | Детект неподставленного `<…>`-плейсхолдера                               |
-| `nextRoundNumber`   | Utility      | Следующий номер Round по существующим `### Round N`                      |
-| `buildRoundHeader`  | Utility      | Текст заголовка Round                                                   |
-| `buildEventLine`    | Utility      | Строка `- [x] \`<ts>\` <content>`                                        |
-| `buildCloseBlock`   | Utility      | Блок `#### Round close` + DONE                                          |
-| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` | Utility | Билдеры диагностик |
-| `PLACEHOLDER_RE`    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                                     |
-| `LogOutcome`        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                 |
+| Name                                                                | Type         | Purpose                                                         |
+| ------------------------------------------------------------------- | ------------ | --------------------------------------------------------------- |
+| `run`                                                               | Command      | Точка входа CLI: парс режима, чтение, валидация, append, запись |
+| `findSectionBounds`                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки  |
+| `hasPlaceholder`                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                      |
+| `nextRoundNumber`                                                   | Utility      | Следующий номер Round по существующим `### Round N`             |
+| `buildRoundHeader`                                                  | Utility      | Текст заголовка Round                                           |
+| `buildEventLine`                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                               |
+| `buildCloseBlock`                                                   | Utility      | Блок `#### Round close` + DONE                                  |
+| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` | Utility      | Билдеры диагностик                                              |
+| `PLACEHOLDER_RE`                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                            |
+| `LogOutcome`                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`        |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -96,12 +96,12 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 5. Public Options & Policies
 
-| Argument            | Type   | Description                                              |
-| ------------------- | ------ | -------------------------------------------------------- |
-| `<ticket>`          | string | Путь к тикету                                            |
-| `round "<reason>"`  | mode   | Открыть Round (авто-номер, дата)                         |
-| `line "<content>"`  | mode   | Дописать timestamped event-строку                       |
-| `close`             | mode   | Дописать блок Round-close                                |
+| Argument           | Type   | Description                       |
+| ------------------ | ------ | --------------------------------- |
+| `<ticket>`         | string | Путь к тикету                     |
+| `round "<reason>"` | mode   | Открыть Round (авто-номер, дата)  |
+| `line "<content>"` | mode   | Дописать timestamped event-строку |
+| `close`            | mode   | Дописать блок Round-close         |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -122,6 +122,7 @@ cli/cmd/sdd-log/
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **E2E:** отложен (прокси-блок в песочнице). Покрытие: unit + lint + typecheck + ручной smoke (round→line→close).
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

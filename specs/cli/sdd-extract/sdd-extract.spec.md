@@ -59,19 +59,19 @@ $ npx gennady sdd-extract ticket.md phase_p1
 
 _Полный список сущностей модуля `sdd-extract` + общего ядра `shared/sdd/section.ts`. Любое введение сущности помимо этого списка — drift, требует обновления спеки._
 
-| Name                  | Type         | Purpose                                                                                  |
-| --------------------- | ------------ | ---------------------------------------------------------------------------------------- |
-| `run`                 | Command      | Точка входа CLI: парсинг `<file> <NAME>`, чтение файла, маппинг в `ExtractOutcome`        |
-| `extractSection`      | Utility      | Чистое ядро: возвращает `SectionResult` по контенту и имени секции (`shared/sdd`)         |
-| `isValidSectionName`  | Utility      | Проверка имени против `SECTION_NAME_REGEX`                                                |
-| `toOutcome`           | Utility      | Маппинг `SectionResult` → `ExtractOutcome` с actionable-сообщением и exit-кодом           |
-| `badInvocation`       | Utility      | Билдер диагностики плохого вызова (exit 4)                                                |
-| `invalidName`         | Utility      | Билдер диагностики невалидного имени (exit 4)                                             |
-| `fileNotFound`        | Utility      | Билдер диагностики отсутствующего файла (exit 1)                                          |
-| `fileNotReadable`     | Utility      | Билдер диагностики нечитаемого файла / директории (exit 1)                                |
-| `SECTION_NAME_REGEX`  | Value Object | Каноническая грамматика имени секции: `^[A-Z][A-Z0-9_]*$`                                 |
-| `SectionResult`       | Type         | Дискриминированный union ядра: `ok` / `invalid_name` / `not_found` / `unbalanced` / `duplicated` / `empty` |
-| `ExtractOutcome`      | Type         | Результат команды: `{ok:true, content}` либо `{ok:false, code, exitCode, message}`        |
+| Name                    | Type         | Purpose                                                                                                                  |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `run`                   | Command      | Точка входа CLI: парсинг `<file> <NAME>`, чтение файла, маппинг в `ExtractOutcome`                                       |
+| `extractSection`        | Utility      | Чистое ядро: возвращает `SectionResult` по контенту и имени секции (`shared/sdd`)                                        |
+| `isValidSectionName`    | Utility      | Проверка имени против `SECTION_NAME_REGEX`                                                                               |
+| `toOutcome`             | Utility      | Маппинг `SectionResult` → `ExtractOutcome` с actionable-сообщением и exit-кодом                                          |
+| `badInvocation`         | Utility      | Билдер диагностики плохого вызова (exit 4)                                                                               |
+| `invalidName`           | Utility      | Билдер диагностики невалидного имени (exit 4)                                                                            |
+| `fileNotFound`          | Utility      | Билдер диагностики отсутствующего файла (exit 1)                                                                         |
+| `fileNotReadable`       | Utility      | Билдер диагностики нечитаемого файла / директории (exit 1)                                                               |
+| `SECTION_NAME_REGEX`    | Value Object | Каноническая грамматика имени секции: `^[A-Z][A-Z0-9_]*$`                                                                |
+| `SectionResult`         | Type         | Дискриминированный union ядра: `ok` / `invalid_name` / `not_found` / `unbalanced` / `duplicated` / `empty`               |
+| `ExtractOutcome`        | Type         | Результат команды: `{ok:true, content}` либо `{ok:false, code, exitCode, message}`                                       |
 | `ERR_CLI_SDD_EXTRACT_*` | Value Object | 8 кодов ошибок (bad-invocation, invalid-name, file-not-found/-readable, anchor-not-found/-empty/-unbalanced/-duplicated) |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -133,11 +133,11 @@ _Полный список сущностей модуля `sdd-extract` + об�
 
 ## 6. Public Options & Policies
 
-| Argument | Type   | Default | Description                                       |
-| -------- | ------ | ------- | ------------------------------------------------- |
-| `<file>` | string | —       | Путь к markdown-артефакту SDD (тикет / спека)     |
-| `<NAME>` | string | —       | Имя якоря секции, matched против `^[A-Z][A-Z0-9_]*$` |
-| `--help`, `-h` | boolean | false | Показать справку                              |
+| Argument       | Type    | Default | Description                                          |
+| -------------- | ------- | ------- | ---------------------------------------------------- |
+| `<file>`       | string  | —       | Путь к markdown-артефакту SDD (тикет / спека)        |
+| `<NAME>`       | string  | —       | Имя якоря секции, matched против `^[A-Z][A-Z0-9_]*$` |
+| `--help`, `-h` | boolean | false   | Показать справку                                     |
 
 **Канонические имена секций:** `META`, `PHASES_OVERVIEW`, `PHASE_P<N>`, `PHASE_P<N>_FIX`, `BDD`, `VERIFICATION`, `TEST_COVERAGE`, `EXECUTION_LOG`.
 
@@ -170,6 +170,7 @@ shared/sdd/
 - `cli/cmd/README.md` — scenarios + commands table
 
 **E2E:** `cli/__tests__/e2e/sdd-extract.e2e.test.ts` + fixture `cli/__tests__/e2e/fixtures/sdd/ticket.md`, registered in `cli/__tests__/e2e/e2e.test.ts`.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

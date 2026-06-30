@@ -6,13 +6,36 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, resolve, dirname, sep } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkTicket, isTicket, checkPortal, checkTaskGraph, checkTrackers, checkSpecStructure, checkReviewState, checkModuleGraph, checkScopeDeps, moduleGraphEdges, ticketRef, type Finding, type TicketRef, type TrackerRowRef } from '../../../shared/sdd/check.ts';
+import {
+  checkTicket,
+  isTicket,
+  checkPortal,
+  checkTaskGraph,
+  checkTrackers,
+  checkSpecStructure,
+  checkReviewState,
+  checkModuleGraph,
+  checkScopeDeps,
+  moduleGraphEdges,
+  ticketRef,
+  type Finding,
+  type TicketRef,
+  type TrackerRowRef,
+} from '../../../shared/sdd/check.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
 import { parseTrackerRows } from '../../../shared/sdd/tracker.ts';
 import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage', '__tests__']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '__tests__',
+]);
 
 /** @purpose Recursively collect .md files under a directory, skipping system/build dirs and symlinks. */
 function walkMd(dir: string, acc: string[]): void {
@@ -70,7 +93,11 @@ function checkRuleLinks(file: string, content: string): Finding[] {
 
 /** @purpose GitHub-style heading slug: lowercase, drop non-word chars (keep spaces/hyphens), spaces→hyphens. | @param heading Heading text. | @returns Anchor slug. */
 function slug(heading: string): string {
-  return heading.toLowerCase().replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+  return heading
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
 }
 
 /** @purpose Check a ticket's spec references `](…spec.md#entity)` resolve — file on disk + anchor as a heading-slug or SECTION marker — so the worker's sdd-extract will not miss. | @param file Ticket path. | @param content Ticket markdown. | @returns SDD_BROKEN_SPEC_REF (error, file) / SDD_BROKEN_SPEC_ANCHOR (warn, anchor). */
@@ -83,7 +110,12 @@ function checkSpecRefs(file: string, content: string): Finding[] {
     if (!target || !anchor) continue;
     const abs = resolve(dir, target);
     if (!existsSync(abs)) {
-      findings.push({ severity: 'error', code: 'SDD_BROKEN_SPEC_REF', file, message: `Spec reference does not resolve on disk: ${target}#${anchor}` });
+      findings.push({
+        severity: 'error',
+        code: 'SDD_BROKEN_SPEC_REF',
+        file,
+        message: `Spec reference does not resolve on disk: ${target}#${anchor}`,
+      });
       continue;
     }
     let spec: string;
@@ -94,9 +126,16 @@ function checkSpecRefs(file: string, content: string): Finding[] {
     }
     const a = anchor.toLowerCase();
     const headings = [...spec.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map((h) => slug(h[1] ?? ''));
-    const sections = [...spec.matchAll(/<!--SECTION:([A-Z0-9_]+)-->/g)].map((s) => (s[1] ?? '').toLowerCase());
+    const sections = [...spec.matchAll(/<!--SECTION:([A-Z0-9_]+)-->/g)].map((s) =>
+      (s[1] ?? '').toLowerCase()
+    );
     if (!headings.includes(a) && !sections.includes(a)) {
-      findings.push({ severity: 'warn', code: 'SDD_BROKEN_SPEC_ANCHOR', file, message: `Spec anchor not found in ${target}: #${anchor} (entity renamed/moved? the worker's sdd-extract will miss it)` });
+      findings.push({
+        severity: 'warn',
+        code: 'SDD_BROKEN_SPEC_ANCHOR',
+        file,
+        message: `Spec anchor not found in ${target}: #${anchor} (entity renamed/moved? the worker's sdd-extract will miss it)`,
+      });
     }
   }
   return findings;
@@ -112,7 +151,11 @@ function scopeSpecDirs(specsRoot: string): string[] {
   }
   return entries
     .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name))
-    .filter((e) => existsSync(join(specsRoot, e.name, `${e.name}.spec.md`)) || existsSync(join(specsRoot, e.name, `${e.name}.1-spec.md`)))
+    .filter(
+      (e) =>
+        existsSync(join(specsRoot, e.name, `${e.name}.spec.md`)) ||
+        existsSync(join(specsRoot, e.name, `${e.name}.1-spec.md`))
+    )
     .map((e) => e.name);
 }
 
@@ -202,7 +245,8 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         }
         fileCount++;
       } else if (file.endsWith('.3-tasks.md') || file.endsWith('.2-tasks.md')) {
-        for (const r of parseTrackerRows(content)) trackerRowRefs.push({ file, taskId: r.taskId, status: r.status });
+        for (const r of parseTrackerRows(content))
+          trackerRowRefs.push({ file, taskId: r.taskId, status: r.status });
         fileCount++;
       } else if (isTicket(content)) {
         findings.push(...checkTicket(file, content));

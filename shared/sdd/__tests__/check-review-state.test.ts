@@ -17,7 +17,10 @@ describe('checkReviewState', () => {
 
   it('valid review-state (manifest + ТИП) → one STUCK warning, no error', () => {
     const fs = checkReviewState('s.spec.md', manifest('ТИП ИЗМЕНЕНИЯ: refine · add X'));
-    assert.deepStrictEqual(fs.map((f) => f.code), ['SDD_REVIEW_STATE_STUCK']);
+    assert.deepStrictEqual(
+      fs.map((f) => f.code),
+      ['SDD_REVIEW_STATE_STUCK']
+    );
     assert.strictEqual(fs[0]?.severity, 'warn');
   });
 
@@ -34,6 +37,9 @@ describe('checkReviewState', () => {
   it('does not false-positive on ~ (ambiguous in markdown — only ✚ is a detection mark)', () => {
     assert.deepStrictEqual(checkReviewState('s.spec.md', '## 1. Vision\ncoverage ~80% target'), []);
     // `~ path` at line start (e.g. a file tree / diff display) must NOT be read as a change-mark.
-    assert.deepStrictEqual(checkReviewState('s.spec.md', '```\n~ ai/foo/bar.ts\n~ ai/foo/baz.ts\n```'), []);
+    assert.deepStrictEqual(
+      checkReviewState('s.spec.md', '```\n~ ai/foo/bar.ts\n~ ai/foo/baz.ts\n```'),
+      []
+    );
   });
 });

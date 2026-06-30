@@ -47,7 +47,10 @@ describe('checkScopeDeps (B5)', () => {
   });
 
   it('a spec without a SCOPE_DEPENDENCIES section yields [] (module / legacy specs)', () => {
-    assert.deepStrictEqual(checkScopeDeps(FILE, '# just a module\n\nno deps section', [edge('backend', 'api')]), []);
+    assert.deepStrictEqual(
+      checkScopeDeps(FILE, '# just a module\n\nno deps section', [edge('backend', 'api')]),
+      []
+    );
   });
 
   it('prose words in the deps line do not cause false positives', () => {

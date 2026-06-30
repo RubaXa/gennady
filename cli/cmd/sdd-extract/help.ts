@@ -21,7 +21,9 @@ export function printHelp(): void {
   console.info('');
   console.info('Output:');
   console.info('  On success — the section body (between the markers) on stdout, exit 0.');
-  console.info('  On failure — an actionable diagnostic on stdout, never empty, with a non-zero exit:');
+  console.info(
+    '  On failure — an actionable diagnostic on stdout, never empty, with a non-zero exit:'
+  );
   console.info('    1 file not found / unreadable   2 anchor absent / empty');
   console.info('    3 markers unbalanced / duplicated   4 bad invocation / invalid name');
   console.info('');

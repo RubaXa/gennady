@@ -41,13 +41,13 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name             | Type         | Purpose                                                              |
-| ---------------- | ------------ | -------------------------------------------------------------------- |
-| `run`            | Command      | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`   |
-| `findV1Tickets`  | Utility      | Рекурсивный сбор `tasks/**/*.task-*.md`                               |
-| `injectAnchors`  | Utility      | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами     |
-| `badInvocation`  | Utility      | Билдер диагностики (exit 4)                                          |
-| `MigrateOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`              |
+| Name             | Type    | Purpose                                                             |
+| ---------------- | ------- | ------------------------------------------------------------------- |
+| `run`            | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all` |
+| `findV1Tickets`  | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                             |
+| `injectAnchors`  | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами  |
+| `badInvocation`  | Utility | Билдер диагностики (exit 4)                                         |
+| `MigrateOutcome` | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`            |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -78,12 +78,12 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 5. Public Options & Policies
 
-| Argument          | Type    | Description                                          |
-| ----------------- | ------- | ---------------------------------------------------- |
-| `anchors`         | mode    | Инжект `<!--SECTION:-->` в v1-тикеты                  |
-| `<ticket>`        | string  | Один тикет (если не `--all`)                         |
-| `--all [root]`    | flag    | Все `tasks/**/*.task-*.md` под root (по умолч. cwd)   |
-| `--write`         | flag    | Применить (иначе dry-run)                            |
+| Argument       | Type   | Description                                         |
+| -------------- | ------ | --------------------------------------------------- |
+| `anchors`      | mode   | Инжект `<!--SECTION:-->` в v1-тикеты                |
+| `<ticket>`     | string | Один тикет (если не `--all`)                        |
+| `--all [root]` | flag   | Все `tasks/**/*.task-*.md` под root (по умолч. cwd) |
+| `--write`      | flag   | Применить (иначе dry-run)                           |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -98,6 +98,7 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **E2E:** отложен (прокси). Покрытие: unit (core + cmd) + lint + typecheck + dry-run-смок на 68 боевых v1-тикетах.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
@@ -105,15 +106,19 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 ## 7. Module Decision Log
 
 ### D-MG001 — Dry-run по умолчанию, `--write` явно
+
 - **Status:** active · **Why:** миграция мутирует много файлов; dry-run-first даёт верифицируемый предпросмотр (вскрыл 56/12 из 68) без риска. **Risk:** нет (git-tracked).
 
 ### D-MG002 — Ядро в `shared/sdd/anchor-inject.ts`
+
 - **Status:** active · **Why:** чистая, переиспользуемая, unit-тестируемая трансформация; cmd — тонкая обёртка. **Risk:** низкий.
 
 ### D-MG003 — Идемпотентность по наличию маркера
+
 - **Status:** active · **Why:** v1 имеет два суб-формата (голые / уже-с-якорями); пропуск по `<!--SECTION:NAME-->` корректно покрывает оба. **Risk:** нет.
 
 ### D-MG004 — `anchors` первым (детерминированный шаг)
+
 - **Status:** active · **Why:** самый детерминированный + сразу verify через `sdd-check`. `ids` (slug-map) и move — следующие, см. план. **Risk:** нет.
 <!--/SECTION:MODULE_DECISION_LOG-->
 

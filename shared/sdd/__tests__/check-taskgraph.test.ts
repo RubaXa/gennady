@@ -15,11 +15,16 @@ const codes = (refs: TicketRef[]): string[] => checkTaskGraph(refs).map((f) => f
 
 describe('checkTaskGraph', () => {
   it('clean DAG → no findings', () => {
-    assert.deepStrictEqual(checkTaskGraph([ref('a.md', 'cli-a'), ref('b.md', 'cli-b', ['cli-a'])]), []);
+    assert.deepStrictEqual(
+      checkTaskGraph([ref('a.md', 'cli-a'), ref('b.md', 'cli-b', ['cli-a'])]),
+      []
+    );
   });
 
   it('flags a Task-ID used by two tickets', () => {
-    assert.ok(codes([ref('a.md', 'cli-a'), ref('b.md', 'cli-a')]).includes('SDD_TASK_ID_COLLISION'));
+    assert.ok(
+      codes([ref('a.md', 'cli-a'), ref('b.md', 'cli-a')]).includes('SDD_TASK_ID_COLLISION')
+    );
   });
 
   it('flags a dependency that resolves to no ticket', () => {
@@ -27,7 +32,11 @@ describe('checkTaskGraph', () => {
   });
 
   it('flags a dependency cycle', () => {
-    assert.ok(codes([ref('a.md', 'cli-a', ['cli-b']), ref('b.md', 'cli-b', ['cli-a'])]).includes('SDD_DAG_CYCLE'));
+    assert.ok(
+      codes([ref('a.md', 'cli-a', ['cli-b']), ref('b.md', 'cli-b', ['cli-a'])]).includes(
+        'SDD_DAG_CYCLE'
+      )
+    );
   });
 
   it('ignores tickets without a Task-ID for collision/cycle', () => {

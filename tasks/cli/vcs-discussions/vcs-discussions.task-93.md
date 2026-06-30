@@ -49,6 +49,6 @@
 
 _(Round = один execute-then-audit цикл.)_
 
-| Round | Date | Status | Notes |
-|-------|------|--------|-------|
-| R1 | 2025-06-29 | PASS | Command created per spec: getAll() wrapper, human/JSON output. Later enhanced: --draft (draft notes), --since (cursor filter), --vcs-host alias, fullId in human output. |
+| Round | Date       | Status | Notes                                                                                                                                                                    |
+| ----- | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R1    | 2025-06-29 | PASS   | Command created per spec: getAll() wrapper, human/JSON output. Later enhanced: --draft (draft notes), --since (cursor filter), --vcs-host alias, fullId in human output. |

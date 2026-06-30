@@ -109,7 +109,10 @@ export function parseMetaInfo(metaBody: string): MetaInfo {
   const dependencies =
     !depsRaw || /^none$/i.test(depsRaw.trim())
       ? []
-      : depsRaw.split(',').map((d) => d.trim()).filter(Boolean);
+      : depsRaw
+          .split(',')
+          .map((d) => d.trim())
+          .filter(Boolean);
 
   const specRefs = bulletsUnder(metaBody, 'Spec References').map((b) => {
     const colon = b.indexOf(':');
@@ -132,7 +135,12 @@ export function parseMetaInfo(metaBody: string): MetaInfo {
 
 /** @purpose Split a markdown table row into trimmed content cells. */
 function rowCells(line: string): string[] {
-  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
 }
 
 /** @purpose True for a table separator row like `|---|---|`. */
@@ -156,7 +164,13 @@ export function parsePhasesOverview(body: string): PhaseOverview[] {
     out.push({
       id,
       kind: kind ?? '',
-      deps: !deps || deps === '—' ? [] : deps.split(',').map((d) => d.trim()).filter(Boolean),
+      deps:
+        !deps || deps === '—'
+          ? []
+          : deps
+              .split(',')
+              .map((d) => d.trim())
+              .filter(Boolean),
       status: status ?? '',
     });
   }
@@ -193,7 +207,10 @@ export function parseVerification(body: string): Gate[] {
     if (!command) continue;
     out.push({
       command: command.replace(/`/g, '').trim(),
-      requiredBy: (requiredBy ?? '').split(',').map((r) => r.trim()).filter(Boolean),
+      requiredBy: (requiredBy ?? '')
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean),
     });
   }
   return out;

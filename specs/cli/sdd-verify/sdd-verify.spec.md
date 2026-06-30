@@ -55,20 +55,20 @@ $ npx gennady sdd-verify
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name            | Type         | Purpose                                                              |
-| --------------- | ------------ | -------------------------------------------------------------------- |
-| `run`           | Command      | Прогон всех GATES по порядку (RUN-ALL), тайминг, вердикт              |
-| `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output      |
-| `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                 |
+| Name            | Type         | Purpose                                                                      |
+| --------------- | ------------ | ---------------------------------------------------------------------------- |
+| `run`           | Command      | Прогон всех GATES по порядку (RUN-ALL), тайминг, вердикт                     |
+| `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output             |
+| `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                        |
 | `GATES`         | Value Object | Фикс-последовательность: format · lint (mutates) · typecheck · test:coverage |
-| `Gate`          | Value Object | name + mutates                                                       |
-| `GateRunResult` | Value Object | exitCode + output                                                   |
-| `GateResult`    | Value Object | name · exitCode · output · durationMs                                |
-| `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                    |
-| `VerifyOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`              |
-| `Profile`       | Type         | Профиль гейтов: `code` \| `test` \| `full` (D-SV006)                  |
-| `gatesFor`      | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)            |
-| `isProfile`     | Utility      | Type-guard токена профиля из CLI-ввода                                |
+| `Gate`          | Value Object | name + mutates                                                               |
+| `GateRunResult` | Value Object | exitCode + output                                                            |
+| `GateResult`    | Value Object | name · exitCode · output · durationMs                                        |
+| `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                           |
+| `VerifyOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                     |
+| `Profile`       | Type         | Профиль гейтов: `code` \| `test` \| `full` (D-SV006)                         |
+| `gatesFor`      | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                    |
+| `isProfile`     | Utility      | Type-guard токена профиля из CLI-ввода                                       |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -92,22 +92,25 @@ $ npx gennady sdd-verify
 - Invariants:
   - Набор и порядок gate — фиксированные (нет обнаружения по package.json)
   - `run(runner)` детерминистична при фиксированном раннере; реальные подпроцессы — только в `index.ts`
-<!--/SECTION:MODULE_CONTRACTS-->
+  <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
+
 ## 5. Public Options & Policies
 
-| Argument | Type | Description |
-|---|---|---|
+| Argument                       | Type   | Description                                      |
+| ------------------------------ | ------ | ------------------------------------------------ |
 | `--profile <code\|test\|full>` | string | Какой профиль гейтов гнать. По умолчанию `full`. |
-| `--help` / `-h` | — | Справка. |
+| `--help` / `-h`                | —      | Справка.                                         |
 
 Профили — фикс-наборы, выбор по ЯВНОМУ флагу (не обнаружение):
+
 - `code` — `format · lint · typecheck` (фазы кода: impl/refactor/config/doc/bootstrap; тесты НЕ гоняются — их ещё может не быть)
 - `test` — `format · typecheck · test:coverage` (фаза тестов)
 - `full` — `format · lint · typecheck · test:coverage` (финал, все фазы закрыты; **default**)
 
 Порядок внутри профиля нормативен (мутирующие первыми). Плоский `test` НЕ гоняется (покрыт `test:coverage`), но в required-наборе readiness остаётся.
+
 <!--/SECTION:PUBLIC_OPTIONS-->
 
 <!--SECTION:FILE_STRUCTURE-->
@@ -126,6 +129,7 @@ cli/cmd/sdd-verify/
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **Вызывается из:** `phase-execution-protocol` (STEP_5) и `reconcile` (STEP_7), без аргументов.
 **E2E:** отложен (прокси) + живьём мутирует/требует test:coverage → покрытие unit через fake-runner.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
@@ -133,21 +137,27 @@ cli/cmd/sdd-verify/
 ## 7. Module Decision Log
 
 ### D-SV001 — Инъектируемый раннер + tail в index.ts
+
 - **Status:** active · **Why:** оркестрация (порядок, RUN-ALL, вердикт) unit-тестируема без подпроцессов; argless-команда не должна запускать реальные гейты при импорте `run()` в тесте — поэтому self-exec в `index.ts`, а `cmd.ts` только экспортирует. **Risk:** нет.
 
 ### D-SV002 — Фикс-гейты по точным именам (без обнаружения)
+
 - **Status:** active · **Why:** оператор: «строго, без угадываний». Набор и порядок зашиты; `sdd-state` гарантирует наличие скриптов. **Risk:** проект обязан иметь точные имена — это и есть стандарт v2.
 
 ### D-SV003 — Мутирующие первыми, последовательно
+
 - **Status:** active · **Why:** `format`/`lint` делают autofix (переписывают файлы); параллель с читающими (`typecheck`/`test:coverage`) — гонка. Последовательность безопасна. **Risk:** медленнее; read-only пару можно распараллелить позже (async-spawn).
 
 ### D-SV004 — Классификатор `scripts.ts` ретайрнут
+
 - **Status:** active · **Why:** после перехода на точные имена fuzzy-классификатор стал мёртв (ни один потребитель) — удалён вместе с тестами. **Risk:** нет.
 
 ### D-SV005 — Плоский `test` не гоняется
+
 - **Status:** active · **Why:** `test:coverage` запускает те же тесты с покрытием; гонять оба — избыточно. **Risk:** если нужна быстрая прогонка без coverage — добавить `test` в GATES.
 
 ### D-SV006 — Профили гейтов по виду фазы
+
 - **Status:** active · **Why:** гейт привязан к `kind` фазы. Фаза кода не должна гонять тесты (их ещё нет; и корректнее, и экономит) — только format/lint/typecheck; фаза тестов — покрытие; финал — всё. Профиль выбирается ЯВНЫМ `--profile` от оркестратора по виду фазы, НЕ обнаружением по package.json — дух D-SV002 («без угадываний») сохранён, наборы по-прежнему фиксированы. Default `full` — безопасный максимум, если флаг не передан. **Risk:** оркестратор обязан передать верный профиль; недопроверка от неверного профиля ловится финальным `full` (Пункт 3).
 <!--/SECTION:MODULE_DECISION_LOG-->
 

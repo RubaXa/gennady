@@ -4,7 +4,12 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMetaInfo, parsePhasesOverview, parsePhaseDetail, parseVerification } from '../ticket.ts';
+import {
+  parseMetaInfo,
+  parsePhasesOverview,
+  parsePhaseDetail,
+  parseVerification,
+} from '../ticket.ts';
 
 const META = [
   '## 1. Meta',

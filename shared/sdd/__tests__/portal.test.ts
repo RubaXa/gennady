@@ -60,7 +60,9 @@ describe('parseScopes', () => {
   });
 
   it('maps an unknown status cell to unknown', () => {
-    const src = ['## Scopes', '|---|---|---|', '| [`x`](./x/x.spec.md) | product | ? | d |'].join('\n');
+    const src = ['## Scopes', '|---|---|---|', '| [`x`](./x/x.spec.md) | product | ? | d |'].join(
+      '\n'
+    );
     assert.strictEqual(parseScopes(src)[0]?.status, 'unknown');
   });
 });

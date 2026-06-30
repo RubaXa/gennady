@@ -28,7 +28,9 @@ export async function run(rawArgs: string[]): Promise<ExtractOutcome> {
   );
 
   if (positional.length !== 2) {
-    logger.warn(`[SddExtractCommand#run] bad invocation — ${positional.length} positional arg(s), expected 2`);
+    logger.warn(
+      `[SddExtractCommand#run] bad invocation — ${positional.length} positional arg(s), expected 2`
+    );
     return badInvocation();
   }
 

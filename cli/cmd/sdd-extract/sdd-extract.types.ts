@@ -11,17 +11,21 @@ export const ERR_CLI_SDD_EXTRACT_INVALID_NAME = 'ERR_CLI_SDD_EXTRACT_INVALID_NAM
 /** @purpose Target file does not exist (ENOENT). */
 export const ERR_CLI_SDD_EXTRACT_FILE_NOT_FOUND = 'ERR_CLI_SDD_EXTRACT_FILE_NOT_FOUND' as const;
 /** @purpose Target file exists but cannot be read (EACCES, EISDIR, …). */
-export const ERR_CLI_SDD_EXTRACT_FILE_NOT_READABLE = 'ERR_CLI_SDD_EXTRACT_FILE_NOT_READABLE' as const;
+export const ERR_CLI_SDD_EXTRACT_FILE_NOT_READABLE =
+  'ERR_CLI_SDD_EXTRACT_FILE_NOT_READABLE' as const;
 /** @purpose Requested section has no anchor markers in the file. */
 export const ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND = 'ERR_CLI_SDD_EXTRACT_ANCHOR_NOT_FOUND' as const;
 /** @purpose Markers are present and balanced but the section body is empty. */
 export const ERR_CLI_SDD_EXTRACT_ANCHOR_EMPTY = 'ERR_CLI_SDD_EXTRACT_ANCHOR_EMPTY' as const;
 /** @purpose Open and close marker counts do not match — corrupted markers. */
-export const ERR_CLI_SDD_EXTRACT_ANCHOR_UNBALANCED = 'ERR_CLI_SDD_EXTRACT_ANCHOR_UNBALANCED' as const;
+export const ERR_CLI_SDD_EXTRACT_ANCHOR_UNBALANCED =
+  'ERR_CLI_SDD_EXTRACT_ANCHOR_UNBALANCED' as const;
 /** @purpose The same section appears more than once — extraction is ambiguous. */
-export const ERR_CLI_SDD_EXTRACT_ANCHOR_DUPLICATED = 'ERR_CLI_SDD_EXTRACT_ANCHOR_DUPLICATED' as const;
+export const ERR_CLI_SDD_EXTRACT_ANCHOR_DUPLICATED =
+  'ERR_CLI_SDD_EXTRACT_ANCHOR_DUPLICATED' as const;
 
-const CANONICAL = 'META, PHASES_OVERVIEW, PHASE_P<N>, PHASE_P<N>_FIX, BDD, VERIFICATION, TEST_COVERAGE, EXECUTION_LOG';
+const CANONICAL =
+  'META, PHASES_OVERVIEW, PHASE_P<N>, PHASE_P<N>_FIX, BDD, VERIFICATION, TEST_COVERAGE, EXECUTION_LOG';
 
 /**
  * @purpose Result of one extraction run — either the section content (exit 0) or an actionable failure.

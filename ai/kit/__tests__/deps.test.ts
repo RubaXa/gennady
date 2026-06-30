@@ -41,12 +41,18 @@ describe('directive deps are satisfied by the router core', () => {
     if (deps.length === 0) continue;
     it(`${f}: every declared dep is in the router core`, () => {
       const missing = deps.filter((d) => !provided.has(d));
-      assert.deepEqual(missing, [], `${f} declares deps the router does not provide: ${missing.join(', ')}`);
+      assert.deepEqual(
+        missing,
+        [],
+        `${f} declares deps the router does not provide: ${missing.join(', ')}`
+      );
     });
   }
 
   it('at least the known thin branches declare deps (root, discover)', () => {
-    const withDeps = files.filter((f) => declaredDeps(readFileSync(join(SDD_V2, f), 'utf8')).length > 0);
+    const withDeps = files.filter(
+      (f) => declaredDeps(readFileSync(join(SDD_V2, f), 'utf8')).length > 0
+    );
     assert.ok(
       withDeps.some((f) => f.startsWith('root.')) && withDeps.some((f) => f.startsWith('discover')),
       `expected root + discover to declare deps, got: ${withDeps.join(', ')}`

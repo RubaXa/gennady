@@ -7,7 +7,10 @@ import { isProfile } from './sdd-verify.types.ts';
 
 const argv = process.argv.slice(2);
 const flagIdx = argv.indexOf('--profile');
-const rawProfile = flagIdx >= 0 ? argv[flagIdx + 1] : argv.find((a) => a.startsWith('--profile='))?.slice('--profile='.length);
+const rawProfile =
+  flagIdx >= 0
+    ? argv[flagIdx + 1]
+    : argv.find((a) => a.startsWith('--profile='))?.slice('--profile='.length);
 const profile = rawProfile ?? 'full';
 if (!isProfile(profile)) {
   console.error(`[verify] unknown --profile '${profile}' (expected: code | test | full)`);

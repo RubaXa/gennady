@@ -67,23 +67,23 @@ flow=v2 · portal=present · readiness=not-ready · scopes=1 · session=absent
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name             | Type         | Purpose                                                                    |
-| ---------------- | ------------ | -------------------------------------------------------------------------- |
-| `run`            | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/session → снимок        |
-| `isV1Layout`     | Utility      | Маркер v1 — `<root>/tasks/` это каталог                                     |
-| `detectGennady`  | Utility      | gennady установлен — `<root>/node_modules/.bin/gennady` существует           |
-| `probeRepo`      | Utility      | (`shared/sdd/probe`) эвристики кода/инфры за `--probe` (find `*.js/jsx/ts/tsx` без node_modules + конфиги) |
-| `checkReadiness` | Utility      | (`shared/sdd/readiness`) точная проверка: package.json + required-скрипты + lint→gennady + gennady-install |
-| `parseScopes`    | Utility      | (`shared/sdd/portal`) таблица Scopes → `Scope[]` (incl. description)         |
-| `formatSnapshot` | Utility      | Рендер `StateSnapshot` в bracketed-формат                                  |
-| `badInvocation` / `badRoot` | Utility | Билдеры диагностик                                              |
-| `StateSnapshot`  | Value Object | root · flowVersion · portalPresent · portalPath · scopes · readiness · sessionContent · probe? |
-| `FlowVersion`    | Type         | `v1` / `v2`                                                                |
-| `ReadinessResult` | Value Object | packageJsonPresent · required[] · lintHasGennady · gennadyAvailable · ready · missing (`shared/sdd/readiness`) |
-| `ReadinessInput` | Value Object | packageJsonPresent · scripts · gennadyAvailable — вход `checkReadiness` (`shared/sdd/readiness`) |
-| `RepoProbe`      | Value Object | codePresent · codeFileCount · codeDirs · infraPresent · configFiles (`shared/sdd/probe`) |
-| `Scope`          | Value Object | name · type · status · description · specPath (`shared/sdd/portal`)         |
-| `StateOutcome`   | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                     |
+| Name                        | Type         | Purpose                                                                                                        |
+| --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------- |
+| `run`                       | Command      | Точка входа CLI: резолв корня, flow/portal/readiness/session → снимок                                          |
+| `isV1Layout`                | Utility      | Маркер v1 — `<root>/tasks/` это каталог                                                                        |
+| `detectGennady`             | Utility      | gennady установлен — `<root>/node_modules/.bin/gennady` существует                                             |
+| `probeRepo`                 | Utility      | (`shared/sdd/probe`) эвристики кода/инфры за `--probe` (find `*.js/jsx/ts/tsx` без node_modules + конфиги)     |
+| `checkReadiness`            | Utility      | (`shared/sdd/readiness`) точная проверка: package.json + required-скрипты + lint→gennady + gennady-install     |
+| `parseScopes`               | Utility      | (`shared/sdd/portal`) таблица Scopes → `Scope[]` (incl. description)                                           |
+| `formatSnapshot`            | Utility      | Рендер `StateSnapshot` в bracketed-формат                                                                      |
+| `badInvocation` / `badRoot` | Utility      | Билдеры диагностик                                                                                             |
+| `StateSnapshot`             | Value Object | root · flowVersion · portalPresent · portalPath · scopes · readiness · sessionContent · probe?                 |
+| `FlowVersion`               | Type         | `v1` / `v2`                                                                                                    |
+| `ReadinessResult`           | Value Object | packageJsonPresent · required[] · lintHasGennady · gennadyAvailable · ready · missing (`shared/sdd/readiness`) |
+| `ReadinessInput`            | Value Object | packageJsonPresent · scripts · gennadyAvailable — вход `checkReadiness` (`shared/sdd/readiness`)               |
+| `RepoProbe`                 | Value Object | codePresent · codeFileCount · codeDirs · infraPresent · configFiles (`shared/sdd/probe`)                       |
+| `Scope`                     | Value Object | name · type · status · description · specPath (`shared/sdd/portal`)                                            |
+| `StateOutcome`              | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                       |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -117,10 +117,10 @@ flow=v2 · portal=present · readiness=not-ready · scopes=1 · session=absent
 
 ## 5. Public Options & Policies
 
-| Argument         | Type    | Default | Description                  |
-| ---------------- | ------- | ------- | ---------------------------- |
-| `[project-root]` | string  | `.`     | Корень проекта для инспекции |
-| `--probe`        | flag    | off     | Включить эвристики кода/инфры (`[PROBE]`); по умолчанию выключено (минимальное знание) |
+| Argument         | Type   | Default | Description                                                                            |
+| ---------------- | ------ | ------- | -------------------------------------------------------------------------------------- |
+| `[project-root]` | string | `.`     | Корень проекта для инспекции                                                           |
+| `--probe`        | flag   | off     | Включить эвристики кода/инфры (`[PROBE]`); по умолчанию выключено (минимальное знание) |
 
 Required-набор (точные имена): `typecheck`, `test`, `test:coverage`, `lint` (+`gennady` в цепочке), `format` (фиксирующий). Плюс: присутствует `package.json` и установлен `gennady` (`node_modules/.bin/gennady`).
 
@@ -138,6 +138,7 @@ shared/sdd/         portal.ts (parseScopes +description) · readiness.ts (checkR
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **Роутер:** STEP_0 зовёт `sdd-state`; `H_V1_REPO` (flow=v1) → migration-guide; `not-ready` → embody `readiness.directive` (живой флоу настройки; H_NOT_READY-halt снят).
 **E2E:** отложен (прокси). Покрытие: unit + lint + typecheck + ручной smoke.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
@@ -145,24 +146,31 @@ shared/sdd/         portal.ts (parseScopes +description) · readiness.ts (checkR
 ## 7. Module Decision Log
 
 ### D-ST001 — Портал как источник scope (не обход ФС)
+
 - **Status:** active · **Why:** `specs/README.md` — единый портал-индекс; описание scope (Description) берётся оттуда. Расхождение портал↔ФС ловит `sdd-check`. **Risk:** устаревший портал виден и чинится явно.
 
 ### D-ST002 — Ядра в `shared/sdd/` (portal + readiness)
+
 - **Status:** active · **Why:** переиспользуемы и независимо тестируемы. **Risk:** низкий.
 
 ### D-ST003 — Отсутствие портала/сессии/готовности — данные, не ошибка (exit 0)
+
 - **Status:** active · **Why:** роутер ветвится на этих фактах. exit ≠ 0 только на плохом вызове/корне. **Risk:** нет.
 
 ### D-ST004 — Точное совпадение имён, без классификатора
+
 - **Status:** active · **Why:** оператор требует детерминизма; fuzzy-классификатор (`type-?check` и т.п.) убран. Стандарт v2 требует точные имена `typecheck/test/test:coverage/lint/format`; неконформное имя (`type-check`) → not-ready (это правильно). **Risk:** проекты обязаны привести имена — покрыто setup-гайдом.
 
 ### D-ST005 — `FLOW_VERSION` по `tasks/`-каталогу
+
 - **Status:** active · **Why:** оператор: «достаточно `tasks/` + `*.task-*.md`». `tasks/` dir — однозначный маркер v1-раскладки. **Risk:** репо с чужим `tasks/` ложно-v1 — на практике в SDD-проекте этого нет; миграц-гайд всё равно показывает, что делать.
 
 ### D-ST006 — Готовность включает `package.json` + установленный `gennady`
+
 - **Status:** active · **Why:** оператор: state — единый источник «что не так» (нет `package.json` / нет команд / не установлен `gennady`). `gennadyAvailable` = существование `node_modules/.bin/gennady`. `not-ready` больше НЕ halt с гайдом, а вход в живой флоу `readiness.directive`. **Risk:** глобально установленный gennady (вне `node_modules`) читается как not-installed — в SDD-проектах ставится локально; редкий кейс.
 
 ### D-ST007 — Код/инфра зондируются ТОЛЬКО по `--probe` (минимальное знание по умолчанию)
+
 - **Status:** active · **Why:** на старте флоу работаем с минимальным знанием окружения, чтобы не искажать картину; глубокий осмотр репо нужен лишь когда портала нет и root решает greenfield vs восстановление-из-кода — тогда root зовёт `sdd-state --probe`. Эвристики: `*.js/jsx/ts/tsx` вне `node_modules` (код) + тулинг-конфиги (инфра). **Risk:** эвристика грубая (конфиг на JS посчитается «кодом») — поэтому печатается счётчик, решение за root/оператором.
 <!--/SECTION:MODULE_DECISION_LOG-->
 

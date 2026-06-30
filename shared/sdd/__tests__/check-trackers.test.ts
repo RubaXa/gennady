@@ -16,9 +16,19 @@ const tracker = [
   '| `cli-b` | B | cli-a | [ ] TODO | — |',
 ].join('\n');
 
-const ticket = (taskId: string, status: string | null): TicketRef => ({ file: `${taskId}.md`, taskId, status, dependencies: [] });
-const row = (taskId: string, status: string): TrackerRowRef => ({ file: 'mod.3-tasks.md', taskId, status });
-const codes = (t: TicketRef[], r: TrackerRowRef[]): string[] => checkTrackers(t, r).map((f) => f.code);
+const ticket = (taskId: string, status: string | null): TicketRef => ({
+  file: `${taskId}.md`,
+  taskId,
+  status,
+  dependencies: [],
+});
+const row = (taskId: string, status: string): TrackerRowRef => ({
+  file: 'mod.3-tasks.md',
+  taskId,
+  status,
+});
+const codes = (t: TicketRef[], r: TrackerRowRef[]): string[] =>
+  checkTrackers(t, r).map((f) => f.code);
 
 describe('parseTrackerRows', () => {
   it('reads Task-ID + Status from the Tracker Index, link/backtick-stripped', () => {
@@ -34,11 +44,18 @@ describe('parseTrackerRows', () => {
 
 describe('checkTrackers', () => {
   it('clean: ticket status matches its tracker row → no findings', () => {
-    assert.deepStrictEqual(checkTrackers([ticket('cli-a', '[x] DONE')], [row('cli-a', '[x] DONE')]), []);
+    assert.deepStrictEqual(
+      checkTrackers([ticket('cli-a', '[x] DONE')], [row('cli-a', '[x] DONE')]),
+      []
+    );
   });
 
   it('flags status drift between ticket and tracker row', () => {
-    assert.ok(codes([ticket('cli-a', '[x] DONE')], [row('cli-a', '[ ] TODO')]).includes('SDD_TRACKER_STATUS_DRIFT'));
+    assert.ok(
+      codes([ticket('cli-a', '[x] DONE')], [row('cli-a', '[ ] TODO')]).includes(
+        'SDD_TRACKER_STATUS_DRIFT'
+      )
+    );
   });
 
   it('flags a ticket with no tracker row', () => {

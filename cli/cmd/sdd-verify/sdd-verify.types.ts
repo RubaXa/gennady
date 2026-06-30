@@ -98,7 +98,12 @@ export function verdict(results: GateResult[]): VerifyOutcome {
   }
 
   const failBlocks = failed.map((r) =>
-    [`  ❌ ${r.name} — exit ${r.exitCode}`, '  --- output ---', r.output.trimEnd(), '  --- end ---'].join('\n')
+    [
+      `  ❌ ${r.name} — exit ${r.exitCode}`,
+      '  --- output ---',
+      r.output.trimEnd(),
+      '  --- end ---',
+    ].join('\n')
   );
   return {
     ok: false,

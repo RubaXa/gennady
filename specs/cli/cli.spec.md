@@ -1400,7 +1400,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-IB-01 | `gennady inbox` — `Inbox.getActionable()` → группировка по роли (reviewer/author/mentioned), отсев (no-role/stale/drafts), CI-события только для author |
 | FR-IB-02 | Реестр `~/.gennady/inbox-registry.json` (глобальный): метки `NEW`/`↑updated` по `updatedAt` vs прошлый прогон; `--no-save` — read-only                  |
 | FR-IB-03 | Стадия каждого видимого MR (review_needed/reply_needed/awaiting_reply/idle) через скан обсуждений + identity; idle берёт стадию из реестра              |
-| FR-IB-04 | `--vcs-host=<host>` отключает автодетект origin; `--pick <ref>` — work packet (стадия + open questions) одного MR                                     |
+| FR-IB-04 | `--vcs-host=<host>` отключает автодетект origin; `--pick <ref>` — work packet (стадия + open questions) одного MR                                       |
 | FR-IB-05 | `--reset` — чистый лист: удалить реестр, черновики (`~/.gennady/inbox-out/`) и worktrees                                                                |
 | FR-IB-06 | Флаги отсева: `--drafts`, `--include-stale`, `--stale-days=N`, `--ci-all`, `--all`                                                                      |
 
@@ -1449,7 +1449,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-CTX-03 | `--ref <PROJECT>!<IID>` / позиционный `group/repo!42` — краткая форма                                                                                                           |
 | FR-CTX-04 | `--project <path> --iid <N>` — явный project + номер MR                                                                                                                         |
 | FR-CTX-05 | `--branch/-b <name>` — явный override ветки                                                                                                                                     |
-| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-host` для обратной совместимости с inbox                                                                  |
+| FR-CTX-06 | `--host <host>` — override хоста (self-hosted GitLab). Алиас `--vcs-host` для обратной совместимости с inbox                                                                    |
 | FR-CTX-07 | Приоритет источника: `ref › project+iid › branch (auto)`. `--ref` и `--branch` одновременно → ошибка: «--ref и --branch взаимоисключающие»                                      |
 | FR-CTX-08 | Токен: `GITLAB_PERSONAL_TOKEN` env var                                                                                                                                          |
 | FR-CTX-09 | Если ветка не найдена И нет явного ref/project+iid → `VcsResolveError` с понятным сообщением (не exit — resolver возвращает значение, exit решает команда)                      |

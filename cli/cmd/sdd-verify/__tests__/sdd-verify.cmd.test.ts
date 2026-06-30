@@ -5,7 +5,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { run } from '../sdd-verify.cmd.ts';
-import { GATES, gatesFor, isProfile, verdict, type GateRunner, type GateResult } from '../sdd-verify.types.ts';
+import {
+  GATES,
+  gatesFor,
+  isProfile,
+  verdict,
+  type GateRunner,
+  type GateResult,
+} from '../sdd-verify.types.ts';
 
 /** Fake runner: fails the named gates, records the commands it was asked to run. */
 function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: string[] } {
@@ -21,14 +28,25 @@ function fakeRunner(failNames: string[] = []): { runner: GateRunner; calls: stri
 
 describe('GATES', () => {
   it('is the fixed mutating-first exact sequence', () => {
-    assert.deepStrictEqual(GATES.map((g) => g.name), ['format', 'lint', 'typecheck', 'test:coverage']);
-    assert.deepStrictEqual(GATES.filter((g) => g.mutates).map((g) => g.name), ['format', 'lint']);
+    assert.deepStrictEqual(
+      GATES.map((g) => g.name),
+      ['format', 'lint', 'typecheck', 'test:coverage']
+    );
+    assert.deepStrictEqual(
+      GATES.filter((g) => g.mutates).map((g) => g.name),
+      ['format', 'lint']
+    );
   });
 });
 
 describe('verdict', () => {
   it('all pass → brief ✅ ALL PASS with a line per gate', () => {
-    const results: GateResult[] = GATES.map((g) => ({ name: g.name, exitCode: 0, output: '', durationMs: 100 }));
+    const results: GateResult[] = GATES.map((g) => ({
+      name: g.name,
+      exitCode: 0,
+      output: '',
+      durationMs: 100,
+    }));
     const v = verdict(results);
     assert.strictEqual(v.ok, true);
     if (v.ok) {
@@ -58,9 +76,18 @@ describe('verdict', () => {
 
 describe('profiles', () => {
   it('gatesFor subsets GATES in canonical order per profile', () => {
-    assert.deepStrictEqual(gatesFor('code').map((g) => g.name), ['format', 'lint', 'typecheck']);
-    assert.deepStrictEqual(gatesFor('test').map((g) => g.name), ['format', 'typecheck', 'test:coverage']);
-    assert.deepStrictEqual(gatesFor('full').map((g) => g.name), ['format', 'lint', 'typecheck', 'test:coverage']);
+    assert.deepStrictEqual(
+      gatesFor('code').map((g) => g.name),
+      ['format', 'lint', 'typecheck']
+    );
+    assert.deepStrictEqual(
+      gatesFor('test').map((g) => g.name),
+      ['format', 'typecheck', 'test:coverage']
+    );
+    assert.deepStrictEqual(
+      gatesFor('full').map((g) => g.name),
+      ['format', 'lint', 'typecheck', 'test:coverage']
+    );
   });
 
   it('isProfile guards CLI input', () => {
@@ -75,7 +102,11 @@ describe('profiles', () => {
 
     const test = fakeRunner();
     await run(test.runner, 'test');
-    assert.deepStrictEqual(test.calls, ['npm run format', 'npm run typecheck', 'npm run test:coverage']);
+    assert.deepStrictEqual(test.calls, [
+      'npm run format',
+      'npm run typecheck',
+      'npm run test:coverage',
+    ]);
   });
 });
 
@@ -84,7 +115,12 @@ describe('run', () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner);
     assert.strictEqual(o.ok, true);
-    assert.deepStrictEqual(calls, ['npm run format', 'npm run lint', 'npm run typecheck', 'npm run test:coverage']);
+    assert.deepStrictEqual(calls, [
+      'npm run format',
+      'npm run lint',
+      'npm run typecheck',
+      'npm run test:coverage',
+    ]);
   });
 
   it('RUN-ALL: keeps running after a failure and exits 1', async () => {

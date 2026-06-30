@@ -18,7 +18,13 @@ const codes = (findings: { code: string }[]): string[] => findings.map((f) => f.
 
 describe('parseGraphEdges', () => {
   it('parses bare and labelled arrows down to bare ids', () => {
-    const md = ['```mermaid', 'graph TD', '  web --> backend', '  web[Web SPA] -->|uses| auth', '```'].join('\n');
+    const md = [
+      '```mermaid',
+      'graph TD',
+      '  web --> backend',
+      '  web[Web SPA] -->|uses| auth',
+      '```',
+    ].join('\n');
     assert.deepStrictEqual(parseGraphEdges(md), [
       { from: 'web', to: 'backend' },
       { from: 'web', to: 'auth' },
@@ -52,7 +58,11 @@ describe('checkPortal', () => {
   });
 
   it('flags a dangling edge (renamed / removed scope)', () => {
-    const r = checkPortal({ scopes: [scope('web')], edges: [{ from: 'web', to: 'backend' }], specDirs: ['web'] });
+    const r = checkPortal({
+      scopes: [scope('web')],
+      edges: [{ from: 'web', to: 'backend' }],
+      specDirs: ['web'],
+    });
     assert.ok(codes(r).includes('SDD_PORTAL_DANGLING_DEP'));
   });
 

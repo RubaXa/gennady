@@ -11,9 +11,7 @@ export function printHelp(): void {
   console.info('nothing from the MR is executed.');
   console.info('');
   console.info('Usage:');
-  console.info(
-    '  npx tsx cli/gennady.ts vcs-worktree --ref group/project!iid [--vcs-host=<host>]'
-  );
+  console.info('  npx tsx cli/gennady.ts vcs-worktree --ref group/project!iid [--vcs-host=<host>]');
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup <worktree-path>');
   console.info('  npx tsx cli/gennady.ts vcs-worktree --cleanup-all');
   console.info('');

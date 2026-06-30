@@ -65,7 +65,8 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
   const { taskId, status } = parseMeta(metaRes.content);
   if (!taskId || !status) return metaError(ticket);
 
-  const indexes = positional.length > 1 ? positional.slice(1).map((p) => resolve(p)) : discoverIndexes(ticket);
+  const indexes =
+    positional.length > 1 ? positional.slice(1).map((p) => resolve(p)) : discoverIndexes(ticket);
   logger.debug(`[SddSyncCommand#run] ${taskId} → ${status}; ${indexes.length} index file(s)`);
 
   // #region START_SYNC — invariant: update each index; verify the write took before reporting updated

@@ -4,7 +4,12 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractSection, findSectionBounds, isValidSectionName, SECTION_NAME_REGEX } from '../section.ts';
+import {
+  extractSection,
+  findSectionBounds,
+  isValidSectionName,
+  SECTION_NAME_REGEX,
+} from '../section.ts';
 
 const TICKET = [
   '# Some Ticket',
@@ -22,13 +27,31 @@ const TICKET = [
 
 describe('isValidSectionName', () => {
   it('accepts canonical names', () => {
-    for (const name of ['META', 'PHASES_OVERVIEW', 'PHASE_P1', 'PHASE_P1_FIX', 'EXECUTION_LOG', 'A', 'A1']) {
+    for (const name of [
+      'META',
+      'PHASES_OVERVIEW',
+      'PHASE_P1',
+      'PHASE_P1_FIX',
+      'EXECUTION_LOG',
+      'A',
+      'A1',
+    ]) {
       assert.strictEqual(isValidSectionName(name), true, `${name} should be valid`);
     }
   });
 
   it('rejects non-canonical names', () => {
-    for (const name of ['', 'meta', 'Meta', '1PHASE', '_META', 'PHASE-1', 'PHASE 1', 'PHASE:1', 'PHASE.1']) {
+    for (const name of [
+      '',
+      'meta',
+      'Meta',
+      '1PHASE',
+      '_META',
+      'PHASE-1',
+      'PHASE 1',
+      'PHASE:1',
+      'PHASE.1',
+    ]) {
       assert.strictEqual(isValidSectionName(name), false, `${name} should be invalid`);
     }
   });
@@ -56,7 +79,9 @@ describe('extractSection — happy path', () => {
   });
 
   it('tolerates leading indentation on marker lines', () => {
-    const indented = ['  <!--SECTION:META-->', '    body line', '  <!--/SECTION:META-->'].join('\n');
+    const indented = ['  <!--SECTION:META-->', '    body line', '  <!--/SECTION:META-->'].join(
+      '\n'
+    );
     const r = extractSection(indented, 'META');
     assert.strictEqual(r.status, 'ok');
     assert.strictEqual(r.status === 'ok' ? r.content : '', '    body line');
@@ -134,7 +159,14 @@ describe('findSectionBounds', () => {
 
   it('returns null for unbalanced or duplicated markers', () => {
     assert.strictEqual(findSectionBounds('<!--SECTION:META-->\nx', 'META'), null);
-    const dup = ['<!--SECTION:META-->', 'a', '<!--/SECTION:META-->', '<!--SECTION:META-->', 'b', '<!--/SECTION:META-->'].join('\n');
+    const dup = [
+      '<!--SECTION:META-->',
+      'a',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:META-->',
+      'b',
+      '<!--/SECTION:META-->',
+    ].join('\n');
     assert.strictEqual(findSectionBounds(dup, 'META'), null);
   });
 

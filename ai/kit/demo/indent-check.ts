@@ -5,27 +5,27 @@
  * markdown tables, nested lists, XML-like example content).
  * Run: npx tsx ai/kit/demo/indent-check.ts
  */
-import { readFileSync } from "node:fs";
-import { createRenderer, walk, normalizeBrick, KIT, TEMPLATES } from "../render.ts";
+import { readFileSync } from 'node:fs';
+import { createRenderer, walk, normalizeBrick, KIT, TEMPLATES } from '../render.ts';
 
 const { render } = createRenderer();
-const PAD = "    "; // include at depth 2
+const PAD = '    '; // include at depth 2
 
-const bricks = walk(KIT, (p) => p.endsWith(".xml") && !p.startsWith(TEMPLATES + "/"));
+const bricks = walk(KIT, (p) => p.endsWith('.xml') && !p.startsWith(TEMPLATES + '/'));
 let ok = 0;
 const fails: { brick: string; line: number; exp: string; got: string }[] = [];
 
 for (const f of bricks) {
-  const rel = f.replace(KIT + "/", "").replace(/\.xml$/, "");
-  const canonical = normalizeBrick(readFileSync(f, "utf8")).split("\n");
-  const expected = canonical.map((l) => (l === "" ? "" : PAD + l));
+  const rel = f.replace(KIT + '/', '').replace(/\.xml$/, '');
+  const canonical = normalizeBrick(readFileSync(f, 'utf8')).split('\n');
+  const expected = canonical.map((l) => (l === '' ? '' : PAD + l));
 
   // wrap so the include sits at depth 2; <Wrap> children are at depth 2
   const tpl = `<Root>\n  <Wrap>\n    {{> "${rel}"}}\n  </Wrap>\n</Root>\n`;
-  const out = render(tpl).split("\n");
+  const out = render(tpl).split('\n');
   // extract lines between <Wrap> and </Wrap>
-  const start = out.findIndex((l) => l.trim() === "<Wrap>") + 1;
-  const end = out.findIndex((l) => l.trim() === "</Wrap>");
+  const start = out.findIndex((l) => l.trim() === '<Wrap>') + 1;
+  const end = out.findIndex((l) => l.trim() === '</Wrap>');
   const got = out.slice(start, end);
 
   let matched = true;
@@ -33,7 +33,12 @@ for (const f of bricks) {
   for (let i = 0; i < n; i++) {
     if (expected[i] !== got[i]) {
       matched = false;
-      fails.push({ brick: rel, line: i, exp: JSON.stringify(expected[i] ?? "∅"), got: JSON.stringify(got[i] ?? "∅") });
+      fails.push({
+        brick: rel,
+        line: i,
+        exp: JSON.stringify(expected[i] ?? '∅'),
+        got: JSON.stringify(got[i] ?? '∅'),
+      });
       break;
     }
   }

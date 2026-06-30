@@ -22,28 +22,51 @@ describe('checkSpecStructure', () => {
     // counts balance (A 1/1, B 1/1) so SDD_ANCHOR_UNBALANCED stays silent — overlap must catch it
     const md = '<!--SECTION:A-->\nx\n<!--SECTION:B-->\ny\n<!--/SECTION:A-->\n<!--/SECTION:B-->';
     const codes = checkSpecStructure('s.spec.md', md).map((f) => f.code);
-    assert.ok(!codes.includes('SDD_ANCHOR_UNBALANCED'), 'counts balance, so unbalanced must not fire');
+    assert.ok(
+      !codes.includes('SDD_ANCHOR_UNBALANCED'),
+      'counts balance, so unbalanced must not fire'
+    );
     assert.ok(codes.includes('SDD_SECTION_OVERLAP'), 'interleave must be caught by overlap');
   });
 
   it('flags a nested section (B opens while A is still open)', () => {
     const md = '<!--SECTION:A-->\nx\n<!--SECTION:B-->\ny\n<!--/SECTION:B-->\n<!--/SECTION:A-->';
-    assert.ok(checkSpecStructure('s.spec.md', md).map((f) => f.code).includes('SDD_SECTION_OVERLAP'));
+    assert.ok(
+      checkSpecStructure('s.spec.md', md)
+        .map((f) => f.code)
+        .includes('SDD_SECTION_OVERLAP')
+    );
   });
 
   it('flat sibling sections (A then B, no overlap) → no overlap finding', () => {
     const md = [block('A'), block('B')].join('\n');
-    assert.ok(!checkSpecStructure('s.spec.md', md).map((f) => f.code).includes('SDD_SECTION_OVERLAP'));
+    assert.ok(
+      !checkSpecStructure('s.spec.md', md)
+        .map((f) => f.code)
+        .includes('SDD_SECTION_OVERLAP')
+    );
   });
 });
 
-const block = (name: string): string => `<!--SECTION:${name}-->\n## ${name}\nx\n<!--/SECTION:${name}-->`;
+const block = (name: string): string =>
+  `<!--SECTION:${name}-->\n## ${name}\nx\n<!--/SECTION:${name}-->`;
 const scopeSpec = (type: string, sections: string[]): string =>
-  [`<!--SECTION:SCOPE_TYPE-->\n## scope-type\n${type}\n<!--/SECTION:SCOPE_TYPE-->`, ...sections.map(block)].join('\n\n');
-const sectionCodes = (md: string): string[] => checkSpecStructure('s.spec.md', md).map((f) => f.code);
+  [
+    `<!--SECTION:SCOPE_TYPE-->\n## scope-type\n${type}\n<!--/SECTION:SCOPE_TYPE-->`,
+    ...sections.map(block),
+  ].join('\n\n');
+const sectionCodes = (md: string): string[] =>
+  checkSpecStructure('s.spec.md', md).map((f) => f.code);
 
 describe('checkSpecStructure — required sections per scope-type', () => {
-  const PRODUCT = ['VISION', 'GOLDEN_DX', 'REQUIREMENTS_AND_CONSTRAINTS', 'ARCHITECTURE', 'DECISION_LOG', 'MODULE_MAP'];
+  const PRODUCT = [
+    'VISION',
+    'GOLDEN_DX',
+    'REQUIREMENTS_AND_CONSTRAINTS',
+    'ARCHITECTURE',
+    'DECISION_LOG',
+    'MODULE_MAP',
+  ];
 
   it('a complete product scope spec → no missing-section findings', () => {
     assert.ok(!sectionCodes(scopeSpec('product', PRODUCT)).includes('SDD_SPEC_SECTION_MISSING'));
@@ -97,7 +120,9 @@ describe('checkSpecStructure — module bloat (soft signal)', () => {
   });
 
   const longModuleSpec = (entities: number, lines: number): string => {
-    const rows = Array.from({ length: entities }, (_, i) => `| Entity${i} | Service | v1 |`).join('\n');
+    const rows = Array.from({ length: entities }, (_, i) => `| Entity${i} | Service | v1 |`).join(
+      '\n'
+    );
     const inventory = `<!--SECTION:ENTITY_INVENTORY-->\n## Entity Inventory\n\n| Entity | Kind | Consumer |\n| --- | --- | --- |\n${rows}\n<!--/SECTION:ENTITY_INVENTORY-->`;
     const padding = Array.from({ length: lines }, (_, i) => `prose line ${i}`).join('\n');
     return [block('MODULE_VISION'), inventory, padding, block('MODULE_CONTRACTS')].join('\n\n');
@@ -152,4 +177,11 @@ describe('checkSpecStructure — scope bloat (AX_SCOPE_STAYS_THIN)', () => {
   });
 });
 
-const PRODUCT_ALL = ['VISION', 'GOLDEN_DX', 'REQUIREMENTS_AND_CONSTRAINTS', 'ARCHITECTURE', 'DECISION_LOG', 'MODULE_MAP'];
+const PRODUCT_ALL = [
+  'VISION',
+  'GOLDEN_DX',
+  'REQUIREMENTS_AND_CONSTRAINTS',
+  'ARCHITECTURE',
+  'DECISION_LOG',
+  'MODULE_MAP',
+];

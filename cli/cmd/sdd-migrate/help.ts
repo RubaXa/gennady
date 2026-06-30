@@ -10,7 +10,9 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-migrate anchors <ticket>         # one v1 ticket (dry-run)');
-  console.info('  npx gennady sdd-migrate anchors --all [root]     # every tasks/**/*.task-*.md (dry-run)');
+  console.info(
+    '  npx gennady sdd-migrate anchors --all [root]     # every tasks/**/*.task-*.md (dry-run)'
+  );
   console.info('  npx gennady sdd-migrate anchors --all --write    # actually inject the anchors');
   console.info('');
   console.info('anchors mode:');

@@ -16,7 +16,11 @@ import {
  * @param declared Entity names declared in the module spec inventory.
  * @returns One error per exported entity not in `declared`; empty when every export is declared.
  */
-export async function check(content: string, filePath: string, declared: string[]): Promise<LintError[]> {
+export async function check(
+  content: string,
+  filePath: string,
+  declared: string[]
+): Promise<LintError[]> {
   const result = await new DbcTsAstAdapter().parseFile(filePath, content);
   if (!result.ok) return [];
   const declaredSet = new Set(declared);
@@ -52,7 +56,11 @@ export async function collectExports(content: string, filePath: string): Promise
  * @param specPath Module spec path — error location for the operator.
  * @returns One error per declared entity absent from `implemented`; empty when all are implemented.
  */
-export function reverseUnimplemented(declared: string[], implemented: Set<string>, specPath: string): LintError[] {
+export function reverseUnimplemented(
+  declared: string[],
+  implemented: Set<string>,
+  specPath: string
+): LintError[] {
   return declared
     .filter((name) => !implemented.has(name))
     .map((name) => ({

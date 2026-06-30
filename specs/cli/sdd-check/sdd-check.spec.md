@@ -44,19 +44,19 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name             | Type         | Purpose                                                                  |
-| ---------------- | ------------ | ------------------------------------------------------------------------ |
-| `run`            | Command      | Точка входа CLI: `--task`/`--all`, обход, агрегация, формат                |
-| `walkMd`         | Utility      | Рекурсивный сбор `.md` под директорией (skip system/build, симлинки)       |
-| `checkSpecLinks` | Utility      | Резолв `](…spec.md)` ссылок спеки на диске                                |
-| `parseGraphEdges`| Utility      | (`shared/sdd/portal`) рёбра Mermaid-графа портала → `{from,to}[]`          |
-| `checkPortal`    | Utility      | (`shared/sdd/check`) чистые проверки портала (граф/таблица/сироты) → `Finding[]` |
-| `checkTicket`    | Utility      | (`shared/sdd/check`) чистые пер-тикет проверки → `Finding[]`               |
-| `isTicket`       | Utility      | (`shared/sdd/check`) распознавание тикета по META + EXECUTION_LOG          |
-| `formatFindings` | Utility      | ESLint-style рендер + вывод exit-кода                                     |
-| `badInvocation` / `fileError` | Utility | Билдеры результатов-ошибок                                  |
-| `Finding`        | Value Object | `{severity, code, file, message}` (`shared/sdd/check`)                     |
-| `CheckResult`    | Value Object | `{text, exitCode}`                                                       |
+| Name                          | Type         | Purpose                                                                          |
+| ----------------------------- | ------------ | -------------------------------------------------------------------------------- |
+| `run`                         | Command      | Точка входа CLI: `--task`/`--all`, обход, агрегация, формат                      |
+| `walkMd`                      | Utility      | Рекурсивный сбор `.md` под директорией (skip system/build, симлинки)             |
+| `checkSpecLinks`              | Utility      | Резолв `](…spec.md)` ссылок спеки на диске                                       |
+| `parseGraphEdges`             | Utility      | (`shared/sdd/portal`) рёбра Mermaid-графа портала → `{from,to}[]`                |
+| `checkPortal`                 | Utility      | (`shared/sdd/check`) чистые проверки портала (граф/таблица/сироты) → `Finding[]` |
+| `checkTicket`                 | Utility      | (`shared/sdd/check`) чистые пер-тикет проверки → `Finding[]`                     |
+| `isTicket`                    | Utility      | (`shared/sdd/check`) распознавание тикета по META + EXECUTION_LOG                |
+| `formatFindings`              | Utility      | ESLint-style рендер + вывод exit-кода                                            |
+| `badInvocation` / `fileError` | Utility      | Билдеры результатов-ошибок                                                       |
+| `Finding`                     | Value Object | `{severity, code, file, message}` (`shared/sdd/check`)                           |
+| `CheckResult`                 | Value Object | `{text, exitCode}`                                                               |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -89,11 +89,11 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
 
 ## 5. Public Options & Policies
 
-| Flag / Arg          | Type    | Description                                            |
-| ------------------- | ------- | ------------------------------------------------------ |
-| `--task <ticket>`   | string  | Проверить один тикет                                   |
-| `--all`             | boolean | Проверить все тикеты + спеки под `specs/`              |
-| `[project-root]`    | string  | Корень для `--all` (cwd по умолчанию); обходит `specs/` под ним ИЛИ саму папку — `--all specs/<scope>` скоупит проверку на один scope |
+| Flag / Arg        | Type    | Description                                                                                                                           |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `--task <ticket>` | string  | Проверить один тикет                                                                                                                  |
+| `--all`           | boolean | Проверить все тикеты + спеки под `specs/`                                                                                             |
+| `[project-root]`  | string  | Корень для `--all` (cwd по умолчанию); обходит `specs/` под ним ИЛИ саму папку — `--all specs/<scope>` скоупит проверку на один scope |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -114,6 +114,7 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **E2E:** отложен (прокси-блок в песочнице). Покрытие: unit (pure + run) + lint + typecheck + dogfood `--all .` (41 спека, clean).
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
@@ -149,6 +150,7 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 - **Status:** active
 - **Why:** раздувание реально на уровне модуля, и предел держит ТУЛ, не проза (аксиома лишь называет правило, просто). Два детерминированных сигнала → два средства: `SDD_MODULE_OVERSIZED` (инвентарь > порога сущностей → мир большой → **декомпозиция** на под-модули); `SDD_MODULE_SPEC_VERBOSE` (спека > порога строк при связном инвентаре → не велик, просто многословно → **компрессия**). Оба — **warn** (exit 0), не error: тул подсвечивает и говорит ЧТО подходит, оператор решает. Срабатывают на границах `module`-сессии (вход `add-module`/`refine-module` + закрытие STEP_6) и в `--all`. Пороги — именованные константы на ХВОСТЕ (~P90) реального распределения: ловят выброс, а не верхнюю четверть (совет, срабатывающий на четверти спек — шум). **750 строк** (хвост LOC спеков). **20 сущностей** — откалибровано по 63 инвентарям: медиана 9, Q3 14, P90 20, max 50; старое 12 стояло между медианой и Q3 → флагало ~треть модулей (здоровое ядро); 20 = P90 ловит только реальные выбросы (верх корзины 16-30 + три монстра: activity-monitor 50, types 44, utils 32). VERBOSE→компрессия не дробит (уплотняет прозу), ложное срабатывание безвредно; риск «мельчения» несёт только OVERSIZED→декомпозиция. На уровне scope счётчика НЕТ: граница **категориальная** (см. D-CK010 — scope несёт модульную деталь), а не размерная.
 - **Risk accepted:** пороги приблизительны (счёт строк таблицы / строк файла); длинный decision-log может ложно поднять LOC — допустимо, это совет, решает оператор + директива.
+
 ### D-CK007 — Rule-ссылки тикетов резолвятся (`SDD_BROKEN_RULE_LINK`)
 
 - **Status:** active

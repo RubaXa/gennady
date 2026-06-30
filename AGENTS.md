@@ -81,8 +81,8 @@ _(Обновляется по мере развития проекта; аген
 | Logging branch decision example                                  | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION)       |
 | Expressive terseness example                                     | [ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS](ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS)             |
 | Trace prefix definition                                          | [ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX](ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX)                           |
-| Взял MR в работу (review_needed / reply_needed)                 | [ai/skills/agent-inbox-take/SKILL.md](ai/skills/agent-inbox-take/SKILL.md)                                                                |
-| Постинг замечаний после согласования                             | [ai/skills/agent-inbox-post/SKILL.md](ai/skills/agent-inbox-post/SKILL.md)                                                                |
+| Взял MR в работу (review_needed / reply_needed)                  | [ai/skills/agent-inbox-take/SKILL.md](ai/skills/agent-inbox-take/SKILL.md)                                                                 |
+| Постинг замечаний после согласования                             | [ai/skills/agent-inbox-post/SKILL.md](ai/skills/agent-inbox-post/SKILL.md)                                                                 |
 
 ---
 

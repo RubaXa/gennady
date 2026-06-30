@@ -49,7 +49,12 @@ describe('checkTicket', () => {
   });
 
   it('flags a missing EXECUTION_LOG section', () => {
-    const c = ['<!--SECTION:META-->', '- **Task-ID:** cli-foo', '- **Status:** [ ] TODO', '<!--/SECTION:META-->'].join('\n');
+    const c = [
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '- **Status:** [ ] TODO',
+      '<!--/SECTION:META-->',
+    ].join('\n');
     // not a ticket by isTicket, but checkTicket still reports the missing log
     assert.ok(codes(c).includes('SDD_MISSING_EXECUTION_LOG'));
   });
@@ -60,7 +65,10 @@ describe('checkTicket', () => {
   });
 
   it('does not flag DONE when the blocker was resolved later', () => {
-    const c = CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting\n- ✅ RESOLVED operator chose B');
+    const c = CLEAN.replace(
+      '#### P1',
+      '#### P1\n- 🛑 BLOCKED waiting\n- ✅ RESOLVED operator chose B'
+    );
     assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
   });
 
@@ -70,7 +78,14 @@ describe('checkTicket', () => {
   });
 
   it('warns on missing Task-ID and unparseable status', () => {
-    const c = ['<!--SECTION:META-->', '- **Purpose:** x', '<!--/SECTION:META-->', '<!--SECTION:EXECUTION_LOG-->', 'log', '<!--/SECTION:EXECUTION_LOG-->'].join('\n');
+    const c = [
+      '<!--SECTION:META-->',
+      '- **Purpose:** x',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      'log',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
     const cs = codes(c);
     assert.ok(cs.includes('SDD_MISSING_TASK_ID'));
     assert.ok(cs.includes('SDD_STATUS_UNPARSEABLE'));

@@ -8,6 +8,7 @@
 **Источник:** `/Users/k.lebedev/Developer/messenger/draft/ai/sdd-authoring-{core,lifecycle,scope,module,task,root}.md` + эталон `…/operation-handle/{full,full-review}/`. Изучено дословно.
 
 **Замысел — документы по уровням:**
+
 - **root** — 1 файл (портал).
 - **scope** — 1 файл `<scope>.spec.md` (split допустим если разрастётся; по умолчанию один — у scope нет тяжёлого машинного справочника, код в модулях). Порядок «общее→частное».
 - **МОДУЛЬ — ДВА файла:** `<module>.1-spec.md` (ЧЕЛОВЕКУ: EARS-требования, зачем; читает РЕВЬЮЕР чтобы одобрить) + `<module>.2-design.md` (МАШИНЕ: инвентарь/DbC-контракты/файлы; источник истины для реализации; порядок секций ради человека, читается по маркерам).
@@ -15,6 +16,7 @@
 - Принцип A2: spec для людей, design для машины. A10: требование↔контракт связаны тегом `[ACR-REQ-N]`.
 
 **Замысел — ЖИЗНЕННЫЙ ЦИКЛ (все уровни), A11/L1-L5:**
+
 - **master** — чистый файл (без манифеста/меток).
 - **review-state** — тот же файл на ветке: целевой текст ВНЕСЁН НА МЕСТЕ (остальное байт-в-байт → diff читается как PR) + временный `CHANGE_MANIFEST` вверху 1-spec (ТИП: refine/pivot/greenfield · СВЯЗЬ С МИРОМ · ЧТО МЕНЯЕТСЯ ✚/~ · НЕ ТРОНУТО · ФАЙЛЫ кода · ЗАЧЕМ · ЧЕК-ЛИСТ РЕВЬЮЕРА) + метки строк `✚`(новое)/`~`(изменено) + новые ID в конец секций.
 - **критик** (L3, отдельный субагент) — гейт стадии спеки, 3 линзы: **полнота** (ни одна клауза не потеряна) · **автономность** (агент реализует модуль из спеки один) · **понимание** (свежий критик понимает без оригинала). Цикл правок пока не CLEAN.
@@ -22,6 +24,7 @@
 - **Два сценария:** greenfield (∅→review-state, тип=greenfield, БЕЗ построчных меток) · change (master→review-state на месте).
 
 **ЧТО v2 ИМЕЕТ vs ПОТЕРЯНО:**
+
 - root 1 файл ✓ · scope 1 файл ✓.
 - **МОДУЛЬ:** v2 = один `.spec.md` ✗ — split `1-spec`(человек)/`2-design`(машина) ПОТЕРЯН.
 - **ЖИЗНЕННЫЙ ЦИКЛ master/review/compress + Change Manifest + ✚/~** — ПОТЕРЯН целиком (v2 имеет режимы greenfield/refine/pivot, но НЕ review-state представление + НЕ compress).
@@ -30,6 +33,7 @@
 - scope-type в черновике зовётся `contracts` (мы переименовали → `interface`).
 
 **РЕШЕНО (2026-06-23) — это и есть недоделанный этап построения спецификации, строим его:**
+
 - **(А) ОДИН документ** на (под)модуль И scope. Split `1-spec/2-design` НЕ делаем: выборочное чтение держат маркеры (`sdd-extract`), тяжесть держит ДЕКОМПОЗИЦИЯ (наши пороги + под-модули — это наш ответ на тяжесть вместо split'а), поиск и прослеживаемость A10 проще в одном файле. Сохраняем принципы черновика: человеческое вверху (A1), разделение человек/машина через ПОРЯДОК секций, не файлы.
 - **НЕЙМИНГ:** спека = `<name>.1-spec.md`, задачи = `<name>.2-tasks.md`. Свернули `3→2` (design влит в spec), убирает рубец `.3-tasks` + распознаватель `1-spec/2-design` в `AX_TASK_RESOLUTION`. Касается scope+module+project-index. Rename конвенции — часть стройки этого этапа (форматы+директивы+парсинг тулов), specs/ репо НЕ мигрируем в этой сессии.
 - **(Б) Жизненный цикл master/review-state/compress + Change Manifest + `✚`/`~`** — ДА. compress (растворение) АВТОМАТИЗИРОВАН (детерминированный шаг). **НОВЫЙ механический чек:** документ НЕ застрял в review (`CHANGE_MANIFEST`/метки висят при закрытой задаче) → ошибка, по `AX_CLOSE_WITH_INTEGRITY_CHECK`.
@@ -37,6 +41,7 @@
 - **НОВЫЙ ИНСТРУМЕНТ (записать, вернуться):** по завершению задачи проверять **покрытие тестами ≥ 80%** — coverage-гейт (связан с `sdd-verify` test:coverage). Покрытие надо контролировать механически.
 
 **СТРОЙКА Б — прогресс (2026-06-23):**
+
 - ✅ **Запись в review-state:** кирпич `CHANGE_MANIFEST_FORMAT` + формат `formats/change-manifest.xml` + аксиома `AX_SPEC_LIFECYCLE` в BeliefState scope/infra/interface/module; FINAL_SPEC каждой пишет в review-state.
 - ✅ **Триггер compress уточнён:** `AX_SPEC_LIFECYCLE` — compress ТОЛЬКО по одобрению ВНЕШНЕГО ревью (оператор «замечаний нет»), НЕ по внутреннему CLEAN. Спека-PR (design-PR) мёржится по ревью, реализация (scaffold→execute) — ПОСЛЕ master.
 - ✅ **Механическое отслеживание процесса:** `checkReviewState` в sdd-check — `SDD_REVIEW_INCONSISTENT` (error: ✚-марка без манифеста / манифест без «ТИП ИЗМЕНЕНИЯ») + `SDD_REVIEW_STATE_STUCK` (warn: манифест висит → финализируй compress). Сообщения учат + ссылка на аксиому. Детект осиротевших марок — только `✚` (`~` неоднозначен в markdown → ложные на код-блоках; поймал на dogfood, сузил). 5 тестов · 160 SDD-unit · dogfood 0/2.
@@ -51,12 +56,15 @@
 **UC-21/22 (reconcile) — ТРАССА:** два режима (fix / from-code) → общий хвост: probe (критик: bug-vs-defect+class+blast) → plan → agree → apply (reopen+batch) → sync → verify. **Дыра ЗАКРЫТА:** STEP_5 пропускал per-task аудит (`AX_DISPATCH_VIA_BATCH`), а STEP_7 был только sdd-check+sdd-verify — обходил сеть качества UC-19/20. Теперь STEP_7 + эпик-audit (дрейф) + code-review (баги в reconciled diff) на reconcile-уровне (переиспользует audit/code-review директивы; BLOCKER → пауза). Когерентно с execute.
 
 ## ✅ ВЕСЬ UC-СПИСОК ПРОЙДЕН (1–24)
+
 Все use-case'ы трассированы методом call-graph (что активируется · дыра · тул? · финальная верификация), дыры закрыты, спека-раньше-тула, проверено (render+deps 56 · ~304 теста · dogfood 0 err / 2 warn (bloat) · typecheck/lint чисто). Спина верификации завершена.
 
 ## 🔄 СВЕРКА ОТЛОЖЕННОГО (2026-06-23) — авторитетный open-ledger
+
 > ⚠️ Всё НИЖЕ (RESUME-строка · ## Статус · ## Граф узлов · ## ОСТАЛОСЬ) — **ИСТОРИЧЕСКИЕ снимки ранних фаз**: там много «в работе / СЛЕД / ОТКРЫТО / 🚧», которое УЖЕ закрыто. Актуальная истина — этот раздел + блоки ✅ выше (строки 1–76).
 
 **ЗАКРЫТО за сессию (было помечено открытым):**
+
 - Весь UC-список **1–24** (RESUME «СЛЕД: 19 · 21-24» — пройдено).
 - **Критик-гейт после спеки/модуля + переделка `sdd-critic`** (флаг оператора, был «отложен») → Б (`review-lifecycle` STEP_1 = семантический гейт) + В (`AX_PRODUCT_ARCHITECT_LENS`, продукт-архитектор + системный контекст).
 - **Coverage-гейт ≥80%** (был «вернуться») → `testcov --min` + audit STEP_1.
@@ -65,20 +73,23 @@
 - **v2 SKILL-слой** (6 скилов) · пер-тул разборы (Доработки #1–4) · «## ОСТАЛОСЬ» п.1-2.
 
 **ЗАКРЫТО 2026-06-24 (группы 1-2 из ledger):**
+
 - **sdd-check: вложенность/перекрытие секций** → `sectionOverlaps` (стек: open-при-открытой + close не-вершины), код `SDD_SECTION_OVERLAP` (error) в `checkTicket`+`checkSpecStructure`; D-CK009. Ловит interleaving, который баланс по счёту пропускает.
 - **inventory обратное направление** → `reverseUnimplemented`+`collectExports` (lint), opt-in флаг `--inventory-reverse`, код `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (error); D-015. Корректен только над целым модулем → флаг по умолчанию OFF (phase/audit гоняют подмножество — без ложных); audit-директива зовёт его при закрытии ВСЕГО модуля.
 - **общий `as <Type>` через AST** → `DbcTsAstAdapter.extractCastSites` + тип `CastSite`; `CastSafetyCheck` стал async, regex/`maskNonCode` удалены; D-016, **политика А (решение оператора): ВСЕ касты = error**. AST убрал ложные на import-rename/generics/`as anyType`. Angle-касты вне зоны (tsx-грамматика). Догфуд: чек ловит существующие касты репо (`as string[]`/`as NodeJS.ErrnoException`/…) → это трек миграции (п.3, не мигрируем), мои добавления чистые.
 
 **ЗАКРЫТО 2026-06-24 (вторая волна — спроектировано ОТ ФОРМАТА v2 в `ai/kit`, не от легаси-спек репо):**
+
 - **B5 scope-deps↔портал** → `checkScopeDeps` (`shared/sdd/check.ts`), код `SDD_SCOPE_DEP_UNDECLARED` (warn); D-CK011. Направление граф→спека: каждое ребро портала `X --> Y` отражено в `## 7 Scope Dependencies` («Depends on») спеки X — точное имя ИЛИ wildcard `prefix-*`. Свободная форма обезврежена: wildcard-толерантность + односторонность + проза безвредна (проверяем покрытие рёбер, лишние токены не флагают). Рёбра портала предчитываются в `--all`.
 - **scope-level bloat** → не размерный порог, а **категориальный** `SDD_SCOPE_BLOATED` (warn); D-CK010. Scope-спека (есть `SCOPE_TYPE`, нет `MODULE_VISION`), несущая `ENTITY_INVENTORY`/`MODULE_CONTRACTS` (модульная деталь) → `AX_SCOPE_STAYS_THIN`. Классификатор уточнён: модуль = по `MODULE_VISION` (раньше ловился по `ENTITY_INVENTORY` → раздутый scope маскировался под модуль).
 - **калибровка порога 12 → 20 (P90)** → D-CK005 обновлён. По 63 инвентарям: медиана 9, Q3 14, **P90 20**, max 50; 12 стояло между медианой и Q3 (флагало ~треть, здоровое ядро). 20 ловит выбросы (верх 16-30 + монстры 32/44/50). Догфуд подтвердил: `sdd-state`(15) больше НЕ флагается (был ложный шум), остаётся только `testcov`(31). Догфуд `--all .` = 0 err / 1 warn.
 - **split-тесты: решение «две фазы» ФИНАЛЬНО** (решение оператора). Тесты — отдельная фаза, тест не читает исходники, только публичный API (уже в `phase-execution-protocol`). Web-ресёрч с источниками не требуется — решение стоит на общих знаниях; снято с отложенного.
 
 **АКТИВНО — отложено сознательно (НЕ закрыто):**
-1. *Вне зоны инструмента:* angle-касты `<T>x` (tsx-грамматика конфликтует с JSX; форма устаревшая, в коде её нет — `as Foo` ловится).
-2. *Миграция самого репо (НЕ разработка SDD — отдельный трек, «не мигрируем»):* касты репо (теперь подсвечены D-016) · oversized-спека `testcov`(31) · полный rename-флип (`1-spec`/`2-tasks`, 31 ссылка + файлы repo; энейблер в тулах готов) · v1→v2 миграция репо (+ tool-режимы `sdd-migrate ids/move`) · TSK-NN file-header `@tasks`-аксиомы (решение оператора) · cutover-доки (ai/skills/README · specs/ai-skills · sync-skills DX в cli.spec).
-3. *Находка-данные:* **TSK-55** несёт прозу в Dependencies → `parseMetaInfo` режет по запятой в мусор-deps (тикет малформед; не баг тула).
+
+1. _Вне зоны инструмента:_ angle-касты `<T>x` (tsx-грамматика конфликтует с JSX; форма устаревшая, в коде её нет — `as Foo` ловится).
+2. _Миграция самого репо (НЕ разработка SDD — отдельный трек, «не мигрируем»):_ касты репо (теперь подсвечены D-016) · oversized-спека `testcov`(31) · полный rename-флип (`1-spec`/`2-tasks`, 31 ссылка + файлы repo; энейблер в тулах готов) · v1→v2 миграция репо (+ tool-режимы `sdd-migrate ids/move`) · TSK-NN file-header `@tasks`-аксиомы (решение оператора) · cutover-доки (ai/skills/README · specs/ai-skills · sync-skills DX в cli.spec).
+3. _Находка-данные:_ **TSK-55** несёт прозу в Dependencies → `parseMetaInfo` режет по запятой в мусор-deps (тикет малформед; не баг тула).
 
 **RESUME ⚠️ ИСТОРИЧЕСКИЙ снимок — УСТАРЕЛ (актуальная истина — раздел «СВЕРКА ОТЛОЖЕННОГО» выше; здесь «СЛЕД/ОТКРЫТО/В РАБОТЕ» уже не верны):** идём по списку UC методом call-graph (трасса → дыра → чиним; на каждом UC спрашивать «нужен ли детерминированный ТУЛ? нужна ли финальная верификация?»; спека раньше тула; язык — плоский русский, без калек/метафор; «скилы» не «двери»). **Готово:** UC-1 readiness-флоу · UC-2 migration+compression директивы · UC-3 `sdd-state --probe` + `discover-from-code` · UC-5/6 root (relationship-first + сироты при удалении/переименовании + финальный sdd-check) · UC-7-10 scope-типы (переименование `contracts`→`interface`; режим `rewrite`; F1 финальная верификация в infra/scope/interface/module). **В РАБОТЕ:** `sdd-check` как ПОЛНЫЙ механический слой — волны 1-5 готовы (B1 task-DAG · B2 tracker↔ticket · B3/B4 фазы+exec-log · F2-баланс-якорей в `.spec.md` · **B0 reconcile** — кирпич `AX_MECHANICAL_VIA_SDD_CHECK` + audit STEP_1 + спека `sdd-check` честны: тул заявляет РОВНО реальный набор, file-headers→`sdd-verify`, семантика→audit); **F2-секции-по-типу** ✅ (`checkSpecStructure` — required-секции по scope-type из секции `SCOPE_TYPE`, минимальный костяк на тип; module-спеки ИСКЛЮЧЕНЫ по `MODULE_VISION/ENTITY_INVENTORY/MODULE_CONTRACTS`, тк они тоже несут SCOPE_TYPE родителя). **B5 ОТЛОЖЕН СОЗНАТЕЛЬНО:** scope-deps в спеках — свободная форма `[infra-*, …]`; направление cross-scope-DAG неоднозначно (порядок-исполнения vs depends-on); rollup-счётчики опциональны → надёжно не мехнизировать, было бы хрупко (против «простое-но-не-хрупкое»). Вернуться, когда форматы дадут структурированные/анкоренные deps. **Механический слой `sdd-check` ЗАВЕРШЁН** (модуло B5): 103 SDD-unit · render 47 · dogfood 44 clean. **UC по списку:** 11/12 ✅ (refine coherent · pivot supersession+invalidation · rewrite + НОВЫЙ guard `H_REWRITE_WITH_DOWNSTREAM` — rewrite запрещён при downstream-модулях/тикетах, аксиома супессии усилена). **UC-13 структурная дыра ЗАКРЫТА:** новая аксиома `AX_SCOPE_STAYS_THIN` (scope ограничен ролью: vision/требования/арх-решения/decision-log/Module-Map/composition/handoff; entity-инвентарь/поверхности/DbC/файлы — ТОЛЬКО в модулях; два представления монолит/индекс; рост = сигнал к декомпозиции, не лицензия пухнуть; первая декомпозиция = миграция «вынеси деталь в модули, scope → тонкий индекс»). Вплетена в scope+module BeliefState, явный шаг миграции в module STEP_1. Жёсткий bloat-check ОТЛОЖЕН (порог «слишком много детали» размыт, как B5; связность держат bidirectional-check `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` + миграция). **UC-13 рекурсия раздувания (решения оператора A1 + мягкий счётчик):** scope→module = категориальная граница (A1 лениво: scope может быть без модулей, первый рождается когда нужна деталь; порог не нужен). module→submodule = по связности: `AX_HIERARCHICAL_SPECS` усилена триггером роста + module проактивно ПРЕДЛАГАЕТ под-модули в STEP_2; тул держит предел (аксиома упрощена до одной мысли). ДВА детерминированных сигнала в `checkSpecStructure` → два средства: `SDD_MODULE_OVERSIZED` (инвентарь > 12 сущностей → декомпозиция) · `SDD_MODULE_SPEC_VERBOSE` (спека > 750 строк при связном инвентаре → компрессия; 750 = ~P95 реального распределения LOC, чтобы ловить выброс, а не верхнюю четверть). Оба warn/exit0. Срабатывают на границах module-сессии: вход (add/refine-module STEP_0 — подсветить ДО работы) + закрытие (STEP_6) + `--all`. Спека sdd-check + D-CK005 объявляют до тула. Догфуд: sdd-state(15)/testcov(31) → OVERSIZED. 143 SDD-unit · render+deps 55 · dogfood 0 err / 2 warn. **Рефлексия-фикс (контракт директива↔тул):** все 6 мест «run `sdd-check`» вызывали тул без формы, а `--task <spec>` трактует спеку как тикет → ложные META/EXECUTION_LOG. Прописал конкретно: scope-типы + module → `--all specs/<scope>` (скоуп на один scope; structure/links/size без кросс-проверок, быстрее), root → `--all .` (портальному графу нужен весь репо). Спека PUBLIC_OPTIONS честна: `[root]` обходит `specs/` под ним ИЛИ саму папку. **UC-13/14/15 трасса режимов сделана** (фактура: initial=первая декомпозиция scope→модули; add-module=добавить модуль, не трогая чужие; refine-module=поменять существующий). **UC-14 тул: `checkModuleGraph`** — цикл-чек графа модулей (`## 9` Mermaid, рёбра объединены по scope, `parseGraphEdges`+`hasCycle`); `SDD_MODULE_DAG_CYCLE` (error). Dangling-чек СОЗНАТЕЛЬНО НЕ делаем (граф легально несёт не-модульные узлы: index.ts/gennady.ts/shared-либы → ложные срабатывания), D-CK006. Группировка по `relative(base, ...)` (полный `--all .` ловит; scoped `--all specs/<scope>` аккуратно пропускает — цикл кросс-модульный, ловится на репо-уровне). 149 unit · lint clean · dogfood 0 цикла (нет ложных на реальных графах) · сквозняк на temp подтвердил детект. **ОТКРЫТО — UC-15 gap B:** Consumer Impact List для ломающего refine-module (потребители = обратные рёбра графа) — директивная правка `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, симметрично Pivot Invalidation List. **ИНВАРИАНТ «мутация → проверка целостности scope»:** простая аксиома `AX_CLOSE_WITH_INTEGRITY_CHECK` (мутация не завершена, пока scope не прошёл sdd-check; `--all specs/<scope>`, а портал/task-DAG/кросс-scope → `--all .`) вплетена в BeliefState всех 6 мутирующих флоу (root/scope/infra/interface/module/scaffold). **scaffold STEP_5 ФИКС:** добавлен закрывающий `sdd-check --all .` (task-DAG/tracker/phase/exec-log) — раньше scaffold писал тикеты+DAG и НЕ верифицировал (дыра UC-17-18 закрыта). **cmd ФИКС:** группировка module-graph базонезависима (по абсолютному пути от сегмента `specs`) — scoped `--all specs/<scope>` теперь ТОЖЕ гоняет цикл-чек (add-module верифицирует граф на close; раньше пропускался). 149 unit · render+deps 55 · lint clean · dogfood full 0/2 · scoped agent-mon 7 files clean. **UC-15 gap B ЗАКРЫТ:** ломающий refine-module строит Pivot Invalidation List (потребители = обратные рёбра графа `## 9` `--> this-module`) в спеке модуля; halt `H_REFINE_BREAKING_NO_IMPACT_LIST`; audit-проверка `AX_STALE_AFTER_PIVOT_VERIFICATION` обобщена «scope spec» → «scope или module spec» (та же форма `PIVOT_INVALIDATION_LIST_FORMAT`, переиспользована, без параллели). Без нового тула — деривация механическая, верификация уже в audit. **UC-13/14/15 ПОЛНОСТЬЮ.** **ОТКРЫТО (флаг оператора 2026-06-23, отложено по его решению):** (1) **семантический гейт после написания спеки/модуля** — закрытие флоу сейчас однослойное (только механика `sdd-check`); нужен второй слой: критик-архитектор ПОСЛЕ `sdd-check` и ДО одобрения оператора (порядок: написал→sdd-check→критик→operator→handoff); калибровать (полное ревью на существенном — новый scope/initial/pivot/ломающий refine; мелкий refine — пропуск/лёгкий режим, чтобы не церемония). (2) **переделать сам `sdd-critic`** из придиры в архитектора/ревьюера: выдаёт (а) как понял артефакт + бизнес-цель, (б) отклонения от целей, (в) фундаментальные/логические проблемы, (г) слепые зоны; ЗАПРЕТ мелких придирок (стиль/формат = линт), ранжирование «фундаментальное вперёд». Связь: гейт зовёт критика → сперва чинить поведение критика, потом гейт. **UC-16 кросс-scope ТРАССА:** механика уже покрыта `checkPortal` (UC-6: ацикличность/граф↔таблица↔спеки/висячие/сироты); каскад — scaffold (`AX_RULES_CASCADE_RESOLUTION`+hard-fail); граница — контракты из `interface`-scope. **ФИКС:** 3 устаревших токена рейнейма `contracts`→`interface` (ax-cross-scope-dependencies · scope-spec-module-map-update · module-spec-markdown-structure) — рейнейм теперь полный (греп чисто). **B5 остаётся отложен:** spec `depends-on` ↔ портал-граф (в спеке свободная форма) — без изменений. **СЛЕД:** 19 execute · 21-24 сопровождение (+ открытые: критик-гейт/переделка критика). Команды: сборка `npx tsx ai/kit/build-directives.ts`; тесты `node --import tsx --test shared/sdd/__tests__/*.test.ts cli/cmd/sdd-*/__tests__/*.test.ts` + `npx tsx --test ai/kit/__tests__/{render,deps}.test.ts`; догфуд `npx tsx cli/gennady.ts sdd-check --all .` (=44 clean). Карта флоу + находки A/B — в разделе «Граф узлов» ниже; роадмап sdd-check — в bullet «Side-view».
 
@@ -105,6 +116,7 @@
 Открытые из прошлого (флаг оператора): семантический гейт-критик после написания спеки/модуля + переделка `sdd-critic` (см. RESUME).
 
 ## Статус ⚠️ ИСТОРИЧЕСКИЙ (ранние фазы; 🚧/«СЕЙЧАС»/«ОСТАЛОСЬ» ниже многие закрыты — см. «СВЕРКА ОТЛОЖЕННОГО» выше)
+
 - ✅ **Директивный слой v2 — построен, независимо проаудирован, punch-list закрыт.**
 - ✅ **ФАЗА ТУЛОВ ЗАВЕРШЕНА** — все 7: extract · state · verify · log · sync · task · check. Ядра `shared/sdd/`: `section` (extractSection+findSectionBounds), `scripts` (gate-классификация), `portal` (Scopes), `tracker` (parseMeta+updateTrackerStatus), `ticket` (Meta/Phases/Verification парсеры), `check` (checkTicket). Каждый тул: cmd/types/help/index + unit + спека (`specs/cli/sdd-*/`) + 4 точки регистрации. **99 unit зелёные, lint+typecheck чисто, sdd-check --all продогфужен на 42 спеках репо.**
 - ✅ **Проводка вызова тулов (как в v1)**: бирка `axiom/process/ax-tool-invocation` (`AX_TOOL_INVOCATION`) в 7 tool-директивах (router/scaffold/execute/phase-execution-protocol/audit/reconcile/critic). Исходник несёт DEV-форму `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd>` → локально гоняется через tsx; `path-normalizer.ts` (RULE_CLI_TSX_FULL) на `sync`/`sync-skills` переписывает в `npx gennady <cmd>`. Новые тулы нормализуются автоматически (правило ловит любой `<cmd>` после gennady.ts — менять нормализатор не нужно). Проверено: execute.directive.xml → после нормализации `npx gennady`, dev-путей не остаётся. `sdd-orient`→`orient` тоже сделано.
@@ -122,7 +134,9 @@
   - ⚠️ Заметка: v1 имеет ДВА суб-формата тикетов — голые (56, до ~2026-05-21) и уже-с-якорями (12, newer). anchor-inject покрывает оба (inject/skip). Сделать `sdd-state`-детект FLOW_VERSION тоньше не нужно (`tasks/`-dir достаточно). Полировка: skip-сообщение «already anchored / no canonical sections» можно разделить на два явных случая.
 
 ## Список Use Cases — спина верификации (СОГЛАСУЕМ, потом идём по нему по одному)
+
 Метод на каждый UC: трассируем call-graph (дверь → директива → Mission/axioms/steps/halts/LOGIC_SWITCH → тулы), ищем дыры, чиним как UC-1. НЕ метаться — двигаться по списку.
+
 - **A. Вход/предусловия (роутер preflight):** 1 ✔ не-готов (нет package.json/команд/gennady) → readiness-настройка [СДЕЛАНО] · 2 ✔ готов но v1 (`tasks/`) → живой `migration-v1-v2.directive` [СДЕЛАНО] · 3 готов+v2 но интент неоднозначен → роутер уточняет, не угадывает
 - **B. Портал проекта (root) — портала НЕТ (это UC-3, два вида):** **3a** кода НЕТ (пусто / только package.json) → greenfield: vision + scope-graph + первый infra-base · **3b** код ЕСТЬ → восстановление спек из кода (НОВАЯ директива `discover-from-code`: картография → infra-scope из конфигов → scope/модули из кода → проверить контракты → извлечь правила написания → план → задачи на приведение кода в порядок). Ветвление по **`sdd-state --probe`** (эвристики CODE/INFRA: find `*.js/jsx/ts/tsx` без node_modules + конфиги; ЗА ФЛАГОМ — дефолт молчит = минимальное знание на старте, чтобы не искажать картину). · 5 портал есть → +новый scope в граф · 6 портал есть → refine vision / перестройка графа (idempotent)
 - **C. Спека scope по типу (router→ветка):** 7 infrastructure → infra · 8 product → scope · 9 library → scope · 10 interface → interface · 11 эволюция-refine · 12 эволюция-pivot/rewrite
@@ -133,7 +147,9 @@
 - **H. Сопровождение:** 21 findings/баг/ревью → reconcile-fix (spec⟷code⟷task + verify) · 22 код убежал → reconcile-from-code · 23 critic (spec/ticket, многораундовый) · 24 check (репортер, read-only)
 
 ## Граф узлов (карта флоу — держим и сверяем через UC)
+
 Лениво: `READ_AND_USE_DIRECTIVE` (→) грузит директиву/формат в контекст. Тулы — детерминированные вызовы. Дверь `embody` директиву.
+
 - **ВХОД** `/sdd` ⇒ embody `router`.
 - `router` STEP_0: tool `sdd-state` → гейты: v1 → `migration-v1-v2` (→ lazy `compression`; tools sdd-migrate/sdd-state/sdd-check) · not-ready → `readiness` (tool sdd-state) · else classify → `LOGIC_SWITCH` → `root` | `scope` | `infra` | `interface` | `module`.
 - `root` (portal absent): tool `sdd-state --probe` → CODE=absent ⇒ greenfield (сам: vision+граф+infra-base) | CODE=present → `discover-from-code`.
@@ -144,6 +160,7 @@
 - **⚠️ НАХОДКА-B (state-refresh):** `router` STEP_0 берёт `sdd-state` ОДИН раз; после embedded `migration`(v1→v2)/`readiness` следующий гейт/классификация смотрят на УСТАРЕВШИЙ снимок → надо пере-запрашивать `sdd-state` между гейтами.
 
 ## ОСТАЛОСЬ (актуальное)
+
 1. **v2 SKILL-слой** — создать двери `/sdd-*` в `ai/skills/`, ссылающиеся на `ai/directives/sdd-v2/…` (dev-форма вызова `npx tsx ~/Developer/gennady/cli/gennady.ts` → нормализуется в `npx gennady`). Без этого v2 не запускается оператором. Плюс закрыть cutover-хвосты выше.
 2. **Верификация (процесс оператора)** — пер-тул разбор (как звать, что получаем, доработки) → директивы по сценариям (как активируется, какие узлы mission/axioms грузятся) → **node call-graph + симуляция** прогона. Отдельная фаза. (Реализуемо: kit — это partials `{{>}}`, статический граф включений на директиву считается; activation-цепочка LOGIC_SWITCH/READ_AND_USE_DIRECTIVE трассируется.)
    - 🔎 НАЧАТО: пер-тул разбор + живой прогон execute-цикла на фикстуре. **Доработка #1:** `sdd-check` принимал только `--task=<path>` (через `=`); добавил приём `--task <path>` (пробел) — обе формы, +регрессия. Карта вызовов: state→router; task/check/log→execute STEP_1; extract/verify/log→phase-worker; sync→execute STEP_4; check/extract→audit; orient→reconcile/critic; check→scaffold/root.
@@ -159,20 +176,24 @@
    - **План миграции (из диффа):** Фаза-1 (детермин. ядро + 1 семантич. шаг): (a) **anchor-injection** по header→canonical map (verify: sdd-check balance); (b) **slug-map** (семантика: прочитать N тикетов → `ACR-slug`) → точный replace по зонам (курир. паттерны, не трогая UTF) → verify ноль старых task-id; (c) `git mv tasks/→specs/` + индексы `*.3-tasks.md`. Фаза-2 (семантич. reformat): spec-refs→anchors, BDD+REQ-теги, decision-log, ЯЗЫК. ТУЛ `sdd-migrate` = детерминир. части (anchor-inject, id-map-replace, move, verify); ГАЙД = семантика (как строить slug-map, reformat, язык).
    - **Живые флоу (миграцию НЕ выполняем в этой ветке — только проектируем директивы):** `readiness.directive` (настройка) + `migration-v1-v2.directive` (структура `tasks/`→co-located `specs/*.3-tasks.md`, `TSK-NN`→slug, компрессия решений, ЯЗЫК) + `compression.directive`. Гайды удалены — роутер/двери embody'ят директивы.
 3. **e2e для 6 тулов** (есть только sdd-extract) + прогон сюиты с `unset HTTPS_PROXY`.
+
 - 🧱 **DBC-линт тулов (помнить!):** object/interface-типы → КАЖДОЕ поле с `/** @purpose */`; union-типы — не надо. JSDoc-порядок: `@purpose → @invariant → @param → @returns`.
 - ⚠️ **e2e в песочнице не идёт**: harness делает `npm install ./*.tgz`, корпоративный registry (verdaccio.devmail.ru) → 403. Отменяет ВСЮ e2e-сюиту в общем `before`-хуке, не только мою. e2e написаны+зарегистрированы, пойдут в CI/у юзера. Компенсация: cmd-level unit-тесты (`run()` через stub process.exit, как в lint.cmd.test.ts).
 - ⏳ Эталон (вендоринг) · 5 косметических `TSK-NN`-плейсхолдеров в примерах форматов.
 
 ## Принципы (ai/kit/AUTHORING.md)
+
 Теги=якоря (не парсер). Раскладка под внимание: ядро в начало (primacy/sink), тяжёлое лениво у шага (recency), must-follow пере-якорить. Детерминизм→тестируемые тулы; суждение→агент. Модель по нагрузке. Conduct 3 профиля (интервью/worker/оркестратор).
 
 ## Директивный слой (готов)
+
 ```
 /sdd router (+ multi-scope, session-file) → root · scope · infra · interface · module
 /sdd-scaffold (2 гейта: разбиение+тест-план) · /sdd-execute (orchestrator + phase-protocol worker) · /sdd-reconcile (fix⊕sync-from-code)
 субагенты: audit (sdd-check + семантика) · critic (orchestrator + sensor, risk-first)
 check = sdd-check --all + репортер (без директивы)
 ```
+
 14 директив + ~21 ленивый формат (`sdd-v2/formats/`). Формат тикета сведён v2 (slug Task-ID, per-contract anchors, typing-BLOCKER, Test-Coverage-BLOCKER, Decision Log). Индексы co-located `*.3-tasks.md` (project/scope/module, declare-once). Имена обобщены (root/scope/module/scaffold flows). Пути co-located `specs/` (не `tasks/`).
 
 ## ФАЗА ТУЛОВ (текущая)
@@ -193,7 +214,7 @@ check = sdd-check --all + репортер (без директивы)
 | `sdd-log` | `sdd-log` | новый — строка журнала (token vocab, запрет фабрикованного DONE/`<…>`) |
 | `sdd-sync` | `sdd-sync` | новый — синк статусов в `*.3-tasks.md` (имя `sync` занято дистрибуцией) |
 
-**РЕВЕРС-СПЕК НАЙДЕН:** старые механические скрипты в `ai/skills/sdd-execute/scripts/` — прямой эталон контрактов: `extract-section.sh`→sdd-extract (полный exit-code контракт), `scan.sh`→sdd-check (status/rounds/blocker-state/placeholders/anchor-balance + DONE-противоречия), `verify.sh`+`classify-scripts.ts`→sdd-verify+sdd-state (RUN-ALL/SUPPRESS-ON-SUCCESS, классификация npm-скриптов). Контракт извлечения: парные `<!--SECTION:NAME-->`…`<!--/SECTION:NAME-->`, NAME=`^[A-Z][A-Z0-9_]*# SDD v2 — карта работы и точка возобновления
+**РЕВЕРС-СПЕК НАЙДЕН:** старые механические скрипты в `ai/skills/sdd-execute/scripts/` — прямой эталон контрактов: `extract-section.sh`→sdd-extract (полный exit-code контракт), `scan.sh`→sdd-check (status/rounds/blocker-state/placeholders/anchor-balance + DONE-противоречия), `verify.sh`+`classify-scripts.ts`→sdd-verify+sdd-state (RUN-ALL/SUPPRESS-ON-SUCCESS, классификация npm-скриптов). Контракт извлечения: парные `<!--SECTION:NAME-->`…`<!--/SECTION:NAME-->`, NAME=`^[A-Z][A-Z0-9_]\*# SDD v2 — карта работы и точка возобновления
 
 Исследовательский трек: пересборка SDD-флоу из `ai/kit` (шаблоны `.hbs` + кирпичи) → `ai/directives/sdd-v2/`.
 Работаем НЕ по SDD (бутстрап). При возобновлении после компакта — читать ЭТОТ файл + `ai/kit/AUTHORING.md`.
@@ -201,20 +222,24 @@ check = sdd-check --all + репортер (без директивы)
 Сборка директив: `npx tsx ai/kit/build-directives.ts` · Тесты: `npx tsx --test ai/kit/__tests__/render.test.ts` (47).
 
 ## Статус
+
 - ✅ **Директивный слой v2 — построен, независимо проаудирован, punch-list закрыт.**
 - 🔨 **Фаза тулов** (в работе) — строим `gennady sdd-*` (TypeScript + e2e). СЕЙЧАС: `sdd-check` (первый).
 - ⏳ Эталон (вендоринг) · 5 косметических `TSK-NN`-плейсхолдеров в примерах форматов.
 
 ## Принципы (ai/kit/AUTHORING.md)
+
 Теги=якоря (не парсер). Раскладка под внимание: ядро в начало (primacy/sink), тяжёлое лениво у шага (recency), must-follow пере-якорить. Детерминизм→тестируемые тулы; суждение→агент. Модель по нагрузке. Conduct 3 профиля (интервью/worker/оркестратор).
 
 ## Директивный слой (готов)
+
 ```
 /sdd router (+ multi-scope, session-file) → root · scope · infra · contracts · module
 /sdd-scaffold (2 гейта: разбиение+тест-план) · /sdd-execute (orchestrator + phase-protocol worker) · /sdd-reconcile (fix⊕sync-from-code)
 субагенты: audit (sdd-check + семантика) · critic (orchestrator + sensor, risk-first)
 check = sdd-check --all + репортер (без директивы)
 ```
+
 14 директив + ~21 ленивый формат (`sdd-v2/formats/`). Формат тикета сведён v2 (slug Task-ID, per-contract anchors, typing-BLOCKER, Test-Coverage-BLOCKER, Decision Log). Индексы co-located `*.3-tasks.md` (project/scope/module, declare-once). Имена обобщены (root/scope/module/scaffold flows). Пути co-located `specs/` (не `tasks/`).
 
 ## ФАЗА ТУЛОВ (текущая)
@@ -242,13 +267,16 @@ check = sdd-check --all + репортер (без директивы)
 **Порядок (ПЕРЕУПОРЯДОЧЕН под зависимости):** (1) `sdd-extract` ← СЕЙЧАС (простейший; полный reverse-spec в extract-section.sh; его извлечение секций — кирпич для sdd-check/sdd-task; ставит test/registration-harness) · (2) `sdd-state` (classify-scripts реюз) · (3) `sdd-verify` (verify.sh; зовёт classify) · (4) `sdd-check` (крупнейший; зависит от extract) · (5) `sdd-task` (зависит от extract) · (6) `sdd-log`+`sdd-sync`. Общая логика → `shared/sdd/` (section.ts, далее status.ts/scripts.ts).
 
 **Чек-лист тулов (отмечать по мере готовности):**
-- [x] **sdd-extract**  [x] **sdd-state**  [x] **sdd-verify**  [x] **sdd-log**  [x] **sdd-sync**  [x] **sdd-task**  [x] **sdd-check**  ·  [x] orient (переиспользуем)  ← ВСЕ 7 ГОТОВЫ
+
+- [x] **sdd-extract** [x] **sdd-state** [x] **sdd-verify** [x] **sdd-log** [x] **sdd-sync** [x] **sdd-task** [x] **sdd-check** · [x] orient (переиспользуем) ← ВСЕ 7 ГОТОВЫ
 
 Каждый тул = cmd+types+help+index + e2e + регистрация (3 файла) + спека. Строить как ЦЕЛЬНЫЙ юнит (пережить компакт между тулами).
 
 ## ACCEPTANCE GATE — ✅ пройден
+
 Независимый аудит v2↔старый по каждому use-case проведён (9 агентов). Реальных потерь логики нет; 6 находок закрыты (punch-list). При ЛЮБОМ изменении директив — повторять независимый аудит затронутого.
 
 ## Остаток
+
 - Эталон: завендорить золотой пример (`operation-handle` из messenger/draft) для сверки.
 - 5 косметических `TSK-NN`-плейсхолдеров в примерах форматов (return-summary/fix-summary/audit-summary/audit-round/pivot) — нормализовать при случае.

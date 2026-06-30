@@ -2,14 +2,14 @@
  * Reusable Handlebars renderer for kit templates.
  * Shared by the static builder (build-directives.ts) and by dynamic tools that pass params.
  */
-import Handlebars from "handlebars";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import Handlebars from 'handlebars';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 export const KIT = import.meta.dirname; // ai/kit
-export const TEMPLATES = join(KIT, "templates");
-export const OUT_ROOT = join(KIT, "..", "directives"); // ai/directives
-export const UNIT = "  "; // one indent level — switch to "\t" to change the base
+export const TEMPLATES = join(KIT, 'templates');
+export const OUT_ROOT = join(KIT, '..', 'directives'); // ai/directives
+export const UNIT = '  '; // one indent level — switch to "\t" to change the base
 
 export function walk(dir: string, ok: (p: string) => boolean): string[] {
   const out: string[] = [];
@@ -23,16 +23,18 @@ export function walk(dir: string, ok: (p: string) => boolean): string[] {
 
 /** Strip `<!-- source -->` and normalize a brick to base level 0 (open tag col 0, body one unit). */
 export function normalizeBrick(raw: string): string {
-  let lines = raw.replace(/\n+$/, "").split("\n");
-  while (lines.length && lines[0].trim().startsWith("<!--")) lines = lines.slice(1);
-  if (!lines.length) return "";
+  let lines = raw.replace(/\n+$/, '').split('\n');
+  while (lines.length && lines[0].trim().startsWith('<!--')) lines = lines.slice(1);
+  if (!lines.length) return '';
   const open = lines[0].trimStart();
   if (lines.length === 1) return open; // self-closing brick
   const close = lines[lines.length - 1].trimStart();
   const body = lines.slice(1, -1);
-  const indents = body.filter((l) => l.trim() !== "").map((l) => l.match(/^ */)![0].length);
+  const indents = body.filter((l) => l.trim() !== '').map((l) => l.match(/^ */)![0].length);
   const base = indents.length ? Math.min(...indents) : 0;
-  return [open, ...body.map((l) => (l.trim() === "" ? "" : UNIT + l.slice(base))), close].join("\n");
+  return [open, ...body.map((l) => (l.trim() === '' ? '' : UNIT + l.slice(base))), close].join(
+    '\n'
+  );
 }
 
 /**
@@ -42,13 +44,13 @@ export function normalizeBrick(raw: string): string {
  * the template. Brick interiors are never touched (they live inside the partial files).
  */
 export function protectPartialNewlines(src: string): string {
-  return src.replace(/^([ \t]*\{\{>[^}]*\}\})[ \t]*$/gm, "$1\n");
+  return src.replace(/^([ \t]*\{\{>[^}]*\}\})[ \t]*$/gm, '$1\n');
 }
 
 /** Light cleanup only: strip trailing whitespace, guarantee a final newline. */
 export function formatDirective(out: string): string {
-  out = out.replace(/[ \t]+$/gm, "");
-  return out.endsWith("\n") ? out : out + "\n";
+  out = out.replace(/[ \t]+$/gm, '');
+  return out.endsWith('\n') ? out : out + '\n';
 }
 
 /**
@@ -57,9 +59,9 @@ export function formatDirective(out: string): string {
  */
 export function createRenderer(extraPartials: Record<string, string> = {}) {
   const hb = Handlebars.create();
-  for (const f of walk(KIT, (p) => p.endsWith(".xml") && !p.startsWith(TEMPLATES + "/"))) {
-    const name = relative(KIT, f).replace(/\.xml$/, "");
-    hb.registerPartial(name, normalizeBrick(readFileSync(f, "utf8")));
+  for (const f of walk(KIT, (p) => p.endsWith('.xml') && !p.startsWith(TEMPLATES + '/'))) {
+    const name = relative(KIT, f).replace(/\.xml$/, '');
+    hb.registerPartial(name, normalizeBrick(readFileSync(f, 'utf8')));
   }
   for (const [name, raw] of Object.entries(extraPartials)) {
     hb.registerPartial(name, normalizeBrick(raw));

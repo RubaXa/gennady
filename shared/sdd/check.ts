@@ -28,7 +28,9 @@ const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
 
 /** @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections). | @param content Full file markdown. | @returns True when both section markers are present. */
 export function isTicket(content: string): boolean {
-  return content.includes('<!--SECTION:META-->') && content.includes('<!--SECTION:EXECUTION_LOG-->');
+  return (
+    content.includes('<!--SECTION:META-->') && content.includes('<!--SECTION:EXECUTION_LOG-->')
+  );
 }
 
 /** @purpose Collect section names whose open/close marker counts disagree. */
@@ -56,13 +58,16 @@ function sectionOverlaps(content: string): string[] {
     const c = /^<!--\/SECTION:([A-Z][A-Z0-9_]*)-->$/.exec(t);
     if (o?.[1]) {
       const top = stack[stack.length - 1];
-      if (top) issues.push(`${o[1]} opens while ${top} is still open — sections must be flat, not nested`);
+      if (top)
+        issues.push(`${o[1]} opens while ${top} is still open — sections must be flat, not nested`);
       stack.push(o[1]);
     } else if (c?.[1]) {
       const top = stack[stack.length - 1];
       if (top === c[1]) stack.pop();
       else if (stack.includes(c[1])) {
-        issues.push(`/${c[1]} closes while ${top} is the innermost open section — interleaved sections`);
+        issues.push(
+          `/${c[1]} closes while ${top} is the innermost open section — interleaved sections`
+        );
         while (stack.length && stack[stack.length - 1] !== c[1]) stack.pop();
         stack.pop();
       }
@@ -96,8 +101,10 @@ function hasActiveBlocker(logBody: string): boolean {
  */
 export function checkTicket(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
-  const err = (code: string, message: string): void => void findings.push({ severity: 'error', code, file, message });
-  const warn = (code: string, message: string): void => void findings.push({ severity: 'warn', code, file, message });
+  const err = (code: string, message: string): void =>
+    void findings.push({ severity: 'error', code, file, message });
+  const warn = (code: string, message: string): void =>
+    void findings.push({ severity: 'warn', code, file, message });
 
   // #region START_ANCHORS — invariant: every section's markers balance
   for (const name of unbalancedAnchors(content)) {
@@ -120,7 +127,8 @@ export function checkTicket(file: string, content: string): Finding[] {
   if (metaSec.status === 'ok') {
     const meta = parseMetaInfo(metaSec.content);
     if (!meta.taskId) warn('SDD_MISSING_TASK_ID', 'Meta has no parseable Task-ID.');
-    if (!meta.status) warn('SDD_STATUS_UNPARSEABLE', 'Meta Status is missing or not in `[x] STATE` form.');
+    if (!meta.status)
+      warn('SDD_STATUS_UNPARSEABLE', 'Meta Status is missing or not in `[x] STATE` form.');
     isDone = meta.status?.includes('[x]') ?? false;
   }
   // #endregion END_META
@@ -130,18 +138,27 @@ export function checkTicket(file: string, content: string): Finding[] {
     const logLines = logSec.content.split('\n');
     for (const line of logLines) {
       if (/\[x\]/.test(line) && PLACEHOLDER.test(line)) {
-        err('SDD_FABRICATED_DONE', `Checked [x] line with an unreplaced placeholder: "${line.trim()}"`);
+        err(
+          'SDD_FABRICATED_DONE',
+          `Checked [x] line with an unreplaced placeholder: "${line.trim()}"`
+        );
       }
     }
     if (isDone && hasActiveBlocker(logSec.content)) {
-      err('SDD_DONE_WITH_ACTIVE_BLOCKER', 'Status is DONE but the Execution Log ends with an unresolved BLOCKED.');
+      err(
+        'SDD_DONE_WITH_ACTIVE_BLOCKER',
+        'Status is DONE but the Execution Log ends with an unresolved BLOCKED.'
+      );
     }
   }
   // #endregion END_EXEC_LOG
 
   // #region START_DONE_PLACEHOLDERS — a DONE ticket has no scaffold placeholders left
   if (isDone && PLACEHOLDER.test(content)) {
-    warn('SDD_DONE_WITH_PLACEHOLDERS', 'Status is DONE but unreplaced <…> scaffold placeholders remain.');
+    warn(
+      'SDD_DONE_WITH_PLACEHOLDERS',
+      'Status is DONE but unreplaced <…> scaffold placeholders remain.'
+    );
   }
   // #endregion END_DONE_PLACEHOLDERS
 
@@ -153,7 +170,8 @@ export function checkTicket(file: string, content: string): Finding[] {
 
     for (const p of phases) {
       for (const d of p.deps) {
-        if (!ids.has(d)) err('SDD_PHASE_DEP_UNRESOLVED', `Phase ${p.id} depends on unknown phase ${d}.`);
+        if (!ids.has(d))
+          err('SDD_PHASE_DEP_UNRESOLVED', `Phase ${p.id} depends on unknown phase ${d}.`);
       }
     }
 
@@ -162,17 +180,24 @@ export function checkTicket(file: string, content: string): Finding[] {
     }
 
     const sectionIds = new Set<string>();
-    for (const m of content.matchAll(/<!--SECTION:PHASE_(P[0-9]+)-->/g)) sectionIds.add(m[1] as string);
+    for (const m of content.matchAll(/<!--SECTION:PHASE_(P[0-9]+)-->/g))
+      sectionIds.add(m[1] as string);
     for (const p of phases) {
-      if (!sectionIds.has(p.id)) err('SDD_PHASE_SECTION_MISSING', `Phase ${p.id} in the overview has no PHASE_${p.id} section.`);
+      if (!sectionIds.has(p.id))
+        err(
+          'SDD_PHASE_SECTION_MISSING',
+          `Phase ${p.id} in the overview has no PHASE_${p.id} section.`
+        );
     }
     for (const s of sectionIds) {
-      if (!ids.has(s)) err('SDD_PHASE_SECTION_ORPHAN', `PHASE_${s} section has no row in the Phases Overview.`);
+      if (!ids.has(s))
+        err('SDD_PHASE_SECTION_ORPHAN', `PHASE_${s} section has no row in the Phases Overview.`);
     }
 
     if (isDone) {
       for (const p of phases) {
-        if (!p.status.includes('[x]')) err('SDD_DONE_PHASE_UNCHECKED', `Status is DONE but phase ${p.id} is not checked ([x]).`);
+        if (!p.status.includes('[x]'))
+          err('SDD_DONE_PHASE_UNCHECKED', `Status is DONE but phase ${p.id} is not checked ([x]).`);
       }
     }
   }
@@ -233,7 +258,8 @@ export function checkPortal(input: PortalInput): Finding[] {
   const { scopes, edges, specDirs } = input;
   const file = 'specs/README.md';
   const findings: Finding[] = [];
-  const err = (code: string, message: string): void => void findings.push({ severity: 'error', code, file, message });
+  const err = (code: string, message: string): void =>
+    void findings.push({ severity: 'error', code, file, message });
   const names = new Set(scopes.map((s) => s.name));
 
   // The depends-on graph must be a DAG.
@@ -241,14 +267,23 @@ export function checkPortal(input: PortalInput): Finding[] {
 
   // #region START_DANGLING — invariant: every graph edge connects scopes that exist in the table
   for (const e of edges) {
-    if (!names.has(e.from)) err('SDD_PORTAL_DANGLING_DEP', `Graph edge from a scope not in the table: ${e.from} --> ${e.to}`);
-    if (!names.has(e.to)) err('SDD_PORTAL_DANGLING_DEP', `Graph edge to a scope not in the table: ${e.from} --> ${e.to}`);
+    if (!names.has(e.from))
+      err(
+        'SDD_PORTAL_DANGLING_DEP',
+        `Graph edge from a scope not in the table: ${e.from} --> ${e.to}`
+      );
+    if (!names.has(e.to))
+      err(
+        'SDD_PORTAL_DANGLING_DEP',
+        `Graph edge to a scope not in the table: ${e.from} --> ${e.to}`
+      );
   }
   // #endregion END_DANGLING
 
   // #region START_COHERENCE — invariant: spec dirs ↔ table rows, and a done scope has its spec
   for (const d of specDirs) {
-    if (!names.has(d)) err('SDD_PORTAL_ORPHAN_SPEC', `Spec dir has no row in the portal Scopes table: specs/${d}/`);
+    if (!names.has(d))
+      err('SDD_PORTAL_ORPHAN_SPEC', `Spec dir has no row in the portal Scopes table: specs/${d}/`);
   }
   for (const s of scopes) {
     if (s.status === 'done' && !specDirs.includes(s.name)) {
@@ -291,7 +326,12 @@ export type TrackerRowRef = {
 export function ticketRef(file: string, content: string): TicketRef {
   const metaSec = extractSection(content, 'META');
   const meta = metaSec.status === 'ok' ? parseMetaInfo(metaSec.content) : null;
-  return { file, taskId: meta?.taskId ?? null, status: meta?.status ?? null, dependencies: meta?.dependencies ?? [] };
+  return {
+    file,
+    taskId: meta?.taskId ?? null,
+    status: meta?.status ?? null,
+    dependencies: meta?.dependencies ?? [],
+  };
 }
 
 /** @purpose True when a Status token marks completion. | @param status Meta Status token (e.g. `[x] DONE`). | @returns True for a DONE status. */
@@ -306,11 +346,17 @@ function isDone(status: string | null | undefined): boolean {
  * @returns The TicketRefs ready to execute, in input order.
  */
 export function pickableTasks(refs: TicketRef[]): TicketRef[] {
-  const statusById = new Map(refs.filter((r) => r.taskId).map((r) => [r.taskId as string, r.status]));
+  const statusById = new Map(
+    refs.filter((r) => r.taskId).map((r) => [r.taskId as string, r.status])
+  );
   // A placeholder "None" / "N/A" / "—" dependencies value means no real dependency.
-  const realDeps = (deps: string[]): string[] => deps.filter((d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()));
+  const realDeps = (deps: string[]): string[] =>
+    deps.filter((d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()));
   return refs.filter(
-    (r) => r.taskId != null && /\bTODO\b/i.test(r.status ?? '') && realDeps(r.dependencies).every((d) => isDone(statusById.get(d)))
+    (r) =>
+      r.taskId != null &&
+      /\bTODO\b/i.test(r.status ?? '') &&
+      realDeps(r.dependencies).every((d) => isDone(statusById.get(d)))
   );
 }
 
@@ -333,14 +379,24 @@ export function checkTaskGraph(tickets: TicketRef[]): Finding[] {
 
   for (const [id, files] of byId) {
     if (files.length > 1) {
-      findings.push({ severity: 'error', code: 'SDD_TASK_ID_COLLISION', file: files[0] as string, message: `Task-ID ${id} is used by ${files.length} tickets: ${files.join(', ')}.` });
+      findings.push({
+        severity: 'error',
+        code: 'SDD_TASK_ID_COLLISION',
+        file: files[0] as string,
+        message: `Task-ID ${id} is used by ${files.length} tickets: ${files.join(', ')}.`,
+      });
     }
   }
 
   for (const t of tickets) {
     for (const d of t.dependencies) {
       if (!byId.has(d)) {
-        findings.push({ severity: 'error', code: 'SDD_DEP_UNRESOLVED', file: t.file, message: `Dependency ${d} resolves to no ticket in the tree.` });
+        findings.push({
+          severity: 'error',
+          code: 'SDD_DEP_UNRESOLVED',
+          file: t.file,
+          message: `Dependency ${d} resolves to no ticket in the tree.`,
+        });
       }
     }
   }
@@ -349,7 +405,12 @@ export function checkTaskGraph(tickets: TicketRef[]): Finding[] {
     .filter((t) => t.taskId)
     .flatMap((t) => t.dependencies.map((d) => ({ from: t.taskId as string, to: d })));
   if (hasCycle(edges)) {
-    findings.push({ severity: 'error', code: 'SDD_DAG_CYCLE', file: '(task graph)', message: 'Task dependency graph has a cycle.' });
+    findings.push({
+      severity: 'error',
+      code: 'SDD_DAG_CYCLE',
+      file: '(task graph)',
+      message: 'Task dependency graph has a cycle.',
+    });
   }
 
   return findings;
@@ -378,13 +439,23 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
     if (!t.taskId) continue;
     const trackerRows = rowsById.get(t.taskId);
     if (!trackerRows) {
-      findings.push({ severity: 'error', code: 'SDD_TRACKER_MISSING_ROW', file: t.file, message: `Ticket ${t.taskId} has no row in any Tracker Index.` });
+      findings.push({
+        severity: 'error',
+        code: 'SDD_TRACKER_MISSING_ROW',
+        file: t.file,
+        message: `Ticket ${t.taskId} has no row in any Tracker Index.`,
+      });
       continue;
     }
     if (t.status) {
       for (const r of trackerRows) {
         if (norm(r.status) !== norm(t.status)) {
-          findings.push({ severity: 'error', code: 'SDD_TRACKER_STATUS_DRIFT', file: r.file, message: `Tracker row for ${t.taskId} says "${norm(r.status)}" but the ticket Status is "${norm(t.status)}".` });
+          findings.push({
+            severity: 'error',
+            code: 'SDD_TRACKER_STATUS_DRIFT',
+            file: r.file,
+            message: `Tracker row for ${t.taskId} says "${norm(r.status)}" but the ticket Status is "${norm(t.status)}".`,
+          });
         }
       }
     }
@@ -392,7 +463,12 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
 
   for (const r of rows) {
     if (!ticketIds.has(r.taskId)) {
-      findings.push({ severity: 'error', code: 'SDD_TRACKER_ORPHAN_ROW', file: r.file, message: `Tracker row ${r.taskId} points to no ticket on disk.` });
+      findings.push({
+        severity: 'error',
+        code: 'SDD_TRACKER_ORPHAN_ROW',
+        file: r.file,
+        message: `Tracker row ${r.taskId} points to no ticket on disk.`,
+      });
     }
   }
 
@@ -404,10 +480,29 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
  * @invariant Keyed by the `scope-type` value; a spec may carry MORE sections (the format grows) but never fewer.
  */
 const REQUIRED_SECTIONS: Record<string, string[]> = {
-  product: ['VISION', 'GOLDEN_DX', 'REQUIREMENTS_AND_CONSTRAINTS', 'ARCHITECTURE', 'DECISION_LOG', 'MODULE_MAP'],
-  library: ['VISION', 'GOLDEN_DX', 'REQUIREMENTS_AND_CONSTRAINTS', 'PUBLIC_API_SURFACE', 'DECISION_LOG'],
+  product: [
+    'VISION',
+    'GOLDEN_DX',
+    'REQUIREMENTS_AND_CONSTRAINTS',
+    'ARCHITECTURE',
+    'DECISION_LOG',
+    'MODULE_MAP',
+  ],
+  library: [
+    'VISION',
+    'GOLDEN_DX',
+    'REQUIREMENTS_AND_CONSTRAINTS',
+    'PUBLIC_API_SURFACE',
+    'DECISION_LOG',
+  ],
   infrastructure: ['VISION', 'TOOL_STACK', 'VERIFICATION_COMMANDS', 'DECISION_LOG'],
-  interface: ['VISION', 'INTERFACE_DECLARATION', 'VERSIONING_POLICY', 'COMPATIBILITY_MATRIX', 'DECISION_LOG'],
+  interface: [
+    'VISION',
+    'INTERFACE_DECLARATION',
+    'VERSIONING_POLICY',
+    'COMPATIBILITY_MATRIX',
+    'DECISION_LOG',
+  ],
 };
 
 // Module size budget — soft signals (warn, never a gate) per AX_HIERARCHICAL_SPECS. Tunable, conservative.
@@ -445,7 +540,12 @@ export function checkSpecStructure(file: string, content: string): Finding[] {
     message: `Section ${name}: open/close markers do not balance.`,
   }));
   for (const ov of sectionOverlaps(content)) {
-    findings.push({ severity: 'error', code: 'SDD_SECTION_OVERLAP', file, message: `${ov}. sdd-extract pulls one flat section — fix the marker order.` });
+    findings.push({
+      severity: 'error',
+      code: 'SDD_SECTION_OVERLAP',
+      file,
+      message: `${ov}. sdd-extract pulls one flat section — fix the marker order.`,
+    });
   }
 
   // Classify by the genuine module marker MODULE_VISION (a module spec also carries its parent's SCOPE_TYPE,
@@ -491,12 +591,21 @@ export function checkSpecStructure(file: string, content: string): Finding[] {
 
   const typeSec = extractSection(content, 'SCOPE_TYPE');
   if (typeSec.status === 'ok' && !isModuleSpec) {
-    const type = Object.keys(REQUIRED_SECTIONS).find((t) => new RegExp(`\\b${t}\\b`).test(typeSec.content));
+    const type = Object.keys(REQUIRED_SECTIONS).find((t) =>
+      new RegExp(`\\b${t}\\b`).test(typeSec.content)
+    );
     if (type) {
-      const present = new Set([...content.matchAll(/<!--SECTION:([A-Z_]+)-->/g)].map((m) => m[1] as string));
+      const present = new Set(
+        [...content.matchAll(/<!--SECTION:([A-Z_]+)-->/g)].map((m) => m[1] as string)
+      );
       for (const req of REQUIRED_SECTIONS[type] as string[]) {
         if (!present.has(req)) {
-          findings.push({ severity: 'error', code: 'SDD_SPEC_SECTION_MISSING', file, message: `${type} scope spec is missing required section ${req}.` });
+          findings.push({
+            severity: 'error',
+            code: 'SDD_SPEC_SECTION_MISSING',
+            file,
+            message: `${type} scope spec is missing required section ${req}.`,
+          });
         }
       }
     }
@@ -565,7 +674,14 @@ export function checkScopeDeps(file: string, content: string, portalEdges: Graph
  */
 export function checkModuleGraph(scope: string, scopeFile: string, edges: GraphEdge[]): Finding[] {
   return hasCycle(edges)
-    ? [{ severity: 'error', code: 'SDD_MODULE_DAG_CYCLE', file: scopeFile, message: `Scope ${scope}: module dependency graph (## 9) has a cycle.` }]
+    ? [
+        {
+          severity: 'error',
+          code: 'SDD_MODULE_DAG_CYCLE',
+          file: scopeFile,
+          message: `Scope ${scope}: module dependency graph (## 9) has a cycle.`,
+        },
+      ]
     : [];
 }
 

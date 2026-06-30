@@ -13,7 +13,9 @@ describe('classifyScript', () => {
   });
 
   it('classifies gennady contract lint', () => {
-    assert.ok(classifyScript('lint:contracts', 'tsx cli/gennady.ts lint --autofix cli/').includes('gennady'));
+    assert.ok(
+      classifyScript('lint:contracts', 'tsx cli/gennady.ts lint --autofix cli/').includes('gennady')
+    );
   });
 
   it('classifies plain eslint as lint, not when gennady present', () => {
@@ -31,7 +33,9 @@ describe('classifyScript', () => {
   });
 
   it('treats composite gates as umbrella', () => {
-    assert.deepStrictEqual(classifyScript('check', 'npm run type-check && npm run test'), ['umbrella']);
+    assert.deepStrictEqual(classifyScript('check', 'npm run type-check && npm run test'), [
+      'umbrella',
+    ]);
     assert.deepStrictEqual(classifyScript('lint', 'tsc --noEmit && eslint .'), ['umbrella']);
   });
 

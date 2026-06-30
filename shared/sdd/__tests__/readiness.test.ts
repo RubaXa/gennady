@@ -7,10 +7,7 @@ import assert from 'node:assert/strict';
 import { checkReadiness, REQUIRED_SCRIPTS } from '../readiness.ts';
 
 /** Check `scripts` with package.json present and gennady installed unless overridden. */
-function check(
-  scripts: Record<string, string>,
-  opts?: { pkg?: boolean; gennady?: boolean }
-) {
+function check(scripts: Record<string, string>, opts?: { pkg?: boolean; gennady?: boolean }) {
   return checkReadiness({
     packageJsonPresent: opts?.pkg ?? true,
     scripts,
@@ -29,7 +26,10 @@ const FULL = {
 
 describe('REQUIRED_SCRIPTS', () => {
   it('is the exact v2 set', () => {
-    assert.deepStrictEqual([...REQUIRED_SCRIPTS], ['typecheck', 'test', 'test:coverage', 'lint', 'format']);
+    assert.deepStrictEqual(
+      [...REQUIRED_SCRIPTS],
+      ['typecheck', 'test', 'test:coverage', 'lint', 'format']
+    );
   });
 });
 
@@ -50,14 +50,26 @@ describe('checkReadiness', () => {
   });
 
   it('flags lint→gennady when lint exists but no gennady in its chain', () => {
-    const r = check({ typecheck: 'x', test: 'x', 'test:coverage': 'x', lint: 'eslint .', format: 'x' });
+    const r = check({
+      typecheck: 'x',
+      test: 'x',
+      'test:coverage': 'x',
+      lint: 'eslint .',
+      format: 'x',
+    });
     assert.strictEqual(r.lintHasGennady, false);
     assert.ok(r.missing.includes('lint→gennady'));
     assert.strictEqual(r.ready, false);
   });
 
   it('exact names only — `type-check` (hyphen) does NOT satisfy `typecheck`', () => {
-    const r = check({ 'type-check': 'tsc --noEmit', test: 'x', 'test:coverage': 'x', lint: 'gennady', format: 'x' });
+    const r = check({
+      'type-check': 'tsc --noEmit',
+      test: 'x',
+      'test:coverage': 'x',
+      lint: 'gennady',
+      format: 'x',
+    });
     assert.ok(r.missing.includes('typecheck'));
   });
 
@@ -79,6 +91,8 @@ describe('checkReadiness', () => {
     assert.ok(r.missing.includes('gennady (not installed)'));
     // the scripts themselves are fine — only the install is missing
     assert.strictEqual(r.lintHasGennady, true);
-    assert.ok(!r.missing.some((m) => REQUIRED_SCRIPTS.includes(m as (typeof REQUIRED_SCRIPTS)[number])));
+    assert.ok(
+      !r.missing.some((m) => REQUIRED_SCRIPTS.includes(m as (typeof REQUIRED_SCRIPTS)[number]))
+    );
   });
 });

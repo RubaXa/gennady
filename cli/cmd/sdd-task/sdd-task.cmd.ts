@@ -17,7 +17,15 @@ import {
 import { isTicket, ticketRef, pickableTasks, type TicketRef } from '../../../shared/sdd/check.ts';
 import { fileError, formatPlan, notATicket, type TaskOutcome } from './sdd-task.types.ts';
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage', '__tests__']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '__tests__',
+]);
 
 /** @purpose Recursively collect every ticket's graph ref under a directory (the execution map's raw input). | @param dir Directory to walk. | @param acc TicketRef accumulator. */
 function walkTickets(dir: string, acc: TicketRef[]): void {
@@ -47,12 +55,20 @@ function walkTickets(dir: string, acc: TicketRef[]): void {
 function formatMap(refs: TicketRef[]): string {
   const pickable = pickableTasks(refs);
   const pickableIds = new Set(pickable.map((r) => r.taskId));
-  const doneIds = new Set(refs.filter((r) => /\bDONE\b/i.test(r.status ?? '')).map((r) => r.taskId));
-  const blocked = refs.filter((r) => /\bTODO\b/i.test(r.status ?? '') && !pickableIds.has(r.taskId));
-  const lines = [`[sdd-task] execution map — ${pickable.length} pickable, ${blocked.length} blocked`];
+  const doneIds = new Set(
+    refs.filter((r) => /\bDONE\b/i.test(r.status ?? '')).map((r) => r.taskId)
+  );
+  const blocked = refs.filter(
+    (r) => /\bTODO\b/i.test(r.status ?? '') && !pickableIds.has(r.taskId)
+  );
+  const lines = [
+    `[sdd-task] execution map — ${pickable.length} pickable, ${blocked.length} blocked`,
+  ];
   lines.push(`pickable (ready now): ${pickable.map((r) => r.taskId).join(', ') || '— none'}`);
   for (const b of blocked) {
-    const unmet = b.dependencies.filter((d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d));
+    const unmet = b.dependencies.filter(
+      (d) => !/^(none|n\/a|[—-])\b/i.test(d.trim()) && !doneIds.has(d)
+    );
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}`);
   }
   return lines.join('\n');
@@ -103,7 +119,9 @@ export async function run(rawArgs: string[]): Promise<TaskOutcome> {
   }
   // #endregion END_PHASE_DETAILS
 
-  logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`);
+  logger.debug(
+    `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`
+  );
   return { ok: true, text: formatPlan(meta, phases, detailsById, gates) };
 }
 

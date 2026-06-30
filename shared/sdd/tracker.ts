@@ -45,7 +45,12 @@ function cellText(cell: string): string {
 
 /** @purpose Split a markdown table row into trimmed content cells (leading/trailing pipes dropped). */
 function contentCells(line: string): string[] {
-  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
 }
 
 /**
@@ -57,7 +62,11 @@ function contentCells(line: string): string[] {
  * @param newStatus Status token to write (e.g. `[x] DONE`).
  * @returns ok with the updated text and whether it changed, or a failure reason (no tracker table / row not found).
  */
-export function updateTrackerStatus(content: string, taskId: string, newStatus: string): TrackerUpdate {
+export function updateTrackerStatus(
+  content: string,
+  taskId: string,
+  newStatus: string
+): TrackerUpdate {
   const lines = content.split('\n');
 
   const header = findTaskStatusHeader(lines);
@@ -101,7 +110,9 @@ export type TrackerRow = {
  * @param lines The index file split into lines.
  * @returns The header row index + the two column indices, or null when no such table exists.
  */
-function findTaskStatusHeader(lines: string[]): { headerIdx: number; idCol: number; statusCol: number } | null {
+function findTaskStatusHeader(
+  lines: string[]
+): { headerIdx: number; idCol: number; statusCol: number } | null {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line === undefined || !line.trimStart().startsWith('|')) continue;
