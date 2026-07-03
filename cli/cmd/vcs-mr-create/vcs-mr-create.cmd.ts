@@ -9,8 +9,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsMergeRequestCreateQuery } from '../../../services/vcs-client/entities/vcs-merge-request-create-query.type.ts';
 import { execFile } from 'node:child_process';
@@ -140,13 +139,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   try {
-    const client: VcsClient =
-      context.provider === 'github'
-        ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-        : new VcsGitlabClient({
-            baseUrl: `https://${context.host}/api/v4`,
-            token: context.token,
-          });
+    const client: VcsClient = createVcsClient(context);
     const result = (await client.MergeRequests.create(createQuery)) as {
       webUrl: string;
       iid: string | number;

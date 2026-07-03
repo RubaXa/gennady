@@ -7,7 +7,6 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import {
   resolveStateDir,
   worktreesRoot,
@@ -24,6 +23,7 @@ import {
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 
 /** @purpose Staleness TTL: worktrees older than this are GC'd on prepare. */
 const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
@@ -74,8 +74,7 @@ async function run(): Promise<number> {
     const host = context.host;
     const token = context.token;
 
-    const baseUrl = `https://${host}/api/v4`;
-    const client = new VcsGitlabClient({ token, baseUrl });
+    const client = createVcsClient(context);
     // #endregion END_RESOLVE_VCS_CONTEXT
 
     const mr = (await client.MergeRequests.getByIid({ project, iid })) as {
@@ -100,7 +99,9 @@ async function run(): Promise<number> {
     const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
     const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
-    const baseSha = targetBranch ? resolveBaseSha(clonePath, targetBranch, prepared.headSha) : '';
+    const baseSha = targetBranch
+      ? resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
+      : '';
 
     console.info(style.bold(`worktree ready — ${ref}`));
     console.info(`path:   ${prepared.worktreePath}`);

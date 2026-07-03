@@ -8,7 +8,6 @@ import { mkdirSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import {
   resolveStateDir,
   worktreesRoot,
@@ -23,6 +22,7 @@ import {
   lastNoteAuthor,
 } from '../inbox/_core/logic/classify-mr-stage.logic.ts';
 import { resolveVcsContext, type VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import {
   prepareMrWorktree,
   resolveBaseSha,
@@ -181,8 +181,8 @@ async function run(): Promise<number> {
     const iid = String(context.iid);
     const host = context.host;
     const token = context.token;
-    const baseUrl = `https://${host}/api/v4`;
-    const client = new VcsGitlabClient({ token, baseUrl });
+
+    const client = createVcsClient(context);
 
     const mr = (await client.MergeRequests.getByIid({ project, iid })) as {
       title?: string;
@@ -221,8 +221,17 @@ async function run(): Promise<number> {
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
       let baseSha = '';
       if (targetBranch) {
+        // #region START_ENSURE_FRESH_TARGET — force-refresh target branch so merge-base
+        // is computed against the latest master state (avoids stale FETCH_HEAD in reused clones).
         try {
-          baseSha = resolveBaseSha(clonePath, targetBranch, prepared.headSha);
+          execFileSync('git', ['-c', 'core.hooksPath=/dev/null', 'fetch', 'origin', targetBranch], {
+            cwd: clonePath,
+            stdio: 'ignore',
+          });
+        } catch {}
+        // #endregion END_ENSURE_FRESH_TARGET
+        try {
+          baseSha = resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha);
         } catch {
           baseSha = '';
         }
@@ -266,8 +275,8 @@ async function run(): Promise<number> {
 
     if (!skipThreads) {
       const [allDiscussions, draftNotes] = await Promise.all([
-        client.MergeDiscussions.getAll({ project, iid }),
-        client.MergeDiscussions.listDraftNotes({ project, iid }),
+        client.MergeDiscussions!.getAll({ project, iid }),
+        client.MergeDiscussions!.listDraftNotes({ project, iid }),
       ]);
       const notes = flattenNotes(allDiscussions);
       stage = classifyMrStage(notes, me.login, pkg.role);

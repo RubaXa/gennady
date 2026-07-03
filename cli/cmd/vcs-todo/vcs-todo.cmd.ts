@@ -52,19 +52,20 @@ function resolveHost(host?: string): string | undefined {
 export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: number }> {
   const dryRun = !!opts.dryRun;
 
-  const token = opts.vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
+  const token = opts.vcsContext?.token;
   const host = opts.vcsContext?.host ?? resolveHost(opts.host);
 
   if (!token) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа GitLab.');
-    console.error('  Установите переменную окружения:');
-    console.error(style.cyan('  export GITLAB_PERSONAL_TOKEN="your_token_here"'));
+    console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа.');
+    console.error('  Установите переменную окружения для вашего провайдера:');
+    console.error(style.cyan('  GitHub: export GITHUB_PERSONAL_TOKEN="..."'));
+    console.error(style.cyan('  GitLab: export GITLAB_PERSONAL_TOKEN="..."'));
     return { ok: false, code: 1 };
   }
   if (!host) {
     console.error(
       style.redBright.bold('✖ Ошибка:'),
-      'Не определён GitLab-host. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
+      'Не определён VCS-хост. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
     );
     return { ok: false, code: 1 };
   }

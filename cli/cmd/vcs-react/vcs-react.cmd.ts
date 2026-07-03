@@ -9,9 +9,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
-import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsReactionQuery } from '../../../services/vcs-client/entities/vcs-reaction-query.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
@@ -51,12 +49,6 @@ function defaultDeps(): Deps {
     stderr: process.stderr,
     exit: (code: number) => process.exit(code),
   };
-}
-
-function createClient(ctx: VcsCliContext): VcsClient {
-  return ctx.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: ctx.token })
-    : new VcsGitlabClient({ baseUrl: `https://${ctx.host}/api/v4`, token: ctx.token });
 }
 
 /**
@@ -125,7 +117,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     deps.exit(1);
   }
 
-  const client = createClient(context);
+  const client = createVcsClient(context);
   if (!client.Reactions) {
     deps.stderr.write('✖ Reactions not available for this host\n');
     deps.exit(1);

@@ -9,6 +9,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -224,10 +225,7 @@ async function approveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,
@@ -258,10 +256,7 @@ async function unapproveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,

@@ -39,8 +39,9 @@ export async function resolveCatUrl(
     if (!token) return { ok: false, error: 'GITLAB_PERSONAL_TOKEN не установлен.' };
     baseUrl = `https://${parsed.host}${process.env.GITLAB_API_PATH ?? '/api/v4'}`;
   } else {
-    token = process.env.GITHUB_PERSONAL_TOKEN ?? '';
-    if (!token) return { ok: false, error: 'GITHUB_PERSONAL_TOKEN не установлен.' };
+    token = process.env.GITHUB_PERSONAL_TOKEN ?? process.env.GITHUB_TOKEN ?? '';
+    if (!token)
+      return { ok: false, error: 'GITHUB_PERSONAL_TOKEN или GITHUB_TOKEN не установлен.' };
     baseUrl =
       parsed.host === 'github.com' ? 'https://api.github.com' : `https://${parsed.host}/api/v3`;
   }

@@ -8,8 +8,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
@@ -86,10 +85,7 @@ async function resolveContextOrFail(
  * @sideEffect Network: GET draft_notes; Console: draft notes list.
  */
 async function listDrafts(context: VcsCliContext, deps: VcsDraftDeps): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
   const iid = context.iid!;
 
   logger.info(`[listDrafts] [idle → listing] ${context.project}!${iid}`);
@@ -131,10 +127,7 @@ async function createDraft(
   body: string,
   deps: VcsDraftDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
   const iid = context.iid!;
 
   logger.info(`[createDraft] [idle → creating] ${context.project}!${iid}`);
@@ -166,10 +159,7 @@ async function updateDraft(
   body: string,
   deps: VcsDraftDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
   const iid = context.iid!;
 
   logger.info(
@@ -202,10 +192,7 @@ async function deleteDraft(
   draftNoteId: string | number,
   deps: VcsDraftDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
   const iid = context.iid!;
 
   logger.info(
@@ -236,10 +223,7 @@ async function publishDraft(
   draftNoteId: string | number,
   deps: VcsDraftDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
   const iid = context.iid!;
 
   logger.info(
@@ -341,10 +325,7 @@ export async function run(
   const context = await resolveContextOrFail(vcsArgs, deps);
 
   if (context.iid === undefined && context.branch) {
-    const client: VcsClient =
-      context.provider === 'github'
-        ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-        : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+    const client: VcsClient = createVcsClient(context);
     const mr = (await client.MergeRequests.getOne({
       project: context.project,
       sourceBranch: context.branch,

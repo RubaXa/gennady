@@ -5,6 +5,7 @@
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -127,10 +128,7 @@ async function locateMrByBranch(
  * @throws Propagates network/API errors from the GitLab client.
  */
 async function fetchPipeline(context: VcsCliContext, iid: number): Promise<VcsPipelineStatus> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   logger.info(`[fetchPipeline] [idle → fetching] ${context.project}!${iid}`);
   const pipeline = await client.MergeRequests.getPipeline({
@@ -298,13 +296,7 @@ export async function run(
 
     if (logsMode && jobs.length > 0) {
       deps.stdout.write(`Pipeline status: ${pipeline.status}\n\n`);
-      const client: VcsClient =
-        context.provider === 'github'
-          ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-          : new VcsGitlabClient({
-              baseUrl: `https://${context.host}/api/v4`,
-              token: context.token,
-            });
+      const client: VcsClient = createVcsClient(context);
       for (const job of jobs) {
         const failed = job.status.toLowerCase() !== 'success';
         deps.stdout.write(`${failed ? '✖' : '✓'} ${job.name} (${job.status})\n`);
