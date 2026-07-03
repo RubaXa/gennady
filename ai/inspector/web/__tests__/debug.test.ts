@@ -51,7 +51,9 @@ test('scenario: advancing past GATHER auto-enters the router at EMBODY (stack /s
   assert.deepEqual(stackLabels(sim), ['/sdd', '<SddRouter>']);
   // the descent is announced in the log and the loaded directive is attached for inspection
   assert.ok(divs(sim).some((d: string) => d.startsWith('загружен скил /sdd')));
-  assert.ok(divs(sim).some((d: string) => d.includes('<SddRouter>') && d.includes('router.directive.xml')));
+  assert.ok(
+    divs(sim).some((d: string) => d.includes('<SddRouter>') && d.includes('router.directive.xml'))
+  );
   const loaded = sim.log.find((e: any) => e.dir && e.dir.label === '<SddRouter>');
   assert.ok(loaded, 'router node carried on the entry divider for the collapsed inspect block');
 });

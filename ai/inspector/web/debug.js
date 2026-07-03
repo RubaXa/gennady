@@ -5,7 +5,8 @@
 
 export const base = (p) => (p || '').split('/').pop();
 
-export const dirOf = (run) => ((run && run.children) || []).find((c) => c.kind === 'directive') || null;
+export const dirOf = (run) =>
+  ((run && run.children) || []).find((c) => c.kind === 'directive') || null;
 
 /** Collect descendant nodes of a kind within a unit, NOT crossing into a run's resolved directive. */
 export function gather(node, kind) {

@@ -102,7 +102,6 @@ function renderNode(node, depth) {
   return wrap;
 }
 
-
 // ---------- debugger view ----------
 function renderDebug(container, skill) {
   let moves = [];
