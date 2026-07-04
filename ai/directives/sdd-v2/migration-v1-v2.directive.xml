@@ -112,7 +112,9 @@
     </Axiom>
 
     <Axiom id="AX_PIVOT_REQUIRES_SUPERSESSION">
-      In `pivot` mode every replaced decision: the old D-NNN → `status: superseded`. The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List (Pivot Invalidation List) enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
+      In `pivot` mode every replaced decision: the old D-NNN → `status: superseded`. The new D-NNN carries `Was → Now` + `Supersedes: D-NNN` + a git ref pointing to the pre-rework state. Pivot Invalidation List enumerates downstream artifacts requiring `refine-module` / reopen — consumed by `audit` via `AX_STALE_AFTER_PIVOT_VERIFICATION`.
+
+      `rewrite` mode is the exception: a pre-production / v0 scope with no production backing, whose old content was scratch that helps nothing going forward. It replaces the spec from a clean slate — NO supersession trail, NO Pivot Invalidation List (nothing downstream to keep coherent; git history is the only record). Use `pivot` (keep the trail) whenever the scope has any production backing or downstream consumers; use `rewrite` only for genuine v0 throwaway. Enforcement: a scope that already has downstream artifacts on disk (module specs or task tickets) is by definition NOT v0 — `rewrite` is forbidden there; halt and use `pivot`.
     </Axiom>
 
     <Axiom id="AX_EVIDENCE_HYGIENE">

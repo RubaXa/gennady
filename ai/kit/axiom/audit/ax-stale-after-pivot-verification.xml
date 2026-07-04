@@ -1,6 +1,6 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
 <Axiom id="AX_STALE_AFTER_PIVOT_VERIFICATION">
-      When scope spec contains Pivot Invalidation List, audit verifies every listed artifact has been addressed.
+      When a scope or module spec contains a Pivot Invalidation List, audit verifies every listed artifact has been addressed (scope `pivot` lists it in the scope spec; a breaking `refine-module` lists consumer modules in the module spec — same format, same check).
 
       | Listed item | Check | Severity if stale |
       |---|---|---|

@@ -1,13 +1,8 @@
 <Axiom id="AX_DISPATCH_VIA_BATCH">
---- ax-done-requires-evidence.xml ---
-<Axiom id="AX_DONE_REQUIRES_EVIDENCE">
---- ax-execution-log-plan-vs-fact.xml ---
-<Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
---- ax-execution-order.xml ---
-<Axiom id="AX_EXECUTION_ORDER">
---- ax-fix-classification.xml ---
-<Axiom id="AX_FIX_CLASSIFICATION">
---- ax-frame-exit-discipline.xml ---
-<Axiom id="AX_FRAME_EXIT_DISCIPLINE">
---- ax-grouping-reduces-noise.xml ---
-<Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes in a file with one shared intent (mass renaming, parameter added to many calls) MUST be grouped into a single logical task. Per-line entries are noise.</Axiom>
+      After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers.
+
+      Audit flag: pass `skip-audit` to the batch — per-task audit is skipped; the reconcile-level
+      safety net (verify + fresh-eyes epic audit + code-review) runs ONCE at STEP_7 instead.
+      (The batch still runs phases but skips the per-task audit dispatch.)
+    </Axiom>

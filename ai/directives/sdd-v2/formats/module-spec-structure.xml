@@ -65,7 +65,7 @@
   <!--SECTION:INTER_MODULE_DEPENDENCIES-->
   ## 9. Inter-Module Dependencies
   - **Depends on:** <list of modules within this scope with links>
-  - **Scope Reference (cross-scope):** <contracts-type scope with link if any>
+  - **Scope Reference (cross-scope):** <interface-type scope with link if any>
   - **Provides to:** <list of modules within this scope>
 
   ```mermaid

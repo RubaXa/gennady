@@ -1,7 +1,7 @@
 <Contract id="SCOPE_TASKS_INDEX_STRUCTURE">
   `specs/<scope>/<scope>.3-tasks.md` — scope task index, co-located with the scope spec. Holds the
   scope's Cascade Table, the inter-module DAG, and a tracker (module rollup + any scope-level tickets
-  for infra / contracts scopes that have no modules). Project-wide conventions are inherited from
+  for infra / interface scopes that have no modules). Project-wide conventions are inherited from
   `specs/3-tasks.md`, not repeated.
 
   ```markdown

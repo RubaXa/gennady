@@ -3,6 +3,6 @@
   Scope Graph is a directed dependency graph. Rules:
   - Edge A→B means «scope A depends-on scope B»: A inherits B's effective rules in the cascade and may consume B's contracts.
   - Cycle in the graph → `H_CYCLE_IN_GRAPH` (abort).
-  - scope-type constraints: `infrastructure` and `contracts` scopes are typically leaves (depend only on other infra / contracts). `product` and `library` scopes depend on infra + contracts.
+  - scope-type constraints: `infrastructure` and `interface` scopes are typically leaves (depend only on other infra / interface). `product` and `library` scopes depend on infra + interface.
   - The graph is rendered as a Mermaid `graph TD` block inside the Portal.
 </Axiom>

@@ -1,7 +1,5 @@
 <Axiom id="AX_EXECUTION_ORDER">
-110:    <Axiom id="AX_HANDOFF_TYPED">
-114:    <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
-120:      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
-127:    <Axiom id="AX_AUDIT_HOOK">
-128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
-131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+      Phases within one ticket dispatch strictly sequentially, in the order declared by each phase's `Deps` — a phase starts only after every phase it depends on reaches `[x] DONE` in the current Round. Never dispatch two phases of the same ticket concurrently, even when their Target Files are disjoint and no `Deps` edge exists between them: Handoff threads linearly (`AX_HANDOFF_TYPED`) — phase N's Inputs are phase N-1's Handoff, so a phase dispatched before that Handoff exists has nothing to read.
+
+      Parallelism, where available, is only across separate tickets whose Target-File sets are disjoint (`AX_DAG_AND_TICKET_BOUNDARIES`) — never within one ticket's own phases.
+    </Axiom>

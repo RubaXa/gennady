@@ -2,5 +2,5 @@
 <Axiom id="AX_SCOPE_TYPE_GATE">
       Module decomposition applies ONLY to scope-type=product and scope-type=library.
       - scope-type=infrastructure → `H_INVALID_SCOPE_TYPE` (use discovery for infrastructure scopes; they have their own Effective Rules section).
-      - scope-type=contracts → `H_INVALID_SCOPE_TYPE` (contracts scopes define interfaces, not modules).
+      - scope-type=interface → `H_INVALID_SCOPE_TYPE` (interface scopes define interfaces, not modules).
     </Axiom>

@@ -16,7 +16,7 @@
       | Tier | coding | testing | architecture | infra |
       |------|--------|---------|--------------|-------|
       | infra-base (traversed) | typescript-rules | vitest-rules | | eslint-setup, git-setup, nodejs-npm-setup |
-      | api-contracts (traversed) | | | | |
+      | api (traversed) | | | | |
       | <scope-name> (target) | | | ports-adapters | |
       | module:payments | | node-test | | |
 

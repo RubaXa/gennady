@@ -54,18 +54,17 @@
     </Axiom>
 
     <Axiom id="AX_MECHANICAL_VIA_SDD_CHECK">
-      Deterministic mechanical checks — file-header presence, Task-ID collision, tracker-sync — are NOT hand-coded here. They live in one tool, `sdd check`, which sdd-check (whole tree) and this directive (scoped) both consume. Single source of mechanical truth → no drift between the two SDD reviewers.
+      Deterministic mechanical checks are NOT hand-coded in this directive — they live in one tool, `sdd-check`, which the whole-tree reporter and this directive both consume. Single source of mechanical truth → no drift between the SDD reviewers. Take its findings as given; do NOT hand-redo them.
 
-      - `sdd check --files <git-diff in-scope files>` → [HEADERS] (`@file`/`@consumers`/`@tasks` presence).
-      - `sdd check --task <Task-ID>` → [TASKID] (collision for that id) + [TRACKER_SYNC] (Meta.Status vs tracker row).
-      - `sdd check <root>` (no flag) → tree-wide [TASKID] orphan refs (epic mode).
+      - `sdd-check --task <ticket-path>` → one ticket: section-anchor balance · Meta + Execution Log present · Task-ID / Status parseable · fabricated DONE · DONE-with-active-blocker · DONE-with-placeholders · phase graph (deps resolve + acyclic) · phase ↔ `PHASE_Pn` section coverage · DONE ⇒ every phase checked.
+      - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps).
 
-      Audit still owns everything the tool cannot decide mechanically: semantic `@consumers` resolvability, current-Task-ID identity, append-only `@tasks` regression vs git, section-anchor coverage, and all code-reading checks (closed-world, completeness, rules-compliance, runtime-backing, backflow).
+      Audit owns only what the tool cannot decide mechanically: closed-world symbol diff (code↔inventory), BDD↔test substance, rules-cascade resolution, stale-after-pivot, runtime-backing real-vs-stub, `@consumers` resolvability, append-only `@tasks` vs git. File-header presence (`@file`/`@consumers`/`@tasks`) is checked by `sdd-verify`, not here.
     </Axiom>
 
     <Axiom id="AX_READ_ONLY">Read artifact + parent spec. Write text output. NEVER edit files — orchestrator applies edits.</Axiom>
 
-    <Axiom id="AX_ISOLATION">Only artifact + parent spec. No other files. Confusion → underspecification.</Axiom>
+    <Axiom id="AX_ISOLATION">The artifact + its parent spec + the Vision / Goals of its direct NEIGHBOURHOOD — both what it depends on AND its consumers (who depend on it) — pulled via `sdd-extract <dep> VISION` (`MODULE_VISION` for a module), Vision sections only, to understand the system the design serves and who it serves. No other files, no full dependent specs. Confusion → underspecification, not a question to ask.</Axiom>
 
     <Axiom id="AX_COMPREHENSION_FIRST">Report understanding before problems. Misunderstanding signals ambiguity.</Axiom>
 

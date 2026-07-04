@@ -52,7 +52,7 @@
 
       <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 7. Scope Dependencies
-      - **Depends on:** [infra-*, contracts scopes]
+      - **Depends on:** [infra-*, interface scopes]
       - **Provides to:** [consumer scopes]
       <!--/SECTION:SCOPE_DEPENDENCIES-->
 

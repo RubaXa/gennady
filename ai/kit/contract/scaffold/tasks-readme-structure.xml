@@ -77,7 +77,7 @@
       | Scope | Type | Tracker | Tasks | Done |
       |---|---|---|---|---|
       | infra-base | infrastructure | [README](infra-base/README.md) | 6 | 0/6 |
-      | api-contracts | contracts | [README](api-contracts/README.md) | 2 | 0/2 |
+      | api | interface | [README](api/README.md) | 2 | 0/2 |
       | backend | product | [README](backend/README.md) | 12 | 0/12 |
       | web | product | [README](web/README.md) | 8 | 0/8 |
       | integration | integration | [README](integration/README.md) | 1 | 0/1 |

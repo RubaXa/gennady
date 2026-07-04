@@ -9,7 +9,7 @@
     Input — operator intent. Output — control handed to one branch directive; the router writes no
     artifact and prints no formatted trace itself.
 
-    **Glossary.** scope-type ∈ {infrastructure, contracts, library, product}. Scope Graph =
+    **Glossary.** scope-type ∈ {infrastructure, interface, library, product}. Scope Graph =
     directed graph; edge A→B = «scope A depends on scope B».
   </Mission>
 
@@ -106,8 +106,8 @@
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
       - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = infrastructure
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
-      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = contracts
-          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/contracts.directive.xml")
+      - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = interface
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
       - WHEN intent = module-decomposition (scope spec approved, product / library)
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
       - DEFAULT

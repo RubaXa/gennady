@@ -5,7 +5,7 @@
       | scope-type | STEP_3 | STEP_4 | STEP_5 | STEP_6 |
       |---|---|---|---|---|
       | infrastructure | Tool Categories + Choices | Dev Workflow Example | File Structure | Effective Rules |
-      | contracts | Interface Declaration | Versioning Policy | Compatibility Matrix | — |
+      | interface | Interface Declaration | Versioning Policy | Compatibility Matrix | — |
       | library | Requirements Gate | Golden DX | Architecture | — |
       | product | Requirements Gate | Golden DX | Design Variants | Architecture Choice |
 

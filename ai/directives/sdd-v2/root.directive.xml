@@ -40,7 +40,7 @@
       Scope Graph is a directed dependency graph. Rules:
       - Edge A→B means «scope A depends-on scope B»: A inherits B's effective rules in the cascade and may consume B's contracts.
       - Cycle in the graph → `H_CYCLE_IN_GRAPH` (abort).
-      - scope-type constraints: `infrastructure` and `contracts` scopes are typically leaves (depend only on other infra / contracts). `product` and `library` scopes depend on infra + contracts.
+      - scope-type constraints: `infrastructure` and `interface` scopes are typically leaves (depend only on other infra / interface). `product` and `library` scopes depend on infra + interface.
       - The graph is rendered as a Mermaid `graph TD` block inside the Portal.
     </Axiom>
 
@@ -106,7 +106,7 @@
         framing — «авторизация только для web? а API / будущие клиенты?». The answer drives three things:
         the «scope vs module» test (a thing used inside one scope may be a module, not a scope →
         `H_SCOPE_VS_MODULE_AMBIGUITY`); the `depends-on` edges; and, when it is cross-cutting, a note that
-        cross-scope scenarios or a contracts scope may be needed. If the change REMOVES or RENAMES a
+        cross-scope scenarios or an interface scope may be needed. If the change REMOVES or RENAMES a
         scope, first surface what it orphans — its `specs/<scope>/…` spec, tasks, and inbound references
         — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
         propose scope-type with rationale and render the Mermaid `graph TD`. Approval Check. STOP.

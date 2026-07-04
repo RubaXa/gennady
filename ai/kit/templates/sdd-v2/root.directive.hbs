@@ -73,7 +73,7 @@
         framing — «авторизация только для web? а API / будущие клиенты?». The answer drives three things:
         the «scope vs module» test (a thing used inside one scope may be a module, not a scope →
         `H_SCOPE_VS_MODULE_AMBIGUITY`); the `depends-on` edges; and, when it is cross-cutting, a note that
-        cross-scope scenarios or a contracts scope may be needed. If the change REMOVES or RENAMES a
+        cross-scope scenarios or an interface scope may be needed. If the change REMOVES or RENAMES a
         scope, first surface what it orphans — its `specs/<scope>/…` spec, tasks, and inbound references
         — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
         propose scope-type with rationale and render the Mermaid `graph TD`. Approval Check. STOP.

@@ -1,6 +1,6 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
-      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / contracts scope → one ticket per discrete capability.
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / interface scope → one ticket per discrete capability.
 
       DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
 

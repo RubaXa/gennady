@@ -1,7 +1,7 @@
 <!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_CONTRACTS_FLOW">
-      For scope-type=contracts:
+<Axiom id="AX_INTERFACE_FLOW">
+      For scope-type=interface:
       - Interface Declaration: schema format (OpenAPI / gRPC proto / JSON Schema / GraphQL), versioning scheme (semver / date-based / none), namespacing.
       - Compatibility Matrix: backward-compat guarantees, breaking-change protocol.
-      - Consumer declaration: which scopes consume this contracts scope.
+      - Consumer declaration: which scopes consume this interface scope.
     </Axiom>

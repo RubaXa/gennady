@@ -1,5 +1,12 @@
 <Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
-120:      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
-127:    <Axiom id="AX_AUDIT_HOOK">
-128:      Round is complete only after `audit` returns PASS. `sdd-execute` orchestrator dispatches audit-subagent automatically after the last phase of a Round closes — operator does not invoke audit manually. `[x] DONE` on the ticket is mechanical close, not verification. Until audit PASS, dependents are blocked.
-131:    <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
+      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until a later Round entry explicitly marks it RESOLVED. Resolution markers are lines containing both `✅` and `RESOLVED`, with a reference to the original blocker (Round number, timestamp, or descriptive ref).
+
+      Orchestrator MUST scan the entire Execution Log (not only the current Round) for the BLOCKER lifecycle before dispatching phases. If the dispatching skill provides `sdd check-blockers <ticket>` tool, use it; otherwise scan manually:
+      - Count `🛑 BLOCKED` lines and `✅ RESOLVED` lines from Execution Log start.
+      - If the **last** marker (by line position) is `✅` AND resolved count ≥ blocker count → all blockers resolved → CLEAR to dispatch.
+      - Otherwise → at least one ACTIVE blocker → halt as PAUSED awaiting operator (NOT failed, see `AX_HALT_VS_FAIL_DISTINCTION`).
+
+      Resolution authorship: the entry adding `✅ RESOLVED` MUST cite the specific environmental change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed", "operator chose option B"). Empty resolution prose → audit treats as fabricated and may re-flag.
+
+      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line; resolution is appended in a later Round entry. The blocker history is part of the artifact.
+    </Axiom>

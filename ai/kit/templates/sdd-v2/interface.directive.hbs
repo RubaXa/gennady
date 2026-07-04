@@ -1,3 +1,97 @@
+<SddInterface keywords="interface, schema, versioning, compatibility, consumer, decision-log, sdd-interface" type="directive" ver="2.0">
+  <Mission>
+    Author or evolve an `interface` scope spec — cross-scope interfaces: schema (OpenAPI / gRPC proto
+    / JSON Schema / GraphQL), versioning policy, compatibility matrix, consumer declaration. A
+    self-contained living spec. Loaded lazily by the router; inherits the router core (language,
+    dialogue, safeguard, diverge, no-narration, stateless) — not repeated here.
+
+    Input — scope name + intent (or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md` (scope-type interface).
+
+    Out of scope: implementation, module decomposition, product / library design. The project portal
+    is the root branch.
+
+    **Glossary.** Modes: greenfield · refine · pivot · rewrite. Consumers = the scopes that depend on this
+    interface scope.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
+
+    {{> "axiom/spec/ax-living-spec"}}
+
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/spec/ax-interface-flow"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+
+    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_BREAKING_CHANGE_NO_PROTOCOL` | A breaking interface change without a declared breaking-change protocol |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | External-deps step finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode.</Goal>
+      <Action>
+        State from the router gives the portal + scope-type (interface). Resolve the scope name; stat
+        the spec → `greenfield` or mode per `AX_MODE_AUTO_DETECT_OR_HALT`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm interface and outline the section set.</Goal>
+      <Action>Confirm scope-type, outline sections. Approval Check. STOP.</Action>
+    </Step>
+    <Step id="STEP_2_INTERFACE_DECLARATION">
+      <Goal>Declare the interface.</Goal>
+      <Action>
+        Per `AX_INTERFACE_FLOW`: schema format (OpenAPI / gRPC proto / JSON Schema / GraphQL),
+        versioning scheme (semver / date-based / none), namespacing. Interview per
+        `AX_OPERATOR_SAFEGUARD` — this is the substance, not chatter. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_VERSIONING_POLICY">
+      <Goal>Lock the versioning policy.</Goal>
+      <Action>
+        Versioning scheme + breaking-change protocol + consumer-notification rule. A breaking change
+        without a protocol → `H_BREAKING_CHANGE_NO_PROTOCOL`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_COMPATIBILITY_MATRIX">
+      <Goal>Lock compatibility guarantees and consumers.</Goal>
+      <Action>
+        Backward-compat guarantees + consumer declaration (which scopes consume this contract, per
+        `AX_CROSS_SCOPE_DEPENDENCIES`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Materialize Bootstrap Requirements.</Goal>
+      <Action>
         Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
         (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`); resolve with the operator;
         materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
@@ -10,7 +104,32 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")` and
         assemble `specs/<scope>/<scope>.spec.md` to it. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`). Handoff is to scaffold (interface scopes have no modules).
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (interface scopes have no modules).
         Approval Check. STOP.
       </Action>
     </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `📐 CON_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Interface · Versioning · Compatibility · Spec.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/understanding-block-format"}}
+
+    {{> "contract/process/side-dive-format"}}
+
+    {{> "contract/process/flow-diagram-when"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    <!-- spec-structure + pivot formats load lazily at STEP_6 (used only when writing) — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddInterface>

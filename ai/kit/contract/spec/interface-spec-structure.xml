@@ -1,11 +1,11 @@
 <!-- source: sdd/discovery.directive.xml -->
-<Contract id="CONTRACTS_SPEC_STRUCTURE">
+<Contract id="INTERFACE_SPEC_STRUCTURE">
       ```markdown
-      # <scope-name>: Contracts Specification
+      # <scope-name>: Interface Specification
 
       <!--SECTION:SCOPE_TYPE-->
       ## scope-type
-      contracts
+      interface
       <!--/SECTION:SCOPE_TYPE-->
 
       <!--SECTION:VISION-->
@@ -40,7 +40,7 @@
       <!--SECTION:SCOPE_DEPENDENCIES-->
       ## 6. Scope Dependencies
       - **Depends on:** [infra scopes if any]
-      - **Provides contracts to:** [product/library scopes]
+      - **Provides interface to:** [product/library scopes]
       <!--/SECTION:SCOPE_DEPENDENCIES-->
 
       <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
