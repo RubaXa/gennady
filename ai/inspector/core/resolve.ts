@@ -11,8 +11,9 @@ const MAX_DEPTH = 12;
 export type DirectiveReader = (ref: string) => string | null;
 
 /**
- * Развернуть дерево на месте: каждый run-узел со ссылкой на *.directive.xml получает дочерним
- * разобранное дерево этой директивы (рекурсивно). Циклы и превышение глубины помечаются узлом 'unparsed'.
+ * Развернуть дерево на месте: каждый run-узел со ссылкой на *.xml (директиву ИЛИ formats/*-контракт)
+ * получает дочерним разобранное дерево этого файла (рекурсивно). Циклы и превышение глубины помечаются
+ * узлом 'unparsed'.
  * @param node Корень поддерева.
  * @param read Читатель файлов директив.
  * @param seen Ссылки на текущем пути сверху вниз (для детекта циклов).
@@ -24,7 +25,7 @@ export function resolveTree(
   seen: Set<string> = new Set(),
   depth = 0
 ): TraceNode {
-  if (node.kind === 'run' && node.ref && node.ref.endsWith('.directive.xml')) {
+  if (node.kind === 'run' && node.ref && node.ref.endsWith('.xml')) {
     if (depth >= MAX_DEPTH) {
       node.children = [{ kind: 'unparsed', label: 'предел глубины', note: node.ref }];
       return node;

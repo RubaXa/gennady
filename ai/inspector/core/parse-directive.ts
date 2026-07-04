@@ -166,11 +166,16 @@ export function parseDirective(path: string, xml: string): TraceNode {
         detail: clean(el.inner),
       });
   }
+  // A format/contract file (<Contract>) has no PascalCase structural children — its whole body IS the
+  // content (a markdown template). Capture it as detail so descending into it shows something, not a blank leaf.
+  const rootDetail = sections.length === 0 ? clean(root.inner) : undefined;
   return {
     kind: 'directive',
     label: `<${root.name}>`,
     ref: path,
     attrs: parseAttrs(root.attrsRaw),
+    note: rootDetail ? firstSentence(rootDetail) : undefined,
+    detail: rootDetail,
     children: sections,
   };
 }

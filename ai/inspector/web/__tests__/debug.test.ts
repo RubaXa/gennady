@@ -32,6 +32,51 @@ const stackLabels = (sim: ReturnType<typeof simulate>) => sim.stack.map((f: any)
 const divs = (sim: ReturnType<typeof simulate>) =>
   sim.log.filter((e: any) => e.div).map((e: any) => e.div);
 
+/** Drive the debugger deterministically: prefer a transition matching `prefer`, else DEFAULT, else advance —
+ *  until `stop(sim)` is true or moves run dry. Returns { sim, moves } so the caller can extend the path. */
+function driveUntil(skill: any, stop: (sim: any) => boolean, prefer: RegExp[] = [], maxSteps = 40) {
+  const moves: any[] = [];
+  for (let i = 0; i < maxSteps; i++) {
+    const sim = simulate(skill, moves);
+    if (!sim.current || stop(sim)) return { sim, moves };
+    const trans = sim.current.transitions;
+    const picked =
+      prefer.map((re) => trans.find((t: any) => re.test(t.run?.ref ?? t.label))).find(Boolean) ??
+      trans.find((t: any) => /DEFAULT/.test(t.label)) ??
+      trans.find((t: any) => t.type === 'next') ??
+      trans[0];
+    moves.push({ type: picked.type, i: picked.i });
+  }
+  return { sim: simulate(skill, moves), moves };
+}
+
+test('regression: a formats/*.xml contract reference (not *.directive.xml) is offered as step-into', () => {
+  // STEP_4_PORTAL_WRITE's Action reads `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")`.
+  // formats/*.xml files are NOT *.directive.xml — the scanner used to miss them entirely, so this step
+  // silently advanced past the reference instead of offering a descent. Pin the fix at both layers:
+  // the ref is scanned as a 'run' node, resolved into a <Contract> leaf carrying its markdown body, and
+  // offered as a real 'into' transition from the step.
+  const sdd = loadSkill('sdd');
+  const { sim, moves } = driveUntil(sdd, (s) => s.current.unit.attrs?.id === 'STEP_4_PORTAL_WRITE', [
+    /root\.directive\.xml/,
+  ]);
+  assert.equal(sim.current.unit.attrs?.id, 'STEP_4_PORTAL_WRITE');
+
+  const into = sim.current.transitions.find((t: any) => t.run && /portal-structure\.xml/.test(t.run.ref));
+  assert.ok(into, 'portal-structure.xml is offered as a step-into transition');
+
+  const after = simulate(sdd, [...moves, { type: into.type, i: into.i }]);
+  const loaded = after.log.find((e: any) => e.dir && e.dir.label === '<Contract>');
+  assert.ok(loaded, 'entering the ref attaches the resolved <Contract> node for inspection');
+  assert.match(
+    loaded.dir.detail ?? '',
+    /Vision/,
+    'the contract carries its markdown template body, not an empty leaf'
+  );
+  // the contract has no <ExecutionPlan> (it is a format, not a directive with steps) — auto-unwind cascades
+  assert.ok(after.done, 'flow completes after the content-only contract immediately unwinds');
+});
+
 test('/sdd skill exposes the GATHER / EMBODY / ROUTE loader steps and embodies the router', () => {
   const sdd = loadSkill('sdd');
   const units = unitsOf(sdd);

@@ -7,8 +7,10 @@ import type { TraceNode } from './model.ts';
 const PASCAL_OPEN = /<([A-Z][A-Za-z0-9]*)\b([^>]*?)(\/?)>/;
 const TOOL_RE = /\bsdd-(?:state|task|extract|verify|log|sync|check)\b|\borient\b/g;
 // Sub-directive references are written inconsistently: READ_AND_USE_DIRECTIVE("path"), a backticked path,
-// or a ~/abs path. Match any *.directive.xml token, then normalise to the repo-relative ai/directives/... tail.
-const DIRECTIVE_REF_RE = /[\w./~-]*\.directive\.xml/g;
+// or a ~/abs path. Every real reference is anchored under ai/directives/ (verified: no READ_AND_USE_DIRECTIVE
+// ref points elsewhere), so match any such .xml token — both *.directive.xml AND formats/*.xml contracts —
+// then normalise to the repo-relative ai/directives/... tail.
+const DIRECTIVE_REF_RE = /[\w./~-]*ai\/directives\/[\w./-]+\.xml/g;
 
 /** Содержимое тега для показа: срезать HTML-комментарии (но НЕ внутри `code`-спанов, там это literal-контент), dedent, схлопнуть пустые строки, обрезать. */
 export function clean(s: string): string {

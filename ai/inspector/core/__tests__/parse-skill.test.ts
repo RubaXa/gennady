@@ -63,9 +63,10 @@ test('resolveTree expands a run node into the referenced directive tree', () => 
 });
 
 test('resolveTree marks a cycle instead of looping forever', () => {
-  const tree: TraceNode = { kind: 'run', label: 'a', ref: 'a.directive.xml' };
+  const ref = 'ai/directives/sdd-v2/a.directive.xml';
+  const tree: TraceNode = { kind: 'run', label: 'a', ref };
   const read = (): string =>
-    '<RootA><ExecutionPlan><Step id="S"><Action>read a.directive.xml</Action></Step></ExecutionPlan></RootA>';
+    `<RootA><ExecutionPlan><Step id="S"><Action>read \`READ_AND_USE_DIRECTIVE("${ref}")\`</Action></Step></ExecutionPlan></RootA>`;
   resolveTree(tree, read);
   // descend until the self-reference is caught
   const json = JSON.stringify(tree);
