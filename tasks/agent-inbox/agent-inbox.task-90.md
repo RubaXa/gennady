@@ -58,7 +58,7 @@
 
 <!--SECTION:VERIFICATION-->
 
-- `npm run typecheck` — pass
+- `npm run type-check` — pass
 - `npm run test -- cli/cmd/inbox/_core/logic/inbox-config.test.ts` — pass
 
 ## 7. Execution Log

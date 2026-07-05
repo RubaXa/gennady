@@ -104,11 +104,11 @@ describe('inbox-context config signal', () => {
 
   it('config with reposBase → reposBase used instead of ~/Developer default', () => {
     writeConfig(tmpDir, { version: 1, reposBase: '/custom/repos' });
-    const r = spawnInboxContext(
-      ['--ref', 'group/proj!510', '--json', '--vcs-host=H'],
-      tmpDir
-    );
+    const r = spawnInboxContext(['--ref', 'group/proj!510', '--json', '--vcs-host=H'], tmpDir);
     assert.notStrictEqual(r.status, 0, 'should fail after config check (no token)');
-    assert.ok(!r.stdout.includes('"configured": false'), 'config passed, reposBase from config accepted');
+    assert.ok(
+      !r.stdout.includes('"configured": false'),
+      'config passed, reposBase from config accepted'
+    );
   });
 });

@@ -19,14 +19,12 @@ import {
   removeWorktreeAt,
   gcStaleWorktrees,
   removeAllWorktrees,
+  WORKTREE_TTL_MS,
 } from './_core/logic/worktree-ops.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
 import { createVcsClient } from '../_shared/create-vcs-client.ts';
-
-/** @purpose Staleness TTL: worktrees older than this are GC'd on prepare. */
-const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
 
 function parseValue(argv: string[], flag: string): string | undefined {
   const inline = argv.find((a) => a.startsWith(`${flag}=`));

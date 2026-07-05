@@ -48,8 +48,8 @@
     <Rule id="CODE_REMOVED">
       The specific code my remark referred to was removed from the file (the file is still in changeset but the referenced lines are gone) → resolve with note "code removed".
     </Rule>
-    <Rule id="NEW_COMMITS_NO_MY_REMARKS">
-      `myDiscussions` is empty (I have not reviewed this MR before) BUT `headChanged.kind == "fast_forward"` → proceed with new-commits-only analysis: scan changed files for new issues (critical probes only: SEC, NAT, BIZ, TYPO).
+    <Rule id="APPROVED_NO_THREADS">
+      `myDiscussions` has no threads/drafts BUT I am in `approvedBy` (my prior review was an approve without remarks) → skip thread cross-reference, proceed with new-commits-only analysis: scan changed files for new issues (critical probes only: SEC, NAT, BIZ, TYPO). No threads AND not in `approvedBy` → `H_NO_MY_REVIEW` (see AX_NO_MY_REVIEW_FALLBACK), never proceed.
     </Rule>
     <Rule id="ALL_RESOLVED_NO_NEW_ISSUES">
       All my prior threads are resolved AND no new issues found in `newCommits` → suggest approve.

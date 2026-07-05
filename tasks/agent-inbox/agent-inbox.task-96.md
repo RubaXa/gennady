@@ -46,7 +46,7 @@
 
 ## 5. Verification
 
-- `npm run typecheck` — pass
+- `npm run type-check` — pass
 - `npm run test -- cli/cmd/vcs-discussions/vcs-discussions.test.ts` — pass
 - `npm run format:check` — pass
 

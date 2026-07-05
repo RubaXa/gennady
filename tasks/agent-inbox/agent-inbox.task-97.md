@@ -40,7 +40,7 @@
 
 ## 5. Verification
 
-- `npm run typecheck` — pass
+- `npm run type-check` — pass
 - `npm run test -- cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts` — pass
 - `npm run format:check` — pass
 

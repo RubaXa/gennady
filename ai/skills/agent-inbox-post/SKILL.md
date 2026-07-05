@@ -62,7 +62,7 @@ Sha — из `diff_refs` worktree. Строки — ТОЛЬКО изменён�
 ```json
 {"discussionId": "<id>", "body": "🤖 ..."}
 ```
-discussionId — из `review-issues --all` или GitLab API.
+discussionId — из `vcs-discussions --url <webUrl> --json` или GitLab API.
 
 ---
 

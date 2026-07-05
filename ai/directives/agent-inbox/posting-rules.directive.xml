@@ -140,7 +140,8 @@
       An exact mechanical fix the author applies with one click (Apply suggestion).
       GitLab syntax: a fenced block ```suggestion:-M+N where M and N are NUMBERS —
       how many lines above (M) and below (N) the commented line the replacement covers.
-      Single-line replacement → ```suggestion:-0+0 (or bare ```suggestion).
+      Single-line replacement → ```suggestion:-0+0. Always write the numeric :-M+N header —
+      vcs-reply validation rejects a bare ```suggestion.
       INSIDE the block — the full new text of the covered lines (not a diff, not a description).
       Posted as a line-comment on the target line. JSON shape:
       <![CDATA[

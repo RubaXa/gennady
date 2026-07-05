@@ -61,6 +61,7 @@ mock.module('../_core/logic/worktree-ops.logic.ts', {
     removeWorktreeAt: () => {},
     gcStaleWorktrees: () => [],
     removeAllWorktrees: () => [],
+    WORKTREE_TTL_MS: 7 * 24 * 60 * 60 * 1000,
   },
 });
 

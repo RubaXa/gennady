@@ -65,7 +65,7 @@
 
 ## 5. Verification
 
-- `npm run typecheck` — pass
+- `npm run type-check` — pass
 - `npm run test -- cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts` — pass
 - `npm run test -- cli/cmd/inbox-context/inbox-context.test.ts` — pass
 - `npm run format:check` — pass
