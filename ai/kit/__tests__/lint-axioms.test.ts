@@ -92,7 +92,11 @@ describe('lintDanglingAxioms — single directive', () => {
   });
 
   it('unreferenced axiom is dangling', () => {
-    const d = directive({ file: 'a.xml', axioms: [{ id: 'AX_ORPHAN' }], body: '  <ExecutionPlan/>' });
+    const d = directive({
+      file: 'a.xml',
+      axioms: [{ id: 'AX_ORPHAN' }],
+      body: '  <ExecutionPlan/>',
+    });
     assert.deepEqual(lintDanglingAxioms([d]), [{ file: 'a.xml', id: 'AX_ORPHAN' }]);
   });
 

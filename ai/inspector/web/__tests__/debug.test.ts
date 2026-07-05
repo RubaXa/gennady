@@ -57,12 +57,16 @@ test('regression: a formats/*.xml contract reference (not *.directive.xml) is of
   // the ref is scanned as a 'run' node, resolved into a <Contract> leaf carrying its markdown body, and
   // offered as a real 'into' transition from the step.
   const sdd = loadSkill('sdd');
-  const { sim, moves } = driveUntil(sdd, (s) => s.current.unit.attrs?.id === 'STEP_4_PORTAL_WRITE', [
-    /root\.directive\.xml/,
-  ]);
+  const { sim, moves } = driveUntil(
+    sdd,
+    (s) => s.current.unit.attrs?.id === 'STEP_4_PORTAL_WRITE',
+    [/root\.directive\.xml/]
+  );
   assert.equal(sim.current.unit.attrs?.id, 'STEP_4_PORTAL_WRITE');
 
-  const into = sim.current.transitions.find((t: any) => t.run && /portal-structure\.xml/.test(t.run.ref));
+  const into = sim.current.transitions.find(
+    (t: any) => t.run && /portal-structure\.xml/.test(t.run.ref)
+  );
   assert.ok(into, 'portal-structure.xml is offered as a step-into transition');
 
   const after = simulate(sdd, [...moves, { type: into.type, i: into.i }]);

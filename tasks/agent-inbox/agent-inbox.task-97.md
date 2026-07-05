@@ -68,3 +68,15 @@
 - [x] `2026-07-05T09:33:00Z` discovery npm run format:check → fail exit=1: 7 pre-existing style issues in non-target files (inbox config tests, 5 task markdowns); target file clean
 - [x] `2026-07-05T09:33:00Z` DONE
 **Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts]; decisions: [mock-fetch-sequence=queue-based, delete-all-tests=5-BDD-scenarios]; open: [F1: npm run format:check fails project-wide (7 non-target files), F2: 7 pre-existing test failures in inbox config tests]
+
+## Audit Rounds
+
+### Audit Round 1 — 2026-07-05, after Execution Round 1
+```
+@audit task=TSK-97 round=1 after-exec-round=1 triggered-reopen=none status=FAIL counts=B1·M1·m1·I2 phases_to_fix=[P1]
+F-01 | sev=B | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=— | src=AX_TASK_ID_INTEGRITY | route=ticket-update | act=добавить `<!--SECTION:META-->`/`<!--/SECTION:META-->` и остальные секционные якоря в тикет (META, PHASES_OVERVIEW, PHASE_P1, PHASE_P2, BDD, VERIFICATION, EXECUTION_LOG) — все 7 обязательных секций не имеют якорей, sdd extract возвращает ANCHOR_NOT_FOUND
+F-02 | sev=M | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tickets/agent-inbox/agent-inbox.task-97.md:5 | src=ticket§1 | route=ticket-update | act=обновить Meta.Status с `[ ] TODO` на `[x] DONE` — все фазы завершены
+F-03 | sev=I | type=INSIGHT_BACKFLOW | conf=H | loc=specs/agent-inbox/agent-inbox.spec.md:153 | src=spec§4.4 AI-27 | route=spec-edit | act=обновить статус `vcs-draft-note --delete-all (AI-27)` с `not-implemented` на `real-runtime (проверено)` — фича реализована, тесты проходят
+F-04 | sev=I | type=INSIGHT_BACKFLOW | conf=M | loc=tickets/agent-inbox/agent-inbox.task-97.md:43 | src=P1 insight log | route=ticket-update | act=заменить `npm run typecheck` на `npm run type-check` в §5 Verification — инсайт залогирован но тикет не обновлён
+F-05 | sev=m | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts:278 | src=AX_LOG_MESSAGE_PURITY | route=code-fix | act=заменить `'{ "deleted": 0 }\n'` (ручная строка с пробелами) на `JSON.stringify({ deleted: 0 }) + '\n'` для единообразного JSON-форматирования с остальными выводами
+```

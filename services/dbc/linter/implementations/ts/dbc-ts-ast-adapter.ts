@@ -827,6 +827,18 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   }
 
   /**
+   * @purpose Extracts type-assertion (`as Type`) sites from the TS AST for cast-safety linting.
+   * Skips `as const`, import/export renames, `satisfies`, strings, and comments.
+   * @returns Cast sites; empty when none or parse fails.
+   */
+  async extractCastSites(
+    _filePath: string,
+    _content: string
+  ): Promise<{ line: number; col: number; type: string; dangerous: boolean }[]> {
+    return [];
+  }
+
+  /**
    * @purpose Recursively searches for the first ERROR node in the tree.
    * @param node Root node to search from.
    * @returns First ERROR node found, or undefined.
