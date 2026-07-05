@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -63,7 +63,10 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [inbox.cmd.ts, inbox-context.cmd.ts, build-inbox-context.logic.ts]; decisions: []; open: []
+- [x] `2026-07-05T09:16:04Z` ver sdd verify → pass (type-check, gennady lint, test, format:check)
+- [x] `2026-07-05T09:17:03Z` ver npm run typecheck → fail exit=1 (скрипт в package.json называется `type-check`, не `typecheck` — ticket §5 discrepancy)
+- [x] `2026-07-05T09:17:21Z` DONE
+      **Handoff →** artifacts: [inbox.cmd.ts, inbox-context.cmd.ts, build-inbox-context.logic.ts]; decisions: [config-signal=structured-json, flag-override=coverage, sdd-verify=all-gates-pass]; open: []
 
 #### P2
 

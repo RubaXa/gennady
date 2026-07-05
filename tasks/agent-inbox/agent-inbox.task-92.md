@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -87,7 +87,14 @@ gennady inbox config --help             → help-текст
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [config.cmd.ts, config-index.ts, config-help.ts, gennady.ts]; decisions: [D44]; open: []
+- [x] 2026-07-05T09:15:35Z intro config.cmd.ts ← CLI entry point for gennady inbox config (6 operations + error contract)
+- [x] 2026-07-05T09:15:35Z intro config-index.ts ← dynamic import bridge for gennady.ts subcommand dispatch
+- [x] 2026-07-05T09:15:35Z intro config-help.ts printHelp ← help text for inbox config subcommand
+- [x] 2026-07-05T09:20:10Z discovery §5 команда "npm run typecheck" не найдена в package.json; актуальное имя скрипта — "npm run type-check"
+- [x] 2026-07-05T09:21:55Z ver npm run type-check → pass exit=0
+- [x] 2026-07-05T09:21:55Z ver npm run test -- cli/cmd/inbox/config.test.ts → skip:P2-phase (тестовый файл создаётся в P2)
+- [x] 2026-07-05T09:21:55Z DONE
+**Handoff →** artifacts: [cli/cmd/inbox/config.cmd.ts, cli/cmd/inbox/config-index.ts, cli/cmd/inbox/config-help.ts, cli/gennady.ts]; decisions: [config-path=via-configPath(stateDir), state-dir=resolved-via-resolveStateDir, atomic-save=tmp+rename, subcommand-dispatch=inbox-config-before-inbox]; open: []
 
 #### P2
 

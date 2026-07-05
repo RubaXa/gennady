@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox — list merge requests awaiting your reaction.
 // @consumers: N/A
-// @tasks: TSK-93
+// @tasks: TSK-93, TSK-91
 
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
@@ -21,7 +21,9 @@ import {
   registryPath,
   outDir,
   worktreesRoot,
+  configPath,
 } from './_core/logic/state-paths.logic.ts';
+import { loadConfig, validateConfig } from './_core/logic/inbox-config.logic.ts';
 import {
   removeAllWorktrees,
   gcStaleWorktrees,
@@ -49,7 +51,7 @@ function parseValue(argv: string[], flag: string): string | undefined {
   return idx !== -1 ? argv[idx + 1] : undefined;
 }
 
-async function runPick(ref: string, vcsSource?: string): Promise<number> {
+async function runPick(ref: string, vcsSource?: string, configVcsHost?: string): Promise<number> {
   const sep = ref.lastIndexOf('!');
   if (sep === -1) {
     console.error(style.redBright.bold('✖ Ошибка:'), 'Ожидался ref вида group/project!iid');
@@ -58,7 +60,7 @@ async function runPick(ref: string, vcsSource?: string): Promise<number> {
   const project = ref.slice(0, sep);
   const iid = ref.slice(sep + 1);
 
-  const client = buildInboxClient(vcsSource);
+  const client = buildInboxClient(vcsSource, configVcsHost);
   const [items, me] = await Promise.all([client.Inbox.getActionable(), client.getCurrentUser()]);
   const mr = items.find((m) => m.project === project && m.iid === iid);
   const discussions = await client.MergeDiscussions.getAll({ project, iid });
@@ -107,13 +109,43 @@ async function run(): Promise<number> {
     }
 
     const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
+    const reposBaseFlag = parseValue(argv, '--repos-base');
+
+    // #region START_CONFIG_SIGNAL — check inbox config before any network I/O;
+    // flag overrides cover the corresponding config keys; corrupt config → absent
+    let config: import('./_core/logic/inbox-config.logic.ts').InboxConfig | null = null;
+    try {
+      config = await loadConfig(configPath(stateDir));
+    } catch {
+      /* corrupt config treated as absent */
+    }
+    const cfg = config ?? { version: 1 as const, reposBase: undefined, vcsHost: undefined };
+    const checkResult = validateConfig(cfg);
+
+    const covered = new Set<string>();
+    if (vcsSource) covered.add('vcsHost');
+    if (reposBaseFlag) covered.add('reposBase');
+
+    const missing = checkResult.missing.filter((k) => !covered.has(k));
+    if (missing.length > 0) {
+      if (argv.includes('--json')) {
+        console.info(JSON.stringify({ configured: false, missing }));
+      } else {
+        console.info(
+          style.yellow('ℹ agent-inbox не настроен. Запустите gennady inbox config --init')
+        );
+      }
+      return 0;
+    }
+    // #endregion END_CONFIG_SIGNAL
+
     const pick = parseValue(argv, '--pick');
-    if (pick) return await runPick(pick, vcsSource);
+    if (pick) return await runPick(pick, vcsSource, cfg.vcsHost);
 
     const options = parseOptions(argv);
     const persist = !argv.includes('--no-save');
 
-    const client = buildInboxClient(vcsSource);
+    const client = buildInboxClient(vcsSource, cfg.vcsHost);
     const items = await client.Inbox.getActionable();
 
     const now = new Date().toISOString();
@@ -157,6 +189,7 @@ async function run(): Promise<number> {
 
     if (argv.includes('--json')) {
       const out = {
+        configured: true,
         total: view.total,
         hidden: view.hidden,
         delta: view.delta,

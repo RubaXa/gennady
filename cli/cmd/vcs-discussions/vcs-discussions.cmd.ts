@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Show MR discussions — human-readable output of GitLab MR discussion threads.
 // @consumers: gennady.ts
-// @tasks: TSK-93
+// @tasks: TSK-93, TSK-96
 
 import {
   resolveVcsContext,
@@ -10,6 +10,7 @@ import {
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
 import { createVcsClient } from '../_shared/create-vcs-client.ts';
+import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
 
@@ -43,8 +44,11 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     project: { aliases: ['project'], takesValue: true },
     iid: { aliases: ['iid'], takesValue: true },
     host: { aliases: ['host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     all: ['all'],
     json: ['json'],
+    my: ['my'],
+    'with-drafts': ['with-drafts', 'drafts'],
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 
@@ -55,6 +59,24 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const json = !!args.json;
   const dryRun = !!args['dry-run'];
   const host = args.host as string | undefined;
+  const urlArg = args.url as string | undefined;
+  const my = !!args.my;
+  const withDrafts = !!args['with-drafts'];
+
+  if (withDrafts && !my) {
+    if (json) {
+      deps.stdout.write(
+        JSON.stringify({
+          ok: false,
+          error: 'INVALID_ARGS',
+          detail: '--with-drafts requires --my',
+        }) + '\n'
+      );
+      deps.exit(2);
+    }
+    deps.stderr.write('✖ Ошибка: --with-drafts requires --my\n');
+    deps.exit(1);
+  }
 
   if (ref && !/^.+\!\d+$/.test(ref)) {
     deps.stderr.write('✖ Invalid ref format. Expected: <group/repo>!<iid>\n');
@@ -64,7 +86,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
+  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid, url: urlArg };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);
@@ -111,17 +133,73 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
 
     const filtered = showAll ? discussions : discussions.filter((d) => !d.resolved);
 
+    let resultDiscussions = filtered;
+    let drafts: unknown[] | undefined;
+
+    if (my) {
+      // #region START_APPLY_MY_FILTER
+      try {
+        const gitlabClient = client as VcsGitlabClient;
+        const me = await gitlabClient.getCurrentUser();
+        resultDiscussions = resultDiscussions.filter((d) => {
+          const notes = (d.notes as Array<Record<string, unknown>>) ?? [];
+          return notes.some((n) => {
+            const author = n.author as { username?: string } | undefined;
+            return author?.username === me.login;
+          });
+        });
+      } catch (cause) {
+        if (json) {
+          deps.stdout.write(
+            JSON.stringify({
+              ok: false,
+              error: 'NETWORK',
+              detail: (cause as Error).message ?? 'Не удалось определить текущего пользователя',
+            }) + '\n'
+          );
+          deps.exit(2);
+        }
+        deps.stderr.write(
+          `✖ Ошибка: ${(cause as Error).message ?? 'Не удалось определить текущего пользователя'}\n`
+        );
+        deps.exit(1);
+      }
+      // #endregion END_APPLY_MY_FILTER
+
+      if (withDrafts) {
+        // #region START_LOAD_DRAFT_NOTES
+        try {
+          drafts = await client.MergeDiscussions!.listDraftNotes({
+            project: context.project,
+            iid: resolvedIid,
+          });
+        } catch (cause) {
+          deps.stderr.write(
+            `⚠ Не удалось загрузить черновики: ${(cause as Error).message ?? 'неизвестная ошибка'}\n`
+          );
+          drafts = [];
+        }
+        // #endregion END_LOAD_DRAFT_NOTES
+      }
+    }
+
     if (json) {
-      deps.stdout.write(JSON.stringify(filtered.map(mapToJson), null, 2) + '\n');
+      if (withDrafts) {
+        deps.stdout.write(
+          JSON.stringify({ discussions: resultDiscussions.map(mapToJson), drafts }, null, 2) + '\n'
+        );
+      } else {
+        deps.stdout.write(JSON.stringify(resultDiscussions.map(mapToJson), null, 2) + '\n');
+      }
       deps.exit(0);
     }
 
-    if (filtered.length === 0) {
+    if (resultDiscussions.length === 0) {
       deps.stdout.write(`No discussions found for ${context.project}!${resolvedIid}\n`);
       deps.exit(0);
     }
 
-    for (const d of filtered) {
+    for (const d of resultDiscussions) {
       const shortId = String(d.id ?? '').slice(0, 8);
       const notes = (d.notes as Array<Record<string, unknown>> | undefined) ?? [];
       const firstNote = notes[0];

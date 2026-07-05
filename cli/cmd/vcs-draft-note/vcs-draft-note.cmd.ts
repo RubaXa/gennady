@@ -1,6 +1,6 @@
 // @file: Create, list, update, delete, and publish draft notes on GitLab MRs via CLI.
 // @consumers: vcs-draft
-// @tasks: TSK-87
+// @tasks: TSK-87, TSK-97
 
 import {
   resolveVcsContext,
@@ -241,6 +241,80 @@ async function publishDraft(
 }
 // #endregion END_PUBLISH_DRAFT_NOTE
 
+// #region START_DELETE_ALL_DRAFTS
+/**
+ * @purpose Delete all draft notes of the authenticated user on an MR (best-effort).
+ * @invariant Individual delete failures do not block the rest — partial output emitted with errors list.
+ * @invariant listDraftNotes failure → AI-22 error on stdout, exit 1.
+ * @param context Resolved VCS context.
+ * @param deps Injected dependencies.
+ * @sideEffect Network: GET draft_notes, DELETE draft_notes/:id; Console: result JSON.
+ */
+async function deleteAllDrafts(context: VcsCliContext, deps: VcsDraftDeps): Promise<void> {
+  const client: VcsClient = createVcsClient(context);
+  const iid = context.iid!;
+
+  logger.info(`[deleteAllDrafts] [idle → listing] ${context.project}!${iid}`);
+
+  // #region START_FETCH_DRAFT_LIST — failure mode: network/auth failure on listDraftNotes → AI-22 error
+  let drafts: unknown[];
+  try {
+    drafts = await client.MergeDiscussions!.listDraftNotes({
+      project: context.project,
+      iid: String(iid),
+    });
+  } catch (cause) {
+    const msg = (cause as Error).message ?? 'неизвестная ошибка';
+    const errorCode = /401|403|Forbidden|Unauthorized|AUTH/i.test(msg) ? 'AUTH' : 'NETWORK';
+    logger.error(`[deleteAllDrafts] [listing → failed] ${context.project}!${iid}`, {
+      error: cause,
+    });
+    deps.stdout.write(JSON.stringify({ ok: false, error: errorCode, detail: msg }) + '\n');
+    deps.exit(1);
+  }
+  // #endregion END_FETCH_DRAFT_LIST
+
+  if (drafts.length === 0) {
+    deps.stdout.write('{ "deleted": 0 }\n');
+    logger.info(`[deleteAllDrafts] [listing → empty]`);
+    deps.exit(0);
+  }
+
+  // #region START_DELETE_EACH_DRAFT — best-effort: individual failure does not block remaining deletes
+  let deleted = 0;
+  const errors: { draftId: string; error: string }[] = [];
+
+  for (const draft of drafts) {
+    const d = draft as Record<string, unknown>;
+    const draftId = String(d.id ?? d.draft_note_id ?? '?');
+    try {
+      await client.MergeDiscussions!.deleteDraftNote({
+        project: context.project,
+        iid: String(iid),
+        draftNoteId: draftId,
+      });
+      deleted++;
+    } catch (cause) {
+      const msg = (cause as Error).message ?? 'неизвестная ошибка';
+      logger.warn(`[deleteAllDrafts] [deleting → partial-fail] draftNoteId=${draftId}`, {
+        error: cause,
+      });
+      errors.push({ draftId, error: msg });
+    }
+  }
+  // #endregion END_DELETE_EACH_DRAFT
+
+  if (errors.length > 0) {
+    deps.stdout.write(JSON.stringify({ deleted, errors }) + '\n');
+  } else {
+    deps.stdout.write(JSON.stringify({ deleted }) + '\n');
+  }
+
+  logger.info(`[deleteAllDrafts] [deleting → deleted] deleted=${deleted} errors=${errors.length}`);
+  deps.exit(0);
+}
+// #endregion END_DELETE_ALL_DRAFTS
+
 // #region START_COUNT_ACTIONS
 /** @purpose Count how many action flags are set among the parsed args. */
 function countActions(args: Record<string, unknown>): number {
@@ -250,6 +324,7 @@ function countActions(args: Record<string, unknown>): number {
   if (args.update !== undefined) count++;
   if (args.delete !== undefined) count++;
   if (args.publish !== undefined) count++;
+  if (args['delete-all']) count++;
   return count;
 }
 // #endregion END_COUNT_ACTIONS
@@ -275,10 +350,12 @@ export async function run(
     project: { aliases: ['project'], takesValue: true },
     iid: { aliases: ['iid'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     create: { aliases: ['create'], takesValue: true },
     update: { aliases: ['update'], takesValue: true },
     delete: { aliases: ['delete'], takesValue: true },
     publish: { aliases: ['publish'], takesValue: true },
+    'delete-all': ['delete-all'],
     body: { aliases: ['body'], takesValue: true },
     list: ['list'],
     'dry-run': ['dry-run', 'dry'],
@@ -287,7 +364,7 @@ export async function run(
   const actionCount = countActions(args);
   if (actionCount === 0) {
     deps.stderr.write(
-      '✖ Ошибка: укажите одно действие: --list, --create, --update, --delete или --publish\n'
+      '✖ Ошибка: укажите одно действие: --list, --create, --update, --delete, --delete-all или --publish\n'
     );
     deps.exit(1);
   }
@@ -302,6 +379,7 @@ export async function run(
   const updateId = args.update as string | undefined;
   const deleteId = args.delete as string | undefined;
   const publishId = args.publish as string | undefined;
+  const deleteAllAction = !!args['delete-all'];
   const body = args.body as string | undefined;
   const dryRun = !!args['dry-run'];
 
@@ -316,10 +394,11 @@ export async function run(
     project: args.project as string | undefined,
     iid: args.iid !== undefined ? Number(args.iid) : undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   logger.debug(
-    `[run] [parsing → parsed] list=${listAction} create=${!!createBody} update=${updateId ?? ''} delete=${deleteId ?? ''} publish=${publishId ?? ''} dryRun=${dryRun} ref=${vcsArgs.ref ?? ''}`
+    `[run] [parsing → parsed] list=${listAction} create=${!!createBody} update=${updateId ?? ''} delete=${deleteId ?? ''} deleteAll=${deleteAllAction} publish=${publishId ?? ''} dryRun=${dryRun} ref=${vcsArgs.ref ?? ''}`
   );
 
   const context = await resolveContextOrFail(vcsArgs, deps);
@@ -352,7 +431,9 @@ export async function run(
           ? `update #${updateId}`
           : deleteId !== undefined
             ? `delete #${deleteId}`
-            : `publish #${publishId}`;
+            : deleteAllAction
+              ? 'delete-all'
+              : `publish #${publishId}`;
     deps.stdout.write(
       `[DRY-RUN] Would ${action} on ${context.project}!${context.iid} host=${context.host}\n`
     );
@@ -369,6 +450,8 @@ export async function run(
       await updateDraft(context, updateId, body!, deps);
     } else if (deleteId !== undefined) {
       await deleteDraft(context, deleteId, deps);
+    } else if (deleteAllAction) {
+      await deleteAllDrafts(context, deps);
     } else if (publishId !== undefined) {
       await publishDraft(context, publishId, deps);
     }

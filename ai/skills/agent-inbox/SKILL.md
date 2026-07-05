@@ -88,15 +88,14 @@ compatibility: opencode
 
 | Инструмент | Команда | Когда |
 |---|---|---|
-| Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--pick <ref>] [--reset]` | старт; `--pick` — пакет одного MR; `--all` — снять фильтр |
-| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref> [--skip-worktree] [--skip-threads]` | **ОДИН вызов вместо 4:** worktree + changeset + stage + threads + drafts + package |
-| Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --ref <ref>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
-| Дифф/файл | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-diff --ref <ref> [--path <file>]` | список файлов или содержимое файла без клона |
-| Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts review-issues --ref <ref> --all` · `--draft` | что уже писали / мои черновики |
-| CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --ref <ref> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
-| Постинг | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --project=<g/p> --iid=<iid>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
-| Черновики | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --ref <ref> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
-| Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --project=<g/p> --iid=<iid> [--revoke]` | approve / `--revoke` снять |
+| Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | старт; `--all` — снять фильтр |
+| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** worktree + changeset + stage + threads + drafts + package |
+| Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
+| Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | что уже писали / мои черновики |
+| CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
+| Постинг | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
+| Черновики | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
+| Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` снять |
 | Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
 
 **`vcs-reply` (JSON-массив).** Формы reply/line/suggestion — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Только в этом скилле:
@@ -107,7 +106,7 @@ compatibility: opencode
 - **Suggestion** — точную механическую правку с известным итогом (опечатка `TYPO`, очевидная замена) → suggestion, не проза. Спорное → замечание с вопросом.
 - **Resolve** — когда вопрос исчерпан (я ответил / автор поправил и я согласен). Не резолвить там, где не ответил или спор открыт. Обычно reply+resolve вместе.
 - **Approve / `--revoke`** — апрув только без моих блокирующих замечаний; `--revoke`, если MR изменился после approve или нашлась проблема. Approve по MR, resolve по треду — разное.
-- **Править/удалять — только свои** заметки (`noteId` из `review-issues --all`).
+- **Править/удалять — только свои** заметки (`noteId` из `vcs-discussions --json`).
 - **Todo done** — после реакции `vcs-todo --done <ref>`.
 - Любой постинг — после Ask (правило 2), сразу live, без dry-run.
 
@@ -163,8 +162,7 @@ compatibility: opencode
    tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
    контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
    (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
-3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
-   (Если нужно по отдельности — `vcs-worktree` / `inbox --pick` / `review-issues --all`/`--draft`.)
+3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);

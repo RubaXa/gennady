@@ -1,6 +1,6 @@
 // @file: vcs-discussions command help output.
 // @consumers: help command
-// @tasks: TSK-93
+// @tasks: TSK-93, TSK-96
 
 /**
  * @purpose Print CLI help for the vcs-discussions command.
@@ -13,16 +13,25 @@ export function printHelp(): void {
   console.info('  npx gennady vcs-discussions --ref <group/repo!iid> [options]');
   console.info('');
   console.info('Options:');
+  console.info(
+    '  --url <webUrl>           MR web URL (e.g. https://gitlab.example.com/group/proj/-/merge_requests/510)'
+  );
   console.info('  --ref <group/repo!iid>   MR ref');
   console.info('  --project <group/repo>   Explicit project path');
   console.info('  --iid <id>               MR internal ID');
   console.info('  --all                    Include resolved discussions');
+  console.info('  --my                     Show only discussions where I commented');
+  console.info('  --with-drafts, --drafts  Include my draft notes (requires --my)');
   console.info('  --json                   Machine-readable JSON output');
   console.info('  --host <hostname>        GitLab host');
   console.info('  --dry-run, --dry         Print without calling API');
   console.info('');
   console.info('Examples:');
-  console.info('  npx gennady vcs-discussions --ref group/repo!42');
+  console.info(
+    '  npx gennady vcs-discussions --url https://gitlab.example.com/group/proj/-/merge_requests/510 --json'
+  );
   console.info('  npx gennady vcs-discussions --ref group/repo!42 --all');
-  console.info('  npx gennady vcs-discussions --ref group/repo!42 --json');
+  console.info(
+    '  npx gennady vcs-discussions --url https://gitlab.example.com/group/proj/-/merge_requests/510 --json --my --with-drafts'
+  );
 }

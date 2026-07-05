@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -53,7 +53,15 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [vcs-reply.cmd.ts]; decisions: []; open: []
+- [x] `2026-07-05T09:23:35Z` intro `validateReplyItems` ← TSK-100 P1: 5 механических проверок до POST
+- [x] `2026-07-05T09:23:35Z` discovery ticket §5 ссылается на несуществующий `cli/cmd/vcs-reply/vcs-reply.test.ts`; актуальные тесты в `__tests__/vcs-reply.*.test.ts` — исправление в P2
+- [x] `2026-07-05T09:23:35Z` ver `npm run typecheck` → pass exit=0
+- [x] `2026-07-05T09:23:35Z` ver `npm run test -- cli/cmd/vcs-reply/vcs-reply.test.ts` → fail exit=1
+- [x] `2026-07-05T09:23:35Z` ver `npm run format:check` → fail exit=1
+- [x] `2026-07-05T09:23:35Z` insight format:check: 2 pre-existing warnings в `tasks/agent-inbox/agent-inbox.task-92.md`, `tasks/agent-inbox/agent-inbox.task-97.md` → вне Target Files P1
+- [x] `2026-07-05T09:23:35Z` insight 3 теста vcs-reply (`edit`, `mixed`, `resolve+reply`) падают из-за авто-🤖 префикса → ожидания тестов обновить в P2
+- [x] `2026-07-05T09:23:35Z` DONE
+**Handoff →** artifacts: [cli/cmd/vcs-reply/vcs-reply.cmd.ts]; decisions: [auto-prepend-bot-prefix=body без 🤖 получает префикс, validation-atomic=любая ошибка → INVALID_ARGS, skip-on-unavailable=getAll/getChanges недоступны → проверка пропускается]; open: [P2: обновить ожидания тестов под 🤖 префикс, P2: исправить путь к тестовому файлу в §5]
 
 #### P2
 

@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -50,7 +50,14 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [vcs-draft-note.cmd.ts, help.ts]; decisions: [D49]; open: []
+- [x] `2026-07-05T09:15:30Z` intro `deleteAllDrafts` ← TSK-97 P1: функция массового удаления черновиков (best-effort)
+- [x] `2026-07-05T09:18:25Z` insight ticket §5 команда `npm run typecheck` не существует (скрипт называется `type-check`) → `## 5. Verification`, заменить на `npm run type-check`
+- [x] `2026-07-05T09:19:30Z` ver npm run typecheck → fail exit=1
+- [x] `2026-07-05T09:19:30Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-05T09:19:30Z` ver npm run test -- cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts → pass exit=0
+- [x] `2026-07-05T09:19:30Z` ver npm run format:check → pass exit=0
+- [x] `2026-07-05T09:19:30Z` DONE
+**Handoff →** artifacts: [cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts, cli/cmd/vcs-draft-note/help.ts]; decisions: [--delete-all=best-effort, --url=forwarded-to-resolveVcsContext]; open: []
 
 #### P2
 

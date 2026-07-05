@@ -1,6 +1,6 @@
 // @file: Unified VCS context resolver — auto-detect branch, project, host, and token for all VCS commands.
 // @consumers: vcs-approve, vcs-worktree, vcs-reply, review-issues
-// @tasks: TSK-68
+// @tasks: TSK-68, TSK-95
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -26,6 +26,8 @@ export type VcsCliDeps = {
 
 /** @purpose Input arguments for VCS context resolution. */
 export type VcsCliArgs = {
+  /** @purpose MR web URL (e.g. https://gitlab.example.com/group/proj/-/merge_requests/<iid>) | @invariant Takes priority over --ref */
+  url?: string;
   /** @purpose MR ref in group/repo!iid format | @invariant Mutually exclusive with explicit branch */
   ref?: string;
   /** @purpose Explicit project path (group/repo) */
@@ -119,10 +121,23 @@ function parseGitRemoteUrl(url: string): { host: string; project: string } | nul
 }
 // #endregion END_PARSE_GIT_REMOTE_URL
 
+// #region START_PARSE_GITLAB_URL
+/**
+ * @purpose Parse a GitLab MR web URL into host, project, and iid.
+ * @param url Raw web URL (e.g. https://gitlab.example.com/group/proj/-/merge_requests/510).
+ * @returns { host, project, iid } or null when URL format is unrecognized.
+ */
+function parseGitlabUrl(url: string): { host: string; project: string; iid: number } | null {
+  const match = url.match(/^https?:\/\/([^/]+)\/(.+)\/-\/merge_requests\/(\d+)\/?$/);
+  if (!match) return null;
+  return { host: match[1], project: match[2], iid: Number(match[3]) };
+}
+// #endregion END_PARSE_GITLAB_URL
+
 /**
  * @purpose Resolve VCS context from CLI args, git state, and environment.
  * @implements {VcsCliContext} in specs/cli/cli.spec.md#VcsCliContext
- * @invariant Priority: ref > project+iid > branch (auto). Provider detected from host.
+ * @invariant Priority: url > ref > project+iid > branch (auto). Provider detected from host. --vcs-host overrides host from --url.
  * @param args CLI input arguments.
  * @param [deps] Injectable dependencies — defaults to real child_process and process.env.
  * @throws {VcsResolveError} On mutual exclusion, missing token, non-GitLab host, missing git remote, or branch not found.
@@ -134,6 +149,39 @@ export async function resolveVcsContext(
   deps: VcsCliDeps = defaultDeps()
 ): Promise<VcsCliContext> {
   logger.debug('[resolveVcsContext] [idle → resolving]');
+
+  // #region START_RESOLVE_FROM_URL — priority: --url overrides everything else
+  if (typeof args.url === 'string') {
+    logger.debug('[resolveVcsContext] [resolving → parsing-url]');
+    const parsedUrl = parseGitlabUrl(args.url);
+    if (!parsedUrl) {
+      const msg = `[resolveVcsContext] Некорректный URL: ${args.url}`;
+      logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
+      throw new VcsResolveError(`Некорректный URL: ${args.url}`);
+    }
+
+    const host = args.host ?? parsedUrl.host;
+    const project = parsedUrl.project;
+    const iid = parsedUrl.iid;
+    const provider: VcsCliContext['provider'] = /github/i.test(host) ? 'github' : 'gitlab';
+
+    const token =
+      provider === 'github'
+        ? (deps.env('GITHUB_PERSONAL_TOKEN') ?? deps.env('GITHUB_TOKEN'))
+        : deps.env('GITLAB_PERSONAL_TOKEN');
+    if (!token) {
+      const envVar =
+        provider === 'github' ? 'GITHUB_PERSONAL_TOKEN or GITHUB_TOKEN' : 'GITLAB_PERSONAL_TOKEN';
+      const msg = `[resolveVcsContext] Не найден токен доступа. Установите ${envVar}.`;
+      logger.error(`[resolveVcsContext] [resolving → failed] ${msg}`);
+      throw new VcsResolveError(`Не найден токен доступа. Установите ${envVar}.`);
+    }
+
+    const context: VcsCliContext = { provider, host, project, iid, token };
+    logger.info(`[resolveVcsContext] [resolving → resolved] ${host}/${project}!${iid}`);
+    return context;
+  }
+  // #endregion END_RESOLVE_FROM_URL
 
   // #region START_VALIDATE_MUTUAL_EXCLUSIVITY
   if (typeof args.ref === 'string' && args.branch) {

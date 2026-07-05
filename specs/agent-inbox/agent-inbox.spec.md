@@ -148,7 +148,7 @@ gennady inbox --reset                                        # чистый ли
 | Error response contracts (AI-22)                         | `not-implemented`                                                       |
 | Worktree reuse + 7d TTL (AI-09, AI-23)                   | `not-implemented`                                                       |
 | `inbox-context` format v2 + delta commits (AI-16, AI-24) | `not-implemented`                                                       |
-| Unified `--url` interface (AI-25)                        | `not-implemented`                                                       |
+| Unified `--url` interface (AI-25)                        | `real-runtime` (проверено)                                              |
 | `vcs-discussions --my --with-drafts` (AI-26)             | `not-implemented`                                                       |
 | `vcs-draft-note --delete-all` (AI-27)                    | `not-implemented`                                                       |
 | `update-review.directive.xml` (AI-28)                    | `not-implemented`                                                       |

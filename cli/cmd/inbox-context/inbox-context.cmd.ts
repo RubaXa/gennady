@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox-context — atomic context gathering for one MR.
 // @consumers: agent-inbox skill
-// @tasks: TSK-AI-16, TSK-93
+// @tasks: TSK-AI-16, TSK-93, TSK-95, TSK-91
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync } from 'node:fs';
@@ -13,7 +13,9 @@ import {
   worktreesRoot,
   clonesRoot,
   reposMapPath,
+  configPath,
 } from '../inbox/_core/logic/state-paths.logic.ts';
+import { loadConfig, validateConfig } from '../inbox/_core/logic/inbox-config.logic.ts';
 import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
 import {
   classifyMrStage,
@@ -167,14 +169,49 @@ async function run(): Promise<number> {
     const skipWorktree = argv.includes('--skip-worktree');
     const skipThreads = argv.includes('--skip-threads');
 
+    const url = parseValue(argv, '--url');
     const ref = parseValue(argv, '--ref');
-    if (!ref || !ref.includes('!')) {
-      console.error(style.redBright.bold('✖ Ошибка:'), 'Укажите --ref group/project!iid');
+
+    if (!url && !ref) {
+      console.error(
+        style.redBright.bold('✖ Ошибка:'),
+        'Укажите --url <webUrl> или --ref group/project!iid'
+      );
       return 1;
     }
 
     const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
-    const vcsCliArgs: VcsCliArgs = { ref, host: vcsSource };
+    const reposBaseFlag = parseValue(argv, '--repos-base');
+
+    // #region START_CONFIG_SIGNAL — check inbox config before any network I/O;
+    // flag overrides cover the corresponding config keys; corrupt config → absent
+    let config: import('../inbox/_core/logic/inbox-config.logic.ts').InboxConfig | null = null;
+    try {
+      config = await loadConfig(configPath(stateDir));
+    } catch {
+      /* corrupt config treated as absent */
+    }
+    const cfg = config ?? { version: 1 as const, reposBase: undefined, vcsHost: undefined };
+    const checkResult = validateConfig(cfg);
+
+    const covered = new Set<string>();
+    if (vcsSource) covered.add('vcsHost');
+    if (reposBaseFlag) covered.add('reposBase');
+
+    const missing = checkResult.missing.filter((k) => !covered.has(k));
+    if (missing.length > 0) {
+      if (argv.includes('--json')) {
+        console.info(JSON.stringify({ configured: false, missing }));
+      } else {
+        console.info(
+          style.yellow('ℹ agent-inbox не настроен. Запустите gennady inbox config --init')
+        );
+      }
+      return 0;
+    }
+    // #endregion END_CONFIG_SIGNAL
+
+    const vcsCliArgs: VcsCliArgs = { url, ref, host: vcsSource };
     const context = await resolveVcsContext(vcsCliArgs);
     const project = context.project;
     const iid = String(context.iid);
@@ -205,7 +242,7 @@ async function run(): Promise<number> {
     let changeset: Changeset | null = null;
 
     if (!skipWorktree) {
-      const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
+      const reposBase = reposBaseFlag ?? join(homedir(), 'Developer');
       const clonePath = ensureClone(project, host, token, {
         reposBase,
         reposMapPath: reposMapPath(stateDir),
@@ -250,7 +287,7 @@ async function run(): Promise<number> {
     // #endregion END_WORKTREE
 
     // #region START_PACKAGE
-    const inboxClient = buildInboxClient(vcsSource);
+    const inboxClient = buildInboxClient(vcsSource, cfg.vcsHost);
     const [items, me] = await Promise.all([
       inboxClient.Inbox.getActionable(),
       inboxClient.getCurrentUser(),

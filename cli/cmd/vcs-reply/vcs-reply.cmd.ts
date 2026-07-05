@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87
+// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87, TSK-100
 
 import fs from 'node:fs';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
@@ -68,6 +68,86 @@ function resolveBody(it: ReplyItem): string {
   return it.body!;
 }
 
+/**
+ * @purpose Validate reply items atomically: prepend 🤖, verify discussionId exists,
+ *   validate suggestion syntax, check newPath in diff. Any error aborts batch.
+ * @param items Reply items (already filtered by structural validity).
+ * @param discussions Real MR discussions from getAll (null → skip discussionId check).
+ * @param diffPaths MR diff file paths from getChanges (null → skip newPath check).
+ * @returns null if all valid; otherwise list of {index, error} per invalid item.
+ */
+function validateReplyItems(
+  items: ReplyItem[],
+  discussions: unknown[] | null,
+  diffPaths: string[] | null
+): Array<{ index: number; error: string }> | null {
+  const errors: Array<{ index: number; error: string }> = [];
+  const validIds = new Set(
+    discussions?.map((d) => (d as Record<string, unknown>).id as string).filter(Boolean) ?? []
+  );
+  const diffSet = diffPaths ? new Set(diffPaths) : null;
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+
+    // #region START_AUTO_PREPEND_BOT_PREFIX — check 1: body без 🤖 → авто-дописать
+    if (it.body && !it.body.startsWith('🤖')) {
+      it.body = `🤖 ${it.body}`;
+    }
+    // #endregion END_AUTO_PREPEND_BOT_PREFIX
+
+    // #region START_VALIDATE_DISCUSSION_ID — check 2: discussionId сверка с реальными дискуссиями
+    if (it.discussionId && validIds.size > 0 && !validIds.has(it.discussionId)) {
+      const sample = [...validIds].slice(0, 10).join(', ');
+      const extra = validIds.size > 10 ? `... (+${validIds.size - 10})` : '';
+      errors.push({
+        index: i,
+        error: `discussionId "${it.discussionId}" не найден. Валидные: ${sample}${extra}`,
+      });
+      continue;
+    }
+    // #endregion END_VALIDATE_DISCUSSION_ID
+
+    // #region START_VALIDATE_SUGGESTION_BLOCK — check 3: ```suggestion блок синтаксически цел
+    const bodyText = it.body ?? '';
+    const suggestionText =
+      it.suggestion !== undefined ? composeSuggestionBody(it.suggestion, it.suggestionRange) : '';
+    const combined = bodyText + suggestionText;
+
+    if (combined.includes('```suggestion')) {
+      // failure mode: opening header must match ```suggestion:-N+M format
+      if (!/```suggestion:-\d+\+\d+/.test(combined)) {
+        errors.push({
+          index: i,
+          error: 'suggestion-блок: неверный заголовок (ожидается ```suggestion:-N+M)',
+        });
+        continue;
+      }
+      const afterOpening = combined.slice(combined.indexOf('```suggestion') + 3);
+      if (!afterOpening.includes('```')) {
+        errors.push({ index: i, error: 'suggestion-блок не закрыт' });
+        continue;
+      }
+      if (!it.position) {
+        errors.push({ index: i, error: 'suggestion-блок требует position' });
+        continue;
+      }
+    }
+    // #endregion END_VALIDATE_SUGGESTION_BLOCK
+
+    // #region START_VALIDATE_NEW_PATH — check 4: position.newPath в диффе MR
+    if (it.position?.newPath && diffSet && !diffSet.has(it.position.newPath)) {
+      errors.push({
+        index: i,
+        error: `position.newPath "${it.position.newPath}" не найден в диффе MR`,
+      });
+    }
+    // #endregion END_VALIDATE_NEW_PATH
+  }
+
+  return errors.length > 0 ? errors : null;
+}
+
 type MainOpts = {
   project?: string;
   iid?: string;
@@ -86,7 +166,8 @@ type MainOpts = {
 /**
  * @purpose Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
  * @param [opts] project, iid, dryRun, stdinJsonArray, token, remote, baseUrl, vcs (for tests).
- * @returns Object { ok, sent, failed, code }; code 0 on ok, otherwise 1.
+ * @returns Object { ok, sent, failed, code, error?, detail? }; code 0 on ok, otherwise 1.
+ *   `error` and `detail` populated on INVALID_ARGS validation failure (TSK-100).
  * @sideEffect Network: POST to GitLab Discussions API; Console: status and error output.
  * @consumer CLI (cmd/vcs-reply)
  */
@@ -95,6 +176,8 @@ export async function main(opts: MainOpts = {}): Promise<{
   sent: number;
   failed: number;
   code: number;
+  error?: string;
+  detail?: string;
 }> {
   const project = opts.project;
   const iid = opts.iid;
@@ -253,6 +336,42 @@ export async function main(opts: MainOpts = {}): Promise<{
   } else {
     hostInfo = host;
   }
+
+  // #region START_VALIDATE_REPLY_FORMAT — TSK-100: 5 mechanical checks before POST
+  if (!dryRun) {
+    let discussions: unknown[] | null = null;
+    let diffPaths: string[] | null = null;
+
+    try {
+      discussions = await vcs!.MergeDiscussions!.getAll({ project, iid });
+    } catch {
+      // failure mode: getAll unavailable (test mock) or network failure → skip check 2
+    }
+
+    try {
+      const changes = await vcs!.MergeRequests.getChanges({ repository: project, iid });
+      diffPaths = changes.map((c) => c.path);
+    } catch {
+      // failure mode: getChanges unavailable or network failure → skip check 4
+    }
+
+    const validationErrors = validateReplyItems(items, discussions, diffPaths);
+    if (validationErrors) {
+      console.error(style.redBright.bold('✖ Ошибка:'), 'INVALID_ARGS');
+      for (const err of validationErrors) {
+        console.error(style.gray(`  [${err.index}] ${err.error}`));
+      }
+      return {
+        ok: false,
+        sent: 0,
+        failed: 0,
+        code: 1,
+        error: 'INVALID_ARGS',
+        detail: JSON.stringify(validationErrors),
+      };
+    }
+  }
+  // #endregion END_VALIDATE_REPLY_FORMAT
 
   console.info(
     '🤖',

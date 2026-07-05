@@ -1,6 +1,6 @@
 // @file: vcs-draft-note command help output.
 // @consumers: help command
-// @tasks: TSK-87
+// @tasks: TSK-87, TSK-97
 
 /**
  * @purpose Print CLI help for the vcs-draft-note command.
@@ -15,6 +15,7 @@ export function printHelp(): void {
   console.info('  npx gennady vcs-draft-note --update <id> --body "<text>" [--ref <ref>]');
   console.info('  npx gennady vcs-draft-note --delete <id> [--ref <ref>]');
   console.info('  npx gennady vcs-draft-note --publish <id> [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --delete-all [--ref <ref>]');
   console.info('');
   console.info('Options:');
   console.info('  --ref <group/repo!iid>   MR ref (определяет project + iid)');
@@ -28,6 +29,7 @@ export function printHelp(): void {
   console.info('  --body "<text>"          Текст для --update');
   console.info('  --delete <id>            Удалить черновик');
   console.info('  --publish <id>           Опубликовать черновик');
+  console.info('  --delete-all             Удалить все черновики (best-effort)');
   console.info('  --dry-run, --dry         Показать, что будет выполнено, без API-вызова');
   console.info('');
   console.info('Environment:');
@@ -41,5 +43,6 @@ export function printHelp(): void {
   );
   console.info('  npx gennady vcs-draft-note --ref group/repo!42 --delete 123');
   console.info('  npx gennady vcs-draft-note --ref group/repo!42 --publish 123');
+  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --delete-all');
   console.info('  npx gennady vcs-draft-note --ref group/repo!42 --list --dry-run');
 }

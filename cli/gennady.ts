@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI entry point — dispatches commands, runs update check on startup.
 // @consumers: CLI users (gennady <command>)
-// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59, TSK-65, TSK-69, TSK-76, TSK-81, TSK-83, TSK-85, TSK-87
+// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59, TSK-65, TSK-69, TSK-76, TSK-81, TSK-83, TSK-85, TSK-87, TSK-92
 
 import { checkForUpdates } from './cmd/_shared/update-check.ts';
 import { readFileSync } from 'node:fs';
@@ -64,7 +64,11 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       helpLoaded = true;
       break;
     case 'inbox':
-      await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
+      if (process.argv[3] === 'config') {
+        await import('./cmd/inbox/config-help.ts').then((m) => m.printHelp());
+      } else {
+        await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
+      }
       helpLoaded = true;
       break;
     case 'inbox-context':
@@ -223,7 +227,11 @@ switch (command) {
     break;
 
   case 'inbox':
-    await import('./cmd/inbox/index.ts');
+    if (process.argv[3] === 'config') {
+      await import('./cmd/inbox/config-index.ts');
+    } else {
+      await import('./cmd/inbox/index.ts');
+    }
     break;
 
   case 'inbox-context':
