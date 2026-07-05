@@ -11,7 +11,7 @@
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [x]    |
-| P2  | test | P1   | [ ]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -61,4 +61,10 @@
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [vcs-draft-note.test.ts]; decisions: []; open: []
+- [x] `2026-07-05T09:29:07Z` intro `mockFetchSequence` ← TSK-97 P2: queue-based fetch mock для тестирования нескольких последовательных API-вызовов в одном тесте
+- [x] `2026-07-05T09:32:45Z` ver npm run typecheck → fail exit=1
+- [x] `2026-07-05T09:32:45Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-05T09:31:30Z` ver npm run test -- cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts → pass exit=0
+- [x] `2026-07-05T09:33:00Z` discovery npm run format:check → fail exit=1: 7 pre-existing style issues in non-target files (inbox config tests, 5 task markdowns); target file clean
+- [x] `2026-07-05T09:33:00Z` DONE
+**Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts]; decisions: [mock-fetch-sequence=queue-based, delete-all-tests=5-BDD-scenarios]; open: [F1: npm run format:check fails project-wide (7 non-target files), F2: 7 pre-existing test failures in inbox config tests]

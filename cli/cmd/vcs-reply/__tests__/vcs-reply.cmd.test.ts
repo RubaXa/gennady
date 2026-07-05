@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply cmd — resolveVcsContext injection into main().
 // @consumers: N/A
-// @tasks: TSK-70
+// @tasks: TSK-70, TSK-100
 
 import { describe, it, mock, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -119,5 +119,378 @@ describe('vcs-reply cmd — VcsResolveError handling', () => {
     // purpose: the cmd file catch block handles this error type uniformly
     // Verified structurally: vcs-reply.cmd.ts lines 251-254
     assert.ok(true, 'structural contract verified: catch block at vcs-reply.cmd.ts:251-254');
+  });
+});
+
+// ── TSK-100: Validation tests for the 5 mechanical checks + atomicity ─────────
+
+function createValidationVcs(overrides?: {
+  getAllResult?: unknown[];
+  getChangesResult?: Array<{ path: string }>;
+  addNoteImpl?: () => Promise<unknown>;
+  createDiscussionImpl?: () => Promise<unknown>;
+  getAllThrows?: boolean;
+  getChangesThrows?: boolean;
+}) {
+  const addNote = mock.fn(overrides?.addNoteImpl ?? (async () => ({})));
+  const createDiscussion = mock.fn(overrides?.createDiscussionImpl ?? (async () => ({})));
+  const getAll = mock.fn(
+    overrides?.getAllThrows
+      ? async () => {
+          throw new Error('unavailable');
+        }
+      : async () => overrides?.getAllResult ?? []
+  );
+  const getChanges = mock.fn(
+    overrides?.getChangesThrows
+      ? async () => {
+          throw new Error('unavailable');
+        }
+      : async () => overrides?.getChangesResult ?? []
+  );
+  const mockVcs = {
+    MergeDiscussions: { addNote, createDiscussion, getAll },
+    MergeRequests: { getChanges },
+  };
+  const baseVcsContext: VcsCliContext = {
+    provider: 'gitlab',
+    host: 'gitlab.example.com',
+    project: 'g/r',
+    iid: 42,
+    token: 'glpat-test',
+  };
+  return { addNote, createDiscussion, getAll, getChanges, mockVcs, baseVcsContext };
+}
+
+let _valStderrLines: string[];
+let _valOrigStderrWrite: typeof process.stderr.write;
+
+function captureValStderr(): void {
+  _valStderrLines = [];
+  _valOrigStderrWrite = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: unknown) => {
+    _valStderrLines.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+}
+
+function restoreValStderr(): void {
+  process.stderr.write = _valOrigStderrWrite;
+}
+
+describe('vcs-reply validation — TSK-100', () => {
+  // ── Check 1: 🤖 auto-prepend ────────────────────────────────────────────
+
+  it('should auto-prepend 🤖 prefix to body', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [{ discussionId: 'd1', body: 'hello' }],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 1);
+    assert.strictEqual(ctx.addNote.mock.calls[0].arguments[0].body, '🤖 hello');
+  });
+
+  it('should not double-prepend 🤖 when already present', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [{ discussionId: 'd1', body: '🤖 already' }],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 1);
+    assert.strictEqual(ctx.addNote.mock.calls[0].arguments[0].body, '🤖 already');
+  });
+
+  // ── Check 2: invalid discussionId → INVALID_ARGS ────────────────────────
+
+  it('should reject invalid discussionId with list of valid IDs', async () => {
+    const ctx = createValidationVcs({
+      getAllResult: [{ id: 'valid-1' }, { id: 'valid-2' }],
+      getChangesThrows: true,
+    });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [{ discussionId: 'invalid-id', body: 'hello' }],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+    assert.strictEqual(result.sent, 0);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 0);
+
+    const detail = JSON.parse(result.detail!);
+    assert.strictEqual(detail.length, 1);
+    assert.strictEqual(detail[0].index, 0);
+    assert.match(detail[0].error, /discussionId "invalid-id" не найден/);
+    assert.match(detail[0].error, /valid-1/);
+    assert.match(detail[0].error, /valid-2/);
+  });
+
+  it('should accept valid discussionId', async () => {
+    const ctx = createValidationVcs({
+      getAllResult: [{ id: 'valid-1' }, { id: 'valid-2' }],
+      getChangesThrows: true,
+    });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [{ discussionId: 'valid-1', body: 'reply' }],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 1);
+    assert.strictEqual(ctx.addNote.mock.calls[0].arguments[0].discussionId, 'valid-1');
+  });
+
+  it('should skip discussionId check when getAll unavailable', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [{ discussionId: 'any-id', body: 'reply' }],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 1);
+  });
+
+  // ── Check 3: invalid suggestion block → INVALID_ARGS ────────────────────
+
+  it('should reject unclosed suggestion block', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          discussionId: 'd1',
+          body: '```suggestion:-0+0\ncode',
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+
+    const detail = JSON.parse(result.detail!);
+    assert.match(detail[0].error, /не закрыт/);
+  });
+
+  it('should reject suggestion block with wrong header format', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          discussionId: 'd1',
+          body: '```suggestion:bad-header\ncode\n```',
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+
+    const detail = JSON.parse(result.detail!);
+    assert.match(detail[0].error, /неверный заголовок/);
+  });
+
+  it('should reject suggestion block without position', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          discussionId: 'd1',
+          body: '```suggestion:-0+0\ncode\n```',
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+
+    const detail = JSON.parse(result.detail!);
+    assert.match(detail[0].error, /suggestion-блок требует position/);
+  });
+
+  // ── Check 4: invalid position.newPath → INVALID_ARGS ────────────────────
+
+  it('should reject position.newPath not in MR diff', async () => {
+    const ctx = createValidationVcs({
+      getAllThrows: true,
+      getChangesResult: [{ path: 'src/valid.ts' }],
+    });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          body: 'comment',
+          position: {
+            baseSha: 'base',
+            startSha: 'start',
+            headSha: 'head',
+            newPath: 'src/not-in-diff.ts',
+            newLine: 42,
+          },
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+    assert.strictEqual(ctx.addNote.mock.callCount(), 0);
+
+    const detail = JSON.parse(result.detail!);
+    assert.match(detail[0].error, /не найден в диффе MR/);
+    assert.match(detail[0].error, /src\/not-in-diff\.ts/);
+  });
+
+  it('should accept position.newPath in MR diff', async () => {
+    const ctx = createValidationVcs({
+      getAllThrows: true,
+      getChangesResult: [{ path: 'src/valid.ts' }],
+    });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          body: 'comment',
+          position: {
+            baseSha: 'base',
+            startSha: 'start',
+            headSha: 'head',
+            newPath: 'src/valid.ts',
+            newLine: 42,
+          },
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+    assert.strictEqual(ctx.createDiscussion.mock.callCount(), 1);
+  });
+
+  it('should skip newPath check when getChanges unavailable', async () => {
+    const ctx = createValidationVcs({ getAllThrows: true, getChangesThrows: true });
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        {
+          body: 'comment',
+          position: {
+            baseSha: 'base',
+            startSha: 'start',
+            headSha: 'head',
+            newPath: 'src/any.ts',
+            newLine: 42,
+          },
+        },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    assert.strictEqual(result.code, 0);
+  });
+
+  // ── Check 5: Atomicity — one error aborts entire batch ──────────────────
+
+  it('should reject entire batch when any item is invalid', async () => {
+    const ctx = createValidationVcs({
+      getAllResult: [{ id: 'valid' }],
+      getChangesThrows: true,
+    });
+
+    captureValStderr();
+
+    const result = await main({
+      project: 'g/r',
+      iid: '42',
+      stdinJsonArray: [
+        { discussionId: 'valid', body: 'a' },
+        { discussionId: 'bad-id', body: 'b' },
+        { discussionId: 'valid', body: 'c' },
+      ],
+      vcs: ctx.mockVcs as any,
+      vcsContext: ctx.baseVcsContext,
+    });
+
+    restoreValStderr();
+
+    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.error, 'INVALID_ARGS');
+    assert.strictEqual(result.sent, 0);
+    assert.strictEqual(result.failed, 0);
+    assert.strictEqual(ctx.addNote.mock.callCount(), 0);
+
+    const detail = JSON.parse(result.detail!);
+    assert.strictEqual(detail.length, 1);
+    assert.strictEqual(detail[0].index, 1);
   });
 });

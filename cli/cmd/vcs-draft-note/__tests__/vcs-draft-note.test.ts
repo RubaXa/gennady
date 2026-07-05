@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-draft-note command — CLI draft-note lifecycle via run().
 // @consumers: N/A
-// @tasks: TSK-87
+// @tasks: TSK-87, TSK-97
 
 import { describe, it, mock, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -56,6 +56,36 @@ function mockFetchResponse(responseInit: { status?: number; body?: unknown }): v
 
 function restoreFetch(): void {
   globalThis.fetch = origFetch;
+}
+
+let fetchQueue: Response[];
+
+function mockFetchSequence(responses: Array<{ status?: number; body?: unknown }>): void {
+  fetchQueue = responses.map((r) => {
+    const body = r.body;
+    return {
+      ok: r.status === undefined ? true : r.status < 400,
+      status: r.status ?? 200,
+      statusText: '',
+      json: async () => body,
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+      headers: new Headers(),
+      redirected: false,
+      type: 'basic' as ResponseType,
+      url: '',
+      clone: () => ({}) as Response,
+      body: null,
+      bodyUsed: false,
+      arrayBuffer: async () => new ArrayBuffer(0),
+      blob: async () => new Blob(),
+      formData: async () => new FormData(),
+    } as Response;
+  });
+  globalThis.fetch = ((_input: unknown, _init?: unknown) => {
+    const r = fetchQueue.shift();
+    if (!r) throw new Error('Fetch mock queue exhausted');
+    return Promise.resolve(r);
+  }) as typeof fetch;
 }
 
 // ── Import SUT ───────────────────────────────────────────────────────────
@@ -407,5 +437,109 @@ describe('vcs-draft-note API errors', () => {
     assert.strictEqual(exitCodes[0], 1);
     const joined = stderrLines.join('');
     assert.match(joined, /404/);
+  });
+});
+
+// ── BDD: vcs-draft-note --delete-all ─────────────────────────────────────
+
+describe('vcs-draft-note --delete-all', () => {
+  it('vcs-draft-note --url <URL> --delete-all — 3 черновика, все удалены → { deleted: 3 }', async () => {
+    mockFetchSequence([
+      { status: 200, body: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+      { status: 200, body: {} },
+      { status: 200, body: {} },
+      { status: 200, body: {} },
+    ]);
+
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete-all',
+    ]);
+
+    assert.strictEqual(exitCodes[0], 0);
+    const joined = stdoutLines.join('');
+    assert.match(joined, /"deleted":3/);
+    assert.doesNotMatch(joined, /"errors"/);
+  });
+
+  it('vcs-draft-note --url <URL> --delete-all — 0 черновиков → { deleted: 0 }', async () => {
+    mockFetchSequence([{ status: 200, body: [] }]);
+
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete-all',
+    ]);
+
+    assert.strictEqual(exitCodes[0], 0);
+    const joined = stdoutLines.join('');
+    assert.match(joined, /deleted.*0/);
+  });
+
+  it('vcs-draft-note --url <URL> --delete-all — listDraftNotes() упал (сеть) → {"ok": false, "error": "NETWORK"}', async () => {
+    mockFetchSequence([{ status: 500, body: 'Internal Server Error' }]);
+
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete-all',
+    ]);
+
+    assert.strictEqual(exitCodes[0], 1);
+    const joined = stdoutLines.join('');
+    assert.match(joined, /"ok":false/);
+    assert.match(joined, /"error":"NETWORK"/);
+  });
+
+  it('vcs-draft-note --url <URL> --delete-all — listDraftNotes() упал (403) → {"ok": false, "error": "AUTH"}', async () => {
+    mockFetchSequence([{ status: 403, body: 'Forbidden' }]);
+
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete-all',
+    ]);
+
+    assert.strictEqual(exitCodes[0], 1);
+    const joined = stdoutLines.join('');
+    assert.match(joined, /"ok":false/);
+    assert.match(joined, /"error":"AUTH"/);
+  });
+
+  it('vcs-draft-note --url <URL> --delete-all — 3 черновика, 2 удалены, 1 упал (403) → { deleted: 2, errors: [{draftId, error}] }', async () => {
+    mockFetchSequence([
+      { status: 200, body: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+      { status: 200, body: {} },
+      { status: 200, body: {} },
+      { status: 403, body: 'Forbidden' },
+    ]);
+
+    await runDraft([
+      'node',
+      'gennady',
+      'vcs-draft-note',
+      '--project=g/p',
+      '--iid=42',
+      '--delete-all',
+    ]);
+
+    assert.strictEqual(exitCodes[0], 0);
+    const joined = stdoutLines.join('');
+    assert.match(joined, /"deleted":2/);
+    assert.match(joined, /"errors"/);
+    assert.match(joined, /"draftId":"3"/);
   });
 });

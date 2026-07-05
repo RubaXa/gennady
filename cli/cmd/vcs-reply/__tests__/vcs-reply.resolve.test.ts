@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply resolve/reopen logic via stdin JSON.
 // @consumers: N/A
-// @tasks: TSK-72
+// @tasks: TSK-72, TSK-100
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -144,7 +144,7 @@ describe('vcs-reply resolve/reopen', () => {
       project: 'g/r',
       iid: '42',
       discussionId: 'abc',
-      body: 'fixed',
+      body: '🤖 fixed',
     });
 
     assert.strictEqual(ctx.resolveDiscussion.mock.callCount(), 1);

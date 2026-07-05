@@ -129,9 +129,9 @@
 - [x] 2026-07-05T09:13:55Z DONE
       **Handoff →** artifacts: [tasks/agent-inbox/agent-inbox.task-95.md, specs/agent-inbox/agent-inbox.spec.md, cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts, ai/skills/agent-inbox/SKILL.md, ai/directives/agent-inbox/posting-rules.directive.xml]; decisions: [RuntimePosture=real-runtime, TicketHygiene=anchors+reopens+audit-rounds]; open: []
 
-## 8. Audit Rounds
+## Audit Rounds
 
-### Round 1 — 2026-07-05
+### Audit Round 1 — 2026-07-05
 
 | ID   | Sev | Finding                                                                                    | Status    |
 | ---- | --- | ------------------------------------------------------------------------------------------ | --------- |
@@ -142,3 +142,13 @@
 | F-05 | m   | `@consumers:` в test-файл заголовке. `@tasks:` уже был.                                    | [x] fixed |
 | F-06 | I   | SKILL.md line 109: `review-issues --all` → `vcs-discussions --json`                        | [x] fixed |
 | F-07 | I   | posting-rules VcsReplySyntax: `--project --iid` → `--url=<webUrl>`                         | [x] fixed |
+
+### Audit Round 2 — 2026-07-05, after Execution Round 1
+```
+@audit task=TSK-95 round=2 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B0·M2·m2·I1
+F-01 | sev=M | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tasks/agent-inbox/agent-inbox.task-95.md | phase=— | src=ai/directives/sdd/audit.directive.xml#AX_EXECUTION_LOG_VERIFICATION | route=ticket-update | act=добавить закрывающие <!--/SECTION:*--> для всех 8 секций (META..EXECUTION_LOG)
+F-02 | sev=M | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tasks/agent-inbox/agent-inbox.task-95.md:7 | phase=— | src=ai/directives/sdd/audit.directive.xml#AX_EXECUTION_LOG_VERIFICATION | route=ticket-update | act=вынести P1 re-run в ### Round 2 или установить Reopens: 0
+F-03 | sev=m | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=ai/directives/agent-inbox/posting-rules.directive.xml:164 | phase=P1 | src=ai/directives/agent-inbox/posting-rules.directive.xml#VcsReplySyntax | route=spec-edit | act=заменить устаревший текст на «--url=<webUrl> provides host, project, and iid; --vcs-host overrides the host»
+F-04 | sev=m | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=ai/skills/agent-inbox-post/SKILL.md:65 | phase=P1 | src=specs/agent-inbox/agent-inbox.spec.md#AI-13 | route=spec-edit | act=заменить review-issues --all на vcs-discussions --url <URL> --all
+F-05 | sev=I | type=INSIGHT_BACKFLOW | conf=H | loc=tasks/agent-inbox/README.md:13 | phase=— | src=tasks/agent-inbox/agent-inbox.task-95.md#1 | route=ticket-update | act=обновить статус TSK-95 в Cascade Table с TODO на DONE
+```

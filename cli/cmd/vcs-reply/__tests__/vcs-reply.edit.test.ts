@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply edit/delete note operations via stdin JSON.
 // @consumers: N/A
-// @tasks: TSK-78
+// @tasks: TSK-78, TSK-100
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -134,7 +134,7 @@ describe('vcs-reply edit/delete', () => {
       project: 'g/r',
       iid: '42',
       noteId: '12345',
-      body: 'исправленный текст',
+      body: '🤖 исправленный текст',
     });
     assert.strictEqual(ctx.deleteNote.mock.callCount(), 0);
     // #endregion END_UPDATE_NOTE_ASSERT
@@ -432,7 +432,7 @@ describe('vcs-reply edit/delete', () => {
       project: 'g/r',
       iid: '42',
       noteId: 'a',
-      body: 'edit',
+      body: '🤖 edit',
     });
 
     assert.strictEqual(ctx.deleteNote.mock.callCount(), 1);

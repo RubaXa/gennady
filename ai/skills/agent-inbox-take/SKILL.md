@@ -31,12 +31,10 @@
 
 ## Шаг 1 — Скаут
 
-1. `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --ref <ref> --vcs-source=<host>`
-2. `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --pick <ref> --vcs-source=<host>`
-3. **Существующее обсуждение — обязательно, ДО анализа:** `npx tsx ~/Developer/gennady/cli/gennady.ts review-issues --ref <ref> --all --vcs-source=<host>` + `--draft` → `prior_threads` / `my_drafts` / `my_login`. Это вход для `AX_PRIOR_DISCUSSION_AWARENESS`: без него разбор слеп — не увидишь чужих ревьюеров (включая бота), уже исправленного автором и сдвинувшегося head. Тредов нет — так и скажи в отчёте.
-4. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`
-5. Разложи файлы по дорожкам: **security**(всегда) / **logic** / **ui** / **tests** / **docs** / **config**
-6. **Транспорт (action 0):** проверь наличие виджета (`mcp__visualize__show_widget`); объяви первой строкой «чат, widget (инструмент найден)» или «чат, ASCII (виджет недоступен)». Выведи карту файлов + таблицу категорий; реляционную диаграмму — виджетом при наличии, ASCII только как fallback.
+1. `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --vcs-host=<host>`
+2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`
+3. Разложи файлы по дорожкам: **security**(всегда) / **logic** / **ui** / **tests** / **docs** / **config**
+4. **Транспорт (action 0):** проверь наличие виджета (`mcp__visualize__show_widget`); объяви первой строкой «чат, widget (инструмент найден)» или «чат, ASCII (виджет недоступен)». Выведи карту файлов + таблицу категорий; реляционную диаграмму — виджетом при наличии, ASCII только как fallback.
 
 ---
 

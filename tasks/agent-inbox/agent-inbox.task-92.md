@@ -11,7 +11,7 @@
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [x]    |
-| P2  | test | P1   | [ ]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -98,4 +98,9 @@ gennady inbox config --help             → help-текст
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [config.test.ts]; decisions: []; open: []
+- [x] 2026-07-05T09:38:27Z insight --init интерактивные тесты пропущены — process.exit(await run()) в config.cmd.ts при piped stdin вызывает unsettled top-level await в Node.js 22, saveConfig не успевает выполниться; интерактивный поток работает только в реальном TTY. Логика валидации покрыта через тесты --set с ошибками → §4 BDD, добавить пометку о невозможности тестирования --init через subprocess
+- [x] 2026-07-05T09:38:27Z ver npm run typecheck → fail exit=1 (скрипт не найден — известная проблема из P1, актуальный скрипт: npm run type-check)
+- [x] 2026-07-05T09:38:27Z ver npm run type-check → pass exit=0
+- [x] 2026-07-05T09:38:27Z ver npm run test -- cli/cmd/inbox/config.test.ts → pass exit=0
+- [x] 2026-07-05T09:38:27Z DONE
+**Handoff →** artifacts: [cli/cmd/inbox/config.test.ts]; decisions: [test-isolation=fresh-state-dir-per-test, init-tests=skipped-pipe-limitation]; open: [TBD: добавить пометку в §4 о невозможности тестирования --init через subprocess]

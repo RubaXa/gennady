@@ -11,7 +11,7 @@
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -60,4 +60,13 @@
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [vcs-discussions.test.ts]; decisions: []; open: []
+- [x] `2026-07-05T09:30:22Z` discovery ticket §5 говорит `npm run typecheck`, но скрипт в package.json — `type-check` (c дефисом). Фактический `npm run type-check` → pass.
+- [x] `2026-07-05T09:30:22Z` discovery `npm run format:check` падает на 7 pre-existing файлах вне Target Files (inbox-context-cmd-config.test.ts, inbox/config.test.ts, vcs-reply.cmd.test.ts, agent-inbox.task-100.md, agent-inbox.task-92.md, agent-inbox.task-95.md, agent-inbox.task-97.md). Файл фазы `vcs-discussions.test.ts` форматирование проходит.
+- [x] `2026-07-05T09:30:22Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-05T09:30:22Z` ver gennady lint cli/cmd/vcs-discussions/vcs-discussions.test.ts → pass exit=0
+- [x] `2026-07-05T09:30:22Z` ver npm run test → pass exit=0
+- [x] `2026-07-05T09:30:22Z` ver npm run test -- cli/cmd/vcs-discussions/vcs-discussions.test.ts → pass exit=0
+- [x] `2026-07-05T09:30:22Z` ver npm run typecheck → fail exit=1
+- [x] `2026-07-05T09:30:22Z` ver npm run format:check → fail exit=1
+- [x] `2026-07-05T09:30:22Z` DONE
+**Handoff →** artifacts: [cli/cmd/vcs-discussions/vcs-discussions.test.ts]; decisions: []; open: [F-1: ticket-typings: npm run typecheck vs type-check с дефисом, F-2: npm run format:check падает на pre-existing файлах вне скоупа фазы]

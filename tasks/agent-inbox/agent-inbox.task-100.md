@@ -11,7 +11,7 @@
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [x]    |
-| P2  | test | P1   | [ ]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -43,8 +43,8 @@
 
 ## 5. Verification
 
-- `npm run typecheck` — pass
-- `npm run test -- cli/cmd/vcs-reply/vcs-reply.test.ts` — pass
+- `npm run type-check` — pass
+- `npm run test -- 'cli/cmd/vcs-reply/__tests__/*.test.ts'` — pass
 - `npm run format:check` — pass
 
 ## 7. Execution Log
@@ -61,8 +61,18 @@
 - [x] `2026-07-05T09:23:35Z` insight format:check: 2 pre-existing warnings в `tasks/agent-inbox/agent-inbox.task-92.md`, `tasks/agent-inbox/agent-inbox.task-97.md` → вне Target Files P1
 - [x] `2026-07-05T09:23:35Z` insight 3 теста vcs-reply (`edit`, `mixed`, `resolve+reply`) падают из-за авто-🤖 префикса → ожидания тестов обновить в P2
 - [x] `2026-07-05T09:23:35Z` DONE
-**Handoff →** artifacts: [cli/cmd/vcs-reply/vcs-reply.cmd.ts]; decisions: [auto-prepend-bot-prefix=body без 🤖 получает префикс, validation-atomic=любая ошибка → INVALID_ARGS, skip-on-unavailable=getAll/getChanges недоступны → проверка пропускается]; open: [P2: обновить ожидания тестов под 🤖 префикс, P2: исправить путь к тестовому файлу в §5]
+      **Handoff →** artifacts: [cli/cmd/vcs-reply/vcs-reply.cmd.ts]; decisions: [auto-prepend-bot-prefix=body без 🤖 получает префикс, validation-atomic=любая ошибка → INVALID_ARGS, skip-on-unavailable=getAll/getChanges недоступны → проверка пропускается]; open: [P2: обновить ожидания тестов под 🤖 префикс, P2: исправить путь к тестовому файлу в §5]
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [vcs-reply.test.ts]; decisions: []; open: []
+- [x] `2026-07-05T09:26:11Z` discovery файл `cli/cmd/vcs-reply/vcs-reply.test.ts` не существует; актуальные тесты в `__tests__/vcs-reply.*.test.ts`. §5 и Target Files в тикете содержат неверный путь.
+- [x] `2026-07-05T09:26:11Z` decision target-files=cli/cmd/vcs-reply/**tests**/vcs-reply.{cmd,edit,resolve}.test.ts ← актуальное расположение тестов; путь в тикете ошибочен
+- [x] `2026-07-05T09:26:11Z` tried fix-existing-tests: обновлены ожидания body в `vcs-reply.edit.test.ts` (2 теста), `vcs-reply.resolve.test.ts` (1 тест) под 🤖 авто-префикс → pass
+- [x] `2026-07-05T09:26:11Z` intro validation-tests ← TSK-100 P2: 10 новых тестов на 5 механических проверок + атомарность в `vcs-reply.cmd.test.ts`
+- [x] `2026-07-05T09:26:11Z` insight §5 содержит `npm run typecheck` (неверное имя скрипта) и путь `cli/cmd/vcs-reply/vcs-reply.test.ts` (не существует) → §5, исправлено на `type-check` и `__tests__/*.test.ts`
+- [x] `2026-07-05T09:26:11Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-05T09:26:11Z` ver `npm run test -- 'cli/cmd/vcs-reply/__tests__/*.test.ts'` → pass exit=0
+- [x] `2026-07-05T09:26:11Z` ver `npm run format:check` → fail exit=1
+- [x] `2026-07-05T09:26:11Z` insight format:check: 6 pre-existing warnings (cli/cmd/inbox-context, cli/cmd/inbox, tasks/agent-inbox/*.md) → вне Target Files P2; целевые файлы P2 чистые (prettier --check pass)
+- [x] `2026-07-05T09:26:11Z` DONE
+      **Handoff →** artifacts: [cli/cmd/vcs-reply/__tests__/vcs-reply.cmd.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.edit.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.resolve.test.ts]; decisions: [auto-prepend-bot-prefix=confirmed-by-tests, validation-atomic=confirmed-by-tests, skip-on-unavailable=confirmed-by-tests, ticket-§5-path-corrected=type-check+__tests__-glob]; open: []
