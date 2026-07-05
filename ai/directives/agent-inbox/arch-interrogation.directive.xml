@@ -158,6 +158,7 @@
     | `H_NO_DIFF` | No changed code / diff and no design doc available to interrogate. |
     | `H_NO_REPO_ACCESS` | Cannot search the repo at HEAD → axes B and D cannot be grounded; interrogation would be invention. |
     | `H_EMPTY_INVENTORY` | Inventory step found zero introduced/changed entities (pure formatting/doc-only change with no architecture) → report "no architecture to interrogate" and stop. |
+    | `H_NO_REVIEW_PLAN` | `reviewPlanRequired == true` from inbox-context but no `ReviewPlan` loaded via `inbox-review-plan --path &lt;worktree.path&gt; --base &lt;worktree.base&gt;`. STOP. Do NOT proceed inline — fan-out via subagents is MANDATORY above threshold (files &gt; 6 or lines &gt; 300 or meaningful tracks &gt; 1). Call the command, get the plan, then dispatch mechanically. |
   </HaltConditions>
 
   <ExecutionPlan>

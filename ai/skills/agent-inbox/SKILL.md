@@ -174,6 +174,7 @@ compatibility: opencode
 3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
    **Сразу после получения worktree:** прочитай содержимое worktree-директории (`ls <worktreePath>`). Это вызовет **один** запрос прав на всю директорию — дальше чтение любых файлов внутри worktree пойдёт без повторных подтверждений.
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
+   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, план ревью должен быть загружен ДО любого анализа.
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
    - `review_needed` + `headChanged.kind == "fast_forward"` + моё ревью существует (мои треды из `vcs-discussions --my --with-drafts` непусты или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — проверка обновлений (сверка старых замечаний с новым диффом, поиск новых проблем). Полный `arch-interrogation` НЕ запускается, код-ревью сабагентом НЕ запускается.

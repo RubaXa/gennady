@@ -436,6 +436,8 @@ async function run(): Promise<number> {
       approvedBy,
       headChanged,
       newCommits,
+      reviewPlanRequired:
+        (stage === 'review_needed' || (stage === null && myRole === 'reviewer')) && worktree !== null,
       worktree,
       changeset,
       stage,
