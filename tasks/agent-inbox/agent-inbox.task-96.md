@@ -69,4 +69,4 @@
 - [x] `2026-07-05T09:30:22Z` ver npm run typecheck → fail exit=1
 - [x] `2026-07-05T09:30:22Z` ver npm run format:check → fail exit=1
 - [x] `2026-07-05T09:30:22Z` DONE
-**Handoff →** artifacts: [cli/cmd/vcs-discussions/vcs-discussions.test.ts]; decisions: []; open: [F-1: ticket-typings: npm run typecheck vs type-check с дефисом, F-2: npm run format:check падает на pre-existing файлах вне скоупа фазы]
+      **Handoff →** artifacts: [cli/cmd/vcs-discussions/vcs-discussions.test.ts]; decisions: []; open: [F-1: ticket-typings: npm run typecheck vs type-check с дефисом, F-2: npm run format:check падает на pre-existing файлах вне скоупа фазы]

@@ -71,7 +71,7 @@
 #### P2
 
 - [x] `2026-07-05T09:33:47Z` ver npm run typecheck → fail exit=1 (скрипт в package.json называется `type-check`, не `typecheck` — ticket §5 discrepancy; `sdd verify` покрывает type-check)
-- [x] `2026-07-05T09:33:47Z` ver npm run test -- cli/cmd/inbox/_core/logic/inbox-cmd-config.test.ts → pass exit=0
+- [x] `2026-07-05T09:33:47Z` ver npm run test -- cli/cmd/inbox/\_core/logic/inbox-cmd-config.test.ts → pass exit=0
 - [x] `2026-07-05T09:33:47Z` ver npm run test -- cli/cmd/inbox-context/inbox-context-cmd-config.test.ts → pass exit=0
 - [x] `2026-07-05T09:33:47Z` DONE
-**Handoff →** artifacts: [cli/cmd/inbox/_core/logic/inbox-cmd-config.test.ts, cli/cmd/inbox-context/inbox-context-cmd-config.test.ts]; decisions: [all-bdd-scenarios-covered, flag-override-tested-both-flags, text-mode-tested]; open: []
+      **Handoff →** artifacts: [cli/cmd/inbox/_core/logic/inbox-cmd-config.test.ts, cli/cmd/inbox-context/inbox-context-cmd-config.test.ts]; decisions: [all-bdd-scenarios-covered, flag-override-tested-both-flags, text-mode-tested]; open: []

@@ -144,6 +144,7 @@
 | F-07 | I   | posting-rules VcsReplySyntax: `--project --iid` → `--url=<webUrl>`                         | [x] fixed |
 
 ### Audit Round 2 — 2026-07-05, after Execution Round 1
+
 ```
 @audit task=TSK-95 round=2 after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B0·M2·m2·I1
 F-01 | sev=M | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=tasks/agent-inbox/agent-inbox.task-95.md | phase=— | src=ai/directives/sdd/audit.directive.xml#AX_EXECUTION_LOG_VERIFICATION | route=ticket-update | act=добавить закрывающие <!--/SECTION:*--> для всех 8 секций (META..EXECUTION_LOG)

@@ -73,6 +73,6 @@
 - [x] `2026-07-05T09:26:11Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-07-05T09:26:11Z` ver `npm run test -- 'cli/cmd/vcs-reply/__tests__/*.test.ts'` → pass exit=0
 - [x] `2026-07-05T09:26:11Z` ver `npm run format:check` → fail exit=1
-- [x] `2026-07-05T09:26:11Z` insight format:check: 6 pre-existing warnings (cli/cmd/inbox-context, cli/cmd/inbox, tasks/agent-inbox/*.md) → вне Target Files P2; целевые файлы P2 чистые (prettier --check pass)
+- [x] `2026-07-05T09:26:11Z` insight format:check: 6 pre-existing warnings (cli/cmd/inbox-context, cli/cmd/inbox, tasks/agent-inbox/\*.md) → вне Target Files P2; целевые файлы P2 чистые (prettier --check pass)
 - [x] `2026-07-05T09:26:11Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-reply/__tests__/vcs-reply.cmd.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.edit.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.resolve.test.ts]; decisions: [auto-prepend-bot-prefix=confirmed-by-tests, validation-atomic=confirmed-by-tests, skip-on-unavailable=confirmed-by-tests, ticket-§5-path-corrected=type-check+__tests__-glob]; open: []

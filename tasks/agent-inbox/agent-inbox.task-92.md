@@ -94,7 +94,7 @@ gennady inbox config --help             → help-текст
 - [x] 2026-07-05T09:21:55Z ver npm run type-check → pass exit=0
 - [x] 2026-07-05T09:21:55Z ver npm run test -- cli/cmd/inbox/config.test.ts → skip:P2-phase (тестовый файл создаётся в P2)
 - [x] 2026-07-05T09:21:55Z DONE
-**Handoff →** artifacts: [cli/cmd/inbox/config.cmd.ts, cli/cmd/inbox/config-index.ts, cli/cmd/inbox/config-help.ts, cli/gennady.ts]; decisions: [config-path=via-configPath(stateDir), state-dir=resolved-via-resolveStateDir, atomic-save=tmp+rename, subcommand-dispatch=inbox-config-before-inbox]; open: []
+      **Handoff →** artifacts: [cli/cmd/inbox/config.cmd.ts, cli/cmd/inbox/config-index.ts, cli/cmd/inbox/config-help.ts, cli/gennady.ts]; decisions: [config-path=via-configPath(stateDir), state-dir=resolved-via-resolveStateDir, atomic-save=tmp+rename, subcommand-dispatch=inbox-config-before-inbox]; open: []
 
 #### P2
 
@@ -103,4 +103,4 @@ gennady inbox config --help             → help-текст
 - [x] 2026-07-05T09:38:27Z ver npm run type-check → pass exit=0
 - [x] 2026-07-05T09:38:27Z ver npm run test -- cli/cmd/inbox/config.test.ts → pass exit=0
 - [x] 2026-07-05T09:38:27Z DONE
-**Handoff →** artifacts: [cli/cmd/inbox/config.test.ts]; decisions: [test-isolation=fresh-state-dir-per-test, init-tests=skipped-pipe-limitation]; open: [TBD: добавить пометку в §4 о невозможности тестирования --init через subprocess]
+      **Handoff →** artifacts: [cli/cmd/inbox/config.test.ts]; decisions: [test-isolation=fresh-state-dir-per-test, init-tests=skipped-pipe-limitation]; open: [TBD: добавить пометку в §4 о невозможности тестирования --init через subprocess]

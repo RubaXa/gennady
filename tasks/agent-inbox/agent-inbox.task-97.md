@@ -54,24 +54,25 @@
 - [x] `2026-07-05T09:18:25Z` insight ticket §5 команда `npm run typecheck` не существует (скрипт называется `type-check`) → `## 5. Verification`, заменить на `npm run type-check`
 - [x] `2026-07-05T09:19:30Z` ver npm run typecheck → fail exit=1
 - [x] `2026-07-05T09:19:30Z` ver npm run type-check → pass exit=0
-- [x] `2026-07-05T09:19:30Z` ver npm run test -- cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts → pass exit=0
+- [x] `2026-07-05T09:19:30Z` ver npm run test -- cli/cmd/vcs-draft-note/**tests**/vcs-draft-note.test.ts → pass exit=0
 - [x] `2026-07-05T09:19:30Z` ver npm run format:check → pass exit=0
 - [x] `2026-07-05T09:19:30Z` DONE
-**Handoff →** artifacts: [cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts, cli/cmd/vcs-draft-note/help.ts]; decisions: [--delete-all=best-effort, --url=forwarded-to-resolveVcsContext]; open: []
+      **Handoff →** artifacts: [cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts, cli/cmd/vcs-draft-note/help.ts]; decisions: [--delete-all=best-effort, --url=forwarded-to-resolveVcsContext]; open: []
 
 #### P2
 
 - [x] `2026-07-05T09:29:07Z` intro `mockFetchSequence` ← TSK-97 P2: queue-based fetch mock для тестирования нескольких последовательных API-вызовов в одном тесте
 - [x] `2026-07-05T09:32:45Z` ver npm run typecheck → fail exit=1
 - [x] `2026-07-05T09:32:45Z` ver npm run type-check → pass exit=0
-- [x] `2026-07-05T09:31:30Z` ver npm run test -- cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts → pass exit=0
+- [x] `2026-07-05T09:31:30Z` ver npm run test -- cli/cmd/vcs-draft-note/**tests**/vcs-draft-note.test.ts → pass exit=0
 - [x] `2026-07-05T09:33:00Z` discovery npm run format:check → fail exit=1: 7 pre-existing style issues in non-target files (inbox config tests, 5 task markdowns); target file clean
 - [x] `2026-07-05T09:33:00Z` DONE
-**Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts]; decisions: [mock-fetch-sequence=queue-based, delete-all-tests=5-BDD-scenarios]; open: [F1: npm run format:check fails project-wide (7 non-target files), F2: 7 pre-existing test failures in inbox config tests]
+      **Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts]; decisions: [mock-fetch-sequence=queue-based, delete-all-tests=5-BDD-scenarios]; open: [F1: npm run format:check fails project-wide (7 non-target files), F2: 7 pre-existing test failures in inbox config tests]
 
 ## Audit Rounds
 
 ### Audit Round 1 — 2026-07-05, after Execution Round 1
+
 ```
 @audit task=TSK-97 round=1 after-exec-round=1 triggered-reopen=none status=FAIL counts=B1·M1·m1·I2 phases_to_fix=[P1]
 F-01 | sev=B | type=EXECUTION_LOG_INCOMPLETE | conf=H | loc=— | src=AX_TASK_ID_INTEGRITY | route=ticket-update | act=добавить `<!--SECTION:META-->`/`<!--/SECTION:META-->` и остальные секционные якоря в тикет (META, PHASES_OVERVIEW, PHASE_P1, PHASE_P2, BDD, VERIFICATION, EXECUTION_LOG) — все 7 обязательных секций не имеют якорей, sdd extract возвращает ANCHOR_NOT_FOUND

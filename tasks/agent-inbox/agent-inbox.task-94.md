@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -90,8 +90,22 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [inbox-context.cmd.ts, inbox-registry.logic.ts, SKILL.md]; decisions: [D47]; open: []
+- [x] `<ts>` intro promoteReviewedHead ← TSK-94 P1: delta commit tracking in inbox registry
+- [x] `<ts>` discovery ticket §5 says `npm run typecheck` but project script is `npm run type-check` — ran actual command
+- [x] `<ts>` ver npm run type-check → pass exit=0
+- [x] `<ts>` ver npm run format:check → pass exit=0
+- [x] `<ts>` DONE
+      **Handoff →** artifacts: [cli/cmd/inbox-context/inbox-context.cmd.ts, cli/cmd/inbox/_core/logic/inbox-registry.logic.ts, cli/cmd/inbox/_core/logic/classify-inbox.logic.ts, cli/cmd/vcs-todo/vcs-todo.cmd.ts, ai/skills/agent-inbox/SKILL.md]; decisions: [RegistryEntry.candidateHeadSha=optional, RegistryEntry.lastReviewedHeadSha=optional, headChanged={kind: none|fast_forward|rewritten, newCommitCount}, newCommits=Array<{sha,subject,author,date}>, promoteReviewedHead=best-effort-in-vcs-todo]; open: []
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [inbox-context-cmd.test.ts, inbox-registry.test.ts]; decisions: []; open: []
+- [x] `<ts>` discovery inbox-registry.test.ts did not exist prior to P2 — created as new file (ticket said «дополнить»)
+- [x] `<ts>` discovery inbox-context.cmd.ts не экспортирует тестируемые функции (монолитный CLI-скрипт) — тесты написаны через spawnSync для error-paths + structural source inspection для проверки формы result
+- [x] `<ts>` intro promoteReviewedHead tests ← TSK-94 P2: verify candidate→lastReviewed promotion contract
+- [x] `<ts>` intro inbox-context-cmd.test.ts ← TSK-94 P2: verify flat format shape, delta commits, skip flags
+- [x] `<ts>` ver npm run type-check → pass exit=0
+- [x] `<ts>` ver gennady lint → pass exit=0
+- [x] `<ts>` ver npm run test → pass exit=0
+- [x] `<ts>` ver npm run format:check → pass exit=0
+- [x] `<ts>` DONE
+**Handoff →** artifacts: [cli/cmd/inbox-context/inbox-context-cmd.test.ts, cli/cmd/inbox/_core/logic/inbox-registry.test.ts]; decisions: [test-strategy=spawnSync+structural, promoteReviewedHead-tests=full-coverage, command-format-tests=source-inspection]; open: []

@@ -13,7 +13,10 @@ function freshStateDir(): string {
   return mkdtempSync(join(tmpdir(), 'inbox-config-cli-'));
 }
 
-function runCli(stateDir: string, ...args: string[]): { stdout: string; stderr: string; exitCode: number } {
+function runCli(
+  stateDir: string,
+  ...args: string[]
+): { stdout: string; stderr: string; exitCode: number } {
   try {
     const result = execFileSync(
       process.execPath,
@@ -35,7 +38,9 @@ function configFile(stateDir: string): string {
 }
 
 function cleanup(dir: string): void {
-  try { rmSync(dir, { recursive: true, force: true }); } catch {}
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {}
 }
 
 describe('gennady inbox config', () => {
@@ -126,9 +131,7 @@ describe('gennady inbox config', () => {
     it('множественный --set → оба ключа сохранены', () => {
       const sd = freshStateDir();
       try {
-        const { stdout, exitCode } = runCli(
-          sd, '--set', `reposBase=${sd}`, '--set', 'vcsHost=h'
-        );
+        const { stdout, exitCode } = runCli(sd, '--set', `reposBase=${sd}`, '--set', 'vcsHost=h');
         assert.strictEqual(exitCode, 0);
         const parsed = JSON.parse(stdout);
         assert.strictEqual(parsed.configured, true);
@@ -244,7 +247,7 @@ describe('gennady inbox config', () => {
         writeFileSync(configFile(sd), 'not valid json {{{', 'utf-8');
         const { stdout, stderr, exitCode } = runCli(sd);
         assert.notStrictEqual(exitCode, 0);
-        const combined = (stderr + stdout);
+        const combined = stderr + stdout;
         assert.ok(combined.includes('"ok":false'), 'должен содержать ok:false');
         assert.ok(combined.includes('"error":"CONFIG"'), 'должен содержать error:CONFIG');
       } finally {

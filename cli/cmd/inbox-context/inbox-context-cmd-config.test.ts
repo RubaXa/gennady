@@ -54,10 +54,7 @@ describe('inbox-context config signal', () => {
   });
 
   it('--ref group/proj!510 --json --vcs-host=H → missing ["reposBase"]', () => {
-    const r = spawnInboxContext(
-      ['--ref', 'group/proj!510', '--json', '--vcs-host=H'],
-      tmpDir
-    );
+    const r = spawnInboxContext(['--ref', 'group/proj!510', '--json', '--vcs-host=H'], tmpDir);
     assert.strictEqual(r.status, 0);
     const out = JSON.parse(r.stdout.trim());
     assert.strictEqual(out.configured, false);

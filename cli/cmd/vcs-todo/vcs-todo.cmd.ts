@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-todo — mark todos done via Inbox.markTodoDone
 // @consumers: N/A
-// @tasks: TSK-76
+// @tasks: TSK-76, TSK-94
 
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
@@ -12,6 +12,12 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
 import { logger } from '#logger';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
+import {
+  loadRegistry,
+  saveRegistry,
+  promoteReviewedHead,
+} from '../inbox/_core/logic/inbox-registry.logic.ts';
+import { resolveStateDir, registryPath } from '../inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose Options consumed by the vcs-todo main function. */
 type MainOpts = {
@@ -40,6 +46,30 @@ function resolveHost(host?: string): string | undefined {
   return remote?.host;
 }
 // #endregion END_RESOLVE_HOST
+
+// #region START_PROMOTE_HEAD_ON_DONE
+/**
+ * @purpose Promote candidateHeadSha → lastReviewedHeadSha on successful vcs-todo --done.
+ *   Best-effort: registry I/O errors emit a warning to stderr but never block the caller.
+ * @param ref MR ref in group/proj!iid format.
+ * @param dryRun Skip actual promotion when the caller is also in dry-run.
+ * @sideEffect Reads and writes inbox registry file.
+ */
+function promoteIfNotDry(ref: string, dryRun: boolean): void {
+  if (dryRun) return;
+  try {
+    const stateDir = resolveStateDir(process.argv.slice(2));
+    const path = registryPath(stateDir);
+    const registry = loadRegistry(path);
+    const promoted = promoteReviewedHead(registry, ref);
+    saveRegistry(path, promoted);
+    logger.debug(`[vcs-todo] [head → promoted] ${ref}`);
+  } catch (cause) {
+    const message = (cause as Error).message ?? String(cause);
+    console.error(style.yellow(`Warning: Failed to update reviewed head in registry: ${message}`));
+  }
+}
+// #endregion END_PROMOTE_HEAD_ON_DONE
 
 /**
  * @purpose Mark GitLab todos as done: either all todos for a given MR (--done <ref>)
@@ -116,21 +146,25 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
       if (!mr || mr.todoIds.length === 0) {
         console.info(style.yellow('ℹ No pending todos for this MR'));
         logger.info(`[vcs-todo] [fetching → no-todos] ${opts.doneRef}`);
+        promoteIfNotDry(opts.doneRef, dryRun);
         return { ok: true, code: 0 };
       }
 
       logger.info(`[vcs-todo] [fetching → marking] ${mr.todoIds.length} todos for ${opts.doneRef}`);
 
-      for (const todoId of mr.todoIds) {
-        if (dryRun) {
+      if (dryRun) {
+        for (const todoId of mr.todoIds) {
           console.info(`Would mark todo done: ${todoId}`);
-        } else {
+        }
+      } else {
+        for (const todoId of mr.todoIds) {
           await vcs.Inbox!.markTodoDone({ todoId });
           console.info(`${style.green('✔')} Todo marked done: ${todoId}`);
         }
       }
 
       logger.info(`[vcs-todo] [marking → done] ${mr.todoIds.length} todos for ${opts.doneRef}`);
+      promoteIfNotDry(opts.doneRef, dryRun);
       return { ok: true, code: 0 };
     } catch (cause) {
       const error = new Error(`[vcs-todo] Failed to process todos for ${opts.doneRef}`, { cause });

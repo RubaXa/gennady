@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox-context — atomic context gathering for one MR.
 // @consumers: agent-inbox skill
-// @tasks: TSK-AI-16, TSK-93, TSK-95, TSK-91
+// @tasks: TSK-AI-16, TSK-93, TSK-95, TSK-91, TSK-94
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync } from 'node:fs';
@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
 import {
   resolveStateDir,
+  registryPath,
   worktreesRoot,
   clonesRoot,
   reposMapPath,
@@ -17,6 +18,7 @@ import {
 } from '../inbox/_core/logic/state-paths.logic.ts';
 import { loadConfig, validateConfig } from '../inbox/_core/logic/inbox-config.logic.ts';
 import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
+import { loadRegistry, saveRegistry } from '../inbox/_core/logic/inbox-registry.logic.ts';
 import {
   classifyMrStage,
   buildWorkPacket,
@@ -223,13 +225,19 @@ async function run(): Promise<number> {
     const mr = (await client.MergeRequests.getByIid({ project, iid })) as {
       title?: string;
       web_url?: string;
+      source_branch?: string;
       target_branch?: string;
+      created_at?: string;
+      updated_at?: string;
       diff_refs?: { base_sha?: string; start_sha?: string; head_sha?: string };
     } | null;
 
     const title = mr?.title ?? '';
     const webUrl = mr?.web_url ?? '';
+    const sourceBranch = mr?.source_branch ?? '';
     const targetBranch = mr?.target_branch ?? '';
+    const createdAt = mr?.created_at ?? '';
+    const updatedAt = mr?.updated_at ?? '';
     const diffRefs = mr?.diff_refs;
 
     // #region START_WORKTREE
@@ -240,6 +248,7 @@ async function run(): Promise<number> {
       repoLayout: { dirs: string[]; rootFiles: string[] } | null;
     } | null = null;
     let changeset: Changeset | null = null;
+    let currentHeadSha: string | null = null;
 
     if (!skipWorktree) {
       const reposBase = reposBaseFlag ?? join(homedir(), 'Developer');
@@ -255,6 +264,7 @@ async function run(): Promise<number> {
       const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
+      currentHeadSha = prepared.headSha;
       let baseSha = '';
       if (targetBranch) {
         // #region START_ENSURE_FRESH_TARGET — force-refresh target branch so merge-base
@@ -294,20 +304,19 @@ async function run(): Promise<number> {
     ]);
     const mrItem = items.find((m) => m.project === project && m.iid === iid);
 
-    const pkg = {
-      role: mrItem?.role ?? null,
-      author: mrItem?.author ?? '',
-      reviewers: mrItem?.reviewers ?? [],
-      description: mrItem?.description ?? '',
-      approvedBy: mrItem?.approvedBy ?? [],
-    };
+    const myLogin: string = me.login;
+    const myRole = mrItem?.role ?? null;
+    const author = mrItem?.author ?? '';
+    const reviewers = mrItem?.reviewers ?? [];
+    const description = mrItem?.description ?? '';
+    const approvedBy = mrItem?.approvedBy ?? [];
     // #endregion END_PACKAGE
 
     // #region START_THREADS
     let stage: string | null = null;
     let openQuestions: number | null = null;
     let lastAuthorStr: string | null = null;
-    let threads: { all: unknown[]; drafts: unknown[] } | null = null;
+    let threadStats: { total: number; drafts: number } | null = null;
 
     if (!skipThreads) {
       const [allDiscussions, draftNotes] = await Promise.all([
@@ -315,26 +324,124 @@ async function run(): Promise<number> {
         client.MergeDiscussions!.listDraftNotes({ project, iid }),
       ]);
       const notes = flattenNotes(allDiscussions);
-      stage = classifyMrStage(notes, me.login, pkg.role);
-      const packet = buildWorkPacket(notes, me.login, pkg.role);
+      stage = classifyMrStage(notes, myLogin, myRole);
+      const packet = buildWorkPacket(notes, myLogin, myRole);
       openQuestions = packet.openNotes.length;
       lastAuthorStr = lastNoteAuthor(notes);
 
-      threads = { all: allDiscussions, drafts: draftNotes };
+      threadStats = { total: allDiscussions.length, drafts: draftNotes.length };
     }
     // #endregion END_THREADS
+
+    // #region START_HEAD_CHANGED
+    let headChanged: { kind: string; newCommitCount: number } | null = null;
+    let newCommits: { sha: string; subject: string; author: string; date: string }[] | null = null;
+
+    if (!skipWorktree && currentHeadSha) {
+      const registry = loadRegistry(registryPath(stateDir));
+      const entry = webUrl ? registry.entries[webUrl] : undefined;
+      const lastReviewed = entry?.lastReviewedHeadSha;
+
+      // #region START_COMPUTE_HEAD_DELTA
+      if (!lastReviewed || lastReviewed === currentHeadSha) {
+        headChanged = { kind: 'none', newCommitCount: 0 };
+        newCommits = [];
+      } else {
+        let isAncestor = false;
+        try {
+          execFileSync('git', ['merge-base', '--is-ancestor', lastReviewed, 'HEAD'], {
+            cwd: worktree!.path,
+            stdio: 'ignore',
+          });
+          isAncestor = true;
+        } catch {
+          // exit non-zero or exec error → not ancestor; fallthrough to rewritten
+        }
+
+        if (isAncestor) {
+          // #region START_FAST_FORWARD_COMMITS
+          try {
+            const log = git(
+              ['log', `--format=%H%x09%s%x09%an%x09%aI`, `${lastReviewed}..HEAD`],
+              worktree!.path
+            );
+            newCommits = log
+              .split('\n')
+              .filter(Boolean)
+              .map((line) => {
+                const [sha, subject, author, date] = line.split('\t');
+                return { sha, subject, author, date };
+              });
+          } catch {
+            newCommits = [];
+          }
+          headChanged = { kind: 'fast_forward', newCommitCount: newCommits.length };
+          // #endregion END_FAST_FORWARD_COMMITS
+        } else {
+          // #region START_REWRITTEN_COMMITS
+          try {
+            const log = git(
+              ['log', '--format=%H%x09%s%x09%an%x09%aI', 'HEAD', '--max-count=50'],
+              worktree!.path
+            );
+            newCommits = log
+              .split('\n')
+              .filter(Boolean)
+              .map((line) => {
+                const [sha, subject, author, date] = line.split('\t');
+                return { sha, subject, author, date };
+              });
+          } catch {
+            newCommits = [];
+          }
+          headChanged = { kind: 'rewritten', newCommitCount: newCommits.length };
+          // #endregion END_REWRITTEN_COMMITS
+        }
+      }
+      // #endregion END_COMPUTE_HEAD_DELTA
+
+      // #region START_UPDATE_CANDIDATE
+      if (webUrl) {
+        const prevEntry = registry.entries[webUrl];
+        registry.entries[webUrl] = {
+          project,
+          iid,
+          role: prevEntry?.role ?? myRole,
+          stage: prevEntry?.stage ?? 'idle',
+          lastSeenUpdatedAt: prevEntry?.lastSeenUpdatedAt ?? '',
+          firstSeenAt: prevEntry?.firstSeenAt ?? new Date().toISOString(),
+          lastClassifiedAt: prevEntry?.lastClassifiedAt ?? new Date().toISOString(),
+          candidateHeadSha: currentHeadSha,
+          lastReviewedHeadSha: prevEntry?.lastReviewedHeadSha,
+        };
+        saveRegistry(registryPath(stateDir), registry);
+      }
+      // #endregion END_UPDATE_CANDIDATE
+    }
+    // #endregion END_HEAD_CHANGED
 
     const result: Record<string, unknown> = {
       ref: `${project}!${iid}`,
       title,
       webUrl,
+      sourceBranch,
+      targetBranch,
+      createdAt,
+      updatedAt,
+      myLogin,
+      myRole,
+      author,
+      reviewers,
+      description,
+      approvedBy,
+      headChanged,
+      newCommits,
       worktree,
       changeset,
       stage,
       openQuestions,
       lastAuthor: lastAuthorStr,
-      threads,
-      package: pkg,
+      threadStats,
     };
 
     console.info(JSON.stringify(result, null, 2));
