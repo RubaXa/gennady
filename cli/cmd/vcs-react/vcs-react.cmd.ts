@@ -66,6 +66,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     comment: { aliases: ['comment'], takesValue: true },
     emoji: { aliases: ['emoji'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     remove: ['remove'],
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
@@ -99,7 +100,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
+  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid, url: args.url as string | undefined };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);

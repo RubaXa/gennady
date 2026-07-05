@@ -121,6 +121,7 @@ export async function run(
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     job: { aliases: ['job'], takesValue: true },
     raw: { aliases: ['raw'] },
   }) as Record<string, unknown>;
@@ -128,6 +129,7 @@ export async function run(
   const vcsArgs: VcsCliArgs = {
     ref: args.ref as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const jobSpec = args.job as string | undefined;

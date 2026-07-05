@@ -55,6 +55,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     'target-branch': { aliases: ['target-branch'], takesValue: true },
     project: { aliases: ['project'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     label: { aliases: ['label'], takesValue: true },
     assignee: { aliases: ['assignee'], takesValue: true },
     reviewer: { aliases: ['reviewer'], takesValue: true },
@@ -79,7 +80,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const milestoneId = args.milestone as string | undefined;
   const host = args.host as string | undefined;
 
-  const vcsArgs: VcsCliArgs = { host, project: args.project as string | undefined };
+  const vcsArgs: VcsCliArgs = { host, project: args.project as string | undefined, url: args.url as string | undefined };
   let context: VcsCliContext;
 
   try {

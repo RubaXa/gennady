@@ -214,6 +214,7 @@ export async function run(
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     status: { aliases: ['status'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
     json: ['json'],
@@ -224,6 +225,7 @@ export async function run(
   const vcsArgs: VcsCliArgs = {
     ref: args.ref as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const dryRun = !!args['dry-run'];

@@ -210,12 +210,14 @@ export async function run(
     ref: { aliases: ['ref'], takesValue: true },
     path: { aliases: ['path'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
     ref: args.ref as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const filePath = args.path as string | undefined;

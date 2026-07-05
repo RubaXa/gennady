@@ -295,6 +295,7 @@ export async function run(
     iid: { aliases: ['iid'], takesValue: true },
     branch: { aliases: ['branch'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
     revoke: ['revoke', 'unapprove'],
   }) as Record<string, unknown>;
@@ -305,6 +306,7 @@ export async function run(
     iid: args.iid !== undefined ? Number(args.iid) : undefined,
     branch: args.branch as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const dryRun = !!args['dry-run'];
