@@ -221,9 +221,10 @@ function buildReviewPlan(changeset: Changeset): ReviewPlan {
     ([name]) => name !== 'docs' && name !== 'config' && name !== 'assets'
   );
 
+  const totalLines = changeset.totals.plus + changeset.totals.minus;
   const mode =
     changeset.totals.files <= INLINE_MAX_FILES &&
-    changeset.totals.plus <= INLINE_MAX_LINES &&
+    totalLines <= INLINE_MAX_LINES &&
     meaningfulTracks.length <= 1
       ? 'inline'
       : 'fan_out';

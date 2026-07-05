@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-102 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-cli + directives + skills | **Dependencies:** TSK-91 (config signal), TSK-94 (inbox-context v2), TSK-95 (--url)
+- **Task-ID:** TSK-102 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-cli + directives + skills | **Dependencies:** TSK-91 (config signal), TSK-94 (inbox-context v2), TSK-95 (--url)
 - **Purpose:** Детерминированный план ревью: `inbox-review-plan --path <worktree> --base <sha>` классифицирует diff-файлы по дорожкам (security/logic/ui/tests/docs/config/assets), применяет пороги fan-out (≤6 файлов, ≤300 строк, ≤1 содержательная дорожка → inline; иначе → fan_out). `inbox-context` сигналит `reviewPlanRequired: true`. `arch-interrogation` содержит `H_NO_REVIEW_PLAN`. SKILL.md take шаг 2 переписан на механическое исполнение.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-34 | **Runtime:** not-implemented | **Verification:** unit
 
