@@ -36,16 +36,25 @@ type Changeset = {
 };
 
 function computeChangeset(worktreePath: string, baseSha: string): Changeset {
-  const numstat = execFileSync(
-    'git',
-    ['-C', worktreePath, 'diff', '--numstat', `${baseSha}..HEAD`],
-    { encoding: 'utf8' }
-  ).trim();
-  const nameStatus = execFileSync(
-    'git',
-    ['-C', worktreePath, 'diff', '--name-status', `${baseSha}..HEAD`],
-    { encoding: 'utf8' }
-  ).trim();
+  let numstat: string;
+  let nameStatus: string;
+  try {
+    numstat = (
+      execFileSync('git', ['-C', worktreePath, 'diff', '--numstat', `${baseSha}..HEAD`], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }) as string
+    ).trim();
+    nameStatus = (
+      execFileSync('git', ['-C', worktreePath, 'diff', '--name-status', `${baseSha}..HEAD`], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }) as string
+    ).trim();
+  } catch (e: unknown) {
+    const err = e as { stderr?: string; message: string };
+    throw new Error(err.stderr || err.message);
+  }
 
   const statusMap = new Map<string, string>();
   for (const line of nameStatus.split('\n')) {
@@ -103,7 +112,10 @@ type ReviewPlan = {
 
 // #region START_TRACK_CLASSIFICATION
 
-const TRACK_RULES: Record<string, { patterns: RegExp[]; focus: string; directive: ReviewTrack['directive'] }> = {
+const TRACK_RULES: Record<
+  string,
+  { patterns: RegExp[]; focus: string; directive: ReviewTrack['directive'] }
+> = {
   tests: {
     patterns: [/\.(test|spec)\.(ts|tsx|js|jsx)$/, /__tests__\//],
     focus: 'TEST probe',
@@ -136,11 +148,31 @@ const TRACK_RULES: Record<string, { patterns: RegExp[]; focus: string; directive
 };
 
 const SECURITY_PATTERNS: RegExp[] = [
-  /auth/i, /token/i, /secret/i, /password/i, /credential/i,
-  /crypto/i, /permission/i, /acl/i, /rbac/i, /oauth/i,
-  /jwt/i, /session/i, /csrf/i, /xss/i, /sanitiz/i, /escap/i,
-  /cipher/i, /encrypt/i, /decrypt/i, /hash/i, /salt/i,
-  /cert/i, /ssl/i, /tls/i, /key/i,
+  /auth/i,
+  /token/i,
+  /secret/i,
+  /password/i,
+  /credential/i,
+  /crypto/i,
+  /permission/i,
+  /acl/i,
+  /rbac/i,
+  /oauth/i,
+  /jwt/i,
+  /session/i,
+  /csrf/i,
+  /xss/i,
+  /sanitiz/i,
+  /escap/i,
+  /cipher/i,
+  /encrypt/i,
+  /decrypt/i,
+  /hash/i,
+  /salt/i,
+  /cert/i,
+  /ssl/i,
+  /tls/i,
+  /key/i,
 ];
 
 function isSecurityFile(path: string): boolean {
@@ -229,7 +261,9 @@ async function run(): Promise<number> {
     console.info(b('gennady inbox-review-plan') + ' — детерминированный план ревью MR');
     console.info('');
     console.info('  ' + b('Использование:'));
-    console.info('    npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>');
+    console.info(
+      '    npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>'
+    );
     console.info('');
     console.info('  ' + b('Флаги:'));
     console.info('    --path <worktree>  Путь к git worktree (из ответа inbox-context)');
@@ -237,8 +271,12 @@ async function run(): Promise<number> {
     console.info('    --help              Этот текст');
     console.info('');
     console.info('  ' + b('Вывод:'));
-    console.info('    JSON с ReviewPlan: mode (inline|fan_out), tracks[] с name/focus/directive/files/lineCount.');
-    console.info('    Агент механически диспетчерит сабагентов по трекам — ни одного решения не принимает.');
+    console.info(
+      '    JSON с ReviewPlan: mode (inline|fan_out), tracks[] с name/focus/directive/files/lineCount.'
+    );
+    console.info(
+      '    Агент механически диспетчерит сабагентов по трекам — ни одного решения не принимает.'
+    );
     return 0;
   }
 
@@ -247,7 +285,11 @@ async function run(): Promise<number> {
 
   if (!worktreePath || !baseSha) {
     console.error(
-      JSON.stringify({ ok: false, error: 'INVALID_ARGS', detail: '--path <worktree> and --base <sha> required' })
+      JSON.stringify({
+        ok: false,
+        error: 'INVALID_ARGS',
+        detail: '--path <worktree> and --base <sha> required',
+      })
     );
     return 1;
   }
