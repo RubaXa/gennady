@@ -336,20 +336,21 @@ async function run(): Promise<number> {
     // #region START_HEAD_CHANGED
     let headChanged: { kind: string; newCommitCount: number } | null = null;
     let newCommits: { sha: string; subject: string; author: string; date: string }[] | null = null;
+    let lastReviewedHeadSha: string | undefined;
 
     if (!skipWorktree && currentHeadSha) {
       const registry = loadRegistry(registryPath(stateDir));
       const entry = webUrl ? registry.entries[webUrl] : undefined;
-      const lastReviewed = entry?.lastReviewedHeadSha;
+      lastReviewedHeadSha = entry?.lastReviewedHeadSha;
 
       // #region START_COMPUTE_HEAD_DELTA
-      if (!lastReviewed || lastReviewed === currentHeadSha) {
+      if (!lastReviewedHeadSha || lastReviewedHeadSha === currentHeadSha) {
         headChanged = { kind: 'none', newCommitCount: 0 };
         newCommits = [];
       } else {
         let isAncestor = false;
         try {
-          execFileSync('git', ['merge-base', '--is-ancestor', lastReviewed, 'HEAD'], {
+          execFileSync('git', ['merge-base', '--is-ancestor', lastReviewedHeadSha, 'HEAD'], {
             cwd: worktree!.path,
             stdio: 'ignore',
           });
@@ -362,7 +363,7 @@ async function run(): Promise<number> {
           // #region START_FAST_FORWARD_COMMITS
           try {
             const log = git(
-              ['log', `--format=%H%x09%s%x09%an%x09%aI`, `${lastReviewed}..HEAD`],
+              ['log', `--format=%H%x09%s%x09%an%x09%aI`, `${lastReviewedHeadSha}..HEAD`],
               worktree!.path
             );
             newCommits = log
@@ -436,8 +437,12 @@ async function run(): Promise<number> {
       approvedBy,
       headChanged,
       newCommits,
+      lastReviewedHeadSha: lastReviewedHeadSha ?? null,
       reviewPlanRequired:
-        (stage === 'review_needed' || (stage === null && myRole === 'reviewer')) && worktree !== null,
+        worktree !== null &&
+        (stage === 'review_needed' ||
+          (stage === null && myRole === 'reviewer') ||
+          headChanged?.kind === 'fast_forward'),
       worktree,
       changeset,
       stage,

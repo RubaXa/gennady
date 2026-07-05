@@ -89,8 +89,8 @@ compatibility: opencode
 | Инструмент | Команда | Когда |
 |---|---|---|
 | Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | старт; `--all` — снять фильтр |
-| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, …, myRole, author, …, headChanged, newCommits, worktree + repoLayout, changeset, stage, threadStats. **Поле `reviewPlanRequired: true` → нужен `inbox-review-plan` перед анализом.** |
-| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <worktree.base>` | **Только когда `reviewPlanRequired == true`.** Возвращает `ReviewPlan { mode, tracks[] }` — готовый план диспетчеризации сабагентов. Агент НЕ думает, агент выполняет. |
+| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, worktree, changeset, stage, threadStats. **`reviewPlanRequired: true` → нужен `inbox-review-plan`.** |
+| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha>` | **Всегда когда `reviewPlanRequired == true`.** `--base`: полный ревью → `<worktree.base>`, fast_forward → `<lastReviewedHeadSha>`. Возвращает `ReviewPlan { mode, tracks[] }` — готовый план диспетчеризации сабагентов. Агент НЕ думает, агент выполняет. |
 | Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
 | Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | что уже писали / мои черновики |
 | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
@@ -175,7 +175,8 @@ compatibility: opencode
 3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
    **Сразу после получения worktree:** прочитай содержимое worktree-директории (`ls <worktreePath>`). Это вызовет **один** запрос прав на всю директорию — дальше чтение любых файлов внутри worktree пойдёт без повторных подтверждений.
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
-   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, план ревью должен быть загружен ДО любого анализа.
+   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, план ревью должен быть загружен ДО любого анализа (через `inbox-review-plan`).
+   **Всегда план:** первый ревью → полный план (`--base <worktree.base>`); fast_forward → дельта-план (`--base <lastReviewedHeadSha>`); rewritten → полный план заново.
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
    - `review_needed` + `headChanged.kind == "fast_forward"` + моё ревью существует (мои треды из `vcs-discussions --my --with-drafts` непусты или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — проверка обновлений (сверка старых замечаний с новым диффом, поиск новых проблем). Полный `arch-interrogation` НЕ запускается, код-ревью сабагентом НЕ запускается.

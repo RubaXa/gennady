@@ -48,19 +48,23 @@
 
 ## Шаг 2 — План ревью (МЕХАНИЧЕСКИ, без решений агентом)
 
-**Этот шаг — жёсткий гейт.** Никакой инлайн-анализ без плана.
+**Всегда план.** Агент НИКОГДА не начинает анализ без `ReviewPlan`.
 
-1. **Проверь `reviewPlanRequired`** из ответа `inbox-context` (поле уже в JSON):
-   - `false` → план не нужен (`reply_needed` / `update-review` / `author`). Пропусти шаг 2, иди к шагу 3.
-   - `true` → **HALT.** Не читай файлы, не анализируй. Сделай строго следующее:
+1. **Проверь `reviewPlanRequired`** из ответа `inbox-context`:
+   - `false` → план не нужен (`reply_needed` / `author`). Пропусти шаг 2, иди к шагу 3.
+   - `true` → **HALT.** Не читай файлы, не анализируй. Определи `--base`:
 
-2. **Вызови команду:**
+2. **Выбери `--base` для `inbox-review-plan`:**
+   - `headChanged.kind == "fast_forward"` + `lastReviewedHeadSha` непуст → `--base <lastReviewedHeadSha>` (дельта-план: только изменившиеся файлы)
+   - Иначе (первый ревью / `rewritten` / `none`) → `--base <worktree.base>` (полный план)
+
+3. **Вызови команду:**
    ```
-   npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <worktree.base>
+   npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <выбранный base>
    ```
    Дождись ответа. Получи `ReviewPlan { mode, tracks[{name, files, lineCount, focus, directive}] }`.
 
-3. **Интерпретация — чисто механическая:**
+4. **Интерпретация — чисто механическая:**
    - `mode: "inline"` → **один** проход. Один трек. Читай директиву из `track.directive`, используй пробы из `track.focus`. Без сабагентов.
    - `mode: "fan_out"` → диспетчеризация. **Ровно по одному сабагенту на каждый трек**, кроме:
      - **Пропусти треки** где `focus` содержит `"skip review"` (assets, docs без проб) — для них сабагент не нужен.
@@ -73,7 +77,7 @@
      - `ref`, `webUrl`
      - `prior_threads` / `my_drafts` / `my_login`
 
-4. **Жди ВСЕХ сабагентов.** Собери выводы → шаг 4 (Синтез).
+5. **Жди ВСЕХ сабагентов.** Собери выводы → шаг 4 (Синтез).
 
 **Агент НЕ принимает решений:**
 - Не считает файлы/строки вручную (это сделала команда)
@@ -123,7 +127,7 @@
 | # | Секция | Есть? |
 |---|--------|-------|
 | 0c | Существующее обсуждение подгружено (vcs-discussions) или явно сказано «тредов нет» | □ |
-| — | `reviewPlanRequired == true` → `inbox-review-plan` вызван, `ReviewPlan` загружен, треки диспетчеризованы | □ |
+| — | `reviewPlanRequired == true` → `inbox-review-plan` вызван с правильным `--base` (полный = worktree.base, дельта = lastReviewedHeadSha), `ReviewPlan` загружен | □ |
 | — | План разбивки показан (трек → N файлов → сабагент/инлайн) | □ |
 
 Если любой □ пуст → возврат. **Особенно жёстко:** если `reviewPlanRequired` был `true`, а план не загружен — это нарушение `H_NO_REVIEW_PLAN`, возврат к шагу 2.
