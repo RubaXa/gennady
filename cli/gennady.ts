@@ -238,6 +238,10 @@ switch (command) {
     await import('./cmd/inbox-context/index.ts');
     break;
 
+  case 'inbox-review-plan':
+    await import('./cmd/inbox-review-plan/index.ts');
+    break;
+
   case 'vcs-worktree':
     await import('./cmd/vcs-worktree/index.ts');
     break;
