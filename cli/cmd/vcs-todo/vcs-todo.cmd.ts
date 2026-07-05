@@ -192,10 +192,12 @@ export async function run(rawArgs: string[] = process.argv): Promise<number> {
       id: { aliases: ['id'], takesValue: true },
       'dry-run': ['dry-run', 'dry'],
       'vcs-host': { aliases: ['vcs-host', 'host', 'vcs-source'], takesValue: true },
+      url: { aliases: ['url'], takesValue: true },
     });
 
     const vcsCliArgs: VcsCliArgs = {
       host: (args['vcs-host'] as string) || undefined,
+      url: args.url as string | undefined,
     };
 
     const vcsContext = await resolveVcsContext(vcsCliArgs);

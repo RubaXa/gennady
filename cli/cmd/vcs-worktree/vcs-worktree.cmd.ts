@@ -58,12 +58,14 @@ async function run(): Promise<number> {
     }
 
     const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
+    const url = parseValue(argv, '--url');
     const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
 
     // #region START_RESOLVE_VCS_CONTEXT
     const vcsCliArgs: VcsCliArgs = {
       ref,
       host: vcsSource,
+      url,
     };
 
     const context = await resolveVcsContext(vcsCliArgs);

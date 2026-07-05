@@ -123,6 +123,7 @@ describe('vcs-worktree cmd', () => {
     assert.deepStrictEqual(resolveCallArgs, {
       ref: 'group/repo!510',
       host: undefined,
+      url: undefined,
     });
   });
 });

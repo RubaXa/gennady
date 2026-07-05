@@ -611,12 +611,14 @@ const args = parseArgs(process.argv, {
   iid: { aliases: ['iid'], takesValue: true },
   'dry-run': ['dry-run', 'dry'],
   'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
+  url: { aliases: ['url'], takesValue: true },
 });
 
 const vcsCliArgs: VcsCliArgs = {
   project: args.project as string | undefined,
   iid: args.iid ? Number(args.iid) : undefined,
   host: args['vcs-host'] as string | undefined,
+  url: args.url as string | undefined,
 };
 
 try {

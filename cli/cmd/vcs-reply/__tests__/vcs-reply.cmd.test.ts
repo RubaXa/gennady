@@ -84,6 +84,7 @@ describe('vcs-reply cmd', () => {
       project: 'g/p',
       iid: 42,
       host: undefined,
+      url: undefined,
     });
   });
 
