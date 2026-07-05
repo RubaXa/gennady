@@ -92,7 +92,8 @@ function formatError(detail: string): string {
  */
 function formatConfigOutput(config: InboxConfig): string {
   const { valid } = validateConfig(config);
-  return JSON.stringify({ configured: valid, ...config });
+  const { version: _, ...visible } = config;
+  return JSON.stringify({ configured: valid, ...visible });
 }
 
 async function run(): Promise<number> {
@@ -158,7 +159,13 @@ async function run(): Promise<number> {
       }
     }
 
-    let config = (await loadConfig(cfgPath)) ?? { version: 1 as const };
+    let config: InboxConfig;
+    try {
+      config = (await loadConfig(cfgPath)) ?? { version: 1 as const };
+    } catch (cause) {
+      console.error(formatError((cause as Error).message));
+      return 1;
+    }
 
     for (const [key, value] of setFlags) {
       (config as Record<string, unknown>)[key] = value;

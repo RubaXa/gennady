@@ -275,7 +275,7 @@ async function deleteAllDrafts(context: VcsCliContext, deps: VcsDraftDeps): Prom
   // #endregion END_FETCH_DRAFT_LIST
 
   if (drafts.length === 0) {
-    deps.stdout.write('{ "deleted": 0 }\n');
+    deps.stdout.write(JSON.stringify({ deleted: 0 }) + '\n');
     logger.info(`[deleteAllDrafts] [listing → empty]`);
     deps.exit(0);
   }

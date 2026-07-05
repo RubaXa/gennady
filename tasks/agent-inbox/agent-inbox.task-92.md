@@ -75,6 +75,10 @@ gennady inbox config --help             → help-текст
 - `gennady inbox config --path` → `/Users/.../.gennady/agent-inbox/config.json`
 - `gennady inbox config --path --state-dir=/tmp/gn` → `/tmp/gn/agent-inbox/config.json`
 - `gennady inbox config --help` → usage summary с `--set`, `--unset`, `--path`, `--init`, `--help`
+- `gennady inbox config` на машине с конфигом → вывод НЕ содержит поле `version` (AI-21: `version` — внутреннее, только в файле, не выводится в CLI-ответах)
+- `gennady inbox config --set reposBase=/p --set vcsHost=h` на машине с конфигом → вывод НЕ содержит `version`
+- `gennady inbox config --set reposBase=/p` при битом config.json → `{"ok": false, "error": "CONFIG", "detail": "..."}`, exit ≠ 0 (не unhandled rejection)
+- `gennady inbox config --unset reposBase` при битом config.json → `{"ok": false, "error": "CONFIG", "detail": "..."}`, exit ≠ 0
 
 ## 5. Verification
 

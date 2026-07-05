@@ -254,6 +254,62 @@ describe('gennady inbox config', () => {
         cleanup(sd);
       }
     });
+
+    it('битый JSON + --set → {"ok": false, "error": "CONFIG", ...} (не unhandled rejection)', () => {
+      const sd = freshStateDir();
+      try {
+        mkdirSync(join(sd, 'agent-inbox'), { recursive: true });
+        writeFileSync(configFile(sd), 'not valid json {{{', 'utf-8');
+        const { stdout, stderr, exitCode } = runCli(sd, '--set', `reposBase=${sd}`);
+        assert.notStrictEqual(exitCode, 0, 'should exit non-zero on corrupt config');
+        const combined = stderr + stdout;
+        assert.ok(combined.includes('"ok":false'), 'должен содержать ok:false');
+        assert.ok(combined.includes('"error":"CONFIG"'), 'должен содержать error:CONFIG');
+      } finally {
+        cleanup(sd);
+      }
+    });
+
+    it('битый JSON + --unset → {"ok": false, "error": "CONFIG", ...} (не unhandled rejection)', () => {
+      const sd = freshStateDir();
+      try {
+        mkdirSync(join(sd, 'agent-inbox'), { recursive: true });
+        writeFileSync(configFile(sd), 'not valid json {{{', 'utf-8');
+        const { stdout, stderr, exitCode } = runCli(sd, '--unset', 'reposBase');
+        assert.notStrictEqual(exitCode, 0, 'should exit non-zero on corrupt config');
+        const combined = stderr + stdout;
+        assert.ok(combined.includes('"ok":false'), 'должен содержать ok:false');
+        assert.ok(combined.includes('"error":"CONFIG"'), 'должен содержать error:CONFIG');
+      } finally {
+        cleanup(sd);
+      }
+    });
+  });
+
+  describe('version — внутреннее поле', () => {
+    it('вывод НЕ содержит поле version', () => {
+      const sd = freshStateDir();
+      try {
+        runCli(sd, '--set', `reposBase=${sd}`, '--set', 'vcsHost=h');
+        const { stdout } = runCli(sd);
+        const parsed = JSON.parse(stdout);
+        assert.strictEqual(parsed.configured, true);
+        assert.ok(!('version' in parsed), 'version не должен быть в CLI-выводе');
+      } finally {
+        cleanup(sd);
+      }
+    });
+
+    it('вывод после --set НЕ содержит version', () => {
+      const sd = freshStateDir();
+      try {
+        const { stdout } = runCli(sd, '--set', 'vcsHost=h');
+        const parsed = JSON.parse(stdout);
+        assert.ok(!('version' in parsed), 'version не должен быть в выводе --set');
+      } finally {
+        cleanup(sd);
+      }
+    });
   });
 
   describe('атомарность', () => {

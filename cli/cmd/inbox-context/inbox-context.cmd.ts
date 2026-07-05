@@ -197,7 +197,7 @@ async function run(): Promise<number> {
     const checkResult = validateConfig(cfg);
 
     const covered = new Set<string>();
-    if (vcsSource) covered.add('vcsHost');
+    if (vcsSource || url) covered.add('vcsHost');
     if (reposBaseFlag) covered.add('reposBase');
 
     const missing = checkResult.missing.filter((k) => !covered.has(k));
@@ -251,7 +251,7 @@ async function run(): Promise<number> {
     let currentHeadSha: string | null = null;
 
     if (!skipWorktree) {
-      const reposBase = reposBaseFlag ?? join(homedir(), 'Developer');
+      const reposBase = reposBaseFlag ?? cfg.reposBase ?? join(homedir(), 'Developer');
       const clonePath = ensureClone(project, host, token, {
         reposBase,
         reposMapPath: reposMapPath(stateDir),

@@ -76,4 +76,39 @@ describe('inbox-context config signal', () => {
     assert.strictEqual(r.status, 0);
     assert.ok(r.stdout.includes('agent-inbox не настроен'), 'should print human-readable message');
   });
+
+  it('--url <URL> --json, no config → missing ["reposBase"] only (vcsHost covered by URL)', () => {
+    const r = spawnInboxContext(
+      ['--url', 'https://gitlab.example.com/group/proj/-/merge_requests/510', '--json'],
+      tmpDir
+    );
+    assert.strictEqual(r.status, 0);
+    const out = JSON.parse(r.stdout.trim());
+    assert.strictEqual(out.configured, false);
+    assert.deepStrictEqual(out.missing, ['reposBase']);
+  });
+
+  it('--url <URL> --json --repos-base=/p, no config → passes config check', () => {
+    const r = spawnInboxContext(
+      [
+        '--url',
+        'https://gitlab.example.com/group/proj/-/merge_requests/510',
+        '--json',
+        '--repos-base=/p',
+      ],
+      tmpDir
+    );
+    assert.notStrictEqual(r.status, 0, 'should fail after config check (no token)');
+    assert.ok(!r.stdout.includes('"configured": false'), 'should not print not-configured signal');
+  });
+
+  it('config with reposBase → reposBase used instead of ~/Developer default', () => {
+    writeConfig(tmpDir, { version: 1, reposBase: '/custom/repos' });
+    const r = spawnInboxContext(
+      ['--ref', 'group/proj!510', '--json', '--vcs-host=H'],
+      tmpDir
+    );
+    assert.notStrictEqual(r.status, 0, 'should fail after config check (no token)');
+    assert.ok(!r.stdout.includes('"configured": false'), 'config passed, reposBase from config accepted');
+  });
 });

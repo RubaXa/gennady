@@ -71,6 +71,7 @@ function resolveBody(it: ReplyItem): string {
 /**
  * @purpose Validate reply items atomically: prepend 🤖, verify discussionId exists,
  *   validate suggestion syntax, check newPath in diff. Any error aborts batch.
+ * @sideEffect Mutates items[i].body — prepends 🤖 prefix when missing.
  * @param items Reply items (already filtered by structural validity).
  * @param discussions Real MR discussions from getAll (null → skip discussionId check).
  * @param diffPaths MR diff file paths from getChanges (null → skip newPath check).

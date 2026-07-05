@@ -50,6 +50,9 @@
 - `gennady inbox-context --ref group/proj!510 --json --vcs-host=H` → `{"configured": false, "missing": ["reposBase"]}`
 - `gennady inbox-context --ref group/proj!510 --json --vcs-host=H --repos-base=/p` → конфиг покрыт, продолжает работу
 - `gennady inbox-context --ref group/proj!510` (без `--json`) без конфига → человекочитаемое сообщение, exit 0
+- Конфиг содержит `reposBase: "/p"`, флаг `--repos-base` не передан → `reposBase` из конфига используется как значение для работы (не падает на дефолт `~/Developer`)
+- `gennady inbox-context --url https://gitlab.example.com/group/proj/-/merge_requests/510 --json` без конфига → host извлечён из URL, `vcsHost` не требуется: `{"configured": false, "missing": ["reposBase"]}` (AI-20: `--url` покрывает `vcsHost`)
+- `gennady inbox-context --url <URL> --json --repos-base=/p` без конфига → `vcsHost` из URL + `reposBase` из флага → `{"configured": true}`, продолжает работу
 
 ## 5. Verification
 
