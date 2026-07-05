@@ -157,6 +157,15 @@ compatibility: opencode
 
 ## Процедура интерактивного разбора (по умолчанию)
 
+0. **Pre-flight: конфиг.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`.
+   Если ответ содержит `"configured": false`:
+   - **Не печатай текст и не выходи.** Используй `AskUserQuestion` (два вопроса последовательно, по одному на каждый `missing`-ключ):
+     - `reposBase`: «Где лежат репозитории?» — варианты: `~/Developer` (Recommended), `~/work`, `~/projects`, `~/src` + Other (ввести свой путь). Валидация: абсолютный путь, существует, isDirectory. При невалидном вводе — переспросить.
+     - `vcsHost`: «Какой хост GitLab?» — варианты из `git remote get-url origin` (авто-детект, если есть) + Other (ввести свой). Валидация: непустой.
+   - После получения обоих значений: `npx tsx ~/Developer/gennady/cli/gennady.ts inbox config --set reposBase=<путь> --set vcsHost=<хост>`
+   - Затем повтори `inbox --json` — теперь должен вернуть список MR.
+   - Если уже `"configured": true` — сразу к шагу 1.
+
 1. **Инбокс.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → виджет/дашборд (список уже actionable).
 2. **Выбор задачи — ТОЛЬКО если я не назвал.** Сказал «возьми первую/эту» (или дал задачу через
    tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
