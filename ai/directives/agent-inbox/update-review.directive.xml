@@ -1,0 +1,122 @@
+<UpdateReview keywords="update review, head changed, re-verify, fast forward, new commits, review update, prior findings, cross-reference" type="directive" ver="1.0">
+  <Mission>
+    When the MR HEAD has changed since my last review (headChanged.kind == "fast_forward") AND my review exists (I have threads or I'm in approvedBy), verify whether my previous findings were addressed by the new commits. Do NOT re-run the full arch-interrogation battery — only cross-reference my prior remarks against the updated changeset and scan new commits for new issues.
+
+    Consumer: the `agent-inbox` skill, loaded instead of `arch-interrogation` when `headChanged.kind == "fast_forward"` AND my review exists.
+  </Mission>
+
+  <InputContract>
+    Supplied by the consumer (from inbox-context + vcs-discussions):
+    - **Required:** `ref`, `webUrl`, `headChanged` ({ kind, newCommitCount }), `newCommits` ([{ sha, subject, author, date }]), `changeset` ({ files: [{ path, status, plus, minus }], totals, byCategory }), `approvedBy`, `myLogin`.
+    - **Required:** `myDiscussions` — output of `vcs-discussions --url &lt;webUrl&gt; --my --with-drafts` (my threads + drafts).
+    - **Optional:** `prior_threads` — full discussion context for de-duplication.
+  </InputContract>
+
+  <BeliefState>
+    <Axiom id="AX_UPDATE_SCOPE_LOCK">
+      This directive only re-verifies my prior findings and scans new commits for new issues. It does NOT re-run axes A–G from arch-interrogation. If `headChanged.kind == "rewritten"` — the MR history was rewritten; this is a full re-review, delegate to `arch-interrogation`. If `headChanged.kind == "none"` — this directive should not have been loaded; halt.
+    </Axiom>
+
+    <Axiom id="AX_CHANGESET_AS_TRUTH">
+      The changeset (`base..HEAD` diff from inbox-context) is the ground truth for file presence. My prior remark's file path is checked against `changeset.files`. File absent → code was removed from the MR. File present → verify the fix in the diff.
+    </Axiom>
+
+    <Axiom id="AX_NO_MY_REVIEW_FALLBACK">
+      If `myDiscussions` is empty (no threads, no drafts) AND I am NOT in `approvedBy` → I have not reviewed this MR. Fall back to full `arch-interrogation` (the caller should not have loaded this directive).
+    </Axiom>
+
+    <Axiom id="AX_PURE_FORMATTING_SKIP">
+      If all changes in `newCommits` are formatting-only (zero semantic delta — only whitespace, indentation, line breaks, linter auto-fix), skip analysis and report "только форматирование" → suggest approve.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive prose (axioms, halt names, step procedures, rule IDs, structural section headings) — English.**
+      **Operator-facing output — Russian.** Everything the operator sees is written in Russian.
+    </Axiom>
+  </BeliefState>
+
+  <DecisionRules>
+    <Rule id="FILE_ABSENT">
+      The file referenced by my remark is absent from `changeset.files` → the code was removed from the MR entirely → resolve the thread with note "код удалён из MR".
+    </Rule>
+    <Rule id="FILE_PRESENT_FIX_FOUND">
+      The file of my remark is present in the changeset AND the fix addressing my concern is visible in the diff → verify the fix is correct → resolve with 👍.
+    </Rule>
+    <Rule id="FILE_PRESENT_FIX_NOT_FOUND">
+      The file of my remark is present in the changeset BUT the fix is NOT found or is insufficient → reply to the thread explaining what was expected and what was observed. Do NOT resolve.
+    </Rule>
+    <Rule id="CODE_REMOVED">
+      The specific code my remark referred to was removed from the file (the file is still in changeset but the referenced lines are gone) → resolve with note "code removed".
+    </Rule>
+    <Rule id="NEW_COMMITS_NO_MY_REMARKS">
+      `myDiscussions` is empty (I have not reviewed this MR before) BUT `headChanged.kind == "fast_forward"` → proceed with new-commits-only analysis: scan changed files for new issues (critical probes only: SEC, NAT, BIZ, TYPO).
+    </Rule>
+    <Rule id="ALL_RESOLVED_NO_NEW_ISSUES">
+      All my prior threads are resolved AND no new issues found in `newCommits` → suggest approve.
+    </Rule>
+  </DecisionRules>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_VCS_DISCUSSIONS_FAIL` | `vcs-discussions --my --with-drafts` fails (non-zero exit, network/auth error) → do NOT post anything, signal error to operator. |
+    | `H_REWRITTEN` | `headChanged.kind == "rewritten"` → this directive is inadequate; signal that full re-review via `arch-interrogation` is needed. |
+    | `H_NO_HEAD_CHANGE` | `headChanged.kind == "none"` → directive loaded incorrectly; halt with explanation. |
+    | `H_NO_MY_REVIEW` | `myDiscussions` is empty AND I am NOT in `approvedBy` → I have no prior review to update; halt and suggest fallback to `arch-interrogation`. |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_ANALYZE_NEW_COMMITS">
+      <Goal>Understand what changed since my last review.</Goal>
+      <Action>
+        1. Read `headChanged` and `newCommits`. Validate:
+           - `kind == "none"` → `H_NO_HEAD_CHANGE`.
+           - `kind == "rewritten"` → `H_REWRITTEN`.
+           - `kind == "fast_forward"` → proceed.
+        2. Build a map from `changeset.files`: file path → { status, plus, minus }.
+        3. Classify the change nature:
+           - ALL files have zero semantic delta (formatting-only) → `AX_PURE_FORMATTING_SKIP` → report "только форматирование" + suggest approve, stop.
+           - Otherwise → proceed to STEP_1.
+        4. Collect changed files grouped by category (code, tests, docs, config, assets).
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_CROSS_REFERENCE">
+      <Goal>Cross-reference my prior findings with the updated changeset.</Goal>
+      <Action>
+        1. Parse `myDiscussions`. If empty:
+           - I am in `approvedBy` → I approved this MR before, proceed to new-commits analysis (skip thread cross-reference).
+           - I am NOT in `approvedBy` → `H_NO_MY_REVIEW` → halt, suggest `arch-interrogation`.
+        2. For each of my discussion threads (including drafts, excluding resolved threads):
+           a. Extract the file path and line range my remark refers to.
+           b. Check the file against the changeset:
+              - File path absent from `changeset.files` → apply Rule `FILE_ABSENT` → mark thread for resolve with note "код удалён из MR".
+              - File present, but the specific code at my remark's location was removed → apply Rule `CODE_REMOVED` → mark thread for resolve with note "code removed".
+              - File present → read the diff for that file. Determine if the fix addressing my concern is visible:
+                - Fix found AND correct → apply Rule `FILE_PRESENT_FIX_FOUND` → mark thread for resolve with 👍.
+                - Fix not found OR insufficient → apply Rule `FILE_PRESENT_FIX_NOT_FOUND` → mark thread for reply (do NOT resolve).
+        3. Track outcomes per thread: resolved / reply-needed.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_DECIDE">
+      <Goal>Make the final decision and report to operator.</Goal>
+      <Action>
+        1. Scan new commits for NEW issues on changed files. Apply critical probes from `code-interrogation` lite: SEC (security-sensitive path/auth), NAT (native/stdlib analog misuse), BIZ (business-logic drift), TYPO (obvious typo/error). Do NOT run the full battery — only quick, high-signal checks.
+        2. Assemble the result:
+            - ALL my prior threads marked for resolve AND no new issues found → suggest approve: `vcs-approve --url &lt;webUrl&gt;`.
+           - Some threads need reply OR new issues found → prepare reply list. Unresolved threads stay open.
+        3. Report to operator (in chat, Russian):
+           - **Header:** `headChanged` summary: kind, N new commits, N changed files.
+           - **New commits:** brief list (sha, subject, author) if ≤5; summary line if more.
+           - **Cross-reference result:** table:
+             | Thread | Файл | Моё замечание | Вердикт |
+             |--------|------|---------------|---------|
+             | (discussionId/link) | file.ts:42 | краткая суть | ✅ resolved (fix found) / ✅ resolved (код удалён) / ❌ reply (fix не найден) |
+           - **New issues:** if any — list with file, line, problem, kind.
+           - **Decision:** approve / reply-needed / error.
+        4. Do NOT post anything — the skill's Ask-gate controls posting. This directive only produces the report and recommendations.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</UpdateReview>

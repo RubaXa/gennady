@@ -13,9 +13,9 @@
 
   <InputContract>
     Supplied by the consumer (the `agent-inbox` skill):
-    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see `<OutputFormat>`). `diff_refs` + worktree `path` + `base` for grounded reading. `base` + `path` make the change stats computable (`git -C <path> diff --numstat <base>..HEAD` for per-file +/− lines; `--name-status` for added/deleted/renamed) — the source for the scope summary required by `AX_CHANGESET_SCALE`.
+    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see &lt;OutputFormat&gt;). `diff_refs` + worktree `path` + `base` for grounded reading. `base` + `path` make the change stats computable (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` for per-file +/− lines; `--name-status` for added/deleted/renamed) — the source for the scope summary required by `AX_CHANGESET_SCALE`.
     - **Optional:** `title`, `spec_links` (linked spec/ticket/design-doc URLs).
-    - **Optional:** `prior_threads` — existing discussion already on the MR (the `<Review_Threads>` artifact from `review-issues --all`: per-thread `file`/`line`/`resolved` and messages tagged `Reviewer` / `Author` / `AI_Agent`, each with `uid`), plus `my_login` (my GitLab username) and `my_drafts` (my unpublished notes from `review-issues --draft`). When supplied, they feed `AX_PRIOR_DISCUSSION_AWARENESS`: the interrogation reads them as context and de-duplicates against them. When absent, proceed without prior-discussion awareness and say so in the report.
+    - **Optional:** `prior_threads` — existing discussion already on the MR (the &lt;Review_Threads&gt; artifact from `review-issues --all`: per-thread `file`/`line`/`resolved` and messages tagged `Reviewer` / `Author` / `AI_Agent`, each with `uid`), plus `my_login` (my GitLab username) and `my_drafts` (my unpublished notes from `review-issues --draft`). When supplied, they feed `AX_PRIOR_DISCUSSION_AWARENESS`: the interrogation reads them as context and de-duplicates against them. When absent, proceed without prior-discussion awareness and say so in the report.
     No `webUrl` → render the bookend from `ref` as plain text and note the missing link; do not invent a URL.
   </InputContract>
 
@@ -47,7 +47,7 @@
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
-      Presence of a `packages/` directory (or any monorepo shared-package root) is a concrete trigger: for each changed entity ask whether it belongs in a shared package rather than the app, and conversely whether app-specific logic has leaked into a shared package. Run the extraction gate (see `<PackageExtractionGate>`); ANY gate item failing → keep it local and say which item failed. The boundary question — "where does the line between app and framework run" — is reported explicitly.
+      Presence of a `packages/` directory (or any monorepo shared-package root) is a concrete trigger: for each changed entity ask whether it belongs in a shared package rather than the app, and conversely whether app-specific logic has leaked into a shared package. Run the extraction gate (see &lt;PackageExtractionGate&gt;); ANY gate item failing → keep it local and say which item failed. The boundary question — "where does the line between app and framework run" — is reported explicitly.
     </Axiom>
 
     <Axiom id="AX_VISUALIZE_WHEN_RELATIONAL">
@@ -164,7 +164,7 @@
     <Step id="STEP_0_INVENTORY">
       <Goal>Enumerate what is on the table.</Goal>
       <Action>
-        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C <path> diff --numstat <base>..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / `<OutputFormat>` §2.
+        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / &lt;OutputFormat&gt; §2.
         2. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config. Record the count of *new* entities (expansion signal).
         3. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
         4. Zero elements → `H_EMPTY_INVENTORY`.
@@ -187,7 +187,7 @@
         2. Axes `B` and `D` REQUIRE repo search (analogs, prior examples) — record path+symbol or "inconclusive". Never assert a convention without a reference (`AX_GROUNDED_IN_REPO`).
         3. Apply `AX_QUALITY_ATTRIBUTE_TRADEOFF`: name served attribute + tradeoff; for new service/store probe observability, migration/rollback, error path.
         4. Load `ai/directives/agent-inbox/code-interrogation.directive.xml` and run its code-level battery (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`) per changed unit; honour its `ScopeGuard` (no linter-duplication) and `WebSearchGuard` (web-search off by default). Flags attach to the unit's entity card and become §9 candidates with the probe code in «Ось».
-        5. Assign a verdict per `<VerdictModel>`; default `unjustified` until disproven (`AX_ADVERSARIAL_DEFAULT`).
+        5. Assign a verdict per &lt;VerdictModel&gt;; default `unjustified` until disproven (`AX_ADVERSARIAL_DEFAULT`).
       </Action>
     </Step>
 
@@ -195,7 +195,7 @@
       <Goal>Test the app/framework boundary.</Goal>
       <Action>
         1. Skip if no `packages/` (or shared-package root) in the repo.
-        2. For each candidate run `<PackageExtractionGate>`; record extract-recommended elements and, conversely, app logic that leaked into a shared package.
+        2. For each candidate run &lt;PackageExtractionGate&gt;; record extract-recommended elements and, conversely, app logic that leaked into a shared package.
         3. Report the explicit app↔package boundary line for the changed area.
       </Action>
     </Step>
@@ -219,19 +219,19 @@
        </Precondition>
        <Action>
         1. Choose visual transport per the destination check above (see Precondition). Per `AX_VISUALIZE_WHEN_RELATIONAL`: relational findings → picture; single judgements → prose. Per `AX_SCANNABLE_OUTPUT`: use emoji verdict icons (✅⚠️❌) and risk colours (🟢🟡🔴).
-        2. Emit the mandatory scope summary first per `AX_CHANGESET_SCALE` / `<OutputFormat>` §2: headline line + by-category table + file map. The file map is rendered for every MR size, never skipped.
+        2. Emit the mandatory scope summary first per `AX_CHANGESET_SCALE` / &lt;OutputFormat&gt; §2: headline line + by-category table + file map. The file map is rendered for every MR size, never skipped.
         3. Render the context/container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (C4-style: system boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside the diagram).
         4. Add flow diagrams only for non-trivial scenarios; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
         5. Emit per-entity cards ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first): name · role · reconstructed rationale · verdict with emoji per `AX_SCANNABLE_OUTPUT` · stable ID per `AX_STABLE_FINDING_IDS` · open question (Q-ID if unresolved). Prose for ❌ unjustified; one line for ✅⚠️.
         6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
         7. Reconcile candidates against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert already-raised into reply-to-thread candidate, mark correction-replies, list awaiting-my-reply threads.
         8. Produce verdict summary per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table format per `AX_SCANNABLE_OUTPUT`.
-         9. Produce comment candidate table per `<OutputFormat>` §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
+         9. Produce comment candidate table per &lt;OutputFormat&gt; §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
        </Action>
        <SelfCheck>
          **После сборки отчёта, перед отправкой оператору — пройди этот список. Если любой пункт ✗ — вернись и добавь пропущенное. Не выдавай неполный отчёт.**
 
-         0. `<IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/>` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
+         0. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
          0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
          1. **Шапка** — первая строка: `ref` как кликабельная ссылка на `webUrl`, затем `title`. ✗/✓
          2. **Обзор** — строка «Размер: …», таблица категорий (Код/Тесты/Доки/Конфиг/Ассеты), карта файлов с иконками (🆕/✏️/🗑️/↪︎) и ± строками. ✗/✓
@@ -298,4 +298,62 @@
     ---
     10. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
   </OutputFormat>
+
+  <AuthorMode>
+    <Mission>
+      Self-review: interrogate own changes through the readiness-for-review lens instead of adversarial architecture review. Produce a structured summary for reviewers — not a design critique.
+      Consumer: the `agent-inbox` skill, `author` role. Loaded when `myRole=author` — replaces the full adversarial interrogation battery with readiness checks + reviewer cross-check.
+    </Mission>
+
+    <ExecutionPlan>
+      <Step id="AUTHOR_STEP_1_READINESS_CHECK">
+        <Goal>Verify the MR is ready for review.</Goal>
+        <Action>
+          1. **Полнота описания:** ≥3 полных предложения (что сделано / зачем / как). Короче → verdict ❌, блок «Описание».
+          2. **Покрытие тестами:** ≥1 тест на каждый изменённый файл кода (не docs/config). Пропуск → verdict ❌, указать файлы без тестов.
+          3. **Отладочный код:** поиск `console.log`, `debugger`, `TODO` без ссылки на тикет. Найдено → verdict ❌, указать файл/строку.
+        </Action>
+      </Step>
+
+      <Step id="AUTHOR_STEP_2_ASSEMBLE_SUMMARY">
+        <Goal>Produce a compact reviewer-facing summary.</Goal>
+        <Action>
+          1. **Шапка:** `ref` как ссылка на `webUrl` + `title`.
+          2. **Readiness checklist:** три пункта (описание / тесты / отладка) с ✅ или ❌ и кратким пояснением.
+          3. **Карта файлов:** по папкам, иконки (🆕/✏️/🗑️/↪︎), ± строки.
+          4. **Таблица «Что проверил»:** колонки Check / Result / Notes. Каждый пункт — что автор проверил перед тем как отдать ревьюерам.
+          5. **Вердикт:** ready-for-review / needs-work (с указанием что доделать).
+        </Action>
+      </Step>
+
+      <Step id="AUTHOR_STEP_3_CROSS_CHECK_REVIEWERS">
+        <Goal>Compare self-review against existing reviewer threads.</Goal>
+        <Action>
+          1. `vcs-discussions --json` — ВСЕ дискуссии (не `--my`). Пусто (нет ревьюверов) → proceed без сравнения, выдать сводку.
+          2. Для каждого reviewer-треда: согласен → 👍 + reply.
+             Согласен и исправил → 👍 + reply «согласен, уже исправил в &lt;sha&gt;» (SHA уже в репозитории, агент не коммитит — NFC-01).
+             Не согласен → reply с объяснением.
+          3. После сверки — обновить сводку (пометить что учтено, что оспорено).
+          4. Постинг — через `posting-rules.directive.xml` (включая &lt;ReactionMatrix&gt; для author-реакций).
+        </Action>
+      </Step>
+    </ExecutionPlan>
+
+    <OutputFormat>
+      One consolidated self-review summary, Russian per AX_OPERATOR_LANGUAGE. Structure:
+      1. **Шапка:** ref→webUrl + title.
+      2. **Readiness checklist:** таблица из трёх строк (Описание / Тесты / Отладка) с ✅/❌ и примечанием.
+      3. **Карта файлов:** иконки + ± строки, группировка по папкам.
+      4. **Что проверил:** таблица Check / Result / Notes.
+      5. **Вердикт:** ready-for-review / needs-work + итог сверки с ревьюверами (если есть).
+      6. **Подвал:** ссылка на webUrl.
+    </OutputFormat>
+
+    <HaltConditions>
+      | ID | Trigger |
+      |---|---|
+      | `H_AUTHOR_NO_DIFF` | No diff to self-review |
+      | `H_AUTHOR_VCS_DISCUSSIONS_FAIL` | Cannot fetch reviewer discussions |
+    </HaltConditions>
+  </AuthorMode>
 </ArchInterrogation>

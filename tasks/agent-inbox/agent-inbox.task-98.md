@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -69,8 +69,24 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [update-review.directive.xml, SKILL.md, agent-inbox-take/SKILL.md]; decisions: [D50]; open: []
+- [x] `2026-07-05T10:03:49Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-05T10:03:49Z` ver gennady lint ai/directives/agent-inbox/update-review.directive.xml ai/skills/agent-inbox/SKILL.md ai/skills/agent-inbox-take/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:03:49Z` ver npm run format:check → pass exit=0
+- [x] `2026-07-05T10:03:49Z` discovery npm run test: 1 transient failure (lint.cmd.test.ts — Node.js clone worker version mismatch) — passes in isolation (8/8 pass), pre-existing infra issue unrelated to target files
+- [x] `2026-07-05T10:03:49Z` ver xmllint --noout ai/directives/agent-inbox/update-review.directive.xml → pass exit=0
+- [x] `2026-07-05T10:03:49Z` ver grep "update-review.directive.xml" ai/skills/agent-inbox/SKILL.md → found exit=0
+- [x] `2026-07-05T10:03:49Z` ver grep "update-review" ai/skills/agent-inbox-take/SKILL.md → found exit=0
+- [x] `2026-07-05T10:03:49Z` DONE
+      **Handoff →** artifacts: [ai/directives/agent-inbox/update-review.directive.xml, ai/skills/agent-inbox/SKILL.md, ai/skills/agent-inbox-take/SKILL.md]; decisions: [D50]; open: []
 
 #### P2
 
-- [ ] **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-05T10:18:29Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-05T10:18:29Z` ver npm run lint:contracts → pass exit=0
+- [x] `2026-07-05T10:18:29Z` ver npm run test → pass exit=0
+- [x] `2026-07-05T10:18:29Z` ver npm run format:check → pass exit=0
+- [x] `2026-07-05T10:18:29Z` ver xmllint --noout ai/directives/agent-inbox/update-review.directive.xml → pass exit=0
+- [x] `2026-07-05T10:18:29Z` ver grep "update-review.directive.xml" ai/skills/agent-inbox/SKILL.md → found exit=0
+- [x] `2026-07-05T10:18:29Z` ver grep "update-review" ai/skills/agent-inbox-take/SKILL.md → found exit=0
+- [x] `2026-07-05T10:18:29Z` DONE
+      **Handoff →** artifacts: [ai/directives/agent-inbox/update-review.directive.xml, ai/skills/agent-inbox/SKILL.md, ai/skills/agent-inbox-take/SKILL.md]; decisions: [D50]; open: []

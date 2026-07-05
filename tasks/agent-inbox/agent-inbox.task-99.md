@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -77,8 +77,27 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [arch-interrogation.directive.xml, posting-rules.directive.xml, SKILL.md, agent-inbox-take/SKILL.md]; decisions: [D50]; open: []
+- [x] `2026-07-05T10:03:03Z` intro AuthorMode ← расширение arch-interrogation для role=author (AI-29)
+- [x] `2026-07-05T10:03:03Z` intro ReactionMatrix ← расширение posting-rules для role×situation authority (AI-30)
+- [x] `2026-07-05T10:03:03Z` ver /Users/k.lebedev/Developer/gennady/.claude/skills/sdd-execute/scripts/sdd verify ai/directives/agent-inbox/arch-interrogation.directive.xml ai/directives/agent-inbox/posting-rules.directive.xml ai/skills/agent-inbox/SKILL.md ai/skills/agent-inbox-take/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:03:03Z` ver grep -q "AuthorMode" ai/directives/agent-inbox/arch-interrogation.directive.xml → pass exit=0
+- [x] `2026-07-05T10:03:03Z` ver grep -q "ReactionMatrix" ai/directives/agent-inbox/posting-rules.directive.xml → pass exit=0
+- [x] `2026-07-05T10:03:03Z` ver grep -q "ReactionMatrix" ai/skills/agent-inbox/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:03:03Z` ver grep -q "AuthorMode" ai/skills/agent-inbox-take/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:03:03Z` insight xmllint fail (pre-existing: directives use unescaped &lt;/&gt; in text) → §5 Verification, P2 scope
+- [x] `2026-07-05T10:03:03Z` DONE
+      **Handoff →** artifacts: [arch-interrogation.directive.xml, posting-rules.directive.xml, SKILL.md, agent-inbox-take/SKILL.md]; decisions: [D50]; open: []
 
 #### P2
 
-- [ ] **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-05T10:21:57Z` discovery xmllint fail (pre-existing: unescaped `&lt;` `&gt;` in text content) → fixed both XMLs
+- [x] `2026-07-05T10:21:57Z` tried prettier --write tasks/agent-inbox/agent-inbox.task-98.md → fixed format gate
+- [x] `2026-07-05T10:21:57Z` ver /Users/k.lebedev/Developer/gennady/.claude/skills/sdd-execute/scripts/sdd verify ai/directives/agent-inbox/arch-interrogation.directive.xml ai/directives/agent-inbox/posting-rules.directive.xml ai/skills/agent-inbox/SKILL.md ai/skills/agent-inbox-take/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver xmllint --noout ai/directives/agent-inbox/arch-interrogation.directive.xml → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver xmllint --noout ai/directives/agent-inbox/posting-rules.directive.xml → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver grep -q "AuthorMode" ai/directives/agent-inbox/arch-interrogation.directive.xml → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver grep -q "ReactionMatrix" ai/directives/agent-inbox/posting-rules.directive.xml → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver grep -q "ReactionMatrix" ai/skills/agent-inbox/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:21:57Z` ver grep -q "AuthorMode" ai/skills/agent-inbox-take/SKILL.md → pass exit=0
+- [x] `2026-07-05T10:21:57Z` DONE
+      **Handoff →** artifacts: [arch-interrogation.directive.xml, posting-rules.directive.xml]; decisions: [D50]; open: []

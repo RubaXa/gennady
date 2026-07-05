@@ -31,10 +31,17 @@
 
 ## Шаг 1 — Скаут
 
+**Ролевая развилка:**
+- `myRole=author` → загрузить `arch-interrogation` в режиме `<AuthorMode>` (вместо adversarial interrogation). **Приоритет:** `role=author` + `headChanged != none` → сначала `update-review` (проверить что изменилось), затем `AuthorMode` (обновить сводку). `headChanged == none` → сразу `AuthorMode`.
+- `myRole=reviewer` → стандартный adversarial-разбор через `arch-interrogation`.
+
 1. `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --vcs-host=<host>`
 2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`
 3. Разложи файлы по дорожкам: **security**(всегда) / **logic** / **ui** / **tests** / **docs** / **config**
 4. **Транспорт (action 0):** проверь наличие виджета (`mcp__visualize__show_widget`); объяви первой строкой «чат, widget (инструмент найден)» или «чат, ASCII (виджет недоступен)». Выведи карту файлов + таблицу категорий; реляционную диаграмму — виджетом при наличии, ASCII только как fallback.
+5. **Выбор директивы:** проверь `headChanged.kind` из ответа `inbox-context`:
+   - `kind == "fast_forward"` И мои треды непусты (или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — шаги 2–4 skip, сразу к синтезу по директиве.
+   - Иначе → полный `arch-interrogation` + `code-interrogation` (текущее поведение).
 
 ---
 

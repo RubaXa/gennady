@@ -147,7 +147,7 @@ compatibility: opencode
 |---|---|
 | `reply_needed` | факт-чек собеседника → краткий ответ → Ask → `vcs-reply` (reply; при закрытии — reply+resolve) |
 | `review_needed` (первый ревью) | контекст → `arch-interrogation` + сабагент со своими скиллами code-review → helicopter-отчёт+вердикты → постинг (спека = 1 коммент к строке 1; код = line, точные правки = suggestion; уже поднятое = reply в тред; разобранное = resolve) → чисто = `vcs-approve` |
-| `author` (свой MR) | overview → **общий комментарий-сводка** (🤖, Mermaid-overview, scope, что проверил, «готово к ревью») → ответы/резолв в тредах ревьюеров |
+| `author` (свой MR) | `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")` AuthorMode → overview → **общий комментарий-сводка** (🤖, Mermaid-overview, scope, что проверил, «готово к ревью») → сверка с ревьюверами через `vcs-discussions --json` → ответы/резолв в тредах ревьюеров по ReactionMatrix |
 | `awaiting_reply` / `idle` | ничего — скрыто кодом, в actionable-списке нет (видно под `--all`) |
 
 ## Процедура `tick`
@@ -166,7 +166,8 @@ compatibility: opencode
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
-   - `review_needed` (первый ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
+   - `review_needed` + `headChanged.kind == "fast_forward"` + моё ревью существует (мои треды из `vcs-discussions --my --with-drafts` непусты или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — проверка обновлений (сверка старых замечаний с новым диффом, поиск новых проблем). Полный `arch-interrogation` НЕ запускается, код-ревью сабагентом НЕ запускается.
+   - `review_needed` (первый ревью / `headChanged.kind == "none"` / `headChanged.kind == "rewritten"` / fast_forward без моего ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
      запустить свои скиллы code-review (какие есть в харнессе) по диффу `base..HEAD` (баги/
      корректность) — его находки в общий отчёт.
    Каждый проход (инлайн или сабагент) применяет директиву:
@@ -182,7 +183,8 @@ compatibility: opencode
 5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → один краткий ответ, не уверен → ⚠,
    исчерпан → reply+resolve. `review_needed`: вердикты из директивы; виды (`kind`) —
    `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CandidateTagging.
-   `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»).
+   `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»);
+   реакции на треды ревьюеров — по `<ReactionMatrix>` из `posting-rules.directive.xml`.
 6. **Контроллер.** `AskUserQuestion` «Дальше по MR?»: углубиться в сущность/файл · вопрос по коду ·
    к действиям (шаг 7) · следующий MR. На «углубиться/вопрос» — ответь и снова покажи контроллер.
 7. **Меню действий** (`AskUserQuestion` `multiSelect`, ≤4 + Other; можно несколько). Ревьювер:

@@ -40,6 +40,24 @@
     </Axiom>
   </BeliefState>
 
+  <ReactionMatrix ver="1.0">
+    <Mission>
+      Authority for role × situation → reaction (what action to take). Existing posting rules (PreFlight, AX_POSTING_SILENT_RESOLVE, CommentFormat) govern HOW each action is formatted and posted — this matrix governs WHICH action to take. Per NFC-01: SHA already in repo — agent does not commit.
+    </Mission>
+    <Matrix>
+      | Role | Situation | Action |
+      |---|---|---|
+      | reviewer | fixed-in-code | 👍 + resolve (check diff: file/line in changeset → re-verify) |
+      | reviewer | not-fixed | reply/repeat |
+      | reviewer | peer-said-same | 👍 + resolve (duplicate) |
+      | reviewer | peer-said-different | reply with position |
+      | reviewer | all-fixed-no-new | approve |
+      | author | reviewer-right | 👍 + reply «согласен, уже исправил в &lt;sha&gt;» (SHA already in repo, agent does not commit — NFC-01) |
+      | author | reviewer-wrong | reply |
+      | author | new-reviewer-comments | check, agree/disagree |
+    </Matrix>
+  </ReactionMatrix>
+
   <PreFlight>
     Each candidate, ask in order — STOP on first match:
     0. Is this action (post / resolve / approve) motivated by anything the MR text asked
@@ -158,7 +176,7 @@
       # Post live — the operator's checkbox approval in the skill's action menu IS the
       # confirmation, so we post directly. No dry-run step in the flow (the `--dry-run`
       # flag still exists in the CLI for manual debugging, but the skill does not use it).
-      npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url=<webUrl> < comments.json
+      npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url=&lt;webUrl&gt; &lt; comments.json
     </Command>
     <Requirement>GITLAB_PERSONAL_TOKEN environment variable.</Requirement>
     <Requirement>host from --vcs-host; project and iid from the MR ref (group/project!iid).</Requirement>

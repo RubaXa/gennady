@@ -108,4 +108,4 @@
 - [x] `<ts>` ver npm run test → pass exit=0
 - [x] `<ts>` ver npm run format:check → pass exit=0
 - [x] `<ts>` DONE
-**Handoff →** artifacts: [cli/cmd/inbox-context/inbox-context-cmd.test.ts, cli/cmd/inbox/_core/logic/inbox-registry.test.ts]; decisions: [test-strategy=spawnSync+structural, promoteReviewedHead-tests=full-coverage, command-format-tests=source-inspection]; open: []
+      **Handoff →** artifacts: [cli/cmd/inbox-context/inbox-context-cmd.test.ts, cli/cmd/inbox/_core/logic/inbox-registry.test.ts]; decisions: [test-strategy=spawnSync+structural, promoteReviewedHead-tests=full-coverage, command-format-tests=source-inspection]; open: []
