@@ -1,0 +1,152 @@
+<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, sdd-interview-protocol" type="directive" ver="2.0">
+  <Mission>
+    Run ONE operator interview for an authoring step. Loaded lazily by a branch step (scope
+    STEP_2 / STEP_3, infra STEP_2, interface STEP_2, module STEP_2) via `READ_AND_USE_DIRECTIVE`; the calling
+    step supplies the scope-type + its focus and stays the owner of what gets written. Inherits
+    the router core (language, dialogue, safeguard, diverge, no-narration) — not repeated here.
+
+    This protocol equips the interview declared by `AX_OPERATOR_SAFEGUARD` with instruments: a
+    live coverage map, an amplification triage, defaults-first rounds, and a map-based closure
+    criterion. The safeguard axiom stays the source of the interviewing instinct; this directive
+    only gives it structure.
+
+    Input — scope-type, calling-step focus, intake gathered so far. Output — a closed coverage
+    map + the captured answers and decisions, returned to the calling step. This directive writes
+    no artifact; control returns to the caller at CLOSE.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION">
+    <Axiom id="AX_COVERAGE_MAP_CLOSURE">
+      The interview ends when the coverage map is closed — every topic `[✔]` or explicitly skipped
+      with a recorded reason — never when a question count is reached, and never by a silent Approval
+      Check. After every operator answer, re-check the map: an answer that opens a new hole or risk
+      adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom
+      owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
+      `H_HIGH_STAKES_SKIP`.
+    </Axiom>
+
+    <Axiom id="AX_DEFAULTS_FIRST">
+      Where a defensible default exists, lead with it: propose one concrete option drawn from real
+      production practice and ask the operator to confirm or correct — instead of an open question.
+      The default MUST be the result of `AX_DIVERGE_BEFORE_RECOMMEND`, not the first typical answer.
+      Reserve open questions for decisions that are genuinely operator-owned (business goals, risk
+      acceptance, priorities) or where no defensible default exists; open-ended deepening on any
+      topic happens when the operator asks for it.
+    </Axiom>
+
+    <Axiom id="AX_AMPLIFICATION_OPT_IN">
+      Amplifications are opt-in: after triage the agent PROPOSES a set from the catalog, the operator
+      confirms; the default for small tasks is «none active». State an empty proposal explicitly —
+      «усиления не нужны, потому что …» — it is a valid triage outcome, not a silent omission. A
+      confirmed amplification becomes a map topic and its directive loads lazily via
+      `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
+    </Axiom>
+  </BeliefState>
+
+  <TopicCatalog>
+    Base topics — every interview starts with these (map labels in Russian):
+
+    | Topic | Substance |
+    |---|---|
+    | Цель и не-цель | what this scope delivers; what it explicitly refuses to do in this iteration |
+    | Потребители | who consumes the result and what they expect from it |
+    | Слабые места | MANDATORY: holes, contradictions, unstated expectations of the intake — name them to the operator, per `AX_OPERATOR_SAFEGUARD` |
+    | Внешние зависимости | what outside this scope must exist / hold for the design to stand |
+
+    scope-type block — append per the caller's scope-type:
+
+    | scope-type | Topics |
+    |---|---|
+    | product | Пользователи (who exactly, how many) · Метрика успеха/провала (both, not only success) · Зачем сейчас (why this, why now) · Worst case (the worst plausible scenario and who pays for it) |
+    | library | Разработчики-потребители (which teams / repos) · DX (how consumption should feel; feeds Golden DX) · Версии (versioning + compatibility promises) |
+    | infrastructure | Окружения (dev / CI / prod parity) · Доставка (how changes reach consumers) |
+    | interface | Стороны контракта (producers and consumers, who owns the schema) · Эволюция (how the contract changes without breaking consumers) |
+
+    The calling step MAY narrow or extend the block for its focus (e.g. scope STEP_3 keeps only
+    what the Requirements Gate still misses); «Слабые места» stays on every map.
+  </TopicCatalog>
+
+  <AmplificationCatalog>
+    Deep-dive modules; each is a separate directive authored elsewhere and loaded lazily
+    (`AX_AMPLIFICATION_OPT_IN`):
+
+    | Amplification | Directive | Triage trigger |
+    |---|---|---|
+    | security | `ai/directives/sdd-v2/amplify-security.directive.xml` | external users, or data crossing a trust boundary |
+    | nfr | `ai/directives/sdd-v2/amplify-nfr.directive.xml` | load / latency / volume significant enough to shape the design |
+    | storage | `ai/directives/sdd-v2/amplify-storage.directive.xml` | state persisted beyond a single run |
+    | observability | `ai/directives/sdd-v2/amplify-observability.directive.xml` | someone must diagnose this in production |
+  </AmplificationCatalog>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `[✗ skip: <причина>]` in the map and proceed |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_INIT_MAP">
+      <Goal>Build and show the coverage map.</Goal>
+      <Action>
+        Assemble the map: base topics + the scope-type block from `TopicCatalog`, narrowed /
+        extended by the calling step's focus. Mark topics the intake already answers `[✔]` — ask
+        only what a decision still needs. Render per `COVERAGE_MAP_FORMAT` with a one-line plan
+        («что осталось закрыть»); proceed straight to triage.
+      </Action>
+    </Step>
+    <Step id="STEP_2_TRIAGE">
+      <Goal>Decide which amplifications this task deserves.</Goal>
+      <Action>
+        One compact block of 3–5 closed questions (yes / no / short pick), mandatory even when the
+        task looks small: external users or external data? load significant? state persisted?
+        must this be diagnosable in production? — plus at most one triage question specific to the
+        intake. From the answers, propose an amplification set per `AmplificationCatalog` with the
+        small-task default «none active» (`AX_AMPLIFICATION_OPT_IN`); operator confirms. Confirmed
+        amplifications become map topics on the «Усиления» line. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_ROUNDS">
+      <Goal>Close the map topic by topic.</Goal>
+      <Action>
+        Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); each round:
+        1. Show the map per `COVERAGE_MAP_FORMAT`, pick 1–2 open topics, mark them `[▶]`.
+        2. Ask the round as ONE grouped call: `AskUserQuestion` / `MultiAsk` with concrete options
+           + «Other» when the tool is available; otherwise `QUESTION_FORMAT` (`Q<N>`).
+        3. Shape each question per `AX_DEFAULTS_FIRST` — a concrete default to confirm or correct;
+           stakes gate the presentation per `AX_DIALOGUE_DISCIPLINE`.
+        4. After each answer, update the map and pull the thread per `AX_COVERAGE_MAP_CLOSURE`
+           (new hole → new / reopened topic).
+        5. An amplification topic opens → `READ_AND_USE_DIRECTIVE` its directive from
+           `AmplificationCatalog` and run its questions as this round.
+        A skip request on a high-stakes topic → `H_HIGH_STAKES_SKIP`.
+      </Action>
+    </Step>
+    <Step id="STEP_4_CLOSE">
+      <Goal>Verify closure and return to the caller.</Goal>
+      <Action>
+        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `[✔]` or `[✗ skip: <причина>]` — an open
+        or `[▶]` topic sends the flow back to STEP_3. Show the final map + a compact digest of
+        answers and decisions (Russian), including skips with reasons. Hand the digest to the
+        calling step — it owns the Approval Check, artifact writing, and any Decision Log entries.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    The map per `COVERAGE_MAP_FORMAT` opens every round — it is the operator's progress view, so
+    keep it current and compact (per `AX_NO_PROCESS_NARRATION`, the map replaces narration about
+    what the interview is doing).
+
+    <Contract id="COVERAGE_MAP_FORMAT">
+      Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
+      ≤ 72 columns; statuses: `[✔]` closed · `[▶]` in progress · `[ ]` open · `[✗ skip: <причина>]`.
+
+      Покрытие: Цель/не-цель [✔] · Потребители [▶] · Слабые места [ ] · Зависимости [ ]
+      Усиления:  security [▶] · storage [✗ skip: прототип, данных нет]
+
+      4–6 topics per line; the «Усиления» line appears only when at least one amplification is
+      active or skipped. The map is session state for the dialogue — the calling step decides what
+      from the answers lands in the artifact; the map itself stays out of the spec.
+    </Contract>
+  </ChatOutput>
+</SddInterviewProtocol>

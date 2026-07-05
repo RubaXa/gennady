@@ -15,7 +15,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -39,7 +39,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -109,14 +109,24 @@
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
-      Closed-world drift is the priority check — main pain audit prevents.
+      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec 2 Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
+    </Axiom>
 
-      Comparison:
-      1. Entities from `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory.
-      2. Entities actually present in code (classes, interfaces, exported types/functions with public surface).
-      3. Entities flagged by phase agents in Execution Log as `intro <X> ← <Y>` lines.
+    <Axiom id="AX_RULES_CASCADE_VERIFICATION">
+      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<DependsOn>`**.
 
-      Drift = (entities in code) ∖ (inventory ∪ logged-introductions). Each → `CLOSED_WORLD_DRIFT` (`BLOCKER`).
+      Cascade tiers (sources of truth):
+
+      | Tier | Source |
+      |---|---|
+      | traversed-scopes | Cascade Table in `tasks/<scope>/README.md` traversed-scope rows |
+      | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec 5/4.5 |
+      | module | `tasks/<scope>/README.md` module row + module spec 9 Module Rules Additions |
+      | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
+
+      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<DependsOn>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once at ticket generation per `AX_RULE_ACTIVATION_PLAN`). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
+
+      Plan rows ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
     </Axiom>
 
     <Axiom id="AX_RUNTIME_BACKING_VERIFICATION">
@@ -239,7 +249,7 @@
     <Step id="STEP_1_MECHANICAL">
       <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
       <Action>
-        Run `sdd-check --task <ticket-path>` (and `--all` for an epic) per `AX_MECHANICAL_VIA_SDD_CHECK`
+        Run `sdd-check --task <ticket-path>` (and `--all` for an epic, per `AX_AUDIT_MODES`) per `AX_MECHANICAL_VIA_SDD_CHECK`
         — it reports the deterministic findings: structure / anchors / Task-ID + Status, fabricated-DONE,
         the phase graph, Execution-Log completeness, the task DAG, and tracker↔ticket coherence. Take these
         as given — the tool owns them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
@@ -260,11 +270,19 @@
       <Goal>Add the layer the tool cannot — meaning.</Goal>
       <Action>
         Read the artifacts (per `AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec
-        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`). Judge
+        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`).
+        Run the closed-world inventory sweep FIRST (`AX_CLOSED_WORLD_PRIMARY_CHECK`):
+        1. collect declared entities from `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
+        2. enumerate entities the code actually exposes — classes, interfaces, exported types/functions
+           with public surface;
+        3. collect the `intro <X> ← <Y>` lines phase agents logged in the Execution Log;
+        4. flag every code entity outside inventory ∪ logged-introductions as `CLOSED_WORLD_DRIFT`
+           (`BLOCKER`).
+        Verify each phase's `Rules:` list against what the cascade would derive now, including the
+        transitive `<DependsOn>` closure (`AX_RULES_CASCADE_VERIFICATION`). Then judge
         what is irreducibly semantic: does the implementation satisfy the contract's postconditions /
         invariants in substance; is a `real-runtime` claim actually backed or a stub
-        (`AX_RUNTIME_BACKING_VERIFICATION`); does the implementation's public surface match the
-        closed-world inventory (`AX_CLOSED_WORLD_PRIMARY_CHECK`); capture spec gaps as insights
+        (`AX_RUNTIME_BACKING_VERIFICATION`); capture spec gaps as insights
         (`AX_INSIGHT_BACKFLOW_CAPTURE`). Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
       </Action>
     </Step>

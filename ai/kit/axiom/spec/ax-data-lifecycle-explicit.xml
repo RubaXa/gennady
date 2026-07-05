@@ -1,0 +1,7 @@
+<!-- source: sdd-v2 amplify-storage -->
+<Axiom id="AX_DATA_LIFECYCLE_EXPLICIT">
+  Stored data has a declared lifecycle: how it arrives, how it migrates when the schema evolves
+  (expand → backfill → contract; each step reversible), and when it leaves (retention period,
+  deletion mechanics, legal holds). A spec that adds persistence states all three; «храним вечно»
+  is a decision to record, not a default to inherit silently.
+</Axiom>

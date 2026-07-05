@@ -14,7 +14,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -38,7 +38,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -65,7 +65,7 @@
       like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
     </Axiom>
 
-    <Axiom id="AX_DIALOGUE_DISCIPLINE">
+    <Axiom id="AX_DIALOGUE_DISCIPLINE" cross-cutting="true">
       Move forward unless stopped — gated by confidence and stakes:
       - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
       - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
@@ -75,7 +75,7 @@
       Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_SAFEGUARD">
+    <Axiom id="AX_OPERATOR_SAFEGUARD" cross-cutting="true">
       The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
       - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
       - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
@@ -112,49 +112,23 @@
     </Axiom>
 
     <Axiom id="AX_TASK_RESOLUTION">
-      BEFORE classification, resolve which task owns each affected file.
-
-      For every finding whose location is a `.ts` or `.spec.md` file:
-      1. Read the file's header (first lines before `import` / first `#`).
-      2. Extract `@tasks: <ACR>-<slug>[, ...]` — the task(s) that created / own this file.
-      3. Build map: file → [Task-IDs].
-      4. No `@tasks:` header → still classify the finding (the fix IS adding the header), but note "no task" for the plan.
-
-      Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the Task-ID is in the filename.
-      Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a scope, not a single task. (One document per scope / module — design folded into the spec; no separate `2-design`.)
-      Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` / `specs/3-tasks.md`) — no task, global artifacts.
-
-      This map is used by `AX_FIX_CLASSIFICATION` to route fixes to the correct task.
+      Every fix routes through the task that owns the affected file — ownership is resolved from the
+      artifacts, before classification. `@tasks: <ACR>-<slug>[, ...]` in a file header names the owning
+      task(s). Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the
+      Task-ID is in the filename. Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a
+      scope, not a single task. Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` /
+      `specs/3-tasks.md`) are global artifacts, owned by no task. The resulting file → [Task-IDs] map is
+      what routes fixes per `AX_FIX_CLASSIFICATION`.
     </Axiom>
 
     <Axiom id="AX_FIX_CLASSIFICATION">
-      Three action categories. Use AX_TASK_RESOLUTION map to determine task ownership.
-
-      **A. direct-fix** — file edit, NO task reopen needed. File is NOT a .ts implementation file.
-      Triggers: tracker desync (trackers are global), execution log placeholder (ticket file itself),
-               missing `@file:` / `@consumers:` / `@tasks:` headers on a file that has no other findings.
-      Action: Edit the file directly. Verify the fix.
-
-      **B. spec-update** — spec file edit. May trigger a task reopen if the spec change invalidates existing code.
-      Triggers: missing entity in Entity Inventory, DBC contract gap, Decision Log gap, stale pivot artifact.
-      Action: Edit the spec file. If spec change invalidates code → the owning task (from @tasks: on the code file) becomes Category C.
-
-      **C. task-reopen** — code change OR header fix on a .ts file that belongs to a task.
-      Triggers: ANY finding in a .ts file that has `@tasks:` header → reopen that task.
-               Specific triggers: code bug, missing null guard, logic error, type error,
-               DBC contract violation, missing test, BDD mismatch, RULES_COMPLIANCE_VIOLATION,
-               code review finding in implementation code.
-      Action: For each Task-ID from AX_TASK_RESOLUTION:
-              1. Read the ticket file: `tasks/<scope>/<scope>.task-NN.md`
-              2. Append new Round per AX_REOPEN_FORMAT
-              3. Add phase block(s):
-                 - P1: kind `fix` — Target Files = affected .ts files, fix the issue
-                 - P2: kind `test` — Target Files = corresponding test file, add regression test
-                 **Every code fix MUST have a test phase to prevent regression.**
-              4. Set Status → `[ ] TODO`, increment Reopens
-              5. Sync tracker
-      Multiple findings in the same task → one reopen Round with all fixes grouped into phases.
+      A reported symptom is an entry point, never the class. Every finding MUST be classified BEFORE any
+      edit: bug vs spec-defect, action category (direct-fix / spec-update / task-reopen), the full problem
+      class and the blast radius. Triviality of a fix is confirmed by the blast-radius probe, never by
+      self-assessment. A fix applied without this classification is a symptom patch, not SDD.
     </Axiom>
+
+    <Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes with one shared intent (a mass rename, a parameter added across call sites) MUST be grouped into a single logical task. Per-item entries are noise.</Axiom>
 
     <Axiom id="AX_FINDING_ROUTING">
       Every finding is routed to the artifact that owns the remediation:
@@ -236,6 +210,7 @@
     | `H_NO_INPUT` | Neither findings / bug nor a code change to reconcile |
     | `H_AMBIGUOUS_MODE` | Cannot tell fix from from-code — ask the operator |
     | `H_OPERATOR_REJECT` | Operator rejected the reconcile plan |
+    | `H_TRIVIALITY_UNCONFIRMED` | Fix looks trivial but the probe leaves doubt — ask the operator: short-circuit or full path |
     | `H_VERIFICATION_FAIL` | Gates still fail after the reconcile |
   </HaltConditions>
 
@@ -259,18 +234,45 @@
       <Goal>Probe the spec against the problem — the critical step (`AX_PROBLEM_PROBES_SPEC`).</Goal>
       <Action>
         Dispatch the critic on the affected spec, seeded with the problem, to judge: **bug or spec-defect**
-        (`AX_FIX_CLASSIFICATION` — code violates a right spec, or the spec was wrong); **the class** (where
+        (code violates a right spec, or the spec was wrong); **the class** (where
         else the same class occurs, via `sdd-orient` over the closed-world); **the blast radius** (what
-        else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point.
+        else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point. The probe verdict feeds STEP_2B.
+      </Action>
+    </Step>
+    <Step id="STEP_2B_CLASSIFY">
+      <Goal>Resolve ownership, classify every finding — BEFORE any edit (`AX_FIX_CLASSIFICATION`).</Goal>
+      <Action>
+        Build the ownership map first (`AX_TASK_RESOLUTION`): per finding located in a `.ts` / `.spec.md`
+        file — read the file header (first lines before `import` / first `#`), extract
+        `@tasks: <ACR>-<slug>[, ...]`, build file → [Task-IDs]. Header absent → classify anyway (the fix
+        IS adding the header), note "no task" for the plan.
+
+        Classify each finding into an action category:
+        - **direct-fix** — global / non-code artifact: tracker desync, execution-log placeholder, a
+          missing header with no other findings. Edit the file directly, verify.
+        - **spec-update** — spec gap: missing inventory entity, DbC contract gap, Decision Log gap,
+          stale pivot artifact. Edit the spec; a spec change that invalidates code escalates to task-reopen.
+        - **task-reopen** — ANY finding in a code file carrying `@tasks:`: bug, contract violation,
+          missing test, BDD mismatch, review finding. Reopen the owning task per `AX_REOPEN_FORMAT`;
+          pair every code-fix phase with a `test` phase (regression); multiple findings of one task go
+          into a single reopen Round.
+
+        <LogicSwitch on="fix class — confirmed by the STEP_2 probe, never by self-assessment">
+        - WHEN the class is trivial: a single site, blast radius confirmed empty by the probe, contracts / specs untouched -> patch the code, back-sync the spec (`sdd-sync`), run the light gate (typecheck + tests of the touched files), present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, epic audit + code-review) stays skipped.
+        - WHEN triviality is plausible but the probe leaves doubt -> `H_TRIVIALITY_UNCONFIRMED`
+        - DEFAULT -> STEP_3_PLAN, the full path
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_3_PLAN">
       <Goal>Plan what moves.</Goal>
       <Action>
-        From the probe, decide per item what moves: code → spec (fix the code via execution) or
-        spec → code (`AX_PIVOT_REQUIRES_SUPERSESSION` + cascade downstream) or both; reopen / create the
-        affected tasks (`AX_REOPEN_FORMAT`), including the class siblings; reconcile any new entity via
-        `sdd-orient` (`AX_REUSE_FIRST`). Present the plan (`PLAN_TABLE_FORMAT`).
+        From the probe + STEP_2B categories, decide per item what moves: code → spec (fix the code via
+        execution) or spec → code (`AX_PIVOT_REQUIRES_SUPERSESSION` + cascade downstream) or both;
+        reopen / create the affected tasks (`AX_REOPEN_FORMAT`), including the class siblings; group
+        scattered edits sharing one intent into a single task (`AX_GROUPING_REDUCES_NOISE`) — per-finding
+        tasks are noise; reconcile any new entity via `sdd-orient` (`AX_REUSE_FIRST`). Present the plan
+        (`PLAN_TABLE_FORMAT`).
       </Action>
     </Step>
     <Step id="STEP_4_AGREE">
@@ -280,9 +282,10 @@
     <Step id="STEP_5_APPLY">
       <Goal>Apply the changes.</Goal>
       <Action>
-        Apply spec edits (defect / from-code); reopen / create tasks (`AX_TASK_RESOLUTION` maps each finding
-        to its owning task via `@tasks:`); dispatch the reopened tasks through execute as a BATCH with per-task
-        audit skipped (`AX_DISPATCH_VIA_BATCH`) — one reconcile-level verify runs at STEP_7 instead
+        Apply spec edits (defect / from-code); reopen / create tasks per the STEP_2B ownership map
+        (`AX_TASK_RESOLUTION`); dispatch the reopened tasks through execute as a BATCH with per-task
+        audit skipped (`AX_DISPATCH_VIA_BATCH`; the dispatched workers stay spec-bound per
+        `AX_SPEC_IS_SOLE_SOURCE`) — one reconcile-level verify runs at STEP_7 instead
         (`AX_EXECUTION_ORDER`, `AX_HANDOFF_TYPED`, route per `AX_FINDING_ROUTING`).
       </Action>
     </Step>

@@ -17,7 +17,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -41,7 +41,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -68,21 +68,21 @@
       like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
     </Axiom>
 
-    <Axiom id="AX_NO_PROCESS_NARRATION">
+    <Axiom id="AX_NO_PROCESS_NARRATION" cross-cutting="true">
       The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
       narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
       reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
       line and the log, nowhere else.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
       Everything the operator reads is a normal chat message with live-rendered markdown — headers,
       bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
       plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
       because alignment matters: a small ASCII flow diagram, and on-disk file templates.
     </Axiom>
 
-    <Axiom id="AX_STATELESS_ARTIFACT">
+    <Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
       Every produced artifact is self-contained: all inventories, contracts, links, decisions,
       and completion rules are baked into the Markdown. Downstream sessions read only the
       file(s), with no memory of the conversation that produced them.
@@ -141,7 +141,7 @@
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_RESOLUTION">
-      **Effective rule-set per task = union of 5 tiers; later tier overrides earlier on collision.**
+      **Effective rule-set per task = union of 4 tiers; later tier overrides earlier on collision.**
 
       Tier order (low → high):
       1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
@@ -149,29 +149,17 @@
       3. **module:<name>** — module spec 9 Handoff Module Rules Additions (when modules exist).
       4. **task** — operator-supplied during ticket generation.
 
-      Materialization:
-      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`. Generated from scope graph automatically.
-      - **Per-phase `Rules:` bullet list** inside each ticket's section 3 Phases block: derived by scaffolder per `AX_RULE_ACTIVATION_PLAN` from cascade × THAT PHASE's Target Files + kind. Rules are NOT declared at ticket level — only per phase.
-      - Auditor recomputes effective set per-phase from sources and compares with each phase block.
+      Invariants of the materialized cascade:
+      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`.
+      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's section 3 Phases; a ticket-level rule list is a structure violation.
+      - Auditor recomputes the effective set per-phase from these sources and compares with each phase block.
     </Axiom>
 
     <Axiom id="AX_RULE_ACTIVATION_PLAN">
-      Rules are resolved per phase, not per ticket. For each phase declared in the ticket's section 2 Phases Overview:
-
-      1. Read `ai/directives/knowledge.xml` — the canonical rule registry (`<Rules>` section).
-      2. From the scope's Project-Wide Rules, extract the candidate rule set for this scope.
-      3. For each candidate rule: evaluate its `<Triggers>` and `<SkipWhen>` against THIS PHASE's `Target Files` and phase `kind`. Include the rule only when `<Triggers>` match AND `<SkipWhen>` does not apply. Signal-based only — no hardcoded language/tool knowledge in this directive.
-      4. **Transitive closure via `<DependsOn>`.** For each included rule, open its file and read its `<DependsOn>` section (optional; lists rule-file paths this rule architecturally extends). Add every dependency to the phase's Rules set. Recurse until the set stops growing. Cycles → halt `H_RULES_CYCLE`. Missing dependency file → halt `H_MISSING_RULES`. This produces the explicit, fully-resolved set; phase-subagent does NOT walk `<DependsOn>` at runtime.
-      5. For each rule in the resolved set:
-         - `<File>` → full path to rule file (`ai/directives/<category>/<rule>.xml`); render as Markdown link in the phase's `Rules:` bullet list.
-         - `<RequiresVerification>` → collect aliases for ticket-level Verification table (step 7).
-      6. Write the phase's `Rules:` bullet list with one `[<rule-id>](<rule-file-path>)` per included rule (direct + transitive, all explicit).
-      7. After all phases are processed, collect the union of all `<RequiresVerification>` aliases across all phases of this ticket. Group rules by alias (multiple rules may share `check-command`). Resolve each unique alias from infra-spec Verification Commands.
-         - Alias present in spec → use its invocation.
-         - Alias absent → halt: H_VERIFICATION_COMMAND_MISSING (alias, ticket ID).
-      8. Write ticket section 5 Verification table (ticket-level, single table):
-         | Command | Required by |
-         One row per unique alias. "Required by" = comma-separated rule IDs that declared it. Phase-subagent runs only the rows whose Required-by intersects with its phase's `Rules`.
+      **Rules activate per phase, not per ticket.** `ai/directives/knowledge.xml` (`<Rules>` section) is the canonical rule registry. Invariants of a correctly activated phase:
+      - A rule is active for a phase exactly when its `<Triggers>` match THAT PHASE's `Target Files` + `kind` AND its `<SkipWhen>` does not apply. Signal-based only — the directive carries zero hardcoded language/tool knowledge.
+      - The phase's `Rules:` bullet list is the **explicit, fully-resolved transitive closure** over `<DependsOn>` — one `[<rule-id>](<rule-file-path>)` per rule, direct + transitive; the phase-subagent reads the list as-is and never walks `<DependsOn>` at runtime.
+      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level section 5 Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
     </Axiom>
 
     <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
@@ -208,7 +196,7 @@
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
-      - For every DbC contract in Spec References (Port / Adapter / Value Object / branded type / discriminated union): one `contract`-level typing scenario MUST exist — covers input/output shape, branded-type rejection at boundary, union exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
+      - For every DbC contract in Spec References (Port / Adapter / Value Object): one `contract`-level typing scenario MUST exist — derived from the textual surface (`AX_CONTRACTS_TEXTUAL_AGNOSTIC`): input/output shape, boundary rejection of invalid values, case exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
     </Axiom>
 
     <Axiom id="AX_TICKET_DEDUPLICATION">
@@ -270,7 +258,7 @@
     </Axiom>
 
     <Axiom id="AX_SSOT_TRACEABILITY">
-      **No contract duplication.** Tickets link to spec sections via Markdown anchors. Module spec for contracts/consumers/invariants; scope spec 4 only for cross-cutting constraints.
+      **The spec is the single source for contract content; a ticket carries references, never copies.** Contract text duplicated into a ticket drifts silently from its source and breaks traceability.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
@@ -281,7 +269,7 @@
     </Axiom>
 
     <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
-      Ticket sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers (grammar: `extract-section.sh`). **Anchor names in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — orchestrator (`sdd-execute`) and auditor query them by exact string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Renaming or omitting a templated anchor breaks programmatic dispatch. Each `### P<N>` phase block under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container itself is NOT wrapped — extraction is per-phase.
+      **Section anchor names templated in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — the orchestrator (`sdd-execute`) and the auditor query them by exact string. Renaming or omitting a templated anchor breaks programmatic dispatch and traceability.
     </Axiom>
 
     <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
@@ -294,7 +282,9 @@
     |---|---|
     | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
     | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
+    | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | An in-scope spec lacks a Bootstrap Requirements section (did not pass the scope flow) |
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
@@ -306,18 +296,26 @@
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
         Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
-        module specs. Detect the graph (`AX_SCOPE_GRAPH_DETECTION`) and mode
-        (`AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
+        module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`). Detect the graph
+        (`AX_SCOPE_GRAPH_DETECTION`) and mode
+        (`AX_DIRECTIVE_MODE`, auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
         (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">
       <Goal>Resolve the rules cascade. (auto)</Goal>
       <Action>
-        Read the rule registry. Per scope, take the transitive closure of depends-on edges and collect
-        rule refs (`AX_RULES_CASCADE_RESOLUTION`); every ref must resolve to a file
-        (`AX_RULES_RESOLUTION_HARD_FAIL`, else `H_MISSING_RULE_FILE`). Build per-scope Cascade Tables. No
-        operator stop — mechanical.
+        Read the rule registry — `ai/directives/knowledge.xml`, `<Rules>` section. Per scope, resolve
+        the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
+        1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
+           `depends-on` from the target scope (transitive closure);
+        2. overlay the target-scope tier (scope spec 5 Effective Rules for infra; 4.5 Rules for
+           product/library), then each `module:<name>` tier (module spec 9 Handoff Module Rules
+           Additions), then task-tier rules the operator supplied — later tier wins on collision;
+        3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
+           `H_MISSING_RULE_FILE`);
+        4. build the per-scope Cascade Table (Scope × Categories) destined for `tasks/<scope>/README.md`.
+        No operator stop — mechanical.
       </Action>
     </Step>
     <Step id="STEP_2_DAG">
@@ -335,14 +333,31 @@
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per ticket:
-        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate); per-phase
-        `Rules:` links via `AX_RULE_ACTIVATION_PLAN`; draft BDD with the mandatory `contract`-level
+        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate). Activate
+        rules per phase (`AX_RULE_ACTIVATION_PLAN`):
+        1. candidates = the scope's cascade set from STEP_1;
+        2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
+           whose `<SkipWhen>` does not apply;
+        3. close the set over `<DependsOn>` transitively — open each included rule file, add every
+           dependency, recurse until the set stops growing (cycle → `H_RULES_CYCLE`; missing file →
+           `H_MISSING_RULE_FILE`) — the list ships fully resolved, the phase-subagent never walks
+           `<DependsOn>` at runtime;
+        4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
+           + transitive, all explicit;
+        5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
+           rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
+           `H_VERIFICATION_COMMAND_MISSING`), and write ticket section 5 Verification table — one row
+           per unique alias, Required-by = comma-separated declaring rule IDs.
+        Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
         (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
         clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
         corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
-        reviewed checklist in the ticket Decision Log. Validate every contract has its typing scenario
-        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). No operator stop — automated.
+        reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`). Validate every contract has its typing scenario
+        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
+        `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly
+        (`AX_TICKET_SECTION_NAMES_NORMATIVE`), and contract material is linked by spec anchor with zero
+        copied contract text (`AX_SSOT_TRACEABILITY`). No operator stop — automated.
       </Action>
     </Step>
     <Step id="STEP_4_TEST_PLAN_REVIEW">
@@ -433,7 +448,7 @@
       ```
     </Contract>
 
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
       Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
       read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
       derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the

@@ -1,6 +1,6 @@
 ---
 name: sdd-discover
-description: Start or evolve a scope spec — for any scope-type (infrastructure, contracts, library, product). Creates specs/<scope>/<scope>.spec.md. Use when designing a new scope or refining/pivoting an existing scope's vision, requirements, or architecture. Modes auto-detected: greenfield (no spec), refine (add to existing), pivot (replace decisions).
+description: Start or evolve a scope spec — for any scope-type (infrastructure, interface, library, product). Creates specs/<scope>/<scope>.spec.md. Use when designing a new scope or refining/pivoting an existing scope's vision, requirements, or architecture. Modes auto-detected: greenfield (no spec), refine (add to existing), pivot (replace decisions).
 compatibility: opencode
 ---
 

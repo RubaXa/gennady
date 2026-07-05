@@ -5,9 +5,14 @@
   within the same piece of work; it is NOT carried between unrelated sessions. The kernel reads it on
   entry and updates it after each loaded directive. On the work finishing, it is discarded.
 
+  The `scale:` field carries the operator-confirmed SCALE (`AX_SCALE_PROPORTIONAL_DEPTH`) — the
+  router writes it once at classification; every branch reads it as its depth parameter (interview
+  depth, number of design alternatives, weight of the verification tail).
+
   ```markdown
   # SDD session — <YYYY-MM-DD>
   intent: <classified intent>
+  scale: <product | library | module | function | fix> — operator-confirmed
   working set:
     - <scope / module spec path> — <why touched> — <status>
   journal:

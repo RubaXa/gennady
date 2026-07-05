@@ -1,0 +1,26 @@
+<Contract id="SECURITY_SECTION_FORMAT">
+  Fills a `### Security` subsection inside Requirements & Constraints
+  (`SECTION:REQUIREMENTS_AND_CONSTRAINTS`) of the scope spec:
+
+  ```markdown
+  ### Security
+
+  #### Trust Boundaries
+  | Граница | Кто по ту сторону | Валидация на входе |
+  |---|---|---|
+
+  #### AuthN / AuthZ
+  - **Аутентификация:** [механизм + хранение сессии/токена]
+  - **Авторизация:** [модель (RBAC / ABAC / owner-check) + точка enforcement]
+
+  #### Secrets
+  [Где живут секреты, как попадают в runtime. Per `AX_SECRETS_DISCIPLINE`.]
+
+  #### Data Classification & PII
+  | Данные | Класс | PII | Хранение / маскирование |
+  |---|---|---|---|
+
+  #### Dependencies (SCA)
+  [Делегировано инструменту: какой SCA + канал реакции на findings. В спеке — только решение.]
+  ```
+</Contract>

@@ -1,8 +1,0 @@
-<!-- supersedes AX_AGNOSTICISM per draft sdd-authoring-core A12: contracts on the project's real language -->
-<Axiom id="AX_CONTRACTS_REAL_LANGUAGE">
-  Write signatures and DbC contracts in the project's real language (for us, TypeScript), not in an
-  agnostic pseudo-form. For a single-language project this is deliberate: exact signatures in the spec
-  remove ambiguity for the implementer and let the typing scenario check them directly. This supersedes
-  the former DbC-agnosticism rule. A genuinely cross-language contract still belongs in a `contracts`
-  scope, expressed in its own interface language (schema / proto / IDL), not here.
-</Axiom>

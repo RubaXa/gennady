@@ -1,9 +1,8 @@
-<!-- source: sdd/module-decomposition + discovery (converged) -->
+<!-- source: sdd/module-decomposition + discovery (converged); trimmed to invariant per AUTHORING.md §7 — the Stage A/B mechanics live in the executing step (scope STEP_7_RULE_ACTIVATION) -->
 <Axiom id="AX_RULE_ACTIVATION">
-  **Two stages: pick rules, then walk through axioms. Never activate silently.**
-
-  - **Stage A — Relevance per category.** Shortlist "recommend activate" + "considered, recommend skip", each with one-line rationale scoped to context. Operator agree / expand / contract → list locked; deviations → Decision Log.
-  - **Stage B — Per-rule axiom walk-through (infra/* and architecture/* rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
-
-  **Loading defaults.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`. Activation outcomes recorded in the relevant Decision Log.
+  **Every rule activates through an explicit operator decision — never silently.** The decision is
+  two-staged: Stage A locks the relevance shortlist per category with the operator; Stage B walks
+  the axioms of `architecture/*` and `infra/*` rules for Accept (default) / Adapt / Override. Every
+  deviation from a rule default lands in the Decision Log. `coding/*` / `testing/*` rules stay
+  deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`.
 </Axiom>

@@ -1,5 +1,5 @@
 <!-- source: sdd-opt-v1 AX_OPERATOR_SAFEGUARD, generalized -->
-<Axiom id="AX_OPERATOR_SAFEGUARD">
+<Axiom id="AX_OPERATOR_SAFEGUARD" cross-cutting="true">
   The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
   - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
   - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.

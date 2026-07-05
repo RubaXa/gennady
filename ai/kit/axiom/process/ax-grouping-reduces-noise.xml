@@ -1,0 +1,2 @@
+<!-- source: ai/directives/semantic-change-extractor.directive.xml -->
+<Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes with one shared intent (a mass rename, a parameter added across call sites) MUST be grouped into a single logical task. Per-item entries are noise.</Axiom>

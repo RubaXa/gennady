@@ -60,7 +60,8 @@
       <Goal>Collect the decisions and discussion threads in scope.</Goal>
       <Action>
         Gather every decision (`D-NNN`) and discussion thread across the target artifact set, with its
-        location and the conclusion it reached. Read-only.
+        location and the conclusion it reached. Read-only. Record the conclusions as written in the
+        artifacts (facts) and keep your own reading of them separate per `AX_EVIDENCE_HYGIENE`.
       </Action>
     </Step>
     <Step id="STEP_1_CLUSTER">
@@ -68,22 +69,28 @@
       <Action>
         Cluster entries by topic. Flag a cluster only when entries reached the SAME conclusion (duplicate)
         or a later one replaced an earlier one (supersession). Entries that merely touch the same area but
-        differ in substance are NOT a cluster. No redundancy anywhere → `H_NOTHING_TO_COMPRESS`.
+        differ in substance are NOT a cluster. Per `AX_EVIDENCE_HYGIENE`, sameness read verbatim from the
+        artifacts is a fact; an equivalence inferred from paraphrase is a hypothesis — carry it into
+        STEP_2 marked as such for the operator to confirm. No redundancy anywhere →
+        `H_NOTHING_TO_COMPRESS`.
       </Action>
     </Step>
     <Step id="STEP_2_PROPOSE">
       <Goal>Draft the merge set for approval.</Goal>
       <Action>
         Per flagged cluster, draft one merged current statement that keeps every unique rationale, names
-        which IDs collapse into which survivor, and marks the superseded ones. Present the full merge set
+        which IDs collapse into which survivor, and marks the superseded ones. The survivor stays a
+        complete Decision Log entry per `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`: stable
+        D-NNN, Why in the operator's wording, Risk, Rejected alternatives). Present the full merge set
         (before → after) + Approval Check. `H_OPERATOR_REJECTS_MERGE` on decline. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_APPLY">
       <Goal>Apply the approved merges and repoint references.</Goal>
       <Action>
-        Rewrite the surviving entries, mark superseded ones, and repoint every reference to a collapsed
-        `D-NNN` (specs AND code) to the survivor. Nothing dangling.
+        Rewrite the surviving entries; mark superseded ones per `AX_PIVOT_REQUIRES_SUPERSESSION`
+        (`status: superseded` on the old entry, the survivor names what it supersedes). Repoint every
+        reference to a collapsed `D-NNN` (specs AND code) to the survivor. Nothing dangling.
       </Action>
     </Step>
     <Step id="STEP_4_VERIFY">

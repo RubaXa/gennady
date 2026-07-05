@@ -1,5 +1,5 @@
 <!-- source: sdd-opt-v1 NO_PROCESS_NARRATION -->
-<Axiom id="AX_NO_PROCESS_NARRATION">
+<Axiom id="AX_NO_PROCESS_NARRATION" cross-cutting="true">
   The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
   narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
   reading, and step transitions happen silently. Mode / scope / confidence live in the dim service

@@ -8,5 +8,5 @@
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
-      - For every DbC contract in Spec References (Port / Adapter / Value Object / branded type / discriminated union): one `contract`-level typing scenario MUST exist — covers input/output shape, branded-type rejection at boundary, union exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
+      - For every DbC contract in Spec References (Port / Adapter / Value Object): one `contract`-level typing scenario MUST exist — derived from the textual surface (`AX_CONTRACTS_TEXTUAL_AGNOSTIC`): input/output shape, boundary rejection of invalid values, case exhaustiveness. `Deferred Test Ownership` not allowed for typing scenarios — they ship with the types.
     </Axiom>

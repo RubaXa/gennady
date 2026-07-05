@@ -1,0 +1,11 @@
+<!-- reinstates v1 DbC-agnosticism (ex AX_AGNOSTICISM), supersedes AX_CONTRACTS_REAL_LANGUAGE (real-language signatures) per operator decision -->
+<Axiom id="AX_CONTRACTS_TEXTUAL_AGNOSTIC">
+  DbC contracts are textual and language-agnostic. Write preconditions / postconditions /
+  invariants and public operations as plain intent-level statements in the shared vocabulary
+  (Port, Adapter, Entity, Command, Query, Event) — one testable statement per line, readable,
+  free of syntax noise. Concrete signatures and types belong to the execution phase: the coding
+  rules turn the contract into the project's language there. The single exception: Golden DX /
+  usage examples are written in the project's target language — they show consumption, the
+  contract stays textual. A genuinely cross-language contract belongs in an `interface` scope,
+  expressed in its own interface language (schema / proto / IDL), not here.
+</Axiom>

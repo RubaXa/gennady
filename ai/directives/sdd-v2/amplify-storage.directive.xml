@@ -1,0 +1,95 @@
+<SddAmplifyStorage keywords="storage, amplify, schema, indexes, access-patterns, migrations, retention, persistence, sdd-amplify-storage" type="directive" ver="2.0">
+  <Mission>
+    Deepen the storage model of a scope spec under discovery: schema shape, indexes, access
+    patterns, data migrations, retention. Loaded lazily by the discovery interview's triage —
+    ONLY for scopes with persistence; inherits the session core — not repeated here.
+
+    Input — the scope spec draft + interview context. Output — a `Storage Model` subsection
+    inside the Architecture section of the scope spec + follow-up items on the discovery
+    interview map. Out of scope: picking the database engine when the spec already locked it
+    (that is a pivot), DDL-level detail — the spec records the model, tickets carry the DDL.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
+    <Axiom id="AX_AMPLIFY_DEFAULTS_FIRST">
+      An amplification opens with a ready answer, not a questionnaire. FIRST assemble a complete
+      defaults package — the decisions live products of this class actually ship with (run a short
+      targeted research pass when class practice is uncertain, grounded in the scope's intent) — and
+      present it as ONE accept-or-edit reply: the operator takes everything with one word or edits by
+      item number. Ask via the AskUserQuestion / multi-question tool when available; fallback
+      `QUESTION_FORMAT`. Deep-dive questions open only for topics the operator explicitly marks
+      deep-dive; every untouched topic keeps its default. An accepted default is a real decision —
+      record it like one.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-trivial decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT`
+      (D-NNN, Status, Recorded, Why in the operator's wording, Risk accepted, Rejected
+      alternatives; IDs are stable). Which decisions qualify and which Decision Log receives
+      the entry are specified per directive.
+    </Axiom>
+
+    <Axiom id="AX_ACCESS_PATTERNS_DRIVE_SCHEMA">
+      Schema and indexes derive from named access patterns, in that order: list the queries the
+      product actually runs (read/write mix, cardinality, hot paths) FIRST, then shape tables /
+      collections and indexes to serve them. An index with no named query behind it is dead weight;
+      a hot query with no index plan is a latent incident.
+    </Axiom>
+
+    <Axiom id="AX_DATA_LIFECYCLE_EXPLICIT">
+      Stored data has a declared lifecycle: how it arrives, how it migrates when the schema evolves
+      (expand → backfill → contract; each step reversible), and when it leaves (retention period,
+      deletion mechanics, legal holds). A spec that adds persistence states all three; «храним вечно»
+      is a decision to record, not a default to inherit silently.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_PERSISTENCE` | Triage misfired: the scope stores nothing durable — report and return control |
+    | `H_OPERATOR_REJECTS_DEFAULTS` | Operator declines the whole defaults package and skips deep-dive — leave the spec untouched |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_PROPOSE_DEFAULTS">
+      <Goal>Assemble the storage defaults package for this product class.</Goal>
+      <Action>
+        From the spec draft, list the data the scope persists and — FIRST, per
+        `AX_ACCESS_PATTERNS_DRIVE_SCHEMA` — the named access patterns (queries, read/write mix,
+        cardinality, hot paths). No durable data → `H_NO_PERSISTENCE`. Per
+        `AX_AMPLIFY_DEFAULTS_FIRST`, draft one default decision per topic: schema shape serving
+        those patterns, index plan (one named query behind every index), migration policy (expand →
+        backfill → contract per `AX_DATA_LIFECYCLE_EXPLICIT`), retention per data class — grounded
+        in what live products of this class ship; short targeted research when class practice is
+        uncertain.
+      </Action>
+    </Step>
+    <Step id="STEP_1_AGREE">
+      <Goal>One accept-or-edit gate; deep-dive only on explicit pick.</Goal>
+      <Action>
+        Present the package as ONE reply per `AX_AMPLIFY_DEFAULTS_FIRST` (AskUserQuestion when
+        available, else `QUESTION_FORMAT`); each topic accept / edit / deep-dive. Deep-dive topic
+        map: access patterns → schema → indexes → migrations → retention. Untouched topics keep
+        their defaults. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_APPLY">
+      <Goal>Write the agreed storage model into the spec.</Goal>
+      <Action>
+        Write a `### Storage Model` subsection into the Architecture section of the scope spec:
+        **Access Patterns** (table `| Запрос | Частота | Read/Write | Hot? |`) → **Schema**
+        (entity sketch, intent-level) → **Indexes** (`| Индекс | Обслуживает запрос |`) →
+        **Migrations** (policy) → **Retention** (`| Данные | Срок | Механика удаления |`).
+        Non-default picks and notable accepted defaults → Decision Log per
+        `AX_DECISION_LOG_REQUIRED`. Unresolved topics → items on the discovery interview map.
+        Return control to the interview.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🗄️ AMP_STO · topics=<n> · accepted=<n> · edited=<n> · dive=<n>`.
+  </ChatOutput>
+</SddAmplifyStorage>

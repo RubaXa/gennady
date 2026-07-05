@@ -13,7 +13,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -37,7 +37,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -108,6 +108,10 @@
       Rules from sibling phases are NOT this phase's concern. Do not pre-load them. Read failure on a cited rule → `H_RULE_FILE_MISSING`.
     </Axiom>
 
+    <Axiom id="AX_CLOSED_WORLD_INVENTORY">
+      Entity inventory is a closed world. For every module the agent lists ALL entities explicitly. Phrases like «и т.д.», «etc.», «and similar» are forbidden. Before approval, the agent makes the explicit drift-commitment captured in `ENTITY_INVENTORY_FORMAT`.
+    </Axiom>
+
     <Axiom id="AX_INTRODUCED_DISCIPLINE">
       Every entity introduced beyond the module Entity Inventory MUST be logged: `<ts> intro <EntityName> ← <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `intro` line, the entity is closed-world drift and audit blocks the task. Mechanically enforced by `InventorySyncCheck` (`gennady lint --spec=<module-spec>`): an exported entity absent from the inventory surfaces as `ERR_CLI_LINT_INVENTORY_UNDECLARED` — resolve by removing it or by backflowing it into the spec inventory (carrying the `intro` reason).
     </Axiom>
@@ -131,18 +135,11 @@
     </Axiom>
 
     <Axiom id="AX_THIRD_PARTY_TOOL_CURRENT_API">
-      Triggers when phase kind = `config`. Before writing any third-party tool config, verify CURRENT API of the actually-installed version.
-
-      Protocol:
-      1. Get installed version: read `<modules-dir>/<pkg>/package.json` field `version`.
-      2. Read local CHANGELOG (recent major + previous): look for `BREAKING`, `deprecated`, `removed`, `migration`.
-      3. Read local README for current-version config syntax.
-      4. Local docs minimal → WebFetch homepage from `package.json#homepage`/`repository.url`.
-      5. Network blocked AND local docs insufficient → `H_THIRD_PARTY_API_UNVERIFIABLE`. Never guess; never apply training-default silently.
-      6. Apply current-version API.
-      7. Log: `<ts> verified <tool>@<version> <one-line summary>`.
-
-      Audit (`audit` rules-compliance step) checks: every config artifact in this phase MUST have a corresponding `verified` log entry. Absence → `RULES_COMPLIANCE_VIOLATION` tagged `stale-tool-api-not-verified`.
+      Third-party tool config targets the CURRENT API of the actually-installed version — verified against
+      the installed package and its local docs, never assumed from training data. Every config artifact
+      MUST be backed by a `verified <tool>@<version>` log entry; audit (`audit` rules-compliance step)
+      flags a config artifact without one as `RULES_COMPLIANCE_VIOLATION` tagged
+      `stale-tool-api-not-verified`.
     </Axiom>
 
     <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
@@ -221,6 +218,7 @@
     | `H_MISSING_RULE_FILE` | A rule cited in the phase Rules list does not resolve |
     | `H_INPUT_HANDOFF_MISSING` | A phase Input cites a prior phase whose Handoff is absent in the current Round |
     | `H_OUT_OF_PHASE_WRITE` | A write is required outside Target Files or outside `AX_TICKET_WRITE_SCOPE` |
+    | `H_THIRD_PARTY_API_UNVERIFIABLE` | `config` kind: network blocked AND local docs insufficient to verify a tool's current API |
     | `H_VERIFICATION_FAIL` | The verification gate fails after fix attempts (or tooling is missing) |
     | `H_BLOCKED` | Generic blocker per `AX_BLOCKER_ESCALATION` |
   </HaltConditions>
@@ -261,19 +259,34 @@
         anchor that fails to resolve → `H_MISSING_RULE_FILE`. Skip the `rules` log line — the manifest declares them.
       </Action>
     </Step>
+    <Step id="STEP_3B_TOOL_API">
+      <Goal>`config` kind only: verify the CURRENT API of every third-party tool this phase configures (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Any other kind skips this step.</Goal>
+      <Action>
+        Per tool, BEFORE writing any config:
+        1. Installed version: read `<modules-dir>/<pkg>/package.json` field `version`.
+        2. Local CHANGELOG (recent major + previous): look for `BREAKING`, `deprecated`, `removed`, `migration`.
+        3. Local README: current-version config syntax.
+        4. Local docs minimal → WebFetch homepage from `package.json#homepage` / `repository.url`.
+        5. Network blocked AND local docs insufficient → `H_THIRD_PARTY_API_UNVERIFIABLE` — halt rather
+           than guess or apply a training-default silently.
+        Then log: `<ts> verified <tool>@<version> <one-line summary>` — audit requires this entry per
+        config artifact.
+      </Action>
+    </Step>
     <Step id="STEP_4_EXECUTE">
       <Goal>Produce the artifacts the phase Objective demands, within Target Files.</Goal>
       <Action>
         Apply rules continuously; respect `AX_PHASE_SCOPE_LOCK`, `AX_FILE_HEADER_APPEND_ONLY`,
-        `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind honors
-        `AX_THIRD_PARTY_TOOL_CURRENT_API` before writing config. Append event lines per `AX_LIVE_LOG`; a
+        `AX_INTRODUCED_DISCIPLINE`. `test` kind honors `AX_BDD_NAME_DISCIPLINE`; `config` kind applies
+        the current-version API verified at STEP_3B (`AX_THIRD_PARTY_TOOL_CURRENT_API`). Append event
+        lines per `AX_LIVE_LOG`; a
         spec gap goes to an `insight` line and leaves the spec untouched (`AX_SPEC_NEVER_EDITED`).
       </Action>
     </Step>
     <Step id="STEP_5_VERIFY">
       <Goal>Run the verification gate, then the ticket §5 commands. Log only final results.</Goal>
       <Action>
-        Run `sdd-verify --profile <by kind>` (the deterministic gate, exact `npm run` scripts, mutating
+        Run `sdd-verify --profile <by kind>` (commands stay within `AX_PERMITTED_BASH_COMMANDS`; the deterministic gate, exact `npm run` scripts, mutating
         first, run-all, brief on pass, details on fail). Profile by phase kind: `impl` / `refactor` /
         `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck — a code phase skips tests);
         `test` → `test` (format · typecheck · test:coverage); a `fix` phase takes the profile of
@@ -283,19 +296,22 @@
         (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift
         (`AX_CLOSED_WORLD_INVENTORY`): remove it, or — if genuinely needed — log an `intro <name> ← <reason>`
         line (`AX_INTRODUCED_DISCIPLINE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
-        line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error`.
+        line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
         exactly as written. **Error ownership:** this session MUST fix every failure the gate surfaces —
         edited or not, in scope or not, pre-existing or not. Treat each as an error still to fix. Fix all,
         re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
-        breaks the phase contract → `H_BLOCKED`; missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST
+        breaks the phase contract → `H_BLOCKED` (surfaced as PAUSED awaiting the operator, not as failure —
+        `AX_HALT_VS_FAIL_DISTINCTION`; the `🛑 BLOCKED` log line opens the resolution trail the
+        orchestrator checks, `AX_BLOCKER_RESOLUTION_TRAIL`); missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST
         reflect a command actually run verbatim; logging one otherwise is fabricated verification (audit BLOCKER).
       </Action>
     </Step>
     <Step id="STEP_6_EMIT_HANDOFF">
       <Goal>Close the phase block with a typed Handoff and DONE.</Goal>
       <Action>
-        Append `<ts> DONE`; append the `**Handoff →**` line per `HANDOFF_FORMAT`; flip this phase's Status
+        Append `<ts> DONE`; append the `**Handoff →**` line per `HANDOFF_FORMAT` (typed payload,
+        `AX_HANDOFF_TYPED`); flip this phase's Status
         in Phases Overview `[ ]` → `[x]`; return the structured summary per `RETURN_SUMMARY_FORMAT` to the
         orchestrator.
       </Action>

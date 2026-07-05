@@ -12,7 +12,7 @@
 
       <!--SECTION:MODULE_USAGE_EXAMPLE-->
       ## 2. Module Usage Example
-      [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
+      [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per `AX_CONTRACTS_TEXTUAL_AGNOSTIC`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
       <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
       <!--SECTION:ENTITY_INVENTORY-->

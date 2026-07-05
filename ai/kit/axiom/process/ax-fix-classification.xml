@@ -1,29 +1,7 @@
 <!-- source: ai/directives/sdd/fix.directive.xml -->
 <Axiom id="AX_FIX_CLASSIFICATION">
-      Three action categories. Use AX_TASK_RESOLUTION map to determine task ownership.
-
-      **A. direct-fix** — file edit, NO task reopen needed. File is NOT a .ts implementation file.
-      Triggers: tracker desync (trackers are global), execution log placeholder (ticket file itself),
-               missing `@file:` / `@consumers:` / `@tasks:` headers on a file that has no other findings.
-      Action: Edit the file directly. Verify the fix.
-
-      **B. spec-update** — spec file edit. May trigger a task reopen if the spec change invalidates existing code.
-      Triggers: missing entity in Entity Inventory, DBC contract gap, Decision Log gap, stale pivot artifact.
-      Action: Edit the spec file. If spec change invalidates code → the owning task (from @tasks: on the code file) becomes Category C.
-
-      **C. task-reopen** — code change OR header fix on a .ts file that belongs to a task.
-      Triggers: ANY finding in a .ts file that has `@tasks:` header → reopen that task.
-               Specific triggers: code bug, missing null guard, logic error, type error,
-               DBC contract violation, missing test, BDD mismatch, RULES_COMPLIANCE_VIOLATION,
-               code review finding in implementation code.
-      Action: For each Task-ID from AX_TASK_RESOLUTION:
-              1. Read the ticket file: `tasks/<scope>/<scope>.task-NN.md`
-              2. Append new Round per AX_REOPEN_FORMAT
-              3. Add phase block(s):
-                 - P1: kind `fix` — Target Files = affected .ts files, fix the issue
-                 - P2: kind `test` — Target Files = corresponding test file, add regression test
-                 **Every code fix MUST have a test phase to prevent regression.**
-              4. Set Status → `[ ] TODO`, increment Reopens
-              5. Sync tracker
-      Multiple findings in the same task → one reopen Round with all fixes grouped into phases.
-    </Axiom>
+  A reported symptom is an entry point, never the class. Every finding MUST be classified BEFORE any
+  edit: bug vs spec-defect, action category (direct-fix / spec-update / task-reopen), the full problem
+  class and the blast radius. Triviality of a fix is confirmed by the blast-radius probe, never by
+  self-assessment. A fix applied without this classification is a symptom patch, not SDD.
+</Axiom>

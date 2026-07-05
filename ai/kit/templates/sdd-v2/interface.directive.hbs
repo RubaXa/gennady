@@ -15,7 +15,7 @@
     interface scope.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/scaffold/ax-directive-mode"}}
 
     {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
@@ -60,7 +60,7 @@
       <Goal>Resolve scope name and mode.</Goal>
       <Action>
         State from the router gives the portal + scope-type (interface). Resolve the scope name; stat
-        the spec → `greenfield` or mode per `AX_MODE_AUTO_DETECT_OR_HALT`.
+        the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`.
       </Action>
     </Step>
     <Step id="STEP_1_CONFIRM">
@@ -71,14 +71,20 @@
       <Goal>Declare the interface.</Goal>
       <Action>
         Per `AX_INTERFACE_FLOW`: schema format (OpenAPI / gRPC proto / JSON Schema / GraphQL),
-        versioning scheme (semver / date-based / none), namespacing. Interview per
-        `AX_OPERATOR_SAFEGUARD` — this is the substance, not chatter. Approval Check. STOP.
+        versioning scheme (semver / date-based / none), namespacing — Facts / Assumptions /
+        Hypotheses separated per `AX_EVIDENCE_HYGIENE`. Then run the operator interview —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
+        scope-type `interface` (selects the TopicCatalog block) and the confirmed `scale:` from
+        the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the
+        triage minimum; `product` → the full scope-type block. The interview IS the substance of
+        the step. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_VERSIONING_POLICY">
       <Goal>Lock the versioning policy.</Goal>
       <Action>
-        Versioning scheme + breaking-change protocol + consumer-notification rule. A breaking change
+        Versioning scheme + breaking-change protocol + consumer-notification rule — each locked choice
+        recorded as a Decision Log entry (`AX_DECISION_LOG_REQUIRED`). A breaking change
         without a protocol → `H_BREAKING_CHANGE_NO_PROTOCOL`. STOP.
       </Action>
     </Step>
@@ -93,7 +99,8 @@
       <Goal>Materialize Bootstrap Requirements.</Goal>
       <Action>
         Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
-        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`); resolve with the operator;
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
+        design stays sourced from specs); resolve with the operator;
         materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
         else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
       </Action>
@@ -102,9 +109,10 @@
       <Goal>Emit the interface spec.</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")` and
-        assemble `specs/<scope>/<scope>.spec.md` to it. In `pivot` mode also
+        assemble `specs/<scope>/<scope>.spec.md` to it. In `refine` mode update sections in place per
+        `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (interface scopes have no modules).
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (interface scopes have no modules).
         Approval Check. STOP.
       </Action>
     </Step>

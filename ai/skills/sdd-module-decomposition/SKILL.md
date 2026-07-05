@@ -4,7 +4,7 @@ description: Decompose a product or library scope into module specs with closed-
 compatibility: opencode
 ---
 
-1. **Extract intent.** Operator wants to decompose scope `<name>` into modules. Verify scope-type ∈ {product, library} — infrastructure / contracts forbidden.
+1. **Extract intent.** Operator wants to decompose scope `<name>` into modules. Verify scope-type ∈ {product, library} — infrastructure / interface forbidden.
 
 2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/module-decomposition.directive.xml`
    Announce: `🔒 DIRECTIVE ACTIVATED: SddModuleDecomposition`

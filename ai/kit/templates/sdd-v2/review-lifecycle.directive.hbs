@@ -36,7 +36,7 @@
       <Action>
         Verify the working tree carries ONLY this spec change (`git status`; else `H_DIRTY_TREE_NOT_THIS_CHANGE`).
         Commit the review-state spec on the working branch (`git add <spec>` → `git commit`), `git push`, open the
-        MR/PR (`gh pr create`) and capture its link. Present the MR link to the operator — the diff reads as a PR
+        MR/PR (`gh pr create`) and capture its link — all via bash within `AX_PERMITTED_BASH_COMMANDS`. Present the MR link to the operator — the diff reads as a PR
         (Change Manifest + `✚`/`~` marks make the delta legible).
       </Action>
     </Step>

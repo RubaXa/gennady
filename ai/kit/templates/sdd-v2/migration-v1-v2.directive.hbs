@@ -74,7 +74,8 @@
       <Goal>Show the operator the whole migration before touching anything.</Goal>
       <Action>
         Build and present the plan, in plain Russian (`AX_OPERATOR_LANGUAGE`), across as many messages as
-        it needs to be clear:
+        it needs to be clear — keep the scanned facts (STEP_0 tool output) visibly separate from drafted
+        proposals like the ID map (`AX_EVIDENCE_HYGIENE`):
         - **Current → target:** v1 (`tasks/`, bare `## N.`, `TSK-NN`, operator-prose) → v2 (co-located
           `specs/`, anchored sections, `<ACR>-<slug>` IDs, compressed decisions, flat-Russian).
         - **Passes:** how many iterations the run will take.
@@ -84,7 +85,8 @@
         - **Decision compression:** which `D-NNN` / discussion threads converged and will be merged.
         - **Files touched:** specs, tickets, AND code (ID/decision references), with a count.
         - **Optimizations:** what gets collapsed / simplified beyond a 1:1 copy.
-        Then an acknowledgement check — the operator confirms «ознакомился» or adds a custom instruction
+        Then an acknowledgement check (`AX_OPERATOR_AGREEMENT` — nothing is written before an explicit
+        go-ahead) — the operator confirms «ознакомился» or adds a custom instruction
         (a scope to skip, a naming preference, a decision to keep). `H_OPERATOR_REJECTS_PLAN` on decline. STOP.
       </Action>
     </Step>

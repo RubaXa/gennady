@@ -1,3 +1,3 @@
 <Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
-Ticket sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers (grammar: `extract-section.sh`). **Anchor names in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — orchestrator (`sdd-execute`) and auditor query them by exact string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Renaming or omitting a templated anchor breaks programmatic dispatch. Each `### P<N>` phase block under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container itself is NOT wrapped — extraction is per-phase.
+**Section anchor names templated in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — the orchestrator (`sdd-execute`) and the auditor query them by exact string. Renaming or omitting a templated anchor breaks programmatic dispatch and traceability.
 </Axiom>

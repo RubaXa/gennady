@@ -18,7 +18,7 @@
     bundler, ci, monorepo-tool, docs.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     <Axiom id="AX_DIRECTIVE_MODE">
       Each directive runs in one of several modes, auto-detected from operator intake. Mode controls
       step branching and which axioms apply. The concrete mode set is directive-specific
@@ -102,12 +102,11 @@
     </Axiom>
 
     <Axiom id="AX_RULE_ACTIVATION">
-      **Two stages: pick rules, then walk through axioms. Never activate silently.**
-
-      - **Stage A — Relevance per category.** Shortlist "recommend activate" + "considered, recommend skip", each with one-line rationale scoped to context. Operator agree / expand / contract → list locked; deviations → Decision Log.
-      - **Stage B — Per-rule axiom walk-through (infra/* and architecture/* rules only).** Read only `Mission`, `Belief_State`, `Reward_Criteria` of the rule file. Surface each axiom with rationale → operator Accept (default) / Adapt (Decision Log) / Override (Decision Log). No badgering on uncontroversial axioms.
-
-      **Loading defaults.** `architecture/*`, `infra/*` → walk through now (Stage B). `coding/*`, `testing/*` → deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`. Activation outcomes recorded in the relevant Decision Log.
+      **Every rule activates through an explicit operator decision — never silently.** The decision is
+      two-staged: Stage A locks the relevance shortlist per category with the operator; Stage B walks
+      the axioms of `architecture/*` and `infra/*` rules for Accept (default) / Adapt / Override. Every
+      deviation from a rule default lands in the Decision Log. `coding/*` / `testing/*` rules stay
+      deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`.
     </Axiom>
 
     <Axiom id="AX_CROSS_SCOPE_DEPENDENCIES">
@@ -153,7 +152,8 @@
       <Goal>Resolve scope name and mode.</Goal>
       <Action>
         State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
-        stat the spec → `greenfield` or mode per `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry
+        stat the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` /
+        `AX_MODE_AUTO_DETECT_OR_HALT`. Read the rule registry
         (per `AX_SCOPE_RULES_DECLARATION`) — it maps tools to rule files.
       </Action>
     </Step>
@@ -164,9 +164,15 @@
     <Step id="STEP_2_TOOL_CATEGORIES">
       <Goal>Declare the tool categories.</Goal>
       <Action>
-        Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`. Mandatory categories
+        Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`, Facts / Assumptions / Hypotheses
+        separated per `AX_EVIDENCE_HYGIENE`. Mandatory categories
         (vcs / package-management / git-hooks) cannot be dropped (`H_MANDATORY_CATEGORY_DROPPED`).
-        Interview per `AX_OPERATOR_SAFEGUARD` — this is the substance, not chatter. Approval Check. STOP.
+        Then run the operator interview —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
+        scope-type `infrastructure` (selects the TopicCatalog block) and the confirmed `scale:`
+        from the session file: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics +
+        the triage minimum; `product` → the full scope-type block. The interview IS the substance
+        of the step. Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_TOOL_CHOICES">
@@ -186,16 +192,23 @@
     <Step id="STEP_5_FILE_STRUCTURE_AND_RULES">
       <Goal>Lock file layout, Effective Rules, Verification Commands.</Goal>
       <Action>
-        Repo root layout + config-file mapping. Effective Rules: look up each chosen tool in the rule
-        registry per `AX_SCOPE_RULES_DECLARATION` / `AX_RULE_ACTIVATION`, record matched rule file
-        paths. Verification Commands table — one row per active tool command. STOP.
+        Repo root layout + config-file mapping. Effective Rules — activate per `AX_RULE_ACTIVATION`:
+        look up each chosen tool in the rule registry per `AX_SCOPE_RULES_DECLARATION`; Stage A —
+        shortlist «recommend activate» + «considered, recommend skip» with one-line rationales,
+        operator locks the list; Stage B — for `infra/*` rules on the locked list read only
+        `Mission`, `Belief_State`, `Reward_Criteria` and walk the axioms: operator Accept (default) /
+        Adapt / Override, the latter two → Decision Log. Record matched rule file paths
+        (unresolvable reference → `H_MISSING_RULE_FILE`). Verification Commands table — one row per
+        active tool command. STOP.
       </Action>
     </Step>
     <Step id="STEP_6_EXTERNAL_DEPENDENCIES_AUDIT">
       <Goal>Materialize Bootstrap Requirements.</Goal>
       <Action>
         Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
-        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ`); resolve with the operator;
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
+        design stays sourced from specs); resolve with the operator; record confirmed cross-scope
+        assumptions as `depends-on` edges per `AX_CROSS_SCOPE_DEPENDENCIES`;
         materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
         else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
       </Action>
@@ -204,9 +217,10 @@
       <Goal>Emit the infrastructure spec.</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")` and
-        assemble `specs/<scope>/<scope>.spec.md` to it. In `pivot` mode also
+        assemble `specs/<scope>/<scope>.spec.md` to it. In `refine` mode update sections in place per
+        `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
-        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (infra scopes have no modules).
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (infra scopes have no modules).
         Approval Check. STOP.
       </Action>
     </Step>
@@ -272,7 +286,7 @@
       ```
     </Contract>
 
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
       Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
       read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
       derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the

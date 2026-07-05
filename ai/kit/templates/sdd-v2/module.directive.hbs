@@ -18,7 +18,7 @@
     Service, not a Port.
   </Mission>
 
-  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT">
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
     {{> "axiom/scaffold/ax-directive-mode"}}
 
     {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
@@ -53,7 +53,7 @@
 
     {{> "axiom/spec/ax-context-to-contract"}}
 
-    {{> "axiom/spec/ax-contracts-real-language"}}
+    {{> "axiom/spec/ax-contracts-textual-agnostic"}}
 
     {{> "axiom/spec/ax-runtime-backing-in-contracts"}}
 
@@ -87,7 +87,7 @@
     | `H_AMBIGUOUS_MODE` | Module specs exist + mode verb absent + no Pivot Invalidation List |
     | `H_LOW_CONFIDENCE` | Confidence LOW at decomposition lock or final hierarchy |
     | `H_INVENTORY_NOT_APPROVED` | Entered the surface step without all-module inventories approved |
-    | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes a public entity / weakens a postcondition without a Decision Log entry |
+    | `H_REFINE_BREAKING_CHANGE_NO_LOG` | `refine-module` removes a public entity / weakens a postcondition without a Decision Log entry (`AX_DECISION_LOG_REQUIRED`) |
     | `H_REFINE_BREAKING_NO_IMPACT_LIST` | breaking `refine-module` without a Pivot Invalidation List enumerating consumer modules (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`) |
     | `H_MISSING_RULE_FILE` | A module rule reference does not resolve to an existing file (and not `deferred`) |
     | `H_OPERATOR_REJECT` | Operator refused decomposition, inventory, surface, contract, structure, or final hierarchy |
@@ -100,7 +100,8 @@
         Read `specs/<scope>/<scope>.spec.md` (sole source per `AX_SPEC_IS_SOLE_SOURCE`). Missing →
         `H_SCOPE_SPEC_MISSING`; incomplete → `H_INCOMPLETE_SCOPE_SPEC`. scope-type must be
         product / library (`AX_SCOPE_TYPE_GATE`, else `H_INVALID_SCOPE_TYPE`). Mode per
-        `AX_MODE_AUTO_DETECT_OR_HALT` (initial / add-module / refine-module). On `add-module` /
+        `AX_MODE_AUTO_DETECT_OR_HALT` — initial / add-module / refine-module; the mode picked here
+        controls step branching downstream (`AX_DIRECTIVE_MODE`). On `add-module` /
         `refine-module`, run `sdd-check --all specs/<scope>` first — an over-budget module
         (`SDD_MODULE_OVERSIZED` → decompose, `SDD_MODULE_SPEC_VERBOSE` → compress) is surfaced to the
         operator BEFORE new work, per `AX_HIERARCHICAL_SPECS`.
@@ -122,8 +123,14 @@
       <Goal>Closed-world inventory per module.</Goal>
       <Action>
         List every entity of the module — the complete world (`AX_CLOSED_WORLD_INVENTORY`); anything an
-        execution agent adds beyond it is drift. Interview per `AX_OPERATOR_SAFEGUARD` (find the
-        missing entity, the unowned responsibility) — the substance, not chatter.
+        execution agent adds beyond it is drift. Interview the operator via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`, extending
+        its coverage map with the decomposition topics: «Пропущенная сущность» (what the inventory
+        still misses) and «Бесхозная ответственность» (a responsibility no listed entity owns).
+        Size the interview to the confirmed `scale:` from the session file
+        (`AX_SCALE_PROPORTIONAL_DEPTH`). Keep evidence separated per `AX_EVIDENCE_HYGIENE`: entities
+        named by the scope spec are facts; entities inferred during the interview stay hypotheses
+        until the operator confirms them.
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/entity-inventory-format.xml")`. If a
         module's inventory outgrows cohesion (too many entities / unrelated responsibility clusters),
         PROPOSE sub-module decomposition here per `AX_HIERARCHICAL_SPECS` (diverge-before-recommend;
@@ -143,12 +150,21 @@
     <Step id="STEP_4_CONTRACTS_DBC">
       <Goal>DbC contract per entity.</Goal>
       <Action>
-        Preconditions / postconditions / invariants per entity. A Port is introduced ONLY on confirmed
+        Preconditions / postconditions / invariants per entity — written textual and
+        language-agnostic per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` (target-language code appears only in
+        usage examples). A Port is introduced ONLY on confirmed
         variability or a test seam (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`) — Port-vs-Service is a
         design choice, so apply `AX_DIVERGE_BEFORE_RECOMMEND` (do not default to Port). Each abstraction
         carries its justification (`AX_CONTEXT_TO_CONTRACT`); runtime backing is stated per contract
         (`AX_RUNTIME_BACKING_IN_CONTRACTS`).
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")`. STOP.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/dbc-contracts.xml")`.
+        Close the step with two checks before presenting:
+        1. Every module / entity / Port in the contracts carries a confirmed v1 consumer or
+           near-term variability (`AX_YAGNI_OVERENGINEERING_GUARD`).
+        2. Every public option / flag / policy the scope spec mentions is bound to a concrete
+           Port / Adapter contract or explicitly marked `deferred / not consumed in v1` with a
+           pointer to the task or version that activates it (`AX_NO_SILENT_OPTION_DROP`).
+        STOP.
       </Action>
     </Step>
     <Step id="STEP_5_FILE_STRUCTURE">
@@ -169,12 +185,17 @@
         (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
         `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
         `## 9` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
-        `H_REFINE_BREAKING_NO_IMPACT_LIST`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
+        `H_REFINE_BREAKING_NO_IMPACT_LIST`. When a module needs rules beyond the scope-wide
+        baseline, fill Module Rules Additions in the Handoff section per `AX_RULE_ACTIVATION`
+        (shortlist + considered-skips, operator locks the list; architecture / infra rules get the
+        per-axiom walk-through); every referenced rule file must resolve, else
+        `H_MISSING_RULE_FILE`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
         `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
         mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
         master downstream after the change ships. Then run
         `sdd-check --all specs/<scope>` (anchor balance + required sections + links + size budget:
-        `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding. Then
+        `SDD_MODULE_OVERSIZED` / `SDD_MODULE_SPEC_VERBOSE`) and resolve or consciously defer any finding
+        per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Then
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic →
         publish (MR) → external review → compress + merge on approval. Only after the spec merges to master,
         hand off to scaffold (`AX_HANDOFF_TO_TASK_SCAFFOLDING`). Approval Check. STOP.
@@ -186,7 +207,9 @@
     Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
     `🧩 DM_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
     `BREADCRUMB_FORMAT`): Module Map · Inventory · Surface · Contracts · Files · Hierarchy. Question
-    IDs are semantic per `AX_Q_IDS` (`Q_MM` / `Q_EI` / `Q_ES` / `Q_DBC` / `Q_FS`).
+    IDs are semantic per `AX_Q_IDS` (`Q_MM` / `Q_EI` / `Q_ES` / `Q_DBC` / `Q_FS`). Disputes and
+    side-topics open a nested frame on the flow's stack per `AX_STACK_BASED_FLOW` (rendered per
+    `SIDE_DIVE_FORMAT`); the main path never silently stalls.
 
     {{> "contract/process/message-layout"}}
 

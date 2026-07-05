@@ -17,7 +17,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -41,7 +41,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for

@@ -1,4 +1,4 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_SSOT_TRACEABILITY">
-      **No contract duplication.** Tickets link to spec sections via Markdown anchors. Module spec for contracts/consumers/invariants; scope spec 4 only for cross-cutting constraints.
+      **The spec is the single source for contract content; a ticket carries references, never copies.** Contract text duplicated into a ticket drifts silently from its source and breaks traceability.
     </Axiom>

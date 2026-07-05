@@ -80,7 +80,8 @@
         inferred **vision** (what the code does — but marked operator-owned: «зачем и куда — твоё»),
         the **scope graph**, the **infra/toolchain**, and a short note on conventions + contract state.
         Mark **confidence** per item — read-for-sure vs guessed vs «не смог отнести к scope/модулю, реши
-        ты» — and steer the operator's attention to the unsure spots. Frame: «вот общая картина как я
+        ты» (facts / assumptions / hypotheses kept apart, `AX_EVIDENCE_HYGIENE`) — and steer the
+        operator's attention to the unsure spots. Frame: «вот общая картина как я
         понял — согласись, дополни, поправь». Open free-text — NOT a multiple-choice question.
         Fold corrections into the locked picture. Outright rejection → `H_OPERATOR_REJECT`. STOP.
       </Action>
@@ -149,7 +150,7 @@
       ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
     </Contract>
 
-    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
       Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
       read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
       derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the

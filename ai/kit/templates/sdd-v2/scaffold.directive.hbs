@@ -75,7 +75,9 @@
     |---|---|
     | `H_NO_SPECS` | `specs/README.md` absent, or no approved scope spec to scaffold |
     | `H_AMBIGUOUS_MODE` | Tasks exist + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
-    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
+    | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
+    | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
     | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | An in-scope spec lacks a Bootstrap Requirements section (did not pass the scope flow) |
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
@@ -87,18 +89,26 @@
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
         Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
-        module specs. Detect the graph (`AX_SCOPE_GRAPH_DETECTION`) and mode
-        (`AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
+        module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`). Detect the graph
+        (`AX_SCOPE_GRAPH_DETECTION`) and mode
+        (`AX_DIRECTIVE_MODE`, auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
         (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
       </Action>
     </Step>
     <Step id="STEP_1_CASCADE">
       <Goal>Resolve the rules cascade. (auto)</Goal>
       <Action>
-        Read the rule registry. Per scope, take the transitive closure of depends-on edges and collect
-        rule refs (`AX_RULES_CASCADE_RESOLUTION`); every ref must resolve to a file
-        (`AX_RULES_RESOLUTION_HARD_FAIL`, else `H_MISSING_RULE_FILE`). Build per-scope Cascade Tables. No
-        operator stop — mechanical.
+        Read the rule registry — `ai/directives/knowledge.xml`, `<Rules>` section. Per scope, resolve
+        the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
+        1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
+           `depends-on` from the target scope (transitive closure);
+        2. overlay the target-scope tier (scope spec 5 Effective Rules for infra; 4.5 Rules for
+           product/library), then each `module:<name>` tier (module spec 9 Handoff Module Rules
+           Additions), then task-tier rules the operator supplied — later tier wins on collision;
+        3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
+           `H_MISSING_RULE_FILE`);
+        4. build the per-scope Cascade Table (Scope × Categories) destined for `tasks/<scope>/README.md`.
+        No operator stop — mechanical.
       </Action>
     </Step>
     <Step id="STEP_2_DAG">
@@ -116,14 +126,31 @@
       <Goal>Generate tickets + test plan. (auto)</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/task-ticket-structure.xml")`. Per ticket:
-        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate); per-phase
-        `Rules:` links via `AX_RULE_ACTIVATION_PLAN`; draft BDD with the mandatory `contract`-level
+        decompose into phases (`AX_PHASES_DECLARED_IN_HEADER`; impl and test always separate). Activate
+        rules per phase (`AX_RULE_ACTIVATION_PLAN`):
+        1. candidates = the scope's cascade set from STEP_1;
+        2. include each candidate whose `<Triggers>` match THIS phase's `Target Files` + `kind` and
+           whose `<SkipWhen>` does not apply;
+        3. close the set over `<DependsOn>` transitively — open each included rule file, add every
+           dependency, recurse until the set stops growing (cycle → `H_RULES_CYCLE`; missing file →
+           `H_MISSING_RULE_FILE`) — the list ships fully resolved, the phase-subagent never walks
+           `<DependsOn>` at runtime;
+        4. write the phase `Rules:` bullet list — one `[<rule-id>](<rule-file-path>)` per rule, direct
+           + transitive, all explicit;
+        5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
+           rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
+           `H_VERIFICATION_COMMAND_MISSING`), and write ticket section 5 Verification table — one row
+           per unique alias, Required-by = comma-separated declaring rule IDs.
+        Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan
         (`AX_EXECUTION_LOG_PLAN_VS_FACT`). **BDD coverage pass — dispatch ONE isolated subagent** with a
         clean slice (module spec + contract anchors + requirements + draft BDD) asking «which negative /
         corner / trust-boundary / failure-mode scenarios are missing?»; merge approved ones, log the
-        reviewed checklist in the ticket Decision Log. Validate every contract has its typing scenario
-        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). No operator stop — automated.
+        reviewed checklist in the ticket Decision Log (`AX_DECISION_LOG_REQUIRED`). Validate every contract has its typing scenario
+        mapped to a test (else `H_TYPING_SCENARIO_MISSING`). Check each emitted ticket against
+        `TASK_TICKET_STRUCTURE`: section anchors match the normative names exactly
+        (`AX_TICKET_SECTION_NAMES_NORMATIVE`), and contract material is linked by spec anchor with zero
+        copied contract text (`AX_SSOT_TRACEABILITY`). No operator stop — automated.
       </Action>
     </Step>
     <Step id="STEP_4_TEST_PLAN_REVIEW">

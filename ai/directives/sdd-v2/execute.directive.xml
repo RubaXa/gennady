@@ -18,7 +18,7 @@
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -42,7 +42,7 @@
       `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -69,14 +69,14 @@
       like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
       Everything the operator reads is a normal chat message with live-rendered markdown — headers,
       bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
       plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
       because alignment matters: a small ASCII flow diagram, and on-disk file templates.
     </Axiom>
 
-    <Axiom id="AX_STATELESS_ARTIFACT">
+    <Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
       Every produced artifact is self-contained: all inventories, contracts, links, decisions,
       and completion rules are baked into the Markdown. Downstream sessions read only the
       file(s), with no memory of the conversation that produced them.
@@ -85,19 +85,29 @@
     <Axiom id="AX_OWNER">Orchestrator owns artifact, applies edits. Critic is sensor — reports only, never edits.</Axiom>
 
     <Axiom id="AX_TASK_RESOLUTION">
-      BEFORE classification, resolve which task owns each affected file.
+      Every fix routes through the task that owns the affected file — ownership is resolved from the
+      artifacts, before classification. `@tasks: <ACR>-<slug>[, ...]` in a file header names the owning
+      task(s). Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the
+      Task-ID is in the filename. Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a
+      scope, not a single task. Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` /
+      `specs/3-tasks.md`) are global artifacts, owned by no task. The resulting file → [Task-IDs] map is
+      what routes fixes per `AX_FIX_CLASSIFICATION`.
+    </Axiom>
 
-      For every finding whose location is a `.ts` or `.spec.md` file:
-      1. Read the file's header (first lines before `import` / first `#`).
-      2. Extract `@tasks: <ACR>-<slug>[, ...]` — the task(s) that created / own this file.
-      3. Build map: file → [Task-IDs].
-      4. No `@tasks:` header → still classify the finding (the fix IS adding the header), but note "no task" for the plan.
+    <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
+      **Topological order, no cycles. Default: minimum tickets — one per coherent spec unit.** Product / library scope → one ticket per module-spec. Infrastructure / interface scope → one ticket per discrete capability.
 
-      Files matching `*.task.<ACR>-<slug>.md` (co-located under `specs/`) are tickets — the Task-ID is in the filename.
-      Files matching `*.1-spec.md` / `*.spec.md` are spec files — linked to a scope, not a single task. (One document per scope / module — design folded into the spec; no separate `2-design`.)
-      Index files (`*.2-tasks.md` / `*.3-tasks.md`, `specs/2-tasks.md` / `specs/3-tasks.md`) — no task, global artifacts.
+      DAG edges derive from real file-level dependencies, Bootstrap → consumers, and cross-scope `depends-on`. No «logical layer» phases — Ports → Adapters → Integrations is an analysis aid in discovery, NOT a ticket-multiplication rule. A Port and its single confirmed-v1 Adapter co-edit and live in one ticket.
 
-      This map is used by `AX_FIX_CLASSIFICATION` to route fixes to the correct task.
+      **Split one ticket into N only when BOTH conditions hold:**
+      - **(P) Parallel sub-process potential** — N phase-subagents dispatched simultaneously; Target Files disjoint across all phases of each ticket; no Deps edge among the N.
+      - **(C) Context budget overflow** — combined cascade Rules + Spec References + Target Files exceed comfortable single-context for one phase-subagent's phase.
+
+      **NOT a reason to split:** audit milestone granularity (audit runs once per ticket regardless of size); logical layering (Port + Adapter ship together); partial shippability (consumer can't pick a half-module); human time-units (hours / days — irrelevant for AI execution bounded by context window).
+
+      Sequential split (A → B with hard Deps) without (C) = pure overhead: B's phase-subagent re-reads what A's already loaded; zero wall-clock gain.
+
+      Cross-scope: scope B DONE before A's tasks consuming B's outputs. Bootstrap tickets DONE before non-bootstrap of the same scope.
     </Axiom>
 
     <Axiom id="AX_EXECUTION_ORDER">
@@ -149,8 +159,11 @@
       <Goal>Resolve the task.</Goal>
       <Action>
         FIRST run `sdd-task` (no Task-ID) for the deterministic execution map — the pickable set
-        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers, `AX_TASK_RESOLUTION`) and
-        the blocked tickets. Then route on intent:
+        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers) and
+        the blocked tickets. When intent arrives as a path instead of a Task-ID, resolve the owner from
+        the artifact (`AX_TASK_RESOLUTION`): a ticket path (`*.task.<ACR>-<slug>.md`) carries its Task-ID
+        in the filename; a code / spec file resolves via its `@tasks:` header (read the header, extract
+        `@tasks: <ACR>-<slug>[, ...]`, map file → [Task-IDs]; no header → ask the operator). Then route on intent:
 
         <LogicSwitch on="intent">
         - WHEN intent is a specific Task-ID / ticket path -> run that ticket (STEP_1–8)
@@ -216,7 +229,8 @@
       <Action>
         Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
         (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec / decision-log
-        only: apply them directly (the orchestrator owns trackers and may make administrative edits), no
+        only: apply them directly (the orchestrator owns trackers and may make administrative edits,
+        `AX_OWNER`), no
         new Round, then re-dispatch audit (R2). Either way return to STEP_6.
       </Action>
     </Step>

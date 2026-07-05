@@ -1,0 +1,8 @@
+<!-- new for sdd-v2: SCALE axis — the depth invariant shared by router (source) and branches (consumers) -->
+<Axiom id="AX_SCALE_PROPORTIONAL_DEPTH">
+  Process depth is proportional to the declared SCALE: SCALE governs interview depth, the number
+  of design alternatives explored, and the weight of the verification tail. SCALE becomes binding
+  only after operator confirmation — the router proposes a default, the operator confirms or
+  corrects it; a silently self-assessed scale is void. Branches read the confirmed `scale:` from
+  the session file (`SESSION_FILE_FORMAT`) and size their process to it.
+</Axiom>

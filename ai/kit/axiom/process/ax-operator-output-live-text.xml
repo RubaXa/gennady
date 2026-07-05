@@ -1,5 +1,5 @@
 <!-- source: sdd-opt-v1 OPERATOR_OUTPUT_IS_LIVE_TEXT -->
-<Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+<Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
   Everything the operator reads is a normal chat message with live-rendered markdown — headers,
   bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
   plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,

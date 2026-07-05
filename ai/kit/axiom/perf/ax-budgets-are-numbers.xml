@@ -1,0 +1,8 @@
+<!-- source: sdd-v2 amplify-nfr -->
+<Axiom id="AX_BUDGETS_ARE_NUMBERS">
+  A non-functional constraint is a number plus its measurement condition: latency as a percentile
+  under stated load (`p95 ≤ 200ms @ 100 RPS`), availability as a target with an error budget,
+  scale as concrete volumes (rows, RPS, concurrent users, growth horizon), consistency as a named
+  model. «Fast», «reliable», «scales» are placeholders, not constraints — replace each with a
+  measurable budget, or record an explicit «не бюджетируем, потому что …» decision.
+</Axiom>

@@ -1,15 +1,19 @@
-<!-- source: sdd/module-decomposition.directive.xml -->
+<!-- source: sdd/module-decomposition.directive.xml; textual-agnostic per AX_CONTRACTS_TEXTUAL_AGNOSTIC -->
 <Contract id="DBC_ADAPTER_FORMAT">
+      Same language rules as `DBC_PORT_FORMAT`: plain-language statements per
+      `AX_CONTRACTS_TEXTUAL_AGNOSTIC`, one per line; DbC conditions live on the Port — the Adapter
+      declares implementation facts (side effects, runtime backing).
+
       ```markdown
       #### Adapter: `<AdapterName>`
       - **Implements:** `<PortName>` (`<path/to/port-file>`)
       - **Purpose:** <1 sentence>
-      - **Supporting Artifacts:** <if any>
+      - **Supporting Artifacts:** <links — omit when none>
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
-      - **Deferred Runtime Scope:** <None or description>
+      - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
 
       **Side Effects:**
-      - <external HTTP, IO, observability, mutation of shared state, ...>
+      - <one observable effect per line: external HTTP, IO, observability, mutation of shared state, …>
       ```
     </Contract>

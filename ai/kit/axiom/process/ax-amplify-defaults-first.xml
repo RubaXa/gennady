@@ -1,0 +1,11 @@
+<!-- source: sdd-v2 amplify catalog (operator decision: ready defaults over questionnaires) -->
+<Axiom id="AX_AMPLIFY_DEFAULTS_FIRST">
+  An amplification opens with a ready answer, not a questionnaire. FIRST assemble a complete
+  defaults package — the decisions live products of this class actually ship with (run a short
+  targeted research pass when class practice is uncertain, grounded in the scope's intent) — and
+  present it as ONE accept-or-edit reply: the operator takes everything with one word or edits by
+  item number. Ask via the AskUserQuestion / multi-question tool when available; fallback
+  `QUESTION_FORMAT`. Deep-dive questions open only for topics the operator explicitly marks
+  deep-dive; every untouched topic keeps its default. An accepted default is a real decision —
+  record it like one.
+</Axiom>

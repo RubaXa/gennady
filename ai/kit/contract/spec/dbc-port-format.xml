@@ -1,22 +1,25 @@
-<!-- source: sdd/module-decomposition.directive.xml -->
+<!-- source: sdd/module-decomposition.directive.xml; textual-agnostic per AX_CONTRACTS_TEXTUAL_AGNOSTIC -->
 <Contract id="DBC_PORT_FORMAT">
+      Conditions are plain-language statements per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` — one testable
+      statement per line, shared vocabulary, code syntax stays out (target-language code lives only
+      in Golden DX / usage examples). Optional fields marked «omit when none» are omitted, not
+      filled with placeholders.
+
       ```markdown
       #### Port: `<PortName>`
       - **Purpose:** <1 sentence>
-      - **Consumers:**
-        - Internal: <path>
-        - External: <description>
-      - **Supporting Artifacts:** <if any>
+      - **Consumers:** <internal: path · external: description>
+      - **Supporting Artifacts:** <links — omit when none>
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
-      - **Deferred Runtime Scope:** <None or description>
+      - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
 
       **Contract (DbC):**
       - Preconditions:
-        - <condition>
+        - <what must hold before the operation may be called>
       - Postconditions:
-        - <guarantee>
+        - <what the operation guarantees on completion>
       - Invariants:
-        - <invariant>
+        - <what stays true across the entity's lifetime>
       ```
     </Contract>

@@ -11,7 +11,7 @@
       | module | `tasks/<scope>/README.md` module row + module spec 9 Module Rules Additions |
       | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
 
-      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<DependsOn>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once per `AX_RULE_ACTIVATION_PLAN` step 4). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
+      **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<DependsOn>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once at ticket generation per `AX_RULE_ACTIVATION_PLAN`). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
 
       Plan rows ≠ derived → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
     </Axiom>

@@ -67,7 +67,8 @@
         the tool is already a dependency, else a TODO stub), wire `lint` to `gennady`, and install the
         missing dependencies / `gennady`. If the operator wants to lock a real tool now (test runner,
         formatter, type-checker), offer 2–3 options with trade-offs (`AX_DIVERGE_BEFORE_RECOMMEND`);
-        otherwise stub it and defer the choice to the infra flow. Present the plan + Approval Check. STOP.
+        otherwise stub it and defer the choice to the infra flow. Present the plan + Approval Check
+        (`AX_OPERATOR_AGREEMENT` — no edits before an explicit go-ahead). STOP.
       </Action>
     </Step>
     <Step id="STEP_2_APPLY">

@@ -1,0 +1,7 @@
+<!-- source: sdd-v2 amplify-observability -->
+<Axiom id="AX_ALERTS_ON_SYMPTOMS">
+  Alert on operator-visible symptoms — SLO burn, error rate, saturation, staleness — and page a
+  human only for actionable conditions; cause-level signals stay on dashboards. Every alert names
+  its threshold, its severity, and the first response action. An alert nobody acts on is noise
+  debt: delete it or demote it.
+</Axiom>

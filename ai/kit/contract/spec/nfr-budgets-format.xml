@@ -1,0 +1,22 @@
+<!-- source: sdd-v2 amplify-nfr -->
+<Contract id="NFR_BUDGETS_FORMAT">
+  Fills the `### Non-Functional Constraints` subsection of the scope spec (an empty header in
+  `PRODUCT_SPEC_STRUCTURE` / `LIBRARY_SPEC_STRUCTURE` until amplified). Every row per
+  `AX_BUDGETS_ARE_NUMBERS`; a consciously skipped dimension keeps its row with an explicit
+  «не бюджетируем, потому что …»:
+
+  ```markdown
+  ### Non-Functional Constraints
+
+  | Показатель | Бюджет | Условия измерения | Источник |
+  |---|---|---|---|
+  | Latency | p95 ≤ NNN ms | операция + профиль нагрузки | default / operator / research |
+  | Throughput | NNN RPS | профиль запросов | … |
+  | Масштаб | NNN <единиц> | горизонт роста (напр. 12 мес) | … |
+  | Availability | NN.N % | окно измерения + error budget | … |
+  | Consistency | <модель> | где допустима staleness | … |
+
+  **Узкие места:** [компонент, где бюджет ломается первым, + причина]
+  **Деградация под нагрузкой:** [что отключаем / шеддим первым; поведение на пределе]
+  ```
+</Contract>

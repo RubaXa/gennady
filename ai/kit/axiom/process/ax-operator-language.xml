@@ -1,5 +1,5 @@
 <!-- source: all 7 sdd directives (converged to principle; per-directive field lists stay in their directives) -->
-<Axiom id="AX_OPERATOR_LANGUAGE">
+<Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
   **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
   section headings, action/status tokens) — English.**
 

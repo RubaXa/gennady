@@ -5,14 +5,15 @@
     every introduced entity against the existing surface via `sdd-orient` (reuse > extend > justify >
     escalate), surgically edit the artifact, and re-dispatch if edits were applied (cap 5). Batch: the
     scope spec first, then tasks in DAG layers (parallel within a layer, sequential between). On CLEAN:
-    delete the temporary `## Critic Rounds` scratch. I own the artifact and apply edits; the sensor only reports.
+    delete the temporary `## Critic Rounds` scratch. I own the artifact and apply `MECHANICAL` edits; `GOAL`
+    findings go to the operator as one batched question block first (`AX_GOAL_OWNER_GATE`). The sensor only reports.
 
     A separate door (`/sdd-critic`). Input — a spec / task / batch target. Output — the cleaned artifact
     + the final verdict.
   </Mission>
 
   <BeliefState>
-    <Axiom id="AX_OPERATOR_LANGUAGE">
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
       **Directive prose (axioms, halt names, step procedures, contract identifiers, structural
       section headings, action/status tokens) — English.**
 
@@ -27,7 +28,7 @@
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
     </Axiom>
 
-    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
       The document's language is a few-shot for the agent's own speech: operator-facing Russian must
       read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
       sharp is the failure mode, not the goal. These directives are written in dense English for
@@ -66,6 +67,19 @@
 
     <Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>
 
+    <Axiom id="AX_FINDING_ADDRESSEE">
+      Every finding carries an addressee — who owns its resolution:
+      - `MECHANICAL` — style, structure, consistency, a detail the spec already implies. Resolved by an artifact edit.
+      - `GOAL` — goal / scope shift ("goal drawn too narrow"), misunderstood intent, a missing requirement, an unanswered uncomfortable question. Resolved ONLY by the goal owner — the operator.
+    </Axiom>
+
+    <Axiom id="AX_GOAL_OWNER_GATE">
+      The operator owns the goal. A `GOAL` finding is resolved by an operator answer, and the edit follows
+      the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. Batch the round's `GOAL` findings
+      into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they touch. Goal / scope
+      wording stays intact until an operator answer sanctions the change.
+    </Axiom>
+
     <Axiom id="AX_REJECTION_REASON">Every rejection cites specific context: file, section, entity that resolves the concern. No vague "more context."</Axiom>
 
     <Axiom id="AX_RE_DISPATCH">Any edit → re-dispatch mandatory. Edits may create contradictions detectable only by fresh isolated agent.</Axiom>
@@ -86,12 +100,13 @@
     | `H_PARENT_SPEC_MISSING` | A task's parent spec is missing — cannot critique a task without its spec |
     | `H_DISPATCH_FAILED` | The sensor subagent failed to dispatch twice — surface to the operator, do not loop silently |
     | `H_MAX_ROUNDS` | Cap of 5 rounds hit and still not CLEAN — escalate to the operator (`AX_CAP_5`) |
+    | `H_GOAL_BLOCKED` | `GOAL` findings block the round and the operator is unavailable to answer — stop, report the pending question block |
   </HaltConditions>
 
   <ExecutionPlan>
     <Step id="STEP_0_RESOLVE">
       <Goal>Resolve the target.</Goal>
-      <Action>Spec / task / batch (spec + its tasks). Missing → `H_NO_ARTIFACT`.</Action>
+      <Action>Spec / task / batch (spec + its tasks — critiqued in DAG layers, parallel within a layer, per `AX_TASK_PARALLEL`). Missing → `H_NO_ARTIFACT`.</Action>
     </Step>
     <Step id="STEP_1_DISPATCH">
       <Goal>Dispatch the isolated sensor.</Goal>
@@ -99,15 +114,19 @@
     </Step>
     <Step id="STEP_2_EVALUATE">
       <Goal>Weigh findings against full project context.</Goal>
-      <Action>Accept by default (`AX_DEFAULT_ACCEPT`); a rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion = an artifact bug to fix (`AX_CONFUSION_BUG`).</Action>
+      <Action>Split by addressee (`AX_FINDING_ADDRESSEE`): `MECHANICAL` — accept by default (`AX_DEFAULT_ACCEPT`); `GOAL` — queue for STEP_2C, keep the touched sections intact (`AX_GOAL_OWNER_GATE`). A rejection cites a specific file / section that resolves the concern (`AX_REJECTION_REASON`). Sensor confusion the full context resolves = an artifact bug — clarify by edit (`AX_CONFUSION_BUG`); confusion the project cannot answer = `GOAL`.</Action>
     </Step>
     <Step id="STEP_2B_RECONCILE">
       <Goal>Reconcile every introduced entity. (mechanical → tool)</Goal>
       <Action>For each entity a finding would add, run `sdd-orient` to check the existing project surface: reuse > extend > justify > escalate (`AX_REUSE_FIRST`). Do not let the critique invent a duplicate of an existing entity.</Action>
     </Step>
+    <Step id="STEP_2C_GOAL_GATE">
+      <Goal>Take `GOAL` findings to the goal owner (`AX_GOAL_OWNER_GATE`).</Goal>
+      <Action>No `GOAL` findings → skip to STEP_3. Otherwise batch ALL of the round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`, `Q<N>` with options; when the AskUserQuestion tool is available, ask through it) and WAIT — this precedes any edit to the sections they touch. Operator answers become edit instructions for STEP_3 and flow into the normal re-dispatch cycle. Operator unreachable while `GOAL` findings block → `H_GOAL_BLOCKED`.</Action>
+    </Step>
     <Step id="STEP_3_EDIT">
       <Goal>Apply surgical edits.</Goal>
-      <Action>Edit only what a finding requires (`AX_SURGICAL`); record each in the temporary `## Critic Rounds` scratch (`AX_SCRATCH_LOG`).</Action>
+      <Action>Edit only what a finding requires (`AX_SURGICAL`); I apply the edits — the sensor never does (`AX_OWNER`): `MECHANICAL` — directly; `GOAL` — exactly as the operator answered (`AX_GOAL_OWNER_GATE`). Record each in the temporary `## Critic Rounds` scratch (`AX_SCRATCH_LOG`).</Action>
     </Step>
     <Step id="STEP_4_DECIDE">
       <Goal>Loop or stop.</Goal>
@@ -120,6 +139,39 @@
   </ExecutionPlan>
 
   <ChatOutput>
+    <Contract id="QUESTION_FORMAT">
+      Questions must LOOK like questions and stay readable on any theme. A `### ❓ Вопросы — реши <N>`
+      section header; each question numbered `Q<N>`; options described in words. Never use `+` / `-`
+      signs for pros / cons (they render black and vanish on dark themes). Group obvious sub-questions
+      into one; do not pad the count.
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      ### ❓ Вопросы — реши <N>
+      «годится» = беру все рекомендации, или поправь по номерам.
+
+      **Q1 · <вопрос?>**
+      ✅ **<рекомендованный вариант>** `[code]` — почему подходит именно под эту задачу.
+      Иначе:
+      - **<альтернатива>** `[code]` — _за: <плюс> · против: <минус>_
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win.
+
+      A plain binary question needs no list — recommendation + inline alternative:
+
+      **Q2 · <вопрос?>**
+      ✅ **<рекомендация>** — почему. _или <короткая альтернатива>?_
+    </Contract>
+
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+
     <Contract id="ORCHESTRATOR_PROGRESS_FORMAT">
       Subagents are black boxes; emit one progress line per state transition so the operator sees the run.
 

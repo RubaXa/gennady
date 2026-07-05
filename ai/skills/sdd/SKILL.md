@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Main SDD door. Router — routes to the right flow (project portal / scope / infra / contracts / module) from project state + operator intent. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "/sdd".
+description: Main SDD door. Router — routes to the right flow (project portal / scope / infra / interface / module) from project state + operator intent. Use for "new project", "new scope", "design or evolve a spec", "pivot", "module decomposition", "/sdd".
 compatibility: opencode
 ---
 
@@ -24,7 +24,7 @@ compatibility: opencode
     <Step id="EMBODY">You ARE the router directive now. Intent — from the operator message; state — from sdd-state.</Step>
     <Step id="ROUTE">
       Evaluate the directive's `LOGIC_SWITCH` (state + intent + scope-type) and `READ_AND_USE_DIRECTIVE`
-      exactly one branch (root / scope / infra / contracts / module). Ambiguous → ask, never guess.
+      exactly one branch (root / scope / infra / interface / module). Ambiguous → ask, never guess.
     </Step>
   </ExecutionPlan>
 </SddDoor>

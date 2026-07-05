@@ -31,6 +31,8 @@
 
     {{> "axiom/audit/ax-closed-world-primary-check"}}
 
+    {{> "axiom/audit/ax-rules-cascade-verification"}}
+
     {{> "axiom/audit/ax-runtime-backing-verification"}}
 
     {{> "axiom/audit/ax-insight-backflow-capture"}}
@@ -65,7 +67,7 @@
     <Step id="STEP_1_MECHANICAL">
       <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
       <Action>
-        Run `sdd-check --task <ticket-path>` (and `--all` for an epic) per `AX_MECHANICAL_VIA_SDD_CHECK`
+        Run `sdd-check --task <ticket-path>` (and `--all` for an epic, per `AX_AUDIT_MODES`) per `AX_MECHANICAL_VIA_SDD_CHECK`
         — it reports the deterministic findings: structure / anchors / Task-ID + Status, fabricated-DONE,
         the phase graph, Execution-Log completeness, the task DAG, and tracker↔ticket coherence. Take these
         as given — the tool owns them. Then INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
@@ -86,11 +88,19 @@
       <Goal>Add the layer the tool cannot — meaning.</Goal>
       <Action>
         Read the artifacts (per `AX_READ_PER_MANIFEST` — the bounded artifacts list + relevant spec
-        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`). Judge
+        anchors, not the whole repo) and the git diff (`AX_AUDIT_READS_CODE`, `AX_GIT_DIFF_SCAN`).
+        Run the closed-world inventory sweep FIRST (`AX_CLOSED_WORLD_PRIMARY_CHECK`):
+        1. collect declared entities from `specs/<scope>/<module>/<module>.spec.md` 2 Entity Inventory;
+        2. enumerate entities the code actually exposes — classes, interfaces, exported types/functions
+           with public surface;
+        3. collect the `intro <X> ← <Y>` lines phase agents logged in the Execution Log;
+        4. flag every code entity outside inventory ∪ logged-introductions as `CLOSED_WORLD_DRIFT`
+           (`BLOCKER`).
+        Verify each phase's `Rules:` list against what the cascade would derive now, including the
+        transitive `<DependsOn>` closure (`AX_RULES_CASCADE_VERIFICATION`). Then judge
         what is irreducibly semantic: does the implementation satisfy the contract's postconditions /
         invariants in substance; is a `real-runtime` claim actually backed or a stub
-        (`AX_RUNTIME_BACKING_VERIFICATION`); does the implementation's public surface match the
-        closed-world inventory (`AX_CLOSED_WORLD_PRIMARY_CHECK`); capture spec gaps as insights
+        (`AX_RUNTIME_BACKING_VERIFICATION`); capture spec gaps as insights
         (`AX_INSIGHT_BACKFLOW_CAPTURE`). Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
       </Action>
     </Step>

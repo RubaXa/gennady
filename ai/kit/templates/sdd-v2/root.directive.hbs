@@ -55,7 +55,8 @@
           - `CODE=present` → **from-code recovery** — do NOT invent a vision over existing code:
             `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")`.
         - Present → empty intake → `H_NO_INTENT`; otherwise classify the change:
-          vision / add scope / update graph / infra bootstrap.
+          vision / add scope / update graph / infra bootstrap. Root has no hard modes — create when
+          absent, propose intake-derived updates when present, per `AX_IDEMPOTENT_MODES`.
       </Action>
     </Step>
     <Step id="STEP_1_VISION">
@@ -76,16 +77,20 @@
         cross-scope scenarios or an interface scope may be needed. If the change REMOVES or RENAMES a
         scope, first surface what it orphans — its `specs/<scope>/…` spec, tasks, and inbound references
         — and resolve with the operator (move / delete / repoint); never silently leave orphans. Then
-        propose scope-type with rationale and render the Mermaid `graph TD`. Approval Check. STOP.
+        propose scope-type with rationale and render the Mermaid `graph TD` — edge semantics
+        (A→B = A depends-on B), acyclicity, and scope-type constraints per
+        `AX_SCOPE_GRAPH_DISCIPLINE` (a cycle → `H_CYCLE_IN_GRAPH`). Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_3_INFRA_BOOTSTRAP">
       <Goal>Materialize the minimal infra-base spec if tooling was declared.</Goal>
       <Action>
-        No tooling declared → skip. Else `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`
+        No tooling declared → skip. Else, per `AX_INFRA_BASE_BOOTSTRAP`,
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infra-base-minimal-spec.xml")`
         and write `specs/infra-base/infra-base.spec.md` to that format (scope-type infrastructure,
         one-sentence Vision, Tool Stack table, note pointing to `discovery infra-base` for the full
-        Decision Log). Approval Check. STOP.
+        Decision Log — the bootstrap only locks the tool choice, the full `infra` flow comes later).
+        Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_4_PORTAL_WRITE">
@@ -93,10 +98,12 @@
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
         Portal to that format. Scope status (✅ / 🚧) comes from `sdd-state` (presence of
-        `specs/<scope>/<scope>.spec.md`), not a manual stat. Reconcile any placeholder rows left by the
-        scope flow into full rows. Write the file. Then run `sdd-check --all .` to verify portal integrity —
+        `specs/<scope>/<scope>.spec.md`), not a manual stat — rows per `AX_SCOPE_TABLE_FORMAT`.
+        Reconcile any placeholder rows left by the scope flow into full rows — root is the primary
+        owner of `specs/README.md` and the only flow that rewrites it (`AX_PORTAL_PRIMARY_OWNER`).
+        Write the file. Then run `sdd-check --all .` to verify portal integrity —
         graph acyclicity, graph↔table↔spec coherence, no orphan specs or dangling scope references — and
-        resolve any finding before finishing. Approval Check. STOP.
+        resolve any finding before finishing, per `AX_CLOSE_WITH_INTEGRITY_CHECK`. Approval Check. STOP.
       </Action>
     </Step>
   </ExecutionPlan>

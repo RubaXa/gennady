@@ -32,6 +32,8 @@
 
     {{> "axiom/process/ax-task-resolution"}}
 
+    {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
+
     {{> "axiom/process/ax-execution-order"}}
 
     {{> "axiom/process/ax-handoff-typed"}}
@@ -60,8 +62,11 @@
       <Goal>Resolve the task.</Goal>
       <Action>
         FIRST run `sdd-task` (no Task-ID) for the deterministic execution map — the pickable set
-        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers, `AX_TASK_RESOLUTION`) and
-        the blocked tickets. Then route on intent:
+        (`[ ] TODO` with every dependency `[x] DONE`, computed from the trackers) and
+        the blocked tickets. When intent arrives as a path instead of a Task-ID, resolve the owner from
+        the artifact (`AX_TASK_RESOLUTION`): a ticket path (`*.task.<ACR>-<slug>.md`) carries its Task-ID
+        in the filename; a code / spec file resolves via its `@tasks:` header (read the header, extract
+        `@tasks: <ACR>-<slug>[, ...]`, map file → [Task-IDs]; no header → ask the operator). Then route on intent:
 
         <LogicSwitch on="intent">
         - WHEN intent is a specific Task-ID / ticket path -> run that ticket (STEP_1–8)
@@ -127,7 +132,8 @@
       <Action>
         Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
         (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec / decision-log
-        only: apply them directly (the orchestrator owns trackers and may make administrative edits), no
+        only: apply them directly (the orchestrator owns trackers and may make administrative edits,
+        `AX_OWNER`), no
         new Round, then re-dispatch audit (R2). Either way return to STEP_6.
       </Action>
     </Step>

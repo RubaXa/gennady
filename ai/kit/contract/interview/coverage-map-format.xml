@@ -1,0 +1,12 @@
+<!-- source: new for sdd-v2 interview protocol; rendering from ai/skills/prd-interview -->
+<Contract id="COVERAGE_MAP_FORMAT">
+  Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
+  ≤ 72 columns; statuses: `[✔]` closed · `[▶]` in progress · `[ ]` open · `[✗ skip: <причина>]`.
+
+  Покрытие: Цель/не-цель [✔] · Потребители [▶] · Слабые места [ ] · Зависимости [ ]
+  Усиления:  security [▶] · storage [✗ skip: прототип, данных нет]
+
+  4–6 topics per line; the «Усиления» line appears only when at least one amplification is
+  active or skipped. The map is session state for the dialogue — the calling step decides what
+  from the answers lands in the artifact; the map itself stays out of the spec.
+</Contract>

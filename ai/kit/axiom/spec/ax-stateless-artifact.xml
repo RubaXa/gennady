@@ -1,5 +1,5 @@
 <!-- source: sdd/setup + discovery + module-decomposition + scaffold (converged to principle) -->
-<Axiom id="AX_STATELESS_ARTIFACT">
+<Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
   Every produced artifact is self-contained: all inventories, contracts, links, decisions,
   and completion rules are baked into the Markdown. Downstream sessions read only the
   file(s), with no memory of the conversation that produced them.
