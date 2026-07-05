@@ -26,7 +26,11 @@ export type Finding = {
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`.
 const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
 
-/** @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections). | @param content Full file markdown. | @returns True when both section markers are present. */
+/**
+ * @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections).
+ * @param content Full file markdown.
+ * @returns True when both section markers are present.
+ */
 export function isTicket(content: string): boolean {
   return (
     content.includes('<!--SECTION:META-->') && content.includes('<!--SECTION:EXECUTION_LOG-->')

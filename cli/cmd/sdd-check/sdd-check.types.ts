@@ -35,7 +35,10 @@ export function formatFindings(findings: Finding[], fileCount: number): CheckRes
   return { text: [...lines, '', summary].join('\n'), exitCode: errors > 0 ? 1 : 0 };
 }
 
-/** @purpose Build the bad-invocation result. | @returns Result with exit 4. */
+/**
+ * @purpose Build the bad-invocation result.
+ * @returns Result with exit 4.
+ */
 export function badInvocation(): CheckResult {
   return {
     text: [
@@ -46,7 +49,11 @@ export function badInvocation(): CheckResult {
   };
 }
 
-/** @purpose Build the file-error result. | @param ticket The ticket path. | @returns Result with exit 1. */
+/**
+ * @purpose Build the file-error result.
+ * @param ticket The ticket path.
+ * @returns Result with exit 1.
+ */
 export function fileError(ticket: string): CheckResult {
   return {
     text: `[sdd-check] ${ERR_CLI_SDD_CHECK_FILE}: ${ticket}\n  Cannot read the ticket — verify the path.`,

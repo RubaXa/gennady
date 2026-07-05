@@ -31,13 +31,21 @@ const PROFILE_GATES: Record<Profile, readonly string[]> = {
   full: ['format', 'lint', 'typecheck', 'test:coverage'],
 };
 
-/** @purpose The gates for a profile, in canonical GATES order. | @param profile Selected profile. | @returns Filtered, ordered gate list. */
+/**
+ * @purpose The gates for a profile, in canonical GATES order.
+ * @param profile Selected profile.
+ * @returns Filtered, ordered gate list.
+ */
 export function gatesFor(profile: Profile): readonly Gate[] {
   const names = PROFILE_GATES[profile];
   return GATES.filter((g) => names.includes(g.name));
 }
 
-/** @purpose Type guard for a profile token from CLI input. | @param v Raw arg value. | @returns True when v is a known profile. */
+/**
+ * @purpose Type guard for a profile token from CLI input.
+ * @param v Raw arg value.
+ * @returns True when v is a known profile.
+ */
 export function isProfile(v: string): v is Profile {
   return v === 'code' || v === 'test' || v === 'full';
 }

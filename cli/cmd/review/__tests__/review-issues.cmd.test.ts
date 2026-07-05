@@ -101,6 +101,7 @@ describe('review-issues cmd', () => {
       branch: undefined,
       project: undefined,
       iid: undefined,
+      host: undefined,
     });
 
     assert.strictEqual(runReviewCommandTracker.mock.callCount(), 1);

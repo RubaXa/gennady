@@ -1,9 +1,9 @@
 // @file: Git worktree operations for read-only MR review (hooks disabled).
 // @consumers: vcs-worktree.cmd
-// @tasks: N/A
+// @tasks: TSK-93
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, rmSync, utimesSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /** @purpose Result of preparing a read-only worktree for an MR. */
@@ -14,18 +14,24 @@ export type PreparedWorktree = {
   headSha: string;
 };
 
+/** @purpose Worktree TTL: 7 days in ms | @invariant Equals 7 * 24 * 60 * 60 * 1000 */
+export const WORKTREE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 function git(args: string[], cwd?: string): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
 /**
- * @purpose Fetch the MR head and add a detached, hooks-disabled worktree for it.
+ * @purpose Fetch MR head and prepare a detached, hooks-disabled worktree.
+ *   Reuses existing via fetch + reset; falls back to full recreate on failure.
  * @invariant Read-only: no checkout hooks run (core.hooksPath=/dev/null); nothing executed.
+ * @invariant Reuse strategy: fetch → reset --hard FETCH_HEAD. Either failing triggers
+ *   full delete + recreate. Mtime is touched on success (best-effort) for GC tracking.
  * @param clonePath Local clone of the project.
  * @param iid Merge request internal ID.
  * @param worktreePath Absolute path where the worktree is created.
  * @returns The worktree path and resolved head SHA.
- * @sideEffect Network: git fetch; FS: creates the worktree directory.
+ * @sideEffect Network: git fetch; FS: creates or reuses the worktree directory, updates mtime.
  * @consumer vcs-worktree.cmd
  */
 export function prepareMrWorktree(
@@ -33,7 +39,38 @@ export function prepareMrWorktree(
   iid: string,
   worktreePath: string
 ): PreparedWorktree {
-  // Collision: a leftover worktree at this path → remove it and prune dangling meta.
+  const now = new Date();
+
+  // #region START_REUSE_EXISTING_WORKTREE — invariant: fetch + reset avoids full recreate;
+  // failure mode: stale FETCH_HEAD / lock / permission → fall through to FULL_RECREATE
+  // side effect: git fetch resets FETCH_HEAD in clone to MR head
+  if (existsSync(worktreePath)) {
+    try {
+      git([
+        '-C',
+        clonePath,
+        '-c',
+        'core.hooksPath=/dev/null',
+        'fetch',
+        'origin',
+        `merge-requests/${iid}/head`,
+      ]);
+      const headSha = git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
+      git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', 'FETCH_HEAD']);
+      try {
+        utimesSync(worktreePath, now, now);
+      } catch {
+        /* best-effort mtime update */
+      }
+      return { worktreePath, headSha };
+    } catch {
+      /* fetch or reset failed → fall through to full recreate */
+    }
+  }
+  // #endregion END_REUSE_EXISTING_WORKTREE
+
+  // #region START_FULL_RECREATE_WORKTREE — invariant: delete any leftover + prune + fetch + add;
+  // failure mode: all paths (fetch, rev-parse, worktree add) throw → propagates to caller
   if (existsSync(worktreePath)) removeWorktreeSafe(worktreePath);
   git(['-C', clonePath, 'worktree', 'prune']);
   git([
@@ -57,15 +94,19 @@ export function prepareMrWorktree(
     worktreePath,
     headSha,
   ]);
+  try {
+    utimesSync(worktreePath, now, now);
+  } catch {
+    /* best-effort mtime update */
+  }
   return { worktreePath, headSha };
+  // #endregion END_FULL_RECREATE_WORKTREE
 }
 
 /**
  * @purpose Fetch the MR target branch and return the merge-base for the review diff.
- * @invariant Only author's own changes appear in the diff — not master noise from merge-conflict resolution.
- *   Strategy: fetch target → merge-base(FETCH_HEAD, headSha). If shallow clone hides the ancestor, deepen
- *   and retry. If GitLab's diff_refs.base_sha is newer than our merge-base (e.g. after author's rebase),
- *   the merge-base is recalculated from the deeper history.
+ * @invariant Author's changes only — no master noise. Fetch target branch, compute
+ *   merge-base. If shallow, deepen. If rebase detected, deepen and recalculate.
  * @param clonePath Local clone.
  * @param targetBranch MR target branch.
  * @param headSha Resolved MR head SHA.
@@ -86,7 +127,7 @@ export function resolveBaseSha(
   try {
     mergeBase = git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
   } catch {
-    // #region START_SHALLOW_DEEN — shallow clone: no common ancestor; unshallow and retry
+    // #region START_SHALLOW_DEEPEN — shallow clone: no common ancestor; unshallow and retry
     git([
       '-C',
       clonePath,

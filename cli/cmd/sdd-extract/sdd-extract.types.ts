@@ -35,7 +35,10 @@ export type ExtractOutcome =
   | { ok: true; content: string }
   | { ok: false; code: string; exitCode: 1 | 2 | 3 | 4; message: string };
 
-/** @purpose Build the bad-invocation diagnostic. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(): ExtractOutcome {
   return {
     ok: false,
@@ -49,7 +52,11 @@ export function badInvocation(): ExtractOutcome {
   };
 }
 
-/** @purpose Build the invalid-name diagnostic. | @param name The rejected section name. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the invalid-name diagnostic.
+ * @param name The rejected section name.
+ * @returns Outcome with exit 4.
+ */
 export function invalidName(name: string): ExtractOutcome {
   return {
     ok: false,
@@ -64,7 +71,11 @@ export function invalidName(name: string): ExtractOutcome {
   };
 }
 
-/** @purpose Build the file-not-found diagnostic. | @param file The missing path. | @returns Outcome with exit 1. */
+/**
+ * @purpose Build the file-not-found diagnostic.
+ * @param file The missing path.
+ * @returns Outcome with exit 1.
+ */
 export function fileNotFound(file: string): ExtractOutcome {
   return {
     ok: false,
@@ -77,7 +88,11 @@ export function fileNotFound(file: string): ExtractOutcome {
   };
 }
 
-/** @purpose Build the file-not-readable diagnostic. | @param file The unreadable path. | @returns Outcome with exit 1. */
+/**
+ * @purpose Build the file-not-readable diagnostic.
+ * @param file The unreadable path.
+ * @returns Outcome with exit 1.
+ */
 export function fileNotReadable(file: string): ExtractOutcome {
   return {
     ok: false,

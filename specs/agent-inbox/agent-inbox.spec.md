@@ -136,40 +136,43 @@ gennady inbox --reset                                        # чистый ли
 
 ### 4.4 Runtime Backing & Deferred Scope
 
-| Capability                                               | Posture                                                               |
-| -------------------------------------------------------- | --------------------------------------------------------------------- |
-| Inbox / стадии / реестр / worktree / постинг             | `real-runtime` (проверено)                                            |
-| `inbox-context` (AI-16)                                  | `real-runtime` (проверено)                                            |
-| Golden chat output example (AI-17)                       | `real-runtime` (проверено)                                            |
-| Self-check в arch-interrogation (AI-18)                  | `real-runtime` (проверено)                                            |
-| Remit-триггер в SKILL.md (AI-19)                         | `real-runtime` (проверено)                                            |
-| Полный `review_needed` на реальном MR (worktree+clone)   | `real-runtime` (не прогнан end-to-end)                                |
-| Config detection + `inbox config` CLI (AI-20, AI-21)     | `not-implemented`                                                     |
-| Error response contracts (AI-22)                         | `not-implemented`                                                     |
-| Worktree reuse + 7d TTL (AI-09, AI-23)                   | `not-implemented`                                                     |
-| `inbox-context` format v2 + delta commits (AI-16, AI-24) | `not-implemented`                                                     |
-| Unified `--url` interface (AI-25)                        | `not-implemented`                                                     |
-| `vcs-discussions --my --with-drafts` (AI-26)             | `not-implemented`                                                     |
-| `vcs-draft-note --delete-all` (AI-27)                    | `not-implemented`                                                     |
-| `update-review.directive.xml` (AI-28)                    | `not-implemented`                                                     |
-| Self-review author role (AI-29)                          | `not-implemented`                                                     |
-| ReactionMatrix (AI-30)                                   | `not-implemented`                                                     |
-| vcs-reply validation (AI-31)                             | `not-implemented`                                                     |
-| Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                          |
-| Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                          |
-| `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox) |
-| Очередь / tick / watch / loop / notify                   | `not-implemented` (deferred)                                          |
-| Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                          |
-| GitHub support                                           | `not-implemented` (deferred)                                          |
+| Capability                                               | Posture                                                                 |
+| -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Inbox / стадии / реестр / worktree / постинг             | `real-runtime` (проверено)                                              |
+| `inbox-context` (AI-16)                                  | `real-runtime` (проверено)                                              |
+| Golden chat output example (AI-17)                       | `real-runtime` (проверено)                                              |
+| Self-check в arch-interrogation (AI-18)                  | `real-runtime` (проверено)                                              |
+| Remit-триггер в SKILL.md (AI-19)                         | `real-runtime` (проверено)                                              |
+| Полный `review_needed` на реальном MR (worktree+clone)   | `real-runtime` (не прогнан end-to-end)                                  |
+| Config detection + `inbox config` CLI (AI-20, AI-21)     | `not-implemented`                                                       |
+| Error response contracts (AI-22)                         | `not-implemented`                                                       |
+| Worktree reuse + 7d TTL (AI-09, AI-23)                   | `not-implemented`                                                       |
+| `inbox-context` format v2 + delta commits (AI-16, AI-24) | `not-implemented`                                                       |
+| Unified `--url` interface (AI-25)                        | `not-implemented`                                                       |
+| `vcs-discussions --my --with-drafts` (AI-26)             | `not-implemented`                                                       |
+| `vcs-draft-note --delete-all` (AI-27)                    | `not-implemented`                                                       |
+| `update-review.directive.xml` (AI-28)                    | `not-implemented`                                                       |
+| Self-review author role (AI-29)                          | `not-implemented`                                                       |
+| ReactionMatrix (AI-30)                                   | `not-implemented`                                                       |
+| vcs-reply validation (AI-31)                             | `not-implemented`                                                       |
+| Линзы ②/③: `change-`/`security-interrogation`            | директивы созданы (2026-07-05), НЕ подключены — wiring в v2-оркестрации |
+| Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                            |
+| Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                            |
+| `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)   |
+| Очередь / tick / watch / loop / notify                   | `not-implemented` (deferred)                                            |
+| Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                            |
+| GitHub support                                           | `not-implemented` (deferred)                                            |
 
 ### 4.5 Rules
 
-| Rule                 | Category    | Source                                                                                                                                                                                                                               |
-| -------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `typescript-rules`   | coding      | `ai/directives/coding/typescript-rules.xml`                                                                                                                                                                                          |
-| `arch-interrogation` | agent-inbox | `ai/directives/agent-inbox/arch-interrogation.directive.xml`                                                                                                                                                                         |
-| `code-interrogation` | agent-inbox | `ai/directives/agent-inbox/code-interrogation.directive.xml` (вторая батарея: код-гигиена через архитектурную призму — native/idioms/literals/deps/testability/security/business-goal; грузится из `arch-interrogation` на `STEP_2`) |
-| `posting-rules`      | agent-inbox | `ai/directives/agent-inbox/posting-rules.directive.xml` (правила постинга: формат ответа, suggestion-range, edit/delete guard, кандидат-теггинг)                                                                                     |
+| Rule                     | Category    | Source                                                                                                                                                                                                                                                                                                             |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `typescript-rules`       | coding      | `ai/directives/coding/typescript-rules.xml`                                                                                                                                                                                                                                                                        |
+| `arch-interrogation`     | agent-inbox | `ai/directives/agent-inbox/arch-interrogation.directive.xml`                                                                                                                                                                                                                                                       |
+| `code-interrogation`     | agent-inbox | `ai/directives/agent-inbox/code-interrogation.directive.xml` (вторая батарея: код-гигиена через архитектурную призму — native/idioms/literals/deps/testability/security/business-goal; грузится из `arch-interrogation` на `STEP_2`)                                                                               |
+| `posting-rules`          | agent-inbox | `ai/directives/agent-inbox/posting-rules.directive.xml` (правила постинга: формат ответа, suggestion-range, edit/delete guard, кандидат-теггинг)                                                                                                                                                                   |
+| `change-interrogation`   | agent-inbox | `ai/directives/agent-inbox/change-interrogation.directive.xml` (линза ②: «зачем меняли, не глубже ли проблема» — пробы CAUSE/LAYER/CHURN/FIGHT/RIPPLE. Создана 2026-07-05; пока НЕ загружается ни одним скиллом — подключение в v2-оркестрации)                                                                    |
+| `security-interrogation` | agent-inbox | `ai/directives/agent-inbox/security-interrogation.directive.xml` (линза ③: Zero Trust — пробы INPUT/PATH/AUTHZ/SECRET/SUPPLY/BLAST/INJ, вердикты unsafe/validated. Когда участвует в ревью, SEC-проба `code-interrogation` деферится сюда. Создана 2026-07-05; пока НЕ загружается — подключение в v2-оркестрации) |
 
 ## 5. High-Level Architecture
 

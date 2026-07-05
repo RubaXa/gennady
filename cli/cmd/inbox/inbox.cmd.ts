@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox — list merge requests awaiting your reaction.
 // @consumers: N/A
-// @tasks: N/A
+// @tasks: TSK-93
 
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
@@ -22,7 +22,11 @@ import {
   outDir,
   worktreesRoot,
 } from './_core/logic/state-paths.logic.ts';
-import { removeAllWorktrees } from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
+import {
+  removeAllWorktrees,
+  gcStaleWorktrees,
+  WORKTREE_TTL_MS,
+} from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -75,6 +79,15 @@ async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
     const stateDir = resolveStateDir(argv);
+
+    // #region START_GC_STALE_WORKTREES — best-effort: remove worktrees older than TTL;
+    // failure mode: GC errors do not block inbox — stale worktrees accumulate harmlessly until next run
+    try {
+      gcStaleWorktrees(worktreesRoot(stateDir), WORKTREE_TTL_MS, Date.now());
+    } catch {
+      /* gc failures are non-blocking */
+    }
+    // #endregion END_GC_STALE_WORKTREES
 
     if (argv.includes('--reset') || argv.includes('reset')) {
       const { registryRemoved, outRemoved } = resetInboxState(

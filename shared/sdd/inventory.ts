@@ -3,7 +3,11 @@
 
 import { extractSection } from './section.ts';
 
-/** @purpose Extract declared entity names from a module spec's `## 3. Entity Inventory` table (first column, backticks stripped). | @param specContent Full module-spec markdown. | @returns Declared entity names; empty when there is no ENTITY_INVENTORY section. */
+/**
+ * @purpose Extract declared entity names from a module spec's `## 3. Entity Inventory` table (first column, backticks stripped).
+ * @param specContent Full module-spec markdown.
+ * @returns Declared entity names; empty when there is no ENTITY_INVENTORY section.
+ */
 export function parseEntityInventory(specContent: string): string[] {
   const sec = extractSection(specContent, 'ENTITY_INVENTORY');
   if (sec.status !== 'ok') return [];

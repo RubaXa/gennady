@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox-context — atomic context gathering for one MR.
 // @consumers: agent-inbox skill
-// @tasks: TSK-AI-16
+// @tasks: TSK-AI-16, TSK-93
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync } from 'node:fs';
@@ -27,10 +27,9 @@ import {
   prepareMrWorktree,
   resolveBaseSha,
   gcStaleWorktrees,
+  WORKTREE_TTL_MS,
 } from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
 import { ensureClone } from '../vcs-worktree/_core/logic/locate-clone.logic.ts';
-
-const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
 
 function parseValue(argv: string[], flag: string): string | undefined {
   const inline = argv.find((a) => a.startsWith(`${flag}=`));

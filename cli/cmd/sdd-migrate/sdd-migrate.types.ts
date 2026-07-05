@@ -15,7 +15,11 @@ export type MigrateOutcome =
   | { ok: true; text: string }
   | { ok: false; code: string; exitCode: 1 | 4; message: string };
 
-/** @purpose Build the bad-invocation diagnostic. | @param detail What was wrong. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @param detail What was wrong.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(detail: string): MigrateOutcome {
   return {
     ok: false,

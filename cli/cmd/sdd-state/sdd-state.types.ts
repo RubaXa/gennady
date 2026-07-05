@@ -114,7 +114,11 @@ export function formatSnapshot(s: StateSnapshot): string {
   return lines.join('\n');
 }
 
-/** @purpose Build the bad-invocation diagnostic. | @param got The arguments as received. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @param got The arguments as received.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(got: string): StateOutcome {
   return {
     ok: false,
@@ -128,7 +132,11 @@ export function badInvocation(got: string): StateOutcome {
   };
 }
 
-/** @purpose Build the bad-root diagnostic. | @param root The path that is not a directory. | @returns Outcome with exit 2. */
+/**
+ * @purpose Build the bad-root diagnostic.
+ * @param root The path that is not a directory.
+ * @returns Outcome with exit 2.
+ */
 export function badRoot(root: string): StateOutcome {
   return {
     ok: false,

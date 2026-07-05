@@ -8,7 +8,7 @@
 | TSK-90  | DONE   | —              | Config-инфраструктура: файл + загрузка/сохранение/валидация    |
 | TSK-91  | TODO   | TSK-90         | Structured config signal в `inbox` и `inbox-context`           |
 | TSK-92  | TODO   | TSK-90         | Подкоманда `gennady inbox config`                              |
-| TSK-93  | TODO   | —              | Worktree reuse + 7-дневный TTL (без явной очистки агентом)     |
+| TSK-93  | DONE   | —              | Worktree reuse + 7-дневный TTL (без явной очистки агентом)     |
 | TSK-94  | TODO   | TSK-91         | inbox-context format v2 + дельта коммитов                      |
 | TSK-95  | TODO   | —              | Unified `--url` interface + удаление legacy команд из SKILL.md |
 | TSK-96  | TODO   | TSK-95         | `vcs-discussions` фильтры `--my` и `--with-drafts`             |

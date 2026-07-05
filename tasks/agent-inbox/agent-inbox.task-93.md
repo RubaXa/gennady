@@ -1,19 +1,27 @@
 # Task: TSK-93 — Worktree reuse + 7-дневный TTL (без явной очистки агентом)
 
+<!--SECTION:META-->
+
 ## 1. Meta
 
-- **Task-ID:** TSK-93 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** vcs-worktree | **Dependencies:** None
+- **Task-ID:** TSK-93 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** vcs-worktree | **Dependencies:** None
 - **Purpose:** Worktree переиспользуется при повторном `inbox-context` (fetch + reset вместо delete + create). TTL = 7 дней от последнего обращения. Агент больше не удаляет worktree явно.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-09, AI-23 | **Runtime:** not-implemented | **Verification:** unit
+
+<!--SECTION:PHASES_OVERVIEW-->
 
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
+
+<!--SECTION:PHASES-->
 
 ## 3. Phases
+
+<!--SECTION:PHASE_P1-->
 
 ### P1 — impl
 
@@ -26,6 +34,8 @@
   - `ai/skills/agent-inbox-take/SKILL.md` — найти и удалить любое упоминание `vcs-worktree --cleanup` или `worktree cleanup` (вероятно в шаге скаута или финализации). Если cleanup-инструкции нет — пропустить.
 - **Exit:** worktree переживает сессии. Повторный `inbox-context` для того же MR — fetch + reset (~секунды) вместо полного пересоздания (~минуты). При ошибке fetch — fallback на recreate. GC по 7-дневному TTL предотвращает неограниченный рост диска. `--cleanup`/`--cleanup-all` у `vcs-worktree` продолжают работать.
 
+<!--SECTION:PHASE_P2-->
+
 ### P2 — test
 
 - **Rules:** none
@@ -33,6 +43,8 @@
   - `cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts` — дополнить существующий файл (если нет — создать)
   - `cli/cmd/inbox-context/inbox-context.test.ts` — проверить `WORKTREE_TTL_MS === 7 * 24 * 60 * 60 * 1000`
 - **Exit:** тесты на reuse (fetch+reset, не delete+add), создание нового, обновление mtime, GC с 7d TTL (stale удалён, свежий остался), fetch failure → fallback на recreate, TTL-константа.
+
+<!--SECTION:BDD-->
 
 ## 4. BDD
 
@@ -49,12 +61,16 @@
 - GC находит stale worktree, `rm -rf` падает (permission denied) → ошибка залогирована, `inbox`/`inbox-context` не заблокирован
 - `vcs-worktree --cleanup <path>` → удаляет конкретный worktree
 
+<!--SECTION:VERIFICATION-->
+
 ## 5. Verification
 
 - `npm run typecheck` — pass
 - `npm run test -- cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts` — pass
 - `npm run test -- cli/cmd/inbox-context/inbox-context.test.ts` — pass
 - `npm run format:check` — pass
+
+<!--SECTION:DEPENDENCIES-->
 
 ## 6. Dependencies / Open questions
 
@@ -64,14 +80,35 @@
 - AI-22 (error contract) — `not-implemented`, WORKTREE-ошибки пока используют существующий throw/console.error; маппинг на AI-22 — отдельный таск
 - SKILL.md зеркало `.claude/skills/agent-inbox/` не существует (D42) — правим только `ai/skills/`
 
+<!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
 
 ### Round 1
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [worktree-ops.logic.ts, inbox-context.cmd.ts, SKILL.md, agent-inbox-take/SKILL.md]; decisions: [D46]; open: []
+- [x] 2026-07-05T07:53:30Z intro WORKTREE_TTL_MS ← единая константа TTL (7d, 604800000ms), экспортирована из worktree-ops.logic.ts, импортируется inbox.cmd.ts и inbox-context.cmd.ts
+- [x] 2026-07-05T07:53:30Z discovery SKILL.md step 9 already has no vcs-worktree --cleanup — contract satisfied, no change needed
+- [x] 2026-07-05T07:53:30Z discovery agent-inbox-take/SKILL.md has no --cleanup mention — contract satisfied, no change needed
+- [x] 2026-07-05T07:53:30Z discovery sdd verify blocked by classify-scripts.js CJS/ESM mismatch — fixed by renaming to .cjs + updating verify.sh reference
+- [x] 2026-07-05T07:53:30Z discovery pre-existing @invariant word count (51) on resolveBaseSha — shortened to 19 words
+- [x] 2026-07-05T07:53:30Z discovery pre-existing anchor typo START_SHALLOW_DEEN → START_SHALLOW_DEEPEN — fixed
+- [x] 2026-07-05T07:53:30Z discovery §5 npm run typecheck does not exist as npm script (package.json uses type-check) — ticket §5 references non-existent script name; functional type-checking passed via sdd verify (npm run type-check)
+- [x] 2026-07-05T07:53:30Z ver npm run typecheck → fail exit=1
+- [x] 2026-07-05T07:53:30Z ver npm run format:check → pass exit=0
+- [x] 2026-07-05T07:53:30Z DONE
+      **Handoff →** artifacts: [cli/cmd/vcs-worktree/_core/logic/worktree-ops.logic.ts, cli/cmd/inbox/inbox.cmd.ts, cli/cmd/inbox-context/inbox-context.cmd.ts]; decisions: [WORKTREE_TTL_MS=exported-from-worktree-ops, reuse-strategy=fetch+reset-fallback-recreate, mtime-touch=best-effort, gc-on-inbox-startup=best-effort]; open: [TSK-93-1: §5 references npm run typecheck but script is type-check — ticket should be corrected]
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [worktree-ops.test.ts, inbox-context.test.ts]; decisions: []; open: []
+- [x] 2026-07-05T08:02:21Z ver npm run type-check → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run lint:contracts → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run test → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run format:check → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run typecheck → fail exit=1
+- [x] 2026-07-05T08:02:21Z ver npm run test -- cli/cmd/vcs-worktree/\_core/logic/worktree-ops.test.ts → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run test -- cli/cmd/inbox-context/inbox-context.test.ts → pass exit=0
+- [x] 2026-07-05T08:02:21Z ver npm run format:check → pass exit=0
+- [x] 2026-07-05T08:02:21Z DONE
+      **Handoff →** artifacts: [cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts, cli/cmd/inbox-context/inbox-context.test.ts]; decisions: []; open: [TSK-93-1: §5 npm run typecheck script missing — actual name is type-check]

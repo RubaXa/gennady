@@ -156,3 +156,12 @@ export const ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS =
 /** @purpose #region START annotation text exceeds the maximum word count. */
 export const ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG =
   'ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG' as const;
+
+/** @purpose A TypeScript `as` assertion bypasses type inference — silent escape hatch (AX_NO_SILENT_ESCAPE_HATCH). */
+export const ERR_CLI_LINT_UNSAFE_CAST = 'ERR_CLI_LINT_UNSAFE_CAST' as const;
+
+/** @purpose An exported entity in code is not declared in the module's closed-world Entity Inventory. */
+export const ERR_CLI_LINT_INVENTORY_UNDECLARED = 'ERR_CLI_LINT_INVENTORY_UNDECLARED' as const;
+
+/** @purpose An inventory entity declared in the spec is exported by no scanned file — planned-but-unbuilt. */
+export const ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED = 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' as const;

@@ -19,7 +19,11 @@ export type SyncOutcome =
   | { ok: true; text: string }
   | { ok: false; code: string; exitCode: 1 | 2 | 4; message: string };
 
-/** @purpose Build the bad-invocation diagnostic. | @param detail What was wrong. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @param detail What was wrong.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(detail: string): SyncOutcome {
   return {
     ok: false,
@@ -33,7 +37,11 @@ export function badInvocation(detail: string): SyncOutcome {
   };
 }
 
-/** @purpose Build the file-error diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 1. */
+/**
+ * @purpose Build the file-error diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 1.
+ */
 export function fileError(ticket: string): SyncOutcome {
   return {
     ok: false,
@@ -43,7 +51,11 @@ export function fileError(ticket: string): SyncOutcome {
   };
 }
 
-/** @purpose Build the unparseable-Meta diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 2. */
+/**
+ * @purpose Build the unparseable-Meta diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 2.
+ */
 export function metaError(ticket: string): SyncOutcome {
   return {
     ok: false,

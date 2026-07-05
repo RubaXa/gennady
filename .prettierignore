@@ -6,4 +6,5 @@ cli/utils/review-gen/specs
 cli/utils/review-gen/js
 **/__tests__/fixtures/**
 ai/skills/
+ai/kit/
 .claude/skills/

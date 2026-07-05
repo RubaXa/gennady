@@ -40,7 +40,9 @@ compatibility: opencode
 - `loop` — планировщик повторяет `tick`; частота задаётся снаружи (`/loop 10m` — пока сессия;
   launchd `StartInterval`/cron — фоном). Скилл частоту не задаёт; `tick` идемпотентен через реестр
   `~/.gennady/inbox-registry.json` (показывает только дельту).
-- `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (сносит реестр, черновики, worktrees).
+- `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (сносит только локальное:
+  реестр и worktrees). Серверные черновики GitLab не трогает — их удаляет только явный
+  `vcs-draft-note --delete-all` по запросу оператора (AI-08).
 
 Не из GitLab-репозитория → `--vcs-host=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
 

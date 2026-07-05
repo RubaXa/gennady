@@ -15,6 +15,8 @@
     WHY a dependency is global, whether the code is testable, whether it serves the business goal.
     Scope strictly to the diff. One `flag` = one real problem, attached to a finding ID (E/R/Q) in
     the parent directive — never a parallel report. If a probe is inconclusive, say so; do not invent.
+    When `security-interrogation.directive.xml` participates in the same review, security findings
+    are raised THERE — the `SEC` probe below defers to that battery (no double-flagging).
   </ScopeGuard>
 
   <Probes>

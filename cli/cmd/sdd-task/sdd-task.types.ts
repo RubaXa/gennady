@@ -19,7 +19,11 @@ export type TaskOutcome =
   | { ok: true; text: string }
   | { ok: false; code: string; exitCode: 1 | 2 | 4; message: string };
 
-/** @purpose Reduce a rule link/path to its rule-id (basename without .xml), for matching Verification rows. | @param rulePath Rule link target or path. | @returns The basename with any `.xml` stripped. */
+/**
+ * @purpose Reduce a rule link/path to its rule-id (basename without .xml), for matching Verification rows.
+ * @param rulePath Rule link target or path.
+ * @returns The basename with any `.xml` stripped.
+ */
 export function ruleId(rulePath: string): string {
   const base = rulePath.split('/').pop() ?? rulePath;
   return base.replace(/\.xml$/, '').trim();
@@ -95,7 +99,10 @@ export function formatPlan(
   return lines.join('\n');
 }
 
-/** @purpose Build the bad-invocation diagnostic. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(): TaskOutcome {
   return {
     ok: false,
@@ -108,7 +115,11 @@ export function badInvocation(): TaskOutcome {
   };
 }
 
-/** @purpose Build the file-error diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 1. */
+/**
+ * @purpose Build the file-error diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 1.
+ */
 export function fileError(ticket: string): TaskOutcome {
   return {
     ok: false,
@@ -118,7 +129,11 @@ export function fileError(ticket: string): TaskOutcome {
   };
 }
 
-/** @purpose Build the not-a-ticket diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 2. */
+/**
+ * @purpose Build the not-a-ticket diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 2.
+ */
 export function notATicket(ticket: string): TaskOutcome {
   return {
     ok: false,

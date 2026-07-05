@@ -71,7 +71,11 @@ export function buildCloseBlock(ts: string): string {
   return `\n#### Round close\n- [x] \`${ts}\` DONE`;
 }
 
-/** @purpose Build the bad-invocation diagnostic. | @param detail What was wrong. | @returns Outcome with exit 4. */
+/**
+ * @purpose Build the bad-invocation diagnostic.
+ * @param detail What was wrong.
+ * @returns Outcome with exit 4.
+ */
 export function badInvocation(detail: string): LogOutcome {
   return {
     ok: false,
@@ -85,7 +89,11 @@ export function badInvocation(detail: string): LogOutcome {
   };
 }
 
-/** @purpose Build the placeholder-rejection diagnostic. | @param content The offending content. | @returns Outcome with exit 2. */
+/**
+ * @purpose Build the placeholder-rejection diagnostic.
+ * @param content The offending content.
+ * @returns Outcome with exit 2.
+ */
 export function placeholderError(content: string): LogOutcome {
   return {
     ok: false,
@@ -99,7 +107,11 @@ export function placeholderError(content: string): LogOutcome {
   };
 }
 
-/** @purpose Build the file-error diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 1. */
+/**
+ * @purpose Build the file-error diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 1.
+ */
 export function fileError(ticket: string): LogOutcome {
   return {
     ok: false,
@@ -109,7 +121,11 @@ export function fileError(ticket: string): LogOutcome {
   };
 }
 
-/** @purpose Build the missing-log-section diagnostic. | @param ticket The ticket path. | @returns Outcome with exit 2. */
+/**
+ * @purpose Build the missing-log-section diagnostic.
+ * @param ticket The ticket path.
+ * @returns Outcome with exit 2.
+ */
 export function noLogSection(ticket: string): LogOutcome {
   return {
     ok: false,
