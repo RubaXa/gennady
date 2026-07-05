@@ -116,11 +116,16 @@
       - `oldPath` = `newPath` unless file was renamed.
     </Section>
     <Section name="suggestion">
-      A code suggestion to replace one line with another (TYPO probe → suggestion candidate). JSON shape is a line-comment with the body following the suggestion format:
+      An exact mechanical fix the author applies with one click (Apply suggestion).
+      GitLab syntax: a fenced block ```suggestion:-M+N where M and N are NUMBERS —
+      how many lines above (M) and below (N) the commented line the replacement covers.
+      Single-line replacement → ```suggestion:-0+0 (or bare ```suggestion).
+      INSIDE the block — the full new text of the covered lines (not a diff, not a description).
+      Posted as a line-comment on the target line. JSON shape:
       <![CDATA[
       ```json
       {
-        "body": "🤖 suggestion:-A+B",
+        "body": "🤖 Опечатка: `REDDIS_URL` → `REDIS_URL`\n\n```suggestion:-0+0\nthrow new Error(`REDIS_URL is not set`);\n```",
         "position": {
           "baseSha": "<base_sha>",
           "startSha": "<start_sha>",
@@ -131,7 +136,6 @@
       }
       ```
       ]]>
-      Where `-A` is the existing text to replace and `+B` is the suggested replacement. Posted as a line-comment on the relevant code line.
     </Section>
   </CommentFormat>
 
@@ -143,7 +147,7 @@
     | `reply-to-thread` | Already raised by another reviewer; I add substance | Post as reply-to-thread with the given discussionId |
     | `correction-reply` | Another reviewer's claim is wrong per AX_GROUNDED_IN_REPO | Post as reply-to-thread with correction |
     | `awaiting-my-reply` | Thread where @my_login is mentioned or my last message got a reply | Post as reply-to-thread; operator sees this separately in the report |
-    | `suggestion` | TYPO probe found a typo or style issue | Post as line-comment with ```suggestion:-A+B format (see §suggestion) |
+    | `suggestion` | TYPO probe found a typo or style issue | Post as line-comment with ```suggestion:-0+0 fenced block containing new text (see §suggestion) |
   </CandidateTagging>
 
   <VcsReplySyntax>

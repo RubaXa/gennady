@@ -13,6 +13,8 @@ compatibility: opencode
 
 > `INCLUDE_ONCE("path")` (и `<IncludeOnce src="path"/>` в директивах) = **прочитай файл сам, один
 > раз за сессию**. Это инструкция тебе, не препроцессор.
+> `RE_READ("path")` = прочитай файл заново СЕЙЧАС, даже если уже читал в этой сессии.
+> Используется там, где важно освежить инструкцию перед каждым MR.
 
 ## ⚡ Инварианты сессии (держи до конца, даже после компрессии)
 
@@ -159,18 +161,18 @@ compatibility: opencode
    tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
    контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
    (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
-3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref>` → `path`/`base`/`diff_refs` +
-   changeset + stage + треды (`Reviewer`/`Author`/`AI_Agent`, `uid`=логин) + мои черновики + package.
+3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --ref <ref> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
    (Если нужно по отдельности — `vcs-worktree` / `inbox --pick` / `review-issues --all`/`--draft`.)
-4. **Анализ (сразу, без вопросов — правило 7).** Карта изменений (инвариант 1), затем:
+4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
+   Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
    - `review_needed` (первый ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
      запустить свои скиллы code-review (какие есть в харнессе) по диффу `base..HEAD` (баги/
      корректность) — его находки в общий отчёт.
    Каждый проход (инлайн или сабагент) применяет директиву:
-   > ⚠️ **REMIT:** перед любым выводом по MR `INCLUDE_ONCE("ai/directives/agent-inbox/arch-interrogation.directive.xml")`
+   > ⚠️ **REMIT:** перед любым выводом по MR `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")`
    > целиком, игнорируя прежнее знание. Следуй `OutputFormat` буквально (все секции, порядок,
-   > разделители), пройди `SelfCheck`, сверь с `INCLUDE_ONCE("ai/directives/agent-inbox/golden-chat-output.example.md")`.
+   > разделители), пройди `SelfCheck`, сверь с `RE_READ("ai/directives/agent-inbox/golden-chat-output.example.md")`.
    > Вся `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
    > `HaltConditions` — обязательны целиком, не подмножество.
 
@@ -188,12 +190,11 @@ compatibility: opencode
    рядом) · закрыть треды (resolve) · approve/`--revoke` · пропустить. Автор: запостить сводку ·
    ответить/закрыть треды ревьюеров · пропустить. Approve и замечания — можно вместе. Это финализация;
    пропуск — только явной галочкой.
-8. **Постинг live** (Ask = подтверждение, без dry-run). Загрузи
-   `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`. Через `vcs-reply`
-   (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
+8. **Постинг live** — `RE_READ("ai/skills/agent-inbox-post/SKILL.md")`.
+   Через `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
    `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
-9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (гасит pending-todo, чтобы MR не всплыл снова) →
-   `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --cleanup <path>`. Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
+9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (гасит pending-todo).
+   Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
    следующий MR.
 
 ## Когда НЕ пропускать
