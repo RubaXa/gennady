@@ -172,6 +172,7 @@ compatibility: opencode
    контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
    (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
 3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
+   **Сразу после получения worktree:** прочитай содержимое worktree-директории (`ls <worktreePath>`). Это вызовет **один** запрос прав на всю директорию — дальше чтение любых файлов внутри worktree пойдёт без повторных подтверждений.
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
