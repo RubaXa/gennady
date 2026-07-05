@@ -48,11 +48,13 @@
 ## 4. BDD
 
 **Формат ответа:**
+
 - `inbox-context --ref group/proj!510` → ответ содержит `myLogin`, `myRole`, `author`, `reviewers`, `description`, `approvedBy` на корневом уровне. Нет поля `package`
 - Ответ содержит `threadStats: { total: N, drafts: M }`. Нет поля `threads`
 - Ответ содержит `sourceBranch`, `targetBranch`, `createdAt`, `updatedAt`
 
 **Дельта коммитов** (сравнение — с `lastReviewedHeadSha`, он появляется только после финализации):
+
 - Первый запуск `inbox-context --ref group/proj!510` → `headChanged: { kind: "none", newCommitCount: 0 }`, `newCommits: []`. В реестр записан `candidateHeadSha`, `lastReviewedHeadSha` отсутствует
 - Автор запушил, финализации не было (`lastReviewedHeadSha` пуст) → повторный `inbox-context` → `kind: "none"` (нет завершённого разбора — не с чем сравнивать; полное ревью и так будет)
 - `vcs-todo --done group/proj!510` → `candidateHeadSha` промоутнут в `lastReviewedHeadSha`
@@ -64,6 +66,7 @@
 - `inbox-context --ref group/proj!510 --skip-worktree` → `headChanged: null`, `newCommits: null`
 
 **skip-флаги:**
+
 - `--skip-threads` → `stage: null`, `openQuestions: null`, `lastAuthor: null`, `threadStats: null`
 - `--skip-worktree` → `worktree: null`, `changeset: null`, `headChanged: null`, `newCommits: null`
 

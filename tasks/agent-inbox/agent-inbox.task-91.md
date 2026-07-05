@@ -35,6 +35,7 @@
 ## 4. BDD
 
 **`gennady inbox`:**
+
 - Машина без конфига → `gennady inbox --json` → `{"configured": false, "missing": ["reposBase", "vcsHost"]}`, exit 0
 - Конфиг с `{"reposBase": "/p"}` (нет vcsHost) → `{"configured": false, "missing": ["vcsHost"]}`
 - `gennady inbox --json --vcs-host=gitlab.example.com` (флаг покрывает vcsHost) → `{"configured": false, "missing": ["reposBase"]}`
@@ -44,6 +45,7 @@
 - `gennady inbox` (без `--json`) без конфига → человекочитаемое сообщение, exit 0
 
 **`gennady inbox-context`:**
+
 - `gennady inbox-context --ref group/proj!510 --json` без конфига → `{"configured": false, "missing": ["reposBase", "vcsHost"]}`, exit 0
 - `gennady inbox-context --ref group/proj!510 --json --vcs-host=H` → `{"configured": false, "missing": ["reposBase"]}`
 - `gennady inbox-context --ref group/proj!510 --json --vcs-host=H --repos-base=/p` → конфиг покрыт, продолжает работу
