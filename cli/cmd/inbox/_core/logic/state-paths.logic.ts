@@ -1,6 +1,6 @@
 // @file: Resolve the gennady state directory and its sub-paths (single --state-dir override).
 // @consumers: inbox.cmd, vcs-worktree.cmd
-// @tasks: N/A
+// @tasks: TSK-90
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -31,6 +31,10 @@ export const worktreesRoot = (stateDir: string): string => join(stateDir, 'workt
 
 /** @purpose Clones cache under the state dir. */
 export const clonesRoot = (stateDir: string): string => join(stateDir, 'clones');
+
+/** @purpose Config file path under the state dir (agent-inbox/config.json). */
+export const configPath = (stateDir: string): string =>
+  join(stateDir, 'agent-inbox', 'config.json');
 
 /** @purpose repos.json path under the state dir. */
 export const reposMapPath = (stateDir: string): string => join(stateDir, 'repos.json');
