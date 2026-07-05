@@ -159,9 +159,9 @@ compatibility: opencode
 
 0. **Pre-flight: конфиг.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`.
    Если ответ содержит `"configured": false`:
-   - **Не печатай текст и не выходи.** Используй `AskUserQuestion` (два вопроса последовательно, по одному на каждый `missing`-ключ):
-     - `reposBase`: «Где лежат репозитории?» — варианты: `~/Developer` (Recommended), `~/work`, `~/projects`, `~/src` + Other (ввести свой путь). Валидация: абсолютный путь, существует, isDirectory. При невалидном вводе — переспросить.
-     - `vcsHost`: «Какой хост GitLab?» — варианты из `git remote get-url origin` (авто-детект, если есть) + Other (ввести свой). Валидация: непустой.
+    - **Не печатай текст и не выходи.** Спроси оператора через два **отдельных** `AskUserQuestion` (строго последовательно — сначала первый, дождись ответа, потом второй):
+      - **Сначала `reposBase`:** «Где лежат репозитории?» — варианты: `~/Developer` (Recommended), `~/work`, `~/projects`, `~/src` + Other (ввести свой путь). Валидация: абсолютный путь, существует, isDirectory. При невалидном вводе — переспроси (новый `AskUserQuestion`), не продолжай пока нет валидного ответа.
+      - **Потом `vcsHost`:** «Какой хост GitLab?» — варианты из `git remote get-url origin` (авто-детект, если есть) + Other (ввести свой). Валидация: непустой.
    - После получения обоих значений: `npx tsx ~/Developer/gennady/cli/gennady.ts inbox config --set reposBase=<путь> --set vcsHost=<хост>`
    - Затем повтори `inbox --json` — теперь должен вернуть список MR.
    - Если уже `"configured": true` — сразу к шагу 1.
