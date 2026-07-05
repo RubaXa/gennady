@@ -89,7 +89,8 @@ compatibility: opencode
 | Инструмент | Команда | Когда |
 |---|---|---|
 | Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | старт; `--all` — снять фильтр |
-| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, sourceBranch, targetBranch, createdAt, updatedAt, myLogin, myRole, author, reviewers, description, approvedBy, headChanged (kind: none/fast_forward/rewritten + newCommitCount), newCommits [{sha, subject, author, date}], worktree + repoLayout, changeset, stage, openQuestions, lastAuthor, threadStats {total, drafts} |
+| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, …, myRole, author, …, headChanged, newCommits, worktree + repoLayout, changeset, stage, threadStats. **Поле `reviewPlanRequired: true` → нужен `inbox-review-plan` перед анализом.** |
+| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <worktree.base>` | **Только когда `reviewPlanRequired == true`.** Возвращает `ReviewPlan { mode, tracks[] }` — готовый план диспетчеризации сабагентов. Агент НЕ думает, агент выполняет. |
 | Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
 | Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | что уже писали / мои черновики |
 | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
