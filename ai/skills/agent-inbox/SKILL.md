@@ -97,7 +97,7 @@ compatibility: opencode
 | Постинг | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
 | Черновики | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
 | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` снять |
-| Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
+| Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
 
 **`vcs-reply` (JSON-массив).** Формы reply/line/suggestion — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Только в этом скилле:
 - `{"noteId":…,"body":…}` править / `{"noteId":…,"delete":true}` удалить — **свою** заметку;
@@ -108,7 +108,7 @@ compatibility: opencode
 - **Resolve** — когда вопрос исчерпан (я ответил / автор поправил и я согласен). Не резолвить там, где не ответил или спор открыт. Обычно reply+resolve вместе.
 - **Approve / `--revoke`** — апрув только без моих блокирующих замечаний; `--revoke`, если MR изменился после approve или нашлась проблема. Approve по MR, resolve по треду — разное.
 - **Править/удалять — только свои** заметки (`noteId` из `vcs-discussions --json`).
-- **Todo done** — после реакции `vcs-todo --done <ref>`.
+- **Todo done** — после реакции `vcs-todo --done <ref> --url <webUrl>`.
 - Любой постинг — после Ask (правило 2), сразу live, без dry-run.
 
 ## Ревью MR: когда → скаут → разбивка → сборка
@@ -208,7 +208,7 @@ compatibility: opencode
 8. **Постинг live** — `RE_READ("ai/skills/agent-inbox-post/SKILL.md")`.
    Через `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
    `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
-9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref>` (гасит pending-todo).
+9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (гасит pending-todo).
    Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
    следующий MR.
 
