@@ -1,6 +1,6 @@
 // @file: Resolve the gennady state directory and its sub-paths (single --state-dir override).
-// @consumers: inbox.cmd, vcs-worktree.cmd
-// @tasks: TSK-90
+// @consumers: inbox.cmd, vcs-worktree.cmd, inbox-review-plan.cmd
+// @tasks: TSK-90, TSK-103
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -38,3 +38,23 @@ export const configPath = (stateDir: string): string =>
 
 /** @purpose repos.json path under the state dir. */
 export const reposMapPath = (stateDir: string): string => join(stateDir, 'repos.json');
+
+/** @purpose Review-report pipeline root under the state dir (agent-inbox/reports). */
+export const reportsRoot = (stateDir: string): string => join(stateDir, 'agent-inbox', 'reports');
+
+/**
+ * @purpose Per-MR, per-head report directory for the review-document pipeline.
+ * @invariant Naming mirrors worktrees (`vcs-worktree.cmd`): `/` → `__`; also keyed by `headSha`
+ *   first 7 chars so a new head gets a fresh, non-colliding tree.
+ * @param stateDir Gennady state root.
+ * @param ref MR reference `group/project!iid`.
+ * @param headSha Resolved MR head SHA; only the first 7 chars name the directory.
+ * @returns Absolute path `<reportsRoot>/<group__proj-iid>/<headSha7>`.
+ * @consumer inbox-review-plan.cmd
+ */
+export function mrReportsDir(stateDir: string, ref: string, headSha: string): string {
+  const sep = ref.lastIndexOf('!');
+  const project = sep === -1 ? ref : ref.slice(0, sep);
+  const iid = sep === -1 ? '' : ref.slice(sep + 1);
+  return join(reportsRoot(stateDir), `${project.replace(/\//g, '__')}-${iid}`, headSha.slice(0, 7));
+}

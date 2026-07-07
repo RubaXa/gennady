@@ -1,12 +1,14 @@
-// @file: Tests for inbox-review-plan command — deterministic track classification.
+// @file: Tests for inbox-review-plan command — deterministic track classification, plus the
+//   document-pipeline scaffold/validate modes and the inbox --reset reports cleanup.
 // @consumers: node:test runner
-// @tasks: TSK-102
+// @tasks: TSK-102, TSK-103
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeFileSync, mkdirSync, rmSync, mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 
 function runPlan(args: string[]) {
@@ -19,6 +21,121 @@ function runPlan(args: string[]) {
     }
   );
 }
+
+function runValidate(dir: string, stage?: string) {
+  const args = ['--validate', dir];
+  if (stage) args.push('--stage', stage);
+  return runPlan(args);
+}
+
+// #region START_SCAFFOLD_TEST_HELPERS — tiny git-repo fixture builders for --scaffold tests
+
+function makeGitRepo(prefix: string): string {
+  const dir = join(process.cwd(), `.tmp-review-plan-${prefix}-${Date.now()}`);
+  mkdirSync(dir, { recursive: true });
+  execFileSync('git', ['-C', dir, 'init'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@test.com'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 'Test'], { stdio: 'ignore' });
+  return dir;
+}
+
+function commitAll(dir: string, message: string): void {
+  execFileSync('git', ['-C', dir, 'add', '.'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', dir, 'commit', '-m', message], { stdio: 'ignore' });
+}
+
+// #endregion END_SCAFFOLD_TEST_HELPERS
+
+// #region START_VALIDATE_TEST_HELPERS — hand-built report-dir fixtures for --validate schema gate
+
+const CANDIDATES_HEADER = '| ID | Файл | Строка | Проблема | Ось | Kind | Severity |';
+const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- |';
+
+function taskContent(
+  opts: {
+    headSha?: string;
+    status?: string;
+    context?: string;
+    findings?: string;
+    verdict?: string;
+    candidatesRow?: string;
+    mermaidBlock?: string;
+  } = {}
+): string {
+  const {
+    headSha: sha = 'abc1234',
+    status = 'filled',
+    context = 'Контекст задачи.',
+    findings = 'Найдено N проблем.',
+    verdict = 'Одобрено.',
+    candidatesRow = '| C1 | foo.ts | 10 | пример проблемы | NAT | suggestion | minor |',
+    mermaidBlock = '',
+  } = opts;
+
+  return `---
+ref: group/project!1
+headSha: ${sha}
+track: logic
+files:
+  - foo.ts
+status: ${status}
+---
+
+## Scope
+
+- \`foo.ts\`
+
+## Context
+
+${context}
+
+## Findings
+
+${findings}
+${mermaidBlock}
+
+## Candidates
+
+${CANDIDATES_HEADER}
+${CANDIDATES_SEPARATOR}
+${candidatesRow}
+
+## Verdict
+
+${verdict}
+`;
+}
+
+function planContent(planHeadSha = 'abc1234'): string {
+  return `---
+ref: group/project!1
+headSha: ${planHeadSha}
+base: HEAD~1
+mode: fan_out
+createdAt: 2026-01-01T00:00:00.000Z
+---
+
+# Review Plan — group/project!1
+
+| Track | Files | Lines | Focus | Status |
+| --- | --- | --- | --- | --- |
+| logic | 1 | 2 | focus | filled |
+`;
+}
+
+function setupReportDir(
+  taskOverrides: Parameters<typeof taskContent>[0] = {},
+  planHeadSha = 'abc1234'
+): { dir: string; taskPath: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'inbox-validate-'));
+  mkdirSync(join(dir, 'tasks'), { recursive: true });
+  writeFileSync(join(dir, 'PLAN.md'), planContent(planHeadSha));
+  const taskPath = join(dir, 'tasks', 'logic.task.md');
+  writeFileSync(taskPath, taskContent(taskOverrides));
+  return { dir, taskPath };
+}
+
+// #endregion END_VALIDATE_TEST_HELPERS
 
 describe('inbox-review-plan', () => {
   it('small diff (HEAD~1) → valid plan', () => {
@@ -117,6 +234,301 @@ describe('inbox-review-plan', () => {
       }
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('inbox-review-plan --scaffold', () => {
+  it('fan_out plan (security+logic+tests) → PLAN.md + 3 track task files + README.md; HISTORY.md one level up', () => {
+    const repo = makeGitRepo('fanout');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'auth.ts'), 'export const a = 1;\n');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      writeFileSync(join(repo, 'foo.test.ts'), "import 'node:test';\n");
+      commitAll(repo, 'base');
+
+      writeFileSync(join(repo, 'auth.ts'), 'export const a = 2;\n');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      writeFileSync(join(repo, 'foo.test.ts'), "import 'node:test';\nexport const t = 1;\n");
+      commitAll(repo, 'change');
+
+      const r = runPlan([
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!42',
+        '--state-dir',
+        stateDir,
+      ]);
+      assert.strictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.scaffolded, true);
+      assert.ok(existsSync(result.plan));
+      assert.strictEqual(result.tasks.length, 3);
+
+      const names = result.tasks.map((t: string) => t.split('/').pop());
+      assert.deepStrictEqual(
+        new Set(names),
+        new Set(['security.task.md', 'logic.task.md', 'tests.task.md'])
+      );
+
+      const mrDir = dirname(result.plan);
+      assert.ok(existsSync(join(mrDir, 'README.md')));
+      assert.ok(existsSync(join(dirname(mrDir), 'HISTORY.md')));
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('inline plan → single tasks/review.task.md with all files, prefilled mechanics', () => {
+    const repo = makeGitRepo('inline');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      commitAll(repo, 'change');
+
+      const r = runPlan([
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!7',
+        '--state-dir',
+        stateDir,
+      ]);
+      assert.strictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.tasks.length, 1);
+      assert.strictEqual(result.tasks[0].split('/').pop(), 'review.task.md');
+
+      const content = readFileSync(result.tasks[0], 'utf8');
+      assert.match(content, /status: scaffolded/);
+      assert.match(content, /## Scope[\s\S]*foo\.ts[\s\S]*\(\+1\/-1\)/);
+      assert.match(content, /## Context\s*\n\s*<!-- FILL: orchestrator/);
+      assert.match(content, /## Findings\s*\n\s*<!-- FILL: agent/);
+      assert.match(content, /## Verdict\s*\n\s*<!-- FILL: agent/);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('re-scaffold with task already filled → task file untouched, warning on stderr', () => {
+    const repo = makeGitRepo('idempotent');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      commitAll(repo, 'change');
+
+      const args = [
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!9',
+        '--state-dir',
+        stateDir,
+      ];
+      const first = runPlan(args);
+      const firstResult = JSON.parse(first.stdout.trim());
+      const taskPath = firstResult.tasks[0];
+
+      const filledContent = readFileSync(taskPath, 'utf8').replace(
+        'status: scaffolded',
+        'status: filled'
+      );
+      writeFileSync(taskPath, filledContent);
+
+      const second = runPlan(args);
+      assert.strictEqual(second.status, 0);
+      assert.match(second.stderr, /status=filled/);
+      assert.ok(second.stderr.includes(taskPath));
+
+      const unchangedContent = readFileSync(taskPath, 'utf8');
+      assert.strictEqual(unchangedContent, filledContent);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('HISTORY.md already exists → not overwritten on re-scaffold', () => {
+    const repo = makeGitRepo('history');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      commitAll(repo, 'change');
+
+      const args = [
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!11',
+        '--state-dir',
+        stateDir,
+      ];
+      const first = runPlan(args);
+      const firstResult = JSON.parse(first.stdout.trim());
+      const historyPath = join(dirname(dirname(firstResult.plan)), 'HISTORY.md');
+      assert.ok(existsSync(historyPath));
+
+      writeFileSync(historyPath, '# custom history entry\n');
+      const second = runPlan(args);
+      assert.strictEqual(second.status, 0);
+      assert.strictEqual(readFileSync(historyPath, 'utf8'), '# custom history entry\n');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('inbox-review-plan --validate', () => {
+  it('all task files filled with valid tokens → {ok:true}, exit 0', () => {
+    const { dir } = setupReportDir();
+    try {
+      const r = runValidate(dir);
+      assert.strictEqual(r.status, 0);
+      assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('--stage enriched, task with status scaffolded → {ok:false, errors}, exit != 0', () => {
+    const { dir } = setupReportDir({ status: 'scaffolded' });
+    try {
+      const r = runValidate(dir, 'enriched');
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.length > 0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('## Context empty without n/a → error names the file and section', () => {
+    const { dir, taskPath } = setupReportDir({ context: '' });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      const err = result.errors.find((e: { file: string }) => e.file === taskPath);
+      assert.ok(err);
+      assert.match(err.error, /Context is empty/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('Candidates row with unknown Kind token → invalid Kind token error', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | typo-fix | minor |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /invalid Kind token/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('Candidates row with unknown Ось token → invalid Ось token error', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /invalid Ось token/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('task headSha differs from PLAN.md headSha → stale report error', () => {
+    const { dir } = setupReportDir({ headSha: 'deadbeef' }, 'abc1234');
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /stale report/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('unclosed ```mermaid block → unclosed mermaid block error', () => {
+    const { dir } = setupReportDir({ mermaidBlock: '```mermaid\ngraph TD;\nA-->B;' });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(
+        result.errors.some((e: { error: string }) => /unclosed mermaid block/.test(e.error))
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("## Findings with 'n/a — <reason>' → valid, no error", () => {
+    const { dir } = setupReportDir({ findings: 'n/a — нет модификаций' });
+    try {
+      const r = runValidate(dir);
+      assert.strictEqual(r.status, 0);
+      assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('inbox --reset clears reports', () => {
+  it('inbox --reset removes reportsRoot(stateDir)', () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-reset-reports-'));
+    try {
+      const reports = join(stateDir, 'agent-inbox', 'reports');
+      mkdirSync(reports, { recursive: true });
+      writeFileSync(join(reports, 'marker.txt'), 'x');
+
+      const r = spawnSync(
+        'node',
+        ['--import', 'tsx', 'cli/cmd/inbox/inbox.cmd.ts', '--reset', '--state-dir', stateDir],
+        { encoding: 'utf8', cwd: process.cwd() }
+      );
+
+      assert.strictEqual(r.status, 0);
+      assert.ok(!existsSync(reports));
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
     }
   });
 });

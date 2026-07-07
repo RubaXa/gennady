@@ -1,8 +1,12 @@
-// @file: review-plan command — deterministic file-to-track classification for fan-out review.
+// @file: review-plan command — deterministic file-to-track classification for fan-out review,
+//   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @consumers: agent-inbox-take skill, agent-inbox skill
-// @tasks: TSK-102
+// @tasks: TSK-102, TSK-103
 
 import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
 
 // #region START_ARG_PARSING
 
@@ -252,7 +256,522 @@ function buildReviewPlan(changeset: Changeset): ReviewPlan {
 
 // #endregion END_PLAN_BUILDER
 
+// #region START_DOCUMENT_PARSING — shared frontmatter/section reader for scaffold (idempotency
+// check) and validate (schema gate); the pipeline only ever reads back documents it generated
+// itself, so a minimal line-based parser is sufficient — no general YAML support needed.
+
+/** @purpose Flat frontmatter map: scalar values or `key:` list blocks (`- item` lines). */
+type Frontmatter = Record<string, string | string[]>;
+
+function parseDocument(content: string): { frontmatter: Frontmatter; body: string } {
+  const lines = content.split('\n');
+  if (lines[0]?.trim() !== '---') return { frontmatter: {}, body: content };
+  const end = lines.indexOf('---', 1);
+  if (end === -1) return { frontmatter: {}, body: content };
+
+  const frontmatter: Frontmatter = {};
+  let currentListKey: string | null = null;
+  for (let i = 1; i < end; i++) {
+    const line = lines[i];
+    const listItem = /^\s*-\s+(.*)$/.exec(line);
+    if (listItem && currentListKey) {
+      (frontmatter[currentListKey] as string[]).push(listItem[1].trim());
+      continue;
+    }
+    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
+    if (!kv) continue;
+    const [, key, value] = kv;
+    if (value === '') {
+      frontmatter[key] = [];
+      currentListKey = key;
+    } else {
+      frontmatter[key] = value.trim();
+      currentListKey = null;
+    }
+  }
+  return { frontmatter, body: lines.slice(end + 1).join('\n') };
+}
+
+function extractSection(body: string, heading: string): string | null {
+  const match = new RegExp(`^## ${heading}\\s*$`, 'm').exec(body);
+  if (!match) return null;
+  const rest = body.slice(match.index + match[0].length);
+  const nextHeadingIdx = rest.search(/^## /m);
+  return (nextHeadingIdx === -1 ? rest : rest.slice(0, nextHeadingIdx)).trim();
+}
+
+function findUnclosedMermaidBlock(body: string): boolean {
+  let inMermaid = false;
+  for (const line of body.split('\n')) {
+    const trimmed = line.trim();
+    if (!inMermaid && trimmed.startsWith('```mermaid')) inMermaid = true;
+    else if (inMermaid && trimmed === '```') inMermaid = false;
+  }
+  return inMermaid;
+}
+
+// #endregion END_DOCUMENT_PARSING
+
+// #region START_SCAFFOLD_TEMPLATES — mechanical prefill for task/plan/readme/history documents.
+// purpose: механика создаёт структуру и словари; смысл (## Context) заполняет оркестратор,
+// находки/вердикт — сабагент. Validate (below) enforces the same schema at read time.
+
+const CANDIDATES_COLUMNS = ['ID', 'Файл', 'Строка', 'Проблема', 'Ось', 'Kind', 'Severity'];
+const CANDIDATES_HEADER = `| ${CANDIDATES_COLUMNS.join(' | ')} |`;
+const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | ')} |`;
+
+const README_TEMPLATE = `# Review Report
+
+## Обзор
+
+<!-- FILL: orchestrator -->
+
+## Архитектура
+
+<!-- FILL: orchestrator -->
+
+## Вердикты
+
+<!-- FILL: orchestrator -->
+
+## Кандидаты
+
+<!-- FILL: orchestrator -->
+
+## Треды
+
+<!-- FILL: orchestrator -->
+`;
+
+function renderHistoryTemplate(ref: string): string {
+  return `# History — ${ref}
+
+<!-- append-only: оркестратор добавляет запись о каждом визите; механика не перезаписывает файл -->
+`;
+}
+
+function renderTaskTemplate(
+  ref: string,
+  headSha: string,
+  track: string,
+  files: string[],
+  focus: string,
+  fileStats: Map<string, FileChange>
+): string {
+  const frontmatterLines = [
+    '---',
+    `ref: ${ref}`,
+    `headSha: ${headSha}`,
+    `track: ${track}`,
+    'files:',
+    ...files.map((f) => `  - ${f}`),
+    'status: scaffolded',
+    '---',
+  ];
+
+  const scopeLines = files.map((f) => {
+    const stat = fileStats.get(f);
+    const delta = stat ? ` (+${stat.plus}/-${stat.minus})` : '';
+    return `- \`${f}\`${delta}`;
+  });
+
+  return `${frontmatterLines.join('\n')}
+
+## Scope
+
+- **Focus:** ${focus}
+- **Files (${files.length}):**
+${scopeLines.join('\n')}
+
+## Context
+
+<!-- FILL: orchestrator — смысл, сущности, prior threads, цели -->
+
+## Findings
+
+<!-- FILL: agent -->
+
+## Candidates
+
+${CANDIDATES_HEADER}
+${CANDIDATES_SEPARATOR}
+
+## Verdict
+
+<!-- FILL: agent -->
+`;
+}
+
+function renderPlanTemplate(
+  ref: string,
+  headSha: string,
+  base: string,
+  mode: ReviewPlan['mode'],
+  createdAt: string,
+  rows: { track: string; files: number; lines: number; focus: string; status: string }[]
+): string {
+  const frontmatterLines = [
+    '---',
+    `ref: ${ref}`,
+    `headSha: ${headSha}`,
+    `base: ${base}`,
+    `mode: ${mode}`,
+    `createdAt: ${createdAt}`,
+    '---',
+  ];
+  const tableRows = rows.map(
+    (r) => `| ${r.track} | ${r.files} | ${r.lines} | ${r.focus} | ${r.status} |`
+  );
+
+  return `${frontmatterLines.join('\n')}
+
+# Review Plan — ${ref}
+
+| Track | Files | Lines | Focus | Status |
+| --- | --- | --- | --- | --- |
+${tableRows.join('\n')}
+`;
+}
+
+// #endregion END_SCAFFOLD_TEMPLATES
+
+// #region START_SCAFFOLD_BUILDER
+
+/** @purpose Result of `--scaffold`: paths of every document the pipeline created or reused. */
+type ScaffoldResult = {
+  scaffolded: true;
+  dir: string;
+  plan: string;
+  tasks: string[];
+};
+
+function readTaskStatus(taskPath: string): string | null {
+  if (!existsSync(taskPath)) return null;
+  const { frontmatter } = parseDocument(readFileSync(taskPath, 'utf8'));
+  return typeof frontmatter.status === 'string' ? frontmatter.status : null;
+}
+
+/**
+ * @purpose Materialize PLAN.md + per-track task files + README.md/HISTORY.md into `dir`.
+ * @invariant Idempotent re-run: a task file past `scaffolded` status is left untouched (stderr
+ *   warning); README.md/HISTORY.md are created once, never rewritten; PLAN.md always regenerates.
+ * @param dir Per-MR, per-head report directory (`mrReportsDir`).
+ * @param ref MR reference `group/project!iid`.
+ * @param headSha Resolved MR head SHA.
+ * @param base Base SHA the diff was computed against.
+ * @param plan Deterministic review plan (mode + tracks).
+ * @param changeset File-level diff stats backing the Scope prefill.
+ * @returns Paths of PLAN.md, all task files (created or pre-existing), and the report dir.
+ * @sideEffect FS: creates the report directory tree; writes PLAN.md always; writes task/README/
+ *   HISTORY files only when absent or still at `scaffolded`.
+ * @consumer inbox-review-plan.cmd `run`
+ */
+function scaffoldReviewReports(
+  dir: string,
+  ref: string,
+  headSha: string,
+  base: string,
+  plan: ReviewPlan,
+  changeset: Changeset
+): ScaffoldResult {
+  const tasksDir = join(dir, 'tasks');
+  mkdirSync(tasksDir, { recursive: true });
+
+  const fileStats = new Map(changeset.files.map((f) => [f.path, f]));
+  const taskSpecs: { track: string; files: string[]; focus: string; taskPath: string }[] =
+    plan.mode === 'inline'
+      ? [
+          {
+            track: 'review',
+            files: plan.tracks.flatMap((t) => t.files),
+            focus: plan.tracks.map((t) => t.focus).join('; '),
+            taskPath: join(tasksDir, 'review.task.md'),
+          },
+        ]
+      : plan.tracks.map((t) => ({
+          track: t.name,
+          files: t.files,
+          focus: t.focus,
+          taskPath: join(tasksDir, `${t.name}.task.md`),
+        }));
+
+  const tasks: string[] = [];
+  const rows: { track: string; files: number; lines: number; focus: string; status: string }[] = [];
+
+  // #region START_WRITE_TASK_FILES — skip-with-warning on any status past scaffolded
+  for (const spec of taskSpecs) {
+    const existingStatus = readTaskStatus(spec.taskPath);
+    if (existingStatus && existingStatus !== 'scaffolded') {
+      console.error(
+        `⚠ ${spec.taskPath}: status=${existingStatus} — пропущен, не перезаписан (re-scaffold идемпотентен)`
+      );
+    } else {
+      writeFileSync(
+        spec.taskPath,
+        renderTaskTemplate(ref, headSha, spec.track, spec.files, spec.focus, fileStats)
+      );
+    }
+    tasks.push(spec.taskPath);
+    rows.push({
+      track: spec.track,
+      files: spec.files.length,
+      lines: spec.files.reduce(
+        (n, f) => n + (fileStats.get(f)?.plus ?? 0) + (fileStats.get(f)?.minus ?? 0),
+        0
+      ),
+      focus: spec.focus,
+      status: existingStatus ?? 'scaffolded',
+    });
+  }
+  // #endregion END_WRITE_TASK_FILES
+
+  const planPath = join(dir, 'PLAN.md');
+  writeFileSync(
+    planPath,
+    renderPlanTemplate(ref, headSha, base, plan.mode, new Date().toISOString(), rows)
+  );
+
+  const readmePath = join(dir, 'README.md');
+  if (!existsSync(readmePath)) writeFileSync(readmePath, README_TEMPLATE);
+
+  const historyPath = join(dirname(dir), 'HISTORY.md');
+  if (!existsSync(historyPath)) writeFileSync(historyPath, renderHistoryTemplate(ref));
+
+  return { scaffolded: true, dir, plan: planPath, tasks };
+}
+
+// #endregion END_SCAFFOLD_BUILDER
+
+// #region START_VALIDATE
+
+/** @purpose One schema violation found while validating a report dir; points at the offending file. */
+type ValidateError = { file: string; error: string };
+
+const VALID_KINDS = new Set([
+  'new-line-comment',
+  'reply-to-thread',
+  'correction-reply',
+  'awaiting-my-reply',
+  'suggestion',
+]);
+
+const VALID_AXES = new Set([
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'NAT',
+  'IDIOM',
+  'LIT',
+  'DEP',
+  'GLOBAL',
+  'TEST',
+  'SEC',
+  'BIZ',
+  'TYPO',
+  'CAUSE',
+  'LAYER',
+  'CHURN',
+  'FIGHT',
+  'RIPPLE',
+  'INPUT',
+  'PATH',
+  'AUTHZ',
+  'SECRET',
+  'SUPPLY',
+  'BLAST',
+  'INJ',
+]);
+
+function validateSectionFilled(
+  taskPath: string,
+  body: string,
+  heading: string,
+  errors: ValidateError[]
+): void {
+  const section = extractSection(body, heading) ?? '';
+  if (!section || /^<!--\s*FILL:/.test(section)) {
+    errors.push({ file: taskPath, error: `## ${heading} is empty` });
+    return;
+  }
+  if (/^n\/a\b/i.test(section) && !/^n\/a\s*[—-]\s*\S/i.test(section)) {
+    errors.push({ file: taskPath, error: `## ${heading} has 'n/a' without a reason` });
+  }
+}
+
+function validateCandidatesTable(taskPath: string, body: string, errors: ValidateError[]): void {
+  const section = extractSection(body, 'Candidates') ?? '';
+  const rows = section
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('|'));
+
+  if (rows.length === 0) {
+    errors.push({ file: taskPath, error: 'Candidates table header missing' });
+    return;
+  }
+
+  const header = rows[0]
+    .split('|')
+    .slice(1, -1)
+    .map((c) => c.trim());
+  if (header.join('|') !== CANDIDATES_COLUMNS.join('|')) {
+    errors.push({
+      file: taskPath,
+      error: `Candidates header mismatch: expected [${CANDIDATES_COLUMNS.join(', ')}]`,
+    });
+    return;
+  }
+
+  for (const row of rows.slice(2)) {
+    const cells = row
+      .split('|')
+      .slice(1, -1)
+      .map((c) => c.trim());
+    const [, , , , axis, kind] = cells;
+    if (kind && !VALID_KINDS.has(kind)) {
+      errors.push({ file: taskPath, error: `invalid Kind token: ${kind}` });
+    }
+    if (axis && !VALID_AXES.has(axis)) {
+      errors.push({ file: taskPath, error: `invalid Ось token: ${axis}` });
+    }
+  }
+}
+
+function validateTaskFile(
+  taskPath: string,
+  stage: 'enriched' | 'filled',
+  planHeadSha: string | undefined,
+  errors: ValidateError[]
+): void {
+  const { frontmatter, body } = parseDocument(readFileSync(taskPath, 'utf8'));
+
+  const status = typeof frontmatter.status === 'string' ? frontmatter.status : undefined;
+  const requiredStatuses = stage === 'enriched' ? ['enriched', 'filled'] : ['filled'];
+  if (!status || !requiredStatuses.includes(status)) {
+    errors.push({
+      file: taskPath,
+      error: `invalid status: expected one of [${requiredStatuses.join(', ')}], got ${status ?? 'missing'}`,
+    });
+  }
+
+  const taskHeadSha = typeof frontmatter.headSha === 'string' ? frontmatter.headSha : undefined;
+  if (planHeadSha && taskHeadSha !== planHeadSha) {
+    errors.push({
+      file: taskPath,
+      error: `stale report: headSha ${taskHeadSha ?? 'missing'} does not match PLAN.md headSha ${planHeadSha}`,
+    });
+  }
+
+  validateSectionFilled(taskPath, body, 'Context', errors);
+  if (stage === 'filled') {
+    validateSectionFilled(taskPath, body, 'Findings', errors);
+    validateSectionFilled(taskPath, body, 'Verdict', errors);
+    validateCandidatesTable(taskPath, body, errors);
+  }
+
+  if (findUnclosedMermaidBlock(body)) {
+    errors.push({ file: taskPath, error: 'unclosed mermaid block' });
+  }
+}
+
+/**
+ * @purpose Deterministic schema gate over a scaffolded report dir: structure/dictionaries only,
+ *   never text length or quality (that is the directives' job, per D57).
+ * @param dir Per-MR, per-head report directory to validate.
+ * @param stage `enriched` gates dispatch (Context filled); `filled` gates synthesis (all sections).
+ * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
+ * @sideEffect Reads PLAN.md and every `tasks/*.task.md` file under `dir`.
+ * @consumer inbox-review-plan.cmd `run`
+ */
+function validateReviewReports(
+  dir: string,
+  stage: 'enriched' | 'filled'
+): { ok: true } | { ok: false; errors: ValidateError[] } {
+  const errors: ValidateError[] = [];
+
+  const planPath = join(dir, 'PLAN.md');
+  if (!existsSync(planPath)) {
+    return { ok: false, errors: [{ file: planPath, error: 'PLAN.md missing' }] };
+  }
+  const { frontmatter: planFrontmatter } = parseDocument(readFileSync(planPath, 'utf8'));
+  const planHeadSha =
+    typeof planFrontmatter.headSha === 'string' ? planFrontmatter.headSha : undefined;
+
+  const tasksDir = join(dir, 'tasks');
+  const taskFiles = existsSync(tasksDir)
+    ? readdirSync(tasksDir)
+        .filter((f) => f.endsWith('.task.md'))
+        .map((f) => join(tasksDir, f))
+    : [];
+
+  if (taskFiles.length === 0) {
+    errors.push({ file: tasksDir, error: 'no task files found' });
+  }
+
+  for (const taskPath of taskFiles) {
+    validateTaskFile(taskPath, stage, planHeadSha, errors);
+  }
+
+  return errors.length > 0 ? { ok: false, errors } : { ok: true };
+}
+
+// #endregion END_VALIDATE
+
 // #region START_MAIN
+
+function resolveHeadSha(worktreePath: string): string {
+  return execFileSync('git', ['-C', worktreePath, 'rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+    stdio: 'pipe',
+  }).trim();
+}
+
+function runScaffold(argv: string[]): number {
+  const worktreePath = getFlagValue(argv, '--path');
+  const baseSha = getFlagValue(argv, '--base');
+  const ref = getFlagValue(argv, '--ref');
+
+  if (!worktreePath || !baseSha || !ref) {
+    console.error(
+      JSON.stringify({
+        ok: false,
+        error: 'INVALID_ARGS',
+        detail:
+          '--path <worktree>, --base <sha> and --ref <group/project!iid> required for --scaffold',
+      })
+    );
+    return 1;
+  }
+
+  let changeset: Changeset;
+  let headSha: string;
+  try {
+    changeset = computeChangeset(worktreePath, baseSha);
+    headSha = resolveHeadSha(worktreePath);
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    console.error(JSON.stringify({ ok: false, error: 'WORKTREE', detail: message }));
+    return 1;
+  }
+
+  const plan = buildReviewPlan(changeset);
+  const dir = mrReportsDir(resolveStateDir(argv), ref, headSha);
+  const result = scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset);
+  console.info(JSON.stringify(result));
+  return 0;
+}
+
+function runValidate(argv: string[], dir: string): number {
+  const stageArg = getFlagValue(argv, '--stage');
+  const stage: 'enriched' | 'filled' = stageArg === 'enriched' ? 'enriched' : 'filled';
+  const result = validateReviewReports(dir, stage);
+  console.info(JSON.stringify(result));
+  return result.ok ? 0 : 1;
+}
 
 async function run(): Promise<number> {
   const argv = process.argv.slice(2);
@@ -265,21 +784,47 @@ async function run(): Promise<number> {
     console.info(
       '    npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>'
     );
+    console.info(
+      '    npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --scaffold --path <worktree> --base <sha> --ref <group/project!iid>'
+    );
+    console.info(
+      '    npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --validate <dir> [--stage enriched|filled]'
+    );
     console.info('');
     console.info('  ' + b('Флаги:'));
-    console.info('    --path <worktree>  Путь к git worktree (из ответа inbox-context)');
+    console.info('    --path <worktree>   Путь к git worktree (из ответа inbox-context)');
     console.info('    --base <sha>        Базовый SHA для git diff (из ответа inbox-context)');
+    console.info(
+      '    --scaffold          Материализовать PLAN.md + tasks/*.task.md + README.md + HISTORY.md'
+    );
+    console.info('    --ref <ref>         MR-референс group/project!iid (требуется с --scaffold)');
+    console.info(
+      '    --validate <dir>    Проверить схему отчётного каталога (структура + словари)'
+    );
+    console.info('    --stage <stage>     enriched|filled (default filled) — только с --validate');
+    console.info(
+      '    --state-dir <dir>   Корень состояния, default ~/.gennady — только с --scaffold'
+    );
     console.info('    --help              Этот текст');
     console.info('');
     console.info('  ' + b('Вывод:'));
     console.info(
-      '    JSON с ReviewPlan: mode (inline|fan_out), tracks[] с name/focus/directive/files/lineCount.'
+      '    Без флагов: JSON с ReviewPlan: mode (inline|fan_out), tracks[] с name/focus/directive/files/lineCount.'
+    );
+    console.info('    --scaffold: { scaffolded: true, dir, plan, tasks: [...] }.');
+    console.info(
+      '    --validate: { ok: true } либо { ok: false, errors: [{ file, error }] }, exit ≠ 0 при ошибках.'
     );
     console.info(
       '    Агент механически диспетчерит сабагентов по трекам — ни одного решения не принимает.'
     );
     return 0;
   }
+
+  const validateDir = getFlagValue(argv, '--validate');
+  if (validateDir) return runValidate(argv, validateDir);
+
+  if (hasFlag(argv, '--scaffold')) return runScaffold(argv);
 
   const worktreePath = getFlagValue(argv, '--path');
   const baseSha = getFlagValue(argv, '--base');

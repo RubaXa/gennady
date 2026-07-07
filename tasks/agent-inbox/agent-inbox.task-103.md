@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-103 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-review-plan | **Dependencies:** TSK-102 (существующая команда review-plan — расширяем её)
+- **Task-ID:** TSK-103 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-review-plan | **Dependencies:** TSK-102 (существующая команда review-plan — расширяем её)
 - **Purpose:** План ревью материализуется в документы: `--scaffold` создаёт болванки задач для каждого сабагента (механика: файлы, статусы, схемы таблиц), `--validate` детерминированно проверяет заполненность и схему. Механика создаёт структуру, оркестратор добавляет смысл, агенты заполняют, код валидирует.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-36, AI-08 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -74,12 +74,34 @@
 
 ## 7. Execution Log
 
-### Round 1
+### Round 1 — 2026-07-05, initial
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [inbox-review-plan.cmd.ts, state-paths.logic.ts, inbox.cmd.ts]; decisions: [D57]; open: []
+- [x] `2026-07-07T10:51:10Z` intro `reportsRoot` ← мех. путь `<stateDir>/agent-inbox/reports`, база для scaffold/validate/`inbox --reset` (TSK-103, AI-08)
+- [x] `2026-07-07T10:51:10Z` intro `mrReportsDir` ← per-MR/per-headSha каталог отчётов, нейминг как у worktrees (TSK-103, AI-36)
+- [x] `2026-07-07T10:51:10Z` decision headSha=git-rev-parse-HEAD-at-worktree ← `--scaffold` не принимает `--head-sha`; worktree уже стоит на голове MR (`vcs-worktree` контракт), поэтому headSha читается из самого worktree
+- [x] `2026-07-07T10:51:10Z` decision inlineTrack=review ← inline-режим объединяет файлы всех треков плана в одну болванку `tasks/review.task.md`
+- [x] `2026-07-07T10:51:10Z` decision idempotency=status-gate ← повторный `--scaffold` пропускает task-файл с warning в stderr, если `status` уже не `scaffolded`; PLAN.md/README.md/HISTORY.md — свои правила перезаписи (PLAN.md всегда, README/HISTORY только при отсутствии)
+- [x] `2026-07-07T10:51:10Z` decision candidatesHeaderMatch=normalized-columns ← `--validate` сравнивает trimmed-ячейки заголовка таблицы Candidates со схемой колонок, не байтовое совпадение строки — терпимо к форматированию агента
+- [x] `2026-07-07T10:51:10Z` ver /Users/k.lebedev/Developer/gennady/.claude/skills/sdd-execute/scripts/sdd verify cli/cmd/inbox/\_core/logic/state-paths.logic.ts cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts cli/cmd/inbox/inbox.cmd.ts → pass exit=0
+- [x] `2026-07-07T10:51:10Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-07T10:51:10Z` ver npm run test -- cli/cmd/inbox-review-plan/inbox-review-plan.test.ts → pass exit=0
+- [x] `2026-07-07T10:51:10Z` ver npm run format:check → pass exit=0
+- [x] `2026-07-07T10:51:10Z` DONE
+      **Handoff →** artifacts: [cli/cmd/inbox/\_core/logic/state-paths.logic.ts, cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts, cli/cmd/inbox/inbox.cmd.ts]; decisions: [D57, headSha=git-rev-parse-HEAD-at-worktree, inlineTrack=review, idempotency=status-gate, candidatesHeaderMatch=normalized-columns]; open: [O1: нет автотестов на --scaffold/--validate/--reset — P2 покрывает; O2: help.ts не создан, help-секция расширена инлайн в inbox-review-plan.cmd.ts]
 
 #### P2
 
-- [ ] **Handoff →** artifacts: [inbox-review-plan.test.ts]; decisions: []; open: []
+- [x] `2026-07-07T11:03:19Z` discovery P1 ver/Handoff строки в task-103.md ломали `npm run format:check` (неэкранированный `_core` вне backticks, `**Handoff →**` без 6-пробельного отступа под списком, как в остальных тикетах) — точечно исправлено экранирование/отступ без изменения контента P1, иначе MANDATORY §5 format:check gate не проходил ни для одной последующей фазы
+- [x] `2026-07-07T11:03:19Z` ver /Users/k.lebedev/Developer/gennady/.claude/skills/sdd-execute/scripts/sdd verify cli/cmd/inbox-review-plan/inbox-review-plan.test.ts → pass exit=0
+- [x] `2026-07-07T11:03:19Z` ver npm run type-check → pass exit=0
+- [x] `2026-07-07T11:03:19Z` ver npm run test -- cli/cmd/inbox-review-plan/inbox-review-plan.test.ts → pass exit=0
+- [x] `2026-07-07T11:03:19Z` ver npm run format:check → pass exit=0
+- [x] `2026-07-07T11:03:19Z` DONE
+      **Handoff →** artifacts: [cli/cmd/inbox-review-plan/inbox-review-plan.test.ts]; decisions: [scaffold-tests=git-fixture-fanout+inline+idempotent+history-not-overwritten, validate-tests=8-schema-rules-per-BDD, reset-test=spawns-inbox-cmd-with-state-dir]; open: []
+
+#### Round close
+
+- [x] `2026-07-07T11:05:00Z` sync agent-inbox+root
+- [x] `2026-07-07T11:05:00Z` DONE

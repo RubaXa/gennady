@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox — list merge requests awaiting your reaction.
 // @consumers: N/A
-// @tasks: TSK-93, TSK-91
+// @tasks: TSK-93, TSK-91, TSK-103
 
+import { existsSync, rmSync } from 'node:fs';
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
 import { buildInboxView, type InboxOptions } from './_core/logic/build-inbox-view.logic.ts';
@@ -21,6 +22,7 @@ import {
   registryPath,
   outDir,
   worktreesRoot,
+  reportsRoot,
   configPath,
 } from './_core/logic/state-paths.logic.ts';
 import { loadConfig, validateConfig } from './_core/logic/inbox-config.logic.ts';
@@ -97,6 +99,14 @@ async function run(): Promise<number> {
         outDir(stateDir)
       );
       const worktrees = removeAllWorktrees(worktreesRoot(stateDir));
+
+      // #region START_RESET_REVIEW_REPORTS — clears the document-pipeline tree (PLAN.md/tasks/
+      // README/HISTORY under every MR); no promotion logic needed, plain recursive delete
+      const reports = reportsRoot(stateDir);
+      const reportsRemoved = existsSync(reports);
+      if (reportsRemoved) rmSync(reports, { recursive: true, force: true });
+      // #endregion END_RESET_REVIEW_REPORTS
+
       console.info(style.bold('Inbox reset — чистый лист.'));
       console.info(
         `  registry:  ${registryRemoved ? style.green('очищен') : style.gray('не было')}`
@@ -104,6 +114,9 @@ async function run(): Promise<number> {
       console.info(`  drafts:    ${outRemoved ? style.green('очищены') : style.gray('не было')}`);
       console.info(
         `  worktrees: ${worktrees.length > 0 ? style.green(`снесено ${worktrees.length}`) : style.gray('не было')}`
+      );
+      console.info(
+        `  reports:   ${reportsRemoved ? style.green('очищены') : style.gray('не было')}`
       );
       return 0;
     }
