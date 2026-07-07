@@ -487,6 +487,22 @@ describe('inbox-review-plan --validate', () => {
     }
   });
 
+  it('dash-only placeholder candidate row → no invalid-token error (means "no candidates")', () => {
+    const { dir } = setupReportDir({ candidatesRow: '| — | — | — | — | — | — | — |' });
+    try {
+      const r = runValidate(dir);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        !(result.errors ?? []).some((e: { error: string }) =>
+          /invalid (Kind|Ось) token/.test(e.error)
+        ),
+        'dash placeholder must not raise token errors'
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('Candidates row with unknown Ось token → invalid Ось token error', () => {
     const { dir } = setupReportDir({
       candidatesRow: '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor |',

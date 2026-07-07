@@ -20,6 +20,20 @@
       strings quoted below (dashboard lines, emoji legend) are literal operator output — emit them
       as-is; do not translate them to English.
     </Axiom>
+
+    <Axiom id="AX_LAZY_LOAD">
+      Load a directive at the step that USES it, never earlier. Reading this file at GATHER does NOT
+      mean loading everything it references — a bare `INCLUDE_ONCE`/`RE_READ` mention is a pointer for
+      its step, not a command to read now. Front-loading wastes context and primes the wrong step
+      (e.g. reading `posting-rules` before any analysis). The per-step load map (see ReviewPipeline
+      Step 0):
+      - Scout / change map → `visual-vocabulary.directive.xml`.
+      - Review pass (arch/code) → `arch-interrogation` + `code-interrogation`.
+      - Synthesis → `golden-chat-output.example.md`.
+      - Update branch → `update-review.directive.xml` (only when headChanged + my review exists).
+      - Posting → `posting-rules.directive.xml` — NEVER before the posting step.
+      Each step below names what to load and which axioms to anchor on; load exactly that, then act.
+    </Axiom>
   </BeliefState>
 
   <SessionInvariants>
@@ -44,7 +58,9 @@
        text — asking "what do we do?" without your proposed decision is forbidden. Ask only at three
        points: task choice (when I did not name it) · finalization in ONE package (steps 6–7) · a
        genuine ambiguity (a disputed verdict, a ping candidate from `ThreadModel`). I answer "yes,
-       correct", uncheck an item, or edit text via Other — but you propose the decision.
+       correct", uncheck an item, or edit text via Other — but you propose the decision. The
+       finalization Ask is MANDATORY, including for a clean approve — never end a review with a bare
+       text "recommend approve"; approve itself is a checkbox in the package the operator confirms.
     5. **Repeat visit — delta first.** `headChanged.kind != "none"` → BEFORE anything else show,
        visually, "what is new since last time": new commits (sha + subject), which files they
        touched, new replies in threads. The operator must see what the author changed at the last
@@ -101,8 +117,8 @@
     3. **Code is read-only** — you only read; never run the MR's build/tests/scripts.
     4. **Do not invent** — fact-check against thread + code; unsure → ⚠ and ask.
     5. **One MR at a time**, focused.
-    6. **Posting to the VCS** (Mermaid-only, granularity, 🤖) —
-       `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`
+    6. **Posting to the VCS** (Mermaid-only, granularity, 🤖) — load
+       `posting-rules.directive.xml` ONLY at the posting step (per `AX_LAZY_LOAD`), not now
        (`AX_POSTING_MERMAID_ONLY`/`_GRANULARITY`/`_BOT_PREFIX`).
     7. **Analysis before questions.** If the task is already named (I said "take the first/this one" or
        gave it via tick) — do NOT re-ask. Straight to: context → analysis (what changed / what is
@@ -153,7 +169,7 @@
     | role / stage | mechanism |
     |---|---|
     | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 💯 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 💯 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
-    | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → clean = `vcs-approve` |
+    | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
     | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode → overview → one consolidated summary comment (🤖, Mermaid overview, scope, what was checked, "ready for review") → cross-check with reviewers via `vcs-discussions --json` → replies/resolve in reviewers' threads per ReactionMatrix |
     | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
   </ActionMap>
@@ -231,12 +247,17 @@
        block: per thread/candidate — the action (👍/💯/resolve/reply/line-comment/suggestion/approve)
        and the ready text next to it; a separate line "ждут автора: N (не пинговать)" and "пропущено:
        что и почему". This is your reviewer's verdict — the operator should be able to just say "yes".
-    7. **One Ask for the whole package** (`AskUserQuestion` `multiSelect`, ≤4 + Other; several
-       allowed). Items from step 6 with texts next to them (a check = consent to the shown text); plus
-       "drill into an entity / question about the code" and "skip MR". The operator unchecks extras,
-       edits text via Other, or adds a line. On "drill/question" — answer and show the (updated)
-       package again. Approve and comments can go together. Finalization; skip only by an explicit
-       check. No separate "controller" before the package — decision and menu come together.
+    7. **One Ask for the whole package — MANDATORY, always fire it** (`AskUserQuestion` `multiSelect`,
+       ≤4 + Other; several allowed). A review is NOT complete until this Ask is fired — ending with a
+       bare text "recommend approve" and no Ask is an incomplete turn. This holds even when the verdict
+       is a clean approve with no blockers: the operator still decides. Typical items to offer (check
+       what applies): **✅ поставить approve** · **💬 запостить N неблокирующих замечаний** (перечисли
+       их с текстом рядом, каждое — своя галочка или под-выбор) · **✍️ добавить мою реплику** (через
+       Other) · **skip MR**. Plus "drill into an entity / question about the code". Approve and
+       non-blocking comments can go together — a clean MR with 3 `minor`/`trivial` candidates offers
+       "approve + post the 3 comments" as separate checkboxes, not a prose recommendation. On
+       "drill/question" — answer and show the (updated) package again. Skip only by an explicit check.
+       No separate "controller" before the package — decision and menu come together.
     8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
        STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
        JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
@@ -264,20 +285,21 @@
     Runs when the agent takes an MR (`review_needed` or `reply_needed`). Does not restate the
     directives — it forces reading them.
 
-    ## Step 0 — Mandatory reading
-    Before any action, read these files (not from memory). Open and read:
-    1. `ai/directives/agent-inbox/arch-interrogation.directive.xml` —
-       `<ExecutionPlan>` STEP_0..STEP_5 (STEP_5 action 0 = transport decision BEFORE output);
-       `<SelfCheck>`; `AX_CHANGESET_SCALE`; `AX_CHANGE_MAP`; `AX_VISUAL_TRANSPORT`;
-       `AX_VISUALIZE_WHEN_RELATIONAL`; `AX_REPORT_ASSEMBLY`; `AX_ADVERSARIAL_DEFAULT`;
-       `AX_PRIOR_DISCUSSION_AWARENESS`.
-    2. `ai/directives/agent-inbox/code-interrogation.directive.xml` — `<Probes>` (NAT/IDIOM/LIT/DEP/
-       GLOBAL/TEST/SEC/BIZ/TYPO); `<ScopeGuard>` (do not duplicate the linter).
-    3. `ai/directives/agent-inbox/golden-chat-output.example.md` — the structure reference; all sections
-       mandatory.
-    4. `ai/directives/agent-inbox/visual-vocabulary.directive.xml` — `<DiagramSelection>` (which diagram
-       per intent, not everything a flowchart); `<Syntax>` (ASCII for chat, Mermaid for the VCS);
-       `AX_INFOGRAPHIC_FIRST`.
+    ## Step 0 — Load map (per `AX_LAZY_LOAD`, NOT a front-load)
+    Do NOT read all directives up front. Read each at its step, and only then — reading fresh (not
+    from memory) at the point of use is still mandatory. What loads where:
+    - **Step 1, emitting the change map** → `visual-vocabulary.directive.xml` (`<DiagramSelection>`
+      which diagram per intent — not everything a flowchart; `<Syntax>`; `AX_CHANGE_MAP`,
+      `AX_INFOGRAPHIC_FIRST`).
+    - **Step 3 / inline review pass** → `arch-interrogation.directive.xml` (full `<BeliefState>`,
+      `<ExecutionPlan>` STEP_0..STEP_5, `<SelfCheck>`; anchor `AX_ADVERSARIAL_DEFAULT`,
+      `AX_CHANGESET_SCALE`, `AX_PRIOR_DISCUSSION_AWARENESS`) + `code-interrogation.directive.xml`
+      (`<Probes>` NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO; `<ScopeGuard>`).
+    - **Step 4 synthesis** → `golden-chat-output.example.md` (structure reference; RE_READ arch per REMIT).
+    - **Update branch** → `update-review.directive.xml` (only when headChanged + my review exists).
+    - **Step 8 posting** → `posting-rules.directive.xml` — NEVER before the posting step.
+    - **`reply_needed`** needs none of the review battery — only `posting-rules` `<ThreadModel>` at the
+      reaction step. Do not load arch/code/visual/golden for a reply-only MR.
 
     ## Step 0a — Drafts and discussion context (BEFORE review)
     Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
@@ -301,9 +323,10 @@
     1. `inbox-context --url <webUrl> --vcs-host=<host>`. Right after: `ls <path>` (one permission prompt).
     2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`.
     3. Split files into tracks: **security** (always) / **logic** / **ui** / **tests** / **docs** / **config**.
-    4. **Transport (action 0):** probe for `mcp__visualize__show_widget`; declare the medium on the first
-       line ("чат, widget (инструмент найден)" / "чат, ASCII (виджет недоступен)"). Emit the change map;
-       relational diagram — widget if present, ASCII only as fallback.
+    4. **Transport (action 0) + change map:** load `visual-vocabulary.directive.xml` NOW (first read of
+       the flow — `AX_CHANGE_MAP`, `AX_INFOGRAPHIC_FIRST`). Probe for `mcp__visualize__show_widget`;
+       declare the medium on the first line ("чат, widget (инструмент найден)" / "чат, ASCII (виджет
+       недоступен)"). Emit the change map; relational diagram — widget if present, ASCII only as fallback.
     5. **Directive choice** by `headChanged.kind` from `inbox-context`:
        - `kind == "fast_forward"` AND my threads non-empty (or I am in `approvedBy`) →
          `INCLUDE_ONCE("update-review.directive.xml")` — Steps 2–4 skipped, straight to synthesis.
@@ -384,6 +407,7 @@
     | — | Chat is a projection of the validated README (map + diagram projected to widget/ASCII); the README diagram reached chat | □ |
     | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
     | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
+    | — | Finalization Ask fired (step 7) — approve / non-blocking comments / my note as checkboxes; NOT a bare "recommend approve" | □ |
     Any □ empty → go back. Especially: if `reviewPlanRequired` was `true` and task files are not
     materialized — that violates `H_NO_REVIEW_PLAN`, go back to Step 2.
   </ReviewPipeline>

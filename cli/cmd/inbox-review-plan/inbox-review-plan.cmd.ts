@@ -413,6 +413,10 @@ ${scopeLines.join('\n')}
 
 ## Кандидаты
 
+<!-- FILL: agent — одна строка на замечание. Нет замечаний → оставь только шапку, placeholder-строку из «—» НЕ добавляй.
+     «Ось» = тип находки: архитектурная A–G или код-проба (NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO).
+     «Вид» = КАК постим (не тип проблемы!): new-line-comment / reply-to-thread / correction-reply / awaiting-my-reply / suggestion. -->
+
 ${CANDIDATES_HEADER}
 ${CANDIDATES_SEPARATOR}
 
@@ -646,16 +650,20 @@ function validateCandidatesTable(taskPath: string, body: string, errors: Validat
     return;
   }
 
+  // A dash/blank cell means "not applicable" — a no-candidate placeholder row is allowed.
+  const isEmptyCell = (c: string) => c === '' || c === '—' || c === '-' || c === '–';
+
   for (const row of rows.slice(2)) {
     const cells = row
       .split('|')
       .slice(1, -1)
       .map((c) => c.trim());
+    if (cells.every(isEmptyCell)) continue;
     const [, , , , axis, kind] = cells;
-    if (kind && !VALID_KINDS.has(kind)) {
+    if (kind && !isEmptyCell(kind) && !VALID_KINDS.has(kind)) {
       errors.push({ file: taskPath, error: `invalid Kind token: ${kind}` });
     }
-    if (axis && !VALID_AXES.has(axis)) {
+    if (axis && !isEmptyCell(axis) && !VALID_AXES.has(axis)) {
       errors.push({ file: taskPath, error: `invalid Ось token: ${axis}` });
     }
   }
