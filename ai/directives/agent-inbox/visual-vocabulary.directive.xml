@@ -52,6 +52,8 @@
     | System boundary + containers (helicopter) | C4-style | boxes grouped in a boundary zone | `flowchart` + `subgraph` |
     | Dependencies / coupling / cycles / direction | flowchart | boxes + arrows | `flowchart` |
     | Who calls whom over time (runtime flow) | sequence | participant columns + arrows (≤4 cols) | `sequenceDiagram` |
+    | Point of a REFACTOR (old shape vs new) | before→after | two small labelled box-graphs side by side | two `flowchart` blocks |
+    | Which product scenario(s) it serves (use-cases, «зачем») | use-case | actors → scenario nodes, one line each | `flowchart` TD |
     | Lifecycle / statuses (MR touches a state machine) | state | `A → B` labelled transitions | `stateDiagram-v2` |
     | Risk / priority matrix of findings | quadrant 2×2 | 2×2 ASCII grid | `quadrantChart` |
     | DB schema (MR touches models/tables) | ER | indented table→fields list | `erDiagram` |

@@ -377,18 +377,23 @@
        greyed neighbors + "что произошло" caption). Even a one-line MR → a minimal map. Below: size line
        + category table + secondary file map. The diagram in `README.md` is Mermaid (validator requires
        it).
-    3. Large MR → a separate C4; small/medium → the map from item 2 replaces it (do not duplicate).
-    4. Flow diagrams (non-trivial scenarios).
+    3. **Архитектура — C4/helicopter, ALWAYS** (even delta; `AX_COMPREHENSION_LADDER` rung 2). Distinct
+       from the change map. Only a trivial change skips it.
+    4. **Поведение** (rung 3): ONE of — `sequenceDiagram` (new/changed runtime flow) OR before→after
+       flowcharts (refactor). Omit only for a trivial change with no behavioural delta.
+    4b. **Сценарии** (rung 4): use-case «зачем» — product scenario(s) served, grounded in the MR
+        description/ticket; if not stated → reconstruct and label «предполагаемый». Trivial → one line.
     5. Entities: [E1]..[EN] with verdicts (✅⚠️❌), role, rationale.
     6. Relationships & risks: [R-IDs], 🎯🧪💥🖐🚀📊.
     7. Verdict table.
-    8. Comment candidates: ID/File/Line/Problem/Axis/Kind table.
+    8. Comment candidates: ID/Файл/Строка/Проблема/Ось/Вид table.
     9. Footer — repeat the `[ref](webUrl)` markdown link.
     Append an entry to `HISTORY.md` (append-only: date, `headSha`, full/delta mode, outcome, links to
     this visit's task files).
-    **Gate before chat output:** `inbox-review-plan --validate <dir>` (filled) now requires ≥1 Mermaid
-    diagram in `README.md` (Архитектура non-empty). `{ok:false}` with "no diagram" → the diagram was
-    forgotten, go back and draw it, do NOT output to chat. The diagram cannot be skipped — code gate.
+    **Gate before chat output:** `inbox-review-plan --validate <dir>` (filled) requires a Mermaid C4 in
+    `README.md` `## Архитектура` AND that `## Поведение` / `## Сценарии` are filled or explicit
+    `n/a — <причина>` (the ladder cannot be silently dropped). `{ok:false}` → fix and re-validate, do
+    NOT output to chat.
     **Chat is a projection of the validated `README.md`, not a fresh composition.** After `{ok:true}`
     emit to chat what is in the README: change map + file map + verdicts, converting Mermaid → widget
     (if `mcp__visualize__show_widget` present) or ASCII (fallback, action 0). The README diagram MUST
@@ -405,9 +410,9 @@
     | — | Split plan shown (track → N files → subagent/inline) | □ |
     | — | `--validate --stage enriched` passed BEFORE dispatch, `--validate` (filled) BEFORE synthesis | □ |
     | — | Synthesis (README.md/HISTORY.md) assembled from task files on disk, not from retellings | □ |
-    | — | `--validate` (filled) passed: README has ≥1 Mermaid diagram (no "no diagram") | □ |
-    | — | Change map (`AX_CHANGE_MAP`) is the FIRST visual; at least one diagram even for a one-line MR | □ |
-    | — | Chat is a projection of the validated README (map + diagram projected to widget/ASCII); the README diagram reached chat | □ |
+    | — | `--validate` (filled) passed: README has the C4 Mermaid + Поведение/Сценарии filled or `n/a — <причина>` | □ |
+    | — | Comprehension ladder present (`AX_COMPREHENSION_LADDER`): change map + C4 (always) + behaviour (sequence\|before→after) + use-cases; trivial MR may collapse with n/a+reason | □ |
+    | — | Chat is a projection of the validated README (all ladder diagrams projected to widget/ASCII), not a fresh composition | □ |
     | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
     | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
     | — | Finalization Ask fired (step 7) — approve / non-blocking comments / my note as checkboxes; NOT a bare "recommend approve" | □ |

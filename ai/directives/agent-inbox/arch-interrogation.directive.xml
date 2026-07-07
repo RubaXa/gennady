@@ -51,7 +51,34 @@
       - **nodes = touched components/entities** (not raw files), each annotated with its file(s) and change type (🆕 added / ✏️ modified / 🗑️ deleted / ↪︎ renamed);
       - **greyed context nodes = existing neighbors** this change plugs into or depends on, so blast-radius is visible;
       - **one caption line = the intent** ("что произошло: …"), harvested per `AX_RECONSTRUCT_RATIONALE`.
-      Diagram type per `visual-vocabulary.directive.xml` (C4-style / flowchart), medium per `AX_VISUAL_TRANSPORT` (widget in chat, Mermaid in GitLab), discipline ≤7 nodes. **Unconditional — even a one-line change gets a minimal map** (the touched node + its neighbors + "косметика/no blast-radius" caption); that minimal map IS the review answer for a trivial change. The bare file tree is still produced as secondary triage (which files, how deep to dig, which tracks) but is NOT the headline and NOT the only visual. A report whose only visual is a file tree, or which has no diagram at all, is incomplete — the synthesis validator (`inbox-review-plan --validate`) enforces a diagram in `README.md` so it cannot be forgotten.
+      Diagram type per `visual-vocabulary.directive.xml` (C4-style / flowchart), medium per `AX_VISUAL_TRANSPORT` (widget in chat, Mermaid in GitLab), discipline ≤7 nodes. **Unconditional — even a one-line change gets a minimal map** (the touched node + its neighbors + "косметика/no blast-radius" caption); that minimal map IS the review answer for a trivial change. The bare file tree is still produced as secondary triage (which files, how deep to dig, which tracks) but is NOT the headline and NOT the only visual.
+
+      The change map is only the FIRST rung — it answers "what changed", not "where it sits / how it works / why". A report whose only visual is the change map (or a bare file tree) is incomplete: comprehension needs the full ladder — see `AX_COMPREHENSION_LADDER`.
+    </Axiom>
+
+    <Axiom id="AX_COMPREHENSION_LADDER">
+      A review shows, not tells. Every non-trivial MR carries a fixed ladder of small diagrams, each
+      answering ONE distinct question (no two diagrams answer the same thing), comprehension-first —
+      the point is that the reviewer SEES what was done and why, not reads a file list:
+      1. **Change map** (`AX_CHANGE_MAP`) — WHAT changed (entities + neighbors + intent).
+      2. **Helicopter / C4** — WHERE it sits in the system (containers/layers + external neighbours,
+         coloured by verdict). Present ALWAYS, even on a delta — this is the missing "second view";
+         it is distinct from the change map (map = the delta; C4 = the system it lands in). Never
+         omit C4 by claiming the change map already covers it.
+      3. **Behaviour** — HOW it works / what changed in behaviour. Pick ONE by the nature of the MR:
+         a `sequenceDiagram` for a new/changed runtime flow (who calls whom, step by step), OR a
+         **before→after** pair of small flowcharts for a refactor (the point of the refactor — old
+         shape vs new shape). Not both.
+      4. **Use-cases / зачем** — WHICH product scenario(s) it serves (actors → scenario, one line
+         "зачем" each). Grounded per `AX_GROUNDED_IN_REPO` / `AX_RECONSTRUCT_RATIONALE`: harvest the
+         scenario from the MR description and linked ticket. If none is stated, reconstruct it from
+         the code and mark it «предполагаемый сценарий — подтвердите», never present an inferred
+         scenario as fact.
+      Trivial change (typo / pure config, `H_EMPTY_INVENTORY`-adjacent): collapse to change map + one
+      line "зачем"; skip C4/behaviour/use-cases (nothing to interrogate). Non-trivial: the full
+      ladder. The synthesis validator (`inbox-review-plan --validate`) enforces the C4 diagram in
+      `README.md` and that the Поведение/Сценарии sections are filled or explicitly `n/a — <reason>`,
+      so a rung cannot be silently dropped.
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
@@ -245,9 +272,9 @@
          0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
          1. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
          2. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
-         3. **Диаграмма отрисована медиумом (action 0)** — виджет при наличии, иначе ASCII; для крупного MR — отдельный C4, для малого/среднего карта изменения из §2 её заменяет (не дублировать). ✗/✓
+         3. **Лесенка понимания (`AX_COMPREHENSION_LADDER`)** отрисована медиумом (action 0): §3 **C4/helicopter — ВСЕГДА** (даже на дельте, отдельно от карты изменения); §4 **Поведение** — sequence (новый флоу) ИЛИ было→стало (рефактор); §4b **Сценарии** — use-case «зачем», grounded (не заявлено → «предполагаемый»). Нетривиальный MR без C4 / без поведения / без сценариев = ✗. Тривиальный (опечатка/конфиг) — карта + строка «зачем», остальное можно `n/a — <причина>`. ✗/✓
          4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
-         5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Kind. ✗/✓
+         5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Вид. ✗/✓
          6. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
 
          Если все пункты ✓ — отдавай отчёт оператору.
@@ -263,14 +290,16 @@
     1. **Шапка [header] — mandatory.** First line: `ref` as a markdown link `[ref](webUrl)` — clickable, NEVER a bare URL or plain text, so the operator jumps to the MR with one click. Then `title`.
     ---
     2. **Обзор [overview] — change map first, per `AX_CHANGE_MAP`.** Lead with comprehension, not counting:
-       - **the change map** (the headline visual, mandatory every size): component/entity graph — changed nodes coloured by change type (🆕/✏️/🗑️/↪︎) and annotated with their file(s), greyed context-neighbors for blast-radius, one caption line «что произошло: …» (the intent). Even a one-line change → a minimal map (touched node + neighbors + «косметика»). Medium per `AX_VISUAL_TRANSPORT`, type per `visual-vocabulary`. This replaces the bare file tree AND, for small/medium MRs, the separate §3 C4 (fold them into one map; keep §3 only when a big MR needs a fuller container view).
+       - **the change map** (the headline visual, mandatory every size): component/entity graph — changed nodes coloured by change type (🆕/✏️/🗑️/↪︎) and annotated with their file(s), greyed context-neighbors for blast-radius, one caption line «что произошло: …» (the intent). Even a one-line change → a minimal map (touched node + neighbors + «косметика»). Medium per `AX_VISUAL_TRANSPORT`, type per `visual-vocabulary`. Rung 1 of `AX_COMPREHENSION_LADDER`.
        - **one compact size line** (proxy, not the star) — `**Размер:** {малый/средний/крупный} · N файлов · +X/−Y · M новых` + a by-category table (Код · Тесты · Доки/спеки · Конфиг · Ассеты) so asset/generated `+X` is not misread as logic;
        - **secondary file map** (triage): touched files grouped by folder with change-type icons — for "which files / how deep / which tracks". Below the change map, not above it; may be collapsed for large MRs.
        Then 1–2 sentences + verdict tally per `AX_STABLE_FINDING_IDS` (N ✅ / N ⚠️ / N ❌). No findings yet — the shape, not the details.
     ---
-    3. **Архитектура [helicopter] — only when the change map did not already cover it.** For a big/multi-container MR, a fuller C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone, containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend). For small/medium MRs the §2 change map already IS this — omit §3, do not duplicate.
+    3. **Архитектура [helicopter / C4] — mandatory, ALWAYS (even on a delta).** Rung 2 of `AX_COMPREHENSION_LADDER`: a C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone / layers, containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend). Distinct from §2: the change map is the delta, this is the system it lands in. Do NOT omit by claiming the change map covers it. Only a trivial change (typo/config) skips it.
     ---
-    4. **Потоки [flows].** Flow diagram(s) for non-trivial scenarios only; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
+    4. **Поведение [behaviour] — HOW it works.** Rung 3: pick ONE by MR nature — a `sequenceDiagram` for a new/changed runtime flow (who calls whom, step by step), OR a **before→after** pair of small flowcharts for a refactor (old shape vs new shape). ≤7 nodes, one caption. Omit only for a trivial change with no behavioural delta.
+    ---
+    4b. **Сценарии [use-cases] — WHY / зачем.** Rung 4: which product scenario(s) the change serves — actors → scenario nodes, one line «зачем» each (small flowchart). Grounded per `AX_GROUNDED_IN_REPO` / `AX_RECONSTRUCT_RATIONALE` from the MR description + linked ticket; if not stated, reconstruct from code and label «предполагаемый сценарий — подтвердите», never as fact. Trivial change → one line "зачем" instead of a diagram.
     ---
     5. **Разбор сущностей [entities].** One subsection per entity, ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first). Each card:
        - **Stable ID** — `[E1]`, `[E2]`… per `AX_STABLE_FINDING_IDS`.

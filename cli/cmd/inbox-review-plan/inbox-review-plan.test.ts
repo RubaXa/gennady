@@ -138,6 +138,14 @@ flowchart TD
   A[Middleware] --> B[Store]
 \`\`\`
 
+## Поведение
+
+n/a — тривиально
+
+## Сценарии
+
+n/a — тривиально
+
 ## Вердикты
 
 1 ✅
@@ -622,6 +630,33 @@ describe('inbox-review-plan --validate', () => {
       const r = runValidate(dir);
       assert.strictEqual(r.status, 0);
       assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('README missing ## Поведение / ## Сценарии → ladder error', () => {
+    const readmeNoLadder = `# Отчёт ревью
+
+## Архитектура
+
+\`\`\`mermaid
+flowchart TD
+  A --> B
+\`\`\`
+
+## Вердикты
+
+ок
+`;
+    const { dir } = setupReportDir({}, 'abc1234', readmeNoLadder);
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /Поведение/.test(e.error)));
+      assert.ok(result.errors.some((e: { error: string }) => /Сценарии/.test(e.error)));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

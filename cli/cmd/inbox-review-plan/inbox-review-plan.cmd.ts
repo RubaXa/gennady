@@ -348,7 +348,15 @@ const README_TEMPLATE = `# Отчёт ревью
 
 ## Архитектура
 
-<!-- FILL: orchestrator — C4/flowchart Mermaid, ≤7 узлов, не сплошной текст -->
+<!-- FILL: orchestrator — C4/helicopter Mermaid (всегда, даже на дельте), ≤7 узлов, не сплошной текст -->
+
+## Поведение
+
+<!-- FILL: orchestrator — как работает: sequenceDiagram (новый флоу) ИЛИ было→стало (рефактор). Тривиально → n/a — <причина> -->
+
+## Сценарии
+
+<!-- FILL: orchestrator — use-case «зачем»: продуктовые сценарии из описания MR/тикета; не заявлено → «предполагаемый». Тривиально → n/a — <причина> -->
 
 ## Вердикты
 
@@ -784,6 +792,8 @@ function validateReviewReports(
       if (!arch || /^<!--\s*FILL:/.test(arch)) {
         errors.push({ file: readmePath, error: '## Архитектура is empty (synthesis incomplete)' });
       }
+      validateSectionFilled(readmePath, readme, 'Поведение', errors);
+      validateSectionFilled(readmePath, readme, 'Сценарии', errors);
       pushStopWordErrors(readmePath, readme, errors);
     }
   }
