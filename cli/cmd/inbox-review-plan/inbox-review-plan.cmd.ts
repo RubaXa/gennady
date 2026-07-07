@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
+import { findStopWords } from '../../../shared/prompt-lint/stop-words.ts';
 
 // #region START_ARG_PARSING
 
@@ -339,7 +340,7 @@ const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | '
 const README_TEMPLATE = `# Отчёт ревью
 
 <!-- Инфографика вместо стены текста: реляционное — Mermaid-диаграммой (тип по
-     ai/directives/agent-inbox/visual-vocabulary.directive.xml), одиночное суждение — прозой. -->
+     ai/directives/agent-inbox/visual-vocabulary.directive.xml), одиночное суждение — сплошным текстом. -->
 
 ## Обзор
 
@@ -347,7 +348,7 @@ const README_TEMPLATE = `# Отчёт ревью
 
 ## Архитектура
 
-<!-- FILL: orchestrator — C4/flowchart Mermaid, ≤7 узлов, не проза -->
+<!-- FILL: orchestrator — C4/flowchart Mermaid, ≤7 узлов, не сплошной текст -->
 
 ## Вердикты
 
@@ -695,6 +696,23 @@ function validateTaskFile(
   if (findUnclosedMermaidBlock(body)) {
     errors.push({ file: taskPath, error: 'unclosed mermaid block' });
   }
+
+  pushStopWordErrors(taskPath, body, errors);
+}
+
+/**
+ * @purpose Scan an artifact body for banned words and add file-scoped errors with a replacement hint.
+ * @param path Artifact path for the error location.
+ * @param text Artifact body (code fences / inline code skipped by findStopWords).
+ * @param errors Accumulator, mutated in place.
+ */
+function pushStopWordErrors(path: string, text: string, errors: ValidateError[]): void {
+  for (const hit of findStopWords(text)) {
+    errors.push({
+      file: path,
+      error: `стоп-слово «${hit.word}» (${hit.why}) на строке ${hit.line} — замени на «${hit.use}»`,
+    });
+  }
 }
 
 /**
@@ -758,6 +776,7 @@ function validateReviewReports(
       if (!arch || /^<!--\s*FILL:/.test(arch)) {
         errors.push({ file: readmePath, error: '## Архитектура is empty (synthesis incomplete)' });
       }
+      pushStopWordErrors(readmePath, readme, errors);
     }
   }
   // #endregion END_VALIDATE_README_DIAGRAM

@@ -621,6 +621,23 @@ describe('inbox-review-plan --validate', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('stop-word in a task section → validation error names it and the replacement', () => {
+    const { dir } = setupReportDir({ findings: 'Тут проскочила проза вместо нормального текста.' });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(
+        result.errors.some(
+          (e: { error: string }) => /стоп-слово/.test(e.error) && /текст/.test(e.error)
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('inbox --reset clears reports', () => {
