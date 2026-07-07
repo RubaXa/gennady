@@ -77,8 +77,12 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       break;
     case 'inbox-review-plan':
       console.info('gennady inbox-review-plan — детерминированный план ревью MR');
-      console.info('  npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>');
-      console.info('  Возвращает ReviewPlan { mode, tracks[] } с готовым планом диспетчеризации сабагентов.');
+      console.info(
+        '  npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>'
+      );
+      console.info(
+        '  Возвращает ReviewPlan { mode, tracks[] } с готовым планом диспетчеризации сабагентов.'
+      );
       helpLoaded = true;
       break;
     case 'vcs-worktree':

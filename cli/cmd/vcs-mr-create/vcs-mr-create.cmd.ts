@@ -80,7 +80,11 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const milestoneId = args.milestone as string | undefined;
   const host = args.host as string | undefined;
 
-  const vcsArgs: VcsCliArgs = { host, project: args.project as string | undefined, url: args.url as string | undefined };
+  const vcsArgs: VcsCliArgs = {
+    host,
+    project: args.project as string | undefined,
+    url: args.url as string | undefined,
+  };
   let context: VcsCliContext;
 
   try {

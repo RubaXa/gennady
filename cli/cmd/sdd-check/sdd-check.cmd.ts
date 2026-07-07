@@ -72,7 +72,7 @@ function checkSpecLinks(file: string, content: string): Finding[] {
   return findings;
 }
 
-/** @purpose Check that every `](….xml)` rule link in a ticket resolves on disk — mirror of checkSpecLinks for phase Rules (shift-left for scaffold's rule refs). | @param file Ticket path. | @param content Ticket markdown. | @returns Findings for unresolved rule links. */
+/** @purpose Check every `](….xml)` rule link in a ticket resolves on disk — checkSpecLinks mirror for phase Rules (shift-left for scaffold). | @param file Ticket path. | @param content Ticket markdown. | @returns Findings for unresolved rule links. */
 function checkRuleLinks(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
   const dir = dirname(file);
@@ -100,7 +100,7 @@ function slug(heading: string): string {
     .replace(/\s+/g, '-');
 }
 
-/** @purpose Check a ticket's spec references `](…spec.md#entity)` resolve — file on disk + anchor as a heading-slug or SECTION marker — so the worker's sdd-extract will not miss. | @param file Ticket path. | @param content Ticket markdown. | @returns SDD_BROKEN_SPEC_REF (error, file) / SDD_BROKEN_SPEC_ANCHOR (warn, anchor). */
+/** @purpose Check a ticket's spec references `](…spec.md#entity)` resolve: file on disk + anchor as heading-slug or SECTION marker (sdd-extract safety). | @param file Ticket path. | @param content Ticket markdown. | @returns SDD_BROKEN_SPEC_REF (error, file) / SDD_BROKEN_SPEC_ANCHOR (warn, anchor). */
 function checkSpecRefs(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
   const dir = dirname(file);

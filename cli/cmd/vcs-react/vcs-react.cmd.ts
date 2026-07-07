@@ -100,7 +100,13 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid, url: args.url as string | undefined };
+  const vcsArgs: VcsCliArgs = {
+    host,
+    ref,
+    project,
+    iid: validIid,
+    url: args.url as string | undefined,
+  };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);

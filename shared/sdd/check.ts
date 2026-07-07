@@ -642,7 +642,7 @@ function coversDep(tokens: string[], dep: string): boolean {
 
 /**
  * @purpose Cross-check a scope spec's declared dependencies against the portal Scope Graph (B5) — the graph is authoritative, the spec must acknowledge each outgoing edge.
- * @invariant Warn-only; graph→spec direction only (spec-side free-form is too noisy to flag the reverse). A spec without a SCOPE_DEPENDENCIES section yields [] (module specs, legacy specs). Pure.
+ * @invariant Warn-only; graph→spec direction only (reverse is too noisy). No SCOPE_DEPENDENCIES section → [] (module/legacy specs). Pure.
  * @param file Spec file path — error location and the source of the scope name (basename stem).
  * @param content Full scope-spec markdown.
  * @param portalEdges Edges parsed from the portal Scope Graph (specs/README.md).
@@ -695,7 +695,7 @@ const CHANGE_MARK = /^[ \t]*✚ /m;
 
 /**
  * @purpose Track a spec's lifecycle state (master vs review-state) and flag broken or stuck review-states.
- * @invariant master = no CHANGE_MANIFEST and no ✚/~ marks; review-state = manifest + (marks, or none for greenfield). Mismatches are surfaced with the reason per AX_SPEC_LIFECYCLE.
+ * @invariant master = no CHANGE_MANIFEST and no ✚/~ marks; review-state = manifest (marks optional for greenfield). Mismatches surfaced per AX_SPEC_LIFECYCLE.
  * @param file Spec file path.
  * @param content Full spec markdown.
  * @returns Findings: SDD_REVIEW_INCONSISTENT (error) for a malformed review-state; SDD_REVIEW_STATE_STUCK (warn) for a lingering manifest.
