@@ -219,7 +219,7 @@
 
        Subagent input — ONE path to its task file (document pipeline, "Review pipeline" Step 3):
        `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` are already in
-       its `## Context`, the track's file list in its `## Scope`. Do not restate structure/visual/
+       its `## Контекст`, the track's file list in its `## Область`. Do not restate structure/visual/
        axes/verdicts/candidates — they are in the directive.
     5. **Candidates.** `reply_needed`: fact-check (right/wrong) → apply
        `INCLUDE_ONCE("posting-rules.directive.xml")` PreFlight to each candidate STRICTLY along the
@@ -284,7 +284,7 @@
     1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json` →
        `my_drafts` = investigation vector; `my_threads` = what I already wrote (dedup).
     2. Pass to subagents via the task file's Context (not separate fields): `prior_threads` +
-       `my_drafts` + `my_login` are folded into `## Context` at Step 2, with `worktree.path`,
+       `my_drafts` + `my_login` are folded into `## Контекст` at Step 2, with `worktree.path`,
        `diff_refs`, `base`, `ref`, `webUrl` — the subagent gets ONE file path, everything else inside.
     3. AFTER review, BEFORE posting (Step 4): `vcs-draft-note --delete-all` (drafts served their
        purpose) then `vcs-discussions --url <webUrl> --all --json`. Reconcile duplicates
@@ -319,23 +319,23 @@
     3. Materialize: `inbox-review-plan --path <worktree.path> --base <base> --scaffold --ref <ref>` →
        `{ scaffolded, dir, plan, tasks }`. `mode: inline` → one `tasks/review.task.md`; `mode: fan_out`
        → one per track (except tracks whose `focus` is "skip review").
-    4. Enrich each task file's `## Context` (orchestrator, not mechanics): what the code cannot know —
+    4. Enrich each task file's `## Контекст` (orchestrator, not mechanics): what the code cannot know —
        which entities matter in THIS track's files, what was already discussed in `prior_threads`/
        `my_drafts` (`my_login` for dedup), the MR goal, what to look at. Plus facts for autonomous
        filling: `worktree.path`, `diff_refs`, `base`, `ref`, `webUrl`. Minimal per-track context, NOT a
-       retelling of the whole MR. Security task: even though its `## Scope` lists only security-classified
-       files — in `## Context` write explicitly "look at the WHOLE diff, not just Scope". Set
+       retelling of the whole MR. Security task: even though its `## Область` lists only security-classified
+       files — in `## Контекст` write explicitly "look at the WHOLE diff, not just Scope". Set
        `status: enriched`.
     5. Gate before dispatch: `inbox-review-plan --validate <dir> --stage enriched`. `{ok: false}` (empty
-       `## Context` somewhere) → fill and retry. Dispatch (Step 3) only after `{ok: true}`.
+       `## Контекст` somewhere) → fill and retry. Dispatch (Step 3) only after `{ok: true}`.
     The agent makes no decisions: does not count files/lines by hand, does not choose inline vs
     subagents (`ReviewPlan.mode`), does not pick probes (`ReviewTrack.focus`), does not pick the
     directive (`ReviewTrack.directive`), does not classify files into tracks — the command did all that.
 
     ## Step 3 — Dispatch by task files
-    Each subagent gets exactly one input: the path to its task file + "read `## Scope` and `## Context`,
-    load the directive from `track.directive` (see `## Scope`), run the probes from `focus`, fill
-    `## Findings` / `## Candidates` / `## Verdict` per the file schema, set `status: filled`". Report —
+    Each subagent gets exactly one input: the path to its task file + "read `## Область` and `## Контекст`,
+    load the directive from `track.directive` (see `## Область`), run the probes from `focus`, fill
+    `## Находки` / `## Кандидаты` / `## Вердикт` per the file schema, set `status: filled`". Report —
     VCS-flavored markdown (GitLab/GitHub), diagrams — mermaid (in the file; not to chat, see Step 4).
     `mode: inline` → no subagents, you fill the single `tasks/review.task.md`. Wait for ALL subagents.
     Gate after filling: `inbox-review-plan --validate <dir>`. `{ok: false}` → errors are file-scoped

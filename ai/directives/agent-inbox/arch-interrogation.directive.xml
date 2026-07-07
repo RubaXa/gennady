@@ -296,7 +296,7 @@
     ---
     9. **Кандидаты в замечания [comment candidates].** Per `AX_PRIOR_DISCUSSION_AWARENESS`. Compact table per `AX_SCANNABLE_OUTPUT`:
 
-       | ID | Файл | Строка | Проблема | Ось | Kind |
+       | ID | Файл | Строка | Проблема | Ось | Вид |
        |----|------|--------|-----------|-----|------|
        | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment |
        | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) |

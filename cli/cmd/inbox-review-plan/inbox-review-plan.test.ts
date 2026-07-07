@@ -48,7 +48,7 @@ function commitAll(dir: string, message: string): void {
 
 // #region START_VALIDATE_TEST_HELPERS — hand-built report-dir fixtures for --validate schema gate
 
-const CANDIDATES_HEADER = '| ID | Файл | Строка | Проблема | Ось | Kind | Severity |';
+const CANDIDATES_HEADER = '| ID | Файл | Строка | Проблема | Ось | Вид | Важность |';
 const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- |';
 
 function taskContent(
@@ -81,26 +81,26 @@ files:
 status: ${status}
 ---
 
-## Scope
+## Область
 
 - \`foo.ts\`
 
-## Context
+## Контекст
 
 ${context}
 
-## Findings
+## Находки
 
 ${findings}
 ${mermaidBlock}
 
-## Candidates
+## Кандидаты
 
 ${CANDIDATES_HEADER}
 ${CANDIDATES_SEPARATOR}
 ${candidatesRow}
 
-## Verdict
+## Вердикт
 
 ${verdict}
 `;
@@ -115,9 +115,9 @@ mode: fan_out
 createdAt: 2026-01-01T00:00:00.000Z
 ---
 
-# Review Plan — group/project!1
+# План ревью — group/project!1
 
-| Track | Files | Lines | Focus | Status |
+| Дорожка | Файлов | Строк | Фокус | Статус |
 | --- | --- | --- | --- | --- |
 | logic | 1 | 2 | focus | filled |
 `;
@@ -343,10 +343,10 @@ describe('inbox-review-plan --scaffold', () => {
 
       const content = readFileSync(result.tasks[0], 'utf8');
       assert.match(content, /status: scaffolded/);
-      assert.match(content, /## Scope[\s\S]*foo\.ts[\s\S]*\(\+1\/-1\)/);
-      assert.match(content, /## Context\s*\n\s*<!-- FILL: orchestrator/);
-      assert.match(content, /## Findings\s*\n\s*<!-- FILL: agent/);
-      assert.match(content, /## Verdict\s*\n\s*<!-- FILL: agent/);
+      assert.match(content, /## Область[\s\S]*foo\.ts[\s\S]*\(\+1\/-1\)/);
+      assert.match(content, /## Контекст\s*\n\s*<!-- FILL: orchestrator/);
+      assert.match(content, /## Находки\s*\n\s*<!-- FILL: agent/);
+      assert.match(content, /## Вердикт\s*\n\s*<!-- FILL: agent/);
     } finally {
       rmSync(repo, { recursive: true, force: true });
       rmSync(stateDir, { recursive: true, force: true });
@@ -457,7 +457,7 @@ describe('inbox-review-plan --validate', () => {
     }
   });
 
-  it('## Context empty without n/a → error names the file and section', () => {
+  it('## Контекст empty without n/a → error names the file and section', () => {
     const { dir, taskPath } = setupReportDir({ context: '' });
     try {
       const r = runValidate(dir);
@@ -466,7 +466,7 @@ describe('inbox-review-plan --validate', () => {
       assert.strictEqual(result.ok, false);
       const err = result.errors.find((e: { file: string }) => e.file === taskPath);
       assert.ok(err);
-      assert.match(err.error, /Context is empty/);
+      assert.match(err.error, /Контекст is empty/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -530,7 +530,7 @@ describe('inbox-review-plan --validate', () => {
     }
   });
 
-  it("## Findings with 'n/a — <reason>' → valid, no error", () => {
+  it("## Находки with 'n/a — <reason>' → valid, no error", () => {
     const { dir } = setupReportDir({ findings: 'n/a — нет модификаций' });
     try {
       const r = runValidate(dir);

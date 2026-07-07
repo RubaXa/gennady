@@ -1,6 +1,6 @@
 // @file: review-plan command — deterministic file-to-track classification for fan-out review,
 //   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
-// @consumers: agent-inbox-take skill, agent-inbox skill
+// @consumers: agent-inbox skill (inbox-flow.directive.xml)
 // @tasks: TSK-102, TSK-103
 
 import { execFileSync } from 'node:child_process';
@@ -332,11 +332,11 @@ function hasClosedMermaidBlock(body: string): boolean {
 // purpose: механика создаёт структуру и словари; смысл (## Context) заполняет оркестратор,
 // находки/вердикт — сабагент. Validate (below) enforces the same schema at read time.
 
-const CANDIDATES_COLUMNS = ['ID', 'Файл', 'Строка', 'Проблема', 'Ось', 'Kind', 'Severity'];
+const CANDIDATES_COLUMNS = ['ID', 'Файл', 'Строка', 'Проблема', 'Ось', 'Вид', 'Важность'];
 const CANDIDATES_HEADER = `| ${CANDIDATES_COLUMNS.join(' | ')} |`;
 const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | ')} |`;
 
-const README_TEMPLATE = `# Review Report
+const README_TEMPLATE = `# Отчёт ревью
 
 <!-- Инфографика вместо стены текста: реляционное — Mermaid-диаграммой (тип по
      ai/directives/agent-inbox/visual-vocabulary.directive.xml), одиночное суждение — прозой. -->
@@ -363,7 +363,7 @@ const README_TEMPLATE = `# Review Report
 `;
 
 function renderHistoryTemplate(ref: string): string {
-  return `# History — ${ref}
+  return `# История — ${ref}
 
 <!-- append-only: оркестратор добавляет запись о каждом визите; механика не перезаписывает файл -->
 `;
@@ -396,26 +396,26 @@ function renderTaskTemplate(
 
   return `${frontmatterLines.join('\n')}
 
-## Scope
+## Область
 
-- **Focus:** ${focus}
-- **Files (${files.length}):**
+- **Фокус:** ${focus}
+- **Файлы (${files.length}):**
 ${scopeLines.join('\n')}
 
-## Context
+## Контекст
 
 <!-- FILL: orchestrator — смысл, сущности, prior threads, цели -->
 
-## Findings
+## Находки
 
 <!-- FILL: agent -->
 
-## Candidates
+## Кандидаты
 
 ${CANDIDATES_HEADER}
 ${CANDIDATES_SEPARATOR}
 
-## Verdict
+## Вердикт
 
 <!-- FILL: agent -->
 `;
@@ -444,9 +444,9 @@ function renderPlanTemplate(
 
   return `${frontmatterLines.join('\n')}
 
-# Review Plan — ${ref}
+# План ревью — ${ref}
 
-| Track | Files | Lines | Focus | Status |
+| Дорожка | Файлов | Строк | Фокус | Статус |
 | --- | --- | --- | --- | --- |
 ${tableRows.join('\n')}
 `;
@@ -622,7 +622,7 @@ function validateSectionFilled(
 }
 
 function validateCandidatesTable(taskPath: string, body: string, errors: ValidateError[]): void {
-  const section = extractSection(body, 'Candidates') ?? '';
+  const section = extractSection(body, 'Кандидаты') ?? '';
   const rows = section
     .split('\n')
     .map((l) => l.trim())
@@ -685,10 +685,10 @@ function validateTaskFile(
     });
   }
 
-  validateSectionFilled(taskPath, body, 'Context', errors);
+  validateSectionFilled(taskPath, body, 'Контекст', errors);
   if (stage === 'filled') {
-    validateSectionFilled(taskPath, body, 'Findings', errors);
-    validateSectionFilled(taskPath, body, 'Verdict', errors);
+    validateSectionFilled(taskPath, body, 'Находки', errors);
+    validateSectionFilled(taskPath, body, 'Вердикт', errors);
     validateCandidatesTable(taskPath, body, errors);
   }
 
