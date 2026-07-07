@@ -322,13 +322,16 @@ const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | '
 
 const README_TEMPLATE = `# Review Report
 
+<!-- Инфографика вместо стены текста: реляционное — Mermaid-диаграммой (тип по
+     ai/directives/agent-inbox/visual-vocabulary.directive.xml), одиночное суждение — прозой. -->
+
 ## Обзор
 
-<!-- FILL: orchestrator -->
+<!-- FILL: orchestrator — размер + карта файлов (дерево) -->
 
 ## Архитектура
 
-<!-- FILL: orchestrator -->
+<!-- FILL: orchestrator — C4/flowchart Mermaid, ≤7 узлов, не проза -->
 
 ## Вердикты
 

@@ -118,12 +118,16 @@
   </PreFlight>
 
   <DiagramConversion>
-    <Goal>Convert chat-format diagrams (ASCII/widget) to GitLab-native Mermaid.</Goal>
+    <Goal>Convert the chat report's diagrams (ASCII/widget) to GitLab-native Mermaid for posting.</Goal>
     <Rules>
-      1. ASCII tree/graph → Mermaid flowchart LR or TD (whichever fits the relationship direction).
-      2. Widget visualization → Mermaid equivalent (flowchart for entity maps, sequenceDiagram for flows).
-      3. Keep ≤7 nodes per diagram (same discipline as arch-interrogation AX_VISUALIZE_WHEN_RELATIONAL).
-      4. Use fixed classDef for entity state — COPY AS-IS from arch-interrogation entity-map convention:
+      1. Keep the SAME diagram TYPE the report chose — the intent→type mapping is owned by
+         `ai/directives/agent-inbox/visual-vocabulary.directive.xml` `<DiagramSelection>`; load it and
+         convert to that row's Mermaid keyword (tree stays plain text; C4/dependencies → `flowchart`;
+         runtime flow → `sequenceDiagram`; lifecycle → `stateDiagram-v2`; risk-matrix → `quadrantChart`;
+         schema → `erDiagram`). Do NOT collapse everything into a flowchart.
+      2. Minimal syntax per type — see visual-vocabulary `<Syntax>` (Mermaid column).
+      3. Keep ≤7 nodes per diagram (arch-interrogation AX_VISUALIZE_WHEN_RELATIONAL / visual-vocabulary AX_DIAGRAM_DISCIPLINE).
+      4. Use fixed classDef for entity state — COPY AS-IS:
          - new → green fill (#dafbe1), green stroke (#2da44e)
          - modified → yellow fill (#fff8c5), yellow stroke (#bf8700)
          - deleted → red fill (#ffebe9), red stroke (#cf222e)
@@ -132,6 +136,14 @@
       6. Every diagram gets a one-line caption in Russian.
     </Rules>
   </DiagramConversion>
+
+  <Axiom id="AX_COMMENT_INFOGRAPHIC">
+    Per `AX_INFOGRAPHIC_FIRST` (visual-vocabulary) applied to POSTED comments — not just the overview:
+    when a line-comment or thread-reply explains something RELATIONAL and it fits ≤5 nodes (a flow the
+    author must trace, a dependency they missed, a state transition), embed a small Mermaid diagram
+    instead of a paragraph. A single-point remark stays prose. A wall of diagrams in a thread erodes
+    author trust as much as a wall of text — gate on relational + ≤5 nodes.
+  </Axiom>
 
   <CommentFormat>
     <Section name="general-comment">

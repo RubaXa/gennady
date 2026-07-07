@@ -1,0 +1,186 @@
+<VisualVocabulary keywords="diagram selection, mermaid, ascii, bird's-eye view, infographic, visualization cheat sheet, c4, flowchart, sequence, state, quadrant, er, fishbone" type="directive" ver="1.0">
+  <Mission>
+    Diagram-selection cheat sheet for agent-inbox output. The point of this project is control over
+    what the AI (author or reviewer) actually decided: the biggest risk in AI-assisted development is
+    NOT bugs — it is unstated requirements the AI silently "filled in" with its most-probable guess,
+    where "most probable" is only probable, not correct. A reviewer cannot catch that by reading
+    walls of generated text and code; they catch it with a bird's-eye view — an infographic that
+    shows the shape of the decision in seconds.
+
+    So: whenever meaning is relational (structure, flow, boundaries, lifecycle, dependencies,
+    risk-priority), SHOW it as a picture, do not describe it in prose. This directive tells the agent
+    WHICH diagram fits WHICH intent, and gives the minimal syntax for both destinations. Loaded by
+    `arch-interrogation` (chat report), `posting-rules` (GitLab), and the review pipeline (artifacts).
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_INFOGRAPHIC_FIRST">
+      Relational meaning → picture, everywhere the output goes: the chat report, GitLab comments, and
+      the generated artifacts (README/task files). A single judgement (one entity's verdict, one
+      necessity call) stays prose — a diagram of one node is noise. The rule is not "always draw"; it
+      is "if the thing to understand is a relationship among ≥2 elements positioned in space, a
+      picture beats a paragraph." Reviewer reads it in seconds, then drills down with questions.
+    </Axiom>
+
+    <Axiom id="AX_DEST_DECIDES_MEDIUM">
+      The destination decides the form, the intent decides the diagram TYPE (both from
+      `<DiagramSelection>`).
+      - **Chat** (operator reads in Claude/terminal): a widget (`mcp__visualize__show_widget`) when
+        present — it is the best medium, use it; otherwise ASCII/emoji. NEVER Mermaid/SVG to chat —
+        it will not render. So in chat you may only use diagram types that have a clean ASCII form
+        (the `<DiagramSelection>` core is chosen for exactly this).
+      - **GitLab** (posted comment): Mermaid, GitLab renders it natively. Conversion + posting format
+        owned by `posting-rules.directive.xml`.
+      Same intent, two renderings: e.g. dependencies = ASCII boxes+arrows in chat, `flowchart` in GitLab.
+    </Axiom>
+
+    <Axiom id="AX_DIAGRAM_DISCIPLINE">
+      Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE diagram per idea; a
+      one-line caption in Russian directly under it; encode the single thing to notice first with
+      colour/size/position. A diagram nobody can read in 5 seconds failed its job — simplify.
+    </Axiom>
+  </BeliefState>
+
+  <DiagramSelection>
+    Pick the row by your INTENT (left). Core set — all have a clean ASCII form, so they work in chat
+    AND GitLab. Chat form is what you render (widget/ASCII); GitLab form is the Mermaid keyword
+    `posting-rules` converts to when posting.
+
+    | Intent — what you show | Diagram | Chat form (widget/ASCII) | GitLab (mermaid) |
+    |---|---|---|---|
+    | File map / hierarchy / MR structure | tree | indented ASCII tree | (plain text) |
+    | System boundary + containers (helicopter) | C4-style | boxes grouped in a boundary zone | `flowchart` + `subgraph` |
+    | Dependencies / coupling / cycles / direction | flowchart | boxes + arrows | `flowchart` |
+    | Who calls whom over time (runtime flow) | sequence | participant columns + arrows (≤4 cols) | `sequenceDiagram` |
+    | Lifecycle / statuses (MR touches a state machine) | state | `A → B` labelled transitions | `stateDiagram-v2` |
+    | Risk / priority matrix of findings | quadrant 2×2 | 2×2 ASCII grid | `quadrantChart` |
+    | DB schema (MR touches models/tables) | ER | indented table→fields list | `erDiagram` |
+    | Why a change happened / deeper cause (lens ②) | fishbone | nested cause list | `flowchart` LR |
+
+    **Extended — GitLab-only, rare** (no clean ASCII; use ONLY when posting to GitLab and the shape
+    genuinely needs it, never as the default): `classDiagram` (OO inheritance-heavy MR),
+    `gitGraph` (commit/branch delta on re-visit), `mindmap` (requirement/idea hierarchy),
+    `requirementDiagram` (spec↔code traceability). In chat, render the same intent with a core-set
+    ASCII form instead (e.g. class relations → flowchart boxes; commit delta → plain list).
+
+    Not in scope (no ASCII, niche for MR review): pie, gantt, timeline, journey, sankey, radar, venn,
+    wardley, kanban, packet, xychart, block, architecture-beta, treeview-beta, zenuml — skip.
+  </DiagramSelection>
+
+  <Syntax>
+    Minimal skeletons. Left = ASCII (chat fallback), right = Mermaid (GitLab). Keep ≤7 nodes.
+
+    <Type name="flowchart / C4-style">
+      ASCII:
+        ┌─ Boundary: Session ─────────────┐
+        │  [Middleware ✏️] ──▶ [Store iface] │
+        │                        │          │
+        │           ┌───────────┴──────┐    │
+        │           ▼                  ▼    │
+        │   [MemoryStore]      [✅ RedisStore 🆕] │
+        └──────────────────────────────────┘
+      Mermaid:
+        ```mermaid
+        flowchart TD
+          subgraph Session
+            MW[Middleware] --> IF[Store iface]
+            IF --> MEM[MemoryStore]
+            IF --> RDS[RedisStore]
+          end
+        ```
+      classDef (GitLab, copy as-is): new fill #dafbe1 stroke #2da44e · modified fill #fff8c5 stroke #bf8700 · deleted fill #ffebe9 stroke #cf222e · outside fill #f6f8fa stroke #999 dashed.
+    </Type>
+
+    <Type name="sequence">
+      ASCII (columns, ≤4 participants):
+        Client      API        DB
+          │  POST    │          │
+          │─────────▶│  query   │
+          │          │─────────▶│
+          │          │◀─────────│
+          │◀─────────│          │
+      Mermaid:
+        ```mermaid
+        sequenceDiagram
+          Client->>API: POST
+          API->>DB: query
+          DB-->>API: rows
+          API-->>Client: 201
+        ```
+    </Type>
+
+    <Type name="state">
+      ASCII:  [draft] ──open──▶ [review] ──approve──▶ [merged]
+                                   │
+                                 reject ──▶ [closed]
+      Mermaid:
+        ```mermaid
+        stateDiagram-v2
+          draft --> review: open
+          review --> merged: approve
+          review --> closed: reject
+        ```
+    </Type>
+
+    <Type name="quadrant 2×2 (risk / priority)">
+      ASCII:
+                 высокий impact
+                     │
+        [E7]🔴       │      [E3]🟡
+        ─────────────┼─────────────
+        [R2]🟢       │      [E5]🟡
+                     │
+                 низкий impact
+        (ось X: низкая→высокая вероятность)
+      Mermaid:
+        ```mermaid
+        quadrantChart
+          x-axis Low prob --> High prob
+          y-axis Low impact --> High impact
+          "E7": [0.2, 0.9]
+          "E3": [0.8, 0.85]
+        ```
+    </Type>
+
+    <Type name="ER">
+      ASCII:
+        User ──1:N──▶ Session
+          - id (PK)      - id (PK)
+          - email        - user_id (FK)
+      Mermaid:
+        ```mermaid
+        erDiagram
+          USER ||--o{ SESSION : has
+          USER { int id PK; string email }
+          SESSION { int id PK; int user_id FK }
+        ```
+    </Type>
+
+    <Type name="fishbone (cause of a change — lens ②)">
+      ASCII (nested list toward the effect):
+        Симптом: middleware правят 3-й раз
+          ├─ причина: нет единой точки валидации
+          ├─ причина: конфиг зашит литералом (DEP)
+          └─ причина: обход абстракции store (FIGHT)
+      Mermaid: flowchart LR with causes → effect node.
+    </Type>
+
+    <Type name="tree (file map)">
+      ASCII only (chat + plain text in GitLab):
+        src/
+          session/
+            store.ts        🆕 +120
+            middleware.ts   ✏️ +45/−12
+          config/
+            redis.ts        🆕 +0
+    </Type>
+  </Syntax>
+
+  <CommentInfographicRule>
+    For a GitLab comment (not the overview): embed a small Mermaid diagram INSTEAD of a paragraph only
+    when the point is relational AND fits ≤5 nodes (a flow the author must trace, a dependency they
+    missed, a state transition). A single-point remark stays prose. This keeps threads readable —
+    a wall of diagrams erodes author trust as much as a wall of text. Governed together with
+    `posting-rules.directive.xml` AX_POSTING_MERMAID_ONLY.
+  </CommentInfographicRule>
+</VisualVocabulary>
