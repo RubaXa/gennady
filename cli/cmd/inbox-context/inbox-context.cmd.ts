@@ -15,6 +15,9 @@ import {
   clonesRoot,
   reposMapPath,
   configPath,
+  reportsRoot,
+  gcStaleReports,
+  REPORTS_TTL_MS,
 } from '../inbox/_core/logic/state-paths.logic.ts';
 import { loadConfig, validateConfig } from '../inbox/_core/logic/inbox-config.logic.ts';
 import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
@@ -261,6 +264,7 @@ async function run(): Promise<number> {
       const root = worktreesRoot(stateDir);
       mkdirSync(root, { recursive: true });
       gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+      gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
       const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);

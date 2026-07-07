@@ -5,7 +5,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
 import { findStopWords } from '../../../shared/prompt-lint/stop-words.ts';
 
@@ -527,13 +527,20 @@ function scaffoldReviewReports(
           taskPath: join(tasksDir, `${t.name}.task.md`),
         }));
 
+  // New head = fresh visit in the reused flat dir → refresh everything; same head → idempotent skip.
+  const planPath = join(dir, 'PLAN.md');
+  const priorPlanHead = existsSync(planPath)
+    ? (parseDocument(readFileSync(planPath, 'utf8')).frontmatter.headSha as string | undefined)
+    : undefined;
+  const isNewHead = priorPlanHead !== undefined && priorPlanHead !== headSha;
+
   const tasks: string[] = [];
   const rows: { track: string; files: number; lines: number; focus: string; status: string }[] = [];
 
-  // #region START_WRITE_TASK_FILES — skip-with-warning on any status past scaffolded
+  // #region START_WRITE_TASK_FILES — skip-with-warning on filled files (same head); fresh on new head
   for (const spec of taskSpecs) {
     const existingStatus = readTaskStatus(spec.taskPath);
-    if (existingStatus && existingStatus !== 'scaffolded') {
+    if (!isNewHead && existingStatus && existingStatus !== 'scaffolded') {
       console.error(
         `⚠ ${spec.taskPath}: status=${existingStatus} — пропущен, не перезаписан (re-scaffold идемпотентен)`
       );
@@ -557,16 +564,15 @@ function scaffoldReviewReports(
   }
   // #endregion END_WRITE_TASK_FILES
 
-  const planPath = join(dir, 'PLAN.md');
   writeFileSync(
     planPath,
     renderPlanTemplate(ref, headSha, base, plan.mode, new Date().toISOString(), rows)
   );
 
   const readmePath = join(dir, 'README.md');
-  if (!existsSync(readmePath)) writeFileSync(readmePath, README_TEMPLATE);
+  if (isNewHead || !existsSync(readmePath)) writeFileSync(readmePath, README_TEMPLATE);
 
-  const historyPath = join(dirname(dir), 'HISTORY.md');
+  const historyPath = join(dir, 'HISTORY.md');
   if (!existsSync(historyPath)) writeFileSync(historyPath, renderHistoryTemplate(ref));
 
   return { scaffolded: true, dir, plan: planPath, tasks };
@@ -842,7 +848,7 @@ function runScaffold(argv: string[]): number {
   }
 
   const plan = buildReviewPlan(changeset);
-  const dir = mrReportsDir(resolveStateDir(argv), ref, headSha);
+  const dir = mrReportsDir(resolveStateDir(argv), ref);
   const result = scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset);
   console.info(JSON.stringify(result));
   return 0;

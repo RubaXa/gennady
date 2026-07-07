@@ -23,6 +23,8 @@ import {
   outDir,
   worktreesRoot,
   reportsRoot,
+  gcStaleReports,
+  REPORTS_TTL_MS,
   configPath,
 } from './_core/logic/state-paths.logic.ts';
 import { loadConfig, validateConfig } from './_core/logic/inbox-config.logic.ts';
@@ -88,6 +90,7 @@ async function run(): Promise<number> {
     // failure mode: GC errors do not block inbox — stale worktrees accumulate harmlessly until next run
     try {
       gcStaleWorktrees(worktreesRoot(stateDir), WORKTREE_TTL_MS, Date.now());
+      gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
     } catch {
       /* gc failures are non-blocking */
     }

@@ -6,10 +6,19 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, mkdirSync, rmSync, mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import {
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  mkdtempSync,
+  existsSync,
+  readFileSync,
+  utimesSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { gcStaleReports } from '../inbox/_core/logic/state-paths.logic.ts';
 
 function runPlan(args: string[]) {
   return spawnSync(
@@ -278,7 +287,7 @@ describe('inbox-review-plan', () => {
 });
 
 describe('inbox-review-plan --scaffold', () => {
-  it('fan_out plan (security+logic+tests) → PLAN.md + 3 track task files + README.md; HISTORY.md one level up', () => {
+  it('fan_out plan (security+logic+tests) → PLAN.md + 3 track task files + README.md + HISTORY.md (flat per-MR dir)', () => {
     const repo = makeGitRepo('fanout');
     const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
     try {
@@ -317,7 +326,9 @@ describe('inbox-review-plan --scaffold', () => {
 
       const mrDir = dirname(result.plan);
       assert.ok(existsSync(join(mrDir, 'README.md')));
-      assert.ok(existsSync(join(dirname(mrDir), 'HISTORY.md')));
+      assert.ok(existsSync(join(mrDir, 'HISTORY.md')));
+      // Flat per-MR dir (no headSha subfolder): PLAN sits directly under reports/<proj-iid>.
+      assert.ok(mrDir.endsWith('group__project-42'));
     } finally {
       rmSync(repo, { recursive: true, force: true });
       rmSync(stateDir, { recursive: true, force: true });
@@ -404,6 +415,67 @@ describe('inbox-review-plan --scaffold', () => {
     }
   });
 
+  it('re-scaffold on a NEW head → filled task refreshed (flat dir reused, fresh visit)', () => {
+    const repo = makeGitRepo('newhead');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      commitAll(repo, 'change');
+
+      const args = [
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!12',
+        '--state-dir',
+        stateDir,
+      ];
+      const first = runPlan(args);
+      const taskPath = JSON.parse(first.stdout.trim()).tasks[0];
+      writeFileSync(
+        taskPath,
+        readFileSync(taskPath, 'utf8').replace('status: scaffolded', 'status: filled')
+      );
+
+      // Author pushes a new commit → new head → same flat dir, but a fresh visit.
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 3;\n');
+      commitAll(repo, 'new head');
+
+      const second = runPlan(args);
+      assert.strictEqual(second.status, 0);
+      const refreshed = readFileSync(taskPath, 'utf8');
+      assert.match(refreshed, /status: scaffolded/, 'new head must refresh the filled task');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('gcStaleReports removes report dirs older than TTL, keeps fresh ones', () => {
+    const root = mkdtempSync(join(tmpdir(), 'inbox-reports-gc-'));
+    try {
+      const stale = join(root, 'group__proj-1');
+      const fresh = join(root, 'group__proj-2');
+      mkdirSync(stale, { recursive: true });
+      mkdirSync(fresh, { recursive: true });
+      const now = Date.parse('2026-01-10T00:00:00Z');
+      const old = new Date('2026-01-01T00:00:00Z'); // 9 days → stale (TTL 7d)
+      utimesSync(stale, old, old);
+
+      const removed = gcStaleReports(root, 7 * 24 * 60 * 60 * 1000, now);
+      assert.ok(removed.includes(stale));
+      assert.ok(!existsSync(stale));
+      assert.ok(existsSync(fresh));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('HISTORY.md already exists → not overwritten on re-scaffold', () => {
     const repo = makeGitRepo('history');
     const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
@@ -426,7 +498,7 @@ describe('inbox-review-plan --scaffold', () => {
       ];
       const first = runPlan(args);
       const firstResult = JSON.parse(first.stdout.trim());
-      const historyPath = join(dirname(dirname(firstResult.plan)), 'HISTORY.md');
+      const historyPath = join(dirname(firstResult.plan), 'HISTORY.md');
       assert.ok(existsSync(historyPath));
 
       writeFileSync(historyPath, '# custom history entry\n');
