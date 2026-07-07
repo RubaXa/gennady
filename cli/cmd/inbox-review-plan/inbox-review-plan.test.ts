@@ -123,16 +123,47 @@ createdAt: 2026-01-01T00:00:00.000Z
 `;
 }
 
+// Default synthesis README: non-empty Архитектура with a closed mermaid diagram (passes the
+// filled-stage README gate). Tests that probe the gate override this via `readme`.
+const VALID_README = `# Review Report
+
+## Обзор
+
+Небольшой MR.
+
+## Архитектура
+
+\`\`\`mermaid
+flowchart TD
+  A[Middleware] --> B[Store]
+\`\`\`
+
+## Вердикты
+
+1 ✅
+
+## Кандидаты
+
+нет
+
+## Треды
+
+нет
+`;
+
 function setupReportDir(
   taskOverrides: Parameters<typeof taskContent>[0] = {},
-  planHeadSha = 'abc1234'
-): { dir: string; taskPath: string } {
+  planHeadSha = 'abc1234',
+  readme: string | null = VALID_README
+): { dir: string; taskPath: string; readmePath: string } {
   const dir = mkdtempSync(join(tmpdir(), 'inbox-validate-'));
   mkdirSync(join(dir, 'tasks'), { recursive: true });
   writeFileSync(join(dir, 'PLAN.md'), planContent(planHeadSha));
   const taskPath = join(dir, 'tasks', 'logic.task.md');
   writeFileSync(taskPath, taskContent(taskOverrides));
-  return { dir, taskPath };
+  const readmePath = join(dir, 'README.md');
+  if (readme !== null) writeFileSync(readmePath, readme);
+  return { dir, taskPath, readmePath };
 }
 
 // #endregion END_VALIDATE_TEST_HELPERS
@@ -503,6 +534,87 @@ describe('inbox-review-plan --validate', () => {
     const { dir } = setupReportDir({ findings: 'n/a — нет модификаций' });
     try {
       const r = runValidate(dir);
+      assert.strictEqual(r.status, 0);
+      assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('README.md missing at filled stage → synthesis-not-written error', () => {
+    const { dir } = setupReportDir({}, 'abc1234', null);
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /README\.md missing/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('README without any mermaid diagram → no diagram error (agent forgot to draw)', () => {
+    const readmeNoDiagram = `# Review Report
+
+## Обзор
+
+Текст.
+
+## Архитектура
+
+Просто описание словами, без диаграммы.
+
+## Вердикты
+
+ок
+`;
+    const { dir } = setupReportDir({}, 'abc1234', readmeNoDiagram);
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /no diagram/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('README ## Архитектура still a FILL marker → empty-section error', () => {
+    const readmeFill = `# Review Report
+
+## Архитектура
+
+<!-- FILL: orchestrator — C4/flowchart Mermaid, ≤7 узлов, не проза -->
+`;
+    const { dir } = setupReportDir({}, 'abc1234', readmeFill);
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /Архитектура is empty/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('README with a valid mermaid diagram → {ok:true}', () => {
+    const { dir } = setupReportDir();
+    try {
+      const r = runValidate(dir);
+      assert.strictEqual(r.status, 0);
+      assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('--stage enriched does NOT require README diagram (gate is filled-only)', () => {
+    const { dir } = setupReportDir({ status: 'enriched' }, 'abc1234', null);
+    try {
+      const r = runValidate(dir, 'enriched');
       assert.strictEqual(r.status, 0);
       assert.deepStrictEqual(JSON.parse(r.stdout.trim()), { ok: true });
     } finally {

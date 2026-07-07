@@ -41,9 +41,17 @@
 
       **Scale gates COST (inline vs fan-out), never depth of thought.** A NEW entity introduced by a one-line diff still receives the full battery: one new helper is an architecture change, and the question "does the repo already have ten of these — should the author refactor instead" is mandatory at any diff size. Review judges the whole system, not the changed lines: even a single edited line is a reason to ask why it had to change — the problem may sit deeper than the edit. Conversely, a pure typo fix has no architecture to interrogate (H_EMPTY_INVENTORY): the inventory step decides depth by the NATURE of the change, not by line count.
 
-      Measure from the review diff (`base..HEAD` in the worktree): total files changed, lines added / removed, and — counted separately — **new files** and **new entities**, because added surface area (not churn in existing files) is the signal that the system is *expanding* and the strictest reviewing applies. Break the volume down **by category** — code, tests, docs/specs, config, assets (images/binaries) — so a large `+N` is not misread: 4000 lines of images is not 4000 lines of logic.
+      **Lead with comprehension, not counting.** The reviewer's #1 challenge is understanding WHAT changed and WHY, not how many lines (Bacchelli & Bird 2013; Google MCR 2018). So the headline is the **change map** (see `AX_CHANGE_MAP`), NOT a line tally. Line/file counts are a size-and-risk PROXY only (review quality falls past ~400 LOC/session — SmartBear/Cisco): keep them to ONE compact line — `**Размер:** {малый/средний/крупный} · N файлов · +X/−Y · M новых` — plus a by-category table so a big `+N` of assets is not misread as logic. Never make the counts the main visual; in SDD a 1000-line spec diff says little about review effort.
 
-      **Always render a file map — even for a one-file change.** Beyond the category counts, show the touched files themselves as a compact visual: grouped by folder/module, each with its change type (added / modified / deleted / renamed) and magnitude (± lines). This is unconditional — a tiny MR gets a few-line map, a large one gets a grouped tree — so the operator sees *what and how* changed straight from the report without opening the MR. Never reduce a changeset to a bare link and a sentence.
+      Measure from the review diff (`base..HEAD` in the worktree). Count new files and new entities separately — added surface area (not churn) is the expansion signal that earns the strictest reviewing.
+    </Axiom>
+
+    <Axiom id="AX_CHANGE_MAP">
+      The headline of every MR report is a **change map** — a picture the reviewer reads in seconds to know what happened, before any verdict. It is NOT a bare file tree (a folder list with ±lines answers "which files", not "what changed"). It is a component/entity graph:
+      - **nodes = touched components/entities** (not raw files), each annotated with its file(s) and change type (🆕 added / ✏️ modified / 🗑️ deleted / ↪︎ renamed);
+      - **greyed context nodes = existing neighbors** this change plugs into or depends on, so blast-radius is visible;
+      - **one caption line = the intent** ("что произошло: …"), harvested per `AX_RECONSTRUCT_RATIONALE`.
+      Diagram type per `visual-vocabulary.directive.xml` (C4-style / flowchart), medium per `AX_VISUAL_TRANSPORT` (widget in chat, Mermaid in GitLab), discipline ≤7 nodes. **Unconditional — even a one-line change gets a minimal map** (the touched node + its neighbors + "косметика/no blast-radius" caption); that minimal map IS the review answer for a trivial change. The bare file tree is still produced as secondary triage (which files, how deep to dig, which tracks) but is NOT the headline and NOT the only visual. A report whose only visual is a file tree, or which has no diagram at all, is incomplete — the synthesis validator (`inbox-review-plan --validate`) enforces a diagram in `README.md` so it cannot be forgotten.
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
@@ -236,8 +244,8 @@
          0. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
          0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
          1. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
-         2. **Обзор** — строка «Размер: …», таблица категорий (Код/Тесты/Доки/Конфиг/Ассеты), карта файлов с иконками (🆕/✏️/🗑️/↪︎) и ± строками. ✗/✓
-         3. **C4-диаграмма** — контейнеры с вердикт-цветом (✅⚠️❌), внешние системы, легенда. ASCII или виджет. ✗/✓
+         2. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
+         3. **Диаграмма отрисована медиумом (action 0)** — виджет при наличии, иначе ASCII; для крупного MR — отдельный C4, для малого/среднего карта изменения из §2 её заменяет (не дублировать). ✗/✓
          4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
          5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Kind. ✗/✓
          6. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
@@ -254,13 +262,13 @@
 
     1. **Шапка [header] — mandatory.** First line: `ref` as a markdown link `[ref](webUrl)` — clickable, NEVER a bare URL or plain text, so the operator jumps to the MR with one click. Then `title`.
     ---
-    2. **Обзор [overview] — mandatory scope first.** Open with the quantified scope per `AX_CHANGESET_SCALE`, never just prose:
-       - one headline line — `**Размер:** {малый/средний/крупный} · N файлов · +X / −Y строк · M новых файлов · K новых сущностей` — plus a half-sentence read: expansion (new files/entities) or churn, and the dominant category;
-       - a by-category table (rows: Код · Тесты · Доки/спеки · Конфиг · Ассеты; columns: Файлов · +строк · −строк · новых), so a big `+X` driven by assets/generated files is not misread as logic;
-       - a **file map** (mandatory, every size): touched files grouped by folder/module, each with change-type icon (🆕 added · ✏️ modified · 🗑️ deleted · ↪︎ renamed) and ± lines — a few-line list for a tiny MR, a grouped tree for a large one;
-       Then 2–4 sentences: what the MR introduces and the verdict tally per `AX_STABLE_FINDING_IDS` (N ✅ justified, N ⚠️ weak, N ❌ unjustified). No findings yet — just the shape and the scale.
+    2. **Обзор [overview] — change map first, per `AX_CHANGE_MAP`.** Lead with comprehension, not counting:
+       - **the change map** (the headline visual, mandatory every size): component/entity graph — changed nodes coloured by change type (🆕/✏️/🗑️/↪︎) and annotated with their file(s), greyed context-neighbors for blast-radius, one caption line «что произошло: …» (the intent). Even a one-line change → a minimal map (touched node + neighbors + «косметика»). Medium per `AX_VISUAL_TRANSPORT`, type per `visual-vocabulary`. This replaces the bare file tree AND, for small/medium MRs, the separate §3 C4 (fold them into one map; keep §3 only when a big MR needs a fuller container view).
+       - **one compact size line** (proxy, not the star) — `**Размер:** {малый/средний/крупный} · N файлов · +X/−Y · M новых` + a by-category table (Код · Тесты · Доки/спеки · Конфиг · Ассеты) so asset/generated `+X` is not misread as logic;
+       - **secondary file map** (triage): touched files grouped by folder with change-type icons — for "which files / how deep / which tracks". Below the change map, not above it; may be collapsed for large MRs.
+       Then 1–2 sentences + verdict tally per `AX_STABLE_FINDING_IDS` (N ✅ / N ⚠️ / N ❌). No findings yet — the shape, not the details.
     ---
-    3. **Архитектура [helicopter].** The C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone, internal containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend outside). One caption sentence under it.
+    3. **Архитектура [helicopter] — only when the change map did not already cover it.** For a big/multi-container MR, a fuller C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone, containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend). For small/medium MRs the §2 change map already IS this — omit §3, do not duplicate.
     ---
     4. **Потоки [flows].** Flow diagram(s) for non-trivial scenarios only; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
     ---

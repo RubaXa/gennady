@@ -310,6 +310,22 @@ function findUnclosedMermaidBlock(body: string): boolean {
   return inMermaid;
 }
 
+/**
+ * @purpose True when the text contains at least one closed ```mermaid fenced block.
+ * @invariant Opening ```mermaid must be followed by a closing ``` — an unclosed block does NOT count.
+ * @param body Markdown text to scan.
+ * @returns true if a complete mermaid block exists.
+ */
+function hasClosedMermaidBlock(body: string): boolean {
+  let inMermaid = false;
+  for (const line of body.split('\n')) {
+    const trimmed = line.trim();
+    if (!inMermaid && trimmed.startsWith('```mermaid')) inMermaid = true;
+    else if (inMermaid && trimmed === '```') return true;
+  }
+  return false;
+}
+
 // #endregion END_DOCUMENT_PARSING
 
 // #region START_SCAFFOLD_TEMPLATES — mechanical prefill for task/plan/readme/history documents.
@@ -718,6 +734,33 @@ function validateReviewReports(
   for (const taskPath of taskFiles) {
     validateTaskFile(taskPath, stage, planHeadSha, errors);
   }
+
+  // #region START_VALIDATE_README_DIAGRAM — synthesis must carry a diagram, never just prose.
+  // The reviewer's #1 challenge is COMPREHENSION (Bacchelli & Bird 2013), so the tool forces at
+  // least one diagram into the synthesis rather than trusting the agent to remember (D59).
+  if (stage === 'filled') {
+    const readmePath = join(dir, 'README.md');
+    if (!existsSync(readmePath)) {
+      errors.push({ file: readmePath, error: 'README.md missing (synthesis not written)' });
+    } else {
+      const readme = readFileSync(readmePath, 'utf8');
+      if (findUnclosedMermaidBlock(readme)) {
+        errors.push({ file: readmePath, error: 'unclosed mermaid block' });
+      }
+      if (!hasClosedMermaidBlock(readme)) {
+        errors.push({
+          file: readmePath,
+          error:
+            'no diagram: README must contain ≥1 ```mermaid block (## Архитектура — карта изменения, не проза; даже одна строка → минимальный граф)',
+        });
+      }
+      const arch = extractSection(readme, 'Архитектура') ?? '';
+      if (!arch || /^<!--\s*FILL:/.test(arch)) {
+        errors.push({ file: readmePath, error: '## Архитектура is empty (synthesis incomplete)' });
+      }
+    }
+  }
+  // #endregion END_VALIDATE_README_DIAGRAM
 
   return errors.length > 0 ? { ok: false, errors } : { ok: true };
 }
