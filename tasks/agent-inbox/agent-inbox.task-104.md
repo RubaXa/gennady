@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-104 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** skills | **Dependencies:** TSK-103 (`--scaffold`/`--validate`)
+- **Task-ID:** TSK-104 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** skills | **Dependencies:** TSK-103 (`--scaffold`/`--validate`)
 - **Purpose:** Перевести конвейер разбора на документы: scaffold → оркестратор обогащает Context → validate(enriched) → диспатч сабагентов по task-файлам → validate(filled) → README/HISTORY → итог в чат. Правило «ничего на диск» переформулировать: артефакты конвейера живут в state-dir.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-36, AI-08 | **Runtime:** not-implemented | **Verification:** review
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -67,12 +67,29 @@
 
 ## 7. Execution Log
 
-### Round 1
+### Round 1 — 2026-07-05, initial
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [agent-inbox-take/SKILL.md, agent-inbox/SKILL.md, зеркала]; decisions: [D57]; open: []
+- [x] `2026-07-07T12:06:03Z` decision hardlink=verified ← `.claude/skills/*` уже hardlink к `ai/skills/*` (тот же inode) — cp подтвердил идентичность без копирования, зеркало синхронизировано автоматически
+- [x] `2026-07-07T12:06:03Z` ver `<sdd-path> verify ai/skills/agent-inbox-take/SKILL.md ai/skills/agent-inbox/SKILL.md .claude/skills/agent-inbox-take/SKILL.md .claude/skills/agent-inbox/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:06:03Z` ver `grep -c 'Ничего на диск' ai/skills/agent-inbox/SKILL.md` → pass (count=0, старая формулировка отсутствует)
+- [x] `2026-07-07T12:06:03Z` DONE
+- [x] **Handoff →** artifacts: [ai/skills/agent-inbox-take/SKILL.md, ai/skills/agent-inbox/SKILL.md, .claude/skills/agent-inbox-take/SKILL.md, .claude/skills/agent-inbox/SKILL.md]; decisions: [D57=applied, mirror-sync=hardlink]; open: []
 
 #### P2
 
-- [ ] **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-07T12:08:21Z` ver `<sdd-path> verify ai/skills/agent-inbox-take/SKILL.md ai/skills/agent-inbox/SKILL.md .claude/skills/agent-inbox-take/SKILL.md .claude/skills/agent-inbox/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `grep -q 'scaffold' ai/skills/agent-inbox-take/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `grep -q 'validate' ai/skills/agent-inbox-take/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `grep -q 'reports' ai/skills/agent-inbox/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `diff ai/skills/agent-inbox/SKILL.md .claude/skills/agent-inbox/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `diff ai/skills/agent-inbox-take/SKILL.md .claude/skills/agent-inbox-take/SKILL.md` → pass exit=0
+- [x] `2026-07-07T12:08:21Z` ver `grep -c 'Ничего на диск' ai/skills/agent-inbox/SKILL.md` → pass exit=1 (grep -c печатает `0`; ненулевой exit — стандартное поведение grep при отсутствии совпадений, старая формулировка подтверждённо отсутствует)
+- [x] `2026-07-07T12:08:21Z` DONE
+- [x] **Handoff →** artifacts: [ai/skills/agent-inbox-take/SKILL.md, ai/skills/agent-inbox/SKILL.md, .claude/skills/agent-inbox-take/SKILL.md, .claude/skills/agent-inbox/SKILL.md]; decisions: [consistency-checks=all-pass, rule8-old-phrasing=absent, mirrors=identical]; open: []
+
+#### Round close
+
+- [x] `2026-07-07T12:15:00Z` sync agent-inbox+root
+- [x] `2026-07-07T12:15:00Z` DONE

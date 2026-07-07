@@ -90,8 +90,10 @@ compatibility: opencode
    tick) — НЕ переспрашивай и не задавай уточнений. Сразу: контекст → анализ (что изменено / что от
    меня требуется), и ТОЛЬКО ПОСЛЕ анализа предлагай действия. Ask до анализа запрещён (кроме выбора
    задачи, когда я её не назвал).
-8. **Ничего на диск.** Отчёт, анализ, итог — только в чат. Файлы не пишешь (`inbox-registry.json`
-   для дельты — внутреннее состояние команд, его не трогаешь).
+8. **В репозиторий оператора и произвольные пути — ничего.** Итог оператору — только в чат. Рабочие
+   артефакты конвейера ревью (`PLAN.md`, task-документы, `README.md`, `HISTORY.md`) живут ТОЛЬКО в
+   `<state-dir>/agent-inbox/reports/…` — создаёт их `inbox-review-plan --scaffold` (AI-36), чистит
+   `inbox --reset`. `inbox-registry.json` — тоже внутреннее состояние команд, его не трогаешь.
 
 ## VCS-инструменты
 
@@ -99,7 +101,7 @@ compatibility: opencode
 |---|---|---|
 | Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | старт; `--all` — снять фильтр |
 | **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, worktree, changeset, stage, threadStats. **`reviewPlanRequired: true` → нужен `inbox-review-plan`.** |
-| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha>` | **Всегда когда `reviewPlanRequired == true`.** `--base`: полный ревью → `<worktree.base>`, fast_forward → `<lastReviewedHeadSha>`. Возвращает `ReviewPlan { mode, tracks[] }` — готовый план диспетчеризации сабагентов. Агент НЕ думает, агент выполняет. |
+| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | **Всегда когда `reviewPlanRequired == true`.** Без флагов — `ReviewPlan { mode, tracks[] }` (план диспетчеризации). `--scaffold` — материализует болванки → оркестратор обогащает Context → сабагенты заполняют → `--validate` (документный конвейер, детали в `agent-inbox-take/SKILL.md`). Агент НЕ думает, агент выполняет. |
 | Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (ручной снос, не использовать в flow) | read-only код + `diff_refs`. Worktree переиспользуется между сессиями, авто-очистка по TTL (7 дней от последнего `inbox-context`). **Агент НЕ удаляет worktree явно — ни в коем случае.** |
 | Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | что уже писали / мои черновики |
 | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
@@ -143,10 +145,10 @@ compatibility: opencode
 папкам). Сомневаешься, окупится ли → инлайн.
 
 **Диспетчеризация** (параллель — оптимизация, не обязалово): есть инструмент сабагентов (Claude
-`Agent`/Task, OpenCode task) → параллельно по дорожке; **нет в харнессе** → попроси оператора/харнесс
-заспаунить ревьюера; **иначе** → ревьюй дорожки последовательно сам, инлайн. Каждому проходу дай:
-директивы + `path`/`diff_refs`/`base` + `ref`/`webUrl` + `prior_threads`/`my_drafts`/`my_login` +
-список файлов дорожки. `security`-проход смотрит **весь дифф** (уязвимость бывает где угодно).
+`Agent`/Task, OpenCode task) → параллельно по дорожке (по task-файлу — документный конвейер,
+`agent-inbox-take/SKILL.md` Шаг 3); **нет в харнессе** → попроси оператора/харнесс заспаунить
+ревьюера; **иначе** → ревьюй дорожки последовательно сам, инлайн. `security`-проход смотрит **весь
+дифф** (уязвимость бывает где угодно) — процедура и вход сабагенту не дублируются здесь.
 
 **Сборка:** находки → ОДИН helicopter-отчёт (дедуп, сквозные [E/R/Q]-ID, одна C4-диаграмма, общая
 таблица кандидатов).
@@ -183,9 +185,14 @@ compatibility: opencode
    (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
 3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
    **Сразу после получения worktree:** прочитай содержимое worktree-директории (`ls <worktreePath>`). Это вызовет **один** запрос прав на всю директорию — дальше чтение любых файлов внутри worktree пойдёт без повторных подтверждений.
-4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
-   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, план ревью должен быть загружен ДО любого анализа (через `inbox-review-plan`).
+4. **Анализ.** Документный конвейер разбора одного MR (scaffold → обогащение Context → диспатч по
+   task-файлам → validate → синтез) — процедура целиком в `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`,
+   здесь не пересказывается.
+   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, болванки должны быть материализованы (`inbox-review-plan --scaffold`) ДО любого анализа.
    **Всегда план:** первый ревью → полный план (`--base <worktree.base>`); fast_forward → дельта-план (`--base <lastReviewedHeadSha>`); rewritten → полный план заново.
+   **Повторный заход** (`headChanged.kind != "none"`) → прочитай прошлые `README.md`/`HISTORY.md` из
+   `<state-dir>/agent-inbox/reports/…` этого MR ДО анализа — вход дельта-блока (инвариант 5, «что
+   нового» строится и из них, не только из свежего диффа).
    **Всегда драфты (Step 0a take/SKILL.md):** ДО ревью — `vcs-discussions --my --with-drafts` (вектор расследования). ПОСЛЕ ревью — `vcs-draft-note --delete-all` + `vcs-discussions --all` (сверка).
    Карта изменений (инвариант 1), затем:
    - `reply_needed`/`awaiting` → факт-чек ВСЕХ тредов, ревью НЕ запускаешь (шаг 5):
@@ -204,9 +211,10 @@ compatibility: opencode
    > Вся `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
    > `HaltConditions` — обязательны целиком, не подмножество.
 
-   Входы директиве/сабагенту: `ref`/`webUrl`, `diff_refs`, `path`/`base`, `prior_threads`/
-   `my_drafts`/`my_login`, список файлов дорожки (см. `InputContract`). Структуру/визуал/оси/
-   вердикты/кандидатов не пересказывай — они в директиве.
+   Вход сабагенту — ОДИН путь к его task-файлу (документный конвейер, `agent-inbox-take/SKILL.md`
+   Шаг 3): `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` уже внутри
+   его `## Context`, список файлов дорожки — в его `## Scope`. Структуру/визуал/оси/вердикты/
+   кандидатов не пересказывай — они в директиве.
 5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → применить `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` PreFlight к каждому кандидату СТРОГО по цепочке 0→5 (STOP на первом match; правила владения и закрытия — `<ThreadModel>`). `review_needed`: вердикты из директивы; виды (`kind`) —
    `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CandidateTagging.
    `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»);
@@ -225,7 +233,8 @@ compatibility: opencode
    Через `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
    `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
 9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (гасит pending-todo).
-   Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
+   Итог — короткой сводкой **в чат** (правило 8: оператору — только в чат, конвейерные артефакты уже
+   в `reports/…`). →
    следующий MR.
 
 ## Когда НЕ пропускать

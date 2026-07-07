@@ -19,7 +19,7 @@
 | TSK-101 | DONE   | —                      | Защита от prompt injection + AX_UNTRUSTED_MR_CONTENT              |
 | TSK-102 | DONE   | TSK-91, TSK-94, TSK-95 | `inbox-review-plan` command + `H_NO_REVIEW_PLAN` gate             |
 | TSK-103 | DONE   | TSK-102                | `inbox-review-plan --scaffold`/`--validate`: документный конвейер |
-| TSK-104 | TODO   | TSK-103                | Документный конвейер в скиллах + пивот «ничего на диск»           |
+| TSK-104 | DONE   | TSK-103                | Документный конвейер в скиллах + пивот «ничего на диск»           |
 
 ## Dependency Graph
 

@@ -160,7 +160,7 @@ gennady inbox --reset                                        # чистый ли
 | vcs-reply validation (AI-31)                             | `real-runtime` (unit-tested, e2e не прогнан)                            |
 | review-plan command (AI-34)                              | `real-runtime` (проверено)                                              |
 | Линзы ②/③: `change-`/`security-interrogation`            | директивы созданы (2026-07-05), НЕ подключены — wiring в v2-оркестрации |
-| Документный конвейер `--scaffold`/`--validate` (AI-36)   | `not-implemented` (TSK-103, TSK-104)                                    |
+| Документный конвейер `--scaffold`/`--validate` (AI-36)   | implemented + unit-tested (TSK-103/104); real-runtime e2e не прогнан    |
 | Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                            |
 | Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                            |
 | `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)   |
