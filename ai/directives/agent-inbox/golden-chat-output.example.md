@@ -125,3 +125,5 @@ src/
 ---
 
 **[group/proj!510](https://gitlab.corp.mail.ru/group/proj/-/merge_requests/510)**
+
+**Артефакты:** [папка отчёта](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510) · [README](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510/README.md) · [HISTORY](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510/HISTORY.md)

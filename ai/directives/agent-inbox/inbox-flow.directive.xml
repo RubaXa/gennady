@@ -262,8 +262,11 @@
        STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
        JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
     9. **Close.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>`
-       (clears the pending todo). Summary — a short digest in chat (rule 8: operator gets chat only;
-       pipeline artifacts already in `reports/…`). → next MR.
+       (clears the pending todo). Summary — a short digest in chat (rule 8: operator gets chat only).
+       End the digest with an **Артефакты** line of clickable markdown links (invariant 6) so the
+       operator can open the files: the report folder + each artifact —
+       `**Артефакты:** [папка](abs/dir) · [README](abs/README.md) · [HISTORY](abs/HISTORY.md) · [logic.task](abs/tasks/logic.task.md) · …`
+       (absolute paths from `mrReportsDir`). → next MR.
   </InteractiveProcedure>
 
   <WhenNotToSkip>
@@ -408,6 +411,7 @@
     | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
     | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
     | — | Finalization Ask fired (step 7) — approve / non-blocking comments / my note as checkboxes; NOT a bare "recommend approve" | □ |
+    | — | Chat digest ends with an **Артефакты** line — clickable markdown links to the report folder + each artifact (invariant 6) | □ |
     Any □ empty → go back. Especially: if `reviewPlanRequired` was `true` and task files are not
     materialized — that violates `H_NO_REVIEW_PLAN`, go back to Step 2.
   </ReviewPipeline>
