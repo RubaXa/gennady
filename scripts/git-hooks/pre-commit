@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+echo "🔍 Pre-commit: format + type-check + lint"
+
+npm run format
+npm run type-check
+npm run lint:contracts
+
+echo "✅ Pre-commit passed"

@@ -37,6 +37,7 @@
     "services/agent-run/engines/opencode/readonly.config.json"
   ],
   "scripts": {
+    "prepare": "[ -d .git ] && git config core.hooksPath scripts/git-hooks || true",
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
