@@ -112,7 +112,7 @@ gennady inbox --reset                                        # чистый ли
 
 - **NFC-01:** Стадия A/B — публичных действий в GitLab без явного approve нет; автономия (стадия C) — позже, по делегированию.
 - **NFC-02:** Код MR — read-only; запуск тестов/сборки (исполнение чужого кода) вне скоупа (нужна docker-изоляция).
-- **NFC-03:** Только GitLab; GitHub — позже. Роль ревьювер/упомянут — основная; роль автора — в скоупе для self-review сводки + ответов/резолва в тредах ревьюеров (полный автор-цикл — мердж, ребейз — позже).
+- **NFC-03:** GitLab **и** GitHub — оба поддержаны (провайдер авто-детектится из host: `VcsGitlabClient`/`VcsGithubClient`, токены `GITLAB_PERSONAL_TOKEN` / `GITHUB_PERSONAL_TOKEN`|`GITHUB_TOKEN`). Промпты и директивы VCS-нейтральны, «MR» = merge/pull request на любом. Роль ревьювер/упомянут — основная; роль автора — в скоупе для self-review сводки + ответов/резолва в тредах ревьюеров (полный автор-цикл — мердж, ребейз — позже).
 - **NFC-04:** Токен — ENV `GITLAB_PERSONAL_TOKEN`; не коммитить, не логировать.
 - **NFC-05 (конфигурация):** ENV — только секрет (`GITLAB_PERSONAL_TOKEN`). Локации
   состояния — строгие дефолты под `~/.gennady/` (один флаг `--state-dir` переносит всё);
@@ -132,7 +132,7 @@ gennady inbox --reset                                        # чистый ли
 - Файловая очередь задач + `inbox-tick` + `inbox-watch` (фон-автоматизация) — заложены, не реализованы.
 - Output sink `notify()` (мессенджер / нотификация ОС) — заложен интерфейс, реализация позже.
 - Полный автор-цикл (merge/rebase/draft↔ready/управление ревьюверами) — вне скоупа; self-review сводка и ответы в тредах — в скоупе (AI-14).
-- GitHub support — только GitLab.
+- (GitHub поддержан наравне с GitLab — см. NFC-03; из out-of-scope убрано.)
 - Принудительная валидация вывода агента — не можем гарантировать; наша задача — максимально
   понятно объяснить агенту ожидания (self-check, golden example, remit-триггеры).
 - Зеркало `.claude/skills/agent-inbox/` — `sync-skills` не покрывает agent-inbox (скилл регистрируется через opencode иначе).
@@ -167,7 +167,7 @@ gennady inbox --reset                                        # чистый ли
 | `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)   |
 | Очередь / tick / watch / loop / notify                   | `not-implemented` (deferred)                                            |
 | Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                            |
-| GitHub support                                           | `not-implemented` (deferred)                                            |
+| GitHub support (GitLab + GitHub)                         | `real-runtime` (VcsGithubClient + провайдер-детект в резолвере)         |
 
 ### 4.5 Rules
 

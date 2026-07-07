@@ -1,452 +1,390 @@
-<InboxFlow keywords="agent-inbox orchestration, review flow, intents, invariants, presentation, hard rules, vcs tools, action map, review pipeline" type="directive" ver="1.0">
+<InboxFlow keywords="agent-inbox orchestration, review flow, intents, invariants, presentation, hard rules, vcs tools, action map, review pipeline, scaffold validate synthesis, gitlab github" type="directive" ver="1.0">
   <Mission>
-    Весь рабочий процесс agent-inbox: инварианты, интенты, презентация, жёсткие правила, VCS-инструменты, карта действий, конвейер разбора одного MR (scaffold → обогащение → validate → диспатч → синтез), финализация. Дверь agent-inbox/SKILL.md читает эту директиву на GATHER и ВОПЛОЩАЕТ. Это ПРОМПТ, не данные. Постинг — posting-rules.directive.xml.
+    The whole working process of the agent-inbox skill: session invariants, intents, inbox
+    presentation, hard rules, VCS tools, action map, the single-MR review pipeline (scaffold →
+    enrich → validate → dispatch → synthesize), and finalization. The door `agent-inbox/SKILL.md`
+    reads this directive at GATHER and EMBODIES it — this is a PROMPT, not data. Posting to the VCS
+    is governed by `posting-rules.directive.xml` (loaded at the posting step).
+
+    VCS-neutral: GitLab and GitHub are both supported; the provider is auto-detected from the host,
+    and the CLI returns the same shapes for both. "MR" below means merge/pull request on either.
   </Mission>
 
-
-Роль — **«я ревьювер / упомянут»** (свои MR — только self-review сводка, см. «Карта действий»).
-Ты ведёшь ревью: вводишь в контекст, честно проверяешь факты, готовишь ответ и **после моего
-согласования постишь** в GitLab.
-
-> `INCLUDE_ONCE("path")` (и `<IncludeOnce src="path"/>` в директивах) = **прочитай файл сам, один
-> раз за сессию**. Это инструкция тебе, не препроцессор.
-> `RE_READ("path")` = прочитай файл заново СЕЙЧАС, даже если уже читал в этой сессии.
-> Используется там, где важно освежить инструкцию перед каждым MR.
-
-## ⚡ Инварианты сессии (держи до конца, даже после компрессии)
-
-Каждый раз, на каждом «следующий MR», независимо от размера:
-
-1. **Визуализируй изменения всегда.** Первым делом, до текста — **карта изменений** в чате: файлы
-   структурой по папкам, у каждого тип (🆕/✏️/🗑️/↪︎) и ± строк; таблица по категориям
-   (Код/Тесты/Доки/Конфиг/Ассеты); 1–2 фразы сути. Архитектурную диаграмму — только когда есть
-   связи (новые сущности/сервисы/потоки, `AX_VISUALIZE_WHEN_RELATIONAL`), не на каждый файл.
-   **Ответ одной ссылкой на MR без карты — запрещён.**
-2. **Всё в чате рендерится, визуал обязателен.** Реляционное (карта файлов, C4, потоки, дельта) —
-   картинкой, не прозой. **Какую** диаграмму под какое намерение (и её ASCII/Mermaid-синтаксис) —
-   `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (не всё flowchart'ом).
-   Медиум: **есть `mcp__visualize__show_widget` → рисуй виджетом** (он лучше для визуализации — им и
-   пользуйся); виджета нет → ASCII+эмодзи как fallback. Выбор медиума объяви первой строкой
-   (action 0). Выбор/согласование — `AskUserQuestion`. Mermaid/SVG в чат НЕ давать (Mermaid — только
-   постинг в GitLab). Не выводи разметку, которую чат не отрисует.
-3. **Язык — всегда русский** (код/идентификаторы/пути/CLI/токены — English); регистр и детали —
-   `AX_OPERATOR_LANGUAGE`.
-4. **Со-ревьювер, не секретарь.** К каждому треду и кандидату приходи с ГОТОВЫМ решением и
-   текстом — вопрос «что делаем?» без твоего предложенного решения запрещён. Ask — только в трёх
-   точках: выбор задачи (если я не назвал) · финализация ОДНИМ пакетом (шаги 6–7) · настоящая
-   неоднозначность (спорный вердикт, кандидат-пинг из `ThreadModel`). Я отвечаю «да, всё верно»,
-   снимаю галочку или правлю текст через Other — но решение предлагаешь ты.
-5. **Повторный заход — сначала дельта.** `headChanged.kind != "none"` → ДО всего остального
-   покажи визуально «что нового с прошлого раза»: новые коммиты (sha + subject), какие файлы они
-   изменили, новые ответы в тредах. Оператор должен увидеть, что автор поменял в последний момент,
-   раньше любых вердиктов.
-6. **Ссылки — всегда кликабельным markdown.** Любая ссылка на MR — `[group/proj!iid](webUrl)`,
-   НЕ голым текстом и НЕ голым URL: оператор должен нажать в чате и попасть в MR. Это обязательно
-   в шапке и в подвале КАЖДОГО ответа по MR (первая и последняя строки), и в любой сводке. Так же
-   кликабельным markdown — пути к артефактам (`[README.md](/abs/path/README.md)`), ветки, коммиты
-   (ссылкой на GitLab, если знаешь URL). Ответ, где MR упомянут текстом без `[…](…)`, — брак,
-   переделай. Чат рендерит markdown — пользуйся этим, не заставляй копировать текст руками.
-
-## Интенты
-
-- **(по умолчанию / `list` / «разбери входящие»)** — интерактивный разбор: actionable-список →
-  предложить ≤5 задач галочками → вести по одной. Я рулю, ты ведёшь.
-- `tick` (=`once`/`sync`) — ОДИН немой проход для планировщика: `npx tsx ~/Developer/gennady/cli/gennady.ts inbox`, показать дельту,
-  стоп. Без Ask и постинга.
-- `loop` — планировщик повторяет `tick`; частота задаётся снаружи (`/loop 10m` — пока сессия;
-  launchd `StartInterval`/cron — фоном). Скилл частоту не задаёт; `tick` идемпотентен через реестр
-  `~/.gennady/inbox-registry.json` (показывает только дельту).
-- `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (сносит только локальное:
-  реестр и worktrees). Серверные черновики GitLab не трогает — их удаляет только явный
-  `vcs-draft-note --delete-all` по запросу оператора (AI-08).
-
-Не из GitLab-репозитория → `--vcs-host=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
-
-## Презентация инбокса
-
-Данные — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json [--vcs-host=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
-`author`/`reviewers`/`role`/`stage`/`delta`/`age`/`openQuestions`/`lastAuthor`/`events`; сверху
-`total`/`hidden`/`delta`.
-
-**Список уже отфильтрован до actionable кодом** (скрыты влитые/closed, мой approve,
-`awaiting_reply`/`idle`; счётчики в `hidden`). Всё в `groups` реально ждёт меня — вручную не
-фильтруй. Полный список — `--all`.
-
-- **дельта >0** → **виджет** (или ASCII-дашборд): карточки только `new`/`updated` (бейдж
-  `Reply`/`Review` + `ref`→`webUrl` + `age`; ниже `title`; мелко автор/ревьюверы/`openQuestions`/
-  `lastAuthor` + строка сути из `description`), `idle` свернуть в «без изменений — N». Виджет: 2
-  колонки, только Tabler-иконки/цвет (без эмодзи), акцент Reply=danger, Review=warning,
-  `✗ci`/`⚠` по `events`.
-- **дельты нет** → `😴 Без изменений · 📥 {total} actionable · 🙈 скрыто {hidden}`.
-- **`total`=0** → `✅ Инбокс чист`.
-
-Эмодзи (для текста в чате, не в виджете): 📥 inbox · 💬 reply · 👀 review · ⏳ жду · 🆕 new ·
-🔼 updated · ❓ вопросы · ❌ ci · ⚠️ unmergeable · 🙈 скрыто · 😴 тихо · ✅ чисто.
-
-## Жёсткие правила
-
-1. **Визуализируй всегда** (инвариант 1) — без карты изменений ответ не отдаёшь.
-2. **Постинг только после Ask.** Галочка в меню = согласие на показанный текст (показывай тексты
-   рядом с галочками). Без отметки не постишь. **Без dry-run** (Ask уже подтвердил; флаг в CLI — для
-   ручной отладки).
-3. **Код read-only** — только читаешь; не запускаешь build/тесты/скрипты MR.
-4. **Не выдумываешь** — факт-чек по треду+коду; не уверен → ⚠ и спроси.
-5. **Один MR за раз**, с фокусом.
-6. **Постинг в GitLab** (Mermaid-only, гранулярность, 🤖) — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` (`AX_POSTING_MERMAID_ONLY`/`_GRANULARITY`/`_BOT_PREFIX`).
-7. **Анализ — до вопросов.** Если задача уже названа (я сказал «возьми первую/эту» или дал через
-   tick) — НЕ переспрашивай и не задавай уточнений. Сразу: контекст → анализ (что изменено / что от
-   меня требуется), и ТОЛЬКО ПОСЛЕ анализа предлагай действия. Ask до анализа запрещён (кроме выбора
-   задачи, когда я её не назвал).
-8. **В репозиторий оператора и произвольные пути — ничего.** Итог оператору — только в чат. Рабочие
-   артефакты конвейера ревью (`PLAN.md`, task-документы, `README.md`, `HISTORY.md`) живут ТОЛЬКО в
-   `<state-dir>/agent-inbox/reports/…` — создаёт их `inbox-review-plan --scaffold` (AI-36), чистит
-   `inbox --reset`. `inbox-registry.json` — тоже внутреннее состояние команд, его не трогаешь.
-
-## VCS-инструменты
-
-| Инструмент | Команда | Когда |
-|---|---|---|
-| Список | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | старт; `--all` — снять фильтр |
-| **Контекст MR** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | **ОДИН вызов:** ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, worktree, changeset, stage, threadStats. **`reviewPlanRequired: true` → нужен `inbox-review-plan`.** |
-| **План ревью** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | **Всегда когда `reviewPlanRequired == true`.** Без флагов — `ReviewPlan { mode, tracks[] }` (план диспетчеризации). `--scaffold` — материализует болванки → оркестратор обогащает Context → сабагенты заполняют → `--validate` (документный конвейер, детали ниже — секция «Конвейер разбора»). Агент НЕ думает, агент выполняет. |
-| Рабочая копия | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (ручной снос, не использовать в flow) | read-only код + `diff_refs`. Worktree переиспользуется между сессиями, авто-очистка по TTL (7 дней от последнего `inbox-context`). **Агент НЕ удаляет worktree явно — ни в коем случае.** |
-| Треды | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | что уже писали / мои черновики |
-| CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
-| Постинг | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
-| Черновики | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
-| Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` снять |
-| Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
-
-**`vcs-reply` (JSON-массив).** Формы reply/line/suggestion — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Только в этом скилле:
-- `{"noteId":…,"body":…}` править / `{"noteId":…,"delete":true}` удалить — **свою** заметку;
-- `{"discussionId":…,"resolve":true}` закрыть (± `body` = ответить+закрыть) / `"resolve":false` переоткрыть.
-
-**Политика:**
-- **Suggestion** — точную механическую правку с известным итогом (опечатка `TYPO`, очевидная замена) → suggestion, не проза. Спорное → замечание с вопросом.
-- **Resolve — только СВОИ треды** (`ThreadModel` в posting-rules; исключение — треды на моём собственном MR). Чужой правильный тред → 💯 без резолва, владелец закроет сам. Свой тред закрывается когда достигнута ЕГО цель (fix виден в диффе / ответ получен), не когда разговор затих. Формат → `AX_POSTING_SILENT_RESOLVE`: 👍 + resolve БЕЗ тела (no body). Текст — только если нужен ответ по существу (несогласие, уточнение).
-- **Approve / `--revoke`** — апрув только без моих блокирующих замечаний; `--revoke`, если MR изменился после approve или нашлась проблема. Approve по MR, resolve по треду — разное.
-- **Править/удалять — только свои** заметки (`noteId` из `vcs-discussions --json`).
-- **Todo done** — после реакции `vcs-todo --done <ref> --url <webUrl>`.
-- Любой постинг — после Ask (правило 2), сразу live, без dry-run.
-
-## Ревью MR: когда → скаут → разбивка → сборка
-
-**Когда запускать полный ревью:** при первом ревью MR (`review_needed`). Тогда — ДВА прохода, оба
-в отчёт: (1) `arch-interrogation` (архитектура/сущности, см. ниже) и (2) **отдельный сабагент со
-своими скиллами code-review** — какие есть в этом харнессе/у агента (имя не хардкодим) — по диффу MR
-(`base..HEAD`), корректность/баги. **НЕ запускай ревью**, если от
-меня нужен только ответ в уже открытых тредах (`reply_needed`/`awaiting`) — там лишь факт-чек и ответ.
-
-Дёшево по умолчанию, опционально, портативно: инлайн по умолчанию; fan-out — только когда MR
-реально крупный И окупается И харнесс умеет сабагентов. Скаут бесплатный (сам). Правила простые, по
-пути/расширению.
-
-**Дорожки:** `security` (ВСЕГДА отдельно — auth/token/secret/crypto/permission в пути или коде,
-валидация недоверенного ввода, SQL/shell/exec, deps/lock/манифесты, CI/`Dockerfile`/env) · `ui`
-(`*.tsx/jsx/vue/svelte/css`) · `logic` (прочий код) · `tests` (`*.test/spec`, `__tests__`) · `docs`
-(`*.md`, конфиги без секретов).
-
-**Разбивка:** малый/средний (≤6 файлов И ≤300 строк И ≤1 содержательная дорожка кода) → **инлайн
-один проход** (`security` всё равно обязателен). Крупный/многодорожечный → **fan-out ≤~5 сабагентов**
-(мелкие/смежные дорожки объедини, `security` отдельный; дорожка >15 файлов → дроби по верхним
-папкам). Сомневаешься, окупится ли → инлайн.
-
-**Диспетчеризация** (параллель — оптимизация, не обязалово): есть инструмент сабагентов (Claude
-`Agent`/Task, OpenCode task) → параллельно по дорожке (по task-файлу — документный конвейер,
-секция «Конвейер разбора» Шаг 3); **нет в харнессе** → попроси оператора/харнесс заспаунить
-ревьюера; **иначе** → ревьюй дорожки последовательно сам, инлайн. `security`-проход смотрит **весь
-дифф** (уязвимость бывает где угодно) — процедура и вход сабагенту не дублируются здесь.
-
-**Сборка:** находки → ОДИН helicopter-отчёт (дедуп, сквозные [E/R/Q]-ID, одна C4-диаграмма, общая
-таблица кандидатов).
-
-## Карта действий
-
-| роль / стадия | механизм |
-|---|---|
-| `reply_needed` | `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → факт-чек ВСЕХ дискуссий (`vcs-discussions --all --json`, не только `--my`) → каждому треду owner/goal/nextActor/status → мой тред + fixed-in-code → 👍 + resolve silently; мой тред + not-fixed → reply (автор молчит → правило PING_POLICY, не резолвить и не пинговать автоматически); чужой тред + согласен → 💯 БЕЗ resolve (владелец закроет); мой дубликат чужого → resolve СВОЙ + 💯 чужому; не согласен → reply с позицией; частичные ответы автора → пропущенные треды `waiting-author`, действие НЕТ («ждут автора: N»). all-fixed-no-new → approve |
-| `review_needed` (первый ревью) | контекст → `arch-interrogation` + сабагент со своими скиллами code-review → helicopter-отчёт+вердикты → постинг (спека = 1 коммент к строке 1; код = line, точные правки = suggestion; уже поднятое = reply в тред; разобранное = resolve) → чисто = `vcs-approve` |
-| `author` (свой MR) | `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")` AuthorMode → overview → **общий комментарий-сводка** (🤖, Mermaid-overview, scope, что проверил, «готово к ревью») → сверка с ревьюверами через `vcs-discussions --json` → ответы/резолв в тредах ревьюеров по ReactionMatrix |
-| `awaiting_reply` / `idle` | ничего — скрыто кодом, в actionable-списке нет (видно под `--all`) |
-
-## Процедура `tick`
-
-`npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → подача по «Презентации» (дельта → виджет; пусто → `😴`-строка). Без Ask и
-постинга — ровно то, что повторяет loop.
-
-## Процедура интерактивного разбора (по умолчанию)
-
-0. **Pre-flight: конфиг.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`.
-   Если ответ содержит `"configured": false`:
-    - **Не печатай текст и не выходи.** Спроси оператора через два **отдельных** `AskUserQuestion` (строго последовательно — сначала первый, дождись ответа, потом второй):
-      - **Сначала `reposBase`:** «Где лежат репозитории?» — варианты: `~/Developer` (Recommended), `~/work`, `~/projects`, `~/src` + Other (ввести свой путь). Валидация: абсолютный путь, существует, isDirectory. При невалидном вводе — переспроси (новый `AskUserQuestion`), не продолжай пока нет валидного ответа.
-      - **Потом `vcsHost`:** «Какой хост GitLab?» — варианты из `git remote get-url origin` (авто-детект, если есть) + Other (ввести свой). Валидация: непустой.
-   - После получения обоих значений: `npx tsx ~/Developer/gennady/cli/gennady.ts inbox config --set reposBase=<путь> --set vcsHost=<хост>`
-   - Затем повтори `inbox --json` — теперь должен вернуть список MR.
-   - Если уже `"configured": true` — сразу к шагу 1.
-
-1. **Инбокс.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → виджет/дашборд (список уже actionable).
-2. **Выбор задачи — ТОЛЬКО если я не назвал.** Сказал «возьми первую/эту» (или дал задачу через
-   tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
-   контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
-   (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
-3. **Контекст одним вызовом.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree + changeset + stage + threads + drafts + package.
-   **Сразу после получения worktree:** прочитай содержимое worktree-директории (`ls <worktreePath>`). Это вызовет **один** запрос прав на всю директорию — дальше чтение любых файлов внутри worktree пойдёт без повторных подтверждений.
-4. **Анализ.** Документный конвейер разбора одного MR (scaffold → обогащение Context → диспатч по
-   task-файлам → validate → синтез) — процедура целиком — ниже, секция «Конвейер разбора»,
-   здесь не пересказывается.
-   **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, болванки должны быть материализованы (`inbox-review-plan --scaffold`) ДО любого анализа.
-   **Всегда план:** первый ревью → полный план (`--base <worktree.base>`); fast_forward → дельта-план (`--base <lastReviewedHeadSha>`); rewritten → полный план заново.
-   **Повторный заход** (`headChanged.kind != "none"`) → прочитай прошлые `README.md`/`HISTORY.md` из
-   `<state-dir>/agent-inbox/reports/…` этого MR ДО анализа — вход дельта-блока (инвариант 5, «что
-   нового» строится и из них, не только из свежего диффа).
-   **Всегда драфты (Step 0a take/SKILL.md):** ДО ревью — `vcs-discussions --my --with-drafts` (вектор расследования). ПОСЛЕ ревью — `vcs-draft-note --delete-all` + `vcs-discussions --all` (сверка).
-   Карта изменений (инвариант 1), затем:
-   - `reply_needed`/`awaiting` → факт-чек ВСЕХ тредов, ревью НЕ запускаешь (шаг 5):
-     1. `vcs-discussions --all --json` (НЕ `--my`) — загрузить все дискуссии
-     2. Каждому треду — аннотация по `<ThreadModel>` из `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`: owner (мой/чужой/автора), goal (что тред хотел добиться), nextActor (чей ход), status. Затем ReactionMatrix + PreFlight
-     3. Проверить факт по коду (diff/worktree), не по словам автора
-     4. Сформировать список действий (resolve своих / 👍 / 💯 / reply); треды `waiting-author` — в сводку «ждут автора: N», без действия и без пинга (PING_POLICY);
-   - `review_needed` + `headChanged.kind == "fast_forward"` + моё ревью существует (мои треды из `vcs-discussions --my --with-drafts` непусты или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — проверка обновлений (сверка старых замечаний с новым диффом, поиск новых проблем). Полный `arch-interrogation` НЕ запускается, код-ревью сабагентом НЕ запускается.
-   - `review_needed` (первый ревью / `headChanged.kind == "none"` / `headChanged.kind == "rewritten"` / fast_forward без моего ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
-     запустить свои скиллы code-review (какие есть в харнессе) по диффу `base..HEAD` (баги/
-     корректность) — его находки в общий отчёт.
-   Каждый проход (инлайн или сабагент) применяет директиву:
-   > ⚠️ **REMIT:** перед любым выводом по MR `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")`
-   > целиком, игнорируя прежнее знание. Следуй `OutputFormat` буквально (все секции, порядок,
-   > разделители), пройди `SelfCheck`, сверь с `RE_READ("ai/directives/agent-inbox/golden-chat-output.example.md")`.
-   > Вся `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
-   > `HaltConditions` — обязательны целиком, не подмножество.
-
-   Вход сабагенту — ОДИН путь к его task-файлу (документный конвейер, секция «Конвейер разбора»
-   Шаг 3): `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` уже внутри
-   его `## Context`, список файлов дорожки — в его `## Scope`. Структуру/визуал/оси/вердикты/
-   кандидатов не пересказывай — они в директиве.
-5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → применить `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` PreFlight к каждому кандидату СТРОГО по цепочке 0→5 (STOP на первом match; правила владения и закрытия — `<ThreadModel>`). `review_needed`: вердикты из директивы; виды (`kind`) —
-   `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CandidateTagging.
-   `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»);
-   реакции на треды ревьюеров — по `<ReactionMatrix>` из `posting-rules.directive.xml`.
-6. **Решение (выжимка со-ревьювера, инвариант 4).** Не спрашивая, покажи готовое решение одним
-   блоком: по каждому треду/кандидату — действие (👍/💯/resolve/reply/line-comment/suggestion/
-   approve) и готовый текст рядом; отдельной строкой — «ждут автора: N (не пинговать)» и «пропущено:
-   что и почему». Это твоё заключение как ревьювера — оператор должен смочь сказать просто «да».
-7. **Один Ask на весь пакет** (`AskUserQuestion` `multiSelect`, ≤4 + Other; можно несколько).
-   Пункты пакета из шага 6 с текстами рядом (галочка = согласие на показанный текст); плюс опции
-   «углубиться в сущность/вопрос по коду» и «пропустить MR». Оператор снимает лишнее, через Other
-   правит текст или добавляет свою строчку. На «углубиться/вопрос» — ответь и снова покажи пакет
-   (обновлённый). Approve и замечания — можно вместе. Это финализация; пропуск — только явной
-   галочкой. Отдельного «контроллера» перед пакетом нет — решение и меню приходят вместе.
-8. **Постинг live** — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` (PreFlight → JSON-формы → СТОП-ЧЕК постинга там же).
-   Через `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
-   `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
-9. **Закрытие.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (гасит pending-todo).
-   Итог — короткой сводкой **в чат** (правило 8: оператору — только в чат, конвейерные артефакты уже
-   в `reports/…`). →
-   следующий MR.
-
-## Когда НЕ пропускать
-
-Скрытое кодом (`awaiting`/`idle`/approved) в список не попадает — всё взятое требует реакции.
-Пропуск — **только явной галочкой** «пропустить» (чужой MR, мне нечего добавить, в тредах меня нет).
-НЕ пропускать: `review_needed` без сделанного ревью (даже крупный или «нечего сказать»); незакрытый
-тред, где ждут моего ответа. Даже одна строка кода требует ревью.
-
-## Вне скоупа
-
-- Полный автор-цикл (merge/rebase/draft↔ready/ревьюверы) — позже; self-review сводка и треды своих
-  MR — в скоупе.
-- Запуск тестов/сборки MR (исполнение чужого кода) — нужна docker-изоляция.
-- GitHub — только GitLab.
-
-  <!-- ===== Конвейер разбора одного MR (бывший agent-inbox-take) ===== -->
-
----
-
-## Шаг 0 — Обязательное чтение
-
-Перед любым действием — прочитай эти файлы. Не по памяти, не «я знаю». Открой и прочитай:
-
-1. **`ai/directives/agent-inbox/arch-interrogation.directive.xml`**
-   - `<ExecutionPlan>` — STEP_0..STEP_5; STEP_5 action 0 = решение по транспорту ДО вывода
-   - `<SelfCheck>` — пункты 0/0b/1..6; 0b = транспорт объявлен и виджет использован при наличии
-   - `AX_CHANGESET_SCALE` — scope-итог: размер, категории, карта файлов
-   - `AX_VISUAL_TRANSPORT` — виджет = медиум в чате при наличии; ASCII только fallback; Mermaid — только GitLab
-   - `AX_VISUALIZE_WHEN_RELATIONAL` — когда рисовать диаграмму
-   - `AX_REPORT_ASSEMBLY` — ЕДИНЫЙ отчёт, не кусками
-   - `AX_ADVERSARIAL_DEFAULT` — вердикт unjustified пока не доказано обратное
-   - `AX_PRIOR_DISCUSSION_AWARENESS` — не дублировать существующие треды
-
-2. **`ai/directives/agent-inbox/code-interrogation.directive.xml`**
-   - `<Probes>` — 9 проб: NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO
-   - `<ScopeGuard>` — не дублировать линтер
-
-3. **`ai/directives/agent-inbox/golden-chat-output.example.md`**
-   - Эталон структуры вывода в чат
-   - ВСЕ секции обязательны
-
-4. **`ai/directives/agent-inbox/visual-vocabulary.directive.xml`**
-   - `<DiagramSelection>` — какую диаграмму под какое намерение (не всё flowchart'ом)
-   - `<Syntax>` — скелеты ASCII (чат) и Mermaid (GitLab) для каждого типа ядра
-   - `AX_INFOGRAPHIC_FIRST` — реляционное картинкой, не прозой; риск = недопредъявленные требования
-
----
-
-## Шаг 0a — Драфты и контекст обсуждений (ДО ревью)
-
-Драфты — временный инструмент расследования, не перманентный артефакт. После ревью удаляются.
-
-1. **Загрузить драфты и свои треды:**
-   ```
-   vcs-discussions --url <webUrl> --my --with-drafts --json
-   ```
-   → `my_drafts` = вектор для углубления расследования (о чём я уже думал, но ещё не постил)
-   → `my_threads` = что я уже писал (для дедупликации)
-
-2. **Передать сабагентам — через Context task-файла** (не отдельными полями): `prior_threads` +
-   `my_drafts` + `my_login` войдут в обогащение `## Context` на шаге 2, вместе с `worktree.path`,
-   `diff_refs`, `base`, `ref`, `webUrl` — сабагент получает ОДИН путь к файлу, всё остальное уже там.
-
-3. **ПОСЛЕ ревью, ПЕРЕД постингом (шаг 4):**
-   ```
-   vcs-draft-note --url <webUrl> --delete-all    # драфты отслужили — удалить
-   vcs-discussions --url <webUrl> --all --json    # ВСЕ дискуссии (не только --my)
-   ```
-   → Сверка на дубликаты (`AX_POSTING_NO_DUPLICATES`)
-   → Применение `<ThreadModel>` + `ReactionMatrix` к чужим тредам (peer-said-same → 💯 БЕЗ resolve — владелец закроет сам; свой дубликат чужого → resolve СВОЙ; peer-said-different → reply)
-
----
-
-## Шаг 1 — Скаут
-
-**Ролевая развилка:**
-- `myRole=author` → загрузить `arch-interrogation` в режиме `<AuthorMode>` (вместо adversarial interrogation). **Приоритет:** `role=author` + `headChanged != none` → сначала `update-review` (проверить что изменилось), затем `AuthorMode` (обновить сводку). `headChanged == none` → сразу `AuthorMode`.
-- `myRole=reviewer` → стандартный adversarial-разбор через `arch-interrogation`.
-
-1. `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --vcs-host=<host>`
-   **Сразу после:** прочитай содержимое worktree (`ls <path>`). Один запрос прав на всю директорию.
-2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`
-3. Разложи файлы по дорожкам: **security**(всегда) / **logic** / **ui** / **tests** / **docs** / **config**
-4. **Транспорт (action 0):** проверь наличие виджета (`mcp__visualize__show_widget`); объяви первой строкой «чат, widget (инструмент найден)» или «чат, ASCII (виджет недоступен)». Выведи карту файлов + таблицу категорий; реляционную диаграмму — виджетом при наличии, ASCII только как fallback.
-5. **Выбор директивы:** проверь `headChanged.kind` из ответа `inbox-context`:
-   - `kind == "fast_forward"` И мои треды непусты (или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — шаги 2–4 skip, сразу к синтезу по директиве.
-   - Иначе → полный `arch-interrogation` + `code-interrogation` (текущее поведение).
-
----
-
-## Шаг 2 — План ревью → болванки → обогащение (МЕХАНИЧЕСКИ, без решений агентом)
-
-**Всегда документный конвейер.** Агент НИКОГДА не начинает анализ без материализованных task-файлов.
-Ни один сабагент не получает задание «на словах» — только через файл (AI-36, D57).
-
-1. **Проверь `reviewPlanRequired`** из ответа `inbox-context`:
-   - `false` → план не нужен (`reply_needed` / `author`). Пропусти шаг 2, иди к шагу 3.
-   - `true` → **HALT.** Не читай файлы, не анализируй. Определи `--base`:
-
-2. **Выбери `--base`:**
-   - `headChanged.kind == "fast_forward"` + `lastReviewedHeadSha` непуст → `--base <lastReviewedHeadSha>` (дельта-план: только изменившиеся файлы)
-   - Иначе (первый ревью / `rewritten` / `none`) → `--base <worktree.base>` (полный план)
-
-3. **Материализуй болванки:**
-   ```
-   npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <выбранный base> --scaffold --ref <ref>
-   ```
-   → `{ scaffolded: true, dir, plan, tasks: [...] }` — пути `PLAN.md` и `tasks/*.task.md`. `mode: inline` даёт одну болванку `tasks/review.task.md`; `mode: fan_out` — по одной на трек (кроме треков с `"skip review"` в `focus` — для них файл не диспетчерится).
-
-4. **Обогати `## Context` каждой болванки** (оркестратор, не механика): то, что код не знает — какие сущности важны в файлах ЭТОЙ дорожки, что уже обсуждалось в `prior_threads`/`my_drafts` (`my_login` — для дедупликации), цель MR, на что смотреть. Плюс факты для автономного заполнения без обратных вопросов: `worktree.path`, `diff_refs`, `base`, `ref`, `webUrl`. Минимальный контекст по файлам дорожки — **не** пересказ всего MR.
-   - **Security-болванка:** несмотря на то что её `## Scope` содержит только security-classified файлы — в `## Context` явно допиши «смотри ВЕСЬ дифф, не только Scope» (контекст безопасности требует полной картины).
-   - Поставь `status: enriched` во frontmatter каждого файла.
-
-5. **Гейт перед диспатчем:**
-   ```
-   npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --validate <dir> --stage enriched
-   ```
-   `{ok: false}` (пустой `## Context` у кого-то из файлов) → допиши и повтори. Диспатч (шаг 3) — только после `{ok: true}`.
-
-**Агент НЕ принимает решений:**
-- Не считает файлы/строки вручную (это сделала команда)
-- Не решает «инлайн или сабагенты» (это в `ReviewPlan.mode`)
-- Не выбирает пробы (это в `ReviewTrack.focus`)
-- Не выбирает директиву (это в `ReviewTrack.directive`)
-- Не классифицирует файлы по дорожкам (это сделала команда)
-
----
-
-## Шаг 3 — Диспатч по task-файлам
-
-**Каждому сабагенту — ровно один вход:** путь его task-файла + инструкция «прочитай `## Scope` и
-`## Context`, загрузи директиву из `track.directive` (см. `## Scope`), прогони пробы из `focus`,
-заполни `## Findings` / `## Candidates` / `## Verdict` по схеме файла, поставь `status: filled`».
-Отчёт — GitLab-flavored markdown, диаграммы — mermaid (в файле; в чат их не выводить, см. Шаг 4).
-
-`mode: inline` → сабагентов нет, сам заполняешь единственную болванку `tasks/review.task.md`.
-
-Жди ВСЕХ сабагентов.
-
-**Гейт после заполнения:**
-```
-npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --validate <dir>
-```
-`{ok: false}` → ошибки привязаны к конкретному файлу (`errors[].file`). Верни КОНКРЕТНОМУ сабагенту
-его файл + список ЕГО ошибок (точечный retry, не весь конвейер заново), максимум 1 повтор. Тот же
-файл падает второй раз → эскалация оператору (показать ошибки), конвейер не постит.
-
----
-
-## Шаг 4 — Синтез
-
-Прочитай ВСЕ task-файлы дорожки **целиком, с диска** (не пересказы сабагентов в контексте сессии —
-он мог сжаться). Собери ЕДИНЫЙ отчёт по структуре Golden Example и запиши в `README.md` того же
-report-dir (сборка состояния конвейера):
-
-1. Шапка — markdown-ссылка `[ref](webUrl)` (кликабельная, не голый текст/URL) + title
-2. **Карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей (цвет по типу изменения + файлы подписью + серые соседи + строка «что произошло»). Даже на однострочный MR — минимальная карта. Ниже: строка размера + таблица категорий + вторичная карта файлов. Диаграмма в `README.md` — Mermaid (её потребует валидатор).
-3. Крупный MR → отдельный C4; малый/средний → карта из п.2 его заменяет (не дублировать)
-4. Flow-диаграммы (нетривиальные сценарии)
-5. Разбор сущностей: [E1]..[EN] с вердиктами (✅⚠️❌), ролью, обоснованием
-6. Связи и риски: [R-IDs], 🎯🧪💥🖐🚀📊
-7. Итог: таблица вердиктов
-8. Кандидаты в замечания: таблица ID/Файл/Строка/Проблема/Ось/Kind
-9. Подвал — повтор markdown-ссылки `[ref](webUrl)`
-
-Допиши запись в `HISTORY.md` (append-only: дата, `headSha`, режим full/delta, итог, ссылки на
-task-файлы этого визита).
-
-**Гейт перед выводом в чат:** `inbox-review-plan --validate <dir>` (filled) — он теперь требует
-в `README.md` ≥1 Mermaid-диаграммы (секция Архитектура непуста). `{ok:false}` с «no diagram» →
-диаграмма забыта, вернись и нарисуй, НЕ выводи в чат. Диаграмму нельзя пропустить — это гейт кода.
-
-**Чат — проекция проверенного `README.md`, не сочинение заново.** После `{ok:true}` выведи в чат
-то, что в README: карту изменения + карту файлов + вердикты, конвертируя Mermaid → виджет (при
-наличии `mcp__visualize__show_widget`) или ASCII (fallback, транспорт по action 0). Диаграмма из
-README ОБЯЗАНА попасть в чат — раз валидатор подтвердил её в документе, в чате её пропуск = брак.
-Сырые md/`mermaid`-блоки в чат не вставлять (чат их не рендерит). Ссылки — markdown `[…](…)`
-(инвариант 6). Файлы — для GitLab/оркестрации, чат — для оператора (правило 8).
-
-**После синтеза — очистка и сверка (см. Шаг 0a п.3):**
-- `vcs-draft-note --delete-all` — драфты удалены
-- `vcs-discussions --all --json` — загружены ВСЕ дискуссии
-- `AX_POSTING_NO_DUPLICATES`: вычеркнуть кандидатов, уже покрытых существующими тредами
-- `<ThreadModel>` + `ReactionMatrix`: каждому треду owner/goal/nextActor/status; действие для чужих — 👍/💯/reply (resolve — только своих тредов; `waiting-author` → без действия, в сводку «ждут автора»)
-
----
-
-## СТОП-ЧЕК (перед выдачей в чат)
-
-Пройди SelfCheck из `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")` (пункты 0–6), плюс добавочные пункты конвейера:
-
-| # | Секция | Есть? |
-|---|--------|-------|
-| 0c | Существующее обсуждение подгружено (vcs-discussions) или явно сказано «тредов нет» | □ |
-| — | `reviewPlanRequired == true` → `inbox-review-plan --scaffold` вызван с правильным `--base` (полный = worktree.base, дельта = lastReviewedHeadSha), болванки материализованы | □ |
-| — | План разбивки показан (трек → N файлов → сабагент/инлайн) | □ |
-| — | `--validate --stage enriched` прошёл ДО диспатча, `--validate` (filled) прошёл ДО синтеза | □ |
-| — | Синтез (README.md/HISTORY.md) собран из task-файлов с диска, не из пересказов сабагентов | □ |
-| — | `--validate` (filled) прошёл: в README есть ≥1 Mermaid-диаграмма (нет «no diagram») — диаграмму нельзя забыть | □ |
-| — | Карта изменения (`AX_CHANGE_MAP`) — ПЕРВЫЙ визуал; есть хотя бы одна диаграмма даже на однострочный MR | □ |
-| — | Чат — проекция проверенного README (карта + диаграмма спроецированы в виджет/ASCII), не сочинён заново; диаграмма из README попала в чат | □ |
-| — | Шапка и подвал чат-вывода — markdown-ссылка `[ref](webUrl)` (кликабельная, не голый текст/URL); пути артефактов тоже `[…](…)` (инвариант 6) | □ |
-| — | Реляционное отрисовано медиумом по action 0 — виджет при наличии `mcp__visualize__show_widget`, ASCII только fallback (инвариант 2) | □ |
-
-Если любой □ пуст → возврат. **Особенно жёстко:** если `reviewPlanRequired` был `true`, а болванки не материализованы — это нарушение `H_NO_REVIEW_PLAN`, возврат к шагу 2.
-
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      This directive's prose is English (prompt language). Everything the OPERATOR sees is written in
+      Russian, unconditionally — regardless of the language of this file, the MR, the diff, or the
+      discussion. Russian applies to: the change map caption, per-entity card text, verdict reasons,
+      diagram captions, the inbox dashboard, and every chat message. English stays for: file paths,
+      axiom IDs (`AX_*`), CLI commands and flags, code symbols, status tokens. The Russian example
+      strings quoted below (dashboard lines, emoji legend) are literal operator output — emit them
+      as-is; do not translate them to English.
+    </Axiom>
+  </BeliefState>
+
+  <SessionInvariants>
+    Hold these to the end of the session, even after context compression. Every time, on each "next
+    MR", regardless of size:
+
+    1. **Always visualize the change.** First thing, before prose — a change map in chat (see
+       `AX_CHANGE_MAP` in arch-interrogation): entities/components as nodes coloured by change type
+       (🆕/✏️/🗑️/↪︎), files annotated, greyed neighbors, one caption "что произошло". An answer that
+       is just a link to the MR, with no visual, is forbidden.
+    2. **Everything in chat must render; a visual is mandatory.** Relational meaning (file map, C4,
+       flows, delta) → a picture, not prose. WHICH diagram fits which intent (and its ASCII/Mermaid
+       syntax) — `INCLUDE_ONCE("ai/directives/agent-inbox/visual-vocabulary.directive.xml")` (not
+       everything is a flowchart). Medium: **if `mcp__visualize__show_widget` is present → render
+       with the widget** (best for visualization — use it); no widget → ASCII+emoji as fallback.
+       Declare the medium as the first line (action 0). Choice/approval — `AskUserQuestion`. Never
+       send Mermaid/SVG to chat (Mermaid is for posting to the VCS, which renders it natively). Do
+       not emit markup the chat cannot render.
+    3. **Operator language — Russian** (`AX_OPERATOR_LANGUAGE`); code/identifiers/paths/CLI/tokens —
+       English.
+    4. **Co-reviewer, not a secretary.** Come to every thread and candidate with a READY decision and
+       text — asking "what do we do?" without your proposed decision is forbidden. Ask only at three
+       points: task choice (when I did not name it) · finalization in ONE package (steps 6–7) · a
+       genuine ambiguity (a disputed verdict, a ping candidate from `ThreadModel`). I answer "yes,
+       correct", uncheck an item, or edit text via Other — but you propose the decision.
+    5. **Repeat visit — delta first.** `headChanged.kind != "none"` → BEFORE anything else show,
+       visually, "what is new since last time": new commits (sha + subject), which files they
+       touched, new replies in threads. The operator must see what the author changed at the last
+       moment, before any verdicts.
+    6. **Links — always clickable markdown.** Any link to the MR — `[group/proj!iid](webUrl)` (or the
+       PR URL for GitHub), NEVER bare text or a bare URL: the operator must click in chat and land on
+       the MR/PR. Mandatory in the header and footer of EVERY per-MR answer (first and last lines)
+       and in any summary. Artifact paths too — `[README.md](/abs/path/README.md)`. An answer where
+       the MR is named as plain text without `[…](…)` is defective — redo it.
+  </SessionInvariants>
+
+  <Intents>
+    - **(default / `list` / "разбери входящие")** — interactive review: actionable list → propose ≤5
+      tasks as checkboxes → walk them one by one. I steer, you drive.
+    - `tick` (=`once`/`sync`) — ONE silent pass for the scheduler:
+      `npx tsx ~/Developer/gennady/cli/gennady.ts inbox`, show the delta, stop. No Ask, no posting.
+    - `loop` — the scheduler repeats `tick`; frequency is set externally (`/loop 10m` for the session;
+      launchd `StartInterval`/cron in the background). The skill does not set frequency; `tick` is
+      idempotent via the registry `~/.gennady/inbox-registry.json` (shows only the delta).
+    - `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (wipes local state only:
+      registry + worktrees). Does NOT touch server-side drafts — those are removed only by an explicit
+      `vcs-draft-note --delete-all` on operator request (AI-08).
+
+    Outside a VCS repo → pass `--vcs-host=<host>` on every call. Token by provider: GitLab →
+    `GITLAB_PERSONAL_TOKEN`; GitHub → `GITHUB_PERSONAL_TOKEN` / `GITHUB_TOKEN`.
+  </Intents>
+
+  <InboxPresentation>
+    Data — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json [--vcs-host=<host>]`: per MR
+    `ref`/`webUrl`/`title`/`description`/`author`/`reviewers`/`role`/`stage`/`delta`/`age`/
+    `openQuestions`/`lastAuthor`/`events`; at the top `total`/`hidden`/`delta`.
+
+    The list is already filtered to actionable by the CLI (merged/closed, my approve,
+    `awaiting_reply`/`idle` hidden; counts in `hidden`). Everything in `groups` genuinely awaits me —
+    do NOT filter by hand. Full list — `--all`.
+
+    - **delta > 0** → a widget (or ASCII dashboard): cards for `new`/`updated` only (badge
+      `Reply`/`Review` + `ref`→`webUrl` + `age`; `title` below; small author/reviewers/`openQuestions`/
+      `lastAuthor` + a gist line from `description`), collapse `idle` into "без изменений — N". Widget:
+      2 columns, Tabler icons/colour only (no emoji), accent Reply=danger, Review=warning, `✗ci`/`⚠`
+      from `events`.
+    - **no delta** → `😴 Без изменений · 📥 {total} actionable · 🙈 скрыто {hidden}`.
+    - **`total` = 0** → `✅ Инбокс чист`.
+
+    Emoji (for chat text, not the widget): 📥 inbox · 💬 reply · 👀 review · ⏳ жду · 🆕 new ·
+    🔼 updated · ❓ вопросы · ❌ ci · ⚠️ unmergeable · 🙈 скрыто · 😴 тихо · ✅ чисто.
+  </InboxPresentation>
+
+  <HardRules>
+    1. **Always visualize** (invariant 1) — no answer without a change map / diagram.
+    2. **Post only after Ask.** A checkbox in the menu = consent to the shown text (show texts next to
+       the checkboxes). No check → no post. No dry-run (Ask already confirmed; the CLI flag is for
+       manual debugging).
+    3. **Code is read-only** — you only read; never run the MR's build/tests/scripts.
+    4. **Do not invent** — fact-check against thread + code; unsure → ⚠ and ask.
+    5. **One MR at a time**, focused.
+    6. **Posting to the VCS** (Mermaid-only, granularity, 🤖) —
+       `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`
+       (`AX_POSTING_MERMAID_ONLY`/`_GRANULARITY`/`_BOT_PREFIX`).
+    7. **Analysis before questions.** If the task is already named (I said "take the first/this one" or
+       gave it via tick) — do NOT re-ask. Straight to: context → analysis (what changed / what is
+       required of me), and ONLY after analysis propose actions. Ask before analysis is forbidden
+       (except task choice when I did not name it).
+    8. **Nothing to the operator's repo or arbitrary paths.** Output to the operator — chat only. The
+       review pipeline artifacts (`PLAN.md`, task files, `README.md`, `HISTORY.md`) live ONLY under
+       `<state-dir>/agent-inbox/reports/…` — created by `inbox-review-plan --scaffold` (AI-36), wiped
+       by `inbox --reset`. `inbox-registry.json` is internal command state — do not touch it.
+  </HardRules>
+
+  <VcsTools>
+    | Tool | Command | When |
+    |---|---|---|
+    | List | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | start; `--all` removes the filter |
+    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | ONE call: ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, worktree, changeset, stage, threadStats. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
+    | **Review plan** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
+    | Working copy | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
+    | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
+    | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+failed logs; `--status failed` default; jobs — restart/cancel; `--raw` — raw log |
+    | Posting | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
+    | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
+    | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
+    | Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (or `--id <todoId>`) | clear the pending todo (finalization) |
+
+    **`vcs-reply` (JSON array).** reply/line/suggestion forms —
+    `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Only in
+    this skill:
+    - `{"noteId":…,"body":…}` edit / `{"noteId":…,"delete":true}` delete — YOUR OWN note;
+    - `{"discussionId":…,"resolve":true}` close (± `body` = reply+close) / `"resolve":false` reopen.
+
+    **Policy:**
+    - **Suggestion** — an exact mechanical fix with a known result (typo `TYPO`, obvious replacement) →
+      suggestion, not prose. Debatable → a comment with a question.
+    - **Resolve — YOUR OWN threads only** (`ThreadModel` in posting-rules; exception — threads on my
+      own MR). A peer's correct thread → 💯 without resolve, the owner closes it. My thread closes when
+      ITS goal is met (fix visible in the diff / answer received), not when the conversation goes
+      quiet. Format → `AX_POSTING_SILENT_RESOLVE`: 👍 + resolve WITHOUT a body. Text only if a
+      substantive answer is needed (disagreement, clarification).
+    - **Approve / `--revoke`** — approve only with no blocking comments of mine; `--revoke` if the MR
+      changed after approve or a problem was found. Approve is per-MR, resolve is per-thread.
+    - **Edit/delete — own notes only** (`noteId` from `vcs-discussions --json`).
+    - **Todo done** — after reacting, `vcs-todo --done <ref> --url <webUrl>`.
+    - Any posting — after Ask (rule 2), live, no dry-run.
+  </VcsTools>
+
+  <ActionMap>
+    | role / stage | mechanism |
+    |---|---|
+    | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 💯 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 💯 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
+    | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → clean = `vcs-approve` |
+    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode → overview → one consolidated summary comment (🤖, Mermaid overview, scope, what was checked, "ready for review") → cross-check with reviewers via `vcs-discussions --json` → replies/resolve in reviewers' threads per ReactionMatrix |
+    | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
+  </ActionMap>
+
+  <TickProcedure>
+    `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → present per InboxPresentation (delta →
+    widget; empty → the `😴` line). No Ask, no posting — exactly what `loop` repeats.
+  </TickProcedure>
+
+  <InteractiveProcedure>
+    0. **Pre-flight: config.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`. If the
+       response has `"configured": false`:
+       - Do NOT print text and do NOT exit. Ask the operator via two SEPARATE `AskUserQuestion` (strictly
+         sequential — first, wait, then the second):
+         - **First `reposBase`:** "Где лежат репозитории?" — options `~/Developer` (Recommended),
+           `~/work`, `~/projects`, `~/src` + Other. Validate: absolute path, exists, isDirectory.
+           Invalid → re-ask, do not proceed without a valid answer.
+         - **Then `vcsHost`:** "Какой хост?" — options from `git remote get-url origin` (auto-detected)
+           + Other. Validate: non-empty.
+       - Then `inbox config --set reposBase=<path> --set vcsHost=<host>`, retry `inbox --json`.
+       - Already `"configured": true` → straight to step 1.
+    1. **Inbox.** `inbox --json` → widget/dashboard (list is already actionable).
+    2. **Task choice — ONLY if I did not name it.** I said "take the first/this one" (or gave it via
+       tick) → skip Ask, take it, go to step 3. Otherwise: show ≤5 tasks visually with context
+       (`ref`/stage/`title`/author/age/`openQuestions`) and `AskUserQuestion` `multiSelect` (≤4 +
+       Other; >4 → top-4 by urgency, `[reply]` over `[review]`). One at a time.
+    3. **Context in one call.** `inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree +
+       changeset + stage + threads + drafts + meta. Right after getting the worktree: `ls
+       <worktreePath>` — one permission prompt for the whole dir, then reads inside go without repeats.
+    4. **Analysis.** The single-MR document pipeline (scaffold → enrich Context → dispatch by task
+       files → validate → synthesize) — full procedure below, "Review pipeline".
+       **Hard gate:** `arch-interrogation` `H_NO_REVIEW_PLAN` — if `reviewPlanRequired == true`, the
+       task files must be materialized (`inbox-review-plan --scaffold`) BEFORE any analysis.
+       **Always a plan:** first review → full plan (`--base <worktree.base>`); fast_forward → delta plan
+       (`--base <lastReviewedHeadSha>`); rewritten → full plan again.
+       **Repeat visit** (`headChanged.kind != "none"`) → read the prior `README.md`/`HISTORY.md` from
+       `<state-dir>/agent-inbox/reports/…` for this MR BEFORE analysis — input to the delta block
+       (invariant 5).
+       **Always drafts:** BEFORE review — `vcs-discussions --my --with-drafts` (investigation vector);
+       AFTER review — `vcs-draft-note --delete-all` + `vcs-discussions --all` (reconcile).
+       Then the change map (invariant 1), then:
+       - `reply_needed`/`awaiting` → fact-check ALL threads, do NOT run review (step 5):
+         1. `vcs-discussions --all --json` (NOT `--my`) — load all discussions.
+         2. Annotate each thread per `<ThreadModel>` from `INCLUDE_ONCE("posting-rules.directive.xml")`:
+            owner / goal / nextActor / status. Then ReactionMatrix + PreFlight.
+         3. Verify facts against code (diff/worktree), not the author's words.
+         4. Build the action list (resolve mine / 👍 / 💯 / reply); `waiting-author` threads → into the
+            summary "ждут автора: N", no action, no ping (PING_POLICY).
+       - `review_needed` + `headChanged.kind == "fast_forward"` + my review exists (my threads from
+         `vcs-discussions --my --with-drafts` non-empty, or I am in `approvedBy`) →
+         `INCLUDE_ONCE("update-review.directive.xml")` — update check (cross-reference old comments with
+         the new diff, scan for new problems). Full `arch-interrogation` NOT run; code-review subagent
+         NOT run.
+       - `review_needed` (first review / `kind == "none"` / `kind == "rewritten"` / fast_forward without
+         my review) → scout + split (see "Review pipeline") AND a separate subagent: tell it to run its
+         own code-review skills over `base..HEAD` (bugs/correctness) — findings into the shared report.
+       Each pass (inline or subagent) applies the directive:
+       > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
+       > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
+       > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
+       > entire `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
+       > `HaltConditions` — mandatory in full, not a subset.
+
+       Subagent input — ONE path to its task file (document pipeline, "Review pipeline" Step 3):
+       `ref`/`webUrl`/`diff_refs`/`path`/`base`/`prior_threads`/`my_drafts`/`my_login` are already in
+       its `## Context`, the track's file list in its `## Scope`. Do not restate structure/visual/
+       axes/verdicts/candidates — they are in the directive.
+    5. **Candidates.** `reply_needed`: fact-check (right/wrong) → apply
+       `INCLUDE_ONCE("posting-rules.directive.xml")` PreFlight to each candidate STRICTLY along the
+       0→5 chain (STOP on first match; ownership and closing rules — `<ThreadModel>`). `review_needed`:
+       verdicts from the directive; kinds — `INCLUDE_ONCE("posting-rules.directive.xml")`
+       CandidateTagging. `author`: overview + summary (what/why, scope, what was checked, "ready");
+       reactions to reviewers' threads per `<ReactionMatrix>`.
+    6. **Decision (co-reviewer digest, invariant 4).** Without asking, show the ready decision as one
+       block: per thread/candidate — the action (👍/💯/resolve/reply/line-comment/suggestion/approve)
+       and the ready text next to it; a separate line "ждут автора: N (не пинговать)" and "пропущено:
+       что и почему". This is your reviewer's verdict — the operator should be able to just say "yes".
+    7. **One Ask for the whole package** (`AskUserQuestion` `multiSelect`, ≤4 + Other; several
+       allowed). Items from step 6 with texts next to them (a check = consent to the shown text); plus
+       "drill into an entity / question about the code" and "skip MR". The operator unchecks extras,
+       edits text via Other, or adds a line. On "drill/question" — answer and show the (updated)
+       package again. Approve and comments can go together. Finalization; skip only by an explicit
+       check. No separate "controller" before the package — decision and menu come together.
+    8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
+       STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
+       JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
+    9. **Close.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>`
+       (clears the pending todo). Summary — a short digest in chat (rule 8: operator gets chat only;
+       pipeline artifacts already in `reports/…`). → next MR.
+  </InteractiveProcedure>
+
+  <WhenNotToSkip>
+    What the CLI hides (`awaiting`/`idle`/approved) never reaches the list — everything taken needs a
+    reaction. Skip only by an explicit "skip" check (someone else's MR, nothing to add, I am not in the
+    threads). Do NOT skip: `review_needed` without a done review (even large, even "nothing to say"); an
+    open thread awaiting my reply. Even one line of code needs review.
+  </WhenNotToSkip>
+
+  <OutOfScope>
+    - Full author cycle (merge/rebase/draft↔ready/reviewers) — later; self-review summary and threads on
+      my own MRs are in scope.
+    - Running the MR's tests/build (executing untrusted code) — needs docker isolation.
+  </OutOfScope>
+
+  <!-- ===== Review pipeline for a single MR (former agent-inbox-take) ===== -->
+
+  <ReviewPipeline>
+    Runs when the agent takes an MR (`review_needed` or `reply_needed`). Does not restate the
+    directives — it forces reading them.
+
+    ## Step 0 — Mandatory reading
+    Before any action, read these files (not from memory). Open and read:
+    1. `ai/directives/agent-inbox/arch-interrogation.directive.xml` —
+       `<ExecutionPlan>` STEP_0..STEP_5 (STEP_5 action 0 = transport decision BEFORE output);
+       `<SelfCheck>`; `AX_CHANGESET_SCALE`; `AX_CHANGE_MAP`; `AX_VISUAL_TRANSPORT`;
+       `AX_VISUALIZE_WHEN_RELATIONAL`; `AX_REPORT_ASSEMBLY`; `AX_ADVERSARIAL_DEFAULT`;
+       `AX_PRIOR_DISCUSSION_AWARENESS`.
+    2. `ai/directives/agent-inbox/code-interrogation.directive.xml` — `<Probes>` (NAT/IDIOM/LIT/DEP/
+       GLOBAL/TEST/SEC/BIZ/TYPO); `<ScopeGuard>` (do not duplicate the linter).
+    3. `ai/directives/agent-inbox/golden-chat-output.example.md` — the structure reference; all sections
+       mandatory.
+    4. `ai/directives/agent-inbox/visual-vocabulary.directive.xml` — `<DiagramSelection>` (which diagram
+       per intent, not everything a flowchart); `<Syntax>` (ASCII for chat, Mermaid for the VCS);
+       `AX_INFOGRAPHIC_FIRST`.
+
+    ## Step 0a — Drafts and discussion context (BEFORE review)
+    Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
+    1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json` →
+       `my_drafts` = investigation vector; `my_threads` = what I already wrote (dedup).
+    2. Pass to subagents via the task file's Context (not separate fields): `prior_threads` +
+       `my_drafts` + `my_login` are folded into `## Context` at Step 2, with `worktree.path`,
+       `diff_refs`, `base`, `ref`, `webUrl` — the subagent gets ONE file path, everything else inside.
+    3. AFTER review, BEFORE posting (Step 4): `vcs-draft-note --delete-all` (drafts served their
+       purpose) then `vcs-discussions --url <webUrl> --all --json`. Reconcile duplicates
+       (`AX_POSTING_NO_DUPLICATES`); apply `<ThreadModel>` + `ReactionMatrix` to peer threads
+       (peer-said-same → 💯 WITHOUT resolve, owner closes; my duplicate of a peer → resolve MINE;
+       peer-said-different → reply).
+
+    ## Step 1 — Scout
+    Role fork:
+    - `myRole=author` → load `arch-interrogation` in `<AuthorMode>`. Priority: `role=author` +
+      `headChanged != none` → `update-review` first, then `AuthorMode`. `headChanged == none` → straight
+      to `AuthorMode`.
+    - `myRole=reviewer` → standard adversarial review via `arch-interrogation`.
+    1. `inbox-context --url <webUrl> --vcs-host=<host>`. Right after: `ls <path>` (one permission prompt).
+    2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`.
+    3. Split files into tracks: **security** (always) / **logic** / **ui** / **tests** / **docs** / **config**.
+    4. **Transport (action 0):** probe for `mcp__visualize__show_widget`; declare the medium on the first
+       line ("чат, widget (инструмент найден)" / "чат, ASCII (виджет недоступен)"). Emit the change map;
+       relational diagram — widget if present, ASCII only as fallback.
+    5. **Directive choice** by `headChanged.kind` from `inbox-context`:
+       - `kind == "fast_forward"` AND my threads non-empty (or I am in `approvedBy`) →
+         `INCLUDE_ONCE("update-review.directive.xml")` — Steps 2–4 skipped, straight to synthesis.
+       - Otherwise → full `arch-interrogation` + `code-interrogation`.
+
+    ## Step 2 — Review plan → task files → enrich (MECHANICAL, no agent decisions)
+    Always the document pipeline. The agent NEVER starts analysis without materialized task files. No
+    subagent gets a task "verbally" — only via a file (AI-36, D57).
+    1. Check `reviewPlanRequired` from `inbox-context`: `false` → no plan (`reply_needed`/`author`), go
+       to Step 3. `true` → HALT, pick `--base`.
+    2. Pick `--base`: `fast_forward` + non-empty `lastReviewedHeadSha` → `--base <lastReviewedHeadSha>`
+       (delta plan); otherwise (first / `rewritten` / `none`) → `--base <worktree.base>` (full plan).
+    3. Materialize: `inbox-review-plan --path <worktree.path> --base <base> --scaffold --ref <ref>` →
+       `{ scaffolded, dir, plan, tasks }`. `mode: inline` → one `tasks/review.task.md`; `mode: fan_out`
+       → one per track (except tracks whose `focus` is "skip review").
+    4. Enrich each task file's `## Context` (orchestrator, not mechanics): what the code cannot know —
+       which entities matter in THIS track's files, what was already discussed in `prior_threads`/
+       `my_drafts` (`my_login` for dedup), the MR goal, what to look at. Plus facts for autonomous
+       filling: `worktree.path`, `diff_refs`, `base`, `ref`, `webUrl`. Minimal per-track context, NOT a
+       retelling of the whole MR. Security task: even though its `## Scope` lists only security-classified
+       files — in `## Context` write explicitly "look at the WHOLE diff, not just Scope". Set
+       `status: enriched`.
+    5. Gate before dispatch: `inbox-review-plan --validate <dir> --stage enriched`. `{ok: false}` (empty
+       `## Context` somewhere) → fill and retry. Dispatch (Step 3) only after `{ok: true}`.
+    The agent makes no decisions: does not count files/lines by hand, does not choose inline vs
+    subagents (`ReviewPlan.mode`), does not pick probes (`ReviewTrack.focus`), does not pick the
+    directive (`ReviewTrack.directive`), does not classify files into tracks — the command did all that.
+
+    ## Step 3 — Dispatch by task files
+    Each subagent gets exactly one input: the path to its task file + "read `## Scope` and `## Context`,
+    load the directive from `track.directive` (see `## Scope`), run the probes from `focus`, fill
+    `## Findings` / `## Candidates` / `## Verdict` per the file schema, set `status: filled`". Report —
+    VCS-flavored markdown (GitLab/GitHub), diagrams — mermaid (in the file; not to chat, see Step 4).
+    `mode: inline` → no subagents, you fill the single `tasks/review.task.md`. Wait for ALL subagents.
+    Gate after filling: `inbox-review-plan --validate <dir>`. `{ok: false}` → errors are file-scoped
+    (`errors[].file`). Return to the SPECIFIC subagent its file + ITS errors (targeted retry, not the
+    whole pipeline), max 1 retry. Same file fails twice → escalate to the operator (show errors), do not
+    post.
+
+    ## Step 4 — Synthesis
+    Read ALL task files IN FULL, from disk (not subagent retellings — context may have compressed).
+    Assemble ONE report per the Golden Example and write it to `README.md` in the same report dir:
+    1. Header — markdown link `[ref](webUrl)` + title.
+    2. **Change map FIRST** (`AX_CHANGE_MAP`): entity graph (colour by change type + files annotated +
+       greyed neighbors + "что произошло" caption). Even a one-line MR → a minimal map. Below: size line
+       + category table + secondary file map. The diagram in `README.md` is Mermaid (validator requires
+       it).
+    3. Large MR → a separate C4; small/medium → the map from item 2 replaces it (do not duplicate).
+    4. Flow diagrams (non-trivial scenarios).
+    5. Entities: [E1]..[EN] with verdicts (✅⚠️❌), role, rationale.
+    6. Relationships & risks: [R-IDs], 🎯🧪💥🖐🚀📊.
+    7. Verdict table.
+    8. Comment candidates: ID/File/Line/Problem/Axis/Kind table.
+    9. Footer — repeat the `[ref](webUrl)` markdown link.
+    Append an entry to `HISTORY.md` (append-only: date, `headSha`, full/delta mode, outcome, links to
+    this visit's task files).
+    **Gate before chat output:** `inbox-review-plan --validate <dir>` (filled) now requires ≥1 Mermaid
+    diagram in `README.md` (Архитектура non-empty). `{ok:false}` with "no diagram" → the diagram was
+    forgotten, go back and draw it, do NOT output to chat. The diagram cannot be skipped — code gate.
+    **Chat is a projection of the validated `README.md`, not a fresh composition.** After `{ok:true}`
+    emit to chat what is in the README: change map + file map + verdicts, converting Mermaid → widget
+    (if `mcp__visualize__show_widget` present) or ASCII (fallback, action 0). The README diagram MUST
+    reach chat — since the validator confirmed it in the document, skipping it in chat is defective. Do
+    not paste raw md/`mermaid` into chat (chat does not render it). Links — markdown `[…](…)` (invariant
+    6). Files — for the VCS/orchestration, chat — for the operator (rule 8).
+
+    ## STOP-CHECK (before chat output)
+    Run the SelfCheck from `RE_READ("arch-interrogation.directive.xml")` (items 0–6), plus:
+    | # | Check | ok? |
+    |---|-------|-----|
+    | 0c | Prior discussion loaded (vcs-discussions) or explicitly "no threads" | □ |
+    | — | `reviewPlanRequired == true` → `inbox-review-plan --scaffold` called with the right `--base`, task files materialized | □ |
+    | — | Split plan shown (track → N files → subagent/inline) | □ |
+    | — | `--validate --stage enriched` passed BEFORE dispatch, `--validate` (filled) BEFORE synthesis | □ |
+    | — | Synthesis (README.md/HISTORY.md) assembled from task files on disk, not from retellings | □ |
+    | — | `--validate` (filled) passed: README has ≥1 Mermaid diagram (no "no diagram") | □ |
+    | — | Change map (`AX_CHANGE_MAP`) is the FIRST visual; at least one diagram even for a one-line MR | □ |
+    | — | Chat is a projection of the validated README (map + diagram projected to widget/ASCII); the README diagram reached chat | □ |
+    | — | Header and footer of chat output — markdown `[ref](webUrl)` (clickable); artifact paths too (invariant 6) | □ |
+    | — | Relational rendered by the medium per action 0 — widget if present, ASCII only as fallback (invariant 2) | □ |
+    Any □ empty → go back. Especially: if `reviewPlanRequired` was `true` and task files are not
+    materialized — that violates `H_NO_REVIEW_PLAN`, go back to Step 2.
+  </ReviewPipeline>
 </InboxFlow>

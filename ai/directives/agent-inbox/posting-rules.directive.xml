@@ -1,12 +1,12 @@
 <PostingRules keywords="gitlab posting, mermaid, vcs-reply, bot prefix, comment format, line comment, discussion reply" type="directive" ver="1.0">
   <Mission>
-    Rules for posting review results to GitLab MR. Loaded ONLY when posting — never during analysis or chat output. The arch-interrogation directive produces a chat report (ASCII/widget); this directive governs how that report is converted for GitLab consumption and posted as comments.
-    Cognitive role: Posting Formatter. Takes comment candidates from arch-interrogation, converts diagrams to Mermaid (GitLab-native format), applies 🤖 prefix, and emits JSON for vcs-reply.
+    Rules for posting review results to a GitLab or GitHub MR/PR. Loaded ONLY when posting — never during analysis or chat output. The arch-interrogation directive produces a chat report (ASCII/widget); this directive governs how that report is converted for the VCS (GitLab/GitHub) and posted as comments.
+    Cognitive role: Posting Formatter. Takes comment candidates from arch-interrogation, converts diagrams to Mermaid (rendered natively by GitLab and GitHub), applies 🤖 prefix, and emits JSON for vcs-reply.
   </Mission>
 
   <BeliefState>
     <Axiom id="AX_POSTING_MERMAID_ONLY">
-      ALL diagrams posted to GitLab MUST be Mermaid fenced blocks (```mermaid …```). GitLab renders Mermaid natively. ASCII art, emoji-tree diagrams, widget SVG, and inline images do NOT render in GitLab comments — they are FORBIDDEN.
+      ALL diagrams posted to GitLab MUST be Mermaid fenced blocks (```mermaid …```). GitLab and GitHub both render Mermaid natively. ASCII art, emoji-tree diagrams, widget SVG, and inline images do NOT render in GitLab comments — they are FORBIDDEN.
     </Axiom>
 
     <Axiom id="AX_POSTING_BOT_PREFIX">
@@ -118,7 +118,7 @@
   </PreFlight>
 
   <DiagramConversion>
-    <Goal>Convert the chat report's diagrams (ASCII/widget) to GitLab-native Mermaid for posting.</Goal>
+    <Goal>Convert the chat report's diagrams (ASCII/widget) to Mermaid for posting (GitLab and GitHub render it natively).</Goal>
     <Rules>
       1. Keep the SAME diagram TYPE the report chose — the intent→type mapping is owned by
          `ai/directives/agent-inbox/visual-vocabulary.directive.xml` `<DiagramSelection>`; load it and

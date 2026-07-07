@@ -1,45 +1,48 @@
 ---
 name: agent-inbox
-description: Интерактивный ассистент по входящим GitLab MR, где я ревьювер/упомянут. Интенты list/tick/loop/reset. list — интерактивный разбор (Ask, диалог, постинг через vcs-reply после согласования). tick (=once/sync) — один проход без диалога, показывает дельту (что нового). loop — повторение tick планировщиком (частота задаётся снаружи). reset — чистый лист. Use when пользователь говорит «agent-inbox», «разбери входящие», «inbox list», «inbox tick», «что от меня ждут по ревью».
+description: Интерактивный ассистент по входящим GitLab/GitHub MR/PR, где я ревьювер/упомянут. Интенты list/tick/loop/reset. list — интерактивный разбор (Ask, диалог, постинг после согласования). tick (=once/sync) — один проход без диалога, показывает дельту (что нового). loop — повторение tick планировщиком. reset — чистый лист. Use when пользователь говорит «agent-inbox», «разбери входящие», «inbox list», «inbox tick», «что от меня ждут по ревью».
 license: MIT
 compatibility: opencode
 ---
 
 <Skill name="agent-inbox">
   <Mission>
-    Вести ревью входящих GitLab MR как со-ревьювер: ввести в контекст → честный факт-чек →
-    инфографика «что произошло» → готовый ответ/замечания → постинг ПОСЛЕ согласования оператора.
-    Роль — ревьювер/упомянут; свои MR — self-review сводка. Один скилл: сам распознаёт интент и
-    подгружает нужные правила.
+    Drive review of incoming merge/pull requests as a co-reviewer: bring the change into context →
+    honest fact-check → infographic of WHAT changed → a ready answer / line-comments → post ONLY
+    after the operator approves. Role — reviewer / mentioned; my own MR/PR — self-review summary.
+    One skill: it detects the intent and loads the rules it needs. VCS-neutral — GitLab and GitHub
+    (provider auto-detected from host); this door never hardcodes one provider.
   </Mission>
 
   <Priming>
-    Директивы под `ai/directives/agent-inbox/` — это ПРОМПТЫ, не данные: теги размечают секции
-    (`Mission`, `AX_*`, `ExecutionPlan`, `HaltConditions`), тело — инструкция, которую ты ВОПЛОЩАЕШЬ,
-    а не парсишь.
-    `INCLUDE_ONCE("path")` = прочитай файл сам ОДИН раз за сессию.
-    `RE_READ("path")` = прочитай заново СЕЙЧАС, даже если уже читал (для правил, что важно освежать
-    перед каждым MR).
+    Files under `ai/directives/agent-inbox/` are PROMPT directives, not data: the tags mark sections
+    (`Mission`, `AX_*`, `ExecutionPlan`, `HaltConditions`); the body is instruction you EMBODY, not
+    parse. Operator-facing output language is governed by `AX_OPERATOR_LANGUAGE` (Russian), never by
+    the language of this file.
+    `INCLUDE_ONCE("path")` = read the file yourself ONCE per session.
+    `RE_READ("path")` = read it again NOW even if already read (for rules that must be refreshed
+    before each MR/PR).
   </Priming>
 
   <ExecutionPlan>
     <Step id="GATHER">
-      Прочитай целиком `ai/directives/agent-inbox/inbox-flow.directive.xml` — весь рабочий процесс:
-      инварианты сессии, интенты, презентацию инбокса, жёсткие правила, VCS-инструменты, карту
-      действий, конвейер разбора одного MR и финализацию. Ты ВОПЛОЩАЕШЬ эту директиву.
+      Read in full `ai/directives/agent-inbox/inbox-flow.directive.xml` — the whole working process:
+      session invariants, intents, inbox presentation, hard rules, VCS tools, action map, the
+      single-MR review pipeline, and finalization. You EMBODY this directive.
     </Step>
     <Step id="PREFLIGHT">
-      `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`. Ответ содержит `"configured": false`
-      → не выходи: setup-флоу из inbox-flow (два `AskUserQuestion` — `reposBase`, затем `vcsHost` →
-      `inbox config --set` → повтор). `"configured": true` → к EMBODY. Не из GitLab-репозитория →
-      `--vcs-host=<host>` во все вызовы; нужен `GITLAB_PERSONAL_TOKEN`.
+      Run `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`. Response has
+      `"configured": false` → do NOT exit: run the setup flow from inbox-flow (two `AskUserQuestion`
+      — `reposBase`, then `vcsHost` → `inbox config --set` → retry). `"configured": true` → EMBODY.
+      Not inside a repo → pass `--vcs-host=<host>` on every call. Token: `GITLAB_PERSONAL_TOKEN` or
+      `GITHUB_PERSONAL_TOKEN`/`GITHUB_TOKEN`, by provider (auto-detected from host).
     </Step>
     <Step id="EMBODY">
-      Определи интент из сообщения оператора и следуй inbox-flow: `list` (по умолчанию —
-      интерактивный разбор) · `tick` (один немой проход, дельта) · `loop` (планировщик повторяет
-      tick) · `reset` (`inbox --reset`). Разбор одного MR, постинг и self-review — их правила
-      inbox-flow подгружает по ходу (`posting-rules`, `arch-interrogation`, `visual-vocabulary`,
-      `update-review`). Держи инварианты сессии до конца, даже после компрессии контекста.
+      Detect the intent from the operator message and follow inbox-flow: `list` (default —
+      interactive review) · `tick` (one silent pass, delta) · `loop` (scheduler repeats tick) ·
+      `reset` (`inbox --reset`). Single-MR analysis, posting, and self-review — inbox-flow loads
+      their rules on the way (`posting-rules`, `arch-interrogation`, `visual-vocabulary`,
+      `update-review`). Hold the session invariants to the end, even after context compression.
     </Step>
   </ExecutionPlan>
 </Skill>
