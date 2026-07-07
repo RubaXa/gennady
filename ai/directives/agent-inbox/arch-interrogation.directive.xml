@@ -39,7 +39,7 @@
     <Axiom id="AX_CHANGESET_SCALE">
       Size sets the level of attention before any verdict: the bigger the changeset, the more scrutiny it earns. The report MUST open with a quantified, honest scope summary so the reviewer sizes the MR at a glance — never just a link and a title.
 
-      **Scale gates COST (inline vs fan-out), never depth of thought.** A NEW entity introduced by a one-line diff still receives the full battery: one new helper is an architecture change, and the question "does the repo already have ten of these — should the author refactor instead" is mandatory at any diff size. Review judges the whole system, not the changed lines: even a single edited line is a reason to ask why it had to change — the problem may sit deeper than the edit. Conversely, a pure typo fix has no architecture to interrogate (H_EMPTY_INVENTORY): the inventory step decides depth by the NATURE of the change, not by line count.
+      **Scale gates COST (inline vs fan-out), never depth of thought.** A NEW entity introduced by a one-line diff still receives the full battery: one new helper is an architecture change, and the question "does the repo already have ten of these — should the author refactor instead" is mandatory at any diff size. Review judges the whole system, not the changed lines: even a single edited line is a reason to ask why it had to change — the problem may sit deeper than the edit. Conversely, a pure typo fix has no architecture to interrogate (H_EMPTY_INVENTORY): the inventory step decides depth by the NATURE of the change, not by line count. Scale DOES gate one more thing — **visualization richness** (`AX_COMPREHENSION_LADDER`): the bigger/more complex the MR, the more diagrams the report leans on; a trivial change still gets a floor (where it sits + which scenario), never nothing.
 
       **Lead with comprehension, not counting.** The reviewer's #1 challenge is understanding WHAT changed and WHY, not how many lines (Bacchelli & Bird 2013; Google MCR 2018). So the headline is the **change map** (see `AX_CHANGE_MAP`), NOT a line tally. Line/file counts are a size-and-risk PROXY only (review quality falls past ~400 LOC/session — SmartBear/Cisco): keep them to ONE compact line — `**Размер:** {малый/средний/крупный} · N файлов · +X/−Y · M новых` — plus a by-category table so a big `+N` of assets is not misread as logic. Never make the counts the main visual; in SDD a 1000-line spec diff says little about review effort.
 
@@ -74,11 +74,21 @@
          scenario from the MR description and linked ticket. If none is stated, reconstruct it from
          the code and mark it «предполагаемый сценарий — подтвердите», never present an inferred
          scenario as fact.
-      Trivial change (typo / pure config, `H_EMPTY_INVENTORY`-adjacent): collapse to change map + one
-      line "зачем"; skip C4/behaviour/use-cases (nothing to interrogate). Non-trivial: the full
-      ladder. The synthesis validator (`inbox-review-plan --validate`) enforces the C4 diagram in
-      `README.md` and that the Поведение/Сценарии sections are filled or explicitly `n/a — <reason>`,
-      so a rung cannot be silently dropped.
+      **Adaptive — visualization depth scales with MR size/complexity** (thinking depth does not, per
+      `AX_CHANGESET_SCALE`; this is about OUTPUT richness). The bigger and more complex the MR, the
+      more the report leans on visuals:
+      - **Large / multi-container / many entities:** richer C4 (system view + drill-down sub-diagrams
+        per area), MULTIPLE behaviour flows (one per non-trivial scenario), several use-cases. The
+        harder it is to hold in the head, the more diagrams carry the load.
+      - **Small / medium:** the compact 4-rung ladder, one diagram per rung.
+      - **Trivial (typo / one-liner / pure config):** a FLOOR, never nothing — a minimal change map
+        that shows WHERE it sits (the touched node + its neighbour/component) AND one line naming WHICH
+        product scenario it touches («затрагивает сценарий …»). C4 and behaviour may be `n/a — <reason>`
+        (no structure/behaviour changed), but the reviewer still sees where the typo lives and what it
+        is part of — a bare "typo fixed" with no overview is not enough.
+      The synthesis validator (`inbox-review-plan --validate`) enforces the C4 diagram in `README.md`
+      and that the Поведение/Сценарии sections are filled or explicitly `n/a — <reason>`, so a rung
+      cannot be silently dropped; the adaptive richness above the floor is on the reviewer.
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
