@@ -142,6 +142,7 @@
     | Posting | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
     | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
     | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
+    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode outcome (B): write architecture description into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent |
     | Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (or `--id <todoId>`) | clear the pending todo (finalization) |
 
     **`vcs-reply` (JSON array).** reply/line/suggestion forms —
@@ -170,7 +171,7 @@
     |---|---|
     | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 💯 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 💯 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
     | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
-    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode → overview → one consolidated summary comment (🤖, Mermaid overview, scope, what was checked, "ready for review") → cross-check with reviewers via `vcs-discussions --json` → replies/resolve in reviewers' threads per ReactionMatrix |
+    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode → SAME full battery + comprehension ladder as a reviewer (author status never lowers depth) → readiness preflight → cross-check reviewers (`vcs-discussions --json`, ReactionMatrix) → finalization Ask, two ready outcomes: (A) hand-off block of findings for a dev agent · (B) "запускаем как есть" → architecture description appended to MR body via `vcs-mr-edit --description` (read body, append, `--dry-run`, apply on consent) |
     | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
   </ActionMap>
 

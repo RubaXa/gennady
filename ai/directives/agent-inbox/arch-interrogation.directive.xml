@@ -350,28 +350,35 @@
 
   <AuthorMode>
     <Mission>
-      Self-review: interrogate own changes through the readiness-for-review lens instead of adversarial architecture review. Produce a structured summary for reviewers — not a design critique.
-      Consumer: the `agent-inbox` skill, `author` role. Loaded when `myRole=author` — replaces the full adversarial interrogation battery with readiness checks + reviewer cross-check.
+      Self-review of my OWN MR. Depth is IDENTICAL to the reviewer role — the full battery runs:
+      the three lenses (arch / change / security interrogation) plus the comprehension ladder.
+      Author status NEVER lowers rigor (`AX_CHANGESET_SCALE`: scale gates COST, not depth of thought).
+      If anything the author, holding the full intent, is the one who can answer "what was NOT done
+      instead, and why" most honestly — that is the highest-leverage moment of self-review, not a
+      formality. Role changes only what happens to a finding downstream (fix it myself / hand it off /
+      document the rationale), never whether the finding is produced. A readiness checklist is a cheap
+      preflight ON TOP of the interrogation, never a replacement for it.
+      Consumer: the `agent-inbox` skill, `author` role. Loaded when `myRole=author`.
     </Mission>
 
     <ExecutionPlan>
-      <Step id="AUTHOR_STEP_1_READINESS_CHECK">
-        <Goal>Verify the MR is ready for review.</Goal>
+      <Step id="AUTHOR_STEP_1_FULL_INTERROGATION">
+        <Goal>Run the exact review a strict reviewer would — full depth, no softening because the code is mine.</Goal>
         <Action>
-          1. **Полнота описания:** ≥3 полных предложения (что сделано / зачем / как). Короче → verdict ❌, блок «Описание».
-          2. **Покрытие тестами:** ≥1 тест на каждый изменённый файл кода (не docs/config). Пропуск → verdict ❌, указать файлы без тестов.
-          3. **Отладочный код:** поиск `console.log`, `debugger`, `TODO` без ссылки на тикет. Найдено → verdict ❌, указать файл/строку.
+          1. Execute the entire reviewer battery on my diff: entity interrogation (`STEP_0`..`STEP_4` above),
+             the change- and security-interrogation lenses gated by the nature of the change, and the
+             comprehension ladder (change map + C4 always + behaviour + use-case) per `AX_COMPREHENSION_LADDER`.
+          2. Produce the SAME candidate list and verdicts a reviewer would — grounded per `AX_GROUNDED_IN_REPO`,
+             default-`unjustified` per the verdict ladder. Being the author is not a reason to upgrade a verdict.
         </Action>
       </Step>
 
-      <Step id="AUTHOR_STEP_2_ASSEMBLE_SUMMARY">
-        <Goal>Produce a compact reviewer-facing summary.</Goal>
+      <Step id="AUTHOR_STEP_2_READINESS_PREFLIGHT">
+        <Goal>Cheap mechanical gate layered on top of the interrogation — never a substitute for it.</Goal>
         <Action>
-          1. **Шапка:** `ref` как ссылка на `webUrl` + `title`.
-          2. **Readiness checklist:** три пункта (описание / тесты / отладка) с ✅ или ❌ и кратким пояснением.
-          3. **Карта файлов:** по папкам, иконки (🆕/✏️/🗑️/↪︎), ± строки.
-          4. **Таблица «Что проверил»:** колонки Check / Result / Notes. Каждый пункт — что автор проверил перед тем как отдать ревьюерам.
-          5. **Вердикт:** ready-for-review / needs-work (с указанием что доделать).
+          1. **Полнота описания:** ≥3 полных предложения (что / зачем / как).
+          2. **Покрытие тестами:** ≥1 тест на каждый изменённый файл кода (не docs/config); указать файлы без тестов.
+          3. **Отладочный код:** `console.log`, `debugger`, `TODO` без ссылки на тикет — указать файл/строку.
         </Action>
       </Step>
 
@@ -382,20 +389,37 @@
           2. Для каждого reviewer-треда: согласен → 👍 + reply.
              Согласен и исправил → 👍 + reply «согласен, уже исправил в &lt;sha&gt;» (SHA уже в репозитории, агент не коммитит — NFC-01).
              Не согласен → reply с объяснением.
-          3. После сверки — обновить сводку (пометить что учтено, что оспорено).
-          4. Постинг — через `posting-rules.directive.xml` (включая &lt;ReactionMatrix&gt; для author-реакций).
+          3. После сверки — пометить что учтено, что оспорено.
+          4. Постинг — через `posting-rules.directive.xml` (&lt;ReactionMatrix&gt; для author-реакций).
+        </Action>
+      </Step>
+
+      <Step id="AUTHOR_STEP_4_DECISION_HANDOFF">
+        <Goal>Give the operator a decision, not a dump. One finalization Ask (co-reviewer contract), two ready outcomes.</Goal>
+        <Action>
+          Present ONE Ask package with two prepared branches (they may be combined — hand off some, document the rest):
+          - **(A) Передать на исправление.** Emit the findings as a self-contained hand-off block a
+            development agent can act on WITHOUT this session — per finding: `файл:строка`, что не так,
+            почему, предлагаемая правка. Default when the interrogation found blocking issues.
+          - **(B) Запускаем как есть.** Build the architecture description from the comprehension ladder
+            (карта изменения + C4 + поведение + сценарии) as MR-body markdown. Offer to write it into the
+            MR description via `vcs-mr-edit --url &lt;webUrl&gt; --description &lt;body&gt;` — this REPLACES the whole
+            body, so first read the current description, APPEND the architecture section, run `--dry-run`,
+            then apply on operator consent. Right choice when findings are non-blocking / already justified.
+          Description edit and any posting happen ONLY after operator consent — never automatic.
         </Action>
       </Step>
     </ExecutionPlan>
 
     <OutputFormat>
-      One consolidated self-review summary, Russian per AX_OPERATOR_LANGUAGE. Structure:
+      One consolidated self-review, Russian per `AX_OPERATOR_LANGUAGE`. Structure:
       1. **Шапка:** ref→webUrl + title.
-      2. **Readiness checklist:** таблица из трёх строк (Описание / Тесты / Отладка) с ✅/❌ и примечанием.
-      3. **Карта файлов:** иконки + ± строки, группировка по папкам.
-      4. **Что проверил:** таблица Check / Result / Notes.
-      5. **Вердикт:** ready-for-review / needs-work + итог сверки с ревьюверами (если есть).
-      6. **Подвал:** ссылка на webUrl.
+      2. **Карта изменения + лесенка понимания:** change map + C4 + поведение + сценарии (as any review).
+      3. **Находки:** full candidate list + verdicts — identical depth to a reviewer's, grounded.
+      4. **Readiness preflight:** таблица из трёх строк (Описание / Тесты / Отладка) с ✅/❌ и примечанием.
+      5. **Сверка с ревьюерами:** что учтено / что оспорено (если треды есть).
+      6. **Решение (Ask):** (A) хэндофф-блок на исправление · (B) архитектурное описание для тела MR. Обе — готовые пакеты.
+      7. **Подвал:** ссылка на webUrl.
     </OutputFormat>
 
     <HaltConditions>
@@ -403,6 +427,7 @@
       |---|---|
       | `H_AUTHOR_NO_DIFF` | No diff to self-review |
       | `H_AUTHOR_VCS_DISCUSSIONS_FAIL` | Cannot fetch reviewer discussions |
+      | `H_AUTHOR_DESC_EDIT_FAIL` | Outcome (B) chosen but `vcs-mr-edit` unavailable/failed → report, do not silently drop |
     </HaltConditions>
   </AuthorMode>
 </ArchInterrogation>
