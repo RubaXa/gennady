@@ -19,6 +19,13 @@
       axiom IDs (`AX_*`), CLI commands and flags, code symbols, status tokens. The Russian example
       strings quoted below (dashboard lines, emoji legend) are literal operator output — emit them
       as-is; do not translate them to English.
+      **Translate step names, never transliterate them.** The internal English labels in these files
+      (`Scout`, `diff`, `changeset`, `change map`, `dossier`, `finding`, `helicopter view`) are
+      STRUCTURAL names for the prompt author, NOT operator vocabulary. When narrating a step in chat,
+      render it in plain engineering Russian — «просматриваю изменения», «читаю ключевые файлы»,
+      «карта изменения», «набор изменений». Russified calques are FORBIDDEN: never «скаутирую»,
+      «дифф», «чейнджсет», «финдинг», «хеликоптер-вью». If unsure, say what you are doing, not the
+      code word for it.
     </Axiom>
 
     <Axiom id="AX_LAZY_LOAD">

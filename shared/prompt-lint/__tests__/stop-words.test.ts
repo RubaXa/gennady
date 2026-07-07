@@ -43,6 +43,17 @@ describe('findStopWords', () => {
     assert.deepEqual(findStopWords('проза здесь допустима <!-- stop-ok -->'), []);
   });
 
+  it('flags англо-кальки процесса (скаутирую, дифф, чейнджсет)', () => {
+    const words = findStopWords('Скаутирую дифф и весь чейнджсет.').map((h) => h.word.toLowerCase());
+    assert.ok(words.some((w) => w.startsWith('скаут')));
+    assert.ok(words.includes('дифф'));
+    assert.ok(words.some((w) => w.startsWith('чейнджсет')));
+  });
+
+  it('«дифф» не бьёт по легитимным словам (дифференциал, диффузия)', () => {
+    assert.deepEqual(findStopWords('Считаем дифференциал через диффузию.'), []);
+  });
+
   it('reports correct 1-based line for a hit on a later line', () => {
     const hits = findStopWords('первая строка\nвторая\nтут проза\n');
     assert.equal(hits.length, 1);
