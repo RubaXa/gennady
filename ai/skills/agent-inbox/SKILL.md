@@ -30,6 +30,15 @@ compatibility: opencode
    GitLab). Не выводи разметку, которую чат не отрисует.
 3. **Язык — всегда русский** (код/идентификаторы/пути/CLI/токены — English); регистр и детали —
    `AX_OPERATOR_LANGUAGE`.
+4. **Со-ревьювер, не секретарь.** К каждому треду и кандидату приходи с ГОТОВЫМ решением и
+   текстом — вопрос «что делаем?» без твоего предложенного решения запрещён. Ask — только в трёх
+   точках: выбор задачи (если я не назвал) · финализация ОДНИМ пакетом (шаги 6–7) · настоящая
+   неоднозначность (спорный вердикт, кандидат-пинг из `ThreadModel`). Я отвечаю «да, всё верно»,
+   снимаю галочку или правлю текст через Other — но решение предлагаешь ты.
+5. **Повторный заход — сначала дельта.** `headChanged.kind != "none"` → ДО всего остального
+   покажи визуально «что нового с прошлого раза»: новые коммиты (sha + subject), какие файлы они
+   изменили, новые ответы в тредах. Оператор должен увидеть, что автор поменял в последний момент,
+   раньше любых вердиктов.
 
 ## Интенты
 
@@ -105,7 +114,7 @@ compatibility: opencode
 
 **Политика:**
 - **Suggestion** — точную механическую правку с известным итогом (опечатка `TYPO`, очевидная замена) → suggestion, не проза. Спорное → замечание с вопросом.
-- **Resolve** — когда вопрос исчерпан (я ответил / автор поправил и я согласен). Не резолвить там, где не ответил или спор открыт. Обычно reply+resolve вместе.
+- **Resolve — только СВОИ треды** (`ThreadModel` в posting-rules; исключение — треды на моём собственном MR). Чужой правильный тред → 💯 без резолва, владелец закроет сам. Свой тред закрывается когда достигнута ЕГО цель (fix виден в диффе / ответ получен), не когда разговор затих. Формат → `AX_POSTING_SILENT_RESOLVE`: 👍 + resolve БЕЗ тела (no body). Текст — только если нужен ответ по существу (несогласие, уточнение).
 - **Approve / `--revoke`** — апрув только без моих блокирующих замечаний; `--revoke`, если MR изменился после approve или нашлась проблема. Approve по MR, resolve по треду — разное.
 - **Править/удалять — только свои** заметки (`noteId` из `vcs-discussions --json`).
 - **Todo done** — после реакции `vcs-todo --done <ref> --url <webUrl>`.
@@ -146,7 +155,7 @@ compatibility: opencode
 
 | роль / стадия | механизм |
 |---|---|
-| `reply_needed` | факт-чек собеседника → краткий ответ → Ask → `vcs-reply` (reply; при закрытии — reply+resolve) |
+| `reply_needed` | `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → факт-чек ВСЕХ дискуссий (`vcs-discussions --all --json`, не только `--my`) → каждому треду owner/goal/nextActor/status → мой тред + fixed-in-code → 👍 + resolve silently; мой тред + not-fixed → reply (автор молчит → правило PING_POLICY, не резолвить и не пинговать автоматически); чужой тред + согласен → 💯 БЕЗ resolve (владелец закроет); мой дубликат чужого → resolve СВОЙ + 💯 чужому; не согласен → reply с позицией; частичные ответы автора → пропущенные треды `waiting-author`, действие НЕТ («ждут автора: N»). all-fixed-no-new → approve |
 | `review_needed` (первый ревью) | контекст → `arch-interrogation` + сабагент со своими скиллами code-review → helicopter-отчёт+вердикты → постинг (спека = 1 коммент к строке 1; код = line, точные правки = suggestion; уже поднятое = reply в тред; разобранное = resolve) → чисто = `vcs-approve` |
 | `author` (свой MR) | `RE_READ("ai/directives/agent-inbox/arch-interrogation.directive.xml")` AuthorMode → overview → **общий комментарий-сводка** (🤖, Mermaid-overview, scope, что проверил, «готово к ревью») → сверка с ревьюверами через `vcs-discussions --json` → ответы/резолв в тредах ревьюеров по ReactionMatrix |
 | `awaiting_reply` / `idle` | ничего — скрыто кодом, в actionable-списке нет (видно под `--all`) |
@@ -177,8 +186,13 @@ compatibility: opencode
 4. **Анализ.** Конвейер разбора одного MR — `RE_READ("ai/skills/agent-inbox-take/SKILL.md")`.
    **Жёсткий гейт:** `arch-interrogation` `H_NO_REVIEW_PLAN` — если `reviewPlanRequired == true`, план ревью должен быть загружен ДО любого анализа (через `inbox-review-plan`).
    **Всегда план:** первый ревью → полный план (`--base <worktree.base>`); fast_forward → дельта-план (`--base <lastReviewedHeadSha>`); rewritten → полный план заново.
+   **Всегда драфты (Step 0a take/SKILL.md):** ДО ревью — `vcs-discussions --my --with-drafts` (вектор расследования). ПОСЛЕ ревью — `vcs-draft-note --delete-all` + `vcs-discussions --all` (сверка).
    Карта изменений (инвариант 1), затем:
-   - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
+   - `reply_needed`/`awaiting` → факт-чек ВСЕХ тредов, ревью НЕ запускаешь (шаг 5):
+     1. `vcs-discussions --all --json` (НЕ `--my`) — загрузить все дискуссии
+     2. Каждому треду — аннотация по `<ThreadModel>` из `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`: owner (мой/чужой/автора), goal (что тред хотел добиться), nextActor (чей ход), status. Затем ReactionMatrix + PreFlight
+     3. Проверить факт по коду (diff/worktree), не по словам автора
+     4. Сформировать список действий (resolve своих / 👍 / 💯 / reply); треды `waiting-author` — в сводку «ждут автора: N», без действия и без пинга (PING_POLICY);
    - `review_needed` + `headChanged.kind == "fast_forward"` + моё ревью существует (мои треды из `vcs-discussions --my --with-drafts` непусты или я в `approvedBy`) → `INCLUDE_ONCE("ai/directives/agent-inbox/update-review.directive.xml")` — проверка обновлений (сверка старых замечаний с новым диффом, поиск новых проблем). Полный `arch-interrogation` НЕ запускается, код-ревью сабагентом НЕ запускается.
    - `review_needed` (первый ревью / `headChanged.kind == "none"` / `headChanged.kind == "rewritten"` / fast_forward без моего ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
      запустить свои скиллы code-review (какие есть в харнессе) по диффу `base..HEAD` (баги/
@@ -193,18 +207,20 @@ compatibility: opencode
    Входы директиве/сабагенту: `ref`/`webUrl`, `diff_refs`, `path`/`base`, `prior_threads`/
    `my_drafts`/`my_login`, список файлов дорожки (см. `InputContract`). Структуру/визуал/оси/
    вердикты/кандидатов не пересказывай — они в директиве.
-5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → один краткий ответ, не уверен → ⚠,
-   исчерпан → reply+resolve. `review_needed`: вердикты из директивы; виды (`kind`) —
+5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → применить `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` PreFlight к каждому кандидату СТРОГО по цепочке 0→5 (STOP на первом match; правила владения и закрытия — `<ThreadModel>`). `review_needed`: вердикты из директивы; виды (`kind`) —
    `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CandidateTagging.
    `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»);
    реакции на треды ревьюеров — по `<ReactionMatrix>` из `posting-rules.directive.xml`.
-6. **Контроллер.** `AskUserQuestion` «Дальше по MR?»: углубиться в сущность/файл · вопрос по коду ·
-   к действиям (шаг 7) · следующий MR. На «углубиться/вопрос» — ответь и снова покажи контроллер.
-7. **Меню действий** (`AskUserQuestion` `multiSelect`, ≤4 + Other; можно несколько). Ревьювер:
-   запостить замечания/suggestion (2-й `multiSelect` по кандидатам `[E3] file:line — суть`, текст
-   рядом) · закрыть треды (resolve) · approve/`--revoke` · пропустить. Автор: запостить сводку ·
-   ответить/закрыть треды ревьюеров · пропустить. Approve и замечания — можно вместе. Это финализация;
-   пропуск — только явной галочкой.
+6. **Решение (выжимка со-ревьювера, инвариант 4).** Не спрашивая, покажи готовое решение одним
+   блоком: по каждому треду/кандидату — действие (👍/💯/resolve/reply/line-comment/suggestion/
+   approve) и готовый текст рядом; отдельной строкой — «ждут автора: N (не пинговать)» и «пропущено:
+   что и почему». Это твоё заключение как ревьювера — оператор должен смочь сказать просто «да».
+7. **Один Ask на весь пакет** (`AskUserQuestion` `multiSelect`, ≤4 + Other; можно несколько).
+   Пункты пакета из шага 6 с текстами рядом (галочка = согласие на показанный текст); плюс опции
+   «углубиться в сущность/вопрос по коду» и «пропустить MR». Оператор снимает лишнее, через Other
+   правит текст или добавляет свою строчку. На «углубиться/вопрос» — ответь и снова покажи пакет
+   (обновлённый). Approve и замечания — можно вместе. Это финализация; пропуск — только явной
+   галочкой. Отдельного «контроллера» перед пакетом нет — решение и меню приходят вместе.
 8. **Постинг live** — `RE_READ("ai/skills/agent-inbox-post/SKILL.md")`.
    Через `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
    `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
