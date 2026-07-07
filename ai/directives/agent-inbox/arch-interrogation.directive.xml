@@ -234,12 +234,12 @@
 
          0. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
          0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
-         1. **Шапка** — первая строка: `ref` как кликабельная ссылка на `webUrl`, затем `title`. ✗/✓
+         1. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
          2. **Обзор** — строка «Размер: …», таблица категорий (Код/Тесты/Доки/Конфиг/Ассеты), карта файлов с иконками (🆕/✏️/🗑️/↪︎) и ± строками. ✗/✓
          3. **C4-диаграмма** — контейнеры с вердикт-цветом (✅⚠️❌), внешние системы, легенда. ASCII или виджет. ✗/✓
          4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
          5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Kind. ✗/✓
-         6. **Подвал** — повтор ссылки на `webUrl`. ✗/✓
+         6. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
 
          Если все пункты ✓ — отдавай отчёт оператору.
        </SelfCheck>
@@ -251,7 +251,7 @@
 
     Document structure, top to bottom:
 
-    1. **Шапка [header] — mandatory.** First line: `ref` as a clickable link to `webUrl`, then `title`. One click from GitLab before any content.
+    1. **Шапка [header] — mandatory.** First line: `ref` as a markdown link `[ref](webUrl)` — clickable, NEVER a bare URL or plain text, so the operator jumps to the MR with one click. Then `title`.
     ---
     2. **Обзор [overview] — mandatory scope first.** Open with the quantified scope per `AX_CHANGESET_SCALE`, never just prose:
        - one headline line — `**Размер:** {малый/средний/крупный} · N файлов · +X / −Y строк · M новых файлов · K новых сущностей` — plus a half-sentence read: expansion (new files/entities) or churn, and the dominant category;
@@ -297,7 +297,7 @@
 
        **IMPORTANT:** This directive produces the candidate list ONLY. Posting format (Mermaid, 🤖 prefix, vcs-reply syntax, line-comment position fields, granularity by artifact type) is governed by `ai/directives/agent-inbox/posting-rules.directive.xml`. When the skill proceeds to posting, it MUST load that directive.
     ---
-    10. **Подвал [footer] — mandatory.** Repeats the `ref`→`webUrl` link so the operator jumps to GitLab without scrolling up.
+    10. **Подвал [footer] — mandatory.** Repeats the `[ref](webUrl)` markdown link (clickable, never a bare URL) so the operator jumps to GitLab without scrolling up.
   </OutputFormat>
 
   <AuthorMode>
