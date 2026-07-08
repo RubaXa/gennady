@@ -341,11 +341,20 @@ async function run(): Promise<number> {
     let headChanged: { kind: string; newCommitCount: number } | null = null;
     let newCommits: { sha: string; subject: string; author: string; date: string }[] | null = null;
     let lastReviewedHeadSha: string | undefined;
+    let lastApprovedHeadSha: string | undefined;
+    let myApprovalReset = false;
+
+    const iApprove = approvedBy.includes(myLogin);
 
     if (!skipWorktree && currentHeadSha) {
       const registry = loadRegistry(registryPath(stateDir));
       const entry = webUrl ? registry.entries[webUrl] : undefined;
       lastReviewedHeadSha = entry?.lastReviewedHeadSha;
+      lastApprovedHeadSha = entry?.lastApprovedHeadSha;
+
+      // Reset: I approved at some head, that approval is gone, and the head has moved (push dropped it).
+      myApprovalReset =
+        !!lastApprovedHeadSha && !iApprove && lastApprovedHeadSha !== currentHeadSha;
 
       // #region START_COMPUTE_HEAD_DELTA
       if (!lastReviewedHeadSha || lastReviewedHeadSha === currentHeadSha) {
@@ -417,7 +426,9 @@ async function run(): Promise<number> {
           firstSeenAt: prevEntry?.firstSeenAt ?? new Date().toISOString(),
           lastClassifiedAt: prevEntry?.lastClassifiedAt ?? new Date().toISOString(),
           candidateHeadSha: currentHeadSha,
-          lastReviewedHeadSha: prevEntry?.lastReviewedHeadSha,
+          // Approving is a review conclusion — promote both heads so the next delta starts here.
+          lastReviewedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastReviewedHeadSha,
+          lastApprovedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastApprovedHeadSha,
         };
         saveRegistry(registryPath(stateDir), registry);
       }
@@ -442,6 +453,8 @@ async function run(): Promise<number> {
       headChanged,
       newCommits,
       lastReviewedHeadSha: lastReviewedHeadSha ?? null,
+      lastApprovedHeadSha: lastApprovedHeadSha ?? null,
+      myApprovalReset,
       reviewPlanRequired:
         worktree !== null &&
         (stage === 'review_needed' ||

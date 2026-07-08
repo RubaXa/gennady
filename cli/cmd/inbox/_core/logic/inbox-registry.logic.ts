@@ -26,6 +26,8 @@ export type RegistryEntry = {
   candidateHeadSha?: string;
   /** @purpose HEAD SHA at the last completed review — basis for headChanged delta */
   lastReviewedHeadSha?: string;
+  /** @purpose HEAD SHA at which I last approved — set when myLogin is in approvedBy; basis for approval-reset detection */
+  lastApprovedHeadSha?: string;
 };
 
 /** @purpose The whole registry document persisted to disk. */

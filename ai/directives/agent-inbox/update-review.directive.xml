@@ -8,6 +8,7 @@
   <InputContract>
     Supplied by the consumer (from inbox-context + vcs-discussions):
     - **Required:** `ref`, `webUrl`, `headChanged` ({ kind, newCommitCount }), `newCommits` ([{ sha, subject, author, date }]), `changeset` ({ files: [{ path, status, plus, minus }], totals, byCategory }), `approvedBy`, `myLogin`.
+    - **Required:** `myApprovalReset` (bool from inbox-context) + `lastApprovedHeadSha` — true when I had approved this MR and a later push dropped my approval; `newCommits` is then the delta since my approval.
     - **Required:** `myDiscussions` — output of `vcs-discussions --url &lt;webUrl&gt; --my --with-drafts` (my threads + drafts).
     - **Optional:** `prior_threads` — full discussion context for de-duplication.
   </InputContract>
@@ -27,6 +28,18 @@
 
     <Axiom id="AX_PURE_FORMATTING_SKIP">
       If all changes in `newCommits` are formatting-only (zero semantic delta — only whitespace, indentation, line breaks, linter auto-fix), skip analysis and report "только форматирование" → suggest approve.
+    </Axiom>
+
+    <Axiom id="AX_APPROVAL_RESTORE">
+      When `myApprovalReset == true` (I had approved this MR and a later push dropped my approval) AND
+      the delta since my approval introduces NO new functionality — it is only a merge of the target
+      branch into the MR, formatting/whitespace, comments, or another non-behavioral change — then
+      RESTORE my approval automatically: `vcs-approve --url &lt;webUrl&gt;`, WITHOUT the finalization Ask.
+      I already agreed to this exact state; the reset was mechanical, so restoring it is not a new
+      decision. Still report, briefly, what changed and that the approval was restored. This is the ONE
+      operator-authorized exception to the mandatory finalization Ask (spec D62). If the delta
+      introduces ANY new functionality or behavioral code change, or the triviality is uncertain — do
+      NOT auto-approve: run the normal update analysis and go through the Ask.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
@@ -76,6 +89,7 @@
         2. Build a map from `changeset.files`: file path → { status, plus, minus }.
         3. Classify the change nature:
            - ALL files have zero semantic delta (formatting-only) → `AX_PURE_FORMATTING_SKIP` → report "только форматирование" + suggest approve, stop.
+           - `myApprovalReset == true` AND the delta introduces NO new functionality (merge of target branch / formatting / comments / non-behavioral only) → `AX_APPROVAL_RESTORE`: restore approval automatically (`vcs-approve --url &lt;webUrl&gt;`), report the restore in one line, STOP — no Ask.
            - Otherwise → proceed to STEP_1.
         4. Collect changed files grouped by category (code, tests, docs, config, assets).
       </Action>

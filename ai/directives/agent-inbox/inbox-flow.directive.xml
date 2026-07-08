@@ -68,6 +68,10 @@
        correct", uncheck an item, or edit text via Other — but you propose the decision. The
        finalization Ask is MANDATORY, including for a clean approve — never end a review with a bare
        text "recommend approve"; approve itself is a checkbox in the package the operator confirms.
+       ONE exception (`AX_APPROVAL_RESTORE`): if `myApprovalReset == true` and the delta since my
+       approval adds no new functionality (merge of target branch / formatting / comments), restore
+       the approval automatically without the Ask — I already agreed to this state and the reset was
+       mechanical. Report it after the fact. This is the only case where approve happens without Ask.
     5. **Repeat visit — delta first.** `headChanged.kind != "none"` → BEFORE anything else show,
        visually, "what is new since last time": new commits (sha + subject), which files they
        touched, new replies in threads. The operator must see what the author changed at the last
@@ -141,7 +145,7 @@
     | Tool | Command | When |
     |---|---|---|
     | List | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | start; `--all` removes the filter |
-    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | ONE call: ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, worktree, changeset, stage, threadStats. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
+    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | ONE call: ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, `myApprovalReset` (my approval was dropped by a push — see `AX_APPROVAL_RESTORE`), worktree, changeset, stage, threadStats. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
     | **Review plan** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
     | Working copy | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
     | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
@@ -344,8 +348,11 @@
        declare the medium on the first line ("чат, widget (инструмент найден)" / "чат, ASCII (виджет
        недоступен)"). Emit the change map; relational diagram — widget if present, ASCII only as fallback.
     5. **Directive choice** by `headChanged.kind` from `inbox-context`:
-       - `kind == "fast_forward"` AND my threads non-empty (or I am in `approvedBy`) →
-         `INCLUDE_ONCE("update-review.directive.xml")` — Steps 2–4 skipped, straight to synthesis.
+       - `kind == "fast_forward"` AND (my threads non-empty OR I am in `approvedBy` OR
+         `myApprovalReset == true`) → `INCLUDE_ONCE("update-review.directive.xml")` — Steps 2–4 skipped,
+         straight to synthesis. `myApprovalReset` means I had approved and a push dropped it: update-review
+         checks the delta and, if it adds no new functionality, restores the approval automatically
+         (`AX_APPROVAL_RESTORE`) — no Ask.
        - Otherwise → full `arch-interrogation` + `code-interrogation`.
 
     ## Step 2 — Review plan → task files → enrich (MECHANICAL, no agent decisions)

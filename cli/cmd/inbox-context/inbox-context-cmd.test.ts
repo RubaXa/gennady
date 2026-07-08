@@ -134,6 +134,22 @@ describe('inbox-context result shape — flat format (AI-16)', () => {
     );
   });
 
+  it('surfaces myApprovalReset + lastApprovedHeadSha (approval-reset detection, AI-38)', () => {
+    const resultBlock = CMD_SRC.slice(CMD_SRC.indexOf('const result:'));
+    assert.ok(resultBlock.includes('myApprovalReset'), 'myApprovalReset should be at root');
+    assert.ok(resultBlock.includes('lastApprovedHeadSha'), 'lastApprovedHeadSha should be at root');
+    // reset = I approved before, I am no longer an approver, and the head moved
+    assert.ok(
+      CMD_SRC.includes('!iApprove') && CMD_SRC.includes('lastApprovedHeadSha !== currentHeadSha'),
+      'reset condition must be: had approval, not approver now, head changed'
+    );
+    // approving promotes both heads so the next delta is measured from my approval
+    assert.ok(
+      CMD_SRC.includes('iApprove ? currentHeadSha : prevEntry?.lastApprovedHeadSha'),
+      'approval must record lastApprovedHeadSha'
+    );
+  });
+
   it('worktree, changeset, stage, openQuestions, lastAuthor, threadStats at root', () => {
     const resultBlock = CMD_SRC.slice(CMD_SRC.indexOf('const result:'));
     assert.ok(resultBlock.includes('worktree,'), 'worktree should be at root');
@@ -184,8 +200,10 @@ describe('inbox-context delta commits (AI-24)', () => {
       'candidateHeadSha should be set to current HEAD'
     );
     assert.ok(
-      block.includes('lastReviewedHeadSha: prevEntry?.lastReviewedHeadSha'),
-      'lastReviewedHeadSha should be preserved from previous entry'
+      block.includes(
+        'lastReviewedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastReviewedHeadSha'
+      ),
+      'lastReviewedHeadSha preserved from prev, promoted to HEAD only when I approve'
     );
   });
 
