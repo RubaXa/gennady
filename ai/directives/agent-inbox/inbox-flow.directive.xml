@@ -339,6 +339,12 @@
     - **`reply_needed`** needs none of the review battery — only `posting-rules` `<ThreadModel>` at the
       reaction step. Do not load arch/code/visual/golden for a reply-only MR.
 
+    **Pipeline gates are internal mechanics — never narrate them to the operator.** Lines like
+    "валидация enriched пройдена", "scaffolded → filled", "--validate ok" mean nothing to the operator
+    and leak the machinery. Run the `--validate --stage enriched/filled` checks silently; the operator
+    sees only the review result (change map, verdicts, decision). If you must show progress, say it in
+    plain terms ("разбор готов, свожу отчёт"), never the stage tokens.
+
     ## Step 0a — Drafts and discussion context (BEFORE review)
     Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
     1. Load drafts and my threads: `vcs-discussions --url <webUrl> --my --with-drafts --json` →
@@ -400,8 +406,12 @@
     directive (`ReviewTrack.directive`), does not classify files into tracks — the command did all that.
 
     ## Step 3 — Dispatch by task files
-    Each subagent gets exactly one input: the path to its task file + "read `## Область` and `## Контекст`,
-    load the directive from `track.directive` (see `## Область`), run the probes from `focus`, fill
+    Each subagent gets exactly one input: the path to its task file + "FIRST run `ls <worktree.path>` (the
+    root from `## Контекст`) ONCE — that single prompt approves the whole worktree, so the scoped files
+    below open without a prompt each. A subagent starts in a fresh session and has NOT approved the
+    worktree yet; it is handed a file list and would otherwise ask per file — so `ls` the root before
+    reading anything. THEN read `## Область` and `## Контекст`, load the directive from `track.directive`
+    (see `## Область`), run the probes from `focus`, fill
     `## Находки` / `## Кандидаты` / `## Вердикт` per the file schema, set `status: filled`". Report —
     VCS-flavored markdown (GitLab/GitHub), diagrams — mermaid (in the file; not to chat, see Step 4).
     `mode: inline` → still a subagent: dispatch ONE subagent with the single `tasks/review.task.md`. Do
