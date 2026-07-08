@@ -54,7 +54,6 @@ export function classifyInbox(
       lastSeenUpdatedAt: mr.updatedAt,
       firstSeenAt: prev?.firstSeenAt ?? nowIso,
       lastClassifiedAt: nowIso,
-      candidateHeadSha: prev?.candidateHeadSha,
       lastReviewedHeadSha: prev?.lastReviewedHeadSha,
     };
   }

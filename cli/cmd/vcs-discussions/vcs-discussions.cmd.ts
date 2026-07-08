@@ -133,7 +133,12 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
       iid: resolvedIid,
     })) as Array<Record<string, unknown>>;
 
-    const filtered = showAll ? discussions : discussions.filter((d) => !d.resolved);
+    const filtered = showAll
+      ? discussions
+      : discussions.filter((d) => {
+          const firstNote = (d.notes as Array<Record<string, unknown>> | undefined)?.[0];
+          return firstNote?.resolved !== true;
+        });
 
     let resultDiscussions = filtered;
     let drafts: unknown[] | undefined;
@@ -220,7 +225,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
         const line = position.new_line as number | undefined;
         extra = file + (line ? `:${line}` : '');
       }
-      if (d.resolved) extra += ' (resolved)';
+      if (firstNote.resolved) extra += ' (resolved)';
       if (!body) extra += ' (no text)';
 
       deps.stdout.write(
@@ -251,7 +256,7 @@ function mapToJson(d: Record<string, unknown>) {
     body: firstNote?.body ?? '',
     file: position?.new_path ?? undefined,
     line: position?.new_line ?? undefined,
-    resolved: !!d.resolved,
+    resolved: firstNote?.resolved ?? null,
     notes: notes.map((n) => ({
       id: n.id,
       author: (n.author as { name?: string })?.name ?? 'unknown',

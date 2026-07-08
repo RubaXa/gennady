@@ -12,11 +12,7 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
 import { logger } from '#logger';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
-import {
-  loadRegistry,
-  saveRegistry,
-  promoteReviewedHead,
-} from '../inbox/_core/logic/inbox-registry.logic.ts';
+import { loadRegistry, saveRegistry } from '../inbox/_core/logic/inbox-registry.logic.ts';
 import { resolveStateDir, registryPath } from '../inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose Options consumed by the vcs-todo main function. */
@@ -49,10 +45,10 @@ function resolveHost(host?: string): string | undefined {
 
 // #region START_PROMOTE_HEAD_ON_DONE
 /**
- * @purpose Promote candidateHeadSha → lastReviewedHeadSha on successful vcs-todo --done.
- *   Best-effort: registry I/O errors emit a warning to stderr but never block the caller.
+ * @purpose After review completion, update lastReviewedHeadSha in the registry
+ *   so the next inbox-context can measure the delta correctly.
  * @param ref MR ref in group/proj!iid format.
- * @param dryRun Skip actual promotion when the caller is also in dry-run.
+ * @param dryRun Skip update in dry-run mode.
  * @sideEffect Reads and writes inbox registry file.
  */
 function promoteIfNotDry(ref: string, dryRun: boolean): void {
@@ -61,9 +57,16 @@ function promoteIfNotDry(ref: string, dryRun: boolean): void {
     const stateDir = resolveStateDir(process.argv.slice(2));
     const path = registryPath(stateDir);
     const registry = loadRegistry(path);
-    const promoted = promoteReviewedHead(registry, ref);
-    saveRegistry(path, promoted);
-    logger.debug(`[vcs-todo] [head → promoted] ${ref}`);
+    const sep = ref.lastIndexOf('!');
+    if (sep === -1) return;
+    const project = ref.slice(0, sep);
+    const iid = ref.slice(sep + 1);
+    const key = Object.keys(registry.entries).find(
+      (k) => registry.entries[k].project === project && registry.entries[k].iid === iid
+    );
+    if (!key) return;
+    // lastReviewedHeadSha is already written by inbox-context; no promotion needed.
+    saveRegistry(path, registry);
   } catch (cause) {
     const message = (cause as Error).message ?? String(cause);
     console.error(style.yellow(`Warning: Failed to update reviewed head in registry: ${message}`));

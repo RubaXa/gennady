@@ -183,7 +183,6 @@
     | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
     | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
     | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent |
-    | Todo | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>` (or `--id <todoId>`) | clear the pending todo (finalization) |
 
     **`vcs-reply` (JSON array).** reply/line/suggestion forms —
     `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Only in
@@ -202,7 +201,6 @@
     - **Approve / `--revoke`** — approve only with no blocking comments of mine; `--revoke` if the MR
       changed after approve or a problem was found. Approve is per-MR, resolve is per-thread.
     - **Edit/delete — own notes only** (`noteId` from `vcs-discussions --json`).
-    - **Todo done** — after reacting, `vcs-todo --done <ref> --url <webUrl>`.
     - Any posting — after Ask (rule 2), live, no dry-run.
   </VcsTools>
 
@@ -304,10 +302,9 @@
        "drill/question" — answer and show the (updated) package again. Skip only by an explicit check.
        No separate "controller" before the package — decision and menu come together.
     8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
-       STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
-       JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
-    9. **Close.** `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-todo --done <ref> --url <webUrl>`
-       (clears the pending todo). Summary — a short digest in chat (rule 8: operator gets chat only).
+        STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
+        JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
+     9. **Close.** Summary — a short digest in chat (rule 8: operator gets chat only).
        End the digest with an **Артефакты** line of clickable markdown links (invariant 6) so the
        operator can open the files: the report folder + each artifact —
        `**Артефакты:** [папка](abs/dir) · [README](abs/README.md) · [HISTORY](abs/HISTORY.md) · [logic.task](abs/tasks/logic.task.md) · …`

@@ -22,8 +22,6 @@ export type RegistryEntry = {
   firstSeenAt: string;
   /** @purpose ISO timestamp of the last classification touch */
   lastClassifiedAt: string;
-  /** @purpose HEAD SHA recorded at last inbox-context — promoted to lastReviewedHeadSha on vcs-todo --done */
-  candidateHeadSha?: string;
   /** @purpose HEAD SHA at the last completed review — basis for headChanged delta */
   lastReviewedHeadSha?: string;
   /** @purpose HEAD SHA at which I last approved — set when myLogin is in approvedBy; basis for approval-reset detection */
@@ -95,36 +93,4 @@ export function resetInboxState(
     outRemoved = true;
   }
   return { registryRemoved, outRemoved };
-}
-
-/**
- * @purpose Promote candidateHeadSha to lastReviewedHeadSha for an MR identified by ref (project!iid).
- *   No-op when the entry is missing or candidateHeadSha is empty.
- * @param registry Current registry.
- * @param ref MR ref in group/proj!iid format.
- * @returns Registry with the promoted entry (shallow copy).
- */
-export function promoteReviewedHead(registry: InboxRegistry, ref: string): InboxRegistry {
-  const sep = ref.lastIndexOf('!');
-  if (sep === -1) return registry;
-  const project = ref.slice(0, sep);
-  const iid = ref.slice(sep + 1);
-
-  // #region START_FIND_ENTRY_BY_PROJECT_IID
-  const key = Object.keys(registry.entries).find(
-    (k) => registry.entries[k].project === project && registry.entries[k].iid === iid
-  );
-  if (!key) return registry;
-  // #endregion END_FIND_ENTRY_BY_PROJECT_IID
-
-  const entry = registry.entries[key];
-  if (!entry.candidateHeadSha) return registry;
-
-  return {
-    ...registry,
-    entries: {
-      ...registry.entries,
-      [key]: { ...entry, lastReviewedHeadSha: entry.candidateHeadSha },
-    },
-  };
 }

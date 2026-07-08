@@ -314,6 +314,7 @@ async function run(): Promise<number> {
     const reviewers = mrItem?.reviewers ?? [];
     const description = mrItem?.description ?? '';
     const approvedBy = mrItem?.approvedBy ?? [];
+    let iEverApproved = false;
     // #endregion END_PACKAGE
 
     // #region START_THREADS
@@ -334,6 +335,16 @@ async function run(): Promise<number> {
       lastAuthorStr = lastNoteAuthor(notes);
 
       threadStats = { total: allDiscussions.length, drafts: draftNotes.length };
+
+      iEverApproved = (allDiscussions as Array<Record<string, unknown>>).some((d) =>
+        (d.notes as Array<Record<string, unknown>>)?.some(
+          (n) =>
+            n.system === true &&
+            typeof n.body === 'string' &&
+            n.body.includes('approved this merge request') &&
+            (n.author as { username?: string })?.username === myLogin
+        )
+      );
     }
     // #endregion END_THREADS
 
@@ -352,7 +363,10 @@ async function run(): Promise<number> {
       lastReviewedHeadSha = entry?.lastReviewedHeadSha;
       lastApprovedHeadSha = entry?.lastApprovedHeadSha;
 
-      // Reset: I approved at some head, that approval is gone, and the head has moved (push dropped it).
+      if (!lastApprovedHeadSha && iEverApproved) {
+        lastApprovedHeadSha = entry?.lastReviewedHeadSha ?? currentHeadSha;
+      }
+
       myApprovalReset =
         !!lastApprovedHeadSha && !iApprove && lastApprovedHeadSha !== currentHeadSha;
 
@@ -425,10 +439,10 @@ async function run(): Promise<number> {
           lastSeenUpdatedAt: prevEntry?.lastSeenUpdatedAt ?? '',
           firstSeenAt: prevEntry?.firstSeenAt ?? new Date().toISOString(),
           lastClassifiedAt: prevEntry?.lastClassifiedAt ?? new Date().toISOString(),
-          candidateHeadSha: currentHeadSha,
-          // Approving is a review conclusion — promote both heads so the next delta starts here.
-          lastReviewedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastReviewedHeadSha,
-          lastApprovedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastApprovedHeadSha,
+          lastReviewedHeadSha: currentHeadSha,
+          lastApprovedHeadSha: iApprove
+            ? currentHeadSha
+            : (prevEntry?.lastApprovedHeadSha ?? (iEverApproved ? currentHeadSha : undefined)),
         };
         saveRegistry(registryPath(stateDir), registry);
       }
