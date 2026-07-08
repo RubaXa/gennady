@@ -41,6 +41,19 @@
       - Posting → `posting-rules.directive.xml` — NEVER before the posting step.
       Each step below names what to load and which axioms to anchor on; load exactly that, then act.
     </Axiom>
+
+    <Axiom id="AX_INDEPENDENT_ANALYSIS">
+      The value of the review IS independence — independence, independence, and again independence. The
+      deep analysis (the `arch-interrogation` battery and the code-review pass) MUST run in FRESH,
+      INDEPENDENT subagents, one per track — NEVER in this orchestrator session. My session is already
+      polluted: the inbox list, loaded directives, other MRs, this whole conversation. Running the
+      interrogation here yields a muddy review that misses details and anchors on what I already think I
+      know. A subagent starts clean and sees ONLY its task file — that is how the review stays honest.
+      This holds even for a one-track plan: `mode: inline` means ONE subagent, NOT "do it myself." The
+      orchestrator only scaffolds, enriches context, DISPATCHES, reads the filled files, and
+      synthesizes — it never runs the battery in its own context. If I catch myself reading MR code to
+      analyze it here, STOP and dispatch a subagent instead.
+    </Axiom>
   </BeliefState>
 
   <SessionInvariants>
@@ -81,6 +94,10 @@
        the MR/PR. Mandatory in the header and footer of EVERY per-MR answer (first and last lines)
        and in any summary. Artifact paths too — `[README.md](/abs/path/README.md)`. An answer where
        the MR is named as plain text without `[…](…)` is defective — redo it.
+    7. **Analysis runs in independent subagents — never in my session** (`AX_INDEPENDENT_ANALYSIS`).
+       The review battery goes to fresh subagents (one per track; `inline` = one subagent). I never run
+       the interrogation in this polluted session — it loses details and anchors on what I already
+       think. If I start reading MR code to judge it here, STOP and dispatch.
   </SessionInvariants>
 
   <Intents>
@@ -182,7 +199,7 @@
     | role / stage | mechanism |
     |---|---|
     | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status. Reactions are `vcs-react` tool calls, NEVER emoji in a body; mere agreement is a reaction with NO text (`AX_REACTION_IS_A_TOOL_CALL`) → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 👍 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 👍 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
-    | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
+    | `review_needed` (first review) | context → DISPATCH independent subagents (`AX_INDEPENDENT_ANALYSIS`: `arch-interrogation` per track + a subagent with its own code-review skills; never analyze in this session) → read filled files → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
     | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode. Read BOTH: reviewer comments already on the MR (`vcs-discussions --url <webUrl> --all --json`, check each against the code) + my own review (same battery/ladder/depth). For each point decide: needs a fix / needs an answer / agree. Give me three: **Сводка** (что написали ревьюверы + мой вывод), **Задание на исправление** (one copyable block for my development agent), **Черновики ответов** (reply text for disagree/question · 👍 reaction for agree). Finalization Ask: approve replies and reactions to publish; I take the fix-task away. No comments → only the self-review as a fix-task (+ optional architecture overview → MR body via `vcs-mr-edit --description`) |
     | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
   </ActionMap>
@@ -239,7 +256,8 @@
        - `review_needed` (first review / `kind == "none"` / `kind == "rewritten"` / fast_forward without
          my review) → scout + split (see "Review pipeline") AND a separate subagent: tell it to run its
          own code-review skills over `base..HEAD` (bugs/correctness) — findings into the shared report.
-       Each pass (inline or subagent) applies the directive:
+       The review battery ALWAYS runs in a subagent — never in this session (`AX_INDEPENDENT_ANALYSIS`);
+       `inline` = one subagent, `fan_out` = one per track. Each review subagent gets this remit:
        > ⚠️ **REMIT:** before any output on the MR `RE_READ("arch-interrogation.directive.xml")` in
        > full, ignoring prior knowledge. Follow `OutputFormat` literally (all sections, order,
        > separators), run `SelfCheck`, compare against `RE_READ("golden-chat-output.example.md")`. The
@@ -310,10 +328,11 @@
     - **Step 1, emitting the change map** → `visual-vocabulary.directive.xml` (`<DiagramSelection>`
       which diagram per intent — not everything a flowchart; `<Syntax>`; `AX_CHANGE_MAP`,
       `AX_INFOGRAPHIC_FIRST`).
-    - **Step 3 / inline review pass** → `arch-interrogation.directive.xml` (full `<BeliefState>`,
-      `<ExecutionPlan>` STEP_0..STEP_5, `<SelfCheck>`; anchor `AX_ADVERSARIAL_DEFAULT`,
-      `AX_CHANGESET_SCALE`, `AX_PRIOR_DISCUSSION_AWARENESS`) + `code-interrogation.directive.xml`
-      (`<Probes>` NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO; `<ScopeGuard>`).
+    - **Step 3 review subagent** (inline = one, fan_out = one per track) → the SUBAGENT loads
+      `arch-interrogation.directive.xml` (full `<BeliefState>`, `<ExecutionPlan>` STEP_0..STEP_5,
+      `<SelfCheck>`; anchor `AX_ADVERSARIAL_DEFAULT`, `AX_CHANGESET_SCALE`, `AX_PRIOR_DISCUSSION_AWARENESS`)
+      + `code-interrogation.directive.xml` (`<Probes>` NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO;
+      `<ScopeGuard>`). The orchestrator does NOT run the battery itself (`AX_INDEPENDENT_ANALYSIS`).
     - **Step 4 synthesis** → `golden-chat-output.example.md` (structure reference; RE_READ arch per REMIT).
     - **Update branch** → `update-review.directive.xml` (only when headChanged + my review exists).
     - **Step 8 posting** → `posting-rules.directive.xml` — NEVER before the posting step.
@@ -385,7 +404,8 @@
     load the directive from `track.directive` (see `## Область`), run the probes from `focus`, fill
     `## Находки` / `## Кандидаты` / `## Вердикт` per the file schema, set `status: filled`". Report —
     VCS-flavored markdown (GitLab/GitHub), diagrams — mermaid (in the file; not to chat, see Step 4).
-    `mode: inline` → no subagents, you fill the single `tasks/review.task.md`. Wait for ALL subagents.
+    `mode: inline` → still a subagent: dispatch ONE subagent with the single `tasks/review.task.md`. Do
+    NOT fill it yourself — the analysis never runs in this session (`AX_INDEPENDENT_ANALYSIS`). Wait for ALL subagents.
     Gate after filling: `inbox-review-plan --validate <dir>`. `{ok: false}` → errors are file-scoped
     (`errors[].file`). Return to the SPECIFIC subagent its file + ITS errors (targeted retry, not the
     whole pipeline), max 1 retry. Same file fails twice → escalate to the operator (show errors), do not
