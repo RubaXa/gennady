@@ -44,7 +44,9 @@ describe('findStopWords', () => {
   });
 
   it('flags англо-кальки процесса (скаутирую, дифф, чейнджсет)', () => {
-    const words = findStopWords('Скаутирую дифф и весь чейнджсет.').map((h) => h.word.toLowerCase());
+    const words = findStopWords('Скаутирую дифф и весь чейнджсет.').map((h) =>
+      h.word.toLowerCase()
+    );
     assert.ok(words.some((w) => w.startsWith('скаут')));
     assert.ok(words.includes('дифф'));
     assert.ok(words.some((w) => w.startsWith('чейнджсет')));

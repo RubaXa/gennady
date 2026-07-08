@@ -122,6 +122,18 @@ describe('inbox-context result shape — flat format (AI-16)', () => {
     assert.ok(resultBlock.includes('newCommits,'), 'newCommits should be at root');
   });
 
+  it('reviewPlanRequired covers author self-review (AuthorMode = full pipeline, AI-29/AI-34)', () => {
+    const resultBlock = CMD_SRC.slice(CMD_SRC.indexOf('const result:'));
+    const clause = resultBlock.slice(
+      resultBlock.indexOf('reviewPlanRequired:'),
+      resultBlock.indexOf('worktree,')
+    );
+    assert.ok(
+      clause.includes("myRole === 'author'"),
+      'author must require a review plan — same document pipeline as reviewer'
+    );
+  });
+
   it('worktree, changeset, stage, openQuestions, lastAuthor, threadStats at root', () => {
     const resultBlock = CMD_SRC.slice(CMD_SRC.indexOf('const result:'));
     assert.ok(resultBlock.includes('worktree,'), 'worktree should be at root');

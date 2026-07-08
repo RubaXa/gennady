@@ -249,8 +249,10 @@
        `INCLUDE_ONCE("posting-rules.directive.xml")` PreFlight to each candidate STRICTLY along the
        0→5 chain (STOP on first match; ownership and closing rules — `<ThreadModel>`). `review_needed`:
        verdicts from the directive; kinds — `INCLUDE_ONCE("posting-rules.directive.xml")`
-       CandidateTagging. `author`: overview + summary (what/why, scope, what was checked, "ready");
-       reactions to reviewers' threads per `<ReactionMatrix>`.
+       CandidateTagging. `author`: SAME candidates + verdicts as a reviewer (AuthorMode = full
+       battery, `reviewPlanRequired == true` for author, so the document pipeline runs); plus
+       reactions to reviewers' threads per `<ReactionMatrix>`. The role only reframes the outcome at
+       step 7 — hand-off block (A) / architecture description into MR body (B) — not the depth.
     6. **Decision (co-reviewer digest, invariant 4).** Without asking, show the ready decision as one
        block: per thread/candidate — the action (👍/💯/resolve/reply/line-comment/suggestion/approve)
        and the ready text next to it; a separate line "ждут автора: N (не пинговать)" and "пропущено:
@@ -346,8 +348,10 @@
     ## Step 2 — Review plan → task files → enrich (MECHANICAL, no agent decisions)
     Always the document pipeline. The agent NEVER starts analysis without materialized task files. No
     subagent gets a task "verbally" — only via a file (AI-36, D57).
-    1. Check `reviewPlanRequired` from `inbox-context`: `false` → no plan (`reply_needed`/`author`), go
-       to Step 3. `true` → HALT, pick `--base`.
+    1. Check `reviewPlanRequired` from `inbox-context`: `false` → no plan (`reply_needed`), go
+       to Step 3. `true` (`review_needed` / `author` self-review / fast_forward) → HALT, pick `--base`.
+       Author is NOT exempt — AuthorMode runs the same battery, so it materializes README/HISTORY via
+       the same pipeline (its finding-set feeds the step-7 hand-off / MR-description outcomes).
     2. Pick `--base`: `fast_forward` + non-empty `lastReviewedHeadSha` → `--base <lastReviewedHeadSha>`
        (delta plan); otherwise (first / `rewritten` / `none`) → `--base <worktree.base>` (full plan).
     3. Materialize: `inbox-review-plan --path <worktree.path> --base <base> --scaffold --ref <ref>` →

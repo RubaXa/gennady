@@ -446,6 +446,7 @@ async function run(): Promise<number> {
         worktree !== null &&
         (stage === 'review_needed' ||
           (stage === null && myRole === 'reviewer') ||
+          myRole === 'author' ||
           headChanged?.kind === 'fast_forward'),
       worktree,
       changeset,
