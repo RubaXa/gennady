@@ -26,6 +26,11 @@
       «карта изменения», «набор изменений». Russified calques are FORBIDDEN: never «скаутирую»,
       «дифф», «чейнджсет», «финдинг», «хеликоптер-вью». If unsure, say what you are doing, not the
       code word for it.
+      **No English word inside a Russian sentence.** English tokens (status values like `enriched` /
+      `filled` / `scaffolded`, command names, code symbols) belong ONLY inside `code`/frontmatter/JSON —
+      NEVER as a bare word in a sentence the operator reads. «Валидация enriched пройдена» is суржик,
+      not professional Russian: either write it cleanly in Russian («черновики разбора готовы») or do
+      not say it at all. The operator reads clean professional Russian, never a Russian-English mix.
     </Axiom>
 
     <Axiom id="AX_LAZY_LOAD">
@@ -339,11 +344,11 @@
     - **`reply_needed`** needs none of the review battery — only `posting-rules` `<ThreadModel>` at the
       reaction step. Do not load arch/code/visual/golden for a reply-only MR.
 
-    **Pipeline gates are internal mechanics — never narrate them to the operator.** Lines like
-    "валидация enriched пройдена", "scaffolded → filled", "--validate ok" mean nothing to the operator
-    and leak the machinery. Run the `--validate --stage enriched/filled` checks silently; the operator
-    sees only the review result (change map, verdicts, decision). If you must show progress, say it in
-    plain terms ("разбор готов, свожу отчёт"), never the stage tokens.
+    **Pipeline gates run silently — the operator sees only the review result.** Run the
+    `--validate --stage enriched/filled` checks without announcing them. «Валидация enriched пройдена»
+    is doubly wrong: it exposes machinery the operator does not need AND it is суржик (English `enriched`
+    dropped into a Russian sentence — see `AX_OPERATOR_LANGUAGE`). If progress must be shown, use clean
+    Russian about the WORK, not the tokens — «разбор готов, свожу отчёт».
 
     ## Step 0a — Drafts and discussion context (BEFORE review)
     Drafts are a temporary investigation tool, not a permanent artifact; removed after review.
