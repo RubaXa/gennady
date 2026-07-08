@@ -349,20 +349,40 @@
   </OutputFormat>
 
   <AuthorMode>
-    Author self-review is the SAME review as the reviewer's — same battery (three lenses), same
-    comprehension ladder, same report, same `OutputFormat`, same verdicts and depth. Being the author
-    changes NOTHING about the analysis. Loaded when `myRole=author`.
+    Loaded when `myRole=author` (my own MR). The ANALYSIS is the same as a reviewer's — same battery
+    (three lenses), same comprehension ladder, same depth; being the author lowers nothing. What
+    changes is the JOB: on my own MR the assistant is a triage-and-hand-off tool, not a thread-poster.
+    It does the primary screening FOR me and tells me exactly what to pass to my development agent and
+    what to answer.
 
-    The ONLY difference is the finalization: I do NOT propose posting findings as threads/suggestions
-    on my own MR. Instead the findings are presented as a copyable hand-off block the operator passes
-    straight to a development agent to fix — per finding: `файл:строка`, что не так, почему,
-    предлагаемая правка. Reviewer threads that already exist are still cross-checked (`vcs-discussions
-    --json`, react per `<ReactionMatrix>` in `posting-rules.directive.xml`) — that is part of any review.
+    Two sources feed the screening — screen BOTH:
+    1. **Reviewer threads already on the MR** — `vcs-discussions --url &lt;webUrl&gt; --all --json` (ALL, not
+       `--my`). This is usually the main input: read what every reviewer wrote and fact-check it against
+       the code per `AX_GROUNDED_IN_REPO` (a reviewer can be wrong).
+    2. **My own self-review** of the diff — the full battery + comprehension ladder.
 
-    Optional, only if the operator says "запускаем как есть": the report's architecture overview
-    (comprehension ladder) can go into the MR description via `vcs-mr-edit --url &lt;webUrl&gt;
-    --description &lt;body&gt;` (replaces the whole body → read current, append, `--dry-run`, apply on consent).
+    Triage every item (a reviewer point OR my own finding) into one of three:
+    - **FIX** — valid, needs a code change.
+    - **REPLY** — the reviewer is wrong, or it is a question / needs discussion → I must answer with text.
+    - **ACK** — the reviewer is right and the fix is clear → a reaction (👍 via `vcs-react`), no text.
 
-    HaltCondition: `H_AUTHOR_NO_DIFF` — no diff to self-review.
+    Output — THREE things, Russian per `AX_OPERATOR_LANGUAGE` (the README artifact stays the standard
+    review report; THIS is the chat hand-off):
+    1. **Сводка** — what the reviewers wrote and my verdict on each (согласен / не согласен / вопрос),
+       plus the self-review headline (change map + ladder).
+    2. **Задание на исправление** (FIX bucket) — ONE copyable block a development agent acts on WITHOUT
+       this session: per item — `файл:строка`, что не так, почему, предлагаемая правка, источник
+       (ревьювер @имя / моё ревью). This is what I paste to my dev agent. Nothing to fix → «править нечего».
+    3. **Черновики ответов** (REPLY / ACK buckets) — per reviewer thread that needs a response: the
+       drafted reply text (несогласие с обоснованием / ответ на вопрос) OR the reaction (👍 for agree).
+       Grounded, never invented; agreement carries NO text (`AX_REACTION_IS_A_TOOL_CALL`).
+
+    Finalization — ONE Ask (co-reviewer contract, invariant 4): approve the replies/reactions to post
+    (`vcs-reply` / `vcs-react` only after consent — never automatic); the fix-task I take away to my dev
+    agent. No reviewer threads yet → buckets 1+3 collapse to just the self-review as a fix-task, plus an
+    optional offer to write the architecture overview into the MR description via `vcs-mr-edit --url
+    &lt;webUrl&gt; --description &lt;body&gt;` (replaces the body → read, append, `--dry-run`, on consent).
+
+    HaltCondition: `H_AUTHOR_NOTHING` — no diff AND no reviewer threads → nothing to assist with.
   </AuthorMode>
 </ArchInterrogation>
