@@ -56,6 +56,15 @@ describe('findStopWords', () => {
     assert.deepEqual(findStopWords('Считаем дифференциал через диффузию.'), []);
   });
 
+  it('flags жаргон процесса ревью (триаж, хэндофф, факт-чек)', () => {
+    const words = findStopWords('Триаж замечаний, хэндофф разработчику, факт-чек кода.').map((h) =>
+      h.word.toLowerCase()
+    );
+    assert.ok(words.some((w) => w.startsWith('триаж')));
+    assert.ok(words.some((w) => w.startsWith('хэндофф')));
+    assert.ok(words.some((w) => w.startsWith('факт-чек')));
+  });
+
   it('reports correct 1-based line for a hit on a later line', () => {
     const hits = findStopWords('первая строка\nвторая\nтут проза\n');
     assert.equal(hits.length, 1);

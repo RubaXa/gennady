@@ -43,6 +43,9 @@ export const STOP_WORDS: StopWord[] = [
   { re: stem('скаут'), why: 'калька (scout)', use: 'просмотреть / разведать' },
   { re: w('дифф(?:а|е|у|ом|ов|ами)?'), why: 'калька (diff)', use: 'изменения / различия' },
   { re: stem('чейнджсет'), why: 'калька (changeset)', use: 'набор изменений' },
+  { re: stem('триаж'), why: 'калька (triage)', use: 'разбор / сортировка' },
+  { re: stem('х[эе]ндофф'), why: 'калька (handoff)', use: 'передача / готовое задание' },
+  { re: stem('факт-чек'), why: 'калька (fact-check)', use: 'сверка / проверка фактов' },
 ];
 
 // #endregion END_DICTIONARY
