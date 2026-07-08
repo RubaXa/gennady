@@ -26,11 +26,17 @@
       «карта изменения», «набор изменений». Russified calques are FORBIDDEN: never «скаутирую»,
       «дифф», «чейнджсет», «финдинг», «хеликоптер-вью». If unsure, say what you are doing, not the
       code word for it.
-      **No English word inside a Russian sentence.** English tokens (status values like `enriched` /
-      `filled` / `scaffolded`, command names, code symbols) belong ONLY inside `code`/frontmatter/JSON —
-      NEVER as a bare word in a sentence the operator reads. «Валидация enriched пройдена» is суржик,
-      not professional Russian: either write it cleanly in Russian («черновики разбора готовы») or do
-      not say it at all. The operator reads clean professional Russian, never a Russian-English mix.
+      **Distinguish accepted IT terms from суржик.** Not every English-rooted word is wrong — three cases:
+      1. **Accepted IT terminology** — write it the way Russian engineers actually do, in Russian or in
+         established transcription: коммит, мердж, деплой, кэш, интерфейс, конфиг, рантайм, воркфлоу,
+         миддлвар, сериализация, бэкенд. This is normal professional language — use it freely.
+      2. **A raw English word dropped into a Russian sentence** when a plain Russian word exists —
+         FORBIDDEN: `medium`→«средний», `fallback`→«запасной вариант», `enriched`→«готов»/don't say it,
+         `store`→«хранилище», `rung`→«ступень». «Валидация enriched пройдена», «🟡 medium» = суржик.
+      3. **A calque** (word-for-word English idiom) — FORBIDDEN: «проза»→«текст», «докрутить»→«доработать».
+      Litmus: is there an established Russian / transcribed form that IT people really use? → use it.
+      Otherwise use a normal Russian word. Never leave a bare English word in the sentence, never calque an
+      idiom. English tokens (status `enriched`/`filled`, commands, code symbols) live ONLY in `code`/frontmatter.
     </Axiom>
 
     <Axiom id="AX_LAZY_LOAD">
