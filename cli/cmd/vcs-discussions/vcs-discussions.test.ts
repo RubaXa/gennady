@@ -185,6 +185,10 @@ describe('vcs-discussions run', () => {
     assert.strictEqual(result.exitCode, 0);
     assert.strictEqual(parsed.length, 3);
     assert.strictEqual(parsed[0].id, 101);
+    // note id must be surfaced — it is the reaction target for `vcs-react --comment <noteId>`
+    assert.strictEqual(parsed[0].notes[0].id, 1, 'each note must carry its id for vcs-react');
+    assert.strictEqual(parsed[2].notes[1].id, 4);
+    assert.strictEqual(parsed[2].notes[1].username, 'me', 'note author username surfaced');
   });
 
   // ────────────────────────────────────────────────────────────────────────────

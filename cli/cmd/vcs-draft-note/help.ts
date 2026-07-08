@@ -10,15 +10,16 @@ export function printHelp(): void {
   console.info('gennady vcs-draft-note — Управление черновиками (draft notes) GitLab MR');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady vcs-draft-note --list  [--ref <ref>]');
-  console.info('  npx gennady vcs-draft-note --create "<text>" [--ref <ref>]');
-  console.info('  npx gennady vcs-draft-note --update <id> --body "<text>" [--ref <ref>]');
-  console.info('  npx gennady vcs-draft-note --delete <id> [--ref <ref>]');
-  console.info('  npx gennady vcs-draft-note --publish <id> [--ref <ref>]');
-  console.info('  npx gennady vcs-draft-note --delete-all [--ref <ref>]');
+  console.info('  npx gennady vcs-draft-note --list  --url <mr-url>');
+  console.info('  npx gennady vcs-draft-note --create "<text>" --url <mr-url>');
+  console.info('  npx gennady vcs-draft-note --update <id> --body "<text>" --url <mr-url>');
+  console.info('  npx gennady vcs-draft-note --delete <id> --url <mr-url>');
+  console.info('  npx gennady vcs-draft-note --publish <id> --url <mr-url>');
+  console.info('  npx gennady vcs-draft-note --delete-all --url <mr-url>');
   console.info('');
   console.info('Options:');
-  console.info('  --ref <group/repo!iid>   MR ref (определяет project + iid)');
+  console.info('  --url <mr-url>           MR/PR URL — host inferred, no guessing (preferred)');
+  console.info('  --ref <group/repo!iid>   MR ref (override; needs --host)');
   console.info('  --project <group/repo>   Путь к проекту (явно)');
   console.info('  --iid <id>               MR internal ID (явно)');
   console.info('  --host <hostname>        GitLab хост (иначе из origin)');
@@ -36,13 +37,13 @@ export function printHelp(): void {
   console.info('  GITLAB_PERSONAL_TOKEN    GitLab access token (required)');
   console.info('');
   console.info('Examples:');
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --list');
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --create "Надо поправить"');
   console.info(
-    '  npx gennady vcs-draft-note --ref group/repo!42 --update 123 --body "Обновлённый текст"'
+    '  npx gennady vcs-draft-note --url https://gitlab.example.com/group/repo/-/merge_requests/42 --list'
   );
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --delete 123');
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --publish 123');
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --delete-all');
-  console.info('  npx gennady vcs-draft-note --ref group/repo!42 --list --dry-run');
+  console.info(
+    '  npx gennady vcs-draft-note --url https://gitlab.example.com/group/repo/-/merge_requests/42 --create "Надо поправить"'
+  );
+  console.info(
+    '  npx gennady vcs-draft-note --url https://gitlab.example.com/group/repo/-/merge_requests/42 --delete-all'
+  );
 }

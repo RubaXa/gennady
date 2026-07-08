@@ -111,7 +111,9 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   if (!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) {
-    deps.stderr.write('✖ Specify --ref <group/repo>!<iid> or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 

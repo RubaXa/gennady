@@ -112,7 +112,9 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   if (!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) {
-    deps.stderr.write('✖ Specify --ref <group/repo>!<iid> or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 
@@ -251,7 +253,9 @@ function mapToJson(d: Record<string, unknown>) {
     line: position?.new_line ?? undefined,
     resolved: !!d.resolved,
     notes: notes.map((n) => ({
+      id: n.id,
       author: (n.author as { name?: string })?.name ?? 'unknown',
+      username: (n.author as { username?: string })?.username ?? undefined,
       body: n.body ?? '',
       createdAt: n.created_at ?? '',
     })),

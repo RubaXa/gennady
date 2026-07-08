@@ -26,9 +26,11 @@
 
     <Axiom id="AX_REACTION_IS_A_TOOL_CALL">
       A reaction is a TOOL CALL, never text. Add it with
-      `vcs-react --url &lt;webUrl&gt; --comment &lt;noteId&gt; --emoji &lt;name&gt;` (`noteId` from `vcs-discussions
-      --json`). Cross-platform emoji (GitLab + GitHub): 👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` ·
-      🎉 `hooray` · 👀 `eyes`. Do NOT use 💯 — neither the tool nor GitHub supports it.
+      `vcs-react --url &lt;webUrl&gt; --comment &lt;noteId&gt; --emoji &lt;name&gt;`. The target is a NOTE id, not a
+      discussion id: take it from `vcs-discussions --json` → `notes[].id` (react to the specific note —
+      e.g. the reviewer's finding or the author's fix confirmation). `discussionId` is for `vcs-reply`
+      resolve/reply, NOT for reactions. Cross-platform emoji (GitLab + GitHub): 👍 `thumbsup` · 🚀
+      `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`. Do NOT use 💯 — neither the tool nor GitHub supports it.
       Typing an emoji into a comment BODY (via `vcs-reply`) to fake a reaction is FORBIDDEN — that
       posts a noisy comment, the exact opposite of a clean reaction.
 

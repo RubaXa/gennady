@@ -120,7 +120,9 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
 
   const resolvedIid = context.iid ?? validIid;
   if (!resolvedIid) {
-    deps.stderr.write('✖ Specify --ref or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 

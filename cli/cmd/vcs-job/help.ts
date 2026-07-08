@@ -11,19 +11,26 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info(
-    '  npx gennady vcs-job --ref <ref> --job <name|id> [--action status|play|cancel|retry]'
+    '  npx gennady vcs-job --url <mr-url> --job <name|id> [--action status|play|cancel|retry]'
   );
   console.info('');
   console.info('Options:');
-  console.info('  --ref <group/repo!iid>   Explicit MR ref');
+  console.info('  --url <mr-url>           MR/PR URL — host inferred, no guessing (preferred)');
+  console.info('  --ref <group/repo!iid>   MR ref (override; needs --host)');
   console.info('  --job <name|id>          Job name or numeric id');
   console.info('  --action <action>        status (default), play, cancel, retry');
-  console.info('  --host <hostname>        GitLab host (else from origin)');
+  console.info('  --host <hostname>        GitLab host (only with --ref)');
   console.info('  --vcs-host <hostname>    Alias for --host');
   console.info('  --dry-run, --dry         Print what would be done without calling API');
   console.info('');
   console.info('Examples:');
-  console.info('  npx gennady vcs-job --ref group/repo!42 --job lint');
-  console.info('  npx gennady vcs-job --ref group/repo!42 --job 12345 --action play');
-  console.info('  npx gennady vcs-job --ref group/repo!42 --job lint --action retry');
+  console.info(
+    '  npx gennady vcs-job --url https://gitlab.example.com/group/repo/-/merge_requests/42 --job lint'
+  );
+  console.info(
+    '  npx gennady vcs-job --url https://gitlab.example.com/group/repo/-/merge_requests/42 --job 12345 --action play'
+  );
+  console.info(
+    '  npx gennady vcs-job --url https://gitlab.example.com/group/repo/-/merge_requests/42 --job lint --action retry'
+  );
 }

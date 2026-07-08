@@ -52,13 +52,17 @@ async function run(): Promise<number> {
     }
 
     const ref = parseValue(argv, '--ref');
-    if (!ref || !ref.includes('!')) {
-      console.error(style.redBright.bold('✖ Ошибка:'), 'Укажите --ref group/project!iid');
+    const url = parseValue(argv, '--url');
+    // --url is the preferred form (host inferred). --ref is an override; require one of them.
+    if (!url && (!ref || !ref.includes('!'))) {
+      console.error(
+        style.redBright.bold('✖ Ошибка:'),
+        'Укажите --url <mr-url> (предпочтительно) или --ref group/project!iid'
+      );
       return 1;
     }
 
     const vcsSource = parseValue(argv, '--vcs-host') ?? parseValue(argv, '--vcs-source');
-    const url = parseValue(argv, '--url');
     const reposBase = parseValue(argv, '--repos-base') ?? join(homedir(), 'Developer');
 
     // #region START_RESOLVE_VCS_CONTEXT

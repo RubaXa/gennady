@@ -10,13 +10,13 @@ export function printHelp(): void {
   console.info('gennady vcs-discussions — Show GitLab MR discussions (human-readable)');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady vcs-discussions --ref <group/repo!iid> [options]');
+  console.info('  npx gennady vcs-discussions --url <mr-url> [options]');
   console.info('');
   console.info('Options:');
   console.info(
-    '  --url <webUrl>           MR web URL (e.g. https://gitlab.example.com/group/proj/-/merge_requests/510)'
+    '  --url <mr-url>           MR/PR URL — host inferred, no guessing (preferred; e.g. https://gitlab.example.com/group/proj/-/merge_requests/510)'
   );
-  console.info('  --ref <group/repo!iid>   MR ref');
+  console.info('  --ref <group/repo!iid>   MR ref (override; needs --host)');
   console.info('  --project <group/repo>   Explicit project path');
   console.info('  --iid <id>               MR internal ID');
   console.info('  --all                    Include resolved discussions');
