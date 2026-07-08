@@ -51,7 +51,7 @@
       - **nodes = touched components/entities** (not raw files), each annotated with its file(s) and change type (🆕 added / ✏️ modified / 🗑️ deleted / ↪︎ renamed);
       - **greyed context nodes = existing neighbors** this change plugs into or depends on, so blast-radius is visible;
       - **one caption line = the intent** ("что произошло: …"), harvested per `AX_RECONSTRUCT_RATIONALE`.
-      Diagram type per `visual-vocabulary.directive.xml` (C4-style / flowchart), medium per `AX_VISUAL_TRANSPORT` (widget in chat, Mermaid in GitLab), discipline ≤7 nodes. **Unconditional — even a one-line change gets a minimal map** (the touched node + its neighbors + "косметика/no blast-radius" caption); that minimal map IS the review answer for a trivial change. The bare file tree is still produced as secondary triage (which files, how deep to dig, which tracks) but is NOT the headline and NOT the only visual.
+      Diagram type per `visual-vocabulary.directive.xml` (C4-style / flowchart), medium per `AX_VISUAL_TRANSPORT` (widget in chat, Mermaid in GitLab), discipline ≤7 nodes. **Unconditional — even a one-line change gets a minimal map** (the touched node + its neighbors + "косметика/no blast-radius" caption); that minimal map IS the review answer for a trivial change. The bare file tree is still produced as a secondary index (which files, how deep to dig, which tracks) but is NOT the headline and NOT the only visual.
 
       The change map is only the FIRST rung — it answers "what changed", not "where it sits / how it works / why". A report whose only visual is the change map (or a bare file tree) is incomplete: comprehension needs the full ladder — see `AX_COMPREHENSION_LADDER`.
     </Axiom>
@@ -302,7 +302,7 @@
     2. **Обзор [overview] — change map first, per `AX_CHANGE_MAP`.** Lead with comprehension, not counting:
        - **the change map** (the headline visual, mandatory every size): component/entity graph — changed nodes coloured by change type (🆕/✏️/🗑️/↪︎) and annotated with their file(s), greyed context-neighbors for blast-radius, one caption line «что произошло: …» (the intent). Even a one-line change → a minimal map (touched node + neighbors + «косметика»). Medium per `AX_VISUAL_TRANSPORT`, type per `visual-vocabulary`. Rung 1 of `AX_COMPREHENSION_LADDER`.
        - **one compact size line** (proxy, not the star) — `**Размер:** {малый/средний/крупный} · N файлов · +X/−Y · M новых` + a by-category table (Код · Тесты · Доки/спеки · Конфиг · Ассеты) so asset/generated `+X` is not misread as logic;
-       - **secondary file map** (triage): touched files grouped by folder with change-type icons — for "which files / how deep / which tracks". Below the change map, not above it; may be collapsed for large MRs.
+       - **secondary file map**: touched files grouped by folder with change-type icons — for "which files / how deep / which tracks". Below the change map, not above it; may be collapsed for large MRs.
        Then 1–2 sentences + verdict tally per `AX_STABLE_FINDING_IDS` (N ✅ / N ⚠️ / N ❌). No findings yet — the shape, not the details.
     ---
     3. **Архитектура [helicopter / C4] — mandatory, ALWAYS (even on a delta).** Rung 2 of `AX_COMPREHENSION_LADDER`: a C4-style container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (boundary zone / layers, containers coloured by verdict ✅⚠️❌, external systems as black boxes, legend). Distinct from §2: the change map is the delta, this is the system it lands in. Do NOT omit by claiming the change map covers it. Only a trivial change (typo/config) skips it.
@@ -349,40 +349,39 @@
   </OutputFormat>
 
   <AuthorMode>
-    Loaded when `myRole=author` (my own MR). The ANALYSIS is the same as a reviewer's — same battery
+    Loaded when `myRole=author` (my own MR). The analysis is the same as a reviewer's — same battery
     (three lenses), same comprehension ladder, same depth; being the author lowers nothing. What
-    changes is the JOB: on my own MR the assistant is a triage-and-hand-off tool, not a thread-poster.
-    It does the primary screening FOR me and tells me exactly what to pass to my development agent and
-    what to answer.
+    changes is the job: on my own MR the assistant does the first-pass review FOR me and tells me what
+    to hand my development agent and what to answer. It does not write to threads itself.
 
-    Two sources feed the screening — screen BOTH:
-    1. **Reviewer threads already on the MR** — `vcs-discussions --url &lt;webUrl&gt; --all --json` (ALL, not
-       `--my`). This is usually the main input: read what every reviewer wrote and fact-check it against
-       the code per `AX_GROUNDED_IN_REPO` (a reviewer can be wrong).
-    2. **My own self-review** of the diff — the full battery + comprehension ladder.
+    Read two things:
+    1. The reviewer comments already on the MR — `vcs-discussions --url &lt;webUrl&gt; --all --json` (ALL, not
+       `--my`). Check each one against the code (`AX_GROUNDED_IN_REPO`; a reviewer can be wrong). This
+       is usually the main input.
+    2. My own review of the diff — the full battery + comprehension ladder.
 
-    Triage every item (a reviewer point OR my own finding) into one of three:
-    - **FIX** — valid, needs a code change.
-    - **REPLY** — the reviewer is wrong, or it is a question / needs discussion → I must answer with text.
-    - **ACK** — the reviewer is right and the fix is clear → a reaction (👍 via `vcs-react`), no text.
+    For each point (a reviewer comment or my own finding) decide one of three:
+    - **needs a fix** — a code change is required;
+    - **needs an answer** — the reviewer is wrong, or it is a question / needs discussion → reply with text;
+    - **agree** — the reviewer is right and the fix is clear → a 👍 reaction (`vcs-react`), no text.
 
-    Output — THREE things, Russian per `AX_OPERATOR_LANGUAGE` (the README artifact stays the standard
-    review report; THIS is the chat hand-off):
-    1. **Сводка** — what the reviewers wrote and my verdict on each (согласен / не согласен / вопрос),
-       plus the self-review headline (change map + ladder).
-    2. **Задание на исправление** (FIX bucket) — ONE copyable block a development agent acts on WITHOUT
-       this session: per item — `файл:строка`, что не так, почему, предлагаемая правка, источник
-       (ревьювер @имя / моё ревью). This is what I paste to my dev agent. Nothing to fix → «править нечего».
-    3. **Черновики ответов** (REPLY / ACK buckets) — per reviewer thread that needs a response: the
-       drafted reply text (несогласие с обоснованием / ответ на вопрос) OR the reaction (👍 for agree).
-       Grounded, never invented; agreement carries NO text (`AX_REACTION_IS_A_TOOL_CALL`).
+    Give me three things, Russian per `AX_OPERATOR_LANGUAGE` (the README artifact stays the standard
+    review report; this is the chat output):
+    1. **Сводка** — what the reviewers wrote and my conclusion on each (согласен / не согласен /
+       вопрос), plus the self-review headline (change map + ladder).
+    2. **Задание на исправление** — ONE copyable block my development agent can act on without this
+       session: per item — `файл:строка`, что не так, почему, предлагаемая правка, кто сказал. Nothing
+       to fix → «править нечего».
+    3. **Черновики ответов** — for each reviewer comment that needs a response: the reply text
+       (disagreement with reasoning / answer to a question) or the 👍 reaction for agreement. Grounded,
+       never invented; agreement carries no text (`AX_REACTION_IS_A_TOOL_CALL`).
 
-    Finalization — ONE Ask (co-reviewer contract, invariant 4): approve the replies/reactions to post
-    (`vcs-reply` / `vcs-react` only after consent — never automatic); the fix-task I take away to my dev
-    agent. No reviewer threads yet → buckets 1+3 collapse to just the self-review as a fix-task, plus an
+    Finalization — ONE Ask (co-reviewer contract, invariant 4): approve the replies and reactions to
+    publish (`vcs-reply` / `vcs-react` only after consent — never automatic); I take the fix-task to my
+    development agent. No reviewer comments yet → only the self-review as a fix-task remains, plus an
     optional offer to write the architecture overview into the MR description via `vcs-mr-edit --url
     &lt;webUrl&gt; --description &lt;body&gt;` (replaces the body → read, append, `--dry-run`, on consent).
 
-    HaltCondition: `H_AUTHOR_NOTHING` — no diff AND no reviewer threads → nothing to assist with.
+    HaltCondition: `H_AUTHOR_NOTHING` — no diff and no reviewer comments → nothing to assist with.
   </AuthorMode>
 </ArchInterrogation>

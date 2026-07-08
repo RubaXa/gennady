@@ -179,7 +179,7 @@
     |---|---|
     | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status. Reactions are `vcs-react` tool calls, NEVER emoji in a body; mere agreement is a reaction with NO text (`AX_REACTION_IS_A_TOOL_CALL`) → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 👍 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 👍 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
     | `review_needed` (first review) | context → `arch-interrogation` + a subagent with its own code-review skills → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
-    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode — triage assistant. Screen BOTH: existing reviewer threads (`vcs-discussions --url <webUrl> --all --json`, fact-check each) + my own self-review (same battery/ladder/depth). Triage every item → FIX / REPLY / ACK. Output three: **Сводка** (что написали ревьюверы + мой вердикт), **Задание на исправление** (copyable hand-off for my dev agent), **Черновики ответов** (reply text for disagree/question · 👍 react for agree). Finalization Ask: approve replies/reactions to post; fix-task I take away. No threads → collapses to self-review-as-task (+ optional architecture overview → MR body via `vcs-mr-edit --description`) |
+    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode. Read BOTH: reviewer comments already on the MR (`vcs-discussions --url <webUrl> --all --json`, check each against the code) + my own review (same battery/ladder/depth). For each point decide: needs a fix / needs an answer / agree. Give me three: **Сводка** (что написали ревьюверы + мой вывод), **Задание на исправление** (one copyable block for my development agent), **Черновики ответов** (reply text for disagree/question · 👍 reaction for agree). Finalization Ask: approve replies and reactions to publish; I take the fix-task away. No comments → only the self-review as a fix-task (+ optional architecture overview → MR body via `vcs-mr-edit --description`) |
     | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
   </ActionMap>
 
@@ -250,11 +250,11 @@
        `INCLUDE_ONCE("posting-rules.directive.xml")` PreFlight to each candidate STRICTLY along the
        0→5 chain (STOP on first match; ownership and closing rules — `<ThreadModel>`). `review_needed`:
        verdicts from the directive; kinds — `INCLUDE_ONCE("posting-rules.directive.xml")`
-       CandidateTagging. `author`: triage (AuthorMode). Screen reviewer threads (`--all`, fact-checked)
-       + my self-review (`reviewPlanRequired == true` → document pipeline runs, same depth). Every item
-       → FIX / REPLY / ACK. Step 7 delivers three: Сводка · Задание на исправление (copyable, for my dev
-       agent) · Черновики ответов (reply for disagree/question · 👍 react for agree). Findings are NOT
-       posted as threads on my own MR.
+       CandidateTagging. `author` (AuthorMode): read reviewer comments (`--all`, checked against the
+       code) + my own review (`reviewPlanRequired == true` → document pipeline runs, same depth). For
+       each point decide: needs a fix / needs an answer / agree. Step 7 delivers three: Сводка · Задание
+       на исправление (one copyable block for my development agent) · Черновики ответов (reply for
+       disagree/question · 👍 reaction for agree). Findings are NOT written to threads on my own MR.
     6. **Decision (co-reviewer digest, invariant 4).** Without asking, show the ready decision as one
        block: per thread/candidate — the action (👍 react/resolve/reply/line-comment/suggestion/approve)
        and the ready text next to it; a separate line "ждут автора: N (не пинговать)" and "пропущено:
@@ -331,10 +331,10 @@
 
     ## Step 1 — Scout
     Role fork:
-    - `myRole=author` → load `arch-interrogation` in `<AuthorMode>` (triage assistant). Load ALL
-      reviewer threads first — `vcs-discussions --url <webUrl> --all --json` (not `--my`) — they are the
-      main triage input. Priority: `role=author` + `headChanged != none` → `update-review` first, then
-      `AuthorMode`. `headChanged == none` → straight to `AuthorMode`.
+    - `myRole=author` → load `arch-interrogation` in `<AuthorMode>`. Load ALL reviewer comments first —
+      `vcs-discussions --url <webUrl> --all --json` (not `--my`) — they are the main input. Priority:
+      `role=author` + `headChanged != none` → `update-review` first, then `AuthorMode`. `headChanged ==
+      none` → straight to `AuthorMode`.
     - `myRole=reviewer` → standard adversarial review via `arch-interrogation`.
     1. `inbox-context --url <webUrl> --vcs-host=<host>`. Right after: `ls <path>` (one permission prompt).
     2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`.
