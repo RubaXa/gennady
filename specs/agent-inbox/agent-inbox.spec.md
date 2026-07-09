@@ -132,7 +132,6 @@ gennady inbox --reset                                        # чистый ли
 ### 4.3 Out-of-Scope (этой итерации)
 
 - Файловая очередь задач + `inbox-tick` + `inbox-watch` (фон-автоматизация) — заложены, не реализованы.
-- Output sink `notify()` (мессенджер / нотификация ОС) — заложен интерфейс, реализация позже.
 - Полный автор-цикл (merge/rebase/draft↔ready/управление ревьюверами) — вне скоупа; self-review сводка и ответы в тредах — в скоупе (AI-14).
 - (GitHub поддержан наравне с GitLab — см. NFC-03; из out-of-scope убрано.)
 - Принудительная валидация вывода агента — не можем гарантировать; наша задача — максимально
@@ -167,7 +166,8 @@ gennady inbox --reset                                        # чистый ли
 | Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                            |
 | Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                            |
 | `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)   |
-| Очередь / tick / watch / loop / notify                   | `not-implemented` (deferred)                                            |
+| Очередь / tick / watch / loop                             | `not-implemented` (deferred)                                            |
+| Сводка в мессенджер (VK Teams) — Step 9                   | `real-runtime` (специфицировано в inbox-flow.directive.xml, инструменты vk-ws_*) |
 | Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                            |
 | GitHub support (GitLab + GitHub)                         | `real-runtime` (VcsGithubClient + провайдер-детект в резолвере)         |
 
@@ -270,7 +270,7 @@ GitLab (D2), file-очередь+CLI (D5), стадии автономии A→B
 
 - **Статус:** research-спайк, основное ядро реализовано.
 - **Реализовано:** `inbox` / `inbox-context` CLI (+ тесты), `VcsClientInbox` порт + GitLab-имплементация, `ai/directives/agent-inbox/*` (arch-interrogation, code-interrogation, posting-rules, golden-chat-output), `ai/skills/agent-inbox/*` (SKILL.md, agent-inbox-take, agent-inbox-post), SelfCheck в директиве, REMIT-триггер в SKILL.md.
-- **Нереализовано (deferred):** очередь/tick/watch/loop/notify, полный автор-цикл, GitHub, зеркало `.claude/skills/agent-inbox/`.
+- **Нереализовано (deferred):** очередь/tick/watch/loop, полный автор-цикл, GitHub, зеркало `.claude/skills/agent-inbox/`.
 - **Эта итерация (AI-20, AI-21):**
   - Config file `~/.gennady/agent-inbox/config.json` + логика чтения в `state-paths.logic.ts`
   - Config check в `inbox.cmd.ts`: перед getActionable, если конфиг неполный → structured `configured: false` JSON

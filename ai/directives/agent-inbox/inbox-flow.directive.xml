@@ -301,14 +301,44 @@
        "approve + post the 3 comments" as separate checkboxes, not a prose recommendation. On
        "drill/question" — answer and show the (updated) package again. Skip only by an explicit check.
        No separate "controller" before the package — decision and menu come together.
-    8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
-        STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
-        JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
-     9. **Close.** Summary — a short digest in chat (rule 8: operator gets chat only).
-       End the digest with an **Артефакты** line of clickable markdown links (invariant 6) so the
-       operator can open the files: the report folder + each artifact —
-       `**Артефакты:** [папка](abs/dir) · [README](abs/README.md) · [HISTORY](abs/HISTORY.md) · [logic.task](abs/tasks/logic.task.md) · …`
-       (absolute paths from `mrReportsDir`). → next MR.
+     8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
+         STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
+         JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.
+     9. **Messenger summary — after all VCS actions, before close.** Offer to send a short
+        summary to the people we interacted with via VK Teams messenger. Any role, any review.
+
+        - **Probe:** `vk-ws_list-chats` / `vk-ws_send-message` missing from available tools →
+          «Инструменты мессенджера недоступны, отправка сводки пропущена.» → Step 10.
+
+        - **Candidates** from loaded MR data: `review_needed`/`reply_needed` → the MR author;
+          `author` (my MR) → each reviewer whose threads I addressed (resolved, replied to,
+          or reacted to). No candidates → skip to Step 10.
+
+        - **Summary text** — mechanical extraction of what we already did, 2–4 lines in
+          Russian. For the author: verdict (approve/not) + count of non-blocking comments
+          posted + count of threads replied to. For a reviewer on my MR: which of their
+          threads were resolved/replied-to and the outcome. Format:
+          `🤖 По MR [ref](webUrl) («title»):\n• <what I did relevant to this person>`
+
+        - **ONE Ask** (`AskUserQuestion` `multiSelect`, ≤4 + Other). Each checkbox shows
+          name + role + the ready summary text — the operator sees exactly what will be sent.
+          Check all by default; operator unchecks those not to notify, or edits text via Other.
+          All unchecked → skip to Step 10.
+
+        - **Resolve person → VK Teams chat.** For each checked candidate, extract a searchable
+          name from GitLab data (`author.name` first, else `author.username`). Probe:
+          `vk-ws_list-chats(people=["<name>"])` → pick most recently active. Not found →
+          «⚠️ <имя> не найден в мессенджере», continue with remaining candidates.
+
+        - **Send.** `vk-ws_send-message(chat_sn="...", text="...")` per resolved candidate.
+          Report results to operator — one line per recipient («📨 Отправлено: …» /
+          «⚠️ Не отправлено: …»). Send failures do NOT block the flow — report and proceed
+          to Step 10.
+     10. **Close.** Summary — a short digest in chat (rule 8: operator gets chat only).
+        End the digest with an **Артефакты** line of clickable markdown links (invariant 6) so the
+        operator can open the files: the report folder + each artifact —
+        `**Артефакты:** [папка](abs/dir) · [README](abs/README.md) · [HISTORY](abs/HISTORY.md) · [logic.task](abs/tasks/logic.task.md) · …`
+        (absolute paths from `mrReportsDir`). → next MR.
   </InteractiveProcedure>
 
   <WhenNotToSkip>
@@ -343,8 +373,11 @@
       `<ScopeGuard>`). The orchestrator does NOT run the battery itself (`AX_INDEPENDENT_ANALYSIS`).
     - **Step 4 synthesis** → `golden-chat-output.example.md` (structure reference; RE_READ arch per REMIT).
     - **Update branch** → `update-review.directive.xml` (only when headChanged + my review exists).
-    - **Step 8 posting** → `posting-rules.directive.xml` — NEVER before the posting step.
-    - **`reply_needed`** needs none of the review battery — only `posting-rules` `<ThreadModel>` at the
+     - **Step 8 posting** → `posting-rules.directive.xml` — NEVER before the posting step.
+     - **Step 9 messenger** → no directive; probe for `vk-ws_list-chats` / `vk-ws_send-message`
+       in available tools. Missing → skip, tell operator. Available → resolve recipients via
+       `vk-ws_list-chats(people=[...])`, send via `vk-ws_send-message`.
+     - **`reply_needed`** needs none of the review battery — only `posting-rules` `<ThreadModel>` at the
       reaction step. Do not load arch/code/visual/golden for a reply-only MR.
 
     **Pipeline gates run silently — the operator sees only the review result.** Run the
