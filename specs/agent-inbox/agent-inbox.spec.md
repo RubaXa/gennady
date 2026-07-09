@@ -140,36 +140,36 @@ gennady inbox --reset                                        # чистый ли
 
 ### 4.4 Runtime Backing & Deferred Scope
 
-| Capability                                               | Posture                                                                 |
-| -------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Inbox / стадии / реестр / worktree / постинг             | `real-runtime` (проверено)                                              |
-| `inbox-context` (AI-16)                                  | `real-runtime` (проверено)                                              |
-| Golden chat output example (AI-17)                       | `real-runtime` (проверено)                                              |
-| Self-check в arch-interrogation (AI-18)                  | `real-runtime` (проверено)                                              |
-| Remit-триггер в SKILL.md (AI-19)                         | `real-runtime` (проверено)                                              |
-| Полный `review_needed` на реальном MR (worktree+clone)   | `real-runtime` (не прогнан end-to-end)                                  |
-| Config detection + `inbox config` CLI (AI-20, AI-21)     | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| Error response contracts (AI-22)                         | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| Worktree reuse + 7d TTL (AI-09, AI-23)                   | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| `inbox-context` format v2 + delta commits (AI-16, AI-24) | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| Unified `--url` interface (AI-25)                        | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| `vcs-discussions --my --with-drafts` (AI-26)             | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| `vcs-draft-note --delete-all` (AI-27)                    | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| `update-review.directive.xml` (AI-28)                    | `real-runtime` (директива загружается)                                  |
-| Self-review author role (AI-29)                          | `real-runtime` (директива загружается)                                  |
-| ReactionMatrix (AI-30)                                   | `real-runtime` (директива загружается)                                  |
-| vcs-reply validation (AI-31)                             | `real-runtime` (unit-tested, e2e не прогнан)                            |
-| review-plan command (AI-34)                              | `real-runtime` (проверено)                                              |
-| Линзы ②/③: `change-`/`security-interrogation`            | директивы созданы (2026-07-05), НЕ подключены — wiring в v2-оркестрации |
-| Визуальная шпаргалка (visual-vocabulary)                 | директива создана (2026-07-07); подключена в arch/posting/take/skill    |
-| Документный конвейер `--scaffold`/`--validate` (AI-36)   | implemented + unit-tested (TSK-103/104); real-runtime e2e не прогнан    |
-| Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                            |
-| Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                            |
-| `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)   |
-| Очередь / tick / watch / loop                             | `not-implemented` (deferred)                                            |
-| Сводка в мессенджер (VK Teams) — Step 9                   | `real-runtime` (специфицировано в inbox-flow.directive.xml, инструменты vk-ws_*) |
-| Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                            |
-| GitHub support (GitLab + GitHub)                         | `real-runtime` (VcsGithubClient + провайдер-детект в резолвере)         |
+| Capability                                               | Posture                                                                            |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Inbox / стадии / реестр / worktree / постинг             | `real-runtime` (проверено)                                                         |
+| `inbox-context` (AI-16)                                  | `real-runtime` (проверено)                                                         |
+| Golden chat output example (AI-17)                       | `real-runtime` (проверено)                                                         |
+| Self-check в arch-interrogation (AI-18)                  | `real-runtime` (проверено)                                                         |
+| Remit-триггер в SKILL.md (AI-19)                         | `real-runtime` (проверено)                                                         |
+| Полный `review_needed` на реальном MR (worktree+clone)   | `real-runtime` (не прогнан end-to-end)                                             |
+| Config detection + `inbox config` CLI (AI-20, AI-21)     | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| Error response contracts (AI-22)                         | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| Worktree reuse + 7d TTL (AI-09, AI-23)                   | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| `inbox-context` format v2 + delta commits (AI-16, AI-24) | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| Unified `--url` interface (AI-25)                        | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| `vcs-discussions --my --with-drafts` (AI-26)             | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| `vcs-draft-note --delete-all` (AI-27)                    | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| `update-review.directive.xml` (AI-28)                    | `real-runtime` (директива загружается)                                             |
+| Self-review author role (AI-29)                          | `real-runtime` (директива загружается)                                             |
+| ReactionMatrix (AI-30)                                   | `real-runtime` (директива загружается)                                             |
+| vcs-reply validation (AI-31)                             | `real-runtime` (unit-tested, e2e не прогнан)                                       |
+| review-plan command (AI-34)                              | `real-runtime` (проверено)                                                         |
+| Линзы ②/③: `change-`/`security-interrogation`            | директивы созданы (2026-07-05), НЕ подключены — wiring в v2-оркестрации            |
+| Визуальная шпаргалка (visual-vocabulary)                 | директива создана (2026-07-07); подключена в arch/posting/take/skill               |
+| Документный конвейер `--scaffold`/`--validate` (AI-36)   | implemented + unit-tested (TSK-103/104); real-runtime e2e не прогнан               |
+| Eval-набор (AI-32)                                       | `not-implemented` (deferred)                                                       |
+| Счётчики исходов (AI-33)                                 | `not-implemented` (deferred)                                                       |
+| `.claude/skills/agent-inbox/` зеркало скилла             | `not-implemented` (deferred — `sync-skills` не покрывает agent-inbox)              |
+| Очередь / tick / watch / loop                            | `not-implemented` (deferred)                                                       |
+| Сводка в мессенджер (VK Teams) — Step 9                  | `real-runtime` (специфицировано в inbox-flow.directive.xml, инструменты vk-ws\_\*) |
+| Полный автор-цикл (merge/rebase/draft↔ready)             | `not-implemented` (deferred)                                                       |
+| GitHub support (GitLab + GitHub)                         | `real-runtime` (VcsGithubClient + провайдер-детект в резолвере)                    |
 
 ### 4.5 Rules
 

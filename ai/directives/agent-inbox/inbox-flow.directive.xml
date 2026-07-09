@@ -317,13 +317,22 @@
         - **Summary text** — mechanical extraction of what we already did, 2–4 lines in
           Russian. For the author: verdict (approve/not) + count of non-blocking comments
           posted + count of threads replied to. For a reviewer on my MR: which of their
-          threads were resolved/replied-to and the outcome. Format:
-          `🤖 По MR [ref](webUrl) («title»):\n• <what I did relevant to this person>`
+          threads were resolved/replied-to and the outcome. Plain text only — VK Teams
+          does NOT render markdown (no `[text](url)`, no `**bold**`). Emit the webUrl
+          bare on its own line (VK Teams auto-links it). Format:
+          ```
+          🤖💡 <title>
+          - <what I did relevant to this person>
+          - …
+          <webUrl>
+          ```
 
         - **ONE Ask** (`AskUserQuestion` `multiSelect`, ≤4 + Other). Each checkbox shows
           name + role + the ready summary text — the operator sees exactly what will be sent.
-          Check all by default; operator unchecks those not to notify, or edits text via Other.
-          All unchecked → skip to Step 10.
+          Include an explicit **📨 Пропустить — не отправлять сводку** option at the top
+          (like «skip MR» in Step 7). If checked alone — skip to Step 10. If checked
+          together with recipients — skip takes priority (nothing is sent). Operator can
+          also edit summary text via Other.
 
         - **Resolve person → VK Teams chat.** For each checked candidate, extract a searchable
           name from GitLab data (`author.name` first, else `author.username`). Probe:
