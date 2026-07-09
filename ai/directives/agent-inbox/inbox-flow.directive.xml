@@ -334,9 +334,10 @@
           together with recipients — skip takes priority (nothing is sent). Operator can
           also edit summary text via Other.
 
-        - **Resolve person → VK Teams chat.** For each checked candidate, extract a searchable
-          name from GitLab data (`author.name` first, else `author.username`). Probe:
-          `vk-ws_list-chats(people=["<name>"])` → pick most recently active. Not found →
+        - **Resolve person → VK Teams chat.** For each checked candidate, extract the
+          GitLab login (`author.username`) — this is more stable than display name.
+          Fall back to `author.name` if username is unavailable. Probe:
+          `vk-ws_list-chats(people=["<login>"])` → pick most recently active. Not found →
           «⚠️ <имя> не найден в мессенджере», continue with remaining candidates.
 
         - **Send.** `vk-ws_send-message(chat_sn="...", text="...")` per resolved candidate.
