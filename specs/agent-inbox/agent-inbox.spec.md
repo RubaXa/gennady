@@ -136,6 +136,7 @@ $ gennady inbox serve
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements (сводка; полный EARS — в README §4)
@@ -312,6 +313,7 @@ $ gennady inbox serve
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:ARCHITECTURE-->
+
 ## 5. High-Level Architecture
 
 ```
@@ -395,6 +397,7 @@ Config detection flow (AI-20):
 <!--/SECTION:ARCHITECTURE-->
 
 <!--SECTION:DECISION_LOG-->
+
 ## 6. Decision Log
 
 Полный лог — `services/agent-inbox/README.md` §10 (D1–D36). Ключевые: локально (D1),
@@ -451,10 +454,12 @@ GitLab (D2), file-очередь+CLI (D5), стадии автономии A→B
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
+
 ## 7. Scope Dependencies
 
 - **Depends on:** `infra-base`, `vcs` (Inbox/discussions/identity), `cli` (команды), `ai-skills` (формат навыка).
 - **Provides to:** оператору — рабочий процесс разбора входящих + serve-дашборд.
+<!--/SECTION:SCOPE_DEPENDENCIES-->
 
 <!--SECTION:HANDOFF-->
 
