@@ -1,0 +1,292 @@
+// @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
+// @consumers: gennady inbox serve CLI, e2e tests
+// @tasks: TSK-115
+
+import { execSync } from 'node:child_process';
+import { logger } from '#logger';
+import { StateStore } from '../modules/inbox-core/state-store.ts';
+import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
+import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
+import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
+import { OpenCodeMock } from '../modules/inbox-opencode/opencode.mock.ts';
+import { OpenCodeReal } from '../modules/inbox-opencode/opencode.real.ts';
+import {
+  OpenCodePort,
+  type CreateSessionOpts,
+  type PromptOpts,
+  type SessionHandle,
+  type SessionStatus,
+} from '../modules/inbox-opencode/opencode.port.ts';
+import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
+import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
+import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
+import { HttpServer } from '../modules/inbox-api/http-server.ts';
+import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
+import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
+
+// ═══════════════════════════════════════════════════════════════
+// Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @purpose Degraded OpenCode adapter returning SESSION_ERROR for all prompts.
+ * Keeps HTTP server and dashboard available when real opencode is unreachable.
+ * @implements {OpenCodePort} in ../modules/inbox-opencode/opencode.port.ts
+ */
+class DegradedOpencode extends OpenCodePort {
+  protected _seq = 0;
+
+  async createSession(opts: CreateSessionOpts): Promise<SessionHandle> {
+    const sid = `degraded-${++this._seq}`;
+    logger.warn(`[DegradedOpencode#createSession] [degraded] ${sid} "${opts.title}"`);
+    return { sid, title: opts.title, directory: opts.directory, status: 'idle' };
+  }
+
+  async prompt(sid: string, _opts: PromptOpts): Promise<OpenCodeCallResult> {
+    logger.warn(`[DegradedOpencode#prompt] [degraded] ${sid} — AI engine unavailable`);
+    return composeError(
+      'SESSION_ERROR',
+      'AI engine is in degraded mode — opencode server is not responding. Start opencode and restart gennady inbox serve.'
+    );
+  }
+
+  async status(_sid: string): Promise<SessionStatus> {
+    return 'terminated';
+  }
+
+  async continueSignal(sid: string, _opts: PromptOpts): Promise<OpenCodeCallResult> {
+    logger.warn(`[DegradedOpencode#continueSignal] [degraded] ${sid}`);
+    return composeError(
+      'SESSION_ERROR',
+      'AI engine is in degraded mode — opencode server unavailable'
+    );
+  }
+
+  async abort(_sid: string): Promise<void> {
+    /* no-op in degraded mode */
+  }
+
+  async close(_sid: string): Promise<void> {
+    /* no-op in degraded mode */
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Bootstrap helpers
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @purpose Check whether the `opencode` binary is available in PATH.
+ * @returns True if `which opencode` exits with code 0.
+ */
+function checkOpencodePath(): boolean {
+  try {
+    execSync('which opencode', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @purpose Try to reach the opencode server health endpoint with retries.
+ * @param maxRetries Number of connection attempts.
+ * @param delayMs Delay in ms between attempts.
+ * @returns True if the server responds with 2xx within the retry window.
+ */
+async function retryOpencodeConnect(maxRetries: number, delayMs: number): Promise<boolean> {
+  const url = 'http://localhost:4096/health';
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    logger.debug(`[bootstrap] opencode health check attempt ${attempt}/${maxRetries}`);
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        logger.info('[bootstrap] opencode server is reachable');
+        return true;
+      }
+    } catch (cause) {
+      logger.debug('[bootstrap] opencode health check failed', {
+        attempt,
+        error: (cause as Error).message,
+      });
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  logger.warn('[bootstrap] opencode server unreachable after all retries');
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Bootstrap config & result types
+// ═══════════════════════════════════════════════════════════════
+
+/** @purpose Configuration for the bootstrap function. */
+export type BootstrapConfig = {
+  /** @purpose Whether to use mock adapters (dev/e2e) or real (production). */
+  mocks: boolean;
+  /** @purpose Port to listen on (default: 4174). */
+  port?: number;
+  /** @purpose Root state directory (default: ~/.gennady). */
+  stateDir?: string;
+};
+
+/** @purpose Return value from bootstrap — all service handles needed to run and stop. */
+export type BootstrapResult = {
+  /** @purpose The HTTP server instance (not yet started). */
+  server: HttpServer;
+  /** @purpose The role scheduler (timer not yet started). */
+  scheduler: RoleScheduler;
+  /** @purpose The OpenCode adapter (mock, real, or degraded). */
+  opencode: OpenCodePort;
+  /** @purpose Whether the system is in degraded mode (AI disabled). */
+  degraded: boolean;
+  /** @purpose Human-readable opencode status for the startup bar. */
+  opencodeStatus: string;
+  /** @purpose Polling interval in ms. */
+  pollingInterval: number;
+  /** @purpose List of loaded role names. */
+  roles: string[];
+  /** @purpose The port the server will listen on. */
+  port: number;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Main bootstrap
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @purpose Assemble DI for agent-inbox serve: load config, create adapters,
+ * wire engine + scheduler + server, return ready handles.
+ * @param config Bootstrap configuration — mocks, port, optional stateDir.
+ * @throws When config is absent or opencode binary is not found in production mode.
+ * @returns Bootstrap result with server, scheduler, opencode adapter and status metadata.
+ */
+export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResult> {
+  const port = config.port ?? 4174;
+  const pollingInterval = 300_000; // 5 minutes
+  const stateStore = new StateStore(config.stateDir);
+
+  // #region START_CHECK_CONFIG
+  let configVcsHost: string | undefined;
+
+  if (config.mocks) {
+    // In mock mode, config is optional for VCS — mock returns seeded data.
+    // Still try to load config for the status bar.
+    try {
+      const result = await stateStore.loadConfig();
+      if (result.configured) {
+        configVcsHost = result.vcsHost;
+      }
+    } catch {
+      /* config load failure is non-blocking in mock mode */
+    }
+  } else {
+    // Production mode: config is required
+    const result = await stateStore.loadConfig();
+    if (!result.configured) {
+      throw new Error('agent-inbox не настроен. Запустите gennady inbox config --init');
+    }
+    configVcsHost = result.vcsHost;
+  }
+  // #endregion END_CHECK_CONFIG
+
+  // #region START_CREATE_ADAPTERS
+  let vcs: VcsInboxPort;
+  let opencode: OpenCodePort;
+  let degraded = false;
+  let opencodeStatus: string;
+
+  if (config.mocks) {
+    // Dev/e2e mode: mock everything
+    vcs = new VcsInboxMock();
+    opencode = new OpenCodeMock();
+    opencodeStatus = 'mock (dev/e2e)';
+  } else {
+    // Production mode: real VCS + real OpenCode
+
+    // #region START_CREATE_VCS
+    // VcsInboxRealOptions expects host, token, etc.
+    const token = process.env.GITLAB_PERSONAL_TOKEN;
+    vcs = new VcsInboxReal({
+      host: configVcsHost,
+      token,
+    });
+    // #endregion END_CREATE_VCS
+
+    // #region START_CHECK_OPENCODE_PATH
+    if (!checkOpencodePath()) {
+      throw new Error(
+        'opencode not found in PATH. Install @opencode-ai/sdk or run with --mocks for dev mode.'
+      );
+    }
+    // #endregion END_CHECK_OPENCODE_PATH
+
+    // #region START_CONNECT_OPENCODE
+    const connected = await retryOpencodeConnect(3, 2000);
+    if (connected) {
+      opencode = new OpenCodeReal();
+      opencodeStatus = 'connected';
+    } else {
+      degraded = true;
+      opencode = new DegradedOpencode();
+      opencodeStatus = 'degraded (opencode not responding)';
+    }
+    // #endregion END_CONNECT_OPENCODE
+  }
+  // #endregion END_CREATE_ADAPTERS
+
+  // #region START_CREATE_ROLES
+  const engine = new RoleEngine();
+  await engine.loadAll();
+
+  // Activate all loaded roles by default
+  const loadedRoles = engine.list();
+  for (const role of loadedRoles) {
+    engine.activate(role.name);
+  }
+
+  const scheduler = new RoleScheduler({
+    engine,
+    store: stateStore,
+    vcs,
+    opencode,
+    pollingInterval,
+  });
+  // #endregion END_CREATE_ROLES
+
+  // #region START_CREATE_SERVER
+  const boardProvider = new BoardProviderMock();
+  await seedDevData(boardProvider);
+
+  const server = new HttpServer({ port, boardProvider });
+  // #endregion END_CREATE_SERVER
+
+  logger.info('[bootstrap] [idle → assembled]', {
+    mocks: config.mocks,
+    port,
+    roles: loadedRoles.map((r) => r.name),
+    opencodeStatus,
+    degraded,
+  });
+
+  return {
+    server,
+    scheduler,
+    opencode,
+    degraded,
+    opencodeStatus,
+    pollingInterval,
+    roles: loadedRoles.map((r) => r.name),
+    port,
+  };
+}

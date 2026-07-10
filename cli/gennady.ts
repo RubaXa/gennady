@@ -66,6 +66,8 @@ if (restArgs.some((a) => helpFlags.has(a))) {
     case 'inbox':
       if (process.argv[3] === 'config') {
         await import('./cmd/inbox/config-help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'serve') {
+        await import('./cmd/inbox/serve/help.ts').then((m) => m.printHelp());
       } else {
         await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
       }
@@ -239,6 +241,8 @@ switch (command) {
   case 'inbox':
     if (process.argv[3] === 'config') {
       await import('./cmd/inbox/config-index.ts');
+    } else if (process.argv[3] === 'serve') {
+      await import('./cmd/inbox/serve.cmd.ts');
     } else {
       await import('./cmd/inbox/index.ts');
     }

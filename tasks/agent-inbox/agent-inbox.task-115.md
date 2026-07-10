@@ -65,10 +65,10 @@
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] 2026-07-10T00:00:00Z ver `npm run type-check` → pass exit=0
+- [x] 2026-07-10T00:00:00Z DONE
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] 2026-07-10T00:00:00Z ver `node --import tsx --test services/agent-inbox/serve/__tests__/*.test.ts` → pass exit=0
+- [x] 2026-07-10T00:00:00Z DONE

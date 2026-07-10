@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
+- **Task-ID:** TSK-113 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
 - **Purpose:** Role Engine на узловой модели: RoleNode (session/gate/ask/effect), OutcomeClassifier, recovery ladder, ReviewerRole (граф 9 узлов = существующий конвейер D57/D70), AuthorRole, RightsEscalator (нотификации по таймеру).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,9 +10,9 @@
 
 | ID  | Kind | Deps  | Status |
 | --- | ---- | ----- | ------ |
-| P1  | impl | —     | [ ]    |
-| P2  | impl | P1    | [ ]    |
-| P3  | test | P1,P2 | [ ]    |
+| P1  | impl | —     | [x]    |
+| P2  | impl | P1    | [x]    |
+| P3  | test | P1,P2 | [x]    |
 
 ## 3. Phases
 
@@ -93,15 +93,17 @@
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] 2026-07-10T19:30:00Z ver `npm run type-check` → `pass` exit=`0`
+- [x] 2026-07-10T19:30:00Z DONE
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] 2026-07-10T19:35:00Z ver `npm run type-check` → `pass` exit=`0`
+- [x] 2026-07-10T19:35:00Z DONE
 
 #### P3
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] 2026-07-10T19:40:00Z ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/*.test.ts'` → `pass` exit=`0`
+- [x] 2026-07-10T19:40:00Z ver `npm run type-check` → `pass` exit=`0`
+- [x] 2026-07-10T19:40:00Z ver `npm run format:check` → `pass` exit=`0`
+- [x] 2026-07-10T19:40:00Z DONE

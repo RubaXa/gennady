@@ -65,6 +65,7 @@
     "@ai-sdk/openai": "^3.0.41",
     "@mtcute/dispatcher": "^0.29.0",
     "@mtcute/node": "^0.28.2",
+    "@opencode-ai/sdk": "^1.17.18",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.2",
     "@types/jsdom": "^28.0.3",
