@@ -8,14 +8,15 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | test | P1   | [ ]    |
 
 ## 3. Phases
 
 ### P1 — impl
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `services/ai-kit/compile.ts` — `buildSystemPrompt(role, ctx) → Promise<string>`: читает директивы по маппингу роль→файлы, склеивает
@@ -23,6 +24,7 @@
 - **Exit:** Вызов `buildSystemPrompt('reviewer', ctx)` возвращает system prompt из AIKit-директив.
 
 ### P2 — test
+
 - **Rules:** none
 - **Target Files:** `services/ai-kit/__tests__/compile.test.ts`
 - **Exit:** Тест: для роли reviewer возвращается непустая строка, содержащая ключевые слова из директив.
@@ -43,9 +45,13 @@
 ## 7. Execution Log
 
 ### Round 1 — initial
+
 #### P1
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
+
 #### P2
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE

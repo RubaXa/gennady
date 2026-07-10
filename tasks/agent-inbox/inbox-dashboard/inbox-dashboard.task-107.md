@@ -10,9 +10,9 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1 | impl | —    | [ ]    |
-| P2 | impl | P1   | [ ]    |
-| P3 | test | P1   | [ ]    |
+| P1  | impl | —    | [ ]    |
+| P2  | impl | P1   | [ ]    |
+| P3  | test | P1   | [ ]    |
 
 ## 3. Phases
 
@@ -33,6 +33,7 @@
 - **Exit:** Vite dev server показывает Kanban-доску с мок-данными. Drag-and-drop работает.
 
 ### P2 — impl (e2e харнесс)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `e2e/inbox-serve/playwright.config.ts` — webServer: inbox-api + vite dev

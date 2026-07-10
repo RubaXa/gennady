@@ -48,17 +48,17 @@ function BoardPage() {
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name            | Type      | Purpose                                                                              |
-| --------------- | --------- | ------------------------------------------------------------------------------------ |
-| `BoardPage` | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s. |
-| `Header` | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling. |
-| `UnassignedBlock` | Component | Блок «БЕЗ РОЛИ»: список карточек MR без назначенной роли, кнопка «Назначить ▼». |
-| `RoleBlock` | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый. |
-| `KanbanLane`    | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE) с dnd-kit. Принимает карточки.                |
-| `MrCard`        | Component | Карточка MR: проект, номер, время ожидания, статус, кнопка «смотреть».               |
-| `MrDetailModal` | Component | Модалка: отчёт агента, кнопки [Постить] [Отклонить] [Пропустить].                    |
-| `ApiClient`     | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`. |
-| `BoardStore`    | Service   | React Context: состояние доски, polling, optimistic updates.                         |
+| Name              | Type      | Purpose                                                                              |
+| ----------------- | --------- | ------------------------------------------------------------------------------------ |
+| `BoardPage`       | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s.                       |
+| `Header`          | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling.   |
+| `UnassignedBlock` | Component | Блок «БЕЗ РОЛИ»: список карточек MR без назначенной роли, кнопка «Назначить ▼».      |
+| `RoleBlock`       | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                 |
+| `KanbanLane`      | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE) с dnd-kit. Принимает карточки.                |
+| `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус, кнопка «смотреть».               |
+| `MrDetailModal`   | Component | Модалка: отчёт агента, кнопки [Постить] [Отклонить] [Пропустить].                    |
+| `ApiClient`       | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`. |
+| `BoardStore`      | Service   | React Context: состояние доски, polling, optimistic updates.                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 

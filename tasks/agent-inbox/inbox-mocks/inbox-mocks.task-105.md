@@ -8,14 +8,15 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | test | P1   | [ ]    |
 
 ## 3. Phases
 
 ### P1 — impl (фабрики)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-mocks/mr.mock.ts` — `mockActionableMr()`, `mockMrContext()`
@@ -25,6 +26,7 @@
 - **Exit:** Все фабрики возвращают типизированные мок-объекты. Поля переопределяемы через partial-аргументы.
 
 ### P2 — test (фабрики)
+
 - **Rules:** none
 - **Target Files:** `services/agent-inbox/modules/inbox-mocks/__tests__/` — валидация типов возвращаемых объектов
 - **Exit:** Тесты проверяют, что фабрики возвращают корректные типы.
@@ -43,18 +45,22 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Level | Test File |
-|----------|-------|-----------|
-| mockActionableMr типы | unit | inbox-mocks/__tests__/mr.mock.test.ts |
-| mockBoard типы | unit | inbox-mocks/__tests__/board.mock.test.ts |
-| mockOpenCodeResponse типы | unit | inbox-mocks/__tests__/opencode.mock.test.ts |
+| Scenario                  | Level | Test File                                   |
+| ------------------------- | ----- | ------------------------------------------- |
+| mockActionableMr типы     | unit  | inbox-mocks/**tests**/mr.mock.test.ts       |
+| mockBoard типы            | unit  | inbox-mocks/**tests**/board.mock.test.ts    |
+| mockOpenCodeResponse типы | unit  | inbox-mocks/**tests**/opencode.mock.test.ts |
 
 ## 7. Execution Log
 
 ### Round 1 — initial
+
 #### P1
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
+
 #### P2
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE

@@ -17,17 +17,17 @@ inbox-core / inbox-roles.
 ## 2. Module Usage Example
 
 ```ts
-import { HttpServer } from '@/inbox-api';
+import { HttpServer, BoardProviderMock } from '@/inbox-api';
 
-const server = new HttpServer({
-  port: 4174,
-  staticDir: 'dist/inbox-serve',
-  deps: { stateStore, roleScheduler },
-});
+// dev/e2e: мок
+const boardProvider = new BoardProviderMock();
+boardProvider.seed({ roles: [...], unassigned: [...] });
 
+// production: BoardProviderReal (подключает TSK-113)
+// const boardProvider = new BoardProviderReal({ roleScheduler, stateStore, auditLog });
+
+const server = new HttpServer({ port: 4174, boardProvider });
 await server.start();
-// → Dashboard: http://localhost:4174
-// → API:       http://localhost:4174/api/board
 ```
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
@@ -38,11 +38,14 @@ await server.start();
 
 | Name          | Type    | Purpose                                                                |
 | ------------- | ------- | ---------------------------------------------------------------------- |
-| `HttpServer`  | Service | `node:http` сервер: порт, роутинг, CORS, статика, graceful shutdown.   |
-| `BoardRouter` | Service | `GET /api/board` — агрегирует состояние от RoleScheduler + StateStore. |
-| `MrRouter`    | Service | `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`.                  |
-| `AuditRouter` | Service | `GET /api/mr/:id/audit` — читает AuditLog.                             |
-| `StaticFiles` | Service | Раздача React SPA из `dist/inbox-serve/`. SPA fallback.                |
+| `HttpServer` | Service | `node:http` сервер: порт, роутинг, CORS, статика, graceful shutdown. |
+| `BoardProviderPort` | Port | Абстракция состояния доски: `getBoard()`, `assignMr()`, `executeAction()`, `getReport()`. Владеет типами `RoleView`, `MrCard`, `MrDetail`. |
+| `BoardProviderMock` | Adapter | Мок-реализация `BoardProviderPort` для TSK-106 (in-memory, без RoleEngine). |
+| `BoardProviderReal` | Adapter | Реализация через `RoleScheduler` + `StateStore` (TSK-113 подключает). |
+| `BoardRouter` | Service | `GET /api/board` — агрегирует состояние от BoardProviderPort. |
+| `MrRouter` | Service | `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`. |
+| `AuditRouter` | Service | `GET /api/mr/:id/audit` — читает AuditLog. |
+| `StaticFiles` | Service | Раздача React SPA из `dist/inbox-serve/`. SPA fallback. |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -61,6 +64,26 @@ await server.start();
 - **Errors & Degradation:** Порт занят → ошибка старта.
 - **Consumers:** `gennady inbox serve`.
 
+### `BoardProviderPort`
+- **Type:** Port
+- **Purpose:** Абстракция состояния доски. Позволяет TSK-106 работать с моком, TSK-113 — с real RoleScheduler.
+- **Public Operations:**
+  - `getBoard()` → `{ roles: RoleView[], unassigned: MrCard[] }`
+  - `assignMr(mrId, role, rights?)` → `{ ok: boolean }`
+  - `executeAction(mrId, action)` → `{ ok: boolean }`
+  - `getReport(mrId)` → `MrDetail` — отчёт агента (находки, треды, вердикт)
+- **Consumers:** `BoardRouter`, `MrRouter`.
+
+### `BoardProviderMock`
+- **Type:** Adapter | **Implements:** `BoardProviderPort`
+- **Purpose:** In-memory мок для TSK-106. Хранит состояние в памяти. `getReport()` возвращает seeded данные.
+- **Consumers:** DI-контейнер (dev/e2e).
+
+### `BoardProviderReal`
+- **Type:** Adapter | **Implements:** `BoardProviderPort`
+- **Purpose:** Реализация через `RoleScheduler` + `StateStore` + `AuditLog`. Подключается в TSK-113/115.
+- **Consumers:** Production-окружение.
+
 ### `BoardRouter`
 
 - **Type:** Service
@@ -71,10 +94,11 @@ await server.start();
 ### `MrRouter`
 
 - **Type:** Service
-- **Purpose:** Действия над MR.
+- **Purpose:** Действия над MR + отчёт агента.
 - **Endpoints:**
   - `POST /api/mr/:id/assign { role, rights? }` → `{ ok: true }`
   - `POST /api/mr/:id/action { action: 'post' | 'reject' | 'skip' }` → `{ ok: true }`
+  - `GET /api/mr/:id/report` → `MrDetail` — находки, треды, вердикт для MrDetailModal
 - **Consumers:** `inbox-dashboard`.
 
 ### `AuditRouter`
@@ -111,6 +135,9 @@ await server.start();
 ```
 services/agent-inbox/modules/inbox-api/
 ├── http-server.ts            # HttpServer: start, stop, роутинг
+├── board-provider.port.ts    # BoardProviderPort: абстракция
+├── board-provider.mock.ts    # BoardProviderMock: in-memory мок
+├── board-provider.real.ts    # BoardProviderReal: делегат к RoleScheduler
 ├── routers/
 │   ├── board.router.ts       # BoardRouter
 │   ├── mr.router.ts          # MrRouter

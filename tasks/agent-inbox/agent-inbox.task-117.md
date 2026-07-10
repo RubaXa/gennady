@@ -8,13 +8,14 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | verify | —    | [ ]    |
+| ID  | Kind   | Deps | Status |
+| --- | ------ | ---- | ------ |
+| P1  | verify | —    | [ ]    |
 
 ## 3. Phases
 
 ### P1 — verify (ручной golden-прогон)
+
 - **Rules:** none
 - **Exit (критерии прохождения):**
   1. `gennady inbox serve` стартует, OpenCode spawn, polling VCS
@@ -40,5 +41,7 @@
 ## 7. Execution Log
 
 ### Round 1 — initial
+
 #### P1
+
 - [ ] `<ts>` DONE
