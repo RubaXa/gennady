@@ -117,6 +117,20 @@ describe('buildInboxView', () => {
     assert.strictEqual(view.hidden.waiting, 1);
   });
 
+  it('shows an awaiting_reply MR when delta is updated (silent push changed something)', () => {
+    const items = [raw({ iid: '1', role: 'reviewer' }), raw({ iid: '2', role: 'reviewer' })];
+    const stages = stageMap({ '1': 'awaiting_reply', '2': 'awaiting_reply' });
+    const deltas = new Map([
+      ['https://x/1', 'updated'],
+      ['https://x/2', 'idle'],
+    ]);
+    const view = buildInboxView(items, opt(), NOW, deltas, stages);
+    assert.strictEqual(view.total, 1);
+    assert.strictEqual(view.groups[0].items[0].iid, '1');
+    assert.strictEqual(view.groups[0].items[0].delta, 'updated');
+    assert.strictEqual(view.hidden.waiting, 1);
+  });
+
   it('does not stage-filter on the pre-scan pass (empty stages map)', () => {
     const items = [raw({ iid: '1', role: 'reviewer' })];
     const view = buildInboxView(items, opt(), NOW);

@@ -9,6 +9,7 @@ import type {
 } from '../../../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';
 import type { InboxDelta } from './classify-inbox.logic.ts';
 import type { MrStage } from './classify-mr-stage.logic.ts';
+import type { MrActivityEvent } from '../../../../../services/vcs-client/entities/mr-activity-event.type.ts';
 
 /** @purpose Toggles controlling inbox filtering; all default to the noise-suppressing side. */
 export type InboxOptions = {
@@ -54,6 +55,8 @@ export type InboxItem = {
   delta: InboxDelta;
   /** @purpose Actionable stage from discussion scan (idle when not scanned) */
   stage: MrStage;
+  /** @purpose Activity events detected since last visit — parsed system notes */
+  reasons: MrActivityEvent[];
 };
 
 /** @purpose Grouped, filtered inbox plus counts of what was hidden and why. */
@@ -104,6 +107,7 @@ function humanizeAge(updatedAt: string, nowMs: number): string {
  * @param [deltas] Per-MR change since the last tick, keyed by webUrl (defaults to empty).
  * @param [stages] Per-MR stage, keyed by webUrl (defaults to empty). Non-empty: MRs at `awaiting_reply`/`idle` dropped (needing no reaction unless `--all`). Empty (pre-scan): no stage filtering.
  * @param [myLogin] My username; MRs I have already approved are dropped (unless `--all`).
+ * @param [changeReasons] Per-MR parsed activity events, keyed by webUrl (defaults to empty).
  * @returns Grouped inbox view with hidden-counts.
  * @consumer inbox.cmd
  */
@@ -113,7 +117,8 @@ export function buildInboxView(
   nowIso: string,
   deltas: Map<string, InboxDelta> = new Map(),
   stages: Map<string, MrStage> = new Map(),
-  myLogin = ''
+  myLogin = '',
+  changeReasons: Map<string, MrActivityEvent[]> = new Map()
 ): InboxView {
   const nowMs = Date.parse(nowIso);
   const staleMs = options.staleDays * 24 * 60 * 60 * 1000;
@@ -151,8 +156,14 @@ export function buildInboxView(
     // and wait on others; idle = nothing to do. Neither needs a reaction from me —
     // EXCEPT an author's idle MR, which still needs my self-review summary for the
     // reviewers, so every outgoing MR passes through the inbox at least once.
+    // BUT: if the MR was updated since my last visit (delta != 'idle'), something
+    // changed — show it even if the stage says "waiting", because a silent push
+    // (new commits, no comment) leaves the stage untouched.
     const stage = stages.get(mr.webUrl) ?? 'idle';
-    const reactionless = stage === 'awaiting_reply' || (stage === 'idle' && mr.role !== 'author');
+    const delta = deltas.get(mr.webUrl) ?? 'idle';
+    const reactionless =
+      (stage === 'awaiting_reply' && delta === 'idle') ||
+      (stage === 'idle' && mr.role !== 'author');
     if (!options.all && stagesKnown && reactionless) {
       hidden.waiting++;
       continue;
@@ -194,6 +205,7 @@ export function buildInboxView(
       ageLabel: humanizeAge(mr.updatedAt, nowMs),
       delta: deltas.get(mr.webUrl) ?? 'idle',
       stage,
+      reasons: changeReasons.get(mr.webUrl) ?? [],
     });
   }
 

@@ -56,7 +56,7 @@ export function flattenNotes(discussions: unknown[]): RawNote[] {
 }
 
 /**
- * @purpose Decide what the MR needs from me, comparing my activity to others'.
+ * @purpose Classify MR stage from discussion notes — review_needed, reply_needed, awaiting_reply, idle. Silent commits after my last note trigger reply_needed.
  * @param notes Flattened discussion notes.
  * @param myLogin My GitLab username.
  * @param role My role on the MR.
@@ -80,6 +80,19 @@ export function classifyMrStage(
   if (role === 'reviewer' && myLast === null) return 'review_needed';
   // Someone wrote after me (or I never replied) → the ball is in my court.
   if (otherLast !== null && (myLast === null || otherLast > myLast)) return 'reply_needed';
+
+  // System notes about new commits after my last note → the author pushed code
+  // without commenting; treat as needing my attention.
+  if (myLast !== null) {
+    const hasNewSystemActivity = notes
+      .filter((n) => n.system && n.body)
+      .some((n) => {
+        const t = ts(n);
+        return t > myLast && /added \d+ commit/.test(n.body ?? '');
+      });
+    if (hasNewSystemActivity) return 'reply_needed';
+  }
+
   // I spoke last → waiting on others.
   if (myLast !== null) return 'awaiting_reply';
   return 'idle';

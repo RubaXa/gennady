@@ -133,7 +133,7 @@
     `openQuestions`/`lastAuthor`/`events`; at the top `total`/`hidden`/`delta`.
 
     The list is already filtered to actionable by the CLI (merged/closed, my approve,
-    `awaiting_reply`/`idle` hidden; counts in `hidden`). Everything in `groups` genuinely awaits me —
+    `idle` hidden; `awaiting_reply` hidden only when `delta == 'idle'`; counts in `hidden`). Everything in `groups` genuinely awaits me —
     do NOT filter by hand. Full list — `--all`.
 
     - **delta > 0** → a widget (or ASCII dashboard): cards for `new`/`updated` only (badge
@@ -321,7 +321,7 @@
           does NOT render markdown (no `[text](url)`, no `**bold**`). Emit the webUrl
           bare on its own line (VK Teams auto-links it). Format:
           ```
-          🤖💡 <title>
+          🤖💡 <merge title>
           - <what I did relevant to this person>
           - …
           <webUrl>

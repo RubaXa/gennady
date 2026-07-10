@@ -57,6 +57,14 @@ describe('classifyMrStage', () => {
     // only a system note from others → no real activity → reviewer still owes review
     assert.strictEqual(classifyMrStage(notes, ME, 'reviewer'), 'review_needed');
   });
+
+  it('system note "added commits" after my last note → reply_needed', () => {
+    const notes = [
+      note('me', '2026-06-01', false, 'LGTM'),
+      note('svc', '2026-06-05', true, 'added 3 commits'),
+    ];
+    assert.strictEqual(classifyMrStage(notes, ME, 'reviewer'), 'reply_needed');
+  });
 });
 
 describe('buildWorkPacket', () => {

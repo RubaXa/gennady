@@ -16,6 +16,7 @@ import {
   lastNoteAuthor,
   type MrStage,
 } from './_core/logic/classify-mr-stage.logic.ts';
+import { parseMrActivity, type MrActivityEvent } from './_core/logic/parse-mr-activity.logic.ts';
 import { loadRegistry, saveRegistry, resetInboxState } from './_core/logic/inbox-registry.logic.ts';
 import {
   resolveStateDir,
@@ -179,6 +180,7 @@ async function run(): Promise<number> {
 
     const stages = new Map<string, MrStage>();
     const details = new Map<string, { openQuestions: number; lastAuthor: string }>();
+    const changeReasons = new Map<string, MrActivityEvent[]>();
     await Promise.all(
       [...visibleUrls].map(async (url) => {
         const mr = itemByUrl.get(url);
@@ -187,21 +189,32 @@ async function run(): Promise<number> {
           stages.set(url, (registry.entries[url]?.stage as MrStage) ?? 'idle');
           return;
         }
-        const notes = flattenNotes(
-          await client.MergeDiscussions.getAll({ project: mr.project, iid: mr.iid })
-        );
+        const rawDiscussions = await client.MergeDiscussions.getAll({
+          project: mr.project,
+          iid: mr.iid,
+        });
+        const notes = flattenNotes(rawDiscussions);
         stages.set(url, classifyMrStage(notes, me.login, mr.role));
         details.set(url, {
           openQuestions: buildWorkPacket(notes, me.login, mr.role).openNotes.length,
           lastAuthor: lastNoteAuthor(notes),
         });
+        const entry = registry.entries[url];
+        changeReasons.set(
+          url,
+          parseMrActivity(notes, entry?.lastClassifiedAt ?? '', {
+            current:
+              (rawDiscussions as Array<{ notes?: Array<{ commit_id?: string }> }>)[0]?.notes?.[0]
+                ?.commit_id ?? '',
+          })
+        );
       })
     );
     for (const [url, stage] of stages) {
       if (next.entries[url]) next.entries[url].stage = stage;
     }
 
-    const view = buildInboxView(items, options, now, deltas, stages, me.login);
+    const view = buildInboxView(items, options, now, deltas, stages, me.login, changeReasons);
 
     if (argv.includes('--json')) {
       const out = {
@@ -228,6 +241,7 @@ async function run(): Promise<number> {
             events: i.shownEvents,
             openQuestions: details.get(i.webUrl)?.openQuestions ?? null,
             lastAuthor: details.get(i.webUrl)?.lastAuthor ?? null,
+            reasons: (i.reasons ?? []).map((r) => r.summary),
           })),
         })),
       };
