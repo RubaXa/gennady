@@ -186,8 +186,8 @@ await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
   - 24h без действия оператора → `rights.canPost = true`
   - 72h → `rights.canApprove = true` (упрощённая схема)
 - **Invariants:**
-  - Эскалация необратима в пределах жизни RoleInstance
   - Действие оператора сбрасывает таймер бездействия
+  - Эскалированные права сохраняются до завершения RoleInstance
   <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->

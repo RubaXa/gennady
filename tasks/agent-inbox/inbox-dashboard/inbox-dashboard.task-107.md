@@ -10,8 +10,9 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1 | impl | —    | [ ]    |
+| P2 | impl | P1   | [ ]    |
+| P3 | test | P1   | [ ]    |
 
 ## 3. Phases
 
@@ -31,7 +32,15 @@
   - `services/agent-inbox/modules/inbox-dashboard/styles/index.css` — Tailwind v4 entry
 - **Exit:** Vite dev server показывает Kanban-доску с мок-данными. Drag-and-drop работает.
 
-### P2 — test
+### P2 — impl (e2e харнесс)
+- **Rules:** `ai/directives/coding/typescript-rules.xml`
+- **Target Files:**
+  - `e2e/inbox-serve/playwright.config.ts` — webServer: inbox-api + vite dev
+  - `e2e/inbox-serve/fixtures/mock-data.ts` — сценарии мок-данных
+  - `e2e/inbox-serve/smoke.spec.ts` — открыть дашборд, проверить шапку
+- **Exit:** `npx playwright test --config=e2e/inbox-serve/playwright.config.ts` → smoke pass.
+
+### P3 — test (компоненты)
 
 - **Rules:** none
 - **Target Files:**

@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core state), TSK-110 (VCS port), TSK-111 (opencode port)
+- **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core state), TSK-110 (VCS port), TSK-111 (opencode port), TSK-116 (ai-kit)
 - **Purpose:** Role Engine, Scheduler, RoleInstance (стейт-машина), RightsEscalator. Роли reviewer и author. Интеграция всех компонентов.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, SV-07–SV-11, [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md) | **Runtime:** not-implemented | **Verification:** unit, integration
 
@@ -29,7 +29,7 @@
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — RoleInstance: advance, onContextUpdate, updateRights, getBoardView. Вызывает `services/ai-kit` для сборки system prompt из AIKit-директив (SV-12).
+  - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — RoleInstance: advance, onContextUpdate, updateRights, getBoardView. Вызывает `services/ai-kit` (`buildSystemPrompt`) для сборки system prompt (см. TSK-116).
   - `services/agent-inbox/modules/inbox-roles/reviewer.role.ts` — ReviewerRole: states, transitions, buildSystemPrompt (делегирует в ai-kit)
   - `services/agent-inbox/modules/inbox-roles/author.role.ts` — AuthorRole
   - `services/agent-inbox/modules/inbox-roles/rights-escalator.ts` — RightsEscalator: evaluate (24h→canPost, 72h→canApprove), schedule

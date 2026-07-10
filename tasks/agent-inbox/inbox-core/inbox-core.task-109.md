@@ -2,8 +2,8 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-109 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** —
-- **Purpose:** Файловое состояние agent-inbox: config.json, inbox-registry.json, audit.jsonl. Чтение/запись/атомарность/structured signal.
+- **Task-ID:** TSK-109 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** TSK-90–TSK-94 (DONE CLI config/registry)
+- **Purpose:** Перенос CLI-логики состояния (config, registry, audit) в модуль `inbox-core`. CLI начинает использовать модуль вместо прямых вызовов `_core/logic/`. Файлы состояния остаются общими (SV-12). Атомарность, structured signal, дельта — переиспользуются.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-03, AI-20, AI-21, [inbox-core.spec.md](../../specs/agent-inbox/inbox-core/inbox-core.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
@@ -19,12 +19,12 @@
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-core/inbox-config.ts` — InboxConfig: load, save, validate, unset, structured signal
-  - `services/agent-inbox/modules/inbox-core/inbox-registry.ts` — InboxRegistry: load, updateDelta, promoteHeadSha, save
-  - `services/agent-inbox/modules/inbox-core/audit-log.ts` — AuditLog: append, query, rotate (10MB)
+  - `services/agent-inbox/modules/inbox-core/inbox-config.ts` — InboxConfig: обёртка над `cli/cmd/inbox/_core/logic/inbox-config.logic.ts`
+  - `services/agent-inbox/modules/inbox-core/inbox-registry.ts` — InboxRegistry: обёртка над `cli/cmd/inbox/_core/logic/inbox-registry.logic.ts`
+  - `services/agent-inbox/modules/inbox-core/audit-log.ts` — AuditLog: новый, append-only, ротация 10MB
   - `services/agent-inbox/modules/inbox-core/state-store.ts` — StateStore: единая точка доступа
   - `services/agent-inbox/modules/inbox-core/errors.ts` — коды ошибок (AI-22)
-- **Exit:** Файлы читаются/пишутся атомарно. Несуществующий config → structured signal. Несуществующий registry → пустой.
+- **Exit:** Файлы читаются/пишутся атомарно. CLI рефакторен на inbox-core. AuditLog — новый.
 
 ### P2 — test
 

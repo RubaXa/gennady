@@ -50,9 +50,10 @@ function BoardPage() {
 
 | Name            | Type      | Purpose                                                                              |
 | --------------- | --------- | ------------------------------------------------------------------------------------ |
-| `BoardPage`     | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s.                       |
-| `Header`        | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling.   |
-| `RoleBlock`     | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                 |
+| `BoardPage` | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s. |
+| `Header` | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling. |
+| `UnassignedBlock` | Component | Блок «БЕЗ РОЛИ»: список карточек MR без назначенной роли, кнопка «Назначить ▼». |
+| `RoleBlock` | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый. |
 | `KanbanLane`    | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE) с dnd-kit. Принимает карточки.                |
 | `MrCard`        | Component | Карточка MR: проект, номер, время ожидания, статус, кнопка «смотреть».               |
 | `MrDetailModal` | Component | Модалка: отчёт агента, кнопки [Постить] [Отклонить] [Пропустить].                    |
@@ -127,7 +128,7 @@ function BoardPage() {
 
 - **Invariants:**
   - Карточка всегда показывает `prevState → state` переход
-  - Каждые 30s polling — если ответ 304 (не изменилось) → без перерисовки
+  - Каждые 30s polling — при неизменном JSON (same-данные) → без перерисовки
   - Оптимистичные обновления: действие → сразу UI + rollback при ошибке
 
 - **Визуальная структура (ARIA-снапшоты):**
