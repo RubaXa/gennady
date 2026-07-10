@@ -450,6 +450,11 @@ GitLab (D2), file-очередь+CLI (D5), стадии автономии A→B
 | **D75** | `active` | **Foreground + localhost** (не демон, не внешняя сеть) | Соответствует духу проекта: CLI-инструменты запускаются в терминале. Внешний доступ — зона ответственности оператора (reverse proxy). Демонизация — оператор настраивает сам (tmux/launchd). | (a) встроенный daemonize — усложняет код; (b) listen на 0.0.0.0 — дыра безопасности по умолчанию |
 | **D76** | `active` | **Декомпозиция по подсистемам** — 5 модулей: core, api, dashboard, roles, opencode | Изоляция serve от CLI критична: serve — новый режим, не должен зависеть от CLI. Core — переиспользуемое ядро (состояние, VCS). Жертвуем: 5 модулей вместо 3, чуть больше файлов и межмодульных связей. | (a) По слоям (3 модуля) — inbox-engine становится God-модулем; (b) Feature-based (6 модулей) — избыточная нарезка для v1 |
 | **D-79** | `active` | **Оркестрация в движке, LLM только в узлах** — граф типизированных узлов (session/gate/ask/effect), `OutcomeClassifier`, recovery ladder | На живых прогонах агент регулярно пропускал шаги конвейера, забывал спросить оператора, не дописывал артефакты. Контроль процесса нельзя оставлять внутри LLM-сессии. Порядок шагов, гейты, ретраи, классификация исходов, публичные действия — код движка. LLM — только содержимое отдельного узла. | (a) инструкции в сессии + самопроверка модели — агент им не следует (наблюдаемые отказы); (b) проверка промптом «всё ли ты сделал» — модель может гадать |
+| **D-80** | `active` | **Kanban read-only** — дашборд показывает состояние без drag-and-drop. Назначение ролей — через dropdown, действия оператора — через модалку OperatorQuestion. | dnd-kit использовался только в smoke-тесте (drag-and-drop MR INBOX → PROGRESS), но основная механика — dropdown + модалка. Упрощает первую версию. | (a) полноценный drag-and-drop между колонками — избыточно для v1 |
+| **D-81** | `active` | **Single-command dev startup** — Vite plugin (`inboxServePlugin`) поднимает API-сервер (4174) при старте Vite dev (5174). Одна команда `npm run inbox-serve:dev` запускает всё. | Два терминала — плохой DX. Vite-плагин стартует `HttpServer` в `configureServer`, останавливает в `closeBundle`. Прокси `/api` → 4174. | (a) два npm-скрипта + concurrently — лишняя зависимость; (b) отдельный оркестратор-процесс — усложнение без выигрыша |
+| **D-82** | `active` | **Shared mock seed factory** — `dev-seed.ts` содержит единую функцию `seedDevData()`, используемую и standalone `inbox-serve.ts`, и Vite plugin. | Дублирование 100 строк мок-данных в двух местах → единый источник. | (a) копипаст в каждом месте — рассинхрон неизбежен |
+| **D-83** | `active` | **Graceful shutdown: socket tracking + 5s timeout** — `HttpServer` отслеживает все сокеты через событие `connection`, при остановке через 5s форсированно закрывает оставшиеся. | `server.close()` ждёт keep-alive соединения бесконечно. Трекинг сокетов + destroy по таймауту гарантирует завершение. | (a) только `server.close()` — может висеть; (b) немедленный destroy всех сокетов — обрывает активные запросы |
+| **D-84** | `active` | **Provider-aware VCS client** — `_resolveInboxClient()` выбирает GitLab/GitHub клиент по полю `_provider`. Все методы (`getActionable`, `getMrContext`, `getDiscussions`) используют этот метод для identity-запросов. | Конструктор принимал `provider: 'github'`, но `getActionable` хардкодил `VcsGitlabClient`. GitHub — явная ошибка до реализации. | (a) отдельный метод под каждый провайдер — дублирование логики выбора |
 
 <!--/SECTION:DECISION_LOG-->
 
@@ -465,14 +470,16 @@ GitLab (D2), file-очередь+CLI (D5), стадии автономии A→B
 
 ## 8. Handoff to Task Scaffolding
 
-- **Статус:** research-спайк, основное ядро реализовано. Serve-режим — спроектирован, не реализован.
+- **Статус:** research-спайк, CLI-ядро + serve-режим (веб-интерфейс на моках) реализованы. Role Engine + real-smoke — deferred.
 - **Реализовано:** `inbox` / `inbox-context` CLI (+ тесты), `VcsClientInbox` порт + GitLab-имплементация, `ai/directives/agent-inbox/*`, `ai/skills/agent-inbox/*`, SelfCheck, REMIT-триггер.
-- **Нереализовано (deferred):** очередь/tick/watch/loop, полный автор-цикл, бот (VK Teams/Telegram).
+- **Serve mode (TSK-109→108, DONE):** `inbox-core` (StateStore, VcsInboxPort+Mock+Real, AuditLog), `inbox-mocks` (фабрики), `inbox-api` (HTTP-сервер + REST), `inbox-dashboard` (React SPA, Kanban, 21 e2e-тест), `inbox-opencode` (Port+Mock+Pool+SchemaRegistry), `inbox-visual-testing` (ARIA + layout helpers), `ai-kit` (компилятор промптов). Старт: `npm run inbox-serve:dev`.
+- **Нереализовано (deferred):** очередь/tick/watch/loop, полный автор-цикл, RoleEngine (TSK-113), serve-bootstrap (TSK-115), real-smoke (TSK-117), бот (VK Teams/Telegram).
 
 ### 8.1 Serve Mode Handoff
 
-- **Areas requiring decomposition:** Role Engine (интерфейс `.role.ts` модуля — см. [`inbox-roles`](./inbox-roles/inbox-roles.spec.md)), веб-сервер + REST API (`inbox-api`), React SPA дашборд (`inbox-dashboard`), OpenCodeClient абстракция (`inbox-opencode`).
-- **Open risks:** None (все модули декомпозированы).
+- **Implemented (TSK-105–111, 114, 116, 108):** 9 из 13 задач DONE. Полный веб-интерфейс на моках: API-сервер, React SPA (Kanban + AwaitingQueue + MrDetail), 21 e2e-тест (Playwright). Старт: `npm run inbox-serve:dev` → http://localhost:5174.
+- **Pending:** TSK-113 (RoleEngine), TSK-115 (serve bootstrap), TSK-117 (real-smoke), TSK-112 (OpenCodeReal SDK).
+- **Open risks:** None (все модули декомпозированы, веб-интерфейс работает).
 <!--/SECTION:HANDOFF-->
 
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->

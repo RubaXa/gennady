@@ -2,16 +2,16 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-109 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** TSK-90–TSK-94 (DONE CLI config/registry)
+- **Task-ID:** TSK-109 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** TSK-90–TSK-94 (DONE CLI config/registry)
 - **Purpose:** Перенос CLI-логики состояния (config, registry, audit) в модуль `inbox-core`. CLI начинает использовать модуль вместо прямых вызовов `_core/logic/`. Файлы состояния остаются общими (SV-12). Атомарность, structured signal, дельта — переиспользуются.
-- **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-03, AI-20, AI-21, [inbox-core.spec.md](../../specs/agent-inbox/inbox-core/inbox-core.spec.md) | **Runtime:** not-implemented | **Verification:** unit
+- **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-03, AI-20, AI-21, [inbox-core.spec.md](../../specs/agent-inbox/inbox-core/inbox-core.spec.md) | **Runtime:** implemented | **Verification:** unit (pass)
 
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -67,14 +67,34 @@
 
 ## 7. Execution Log
 
-### Round 1 — initial
+### Round 1 — 2026-07-10, initial
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T10:00:00Z` Created `services/agent-inbox/modules/inbox-core/inbox-config.ts` — InboxConfig: load/save/validate с structured signal `configured: false`
+- [x] `2026-07-10T10:00:00Z` Created `services/agent-inbox/modules/inbox-core/inbox-registry.ts` — InboxRegistry: load/save/delta (NEW/↑/idle), promoteReviewedHeadSha
+- [x] `2026-07-10T10:00:00Z` Created `services/agent-inbox/modules/inbox-core/audit-log.ts` — AuditLog: append-only JSON Lines, rotate at 10MB, Promise-chain serial lock
+- [x] `2026-07-10T10:00:00Z` Created `services/agent-inbox/modules/inbox-core/state-store.ts` — StateStore: единая точка доступа, атомарная запись (tmp+rename)
+- [x] `2026-07-10T10:00:00Z` Created `services/agent-inbox/modules/inbox-core/errors.ts` — коды ошибок AI-22: NETWORK, AUTH, RATE_LIMIT, NOT_FOUND, CONFIG, WORKTREE
+- [x] `2026-07-10T10:05:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-10T10:05:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-10T10:05:00Z` DONE
+- [x] **Handoff →** artifacts: [inbox-config.ts, inbox-registry.ts, audit-log.ts, state-store.ts, errors.ts]; decisions: [D_atomic_write=tmp+rename, D_audit_serial_lock=Promise-chain, D_audit_sort=Date.getTime()]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T10:10:00Z` Created `services/agent-inbox/modules/inbox-core/__tests__/inbox-config.test.ts` — structured signal, validate, save, corrupt JSON, missing file
+- [x] `2026-07-10T10:10:00Z` Created `services/agent-inbox/modules/inbox-core/__tests__/inbox-registry.test.ts` — delta NEW/↑/idle, promoteHeadSha, empty registry
+- [x] `2026-07-10T10:10:00Z` Created `services/agent-inbox/modules/inbox-core/__tests__/audit-log.test.ts` — append, query, rotate 10MB, sort by Date.getTime()
+- [x] `2026-07-10T10:10:00Z` Created `services/agent-inbox/modules/inbox-core/__tests__/state-store.test.ts` — atomic save, directory auto-create
+- [x] `2026-07-10T10:15:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-core/__tests__/*.test.ts'` → pass exit=0 (38/38)
+- [x] `2026-07-10T10:15:00Z` ver `npm run test -- 'cli/cmd/inbox/_core/logic/inbox-registry.test.ts' 'cli/cmd/inbox/_core/logic/inbox-config.test.ts'` → pass exit=0 (24/24) — CLI тесты остаются зелёными после миграции
+- [x] `2026-07-10T10:15:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-10T10:15:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-10T10:15:00Z` DONE
+- [x] **Handoff →** artifacts: [inbox-config.test.ts, inbox-registry.test.ts, audit-log.test.ts, state-store.test.ts]; decisions: [test_counts=38+24]; open: []
+
+#### Round close
+
+- [x] `2026-07-10T10:20:00Z` sync inbox-core
+- [x] `2026-07-10T10:20:00Z` DONE

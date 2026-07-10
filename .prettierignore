@@ -8,3 +8,4 @@ cli/utils/review-gen/js
 ai/skills/
 ai/kit/
 .claude/skills/
+e2e/inbox-serve/test-results/

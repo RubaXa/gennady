@@ -163,6 +163,18 @@ services/agent-inbox/modules/inbox-api/
 - `errors.ts` — `ApiError`
 <!--/SECTION:FILE_STRUCTURE-->
 
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- Static file serving uses `path.resolve()` + `startsWith(_distDir)` to block path traversal — paths outside dist dir result in 404
+- `parseBody` has 1MB limit, destroys socket on overflow — prevents memory exhaustion from malicious requests
+- `sendError` returns generic 'Internal server error' — no internal details leaked to client
+- `HttpServer.stop()`: 5s timeout destroys tracked sockets for graceful shutdown — active connections get a chance to finish, then force-closed
+- `HttpServer.start()`: tracks sockets via 'connection' event — enables socket cleanup at shutdown
+
+<!--/SECTION:MODULE_DECISION_LOG-->
+
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
 ## 9. Inter-Module Dependencies

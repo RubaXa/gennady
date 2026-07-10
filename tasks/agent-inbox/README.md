@@ -20,18 +20,18 @@
 | TSK-102 | DONE   | TSK-91, TSK-94, TSK-95  | `inbox-review-plan` command + `H_NO_REVIEW_PLAN` gate              |
 | TSK-103 | DONE   | TSK-102                 | `inbox-review-plan --scaffold`/`--validate`: документный конвейер  |
 | TSK-104 | DONE   | TSK-103                 | Документный конвейер в скиллах + пивот «ничего на диск»            |
-| TSK-105 | TODO   | TSK-109                 | inbox-mocks: фабрики мок-данных                                    |
-| TSK-106 | TODO   | TSK-105                 | inbox-api: HTTP-сервер + REST API (моки)                           |
-| TSK-107 | TODO   | TSK-105, TSK-106        | inbox-dashboard: React SPA дашборд (Kanban) + e2e-харнесс          |
-| TSK-108 | TODO   | TSK-107, TSK-114        | inbox-dashboard: e2e тесты (Playwright)                            |
-| TSK-109 | TODO   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog       |
-| TSK-110 | TODO   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                             |
-| TSK-111 | TODO   | TSK-105                 | inbox-opencode: OpenCodePort + Mock + SessionPool + SchemaRegistry |
+| TSK-105 | DONE   | TSK-109                 | inbox-mocks: фабрики мок-данных                                    |
+| TSK-106 | DONE   | TSK-105                 | inbox-api: HTTP-сервер + REST API (моки)                           |
+| TSK-107 | DONE   | TSK-105, TSK-106        | inbox-dashboard: React SPA дашборд (Kanban) + e2e-харнесс          |
+| TSK-108 | DONE   | TSK-107, TSK-114        | inbox-dashboard: e2e тесты (Playwright)                            |
+| TSK-109 | DONE   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog       |
+| TSK-110 | DONE   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                             |
+| TSK-111 | DONE   | TSK-105                 | inbox-opencode: OpenCodePort + Mock + SessionPool + SchemaRegistry |
 | TSK-112 | TODO   | TSK-111                 | inbox-opencode: OpenCodeReal (SDK-интеграция)                      |
 | TSK-113 | TODO   | TSK-109,110,111,116     | inbox-roles: RoleEngine + Scheduler + Instance + Escalator         |
-| TSK-114 | TODO   | TSK-105, TSK-107        | inbox-visual-testing: ARIA snapshots + layout helpers              |
+| TSK-114 | DONE   | TSK-105, TSK-107        | inbox-visual-testing: ARIA snapshots + layout helpers              |
 | TSK-115 | TODO   | TSK-106,109,110,111,113 | inbox-serve: entry point + DI bootstrap + OpenCode spawn           |
-| TSK-116 | TODO   | —                       | services/ai-kit: компиляция system prompt из AIKit-директив        |
+| TSK-116 | DONE   | —                       | services/ai-kit: компиляция system prompt из AIKit-директив        |
 | TSK-117 | TODO   | TSK-115                 | inbox-serve: real-smoke (ручной golden-прогон)                     |
 
 ## Dependency Graph

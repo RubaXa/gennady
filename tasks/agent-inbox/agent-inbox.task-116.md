@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-116 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** services/ai-kit | **Dependencies:** —
+- **Task-ID:** TSK-116 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** services/ai-kit | **Dependencies:** —
 - **Purpose:** Компиляция system prompt из AIKit-директив для узлов роли. v1: `buildNodePrompt(nodeId, ctx)` читает директивы по маппингу узел→файлы и склеивает. Per-node сборка (не per-role).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-12, Bootstrap #12 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -44,14 +44,25 @@
 
 ## 7. Execution Log
 
-### Round 1 — initial
+### Round 1 — 2026-07-10, initial
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T11:00:00Z` Created `services/ai-kit/compile.ts` — `buildNodePrompt(nodeId, ctx) → Promise<string>`: читает директивы по маппингу узел→файлы, склеивает system prompt
+- [x] `2026-07-10T11:00:00Z` Created `services/ai-kit/node-map.ts` — маппинг: `node_scaffold` → `[arch-interrogation]`, `node_review` → `[arch-interrogation, code-interrogation]`
+- [x] `2026-07-10T11:05:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-10T11:05:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-10T11:05:00Z` DONE
+- [x] **Handoff →** artifacts: [compile.ts, node-map.ts]; decisions: [D_per_node=node→directives (не per-role)]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T11:10:00Z` Created `services/ai-kit/__tests__/compile.test.ts` — 7 tests: reviewer prompt содержит arch-interrogation + code-interrogation; author role; missing directive → error; nodeScaffold → arch-interrogation only
+- [x] `2026-07-10T11:10:00Z` ver `npm run test -- 'services/ai-kit/__tests__/*.test.ts'` → pass exit=0 (7/7)
+- [x] `2026-07-10T11:10:00Z` DONE
+- [x] **Handoff →** artifacts: [compile.test.ts]; decisions: [test_counts=7]; open: []
+
+#### Round close
+
+- [x] `2026-07-10T11:15:00Z` sync ai-kit
+- [x] `2026-07-10T11:15:00Z` DONE

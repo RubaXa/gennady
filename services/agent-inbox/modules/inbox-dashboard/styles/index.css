@@ -1,0 +1,40 @@
+/* @file: Tailwind v4 entry for inbox-dashboard — global styles and dark theme tokens. */
+/* @consumers: inbox-dashboard SPA */
+/* @tasks: TSK-107 */
+
+@import 'tailwindcss';
+
+@theme {
+  --color-background: oklch(0.145 0.008 260);
+  --color-foreground: oklch(0.93 0.005 260);
+  --color-card: oklch(0.185 0.009 260);
+  --color-card-foreground: oklch(0.93 0.005 260);
+  --color-popover: oklch(0.21 0.01 260);
+  --color-popover-foreground: oklch(0.93 0.005 260);
+  --color-primary: oklch(0.68 0.14 255);
+  --color-primary-foreground: oklch(0.14 0.01 260);
+  --color-secondary: oklch(0.23 0.01 260);
+  --color-secondary-foreground: oklch(0.93 0.005 260);
+  --color-muted: oklch(0.23 0.01 260);
+  --color-muted-foreground: oklch(0.65 0.012 260);
+  --color-accent: oklch(0.24 0.012 260);
+  --color-accent-foreground: oklch(0.93 0.005 260);
+  --color-destructive: oklch(0.65 0.2 25);
+  --color-destructive-foreground: oklch(0.93 0.005 260);
+  --color-border: oklch(0.27 0.012 260);
+  --color-input: oklch(0.27 0.012 260);
+  --color-ring: oklch(0.68 0.14 255);
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

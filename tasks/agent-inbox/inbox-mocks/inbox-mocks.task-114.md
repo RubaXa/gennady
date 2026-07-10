@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-114 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-mocks (e2e helpers) | **Dependencies:** TSK-105 (mocks), TSK-107 (dashboard)
+- **Task-ID:** TSK-114 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-mocks (e2e helpers) | **Dependencies:** TSK-105 (mocks), TSK-107 (dashboard)
 - **Purpose:** «Глаза и измерительные приборы» для AI-агента. ARIA-снапшоты (структура страницы как YAML) + layout-хелперы (относительные позиции в процентах). Позволяет агенту проверять визуальную корректность дашборда без pixel-level сравнений.
 - **Spec:** [inbox-dashboard.spec.md](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md) §5 (визуальные контракты), [inbox-mocks.spec.md](../../specs/agent-inbox/inbox-mocks/inbox-mocks.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -55,14 +55,26 @@
 
 ## 7. Execution Log
 
-### Round 1 — initial
+### Round 1 — 2026-07-10, initial
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T15:30:00Z` Created `e2e/inbox-serve/helpers/aria-snapshot.helper.ts` — `captureAriaSnapshot(page)`: обёртка над `page.ariaSnapshot()` возвращает YAML-строку; `compareAriaSnapshot(page, expected)`: обёртка над `toMatchAriaSnapshot()` с диффом; `generateAriaSnapshot(page)`: генерация эталона
+- [x] `2026-07-10T15:30:00Z` Created `e2e/inbox-serve/helpers/layout.helper.ts` — `getRelativePosition(locator) → { left%, top%, width%, height% }`: обёртка над `locator.boundingBox()`; `isLeftOf(a, b)`, `isBelow(a, b)`, `isWithin(a, container)` — проверка пространственных отношений
+- [x] `2026-07-10T15:35:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-10T15:35:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-10T15:35:00Z` DONE
+- [x] **Handoff →** artifacts: [aria-snapshot.helper.ts, layout.helper.ts]; decisions: [D_aria_snapshot_as_YAML, D_layout_percentages=viewport-relative, D_helpers_for_agents_not_pixels]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+- [x] `2026-07-10T15:40:00Z` Created `e2e/inbox-serve/helpers/__tests__/aria-snapshot.helper.test.ts` — 12 tests: captureAriaSnapshot возвращает YAML, compareAriaSnapshot pass/fail c диффом, generateAriaSnapshot, edge cases (empty page, dynamic content)
+- [x] `2026-07-10T15:40:00Z` Created `e2e/inbox-serve/helpers/__tests__/layout.helper.test.ts` — 13 tests: getRelativePosition проценты при viewport 1000×1000, isLeftOf, isBelow, isWithin, edge cases (overlapping, zero-size, nested)
+- [x] `2026-07-10T15:45:00Z` ver `npm run test -- 'e2e/inbox-serve/helpers/__tests__/*.test.ts'` → pass exit=0 (25/25)
+- [x] `2026-07-10T15:45:00Z` DONE
+- [x] **Handoff →** artifacts: [aria-snapshot.helper.test.ts, layout.helper.test.ts]; decisions: [test_counts=25, approach=viewport_percentage_math]; open: []
+
+#### Round close
+
+- [x] `2026-07-10T15:50:00Z` sync inbox-visual-testing
+- [x] `2026-07-10T15:50:00Z` DONE

@@ -283,7 +283,11 @@ services/agent-inbox/modules/inbox-core/
 
 ## 8. Module Decision Log
 
-None — модуль не имеет самостоятельных архитектурных решений.
+- `InboxRegistry.updateDelta()` mutates in-memory registry: sets `lastSeenUpdatedAt` / `firstSeenAt` for NEW entries, updates `lastSeenUpdatedAt` for ↑ entries — avoids rebuild of entire registry on every tick
+- `VcsInboxReal._resolveInboxClient()` — provider-aware client factory that resolves the correct vcs-client implementation at call time; throws for unsupported providers (e.g. GitHub)
+- All `VcsInboxReal` methods (`getActionable`, `getMrContext`, `getDiscussions`) use `_resolveInboxClient()` for identity lookups — single resolution point per operation
+- `AuditLog`: serial lock via Promise chain prevents TOCTOU rotation race — consecutive appends queued sequentially, avoiding interleaved writes during rotation
+- `AuditLog.query()`: sort by `Date.getTime()` (numeric comparison), not lexicographic `localeCompare` — ensures correct chronological order regardless of timezone format
 
 <!--/SECTION:MODULE_DECISION_LOG-->
 

@@ -6,8 +6,8 @@
 
 ## 1. Module Vision
 
-React SPA дашборд serve-режима: Kanban-доска, сгруппированная по ролям.
-shadcn/ui (Radix + Tailwind v4) + dnd-kit. Общается с inbox-api через REST.
+React SPA дашборд serve-режима: очередь «Ждут меня» + Kanban-обзор по ролям (read-only, D-80).
+shadcn/ui (Tailwind v4), тёмная тема, компактный дизайн, hash-роутер. Общается с inbox-api через REST.
 Собирается Vite, раздаётся как статика.
 
 <!--/SECTION:MODULE_VISION-->
@@ -17,26 +17,29 @@ shadcn/ui (Radix + Tailwind v4) + dnd-kit. Общается с inbox-api чер�
 ## 2. Module Usage Example
 
 ```tsx
-// корневой компонент
+// App — hash-роутер (#/ и #/mr/:id)
 function App() {
   return (
-    <BoardStore.Provider>
-      <BoardPage />
-    </BoardStore.Provider>
+    <BoardStore>
+      <HashRouter>
+        <Route path="/" component={BoardPage} />
+        <Route path="/mr/:id" component={MrDetailPage} />
+      </HashRouter>
+    </BoardStore>
   );
 }
 
-// BoardPage — запрашивает /api/board, рендерит блоки ролей
+// BoardPage — запрашивает /api/board, рендерит очередь + блоки ролей
 function BoardPage() {
-  const { roles, unassigned } = useBoard();
-
+  const { board } = useBoard();
   return (
     <div className="p-4">
       <Header />
-      {roles.map((role) => (
+      <AwaitingQueue />
+      {board.roles.map((role) => (
         <RoleBlock key={role.name} role={role} />
       ))}
-      <UnassignedBlock mrs={unassigned} />
+      <UnassignedBlock mrs={board.unassigned} />
     </div>
   );
 }
@@ -151,23 +154,31 @@ function BoardPage() {
 
 ```
 services/agent-inbox/modules/inbox-dashboard/
-├── App.tsx                   # Entry point, BoardStore.Provider
+├── App.tsx                   # Entry point + hash-роутер
+├── dashboard-entry.tsx       # ReactDOM.createRoot
+├── index.html                # SPA shell
+├── vite.config.ts            # Vite + Tailwind v4 + inboxServePlugin
 ├── components/
-│   ├── BoardPage.tsx         # Корневая страница
-│   ├── RoleBlock.tsx         # Блок роли
-│   ├── KanbanLane.tsx        # Дорожка Kanban (dnd-kit)
-│   ├── MrCard.tsx            # Карточка MR
-│   ├── MrDetailModal.tsx     # Модалка отчёта
-│   └── Header.tsx            # Шапка
+│   ├── Header.tsx            # Шапка (заголовок + статус + ошибка)
+│   ├── BoardPage.tsx         # Корневая страница (очередь + роли + unassigned)
+│   ├── AwaitingQueue.tsx     # Очередь «Ждут меня» (агрегация AWAITING ME по ролям)
+│   ├── RoleBlock.tsx         # Блок роли (заголовок + 4 колонки)
+│   ├── KanbanLane.tsx        # Колонка Kanban (read-only, D-80)
+│   ├── MrCard.tsx            # Карточка MR (кликабельна, «Смотреть» → #/mr/:id)
+│   ├── UnassignedBlock.tsx   # Блок «БЕЗ РОЛИ» (неназначенные MR)
+│   └── MrDetailPage.tsx      # Страница #/mr/:id: отчёт + OperatorQuestion
 ├── services/
-│   ├── api-client.ts         # ApiClient
-│   └── board-store.ts        # BoardStore (React Context)
+│   ├── api-client.ts         # ApiClient (fetch-обёртка)
+│   └── board-store.tsx       # BoardStore (React Context + polling 30s)
 ├── styles/
-│   └── index.css             # Tailwind入口 + shadcn/ui тема
-├── __tests__/
-│   ├── BoardPage.test.tsx
-│   ├── RoleBlock.test.tsx
-│   └── MrCard.test.tsx
+│   └── index.css             # Tailwind v4 entry + тёмная тема
+├── lib/
+│   └── utils.ts              # clsx/twMerge helpers
+└── __tests__/
+    ├── BoardPage.test.tsx
+    ├── AwaitingQueue.test.tsx
+    ├── RoleBlock.test.tsx
+    └── MrCard.test.tsx
 ```
 
 **File Mapping:**
@@ -176,6 +187,22 @@ services/agent-inbox/modules/inbox-dashboard/
 - `services/api-client.ts` — `ApiClient`
 - `services/board-store.ts` — `BoardStore`
 <!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- **D-80: Kanban read-only** — колонки отображают состояние без drag-and-drop. Назначение ролей — через dropdown на карточке, действия оператора — через страницу `#/mr/:id` с OperatorQuestion. `@dnd-kit/*` удалён из зависимостей.
+- **Dark theme** — тёмная тема в стиле Linear/Grafana: глубокий слейт `oklch(0.145)`, карточки чуть светлее фона, приглушённые границы, цветные акценты через полупрозрачность. `color-scheme: dark`.
+- **Compact design** — шапка py-2 (15px заголовок), карточки p-2.5 (13px title, 11px meta), заголовки колонок 11px uppercase, сетка p-4/gap-2. Информации на экран больше, читаемость сохранена.
+- **Visual hierarchy** — очередь «Ждут меня» с янтарной рамкой; счётчики колонок цветные (INBOX синий, AWAITING янтарный, DONE зелёный); кнопки в отчёте: зелёная солидная (Approve), остальные контурные.
+- **Responsive** — колонки 4→2 на узком экране (`lg:grid-cols-4`), сетки карточек в очереди и «БЕЗ РОЛИ» — grid вместо flex-wrap.
+- Poll countdown decrements correctly: `setPollCountdown(prev => prev <= 1 ? 30 : prev - 1)`
+- Single-command dev startup: Vite plugin (`inboxServePlugin`) starts API server as sidecar
+- Shared mock seed factory (`dev-seed.ts`) — единый источник мок-данных
+- Playwright config: single `webServer` (Vite), API started by sidecar plugin
+
+<!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
@@ -196,12 +223,14 @@ graph TD
 
 ## 10. Handoff to task-scaffolding
 
-- **Implementation files to be created:** 9 файлов
-- **Test files to be created:** 3 файла
+- **Implementation files to be created:** 20+ файлов (React SPA, API client, store, e2e harness)
+- **Test files to be created:** 4 unit + 21 e2e (Playwright)
 - **Stack dependencies:**
   - Language: TypeScript + React 19 + JSX
-  - UI: shadcn/ui (Radix + Tailwind v4), dnd-kit, lucide-react
-  - Bundler: Vite
+  - UI: shadcn/ui (Tailwind v4), lucide-react (no dnd-kit — D-80)
+  - Theme: dark (oklch), compact, responsive
+  - Bundler: Vite + @tailwindcss/vite + @vitejs/plugin-react
+  - Testing: @playwright/test
   - Formatter: Prettier
 - **Module Rules Additions:** None
 <!--/SECTION:HANDOFF-->

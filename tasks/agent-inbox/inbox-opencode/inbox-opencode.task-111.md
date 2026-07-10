@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-111 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
+- **Task-ID:** TSK-111 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
 - **Purpose:** OpenCode-интеграция: Port (createSession + directory, prompt с format, status, continueSignal, abort, close) + Mock (симулирует все классы исходов) + SessionPool + SchemaRegistry (узел→схема). Без real-SDK (TSK-112).
 - **Spec:** [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 
@@ -66,3 +66,36 @@
 | Recovery: restartMax → AWAITING | unit  | opencode.mock.test.ts   |
 | Pool: очередь без дедлока       | unit  | session-pool.test.ts    |
 | SchemaRegistry: узел→схема      | unit  | schema-registry.test.ts |
+
+## 7. Execution Log
+
+### Round 1
+
+- **Executor:** sdd-task-executor | **Started:** 2026-07-10T00:00:00Z | **Finished:** 2026-07-10T00:05:00Z
+
+#### P1 — impl
+
+- [x] `2026-07-10T14:00:00Z` Created `services/agent-inbox/modules/inbox-opencode/errors.ts` — OutcomeClass enum (OK, NO_RESULT, PARSE_ERROR, SCHEMA_MISMATCH, SESSION_ERROR, TIMEOUT, INCOMPLETE_ARTIFACT), OpenCodeCallResult discriminated union, composeError/composeOk helpers
+- [x] `2026-07-10T14:00:00Z` Created `services/agent-inbox/modules/inbox-opencode/opencode.port.ts` — OpenCodePort abstract class: `createSession(opts)`, `prompt(sid, opts)`, `status(sid)`, `continueSignal(sid, opts)`, `abort(sid)`, `close(sid)`; types: SessionHandle, SessionStatus, CreateSessionOpts, OpenCodeFormat, PromptOpts
+- [x] `2026-07-10T14:00:00Z` Created `services/agent-inbox/modules/inbox-opencode/opencode.mock.ts` — OpenCodeMock implements OpenCodePort; `seed(nodeId, response)`, `seedError(nodeId, class)`; simulates all 7 outcome classes; nodeId extraction via format.schema.title or text prefix
+- [x] `2026-07-10T14:00:00Z` Created `services/agent-inbox/modules/inbox-opencode/session-pool.ts` — SessionPool: `create()` (queues when full), `prompt()`, `release()` (drains queue FIFO), `activeCount`, `cleanup()` (rejects queued); invariant: > maxSessions → queue without deadlock
+- [x] `2026-07-10T14:00:00Z` Created `services/agent-inbox/modules/inbox-opencode/schema-registry.ts` — SchemaRegistry: `get(nodeId)`, `register(nodeId, schema)`; node→schema mapping (not role→schema)
+- [x] `2026-07-10T14:05:00Z` ver `npx tsc --noEmit` → pass exit=0 (no errors in inbox-opencode)
+- [x] `2026-07-10T14:05:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-10T14:05:00Z` DONE
+- [x] **Handoff →** artifacts: [errors.ts, opencode.port.ts, opencode.mock.ts, session-pool.ts, schema-registry.ts]; decisions: [D_7_outcome_classes=comprehensive-coverage, D_nodeId_extraction=format.title|text-prefix, D_pool_FIFO_queue, D_node→schema_not_role→schema]; open: []
+
+#### P2 — test
+
+- [x] `2026-07-10T14:10:00Z` Created `services/agent-inbox/modules/inbox-opencode/__tests__/opencode.mock.test.ts` — 27 tests: session lifecycle (5), seed OK (5), seedError all classes (6), distinct signals (4), terminated session (2), continueSignal recovery (3), seed/seedError override (2)
+- [x] `2026-07-10T14:10:00Z` Created `services/agent-inbox/modules/inbox-opencode/__tests__/session-pool.test.ts` — 8 tests: basic lifecycle (4), queue without deadlock (3), prompt delegation (1)
+- [x] `2026-07-10T14:10:00Z` Created `services/agent-inbox/modules/inbox-opencode/__tests__/schema-registry.test.ts` — 5 tests: register/get, undefined lookup, overwrite, multi-node, cross-contamination
+- [x] `2026-07-10T14:15:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-opencode/__tests__/*.test.ts'` → pass exit=0 (40/40)
+- [x] `2026-07-10T14:15:00Z` ver `npx prettier --write` → pass (no warnings for inbox-opencode)
+- [x] `2026-07-10T14:15:00Z` DONE
+- [x] **Handoff →** artifacts: [opencode.mock.test.ts, session-pool.test.ts, schema-registry.test.ts]; decisions: [test_counts=40, BDD_coverage=all 10 scenarios]; open: []
+
+#### Round Close
+
+- [x] `2026-07-10T14:20:00Z` sync inbox-opencode
+- [x] `2026-07-10T14:20:00Z` **Verdict:** DONE — All 10 BDD scenarios from §4 covered, all gates pass
