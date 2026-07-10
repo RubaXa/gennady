@@ -19,12 +19,15 @@
 - **Rules:** none
 - **Exit (критерии прохождения):**
   1. `gennady inbox serve` стартует, OpenCode spawn, polling VCS
-  2. Дашборд показывает реальные MR из GitLab/GitHub
-  3. Роль reviewer берёт MR в ревью → AI-узел (OpenCode) → structured output
-  4. Оператор видит находки в модалке, жмёт «Постить» → находки в GitLab
-  5. Audit log содержит все переходы состояний
-  6. Права эскалируются (ручная симуляция: перевести часы)
-  7. SIGTERM → graceful shutdown, OpenCode-сессии закрыты
+  2. Дашборд показывает реальные MR
+  3. Reviewer-граф: scaffold → gate → enrich → gate → sessions → gate → synthesize → ask → effect(post) → done
+  4. Оператор видит OperatorQuestion в модалке, отвечает, находки в GitLab
+  5. **Recovery ladder:** убить сессию OpenCode среди AI-узла → OutcomeClassifier → continue-сигнал в ту же сессию → узел завершён
+  6. **Recovery ladder:** исчерпан continueMax → restart узла в свежей сессии от артефактов → узел завершён
+  7. **Restart serve:** убить процесс среди ревью → RoleInstance пересозданы от чекпоинтов артефактов → граф продолжен
+  8. Audit log содержит все переходы + исходы
+  9. Нотификация при 24h бездействия (VK Teams-пинг)
+  10. SIGTERM → graceful shutdown
 
 ## 4. BDD
 

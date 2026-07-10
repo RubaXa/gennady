@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-116 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** services/ai-kit | **Dependencies:** —
-- **Purpose:** Рефакторинг существующего кода компиляции директив в `services/ai-kit/`. v1: `buildSystemPrompt(role, ctx)` читает директивы из `ai/directives/agent-inbox/` напрямую и склеивает в system prompt. Без JSON-схем, без тяжёлых форматов.
+- **Purpose:** Компиляция system prompt из AIKit-директив для узлов роли. v1: `buildNodePrompt(nodeId, ctx)` читает директивы по маппингу узел→файлы и склеивает. Per-node сборка (не per-role).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-12, Bootstrap #12 | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
@@ -19,8 +19,8 @@
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/ai-kit/compile.ts` — `buildSystemPrompt(role, ctx) → Promise<string>`: читает директивы по маппингу роль→файлы, склеивает
-  - `services/ai-kit/role-map.ts` — маппинг: `reviewer` → `[arch-interrogation, code-interrogation]`, `author` → `[arch-interrogation, code-interrogation]`
+  - `services/ai-kit/compile.ts` — `buildNodePrompt(nodeId, ctx) → Promise<string>`: читает директивы по маппингу узел→файлы, склеивает
+  - `services/ai-kit/node-map.ts` — маппинг: `node_scaffold` → `[arch-interrogation]`, `node_review` → `[arch-interrogation, code-interrogation]`
 - **Exit:** Вызов `buildSystemPrompt('reviewer', ctx)` возвращает system prompt из AIKit-директив.
 
 ### P2 — test

@@ -42,7 +42,7 @@
 
 - GIVEN сервер запущен WHEN GET /api/board THEN 200, JSON с roles[] и unassigned[]
 - GIVEN MR в INBOX WHEN POST /api/mr/:id/assign { role:'reviewer' } THEN 200, MR в INBOX reviewer
-- GIVEN роль в AWAITING WHEN POST /api/mr/:id/action { action:'post' } THEN 200, MR в DONE
+- GIVEN роль в AWAITING WHEN POST /api/mr/:id/action { questionId, choice } THEN 200, MR в DONE
 - GIVEN MR с находками WHEN GET /api/mr/:id/report THEN 200, MrDetail с findings[], verdict
 - GIVEN несуществующий MR WHEN POST /api/mr/xxx/assign THEN 404 { ok:false, error:'NOT_FOUND' }
 - GIVEN неизвестный роут WHEN GET /some-page THEN 200 index.html (SPA fallback)
@@ -61,7 +61,7 @@
 | --------------------------------- | ----------- | -------------------- |
 | GET /api/board → 200              | integration | board.router.test.ts |
 | POST /api/mr/:id/assign → ok      | integration | mr.router.test.ts    |
-| POST /api/mr/:id/action → ok      | integration | mr.router.test.ts    |
+| POST /api/mr/:id/action → ok (generic {questionId,choice,payload?}) | integration | mr.router.test.ts |
 | GET /api/mr/:id/report → MrDetail | integration | mr.router.test.ts    |
 | POST /api/mr/xxx/assign → 404     | integration | mr.router.test.ts    |
 | SPA fallback                      | integration | http-server.test.ts  |

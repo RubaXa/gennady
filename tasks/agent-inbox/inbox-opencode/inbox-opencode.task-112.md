@@ -10,10 +10,16 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P0 | research | — | [ ]    |
+| P1 | impl | P0   | [ ]    |
+| P2 | test | P1   | [ ]    |
 
 ## 3. Phases
+
+### P0 — research (подтвердить SDK API)
+- **Rules:** none
+- **Target:** Подтвердить на актуальной версии `@opencode-ai/sdk`: `session.prompt()` с `format: { type: 'json_schema', schema }`, `client.event.list()` (SSE), `session.abort()`, `createSession({ directory })`.
+- **Exit:** Research-логи: что работает, что нет. Если format недоступен → fallback (JSON-блок + парсинг). Результат зафиксировать в D-78.
 
 ### P1 — impl
 

@@ -35,7 +35,8 @@
 
 ## 4. BDD
 
-- GIVEN все модули реализованы WHEN bootstrap(USE_MOCKS=true) THEN HttpServer запущен, /api/board возвращает 200
+- GIVEN `gennady inbox serve --mocks` WHEN запущен THEN mock-VCS + mock-OpenCode (dev/e2e)
+- GIVEN `gennady inbox serve` (без --mocks) WHEN запущен THEN real VCS + real OpenCode
 - GIVEN opencode не найден в PATH WHEN bootstrap() THEN «opencode not found in PATH» → ошибка старта
 - GIVEN opencode не отвечает 3 попытки WHEN bootstrap() THEN degraded-режим, AI-шаги отключены, сервер запущен
 - GIVEN сервер запущен WHEN SIGTERM THEN все OpenCode-сессии отменены, http.Server закрыт, scheduler остановлен
