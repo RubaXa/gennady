@@ -1,6 +1,6 @@
 # Module: inbox-api
 
-> Parent scope: [`../../agent-inbox.spec.md`](../../agent-inbox.spec.md)
+> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md)
 
 <!--SECTION:MODULE_VISION-->
 

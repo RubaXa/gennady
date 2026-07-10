@@ -8,15 +8,16 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | impl | P1   | [ ]    |
-| P3 | test | P1   | [ ]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | impl | P1   | [ ]    |
+| P3  | test | P1   | [ ]    |
 
 ## 3. Phases
 
 ### P1 — impl (SPA + npm-пакеты)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - Bootstrap: `npm install --save-dev react-dom tailwindcss @tailwindcss/vite lucide-react @dnd-kit/core @dnd-kit/sortable class-variance-authority clsx tailwind-merge` (Bootstrap #1–8)
@@ -34,6 +35,7 @@
 - **Exit:** Vite dev показывает Kanban-доску с мок-данными. Drag-and-drop работает.
 
 ### P2 — impl (e2e харнесс)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - Bootstrap: `npm install --save-dev @playwright/test` + Vite entry `inbox-serve` в `vite.config.ts` (Bootstrap #10, #11)
@@ -43,6 +45,7 @@
 - **Exit:** `npx playwright test` → smoke pass.
 
 ### P3 — test (компоненты)
+
 - **Rules:** none
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-dashboard/__tests__/BoardPage.test.tsx`
@@ -67,10 +70,10 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Level | Test File |
-|----------|-------|-----------|
-| BoardPage renders roles | unit | BoardPage.test.tsx |
-| MrCard renders info | unit | MrCard.test.tsx |
-| RoleBlock shows lanes | unit | RoleBlock.test.tsx |
-| Drag-and-drop | e2e | TSK-108 |
-| OperatorQuestion render | e2e | TSK-108 |
+| Scenario                | Level | Test File          |
+| ----------------------- | ----- | ------------------ |
+| BoardPage renders roles | unit  | BoardPage.test.tsx |
+| MrCard renders info     | unit  | MrCard.test.tsx    |
+| RoleBlock shows lanes   | unit  | RoleBlock.test.tsx |
+| Drag-and-drop           | e2e   | TSK-108            |
+| OperatorQuestion render | e2e   | TSK-108            |

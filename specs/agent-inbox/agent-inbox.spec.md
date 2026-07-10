@@ -135,6 +135,7 @@ $ gennady inbox serve
 
 <!--/SECTION:GOLDEN_DX-->
 
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 ## 4. Requirements & Constraints
 
 ### 4.1 Functional Requirements (сводка; полный EARS — в README §4)
@@ -308,6 +309,9 @@ $ gennady inbox serve
 | `security-interrogation` | agent-inbox | `ai/directives/agent-inbox/security-interrogation.directive.xml` (линза ③: Zero Trust — пробы INPUT/PATH/AUTHZ/SECRET/SUPPLY/BLAST/INJ, вердикты unsafe/validated. Когда участвует в ревью, SEC-проба `code-interrogation` деферится сюда. Создана 2026-07-05; пока НЕ загружается — подключение в v2-оркестрации)       |
 | `visual-vocabulary`      | agent-inbox | `ai/directives/agent-inbox/visual-vocabulary.directive.xml` (шпаргалка выбора диаграмм: намерение→тип→ASCII/Mermaid; ASCII-ядро для чата, Mermaid для GitLab; принцип инфографики). Создана 2026-07-07                                                                                                                   |
 
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+<!--SECTION:ARCHITECTURE-->
 ## 5. High-Level Architecture
 
 ```
@@ -388,6 +392,9 @@ Config detection flow (AI-20):
 - **Состояние** — файлы `~/.gennady/`. Читаются при старте, пишутся атомарно.
 - **OpenCode** — spawn при старте, перезапуск при падении, degraded-режим при недоступности.
 
+<!--/SECTION:ARCHITECTURE-->
+
+<!--SECTION:DECISION_LOG-->
 ## 6. Decision Log
 
 Полный лог — `services/agent-inbox/README.md` §10 (D1–D36). Ключевые: локально (D1),
@@ -441,6 +448,9 @@ GitLab (D2), file-очередь+CLI (D5), стадии автономии A→B
 | **D76** | `active` | **Декомпозиция по подсистемам** — 5 модулей: core, api, dashboard, roles, opencode | Изоляция serve от CLI критична: serve — новый режим, не должен зависеть от CLI. Core — переиспользуемое ядро (состояние, VCS). Жертвуем: 5 модулей вместо 3, чуть больше файлов и межмодульных связей. | (a) По слоям (3 модуля) — inbox-engine становится God-модулем; (b) Feature-based (6 модулей) — избыточная нарезка для v1 |
 | **D-79** | `active` | **Оркестрация в движке, LLM только в узлах** — граф типизированных узлов (session/gate/ask/effect), `OutcomeClassifier`, recovery ladder | На живых прогонах агент регулярно пропускал шаги конвейера, забывал спросить оператора, не дописывал артефакты. Контроль процесса нельзя оставлять внутри LLM-сессии. Порядок шагов, гейты, ретраи, классификация исходов, публичные действия — код движка. LLM — только содержимое отдельного узла. | (a) инструкции в сессии + самопроверка модели — агент им не следует (наблюдаемые отказы); (b) проверка промптом «всё ли ты сделал» — модель может гадать |
 
+<!--/SECTION:DECISION_LOG-->
+
+<!--SECTION:SCOPE_DEPENDENCIES-->
 ## 7. Scope Dependencies
 
 - **Depends on:** `infra-base`, `vcs` (Inbox/discussions/identity), `cli` (команды), `ai-skills` (формат навыка).
