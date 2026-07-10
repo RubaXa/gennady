@@ -51,17 +51,18 @@ function BoardPage() {
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name              | Type      | Purpose                                                                                                                                   |
-| ----------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `BoardPage`       | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s.                                                                            |
-| `Header`          | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling.                                                        |
-| `UnassignedBlock` | Component | Блок «БЕЗ РОЛИ»: список карточек MR без назначенной роли, кнопка «Назначить ▼».                                                           |
-| `RoleBlock`       | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                                                                      |
-| `KanbanLane`      | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE) с dnd-kit. Принимает карточки.                                                                     |
-| `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус, кнопка «смотреть».                                                                    |
-| `MrDetailModal`   | Component | Модалка: рендер отчёта (данные из `GET /api/mr/:id/report`), `OperatorQuestion` от ask-узла (варианты выбора), кнопки ответа на question. |
-| `ApiClient`       | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`.                            |
-| `BoardStore`      | Service   | React Context: состояние доски, polling, optimistic updates.                                                                              |
+| Name              | Type      | Purpose                                                                                                                                |
+| ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `BoardPage`       | Component | Корневая страница: шапка, блоки ролей, polling API каждые 30s.                                                                         |
+| `Header`          | Component | Шапка дашборда: заголовок «agent-inbox», статус OpenCode (🟢/⚠), интервал polling.                                                     |
+| `UnassignedBlock` | Component | Блок «БЕЗ РОЛИ»: список карточек MR без назначенной роли, кнопка «Назначить ▼».                                                        |
+| `RoleBlock`       | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                                                                   |
+| `AwaitingQueue`   | Component | Очередь «Ждут меня»: закреплена сверху, все MR в AWAITING ME со всех ролей, ведёт на `#/mr/:id`.                                       |
+| `KanbanLane`      | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE), read-only обзор (D-80). Принимает карточки.                                                    |
+| `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус. Клик — переход на `#/mr/:id`.                                                      |
+| `MrDetailPage`    | Component | Экран `#/mr/:id`: рендер отчёта (данные из `GET /api/mr/:id/report`), `OperatorQuestion` от ask-узла (варианты выбора), кнопки ответа. |
+| `ApiClient`       | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`.                         |
+| `BoardStore`      | Service   | React Context: состояние доски, polling, optimistic updates.                                                                           |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -72,8 +73,8 @@ function BoardPage() {
 ### `BoardPage`
 
 - **Type:** Component
-- **Purpose:** Корневая страница. Header + список RoleBlock + UnassignedBlock.
-- **State:** `roles: RoleView[]`, `unassigned: MrCard[]`, `loading`, `error`
+- **Purpose:** Корневая страница (`#/`). Header + AwaitingQueue + список RoleBlock + UnassignedBlock.
+- **State:** `roles: RoleView[]`, `unassigned: MrCard[]`, `awaiting: MrCard[]`, `loading`, `error`
 - **Lifecycle:** Монтируется → polling каждые 30s → размонтируется.
 - **Consumers:** Entry point React app.
 
@@ -85,11 +86,18 @@ function BoardPage() {
 - **State:** свёрнут/развёрнут
 - **Consumers:** `BoardPage`.
 
+### `AwaitingQueue`
+
+- **Type:** Component
+- **Purpose:** Рабочая очередь оператора: все MR в AWAITING ME со всех ролей одним списком, закреплена над доской. Карточка ведёт на `#/mr/:id`.
+- **Props:** `cards: MrCard[]` (агрегируется из lanes.awaitingMe всех ролей)
+- **Consumers:** `BoardPage`.
+
 ### `KanbanLane`
 
 - **Type:** Component
-- **Purpose:** Одна колонка Kanban. Принимает MrCard через dnd-kit.
-- **Props:** `title`, `cards: MrCard[]`, `onDrop(card, lane)`
+- **Purpose:** Одна колонка Kanban, read-only обзор (колонки переводит движок по графу роли — D-80).
+- **Props:** `title`, `cards: MrCard[]`, `accentClass?`
 - **Consumers:** `RoleBlock`.
 
 ### `MrCard`
@@ -99,13 +107,13 @@ function BoardPage() {
 - **Props:** `mr: { project, iid, title, timeWaiting, state, prevState, actions[] }`
 - **Consumers:** `KanbanLane`, `UnassignedBlock`.
 
-### `MrDetailModal`
+### `MrDetailPage`
 
 - **Type:** Component
-- **Purpose:** Модальное окно: рендер отчёта из `GET /api/mr/:id/report`, `OperatorQuestion` (ask-узел = источник), варианты выбора, кнопки ответа.
-- **Props:** `mr: MrDetail`
-- **State:** открыта/закрыта, выбранное действие
-- **Consumers:** `MrCard` (по клику «смотреть»).
+- **Purpose:** Экран `#/mr/:id` (оверлей поверх доски): рендер отчёта из `GET /api/mr/:id/report`, `OperatorQuestion` (ask-узел = источник), варианты выбора, кнопки ответа. URL — deep-link для нотификаций.
+- **Props:** `mrId` из маршрута
+- **State:** `detail: MrDetail | loading | error`, выбранное действие
+- **Consumers:** Роутер (`#/mr/:id`); переход с `MrCard`/`AwaitingQueue`.
 
 ### `ApiClient`
 
