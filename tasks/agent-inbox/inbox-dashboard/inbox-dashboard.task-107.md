@@ -3,46 +3,46 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-107 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies:** TSK-105 (mocks), TSK-106 (API)
-- **Purpose:** React SPA дашборд: Kanban по ролям, карточки MR, модалка отчёта. shadcn/ui + dnd-kit. Данные из API.
-- **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-03, [inbox-dashboard.spec.md](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md) | **Runtime:** not-implemented | **Verification:** unit
+- **Purpose:** React SPA дашборд: Kanban по ролям, карточки MR, модалка с OperatorQuestion + отчётом из `GET /api/mr/:id/report`. shadcn/ui + dnd-kit + Tailwind v4.
+- **Spec:** [inbox-dashboard.spec.md](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
 
-| ID  | Kind | Deps | Status |
-| --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | impl | P1   | [ ]    |
-| P3  | test | P1   | [ ]    |
+| ID | Kind | Deps | Status |
+|----|------|------|--------|
+| P1 | impl | —    | [ ]    |
+| P2 | impl | P1   | [ ]    |
+| P3 | test | P1   | [ ]    |
 
 ## 3. Phases
 
-### P1 — impl
-
+### P1 — impl (SPA + npm-пакеты)
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-dashboard/App.tsx` — Entry point, BoardStore.Provider
-  - `services/agent-inbox/modules/inbox-dashboard/components/BoardPage.tsx` — корневая страница, polling
-  - `services/agent-inbox/modules/inbox-dashboard/components/Header.tsx` — шапка: заголовок, статус OpenCode/polling
-  - `services/agent-inbox/modules/inbox-dashboard/components/RoleBlock.tsx` — блок роли + KanbanLane × 4
-  - `services/agent-inbox/modules/inbox-dashboard/components/KanbanLane.tsx` — колонка с dnd-kit Droppable
-  - `services/agent-inbox/modules/inbox-dashboard/components/MrCard.tsx` — карточка MR с dnd-kit Draggable
-  - `services/agent-inbox/modules/inbox-dashboard/components/MrDetailModal.tsx` — модалка отчёта
-  - `services/agent-inbox/modules/inbox-dashboard/services/api-client.ts` — fetch-обёртка к API
-  - `services/agent-inbox/modules/inbox-dashboard/services/board-store.ts` — React Context + useReducer
+  - Bootstrap: `npm install --save-dev react-dom tailwindcss @tailwindcss/vite lucide-react @dnd-kit/core @dnd-kit/sortable class-variance-authority clsx tailwind-merge` (Bootstrap #1–8)
   - `services/agent-inbox/modules/inbox-dashboard/styles/index.css` — Tailwind v4 entry
-- **Exit:** Vite dev server показывает Kanban-доску с мок-данными. Drag-and-drop работает.
+  - `services/agent-inbox/modules/inbox-dashboard/App.tsx` — Entry point
+  - `services/agent-inbox/modules/inbox-dashboard/components/Header.tsx`
+  - `services/agent-inbox/modules/inbox-dashboard/components/BoardPage.tsx` — корневая страница + polling
+  - `services/agent-inbox/modules/inbox-dashboard/components/RoleBlock.tsx`
+  - `services/agent-inbox/modules/inbox-dashboard/components/UnassignedBlock.tsx`
+  - `services/agent-inbox/modules/inbox-dashboard/components/KanbanLane.tsx` — dnd-kit Droppable
+  - `services/agent-inbox/modules/inbox-dashboard/components/MrCard.tsx` — dnd-kit Draggable
+  - `services/agent-inbox/modules/inbox-dashboard/components/MrDetailModal.tsx` — OperatorQuestion + report
+  - `services/agent-inbox/modules/inbox-dashboard/services/api-client.ts` — fetch + getReport()
+  - `services/agent-inbox/modules/inbox-dashboard/services/board-store.ts` — React Context
+- **Exit:** Vite dev показывает Kanban-доску с мок-данными. Drag-and-drop работает.
 
 ### P2 — impl (e2e харнесс)
-
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
+  - Bootstrap: `npm install --save-dev @playwright/test` + Vite entry `inbox-serve` в `vite.config.ts` (Bootstrap #10, #11)
   - `e2e/inbox-serve/playwright.config.ts` — webServer: inbox-api + vite dev
   - `e2e/inbox-serve/fixtures/mock-data.ts` — сценарии мок-данных
   - `e2e/inbox-serve/smoke.spec.ts` — открыть дашборд, проверить шапку
-- **Exit:** `npx playwright test --config=e2e/inbox-serve/playwright.config.ts` → smoke pass.
+- **Exit:** `npx playwright test` → smoke pass.
 
 ### P3 — test (компоненты)
-
 - **Rules:** none
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-dashboard/__tests__/BoardPage.test.tsx`
@@ -52,10 +52,10 @@
 
 ## 4. BDD
 
-- GIVEN API возвращает 2 роли и 3 MR WHEN дашборд загружен THEN 2 блока ролей + блок «БЕЗ РОЛИ»
-- GIVEN MR в INBOX WHEN пользователь кликает «Назначить ▼» → reviewer THEN POST /api/mr/:id/assign, карточка в INBOX reviewer
-- GIVEN MR в AWAITING ME WHEN пользователь кликает «Смотреть» THEN модалка с находками
-- GIVEN модалка открыта WHEN пользователь кликает «Постить всё» THEN POST /api/mr/:id/action, карточка в DONE
+- GIVEN API возвращает 2 роли и 3 MR WHEN дашборд загружен THEN 2 блока ролей + UnassignedBlock
+- GIVEN MR в INBOX WHEN клик «Назначить ▼» → reviewer THEN POST /api/mr/:id/assign, карточка в INBOX reviewer
+- GIVEN MR в AWAITING ME WHEN клик «Смотреть» THEN модалка с отчётом (GET /api/mr/:id/report) + OperatorQuestion
+- GIVEN модалка с OperatorQuestion WHEN оператор выбирает ответ THEN POST /api/mr/:id/action { questionId, choice }
 - GIVEN API недоступен WHEN polling THEN баннер «API недоступен», старые данные на доске
 - GIVEN карточка в INBOX WHEN drag в PROGRESS THEN onDrop → API-запрос, оптимистичное обновление
 
@@ -67,23 +67,10 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario                | Level | Test File          |
-| ----------------------- | ----- | ------------------ |
-| BoardPage renders roles | unit  | BoardPage.test.tsx |
-| MrCard renders info     | unit  | MrCard.test.tsx    |
-| RoleBlock shows lanes   | unit  | RoleBlock.test.tsx |
-| Kanban drag-and-drop    | e2e   | TSK-108            |
-
-## 7. Execution Log
-
-### Round 1 — initial
-
-#### P1
-
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-
-#### P2
-
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
+| Scenario | Level | Test File |
+|----------|-------|-----------|
+| BoardPage renders roles | unit | BoardPage.test.tsx |
+| MrCard renders info | unit | MrCard.test.tsx |
+| RoleBlock shows lanes | unit | RoleBlock.test.tsx |
+| Drag-and-drop | e2e | TSK-108 |
+| OperatorQuestion render | e2e | TSK-108 |

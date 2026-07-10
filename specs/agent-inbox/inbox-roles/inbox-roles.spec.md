@@ -51,7 +51,7 @@ await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
 | `RoleInstance`      | Entity       | Экземпляр роли на MR: текущий узел + счётчики continue/restart + контекст + права.                                                     |
 | `RoleNode`          | Value Object | Тип узла: `session` (AI-промпт + схема + политика ретраев), `gate` (код), `ask` (вопрос), `effect` (действие).                         |
 | `OutcomeClassifier` | Service      | Классификация исхода AI-узла: OK / NO_RESULT / PARSE_ERROR / SCHEMA_MISMATCH / SESSION_ERROR / TIMEOUT. Генерирует remediation-сигнал. |
-| `RightsEscalator` | Service | Эскалация нотификаций по времени бездействия оператора. |
+| `RightsEscalator`   | Service      | Эскалация нотификаций по времени бездействия оператора.                                                                                |
 | `ReviewerRole`      | Entity       | Роль ревьювера: граф v1 = scaffold→gate→enrich→gate→sessions→gate→synthesize→ask→effect→done.                                          |
 | `AuthorRole`        | Entity       | Роль автора: разбор замечаний → сводка+задание+черновики → ask → effect react/reply.                                                   |
 
@@ -177,12 +177,12 @@ await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
 
 ## 6. Public Options & Policies
 
-| Option              | Bound To          | Status                         |
-| ------------------- | ----------------- | ------------------------------ |
-| `pollingInterval`   | `RoleScheduler`   | active — `5` мин default       |
-| `maxInstances`      | `RoleScheduler`   | active — `3` default per SV-11 |
-| `escalation24h` | `RightsEscalator` | active — нотификация (VK Teams-пинг) |
-| `retryMax`          | `RoleInstance`    | active — per-node policy       |
+| Option            | Bound To          | Status                               |
+| ----------------- | ----------------- | ------------------------------------ |
+| `pollingInterval` | `RoleScheduler`   | active — `5` мин default             |
+| `maxInstances`    | `RoleScheduler`   | active — `3` default per SV-11       |
+| `escalation24h`   | `RightsEscalator` | active — нотификация (VK Teams-пинг) |
+| `retryMax`        | `RoleInstance`    | active — per-node policy             |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 

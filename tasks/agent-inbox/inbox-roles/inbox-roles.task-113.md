@@ -8,15 +8,16 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | impl | P1   | [ ]    |
-| P3 | test | P1,P2| [ ]    |
+| ID  | Kind | Deps  | Status |
+| --- | ---- | ----- | ------ |
+| P1  | impl | —     | [ ]    |
+| P2  | impl | P1    | [ ]    |
+| P3  | test | P1,P2 | [ ]    |
 
 ## 3. Phases
 
 ### P1 — impl (Engine + Scheduler + Node)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-roles/role-engine.ts` — RoleEngine: loadAll, activate, deactivate
@@ -26,6 +27,7 @@
 - **Exit:** Engine загружает роли. Scheduler выполняет tick с мок-VCS.
 
 ### P2 — impl (Instance + Roles + Classifier + Escalator)
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — RoleInstance: step() (выполнить узел, классифицировать исход, перейти по edge), счётчики continue/restart
@@ -36,6 +38,7 @@
 - **Exit:** RoleInstance выполняет граф. Gate-узлы используют `inbox-review-plan --validate`. Effect-узлы — vcs-reply/approve. Нотификации по таймеру.
 
 ### P3 — test
+
 - **Rules:** none
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-roles/__tests__/role-engine.test.ts`
@@ -66,33 +69,39 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Level | Test File |
-|----------|-------|-----------|
-| Engine: load + activate | unit | role-engine.test.ts |
-| Scheduler: tick → assign | unit | role-scheduler.test.ts |
-| Scheduler: tick → step | unit | role-scheduler.test.ts |
-| Instance: session узел → gate | unit | role-instance.test.ts |
-| Instance: recovery ladder (continue) | unit | role-instance.test.ts |
-| Instance: recovery ladder (restart) | unit | role-instance.test.ts |
-| Instance: recovery ladder (AWAITING) | unit | role-instance.test.ts |
-| Classifier: PARSE_ERROR → signal | unit | outcome-classifier.test.ts |
-| Classifier: SESSION_ERROR → signal | unit | outcome-classifier.test.ts |
-| Classifier: SCHEMA_MISMATCH → signal | unit | outcome-classifier.test.ts |
-| Reviewer: scaffold → gate → enrich | unit | reviewer.role.test.ts |
-| Reviewer: sessions fan-out → synthesize → ask → effect | unit | reviewer.role.test.ts |
-| Author: fetch → classify → summary → ask → effect | unit | author.role.test.ts |
-| Escalator: 24h → нотификация | unit | rights-escalator.test.ts |
-| Escalator: POST → таймер сброшен | unit | rights-escalator.test.ts |
+| Scenario                                               | Level | Test File                  |
+| ------------------------------------------------------ | ----- | -------------------------- |
+| Engine: load + activate                                | unit  | role-engine.test.ts        |
+| Scheduler: tick → assign                               | unit  | role-scheduler.test.ts     |
+| Scheduler: tick → step                                 | unit  | role-scheduler.test.ts     |
+| Instance: session узел → gate                          | unit  | role-instance.test.ts      |
+| Instance: recovery ladder (continue)                   | unit  | role-instance.test.ts      |
+| Instance: recovery ladder (restart)                    | unit  | role-instance.test.ts      |
+| Instance: recovery ladder (AWAITING)                   | unit  | role-instance.test.ts      |
+| Classifier: PARSE_ERROR → signal                       | unit  | outcome-classifier.test.ts |
+| Classifier: SESSION_ERROR → signal                     | unit  | outcome-classifier.test.ts |
+| Classifier: SCHEMA_MISMATCH → signal                   | unit  | outcome-classifier.test.ts |
+| Reviewer: scaffold → gate → enrich                     | unit  | reviewer.role.test.ts      |
+| Reviewer: sessions fan-out → synthesize → ask → effect | unit  | reviewer.role.test.ts      |
+| Author: fetch → classify → summary → ask → effect      | unit  | author.role.test.ts        |
+| Escalator: 24h → нотификация                           | unit  | rights-escalator.test.ts   |
+| Escalator: POST → таймер сброшен                       | unit  | rights-escalator.test.ts   |
 
 ## 7. Execution Log
 
 ### Round 1 — initial
+
 #### P1
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
+
 #### P2
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
+
 #### P3
+
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE

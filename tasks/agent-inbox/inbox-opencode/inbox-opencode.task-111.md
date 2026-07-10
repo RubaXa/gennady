@@ -8,14 +8,15 @@
 
 ## 2. Phases Overview
 
-| ID | Kind | Deps | Status |
-|----|------|------|--------|
-| P1 | impl | —    | [ ]    |
-| P2 | test | P1   | [ ]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | test | P1   | [ ]    |
 
 ## 3. Phases
 
 ### P1 — impl
+
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-opencode/opencode.port.ts` — OpenCodePort: createSession({title, directory}), prompt(sid, {system?,text,format?}), status(sid), continueSignal(sid, {system?,text,format?}), abort(sid), close(sid)
@@ -25,6 +26,7 @@
   - `services/agent-inbox/modules/inbox-opencode/errors.ts` — OpenCodeError
 
 ### P2 — test
+
 - **Rules:** none
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-opencode/__tests__/opencode.mock.test.ts`
@@ -52,15 +54,15 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario | Level | Test File |
-|----------|-------|-----------|
-| Mock: OK | unit | opencode.mock.test.ts |
-| Mock: PARSE_ERROR → сигнал | unit | opencode.mock.test.ts |
-| Mock: SESSION_ERROR | unit | opencode.mock.test.ts |
-| Mock: TIMEOUT | unit | opencode.mock.test.ts |
-| Mock: SCHEMA_MISMATCH | unit | opencode.mock.test.ts |
-| Recovery: continue → OK | unit | opencode.mock.test.ts |
-| Recovery: continueMax → restart | unit | opencode.mock.test.ts |
-| Recovery: restartMax → AWAITING | unit | opencode.mock.test.ts |
-| Pool: очередь без дедлока | unit | session-pool.test.ts |
-| SchemaRegistry: узел→схема | unit | schema-registry.test.ts |
+| Scenario                        | Level | Test File               |
+| ------------------------------- | ----- | ----------------------- |
+| Mock: OK                        | unit  | opencode.mock.test.ts   |
+| Mock: PARSE_ERROR → сигнал      | unit  | opencode.mock.test.ts   |
+| Mock: SESSION_ERROR             | unit  | opencode.mock.test.ts   |
+| Mock: TIMEOUT                   | unit  | opencode.mock.test.ts   |
+| Mock: SCHEMA_MISMATCH           | unit  | opencode.mock.test.ts   |
+| Recovery: continue → OK         | unit  | opencode.mock.test.ts   |
+| Recovery: continueMax → restart | unit  | opencode.mock.test.ts   |
+| Recovery: restartMax → AWAITING | unit  | opencode.mock.test.ts   |
+| Pool: очередь без дедлока       | unit  | session-pool.test.ts    |
+| SchemaRegistry: узел→схема      | unit  | schema-registry.test.ts |

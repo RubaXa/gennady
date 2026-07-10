@@ -56,8 +56,8 @@ function BoardPage() {
 | `RoleBlock`       | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                 |
 | `KanbanLane`      | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE) с dnd-kit. Принимает карточки.                |
 | `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус, кнопка «смотреть».               |
-| `MrDetailModal`   | Component | Модалка: отчёт агента, кнопки [Постить] [Отклонить] [Пропустить].                    |
-| `ApiClient`       | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`. |
+| `MrDetailModal` | Component | Модалка: рендер отчёта (данные из `GET /api/mr/:id/report`), `OperatorQuestion` от ask-узла (варианты выбора), кнопки ответа на question. |
+| `ApiClient` | Service | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`. |
 | `BoardStore`      | Service   | React Context: состояние доски, polling, optimistic updates.                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -99,7 +99,7 @@ function BoardPage() {
 ### `MrDetailModal`
 
 - **Type:** Component
-- **Purpose:** Модальное окно с отчётом агента: находки, треды, действия.
+- **Purpose:** Модальное окно: рендер отчёта из `GET /api/mr/:id/report`, `OperatorQuestion` (ask-узел = источник), варианты выбора, кнопки ответа.
 - **Props:** `mr: MrDetail`
 - **State:** открыта/закрыта, выбранное действие
 - **Consumers:** `MrCard` (по клику «смотреть»).
