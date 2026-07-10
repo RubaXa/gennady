@@ -3,255 +3,200 @@
 > Parent scope: [`../../agent-inbox.spec.md`](../../agent-inbox.spec.md)
 
 <!--SECTION:MODULE_VISION-->
-
 ## 1. Module Vision
 
-Сердце serve-режима. Загружает роли (TypeScript-модули), планирует обработку MR,
-управляет экземплярами ролей (стейт-машины), эскалирует права. Получает данные
-от inbox-core, использует inbox-opencode для AI-узлов.
+Сердце serve-режима. Загружает роли (TypeScript-модули с графом узлов), планирует
+обработку MR, выполняет узлы (session/gate/ask/effect), классифицирует исходы,
+восстанавливает по лесенке. Получает данные от inbox-core, использует inbox-opencode
+для AI-узлов.
 
+Роль v1 (reviewer) обязана выражать существующий документный конвейер
+(scaffold → gate → enrich → gate → track-sessions → gate → synthesize →
+ask → effect → done). Это тест выразительности контракта: если конвейер
+не ложится в граф узлов — контракт неверен.
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
-
 ## 2. Module Usage Example
 
 ```ts
 import { RoleEngine, RoleScheduler } from '@/inbox-roles';
-import { StateStore } from '@/inbox-core';
 
-const store = new StateStore({ stateDir: '~/.gennady' });
-
-// загрузка ролей
 const engine = new RoleEngine();
-await engine.loadAll(); // → [reviewer, author]
-engine.activate('reviewer'); // авто-назначение включено
+await engine.loadAll(); // → загружены reviewer.role.ts, author.role.ts
+engine.activate('reviewer');
 
-// планировщик
 const scheduler = new RoleScheduler({ engine, store });
 
-// каждый tick (5 мин)
+// tick: polling → delta → assign → step() для активных → escalate
 await scheduler.tick();
-// 1. VcsInbox.getActionable() → список MR
-// 2. Для новых MR → matching role → создать RoleInstance
-// 3. Для существующих: headChanged? approvalReset? → обновить RoleInstance
-// 4. Для активных RoleInstance → advance() (выполнить следующее состояние)
-// 5. RightsEscalator → проверить эскалацию
 
-// ручное назначение (с дашборда)
+// Ручное назначение
 await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
 ```
-
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
 <!--SECTION:ENTITY_INVENTORY-->
-
 ## 3. Entity Inventory (Closed-World)
 
-| Name              | Type    | Purpose                                                                          |
-| ----------------- | ------- | -------------------------------------------------------------------------------- |
-| `RoleEngine`      | Service | Загрузка `.role.ts` модулей, регистрация, активация/деактивация.                 |
-| `RoleScheduler`   | Service | Tick: новые MR + изменения существующих. Назначение/обновление RoleInstance.     |
-| `RoleInstance`    | Entity  | Экземпляр роли на MR: state + prevState + контекст + права.                      |
-| `RightsEscalator` | Service | Эскалация прав по времени бездействия оператора.                                 |
-| `ReviewerRole`    | Entity  | Определение роли «ревьювер»: состояния, переходы, права по умолчанию, эскалация. |
-| `AuthorRole`      | Entity  | Определение роли «автор»: разбор замечаний ревьюеров.                            |
-
+| Name | Type | Purpose |
+|------|------|---------|
+| `RoleEngine` | Service | Загрузка `.role.ts` модулей, регистрация, активация. |
+| `RoleScheduler` | Service | Tick: новые MR + изменения существующих. Назначение/обновление RoleInstance. |
+| `RoleInstance` | Entity | Экземпляр роли на MR: текущий узел + счётчики continue/restart + контекст + права. |
+| `RoleNode` | Value Object | Тип узла: `session` (AI-промпт + схема + политика ретраев), `gate` (код), `ask` (вопрос), `effect` (действие). |
+| `OutcomeClassifier` | Service | Классификация исхода AI-узла: OK / NO_RESULT / PARSE_ERROR / SCHEMA_MISMATCH / SESSION_ERROR / TIMEOUT. Генерирует remediation-сигнал. |
+| `RightsEscalator` | Service | Эскалация прав по времени бездействия оператора. |
+| `ReviewerRole` | Entity | Роль ревьювера: граф v1 = scaffold→gate→enrich→gate→sessions→gate→synthesize→ask→effect→done. |
+| `AuthorRole` | Entity | Роль автора: разбор замечаний → сводка+задание+черновики → ask → effect react/reply. |
 <!--/SECTION:ENTITY_INVENTORY-->
 
 <!--SECTION:ENTITY_SURFACES-->
-
 ## 4. Entity Surfaces
 
 ### `RoleEngine`
-
 - **Type:** Service
-- **Purpose:** Загрузка `.role.ts` модулей из `services/agent-inbox/roles/`, регистрация, активация.
-- **Public Operations:**
-  - `loadAll()` — сканирует `roles/`, загружает модули
-  - `activate(name)` — активировать роль (авто-назначение на новые MR)
-  - `deactivate(name)` — деактивировать (только ручное назначение)
-  - `list()` → `RegisteredRole[]` — список ролей со статусом
-- **Lifecycle:** Singleton при старте serve.
-- **Consumers:** `RoleScheduler`, `inbox-api` (дашборд).
+- **Purpose:** Загрузка `.role.ts` модулей, регистрация, активация.
+- **Public Operations:** `loadAll()`, `activate(name)`, `deactivate(name)`, `list() → RegisteredRole[]`
+- **Consumers:** `RoleScheduler`, `inbox-api`.
 
 ### `RoleScheduler`
-
 - **Type:** Service
-- **Purpose:** Оркестрация: получает MR, назначает ролям, запускает/обновляет RoleInstance.
-- **Public Operations:**
-  - `tick()` — полный цикл: запросить MR → дельта → назначение новых → обновление существующих → advance активных → эскалация
-  - `assignManual(mrUrl, role, rights?)` — ручное назначение с дашборда
-  - `activeCount()` → `number` — сколько RoleInstance в работе
-- **Lifecycle:** Запускается по таймеру. Один tick синхронный, не пересекается с предыдущим.
-- **Errors & Degradation:** Ошибка VCS в tick → MR не обработан, следующий tick подхватит.
+- **Purpose:** Оркестрация: tick (polling → delta → assign → step → escalate), assignManual.
+- **Public Operations:** `tick()`, `assignManual(mrUrl, role, rights?)`, `activeCount()`
 - **Consumers:** Таймер serve, `inbox-api`.
 
 ### `RoleInstance`
-
 - **Type:** Entity
-- **Purpose:** Один MR под управлением одной роли. Стейт-машина, контекст, права.
-- **Public Properties:** `id`, `role`, `mr`, `state`, `prevState`, `rights`, `context`, `createdAt`
+- **Purpose:** Один MR под управлением одной роли. Состояние = текущий узел + счётчики.
+- **Public Properties:** `id`, `role`, `mr`, `currentNode`, `continueCount`, `restartCount`, `rights`, `createdAt`
 - **Public Operations:**
-  - `advance()` — выполнить переход в следующее состояние (если возможно)
-  - `onContextUpdate(mrContext)` — обновить контекст при изменении MR (headChanged, approvalReset)
-  - `updateRights(rights)` — оператор изменил права
-  - `getBoardView()` — данные для дашборда: state, prevState, доступные действия
-- **Lifecycle:** Создаётся Scheduler'ом. Уничтожается при DONE или MR closed.
-- **Errors & Degradation:** AI-узел → StructuredOutputError → retry (max 2) → эскалация.
+  - `step()` — выполнить текущий узел, классифицировать исход, перейти по edge
+  - `onContextUpdate(mrContext)` — обновить контекст при изменении MR
+  - `getBoardView()` — данные для дашборда
 - **Consumers:** `RoleScheduler`, `RightsEscalator`, `inbox-api`.
 
-### `RightsEscalator`
+### `RoleNode`
+- **Type:** Value Object
+- **Purpose:** Типизированный узел графа роли.
+- **Variants:**
+  - `{ kind: 'session', prompt(ctx, artifacts): { system, text }, dir(ctx): string, resultSchema?: JsonSchema, policy: { promptTimeout, continueMax, restartMax } }`
+  - `{ kind: 'gate', verify(artifacts): GateResult }` — детерминированный код
+  - `{ kind: 'ask', question(artifacts): OperatorQuestion }` — ждёт оператора
+  - `{ kind: 'effect', run(ctx, artifacts): Promise<void> }` — публичное действие (vcs-reply/approve)
+- **Consumers:** `RoleInstance.step()`.
 
+### `OutcomeClassifier`
 - **Type:** Service
-- **Purpose:** Эскалация прав по времени. Учитывает addressed (ждёт оператора? ждёт автора?).
-- **Public Operations:**
-  - `evaluate(instance)` → `Rights` — вычислить текущие права
-  - `schedule(instance)` — запланировать проверку
-- **Lifecycle:** Вызывается Scheduler'ом в каждом tick.
+- **Purpose:** Классификация сырого результата AI-узла.
+- **Classes:** `OK`, `NO_RESULT`, `PARSE_ERROR`, `SCHEMA_MISMATCH(details)`, `SESSION_ERROR`, `TIMEOUT`, `INCOMPLETE_ARTIFACT(details)`
+- **Output:** `{ class, remediationSignal: string }` — сигнал с конкретикой для continue/restart
+- **Consumers:** `RoleInstance.step()` (после session-узла).
+
+### Service: `RightsEscalator`
+- **Type:** Service
+- **Purpose:** Эскалация нотификаций по времени. Механизм: MrRouter пишет `operator_action` в audit при POST; Escalator читает последний `operator_action` по MR.
+- **Public Operations:** `evaluate(instance)` — 24h бездействия → нотификация (VK Teams-пинг), `schedule(instance)`
 - **Consumers:** `RoleScheduler`.
 
 ### `ReviewerRole`
-
 - **Type:** Entity
-- **Purpose:** Роль ревьювера: состояния, переходы, AI-узлы, права по умолчанию.
-- **Public Properties:** `name: 'reviewer'`, `states`, `transitions`, `defaultRights`, `escalation`
-- **Lifecycle:** Загружается RoleEngine при старте, не меняется.
+- **Purpose:** Граф v1 = существующий документный конвейер.
+- **Граф:** `scaffold(session) → gate(validate scaffolded) → enrich(session) → gate(validate enriched) → track-sessions(session, fan-out N дорожек) → gate(filled) → synthesize(session) → ask(согласование) → effect(post) → done`. Fan-out: движок инстанцирует N сессий параллельно (лимит SV-11).
 - **Consumers:** `RoleEngine`, `RoleScheduler`.
 
 ### `AuthorRole`
-
 - **Type:** Entity
-- **Purpose:** Роль автора: разбор замечаний ревьюеров, сверка с кодом.
-- **Public Properties:** `name: 'author'`, `states`, `transitions`, `defaultRights`, `escalation`
-- **Lifecycle:** Загружается RoleEngine при старте, не меняется.
+- **Purpose:** Разбор замечаний ревьюеров на своём MR.
+- **Граф:** `fetch-discussions(session) → classify(gate) → summary+task+drafts(session) → ask(согласование) → effect(react/reply) → done`.
 - **Consumers:** `RoleEngine`, `RoleScheduler`.
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
-
 ## 5. Module Contracts (DbC)
 
 ### Service: `RoleScheduler`
-
 - **Runtime Backing:** `not-implemented`
 - **Verification Levels:** `contract`, `unit`
-- **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
-
-- **Preconditions:**
-  - `RoleEngine.loadAll()` выполнен, хотя бы одна роль загружена
-  - `inbox-core` StateStore инициализирован
-- **Postconditions:**
-  - `tick()`: все новые MR назначены matching ролям или остались без роли
-  - `tick()`: существующие RoleInstance с изменениями (headChanged, approvalReset) обновлены
-  - `tick()`: активные RoleInstance продвинуты (advance)
-  - `assignManual(mrUrl, role, rights)`: создан RoleInstance с переданными правами
-- **Invariants:**
-  - Один MR = не более одного активного RoleInstance
-  - `activeCount() ≤ maxSessions` из inbox-opencode SessionPool
-  - Tick не запускается, пока предыдущий не завершён
+- **Postconditions:** `tick()` — все новые MR назначены; существующие с изменениями обновлены; активные продвинуты через `step()`; эскалация проверена.
+- **Invariants:** Один MR = не более одного активного RoleInstance. Tick не пересекается с предыдущим.
 
 ### Entity: `RoleInstance`
-
 - **Runtime Backing:** `not-implemented`
 - **Verification Levels:** `contract`, `unit`
-- **Deferred Runtime Scope:** Детальный дизайн стейт-машины — module-decomposition
 
 **Contract (DbC):**
+- **Postconditions:** `step()` — узел выполнен, исход классифицирован, переход по edge.
+- **Invariants:** Gate-узлы детерминированы (без LLM). Effect-узлы выполняются не более одного раза на успешный проход (маркер в артефактах или audit). `continueCount ≤ policy.continueMax`; `restartCount ≤ policy.restartMax`. При рестарте serve: состояние восстанавливается от артефактов-чекпоинтов (`AX_ARTIFACTS_ARE_CHECKPOINTS`).
 
-- **Preconditions:**
-  - `advance()`: текущее состояние имеет доступные переходы
-  - `onContextUpdate()`: передан актуальный `MrContext`
-- **Postconditions:**
-  - `advance()`: state изменён согласно transitions роли
-  - `onContextUpdate()`: при headChanged/approvalReset — prevState сохранён, state обновлён
-  - `getBoardView()`: возвращает { state, prevState, actions[] }
-- **Invariants:**
-  - `prevState` всегда отражает предыдущее значение `state`
-  - `rights` не могут быть шире, чем `defaultRights` роли (эскалация — исключение)
+### Service: `OutcomeClassifier`
+- **Runtime Backing:** `not-implemented`
+- **Verification Levels:** `contract`, `unit`
+
+**Contract (DbC):**
+- **Postconditions:** Каждый исход → класс + remediation-сигнал с конкретикой.
+- **Invariants:** `OK` только при валидном результате. `SESSION_ERROR` при Terminated/abort без structured output. `SCHEMA_MISMATCH` от SDK (native structured output) или от парсинга JSON-блока (fallback).
 
 ### Service: `RightsEscalator`
-
 - **Runtime Backing:** `not-implemented`
 - **Verification Levels:** `contract`, `unit`
-- **Deferred Runtime Scope:** None
 
 **Contract (DbC):**
-
-- **Preconditions:**
-  - `instance.state ∈ { AWAITING_OPERATOR }` (эскалация только когда ждёт оператора)
-- **Postconditions:**
-  - 24h без действия оператора → `rights.canPost = true`
-  - 72h → `rights.canApprove = true` (упрощённая схема)
-- **Invariants:**
-  - Действие оператора сбрасывает таймер бездействия
-  - Эскалированные права сохраняются до завершения RoleInstance
-  <!--/SECTION:MODULE_CONTRACTS-->
+- **Preconditions:** `instance.currentNode.kind === 'ask'` (ждёт оператора).
+- **Postconditions:** 24h без `operator_action` в audit → нотификация (VK Teams-пинг). Права — только явным действием оператора.
+- **Invariants:** Действие оператора (`POST /api/mr/:id/*`) → запись в audit → таймер сброшен. Нотификация отправляется не чаще 24h.
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
-
 ## 6. Public Options & Policies
 
-| Option            | Bound To          | Status                           |
-| ----------------- | ----------------- | -------------------------------- |
-| `pollingInterval` | `RoleScheduler`   | active — `5` мин default         |
-| `maxInstances`    | `RoleScheduler`   | active — `3` default (per SV-11) |
-| `escalation24h`   | `RightsEscalator` | active — `canPost: true`         |
-| `escalation72h`   | `RightsEscalator` | active — `canApprove: true`      |
-| `retryMax`        | `RoleInstance`    | active — `2` AI-узла retry       |
-
+| Option | Bound To | Status |
+|---|---|---|
+| `pollingInterval` | `RoleScheduler` | active — `5` мин default |
+| `maxInstances` | `RoleScheduler` | active — `3` default per SV-11 |
+| `escalation24h/72h` | `RightsEscalator` | active (см. открытое решение) |
+| `retryMax` | `RoleInstance` | active — per-node policy |
 <!--/SECTION:PUBLIC_OPTIONS-->
 
 <!--SECTION:FILE_STRUCTURE-->
-
 ## 7. File Structure
 
 ```
 services/agent-inbox/modules/inbox-roles/
-├── role-engine.ts            # RoleEngine: load, activate, deactivate
-├── role-scheduler.ts         # RoleScheduler: tick, assignManual
-├── role-instance.ts          # RoleInstance: state machine, advance, getBoardView
-├── rights-escalator.ts       # RightsEscalator: evaluate, schedule
-├── reviewer.role.ts          # ReviewerRole: states, transitions, defaultRights
-├── author.role.ts            # AuthorRole: states, transitions, defaultRights
+├── role-engine.ts            # RoleEngine
+├── role-scheduler.ts         # RoleScheduler
+├── role-instance.ts          # RoleInstance: step(), counters
+├── role-node.ts              # RoleNode: типы узлов
+├── outcome-classifier.ts     # OutcomeClassifier: классы + remediation-сигналы
+├── rights-escalator.ts       # RightsEscalator
+├── reviewer.role.ts          # ReviewerRole: граф v1 (9 узлов)
+├── author.role.ts            # AuthorRole: граф v1 (5 узлов)
 ├── errors.ts                 # RoleError
-├── __tests__/
-│   ├── role-engine.test.ts
-│   ├── role-scheduler.test.ts
-│   ├── role-instance.test.ts
-│   ├── rights-escalator.test.ts
-│   ├── reviewer.role.test.ts
-│   └── author.role.test.ts
+└── __tests__/
+    ├── role-engine.test.ts
+    ├── role-scheduler.test.ts
+    ├── role-instance.test.ts
+    ├── outcome-classifier.test.ts
+    ├── rights-escalator.test.ts
+    ├── reviewer.role.test.ts
+    └── author.role.test.ts
 ```
-
-**File Mapping:**
-
-- `role-engine.ts` — `RoleEngine`
-- `role-scheduler.ts` — `RoleScheduler`
-- `role-instance.ts` — `RoleInstance`
-- `rights-escalator.ts` — `RightsEscalator`
-- `reviewer.role.ts` — `ReviewerRole`
-- `author.role.ts` — `AuthorRole`
-- `errors.ts` — `RoleError`
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->
-
 ## 8. Module Decision Log
 
-None — все архитектурные решения на уровне scope spec (D-71–D-77).
-
+None — архитектурные решения на уровне scope spec (D-78).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
-
 ## 9. Inter-Module Dependencies
 
 - **Depends on:** `inbox-core`, `inbox-opencode`
-- **Scope Reference (cross-scope):** `ai-skills` — AIKit директивы (`arch-interrogation`, `code-interrogation`)
-- **Provides to:** `inbox-api`
+- **Scope Reference (cross-scope):** `ai-skills` — AIKit директивы
+- **Provides to:** `inbox-api` (через BoardProviderReal)
 
 ```mermaid
 graph TD
@@ -260,18 +205,14 @@ graph TD
     inbox-api --> inbox-roles
     inbox-roles -. Scope Reference .-> ai-skills
 ```
-
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
 <!--SECTION:HANDOFF-->
-
 ## 10. Handoff to task-scaffolding
 
-- **Implementation files to be created:** 7 файлов (см. File Structure)
-- **Test files to be created:** 5 файлов (см. `__tests__/`)
-- **Stack dependencies:**
-  - Language: TypeScript (resolves to `ai/directives/coding/typescript-rules.xml`)
-  - Test framework: node:test (resolves to `ai/directives/testing/node-test.xml`)
+- **Implementation files to be created:** 10 файлов
+- **Test files to be created:** 7 файлов
+- **Stack dependencies:** TypeScript, node:test
 - **Module Rules Additions:** None
-- **Open risks:** Детальный дизайн `.role.ts` интерфейса (стейт-машины) требует отдельного module-decomposition. Сейчас зафиксированы только намерения.
+- **Open risks:** Reviewer-граф v1 — тест выразительности контракта (должен выражать D57/D70)
 <!--/SECTION:HANDOFF-->

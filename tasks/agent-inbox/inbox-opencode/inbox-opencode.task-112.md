@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-112 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
-- **Purpose:** Реальная интеграция с OpenCode через `@opencode-ai/sdk` + `opencode serve`. Замена мока.
+- **Purpose:** Реальная интеграция с OpenCode через `@opencode-ai/sdk`. Research-фаза: подтвердить `format: json_schema`, events, directory-байндинг сессии. Реализация: status/continueSignal/format. Fallback: JSON-блок + парсинг.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-01, SV-05, [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview

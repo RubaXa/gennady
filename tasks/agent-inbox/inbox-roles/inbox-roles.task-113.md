@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core state), TSK-110 (VCS port), TSK-111 (opencode port), TSK-116 (ai-kit)
-- **Purpose:** Role Engine, Scheduler, RoleInstance (стейт-машина), RightsEscalator. Роли reviewer и author. Интеграция всех компонентов.
+- **Purpose:** Role Engine, Scheduler, RoleInstance (узел-модель: step + OutcomeClassifier + recovery ladder), ReviewerRole (граф v1: scaffold→gate→enrich→gate→sessions→gate→synthesize→ask→effect→done), AuthorRole, RightsEscalator.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, SV-07–SV-11, [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md) | **Runtime:** not-implemented | **Verification:** unit, integration
 
 ## 2. Phases Overview

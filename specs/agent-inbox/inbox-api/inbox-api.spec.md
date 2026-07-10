@@ -36,16 +36,16 @@ await server.start();
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name          | Type    | Purpose                                                                |
-| ------------- | ------- | ---------------------------------------------------------------------- |
-| `HttpServer` | Service | `node:http` сервер: порт, роутинг, CORS, статика, graceful shutdown. |
-| `BoardProviderPort` | Port | Абстракция состояния доски: `getBoard()`, `assignMr()`, `executeAction()`, `getReport()`. Владеет типами `RoleView`, `MrCard`, `MrDetail`. |
-| `BoardProviderMock` | Adapter | Мок-реализация `BoardProviderPort` для TSK-106 (in-memory, без RoleEngine). |
-| `BoardProviderReal` | Adapter | Реализация через `RoleScheduler` + `StateStore` (TSK-113 подключает). |
-| `BoardRouter` | Service | `GET /api/board` — агрегирует состояние от BoardProviderPort. |
-| `MrRouter` | Service | `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`. |
-| `AuditRouter` | Service | `GET /api/mr/:id/audit` — читает AuditLog. |
-| `StaticFiles` | Service | Раздача React SPA из `dist/inbox-serve/`. SPA fallback. |
+| Name                | Type    | Purpose                                                                                                                                    |
+| ------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `HttpServer`        | Service | `node:http` сервер: порт, роутинг, CORS, статика, graceful shutdown.                                                                       |
+| `BoardProviderPort` | Port    | Абстракция состояния доски: `getBoard()`, `assignMr()`, `executeAction()`, `getReport()`. Владеет типами `RoleView`, `MrCard`, `MrDetail`. |
+| `BoardProviderMock` | Adapter | Мок-реализация `BoardProviderPort` для TSK-106 (in-memory, без RoleEngine).                                                                |
+| `BoardProviderReal` | Adapter | Реализация через `RoleScheduler` + `StateStore` (TSK-113 подключает).                                                                      |
+| `BoardRouter`       | Service | `GET /api/board` — агрегирует состояние от BoardProviderPort.                                                                              |
+| `MrRouter`          | Service | `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`.                                                            |
+| `AuditRouter`       | Service | `GET /api/mr/:id/audit` — читает AuditLog.                                                                                                 |
+| `StaticFiles`       | Service | Раздача React SPA из `dist/inbox-serve/`. SPA fallback.                                                                                    |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -65,6 +65,7 @@ await server.start();
 - **Consumers:** `gennady inbox serve`.
 
 ### `BoardProviderPort`
+
 - **Type:** Port
 - **Purpose:** Абстракция состояния доски. Позволяет TSK-106 работать с моком, TSK-113 — с real RoleScheduler.
 - **Public Operations:**
@@ -75,11 +76,13 @@ await server.start();
 - **Consumers:** `BoardRouter`, `MrRouter`.
 
 ### `BoardProviderMock`
+
 - **Type:** Adapter | **Implements:** `BoardProviderPort`
 - **Purpose:** In-memory мок для TSK-106. Хранит состояние в памяти. `getReport()` возвращает seeded данные.
 - **Consumers:** DI-контейнер (dev/e2e).
 
 ### `BoardProviderReal`
+
 - **Type:** Adapter | **Implements:** `BoardProviderPort`
 - **Purpose:** Реализация через `RoleScheduler` + `StateStore` + `AuditLog`. Подключается в TSK-113/115.
 - **Consumers:** Production-окружение.
@@ -94,11 +97,11 @@ await server.start();
 ### `MrRouter`
 
 - **Type:** Service
-- **Purpose:** Действия над MR + отчёт агента.
+- **Purpose:** Действия над MR + отчёт агента + ответ на OperatorQuestion.
 - **Endpoints:**
   - `POST /api/mr/:id/assign { role, rights? }` → `{ ok: true }`
-  - `POST /api/mr/:id/action { action: 'post' | 'reject' | 'skip' }` → `{ ok: true }`
-  - `GET /api/mr/:id/report` → `MrDetail` — находки, треды, вердикт для MrDetailModal
+  - `POST /api/mr/:id/action { questionId, choice, payload? }` → `{ ok: true }` — generic ответ на OperatorQuestion от ask-узла
+  - `GET /api/mr/:id/report` → `MrDetail` — артефакты из `reports/<mr>/` для MrDetailModal
 - **Consumers:** `inbox-dashboard`.
 
 ### `AuditRouter`

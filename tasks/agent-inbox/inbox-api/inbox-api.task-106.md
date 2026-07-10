@@ -57,15 +57,15 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario                      | Level       | Test File            |
-| ----------------------------- | ----------- | -------------------- |
-| GET /api/board → 200          | integration | board.router.test.ts |
-| POST /api/mr/:id/assign → ok  | integration | mr.router.test.ts    |
-| POST /api/mr/:id/action → ok | integration | mr.router.test.ts |
-| GET /api/mr/:id/report → MrDetail | integration | mr.router.test.ts |
-| POST /api/mr/xxx/assign → 404 | integration | mr.router.test.ts |
-| SPA fallback                  | integration | http-server.test.ts  |
-| Graceful shutdown             | integration | http-server.test.ts  |
+| Scenario                          | Level       | Test File            |
+| --------------------------------- | ----------- | -------------------- |
+| GET /api/board → 200              | integration | board.router.test.ts |
+| POST /api/mr/:id/assign → ok      | integration | mr.router.test.ts    |
+| POST /api/mr/:id/action → ok      | integration | mr.router.test.ts    |
+| GET /api/mr/:id/report → MrDetail | integration | mr.router.test.ts    |
+| POST /api/mr/xxx/assign → 404     | integration | mr.router.test.ts    |
+| SPA fallback                      | integration | http-server.test.ts  |
+| Graceful shutdown                 | integration | http-server.test.ts  |
 
 ## 7. Execution Log
 

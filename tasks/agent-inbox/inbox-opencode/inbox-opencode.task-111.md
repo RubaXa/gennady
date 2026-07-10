@@ -3,7 +3,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-111 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
-- **Purpose:** OpenCode-интеграция: Port (абстракция) + Mock (dev/e2e) + SessionPool + SchemaRegistry. Без real-SDK (TSK-112).
+- **Purpose:** OpenCode-интеграция: Port (createSession + directory, prompt с format, status, continueSignal, abort, close) + Mock (симулирует все классы исходов: OK, NO_RESULT, PARSE_ERROR, SCHEMA_MISMATCH, SESSION_ERROR, TIMEOUT, INCOMPLETE_ARTIFACT) + SessionPool + SchemaRegistry (узел→схема). Без real-SDK (TSK-112).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-05, [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
