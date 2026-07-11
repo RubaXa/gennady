@@ -3,7 +3,7 @@
 // @tasks: TSK-115, TSK-117
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { logger } from '#logger';
@@ -326,7 +326,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   }
   // #endregion END_CHECK_CONFIG
 
-
   let vcs: VcsInboxPort;
   let opencode: OpenCodePort;
   let degraded = false;
@@ -370,7 +369,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
     const proc = await spawnOpencode(stateDir, opencodePort);
     if (proc && proc.pid) {
-      // Write PID file so shutdown can find and kill the child process
+      // Ensure agent-inbox directory exists before writing PID file
+      await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
       await writeFile(
         pidFile,
         JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',

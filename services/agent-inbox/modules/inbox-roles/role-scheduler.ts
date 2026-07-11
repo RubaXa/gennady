@@ -283,6 +283,22 @@ export class RoleScheduler {
   }
 
   /**
+   * @purpose Gracefully stop the scheduler — wait for in-flight tick, prevent new ticks.
+   * @returns Promise that resolves when the scheduler is stopped.
+   * @sideEffect Sets internal flag; resolves when any running tick completes.
+   */
+  async stop(): Promise<void> {
+    this._ticking = true; // Block new ticks
+    // Wait for any in-flight tick to complete (polling loop)
+    let waited = 0;
+    while (this._ticking && waited < 5000) {
+      await new Promise((r) => setTimeout(r, 100));
+      waited += 100;
+    }
+    logger.info('[RoleScheduler#stop] [running → stopped]');
+  }
+
+  /**
    * @purpose List all instance snapshots for BoardProviderReal consumption.
    * @returns Array of instance snapshots with role, mr, state, node, and findings.
    * @consumer BoardProviderReal

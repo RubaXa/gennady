@@ -8,6 +8,7 @@ import { logger } from '#logger';
 import type { ChildProcess } from 'node:child_process';
 import type { HttpServer } from '../modules/inbox-api/http-server.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
+import type { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
 
 /**
  * @purpose Configuration for graceful shutdown.
@@ -24,6 +25,8 @@ export type ShutdownConfig = {
   opencodeProcess?: ChildProcess | null;
   /** @purpose Path to opencode PID file — primary method: kill by PID, then remove file. */
   opencodePidFile?: string | null;
+  /** @purpose Optional scheduler to stop before closing HTTP server. */
+  scheduler?: RoleScheduler;
 };
 
 /**
@@ -130,6 +133,19 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
     }
   }
   // #endregion END_KILL_OPENCODE_PROCESS
+
+  // #region START_STOP_SCHEDULER
+  if (config.scheduler) {
+    try {
+      logger.info('[gracefulShutdown] stopping scheduler');
+      await config.scheduler.stop();
+    } catch (cause) {
+      logger.warn('[gracefulShutdown] scheduler stop error (continuing)', {
+        error: (cause as Error).message,
+      });
+    }
+  }
+  // #endregion END_STOP_SCHEDULER
 
   // #region START_CLOSE_SERVER
   // Stop the HTTP server — stop accepting new connections, drain active ones.

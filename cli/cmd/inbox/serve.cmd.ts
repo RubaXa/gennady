@@ -105,6 +105,7 @@ async function run(): Promise<number> {
           opencode: result.opencode,
           opencodeProcess: result.opencodeProcess,
           opencodePidFile: result.opencodePidFile,
+          scheduler: result.scheduler,
         });
       } catch {
         // Ensure we always exit with 0 — individual shutdown errors are logged inside gracefulShutdown
@@ -114,6 +115,16 @@ async function run(): Promise<number> {
 
     process.on('SIGTERM', () => void shutdown('SIGTERM'));
     process.on('SIGINT', () => void shutdown('SIGINT'));
+
+    // D-85: Unhandled errors must trigger cleanup — orphaned opencode + stale PID file.
+    process.on('uncaughtException', (error) => {
+      console.error(style.redBright.bold('✖ Unhandled error:'), error.message);
+      void shutdown('uncaughtException').then(() => process.exit(1));
+    });
+    process.on('unhandledRejection', (reason) => {
+      console.error(style.redBright.bold('✖ Unhandled rejection:'), reason);
+      void shutdown('unhandledRejection').then(() => process.exit(1));
+    });
     // #endregion END_SIGNAL_HANDLERS
 
     // Foreground-сервер: процесс живёт до SIGTERM/SIGINT (выход — внутри shutdown).
