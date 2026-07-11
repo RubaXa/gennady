@@ -66,6 +66,8 @@ export class RoleScheduler {
   protected _instances: Map<string, RoleInstance>;
   /** @purpose Whether a tick is currently in progress */
   protected _ticking: boolean;
+  /** @purpose Whether the scheduler has been stopped — blocks new ticks */
+  protected _stopped: boolean;
   /** @purpose Per-instance consecutive error count — for retry limits (F2) */
   protected _errorCount: Map<string, number>;
   /** @purpose Per-instance cooldown timestamp (epoch ms) — pause after N errors (F2) */
@@ -86,6 +88,7 @@ export class RoleScheduler {
     this._config = config;
     this._instances = new Map();
     this._ticking = false;
+    this._stopped = false;
     this._errorCount = new Map();
     this._pausedUntil = new Map();
     this._lastPolled = new Map();
@@ -107,6 +110,11 @@ export class RoleScheduler {
    * @returns Promise that resolves when the tick completes.
    */
   async tick(): Promise<void> {
+    if (this._stopped) {
+      logger.debug('[RoleScheduler#tick] [idle → skipped] Scheduler stopped');
+      return;
+    }
+
     if (this._ticking) {
       logger.debug('[RoleScheduler#tick] [idle → skipped] Tick already in progress');
       return;
@@ -215,6 +223,7 @@ export class RoleScheduler {
       // #endregion END_CLEANUP_DONE
     } finally {
       this._ticking = false;
+      this._stopped = false;
       logger.debug('[RoleScheduler#tick] [ticking → idle]');
     }
   }
@@ -288,8 +297,8 @@ export class RoleScheduler {
    * @sideEffect Sets internal flag; resolves when any running tick completes.
    */
   async stop(): Promise<void> {
-    this._ticking = true; // Block new ticks
-    // Wait for any in-flight tick to complete (polling loop)
+    this._stopped = true;
+    // Wait for any in-flight tick to complete
     let waited = 0;
     while (this._ticking && waited < 5000) {
       await new Promise((r) => setTimeout(r, 100));

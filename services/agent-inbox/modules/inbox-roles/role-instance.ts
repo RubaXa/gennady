@@ -88,6 +88,10 @@ export class RoleInstance {
   readonly createdAt: string;
   /** @purpose Outcome classifier */
   protected _classifier: OutcomeClassifier;
+  /** @purpose Current ask node id when in awaiting_operator state */
+  protected _askNodeId: string | null;
+  /** @purpose Operator answer when exiting ask node */
+  protected _answer: string | null;
 
   /**
    * @purpose Create a new role instance.
@@ -111,6 +115,8 @@ export class RoleInstance {
     this._sessionId = null;
     this.createdAt = new Date().toISOString();
     this._classifier = new OutcomeClassifier();
+    this._askNodeId = null;
+    this._answer = null;
   }
 
   /**
@@ -119,6 +125,42 @@ export class RoleInstance {
    */
   async step(): Promise<void> {
     if (this.state === 'done' || this.state === 'error') return;
+
+    // #region START_HANDLE_AWAITING_OPERATOR — advance past ask node when operator answered
+    if (this.state === 'awaiting_operator') {
+      if (this._answer !== null && this._askNodeId) {
+        // Store answer in artifacts for downstream nodes
+        this._artifacts[`${this._askNodeId}_answer`] = this._answer;
+
+        // Follow 'answered' edge from the ask node
+        const edge = this._resolveEdge(this._askNodeId, 'answered');
+        if (edge) {
+          this.currentNode = edge.to;
+          if (edge.to === 'done') {
+            this.state = 'done';
+          } else {
+            this.state = 'idle';
+          }
+          this._askNodeId = null;
+          this._answer = null;
+          logger.debug('[RoleInstance#step] [awaiting_operator → advancing]', {
+            instance: this.id,
+            nextNode: this.currentNode,
+          });
+        } else {
+          // No 'answered' edge — treat as completed
+          logger.warn('[RoleInstance#step] [awaiting_operator → no answered edge]', {
+            instance: this.id,
+            node: this._askNodeId,
+          });
+          this.state = 'done';
+          this._askNodeId = null;
+          this._answer = null;
+        }
+      }
+      return;
+    }
+    // #endregion END_HANDLE_AWAITING_OPERATOR
 
     const node = this._findNode(this.currentNode);
     if (!node) {
@@ -161,6 +203,8 @@ export class RoleInstance {
         node: this.currentNode,
         error: cause,
       });
+      // P2/S7/D9: clean up active session on error to prevent session leak
+      await this._closeActiveSession();
       this.state = 'error';
     }
   }
@@ -194,6 +238,27 @@ export class RoleInstance {
       findings: this._extractFindings(),
       verdict: this._extractVerdict(),
     };
+  }
+
+  /**
+   * @purpose Store the operator's answer for the current ask node.
+   * @param answer The operator's chosen answer string.
+   * @consumer BoardProviderReal#executeAction
+   */
+  setAnswer(answer: string): void {
+    this._answer = answer;
+    logger.debug('[RoleInstance#setAnswer] [awaiting_operator → answered]', {
+      instance: this.id,
+      answer,
+    });
+  }
+
+  /**
+   * @purpose Get the current operator answer (if any).
+   * @returns The answer string or null.
+   */
+  getAnswer(): string | null {
+    return this._answer;
   }
 
   /**
@@ -365,9 +430,14 @@ export class RoleInstance {
    */
   protected async _executeAsk(node: AskNode, ctx: NodeContext): Promise<void> {
     this.state = 'awaiting_operator';
+    this._askNodeId = node.id;
+    this._answer = null;
 
     // Store the question in artifacts for dashboard display
     this._artifacts[`${node.id}_question`] = node.question(ctx);
+
+    // Close any active session from previous nodes — ask node has no LLM session
+    await this._closeActiveSession();
 
     logger.info('[RoleInstance#_executeAsk] [executing → awaiting]', {
       instance: this.id,
@@ -450,16 +520,15 @@ export class RoleInstance {
           this.restartCount++;
 
           if (this.restartCount > max.restartMax) {
+            // P2/S7/D9: close session before escalating to operator
+            await this._closeActiveSession();
             this.state = 'awaiting_operator';
             await this._appendAudit('escalated', `Recovery exhausted for node "${node.id}"`);
             return;
           }
 
           // Restart: close old session, create fresh one
-          if (this._sessionId) {
-            await this._opencode.close(this._sessionId);
-            this._sessionId = null;
-          }
+          await this._closeActiveSession();
           await this._appendAudit(
             'restarted',
             `Restarting node "${node.id}" — attempt ${this.restartCount}/${max.restartMax}`
@@ -486,16 +555,15 @@ export class RoleInstance {
       case 'restart': {
         this.restartCount++;
         if (this.restartCount > max.restartMax) {
+          // P2/S7/D9: close session before escalating to operator
+          await this._closeActiveSession();
           this.state = 'awaiting_operator';
           await this._appendAudit('escalated', `Recovery exhausted for node "${node.id}"`);
           return;
         }
 
         // Close old session, create fresh one
-        if (this._sessionId) {
-          await this._opencode.close(this._sessionId);
-          this._sessionId = null;
-        }
+        await this._closeActiveSession();
 
         await this._appendAudit(
           'restarted',
@@ -508,6 +576,8 @@ export class RoleInstance {
       }
 
       case 'await_operator': {
+        // P2/S7/D9: close session before escalating to operator
+        await this._closeActiveSession();
         this.state = 'awaiting_operator';
         await this._appendAudit('escalated', `Node "${node.id}" requires operator attention`);
         break;
@@ -571,5 +641,22 @@ export class RoleInstance {
       event,
       detail,
     });
+  }
+
+  /**
+   * @purpose Close the active OpenCode session if one exists — prevents session leaks
+   * when the instance transitions to error or awaiting_operator state.
+   * @returns Promise that resolves when the session is closed.
+   * @sideEffect Sets _sessionId to null.
+   */
+  protected async _closeActiveSession(): Promise<void> {
+    if (this._sessionId) {
+      logger.debug('[RoleInstance#_closeActiveSession] [closing]', {
+        instance: this.id,
+        sessionId: this._sessionId,
+      });
+      await this._opencode.close(this._sessionId);
+      this._sessionId = null;
+    }
   }
 }

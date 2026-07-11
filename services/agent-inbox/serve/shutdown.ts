@@ -32,10 +32,10 @@ export type ShutdownConfig = {
 /**
  * @purpose Gracefully stop HTTP server and clean up OpenCode resources.
  * Forces exit if timeout exceeded. Never throws — all errors are caught and logged.
- * @invariant Postcondition: process.exit(0) is always reachable — no uncaught errors block it.
+ * @invariant Postcondition: resolves cleanly — caller handles exit code.
  * @param config Shutdown configuration — server handle, optional opencode adapter and process.
  * @returns Promise that resolves when all shutdown steps are complete.
- * @sideEffect Closes the HTTP server; may call process.exit(0) on timeout.
+ * @sideEffect Closes the HTTP server; logs timeout warnings but does NOT call process.exit.
  */
 export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
   const timeout = config.timeout ?? 10_000;
@@ -150,16 +150,19 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
   // #region START_CLOSE_SERVER
   // Stop the HTTP server — stop accepting new connections, drain active ones.
   try {
-    // Use a timer to enforce the timeout
-    const shutdownTimer = setTimeout(() => {
-      logger.warn('[gracefulShutdown] server close timed out, forcing exit');
-      process.exit(0);
-    }, timeout);
+    // Race server.stop() against a timeout — resolve cleanly either way.
+    // Caller (serve.cmd.ts) handles process.exit() code.
+    const stopPromise = config.server.stop().then(() => {
+      logger.info('[gracefulShutdown] [stopping → stopped] HTTP server closed');
+    });
+    const timeoutPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        logger.warn('[gracefulShutdown] server close timed out');
+        resolve();
+      }, timeout);
+    });
 
-    await config.server.stop();
-    clearTimeout(shutdownTimer);
-
-    logger.info('[gracefulShutdown] [stopping → stopped] HTTP server closed');
+    await Promise.race([stopPromise, timeoutPromise]);
   } catch (cause) {
     logger.error('[gracefulShutdown] [stopping → failed]', {
       error: (cause as Error).message,

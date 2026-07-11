@@ -156,7 +156,14 @@ export type RoleNode = SessionNode | GateNode | AskNode | EffectNode;
  * @purpose Transition condition evaluated after a node completes.
  * Maps to a gate result (`pass`/`fail`) or an outcome class from session nodes.
  */
-export type EdgeCondition = 'ok' | 'pass' | 'fail' | 'timeout' | 'error' | 'retry_exhausted';
+export type EdgeCondition =
+  | 'ok'
+  | 'pass'
+  | 'fail'
+  | 'timeout'
+  | 'error'
+  | 'retry_exhausted'
+  | 'answered';
 
 /**
  * @purpose Directed edge between nodes — triggered when the source node completes with a given condition.

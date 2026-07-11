@@ -361,14 +361,17 @@ export class OpenCodeReal extends OpenCodePort {
         partsCount: parts.length,
       });
 
-      const result = await client.session.prompt({
-        body: {
-          system: system || undefined,
-          parts: parts as Array<{ type: 'text'; text: string }>,
-        },
-        path: { id: sid },
-        query: directory ? { directory } : undefined,
-      });
+      const result = await this._withTimeout(
+        client.session.prompt({
+          body: {
+            system: system || undefined,
+            parts: parts as Array<{ type: 'text'; text: string }>,
+          },
+          path: { id: sid },
+          query: directory ? { directory } : undefined,
+        }),
+        this._timeout
+      );
 
       if (result.error) {
         const errData = result.error as { name?: string; data?: { message?: string } } | undefined;
@@ -543,6 +546,28 @@ export class OpenCodeReal extends OpenCodePort {
       return composeError('SESSION_ERROR', `Unexpected error: ${cause.message}`);
       // #endregion END_CLASSIFY_NETWORK_ERROR
     }
+  }
+
+  /**
+   * @purpose Wrap a promise with a timeout — rejects if the promise does not settle within ms.
+   * @param promise The promise to protect.
+   * @param ms Timeout in milliseconds.
+   * @returns The promise result, or throws TIMEOUT error.
+   */
+  protected _withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('TIMEOUT: operation timed out')), ms);
+      promise.then(
+        (val) => {
+          clearTimeout(timer);
+          resolve(val);
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        }
+      );
+    });
   }
 
   /**

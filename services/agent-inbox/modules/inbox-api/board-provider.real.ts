@@ -183,7 +183,8 @@ export class BoardProviderReal extends BoardProviderPort {
       return { ok: false };
     }
 
-    // Advance the instance past the ask node by triggering a step
+    // D3: Store the operator's answer so the ask node can use it, then advance
+    instance.setAnswer(_action.choice);
     void instance.step();
     return { ok: true };
   }
