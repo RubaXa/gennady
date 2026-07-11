@@ -95,10 +95,10 @@ export class RightsEscalator {
     // #region START_QUERY_OPERATOR_ACTIONS
     const auditEntries = await this._store.queryAudit(instance.mr);
 
-    // Find the last operator_action entry
+    // Find relevant events: operator_action (resets timer) and escalated (cooldown check).
+    // effect_applied is intentionally excluded — it's a system event, not an operator action.
     const operatorActions = auditEntries.filter(
-      (e: AuditEntry) =>
-        e.event === 'operator_action' || e.event === 'effect_applied' || e.event === 'escalated'
+      (e: AuditEntry) => e.event === 'operator_action' || e.event === 'escalated'
     );
 
     // Sort by timestamp descending to find the most recent
@@ -107,9 +107,7 @@ export class RightsEscalator {
 
     const now = Date.now();
     const lastEscalation = operatorActions.find((e) => e.event === 'escalated');
-    const lastOperatorAction = operatorActions.find(
-      (e) => e.event === 'operator_action' || e.event === 'effect_applied'
-    );
+    const lastOperatorAction = operatorActions.find((e) => e.event === 'operator_action');
 
     // #region START_CHECK_OPERATOR_ACTION_TIMER
     if (lastOperatorAction) {

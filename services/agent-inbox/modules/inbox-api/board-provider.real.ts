@@ -7,6 +7,7 @@ import type { BoardData, RoleView, MrCard, MrDetail } from './types.ts';
 import type { RoleScheduler, RoleInstanceSnapshot } from '../inbox-roles/role-scheduler.ts';
 import type { RoleEngine, RegisteredRole } from '../inbox-roles/role-engine.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 
 /**
  * @purpose Build a MrCard from a polled VcsActionableMr — real metadata for the dashboard (F7).
@@ -162,6 +163,13 @@ export class BoardProviderReal extends BoardProviderPort {
    * @see {BoardProviderPort#assignMr}
    */
   assignMr(mrId: string, role: string, rights?: Record<string, unknown>): { ok: boolean } {
+    // #region START_VALIDATE_MR_URL — prevent SSRF: only allow URLs matching our VCS host
+    const vcsHost = this._scheduler.getVcsHost();
+    if (!isValidMrUrl(mrId, vcsHost)) {
+      return { ok: false };
+    }
+    // #endregion END_VALIDATE_MR_URL
+
     // Fire-and-forget: assignManual is async but we don't await here
     // because the port is synchronous. The scheduler handles it eventually.
     void this._scheduler.assignManual(mrId, role, rights);

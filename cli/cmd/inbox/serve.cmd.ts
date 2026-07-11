@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
+import { isOpencodePid } from '../../../services/agent-inbox/serve/pid-utils.ts';
 
 /**
  * @purpose Parse command-line flags for `gennady inbox serve`.
@@ -37,27 +38,25 @@ async function run(): Promise<number> {
     console.info(style.bold('gennady inbox serve'));
     console.info('');
 
-    // D-85: Check if another instance is already running
+    // D-85: Check if another instance is already running (S1: verify PID via isOpencodePid)
     const defaultStateDir = join(homedir(), '.gennady');
     const pidFile = join(defaultStateDir, 'agent-inbox', 'opencode.pid');
     if (existsSync(pidFile)) {
       try {
         const raw = readFileSync(pidFile, 'utf-8');
         const { pid, port } = JSON.parse(raw) as { pid: number; port: number };
-        try {
-          process.kill(pid, 0); // Signal 0 = check if process exists
+        if (isOpencodePid(pid)) {
           console.info(style.yellow(`⚠ Уже запущен на порту ${port} (PID ${pid})`));
           return 0;
+        }
+        // Stale PID file — remove and continue
+        try {
+          unlinkSync(pidFile);
         } catch {
-          // PID file exists but process is dead — stale file, remove and continue
-          try {
-            unlinkSync(pidFile);
-          } catch {
-            /* ignore */
-          }
+          /* ignore */
         }
       } catch {
-        // Corrupted PID file — ignore and continue
+        /* Corrupted PID file — ignore and continue */
       }
     }
 

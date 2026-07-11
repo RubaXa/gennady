@@ -262,7 +262,7 @@ export class RoleInstance {
   }
 
   /**
-   * @purpose Extract findings from accumulated artifacts for dashboard display.
+   * @purpose Extract findings from any session artifact that has recommendations or findings arrays.
    * @returns Array of finding objects.
    */
   protected _extractFindings(): Array<{
@@ -271,38 +271,52 @@ export class RoleInstance {
     line: number;
     message: string;
   }> {
-    // Check synthesize artifacts first (final review report)
-    const synthesize = this._artifacts['node_synthesize'] as Record<string, unknown> | undefined;
-    if (synthesize?.recommendations) {
-      return (synthesize.recommendations as Array<Record<string, unknown>>).map((r) => ({
-        severity: (r.severity as string) ?? 'info',
-        file: (r.file as string) ?? '',
-        line: (r.line as number) ?? 0,
-        message: (r.message as string) ?? '',
-      }));
-    }
-    // Fallback: scaffold findings
-    const scaffold = this._artifacts['node_scaffold'] as Record<string, unknown> | undefined;
-    if (scaffold?.findings) {
-      return (scaffold.findings as Array<Record<string, unknown>>).map((f) => ({
-        severity: (f.severity as string) ?? 'info',
-        file: (f.file as string) ?? '',
-        line: (f.line as number) ?? 0,
-        message: (f.message as string) ?? '',
-      }));
+    for (const artifact of Object.values(this._artifacts)) {
+      const obj = artifact as Record<string, unknown> | undefined;
+      if (!obj || typeof obj !== 'object') continue;
+
+      // Check for recommendations (from synthesize-like nodes)
+      const recs = obj.recommendations as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(recs)) {
+        return recs.map((r) => ({
+          severity: (r.severity as string) ?? 'info',
+          file: (r.file as string) ?? '',
+          line: (r.line as number) ?? 0,
+          message: (r.message as string) ?? '',
+        }));
+      }
+
+      // Check for findings (from scaffold-like nodes)
+      const findings = obj.findings as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(findings)) {
+        return findings.map((f) => ({
+          severity: (f.severity as string) ?? 'info',
+          file: (f.file as string) ?? '',
+          line: (f.line as number) ?? 0,
+          message: (f.message as string) ?? '',
+        }));
+      }
     }
     return [];
   }
 
   /**
    * @purpose Extract verdict from accumulated artifacts.
+   * Iterates ALL artifacts (not hardcoded node IDs) — any node that
+   * produces a `reviewReport.verdict` or `verdict` field contributes.
    * @returns Verdict string.
    */
   protected _extractVerdict(): string {
-    const synthesize = this._artifacts['node_synthesize'] as Record<string, unknown> | undefined;
-    if (synthesize?.reviewReport) {
-      const report = synthesize.reviewReport as Record<string, unknown>;
-      if (typeof report.verdict === 'string') return report.verdict;
+    for (const artifact of Object.values(this._artifacts)) {
+      const obj = artifact as Record<string, unknown> | undefined;
+      if (!obj || typeof obj !== 'object') continue;
+
+      // Check for reviewReport (from synthesize-like nodes)
+      const report = obj.reviewReport as Record<string, unknown> | undefined;
+      if (report && typeof report.verdict === 'string') return report.verdict;
+
+      // Check for direct verdict field
+      if (typeof obj.verdict === 'string') return obj.verdict;
     }
     return this.state === 'done' ? 'completed' : 'pending';
   }

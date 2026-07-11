@@ -110,6 +110,12 @@ export abstract class VcsInboxPort {
   abstract getDiscussions(webUrl: string, opts?: DiscussionOpts): Promise<Discussion[]>;
 
   /**
+   * @purpose VCS hostname (e.g. gitlab.example.com) — used for MR URL validation.
+   * @returns Configured VCS hostname; empty string when not configured (mock/dev mode).
+   */
+  abstract getHost(): string;
+
+  /**
    * @purpose Authenticated user login — used by AI-02 noise filter.
    * @returns Login string; empty when identity is unavailable (filter degrades gracefully).
    */

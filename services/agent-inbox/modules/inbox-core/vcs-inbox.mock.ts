@@ -64,6 +64,14 @@ export class VcsInboxMock extends VcsInboxPort {
   }
 
   /**
+   * @returns Empty string — mock mode, host validation is skipped.
+   * @see {VcsInboxPort#getHost}
+   */
+  getHost(): string {
+    return '';
+  }
+
+  /**
    * @returns Deduplicated actionable MRs.
    * @see {VcsInboxPort#getActionable}
    */

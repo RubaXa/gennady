@@ -11,6 +11,7 @@ import {
 } from './vcs-inbox.port.ts';
 import { composeInboxError, type InboxErrorResponse } from './errors.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { isValidMrUrl } from './vcs-validators.ts';
 import { logger } from '#logger';
 
 /**
@@ -63,6 +64,14 @@ export class VcsInboxReal extends VcsInboxPort {
         this._baseUrl = this._host ? `https://${this._host}/api/v4` : '';
       }
     }
+  }
+
+  /**
+   * @returns Configured VCS hostname.
+   * @see {VcsInboxPort#getHost}
+   */
+  getHost(): string {
+    return this._host;
   }
 
   /**
@@ -173,6 +182,17 @@ export class VcsInboxReal extends VcsInboxPort {
    * @see {VcsInboxPort#getMrContext}
    */
   async getMrContext(webUrl: string): Promise<MrContext> {
+    // #region START_VALIDATE_MR_URL — prevent SSRF: only allow URLs matching our VCS host
+    if (!isValidMrUrl(webUrl, this._host)) {
+      const error = composeInboxError(
+        'INVALID_URL',
+        `MR URL does not match configured VCS host: ${webUrl}`
+      );
+      logger.error('[VcsInboxReal#getMrContext] [idle → invalid_url]', { error });
+      throw new Error(`[VcsInboxReal] INVALID_URL: ${webUrl}`, { cause: error });
+    }
+    // #endregion END_VALIDATE_MR_URL
+
     const credErr = this._verifyCredentials();
     if (credErr) {
       logger.error('[VcsInboxReal#getMrContext] [idle → failed]', { error: credErr });
@@ -281,6 +301,17 @@ export class VcsInboxReal extends VcsInboxPort {
    * @see {VcsInboxPort#getDiscussions}
    */
   async getDiscussions(webUrl: string, opts?: DiscussionOpts): Promise<Discussion[]> {
+    // #region START_VALIDATE_MR_URL — prevent SSRF: only allow URLs matching our VCS host
+    if (!isValidMrUrl(webUrl, this._host)) {
+      const error = composeInboxError(
+        'INVALID_URL',
+        `MR URL does not match configured VCS host: ${webUrl}`
+      );
+      logger.error('[VcsInboxReal#getDiscussions] [idle → invalid_url]', { error });
+      throw new Error(`[VcsInboxReal] INVALID_URL: ${webUrl}`, { cause: error });
+    }
+    // #endregion END_VALIDATE_MR_URL
+
     const credErr = this._verifyCredentials();
     if (credErr) {
       logger.error('[VcsInboxReal#getDiscussions] [idle → failed]', { error: credErr });

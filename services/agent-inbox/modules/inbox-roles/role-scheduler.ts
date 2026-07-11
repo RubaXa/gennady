@@ -8,6 +8,7 @@ import type { StateStore } from '../inbox-core/state-store.ts';
 import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { RoleInstance } from './role-instance.ts';
 
 /**
@@ -240,6 +241,14 @@ export class RoleScheduler {
     roleName: string,
     rights?: Record<string, unknown>
   ): Promise<void> {
+    // #region START_VALIDATE_MR_URL — prevent SSRF: only allow URLs matching our VCS host
+    const vcsHost = this._config.vcs.getHost();
+    if (!isValidMrUrl(mrUrl, vcsHost)) {
+      logger.warn('[RoleScheduler#assignManual] [assigning → invalid_url]', { mrUrl, vcsHost });
+      return;
+    }
+    // #endregion END_VALIDATE_MR_URL
+
     logger.info('[RoleScheduler#assignManual] [idle → assigning]', { role: roleName, mr: mrUrl });
 
     const definition = this._config.engine.retrieve(roleName);
@@ -380,25 +389,23 @@ export class RoleScheduler {
     return this._errorCount.get(key) ?? 0;
   }
 
+  /**
+   * @purpose Expose the configured VCS host for MR URL validation.
+   * @returns VCS hostname from the underlying VcsInboxPort.
+   */
+  getVcsHost(): string {
+    return this._config.vcs.getHost();
+  }
+
   // ─── Private helpers ──────────────────────────────────────────────────────────
 
   /**
-   * @purpose Determine whether a given role should process an MR.
-   * Matches role name to MR's myRole field from VcsActionableMr.
+   * @purpose Match mr.role to role.name for assignment. Works for any role.
    * @param mr Actionable MR.
    * @param role Registered role descriptor.
    * @returns True if the role should handle this MR.
    */
   protected _shouldAssignRole(mr: VcsActionableMr, role: RegisteredRole): boolean {
-    // Map role names to VcsActionableRole values
-    const roleToActionableRole: Record<string, string> = {
-      reviewer: 'reviewer',
-      author: 'author',
-    };
-    const expected = roleToActionableRole[role.name];
-    if (!expected) return false;
-
-    // Assign if MR's myRole matches the role
-    return mr.role === expected;
+    return mr.role === role.name;
   }
 }

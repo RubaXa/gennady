@@ -11,6 +11,7 @@ export type InboxErrorCode =
   | 'RATE_LIMIT'
   | 'NOT_FOUND'
   | 'INVALID_REF'
+  | 'INVALID_URL'
   | 'CONFIG'
   | 'WORKTREE';
 
