@@ -3,6 +3,9 @@
 // @tasks: TSK-115, TSK-117
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createServer } from 'node:net';
 import { logger } from '#logger';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
@@ -77,6 +80,27 @@ class DegradedOpencode extends OpenCodePort {
 // ═══════════════════════════════════════════════════════════════
 
 /**
+ * @purpose Find a free TCP port in the given range.
+ * @param [start] Start of port range (default: 4096).
+ * @param [end] End of port range (default: 4106).
+ * @returns First free port number.
+ * @throws If no free port is found in the range.
+ */
+async function findFreePort(start: number = 4096, end: number = 4106): Promise<number> {
+  for (let port = start; port <= end; port++) {
+    const free = await new Promise<boolean>((resolve) => {
+      const server = createServer();
+      server.once('error', () => resolve(false));
+      server.listen(port, () => {
+        server.close(() => resolve(true));
+      });
+    });
+    if (free) return port;
+  }
+  throw new Error(`No free port in range ${start}–${end}`);
+}
+
+/**
  * @purpose Check whether the `opencode` binary is available in PATH.
  * @returns True if `which opencode` exits with code 0.
  */
@@ -95,8 +119,12 @@ function checkOpencodePath(): boolean {
  * @param delayMs Delay in ms between attempts.
  * @returns True if the server responds with 2xx within the retry window.
  */
-async function retryOpencodeConnect(maxRetries: number, delayMs: number): Promise<boolean> {
-  const url = 'http://localhost:4096/health';
+async function retryOpencodeConnect(
+  port: number,
+  maxRetries: number,
+  delayMs: number
+): Promise<boolean> {
+  const url = `http://localhost:${port}/`;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     logger.debug(`[bootstrap] opencode health check attempt ${attempt}/${maxRetries}`);
@@ -136,15 +164,18 @@ async function retryOpencodeConnect(maxRetries: number, delayMs: number): Promis
  */
 async function spawnOpencode(
   cwd: string,
+  port: number,
   maxHealthChecks: number = 10,
   maxSpawnRetries: number = 3
 ): Promise<ChildProcess | null> {
   for (let attempt = 1; attempt <= maxSpawnRetries; attempt++) {
-    logger.info(`[bootstrap] spawning opencode serve (attempt ${attempt}/${maxSpawnRetries})`);
+    logger.info(
+      `[bootstrap] spawning opencode serve on port ${port} (attempt ${attempt}/${maxSpawnRetries})`
+    );
 
     let proc: ChildProcess;
     try {
-      proc = spawn('opencode', ['serve', '--port', '4096'], {
+      proc = spawn('opencode', ['serve', '--port', String(port)], {
         stdio: 'pipe',
         detached: false,
         cwd,
@@ -185,7 +216,7 @@ async function spawnOpencode(
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 2000);
-        const response = await fetch('http://localhost:4096/', { signal: controller.signal });
+        const response = await fetch(`http://localhost:${port}/`, { signal: controller.signal });
         clearTimeout(timeout);
 
         if (response.ok) {
@@ -249,6 +280,10 @@ export type BootstrapResult = {
   port: number;
   /** @purpose The spawned opencode child process (null in mock/degraded mode). */
   opencodeProcess: ChildProcess | null;
+  /** @purpose Path to the PID file for opencode child process management. */
+  opencodePidFile: string | null;
+  /** @purpose Port opencode is running on (null in mock/degraded mode). */
+  opencodePort: number | null;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -291,12 +326,14 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   }
   // #endregion END_CHECK_CONFIG
 
-  // #region START_CREATE_ADAPTERS
+
   let vcs: VcsInboxPort;
   let opencode: OpenCodePort;
   let degraded = false;
   let opencodeStatus: string;
   let opencodeProcess: ChildProcess | null = null;
+  let opencodePidFile: string | null = null;
+  let opencodePort: number | null = null;
 
   if (config.mocks) {
     vcs = new VcsInboxMock();
@@ -320,19 +357,41 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     // #endregion END_CHECK_OPENCODE_PATH
 
     // #region START_CONNECT_OPENCODE
-    // F3: Try to spawn opencode first, then fall back to health-check polling.
     const stateDir = stateStore.getStateDir();
-    const proc = await spawnOpencode(stateDir);
-    if (proc) {
-      opencode = new OpenCodeReal({ directory: stateDir });
-      opencodeStatus = 'connected (spawned)';
+    const pidFile = join(stateDir, 'agent-inbox', 'opencode.pid');
+    opencodePort = 4096;
+    opencodePidFile = null;
+
+    try {
+      opencodePort = await findFreePort();
+    } catch {
+      throw new Error('No free port available in range 4096–4106 for opencode');
+    }
+
+    const proc = await spawnOpencode(stateDir, opencodePort);
+    if (proc && proc.pid) {
+      // Write PID file so shutdown can find and kill the child process
+      await writeFile(
+        pidFile,
+        JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
+        'utf-8'
+      );
+      opencodePidFile = pidFile;
+      opencode = new OpenCodeReal({
+        directory: stateDir,
+        baseUrl: `http://localhost:${opencodePort}`,
+      });
+      opencodeStatus = `connected (port ${opencodePort})`;
       opencodeProcess = proc;
     } else {
       // Spawn failed — try polling an already-running instance
-      const connected = await retryOpencodeConnect(3, 2000);
+      const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
       if (connected) {
-        opencode = new OpenCodeReal({ directory: stateDir });
-        opencodeStatus = 'connected';
+        opencode = new OpenCodeReal({
+          directory: stateDir,
+          baseUrl: `http://localhost:${opencodePort}`,
+        });
+        opencodeStatus = `connected (port ${opencodePort})`;
       } else {
         degraded = true;
         opencode = new DegradedOpencode();
@@ -341,8 +400,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     }
     // #endregion END_CONNECT_OPENCODE
   }
-  // #endregion END_CREATE_ADAPTERS
-
   // #region START_CREATE_ROLES
   const engine = new RoleEngine();
   await engine.loadAll();
@@ -394,6 +451,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       roles: loadedRoles.map((r) => r.name),
       port,
       opencodeProcess,
+      opencodePidFile,
+      opencodePort,
     };
   }
 
@@ -421,5 +480,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     roles: loadedRoles.map((r) => r.name),
     port,
     opencodeProcess,
+    opencodePidFile: opencodePidFile ?? null,
+    opencodePort: opencodePort ?? null,
   };
 }

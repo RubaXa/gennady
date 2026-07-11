@@ -4,6 +4,9 @@
 // @tasks: TSK-115
 
 import { style } from '../../../shared/common/style.ts';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
 
@@ -33,6 +36,30 @@ async function run(): Promise<number> {
     // #region START_BOOTSTRAP — assemble DI, verify config and adapters
     console.info(style.bold('gennady inbox serve'));
     console.info('');
+
+    // D-85: Check if another instance is already running
+    const defaultStateDir = join(homedir(), '.gennady');
+    const pidFile = join(defaultStateDir, 'agent-inbox', 'opencode.pid');
+    if (existsSync(pidFile)) {
+      try {
+        const raw = readFileSync(pidFile, 'utf-8');
+        const { pid, port } = JSON.parse(raw) as { pid: number; port: number };
+        try {
+          process.kill(pid, 0); // Signal 0 = check if process exists
+          console.info(style.yellow(`⚠ Уже запущен на порту ${port} (PID ${pid})`));
+          return 0;
+        } catch {
+          // PID file exists but process is dead — stale file, remove and continue
+          try {
+            unlinkSync(pidFile);
+          } catch {
+            /* ignore */
+          }
+        }
+      } catch {
+        // Corrupted PID file — ignore and continue
+      }
+    }
 
     const result = await bootstrap({ mocks, port });
 
@@ -77,6 +104,7 @@ async function run(): Promise<number> {
           server: result.server,
           opencode: result.opencode,
           opencodeProcess: result.opencodeProcess,
+          opencodePidFile: result.opencodePidFile,
         });
       } catch {
         // Ensure we always exit with 0 — individual shutdown errors are logged inside gracefulShutdown

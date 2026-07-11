@@ -2,6 +2,8 @@
 // @consumers: gennady inbox serve CLI
 // @tasks: TSK-115, TSK-117
 
+import { readFile, unlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { logger } from '#logger';
 import type { ChildProcess } from 'node:child_process';
 import type { HttpServer } from '../modules/inbox-api/http-server.ts';
@@ -18,8 +20,10 @@ export type ShutdownConfig = {
   timeout?: number;
   /** @purpose Optional OpenCode adapter for session cancellation. */
   opencode?: OpenCodePort;
-  /** @purpose Optional opencode child process to kill. */
+  /** @purpose Optional opencode child process to kill (fallback if no PID file). */
   opencodeProcess?: ChildProcess | null;
+  /** @purpose Path to opencode PID file — primary method: kill by PID, then remove file. */
+  opencodePidFile?: string | null;
 };
 
 /**
@@ -53,13 +57,55 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
   // #endregion END_CANCEL_OPENCODE_SESSIONS
 
   // #region START_KILL_OPENCODE_PROCESS
-  // F3: Kill the spawned opencode child process if present.
-  if (config.opencodeProcess && config.opencodeProcess.exitCode === null) {
+  if (config.opencodePidFile && existsSync(config.opencodePidFile)) {
     try {
-      logger.info('[gracefulShutdown] killing opencode child process');
+      const raw = await readFile(config.opencodePidFile, 'utf-8');
+      const { pid } = JSON.parse(raw) as { pid: number; port: number };
+      logger.info('[gracefulShutdown] killing opencode by PID', { pid });
+
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch {
+        /* process already dead */
+      }
+
+      await new Promise<void>((resolve) => {
+        const forceKill = setTimeout(() => {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {
+            /* ignore */
+          }
+          resolve();
+        }, 5000);
+
+        const check = setInterval(() => {
+          try {
+            process.kill(pid, 0);
+          } catch {
+            clearTimeout(forceKill);
+            clearInterval(check);
+            resolve();
+          }
+        }, 200);
+      });
+
+      try {
+        await unlink(config.opencodePidFile);
+      } catch {
+        /* ignore */
+      }
+      logger.info('[gracefulShutdown] opencode terminated, PID file removed');
+    } catch (cause) {
+      logger.warn('[gracefulShutdown] error reading/killing by PID file (continuing)', {
+        error: (cause as Error).message,
+      });
+    }
+  } else if (config.opencodeProcess && config.opencodeProcess.exitCode === null) {
+    try {
+      logger.info('[gracefulShutdown] killing opencode child process (fallback)');
       config.opencodeProcess.kill('SIGTERM');
 
-      // Give it a grace period to exit
       await new Promise<void>((resolve) => {
         const forceKill = setTimeout(() => {
           try {

@@ -65,10 +65,37 @@
 
 #### P1
 
+- [x] 2026-07-10T00:00:00Z Created `services/agent-inbox/serve/bootstrap.ts` — DI factory, spawn opencode, wire adapters
+- [x] 2026-07-10T00:00:00Z Created `services/agent-inbox/serve/shutdown.ts` — graceful stop
+- [x] 2026-07-10T00:00:00Z Created `cli/cmd/inbox/serve.cmd.ts` — `gennady inbox serve` CLI command
+- [x] 2026-07-10T00:00:00Z Created `cli/cmd/inbox/serve/help.ts` — help text
 - [x] 2026-07-10T00:00:00Z ver `npm run type-check` → pass exit=0
 - [x] 2026-07-10T00:00:00Z DONE
 
 #### P2
 
-- [x] 2026-07-10T00:00:00Z ver `node --import tsx --test services/agent-inbox/serve/__tests__/*.test.ts` → pass exit=0
+- [x] 2026-07-10T00:00:00Z Created `services/agent-inbox/serve/__tests__/bootstrap.test.ts` — DI with mocks
+- [x] 2026-07-10T00:00:00Z Created `services/agent-inbox/serve/__tests__/shutdown.test.ts` — graceful shutdown
+- [x] 2026-07-10T00:00:00Z ver `node --import tsx --test services/agent-inbox/serve/__tests__/*.test.ts` → pass exit=0 (8/8)
 - [x] 2026-07-10T00:00:00Z DONE
+
+### Round 2 — 2026-07-11, D-85 process lifecycle
+
+#### P1 — dynamic port + PID file [x]
+
+- [x] `2026-07-11T12:00:00Z` decision D-85=applied ← opencode порт динамический (`findFreePort` 4096–4106), PID-файл `~/.gennady/agent-inbox/opencode.pid`
+- [x] `2026-07-11T12:00:00Z` changed `bootstrap.ts` — `spawnOpencode` принимает `cwd` + динамический порт, пишет `{ pid, port }` в PID-файл после успешного spawn
+- [x] `2026-07-11T12:00:00Z` changed `bootstrap.ts` — `OpenCodeReal` получает `baseUrl` с динамическим портом
+- [x] `2026-07-11T12:00:00Z` changed `shutdown.ts` — читает PID-файл → `process.kill(pid)` → удаляет файл (не pkill)
+- [x] `2026-07-11T12:00:00Z` changed `serve.cmd.ts` — хендлеры SIGINT/SIGTERM передают управление shutdown
+- [x] `2026-07-11T12:00:00Z` changed `StateStore` — добавлен `getStateDir()` для получения пути к state-директории
+- [x] `2026-07-11T12:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-11T12:00:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-11T12:00:00Z` ver `npx tsx cli/gennady.ts lint services/agent-inbox/` → pass (0 errors)
+- [x] `2026-07-11T12:00:00Z` DONE
+- [x] **Handoff →** artifacts: [bootstrap.ts, shutdown.ts, serve.cmd.ts, state-store.ts]; decisions: [D-85, findFreePort, PID file, shutdown by PID]; open: []
+
+#### Round close
+
+- [x] `2026-07-11T12:00:00Z` sync inbox-serve
+- [x] `2026-07-11T12:00:00Z` **Final Status:** DONE

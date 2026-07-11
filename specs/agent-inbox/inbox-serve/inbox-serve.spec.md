@@ -43,11 +43,14 @@ await seedDevData(boardProvider);
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name               | Type        | Purpose                                                                       |
-| ------------------ | ----------- | ----------------------------------------------------------------------------- |
-| `inbox-serve.ts`   | Entry Point | Standalone dev-сервер: создаёт HttpServer с BoardProviderMock, слушает SIGINT |
-| `dev-seed.ts`      | Factory     | Shared mock seed: наполняет BoardProviderMock тестовыми ролями и MR           |
-| `inboxServePlugin` | Vite Plugin | Sidecar-плагин: стартует HttpServer при запуске Vite dev-server               |
+| Name               | Type        | Purpose                                                                         |
+| ------------------ | ----------- | ------------------------------------------------------------------------------- |
+| `inbox-serve.ts`   | Entry Point | Standalone dev-сервер: создаёт HttpServer с BoardProviderMock, слушает SIGINT   |
+| `dev-seed.ts`      | Factory     | Shared mock seed: наполняет BoardProviderMock тестовыми ролями и MR             |
+| `inboxServePlugin` | Vite Plugin | Sidecar-плагин: стартует HttpServer при запуске Vite dev-server                 |
+| `bootstrap.ts`     | DI Factory  | Сборка зависимостей, spawn opencode (динамический порт), PID-файл               |
+| `shutdown.ts`      | Service     | Остановка: kill opencode по PID из файла, остановка scheduler, закрытие HTTP    |
+| `opencode.pid`     | PID File    | `~/.gennady/agent-inbox/opencode.pid` — `{ pid, port }` для управления потомком |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -77,6 +80,27 @@ await seedDevData(boardProvider);
 - **Lifecycle:** `configureServer` hook Vite — создаёт сервер, `server.httpServer.on('close', ...)` — останавливает
 - **Consumers:** Vite config (`inbox-dashboard/vite.config.ts`)
 
+### `bootstrap.ts`
+
+- **Type:** DI Factory
+- **Purpose:** Сборка всех зависимостей serve-режима. Spawn'ит `opencode serve` с динамическим портом, пишет PID-файл.
+- **Public Operations:** `bootstrap(config) → BootstrapResult { server, scheduler, opencode, opencodeProcess, opencodePidFile, ... }`
+- **Lifecycle:** Вызывается из `serve.cmd.ts`. При успешном spawn'е → `{ pid, port }` в `opencode.pid`.
+- **Port:** `findFreePort(4096, 4106)` — первый свободный порт из диапазона.
+
+### `shutdown.ts`
+
+- **Type:** Service
+- **Purpose:** Graceful остановка serve-режима. Читает PID-файл, убивает opencode, останавливает scheduler и HTTP-сервер.
+- **Public Operations:** `shutdown(result)` — читает `opencode.pid` → `process.kill(pid, 'SIGTERM')` → ждёт 5s → `SIGKILL` → удаляет PID-файл
+- **Consumers:** `serve.cmd.ts` (SIGINT/SIGTERM handlers)
+
+### `opencode.pid`
+
+- **Type:** PID File
+- **Purpose:** `~/.gennady/agent-inbox/opencode.pid` — JSON `{ pid: number, port: number }`. Позволяет shutdown найти дочерний процесс и проверить живость при повторном запуске.
+- **Consumers:** `bootstrap.ts` (запись), `shutdown.ts` (чтение/удаление)
+
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
@@ -85,7 +109,9 @@ await seedDevData(boardProvider);
 
 - **Invariants:**
   - `npm run inbox-serve:dev` — single command, starts API (4174) + dashboard (5174), proxy `/api` → 4174
-  - SIGINT/SIGTERM → `server.stop().then(() => process.exit(0))` — graceful shutdown, no microtask interruption
+  - `gennady inbox serve` — spawns `opencode serve` with dynamic port (4096–4106), writes `opencode.pid`
+  - SIGINT/SIGTERM → read `opencode.pid` → `process.kill(pid, 'SIGTERM')` → 5s → `SIGKILL` → remove PID file → stop scheduler → close HTTP server (D-85)
+  - При старте: PID-файл существует + процесс жив → «уже запущен на порту X»
   - Port 4174 for API, 5174 for Vite dev
   - Mock data shared via `dev-seed.ts` (single source of truth)
 
@@ -95,11 +121,15 @@ await seedDevData(boardProvider);
 
 ## 7. File Structure
 
-```
+````
+services/agent-inbox/serve/
+├── bootstrap.ts          # DI factory, spawn opencode, PID file
+├── shutdown.ts           # Graceful stop: kill by PID, cleanup
 services/agent-inbox/modules/inbox-serve/
-├── inbox-serve.ts       # Standalone dev entry point
-├── dev-seed.ts          # Shared mock seed factory
-```
+├── inbox-serve.ts        # Standalone dev entry point
+├── dev-seed.ts           # Shared mock seed factory
+~/.gennady/agent-inbox/
+└── opencode.pid          # { pid, port } — process lifecycle
 
 **File Mapping:**
 
@@ -120,7 +150,7 @@ graph TD
     inbox-serve --> inbox-api
     inbox-serve --> inbox-mocks
     inbox-dashboard --> inbox-serve
-```
+````
 
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
