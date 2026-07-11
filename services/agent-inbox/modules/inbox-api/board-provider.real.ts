@@ -6,9 +6,40 @@ import { BoardProviderPort } from './board-provider.port.ts';
 import type { BoardData, RoleView, MrCard, MrDetail } from './types.ts';
 import type { RoleScheduler, RoleInstanceSnapshot } from '../inbox-roles/role-scheduler.ts';
 import type { RoleEngine, RegisteredRole } from '../inbox-roles/role-engine.ts';
+import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+
+/**
+ * @purpose Build a MrCard from a polled VcsActionableMr — real metadata for the dashboard (F7).
+ * @param mr Actionable MR from the last VCS poll.
+ * @param [role] Role name when the MR is under an instance.
+ * @returns MrCard with real project/iid/title fields.
+ */
+function actionableToMrCard(mr: VcsActionableMr, role?: string): MrCard {
+  return {
+    project: mr.project,
+    iid: Number(mr.iid) || 0,
+    webUrl: mr.webUrl,
+    title: mr.title,
+    description: mr.description,
+    author: mr.author,
+    reviewers: mr.reviewers,
+    approvedBy: mr.approvedBy,
+    updatedAt: mr.updatedAt,
+    draft: mr.draft,
+    state: mr.state,
+    role: (role ?? mr.role) as MrCard['role'],
+    events: [],
+    directlyAddressed: false,
+    todoIds: [],
+    stage: 'review_needed',
+    sourceBranch: '',
+    targetBranch: '',
+  } as MrCard;
+}
 
 /**
  * @purpose Build a MrCard from a RoleInstanceSnapshot for dashboard display.
+ * Skeleton fallback when the MR is not present in the last poll.
  * @param snap Instance snapshot from scheduler.
  * @returns MrCard populated from snapshot data.
  */
@@ -95,12 +126,14 @@ export class BoardProviderReal extends BoardProviderPort {
 
     const assignedMrs = new Set<string>();
 
-    // Place each instance into its role's lane based on state
+    // Place each instance into its role's lane based on state.
+    // Card metadata comes from the last poll when available (F7).
     for (const snap of instances) {
       const roleLanes = lanesByRole.get(snap.role);
       if (!roleLanes) continue;
 
-      const card = snapshotToMrCard(snap);
+      const polled = this._scheduler.getPolledMr(snap.mr);
+      const card = polled ? actionableToMrCard(polled, snap.role) : snapshotToMrCard(snap);
       const lane = stateToLane(snap.state);
       roleLanes[lane].push(card);
       assignedMrs.add(snap.mr);
@@ -113,9 +146,10 @@ export class BoardProviderReal extends BoardProviderPort {
       lanes: lanesByRole.get(r.name) ?? { inbox: [], inProgress: [], awaitingMe: [], done: [] },
     }));
 
-    // Unassigned: MRs that are in no instance. In real mode, the scheduler
-    // creates instances for all assigned MRs — unassigned is empty by design.
-    const unassigned: MrCard[] = [];
+    // F7: MRs from the last poll without a RoleInstance — the «БЕЗ РОЛИ» set (SV-06).
+    const unassigned: MrCard[] = this._scheduler
+      .listUnassigned()
+      .map((mr) => actionableToMrCard(mr));
 
     return { roles, unassigned };
   }
@@ -164,8 +198,9 @@ export class BoardProviderReal extends BoardProviderPort {
     const snap = instances.find((i) => i.mr === mrId);
     if (!snap) return null;
 
+    const polled = this._scheduler.getPolledMr(snap.mr);
     return {
-      mr: snapshotToMrCard(snap),
+      mr: polled ? actionableToMrCard(polled, snap.role) : snapshotToMrCard(snap),
       findings: snap.findings,
       verdict: snap.verdict,
       audit: [],

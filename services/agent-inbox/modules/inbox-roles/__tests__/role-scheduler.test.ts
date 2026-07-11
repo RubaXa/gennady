@@ -206,7 +206,7 @@ describe('RoleScheduler — assignManual', () => {
     assert.strictEqual(scheduler.activeCount(), 1);
   });
 
-  it('GIVEN роль не активна WHEN assignManual THEN не создаётся', async () => {
+  it('GIVEN роль не активна WHEN assignManual THEN инстанс создаётся (SV-08: ручное назначение не гейтится активацией)', async () => {
     const scheduler = new RoleScheduler({
       engine,
       vcs,
@@ -219,7 +219,7 @@ describe('RoleScheduler — assignManual', () => {
       'reviewer'
     );
 
-    assert.strictEqual(scheduler.activeCount(), 0);
+    assert.strictEqual(scheduler.activeCount(), 1);
   });
 });
 

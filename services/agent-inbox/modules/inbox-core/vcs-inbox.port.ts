@@ -108,4 +108,12 @@ export abstract class VcsInboxPort {
    * @returns Normalized discussion threads.
    */
   abstract getDiscussions(webUrl: string, opts?: DiscussionOpts): Promise<Discussion[]>;
+
+  /**
+   * @purpose Authenticated user login — used by AI-02 noise filter.
+   * @returns Login string; empty when identity is unavailable (filter degrades gracefully).
+   */
+  async getMyLogin(): Promise<string> {
+    return '';
+  }
 }

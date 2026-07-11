@@ -70,6 +70,8 @@ export class RoleScheduler {
   protected _errorCount: Map<string, number>;
   /** @purpose Per-instance cooldown timestamp (epoch ms) — pause after N errors (F2) */
   protected _pausedUntil: Map<string, number>;
+  /** @purpose Actionable MRs from the last poll, keyed by webUrl — source for unassigned (F7) */
+  protected _lastPolled: Map<string, VcsActionableMr>;
 
   /** @purpose Max consecutive errors before pausing an instance (F2) */
   private static readonly MAX_ERRORS = 3;
@@ -86,6 +88,7 @@ export class RoleScheduler {
     this._ticking = false;
     this._errorCount = new Map();
     this._pausedUntil = new Map();
+    this._lastPolled = new Map();
   }
 
   /**
@@ -114,14 +117,16 @@ export class RoleScheduler {
 
     try {
       // #region START_POLL_VCS
+      // F7: poll VCS regardless of role activation — MRs without an instance
+      // must reach the dashboard as unassigned (SV-06 «БЕЗ РОЛИ», SV-08 manual assign).
       const activeRoles = this._config.engine.list().filter((r) => r.active);
-      if (activeRoles.length === 0) {
-        logger.debug('[RoleScheduler#tick] [ticking → no_active_roles] No active roles to process');
-        return;
-      }
 
       const mrs = await this._config.vcs.getActionable();
-      logger.debug('[RoleScheduler#tick] [ticking → polled]', { mrCount: mrs.length });
+      this._lastPolled = new Map(mrs.map((mr) => [mr.webUrl, mr]));
+      logger.debug('[RoleScheduler#tick] [ticking → polled]', {
+        mrCount: mrs.length,
+        activeRoles: activeRoles.length,
+      });
       // #endregion END_POLL_VCS
 
       // #region START_ASSIGN_NEW_MRS
@@ -234,9 +239,12 @@ export class RoleScheduler {
       return;
     }
 
+    // SV-08: manual assignment is the operator's explicit decision — role activation
+    // gates only auto-assignment (SV-07), not manual.
     if (!this._config.engine.isActive(roleName)) {
-      logger.warn('[RoleScheduler#assignManual] [assigning → role_inactive]', { role: roleName });
-      return;
+      logger.info('[RoleScheduler#assignManual] [assigning → inactive_role_manual]', {
+        role: roleName,
+      });
     }
 
     const key = this._instanceKey(roleName, mrUrl);
@@ -295,6 +303,31 @@ export class RoleScheduler {
       });
     }
     return snapshots;
+  }
+
+  /**
+   * @purpose Actionable MRs from the last poll with no RoleInstance — unassigned set (F7).
+   * @returns Array of unassigned actionable MRs.
+   * @consumer BoardProviderReal
+   */
+  listUnassigned(): VcsActionableMr[] {
+    const unassigned: VcsActionableMr[] = [];
+    for (const mr of this._lastPolled.values()) {
+      if (!this.findInstance(mr.webUrl)) {
+        unassigned.push(mr);
+      }
+    }
+    return unassigned;
+  }
+
+  /**
+   * @purpose MR data from the last poll by webUrl — enriches instance cards with real metadata.
+   * @param webUrl MR web URL.
+   * @returns The polled MR or undefined.
+   * @consumer BoardProviderReal
+   */
+  getPolledMr(webUrl: string): VcsActionableMr | undefined {
+    return this._lastPolled.get(webUrl);
   }
 
   /**
