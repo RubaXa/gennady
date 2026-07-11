@@ -79,7 +79,8 @@ async function run(): Promise<number> {
     process.on('SIGINT', () => void shutdown('SIGINT'));
     // #endregion END_SIGNAL_HANDLERS
 
-    return 0;
+    // Foreground-сервер: процесс живёт до SIGTERM/SIGINT (выход — внутри shutdown).
+    return await new Promise<number>(() => {});
   } catch (error) {
     // #region START_ERROR_HANDLING
     const message = (error as Error).message ?? String(error);
