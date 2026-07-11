@@ -11,6 +11,29 @@ import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionabl
 import { RoleInstance } from './role-instance.ts';
 
 /**
+ * @purpose Snapshot of a role instance for external consumers (e.g. BoardProviderReal).
+ * @consumer BoardProviderReal
+ */
+export type RoleInstanceSnapshot = {
+  /** @purpose Composite key: role:mrWebUrl */
+  key: string;
+  /** @purpose Role name */
+  role: string;
+  /** @purpose MR web URL */
+  mr: string;
+  /** @purpose Current lifecycle state */
+  state: string;
+  /** @purpose Current graph node id */
+  currentNode: string;
+  /** @purpose Findings / report from last AI node */
+  findings: Array<{ severity: string; file: string; line: number; message: string }>;
+  /** @purpose Final verdict if done */
+  verdict: string;
+  /** @purpose Whether operator attention is needed */
+  awaitingOperator: boolean;
+};
+
+/**
  * @purpose Configuration for the role scheduler.
  * @consumer RoleScheduler
  */
@@ -43,6 +66,15 @@ export class RoleScheduler {
   protected _instances: Map<string, RoleInstance>;
   /** @purpose Whether a tick is currently in progress */
   protected _ticking: boolean;
+  /** @purpose Per-instance consecutive error count — for retry limits (F2) */
+  protected _errorCount: Map<string, number>;
+  /** @purpose Per-instance cooldown timestamp (epoch ms) — pause after N errors (F2) */
+  protected _pausedUntil: Map<string, number>;
+
+  /** @purpose Max consecutive errors before pausing an instance (F2) */
+  private static readonly MAX_ERRORS = 3;
+  /** @purpose Cooldown duration in ms after exceeding error threshold (F2) */
+  private static readonly COOLDOWN_MS = 60_000;
 
   /**
    * @purpose Create a scheduler bound to an engine, store, VCS, and OpenCode adapter.
@@ -52,6 +84,8 @@ export class RoleScheduler {
     this._config = config;
     this._instances = new Map();
     this._ticking = false;
+    this._errorCount = new Map();
+    this._pausedUntil = new Map();
   }
 
   /**
@@ -125,13 +159,41 @@ export class RoleScheduler {
       // #endregion END_ASSIGN_NEW_MRS
 
       // #region START_ADVANCE_INSTANCES
-      for (const instance of this._instances.values()) {
+      for (const [key, instance] of this._instances) {
+        const pausedUntil = this._pausedUntil.get(key);
+        if (pausedUntil !== undefined && Date.now() < pausedUntil) {
+          continue;
+        }
+
         if (
           instance.state === 'idle' ||
           instance.state === 'running' ||
           instance.state === 'awaiting_operator'
         ) {
           await instance.step();
+
+          // F2: Track errors — state may have changed to 'error' or 'done' after step()
+          const currentState: string = instance.state;
+          if (currentState === 'error' || currentState === 'awaiting_operator') {
+            const count = (this._errorCount.get(key) ?? 0) + 1;
+            this._errorCount.set(key, count);
+
+            if (count >= RoleScheduler.MAX_ERRORS) {
+              logger.warn(
+                '[RoleScheduler#tick] [ticking → paused] Instance paused after N errors',
+                {
+                  mr: instance.mr,
+                  role: instance.role,
+                  errorCount: count,
+                  reason: `Exceeded ${RoleScheduler.MAX_ERRORS} consecutive errors without progress`,
+                }
+              );
+              this._pausedUntil.set(key, Date.now() + RoleScheduler.COOLDOWN_MS);
+            }
+          } else {
+            // Progress was made — reset error count
+            this._errorCount.delete(key);
+          }
         }
       }
       // #endregion END_ADVANCE_INSTANCES
@@ -140,6 +202,8 @@ export class RoleScheduler {
       for (const [key, instance] of this._instances) {
         if (instance.state === 'done' || instance.state === 'error') {
           this._instances.delete(key);
+          this._errorCount.delete(key);
+          this._pausedUntil.delete(key);
           logger.debug('[RoleScheduler#tick] [ticking → cleaned]', { key, state: instance.state });
         }
       }
@@ -208,6 +272,54 @@ export class RoleScheduler {
       }
     }
     return count;
+  }
+
+  /**
+   * @purpose List all instance snapshots for BoardProviderReal consumption.
+   * @returns Array of instance snapshots with role, mr, state, node, and findings.
+   * @consumer BoardProviderReal
+   */
+  listInstances(): RoleInstanceSnapshot[] {
+    const snapshots: RoleInstanceSnapshot[] = [];
+    for (const [key, instance] of this._instances) {
+      const view = instance.getBoardView() as Record<string, unknown>;
+      snapshots.push({
+        key,
+        role: instance.role,
+        mr: instance.mr,
+        state: instance.state,
+        currentNode: instance.currentNode,
+        findings: (view.findings as RoleInstanceSnapshot['findings']) ?? [],
+        verdict: (view.verdict as string) ?? 'pending',
+        awaitingOperator: instance.state === 'awaiting_operator',
+      });
+    }
+    return snapshots;
+  }
+
+  /**
+   * @purpose Find an instance by MR URL and optional role filter.
+   * @param mrUrl MR web URL.
+   * @param [roleName] Optional role name to filter by.
+   * @returns The matching instance or undefined.
+   * @consumer BoardProviderReal
+   */
+  findInstance(mrUrl: string, roleName?: string): RoleInstance | undefined {
+    for (const instance of this._instances.values()) {
+      if (instance.mr === mrUrl && (!roleName || instance.role === roleName)) {
+        return instance;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * @purpose Get error count for an instance key — for diagnostics.
+   * @param key Instance key.
+   * @returns Consecutive error count or 0.
+   */
+  getInstanceErrorCount(key: string): number {
+    return this._errorCount.get(key) ?? 0;
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────────

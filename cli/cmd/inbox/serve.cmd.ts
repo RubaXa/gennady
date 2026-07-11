@@ -71,7 +71,16 @@ async function run(): Promise<number> {
       console.info('');
       console.info(style.dim(`Received ${signal}, shutting down...`));
       clearInterval(tickTimer);
-      await gracefulShutdown({ server: result.server });
+      // F5: Pass opencode adapter and process for clean cancellation
+      try {
+        await gracefulShutdown({
+          server: result.server,
+          opencode: result.opencode,
+          opencodeProcess: result.opencodeProcess,
+        });
+      } catch {
+        // Ensure we always exit with 0 — individual shutdown errors are logged inside gracefulShutdown
+      }
       process.exit(0);
     };
 

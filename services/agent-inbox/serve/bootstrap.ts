@@ -1,8 +1,8 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115
+// @tasks: TSK-115, TSK-117
 
-import { execSync } from 'node:child_process';
+import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { logger } from '#logger';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
@@ -22,6 +22,7 @@ import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
 import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
+import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
 
 // ═══════════════════════════════════════════════════════════════
@@ -126,6 +127,92 @@ async function retryOpencodeConnect(maxRetries: number, delayMs: number): Promis
   return false;
 }
 
+/**
+ * @purpose Spawn opencode serve child process, poll root until reachable.
+ * Falls back to degraded mode after maxSpawnRetries failures.
+ * @param maxHealthChecks Number of polls (default: 10, 500ms apart).
+ * @param maxSpawnRetries Max spawn attempts before giving up (default: 3).
+ * @returns ChildProcess on success, null on failure.
+ */
+async function spawnOpencode(
+  maxHealthChecks: number = 10,
+  maxSpawnRetries: number = 3
+): Promise<ChildProcess | null> {
+  for (let attempt = 1; attempt <= maxSpawnRetries; attempt++) {
+    logger.info(`[bootstrap] spawning opencode serve (attempt ${attempt}/${maxSpawnRetries})`);
+
+    let proc: ChildProcess;
+    try {
+      proc = spawn('opencode', ['serve', '--port', '4096'], {
+        stdio: 'pipe',
+        detached: false,
+      });
+
+      // Forward opencode stdout/stderr to logger for diagnostics
+      proc.stdout?.on('data', (data: Buffer) => {
+        logger.debug(`[opencode:stdout] ${data.toString().trim()}`);
+      });
+      proc.stderr?.on('data', (data: Buffer) => {
+        logger.debug(`[opencode:stderr] ${data.toString().trim()}`);
+      });
+      proc.on('error', (err: Error) => {
+        logger.warn('[bootstrap] opencode child process error', { error: err.message });
+      });
+    } catch (cause) {
+      logger.warn('[bootstrap] failed to spawn opencode', {
+        attempt,
+        error: (cause as Error).message,
+      });
+      continue;
+    }
+
+    // Wait for the server to become reachable — poll root endpoint
+    let healthy = false;
+    for (let hc = 1; hc <= maxHealthChecks; hc++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Check if process exited prematurely
+      if (proc.exitCode !== null) {
+        logger.warn('[bootstrap] opencode process exited early', {
+          exitCode: proc.exitCode,
+          attempt,
+        });
+        break;
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const response = await fetch('http://localhost:4096/', { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (response.ok) {
+          healthy = true;
+          logger.info('[bootstrap] opencode serve is reachable (spawned)');
+          break;
+        }
+      } catch {
+        logger.debug(`[bootstrap] opencode health check ${hc}/${maxHealthChecks}`);
+      }
+    }
+
+    if (healthy) {
+      return proc;
+    }
+
+    // Spawn failed — kill the process and retry
+    logger.warn('[bootstrap] opencode spawn attempt failed, killing process');
+    try {
+      proc.kill('SIGTERM');
+    } catch {
+      /* ignore kill errors */
+    }
+  }
+
+  logger.warn('[bootstrap] opencode spawn failed after all retries');
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Bootstrap config & result types
 // ═══════════════════════════════════════════════════════════════
@@ -158,6 +245,8 @@ export type BootstrapResult = {
   roles: string[];
   /** @purpose The port the server will listen on. */
   port: number;
+  /** @purpose The spawned opencode child process (null in mock/degraded mode). */
+  opencodeProcess: ChildProcess | null;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -205,17 +294,14 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let opencode: OpenCodePort;
   let degraded = false;
   let opencodeStatus: string;
+  let opencodeProcess: ChildProcess | null = null;
 
   if (config.mocks) {
-    // Dev/e2e mode: mock everything
     vcs = new VcsInboxMock();
     opencode = new OpenCodeMock();
     opencodeStatus = 'mock (dev/e2e)';
   } else {
-    // Production mode: real VCS + real OpenCode
-
     // #region START_CREATE_VCS
-    // VcsInboxRealOptions expects host, token, etc.
     const token = process.env.GITLAB_PERSONAL_TOKEN;
     vcs = new VcsInboxReal({
       host: configVcsHost,
@@ -232,14 +318,23 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     // #endregion END_CHECK_OPENCODE_PATH
 
     // #region START_CONNECT_OPENCODE
-    const connected = await retryOpencodeConnect(3, 2000);
-    if (connected) {
+    // F3: Try to spawn opencode first, then fall back to health-check polling.
+    const proc = await spawnOpencode();
+    if (proc) {
       opencode = new OpenCodeReal();
-      opencodeStatus = 'connected';
+      opencodeStatus = 'connected (spawned)';
+      opencodeProcess = proc;
     } else {
-      degraded = true;
-      opencode = new DegradedOpencode();
-      opencodeStatus = 'degraded (opencode not responding)';
+      // Spawn failed — try polling an already-running instance
+      const connected = await retryOpencodeConnect(3, 2000);
+      if (connected) {
+        opencode = new OpenCodeReal();
+        opencodeStatus = 'connected';
+      } else {
+        degraded = true;
+        opencode = new DegradedOpencode();
+        opencodeStatus = 'degraded (opencode not responding)';
+      }
     }
     // #endregion END_CONNECT_OPENCODE
   }
@@ -249,11 +344,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   const engine = new RoleEngine();
   await engine.loadAll();
 
-  // Activate all loaded roles by default
-  const loadedRoles = engine.list();
-  for (const role of loadedRoles) {
-    engine.activate(role.name);
-  }
+  // F6: Roles start inactive by default — no auto-activation.
+  // In mock mode, roles are activated after seeding (below).
+  // In real mode, operator activates roles via dashboard.
 
   const scheduler = new RoleScheduler({
     engine,
@@ -264,10 +357,46 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   });
   // #endregion END_CREATE_ROLES
 
-  // #region START_CREATE_SERVER
-  const boardProvider = new BoardProviderMock();
-  await seedDevData(boardProvider);
+  const loadedRoles = engine.list();
 
+  if (config.mocks) {
+    // #region START_CREATE_SERVER_MOCK
+    // F1: Mock mode — BoardProviderMock + seedDevData
+    const boardProvider = new BoardProviderMock();
+    await seedDevData(boardProvider);
+
+    // F6: In mock/dev mode, activate roles after seeding for BDD parity
+    for (const role of loadedRoles) {
+      engine.activate(role.name);
+    }
+
+    const server = new HttpServer({ port, boardProvider });
+    // #endregion END_CREATE_SERVER_MOCK
+
+    logger.info('[bootstrap] [idle → assembled]', {
+      mocks: config.mocks,
+      port,
+      roles: loadedRoles.map((r) => r.name),
+      opencodeStatus,
+      degraded,
+    });
+
+    return {
+      server,
+      scheduler,
+      opencode,
+      degraded,
+      opencodeStatus,
+      pollingInterval,
+      roles: loadedRoles.map((r) => r.name),
+      port,
+      opencodeProcess,
+    };
+  }
+
+  // #region START_CREATE_SERVER
+  // F1: Real mode — BoardProviderReal backed by RoleScheduler
+  const boardProvider = new BoardProviderReal(scheduler, engine);
   const server = new HttpServer({ port, boardProvider });
   // #endregion END_CREATE_SERVER
 
@@ -288,5 +417,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     pollingInterval,
     roles: loadedRoles.map((r) => r.name),
     port,
+    opencodeProcess,
   };
 }

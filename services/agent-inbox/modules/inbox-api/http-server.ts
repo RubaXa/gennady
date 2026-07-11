@@ -8,7 +8,6 @@ import { BoardRouter } from './routers/board.router.ts';
 import { MrRouter } from './routers/mr.router.ts';
 import { AuditRouter } from './routers/audit.router.ts';
 import { StaticFiles } from './static-files.ts';
-import { BoardProviderMock } from './board-provider.mock.ts';
 import { setCorsHeaders, handlePreflight, sendJson } from './http-helpers.ts';
 import type { BoardProviderPort } from './board-provider.port.ts';
 
@@ -51,9 +50,7 @@ export class HttpServer {
     this._config = config;
     this._boardRouter = new BoardRouter(config.boardProvider);
     this._mrRouter = new MrRouter(config.boardProvider);
-    // AuditRouter requires BoardProviderMock for getAudit() access.
-    // In production (TSK-113), this will accept AuditLog directly.
-    this._auditRouter = new AuditRouter(config.boardProvider as BoardProviderMock);
+    this._auditRouter = new AuditRouter(config.boardProvider);
     this._staticFiles = new StaticFiles(config.staticDir);
   }
 

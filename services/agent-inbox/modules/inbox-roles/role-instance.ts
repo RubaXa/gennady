@@ -191,7 +191,55 @@ export class RoleInstance {
       continueCount: this.continueCount,
       restartCount: this.restartCount,
       createdAt: this.createdAt,
+      findings: this._extractFindings(),
+      verdict: this._extractVerdict(),
     };
+  }
+
+  /**
+   * @purpose Extract findings from accumulated artifacts for dashboard display.
+   * @returns Array of finding objects.
+   */
+  protected _extractFindings(): Array<{
+    severity: string;
+    file: string;
+    line: number;
+    message: string;
+  }> {
+    // Check synthesize artifacts first (final review report)
+    const synthesize = this._artifacts['node_synthesize'] as Record<string, unknown> | undefined;
+    if (synthesize?.recommendations) {
+      return (synthesize.recommendations as Array<Record<string, unknown>>).map((r) => ({
+        severity: (r.severity as string) ?? 'info',
+        file: (r.file as string) ?? '',
+        line: (r.line as number) ?? 0,
+        message: (r.message as string) ?? '',
+      }));
+    }
+    // Fallback: scaffold findings
+    const scaffold = this._artifacts['node_scaffold'] as Record<string, unknown> | undefined;
+    if (scaffold?.findings) {
+      return (scaffold.findings as Array<Record<string, unknown>>).map((f) => ({
+        severity: (f.severity as string) ?? 'info',
+        file: (f.file as string) ?? '',
+        line: (f.line as number) ?? 0,
+        message: (f.message as string) ?? '',
+      }));
+    }
+    return [];
+  }
+
+  /**
+   * @purpose Extract verdict from accumulated artifacts.
+   * @returns Verdict string.
+   */
+  protected _extractVerdict(): string {
+    const synthesize = this._artifacts['node_synthesize'] as Record<string, unknown> | undefined;
+    if (synthesize?.reviewReport) {
+      const report = synthesize.reviewReport as Record<string, unknown>;
+      if (typeof report.verdict === 'string') return report.verdict;
+    }
+    return this.state === 'done' ? 'completed' : 'pending';
   }
 
   // ─── Private: Node execution ─────────────────────────────────────────────────
