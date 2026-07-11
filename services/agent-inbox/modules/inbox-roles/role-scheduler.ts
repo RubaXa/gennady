@@ -10,6 +10,11 @@ import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { RoleInstance } from './role-instance.ts';
+// AI-02 noise filter — reused from the CLI pipeline per SV-12 (functions, not spawn).
+// Debt: move classify/build-view into inbox-core alongside the TSK-109 migration.
+import { classifyInbox } from '../../../../cli/cmd/inbox/_core/logic/classify-inbox.logic.ts';
+import { buildInboxView } from '../../../../cli/cmd/inbox/_core/logic/build-inbox-view.logic.ts';
+import type { MrStage } from '../../../../cli/cmd/inbox/_core/logic/classify-mr-stage.logic.ts';
 
 /**
  * @purpose Snapshot of a role instance for external consumers (e.g. BoardProviderReal).
@@ -130,16 +135,18 @@ export class RoleScheduler {
       // must reach the dashboard as unassigned (SV-06 «БЕЗ РОЛИ», SV-08 manual assign).
       const activeRoles = this._config.engine.list().filter((r) => r.active);
 
-      const mrs = await this._config.vcs.getActionable();
+      const rawMrs = await this._config.vcs.getActionable();
+      const registry = this._config.store.loadRegistry();
+      const mrs = await this._filterActionable(rawMrs, registry);
       this._lastPolled = new Map(mrs.map((mr) => [mr.webUrl, mr]));
       logger.debug('[RoleScheduler#tick] [ticking → polled]', {
+        rawCount: rawMrs.length,
         mrCount: mrs.length,
         activeRoles: activeRoles.length,
       });
       // #endregion END_POLL_VCS
 
       // #region START_ASSIGN_NEW_MRS
-      const registry = this._config.store.loadRegistry();
       for (const mr of mrs) {
         const existing = registry.entries[mr.webUrl];
         const isNew = !existing;
@@ -398,6 +405,51 @@ export class RoleScheduler {
   }
 
   // ─── Private helpers ──────────────────────────────────────────────────────────
+
+  /**
+   * @purpose Filter non-actionable MRs via CLI pipeline (classify + buildInboxView).
+   * Drops approved-by-me, idle, and stale drafts. Deltas are in-memory only.
+   * @param items Raw actionable MRs from the VCS poll.
+   * @param registry Loaded inbox registry (read-only here — stage cache + delta basis).
+   * @returns Filtered actionable MRs; raw list when the filter fails (degrade open).
+   */
+  protected async _filterActionable(
+    items: VcsActionableMr[],
+    registry: Parameters<typeof classifyInbox>[1]
+  ): Promise<VcsActionableMr[]> {
+    try {
+      const nowIso = new Date().toISOString();
+      const { deltas } = classifyInbox(items, registry, nowIso);
+
+      const stages = new Map<string, MrStage>();
+      for (const [url, entry] of Object.entries(registry.entries)) {
+        const stage = (entry as { stage?: string } | undefined)?.stage;
+        if (stage) stages.set(url, stage as MrStage);
+      }
+
+      const myLogin = await this._config.vcs.getMyLogin();
+      const view = buildInboxView(
+        items,
+        { drafts: false, includeStale: false, staleDays: 14, ciAll: false, all: false },
+        nowIso,
+        deltas,
+        stages,
+        myLogin
+      );
+
+      const visible = new Set<string>();
+      for (const group of view.groups) {
+        for (const item of group.items) visible.add(item.webUrl);
+      }
+      return items.filter((mr) => visible.has(mr.webUrl));
+    } catch (error) {
+      // Degrade open: raw list is noisy but usable; an empty board is not.
+      logger.warn('[RoleScheduler#_filterActionable] [filter → fallback_raw]', {
+        error: String(error),
+      });
+      return items;
+    }
+  }
 
   /**
    * @purpose Match mr.role to role.name for assignment. Works for any role.

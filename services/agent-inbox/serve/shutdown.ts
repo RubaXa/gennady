@@ -85,15 +85,6 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
         }
 
         await new Promise<void>((resolve) => {
-          const forceKill = setTimeout(() => {
-            try {
-              process.kill(pid, 'SIGKILL');
-            } catch {
-              /* ignore */
-            }
-            resolve();
-          }, 5000);
-
           const check = setInterval(() => {
             if (!isOpencodePid(pid)) {
               clearTimeout(forceKill);
@@ -101,6 +92,16 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
               resolve();
             }
           }, 200);
+
+          const forceKill = setTimeout(() => {
+            clearInterval(check);
+            try {
+              process.kill(pid, 'SIGKILL');
+            } catch {
+              /* ignore */
+            }
+            resolve();
+          }, 5000);
         });
 
         try {

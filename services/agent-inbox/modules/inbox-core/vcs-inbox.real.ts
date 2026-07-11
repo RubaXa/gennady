@@ -74,6 +74,25 @@ export class VcsInboxReal extends VcsInboxPort {
     return this._host;
   }
 
+  /** @purpose Cached authenticated login — resolved once per adapter lifetime. */
+  protected _myLogin: string | null = null;
+
+  /**
+   * @returns Authenticated user login (cached); empty string when identity lookup fails.
+   * @see {VcsInboxPort#getMyLogin}
+   */
+  override async getMyLogin(): Promise<string> {
+    if (this._myLogin !== null) return this._myLogin;
+    try {
+      const client = await this._resolveInboxClient();
+      const me = await client.getCurrentUser();
+      this._myLogin = me.login;
+    } catch {
+      this._myLogin = '';
+    }
+    return this._myLogin;
+  }
+
   /**
    * @purpose Check that required credentials are available before making API calls.
    * @returns InboxErrorResponse or null if credentials are valid.

@@ -93,11 +93,10 @@ async function run(): Promise<number> {
     // #endregion END_STATUS_BAR
 
     // #region START_SIGNAL_HANDLERS
-    const shutdown = async (signal: string) => {
+    const shutdown = async (signal: string, exitCode: number = 0) => {
       console.info('');
       console.info(style.dim(`Received ${signal}, shutting down...`));
       clearInterval(tickTimer);
-      // F5: Pass opencode adapter and process for clean cancellation
       try {
         await gracefulShutdown({
           server: result.server,
@@ -107,22 +106,21 @@ async function run(): Promise<number> {
           scheduler: result.scheduler,
         });
       } catch {
-        // Ensure we always exit with 0 — individual shutdown errors are logged inside gracefulShutdown
+        // Individual shutdown errors are logged inside gracefulShutdown
       }
-      process.exit(0);
+      process.exit(exitCode);
     };
 
     process.on('SIGTERM', () => void shutdown('SIGTERM'));
     process.on('SIGINT', () => void shutdown('SIGINT'));
 
-    // D-85: Unhandled errors must trigger cleanup — orphaned opencode + stale PID file.
     process.on('uncaughtException', (error) => {
       console.error(style.redBright.bold('✖ Unhandled error:'), error.message);
-      void shutdown('uncaughtException').then(() => process.exit(1));
+      void shutdown('uncaughtException', 1);
     });
     process.on('unhandledRejection', (reason) => {
       console.error(style.redBright.bold('✖ Unhandled rejection:'), reason);
-      void shutdown('unhandledRejection').then(() => process.exit(1));
+      void shutdown('unhandledRejection', 1);
     });
     // #endregion END_SIGNAL_HANDLERS
 
