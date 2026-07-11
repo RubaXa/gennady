@@ -135,6 +135,7 @@ async function retryOpencodeConnect(maxRetries: number, delayMs: number): Promis
  * @returns ChildProcess on success, null on failure.
  */
 async function spawnOpencode(
+  cwd: string,
   maxHealthChecks: number = 10,
   maxSpawnRetries: number = 3
 ): Promise<ChildProcess | null> {
@@ -146,6 +147,7 @@ async function spawnOpencode(
       proc = spawn('opencode', ['serve', '--port', '4096'], {
         stdio: 'pipe',
         detached: false,
+        cwd,
       });
 
       // Forward opencode stdout/stderr to logger for diagnostics
@@ -319,16 +321,17 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
     // #region START_CONNECT_OPENCODE
     // F3: Try to spawn opencode first, then fall back to health-check polling.
-    const proc = await spawnOpencode();
+    const stateDir = stateStore.getStateDir();
+    const proc = await spawnOpencode(stateDir);
     if (proc) {
-      opencode = new OpenCodeReal();
+      opencode = new OpenCodeReal({ directory: stateDir });
       opencodeStatus = 'connected (spawned)';
       opencodeProcess = proc;
     } else {
       // Spawn failed — try polling an already-running instance
       const connected = await retryOpencodeConnect(3, 2000);
       if (connected) {
-        opencode = new OpenCodeReal();
+        opencode = new OpenCodeReal({ directory: stateDir });
         opencodeStatus = 'connected';
       } else {
         degraded = true;

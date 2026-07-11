@@ -49,6 +49,13 @@ export class StateStore {
   }
 
   /**
+   * @returns Root state directory path.
+   */
+  getStateDir(): string {
+    return this._stateDir;
+  }
+
+  /**
    * @purpose Atomically update config keys, auto-creating the state directory if needed.
    * @param partial Keys to set on the config.
    * @returns Promise that resolves when the config is saved.
