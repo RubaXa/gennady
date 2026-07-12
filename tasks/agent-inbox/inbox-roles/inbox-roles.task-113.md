@@ -13,11 +13,11 @@
 > - **`prep`-узел** (новый kind): детерминированная подготовка — `inbox-context`, `vcs-discussions
 --my --with-drafts` (драфты+дедуп), `inbox-review-plan --scaffold`, fast-LLM классификатор
 >   (Vectors), выбор ветки. Без LLM-сессии.
-> - **`AX_AGENT_PROPOSES_ENGINE_ACTS`:** сессия пишет артефакт (находки + предлагаемые действия +
+> - **NFC-SV-07 (агент предлагает — движок исполняет):** сессия пишет артефакт (находки + предлагаемые действия +
 >   текст), НЕ вызывает `vcs-*`. Новый `EffectExecutor` — единственный исполнитель постинга
 >   (reconcile-дедуп, ThreadModel/ReactionMatrix, идемпотентность `effect_applied`).
-> - **`AX_ENGINE_OWNS_STATUS`:** статус артефактов переводит движок, не агент.
-> - **`AX_SECURITY_LENS`:** security — сессия по всему changeset, не дорожка файлов.
+> - **NFC-SV-08 (движок владеет статусом):** статус артефактов переводит движок, не агент.
+> - **NFC-SV-09 (security-линза):** security — сессия по всему changeset, не дорожка файлов.
 > - **`ArtifactValidator`:** structural + coverage ledger + tool-call сверка (из opencode) + mermaid-валидность.
 > - **Раунды** секциями `## Round N` в task-файлах; «дослать» = новый раунд с фокусом оператора.
 > - Новые файлы: `artifact-validator.ts`, `effect-executor.ts` (+ тесты). Таймауты — минуты.

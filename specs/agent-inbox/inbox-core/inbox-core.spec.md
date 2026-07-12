@@ -107,7 +107,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Service
 - **Purpose:** Единая точка доступа к файловому состоянию `~/.gennady/agent-inbox/`.
 - **Public Operations:**
-  - `getStateDir()` → `string` — корень состояния (`~/.gennady` по умолчанию, `--state-dir` переопределяет). Единственный источник пути для всего, что пишется на диск (`AX_STATE_UNDER_STATEDIR`): рабочие/сессионные директории узлов, worktrees, отчёты строятся от него, не от `os.tmpdir()`.
+  - `getStateDir()` → `string` — корень состояния (`~/.gennady` по умолчанию, `--state-dir` переопределяет). Единственный источник пути для всего, что пишется на диск (NFC-05): рабочие/сессионные директории узлов, worktrees, отчёты строятся от него, не от `os.tmpdir()`.
   - `loadConfig()` → `InboxConfig`
   - `saveConfig(partial)` → void
   - `loadRegistry()` → `InboxRegistry`

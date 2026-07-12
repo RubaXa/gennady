@@ -10,7 +10,7 @@
 обработку MR, выполняет узлы, классифицирует исходы, восстанавливает по лесенке.
 Получает данные от inbox-core, гоняет агентные сессии через inbox-opencode.
 
-**Принцип разделения труда (`AX_AGENT_PROPOSES_ENGINE_ACTS`):** агентная сессия только
+**Принцип разделения труда (NFC-SV-07):** агентная сессия только
 читает код в worktree и пишет артефакт (находки + предлагаемые действия + готовый текст).
 Все `vcs-*` вызовы (чтение обсуждений, реакции, ответы, approve, резолв) делает движок
 детерминированно — агент их не видит. Это снимает наблюдаемую боль: агент криво дёргает
@@ -102,7 +102,7 @@ _Полный список сущностей модуля. Любое введ�
   - `step()` — выполнить текущий узел, классифицировать исход, перейти по edge
   - `onContextUpdate(mrContext)` — при изменении MR (headChanged/approvalReset) переоткрыть затронутые узлы
   - `getBoardView()` — данные для дашборда (текущий узел + прогресс дорожек)
-- **Lifecycle:** Создаётся Scheduler'ом; при рестарте serve восстанавливается от артефактов (`AX_ARTIFACTS_ARE_CHECKPOINTS`).
+- **Lifecycle:** Создаётся Scheduler'ом; при рестарте serve восстанавливается от артефактов (SV-13).
 - **Consumers:** `RoleScheduler`, `RightsEscalator`, `inbox-api`.
 
 ### `RoleNode`
@@ -115,7 +115,7 @@ _Полный список сущностей модуля. Любое введ�
   - `{ kind: 'gate', verify(artifacts): GateResult }` — детерминированная проверка артефактов (`ArtifactValidator`).
   - `{ kind: 'ask', question(artifacts): OperatorQuestion }` — формирует пакет действий оператору, ждёт ответ.
   - `{ kind: 'effect', run(ctx, artifacts): Promise<void> }` — публичное действие, исполняет `EffectExecutor` (движок), не агент.
-- **`dir(ctx)` контракт (`AX_STATE_UNDER_STATEDIR`):** путь ОБЯЗАН быть поддеревом `ctx.workspace`
+- **`dir(ctx)` контракт (NFC-05):** путь ОБЯЗАН быть поддеревом `ctx.workspace`
   (движок укореняет его под state dir через `StateStore.getStateDir()`). Абсолютные пути / `/tmp` / `os.tmpdir()` — drift.
 - **`policy` (session):** `{ promptTimeout, continueMax, restartMax }`; `promptTimeout` — на агентную сессию, в **минутах** (3–10), не секундах (агентный ход многошаговый).
 - **Consumers:** `RoleInstance.step()`.
@@ -144,7 +144,7 @@ _Полный список сущностей модуля. Любое введ�
 ### `EffectExecutor`
 
 - **Type:** Service
-- **Purpose:** Единственный исполнитель публичных VCS-действий (`AX_AGENT_PROPOSES_ENGINE_ACTS`, `AX_SESSION_NO_SIDE_EFFECTS`). Берёт предложенные действия из артефакта сессии и выполняет их детерминированно после согласия оператора.
+- **Purpose:** Единственный исполнитель публичных VCS-действий (NFC-SV-07, NFC-SV-07). Берёт предложенные действия из артефакта сессии и выполняет их детерминированно после согласия оператора.
 - **Действия:** `vcs-react` (👍 и др.), `vcs-reply` (reply/line/suggestion/edit/delete), `vcs-approve [--revoke]`, резолв тредов, `vcs-draft-note --delete-all`.
 - **Дедуп/reconcile:** перед постингом сверяет кандидатов с актуальными тредами (`vcs-discussions --all`), дропает уже покрытое (`AX_POSTING_NO_DUPLICATES`); применяет ThreadModel/ReactionMatrix (posting-rules): 👍+тихий resolve на мой фикс, 👍 без resolve на согласие с пиром, reply на несогласие, `waiting-author` → без действия.
 - **Идемпотентность:** маркер `effect_applied` в audit — не постит дважды при restart.
@@ -179,7 +179,7 @@ _Полный список сущностей модуля. Любое введ�
 prepare (prep, детерминированный):
   inbox-context → worktree, changeset, stage, headChanged
   vcs-discussions --my --with-drafts → my_drafts (вектор), my_threads (дедуп)
-  inbox-review-plan --scaffold → дорожки (security — линза по всему диффу, AX_SECURITY_LENS)
+  inbox-review-plan --scaffold → дорожки (security — линза по всему диффу, NFC-SV-09)
   fast-LLM классификатор (слой 2) → Vectors в PLAN.md (intent, костыли); недоступен → skip
   ── выбор ветки ──
   │
@@ -202,7 +202,7 @@ delta-review:
 ```
 
 - **Fan-out** — движок инстанцирует N сессий пачками ≤ `maxInstances` (SV-11).
-- **Статус узлов/артефактов** переводит движок (`AX_ENGINE_OWNS_STATUS`), не агент.
+- **Статус узлов/артефактов** переводит движок (NFC-SV-08), не агент.
 - **Раунды** — секции `## Round N` в task-файлах; deep-dive/«дослать» = новый раунд с фокусом оператора; агент читает предыдущие раунды из файла (не зацикливается).
 - **ask-пакет** (финализация, обязателен даже на чистый approve): `approve` (гейт: нет блокирующих) · N неблокирующих замечаний (каждое — чекбокс с текстом, inline-правка) · 👍 пирам · reply/не согласиться · моя реплика · skip · «дослать» (раунд).
 <!--/SECTION:ENTITY_SURFACES-->
@@ -230,11 +230,11 @@ delta-review:
 
 - **Postconditions:** `step()` — узел выполнен, исход классифицирован, переход по edge; `status` артефактов переведён движком.
 - **Invariants:**
-  - `prep`/`gate` детерминированы (без LLM). `session` не делает VCS-вызовов (`AX_AGENT_PROPOSES_ENGINE_ACTS`).
+  - `prep`/`gate` детерминированы (без LLM). `session` не делает VCS-вызовов (NFC-SV-07).
   - `effect` выполняется не более одного раза на успешный проход (`effect_applied` в audit).
-  - `continueCount ≤ policy.continueMax`; `restartCount ≤ policy.restartMax`; исчерпано → `AWAITING_OPERATOR` с диагностикой (`AX_RECOVERY_LADDER`).
-  - `ctx.workspace` под state dir (`AX_STATE_UNDER_STATEDIR`).
-  - Рестарт serve → восстановление от заполненных task-файлов (`AX_ARTIFACTS_ARE_CHECKPOINTS`): готовые дорожки не переисполняются.
+  - `continueCount ≤ policy.continueMax`; `restartCount ≤ policy.restartMax`; исчерпано → `AWAITING_OPERATOR` с диагностикой (SV-05).
+  - `ctx.workspace` под state dir (NFC-05).
+  - Рестарт serve → восстановление от заполненных task-файлов (SV-13): готовые дорожки не переисполняются.
 
 ### Service: `OutcomeClassifier`
 
