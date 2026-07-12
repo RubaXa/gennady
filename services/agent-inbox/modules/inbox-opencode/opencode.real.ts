@@ -11,6 +11,7 @@ import {
   type CreateSessionOpts,
   type PromptOpts,
   type SessionStatus,
+  type ToolCall,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
 
@@ -47,6 +48,8 @@ export class OpenCodeReal extends OpenCodePort {
   protected _sessionDirs: Map<string, string>;
   /** @purpose Track pending schemas per session for JSON extraction validation. */
   protected _pendingSchemas: Map<string, Record<string, unknown>>;
+  /** @purpose Track per-session tools gate (sid → CreateSessionOpts.tools) | @invariant SDK has no session-level tools flag — re-applied on every prompt() call */
+  protected _sessionTools: Map<string, boolean>;
 
   /**
    * @purpose Create an OpenCodeReal adapter bound to a running opencode server.
@@ -60,6 +63,7 @@ export class OpenCodeReal extends OpenCodePort {
     this._client = null;
     this._sessionDirs = new Map();
     this._pendingSchemas = new Map();
+    this._sessionTools = new Map();
     logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
   }
 
@@ -120,6 +124,10 @@ export class OpenCodeReal extends OpenCodePort {
 
       const session = result.data!;
       this._sessionDirs.set(session.id, directory ?? session.directory);
+      // SDK has no session-level tools flag (confirmed live against @opencode-ai/sdk@1.17.18) —
+      // the gate is re-applied on every prompt() call via _sessionTools (see AX decision
+      // prompt-tools=per-prompt-map-not-session-level).
+      this._sessionTools.set(session.id, opts.tools === true);
 
       logger.debug('[OpenCodeReal#createSession] [created]', {
         sid: session.id,
@@ -219,6 +227,60 @@ export class OpenCodeReal extends OpenCodePort {
     // #endregion END_STATUS
   }
 
+  // ── toolCalls ─────────────────────────────────────────────────
+
+  /**
+   * @invariant `session.prompt()` returns only the LAST assistant message of the turn —
+   *           tool-call parts live on earlier messages, recoverable only via `session.messages`.
+   * @param sid Session identifier.
+   * @returns Tool calls that touched a file, path relative to the session directory.
+   * @see {OpenCodePort#toolCalls}
+   */
+  override async toolCalls(sid: string): Promise<ToolCall[]> {
+    const client = this._ensureClient();
+    const directory = this._sessionDirs.get(sid) ?? this._directory;
+
+    // #region START_AGGREGATE_TOOL_CALLS — scan full message history, not the last prompt() reply
+    try {
+      logger.debug('[OpenCodeReal#toolCalls] [querying]', { sid });
+
+      const result = await client.session.messages({
+        path: { id: sid },
+        query: directory ? { directory } : undefined,
+      });
+
+      if (result.error || !result.data) {
+        logger.warn('[OpenCodeReal#toolCalls] [server error → empty]', { sid });
+        return [];
+      }
+
+      const calls: ToolCall[] = [];
+      for (const message of result.data) {
+        if (message.info.role !== 'assistant') continue;
+
+        for (const part of message.parts) {
+          if (part.type !== 'tool') continue;
+
+          const filePath = (part.state.input as { filePath?: unknown }).filePath;
+          if (typeof filePath !== 'string') continue; // non-file tool call (e.g. bash) — no ToolCall.path to report
+
+          calls.push({
+            tool: part.tool,
+            path: this._relativeToSessionDirectory(filePath, directory),
+          });
+        }
+      }
+
+      logger.debug('[OpenCodeReal#toolCalls] [aggregated]', { sid, count: calls.length });
+      return calls;
+    } catch (err: unknown) {
+      const cause = err instanceof Error ? err : new Error(String(err));
+      logger.warn('[OpenCodeReal#toolCalls] [error → empty]', { sid, message: cause.message });
+      return [];
+    }
+    // #endregion END_AGGREGATE_TOOL_CALLS
+  }
+
   // ── continueSignal ────────────────────────────────────────────
 
   /**
@@ -302,6 +364,7 @@ export class OpenCodeReal extends OpenCodePort {
     } finally {
       this._sessionDirs.delete(sid);
       this._pendingSchemas.delete(sid);
+      this._sessionTools.delete(sid);
     }
     // #endregion END_CLOSE
   }
@@ -337,10 +400,21 @@ export class OpenCodeReal extends OpenCodePort {
     }
     // #endregion END_BUILD_PROMPT_BODY
 
+    // Port contract: opts.timeout is in MINUTES (an agent turn is multi-step/long-running);
+    // the adapter's own default (this._timeout) is in ms — convert only the per-call override.
+    const timeoutMs = opts.timeout != null ? opts.timeout * 60_000 : this._timeout;
+
+    // tools gate lives only per-prompt in the SDK (no session-level flag) — re-apply every call.
+    // toolsEnabled=true → omit `tools` (agent's own default tool set applies, confirmed live);
+    // toolsEnabled=false/unset → explicit deny-all so a session created without tools=true never
+    // gains tool access mid-turn.
+    const toolsEnabled = this._sessionTools.get(sid) ?? false;
+
     try {
       logger.debug('[OpenCodeReal#_sendPrompt] [prompting]', {
         sid,
         hasFormat,
+        toolsEnabled,
         systemLength: system.length,
         partsCount: parts.length,
       });
@@ -350,11 +424,16 @@ export class OpenCodeReal extends OpenCodePort {
           body: {
             system: system || undefined,
             parts: parts as Array<{ type: 'text'; text: string }>,
+            ...(toolsEnabled ? {} : { tools: { '*': false } }),
           },
           path: { id: sid },
           query: directory ? { directory } : undefined,
         }),
-        opts.timeout ?? this._timeout
+        timeoutMs,
+        () => {
+          // Client-side timeout must not leave the agent turn running server-side unattended.
+          void this.abort(sid);
+        }
       );
 
       if (result.error) {
@@ -534,13 +613,18 @@ export class OpenCodeReal extends OpenCodePort {
 
   /**
    * @purpose Wrap a promise with a timeout — rejects if the promise does not settle within ms.
+   * @invariant On expiry, `onTimeout` runs BEFORE reject — used to abort the server-side turn.
    * @param promise The promise to protect.
    * @param ms Timeout in milliseconds.
+   * @param [onTimeout] Fire-and-forget callback invoked exactly once on expiry.
    * @returns The promise result, or throws TIMEOUT error.
    */
-  protected _withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  protected _withTimeout<T>(promise: Promise<T>, ms: number, onTimeout?: () => void): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('TIMEOUT: operation timed out')), ms);
+      const timer = setTimeout(() => {
+        onTimeout?.();
+        reject(new Error('TIMEOUT: operation timed out'));
+      }, ms);
       promise.then(
         (val) => {
           clearTimeout(timer);
@@ -552,6 +636,21 @@ export class OpenCodeReal extends OpenCodePort {
         }
       );
     });
+  }
+
+  /**
+   * @purpose Strip the session directory prefix from an absolute tool-call path.
+   * @param absolutePath Absolute path reported by `ToolPart.state.input.filePath`.
+   * @param directory Session directory to strip; undefined → path returned unchanged.
+   * @returns Path relative to the session directory (port contract for `ToolCall.path`).
+   */
+  protected _relativeToSessionDirectory(
+    absolutePath: string,
+    directory: string | undefined
+  ): string {
+    if (!directory) return absolutePath;
+    const prefix = directory.endsWith('/') ? directory : `${directory}/`;
+    return absolutePath.startsWith(prefix) ? absolutePath.slice(prefix.length) : absolutePath;
   }
 
   /**

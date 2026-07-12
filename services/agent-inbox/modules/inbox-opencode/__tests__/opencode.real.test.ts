@@ -329,6 +329,186 @@ describe('OpenCodeReal — continueSignal reuses _sendPrompt', () => {
   });
 });
 
+describe('OpenCodeReal — agentic turn (stubbed SDK client)', () => {
+  it('GIVEN stubbed client WHEN createSession + prompt + toolCalls THEN turn completes with non-empty result and toolCalls', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096' });
+
+    const fakeClient = {
+      session: {
+        create: async () => ({
+          data: { id: 'agentic-sid', title: 'demo', directory: '/tmp/worktree' },
+        }),
+        prompt: async () => ({
+          data: {
+            info: {},
+            parts: [{ type: 'text', text: 'done: ```json\n{"status":"ok"}\n```' }],
+          },
+        }),
+        messages: async () => ({
+          data: [
+            {
+              info: { role: 'assistant' },
+              parts: [
+                {
+                  type: 'tool',
+                  tool: 'read',
+                  state: { input: { filePath: '/tmp/worktree/src/a.ts' } },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const session = await real.createSession({
+      title: 'demo',
+      directory: '/tmp/worktree',
+      tools: true,
+    });
+    assert.strictEqual(session.sid, 'agentic-sid');
+
+    const result = await real.prompt(session.sid, {
+      text: 'do the task',
+      format: makeFormat('agentic_result'),
+    });
+
+    assertOk(result);
+    assert.deepStrictEqual(result.output, { status: 'ok' });
+
+    const calls = await real.toolCalls(session.sid);
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0]?.tool, 'read');
+    assert.strictEqual(calls[0]?.path, 'src/a.ts');
+
+    mock.restoreAll();
+  });
+});
+
+describe('OpenCodeReal — toolCalls extraction (stubbed SDK client)', () => {
+  it('GIVEN session.messages with mixed assistant/user and file/non-file tool parts WHEN toolCalls(sid) THEN returns only file-touching assistant tool calls with path relative to directory', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096', directory: '/tmp/wt' });
+
+    const fakeClient = {
+      session: {
+        messages: async () => ({
+          data: [
+            {
+              info: { role: 'user' },
+              parts: [{ type: 'text', text: 'please read the file' }],
+            },
+            {
+              info: { role: 'assistant' },
+              parts: [
+                {
+                  type: 'tool',
+                  tool: 'read',
+                  state: { input: { filePath: '/tmp/wt/src/a.ts' } },
+                },
+                {
+                  // non-file tool call (e.g. bash) — no filePath, must be skipped
+                  type: 'tool',
+                  tool: 'bash',
+                  state: { input: { command: 'ls' } },
+                },
+                {
+                  type: 'tool',
+                  tool: 'grep',
+                  state: { input: { filePath: '/tmp/wt/src/b.ts' } },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const calls = await real.toolCalls('any-sid');
+
+    assert.strictEqual(calls.length, 2);
+    assert.deepStrictEqual(calls[0], { tool: 'read', path: 'src/a.ts' });
+    assert.deepStrictEqual(calls[1], { tool: 'grep', path: 'src/b.ts' });
+
+    mock.restoreAll();
+  });
+
+  it('GIVEN session.messages server error WHEN toolCalls(sid) THEN returns empty array', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096', directory: '/tmp/wt' });
+
+    const fakeClient = {
+      session: {
+        messages: async () => ({ error: { message: 'not found' } }),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const calls = await real.toolCalls('any-sid');
+
+    assert.deepStrictEqual(calls, []);
+
+    mock.restoreAll();
+  });
+});
+
+describe('OpenCodeReal — TIMEOUT (minutes) aborts the server-side turn', () => {
+  it('GIVEN prompt timeout expressed in minutes WHEN the agent turn never settles THEN returns TIMEOUT and calls abort(sid)', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096' });
+
+    const abortMock = mock.method(OpenCodeReal.prototype, 'abort');
+    abortMock.mock.mockImplementation(async () => {});
+
+    const fakeClient = {
+      session: {
+        // Simulates a hung agent turn — the promise never settles, forcing the client-side timer.
+        prompt: () => new Promise(() => {}),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    // 0.0001 minutes = 6ms — converted from minutes per port contract (PromptOpts.timeout).
+    const result = await real.prompt('timeout-sid', { text: 'long task', timeout: 0.0001 });
+
+    assertError(result, 'TIMEOUT');
+    assert.strictEqual(abortMock.mock.callCount(), 1);
+    assert.strictEqual(abortMock.mock.calls[0]?.arguments[0], 'timeout-sid');
+
+    mock.restoreAll();
+  });
+
+  it('GIVEN no explicit timeout WHEN the agent turn never settles THEN falls back to adapter default (ms) and still aborts', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096', timeout: 5 });
+
+    const abortMock = mock.method(OpenCodeReal.prototype, 'abort');
+    abortMock.mock.mockImplementation(async () => {});
+
+    const fakeClient = {
+      session: {
+        prompt: () => new Promise(() => {}),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const result = await real.prompt('timeout-sid-2', { text: 'long task' });
+
+    assertError(result, 'TIMEOUT');
+    assert.strictEqual(abortMock.mock.callCount(), 1);
+
+    mock.restoreAll();
+  });
+});
+
 describe('OpenCodeReal — constructor defaults', () => {
   it('GIVEN no options WHEN new OpenCodeReal THEN baseUrl defaults to localhost:4096', () => {
     const real = new OpenCodeReal();

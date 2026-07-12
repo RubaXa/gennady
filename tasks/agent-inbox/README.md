@@ -27,7 +27,7 @@
 | TSK-109 | DONE   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog                               |
 | TSK-110 | DONE   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                                                     |
 | TSK-111 | DONE   | TSK-105                 | inbox-opencode: + агентный режим (tools, toolCalls, минуты)                                |
-| TSK-112 | TODO   | TSK-111                 | inbox-opencode: OpenCodeReal агентная сессия + tool-call лог                               |
+| TSK-112 | DONE   | TSK-111                 | inbox-opencode: OpenCodeReal агентная сессия + tool-call лог                               |
 | TSK-113 | TODO   | TSK-109,110,111,116     | inbox-roles: reviewer-граф (3 ветки), thread-механика, дедуп, effect-executor (пивот D-86) |
 | TSK-114 | DONE   | TSK-105, TSK-107        | inbox-visual-testing: ARIA snapshots + layout helpers                                      |
 | TSK-115 | DONE   | TSK-106,109,110,111,113 | inbox-serve: entry point + DI bootstrap + OpenCode spawn                                   |
