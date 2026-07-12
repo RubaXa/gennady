@@ -1,4 +1,4 @@
-// @file: RoleNode — typed graph nodes (session/gate/ask/effect) and edges for role definitions.
+// @file: RoleNode — typed graph nodes (prep/session/gate/ask/effect) and edges for role definitions.
 // @consumers: role-engine, role-instance, role-scheduler, reviewer.role.ts, author.role.ts
 // @tasks: TSK-113
 
@@ -35,7 +35,7 @@ export type RoleArtifacts = Record<string, unknown>;
 export type NodeContext = {
   /** @purpose MR metadata from VCS */
   mr: MrContext;
-  /** @purpose Path to the local workspace directory for this MR */
+  /** @purpose Path to the local workspace directory for this MR | @invariant Rooted under StateStore.getStateDir() (NFC-05) — never /tmp or os.tmpdir() */
   workspace: string;
   /** @purpose Accumulated artifacts from previous nodes */
   artifacts: RoleArtifacts;
@@ -46,7 +46,7 @@ export type NodeContext = {
  * @consumer SessionNode.policy
  */
 export type SessionPolicy = {
-  /** @purpose Timeout in ms for a single prompt call */
+  /** @purpose Timeout for a single agentic session call | @invariant Unit is minutes (3–10) — an agent turn is multi-step, not sub-second */
   promptTimeout: number;
   /** @purpose Max continue attempts before switching to restart */
   continueMax: number;
@@ -62,6 +62,37 @@ export type JsonSchema = Record<string, unknown>;
 // ─── Discriminated node variants ──────────────────────────────────────────────
 
 /**
+ * @purpose Outcome of a deterministic prep node — selects the graph branch to follow.
+ * @invariant `branch` feeds `Edge.on` matching — role graphs define their own branch
+ *   vocabulary (e.g. 'review_needed', 'reply_needed', 'update-review').
+ */
+export type PrepResult = {
+  /** @purpose Edge condition selecting the next branch */
+  branch: string;
+  /** @purpose Artifacts merged into ctx.artifacts (worktree paths, plan, discussions, vectors) */
+  artifacts?: RoleArtifacts;
+};
+
+/**
+ * @purpose Deterministic entry node: prepares workspace/context and selects a graph branch.
+ * @invariant No LLM involvement. Reads discussions via `vcs-*` (read-only) and writes to disk,
+ *   never to VCS — `vcs-*` mutations are EffectExecutor's exclusive job (NFC-SV-07).
+ */
+export type PrepNode = {
+  /** @purpose Discriminant — identifies this node as a deterministic prep node. */
+  kind: 'prep';
+  /** @purpose Stable node identifier */
+  id: string;
+  /**
+   * @purpose Prepare workspace/context and choose the branch to follow.
+   * @param ctx MR context and accumulated artifacts.
+   * @returns Branch selector and any artifacts to merge.
+   * @sideEffect Filesystem writes under ctx.workspace; read-only `vcs-*` calls.
+   */
+  run(ctx: NodeContext): Promise<PrepResult>;
+};
+
+/**
  * @purpose AI-node: sends a system+user prompt to an LLM session and expects structured output.
  * @invariant One session node = one LLM call through OpenCodePort.
  */
@@ -71,11 +102,13 @@ export type SessionNode = {
   /** @purpose Stable node identifier — used for seeding mock responses */
   id: string;
   /**
-   * @purpose Build the system and user prompts from accumulated context and artifacts.
+   * @purpose Build the concrete task text (file addresses, tracks, diff range) for this turn.
+   * @invariant System instruction is NOT built here — the engine assembles it via
+   *   `services/ai-kit` `buildNodePrompt(node.id, ctx)` from directive files.
    * @param ctx MR context and accumulated artifacts.
-   * @returns System instruction and user-level text prompt.
+   * @returns Concrete, addressable task instruction for this turn.
    */
-  prompt(ctx: NodeContext): { system: string; text: string };
+  buildTaskText(ctx: NodeContext): string;
   /**
    * @purpose Determine the working directory for the session.
    * @param ctx MR context and accumulated artifacts.
@@ -148,22 +181,16 @@ export type EffectNode = {
 /**
  * @purpose Union type of all role graph nodes — discriminated by `kind`.
  */
-export type RoleNode = SessionNode | GateNode | AskNode | EffectNode;
+export type RoleNode = PrepNode | SessionNode | GateNode | AskNode | EffectNode;
 
 // ─── Edge and graph ───────────────────────────────────────────────────────────
 
 /**
  * @purpose Transition condition evaluated after a node completes.
- * Maps to a gate result (`pass`/`fail`) or an outcome class from session nodes.
+ * @invariant Well-known: 'ok'|'pass'|'fail'|'timeout'|'error'|'retry_exhausted'|'answered'.
+ *   Prep nodes emit per-role branch names (e.g. 'review_needed') — kept open (string).
  */
-export type EdgeCondition =
-  | 'ok'
-  | 'pass'
-  | 'fail'
-  | 'timeout'
-  | 'error'
-  | 'retry_exhausted'
-  | 'answered';
+export type EdgeCondition = string;
 
 /**
  * @purpose Directed edge between nodes — triggered when the source node completes with a given condition.

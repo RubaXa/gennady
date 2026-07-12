@@ -10,6 +10,7 @@ import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { RoleInstance } from './role-instance.ts';
+import { RightsEscalator } from './rights-escalator.ts';
 // AI-02 noise filter — reused from the CLI pipeline per SV-12 (functions, not spawn).
 // Debt: move classify/build-view into inbox-core alongside the TSK-109 migration.
 import { classifyInbox } from '../../../../cli/cmd/inbox/_core/logic/classify-inbox.logic.ts';
@@ -80,6 +81,8 @@ export class RoleScheduler {
   protected _pausedUntil: Map<string, number>;
   /** @purpose Actionable MRs from the last poll, keyed by webUrl — source for unassigned (F7) */
   protected _lastPolled: Map<string, VcsActionableMr>;
+  /** @purpose Notifies the operator on AWAITING_OPERATOR + reminds on idle (TSK-113 P3 wiring) */
+  protected _rightsEscalator: RightsEscalator;
 
   /** @purpose Max consecutive errors before pausing an instance (F2) */
   private static readonly MAX_ERRORS = 3;
@@ -98,6 +101,7 @@ export class RoleScheduler {
     this._errorCount = new Map();
     this._pausedUntil = new Map();
     this._lastPolled = new Map();
+    this._rightsEscalator = new RightsEscalator({ store: config.store });
   }
 
   /**
@@ -218,6 +222,22 @@ export class RoleScheduler {
         }
       }
       // #endregion END_ADVANCE_INSTANCES
+
+      // #region START_ESCALATE_AWAITING_OPERATOR — notify immediately + remind on idle (SV-notif)
+      for (const [key, instance] of this._instances) {
+        if (instance.state !== 'awaiting_operator') continue;
+
+        try {
+          await this._rightsEscalator.notifyReady(instance);
+          await this._rightsEscalator.remindIdle(instance);
+        } catch (error) {
+          logger.warn('[RoleScheduler#tick] [ticking → escalation_failed]', {
+            key,
+            error: String(error),
+          });
+        }
+      }
+      // #endregion END_ESCALATE_AWAITING_OPERATOR
 
       // #region START_CLEANUP_DONE
       for (const [key, instance] of this._instances) {

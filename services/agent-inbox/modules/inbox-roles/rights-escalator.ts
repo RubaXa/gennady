@@ -42,10 +42,12 @@ export type EscalationResult = {
 };
 
 /**
- * @purpose Monitors operator inactivity on ask nodes and triggers VK Teams notifications.
+ * @purpose Monitors operator inactivity on ask nodes and triggers VK Teams notifications. Never
+ * escalates rights (v1, D74) — only notifies.
  * @invariant Precondition: instance.currentNode.kind === 'ask'.
- * @invariant Postcondition: 24h without operator_action → notification. Notification cooldown 24h.
- * @invariant Operator action (operator_action audit entry) resets the timer.
+ * @invariant `notifyReady` fires once, immediately, on entering AWAITING_OPERATOR. `remindIdle`
+ *   fires on top of that after 24h without operator_action, with a 24h cooldown between reminders.
+ * @invariant Operator action (operator_action audit entry) resets both timers.
  * @consumer RoleScheduler.tick()
  */
 export class RightsEscalator {
@@ -67,13 +69,64 @@ export class RightsEscalator {
   }
 
   /**
-   * @purpose Evaluate whether escalation is needed for a given instance.
-   * Reads the audit log for the MR and checks the time since the last operator_action.
+   * @purpose Notify the operator immediately on entering AWAITING_OPERATOR — no threshold, no
+   * cooldown, fires once per awaiting period (per spec §4 RightsEscalator).
+   * @invariant Dedup: skipped when the most recent audit entry for this MR is already
+   *   `notified_ready` — no new transition happened since the last notification.
+   * @param instance The role instance to notify for — must be at an ask node.
+   * @returns Promise that resolves once the (possibly skipped) notification is recorded.
+   * @sideEffect Appends `notified_ready` audit entry when not already notified for this period.
+   */
+  async notifyReady(instance: RoleInstance): Promise<void> {
+    if (instance.state !== 'awaiting_operator') {
+      logger.debug('[RightsEscalator#notifyReady] [idle → skipped] Instance not awaiting operator');
+      return;
+    }
+
+    const auditEntries = await this._store.queryAudit(instance.mr);
+    const last = auditEntries[auditEntries.length - 1];
+    if (last?.event === 'notified_ready') {
+      logger.debug('[RightsEscalator#notifyReady] [idle → skipped] Already notified this period');
+      return;
+    }
+
+    logger.info('[RightsEscalator#notifyReady] [idle → notified]', {
+      instance: instance.id,
+      mr: instance.mr,
+    });
+
+    await this._store.appendAudit({
+      ts: new Date().toISOString(),
+      mr: instance.mr,
+      role: instance.role,
+      event: 'notified_ready',
+      detail: `Instance awaiting operator at node "${instance.currentNode}"`,
+    });
+  }
+
+  /**
+   * @purpose Reminder on top of `notifyReady` for prolonged idle time — 24h without
+   * operator_action, cooldown 24h between reminders. Never escalates rights (v1, D74).
+   * @param instance The role instance to evaluate — must be at an ask node.
+   * @returns Escalation result with whether a reminder was due and a message.
+   * @sideEffect Appends `escalated` audit entry when a reminder is due.
+   */
+  async remindIdle(instance: RoleInstance): Promise<EscalationResult> {
+    const result = await this._evaluateInactivity(instance);
+    if (result.shouldEscalate) {
+      await this._recordEscalation(instance);
+    }
+    return result;
+  }
+
+  /**
+   * @purpose Evaluate whether a reminder is due, from the audit log's time since last
+   *   operator_action.
    * @param instance The role instance to evaluate — must be at an ask node.
    * @returns Escalation result with whether to escalate and a message.
    */
-  async evaluate(instance: RoleInstance): Promise<EscalationResult> {
-    logger.debug('[RightsEscalator#evaluate] [idle → evaluating]', {
+  protected async _evaluateInactivity(instance: RoleInstance): Promise<EscalationResult> {
+    logger.debug('[RightsEscalator#_evaluateInactivity] [idle → evaluating]', {
       instance: instance.id,
       mr: instance.mr,
       state: instance.state,
@@ -83,7 +136,7 @@ export class RightsEscalator {
     // Precondition: instance must be awaiting operator (at ask node)
     if (instance.state !== 'awaiting_operator') {
       logger.debug(
-        '[RightsEscalator#evaluate] [evaluating → skipped] Instance not awaiting operator'
+        '[RightsEscalator#_evaluateInactivity] [evaluating → skipped] Instance not awaiting operator'
       );
       return {
         shouldEscalate: false,
@@ -115,7 +168,7 @@ export class RightsEscalator {
       const elapsed = now - lastActionTime;
 
       if (elapsed < this._threshold) {
-        logger.debug('[RightsEscalator#evaluate] [evaluating → timer_reset]', {
+        logger.debug('[RightsEscalator#_evaluateInactivity] [evaluating → timer_reset]', {
           instance: instance.id,
           elapsedMs: elapsed,
           thresholdMs: this._threshold,
@@ -138,7 +191,7 @@ export class RightsEscalator {
     const inactiveDuration = now - inactiveSince;
 
     if (inactiveDuration < this._threshold) {
-      logger.debug('[RightsEscalator#evaluate] [evaluating → not_yet]', {
+      logger.debug('[RightsEscalator#_evaluateInactivity] [evaluating → not_yet]', {
         instance: instance.id,
         inactiveMs: inactiveDuration,
         thresholdMs: this._threshold,
@@ -157,7 +210,7 @@ export class RightsEscalator {
       const cooldownElapsed = now - lastEscalationTime;
 
       if (cooldownElapsed < this._cooldown) {
-        logger.debug('[RightsEscalator#evaluate] [evaluating → cooldown]', {
+        logger.debug('[RightsEscalator#_evaluateInactivity] [evaluating → cooldown]', {
           instance: instance.id,
           cooldownElapsedMs: cooldownElapsed,
           cooldownMs: this._cooldown,
@@ -172,7 +225,7 @@ export class RightsEscalator {
 
     // #region START_TRIGGER_ESCALATION
     const hoursInactive = Math.round(inactiveDuration / 3600000);
-    logger.info('[RightsEscalator#evaluate] [evaluating → escalate]', {
+    logger.info('[RightsEscalator#_evaluateInactivity] [evaluating → escalate]', {
       instance: instance.id,
       mr: instance.mr,
       hoursInactive,
@@ -191,8 +244,8 @@ export class RightsEscalator {
    * @returns Promise that resolves when escalation is recorded.
    * @sideEffect Appends 'escalated' audit entry. In production, sends VK Teams ping.
    */
-  async schedule(instance: RoleInstance): Promise<void> {
-    logger.info('[RightsEscalator#schedule] [idle → scheduling]', {
+  protected async _recordEscalation(instance: RoleInstance): Promise<void> {
+    logger.info('[RightsEscalator#_recordEscalation] [idle → scheduling]', {
       instance: instance.id,
       mr: instance.mr,
     });
@@ -205,5 +258,25 @@ export class RightsEscalator {
       event: 'escalated',
       detail: `Inactivity threshold (${this._threshold}ms) exceeded for ask node`,
     });
+  }
+
+  /**
+   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
+   * @see {RightsEscalator#_evaluateInactivity}
+   * @param instance The role instance to evaluate — must be at an ask node.
+   * @returns Escalation result with whether to escalate and a message.
+   */
+  async evaluate(instance: RoleInstance): Promise<EscalationResult> {
+    return this._evaluateInactivity(instance);
+  }
+
+  /**
+   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
+   * @see {RightsEscalator#_recordEscalation}
+   * @param instance The role instance to escalate.
+   * @returns Promise that resolves when escalation is recorded.
+   */
+  async schedule(instance: RoleInstance): Promise<void> {
+    return this._recordEscalation(instance);
   }
 }

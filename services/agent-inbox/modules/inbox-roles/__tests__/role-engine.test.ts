@@ -14,13 +14,13 @@ const minimalGraph: RoleGraph = {
     {
       kind: 'session',
       id: 'test_node',
-      prompt() {
-        return { system: 'Test', text: 'Test prompt' };
+      buildTaskText() {
+        return 'Test prompt';
       },
       dir(ctx: { workspace: string }) {
         return `${ctx.workspace}/test`;
       },
-      policy: { promptTimeout: 10000, continueMax: 1, restartMax: 1 },
+      policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
     },
   ],
   edges: [{ from: 'test_node', to: 'done', on: 'ok' }],

@@ -1,4 +1,6 @@
-// @file: Unit tests for inbox-roles RoleInstance — step(), gate, recovery ladder (continue/restart/AWAITING).
+// @file: Unit tests for inbox-roles RoleInstance — step() per node kind (prep/session/gate),
+//   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
+//   buildTaskText contract.
 // @consumers: node:test runner
 // @tasks: TSK-113
 
@@ -31,27 +33,50 @@ class FakeStateStore {
   }
 }
 
-function makeSimpleGraph(): RoleGraph {
+interface StateStore {
+  getStateDir(): string;
+  loadRegistry(): { version: number; entries: Record<string, unknown> };
+  appendAudit(entry: AuditEntry): Promise<void>;
+  queryAudit(mr: string): Promise<AuditEntry[]>;
+}
+
+// ─── Graph fixtures ─────────────────────────────────────────────────────────────
+
+function makePrepGraph(): RoleGraph {
   return {
     nodes: [
       {
-        kind: 'session',
-        id: 'node_test',
-        prompt() {
-          return { system: 'Test system', text: 'Test prompt' };
+        kind: 'prep',
+        id: 'node_prep',
+        async run(ctx) {
+          const flag = ctx.artifacts['flag'] as string | undefined;
+          return {
+            branch: flag === 'b' ? 'go_b' : 'go_a',
+            artifacts: { seenFlag: flag ?? null },
+          };
         },
-        dir(ctx) {
-          return `${ctx.workspace}/test-graph`;
+      },
+      {
+        kind: 'gate',
+        id: 'gate_a',
+        verify() {
+          return { pass: true };
         },
-        resultSchema: {
-          title: 'node_test',
-          type: 'object',
-          properties: { value: { type: 'string' } },
+      },
+      {
+        kind: 'gate',
+        id: 'gate_b',
+        verify() {
+          return { pass: true };
         },
-        policy: { promptTimeout: 10000, continueMax: 3, restartMax: 2 },
       },
     ],
-    edges: [{ from: 'node_test', to: 'done', on: 'ok' }],
+    edges: [
+      { from: 'node_prep', to: 'gate_a', on: 'go_a' },
+      { from: 'node_prep', to: 'gate_b', on: 'go_b' },
+      { from: 'gate_a', to: 'done', on: 'pass' },
+      { from: 'gate_b', to: 'done', on: 'pass' },
+    ],
   };
 }
 
@@ -61,8 +86,8 @@ function makeGraphWithGate(): RoleGraph {
       {
         kind: 'session',
         id: 'node_scaffold',
-        prompt() {
-          return { system: 'Scaffold', text: 'Do scaffold' };
+        buildTaskText(ctx) {
+          return `Do scaffold for ${ctx.mr.webUrl}`;
         },
         dir(ctx) {
           return `${ctx.workspace}/test-gate`;
@@ -72,7 +97,7 @@ function makeGraphWithGate(): RoleGraph {
           type: 'object',
           properties: { findings: { type: 'array' } },
         },
-        policy: { promptTimeout: 10000, continueMax: 2, restartMax: 2 },
+        policy: { promptTimeout: 10, continueMax: 2, restartMax: 2 },
       },
       {
         kind: 'gate',
@@ -101,8 +126,8 @@ function makeRecoveryGraph(): RoleGraph {
       {
         kind: 'session',
         id: 'node_flaky',
-        prompt() {
-          return { system: 'Flaky', text: 'May fail' };
+        buildTaskText() {
+          return 'May fail';
         },
         dir(ctx) {
           return `${ctx.workspace}/test-recovery`;
@@ -112,10 +137,46 @@ function makeRecoveryGraph(): RoleGraph {
           type: 'object',
           properties: { result: { type: 'string' } },
         },
-        policy: { promptTimeout: 10000, continueMax: 2, restartMax: 1 },
+        policy: { promptTimeout: 10, continueMax: 2, restartMax: 1 },
       },
     ],
     edges: [{ from: 'node_flaky', to: 'done', on: 'ok' }],
+  };
+}
+
+/** @purpose Two-node linear session graph — used to prove checkpoint restart does not re-run node_a. */
+function makeTwoNodeGraph(): RoleGraph {
+  return {
+    nodes: [
+      {
+        kind: 'session',
+        id: 'node_a',
+        buildTaskText() {
+          return 'node_a task';
+        },
+        dir(ctx) {
+          return `${ctx.workspace}/node-a`;
+        },
+        resultSchema: { title: 'node_a', type: 'object', properties: {} },
+        policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
+      },
+      {
+        kind: 'session',
+        id: 'node_b',
+        buildTaskText() {
+          return 'node_b task';
+        },
+        dir(ctx) {
+          return `${ctx.workspace}/node-b`;
+        },
+        resultSchema: { title: 'node_b', type: 'object', properties: {} },
+        policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
+      },
+    ],
+    edges: [
+      { from: 'node_a', to: 'node_b', on: 'ok' },
+      { from: 'node_b', to: 'done', on: 'ok' },
+    ],
   };
 }
 
@@ -134,11 +195,50 @@ beforeEach(() => {
   store = new FakeStateStore();
 });
 
-describe('RoleInstance — session → gate transition', () => {
-  it('GIVEN reviewer loaded WHEN step() on session THEN session executed → gate check → pass', async () => {
+describe('RoleInstance — prep node dispatch', () => {
+  it('GIVEN prep без seed WHEN step THEN branch по умолчанию (go_a)', async () => {
+    const instance = new RoleInstance({
+      id: 'test:prep:1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: makePrepGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    assert.strictEqual(instance.currentNode, 'node_prep');
+    await instance.step();
+    assert.strictEqual(instance.currentNode, 'gate_a');
+  });
+
+  it('GIVEN prep с ctx.artifacts.flag=b (seeded через checkpoint) WHEN step THEN branch go_b', async () => {
+    const instance = new RoleInstance({
+      id: 'test:prep:2',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/2',
+      graph: makePrepGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+      checkpoint: {
+        currentNode: 'node_prep',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { flag: 'b' },
+      },
+    });
+
+    await instance.step();
+    assert.strictEqual(instance.currentNode, 'gate_b');
+    assert.strictEqual(instance.getCheckpoint().artifacts['seenFlag'], 'b');
+  });
+});
+
+describe('RoleInstance — session (buildTaskText) → gate transition', () => {
+  it('GIVEN session успешен WHEN step THEN buildTaskText вызван → gate check → pass', async () => {
     const graph = makeGraphWithGate();
 
-    // Seed successful scaffold response
     opencode.seed('node_scaffold', {
       findings: [{ id: 1, severity: 'high' }],
       summary: 'Test scaffold',
@@ -157,22 +257,18 @@ describe('RoleInstance — session → gate transition', () => {
     assert.strictEqual(instance.state, 'idle');
     assert.strictEqual(instance.currentNode, 'node_scaffold');
 
-    // Step 1: session node
     await instance.step();
-    // Should have moved to gate_validate after scaffold OK
     assert.strictEqual(instance.currentNode, 'gate_validate');
     assert.strictEqual(instance.state, 'idle');
 
-    // Step 2: gate node — should pass and go to done
     await instance.step();
     assert.strictEqual(instance.currentNode, 'done');
     assert.strictEqual(instance.state, 'done');
   });
 
-  it('GIVEN gate fails WHEN step THEN node returns to previous session', async () => {
+  it('GIVEN gate fails WHEN step THEN node возвращается к предыдущей сессии', async () => {
     const graph = makeGraphWithGate();
 
-    // Seed a response that will fail the gate (empty findings)
     opencode.seed('node_scaffold', {
       findings: [], // empty → gate fail
       summary: 'Empty scaffold',
@@ -219,7 +315,7 @@ describe('RoleInstance — recovery ladder (continue)', () => {
 });
 
 describe('RoleInstance — recovery ladder (restart)', () => {
-  it('GIVEN continues exhausted WHEN recovery THEN restart, continueCount сброшен, restartCount++', async () => {
+  it('GIVEN continues исчерпаны WHEN recovery THEN restart, continueCount сброшен, restartCount++', async () => {
     const graph = makeRecoveryGraph();
     opencode.seedError('node_flaky', 'SESSION_ERROR'); // SESSION_ERROR triggers restart directly
 
@@ -234,7 +330,6 @@ describe('RoleInstance — recovery ladder (restart)', () => {
     });
 
     await instance.step();
-    // SESSION_ERROR → restart
     assert.strictEqual(instance.restartCount, 1);
     assert.strictEqual(instance.continueCount, 0);
     assert.strictEqual(instance.state, 'idle');
@@ -248,7 +343,7 @@ describe('RoleInstance — recovery ladder (AWAITING_OPERATOR)', () => {
       nodes: [
         {
           ...makeRecoveryGraph().nodes[0],
-          policy: { promptTimeout: 10000, continueMax: 0, restartMax: 2 },
+          policy: { promptTimeout: 10, continueMax: 0, restartMax: 2 },
         },
       ],
     };
@@ -279,9 +374,38 @@ describe('RoleInstance — recovery ladder (AWAITING_OPERATOR)', () => {
   });
 });
 
-// Minimal StateStore interface for tests
-interface StateStore {
-  loadRegistry(): { version: number; entries: Record<string, unknown> };
-  appendAudit(entry: AuditEntry): Promise<void>;
-  queryAudit(mr: string): Promise<AuditEntry[]>;
-}
+describe('RoleInstance — checkpoint restart recovery (SV-13: заполненные узлы не переисполняются)', () => {
+  it('GIVEN checkpoint с currentNode=node_b и заполненным node_a WHEN construct THEN node_a не переисполняется', async () => {
+    const graph = makeTwoNodeGraph();
+    // Intentionally NOT seeding 'node_a' — if the engine tried to re-execute it, the mock would
+    // return NO_RESULT and the instance would stay stuck on node_a (recovery ladder), never
+    // reaching node_b. Seeding only node_b proves resumption skips the already-filled node.
+    opencode.seed('node_b', { done: true });
+
+    const instance = new RoleInstance({
+      id: 'test:checkpoint:1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/6',
+      graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+      checkpoint: {
+        currentNode: 'node_b',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { node_a: { done: true } },
+      },
+    });
+
+    // Resumes directly at node_b — node_a is not re-entered.
+    assert.strictEqual(instance.currentNode, 'node_b');
+    assert.strictEqual(instance.getCheckpoint().artifacts['node_a'] !== undefined, true);
+
+    await instance.step();
+    assert.strictEqual(instance.currentNode, 'done');
+    assert.strictEqual(instance.state, 'done');
+    // node_a's checkpointed artifact survives untouched across the resumed run.
+    assert.deepStrictEqual(instance.getCheckpoint().artifacts['node_a'], { done: true });
+  });
+});

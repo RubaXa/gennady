@@ -13,6 +13,7 @@ import type {
   EdgeCondition,
   NodeContext,
   RoleArtifacts,
+  PrepNode,
   SessionNode,
   GateNode,
   AskNode,
@@ -46,6 +47,28 @@ export type RoleInstanceOpts = {
   store: StateStore;
   /** @purpose Optional operational rights */
   rights?: Record<string, unknown>;
+  /**
+   * @purpose Resume from a persisted checkpoint (SV-13) instead of an empty graph start — already-
+   *   filled tracks are not re-run after a serve restart.
+   */
+  checkpoint?: RoleInstanceCheckpoint;
+};
+
+/**
+ * @purpose Serializable progress snapshot `RoleScheduler` persists and replays across a serve
+ *   restart (SV-13). Produced by `RoleInstance.getCheckpoint()`.
+ * @invariant Round-trip: replaying a checkpoint reproduces the node/counters/artifacts it was
+ *   taken from. State/session id are runtime-only — a resumed instance re-enters at `idle`.
+ */
+export type RoleInstanceCheckpoint = {
+  /** @purpose Node id to resume execution at */
+  currentNode: string;
+  /** @purpose Continue-attempt counter at checkpoint time */
+  continueCount: number;
+  /** @purpose Restart-attempt counter at checkpoint time */
+  restartCount: number;
+  /** @purpose Artifacts already produced by completed nodes — done tracks are not re-run */
+  artifacts: RoleArtifacts;
 };
 
 /**
@@ -109,10 +132,10 @@ export class RoleInstance {
     this._store = opts.store;
     this._rights = opts.rights ?? {};
     this.state = 'idle';
-    this.currentNode = opts.graph.nodes[0]?.id ?? '';
-    this.continueCount = 0;
-    this.restartCount = 0;
-    this._artifacts = {};
+    this.currentNode = opts.checkpoint?.currentNode ?? opts.graph.nodes[0]?.id ?? '';
+    this.continueCount = opts.checkpoint?.continueCount ?? 0;
+    this.restartCount = opts.checkpoint?.restartCount ?? 0;
+    this._artifacts = opts.checkpoint ? { ...opts.checkpoint.artifacts } : {};
     this._mrContext = null;
     this._sessionId = null;
     this.createdAt = new Date().toISOString();
@@ -186,6 +209,9 @@ export class RoleInstance {
 
     try {
       switch (node.kind) {
+        case 'prep':
+          await this._executePrep(node, ctx);
+          break;
         case 'session':
           await this._executeSession(node, ctx);
           break;
@@ -239,6 +265,20 @@ export class RoleInstance {
       createdAt: this.createdAt,
       findings: this._extractFindings(),
       verdict: this._extractVerdict(),
+    };
+  }
+
+  /**
+   * @purpose Snapshot this instance's progress for persistence across a serve restart (SV-13).
+   * @returns Checkpoint suitable for `RoleInstanceOpts.checkpoint` on the next construction.
+   * @consumer RoleScheduler (persists to the registry; not wired in this phase — see Handoff)
+   */
+  getCheckpoint(): RoleInstanceCheckpoint {
+    return {
+      currentNode: this.currentNode,
+      continueCount: this.continueCount,
+      restartCount: this.restartCount,
+      artifacts: { ...this._artifacts },
     };
   }
 
@@ -326,6 +366,43 @@ export class RoleInstance {
   // ─── Private: Node execution ─────────────────────────────────────────────────
 
   /**
+   * @purpose Execute a deterministic prep node — no LLM, no VCS mutation. Merges its artifacts
+   * and follows the edge matching the branch it selected.
+   * @invariant Prep is deterministic (no LLM) — failures here are programming errors, not
+   *   recoverable outcomes; there is no recovery ladder for prep (unlike session nodes).
+   * @param node Current prep node being executed.
+   * @param ctx Node context with MR data and artifacts.
+   * @returns Promise that resolves when the branch transition completes.
+   */
+  protected async _executePrep(node: PrepNode, ctx: NodeContext): Promise<void> {
+    this.state = 'running';
+
+    const result = await node.run(ctx);
+    if (result.artifacts) {
+      Object.assign(this._artifacts, result.artifacts);
+    }
+
+    logger.debug('[RoleInstance#_executePrep] [executing → branched]', {
+      instance: this.id,
+      node: node.id,
+      branch: result.branch,
+    });
+
+    const edge = this._resolveEdge(node.id, result.branch);
+    if (edge) {
+      this.currentNode = edge.to;
+      this.state = edge.to === 'done' ? 'done' : 'idle';
+    } else {
+      logger.error('[RoleInstance#_executePrep] [branched → no_edge]', {
+        instance: this.id,
+        node: node.id,
+        branch: result.branch,
+      });
+      this.state = 'error';
+    }
+  }
+
+  /**
    * @purpose Execute a session (LLM) node and classify the outcome.
    * @param node Current session node being executed.
    * @param ctx Node context with MR data and artifacts.
@@ -335,8 +412,9 @@ export class RoleInstance {
   protected async _executeSession(node: SessionNode, ctx: NodeContext): Promise<void> {
     this.state = 'running';
 
-    // #region START_SESSION_CALL
-    const promptContent = node.prompt(ctx);
+    // #region START_SESSION_CALL — invariant: system instruction always comes from services/ai-kit
+    // (buildNodePrompt); the node only contributes the concrete task text (buildTaskText)
+    const taskText = node.buildTaskText(ctx);
     const directory = node.dir(ctx);
 
     if (!this._sessionId) {
@@ -347,26 +425,22 @@ export class RoleInstance {
       this._sessionId = handle.sid;
     }
 
-    // Build system prompt from AIKit directives.
-    // Fallback: if node is not mapped, use promptContent.system directly.
+    // Unmapped node id (no directives registered in ai-kit's NODE_DIRECTIVE_MAP) degrades to an
+    // empty system instruction rather than failing the session — the task text still carries intent.
     let system: string;
     try {
-      const systemPrompt = await buildNodePrompt(node.id, ctx);
-      system = systemPrompt;
-      if (promptContent.system) {
-        system = `${systemPrompt}\n\n${promptContent.system}`;
-      }
+      system = await buildNodePrompt(node.id, ctx);
     } catch {
       logger.debug('[RoleInstance#_executeSession] [buildNodePrompt → unmapped node]', {
         instance: this.id,
         node: node.id,
       });
-      system = promptContent.system;
+      system = '';
     }
 
     const promptOpts: PromptOpts = {
       system,
-      text: promptContent.text,
+      text: taskText,
     };
 
     if (node.resultSchema) {

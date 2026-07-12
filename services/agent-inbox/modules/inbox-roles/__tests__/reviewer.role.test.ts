@@ -1,4 +1,6 @@
-// @file: Unit tests for inbox-roles ReviewerRole — scaffold → gate → enrich → sessions → synthesize → ask → effect.
+// @file: Unit tests for inbox-roles ReviewerRole — three branches from node_prepare:
+//   review_needed (fan-out + security lens + code-review → synthesize), reply_needed
+//   (thread-triage, no full battery), update-review (delta-only).
 // @consumers: node:test runner
 // @tasks: TSK-113
 
@@ -57,13 +59,13 @@ beforeEach(() => {
 });
 
 describe('ReviewerRole — graph structure', () => {
-  it('reviewer.role.ts имеет 9 узлов', () => {
-    assert.strictEqual(ReviewerRole.graph.nodes.length, 9);
+  it('reviewer.role.ts имеет 15 узлов (prepare + 3 ветки + shared synthesize/ask/effect)', () => {
+    assert.strictEqual(ReviewerRole.graph.nodes.length, 15);
   });
 
   it('reviewer.role.ts имеет правильное имя и описание', () => {
     assert.strictEqual(ReviewerRole.name, 'reviewer');
-    assert.ok(ReviewerRole.description.includes('reviewer'));
+    assert.ok(ReviewerRole.description.includes('review_needed'));
   });
 
   it('reviewer.role.ts загружается через RoleEngine', () => {
@@ -78,21 +80,28 @@ describe('ReviewerRole — graph structure', () => {
     engine.register(ReviewerRole);
     const def = engine.retrieve('reviewer');
     assert.ok(def);
-    assert.strictEqual(def.graph.nodes.length, 9);
+    assert.strictEqual(def.graph.nodes.length, 15);
     assert.ok(def.graph.edges.length > 0);
   });
 });
 
-describe('ReviewerRole — scaffold → gate → enrich (первые 3 узла)', () => {
-  it('GIVEN reviewer loaded WHEN step() scaffold THEN session → ok → gate_scaffolded', async () => {
+describe('ReviewerRole — branch: review_needed (fan-out + security lens + code-review)', () => {
+  it('GIVEN stage не задан (default) WHEN prep THEN полная батарея → synthesize → ask', async () => {
     engine.register(ReviewerRole);
-    opencode.seed('node_scaffold', {
-      findings: [{ id: 1, severity: 'high' }],
-      summary: 'Found issues',
+
+    opencode.seed('node_track_review', {
+      findings: [{ id: 1 }],
+      tracksCovered: ['logic'],
+    });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [{ id: 2 }] });
+    opencode.seed('node_synthesize', {
+      reviewReport: { total: 3 },
+      recommendations: ['fix X'],
     });
 
     const instance = new RoleInstance({
-      id: 'reviewer:test:1',
+      id: 'reviewer:test:review_needed',
       role: 'reviewer',
       mr: 'https://gitlab.example.com/project/-/merge_requests/1',
       graph: ReviewerRole.graph,
@@ -101,80 +110,122 @@ describe('ReviewerRole — scaffold → gate → enrich (первые 3 узла
       store: store as unknown as StateStore,
     });
 
-    assert.strictEqual(instance.currentNode, 'node_scaffold');
+    assert.strictEqual(instance.currentNode, 'node_prepare');
 
-    // scaffold → gate_scaffolded
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_scaffolded');
+    await instance.step(); // node_prepare → review_needed (default branch)
+    assert.strictEqual(instance.currentNode, 'node_track_review');
 
-    // gate_scaffolded → node_enrich (pass)
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_enrich');
+    await instance.step(); // node_track_review → ok
+    assert.strictEqual(instance.currentNode, 'node_security_lens');
+
+    await instance.step(); // node_security_lens → ok
+    assert.strictEqual(instance.currentNode, 'node_code_review');
+
+    await instance.step(); // node_code_review → ok
+    assert.strictEqual(instance.currentNode, 'gate_review_filled');
+
+    await instance.step(); // gate_review_filled → pass (all 3 filled)
+    assert.strictEqual(instance.currentNode, 'node_synthesize');
+
+    await instance.step(); // node_synthesize → ok
+    assert.strictEqual(instance.currentNode, 'gate_review_synthesis');
+
+    await instance.step(); // gate_review_synthesis → pass
+    assert.strictEqual(instance.currentNode, 'node_ask');
+
+    await instance.step(); // node_ask → awaiting_operator
+    assert.strictEqual(instance.state, 'awaiting_operator');
   });
 });
 
-describe('ReviewerRole — sessions fan-out → synthesize → ask → effect', () => {
-  it('GIVEN все session-узлы успешны WHEN полный проход THEN ask достигнут', async () => {
+describe('ReviewerRole — branch: reply_needed (thread-triage, без полной батареи)', () => {
+  it('GIVEN ctx.artifacts.stage=reply_needed WHEN prep THEN thread-triage → ask (track/security/code-review НЕ запускаются)', async () => {
     engine.register(ReviewerRole);
 
-    // Seed all session nodes
-    opencode.seed('node_scaffold', {
-      findings: [{ id: 1 }],
-      summary: 'Scaffold done',
+    opencode.seed('node_thread_triage', {
+      threads: [{ id: 't1', owner: 'me' }],
+      proposedActions: [{ type: 'reply' }],
     });
-    opencode.seed('node_enrich', {
-      enrichedFindings: [{ id: 1, detail: 'enriched' }],
-      coverage: 'full',
-    });
-    opencode.seed('node_sessions', {
-      sessions: [{ track: 'A' }],
-      trackedCount: 1,
-    });
-    opencode.seed('node_synthesize', {
-      reviewReport: { total: 5 },
-      recommendations: ['fix X', 'improve Y'],
-    });
+    // Intentionally NOT seeded: node_track_review, node_security_lens, node_code_review,
+    // node_synthesize — if the reply_needed branch mistakenly triggered the full battery,
+    // the unseeded nodes would return NO_RESULT and the instance would never reach node_ask.
 
     const instance = new RoleInstance({
-      id: 'reviewer:test:2',
+      id: 'reviewer:test:reply_needed',
       role: 'reviewer',
       mr: 'https://gitlab.example.com/project/-/merge_requests/2',
       graph: ReviewerRole.graph,
       opencode,
       vcs,
       store: store as unknown as StateStore,
+      checkpoint: {
+        currentNode: 'node_prepare',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { stage: 'reply_needed' },
+      },
     });
 
-    // scaffold → gate_scaffolded
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_scaffolded');
+    await instance.step(); // node_prepare → reply_needed
+    assert.strictEqual(instance.currentNode, 'node_thread_triage');
 
-    // gate_scaffolded → node_enrich
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_enrich');
+    await instance.step(); // node_thread_triage → ok
+    assert.strictEqual(instance.currentNode, 'gate_triage');
 
-    // enrich → gate_enriched
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_enriched');
-
-    // gate_enriched → node_sessions
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_sessions');
-
-    // sessions → gate_sessions
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_sessions');
-
-    // gate_sessions → node_synthesize
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_synthesize');
-
-    // synthesize → node_ask
-    await instance.step();
+    await instance.step(); // gate_triage → pass
     assert.strictEqual(instance.currentNode, 'node_ask');
 
-    // ask stops at awaiting_operator
-    await instance.step();
+    await instance.step(); // node_ask → awaiting_operator
+    assert.strictEqual(instance.state, 'awaiting_operator');
+  });
+});
+
+describe('ReviewerRole — branch: update-review (delta-only)', () => {
+  it('GIVEN headChanged=fast_forward + lastReviewedHeadSha WHEN prep THEN delta-review → synthesize_delta → ask', async () => {
+    engine.register(ReviewerRole);
+
+    opencode.seed('node_delta_review', {
+      findings: [{ id: 1 }],
+      closedComments: ['c1'],
+    });
+    opencode.seed('node_synthesize_delta', {
+      reviewReport: { total: 1 },
+    });
+    // Intentionally NOT seeded: node_track_review/node_security_lens/node_code_review/
+    // node_thread_triage — update-review is delta-only, not a full re-review.
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:update-review',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/3',
+      graph: ReviewerRole.graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+      checkpoint: {
+        currentNode: 'node_prepare',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { headChanged: 'fast_forward', lastReviewedHeadSha: 'abc123' },
+      },
+    });
+
+    await instance.step(); // node_prepare → update-review
+    assert.strictEqual(instance.currentNode, 'node_delta_review');
+
+    await instance.step(); // node_delta_review → ok
+    assert.strictEqual(instance.currentNode, 'gate_delta');
+
+    await instance.step(); // gate_delta → pass
+    assert.strictEqual(instance.currentNode, 'node_synthesize_delta');
+
+    await instance.step(); // node_synthesize_delta → ok
+    assert.strictEqual(instance.currentNode, 'gate_delta_synthesis');
+
+    await instance.step(); // gate_delta_synthesis → pass
+    assert.strictEqual(instance.currentNode, 'node_ask');
+
+    await instance.step(); // node_ask → awaiting_operator
     assert.strictEqual(instance.state, 'awaiting_operator');
   });
 });

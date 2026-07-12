@@ -53,8 +53,8 @@ const reviewerGraph = {
       {
         kind: 'session' as const,
         id: 'node_scaffold',
-        prompt() {
-          return { system: 'Test', text: 'Test prompt' };
+        buildTaskText() {
+          return 'Test prompt';
         },
         dir(ctx: { workspace: string }) {
           return `${ctx.workspace}/scheduler-test`;
@@ -64,7 +64,7 @@ const reviewerGraph = {
           type: 'object',
           properties: { value: { type: 'string' } },
         },
-        policy: { promptTimeout: 10000, continueMax: 1, restartMax: 1 },
+        policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
       },
     ],
     edges: [{ from: 'node_scaffold', to: 'done', on: 'ok' as const }],
@@ -161,13 +161,13 @@ describe('RoleScheduler — tick', () => {
           {
             kind: 'session',
             id: 'node_fetch',
-            prompt() {
-              return { system: 'A', text: 'A' };
+            buildTaskText() {
+              return 'A';
             },
             dir(ctx: { workspace: string }) {
               return `${ctx.workspace}/a`;
             },
-            policy: { promptTimeout: 10000, continueMax: 1, restartMax: 1 },
+            policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
           },
         ],
         edges: [{ from: 'node_fetch', to: 'done', on: 'ok' }],

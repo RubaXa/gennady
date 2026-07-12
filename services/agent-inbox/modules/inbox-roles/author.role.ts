@@ -1,126 +1,184 @@
-// @file: AuthorRole — role graph v1: fetch → gate → summary → ask → effect(react/reply) → done.
+// @file: AuthorRole — self-review + reviewer-feedback analysis → REPORT.md (summary) +
+//   FIX_TASK.md (copyable task) + reply drafts. Never approves own MR, never writes threads (D68).
 // @consumers: RoleEngine, role-engine.test.ts, author.role.test.ts
 // @tasks: TSK-113
 
-import type { RoleDefinition, RoleGraph, NodeContext, GateResult } from './role-node.ts';
+import type {
+  RoleDefinition,
+  RoleGraph,
+  NodeContext,
+  GateResult,
+  PrepResult,
+} from './role-node.ts';
 
 /**
- * @purpose Author role graph: fetch discussions → classify → summarize with tasks
- * → operator confirmation → react/reply. Topology: fetch→classify→summary→ask→react→done
+ * @purpose Prepare workspace/context for the (single-path) author graph — no stage branching yet.
+ * @invariant `prep` kind kept for topology parity with reviewer and future stage-aware variants.
+ * @param ctx MR context and accumulated artifacts.
+ * @returns Single 'ok' branch — always proceeds to self-review.
+ * @sideEffect None — deterministic, no I/O.
+ */
+async function preparePrepNode(_ctx: NodeContext): Promise<PrepResult> {
+  return { branch: 'ok' };
+}
+
+/**
+ * @purpose Author graph: prepare → self-review → analyze feedback → synthesize → ask → effect.
  */
 const authorGraph: RoleGraph = {
   nodes: [
     {
+      kind: 'prep',
+      id: 'node_prepare',
+      run: preparePrepNode,
+    },
+    {
       kind: 'session',
-      id: 'node_fetch',
-      prompt(ctx: NodeContext) {
-        return {
-          system:
-            'You are an MR author assistant. Fetch and analyze discussions on this merge request.',
-          text: `Fetch discussions for MR: ${ctx.mr.webUrl}. Title: ${ctx.mr.title}. Author: ${ctx.mr.author}.`,
-        };
+      id: 'node_self_review',
+      buildTaskText(ctx: NodeContext) {
+        return `Self-review your own MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Run the full battery over your own diff — same rigor as an external reviewer. Write findings with file:line addresses.`;
       },
       dir(ctx: NodeContext) {
-        return `${ctx.workspace}/author-fetch`;
+        return `${ctx.workspace}/worktree`;
       },
       resultSchema: {
-        title: 'node_fetch',
+        title: 'node_self_review',
         type: 'object',
         properties: {
-          discussions: { type: 'array' },
-          totalCount: { type: 'number' },
+          findings: { type: 'array' },
         },
       },
       policy: {
-        promptTimeout: 30000,
+        promptTimeout: 10,
+        continueMax: 3,
+        restartMax: 2,
+      },
+    },
+    {
+      kind: 'session',
+      id: 'node_analyze_feedback',
+      buildTaskText(ctx: NodeContext) {
+        const discussions = (ctx.artifacts['discussions'] as unknown[] | undefined) ?? [];
+        return `Analyze reviewer feedback on MR ${ctx.mr.webUrl} (main input — vcs-discussions --all, ${discussions.length} threads pre-fetched). For each comment, classify: 🔧 needs a code fix / 💬 needs a reply / 👍 agree. Do not post anything yet.`;
+      },
+      dir(ctx: NodeContext) {
+        return `${ctx.workspace}/worktree`;
+      },
+      resultSchema: {
+        title: 'node_analyze_feedback',
+        type: 'object',
+        properties: {
+          classifiedComments: { type: 'array' },
+        },
+      },
+      policy: {
+        promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
       },
     },
     {
       kind: 'gate',
-      id: 'gate_classify',
+      id: 'gate_analysis',
       verify(ctx: NodeContext): GateResult {
-        const fetched = ctx.artifacts['node_fetch'] as Record<string, unknown> | undefined;
-        if (!fetched) {
-          return { pass: false, reason: 'No fetch output found in artifacts' };
-        }
-        const totalCount = fetched.totalCount as number | undefined;
-        if (typeof totalCount !== 'number' || totalCount < 0) {
-          return { pass: false, reason: 'Discussion count is invalid' };
+        const selfReview = ctx.artifacts['node_self_review'] as Record<string, unknown> | undefined;
+        const feedback = ctx.artifacts['node_analyze_feedback'] as
+          | Record<string, unknown>
+          | undefined;
+        if (!selfReview || !feedback || !Array.isArray(feedback.classifiedComments)) {
+          return { pass: false, reason: 'Self-review/анализ замечаний не заполнены' };
         }
         return { pass: true };
       },
     },
     {
       kind: 'session',
-      id: 'node_summary',
-      prompt(ctx: NodeContext) {
-        const fetched = (ctx.artifacts['node_fetch'] as Record<string, unknown>) ?? {};
-        return {
-          system:
-            'You are an MR author assistant. Summarize reviewer comments and generate action tasks.',
-          text: `Summarize discussions: ${JSON.stringify(fetched)}`,
-        };
+      id: 'node_synthesize',
+      buildTaskText(ctx: NodeContext) {
+        const selfReview = (ctx.artifacts['node_self_review'] as Record<string, unknown>) ?? {};
+        const feedback = (ctx.artifacts['node_analyze_feedback'] as Record<string, unknown>) ?? {};
+        return `Produce REPORT.md (Сводка), FIX_TASK.md (copyable developer task: file:line / what's wrong / why / fix / who said it) and reply drafts for MR ${ctx.mr.webUrl} from: ${JSON.stringify(
+          { selfReview, feedback }
+        )}. FIX_TASK.md is flat and copyable — no findings are posted to threads on this MR (D68).`;
       },
       dir(ctx: NodeContext) {
-        return `${ctx.workspace}/author-summary`;
+        return `${ctx.workspace}/worktree`;
       },
       resultSchema: {
-        title: 'node_summary',
+        title: 'node_synthesize',
         type: 'object',
         properties: {
-          summary: { type: 'string' },
-          tasks: { type: 'array' },
+          reportSummary: { type: 'string' },
+          fixTasks: { type: 'array' },
           drafts: { type: 'array' },
         },
       },
       policy: {
-        promptTimeout: 45000,
+        promptTimeout: 10,
         continueMax: 2,
         restartMax: 2,
+      },
+    },
+    {
+      kind: 'gate',
+      id: 'gate_synthesis',
+      verify(ctx: NodeContext): GateResult {
+        const synth = ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined;
+        if (!synth || !synth.reportSummary) {
+          return { pass: false, reason: 'REPORT.md/FIX_TASK.md synthesis не заполнен' };
+        }
+        return { pass: true };
       },
     },
     {
       kind: 'ask',
       id: 'node_ask',
       question(ctx: NodeContext) {
-        const summary = (ctx.artifacts['node_summary'] as Record<string, unknown>) ?? {};
-        const summaryText = (summary.summary as string) ?? 'No summary generated';
+        const synth = (ctx.artifacts['node_synthesize'] as Record<string, unknown>) ?? {};
+        const summary = (synth.reportSummary as string) ?? 'No summary generated';
         return {
-          title: 'Post Reaction?',
-          body: `Summary for MR ${ctx.mr.webUrl}: ${summaryText}`,
-          choices: ['react', 'reply', 'skip'],
+          title: 'Publish Drafts / Update Description?',
+          body: `Summary for MR ${ctx.mr.webUrl}: ${summary}. Own MR is never approved here.`,
+          choices: ['publish_drafts', 'react', 'update_description', 'copy_fix_task', 'skip'],
         };
       },
     },
     {
       kind: 'effect',
-      id: 'node_react',
+      id: 'node_effect',
       async run(ctx: NodeContext) {
-        // In production, this would call vcs.react() or vcs.reply()
-        // For now, this is a sentinel effect to be implemented by VCS adapter
+        // effect = vcs-react (👍 on agreement) + vcs-reply (replies) + optional
+        // vcs-mr-edit --description. NEVER vcs-approve on own MR, NEVER new thread writes (D68).
+        // Same NodeContext limitation as reviewer.role.ts's effect node: no VcsInboxPort/StateStore
+        // reference here to build an EffectExecutor — see reviewer.role.ts node_effect comment and
+        // this phase's Handoff open item.
         void ctx;
       },
     },
   ],
   edges: [
-    { from: 'node_fetch', to: 'gate_classify', on: 'ok' },
-    { from: 'gate_classify', to: 'node_summary', on: 'pass' },
-    { from: 'gate_classify', to: 'node_fetch', on: 'fail' },
-    { from: 'node_summary', to: 'node_ask', on: 'ok' },
-    { from: 'node_ask', to: 'node_react', on: 'ok' },
-    { from: 'node_react', to: 'done', on: 'ok' },
+    { from: 'node_prepare', to: 'node_self_review', on: 'ok' },
+    { from: 'node_self_review', to: 'node_analyze_feedback', on: 'ok' },
+    { from: 'node_analyze_feedback', to: 'gate_analysis', on: 'ok' },
+    { from: 'gate_analysis', to: 'node_synthesize', on: 'pass' },
+    { from: 'gate_analysis', to: 'node_analyze_feedback', on: 'fail' },
+    { from: 'node_synthesize', to: 'gate_synthesis', on: 'ok' },
+    { from: 'gate_synthesis', to: 'node_ask', on: 'pass' },
+    { from: 'gate_synthesis', to: 'node_synthesize', on: 'fail' },
+    { from: 'node_ask', to: 'node_effect', on: 'ok' },
+    { from: 'node_effect', to: 'done', on: 'ok' },
   ],
 };
 
 /**
- * @purpose Author role definition — loaded by RoleEngine.
+ * @purpose Author role definition — loaded by RoleEngine. Own MR: self-review + feedback analysis
+ *   → REPORT.md + FIX_TASK.md + drafts → ask → effect.
+ * @invariant Never approves own MR; never writes to threads (D68).
  * @consumer RoleEngine.loadAll()
  */
 export const AuthorRole: RoleDefinition = {
   name: 'author',
   description:
-    'MR author: fetch discussions → classify → summary + tasks + drafts → ask → react/reply',
+    'MR author: prepare → self-review → analyze feedback → synthesize (REPORT.md + FIX_TASK.md + drafts) → ask → react/reply',
   graph: authorGraph,
 };

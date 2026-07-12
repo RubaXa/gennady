@@ -1,4 +1,6 @@
-// @file: Unit tests for inbox-roles AuthorRole — fetch → gate → summary → ask → effect.
+// @file: Unit tests for inbox-roles AuthorRole — prep → self-review → analyze-feedback →
+//   synthesize (REPORT.md/FIX_TASK.md/drafts) → ask → effect. Never approves own MR, never
+//   proposes a fresh thread write (D68).
 // @consumers: node:test runner
 // @tasks: TSK-113
 
@@ -10,6 +12,7 @@ import { RoleInstance } from '../role-instance.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
+import type { AskNode } from '../role-node.ts';
 
 class FakeStateStore {
   public audits: AuditEntry[] = [];
@@ -57,8 +60,8 @@ beforeEach(() => {
 });
 
 describe('AuthorRole — graph structure', () => {
-  it('author.role.ts имеет 5 узлов', () => {
-    assert.strictEqual(AuthorRole.graph.nodes.length, 5);
+  it('author.role.ts имеет 8 узлов (prep + self_review + analyze_feedback + gate + synthesize + gate + ask + effect)', () => {
+    assert.strictEqual(AuthorRole.graph.nodes.length, 8);
   });
 
   it('author.role.ts имеет правильное имя и описание', () => {
@@ -78,18 +81,41 @@ describe('AuthorRole — graph structure', () => {
     engine.register(AuthorRole);
     const def = engine.retrieve('author');
     assert.ok(def);
-    assert.strictEqual(def.graph.nodes.length, 5);
+    assert.strictEqual(def.graph.nodes.length, 8);
     assert.ok(def.graph.edges.length > 0);
+  });
+
+  it('node_ask.choices НЕ содержит "approve" — автор никогда не апрувит свой MR (D68)', () => {
+    const askNode = AuthorRole.graph.nodes.find((n) => n.id === 'node_ask' && n.kind === 'ask') as
+      | AskNode
+      | undefined;
+    assert.ok(askNode);
+    const question = askNode.question({
+      mr: {
+        project: 'g/p',
+        iid: '1',
+        webUrl: 'https://gitlab.example.com/g/p/-/merge_requests/1',
+        title: 't',
+        sourceBranch: 's',
+        targetBranch: 'm',
+        createdAt: '',
+        updatedAt: '',
+        author: 'me',
+        reviewers: [],
+        approvedBy: [],
+        description: '',
+        myRole: 'author',
+      },
+      workspace: '/tmp/x',
+      artifacts: {},
+    });
+    assert.ok(!question.choices.includes('approve'));
   });
 });
 
-describe('AuthorRole — fetch → classify → summary → ask → effect', () => {
-  it('GIVEN author loaded WHEN step() fetch THEN session → ok → gate_classify', async () => {
+describe('AuthorRole — prep → self_review → analyze_feedback → synthesize → ask → effect', () => {
+  it('GIVEN prep WHEN step THEN branch ok → node_self_review', async () => {
     engine.register(AuthorRole);
-    opencode.seed('node_fetch', {
-      discussions: [{ id: '1', body: 'Please fix line 42' }],
-      totalCount: 1,
-    });
 
     const instance = new RoleInstance({
       id: 'author:test:1',
@@ -101,27 +127,25 @@ describe('AuthorRole — fetch → classify → summary → ask → effect', () 
       store: store as unknown as StateStore,
     });
 
-    assert.strictEqual(instance.currentNode, 'node_fetch');
+    assert.strictEqual(instance.currentNode, 'node_prepare');
 
-    // fetch → gate_classify
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_classify');
-
-    // gate_classify → node_summary (pass)
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_summary');
+    await instance.step(); // prep → ok
+    assert.strictEqual(instance.currentNode, 'node_self_review');
   });
 
-  it('GIVEN все session-узлы успешны WHEN полный проход THEN ask достигнут', async () => {
+  it('GIVEN self-review + feedback заполнены WHEN полный проход THEN REPORT.md/FIX_TASK.md synthesis → ask достигнут', async () => {
     engine.register(AuthorRole);
-    opencode.seed('node_fetch', {
-      discussions: [{ id: '1', body: 'Fix this' }],
-      totalCount: 1,
+
+    opencode.seed('node_self_review', {
+      findings: [{ id: 1, file: 'a.ts', line: 10, message: 'issue' }],
     });
-    opencode.seed('node_summary', {
-      summary: 'One issue: fix line 42',
-      tasks: [{ action: 'fix_line_42' }],
-      drafts: ['Draft comment: Will fix'],
+    opencode.seed('node_analyze_feedback', {
+      classifiedComments: [{ id: 'c1', kind: 'needs_fix' }],
+    });
+    opencode.seed('node_synthesize', {
+      reportSummary: 'Сводка: 1 замечание требует исправления.',
+      fixTasks: [{ file: 'a.ts', line: 10, what: 'issue', fix: 'fix it' }],
+      drafts: ['Draft reply: will fix'],
     });
 
     const instance = new RoleInstance({
@@ -134,21 +158,54 @@ describe('AuthorRole — fetch → classify → summary → ask → effect', () 
       store: store as unknown as StateStore,
     });
 
-    // fetch → gate_classify
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'gate_classify');
+    await instance.step(); // prep → node_self_review
+    assert.strictEqual(instance.currentNode, 'node_self_review');
 
-    // gate_classify → node_summary
-    await instance.step();
-    assert.strictEqual(instance.currentNode, 'node_summary');
+    await instance.step(); // self_review → ok
+    assert.strictEqual(instance.currentNode, 'node_analyze_feedback');
 
-    // summary → node_ask
-    await instance.step();
+    await instance.step(); // analyze_feedback → ok
+    assert.strictEqual(instance.currentNode, 'gate_analysis');
+
+    await instance.step(); // gate_analysis → pass
+    assert.strictEqual(instance.currentNode, 'node_synthesize');
+
+    await instance.step(); // synthesize → ok
+    assert.strictEqual(instance.currentNode, 'gate_synthesis');
+
+    await instance.step(); // gate_synthesis → pass
     assert.strictEqual(instance.currentNode, 'node_ask');
 
-    // ask → node_react (but ask stops at awaiting_operator)
-    await instance.step();
+    await instance.step(); // ask stops at awaiting_operator
     assert.strictEqual(instance.currentNode, 'node_ask');
     assert.strictEqual(instance.state, 'awaiting_operator');
+
+    const view = instance.getBoardView() as Record<string, unknown>;
+    assert.ok(view);
+  });
+
+  it('GIVEN gate_analysis не заполнен (feedback пуст) WHEN step THEN gate fail → назад к analyze_feedback', async () => {
+    engine.register(AuthorRole);
+
+    opencode.seed('node_self_review', { findings: [] });
+    opencode.seed('node_analyze_feedback', { classifiedComments: [] }); // empty array → still passes Array.isArray check
+
+    const instance = new RoleInstance({
+      id: 'author:test:3',
+      role: 'author',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/3',
+      graph: AuthorRole.graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // prep → self_review
+    await instance.step(); // self_review → analyze_feedback
+    await instance.step(); // analyze_feedback → gate_analysis
+    assert.strictEqual(instance.currentNode, 'gate_analysis');
+
+    await instance.step(); // gate_analysis → pass (classifiedComments is an array, even if empty)
+    assert.strictEqual(instance.currentNode, 'node_synthesize');
   });
 });

@@ -228,6 +228,110 @@ describe('RightsEscalator — schedule', () => {
   });
 });
 
+describe('RightsEscalator — notifyReady', () => {
+  it('GIVEN инстанс НЕ awaiting_operator WHEN notifyReady THEN ничего не пишется в audit', async () => {
+    const escalator = new RightsEscalator({ store: store as unknown as StateStoreLike });
+
+    const instance = new RoleInstanceClass({
+      id: 'test:notify1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/mr/10',
+      graph: makeAskGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStoreLike,
+    });
+
+    await escalator.notifyReady(instance);
+    const audits = await store.queryAudit('https://gitlab.example.com/mr/10');
+    assert.strictEqual(audits.length, 0);
+  });
+
+  it('GIVEN оператор не реагирует (AWAITING_OPERATOR) WHEN notifyReady THEN notified_ready записан сразу, без threshold/cooldown', async () => {
+    const escalator = new RightsEscalator({ store: store as unknown as StateStoreLike });
+
+    const instance = new RoleInstanceClass({
+      id: 'test:notify2',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/mr/11',
+      graph: makeAskGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStoreLike,
+    });
+    instance.state = 'awaiting_operator';
+
+    await escalator.notifyReady(instance);
+
+    const audits = await store.queryAudit('https://gitlab.example.com/mr/11');
+    const notified = audits.filter((e) => e.event === 'notified_ready');
+    assert.strictEqual(notified.length, 1);
+  });
+
+  it('GIVEN уже notifyReady в этот период WHEN notifyReady снова THEN дедуп — новой записи нет', async () => {
+    const escalator = new RightsEscalator({ store: store as unknown as StateStoreLike });
+
+    const instance = new RoleInstanceClass({
+      id: 'test:notify3',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/mr/12',
+      graph: makeAskGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStoreLike,
+    });
+    instance.state = 'awaiting_operator';
+
+    await escalator.notifyReady(instance);
+    await escalator.notifyReady(instance);
+
+    const audits = await store.queryAudit('https://gitlab.example.com/mr/12');
+    const notified = audits.filter((e) => e.event === 'notified_ready');
+    assert.strictEqual(notified.length, 1);
+  });
+
+  it('GIVEN оператор бездействует WHEN notifyReady + remindIdle THEN права инстанса не растут (rights никогда не устанавливаются эскалатором)', async () => {
+    const escalator = new RightsEscalator({
+      store: store as unknown as StateStoreLike,
+      threshold: 50,
+      cooldown: 50,
+    });
+
+    await store.appendAudit({
+      ts: new Date(Date.now() - 3600 * 1000).toISOString(),
+      mr: 'https://gitlab.example.com/mr/13',
+      role: 'reviewer',
+      event: 'classified',
+      detail: 'Old classification',
+    });
+
+    const instance = new RoleInstanceClass({
+      id: 'test:notify4',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/mr/13',
+      graph: makeAskGraph(),
+      opencode,
+      vcs,
+      store: store as unknown as StateStoreLike,
+    });
+    instance.state = 'awaiting_operator';
+
+    await escalator.notifyReady(instance);
+    await escalator.remindIdle(instance);
+
+    // RightsEscalator (v1, D74) only ever notifies — it has no method that grants or widens
+    // operational rights. The only audit events it can append are 'notified_ready'/'escalated'.
+    const audits = await store.queryAudit('https://gitlab.example.com/mr/13');
+    const eventNames = new Set(audits.map((e) => e.event));
+    for (const name of eventNames) {
+      assert.ok(
+        name === 'notified_ready' || name === 'escalated' || name === 'classified',
+        `unexpected escalator-authored event: ${name}`
+      );
+    }
+  });
+});
+
 interface StateStore {
   loadRegistry(): { version: number; entries: Record<string, unknown> };
   appendAudit(entry: AuditEntry): Promise<void>;

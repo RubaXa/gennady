@@ -1,7 +1,7 @@
 // @file: review-plan command — deterministic file-to-track classification for fan-out review,
 //   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @consumers: agent-inbox skill (inbox-flow.directive.xml)
-// @tasks: TSK-102, TSK-103
+// @tasks: TSK-102, TSK-103, TSK-113
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -586,7 +586,12 @@ function scaffoldReviewReports(
 // #region START_VALIDATE
 
 /** @purpose One schema violation found while validating a report dir; points at the offending file. */
-type ValidateError = { file: string; error: string };
+export type ValidateError = {
+  /** @purpose Path of the offending file */
+  file: string;
+  /** @purpose Human-readable violation description */
+  error: string;
+};
 
 const VALID_KINDS = new Set([
   'new-line-comment',
@@ -747,9 +752,10 @@ function pushStopWordErrors(path: string, text: string, errors: ValidateError[])
  * @param stage `enriched` gates dispatch (Context filled); `filled` gates synthesis (all sections).
  * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
  * @sideEffect Reads PLAN.md and every `tasks/*.task.md` file under `dir`.
- * @consumer inbox-review-plan.cmd `run`
+ * @consumers inbox-review-plan.cmd `run`, ArtifactValidator (agent-inbox, TSK-113 — wraps this
+ *   gate instead of duplicating it; see services/agent-inbox/modules/inbox-roles/artifact-validator.ts)
  */
-function validateReviewReports(
+export function validateReviewReports(
   dir: string,
   stage: 'enriched' | 'filled'
 ): { ok: true } | { ok: false; errors: ValidateError[] } {
