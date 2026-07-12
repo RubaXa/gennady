@@ -59,9 +59,12 @@ function BoardPage() {
 | `RoleBlock`       | Component | Блок роли: заголовок, Kanban-дорожки. Сворачиваемый.                                                                                   |
 | `AwaitingQueue`   | Component | Очередь «Ждут меня»: закреплена сверху, все MR в AWAITING ME со всех ролей, ведёт на `#/mr/:id`.                                       |
 | `KanbanLane`      | Component | Дорожка (INBOX/PROGRESS/AWAITING/DONE), read-only обзор (D-80). Принимает карточки.                                                    |
-| `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус. Клик — переход на `#/mr/:id`.                                                      |
-| `MrDetailPage`    | Component | Экран `#/mr/:id`: рендер отчёта (данные из `GET /api/mr/:id/report`), `OperatorQuestion` от ask-узла (варианты выбора), кнопки ответа. |
-| `ApiClient`       | Service   | HTTP-клиент: `GET /api/board`, `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`.                         |
+| `MrCard`          | Component | Карточка MR: проект, номер, время ожидания, статус-узел графа + прогресс дорожек. Клик — переход на `#/mr/:id`.                        |
+| `MrDetailPage`    | Component | Экран `#/mr/:id`: браузер артефактов (навигация + рендер) + панель действий (`ActionPanel`).                                           |
+| `ArtifactBrowser` | Component | Навигация по артефактам (REPORT/PLAN/дорожки/HISTORY/coverage/tool-log) + рендер выбранного через `ArtifactView`.                      |
+| `ArtifactView`    | Component | Рендер одного артефакта: markdown + mermaid через рендерер (переиспользуется `ai/inspector/web`). Дорожка → находки/кандидаты/вердикт. |
+| `ActionPanel`     | Component | Пакет действий: кандидаты чекбоксами + inline-правка текста; кнопки `[✓ Постить выбранное] [✓ Approve (гейт)] [↺ Дослать] [✕ Skip]`.   |
+| `ApiClient`       | Service   | HTTP-клиент: board / assign / action / report / **artifacts / artifact** / audit.                                                      |
 | `BoardStore`      | Service   | React Context: состояние доски, polling, optimistic updates.                                                                           |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -110,17 +113,38 @@ function BoardPage() {
 ### `MrDetailPage`
 
 - **Type:** Component
-- **Purpose:** Экран `#/mr/:id` (оверлей поверх доски): рендер отчёта из `GET /api/mr/:id/report`, `OperatorQuestion` (ask-узел = источник), варианты выбора, кнопки ответа. URL — deep-link для нотификаций.
+- **Purpose:** Экран `#/mr/:id`: слева `ArtifactBrowser` (навигация + рендер), справа `ActionPanel` (пакет действий). URL — deep-link для нотификаций.
 - **Props:** `mrId` из маршрута
-- **State:** `detail: MrDetail | loading | error`, выбранное действие
+- **State:** `detail`, `artifacts`, выбранный артефакт, выбор кандидатов, `loading`/`error`
 - **Consumers:** Роутер (`#/mr/:id`); переход с `MrCard`/`AwaitingQueue`.
+
+### `ArtifactBrowser`
+
+- **Type:** Component
+- **Purpose:** Список артефактов из `GET /api/mr/:id/artifacts` (REPORT по умолчанию, PLAN, дорожки, HISTORY, coverage/tool-log); клик → `ArtifactView`.
+- **Props:** `mrId`, `artifacts: ArtifactRef[]`
+- **Consumers:** `MrDetailPage`.
+
+### `ArtifactView`
+
+- **Type:** Component
+- **Purpose:** Рендер одного артефакта: markdown + mermaid через рендерер (переиспользуется из `ai/inspector/web`, не пишем с нуля). Для дорожки — находки (file:line), кандидаты, вердикт, coverage ledger, tool-call лог.
+- **Props:** `content`, `kind`
+- **Consumers:** `ArtifactBrowser`.
+
+### `ActionPanel`
+
+- **Type:** Component
+- **Purpose:** Финальный пакет: кандидаты чекбоксами + inline-правка текста; кнопки `[✓ Постить выбранное] [✓ Approve MR] [↺ Дослать] [✕ Skip]`. Approve активна только без блокирующих находок (гейт, AI-13). «Дослать» открывает поле фокуса раунда.
+- **Props:** `question: OperatorQuestion`, `candidates`
+- **Consumers:** `MrDetailPage`; отправляет `POST /api/mr/:id/action`.
 
 ### `ApiClient`
 
 - **Type:** Service
 - **Purpose:** HTTP-клиент к inbox-api.
-- **Public Operations:** `getBoard()`, `assignMr(mrId, role, rights?)`, `actionMr(mrId, action)`, `getAudit(mrId)`
-- **Consumers:** `BoardStore`.
+- **Public Operations:** `getBoard()`, `assignMr(mrId, role, rights?)`, `actionMr(mrId, action)`, `getReport(mrId)`, `listArtifacts(mrId)`, `readArtifact(mrId, path)`, `getAudit(mrId)`
+- **Consumers:** `BoardStore`, `MrDetailPage`.
 
 ### `BoardStore`
 
@@ -149,11 +173,17 @@ function BoardPage() {
   - Карточка MR: `listitem` с текстом `{project} !{iid} · {time}`, кнопкой «Смотреть»
   - Роль «БЕЗ РОЛИ» — отдельный `region` для неназначенных MR
 
+- **Экран `#/mr/:id` (браузер артефактов):**
+  - Слева навигация артефактов (`ArtifactBrowser`), справа рендер (`ArtifactView`) + `ActionPanel`
+  - Все md/mermaid рендерятся (не сырой текст); mermaid валиден (гейт на записи гарантирует)
+  - Дорожка раскрывается в находки (file:line) / кандидаты / вердикт / coverage / tool-call лог
+  - `ActionPanel`: кандидаты чекбоксами + inline-правка; Approve с гейтом; «Дослать» = раунд
+
 - **Пространственные отношения (layout):**
   - Колонки внутри роли слева направо: INBOX, PROGRESS, AWAITING, DONE
   - Блоки ролей друг под другом, порядок: активные → неактивные → «БЕЗ РОЛИ»
-  - Модалка отчёта центрирована, перекрывает доску
   - Карточки MR равной ширины внутри колонки
+  - Статус карточки = текущий узел графа + прогресс дорожек (напр. «security ✓, logic ⏳ 3/6»)
   <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:FILE_STRUCTURE-->
@@ -174,7 +204,10 @@ services/agent-inbox/modules/inbox-dashboard/
 │   ├── KanbanLane.tsx        # Колонка Kanban (read-only, D-80)
 │   ├── MrCard.tsx            # Карточка MR (кликабельна, «Смотреть» → #/mr/:id)
 │   ├── UnassignedBlock.tsx   # Блок «БЕЗ РОЛИ» (неназначенные MR)
-│   └── MrDetailPage.tsx      # Страница #/mr/:id: отчёт + OperatorQuestion
+│   ├── MrDetailPage.tsx      # Страница #/mr/:id: браузер + панель действий
+│   ├── ArtifactBrowser.tsx   # Навигация по артефактам
+│   ├── ArtifactView.tsx      # Рендер md+mermaid (рендерер из ai/inspector/web)
+│   └── ActionPanel.tsx       # Пакет действий (кандидаты, approve-гейт, дослать)
 ├── services/
 │   ├── api-client.ts         # ApiClient (fetch-обёртка)
 │   └── board-store.tsx       # BoardStore (React Context + polling 30s)

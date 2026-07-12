@@ -2,7 +2,14 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-111 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
+- **Task-ID:** TSK-111 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
+
+> **Round 2 — пивот D-86 (канон: [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md)).**
+> Агентный режим: `createSession({ directory, tools })` (cwd=worktree, тулы вкл); `prompt` возвращается
+> по завершении хода агента (не one-shot); `timeout` — в минутах; новый `toolCalls(sid)` (какие файлы
+> агент открывал — для tool-call сверки в ArtifactValidator). Схема не инъектируется в текст промпта.
+> Mock — симулировать tool-call лог.
+
 - **Purpose:** OpenCode-интеграция: Port (createSession + directory, prompt с format, status, continueSignal, abort, close) + Mock (симулирует все классы исходов) + SessionPool + SchemaRegistry (узел→схема). Без real-SDK (TSK-112).
 - **Spec:** [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 

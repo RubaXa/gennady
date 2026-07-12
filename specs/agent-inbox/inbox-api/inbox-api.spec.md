@@ -44,6 +44,7 @@ await server.start();
 | `BoardProviderReal` | Adapter | Реализация через `RoleScheduler` + `StateStore` (TSK-113 подключает).                                                                      |
 | `BoardRouter`       | Service | `GET /api/board` — агрегирует состояние от BoardProviderPort.                                                                              |
 | `MrRouter`          | Service | `POST /api/mr/:id/assign`, `POST /api/mr/:id/action`, `GET /api/mr/:id/report`.                                                            |
+| `ArtifactRouter`    | Service | `GET /api/mr/:id/artifacts` (список), `GET /api/mr/:id/artifact?path=` (содержимое одного) — для браузера артефактов на `#/mr/:id`.        |
 | `AuditRouter`       | Service | `GET /api/mr/:id/audit` — читает AuditLog.                                                                                                 |
 | `StaticFiles`       | Service | Раздача React SPA из `dist/inbox-serve/`. SPA fallback.                                                                                    |
 
@@ -71,9 +72,11 @@ await server.start();
 - **Public Operations:**
   - `getBoard()` → `{ roles: RoleView[], unassigned: MrCard[] }`
   - `assignMr(mrId, role, rights?)` → `{ ok: boolean }`
-  - `executeAction(mrId, action)` → `{ ok: boolean }`
-  - `getReport(mrId)` → `MrDetail` — отчёт агента (находки, треды, вердикт)
-- **Consumers:** `BoardRouter`, `MrRouter`.
+  - `executeAction(mrId, action)` → `{ ok: boolean }` — generic ответ на OperatorQuestion; движок (`EffectExecutor`) исполняет
+  - `getReport(mrId)` → `MrDetail` — сводный отчёт (REPORT.md + вердикт)
+  - `listArtifacts(mrId)` → `ArtifactRef[]` — все артефакты `reports/<mr>/` (REPORT, PLAN, дорожки, HISTORY, coverage/tool-log)
+  - `readArtifact(mrId, path)` → `{ content, kind }` — содержимое одного артефакта (md/mermaid) для рендера; путь валидируется как поддерево `reports/<mr>/` (no traversal)
+- **Consumers:** `BoardRouter`, `MrRouter`, `ArtifactRouter`.
 
 ### `BoardProviderMock`
 
@@ -100,16 +103,25 @@ await server.start();
 - **Purpose:** Действия над MR + отчёт агента + ответ на OperatorQuestion.
 - **Endpoints:**
   - `POST /api/mr/:id/assign { role, rights? }` → `{ ok: true }`
-  - `POST /api/mr/:id/action { questionId, choice, payload? }` → `{ ok: true }` — generic ответ на OperatorQuestion от ask-узла
-  - `GET /api/mr/:id/report` → `MrDetail` — артефакты из `reports/<mr>/` для MrDetailModal
+  - `POST /api/mr/:id/action { questionId, choice, payload? }` → `{ ok: true }` — generic ответ на OperatorQuestion. `choice ∈ {post, approve, redispatch, skip}`; `payload` — выбранные кандидаты + отредактированный текст (post) / фокус раунда (redispatch «дослать»). Движок `EffectExecutor` исполняет.
+  - `GET /api/mr/:id/report` → `MrDetail` — сводный отчёт для экрана `#/mr/:id`
 - **Consumers:** `inbox-dashboard`.
+
+### `ArtifactRouter`
+
+- **Type:** Service
+- **Purpose:** Браузер артефактов на `#/mr/:id`.
+- **Endpoints:**
+  - `GET /api/mr/:id/artifacts` → `{ artifacts: ArtifactRef[] }` — навигация (REPORT/PLAN/дорожки/HISTORY/coverage/tool-log)
+  - `GET /api/mr/:id/artifact?path=<rel>` → `{ content, kind }` — содержимое одного; `path` валидируется как поддерево `reports/<mr>/` (защита от traversal)
+- **Consumers:** `inbox-dashboard` (ApiClient).
 
 ### `AuditRouter`
 
 - **Type:** Service
 - **Purpose:** `GET /api/mr/:id/audit` → история событий по MR.
 - **Response:** `{ events: AuditEntry[] }`
-- **Consumers:** `MrDetailModal`.
+- **Consumers:** `MrDetailPage` (экран `#/mr/:id`).
 
 ### `StaticFiles`
 
@@ -144,13 +156,15 @@ services/agent-inbox/modules/inbox-api/
 ├── routers/
 │   ├── board.router.ts       # BoardRouter
 │   ├── mr.router.ts          # MrRouter
+│   ├── artifact.router.ts    # ArtifactRouter
 │   └── audit.router.ts       # AuditRouter
 ├── static-files.ts           # StaticFiles
 ├── errors.ts                 # ApiError
 ├── __tests__/
 │   ├── http-server.test.ts
 │   ├── board.router.test.ts
-│   └── mr.router.test.ts
+│   ├── mr.router.test.ts
+│   └── artifact.router.test.ts
 ```
 
 **File Mapping:**
@@ -158,6 +172,7 @@ services/agent-inbox/modules/inbox-api/
 - `http-server.ts` — `HttpServer`
 - `routers/board.router.ts` — `BoardRouter`
 - `routers/mr.router.ts` — `MrRouter`
+- `routers/artifact.router.ts` — `ArtifactRouter`
 - `routers/audit.router.ts` — `AuditRouter`
 - `static-files.ts` — `StaticFiles`
 - `errors.ts` — `ApiError`

@@ -2,7 +2,26 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
+- **Task-ID:** TSK-113 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
+
+> **Round 2 — пивот D-86 (канон: [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md)).**
+> Прошлый граф (scaffold→…→synthesize с хардкод-промптами) — заглушка, не выражал реальный
+> reviewer-флоу. Переделать по спеке:
+>
+> - **reviewer-граф — три ветки** от `prep`-узла: `review_needed` (полная батарея), `reply_needed`
+>   (обработка тредов, без повторной батареи), `update-review` (дельта). Паритет с CLI (D57/D70).
+> - **`prep`-узел** (новый kind): детерминированная подготовка — `inbox-context`, `vcs-discussions
+--my --with-drafts` (драфты+дедуп), `inbox-review-plan --scaffold`, fast-LLM классификатор
+>   (Vectors), выбор ветки. Без LLM-сессии.
+> - **`AX_AGENT_PROPOSES_ENGINE_ACTS`:** сессия пишет артефакт (находки + предлагаемые действия +
+>   текст), НЕ вызывает `vcs-*`. Новый `EffectExecutor` — единственный исполнитель постинга
+>   (reconcile-дедуп, ThreadModel/ReactionMatrix, идемпотентность `effect_applied`).
+> - **`AX_ENGINE_OWNS_STATUS`:** статус артефактов переводит движок, не агент.
+> - **`AX_SECURITY_LENS`:** security — сессия по всему changeset, не дорожка файлов.
+> - **`ArtifactValidator`:** structural + coverage ledger + tool-call сверка (из opencode) + mermaid-валидность.
+> - **Раунды** секциями `## Round N` в task-файлах; «дослать» = новый раунд с фокусом оператора.
+> - Новые файлы: `artifact-validator.ts`, `effect-executor.ts` (+ тесты). Таймауты — минуты.
+
 - **Purpose:** Role Engine на узловой модели: RoleNode (session/gate/ask/effect), OutcomeClassifier, recovery ladder, ReviewerRole (граф 9 узлов = существующий конвейер D57/D70), AuthorRole, RightsEscalator (нотификации по таймеру).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 

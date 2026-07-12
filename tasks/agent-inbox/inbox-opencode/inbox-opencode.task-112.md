@@ -2,7 +2,13 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-112 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
+- **Task-ID:** TSK-112 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
+
+> **Round 2 — пивот D-86.** `OpenCodeReal` — агентная сессия (tools вкл, cwd=worktree), `prompt`
+> ждёт завершения хода агента с таймаутом-в-минутах; реализовать `toolCalls(sid)` из телеметрии SDK.
+> Урок TSK-117: 45 КБ директивы one-shot в пустую директорию виснет — repro в тесте, что с worktree+тулами
+> сессия завершается.
+
 - **Purpose:** Реальная интеграция с OpenCode через `@opencode-ai/sdk`. Research-фаза: подтвердить `format: json_schema`, events, directory-байндинг сессии. Реализация: status/continueSignal/format. Fallback: JSON-блок + парсинг.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-01, SV-05, [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 

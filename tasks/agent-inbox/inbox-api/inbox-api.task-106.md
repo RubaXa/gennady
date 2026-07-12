@@ -2,7 +2,14 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-106 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-api | **Dependencies:** TSK-105 (mocks)
+- **Task-ID:** TSK-106 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-api | **Dependencies:** TSK-105 (mocks)
+
+> **Round 2 — пивот D-86 (канон: [inbox-api.spec.md](../../specs/agent-inbox/inbox-api/inbox-api.spec.md)).**
+> Новый `ArtifactRouter`: `GET /api/mr/:id/artifacts` (список) + `GET /api/mr/:id/artifact?path=`
+> (содержимое, path валидируется как поддерево `reports/<mr>/`). `BoardProviderPort` +
+> `listArtifacts`/`readArtifact`. `action` — `choice ∈ {post, approve, redispatch, skip}` + payload
+> (выбранные кандидаты/фокус раунда).
+
 - **Purpose:** `node:http` сервер на порту 4174. Роуты `/api/board`, `/api/mr/:id/assign`, `/api/mr/:id/action`, `/api/mr/:id/report`, `/api/mr/:id/audit`. Статика. `BoardProviderPort` + `BoardProviderMock` — мокаемая граница с RoleEngine (реализуется в TSK-113).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-02, [inbox-api.spec.md](../../specs/agent-inbox/inbox-api/inbox-api.spec.md) | **Runtime:** not-implemented | **Verification:** unit, integration
 

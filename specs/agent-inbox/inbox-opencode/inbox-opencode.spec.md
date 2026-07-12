@@ -58,11 +58,12 @@ const result = await pool.prompt(sid, {
 ### `OpenCodePort`
 
 - **Type:** Port
-- **Purpose:** Абстракция AI-движка.
+- **Purpose:** Абстракция AI-движка. Режим — **агентная многоходовая сессия** (не one-shot): агент сам ходит по коду тулами в cwd; `prompt` возвращается по завершении хода агента.
 - **Public Operations:**
-  - `createSession({ title, directory })` → `SessionHandle` (directory обязателен — cwd сессии)
-  - `prompt(sid, { system?, text, format? })` → сырой результат (текст + structured output при format)
-  - `status(sid)` → текущий статус сессии
+  - `createSession({ title, directory, tools })` → `SessionHandle` (`directory` = cwd = worktree MR, обязателен; `tools: on` — read/grep/git в cwd; write агента — только в свой артефакт-путь)
+  - `prompt(sid, { system?, text, format?, timeout })` → сырой результат. `timeout` — на агентную сессию, в **минутах** (агентный ход многошаговый). `system` — директива (per-node из ai-kit); схема НЕ инъектируется в текст промпта (F10 — вешало модель), хранится для валидации результата.
+  - `status(sid)` → текущий статус сессии (busy/idle/terminated) — для детекта зависания
+  - `toolCalls(sid)` → `ToolCall[]` — какие файлы агент открывал/грепал (телеметрия для `ArtifactValidator` tool-call сверки; факт, не self-report)
   - `continueSignal(sid, { system?, text, format? })` — семантически выделенный prompt для recovery
   - `abort(sid)`, `close(sid)`
 - **Consumers:** `SessionPool`, `inbox-roles`.

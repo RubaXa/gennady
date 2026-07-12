@@ -2,7 +2,14 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-107 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies:** TSK-105 (mocks), TSK-106 (API)
+- **Task-ID:** TSK-107 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies:** TSK-105 (mocks), TSK-106 (API)
+
+> **Round 2 — пивот D-86 (канон: [inbox-dashboard.spec.md](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md)).**
+> `#/mr/:id` → полный браузер артефактов: `ArtifactBrowser` (навигация REPORT/PLAN/дорожки/HISTORY/
+> coverage/tool-log) + `ArtifactView` (рендер md+mermaid через рендерер из `ai/inspector/web`) +
+> `ActionPanel` (кандидаты чекбоксами + inline-правка; `[Постить выбранное] [Approve-гейт] [Дослать] [Skip]`).
+> Карточка: статус = узел графа + прогресс дорожек. Нотификация оператору — сразу при готовности.
+
 - **Purpose:** React SPA дашборд: Kanban по ролям, карточки MR, модалка с OperatorQuestion + отчётом из `GET /api/mr/:id/report`. shadcn/ui + dnd-kit + Tailwind v4.
 - **Spec:** [inbox-dashboard.spec.md](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md) | **Runtime:** not-implemented | **Verification:** unit
 
