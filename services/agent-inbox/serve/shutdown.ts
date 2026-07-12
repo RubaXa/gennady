@@ -122,19 +122,18 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
       config.opencodeProcess.kill('SIGTERM');
 
       await new Promise<void>((resolve) => {
+        const onExit = () => {
+          clearTimeout(forceKill);
+          resolve();
+        };
+
         const forceKill = setTimeout(() => {
-          try {
-            config.opencodeProcess?.kill('SIGKILL');
-          } catch {
-            /* ignore */
-          }
+          config.opencodeProcess?.removeListener('exit', onExit);
+          try { config.opencodeProcess?.kill('SIGKILL'); } catch { /* ignore */ }
           resolve();
         }, 3000);
 
-        config.opencodeProcess?.on('exit', () => {
-          clearTimeout(forceKill);
-          resolve();
-        });
+        config.opencodeProcess?.on('exit', onExit);
       });
 
       logger.info('[gracefulShutdown] opencode child process terminated');
