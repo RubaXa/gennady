@@ -21,12 +21,12 @@
 | TSK-103 | DONE   | TSK-102                 | `inbox-review-plan --scaffold`/`--validate`: документный конвейер                          |
 | TSK-104 | DONE   | TSK-103                 | Документный конвейер в скиллах + пивот «ничего на диск»                                    |
 | TSK-105 | DONE   | TSK-109                 | inbox-mocks: фабрики мок-данных                                                            |
-| TSK-106 | TODO   | TSK-105                 | inbox-api: + artifact endpoints, generic action (пивот D-86)                               |
+| TSK-106 | DONE   | TSK-105                 | inbox-api: + artifact endpoints, generic action (пивот D-86)                               |
 | TSK-107 | TODO   | TSK-105, TSK-106        | inbox-dashboard: + браузер артефактов, ActionPanel (пивот D-86)                            |
 | TSK-108 | DONE   | TSK-107, TSK-114        | inbox-dashboard: e2e тесты (Playwright)                                                    |
 | TSK-109 | DONE   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog                               |
 | TSK-110 | DONE   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                                                     |
-| TSK-111 | TODO   | TSK-105                 | inbox-opencode: + агентный режим (tools, toolCalls, минуты)                                |
+| TSK-111 | DONE   | TSK-105                 | inbox-opencode: + агентный режим (tools, toolCalls, минуты)                                |
 | TSK-112 | TODO   | TSK-111                 | inbox-opencode: OpenCodeReal агентная сессия + tool-call лог                               |
 | TSK-113 | TODO   | TSK-109,110,111,116     | inbox-roles: reviewer-граф (3 ветки), thread-механика, дедуп, effect-executor (пивот D-86) |
 | TSK-114 | DONE   | TSK-105, TSK-107        | inbox-visual-testing: ARIA snapshots + layout helpers                                      |

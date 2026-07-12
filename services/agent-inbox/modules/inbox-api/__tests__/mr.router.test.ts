@@ -187,6 +187,53 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
     const body = data as Record<string, unknown>;
     assert.strictEqual(body.ok, false);
   });
+
+  it('returns 400 for an unknown choice value', async () => {
+    const mr = mockActionableMr({
+      webUrl: 'https://gitlab.example.com/group/project/-/merge_requests/202',
+      iid: 202,
+    });
+
+    provider.seed({
+      roles: [{ name: 'reviewer', active: true }],
+      unassigned: [mr],
+    });
+
+    const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
+    const { status, data } = await fetchJson('POST', actionPath, PORT, {
+      questionId: 'q1',
+      choice: 'reject',
+    });
+
+    assert.strictEqual(status, 400);
+    const body = data as Record<string, unknown>;
+    assert.strictEqual(body.ok, false);
+    assert.strictEqual(body.error, 'CONFIG');
+  });
+
+  for (const choice of ['post', 'approve', 'redispatch', 'skip'] as const) {
+    it(`accepts choice:'${choice}' and returns { ok: true }`, async () => {
+      const mr = mockActionableMr({
+        webUrl: `https://gitlab.example.com/group/project/-/merge_requests/${210 + ['post', 'approve', 'redispatch', 'skip'].indexOf(choice)}`,
+        iid: 210,
+      });
+
+      provider.seed({
+        roles: [{ name: 'reviewer', active: true }],
+        unassigned: [mr],
+      });
+
+      const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
+      const { status, data } = await fetchJson('POST', actionPath, PORT, {
+        questionId: 'q1',
+        choice,
+        payload: choice === 'redispatch' ? { focus: 'security' } : undefined,
+      });
+
+      assert.strictEqual(status, 200);
+      assert.deepStrictEqual(data, { ok: true });
+    });
+  }
 });
 
 describe('MrRouter — GET /api/mr/:id/report', () => {

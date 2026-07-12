@@ -1,19 +1,28 @@
 # Task: TSK-111 — inbox-opencode: OpenCodePort (агентный) + Mock + SessionPool + SchemaRegistry
 
+<!--SECTION:META-->
+
 ## 1. Meta
 
-- **Task-ID:** TSK-111 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
+- **Task-ID:** TSK-111 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-105 (mocks)
 - **Purpose:** OpenCode-порт в **агентном режиме** + мок, пул сессий, реестр схем. Сессия = многоходовой агент (cwd=worktree + тулы), `prompt` возвращается по завершении хода; таймаут в минутах; `toolCalls` (телеметрия открытых файлов) для tool-call сверки. Реврайт под D-86 (существующий код Round-1 дорабатывается, не выбрасывается). Без real-SDK (TSK-112).
 - **Spec:** [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-05 | **Runtime:** not-implemented | **Verification:** unit
+<!--/SECTION:META-->
+
+<!--SECTION:PHASES_OVERVIEW-->
 
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [x]    |
-| P2  | test | P1   | [ ]    |
+| P2  | test | P1   | [x]    |
+
+<!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
+
+<!--SECTION:PHASE_P1-->
 
 ### P1 — impl
 
@@ -25,6 +34,9 @@
   - `services/agent-inbox/modules/inbox-opencode/schema-registry.ts` — SchemaRegistry: get(nodeId)/register(nodeId, schema) (узел→схема).
   - `services/agent-inbox/modules/inbox-opencode/errors.ts` — OutcomeClass, OpenCodeCallResult, composeError/composeOk.
 - **Exit:** Порт поддерживает агентный режим (tools+toolCalls+timeout-минуты); мок симулирует все классы исходов И tool-call лог. `npm run type-check` pass, `npm run format:check` pass.
+<!--/SECTION:PHASE_P1-->
+
+<!--SECTION:PHASE_P2-->
 
 ### P2 — test
 
@@ -34,6 +46,9 @@
   - `services/agent-inbox/modules/inbox-opencode/__tests__/session-pool.test.ts` — очередь без дедлока
   - `services/agent-inbox/modules/inbox-opencode/__tests__/schema-registry.test.ts` — узел→схема
 - **Exit:** `npm run test` для модуля pass; покрыты все классы + tool-call лог.
+<!--/SECTION:PHASE_P2-->
+
+<!--SECTION:BDD-->
 
 ## 4. BDD
 
@@ -45,12 +60,18 @@
 - GIVEN promptTimeout в минутах WHEN prompt THEN таймаут = минуты, не 300s фикс
 - GIVEN Pool limit=3 и 3 активных WHEN 4-й create THEN очередь без дедлока
 - GIVEN SchemaRegistry.register('node_scaffold', schema) WHEN get('node_scaffold') THEN схема
+<!--/SECTION:BDD-->
+
+<!--SECTION:VERIFICATION-->
 
 ## 5. Verification
 
 - `npm run type-check` — pass
 - `npm run test -- 'services/agent-inbox/modules/inbox-opencode/__tests__/*.test.ts'` — pass
 - `npm run format:check` — pass
+<!--/SECTION:VERIFICATION-->
+
+<!--SECTION:TEST_COVERAGE-->
 
 ## 6. Test Scenario Coverage
 
@@ -62,6 +83,10 @@
 | Recovery: continueSignal   | unit  | opencode.mock.test.ts   |
 | Pool: очередь без дедлока  | unit  | session-pool.test.ts    |
 | SchemaRegistry: узел→схема | unit  | schema-registry.test.ts |
+
+<!--/SECTION:TEST_COVERAGE-->
+
+<!--SECTION:EXECUTION_LOG-->
 
 ## 7. Execution Log
 
@@ -86,6 +111,17 @@
 
 #### P2
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-12T18:55:53Z` decision toolCalls-tests=tools-flag-gated ← toolCalls(sid) tests cover tools=true (non-empty, matches seedToolCalls order), tools=false/absent (always []), and no-prompt-yet ([]) per opencode.mock.ts gating logic
+- [x] `2026-07-12T18:55:53Z` decision timeout-tests=explicit-minutes-vs-fallback ← added prompt(timeout=<N>) cases asserting signal contains "<N> min" and never "300s"; kept legacy no-timeout-passed case asserting fallback "30s" wording (pre-migration compat per P1 decision)
+- [x] `2026-07-12T18:55:53Z` ver `<sdd-path> verify <target-files>` → pass exit=0 (typecheck, gennady lint 3 files, npm run test, format:check — all 4 gates green)
+- [x] `2026-07-12T18:55:53Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-12T18:55:53Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-opencode/__tests__/*.test.ts'` → pass exit=0 (66 tests, 18 suites, 0 fail)
+- [x] `2026-07-12T18:55:53Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-12T18:55:53Z` DONE
+      **Handoff →** artifacts: [opencode.mock.test.ts]; decisions: [toolCalls-tests=tools-flag-gated, timeout-tests=explicit-minutes-vs-fallback]; open: []
+
+#### Round close
+
+- [x] `2026-07-12T21:10:00Z` all phases DONE (P1 impl, P2 test) — suite 1910/0
+- [x] `2026-07-12T21:10:00Z` orchestrator sync trackers → audit pending
+<!--/SECTION:EXECUTION_LOG-->

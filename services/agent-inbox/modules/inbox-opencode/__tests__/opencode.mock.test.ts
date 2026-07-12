@@ -302,6 +302,124 @@ describe('OpenCodeMock — continueSignal recovery', () => {
   });
 });
 
+describe('OpenCodeMock — toolCalls telemetry', () => {
+  it('GIVEN seedToolCalls(nodeId, [a.ts, b.ts]) WHEN toolCalls(sid) THEN returns [a.ts, b.ts]', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test', tools: true });
+
+    mock.seed('node_scaffold', { kind: 'scaffold-result' });
+    mock.seedToolCalls('node_scaffold', ['a.ts', 'b.ts']);
+
+    await mock.prompt(handle.sid, {
+      text: 'scaffold something',
+      format: makeFormat('node_scaffold'),
+    });
+    const calls = await mock.toolCalls(handle.sid);
+
+    assert.deepStrictEqual(calls, [
+      { tool: 'read', path: 'a.ts' },
+      { tool: 'read', path: 'b.ts' },
+    ]);
+  });
+
+  it('GIVEN OpenCodeMock.seed(nodeId, response) WHEN prompt with tools=on THEN structured output + toolCalls non-empty', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test', tools: true });
+    const seededOutput = { findings: [{ severity: 'warning', file: 'src/a.ts', line: 1 }] };
+
+    mock.seed('node_scaffold', seededOutput);
+    mock.seedToolCalls('node_scaffold', ['src/a.ts']);
+
+    const result = await mock.prompt(handle.sid, {
+      text: 'scaffold something',
+      format: makeFormat('node_scaffold'),
+    });
+    const calls = await mock.toolCalls(handle.sid);
+
+    assertOk(result);
+    assert.deepStrictEqual(result.output, seededOutput);
+    assert.ok(calls.length > 0, 'toolCalls should be non-empty when tools=on and seeded');
+  });
+
+  it('GIVEN session created without tools WHEN toolCalls(sid) THEN returns empty array regardless of seeding', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test' });
+
+    mock.seed('node_scaffold', { kind: 'scaffold-result' });
+    mock.seedToolCalls('node_scaffold', ['a.ts', 'b.ts']);
+
+    await mock.prompt(handle.sid, { text: 'scaffold', format: makeFormat('node_scaffold') });
+    const calls = await mock.toolCalls(handle.sid);
+
+    assert.deepStrictEqual(calls, []);
+  });
+
+  it('GIVEN session created with tools=false explicitly WHEN toolCalls(sid) THEN returns empty array', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({
+      title: 'test',
+      directory: '/tmp/test',
+      tools: false,
+    });
+
+    mock.seed('node_scaffold', { kind: 'scaffold-result' });
+    mock.seedToolCalls('node_scaffold', ['a.ts']);
+
+    await mock.prompt(handle.sid, { text: 'scaffold', format: makeFormat('node_scaffold') });
+    const calls = await mock.toolCalls(handle.sid);
+
+    assert.deepStrictEqual(calls, []);
+  });
+
+  it('GIVEN no prompt sent yet WHEN toolCalls(sid) on a tools=on session THEN returns empty array', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test', tools: true });
+
+    const calls = await mock.toolCalls(handle.sid);
+
+    assert.deepStrictEqual(calls, []);
+  });
+});
+
+describe('OpenCodeMock — timeout expressed in minutes', () => {
+  it('GIVEN promptTimeout in minutes WHEN prompt THEN TIMEOUT signal reports minutes, not a fixed 300s', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test' });
+
+    mock.seedError('node_t', 'TIMEOUT');
+
+    const result = await mock.prompt(handle.sid, { text: 'node_t hang', timeout: 5 });
+
+    assertError(result, 'TIMEOUT');
+    assert.ok(result.error.signal.includes('5 min'));
+    assert.ok(!result.error.signal.includes('300s'));
+  });
+
+  it('GIVEN a different explicit timeout in minutes WHEN prompt THEN signal scales with the passed value', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test' });
+
+    mock.seedError('node_t', 'TIMEOUT');
+
+    const result = await mock.prompt(handle.sid, { text: 'node_t hang', timeout: 45 });
+
+    assertError(result, 'TIMEOUT');
+    assert.ok(result.error.signal.includes('45 min'));
+  });
+
+  it('GIVEN no timeout passed WHEN prompt THEN TIMEOUT signal falls back to the legacy 30s wording', async () => {
+    const mock = new OpenCodeMock();
+    const handle = await mock.createSession({ title: 'test', directory: '/tmp/test' });
+
+    mock.seedError('node_t', 'TIMEOUT');
+
+    const result = await mock.prompt(handle.sid, { text: 'node_t hang' });
+
+    assertError(result, 'TIMEOUT');
+    assert.ok(result.error.signal.includes('30s'));
+  });
+});
+
 describe('OpenCodeMock — seedError overrides seed', () => {
   it('GIVEN seed() then seedError() for same node WHEN prompt THEN returns error (seedError takes priority)', async () => {
     const mock = new OpenCodeMock();
