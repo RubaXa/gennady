@@ -43,6 +43,8 @@ export type PromptOpts = {
   text?: string;
   /** @purpose Optional structured output format (schema-driven JSON) */
   format?: OpenCodeFormat;
+  /** @purpose Per-call timeout in ms (overrides adapter default). */
+  timeout?: number;
 };
 
 /**

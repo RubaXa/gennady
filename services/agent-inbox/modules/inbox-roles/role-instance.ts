@@ -358,6 +358,10 @@ export class RoleInstance {
       };
     }
 
+    if (node.policy?.promptTimeout) {
+      promptOpts.timeout = node.policy.promptTimeout;
+    }
+
     const result: OpenCodeCallResult = await this._opencode.prompt(this._sessionId, promptOpts);
     // #endregion END_SESSION_CALL
 

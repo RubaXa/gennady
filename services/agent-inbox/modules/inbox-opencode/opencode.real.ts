@@ -45,6 +45,8 @@ export class OpenCodeReal extends OpenCodePort {
   protected _client: OpencodeClient | null;
   /** @purpose Track session directory mappings (sid → directory) for per-session binding. */
   protected _sessionDirs: Map<string, string>;
+  /** @purpose Track pending schemas per session for JSON extraction validation. */
+  protected _pendingSchemas: Map<string, Record<string, unknown>>;
 
   /**
    * @purpose Create an OpenCodeReal adapter bound to a running opencode server.
@@ -57,6 +59,7 @@ export class OpenCodeReal extends OpenCodePort {
     this._timeout = opts.timeout ?? 300_000; // 5-minute default
     this._client = null;
     this._sessionDirs = new Map();
+    this._pendingSchemas = new Map();
     logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
   }
 
@@ -298,6 +301,7 @@ export class OpenCodeReal extends OpenCodePort {
       });
     } finally {
       this._sessionDirs.delete(sid);
+      this._pendingSchemas.delete(sid);
     }
     // #endregion END_CLOSE
   }
@@ -322,30 +326,10 @@ export class OpenCodeReal extends OpenCodePort {
     let system = opts.system ?? '';
     const parts: Array<{ type: 'text'; text: string }> = [];
 
-    // When format is requested, embed schema instructions in the system prompt.
-    // SDK v1.x does not expose a native `format: json_schema` parameter —
-    // fallback: instruct the model to return JSON in a code block.
+    // Store schema for JSON extraction — not injected into prompt (avoids model hang).
+    // _extractJson uses this to validate extracted JSON against the expected schema.
     if (hasFormat && opts.format) {
-      const schemaJson = JSON.stringify(opts.format.schema, null, 2);
-      const formatInstruction = [
-        '',
-        '--- STRUCTURED OUTPUT INSTRUCTIONS ---',
-        'You MUST respond with a single valid JSON object that matches the following JSON Schema.',
-        'Wrap your JSON response in a ```json code block.',
-        'Do NOT include any other text outside the code block.',
-        '',
-        '```json-schema',
-        schemaJson,
-        '```',
-        '',
-        'Example response format:',
-        '```json',
-        JSON.stringify(this._generateExample(opts.format.schema), null, 2),
-        '```',
-        '--- END STRUCTURED OUTPUT INSTRUCTIONS ---',
-      ].join('\n');
-
-      system = system ? `${system}\n${formatInstruction}` : formatInstruction;
+      this._pendingSchemas.set(sid, opts.format.schema);
     }
 
     if (opts.text) {
@@ -370,7 +354,7 @@ export class OpenCodeReal extends OpenCodePort {
           path: { id: sid },
           query: directory ? { directory } : undefined,
         }),
-        this._timeout
+        opts.timeout ?? this._timeout
       );
 
       if (result.error) {
