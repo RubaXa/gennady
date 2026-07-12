@@ -1,52 +1,47 @@
-# Task: TSK-112 — inbox-opencode: OpenCodeReal (SDK-интеграция)
+# Task: TSK-112 — inbox-opencode: OpenCodeReal (агентная сессия через SDK)
 
 ## 1. Meta
 
-- **Task-ID:** TSK-112 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
-
-> **Round 2 — пивот D-86.** `OpenCodeReal` — агентная сессия (tools вкл, cwd=worktree), `prompt`
-> ждёт завершения хода агента с таймаутом-в-минутах; реализовать `toolCalls(sid)` из телеметрии SDK.
-> Урок TSK-117: 45 КБ директивы one-shot в пустую директорию виснет — repro в тесте, что с worktree+тулами
-> сессия завершается.
-
-- **Purpose:** Реальная интеграция с OpenCode через `@opencode-ai/sdk`. Research-фаза: подтвердить `format: json_schema`, events, directory-байндинг сессии. Реализация: status/continueSignal/format. Fallback: JSON-блок + парсинг.
-- **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-01, SV-05, [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md) | **Runtime:** not-implemented | **Verification:** unit
+- **Task-ID:** TSK-112 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
+- **Purpose:** Реальная интеграция OpenCodePort через `@opencode-ai/sdk` + `opencode serve` в **агентном режиме**: сессия с cwd=worktree и тулами, `prompt` ждёт завершения хода агента (таймаут в минутах), `toolCalls` из телеметрии SDK. Реврайт под D-86.
+- **Spec:** [inbox-opencode.spec.md](../../specs/agent-inbox/inbox-opencode/inbox-opencode.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-01/SV-05 | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
 
 | ID  | Kind     | Deps | Status |
 | --- | -------- | ---- | ------ |
-| P0  | research | —    | [x]    |
-| P1  | impl     | P0   | [x]    |
-| P2  | test     | P1   | [x]    |
+| P0  | research | —    | [ ]    |
+| P1  | impl     | P0   | [ ]    |
+| P2  | test     | P1   | [ ]    |
 
 ## 3. Phases
 
-### P0 — research (подтвердить SDK API)
+### P0 — research (агентный SDK)
 
 - **Rules:** none
-- **Target:** Подтвердить на актуальной версии `@opencode-ai/sdk`: `session.prompt()` с `format: { type: 'json_schema', schema }`, `client.event.list()` (SSE), `session.abort()`, `createSession({ directory })`.
-- **Exit:** Research-логи: что работает, что нет. Если format недоступен → fallback (JSON-блок + парсинг). Результат зафиксировать в D-78.
+- **Задача:** подтвердить в актуальном `@opencode-ai/sdk`: (1) агентная сессия с тулами и `directory`=cwd; (2) `session.prompt` завершается по окончании хода агента; (3) как достать список tool-calls (открытые файлы) — для `toolCalls`; (4) поведение `format`/structured output. Зафиксировать выводы в Execution Log (insight-строки).
+- **Exit:** Способ агентного прогона и извлечения tool-call лога подтверждён на живом `opencode serve` (или задокументировано ограничение).
 
 ### P1 — impl
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-opencode/opencode.real.ts` — OpenCodeReal: реализация OpenCodePort через `@opencode-ai/sdk` (client-only, `createOpencodeClient({ baseUrl })`)
-  - Bootstrap: `npm install --save-dev @opencode-ai/sdk` (Bootstrap #9)
-- **Exit:** OpenCodeReal подключается к `opencode serve` на localhost:4096. prompt() → structured output.
+  - `services/agent-inbox/modules/inbox-opencode/opencode.real.ts` — OpenCodeReal implements OpenCodePort: агентная сессия (`createSession` с tools+directory), `prompt` c таймаутом-в-минутах и возвратом по завершению хода, `toolCalls(sid)` из телеметрии, `status`, `continueSignal`, `abort`, `close`. Схема не инъектируется в текст промпта (F10); структурный вывод парсится из результата.
+  - Bootstrap: `@opencode-ai/sdk` (уже установлен).
+- **Exit:** OpenCodeReal подключается к `opencode serve`; агентная сессия завершает ход и отдаёт результат + toolCalls. Репро урока TSK-117: worktree+тулы+предметная задача → сессия завершается (не виснет 300s).
 
 ### P2 — test
 
 - **Rules:** none
 - **Target Files:** `services/agent-inbox/modules/inbox-opencode/__tests__/opencode.real.test.ts`
-- **Exit:** Тесты: успешный prompt (если opencode запущен), ошибка при недоступности.
+- **Exit:** Тесты: агентный prompt (если opencode запущен), UNAVAILABLE при недоступности, извлечение toolCalls.
 
 ## 4. BDD
 
-- GIVEN opencode serve на localhost:4096 WHEN createSession + prompt THEN structured output по схеме
-- GIVEN opencode недоступен WHEN prompt() THEN OpenCodeError('UNAVAILABLE')
-- GIVEN модель вернула невалидный JSON WHEN prompt() THEN StructuredOutputError
+- GIVEN opencode serve WHEN createSession(cwd=worktree, tools=on) + prompt(предметная задача) THEN ход завершается, результат + toolCalls непусты
+- GIVEN opencode недоступен WHEN prompt THEN OpenCodeError('UNAVAILABLE')
+- GIVEN промпт с format WHEN ход завершён THEN structured output распарсен из результата (без инъекции схемы в текст)
+- GIVEN промпт превысил timeout (минуты) WHEN истёк THEN TIMEOUT (abort сессии)
 
 ## 5. Verification
 
@@ -56,53 +51,31 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario                    | Level | Test File             |
-| --------------------------- | ----- | --------------------- |
-| Real: успешный prompt       | unit  | opencode.real.test.ts |
-| Real: UNAVAILABLE           | unit  | opencode.real.test.ts |
-| Real: StructuredOutputError | unit  | opencode.real.test.ts |
+| Scenario                  | Level | Test File             |
+| ------------------------- | ----- | --------------------- |
+| Real: агентный prompt     | unit  | opencode.real.test.ts |
+| Real: UNAVAILABLE         | unit  | opencode.real.test.ts |
+| Real: toolCalls извлечены | unit  | opencode.real.test.ts |
+| Real: TIMEOUT (минуты)    | unit  | opencode.real.test.ts |
 
 ## 7. Execution Log
 
 ### Round 1 — initial
 
-#### P0 — research (SDK API)
+#### P0
 
-- [x] `@opencode-ai/sdk@1.17.18` installed (`npm install --save-dev`)
-- [x] SDK exports: `createOpencodeClient`, `OpencodeClient`, `createOpencodeServer`
-- [x] `createSession` → `client.session.create({ body: { title }, query: { directory? } })` ✅ directory binding works via query param + client-level config
-- [x] `prompt` → `client.session.prompt({ body: { system?, parts }, path: { id }, query: { directory? } })` — synchronous POST, blocks until completion
-- [x] `format: { type: 'json_schema', schema }` — **NOT natively supported** in SDK v1.17.18 `SessionPromptData.body` (only: `messageID`, `model`, `agent`, `noReply`, `system`, `tools`, `parts`)
-- [x] `status` → `client.session.status({ query: { directory? } })` returns `{ [sid]: { type: 'idle'|'busy'|'retry' } }`
-- [x] `abort` → `client.session.abort({ path: { id } })` ✅
-- [x] `close` → `client.session.delete({ path: { id } })` ✅
-- [x] SSE: `client.event.subscribe()` and `client.global.event()` available → not needed for current prompt flow
-- [x] **Decision D-78 confirmed**: format fallback needed — embed JSON schema in system prompt, extract JSON from ```json code blocks
-- [x] 2026-07-10 DONE
+- [ ] `<ts>` insight `<observation>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []
 
-#### P1 — impl
+#### P1
 
-- [x] 2026-07-10 ver `npm run type-check` → pass exit=0 (no errors in opencode.real.ts; pre-existing errors in inbox-roles unrelated)
-- [x] `services/agent-inbox/modules/inbox-opencode/opencode.real.ts` created:
-  - Imports `createOpencodeClient` from `@opencode-ai/sdk`
-  - Constructor: `{ baseUrl?, directory?, timeout? }` with defaults (localhost:4096, 5min)
-  - `createSession` → `client.session.create()` with directory binding
-  - `prompt` / `continueSignal` → `_sendPrompt()` → `client.session.prompt()` → JSON extraction fallback
-  - `status` → maps SDK `SessionStatus` (idle/busy/retry) to port (idle/running/error/terminated)
-  - `abort` → `client.session.abort()` — swallows errors
-  - `close` → `client.session.delete()` — swallows errors
-  - Format fallback: embeds JSON schema + example in system prompt, extracts ```json blocks from response, validates against schema
-  - Lazy client init via `_ensureClient()`
-- [x] 2026-07-10 DONE
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []
 
-#### P2 — test
+#### P2
 
-- [x] 2026-07-10 ver `node --import tsx --test services/agent-inbox/modules/inbox-opencode/__tests__/opencode.real.test.ts` → pass exit=0 (18/18 tests passed)
-- [x] `services/agent-inbox/modules/inbox-opencode/__tests__/opencode.real.test.ts` created:
-  - **UNAVAILABLE** (6 tests): createSession throws on ECONNREFUSED, prompt/continueSignal returns SESSION_ERROR, status returns terminated, abort/close swallow errors
-  - **Structured output** (5 tests): text output without format, valid JSON with format, PARSE_ERROR on malformed JSON, SCHEMA_MISMATCH on invalid schema, NO_RESULT on missing JSON
-  - **Error classification** (3 tests): SESSION_ERROR, TIMEOUT, INCOMPLETE_ARTIFACT
-  - **continueSignal** (2 tests): OK and error paths
-  - **Constructor defaults** (2 tests): default/custom baseUrl
-- [x] 2026-07-10 ver `npm run format:check` → pass exit=0 (both files clean)
-- [x] 2026-07-10 DONE
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []

@@ -1,84 +1,70 @@
-# Task: TSK-113 — inbox-roles: node-model RoleEngine + OutcomeClassifier + recovery ladder
+# Task: TSK-113 — inbox-roles: reviewer/author графы + движок узлов
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [ ] REOPEN (пивот D-86) | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
-
-> **Round 2 — пивот D-86 (канон: [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md)).**
-> Прошлый граф (scaffold→…→synthesize с хардкод-промптами) — заглушка, не выражал реальный
-> reviewer-флоу. Переделать по спеке:
->
-> - **reviewer-граф — три ветки** от `prep`-узла: `review_needed` (полная батарея), `reply_needed`
->   (обработка тредов, без повторной батареи), `update-review` (дельта). Паритет с CLI (D57/D70).
-> - **`prep`-узел** (новый kind): детерминированная подготовка — `inbox-context`, `vcs-discussions
---my --with-drafts` (драфты+дедуп), `inbox-review-plan --scaffold`, fast-LLM классификатор
->   (Vectors), выбор ветки. Без LLM-сессии.
-> - **NFC-SV-07 (агент предлагает — движок исполняет):** сессия пишет артефакт (находки + предлагаемые действия +
->   текст), НЕ вызывает `vcs-*`. Новый `EffectExecutor` — единственный исполнитель постинга
->   (reconcile-дедуп, ThreadModel/ReactionMatrix, идемпотентность `effect_applied`).
-> - **NFC-SV-08 (движок владеет статусом):** статус артефактов переводит движок, не агент.
-> - **NFC-SV-09 (security-линза):** security — сессия по всему changeset, не дорожка файлов.
-> - **`ArtifactValidator`:** structural + coverage ledger + tool-call сверка (из opencode) + mermaid-валидность.
-> - **Раунды** секциями `## Round N` в task-файлах; «дослать» = новый раунд с фокусом оператора.
-> - Новые файлы: `artifact-validator.ts`, `effect-executor.ts` (+ тесты). Таймауты — минуты.
-
-- **Purpose:** Role Engine на узловой модели: RoleNode (session/gate/ask/effect), OutcomeClassifier, recovery ladder, ReviewerRole (граф 9 узлов = существующий конвейер D57/D70), AuthorRole, RightsEscalator (нотификации по таймеру).
-- **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md) | **Runtime:** not-implemented | **Verification:** unit
+- **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
+- **Purpose:** Движок ролей: граф узлов (prep/session/gate/ask/effect), Scheduler, RoleInstance (step + recovery ladder + восстановление от артефактов), OutcomeClassifier, ArtifactValidator (coverage ledger + tool-call сверка + mermaid), EffectExecutor (все vcs-\* детерминированно, дедуп, идемпотентность), RightsEscalator (нотификации). Reviewer-граф — три ветки (review_needed/reply_needed/update-review); author-граф — self-review + разбор замечаний + FIX_TASK.md. Реврайт под D-86 (полный, паритет с CLI D57/D70).
+- **Spec:** [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, NFC-SV-07/08/09 | **Runtime:** not-implemented | **Verification:** unit
 
 ## 2. Phases Overview
 
-| ID  | Kind | Deps  | Status |
-| --- | ---- | ----- | ------ |
-| P1  | impl | —     | [x]    |
-| P2  | impl | P1    | [x]    |
-| P3  | test | P1,P2 | [x]    |
+| ID  | Kind | Deps | Status |
+| --- | ---- | ---- | ------ |
+| P1  | impl | —    | [ ]    |
+| P2  | impl | P1   | [ ]    |
+| P3  | impl | P2   | [ ]    |
+| P4  | test | P3   | [ ]    |
 
 ## 3. Phases
 
-### P1 — impl (Engine + Scheduler + Node)
+### P1 — impl (граф-каркас + Scheduler)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-roles/role-engine.ts` — RoleEngine: loadAll, activate, deactivate
-  - `services/agent-inbox/modules/inbox-roles/role-scheduler.ts` — RoleScheduler: tick, assignManual
-  - `services/agent-inbox/modules/inbox-roles/role-node.ts` — RoleNode: типы (session/gate/ask/effect), Edge
-  - `services/agent-inbox/modules/inbox-roles/errors.ts` — RoleError
-- **Exit:** Engine загружает роли. Scheduler выполняет tick с мок-VCS.
+  - `services/agent-inbox/modules/inbox-roles/role-node.ts` — RoleNode: варианты `prep`/`session`/`gate`/`ask`/`effect` + Edge; типы NodeContext (mr, workspace под state dir, artifacts), SessionPolicy (promptTimeout-минуты, continueMax, restartMax), GateResult, OperatorQuestion
+  - `services/agent-inbox/modules/inbox-roles/role-engine.ts` — RoleEngine: loadAll/activate/deactivate/list (роли `active:false` по умолчанию)
+  - `services/agent-inbox/modules/inbox-roles/role-scheduler.ts` — RoleScheduler: tick (poll → шумовой фильтр AI-02 → delta → assign → step → escalate); assignManual (работает и для неактивной роли, SV-08); listInstances/listUnassigned/getPolledMr/findInstance
+  - `services/agent-inbox/modules/inbox-roles/errors.ts` — RoleError, InstanceState
+- **Exit:** Engine грузит роли; Scheduler.tick с мок-VCS: новые MR → инстанс или в unassigned; type-check + format pass.
 
-### P2 — impl (Instance + Roles + Classifier + Escalator)
+### P2 — impl (движок узлов: instance, classifier, validator, executor, escalator)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — RoleInstance: step() (выполнить узел, классифицировать исход, перейти по edge), счётчики continue/restart
-  - `services/agent-inbox/modules/inbox-roles/outcome-classifier.ts` — OutcomeClassifier: классы (OK, NO_RESULT, PARSE_ERROR, SCHEMA_MISMATCH, SESSION_ERROR, TIMEOUT, INCOMPLETE_ARTIFACT) + remediation-сигналы
-  - `services/agent-inbox/modules/inbox-roles/reviewer.role.ts` — ReviewerRole: граф 9 узлов = scaffold(session)→gate(validate)→enrich(session)→gate→sessions(fan-out)→gate→synthesize(session)→ask→effect(post)→done
-  - `services/agent-inbox/modules/inbox-roles/author.role.ts` — AuthorRole: fetch(session)→gate→summary(session)→ask→effect(react/reply)→done
-  - `services/agent-inbox/modules/inbox-roles/rights-escalator.ts` — RightsEscalator: evaluate (24h бездействия → нотификация), schedule. Читает `operator_action` из audit.
-- **Exit:** RoleInstance выполняет граф. Gate-узлы используют `inbox-review-plan --validate`. Effect-узлы — vcs-reply/approve. Нотификации по таймеру.
+  - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — RoleInstance: `step()` (выполнить узел по kind, классифицировать, перейти по edge), recovery ladder (continue→restart→AWAITING_OPERATOR), движок владеет status (NFC-SV-08), восстановление от заполненных артефактов при рестарте, `ctx.workspace` под `StateStore.getStateDir()` (NFC-05), `onContextUpdate`, `getBoardView`
+  - `services/agent-inbox/modules/inbox-roles/outcome-classifier.ts` — классы + предметный remediation-сигнал
+  - `services/agent-inbox/modules/inbox-roles/artifact-validator.ts` — validate(dir, stage): структура + схема + mermaid-валидность (парсер) + coverage ledger (каждый Scope-файл → находки/явное no-findings) + tool-call сверка (toolCalls из opencode vs Scope). Обёртка над `inbox-review-plan --validate`
+  - `services/agent-inbox/modules/inbox-roles/effect-executor.ts` — единственный исполнитель vcs-\* (NFC-SV-07): reconcile-дедуп против тредов + ThreadModel/ReactionMatrix; vcs-react/vcs-reply/vcs-approve/резолв/vcs-draft-note; идемпотентность (`effect_applied` в audit)
+  - `services/agent-inbox/modules/inbox-roles/rights-escalator.ts` — notifyReady (сразу при AWAITING_OPERATOR) + remindIdle; права не эскалирует
+- **Exit:** Инстанс проходит граф на моках; ладдер, дедуп, идемпотентность, восстановление покрыты; агент vcs-\* не вызывает (только EffectExecutor).
 
-### P3 — test
+### P3 — impl (роли: reviewer + author)
+
+- **Rules:** `ai/directives/coding/typescript-rules.xml`
+- **Target Files:**
+  - `services/agent-inbox/modules/inbox-roles/reviewer.role.ts` — три ветки от `prep`: review_needed (fan-out по дорожкам + security-линза NFC-SV-09 + code-review base..HEAD → synthesize → ask → effect), reply_needed (thread-triage без полной батареи), update-review (дельта). `session`-узлы строят system через `services/ai-kit` (buildNodePrompt), задача — предметная (адреса файлов), cwd=worktree
+  - `services/agent-inbox/modules/inbox-roles/author.role.ts` — self-review + разбор замечаний ревьюеров (`vcs-discussions --all`) → REPORT.md (Сводка) + FIX_TASK.md (копируемое задание) + черновики; effect = react/reply + опц. vcs-mr-edit --description; свой MR не апрувит, в треды не пишет (D68)
+- **Exit:** Обе роли выражают конвейер D57/D70 через граф; reviewer-граф проходит три ветки на моках (тест выразительности).
+
+### P4 — test
 
 - **Rules:** none
-- **Target Files:**
-  - `services/agent-inbox/modules/inbox-roles/__tests__/role-engine.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/role-scheduler.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/outcome-classifier.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/rights-escalator.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts`
-  - `services/agent-inbox/modules/inbox-roles/__tests__/author.role.test.ts`
+- **Target Files:** `__tests__/` — role-engine, role-scheduler, role-instance, outcome-classifier, artifact-validator, effect-executor, rights-escalator, reviewer.role, author.role
+- **Exit:** Полный цикл tick → prep → session → gate → synthesize → ask → effect; ладдер; дедуп; идемпотентность (двойной постинг при restart не происходит); три ветки reviewer; author FIX_TASK.
 
 ## 4. BDD
 
-- GIVEN reviewer.role.ts загружен WHEN step() на узле 'scaffold' THEN session → промпт → structured output → переход 'ok' на 'gate_scaffolded'
-- GIVEN reviewer на gate-узле WHEN verify(артефакты) THEN детерминированный pass/fail → переход по edge
-- GIVEN session-узел вернул PARSE_ERROR WHEN OutcomeClassifier THEN класс + remediation-сигнал → continue в ту же сессию, continueCount++
-- GIVEN continueMax исчерпан WHEN recovery THEN restart узла в свежей сессии, restartCount++
-- GIVEN restartMax исчерпан WHEN recovery THEN RoleInstance → AWAITING_OPERATOR с накопленной диагностикой
-- GIVEN reviewer на ask-узле WHEN оператор не реагирует 24h THEN RightsEscalator → нотификация (VK Teams-пинг)
-- GIVEN оператор сделал POST /api/mr/:id/action WHEN следующий evaluate THEN таймер сброшен (operator_action в audit)
-- GIVEN effect-узел 'post' выполнен WHEN restart узла THEN effect не выполняется повторно (маркер в артефактах)
-- GIVEN author.role.ts загружен WHEN step() THEN fetch discussions → classify → summary → ask → effect react/reply → done
+- GIVEN reviewer активирован WHEN tick с новым MR (stage=review_needed) THEN prep → fan-out сессии по дорожкам + security-линза
+- GIVEN stage=reply_needed WHEN prep THEN ветка thread-triage (полная батарея НЕ запускается)
+- GIVEN headChanged=fast_forward + моё ревью WHEN prep THEN ветка update-review (дельта)
+- GIVEN session вернула TIMEOUT WHEN recovery THEN continue→restart→AWAITING_OPERATOR (лимиты policy)
+- GIVEN агент предложил действия в артефакте WHEN effect THEN EffectExecutor вызывает vcs-\* (агент сам не вызывал)
+- GIVEN effect выполнен WHEN restart узла THEN повторно не постится (effect_applied)
+- GIVEN Scope-файл без находок WHEN validate THEN требуется явное no-findings (coverage ledger)
+- GIVEN агент не открывал Scope-файл WHEN validate THEN предупреждение (tool-call сверка)
+- GIVEN рестарт serve с заполненными дорожками WHEN восстановление THEN готовые не переисполняются
+- GIVEN author-MR WHEN граф THEN REPORT.md + FIX_TASK.md + черновики; approve отсутствует
+- GIVEN оператор не реагирует WHEN AWAITING_OPERATOR THEN notifyReady (права не растут)
 
 ## 5. Verification
 
@@ -88,23 +74,17 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario                                               | Level | Test File                  |
-| ------------------------------------------------------ | ----- | -------------------------- |
-| Engine: load + activate                                | unit  | role-engine.test.ts        |
-| Scheduler: tick → assign                               | unit  | role-scheduler.test.ts     |
-| Scheduler: tick → step                                 | unit  | role-scheduler.test.ts     |
-| Instance: session узел → gate                          | unit  | role-instance.test.ts      |
-| Instance: recovery ladder (continue)                   | unit  | role-instance.test.ts      |
-| Instance: recovery ladder (restart)                    | unit  | role-instance.test.ts      |
-| Instance: recovery ladder (AWAITING)                   | unit  | role-instance.test.ts      |
-| Classifier: PARSE_ERROR → signal                       | unit  | outcome-classifier.test.ts |
-| Classifier: SESSION_ERROR → signal                     | unit  | outcome-classifier.test.ts |
-| Classifier: SCHEMA_MISMATCH → signal                   | unit  | outcome-classifier.test.ts |
-| Reviewer: scaffold → gate → enrich                     | unit  | reviewer.role.test.ts      |
-| Reviewer: sessions fan-out → synthesize → ask → effect | unit  | reviewer.role.test.ts      |
-| Author: fetch → classify → summary → ask → effect      | unit  | author.role.test.ts        |
-| Escalator: 24h → нотификация                           | unit  | rights-escalator.test.ts   |
-| Escalator: POST → таймер сброшен                       | unit  | rights-escalator.test.ts   |
+| Scenario                               | Level | Test File                  |
+| -------------------------------------- | ----- | -------------------------- |
+| Scheduler: tick → assign/unassigned    | unit  | role-scheduler.test.ts     |
+| Instance: три ветки reviewer           | unit  | reviewer.role.test.ts      |
+| Instance: recovery ladder              | unit  | role-instance.test.ts      |
+| Instance: восстановление от артефактов | unit  | role-instance.test.ts      |
+| Classifier: класс + сигнал             | unit  | outcome-classifier.test.ts |
+| Validator: coverage ledger + tool-call | unit  | artifact-validator.test.ts |
+| Executor: дедуп + идемпотентность      | unit  | effect-executor.test.ts    |
+| Escalator: notifyReady                 | unit  | rights-escalator.test.ts   |
+| Author: FIX_TASK + no-approve          | unit  | author.role.test.ts        |
 
 ## 7. Execution Log
 
@@ -112,17 +92,24 @@
 
 #### P1
 
-- [x] 2026-07-10T19:30:00Z ver `npm run type-check` → `pass` exit=`0`
-- [x] 2026-07-10T19:30:00Z DONE
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []
 
 #### P2
 
-- [x] 2026-07-10T19:35:00Z ver `npm run type-check` → `pass` exit=`0`
-- [x] 2026-07-10T19:35:00Z DONE
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []
 
 #### P3
 
-- [x] 2026-07-10T19:40:00Z ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/*.test.ts'` → `pass` exit=`0`
-- [x] 2026-07-10T19:40:00Z ver `npm run type-check` → `pass` exit=`0`
-- [x] 2026-07-10T19:40:00Z ver `npm run format:check` → `pass` exit=`0`
-- [x] 2026-07-10T19:40:00Z DONE
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []
+
+#### P4
+
+- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: []; decisions: []; open: []

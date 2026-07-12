@@ -21,26 +21,27 @@
 | TSK-103 | DONE   | TSK-102                 | `inbox-review-plan --scaffold`/`--validate`: документный конвейер                          |
 | TSK-104 | DONE   | TSK-103                 | Документный конвейер в скиллах + пивот «ничего на диск»                                    |
 | TSK-105 | DONE   | TSK-109                 | inbox-mocks: фабрики мок-данных                                                            |
-| TSK-106 | REOPEN | TSK-105                 | inbox-api: + artifact endpoints, generic action (пивот D-86)                               |
-| TSK-107 | REOPEN | TSK-105, TSK-106        | inbox-dashboard: + браузер артефактов, ActionPanel (пивот D-86)                            |
+| TSK-106 | TODO   | TSK-105                 | inbox-api: + artifact endpoints, generic action (пивот D-86)                               |
+| TSK-107 | TODO   | TSK-105, TSK-106        | inbox-dashboard: + браузер артефактов, ActionPanel (пивот D-86)                            |
 | TSK-108 | DONE   | TSK-107, TSK-114        | inbox-dashboard: e2e тесты (Playwright)                                                    |
 | TSK-109 | DONE   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog                               |
 | TSK-110 | DONE   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                                                     |
-| TSK-111 | REOPEN | TSK-105                 | inbox-opencode: + агентный режим (tools, toolCalls, минуты)                                |
-| TSK-112 | REOPEN | TSK-111                 | inbox-opencode: OpenCodeReal агентная сессия + tool-call лог                               |
-| TSK-113 | REOPEN | TSK-109,110,111,116     | inbox-roles: reviewer-граф (3 ветки), thread-механика, дедуп, effect-executor (пивот D-86) |
+| TSK-111 | TODO   | TSK-105                 | inbox-opencode: + агентный режим (tools, toolCalls, минуты)                                |
+| TSK-112 | TODO   | TSK-111                 | inbox-opencode: OpenCodeReal агентная сессия + tool-call лог                               |
+| TSK-113 | TODO   | TSK-109,110,111,116     | inbox-roles: reviewer-граф (3 ветки), thread-механика, дедуп, effect-executor (пивот D-86) |
 | TSK-114 | DONE   | TSK-105, TSK-107        | inbox-visual-testing: ARIA snapshots + layout helpers                                      |
 | TSK-115 | DONE   | TSK-106,109,110,111,113 | inbox-serve: entry point + DI bootstrap + OpenCode spawn                                   |
 | TSK-116 | DONE   | —                       | services/ai-kit: компиляция system prompt из AIKit-директив                                |
 | TSK-117 | TODO   | TSK-115                 | inbox-serve: real-smoke (ручной golden-прогон)                                             |
 
-## Pivot Invalidation List (D-86)
+## Rewrite queue (D-86)
 
-Пивот D-86 (reviewer-флоу = паритет с CLI). Спеки — канон. Список задач под переоткрытие;
-`sdd-execute` открывает по каждой новый Round и переисполняет фазы как `fix`-kind против
-обновлённых спек (фазы вручную не флипаются — `AX_REOPEN_TICKET_FORMAT`).
+D-86 (reviewer-флоу = паритет с CLI) — по факту полный реврайт serve-контракта, не пивот.
+Пять тикетов переписаны начисто под канонические спеки (чистый `TODO`, фазы = новый контракт,
+Round 1). Существующий код Round-1 (SessionPool, http-server, board-provider mock и т.п.)
+дорабатывается фаза-сабагентами, не выбрасывается. Спеки — канон.
 
-| Task-ID | Reopen reason                                                                                                                                                                                      | Канон-спека     |
+| Task-ID | Что делает (новый контракт)                                                                                                                                                                        | Канон-спека     |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | TSK-111 | opencode: агентный режим (`createSession(cwd,tools)`, `prompt` по завершению хода, `toolCalls`, timeout-минуты); мок симулирует tool-call лог                                                      | inbox-opencode  |
 | TSK-112 | OpenCodeReal: агентная сессия + `toolCalls` из телеметрии SDK; repro «45 КБ one-shot в пустой dir виснет → с worktree+тулами завершается»                                                          | inbox-opencode  |
@@ -48,11 +49,12 @@
 | TSK-106 | `ArtifactRouter` (list/read артефактов), `BoardProviderPort.listArtifacts/readArtifact`, generic `action` (post/approve/redispatch/skip)                                                           | inbox-api       |
 | TSK-107 | `ArtifactBrowser`/`ArtifactView`/`ActionPanel`, рендер md+mermaid (из ai/inspector/web), статус-карточки = узел графа, нотификация сразу                                                           | inbox-dashboard |
 
-**Порядок исполнения:** `111 → 112`; `116 → 113` (113 также ← 109,110,111); `106 → 107`;
-`TSK-117` (golden-прогон) — финал после 113+115.
+**Порядок исполнения (слои):** Layer 0 — `TSK-111`, `TSK-106` (файлы не пересекаются);
+Layer 1 — `TSK-112`, `TSK-113`, `TSK-107` (разные модули). `TSK-117` (golden-прогон, manual)
+— финал после 113+115.
 
-Запуск: `gennady sdd-execute --task <TSK-NN>` (или sdd-execute-batch по списку) — оркестратор
-переоткрывает, дописывает Round, диспатчит фаза-сабагентов, закрывает audit'ом.
+Запуск: скилл `sdd-execute-batch` (оркестратор строит слои, диспатчит фаза-сабагентов
+параллельно по слою, закрывает audit'ом). Не CLI-команда.
 
 ## Dependency Graph
 
