@@ -1,6 +1,7 @@
 # Task: TSK-107 — inbox-dashboard: React SPA + браузер артефактов
 
 <!--SECTION:META-->
+
 ## 1. Meta
 
 - **Task-ID:** TSK-107 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies:** TSK-105 (mocks), TSK-106 (API)
@@ -9,6 +10,7 @@
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
+
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
@@ -16,11 +18,13 @@
 | P1  | impl | —    | [ ]    |
 | P2  | impl | P1   | [ ]    |
 | P3  | test | P1   | [ ]    |
+
 <!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
 
 <!--SECTION:PHASE_P1-->
+
 ### P1 — impl (браузер артефактов + панель действий)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -36,6 +40,7 @@
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
+
 ### P2 — impl (e2e харнесс)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -44,6 +49,7 @@
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:PHASE_P3-->
+
 ### P3 — test (компоненты)
 
 - **Rules:** none
@@ -55,6 +61,7 @@
 <!--/SECTION:PHASE_P3-->
 
 <!--SECTION:BDD-->
+
 ## 4. BDD
 
 - GIVEN #/mr/:id открыт WHEN загружен THEN слева список артефактов, справа REPORT (md+mermaid отрендерен)
@@ -67,6 +74,7 @@
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+
 ## 5. Verification
 
 - `npm run type-check` — pass
@@ -75,6 +83,7 @@
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
+
 ## 6. Test Scenario Coverage
 
 | Scenario                      | Level | Test File                |
@@ -83,9 +92,11 @@
 | ActionPanel reviewer/author   | unit  | ActionPanel.test.tsx     |
 | BoardPage очередь+роли        | unit  | BoardPage.test.tsx       |
 | Deep-link + mermaid рендер    | e2e   | TSK-108                  |
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
 
 ### Round 1 — initial
@@ -106,5 +117,5 @@
 
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+    **Handoff →** artifacts: []; decisions: []; open: []
 <!--/SECTION:EXECUTION_LOG-->

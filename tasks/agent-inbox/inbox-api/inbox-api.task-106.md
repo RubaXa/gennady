@@ -1,6 +1,7 @@
 # Task: TSK-106 — inbox-api: HTTP-сервер + REST + artifact endpoints
 
 <!--SECTION:META-->
+
 ## 1. Meta
 
 - **Task-ID:** TSK-106 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-api | **Dependencies:** TSK-105 (mocks)
@@ -9,17 +10,20 @@
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
+
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
 | P1  | impl | —    | [x]    |
 | P2  | test | P1   | [x]    |
+
 <!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
 
 <!--SECTION:PHASE_P1-->
+
 ### P1 — impl
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -34,6 +38,7 @@
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
+
 ### P2 — test
 
 - **Rules:** none
@@ -45,6 +50,7 @@
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:BDD-->
+
 ## 4. BDD
 
 - GIVEN сервер запущен WHEN GET /api/board THEN 200, roles[] + unassigned[]
@@ -58,6 +64,7 @@
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+
 ## 5. Verification
 
 - `npm run type-check` — pass
@@ -66,6 +73,7 @@
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
+
 ## 6. Test Scenario Coverage
 
 | Scenario                         | Level       | Test File               |
@@ -76,9 +84,11 @@
 | path traversal → 400             | integration | artifact.router.test.ts |
 | POST action generic (4 choice)   | integration | mr.router.test.ts       |
 | SPA fallback + graceful shutdown | integration | http-server.test.ts     |
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
 
 ### Round 1 — initial

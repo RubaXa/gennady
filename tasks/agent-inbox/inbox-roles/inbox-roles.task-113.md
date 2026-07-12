@@ -1,6 +1,7 @@
 # Task: TSK-113 — inbox-roles: reviewer/author графы + движок узлов
 
 <!--SECTION:META-->
+
 ## 1. Meta
 
 - **Task-ID:** TSK-113 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
@@ -9,6 +10,7 @@
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
+
 ## 2. Phases Overview
 
 | ID  | Kind | Deps | Status |
@@ -17,11 +19,13 @@
 | P2  | impl | P1   | [ ]    |
 | P3  | impl | P2   | [ ]    |
 | P4  | test | P3   | [ ]    |
+
 <!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
 
 <!--SECTION:PHASE_P1-->
+
 ### P1 — impl (граф-каркас + Scheduler)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -34,6 +38,7 @@
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
+
 ### P2 — impl (движок узлов: instance, classifier, validator, executor, escalator)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -47,6 +52,7 @@
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:PHASE_P3-->
+
 ### P3 — impl (роли: reviewer + author)
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -57,6 +63,7 @@
 <!--/SECTION:PHASE_P3-->
 
 <!--SECTION:PHASE_P4-->
+
 ### P4 — test
 
 - **Rules:** none
@@ -65,6 +72,7 @@
 <!--/SECTION:PHASE_P4-->
 
 <!--SECTION:BDD-->
+
 ## 4. BDD
 
 - GIVEN reviewer активирован WHEN tick с новым MR (stage=review_needed) THEN prep → fan-out сессии по дорожкам + security-линза
@@ -81,6 +89,7 @@
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+
 ## 5. Verification
 
 - `npm run type-check` — pass
@@ -89,6 +98,7 @@
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
+
 ## 6. Test Scenario Coverage
 
 | Scenario                               | Level | Test File                  |
@@ -102,9 +112,11 @@
 | Executor: дедуп + идемпотентность      | unit  | effect-executor.test.ts    |
 | Escalator: notifyReady                 | unit  | rights-escalator.test.ts   |
 | Author: FIX_TASK + no-approve          | unit  | author.role.test.ts        |
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
 
 ### Round 1 — initial
@@ -131,5 +143,5 @@
 
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+    **Handoff →** artifacts: []; decisions: []; open: []
 <!--/SECTION:EXECUTION_LOG-->

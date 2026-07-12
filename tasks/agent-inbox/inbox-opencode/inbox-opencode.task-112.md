@@ -1,6 +1,7 @@
 # Task: TSK-112 — inbox-opencode: OpenCodeReal (агентная сессия через SDK)
 
 <!--SECTION:META-->
+
 ## 1. Meta
 
 - **Task-ID:** TSK-112 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-111 (port+mock)
@@ -9,6 +10,7 @@
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
+
 ## 2. Phases Overview
 
 | ID  | Kind     | Deps | Status |
@@ -16,11 +18,13 @@
 | P0  | research | —    | [ ]    |
 | P1  | impl     | P0   | [ ]    |
 | P2  | test     | P1   | [ ]    |
+
 <!--/SECTION:PHASES_OVERVIEW-->
 
 ## 3. Phases
 
 <!--SECTION:PHASE_P0-->
+
 ### P0 — research (агентный SDK)
 
 - **Rules:** none
@@ -29,6 +33,7 @@
 <!--/SECTION:PHASE_P0-->
 
 <!--SECTION:PHASE_P1-->
+
 ### P1 — impl
 
 - **Rules:** `ai/directives/coding/typescript-rules.xml`
@@ -39,6 +44,7 @@
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
+
 ### P2 — test
 
 - **Rules:** none
@@ -47,6 +53,7 @@
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:BDD-->
+
 ## 4. BDD
 
 - GIVEN opencode serve WHEN createSession(cwd=worktree, tools=on) + prompt(предметная задача) THEN ход завершается, результат + toolCalls непусты
@@ -56,6 +63,7 @@
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+
 ## 5. Verification
 
 - `npm run type-check` — pass
@@ -64,6 +72,7 @@
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
+
 ## 6. Test Scenario Coverage
 
 | Scenario                  | Level | Test File             |
@@ -72,9 +81,11 @@
 | Real: UNAVAILABLE         | unit  | opencode.real.test.ts |
 | Real: toolCalls извлечены | unit  | opencode.real.test.ts |
 | Real: TIMEOUT (минуты)    | unit  | opencode.real.test.ts |
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
+
 ## 7. Execution Log
 
 ### Round 1 — initial
@@ -95,5 +106,5 @@
 
 - [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+    **Handoff →** artifacts: []; decisions: []; open: []
 <!--/SECTION:EXECUTION_LOG-->
