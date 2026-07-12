@@ -13,4 +13,13 @@ export const NODE_DIRECTIVE_MAP: Readonly<Record<string, readonly string[]>> = {
 
   /** Review node: architecture + code interrogation (full review battery). */
   node_review: ['arch-interrogation', 'code-interrogation'],
+
+  /** Enrich node: same full battery as review (deepen scaffold findings). */
+  node_enrich: ['arch-interrogation', 'code-interrogation'],
+
+  /** Sessions (fan-out) node: same full battery (track analysis). */
+  node_sessions: ['arch-interrogation', 'code-interrogation'],
+
+  /** Synthesize node: same full battery (unified report). */
+  node_synthesize: ['arch-interrogation', 'code-interrogation'],
 };

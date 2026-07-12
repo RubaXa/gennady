@@ -13,10 +13,10 @@ const reviewerGraph: RoleGraph = {
     {
       kind: 'session',
       id: 'node_scaffold',
-      prompt(ctx: NodeContext) {
+      prompt(_ctx: NodeContext) {
         return {
-          system: 'You are a code reviewer. Analyze the MR and produce a scaffold of findings.',
-          text: `Review MR: ${ctx.mr.webUrl}. Title: ${ctx.mr.title}. Description: ${ctx.mr.description}`,
+          system: '',
+          text: '',
         };
       },
       dir(ctx: NodeContext) {
@@ -54,11 +54,10 @@ const reviewerGraph: RoleGraph = {
     {
       kind: 'session',
       id: 'node_enrich',
-      prompt(ctx: NodeContext) {
-        const scaffold = (ctx.artifacts['node_scaffold'] as Record<string, unknown>) ?? {};
+      prompt(_ctx: NodeContext) {
         return {
-          system: 'You are a code reviewer. Enrich the scaffold findings with deeper analysis.',
-          text: `Enrich these findings: ${JSON.stringify(scaffold)}`,
+          system: '',
+          text: '',
         };
       },
       dir(ctx: NodeContext) {
@@ -96,11 +95,10 @@ const reviewerGraph: RoleGraph = {
     {
       kind: 'session',
       id: 'node_sessions',
-      prompt(ctx: NodeContext) {
-        const enriched = (ctx.artifacts['node_enrich'] as Record<string, unknown>) ?? {};
+      prompt(_ctx: NodeContext) {
         return {
-          system: 'You are a code reviewer. Track and analyze individual discussion sessions.',
-          text: `Track sessions for: ${JSON.stringify(enriched)}`,
+          system: '',
+          text: '',
         };
       },
       dir(ctx: NodeContext) {
@@ -138,13 +136,10 @@ const reviewerGraph: RoleGraph = {
     {
       kind: 'session',
       id: 'node_synthesize',
-      prompt(ctx: NodeContext) {
-        const scaffold = (ctx.artifacts['node_scaffold'] as Record<string, unknown>) ?? {};
-        const enriched = (ctx.artifacts['node_enrich'] as Record<string, unknown>) ?? {};
-        const sessions = (ctx.artifacts['node_sessions'] as Record<string, unknown>) ?? {};
+      prompt(_ctx: NodeContext) {
         return {
-          system: 'You are a code reviewer. Synthesize all findings into a final review report.',
-          text: `Synthesize: scaffold=${JSON.stringify(scaffold)}, enriched=${JSON.stringify(enriched)}, sessions=${JSON.stringify(sessions)}`,
+          system: '',
+          text: 'Synthesize the review findings from all track sessions into a unified report.',
         };
       },
       dir(ctx: NodeContext) {

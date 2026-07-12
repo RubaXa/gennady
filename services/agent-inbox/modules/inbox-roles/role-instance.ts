@@ -4,6 +4,7 @@
 
 import { join } from 'node:path';
 import { logger } from '#logger';
+import { buildNodePrompt } from '../../../ai-kit/compile.ts';
 import type { InstanceState } from './errors.ts';
 import type {
   RoleNode,
@@ -346,8 +347,25 @@ export class RoleInstance {
       this._sessionId = handle.sid;
     }
 
+    // Build system prompt from AIKit directives.
+    // Fallback: if node is not mapped, use promptContent.system directly.
+    let system: string;
+    try {
+      const systemPrompt = await buildNodePrompt(node.id, ctx);
+      system = systemPrompt;
+      if (promptContent.system) {
+        system = `${systemPrompt}\n\n${promptContent.system}`;
+      }
+    } catch {
+      logger.debug('[RoleInstance#_executeSession] [buildNodePrompt → unmapped node]', {
+        instance: this.id,
+        node: node.id,
+      });
+      system = promptContent.system;
+    }
+
     const promptOpts: PromptOpts = {
-      system: promptContent.system,
+      system,
       text: promptContent.text,
     };
 
