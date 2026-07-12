@@ -17,8 +17,8 @@ const minimalGraph: RoleGraph = {
       prompt() {
         return { system: 'Test', text: 'Test prompt' };
       },
-      dir() {
-        return '/tmp/test';
+      dir(ctx: { workspace: string }) {
+        return `${ctx.workspace}/test`;
       },
       policy: { promptTimeout: 10000, continueMax: 1, restartMax: 1 },
     },

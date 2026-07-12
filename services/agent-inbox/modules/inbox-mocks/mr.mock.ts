@@ -143,8 +143,8 @@ const DEFAULT_MR_CONTEXT: MrContext = {
   headChanged: null,
   newCommits: null,
   worktree: {
-    path: '/tmp/worktree/group__project-510',
-    base: '/repos/group/project',
+    path: '~/.gennady/worktrees/group__project-510',
+    base: '~/.gennady/clones/group/project',
     diffRefs: 'main...feature/new-feature',
     repoLayout: { dirs: ['src', 'src/utils'], rootFiles: ['package.json', 'tsconfig.json'] },
   },

@@ -14,6 +14,10 @@ import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 class FakeStateStore {
   public audits: AuditEntry[] = [];
 
+  getStateDir() {
+    return '/home/test/.gennady';
+  }
+
   loadRegistry() {
     return { version: 1, entries: {} };
   }
@@ -36,8 +40,8 @@ function makeSimpleGraph(): RoleGraph {
         prompt() {
           return { system: 'Test system', text: 'Test prompt' };
         },
-        dir() {
-          return '/tmp/test-graph';
+        dir(ctx) {
+          return `${ctx.workspace}/test-graph`;
         },
         resultSchema: {
           title: 'node_test',
@@ -60,8 +64,8 @@ function makeGraphWithGate(): RoleGraph {
         prompt() {
           return { system: 'Scaffold', text: 'Do scaffold' };
         },
-        dir() {
-          return '/tmp/test-gate';
+        dir(ctx) {
+          return `${ctx.workspace}/test-gate`;
         },
         resultSchema: {
           title: 'node_scaffold',
@@ -100,8 +104,8 @@ function makeRecoveryGraph(): RoleGraph {
         prompt() {
           return { system: 'Flaky', text: 'May fail' };
         },
-        dir() {
-          return '/tmp/test-recovery';
+        dir(ctx) {
+          return `${ctx.workspace}/test-recovery`;
         },
         resultSchema: {
           title: 'node_flaky',

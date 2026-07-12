@@ -2,6 +2,7 @@
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
 // @tasks: TSK-113
 
+import { join } from 'node:path';
 import { logger } from '#logger';
 import type { InstanceState } from './errors.ts';
 import type {
@@ -634,9 +635,14 @@ export class RoleInstance {
       this._mrContext = await this._vcs.getMrContext(this.mr);
     }
 
+    // NFC-05: all working state lives under the state dir (~/.gennady by default,
+    // relocatable via --state-dir) — never /tmp. Sanitize the composite id for FS use.
+    const slug = this.id.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    const workspace = join(this._store.getStateDir(), 'agent-inbox', 'workspaces', slug);
+
     return {
       mr: this._mrContext,
-      workspace: `/tmp/gennady/workspaces/${this.id}`,
+      workspace,
       artifacts: { ...this._artifacts },
     };
   }

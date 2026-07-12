@@ -16,6 +16,10 @@ class FakeStateStore {
   public audits: AuditEntry[] = [];
   public registry: Record<string, unknown> = { entries: {} };
 
+  getStateDir() {
+    return '/home/test/.gennady';
+  }
+
   loadRegistry() {
     return this.registry;
   }
@@ -34,6 +38,7 @@ class FakeStateStore {
 }
 
 interface StateStoreLike {
+  getStateDir(): string;
   loadRegistry(): unknown;
   loadConfig(): unknown;
   appendAudit(entry: AuditEntry): Promise<void>;
@@ -51,8 +56,8 @@ const reviewerGraph = {
         prompt() {
           return { system: 'Test', text: 'Test prompt' };
         },
-        dir() {
-          return '/tmp/scheduler-test';
+        dir(ctx: { workspace: string }) {
+          return `${ctx.workspace}/scheduler-test`;
         },
         resultSchema: {
           title: 'node_scaffold',
@@ -159,8 +164,8 @@ describe('RoleScheduler — tick', () => {
             prompt() {
               return { system: 'A', text: 'A' };
             },
-            dir() {
-              return '/tmp/a';
+            dir(ctx: { workspace: string }) {
+              return `${ctx.workspace}/a`;
             },
             policy: { promptTimeout: 10000, continueMax: 1, restartMax: 1 },
           },

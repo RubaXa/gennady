@@ -95,6 +95,11 @@ await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
   - `{ kind: 'gate', verify(artifacts): GateResult }` — детерминированный код
   - `{ kind: 'ask', question(artifacts): OperatorQuestion }` — ждёт оператора
   - `{ kind: 'effect', run(ctx, artifacts): Promise<void> }` — публичное действие (vcs-reply/approve)
+- **`dir(ctx)` контракт (`AX_STATE_UNDER_STATEDIR`):** возвращаемый путь ОБЯЗАН быть поддеревом
+  `ctx.workspace`. Движок укореняет `ctx.workspace` под state dir
+  (`<state-dir>/agent-inbox/workspaces/<instance-slug>`, через `StateStore.getStateDir()`), поэтому
+  роль строит только относительные подпапки: `` `${ctx.workspace}/scaffold` ``. Абсолютные пути,
+  `/tmp`, `os.tmpdir()` — запрещены; такой узел — drift.
 - **Consumers:** `RoleInstance.step()`.
 
 ### `OutcomeClassifier`
@@ -149,7 +154,7 @@ await scheduler.assignManual(mrUrl, 'reviewer', { canPost: false });
 **Contract (DbC):**
 
 - **Postconditions:** `step()` — узел выполнен, исход классифицирован, переход по edge.
-- **Invariants:** Gate-узлы детерминированы (без LLM). Effect-узлы выполняются не более одного раза на успешный проход (маркер `effect_applied` в audit log, проверяется перед выполнением). `continueCount ≤ policy.continueMax`; `restartCount ≤ policy.restartMax`. При рестарте serve: состояние восстанавливается от артефактов-чекпоинтов (`AX_ARTIFACTS_ARE_CHECKPOINTS`).
+- **Invariants:** Gate-узлы детерминированы (без LLM). Effect-узлы выполняются не более одного раза на успешный проход (маркер `effect_applied` в audit log, проверяется перед выполнением). `continueCount ≤ policy.continueMax`; `restartCount ≤ policy.restartMax`. При рестарте serve: состояние восстанавливается от артефактов-чекпоинтов (`AX_ARTIFACTS_ARE_CHECKPOINTS`). `ctx.workspace` укоренён под state dir через `StateStore.getStateDir()`, узлы пишут только внутрь него — никаких `/tmp` (`AX_STATE_UNDER_STATEDIR`).
 
 ### Service: `OutcomeClassifier`
 

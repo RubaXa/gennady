@@ -129,7 +129,11 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
 
         const forceKill = setTimeout(() => {
           config.opencodeProcess?.removeListener('exit', onExit);
-          try { config.opencodeProcess?.kill('SIGKILL'); } catch { /* ignore */ }
+          try {
+            config.opencodeProcess?.kill('SIGKILL');
+          } catch {
+            /* ignore */
+          }
           resolve();
         }, 3000);
 

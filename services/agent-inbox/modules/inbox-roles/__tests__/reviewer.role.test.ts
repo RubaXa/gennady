@@ -14,6 +14,10 @@ import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 class FakeStateStore {
   public audits: AuditEntry[] = [];
 
+  getStateDir() {
+    return '/home/test/.gennady';
+  }
+
   loadRegistry() {
     return { version: 1, entries: {} };
   }
@@ -28,6 +32,7 @@ class FakeStateStore {
 }
 
 interface StateStore {
+  getStateDir(): string;
   loadRegistry(): { version: 1; entries: {} };
   appendAudit(entry: AuditEntry): Promise<void>;
   queryAudit(mr: string): Promise<AuditEntry[]>;

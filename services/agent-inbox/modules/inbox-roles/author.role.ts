@@ -21,7 +21,7 @@ const authorGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/author-fetch/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/author-fetch`;
       },
       resultSchema: {
         title: 'node_fetch',
@@ -64,7 +64,7 @@ const authorGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/author-summary/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/author-summary`;
       },
       resultSchema: {
         title: 'node_summary',

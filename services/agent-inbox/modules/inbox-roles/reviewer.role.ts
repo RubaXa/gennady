@@ -20,7 +20,7 @@ const reviewerGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/scaffold/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/scaffold`;
       },
       resultSchema: {
         title: 'node_scaffold',
@@ -62,7 +62,7 @@ const reviewerGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/enrich/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/enrich`;
       },
       resultSchema: {
         title: 'node_enrich',
@@ -104,7 +104,7 @@ const reviewerGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/sessions/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/sessions`;
       },
       resultSchema: {
         title: 'node_sessions',
@@ -148,7 +148,7 @@ const reviewerGraph: RoleGraph = {
         };
       },
       dir(ctx: NodeContext) {
-        return `/tmp/gennady/synthesize/${ctx.mr.project.replace(/\//g, '-')}-${ctx.mr.iid}`;
+        return `${ctx.workspace}/synthesize`;
       },
       resultSchema: {
         title: 'node_synthesize',

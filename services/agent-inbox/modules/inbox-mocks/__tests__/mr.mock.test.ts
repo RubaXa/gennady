@@ -80,7 +80,7 @@ describe('mockMrContext — default values', () => {
     assert.strictEqual(ctx.lastAuthor, 'j.doe');
     assert.deepStrictEqual(ctx.threadStats, { total: 1, drafts: 0 });
     assert.notStrictEqual(ctx.worktree, undefined);
-    assert.strictEqual(ctx.worktree.path, '/tmp/worktree/group__project-510');
+    assert.strictEqual(ctx.worktree.path, '~/.gennady/worktrees/group__project-510');
     assert.notStrictEqual(ctx.changeset, undefined);
     assert.strictEqual(ctx.changeset?.totals.files, 1);
   });
