@@ -34,11 +34,25 @@
 | TSK-116 | DONE   | —                       | services/ai-kit: компиляция system prompt из AIKit-директив                                |
 | TSK-117 | TODO   | TSK-115                 | inbox-serve: real-smoke (ручной golden-прогон)                                             |
 
-> **Пивот D-86 (reviewer-флоу = паритет с CLI).** Спеки — канон. REOPEN-задачи выполняются
-> заново по обновлённым спекам: inbox-roles (три ветки графа, prep-узел, ArtifactValidator,
-> EffectExecutor, agent-proposes-engine-acts), inbox-opencode (агентная сессия + tool-call лог),
-> inbox-api (artifact endpoints), inbox-dashboard (браузер артефактов + ActionPanel).
-> Порядок: 111→112, 116→113, 106→107; TSK-117 (golden-прогон) — финал.
+## Pivot Invalidation List (D-86)
+
+Пивот D-86 (reviewer-флоу = паритет с CLI). Спеки — канон. Список задач под переоткрытие;
+`sdd-execute` открывает по каждой новый Round и переисполняет фазы как `fix`-kind против
+обновлённых спек (фазы вручную не флипаются — `AX_REOPEN_TICKET_FORMAT`).
+
+| Task-ID | Reopen reason                                                                                                                                                                                      | Канон-спека     |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| TSK-111 | opencode: агентный режим (`createSession(cwd,tools)`, `prompt` по завершению хода, `toolCalls`, timeout-минуты); мок симулирует tool-call лог                                                      | inbox-opencode  |
+| TSK-112 | OpenCodeReal: агентная сессия + `toolCalls` из телеметрии SDK; repro «45 КБ one-shot в пустой dir виснет → с worktree+тулами завершается»                                                          | inbox-opencode  |
+| TSK-113 | reviewer-граф (3 ветки), `prep`-узел, `ArtifactValidator` (coverage ledger + tool-call сверка), `EffectExecutor` (дедуп + все vcs-\*), author-граф + FIX_TASK.md, раунды-в-файлах, NFC-SV-07/08/09 | inbox-roles     |
+| TSK-106 | `ArtifactRouter` (list/read артефактов), `BoardProviderPort.listArtifacts/readArtifact`, generic `action` (post/approve/redispatch/skip)                                                           | inbox-api       |
+| TSK-107 | `ArtifactBrowser`/`ArtifactView`/`ActionPanel`, рендер md+mermaid (из ai/inspector/web), статус-карточки = узел графа, нотификация сразу                                                           | inbox-dashboard |
+
+**Порядок исполнения:** `111 → 112`; `116 → 113` (113 также ← 109,110,111); `106 → 107`;
+`TSK-117` (golden-прогон) — финал после 113+115.
+
+Запуск: `gennady sdd-execute --task <TSK-NN>` (или sdd-execute-batch по списку) — оркестратор
+переоткрывает, дописывает Round, диспатчит фаза-сабагентов, закрывает audit'ом.
 
 ## Dependency Graph
 
