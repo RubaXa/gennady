@@ -113,7 +113,11 @@ export class ArtifactRouter {
 
     const artifact = this._provider.readArtifact(mrId, rawPath);
     if (!artifact) {
-      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `Artifact not found: ${rawPath}` });
+      sendJson(res, 404, {
+        ok: false,
+        error: 'NOT_FOUND',
+        detail: `Artifact not found: ${rawPath}`,
+      });
       return;
     }
 

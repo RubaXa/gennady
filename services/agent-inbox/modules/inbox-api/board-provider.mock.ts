@@ -3,7 +3,14 @@
 // @tasks: TSK-106
 
 import { BoardProviderPort } from './board-provider.port.ts';
-import type { BoardData, RoleView, MrCard, MrDetail, ArtifactRef, ArtifactContent } from './types.ts';
+import type {
+  BoardData,
+  RoleView,
+  MrCard,
+  MrDetail,
+  ArtifactRef,
+  ArtifactContent,
+} from './types.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
 
 /** @purpose One seeded artifact entry — ArtifactRef metadata plus its raw content. */
