@@ -135,7 +135,7 @@ function BoardPage() {
 ### `ActionPanel`
 
 - **Type:** Component
-- **Purpose:** Финальный пакет: кандидаты чекбоксами + inline-правка текста; кнопки `[✓ Постить выбранное] [✓ Approve MR] [↺ Дослать] [✕ Skip]`. Approve активна только без блокирующих находок (гейт, AI-13). «Дослать» открывает поле фокуса раунда.
+- **Purpose:** Финальный пакет. Reviewer: `[✓ Постить выбранное] [✓ Approve MR] [↺ Дослать] [✕ Skip]`, Approve активна только без блокирующих находок (гейт, AI-13). Author (свой MR): `[✓ Опубликовать черновики] [✓ 👍-реакции] [📋 Копировать задание (FIX_TASK.md)] [✎ Обновить описание MR] [↺ Дослать] [✕ Skip]` — без Approve. Кандидаты чекбоксами + inline-правка; «Дослать» открывает поле фокуса раунда.
 - **Props:** `question: OperatorQuestion`, `candidates`
 - **Consumers:** `MrDetailPage`; отправляет `POST /api/mr/:id/action`.
 
