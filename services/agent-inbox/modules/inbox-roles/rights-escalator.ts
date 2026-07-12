@@ -261,20 +261,20 @@ export class RightsEscalator {
   }
 
   /**
-   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
-   * @see {RightsEscalator#_evaluateInactivity}
    * @param instance The role instance to evaluate — must be at an ask node.
    * @returns Escalation result with whether to escalate and a message.
+   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
+   * @see {RightsEscalator#_evaluateInactivity}
    */
   async evaluate(instance: RoleInstance): Promise<EscalationResult> {
     return this._evaluateInactivity(instance);
   }
 
   /**
-   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
-   * @see {RightsEscalator#_recordEscalation}
    * @param instance The role instance to escalate.
    * @returns Promise that resolves when escalation is recorded.
+   * @deprecated Use `remindIdle` — kept for compatibility with pre-spec callers.
+   * @see {RightsEscalator#_recordEscalation}
    */
   async schedule(instance: RoleInstance): Promise<void> {
     return this._recordEscalation(instance);
