@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -70,9 +70,18 @@
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-12T18:36:33Z` intro `ArtifactRouter` ← GET /api/mr/:id/artifacts + /api/mr/:id/artifact для браузера артефактов (D-86)
+- [x] `2026-07-12T18:36:33Z` intro `ArtifactRef`, `ArtifactKind`, `ArtifactContent` ← типы для listArtifacts/readArtifact, владеет BoardProviderPort
+- [x] `2026-07-12T18:36:33Z` intro `ActionChoice` ← закрытый набор ответов на OperatorQuestion (post/approve/redispatch/skip), проверяется в MrRouter
+- [x] `2026-07-12T18:36:33Z` decision `listArtifacts/readArtifact=concrete-default-in-port` ← абстрактными их нельзя сделать: BoardProviderReal (TSK-113, вне Target Files этой фазы) не реализует их и типecheck ломается на TS2654; базовый класс отдаёт пустой список/null по умолчанию, BoardProviderMock переопределяет
+- 🛑 `2026-07-12T18:36:33Z` BLOCKED: mandatory `sdd verify` gate `test` fails — 2 assertions в `cli/cmd/inbox-context/inbox-context-cmd.test.ts` (не связанный модуль, вне Target Files этой фазы; проверяют буквальные подстроки в `cli/cmd/inbox-context/inbox-context-cmd.ts`, к inbox-api/ArtifactRouter отношения не имеют)
+  - 🔗 axiom: AX_PHASE_SCOPE_LOCK
+  - 💬 unblock: оператор решает — (a) подтвердить, что регресс pre-existing и не по вине этой фазы → отдельный таск/фикс вне P1, затем перезапуск verify без сюрприза; или (b) явно разрешить фазе тронуть `cli/cmd/inbox-context/inbox-context-cmd.ts` вне Target Files
+- ✅ `2026-07-12T21:00:00Z` RESOLVED (blocker 2026-07-12T18:36:33Z): оператор подтвердил — 2 красных inbox-context теста pre-existing (устаревшие source-substring ассерты после намеренного коммита 9998321, не по вине P1). Ассерты выровнены под текущий дизайн отдельным фиксом вне P1.
+- [x] `2026-07-12T21:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-12T21:00:00Z` ver `npm run test` (full suite) → pass exit=0 (1902/0; board.router-флак раннера не воспроизводится изолированно)
+- [x] `2026-07-12T21:00:00Z` DONE
+      **Handoff →** artifacts: [types.ts, board-provider.port.ts, board-provider.mock.ts, routers/artifact.router.ts, routers/mr.router.ts, http-server.ts]; decisions: [listArtifacts/readArtifact=concrete-default-in-port, action-choice=post/approve/redispatch/skip]; open: []
 
 #### P2
 

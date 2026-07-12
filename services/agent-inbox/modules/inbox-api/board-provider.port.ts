@@ -2,7 +2,7 @@
 // @consumers: inbox-api routers, inbox-dashboard, DI container
 // @tasks: TSK-106
 
-import type { BoardData, MrDetail } from './types.ts';
+import type { BoardData, MrDetail, ArtifactRef, ArtifactContent } from './types.ts';
 
 /**
  * @purpose Abstraction of board state for the inbox-api layer.
@@ -44,4 +44,28 @@ export abstract class BoardProviderPort {
    * @returns MrDetail on success, null if MR not found.
    */
   abstract getReport(mrId: string): MrDetail | null;
+
+  /**
+   * @purpose List all review artifacts (REPORT/PLAN/track/HISTORY/coverage) under `reports/<mr>/`.
+   * @invariant Default returns empty — subclasses without a real `reports/<mr>/` backing (e.g. BoardProviderReal pre-TSK-113) are not forced to implement this yet.
+   * @param mrId MR identifier (webUrl).
+   * @returns ArtifactRef[] for the artifact browser navigation; empty array if MR not found or unsupported.
+   */
+  listArtifacts(mrId: string): ArtifactRef[] {
+    void mrId;
+    return [];
+  }
+
+  /**
+   * @purpose Retrieve the content of one artifact for the artifact browser render.
+   * @invariant Default returns null — same rationale as {@link listArtifacts}.
+   * @param mrId MR identifier (webUrl).
+   * @param path Artifact path relative to `reports/<mr>/` — caller (router) has already rejected traversal attempts.
+   * @returns ArtifactContent on success, null if MR, artifact path not found, or unsupported.
+   */
+  readArtifact(mrId: string, path: string): ArtifactContent | null {
+    void mrId;
+    void path;
+    return null;
+  }
 }

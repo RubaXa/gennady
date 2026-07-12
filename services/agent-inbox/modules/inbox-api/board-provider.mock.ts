@@ -3,8 +3,11 @@
 // @tasks: TSK-106
 
 import { BoardProviderPort } from './board-provider.port.ts';
-import type { BoardData, RoleView, MrCard, MrDetail } from './types.ts';
+import type { BoardData, RoleView, MrCard, MrDetail, ArtifactRef, ArtifactContent } from './types.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
+
+/** @purpose One seeded artifact entry — ArtifactRef metadata plus its raw content. */
+type MockArtifact = ArtifactRef & { content: string };
 
 /** @purpose Internal stored state for a single MR in the mock provider. */
 type MockMrState = {
@@ -20,10 +23,13 @@ type MockMrState = {
   verdict: string;
   /** @purpose Audit events for this MR */
   audit: AuditEntry[];
+  /** @purpose Seeded artifacts, keyed by their path relative to `reports/<mr>/` */
+  artifacts: Map<string, MockArtifact>;
 };
 
 /**
  * @purpose In-memory board provider for development and testing.
+ * @implements {BoardProviderPort} in ./board-provider.port.ts
  * @invariant Pure data store: no network, no filesystem, no side effects.
  * @invariant MRs are indexed by webUrl.
  * @consumer DI container (replaces BoardProviderReal in dev/e2e)
@@ -45,6 +51,7 @@ export class BoardProviderMock extends BoardProviderPort {
    * @purpose Pre-load mock data: board state with roles and MRs.
    * @param data Board-like data: roles (with config) and unassigned MRs.
    * @param [reports] Optional map of webUrl → findings + verdict for getReport().
+   * @param [artifacts] Optional map of webUrl → seeded artifact entries for listArtifacts/readArtifact().
    * @sideEffect Replaces all previously seeded data.
    */
   seed(
@@ -52,7 +59,8 @@ export class BoardProviderMock extends BoardProviderPort {
       roles: Array<{ name: string; active: boolean }>;
       unassigned: MrCard[];
     },
-    reports?: Record<string, { findings: MrDetail['findings']; verdict: string }>
+    reports?: Record<string, { findings: MrDetail['findings']; verdict: string }>,
+    artifacts?: Record<string, MockArtifact[]>
   ): void {
     this._mrs.clear();
     this._roles = data.roles.map((r) => ({ name: r.name, active: r.active }));
@@ -61,6 +69,7 @@ export class BoardProviderMock extends BoardProviderPort {
 
     for (const card of data.unassigned) {
       const report = reports?.[card.webUrl];
+      const seededArtifacts = artifacts?.[card.webUrl] ?? [];
       this._mrs.set(card.webUrl, {
         card,
         assignedRole: null,
@@ -76,6 +85,7 @@ export class BoardProviderMock extends BoardProviderPort {
             detail: 'MR seeded into mock board',
           },
         ],
+        artifacts: new Map(seededArtifacts.map((artifact) => [artifact.path, artifact])),
       });
     }
   }
@@ -189,6 +199,29 @@ export class BoardProviderMock extends BoardProviderPort {
       verdict: state.verdict,
       audit: state.audit,
     };
+  }
+
+  /**
+   * @purpose Override the base no-op: return seeded artifacts instead of an empty list.
+   * @param mrId MR identifier (webUrl or project!iid).
+   * @returns ArtifactRef[] built from seeded artifacts; empty array if MR not found.
+   */
+  listArtifacts(mrId: string): ArtifactRef[] {
+    const state = this._findMr(mrId);
+    if (!state) return [];
+
+    return [...state.artifacts.values()].map(({ name, path, kind }) => ({ name, path, kind }));
+  }
+
+  /**
+   * @purpose Override the base no-op: return seeded artifact content instead of null.
+   * @param mrId MR identifier (webUrl or project!iid).
+   * @param path Artifact path relative to `reports/<mr>/`.
+   * @returns ArtifactContent for the seeded artifact, or null if MR or path not found.
+   */
+  readArtifact(mrId: string, path: string): ArtifactContent | null {
+    const artifact = this._findMr(mrId)?.artifacts.get(path);
+    return artifact ? { content: artifact.content, kind: artifact.kind } : null;
   }
 
   /**

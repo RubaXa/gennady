@@ -143,9 +143,10 @@ describe('inbox-context result shape — flat format (AI-16)', () => {
       CMD_SRC.includes('!iApprove') && CMD_SRC.includes('lastApprovedHeadSha !== currentHeadSha'),
       'reset condition must be: had approval, not approver now, head changed'
     );
-    // approving promotes both heads so the next delta is measured from my approval
+    // approving records lastApprovedHeadSha at current head (9998321: also detected from
+    // system notes via iEverApproved when inbox-context runs before the approve call)
     assert.ok(
-      CMD_SRC.includes('iApprove ? currentHeadSha : prevEntry?.lastApprovedHeadSha'),
+      CMD_SRC.includes('lastApprovedHeadSha: iApprove'),
       'approval must record lastApprovedHeadSha'
     );
   });
@@ -190,20 +191,16 @@ describe('inbox-context delta commits (AI-24)', () => {
     );
   });
 
-  it('candidateHeadSha is written to registry (not lastReviewedHeadSha)', () => {
+  it('lastReviewedHeadSha written to current HEAD directly (9998321: no candidate dance)', () => {
     const block = CMD_SRC.slice(
       CMD_SRC.indexOf('START_UPDATE_CANDIDATE'),
       CMD_SRC.indexOf('END_UPDATE_CANDIDATE')
     );
+    // 9998321: candidateHeadSha/promote dance removed — inbox-context writes
+    // lastReviewedHeadSha=currentHeadSha directly (agent runs inbox-context before approve).
     assert.ok(
-      block.includes('candidateHeadSha: currentHeadSha'),
-      'candidateHeadSha should be set to current HEAD'
-    );
-    assert.ok(
-      block.includes(
-        'lastReviewedHeadSha: iApprove ? currentHeadSha : prevEntry?.lastReviewedHeadSha'
-      ),
-      'lastReviewedHeadSha preserved from prev, promoted to HEAD only when I approve'
+      block.includes('lastReviewedHeadSha: currentHeadSha'),
+      'lastReviewedHeadSha written to current HEAD directly (no candidate dance)'
     );
   });
 

@@ -55,13 +55,16 @@ export type AssignBody = {
   rights?: Record<string, unknown>;
 };
 
+/** @purpose Operator's answer to an OperatorQuestion | @invariant Closed set — EffectExecutor dispatches by this value */
+export type ActionChoice = 'post' | 'approve' | 'redispatch' | 'skip';
+
 /** @purpose Request body for POST /api/mr/:id/action — generic answer to OperatorQuestion. */
 export type ActionBody = {
   /** @purpose ID of the question being answered */
   questionId: string;
   /** @purpose Operator's choice/answer */
-  choice: string;
-  /** @purpose Optional payload for the answer */
+  choice: ActionChoice;
+  /** @purpose Optional payload for the answer — selected candidates + edited text (post) or redispatch focus */
   payload?: unknown;
 };
 
@@ -70,3 +73,24 @@ export type ApiResponse<T = unknown> = {
   /** @purpose Always true on success */
   ok: true;
 } & T;
+
+/** @purpose Render hint for an artifact's content — drives which viewer the dashboard picks. */
+export type ArtifactKind = 'md' | 'mermaid' | 'json' | 'text';
+
+/** @purpose One artifact entry in the `reports/<mr>/` tree — REPORT/PLAN/track/HISTORY/coverage. */
+export type ArtifactRef = {
+  /** @purpose Display name (e.g. REPORT.md) */
+  name: string;
+  /** @purpose Path relative to `reports/<mr>/`, passed back verbatim as the `path` query param */
+  path: string;
+  /** @purpose Render hint derived from the file extension */
+  kind: ArtifactKind;
+};
+
+/** @purpose Content of one artifact returned by `GET /api/mr/:id/artifact?path=`. */
+export type ArtifactContent = {
+  /** @purpose Raw file content */
+  content: string;
+  /** @purpose Render hint, same enum as ArtifactRef.kind */
+  kind: ArtifactKind;
+};

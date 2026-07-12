@@ -8,8 +8,12 @@ import {
   type SessionHandle,
   type CreateSessionOpts,
   type PromptOpts,
+  type ToolCall,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
+
+/** @purpose Fallback prompt-turn timeout (minutes) when the caller does not pass one | @invariant Kept at the historical 30s-equivalent so pre-migration callers see unchanged behavior */
+const DEFAULT_PROMPT_TIMEOUT_MINUTES = 0.5;
 
 /**
  * @purpose Deterministic in-memory OpenCode adapter that simulates every outcome class.
@@ -23,8 +27,14 @@ export class OpenCodeMock extends OpenCodePort {
   protected _responses: Map<string, Record<string, unknown>>;
   /** @purpose Map of nodeId → seeded error class for forced-failure simulation */
   protected _errors: Map<string, OutcomeClass>;
+  /** @purpose Map of nodeId → seeded tool-call telemetry for the simulated agent turn */
+  protected _toolCalls: Map<string, ToolCall[]>;
   /** @purpose Active sessions store — sid → SessionHandle */
   protected _sessions: Map<string, SessionHandle>;
+  /** @purpose Map of sid → tools flag from createSession — gates whether toolCalls() reports telemetry */
+  protected _sessionTools: Map<string, boolean>;
+  /** @purpose Map of sid → nodeId of the last prompt sent on that session, for toolCalls() correlation */
+  protected _sessionLastNode: Map<string, string>;
   /** @purpose Counter for unique session id generation */
   protected _sidCounter: number;
 
@@ -35,7 +45,10 @@ export class OpenCodeMock extends OpenCodePort {
     super();
     this._responses = new Map();
     this._errors = new Map();
+    this._toolCalls = new Map();
     this._sessions = new Map();
+    this._sessionTools = new Map();
+    this._sessionLastNode = new Map();
     this._sidCounter = 0;
   }
 
@@ -62,7 +75,20 @@ export class OpenCodeMock extends OpenCodePort {
   }
 
   /**
-   * @param opts Session title and directory.
+   * @purpose Seed the tool-call telemetry an agent turn would report for a given AI-node.
+   * @param nodeId The AI-node identifier.
+   * @param files File paths the simulated agent turn opens/greps, in order.
+   * @sideEffect Overwrites any previously seeded tool-call log for this nodeId.
+   */
+  seedToolCalls(nodeId: string, files: string[]): void {
+    this._toolCalls.set(
+      nodeId,
+      files.map((path) => ({ tool: 'read', path }))
+    );
+  }
+
+  /**
+   * @param opts Session title, directory, and tools flag.
    * @returns Session handle with new sid.
    * @see {OpenCodePort#createSession}
    */
@@ -75,8 +101,22 @@ export class OpenCodeMock extends OpenCodePort {
       status: 'idle',
     };
     this._sessions.set(sid, handle);
+    this._sessionTools.set(sid, opts.tools ?? false);
     logger.debug(`[OpenCodeMock#createSession] [idle → created] ${sid} "${opts.title}"`);
     return handle;
+  }
+
+  /**
+   * @param sid Session identifier.
+   * @returns Seeded tool-call log for the session's last prompt, gated by its `tools` flag.
+   * @see {OpenCodePort#toolCalls}
+   */
+  async toolCalls(sid: string): Promise<ToolCall[]> {
+    if (!this._sessionTools.get(sid)) {
+      return [];
+    }
+    const nodeId = this._sessionLastNode.get(sid);
+    return nodeId ? (this._toolCalls.get(nodeId) ?? []) : [];
   }
 
   /**
@@ -132,6 +172,7 @@ export class OpenCodeMock extends OpenCodePort {
 
     // #region START_RESOLVE_SEEDED_DATA — check error seeding first, then response seeding, then fallback
     const nodeId = this._extractNodeId(opts);
+    this._sessionLastNode.set(sid, nodeId);
 
     // Priority 1: forced error per seedError()
     const errorClass = this._errors.get(nodeId);
@@ -173,6 +214,7 @@ export class OpenCodeMock extends OpenCodePort {
 
     // continueSignal follows the same seeded-data path as prompt
     const nodeId = this._extractNodeId(opts);
+    this._sessionLastNode.set(sid, nodeId);
     const response = this._responses.get(nodeId);
 
     if (response) {
@@ -213,13 +255,13 @@ export class OpenCodeMock extends OpenCodePort {
    * Each class produces a distinct signal and optional details for recovery ladder testing.
    * @param errorClass Outcome class to simulate.
    * @param nodeId AI-node identifier for error context.
-   * @param _opts Prompt options for error context.
+   * @param opts Prompt options for error context — timeout (minutes) shapes the TIMEOUT signal.
    * @returns Error call result with ok: false.
    */
   protected _buildErrorFromClass(
     errorClass: OutcomeClass,
     nodeId: string,
-    _opts: PromptOpts
+    opts: PromptOpts
   ): OpenCodeCallResult & { ok: false } {
     switch (errorClass) {
       case 'NO_RESULT':
@@ -252,8 +294,17 @@ export class OpenCodeMock extends OpenCodePort {
           `Session for node "${nodeId}" was terminated unexpectedly`
         );
 
-      case 'TIMEOUT':
-        return composeError('TIMEOUT', `Prompt for node "${nodeId}" timed out after 30s`);
+      case 'TIMEOUT': {
+        // timeout is expressed in minutes (agent turns are multi-step); fall back to the
+        // historical 30s-equivalent default when the caller does not pass one, so
+        // pre-migration callers observe unchanged wording.
+        const timeoutLabel =
+          opts.timeout != null ? `${opts.timeout} min` : `${DEFAULT_PROMPT_TIMEOUT_MINUTES * 60}s`;
+        return composeError(
+          'TIMEOUT',
+          `Prompt for node "${nodeId}" timed out after ${timeoutLabel}`
+        );
+      }
 
       case 'INCOMPLETE_ARTIFACT':
         return composeError(

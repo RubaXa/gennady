@@ -6,6 +6,7 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { logger } from '#logger';
 import { BoardRouter } from './routers/board.router.ts';
 import { MrRouter } from './routers/mr.router.ts';
+import { ArtifactRouter } from './routers/artifact.router.ts';
 import { AuditRouter } from './routers/audit.router.ts';
 import { StaticFiles } from './static-files.ts';
 import { setCorsHeaders, handlePreflight, sendJson } from './http-helpers.ts';
@@ -35,6 +36,8 @@ export class HttpServer {
   protected _boardRouter: BoardRouter;
   /** @purpose Router for MR API endpoints. */
   protected _mrRouter: MrRouter;
+  /** @purpose Router for artifact browser API endpoints. */
+  protected _artifactRouter: ArtifactRouter;
   /** @purpose Router for audit API endpoints. */
   protected _auditRouter: AuditRouter;
   /** @purpose Static file server. */
@@ -50,6 +53,7 @@ export class HttpServer {
     this._config = config;
     this._boardRouter = new BoardRouter(config.boardProvider);
     this._mrRouter = new MrRouter(config.boardProvider);
+    this._artifactRouter = new ArtifactRouter(config.boardProvider);
     this._auditRouter = new AuditRouter(config.boardProvider);
     this._staticFiles = new StaticFiles(config.staticDir);
   }
@@ -146,6 +150,11 @@ export class HttpServer {
 
     if (this._mrRouter.matches(req)) {
       void this._mrRouter.handle(req, res);
+      return;
+    }
+
+    if (this._artifactRouter.matches(req)) {
+      void this._artifactRouter.handle(req, res);
       return;
     }
 

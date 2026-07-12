@@ -25,6 +25,16 @@ export type CreateSessionOpts = {
   title: string;
   /** @purpose Working directory — must exist, becomes the session cwd */
   directory: string;
+  /** @purpose Enable code-navigation tools (read/grep/git) bound to directory | @invariant Absent/false → no tool access; agent write stays confined to its own artifact path regardless */
+  tools?: boolean;
+};
+
+/** @purpose A single tool invocation recorded during an agent turn — telemetry fact, not agent self-report. */
+export type ToolCall = {
+  /** @purpose Tool that performed the call (read/grep/git) */
+  tool: string;
+  /** @purpose File path touched by the tool call, relative to the session directory */
+  path: string;
 };
 
 /** @purpose Structured output format descriptor — schema-driven JSON output. */
@@ -43,15 +53,16 @@ export type PromptOpts = {
   text?: string;
   /** @purpose Optional structured output format (schema-driven JSON) */
   format?: OpenCodeFormat;
-  /** @purpose Per-call timeout in ms (overrides adapter default). */
+  /** @purpose Per-call timeout for the whole agent turn, in minutes (overrides adapter default) | @invariant Unit is minutes, not ms/s — an agent turn is multi-step and long-running */
   timeout?: number;
 };
 
 /**
  * @purpose Abstraction over an OpenCode AI-node session for structured prompting.
- * @invariant Preconditions: system/text — non-empty string; directory — existing path.
- * @invariant Postconditions: success → structured output; failure → classified error with signal.
- * @invariant One session = one AI-node. After close() the session is unreachable.
+ * @invariant Preconditions: non-empty system/text; existing directory path.
+ * @invariant Postconditions: success → structured output; failure → classified error.
+ * @invariant Agentic: one session = one AI-node; `tools: true` binds read/grep/git;
+ * prompt() returns after turn completes; unreachable after close().
  * @consumers SessionPool, inbox-roles
  */
 export abstract class OpenCodePort {
@@ -78,6 +89,18 @@ export abstract class OpenCodePort {
    * @returns Current status — may be stale by a few ms.
    */
   abstract status(sid: string): Promise<SessionStatus>;
+
+  /**
+   * @purpose Retrieve tool-call telemetry accumulated during the session's last agent turn —
+   * which files were opened/grepped, as fact rather than agent self-report.
+   * @invariant Default: empty array. Adapters exposing telemetry override. Not abstract — keeps
+   * pre-existing implementers compiling; telemetry is additive.
+   * @param sid Session identifier.
+   * @returns Ordered tool-call log for `ArtifactValidator` cross-check; empty when unavailable.
+   */
+  async toolCalls(_sid: string): Promise<ToolCall[]> {
+    return [];
+  }
 
   /**
    * @purpose Send a continuation signal to a session that hit an error — semantically the

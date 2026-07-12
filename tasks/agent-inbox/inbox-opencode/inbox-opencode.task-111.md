@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [ ]    |
 
 ## 3. Phases
@@ -69,9 +69,20 @@
 
 #### P1
 
-- [ ] `<ts>` ver `<cmd>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: []; decisions: []; open: []
+- [x] `2026-07-12T18:35:19Z` intro `ToolCall` ← agentic tool-call telemetry type, per ticket §3 P1 Target Files types list
+- [x] `2026-07-12T18:35:19Z` decision toolCalls=concrete-default-method ← OpenCodePort#toolCalls is concrete (returns []), not abstract — keeps DegradedOpencode (serve/bootstrap.ts) and OpenCodeReal (opencode.real.ts) compiling without an out-of-phase write; adapters override to report real telemetry
+- [x] `2026-07-12T18:35:19Z` decision timeout-unit=minutes ← PromptOpts.timeout is now minutes per agentic contract; TIMEOUT signal falls back to the legacy "30s" wording only when the caller omits timeout, so the un-migrated P2 test (opencode.mock.test.ts) keeps passing until P2 rewrites it
+- [x] `2026-07-12T18:35:19Z` decision tools-flag=boolean ← single on/off flag per spec ("tools: on — read/grep/git in cwd"), not per-tool selection (AX_EXACT_SCOPE)
+- [x] `2026-07-12T18:35:19Z` tried `sdd verify <target-files>` → fail: npm run type-check (project-wide) reports TS2654 in services/agent-inbox/modules/inbox-api/board-provider.real.ts — unrelated module, not touched by this phase
+- [x] `2026-07-12T18:35:19Z` discovery board-provider.real.ts (mtime 2026-07-11T18:12) predates board-provider.port.ts (mtime 2026-07-12T21:31) — pre-existing inbox-api/TSK-106 drift, unrelated to inbox-opencode
+- [x] `2026-07-12T18:35:19Z` ver `sdd lint <target-files>` → pass exit=0 (gennady DBC lint clean on all 5 Target Files)
+- 🛑 `2026-07-12T18:39:00Z` BLOCKED: `npm run type-check` (project-wide, run by mandatory `sdd verify` gate) fails on `services/agent-inbox/modules/inbox-api/board-provider.real.ts` (TS2654 — BoardProviderReal missing listArtifacts/readArtifact) — outside this phase's Target Files and module; cannot honor the P1 exit criterion "`npm run type-check` pass" without an out-of-phase write
+  - 🔗 axiom: AX_PHASE_SCOPE_LOCK
+  - 💬 unblock: fix `BoardProviderReal` in `inbox-api` (separate task, TSK-106 area) so the project-wide typecheck gate is green again, then re-dispatch P1 to re-verify and close it — the OpenCodePort/OpenCodeMock/SessionPool/SchemaRegistry implementation itself is complete and lint-clean; only the shared typecheck gate is blocked by unrelated repo state.
+- ✅ `2026-07-12T21:00:00Z` RESOLVED (blocker 2026-07-12T18:39:00Z): TS2654 был гонкой параллельного Layer-0 (TSK-111 гонял глобальный type-check в момент незакоммиченного промежуточного состояния TSK-106 `board-provider.port.ts`). В комбинированном дереве (concrete-default методы порта на месте) type-check зелёный. Причина — глобальный verify-гейт при внутрислойном параллелизме; дальше батч идёт последовательно.
+- [x] `2026-07-12T21:00:00Z` ver `npm run type-check` → pass exit=0 (комбинированное дерево)
+- [x] `2026-07-12T21:00:00Z` DONE
+      **Handoff →** artifacts: [opencode.port.ts, opencode.mock.ts]; decisions: [toolCalls=concrete-default, timeout-unit=minutes, tools-flag=boolean]; open: [P2 перепишет opencode.mock.test.ts под минуты/toolCalls]
 
 #### P2
 

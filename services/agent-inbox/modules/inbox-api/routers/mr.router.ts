@@ -4,13 +4,21 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';
-import type { AssignBody, ActionBody } from '../types.ts';
+import type { AssignBody, ActionBody, ActionChoice } from '../types.ts';
 import { sendJson, sendError, parseBody } from '../http-helpers.ts';
 
 /** @purpose Regex patterns for matching MR routes. */
 const MR_ASSIGN_RE = /^\/api\/mr\/(.+)\/assign$/;
 const MR_ACTION_RE = /^\/api\/mr\/(.+)\/action$/;
 const MR_REPORT_RE = /^\/api\/mr\/(.+)\/report$/;
+
+/** @purpose Closed set of valid OperatorQuestion answers — EffectExecutor dispatches by this value. */
+const VALID_ACTION_CHOICES: ReadonlySet<ActionChoice> = new Set([
+  'post',
+  'approve',
+  'redispatch',
+  'skip',
+]);
 
 /**
  * @purpose Route handlers for MR operations: assign, action, report.
@@ -128,6 +136,17 @@ export class MrRouter {
       });
       return;
     }
+
+    // #region START_VALIDATE_ACTION_CHOICE — invariant: EffectExecutor only dispatches the closed choice set
+    if (!VALID_ACTION_CHOICES.has(body.choice)) {
+      sendJson(res, 400, {
+        ok: false,
+        error: 'CONFIG',
+        detail: `Invalid choice: ${body.choice} (expected one of post, approve, redispatch, skip)`,
+      });
+      return;
+    }
+    // #endregion END_VALIDATE_ACTION_CHOICE
 
     const result = this._provider.executeAction(mrId, {
       questionId: body.questionId,
