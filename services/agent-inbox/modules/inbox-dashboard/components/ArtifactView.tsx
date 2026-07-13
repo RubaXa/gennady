@@ -2,6 +2,7 @@
 // @consumers: ArtifactBrowser
 // @tasks: TSK-107
 
+import { useEffect, useId, useState } from 'react';
 // @ts-expect-error D-007: ai/inspector/web/markdown.js has no .d.ts (reused as-is, not rewritten); runtime import is unaffected.
 import { renderMarkdown } from '../../../../../ai/inspector/web/markdown.js';
 import type { ArtifactKind } from '../../inbox-api/types.ts';
@@ -41,25 +42,78 @@ function splitFencedBlocks(raw: string): Array<{ prose: string } | { fenced: Fen
 }
 
 /**
- * @purpose Render one fenced block: mermaid source is boxed and labeled (no diagram engine wired yet),
- *   other languages render as a plain code block.
+ * @purpose Raw fenced source, boxed — used for non-mermaid code and as the mermaid render fallback.
+ * @param props Block body and an optional header label.
+ */
+function RawSourceBlock(props: { body: string; label?: string }) {
+  return (
+    <div className="my-2 rounded-md border border-border bg-secondary/40 overflow-hidden">
+      {props.label && (
+        <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-300 border-b border-border bg-amber-400/10">
+          {props.label}
+        </div>
+      )}
+      <pre className="p-2.5 text-[12px] font-mono overflow-x-auto whitespace-pre">
+        <code>{props.body}</code>
+      </pre>
+    </div>
+  );
+}
+
+/**
+ * @purpose Render a mermaid diagram by lazily loading the engine and injecting its SVG; falls back
+ *   to the raw source on parse/render failure.
+ * @invariant The engine import is dynamic (`import('mermaid')`) so it stays out of the initial bundle.
+ * @param props Mermaid diagram source.
+ */
+function MermaidDiagram(props: { body: string }) {
+  const { body } = props;
+  const rawId = useId();
+  const [svg, setSvg] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const renderId = `mmd-${rawId.replace(/[^a-zA-Z0-9-]/g, '')}`;
+    void (async () => {
+      try {
+        const mermaid = (await import('mermaid')).default;
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
+        const { svg: out } = await mermaid.render(renderId, body);
+        if (!cancelled) {
+          setSvg(out);
+          setFailed(false);
+        }
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [body, rawId]);
+
+  if (failed)
+    return <RawSourceBlock body={body} label="mermaid (не удалось отрисовать — исходник)" />;
+  if (svg === null) return <RawSourceBlock body={body} label="mermaid (отрисовка…)" />;
+  return (
+    <div
+      className="my-2 rounded-md border border-border bg-secondary/40 overflow-x-auto p-2.5 [&_svg]:max-w-full [&_svg]:h-auto"
+      // eslint-disable-next-line react/no-danger -- D-007: mermaid renders with securityLevel:'strict' (DOMPurify-sanitized SVG)
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+/**
+ * @purpose Render one fenced block: mermaid blocks draw as diagrams (lazy engine), other languages
+ *   render as a plain code block.
  * @param props Fenced block to render.
  */
 function FencedBlockView(props: { block: FencedBlock }) {
   const { block } = props;
-  const isMermaid = block.lang === 'mermaid';
-  return (
-    <div className="my-2 rounded-md border border-border bg-secondary/40 overflow-hidden">
-      {isMermaid && (
-        <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-300 border-b border-border bg-amber-400/10">
-          mermaid (raw source — diagram rendering not wired yet)
-        </div>
-      )}
-      <pre className="p-2.5 text-[12px] font-mono overflow-x-auto whitespace-pre">
-        <code>{block.body}</code>
-      </pre>
-    </div>
-  );
+  if (block.lang === 'mermaid') return <MermaidDiagram body={block.body} />;
+  return <RawSourceBlock body={block.body} />;
 }
 
 /**

@@ -18,25 +18,32 @@ export type ValidateError = ReviewPlanValidateError;
 /** @purpose Outcome of ArtifactValidator.validate — mirrors inbox-review-plan's own gate shape. */
 export type ValidateResult = { ok: true } | { ok: false; errors: ValidateError[] };
 
-/** @purpose Mermaid diagram type keywords recognized at the start of a fenced ```mermaid block. */
-const MERMAID_DIAGRAM_KEYWORDS = [
-  'graph',
-  'flowchart',
-  'sequenceDiagram',
-  'classDiagram',
-  'stateDiagram',
-  'stateDiagram-v2',
-  'erDiagram',
-  'gantt',
-  'pie',
-  'journey',
-  'gitGraph',
-  'mindmap',
-  'timeline',
-];
-
 /** @purpose One ```mermaid fenced block extracted from a document body, with its source file for error scoping. */
 type MermaidBlock = { file: string; body: string };
+
+/** @purpose Cached mermaid `parse` fn — mermaid is a browser lib, so it (and its jsdom DOM shim) load once, lazily. */
+let _mermaidParse: ((text: string) => Promise<unknown>) | null = null;
+
+/**
+ * @purpose Lazily load mermaid + a jsdom DOM shim (both browser-oriented) only when a diagram is
+ *   actually validated.
+ * @invariant mermaid reads `window`/`document`/`navigator` from global scope at parse time; jsdom
+ *   provides them. The Node CLI has no browser-detection, so these globals are inert elsewhere.
+ * @returns mermaid's `parse` — resolves for valid diagram source, rejects (throws) on invalid syntax.
+ */
+async function loadMermaidParse(): Promise<(text: string) => Promise<unknown>> {
+  if (_mermaidParse) return _mermaidParse;
+  const { JSDOM } = await import('jsdom');
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+  const g = globalThis as Record<string, unknown>;
+  g.window ??= dom.window;
+  g.document ??= dom.window.document;
+  g.navigator ??= dom.window.navigator;
+  const mermaid = (await import('mermaid')).default;
+  mermaid.initialize({ startOnLoad: false });
+  _mermaidParse = (text: string) => mermaid.parse(text);
+  return _mermaidParse;
+}
 
 /**
  * @purpose Mechanically verifies that a session did the work per plan — structure, not text
@@ -57,15 +64,19 @@ export class ArtifactValidator {
    * @param [toolCalls] Tool-call telemetry from the opencode session (file paths actually opened) —
    *   absent/empty telemetry degrades the cross-check open (no false positives when unavailable).
    * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
-   * @sideEffect Reads PLAN.md, `tasks/*.task.md`, and README.md under `dir`.
+   * @sideEffect Reads PLAN.md, `tasks/*.task.md`, and README.md under `dir`; lazily loads mermaid+jsdom when a diagram is present.
    */
-  validate(dir: string, stage: 'enriched' | 'filled', toolCalls: ToolCall[] = []): ValidateResult {
+  async validate(
+    dir: string,
+    stage: 'enriched' | 'filled',
+    toolCalls: ToolCall[] = []
+  ): Promise<ValidateResult> {
     const errors: ValidateError[] = [];
 
     const base = validateReviewReports(dir, stage);
     if (!base.ok) errors.push(...base.errors);
 
-    errors.push(...this._verifyMermaidSyntax(dir));
+    errors.push(...(await this._verifyMermaidSyntax(dir)));
 
     if (stage === 'filled') {
       errors.push(...this._verifyCoverageLedger(dir));
@@ -152,14 +163,15 @@ export class ArtifactValidator {
   // ─── Mermaid syntax ───────────────────────────────────────────────────────────
 
   /**
-   * @purpose Structural mermaid validity: a real diagram-type header plus a non-empty body —
-   * stronger than a fence-open/fence-close regexp check.
-   * @invariant Best-effort structural check, not a full grammar parse — no parser dependency
-   *   exists yet; adding one is out of phase scope (spec §4 gap).
+   * @purpose Validate every mermaid block through the mermaid parser (spec §4, not regexp) — catches
+   *   bad diagram types and in-block grammar errors.
+   * @invariant mermaid+jsdom load lazily and only when at least one ```mermaid block is present, so
+   *   diagram-free reports never pull in the browser lib.
    * @param dir Report directory to scan (README.md + task files).
-   * @returns One error per structurally invalid mermaid block.
+   * @returns One error per mermaid block the parser rejects, file-scoped.
+   * @sideEffect Lazily loads mermaid+jsdom (see `loadMermaidParse`) when a diagram is present.
    */
-  protected _verifyMermaidSyntax(dir: string): ValidateError[] {
+  protected async _verifyMermaidSyntax(dir: string): Promise<ValidateError[]> {
     const errors: ValidateError[] = [];
     const candidates = [join(dir, 'README.md')];
     const tasksDir = join(dir, 'tasks');
@@ -169,29 +181,20 @@ export class ArtifactValidator {
       }
     }
 
+    const blocks: MermaidBlock[] = [];
     for (const filePath of candidates) {
       if (!existsSync(filePath)) continue;
-      const content = readFileSync(filePath, 'utf8');
-      for (const block of this._extractMermaidBlocks(filePath, content)) {
-        const lines = block.body
-          .split('\n')
-          .map((l) => l.trim())
-          .filter(Boolean);
-        const header = lines[0]?.split(/\s+/)[0];
+      blocks.push(...this._extractMermaidBlocks(filePath, readFileSync(filePath, 'utf8')));
+    }
+    if (blocks.length === 0) return errors;
 
-        if (!header || !MERMAID_DIAGRAM_KEYWORDS.includes(header)) {
-          errors.push({
-            file: block.file,
-            error: `mermaid: неизвестный тип диаграммы "${header ?? '<empty>'}" (ожидается один из: ${MERMAID_DIAGRAM_KEYWORDS.join(', ')})`,
-          });
-          continue;
-        }
-        if (lines.length < 2) {
-          errors.push({
-            file: block.file,
-            error: 'mermaid: диаграмма содержит только заголовок, нет узлов/связей',
-          });
-        }
+    const parse = await loadMermaidParse();
+    for (const block of blocks) {
+      try {
+        await parse(block.body);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message.split('\n')[0] : String(cause);
+        errors.push({ file: block.file, error: `mermaid: ${message}` });
       }
     }
     return errors;

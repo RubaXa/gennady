@@ -70,7 +70,7 @@
 - GIVEN author-MR WHEN ActionPanel THEN [Копировать задание (FIX_TASK.md)] + без Approve
 - GIVEN клик «Постить выбранное» WHEN 2 из 3 отмечены THEN POST action {choice:post, payload: выбранные}
 - GIVEN deep-link #/mr/510 напрямую WHEN загружен THEN отчёт без захода на доску
-- GIVEN mermaid в REPORT WHEN рендер THEN блок mermaid показан размеченным source-блоком (interim по решению оператора 2026-07-13; реальный рендер диаграмм + парсер валидатора — отдельная infra-задача на mermaid-зависимость)
+- GIVEN mermaid в REPORT WHEN рендер THEN диаграмма нарисована (не сырой текст) — реальный рендер через lazy-загружаемый `mermaid`-движок; битая диаграмма падает в fallback на исходник
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -154,4 +154,5 @@
 - [x] `2026-07-13T00:00:00Z` orchestrator sync trackers → audit pending
 - [x] `2026-07-13T00:00:00Z` open items carried to batch summary (not silent): mermaid-engine (raw-source fallback vs BDD «диаграмма нарисована»), board-no-refresh-after-action (ActionPanel→executeAction bypasses refresh), track-progress-data (board API contract), operator-question-wiring — все P1/inbox-api scope, follow-up
 - ✅ `2026-07-13T00:00:00Z` RESOLVED (audit R1 F-01 BDD_COVERAGE_MISMATCH mermaid): решение оператора — НЕ тащить mermaid-зависимость в этот reopen-батч; raw-source принят как задокументированный interim, BDD-сценарий mermaid приведён в соответствие (§4), реальный рендер+парсер вынесены в отдельную infra-задачу (mermaid dependency: ArtifactView render + ArtifactValidator parse). Финдинг закрыт корректировкой контракта под осознанный interim, не подделкой.
+- ✅ `2026-07-13` DELIVERED (mermaid infra follow-up): добавлена зависимость `mermaid` (lazy). ArtifactView рисует диаграммы SVG (fallback на исходник при ошибке), ArtifactValidator валидирует через `mermaid.parse` (+jsdom, lazy). BDD-сценарий mermaid восстановлен на «диаграмма нарисована». Interim снят.
 <!--/SECTION:EXECUTION_LOG-->

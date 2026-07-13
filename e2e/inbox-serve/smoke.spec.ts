@@ -89,11 +89,11 @@ test.describe('inbox-dashboard smoke', () => {
     await expect(nav.locator('button', { hasText: 'security.md' })).toBeVisible();
     await expect(nav.locator('button', { hasText: 'HISTORY.md' })).toBeVisible();
 
-    // Right pane: REPORT.md rendered (prose + mermaid raw-source fallback box).
+    // Right pane: REPORT.md rendered (prose + mermaid drawn as an actual SVG diagram, not raw text).
     await expect(page.locator('text=Summary of findings for !510')).toBeVisible({
       timeout: 5_000,
     });
-    await expect(page.locator('text=mermaid (raw source')).toBeVisible();
+    await expect(page.locator('svg[id^="mmd-"]')).toBeVisible({ timeout: 10_000 });
 
     // Navigate to another artifact — content pane swaps to PLAN.md.
     await nav.locator('button', { hasText: 'PLAN.md' }).click();

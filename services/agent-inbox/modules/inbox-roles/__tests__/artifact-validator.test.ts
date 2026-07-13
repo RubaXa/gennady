@@ -1,5 +1,6 @@
 // @file: Unit tests for inbox-roles ArtifactValidator — coverage ledger (every Scope file needs
-//   findings or an explicit no-findings statement) and tool-call cross-check (telemetry vs Scope).
+//   findings or an explicit no-findings statement), tool-call cross-check (telemetry vs Scope), and
+//   real mermaid parsing (valid diagram passes, malformed diagram is rejected).
 // @consumers: node:test runner
 // @tasks: TSK-113
 
@@ -8,20 +9,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { ArtifactValidator } from '../artifact-validator.ts';
 import type { ToolCall } from '../../inbox-opencode/opencode.port.ts';
-
-// ─── Import guard ───────────────────────────────────────────────────────────────
-// purpose: artifact-validator.ts statically imports validateReviewReports from
-// cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts, which ends with an unconditional top-level
-// `process.exit(await run())` (no entrypoint guard) — a pre-existing bug in that file, exercised
-// here only because this is the first test to import artifact-validator.ts at all. A dynamic
-// import with process.exit patched during load sidesteps it without touching that impl file
-// (same pattern as cli/cmd/vcs-reply/__tests__/vcs-reply.resolve.test.ts for the analogous bug
-// in vcs-reply.cmd.ts).
-const _origExit = process.exit;
-process.exit = ((_code?: number) => undefined as never) as typeof process.exit;
-const { ArtifactValidator } = await import('../artifact-validator.ts');
-process.exit = _origExit;
 
 // ─── Fixture builders (mirrors cli/cmd/inbox-review-plan/inbox-review-plan.test.ts's own
 // hand-built report-dir fixtures — the pipeline only ever reads back documents it generated
@@ -88,7 +77,9 @@ createdAt: 2026-01-01T00:00:00.000Z
 `;
 }
 
-const VALID_README = `# Review Report
+/** @purpose Build a valid README with a mermaid block; the block body is overridable to test malformed diagrams. */
+function readmeWithMermaid(mermaidBody = 'flowchart TD\n  A[Middleware] --> B[Store]'): string {
+  return `# Review Report
 
 ## Обзор
 
@@ -97,8 +88,7 @@ const VALID_README = `# Review Report
 ## Архитектура
 
 \`\`\`mermaid
-flowchart TD
-  A[Middleware] --> B[Store]
+${mermaidBody}
 \`\`\`
 
 ## Поведение
@@ -121,29 +111,31 @@ n/a — тривиально
 
 нет
 `;
+}
 
 function setupReportDir(
   taskOverrides: Parameters<typeof taskContent>[0] = {},
-  withReadme = true
+  withReadme = true,
+  readme = readmeWithMermaid()
 ): string {
   const dir = mkdtempSync(join(tmpdir(), 'inbox-artifact-validator-'));
   mkdirSync(join(dir, 'tasks'), { recursive: true });
   writeFileSync(join(dir, 'PLAN.md'), planContent());
   writeFileSync(join(dir, 'tasks', 'logic.task.md'), taskContent(taskOverrides));
-  if (withReadme) writeFileSync(join(dir, 'README.md'), VALID_README);
+  if (withReadme) writeFileSync(join(dir, 'README.md'), readme);
   return dir;
 }
 
 const validator = new ArtifactValidator();
 
 describe('ArtifactValidator — coverage ledger (Scope file без находок требует явное no-findings)', () => {
-  it('GIVEN Scope-файл не упомянут в находках и нет явного no-findings WHEN validate(filled) THEN coverage-ledger error', () => {
+  it('GIVEN Scope-файл не упомянут в находках и нет явного no-findings WHEN validate(filled) THEN coverage-ledger error', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'Ничего особенного не обнаружено.',
     });
 
-    const result = validator.validate(dir, 'filled');
+    const result = await validator.validate(dir, 'filled');
     assert.strictEqual(result.ok, false);
     if (!result.ok) {
       assert.ok(
@@ -154,37 +146,37 @@ describe('ArtifactValidator — coverage ledger (Scope file без находо�
     }
   });
 
-  it('GIVEN явное блэнкет "нет находок" WHEN validate(filled) THEN coverage-ledger error отсутствует', () => {
+  it('GIVEN явное блэнкет "нет находок" WHEN validate(filled) THEN coverage-ledger error отсутствует', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'Файл src/foo.ts проверен — нет находок.',
     });
 
-    const result = validator.validate(dir, 'filled');
+    const result = await validator.validate(dir, 'filled');
     if (!result.ok) {
       assert.ok(!result.errors.some((e) => e.error.includes('coverage ledger')));
     }
   });
 
-  it('GIVEN находки явно упоминают Scope-файл WHEN validate(filled) THEN coverage-ledger error отсутствует', () => {
+  it('GIVEN находки явно упоминают Scope-файл WHEN validate(filled) THEN coverage-ledger error отсутствует', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена проблема с обработкой ошибок.',
     });
 
-    const result = validator.validate(dir, 'filled');
+    const result = await validator.validate(dir, 'filled');
     if (!result.ok) {
       assert.ok(!result.errors.some((e) => e.error.includes('coverage ledger')));
     }
   });
 
-  it('GIVEN stage=enriched WHEN validate THEN coverage ledger не проверяется', () => {
+  it('GIVEN stage=enriched WHEN validate THEN coverage ledger не проверяется', async () => {
     const dir = setupReportDir(
       { files: ['src/foo.ts'], status: 'enriched', findings: 'Ничего не найдено.' },
       false
     );
 
-    const result = validator.validate(dir, 'enriched');
+    const result = await validator.validate(dir, 'enriched');
     if (!result.ok) {
       assert.ok(!result.errors.some((e) => e.error.includes('coverage ledger')));
     }
@@ -192,14 +184,14 @@ describe('ArtifactValidator — coverage ledger (Scope file без находо�
 });
 
 describe('ArtifactValidator — tool-call cross-check (Scope vs telemetry)', () => {
-  it('GIVEN агент не открывал Scope-файл (toolCalls не содержит его путь) WHEN validate(filled) THEN warning', () => {
+  it('GIVEN агент не открывал Scope-файл (toolCalls не содержит его путь) WHEN validate(filled) THEN warning', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена проблема.',
     });
     const toolCalls: ToolCall[] = [{ tool: 'read', path: 'src/other.ts' }];
 
-    const result = validator.validate(dir, 'filled', toolCalls);
+    const result = await validator.validate(dir, 'filled', toolCalls);
     assert.strictEqual(result.ok, false);
     if (!result.ok) {
       assert.ok(
@@ -210,28 +202,77 @@ describe('ArtifactValidator — tool-call cross-check (Scope vs telemetry)', () 
     }
   });
 
-  it('GIVEN toolCalls содержит путь Scope-файла WHEN validate(filled) THEN warning отсутствует', () => {
+  it('GIVEN toolCalls содержит путь Scope-файла WHEN validate(filled) THEN warning отсутствует', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена проблема.',
     });
     const toolCalls: ToolCall[] = [{ tool: 'read', path: 'src/foo.ts' }];
 
-    const result = validator.validate(dir, 'filled', toolCalls);
+    const result = await validator.validate(dir, 'filled', toolCalls);
     if (!result.ok) {
       assert.ok(!result.errors.some((e) => e.error.includes('tool-call сверка')));
     }
   });
 
-  it('GIVEN telemetry недоступна (toolCalls=[]) WHEN validate(filled) THEN cross-check пропускается (не ложный вызов)', () => {
+  it('GIVEN telemetry недоступна (toolCalls=[]) WHEN validate(filled) THEN cross-check пропускается (не ложный вызов)', async () => {
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена проблема.',
     });
 
-    const result = validator.validate(dir, 'filled', []);
+    const result = await validator.validate(dir, 'filled', []);
     if (!result.ok) {
       assert.ok(!result.errors.some((e) => e.error.includes('tool-call сверка')));
+    }
+  });
+});
+
+describe('ArtifactValidator — mermaid validity (via mermaid parser, spec §4)', () => {
+  it('GIVEN валидная mermaid-диаграмма WHEN validate THEN mermaid-ошибок нет', async () => {
+    const dir = setupReportDir(
+      { files: ['src/foo.ts'], findings: 'В файле src/foo.ts обнаружена проблема.' },
+      true,
+      readmeWithMermaid('sequenceDiagram\n  Alice->>Bob: Привет\n  Bob-->>Alice: Ответ')
+    );
+
+    const result = await validator.validate(dir, 'filled');
+    if (!result.ok) {
+      assert.ok(
+        !result.errors.some((e) => e.error.startsWith('mermaid:')),
+        `valid mermaid should not error: ${JSON.stringify(result.errors)}`
+      );
+    }
+  });
+
+  it('GIVEN синтаксически битая mermaid-диаграмма WHEN validate THEN mermaid-ошибка (парсер отклонил)', async () => {
+    const dir = setupReportDir(
+      { files: ['src/foo.ts'], findings: 'В файле src/foo.ts обнаружена проблема.' },
+      true,
+      readmeWithMermaid('graph TD\n  A --> ')
+    );
+
+    const result = await validator.validate(dir, 'filled');
+    assert.strictEqual(result.ok, false);
+    if (!result.ok) {
+      assert.ok(
+        result.errors.some((e) => e.error.startsWith('mermaid:')),
+        `malformed mermaid should error: ${JSON.stringify(result.errors)}`
+      );
+    }
+  });
+
+  it('GIVEN неизвестный тип диаграммы WHEN validate THEN mermaid-ошибка', async () => {
+    const dir = setupReportDir(
+      { files: ['src/foo.ts'], findings: 'В файле src/foo.ts обнаружена проблема.' },
+      true,
+      readmeWithMermaid('grahp TD\n  A --> B')
+    );
+
+    const result = await validator.validate(dir, 'filled');
+    assert.strictEqual(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.errors.some((e) => e.error.startsWith('mermaid:')));
     }
   });
 });

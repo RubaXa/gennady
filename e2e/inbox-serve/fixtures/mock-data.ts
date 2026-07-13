@@ -295,7 +295,7 @@ export function mrArtifactRefs510(): ArtifactRef[] {
 
 /**
  * @purpose Artifact content for each path in {@link mrArtifactRefs510}, keyed for `GET /api/mr/:id/artifact?path=`.
- * @invariant REPORT.md includes a fenced `mermaid` block — exercises ArtifactView's raw-source fallback (no diagram engine wired, per TSK-107 P1 insight).
+ * @invariant REPORT.md includes a valid fenced `mermaid` block — exercises ArtifactView's real diagram render (drawn as SVG via the lazy mermaid engine).
  * @returns Record of artifact path → content fixture.
  */
 export function mrArtifactContents510(): Record<string, ArtifactContent> {
