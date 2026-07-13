@@ -60,7 +60,11 @@ Object.defineProperty(process.stdin, 'isTTY', { value: true, configurable: true 
 process.argv = ['node', 'gennady', 'vcs-reply', '--project=g/p', '--iid=42', '--dry-run'];
 
 const cmdModule = await import('../vcs-reply.cmd.ts');
-const { main } = cmdModule;
+const { main, run } = cmdModule;
+
+// vcs-reply.cmd.ts no longer self-executes on import (entry is guarded); drive the
+// CLI arg→resolveVcsContext seam explicitly via the exported run() with the argv set above.
+await run(process.argv);
 
 restoreStderr();
 process.exit = origExit;

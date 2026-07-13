@@ -4,6 +4,7 @@
 // @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87, TSK-100
 
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -606,34 +607,49 @@ export async function main(opts: MainOpts = {}): Promise<{
   return { ok, sent, failed, code: ok ? 0 : 1 };
 }
 
-const args = parseArgs(process.argv, {
-  project: { aliases: ['project'], takesValue: true },
-  iid: { aliases: ['iid'], takesValue: true },
-  'dry-run': ['dry-run', 'dry'],
-  'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
-  url: { aliases: ['url'], takesValue: true },
-});
-
-const vcsCliArgs: VcsCliArgs = {
-  project: args.project as string | undefined,
-  iid: args.iid ? Number(args.iid) : undefined,
-  host: args['vcs-host'] as string | undefined,
-  url: args.url as string | undefined,
-};
-
-try {
-  const vcsContext = await resolveVcsContext(vcsCliArgs);
-
-  const run = await main({
-    project: args.project as string,
-    iid: args.iid as string,
-    dryRun: !!args['dry-run'],
-    vcsContext,
+/**
+ * @purpose CLI entry: parse argv, resolve VCS context, run `main`, return exit code.
+ *   Consumed by `index.ts` (dispatcher path) and the self-executing guard (direct run).
+ * @param [argv] Process argv to parse CLI flags (`--project`/`--iid`/`--dry-run`/`--vcs-host`/`--url`) from; defaults to `process.argv`.
+ * @returns Process exit code — 0 when all replies posted, 1 on context-resolve or post failure.
+ */
+export async function run(argv: string[] = process.argv): Promise<number> {
+  const args = parseArgs(argv, {
+    project: { aliases: ['project'], takesValue: true },
+    iid: { aliases: ['iid'], takesValue: true },
+    'dry-run': ['dry-run', 'dry'],
+    'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
   });
 
-  process.exit(run.code);
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`✖ Ошибка: ${message}`);
-  process.exit(1);
+  const vcsCliArgs: VcsCliArgs = {
+    project: args.project as string | undefined,
+    iid: args.iid ? Number(args.iid) : undefined,
+    host: args['vcs-host'] as string | undefined,
+    url: args.url as string | undefined,
+  };
+
+  try {
+    const vcsContext = await resolveVcsContext(vcsCliArgs);
+    const result = await main({
+      project: args.project as string,
+      iid: args.iid as string,
+      dryRun: !!args['dry-run'],
+      vcsContext,
+    });
+    return result.code;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`✖ Ошибка: ${message}`);
+    return 1;
+  }
 }
+
+// #region START_SELF_EXECUTING — invariant: self-executes only when file matches process.argv[1] (direct invocation)
+if (process.argv[1]) {
+  const selfPath = fileURLToPath(import.meta.url);
+  if (selfPath === process.argv[1] || selfPath.endsWith(process.argv[1])) {
+    process.exit(await run(process.argv));
+  }
+}
+// #endregion END_SELF_EXECUTING

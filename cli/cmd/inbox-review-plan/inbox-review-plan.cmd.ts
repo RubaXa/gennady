@@ -6,6 +6,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
 import { findStopWords } from '../../../shared/prompt-lint/stop-words.ts';
 
@@ -871,7 +872,11 @@ function runValidate(argv: string[], dir: string): number {
   return result.ok ? 0 : 1;
 }
 
-async function run(): Promise<number> {
+/**
+ * @purpose CLI entry for `inbox-review-plan`: dispatches --help / --scaffold / --validate / default-plan modes off `process.argv`.
+ * @returns Process exit code — 0 on success, non-zero on argument, worktree, or validation errors.
+ */
+export async function run(): Promise<number> {
   const argv = process.argv.slice(2);
 
   if (hasFlag(argv, '--help')) {
@@ -952,6 +957,13 @@ async function run(): Promise<number> {
   return 0;
 }
 
-process.exit(await run());
-
 // #endregion END_MAIN
+
+// #region START_SELF_EXECUTING — invariant: self-executes only when file matches process.argv[1] (direct invocation)
+if (process.argv[1]) {
+  const selfPath = fileURLToPath(import.meta.url);
+  if (selfPath === process.argv[1] || selfPath.endsWith(process.argv[1])) {
+    process.exit(await run());
+  }
+}
+// #endregion END_SELF_EXECUTING

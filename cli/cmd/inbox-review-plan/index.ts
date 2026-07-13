@@ -2,4 +2,6 @@
 // @consumers: gennady.ts
 // @tasks: TSK-102
 
-import './inbox-review-plan.cmd.ts';
+import { run } from './inbox-review-plan.cmd.ts';
+
+process.exit(await run());
