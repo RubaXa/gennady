@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dashboardDir = resolve(__dirname, '../../services/agent-inbox/modules/inbox-dashboard');
 
+/** @purpose Playwright config for inbox-serve e2e: boots the dashboard vite dev server (API + SPA) and points tests at it. */
 export default defineConfig({
   testDir: '.',
   outputDir: resolve(__dirname, 'test-results'),

@@ -22,7 +22,7 @@
 | TSK-104 | DONE   | TSK-103                 | Документный конвейер в скиллах + пивот «ничего на диск»                                    |
 | TSK-105 | DONE   | TSK-109                 | inbox-mocks: фабрики мок-данных                                                            |
 | TSK-106 | DONE   | TSK-105                 | inbox-api: + artifact endpoints, generic action (пивот D-86)                               |
-| TSK-107 | TODO   | TSK-105, TSK-106        | inbox-dashboard: + браузер артефактов, ActionPanel (пивот D-86)                            |
+| TSK-107 | DONE   | TSK-105, TSK-106        | inbox-dashboard: + браузер артефактов, ActionPanel (пивот D-86)                            |
 | TSK-108 | DONE   | TSK-107, TSK-114        | inbox-dashboard: e2e тесты (Playwright)                                                    |
 | TSK-109 | DONE   | TSK-90–TSK-94 (DONE)    | inbox-core: перенос CLI-логики состояния в модуль + AuditLog                               |
 | TSK-110 | DONE   | TSK-109                 | inbox-core: VcsInboxPort + Mock + Real                                                     |

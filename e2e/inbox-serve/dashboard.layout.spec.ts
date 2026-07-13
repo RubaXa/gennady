@@ -1,9 +1,50 @@
 // @file: dashboard.layout.spec.ts — layout checks for inbox-dashboard element positioning.
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108
+// @tasks: TSK-108, TSK-107
 
 import { test, expect } from '@playwright/test';
 import { isLeftOf, isBelow } from './helpers/layout.helper.ts';
+import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+import type { Page } from '@playwright/test';
+
+/**
+ * @purpose Route MR 510 artifact endpoints to fixtures (dev-seed.ts seeds none yet, TSK-107 P2);
+ *   /board, /report, /action still hit the real server.
+ * @param page Playwright page to install the route on.
+ */
+async function routeArtifacts510(page: Page): Promise<void> {
+  const artifactContents = mrArtifactContents510();
+  await page.route('**/api/mr/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/artifacts')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, artifacts: mrArtifactRefs510() }),
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/artifact')) {
+      const artifactPath = url.searchParams.get('path') ?? '';
+      const content = artifactContents[artifactPath];
+      if (!content) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: false, error: 'NOT_FOUND', detail: artifactPath }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, ...content }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+}
 
 test.describe('inbox-dashboard: layout', () => {
   test('queue "Ждут меня" is above role blocks', async ({ page }) => {
@@ -83,25 +124,25 @@ test.describe('inbox-dashboard: layout', () => {
     expect(authorAboveUnassigned).toBe(true);
   });
 
-  test('modal overlays board (z-index above, centered)', async ({ page }) => {
+  test('split view: ArtifactBrowser (left) is left of ActionPanel (right), no overlay', async ({
+    page,
+  }) => {
+    await routeArtifacts510(page);
     await page.goto('/#/mr/group%2Fproject!510');
 
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    // No modal overlay — the split view replaces the board's <main>, not a fixed/z-50 dialog on top of it.
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5_000 });
 
-    // Dialog should have fixed positioning with high z-index
-    const dialogClass = await dialog.getAttribute('class');
-    expect(dialogClass).toContain('fixed');
-    expect(dialogClass).toContain('inset-0');
-    expect(dialogClass).toContain('z-50');
+    const artifactBrowser = page.locator('nav[aria-label="Артефакты"]');
+    await expect(artifactBrowser).toBeVisible({ timeout: 10_000 });
 
-    // Dialog should be centered — flex items-center justify-center
-    expect(dialogClass).toContain('items-center');
-    expect(dialogClass).toContain('justify-center');
+    // ActionPanel is identified by its candidates heading region.
+    const actionPanel = page.locator('text=Кандидаты').first();
+    await expect(actionPanel).toBeVisible({ timeout: 5_000 });
 
-    // The modal content should have a reasonable max-width (not full-screen)
-    const contentBox = dialog.locator('.max-w-2xl');
-    await expect(contentBox).toBeVisible();
+    // ArtifactBrowser (left) is left of ActionPanel (right), per TSK-107 P1 layout decision.
+    const browserLeftOfPanel = await isLeftOf(artifactBrowser, actionPanel);
+    expect(browserLeftOfPanel).toBe(true);
   });
 
   test('mobile viewport (375x812) — layout does not break', async ({ page }) => {

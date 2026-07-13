@@ -1,8 +1,48 @@
 // @file: dashboard.spec.ts — behavioral e2e tests for inbox-dashboard via Playwright.
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108
+// @tasks: TSK-108, TSK-107
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+
+/**
+ * @purpose Route MR 510 artifact endpoints to fixtures (dev-seed.ts seeds none yet, TSK-107 P2);
+ *   /board, /report, /action still hit the real server.
+ * @param page Playwright page to install the route on.
+ */
+async function routeArtifacts510(page: Page): Promise<void> {
+  const artifactContents = mrArtifactContents510();
+  await page.route('**/api/mr/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/artifacts')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, artifacts: mrArtifactRefs510() }),
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/artifact')) {
+      const artifactPath = url.searchParams.get('path') ?? '';
+      const content = artifactContents[artifactPath];
+      if (!content) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: false, error: 'NOT_FOUND', detail: artifactPath }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, ...content }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+}
 
 test.describe('inbox-dashboard: behavioral', () => {
   test('dashboard header shows "agent-inbox"', async ({ page }) => {
@@ -66,7 +106,10 @@ test.describe('inbox-dashboard: behavioral', () => {
     );
   });
 
-  test('click "Смотреть" navigates to #/mr/:id with report modal', async ({ page }) => {
+  test('click "Смотреть" navigates to #/mr/:id with split view (artifact browser + action panel)', async ({
+    page,
+  }) => {
+    await routeArtifacts510(page);
     await page.goto('/');
 
     // Find MR 510 card in the INBOX lane of reviewer
@@ -80,67 +123,63 @@ test.describe('inbox-dashboard: behavioral', () => {
     await expect(viewBtn).toBeVisible();
     await viewBtn.evaluate((el: HTMLButtonElement) => el.click());
 
-    // Modal dialog should appear
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 5_000 });
-
     // URL hash should have changed to #/mr/...
     await expect(page).toHaveURL(/#\/mr\//);
 
-    // Modal should show MR title
-    await expect(dialog).toContainText('feat: add new feature');
+    // Page title area shows MR title (MrDetailPage header, no modal overlay).
+    await expect(page.locator('main')).toContainText('feat: add new feature');
 
-    // Modal should show findings
-    await expect(dialog.locator('text=Findings')).toBeVisible({ timeout: 5_000 });
+    // Left: ArtifactBrowser nav; right: ActionPanel with candidates ("findings" renamed per D-86).
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('text=Кандидаты')).toBeVisible({ timeout: 5_000 });
 
-    // Close modal
-    await dialog.locator('button[aria-label="Close"]').click();
-    await expect(dialog).not.toBeVisible();
+    // "Назад к доске" replaces the old modal Close button.
+    await page.locator('button[aria-label="Назад к доске"]').click();
+    await expect(page).toHaveURL(/#\/?$/);
   });
 
   test('deep-link #/mr/:id works directly', async ({ page }) => {
+    await routeArtifacts510(page);
     // Navigate directly to the MR detail page via hash
     await page.goto('/#/mr/group%2Fproject!510');
 
-    // Modal dialog should appear immediately
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    // Split view should appear immediately — no modal, no board underneath.
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 10_000 });
 
     // Should show the MR title
-    await expect(dialog).toContainText('feat: add new feature');
+    await expect(page.locator('main')).toContainText('feat: add new feature');
 
-    // Should show findings section
-    await expect(dialog.locator('text=Findings')).toBeVisible({ timeout: 5_000 });
+    // Should show the candidates panel (ActionPanel — replaces the old "Findings" modal section)
+    await expect(page.locator('text=Кандидаты')).toBeVisible({ timeout: 5_000 });
   });
 
-  test('OperatorQuestion: select answer returns to board', async ({ page }) => {
+  test('reviewer Approve: gate passes with no error findings, board returns to DONE lane', async ({
+    page,
+  }) => {
+    await routeArtifacts510(page);
     // Navigate to MR detail
     await page.goto('/#/mr/group%2Fproject!510');
 
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 10_000 });
 
-    // Wait for report to load — findings section appears
-    await expect(dialog.locator('text=Findings')).toBeVisible({ timeout: 5_000 });
+    // ActionPanel visible with the candidates list loaded (2 findings from dev-seed, both non-error).
+    await expect(page.locator('text=Кандидаты (2)')).toBeVisible({ timeout: 5_000 });
 
-    // Operator question section should be visible
-    await expect(dialog.locator('text=Operator Question')).toBeVisible();
-
-    // Click "Approve" button inside the dialog
-    const approveBtn = dialog.locator('button:has-text("Approve")');
+    // Approve is enabled — AI-13 gate only blocks on severity=error findings, dev-seed MR 510 has none.
+    const approveBtn = page.locator('button', { hasText: 'Approve' });
+    await expect(approveBtn).toBeEnabled();
     await approveBtn.click();
 
-    // Wait for the action to complete and board to refresh
+    // Wait for the action to complete server-side.
     await page.waitForTimeout(1_500);
 
-    // Close the modal via the close button
-    await dialog.locator('button[aria-label="Close"]').click();
-
-    // Wait for board page
-    await page.waitForTimeout(500);
-
-    // Should be back on the board page (no dialog)
-    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5_000 });
+    // ActionPanel calls executeAction() directly (api-client), not BoardStore's executeMrAction —
+    // the split view does not optimistically refresh board state (discovery, logged below). A full
+    // reload re-mounts BoardStore and re-fetches, same as the operator navigating back afresh.
+    await page.goto('/');
+    await expect(page.locator('section[aria-label="Role: reviewer"]')).toBeVisible({
+      timeout: 10_000,
+    });
 
     // The MR should now be in DONE lane
     const reviewerBlock = page.locator('section[aria-label="Role: reviewer"]');

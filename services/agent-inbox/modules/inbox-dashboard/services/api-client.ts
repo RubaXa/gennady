@@ -2,7 +2,13 @@
 // @consumers: BoardStore
 // @tasks: TSK-107
 
-import type { BoardData, MrDetail, ApiResponse } from '../../inbox-api/types.ts';
+import type {
+  BoardData,
+  MrDetail,
+  ApiResponse,
+  ArtifactRef,
+  ArtifactContent,
+} from '../../inbox-api/types.ts';
 
 /** @purpose Base URL for the inbox-api server (default port 4174). */
 const BASE_URL = 'http://localhost:4174';
@@ -92,4 +98,34 @@ export async function executeAction(
     method: 'POST',
     body: JSON.stringify({ questionId, choice, payload }),
   });
+}
+
+/**
+ * @purpose List navigable artifacts for an MR via GET /api/mr/:id/artifacts.
+ * @param mrId MR identifier (e.g. "group/project!510").
+ * @returns Artifact references (REPORT/PLAN/tracks/HISTORY/coverage/tool-log).
+ * @sideEffect Network: GET /api/mr/:id/artifacts
+ */
+export async function listArtifacts(mrId: string): Promise<ArtifactRef[]> {
+  const data = await request<ApiResponse<{ artifacts: ArtifactRef[] }>>(
+    `/api/mr/${encodeURIComponent(mrId)}/artifacts`
+  );
+  return data.artifacts;
+}
+
+/**
+ * @purpose Read one artifact's content via GET /api/mr/:id/artifact?path=.
+ * @param mrId MR identifier.
+ * @param path Artifact path relative to `reports/<mr>/`, verbatim from the ArtifactRef.
+ * @throws {Error} On HTTP failure (missing/unsafe path, or artifact not found).
+ * @returns Artifact content and its render-hint kind.
+ * @sideEffect Network: GET /api/mr/:id/artifact?path=
+ */
+export async function readArtifact(mrId: string, path: string): Promise<ArtifactContent> {
+  const data = await request<ApiResponse<ArtifactContent>>(
+    `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent(path)}`
+  );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- D-007: strip ApiResponse ok envelope from artifact content
+  const { ok: _, ...content } = data;
+  return content as ArtifactContent;
 }

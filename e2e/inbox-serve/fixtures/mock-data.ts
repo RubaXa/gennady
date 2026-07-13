@@ -7,6 +7,8 @@ import type {
   RoleView,
   MrCard,
   MrDetail,
+  ArtifactRef,
+  ArtifactContent,
 } from '../../services/agent-inbox/modules/inbox-api/types.ts';
 import type { AuditEntry } from '../../services/agent-inbox/modules/inbox-core/audit-log.ts';
 
@@ -276,3 +278,46 @@ export function mrDetail510(): MrDetail {
   };
 }
 // #endregion END_MR_DETAIL_510
+
+// #region START_ARTIFACT_FIXTURES_510 — matches ArtifactBrowser nav for group/project!510: REPORT/PLAN/track/HISTORY
+/**
+ * @purpose Artifact list for the ArtifactBrowser nav (`GET /api/mr/:id/artifacts`), MR group/project!510.
+ * @returns ArtifactRef[] fixture: REPORT.md (default-selected), PLAN.md, a security track, HISTORY.md.
+ */
+export function mrArtifactRefs510(): ArtifactRef[] {
+  return [
+    { name: 'REPORT.md', path: 'REPORT.md', kind: 'md' },
+    { name: 'PLAN.md', path: 'PLAN.md', kind: 'md' },
+    { name: 'security.md', path: 'tracks/security.md', kind: 'md' },
+    { name: 'HISTORY.md', path: 'HISTORY.md', kind: 'md' },
+  ];
+}
+
+/**
+ * @purpose Artifact content for each path in {@link mrArtifactRefs510}, keyed for `GET /api/mr/:id/artifact?path=`.
+ * @invariant REPORT.md includes a fenced `mermaid` block — exercises ArtifactView's raw-source fallback (no diagram engine wired, per TSK-107 P1 insight).
+ * @returns Record of artifact path → content fixture.
+ */
+export function mrArtifactContents510(): Record<string, ArtifactContent> {
+  return {
+    'REPORT.md': {
+      kind: 'md',
+      content:
+        '# Report\n\nSummary of findings for !510.\n\n- src/utils.ts:42 — Potential null reference\n- src/index.ts:10 — Consider extracting helper\n\n```mermaid\ngraph TD; A-->B;\n```\n',
+    },
+    'PLAN.md': {
+      kind: 'md',
+      content: '# Plan\n\n1. Step one\n2. Step two\n',
+    },
+    'tracks/security.md': {
+      kind: 'md',
+      content:
+        '# Track: security\n\nНаходки:\n- src/utils.ts:42 — Potential null reference\n\nВердикт: commented\n',
+    },
+    'HISTORY.md': {
+      kind: 'md',
+      content: '# History\n\n- seeded\n- assigned to reviewer\n',
+    },
+  };
+}
+// #endregion END_ARTIFACT_FIXTURES_510

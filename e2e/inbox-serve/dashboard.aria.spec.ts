@@ -1,9 +1,50 @@
 // @file: dashboard.aria.spec.ts — ARIA snapshot tests for inbox-dashboard accessibility structure.
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108
+// @tasks: TSK-108, TSK-107
 
 import { test, expect } from '@playwright/test';
 import { captureAriaSnapshot } from './helpers/aria-snapshot.helper.ts';
+import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+import type { Page } from '@playwright/test';
+
+/**
+ * @purpose Route MR 510 artifact endpoints to fixtures (dev-seed.ts seeds none yet, TSK-107 P2);
+ *   /board, /report, /action still hit the real server.
+ * @param page Playwright page to install the route on.
+ */
+async function routeArtifacts510(page: Page): Promise<void> {
+  const artifactContents = mrArtifactContents510();
+  await page.route('**/api/mr/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/artifacts')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, artifacts: mrArtifactRefs510() }),
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/artifact')) {
+      const artifactPath = url.searchParams.get('path') ?? '';
+      const content = artifactContents[artifactPath];
+      if (!content) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: false, error: 'NOT_FOUND', detail: artifactPath }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, ...content }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+}
 
 test.describe('inbox-dashboard: ARIA snapshots', () => {
   test('dashboard structure: regions for roles, lanes, and cards', async ({ page }) => {
@@ -53,32 +94,35 @@ test.describe('inbox-dashboard: ARIA snapshots', () => {
   });
 
   test('MrDetail page structure via ARIA', async ({ page }) => {
+    await routeArtifacts510(page);
     // Navigate directly to MR detail
     await page.goto('/#/mr/group%2Fproject!510');
 
-    // Wait for modal to render
-    const dialog = page.locator('[role="dialog"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    // Wait for the split view to render — ArtifactBrowser nav (left) is the load-bearing signal
+    // that replaces the old modal dialog.
+    const nav = page.locator('nav[aria-label="Артефакты"]');
+    await expect(nav).toBeVisible({ timeout: 10_000 });
 
-    // Wait for report content to load (findings section)
-    await expect(dialog.locator('text=Findings')).toBeVisible({ timeout: 5_000 });
+    // Wait for the ActionPanel candidates list to load (replaces the old "Findings" section).
+    await expect(page.locator('text=Кандидаты')).toBeVisible({ timeout: 5_000 });
 
     const snapshot = await captureAriaSnapshot(page);
 
-    // Should contain dialog role
-    expect(snapshot).toContain('dialog');
+    // No dialog role anymore — split view is a regular page, not a modal overlay.
+    expect(snapshot).not.toContain('dialog');
 
     // Should contain MR title
     expect(snapshot).toContain('feat: add new feature');
 
-    // Should contain findings
-    expect(snapshot).toContain('Findings');
+    // Should contain the artifact nav list (REPORT/PLAN/tracks/HISTORY)
+    expect(snapshot).toContain('Артефакты');
+    expect(snapshot).toContain('REPORT.md');
 
-    // Should contain operator question
-    expect(snapshot).toContain('Operator');
+    // Should contain the candidates panel (ActionPanel)
+    expect(snapshot).toContain('Кандидаты');
 
-    // Should contain verdict
-    expect(snapshot).toContain('Verdict');
+    // Should contain reviewer action buttons (gate replaces "Operator Question" prompt)
+    expect(snapshot).toContain('Approve');
   });
 
   test('error state: "API недоступен" text is visible', async ({ page }) => {
