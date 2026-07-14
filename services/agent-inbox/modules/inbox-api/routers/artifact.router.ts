@@ -1,6 +1,6 @@
 // @file: ArtifactRouter — GET /api/mr/:id/artifacts, GET /api/mr/:id/artifact?path= for the artifact browser.
 // @consumers: HttpServer
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-122
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';
@@ -14,10 +14,11 @@ const ARTIFACT_CONTENT_RE = /^\/api\/mr\/(.+)\/artifact$/;
 /**
  * @purpose Reject any `path` value that could escape the `reports/<mr>/` subtree.
  * @invariant Blocks `..` segments, absolute paths, and NUL bytes — the only realistic traversal vectors for a relative path param.
+ * @invariant Exported (TSK-122) so BoardProviderReal applies the identical guard when reading real files from disk — one guard, not a second divergent copy.
  * @param path Raw `path` query-param value.
  * @returns true if the path stays within the artifact subtree.
  */
-function isSafeArtifactPath(path: string): boolean {
+export function isSafeArtifactPath(path: string): boolean {
   if (!path || path.startsWith('/') || path.includes('\0')) return false;
   return path.split('/').every((segment) => segment !== '..' && segment !== '.');
 }

@@ -2,15 +2,24 @@
 //   security lens + code-review diff → synthesize), reply_needed (thread-triage, no full battery),
 //   update-review (delta-only). Parity with the CLI D57/D70 pipeline (NFC-SV-07/08/09).
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts
-// @tasks: TSK-113, TSK-121
+// @tasks: TSK-113, TSK-121, TSK-122
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { logger } from '#logger';
 import type {
   RoleDefinition,
   RoleGraph,
   NodeContext,
   GateResult,
   PrepResult,
+  ChangesetFile,
 } from './role-node.ts';
+import {
+  buildReviewPlan,
+  scaffoldReviewReports,
+} from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
+import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose Deterministic branch selector read by `preparePrepNode`.
@@ -22,10 +31,191 @@ import type {
 type ReviewerStageSignal = 'review_needed' | 'reply_needed' | 'awaiting_reply' | 'idle';
 
 /**
+ * @purpose Best-effort scaffold materialization (PLAN.md + tasks/*.task.md) for review_needed —
+ *   reuses `inbox-review-plan`'s scaffold function (SV-12), never spawns or reimplements it.
+ * @invariant Degrade-open: absent changesetFiles/baseSha/headSha/stateDir (e.g. worktree
+ *   unavailable, per `context-builder#_prepareWorktreeAndChangeset`) is a silent no-op — scaffold
+ *   materialization never blocks the graph.
+ * @param ctx Node context — reads `changesetFiles`/`baseSha`/`headSha` staged by `buildNodeContext`.
+ * @sideEffect FS: writes PLAN.md/tasks/*.task.md/README.md/HISTORY.md under
+ *   `<StateStore.getStateDir()>/agent-inbox/reports/<mr>/` (NFC-05).
+ */
+function materializeReviewScaffold(ctx: NodeContext): void {
+  const changesetFiles = ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined;
+  const baseSha = ctx.artifacts['baseSha'] as string | undefined;
+  const headSha = ctx.artifacts['headSha'] as string | undefined;
+  const stateDir = ctx.store?.getStateDir();
+
+  if (!changesetFiles?.length || !baseSha || !headSha || !stateDir) return;
+
+  try {
+    const files = changesetFiles.map((f) => ({
+      path: f.path,
+      plus: f.plus,
+      minus: f.minus,
+      status: f.status,
+    }));
+    const changeset = {
+      files,
+      totals: {
+        files: files.length,
+        plus: files.reduce((n, f) => n + f.plus, 0),
+        minus: files.reduce((n, f) => n + f.minus, 0),
+      },
+    };
+
+    const plan = buildReviewPlan(changeset);
+    const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const dir = mrReportsDir(stateDir, ref);
+    scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset);
+  } catch (cause) {
+    logger.warn('[reviewerGraph#materializeReviewScaffold] [scaffolding → degraded]', {
+      mr: ctx.mr.webUrl,
+      error: String(cause),
+    });
+  }
+}
+
+/**
+ * @purpose Deterministic ≤7-node change-map mermaid graph — the guaranteed-closed fallback when a
+ *   synthesis artifact carries no `architectureDiagram` string of its own.
+ * @param files Changeset files backing the graph (top-level dir per node).
+ * @returns A minimal `graph TD` mermaid block body (no fences).
+ */
+function _buildMinimalChangeGraph(files: ChangesetFile[]): string {
+  if (files.length === 0) return 'graph TD\n  mr["MR changeset"]';
+  const dirs = [...new Set(files.map((f) => f.path.split('/')[0] || f.path))].slice(0, 6);
+  const lines = ['graph TD', '  mr["MR changeset"]'];
+  dirs.forEach((d, i) => lines.push(`  mr --> d${i}["${d}"]`));
+  return lines.join('\n');
+}
+
+/**
+ * @purpose Render README.md body (spec §7 real-proof artifact) from a synthesis artifact —
+ *   mirrors `inbox-review-plan`'s README_TEMPLATE headings.
+ * @invariant Always carries ≥1 closed mermaid block (`_buildMinimalChangeGraph` fallback when
+ *   synthesis supplies none).
+ * @param report `synth.reviewReport` (LLM-produced, shape not contractually fixed).
+ * @param recommendations `synth.recommendations` array, when present.
+ * @param changesetFiles Changeset files for the architecture-graph fallback.
+ * @returns Full README.md markdown body.
+ */
+function _renderSynthesisReadme(
+  report: Record<string, unknown>,
+  recommendations: unknown[],
+  changesetFiles: ChangesetFile[]
+): string {
+  const summary =
+    typeof report['summary'] === 'string' && report['summary']
+      ? (report['summary'] as string)
+      : `Изменено файлов: ${changesetFiles.length}`;
+  const verdict =
+    typeof report['verdict'] === 'string' && report['verdict']
+      ? (report['verdict'] as string)
+      : 'pending';
+  const mermaid =
+    typeof report['architectureDiagram'] === 'string' &&
+    (report['architectureDiagram'] as string).trim()
+      ? (report['architectureDiagram'] as string).trim()
+      : _buildMinimalChangeGraph(changesetFiles);
+  const behavior =
+    typeof report['behavior'] === 'string' && report['behavior']
+      ? (report['behavior'] as string)
+      : 'n/a — поведенческие детали не предоставлены синтезом';
+  const scenarios =
+    typeof report['scenarios'] === 'string' && report['scenarios']
+      ? (report['scenarios'] as string)
+      : 'n/a — сценарии не предоставлены синтезом';
+  const candidates =
+    recommendations.length === 0
+      ? 'Нет замечаний.'
+      : recommendations
+          .map((r, i) => {
+            const rec = r as Record<string, unknown>;
+            const text = typeof rec['message'] === 'string' ? rec['message'] : JSON.stringify(rec);
+            return `${i + 1}. ${text}`;
+          })
+          .join('\n');
+
+  return `# Отчёт ревью
+
+## Обзор
+
+${summary}
+
+## Архитектура
+
+\`\`\`mermaid
+${mermaid}
+\`\`\`
+
+## Поведение
+
+${behavior}
+
+## Сценарии
+
+${scenarios}
+
+## Вердикты
+
+${verdict}
+
+## Кандидаты
+
+${candidates}
+
+## Треды
+
+n/a — треды не обрабатываются на ветке review_needed/update-review
+`;
+}
+
+/**
+ * @purpose Write the synthesized review report to README.md (with mermaid) under reports/<mr>/ —
+ *   the real-proof artifact spec §7 requires on disk, not only in `ctx.artifacts`.
+ * @invariant Reads whichever synthesis artifact the branch produced — `node_synthesize`
+ *   (review_needed) or `node_synthesize_delta` (update-review); absent both (reply_needed's
+ *   thread-triage has no reviewReport), this is a no-op.
+ * @param ctx Node context at a synthesis gate — accumulated synthesis artifacts + store for the
+ *   reports dir.
+ * @sideEffect FS: overwrites README.md under `<StateStore.getStateDir()>/agent-inbox/reports/<mr>/`.
+ */
+function materializeSynthesisReadme(ctx: NodeContext): void {
+  const synth =
+    (ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined) ??
+    (ctx.artifacts['node_synthesize_delta'] as Record<string, unknown> | undefined);
+  const stateDir = ctx.store?.getStateDir();
+  if (!synth || !stateDir) return;
+
+  try {
+    const report = (synth['reviewReport'] as Record<string, unknown>) ?? {};
+    const recommendations = (synth['recommendations'] as unknown[] | undefined) ?? [];
+    const changesetFiles = (ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined) ?? [];
+
+    const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const dir = mrReportsDir(stateDir, ref);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'README.md'),
+      _renderSynthesisReadme(report, recommendations, changesetFiles)
+    );
+  } catch (cause) {
+    logger.warn('[reviewerGraph#materializeSynthesisReadme] [writing → degraded]', {
+      mr: ctx.mr.webUrl,
+      error: String(cause),
+    });
+  }
+}
+
+/**
  * @purpose Read pre-seeded stage/headChanged signals from artifacts and pick the branch.
+ * @invariant review_needed also materializes the scaffold pipeline to disk (gap-2, TSK-122) —
+ *   still no LLM, no vcs-* writes; FS-only, consistent with the prep-node contract.
  * @param ctx MR context and accumulated artifacts.
  * @returns Branch selector consumed by the graph's edges.
- * @sideEffect None — deterministic, no I/O (prep invariant: no LLM, no vcs-* writes).
+ * @sideEffect FS: `materializeReviewScaffold` writes PLAN.md/tasks/*.task.md on the review_needed
+ *   branch (best-effort, degrades silently — see that function's invariant).
  */
 async function preparePrepNode(ctx: NodeContext): Promise<PrepResult> {
   const stage = ctx.artifacts['stage'] as ReviewerStageSignal | undefined;
@@ -41,6 +231,7 @@ async function preparePrepNode(ctx: NodeContext): Promise<PrepResult> {
     return { branch: 'reply_needed' };
   }
   // Default (stage undefined on first tick, or stage === 'review_needed'): full battery.
+  materializeReviewScaffold(ctx);
   return { branch: 'review_needed' };
   // #endregion END_SELECT_BRANCH
 }
@@ -246,6 +437,10 @@ const reviewerGraph: RoleGraph = {
         if (!synth || !synth.reviewReport) {
           return { pass: false, reason: 'Delta synthesis не заполнен' };
         }
+        // gap-2 (TSK-122): materialize README.md (with mermaid) to disk right after synthesis
+        // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops
+        // at awaiting_operator (no operator answer yet) still leaves the real-proof artifact on disk.
+        materializeSynthesisReadme(ctx);
         return { pass: true };
       },
     },
@@ -288,6 +483,10 @@ const reviewerGraph: RoleGraph = {
         if (!synth || !synth.reviewReport) {
           return { pass: false, reason: 'Synthesis не заполнен' };
         }
+        // gap-2 (TSK-122): materialize README.md (with mermaid) to disk right after synthesis
+        // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops
+        // at awaiting_operator (no operator answer yet) still leaves the real-proof artifact on disk.
+        materializeSynthesisReadme(ctx);
         return { pass: true };
       },
     },
@@ -316,11 +515,9 @@ const reviewerGraph: RoleGraph = {
       async run(ctx: NodeContext) {
         // Sessions never call vcs-* (NFC-SV-07). Proposed actions computed from the operator's
         // answer + accumulated artifacts are staged here; RoleInstance/EffectExecutor apply them.
-        // NOTE: EffectNode.run(ctx) receives only NodeContext (mr/workspace/artifacts) — no
-        // VcsInboxPort/StateStore to build an EffectExecutor instance directly (both role-node.ts's
-        // NodeContext and role-instance.ts's _executeEffect are outside this phase's Target Files).
-        // Staging into ctx.artifacts keeps the contract observable/testable; see P3 Handoff open
-        // item for wiring RoleInstance to hand these to EffectExecutor.execute().
+        // README.md materialization (gap-2, TSK-122) happens earlier, at gate_review_synthesis/
+        // gate_delta_synthesis — this node only stages; see role-instance.ts#_executeEffect's
+        // EffectExecutor dispatch after this run() returns.
         void ctx;
       },
     },

@@ -1,7 +1,7 @@
 // @file: buildNodeContext — assembles a live NodeContext for one MR (worktree, changeset,
 //   base, stage/headChanged) from real VCS + registry state, for RoleScheduler assignment.
 // @consumers: RoleScheduler
-// @tasks: TSK-121
+// @tasks: TSK-121, TSK-122
 
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -251,6 +251,13 @@ export async function buildNodeContext(
     headChanged,
     lastReviewedHeadSha,
     baseSha: base,
+    // TSK-122 gap-2: worktreePath/headSha/changesetFiles only survive into RoleInstance's own
+    // artifact-only context rebuild (NodeContext.base/changeset/workspace do NOT propagate past
+    // the initial checkpoint) — staged here so node_prepare/node_effect can materialize the real
+    // scaffold/README artifacts to disk without recomputing the worktree.
+    worktreePath,
+    headSha,
+    changesetFiles,
   };
 
   return {

@@ -1,13 +1,19 @@
-// @file: Unit tests for BoardProviderReal — unassigned flow (F7) and card enrichment.
+// @file: Unit + integration tests for BoardProviderReal — unassigned flow (F7), card enrichment,
+//   and the real reports/<mr>/ artifact backing (TSK-122 gap-3: listArtifacts/readArtifact read
+//   real files from disk under a temp state dir, with the same traversal guard as ArtifactRouter).
 // @consumers: node:test runner
-// @tasks: TSK-117
+// @tasks: TSK-117, TSK-122
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { BoardProviderReal } from '../board-provider.real.ts';
 import type { RoleScheduler, RoleInstanceSnapshot } from '../../inbox-roles/role-scheduler.ts';
 import type { RoleEngine } from '../../inbox-roles/role-engine.ts';
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 const MR: VcsActionableMr = {
   iid: '14623',
@@ -60,7 +66,11 @@ function engineStub(): RoleEngine {
 
 describe('BoardProviderReal (F7)', () => {
   it('exposes polled MRs without instance as unassigned', () => {
-    const provider = new BoardProviderReal(schedulerStub({ unassigned: [MR] }), engineStub());
+    const provider = new BoardProviderReal(
+      schedulerStub({ unassigned: [MR] }),
+      engineStub(),
+      '/unused-state-dir'
+    );
     const board = provider.getBoard();
     assert.equal(board.unassigned.length, 1);
     assert.equal(board.unassigned[0]!.project, 'group/proj');
@@ -69,7 +79,11 @@ describe('BoardProviderReal (F7)', () => {
   });
 
   it('returns empty unassigned when scheduler has none', () => {
-    const provider = new BoardProviderReal(schedulerStub({ unassigned: [] }), engineStub());
+    const provider = new BoardProviderReal(
+      schedulerStub({ unassigned: [] }),
+      engineStub(),
+      '/unused-state-dir'
+    );
     assert.equal(provider.getBoard().unassigned.length, 0);
   });
 
@@ -86,12 +100,136 @@ describe('BoardProviderReal (F7)', () => {
     };
     const provider = new BoardProviderReal(
       schedulerStub({ unassigned: [MR], instances: [snap] }),
-      engineStub()
+      engineStub(),
+      '/unused-state-dir'
     );
     const board = provider.getBoard();
     const reviewer = board.roles.find((r) => r.name === 'reviewer')!;
     assert.equal(reviewer.lanes.inProgress.length, 1);
     assert.equal(reviewer.lanes.inProgress[0]!.title, 'feat: real MR');
     assert.equal(reviewer.lanes.inProgress[0]!.project, 'group/proj');
+  });
+
+  it('resolves getReport by the dashboard composite key (project!iid), not only webUrl', () => {
+    const snap: RoleInstanceSnapshot = {
+      key: `reviewer:${MR.webUrl}`,
+      role: 'reviewer',
+      mr: MR.webUrl,
+      state: 'done',
+      currentNode: 'gate_review_synthesis',
+      findings: [],
+      verdict: 'approved',
+      awaitingOperator: false,
+    };
+    const provider = new BoardProviderReal(
+      schedulerStub({ unassigned: [MR], instances: [snap] }),
+      engineStub(),
+      '/unused-state-dir'
+    );
+
+    // The dashboard routes on `${project}!${iid}` (MrCard#mrKey), never the raw webUrl.
+    const report = provider.getReport(`${MR.project}!${MR.iid}`);
+    assert.ok(report);
+    assert.equal(report!.verdict, 'approved');
+    assert.equal(report!.mr.project, 'group/proj');
+  });
+});
+
+describe('BoardProviderReal — reports/<mr>/ artifact backing (TSK-122 gap-3)', () => {
+  const REF = 'group/proj!14623';
+
+  /**
+   * @purpose Seed a temp state dir with a `reports/<mr>/` tree mirroring what
+   *   `materializeReviewScaffold`/`materializeSynthesisReadme` write to disk in a live pass.
+   * @returns The temp state dir root — caller removes it after the test.
+   */
+  function seedTempReportsDir(): string {
+    const stateDir = mkdtempSync(join(tmpdir(), 'board-provider-real-test-'));
+    const dir = mrReportsDir(stateDir, REF);
+    mkdirSync(join(dir, 'tasks'), { recursive: true });
+    writeFileSync(join(dir, 'PLAN.md'), '# Plan\n\nДорожки: auth');
+    writeFileSync(
+      join(dir, 'README.md'),
+      '# Отчёт ревью\n\n## Архитектура\n\n```mermaid\ngraph TD\n  mr["MR changeset"]\n```\n'
+    );
+    writeFileSync(join(dir, 'tasks', 'review.task.md'), '# Task: review');
+    return stateDir;
+  }
+
+  it('listArtifacts reads the real files materialized under reports/<mr>/', () => {
+    const stateDir = seedTempReportsDir();
+    try {
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [] }),
+        engineStub(),
+        stateDir
+      );
+      const artifacts = provider.listArtifacts(REF);
+      assert.ok(artifacts.some((a) => a.path === 'PLAN.md' && a.kind === 'md'));
+      assert.ok(artifacts.some((a) => a.path === 'README.md' && a.kind === 'md'));
+      assert.ok(artifacts.some((a) => a.path === join('tasks', 'review.task.md')));
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns an empty list for an MR with no materialized reports dir', () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'board-provider-real-test-'));
+    try {
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [] }),
+        engineStub(),
+        stateDir
+      );
+      assert.deepStrictEqual(provider.listArtifacts('nobody/nothing!1'), []);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('readArtifact returns README.md content with its mermaid block', () => {
+    const stateDir = seedTempReportsDir();
+    try {
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [] }),
+        engineStub(),
+        stateDir
+      );
+      const content = provider.readArtifact(REF, 'README.md');
+      assert.ok(content);
+      assert.equal(content!.kind, 'md');
+      assert.ok(content!.content.includes('```mermaid'));
+      assert.ok(content!.content.includes('graph TD'));
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null for an unknown artifact path', () => {
+    const stateDir = seedTempReportsDir();
+    try {
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [] }),
+        engineStub(),
+        stateDir
+      );
+      assert.equal(provider.readArtifact(REF, 'MISSING.md'), null);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a path-traversal attempt (../../etc/passwd) — same guard as ArtifactRouter', () => {
+    const stateDir = seedTempReportsDir();
+    try {
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [] }),
+        engineStub(),
+        stateDir
+      );
+      assert.equal(provider.readArtifact(REF, '../../etc/passwd'), null);
+    } finally {
+      rmSync(stateDir, { recursive: true, force: true });
+    }
   });
 });

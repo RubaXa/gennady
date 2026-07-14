@@ -2,8 +2,8 @@
 //   (live NodeContext, dry-run effects) and returns a per-MR result. Closes the serve-mode gap for
 //   TSK-121/EV-10: prep branches on real signals, effect nodes call the real EffectExecutor, and an
 //   optional seed restores prior review state before the pass runs.
-// @consumers: cli/cmd/inbox/serve.cmd.ts (--mrs run-mode entry point)
-// @tasks: TSK-121
+// @consumers: cli/cmd/inbox/serve.cmd.ts (--mrs run-mode entry point), inbox-eval eval-driver.ts
+// @tasks: TSK-121, TSK-122
 
 import { logger } from '#logger';
 import { RoleInstance, type RoleInstanceCheckpoint } from '../modules/inbox-roles/role-instance.ts';
@@ -19,6 +19,7 @@ import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
 import type { StateStore } from '../modules/inbox-core/state-store.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
 import { applySeedState, type SeedState } from './state-seed.ts';
+import { resolveVcsContext } from '../../../cli/cmd/_shared/vcs-context-resolver.ts';
 
 /** @purpose Bound guarding the drive-to-terminal loop per MR | @invariant One-shot mode has no external tick timer to hand control back to — the loop must self-limit against a stuck gate-fail/session-retry cycle. */
 const MAX_STEPS_PER_MR = 50;
@@ -73,6 +74,38 @@ export type RunMrsOnceResult = {
   /** @purpose Per-MR results, in the same order as the input `mrs` list */
   results: MrRunResult[];
 };
+
+/**
+ * @purpose Resolve the VCS host for a run-mode pass: the CLI's own `resolveVcsContext` against
+ *   the first MR URL, else persisted config.
+ * @invariant MR-URL host wins over config — mirrors bootstrap.ts's config-driven `VcsInboxReal`
+ *   wiring, but the pass's own MR list takes priority when it yields a host.
+ * @param mrs MR web URL list for this pass (may be empty).
+ * @param store State store to read the persisted config from when the URL yields no host.
+ * @returns Resolved host, or undefined when neither source yields one (`VcsInboxReal` then
+ *   reports its own `CONFIG: No VCS host configured` error, unchanged from before).
+ * @sideEffect Filesystem read via `StateStore#loadConfig` (fallback path only).
+ */
+export async function resolveRunModeVcsHost(
+  mrs: string[],
+  store: StateStore
+): Promise<string | undefined> {
+  const firstMr = mrs[0];
+  if (firstMr) {
+    try {
+      const context = await resolveVcsContext({ url: firstMr });
+      return context.host;
+    } catch (cause) {
+      logger.debug('[resolveRunModeVcsHost] [resolving-from-url → failed]', {
+        mr: firstMr,
+        error: String(cause),
+      });
+    }
+  }
+
+  const config = await store.loadConfig();
+  return config.configured ? config.vcsHost : undefined;
+}
 
 /**
  * @purpose Feed a fixed MR list through the real role graph, driving each RoleInstance to a

@@ -2,7 +2,7 @@
 // @file: CLI command: inbox serve — start the agent-inbox HTTP server + AI engine, or (with
 //   --mrs) run a one-shot dry-run pass over a fixed MR list through the real role graph.
 // @consumers: gennady.ts (served via `gennady inbox serve`)
-// @tasks: TSK-115, TSK-121
+// @tasks: TSK-115, TSK-121, TSK-122
 
 import { style } from '../../../shared/common/style.ts';
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { homedir } from 'node:os';
 import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
 import { isOpencodePid } from '../../../services/agent-inbox/serve/pid-utils.ts';
-import { runMrsOnce } from '../../../services/agent-inbox/serve/run-mode.ts';
+import { runMrsOnce, resolveRunModeVcsHost } from '../../../services/agent-inbox/serve/run-mode.ts';
 import { loadSeedState, type SeedState } from '../../../services/agent-inbox/serve/state-seed.ts';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
 import { RoleEngine } from '../../../services/agent-inbox/modules/inbox-roles/role-engine.ts';
@@ -124,9 +124,12 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
     const engine = new RoleEngine();
     await engine.loadAll();
 
+    // gap-1 (TSK-122): derive host from the MR list (or fall back to config) — a bare
+    // VcsInboxReal({ token }) with no host always threw CONFIG: No VCS host configured.
+    const vcsHost = mocks ? undefined : await resolveRunModeVcsHost(mrs, store);
     const vcs: VcsInboxPort = mocks
       ? new VcsInboxMock()
-      : new VcsInboxReal({ token: process.env.GITLAB_PERSONAL_TOKEN });
+      : new VcsInboxReal({ host: vcsHost, token: process.env.GITLAB_PERSONAL_TOKEN });
     const opencode: OpenCodePort = mocks
       ? new OpenCodeMock()
       : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: 'http://localhost:4096' });

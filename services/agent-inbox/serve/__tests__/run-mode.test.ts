@@ -2,22 +2,28 @@
 //   role graph (RoleInstance/RoleEngine/EffectExecutor), network-free via VcsInboxMock/OpenCodeMock
 //   and an injected fetchDiffRefs stub. Covers: review_needed reaches ask-terminal with staged
 //   proposedActions (real reviewer graph); effect dry-run posts nothing and a second pass is
-//   idempotent (0 new effect_applied) via a minimal prep→effect graph.
+//   idempotent (0 new effect_applied) via a minimal prep→effect graph; real-disk materialization
+//   (PLAN.md/README.md with a deterministic changeset-derived mermaid block) round-tripped through
+//   BoardProviderReal.listArtifacts/readArtifact (TSK-122 P3 real-proof integration test).
 // @consumers: node:test runner
-// @tasks: TSK-121
+// @tasks: TSK-121, TSK-122
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runMrsOnce, type RunModeDeps } from '../run-mode.ts';
 import { RoleEngine } from '../../modules/inbox-roles/role-engine.ts';
-import type { RoleGraph } from '../../modules/inbox-roles/role-node.ts';
+import { RoleInstance } from '../../modules/inbox-roles/role-instance.ts';
+import { ReviewerRole } from '../../modules/inbox-roles/reviewer.role.ts';
+import type { RoleGraph, ChangesetFile } from '../../modules/inbox-roles/role-node.ts';
 import { StateStore } from '../../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../../modules/inbox-core/vcs-inbox.mock.ts';
 import type { MrContext } from '../../modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../../modules/inbox-opencode/opencode.mock.ts';
+import { BoardProviderReal } from '../../modules/inbox-api/board-provider.real.ts';
+import type { RoleScheduler } from '../../modules/inbox-roles/role-scheduler.ts';
 
 /**
  * @purpose Fresh StateStore rooted at a temp dir, with `agent-inbox/` pre-created so
@@ -237,5 +243,125 @@ describe('runMrsOnce — per-MR result shape for an unresolved role', () => {
     assert.strictEqual(mrResult.state, 'unresolved_role');
     assert.strictEqual(mrResult.board, null);
     assert.strictEqual(mrResult.artifacts, null);
+  });
+});
+
+describe('reviewer graph → real disk materialization → BoardProviderReal round-trip (TSK-122 P3 real-proof)', () => {
+  /**
+   * @purpose Prove the P1 (materializeReviewScaffold/materializeSynthesisReadme) + P2
+   *   (BoardProviderReal.listArtifacts/readArtifact) gaps actually close end-to-end: the REAL
+   *   `ReviewerRole.graph` (not a hand-built test graph) drives `node_prepare` →
+   *   `node_track_review`/`node_security_lens`/`node_code_review` → `gate_review_filled` →
+   *   `node_synthesize` → `gate_review_synthesis` → `node_ask`, actually writing PLAN.md and a
+   *   README.md carrying a real `\`\`\`mermaid` block derived from the changeset files — then reads
+   *   those SAME files back off disk through `BoardProviderReal`, the exact reader the live
+   *   dashboard uses (TSK-122 gap-3/gap-4).
+   * @invariant Only OpenCode is mocked (network-free, per this suite's own contract); the disk
+   *   writes and BoardProviderReal reads are 100% real code paths — not a hand-seeded fixture (that
+   *   coverage already exists in board-provider.real.test.ts's "artifact backing" describe block;
+   *   this test closes the gap that suite leaves open — nothing upstream of BoardProviderReal had
+   *   ever exercised the real writer).
+   * @invariant `changesetFiles`/`baseSha`/`headSha` are seeded directly via `RoleInstanceCheckpoint`
+   *   (bypassing `_prepareWorktreeAndChangeset`'s real `git worktree`/`git diff` calls) — this suite
+   *   stays network- and git-free by design (see `makeStateStore`'s own doc comment); the real git
+   *   fetch path was separately probed live during this phase (see ticket TSK-122 P3 Execution Log)
+   *   against `vk-workspace/superapp!571` and confirmed to fetch a real changeset successfully.
+   */
+  it('GIVEN real reviewer graph + mocked OpenCode WHEN review_needed reaches gate_review_synthesis THEN PLAN.md/README.md(mermaid) are written to reports/<mr>/ and BoardProviderReal reads them back', async () => {
+    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/42';
+
+    const engine = new RoleEngine();
+    engine.register(ReviewerRole);
+
+    const vcs = new VcsInboxMock();
+    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
+
+    const opencode = new OpenCodeMock();
+    opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: ['logic'] });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_synthesize', {
+      reviewReport: { summary: 'Изменения в логике и тестах', verdict: 'changes_requested' },
+      recommendations: [{ message: 'Добавить тест на граничный случай' }],
+    });
+
+    const store = makeStateStore();
+
+    const changesetFiles: ChangesetFile[] = [
+      { path: 'services/agent-inbox/foo.ts', status: 'M', plus: 40, minus: 10 },
+      { path: 'services/agent-inbox/__tests__/foo.test.ts', status: 'A', plus: 60, minus: 0 },
+      { path: 'docs/foo.md', status: 'M', plus: 5, minus: 1 },
+    ];
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:materialize-round-trip',
+      role: 'reviewer',
+      mr: MR,
+      graph: ReviewerRole.graph,
+      opencode,
+      vcs,
+      store,
+      checkpoint: {
+        currentNode: 'node_prepare',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { changesetFiles, baseSha: 'base0000', headSha: 'head1111' },
+      },
+    });
+
+    await instance.step(); // node_prepare (review_needed default branch) — materializeReviewScaffold
+    assert.strictEqual(instance.currentNode, 'node_track_review');
+    await instance.step(); // node_track_review → ok
+    await instance.step(); // node_security_lens → ok
+    await instance.step(); // node_code_review → ok
+    assert.strictEqual(instance.currentNode, 'gate_review_filled');
+    await instance.step(); // gate_review_filled → pass
+    assert.strictEqual(instance.currentNode, 'node_synthesize');
+    await instance.step(); // node_synthesize → ok
+    assert.strictEqual(instance.currentNode, 'gate_review_synthesis');
+    await instance.step(); // gate_review_synthesis → pass — materializeSynthesisReadme fires here
+    assert.strictEqual(instance.currentNode, 'node_ask');
+
+    // NB: mrContext() (this file's shared helper) hardcodes iid: '1' regardless of the MR URL's own
+    // /42/ path segment — the ref below matches that helper's project!iid, not the URL.
+    const ref = 'group/project!1';
+    const reportsDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'group__project-1');
+
+    // #region ASSERT_REAL_DISK_WRITES — the P1 gap (materialization) closed
+    assert.ok(
+      existsSync(join(reportsDir, 'PLAN.md')),
+      'PLAN.md written by materializeReviewScaffold'
+    );
+    assert.ok(
+      existsSync(join(reportsDir, 'README.md')),
+      'README.md written by materializeSynthesisReadme'
+    );
+    // #endregion ASSERT_REAL_DISK_WRITES
+
+    // #region ASSERT_BOARD_PROVIDER_REAL_ROUND_TRIP — the P2 gap (BoardProviderReal reads) closed
+    const provider = new BoardProviderReal(
+      {} as unknown as RoleScheduler,
+      {} as unknown as RoleEngine,
+      store.getStateDir()
+    );
+
+    const artifacts = provider.listArtifacts(ref);
+    assert.ok(artifacts.some((a) => a.path === 'PLAN.md'));
+    assert.ok(artifacts.some((a) => a.path === 'README.md'));
+
+    const readme = provider.readArtifact(ref, 'README.md');
+    assert.ok(readme, 'BoardProviderReal.readArtifact must find the real materialized README.md');
+    assert.equal(readme!.kind, 'md');
+    // Real mermaid — not a placeholder, not "FILL: orchestrator" — derived from the seeded
+    // changesetFiles' top-level directories via reviewer.role.ts's `_buildMinimalChangeGraph`
+    // fallback (node_synthesize's canned reviewReport carries no architectureDiagram of its own).
+    assert.ok(readme!.content.includes('```mermaid'));
+    assert.ok(readme!.content.includes('graph TD'));
+    assert.ok(readme!.content.includes('services') || readme!.content.includes('docs'));
+    assert.ok(
+      !readme!.content.includes('FILL: orchestrator'),
+      'must be the synthesis render, not the unfilled scaffold template'
+    );
+    // #endregion ASSERT_BOARD_PROVIDER_REAL_ROUND_TRIP
   });
 });

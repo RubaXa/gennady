@@ -510,7 +510,7 @@ export class RoleInstance {
     const edge = this._resolveEdge(node.id, condition);
 
     if (result.pass) {
-      // Side-effect-free pass — just transition
+      // Just transition — any FS materialization a gate performs already ran inside verify()
       if (edge) {
         this.currentNode = edge.to;
         if (edge.to === 'done') {

@@ -1,7 +1,7 @@
 // @file: review-plan command — deterministic file-to-track classification for fan-out review,
 //   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @consumers: agent-inbox skill (inbox-flow.directive.xml)
-// @tasks: TSK-102, TSK-103, TSK-113
+// @tasks: TSK-102, TSK-103, TSK-113, TSK-122
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -209,7 +209,13 @@ function getTrackDirective(track: string): ReviewTrack['directive'] {
 const INLINE_MAX_FILES = 6;
 const INLINE_MAX_LINES = 300;
 
-function buildReviewPlan(changeset: Changeset): ReviewPlan {
+/**
+ * @purpose Classify a changeset into inline/fan_out review tracks — deterministic, no LLM.
+ * @param changeset File-level diff stats to classify.
+ * @returns Review plan: mode + per-track file/line groupings.
+ * @consumer inbox-review-plan.cmd `run`, reviewer.role.ts `node_prepare` (TSK-122)
+ */
+export function buildReviewPlan(changeset: Changeset): ReviewPlan {
   const tracks = new Map<string, { files: string[]; lineCount: number }>();
 
   for (const file of changeset.files) {
@@ -498,11 +504,12 @@ function readTaskStatus(taskPath: string): string | null {
  * @param plan Deterministic review plan (mode + tracks).
  * @param changeset File-level diff stats backing the Scope prefill.
  * @returns Paths of PLAN.md, all task files (created or pre-existing), and the report dir.
- * @sideEffect FS: creates the report directory tree; writes PLAN.md always; writes task/README/
- *   HISTORY files only when absent or still at `scaffolded`.
- * @consumer inbox-review-plan.cmd `run`
+ * @sideEffect FS: creates the report dir tree; always writes PLAN.md; writes task/README/HISTORY
+ *   only when absent or still `scaffolded`.
+ * @consumer inbox-review-plan.cmd `run`, reviewer.role.ts `node_prepare` (TSK-122, exported
+ *   for in-process reuse per SV-12, never spawned)
  */
-function scaffoldReviewReports(
+export function scaffoldReviewReports(
   dir: string,
   ref: string,
   headSha: string,

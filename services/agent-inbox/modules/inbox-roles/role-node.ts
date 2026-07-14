@@ -156,7 +156,8 @@ export type SessionNode = {
 
 /**
  * @purpose Deterministic code gate: validates artifacts without LLM involvement.
- * @invariant Gates are pure functions — no side effects, no I/O, no LLM calls.
+ * @invariant No LLM calls. A passing gate MAY perform a documented FS materialization (e.g.
+ *   reviewer.role.ts's synthesis→README write, TSK-122) — never network/vcs-* (EffectNode's job).
  */
 export type GateNode = {
   /** @purpose Discriminant — identifies this node as a gate (deterministic) node. */

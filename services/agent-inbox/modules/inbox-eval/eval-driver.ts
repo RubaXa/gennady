@@ -4,12 +4,17 @@
 //   superseded, see TSK-119 Round 0). Composes an EvalReport (TSK-118 eval-report.ts) and writes
 //   eval-report.json + .md under the reports dir.
 // @consumers: cli/cmd/inbox-eval (TSK-119)
-// @tasks: TSK-119
+// @tasks: TSK-119, TSK-122
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '#logger';
-import { runMrsOnce, type RunModeDeps, type MrRunResult } from '../../serve/run-mode.ts';
+import {
+  runMrsOnce,
+  resolveRunModeVcsHost,
+  type RunModeDeps,
+  type MrRunResult,
+} from '../../serve/run-mode.ts';
 import type { SeedState } from '../../serve/state-seed.ts';
 import { StateStore } from '../inbox-core/state-store.ts';
 import { RoleEngine } from '../inbox-roles/role-engine.ts';
@@ -94,11 +99,14 @@ export type RunEvalResult = {
  * @purpose Resolve real (or mock, per `deps.mocks`) `RunModeDeps` mirroring `serve.cmd.ts --mrs`'s
  *   own wiring — this driver reuses that construction rather than inventing a second one.
  * @param deps Caller-supplied deps; `runModeDeps` bypasses this construction entirely.
+ * @param mrs MR batch this eval run targets — feeds `resolveRunModeVcsHost` (gap-1, TSK-122) when
+ *   `deps.mocks` is false.
  * @returns Store + fully wired `RunModeDeps`.
  * @sideEffect Loads the role engine's graph modules from disk (`RoleEngine#loadAll`).
  */
 async function _resolveRunModeDeps(
-  deps: RunEvalDeps
+  deps: RunEvalDeps,
+  mrs: string[]
 ): Promise<{ store: StateStore; runModeDeps: RunModeDeps }> {
   if (deps.runModeDeps) {
     return { store: deps.runModeDeps.store, runModeDeps: deps.runModeDeps };
@@ -108,9 +116,12 @@ async function _resolveRunModeDeps(
   const engine = new RoleEngine();
   await engine.loadAll();
 
+  // gap-1 (TSK-122): derive host from the MR batch (or fall back to config) — a bare
+  // VcsInboxReal({ token }) with no host always threw CONFIG: No VCS host configured.
+  const vcsHost = deps.mocks ? undefined : await resolveRunModeVcsHost(mrs, store);
   const vcs: VcsInboxPort = deps.mocks
     ? new VcsInboxMock()
-    : new VcsInboxReal({ token: process.env.GITLAB_PERSONAL_TOKEN });
+    : new VcsInboxReal({ host: vcsHost, token: process.env.GITLAB_PERSONAL_TOKEN });
   const opencode: OpenCodePort = deps.mocks
     ? new OpenCodeMock()
     : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: 'http://localhost:4096' });
@@ -253,7 +264,7 @@ export async function runEval(input: RunEvalInput, deps: RunEvalDeps = {}): Prom
   const startedAt = now();
   const dryRun = input.dryRun ?? true;
 
-  const { store, runModeDeps } = await _resolveRunModeDeps(deps);
+  const { store, runModeDeps } = await _resolveRunModeDeps(deps, input.mrs);
   const runModeFn = deps.runMrsOnce ?? runMrsOnce;
 
   logger.info('[runEval] [idle → driving]', { mrCount: input.mrs.length, dryRun });

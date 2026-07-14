@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117
+// @tasks: TSK-115, TSK-117, TSK-122
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
@@ -457,8 +457,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   }
 
   // #region START_CREATE_SERVER
-  // F1: Real mode — BoardProviderReal backed by RoleScheduler
-  const boardProvider = new BoardProviderReal(scheduler, engine);
+  // F1: Real mode — BoardProviderReal backed by RoleScheduler; reports/<mr>/ read from the
+  // same state dir the reviewer graph materializes to disk (TSK-122 gap-3/gap-4).
+  const boardProvider = new BoardProviderReal(scheduler, engine, stateStore.getStateDir());
   const server = new HttpServer({ port, boardProvider });
   // #endregion END_CREATE_SERVER
 

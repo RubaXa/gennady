@@ -1,13 +1,28 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-117
+// @tasks: TSK-117, TSK-122
 
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { logger } from '#logger';
 import { BoardProviderPort } from './board-provider.port.ts';
-import type { BoardData, RoleView, MrCard, MrDetail } from './types.ts';
+import type {
+  BoardData,
+  RoleView,
+  MrCard,
+  MrDetail,
+  ArtifactRef,
+  ArtifactContent,
+} from './types.ts';
 import type { RoleScheduler, RoleInstanceSnapshot } from '../inbox-roles/role-scheduler.ts';
 import type { RoleEngine, RegisteredRole } from '../inbox-roles/role-engine.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
+import { isSafeArtifactPath } from './routers/artifact.router.ts';
+import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+
+/** @purpose Known review-document filenames materialized directly under `reports/<mr>/` (TSK-122 gap-2). */
+const KNOWN_REPORT_FILES = ['REPORT.md', 'README.md', 'PLAN.md', 'HISTORY.md'];
 
 /**
  * @purpose Build a MrCard from a polled VcsActionableMr — real metadata for the dashboard (F7).
@@ -65,6 +80,19 @@ function snapshotToMrCard(snap: RoleInstanceSnapshot): MrCard {
 }
 
 /**
+ * @purpose Render-hint from a `reports/<mr>/` file's extension.
+ * @invariant Every materialized report file is markdown; mermaid ships as a fenced block inside
+ *   README.md, never a standalone kind.
+ * @param name Artifact file name or path.
+ * @returns ArtifactKind driving the dashboard's viewer choice.
+ */
+function deriveArtifactKind(name: string): 'md' | 'json' | 'text' {
+  if (name.endsWith('.json')) return 'json';
+  if (name.endsWith('.md')) return 'md';
+  return 'text';
+}
+
+/**
  * @purpose Map an InstanceState to a board lane.
  * @param state RoleInstance state.
  * @returns Lane name: inbox, inProgress, awaitingMe, or done.
@@ -96,16 +124,39 @@ export class BoardProviderReal extends BoardProviderPort {
   protected _scheduler: RoleScheduler;
   /** @purpose Role engine providing role definitions and activation state. */
   protected _engine: RoleEngine;
+  /** @purpose Gennady state root — reports/<mr>/ artifacts live under `<stateDir>/agent-inbox/reports/` (TSK-122 gap-3). */
+  protected _stateDir: string;
 
   /**
-   * @purpose Create a BoardProviderReal backed by the given scheduler and engine.
+   * @purpose Create a BoardProviderReal backed by the given scheduler, engine, and state directory.
    * @param scheduler The live RoleScheduler.
    * @param engine The RoleEngine for role metadata.
+   * @param stateDir Gennady state root — backs `listArtifacts`/`readArtifact` against `reports/<mr>/` on disk.
    */
-  constructor(scheduler: RoleScheduler, engine: RoleEngine) {
+  constructor(scheduler: RoleScheduler, engine: RoleEngine, stateDir: string) {
     super();
     this._scheduler = scheduler;
     this._engine = engine;
+    this._stateDir = stateDir;
+  }
+
+  /**
+   * @purpose Resolve a live instance by mrId — accepts either the instance's own webUrl or the
+   *   dashboard's `project!iid` composite key (route param, per `MrCard#mrKey`).
+   * @invariant Mirrors `BoardProviderMock#_findMr`'s dual-key lookup; without it, `getReport` never
+   *   matches a live instance and `#/mr/<real>` never renders.
+   * @param mrId MR identifier — webUrl or `project!iid`.
+   * @returns Matching snapshot, or undefined.
+   */
+  protected _resolveInstance(mrId: string): RoleInstanceSnapshot | undefined {
+    const instances = this._scheduler.listInstances();
+    const direct = instances.find((i) => i.mr === mrId);
+    if (direct) return direct;
+
+    return instances.find((i) => {
+      const polled = this._scheduler.getPolledMr(i.mr);
+      return polled ? `${polled.project}!${polled.iid}` === mrId : false;
+    });
   }
 
   /**
@@ -203,8 +254,7 @@ export class BoardProviderReal extends BoardProviderPort {
    * @see {BoardProviderPort#getReport}
    */
   getReport(mrId: string): MrDetail | null {
-    const instances = this._scheduler.listInstances();
-    const snap = instances.find((i) => i.mr === mrId);
+    const snap = this._resolveInstance(mrId);
     if (!snap) return null;
 
     const polled = this._scheduler.getPolledMr(snap.mr);
@@ -214,5 +264,71 @@ export class BoardProviderReal extends BoardProviderPort {
       verdict: snap.verdict,
       audit: [],
     };
+  }
+
+  /**
+   * @purpose Override the base no-op: list the real review-document files materialized on disk
+   *   under `reports/<mr>/` (TSK-122 gap-3).
+   * @param mrId MR identifier — `project!iid`, matching `mrReportsDir`'s `ref` param and the
+   *   dashboard's route key (`MrCard#mrKey`).
+   * @returns ArtifactRef[] for every known top-level report file plus `tasks/*.task.md` that exist
+   *   on disk; empty array when the MR has no materialized reports dir yet.
+   */
+  listArtifacts(mrId: string): ArtifactRef[] {
+    const dir = mrReportsDir(this._stateDir, mrId);
+    if (!existsSync(dir)) return [];
+
+    const refs: ArtifactRef[] = [];
+    for (const name of KNOWN_REPORT_FILES) {
+      if (existsSync(join(dir, name)))
+        refs.push({ name, path: name, kind: deriveArtifactKind(name) });
+    }
+
+    const tasksDir = join(dir, 'tasks');
+    if (existsSync(tasksDir)) {
+      try {
+        for (const name of readdirSync(tasksDir)
+          .filter((f) => f.endsWith('.task.md'))
+          .sort()) {
+          refs.push({ name, path: join('tasks', name), kind: deriveArtifactKind(name) });
+        }
+      } catch (cause) {
+        logger.warn('[BoardProviderReal#listArtifacts] [reading-tasks-dir → degraded]', {
+          mrId,
+          error: String(cause),
+        });
+      }
+    }
+
+    return refs;
+  }
+
+  /**
+   * @purpose Override the base no-op: read one real review-document file's content from disk
+   *   under `reports/<mr>/` (TSK-122 gap-3).
+   * @invariant Applies the identical traversal guard the ArtifactRouter uses ({@link isSafeArtifactPath})
+   *   before touching the filesystem — `path` must stay a relative descendant of `reports/<mr>/`.
+   * @param mrId MR identifier — `project!iid`.
+   * @param path Artifact path relative to `reports/<mr>/`.
+   * @returns ArtifactContent read from disk, or null if unsafe, missing, or unreadable.
+   */
+  readArtifact(mrId: string, path: string): ArtifactContent | null {
+    // Same guard as ArtifactRouter (NFC-05): path must stay a relative descendant of reports/<mr>/.
+    if (!isSafeArtifactPath(path)) return null;
+
+    const filePath = join(mrReportsDir(this._stateDir, mrId), path);
+    if (!existsSync(filePath)) return null;
+
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return { content, kind: deriveArtifactKind(path) };
+    } catch (cause) {
+      logger.error('[BoardProviderReal#readArtifact] [reading → failed]', {
+        mrId,
+        path,
+        error: String(cause),
+      });
+      return null;
+    }
   }
 }
