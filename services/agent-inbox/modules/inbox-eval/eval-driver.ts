@@ -78,7 +78,7 @@ export type RunEvalDeps = {
   /**
    * @purpose Clock override
    * @returns Current timestamp as an ISO string.
-  */
+   */
   now?: () => string;
 };
 

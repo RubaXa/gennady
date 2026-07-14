@@ -46,7 +46,7 @@ export type ContextBuilderDeps = {
    * @purpose Resolve diff_refs for the MR; injectable, defaults to live GitLab lookup
    * @param mrUrl MR web URL
    * @returns diff_refs or undefined when unavailable
-  */
+   */
   fetchDiffRefs: (mrUrl: string) => Promise<DiffRefs | undefined>;
 };
 
