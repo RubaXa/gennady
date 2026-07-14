@@ -75,7 +75,10 @@ export type RunEvalDeps = {
   runMrsOnce?: typeof runMrsOnce;
   /** @purpose Override for the full `RunModeDeps` bundle (engine/store/vcs/opencode/fetchDiffRefs); skips all default wiring when supplied */
   runModeDeps?: RunModeDeps;
-  /** @purpose Clock override | @returns Current timestamp as an ISO string. */
+  /**
+   * @purpose Clock override
+   * @returns Current timestamp as an ISO string.
+  */
   now?: () => string;
 };
 
