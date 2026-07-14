@@ -2,7 +2,7 @@
 //   resolve/draft-note-delete. Reconciles against live discussion threads before posting (dedup)
 //   and guards re-application via the `effect_applied` audit marker (idempotent across restarts).
 // @consumers: RoleInstance (effect nodes), reviewer.role.ts / author.role.ts effect nodes
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-121
 
 import { logger } from '#logger';
 import { run as runVcsReact } from '../../../../cli/cmd/vcs-react/vcs-react.cmd.ts';
@@ -113,6 +113,8 @@ export type EffectExecutorConfig = {
   vcs: VcsInboxPort;
   /** @purpose State store for audit-based idempotency */
   store: StateStore;
+  /** @purpose Skip the real vcs-* mutation (`_apply`) while still running reconcile/dedup and marking `effect_applied` | @invariant Default false — dry-run is opt-in, never a silent default for a real executor */
+  dryRun?: boolean;
 };
 
 // ─── CLI invocation harness ─────────────────────────────────────────────────────
@@ -188,12 +190,12 @@ async function invokeCliCommand(
 /**
  * @purpose Sole executor of approved VCS-mutating actions in inbox-roles (NFC-SV-07). Sessions
  * propose, the operator approves, this class applies.
- * @invariant Idempotent per node: an action already recorded `effect_applied` for the current
- *   node is skipped on restart — no duplicate posting.
- * @invariant Reconcile-dedup: react/resolve/approve actions already reflected in live VCS state
- *   are skipped before any network call.
- * @invariant Posting policy (ThreadModel/ReactionMatrix) is the session's job — this class
- *   executes the action as proposed, it does not re-derive policy.
+ * @invariant Idempotent per node: an action already recorded `effect_applied` is skipped on
+ *   restart or repeat dry-run — no duplicate posting, no duplicate `applied` outcome.
+ * @invariant Reconcile-dedup (react/resolve/approve vs live VCS state) runs before any network
+ *   call; posting policy itself stays the session's job, not re-derived here.
+ * @invariant Dry-run (`dryRun=true`) still reconciles/dedups and records `effect_applied`, only
+ *   `_apply` (the real vcs-* mutation) is withheld.
  * @consumer RoleInstance (effect nodes)
  */
 export class EffectExecutor {
@@ -201,14 +203,17 @@ export class EffectExecutor {
   protected _vcs: VcsInboxPort;
   /** @purpose State store for audit-based idempotency */
   protected _store: StateStore;
+  /** @purpose Dry-run mode — see class @invariant */
+  protected _dryRun: boolean;
 
   /**
    * @purpose Create an executor bound to a VCS adapter and state store.
-   * @param config VCS adapter + state store.
+   * @param config VCS adapter + state store + optional dry-run mode.
    */
   constructor(config: EffectExecutorConfig) {
     this._vcs = config.vcs;
     this._store = config.store;
+    this._dryRun = config.dryRun ?? false;
   }
 
   /**
@@ -227,6 +232,7 @@ export class EffectExecutor {
       mr: ctx.mr,
       node: ctx.nodeId,
       count: approvedActions.length,
+      dryRun: this._dryRun,
     });
 
     const applied = await this._store.queryAudit(ctx.mr);
@@ -253,7 +259,12 @@ export class EffectExecutor {
       }
 
       try {
-        await this._apply(ctx, action);
+        // #region START_DRY_RUN_SKIP_APPLY — invariant: dry-run still reconciles/dedups and marks
+        // effect_applied (idempotency proven end-to-end); only the real vcs-* call is withheld
+        if (!this._dryRun) {
+          await this._apply(ctx, action);
+        }
+        // #endregion END_DRY_RUN_SKIP_APPLY
         await this._store.appendAudit({
           ts: new Date().toISOString(),
           mr: ctx.mr,

@@ -1,8 +1,9 @@
 // @file: RoleNode — typed graph nodes (prep/session/gate/ask/effect) and edges for role definitions.
 // @consumers: role-engine, role-instance, role-scheduler, reviewer.role.ts, author.role.ts
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-121
 
-import type { MrContext } from '../inbox-core/vcs-inbox.port.ts';
+import type { MrContext, VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
+import type { StateStore } from '../inbox-core/state-store.ts';
 
 /**
  * @purpose Result of a deterministic gate check — pass or fail with reason.
@@ -29,8 +30,28 @@ export type OperatorQuestion = {
  */
 export type RoleArtifacts = Record<string, unknown>;
 
+/** @purpose One file's diff stats between `NodeContext.base` and HEAD. */
+export type ChangesetFile = {
+  /** @purpose Repo-relative file path */
+  path: string;
+  /** @purpose Git status letter (A/M/D/R...) */
+  status: string;
+  /** @purpose Added line count */
+  plus: number;
+  /** @purpose Removed line count */
+  minus: number;
+};
+
+/** @purpose File-level changeset between `NodeContext.base` and HEAD, from a live worktree. */
+export type Changeset = {
+  /** @purpose Changed files with per-file diff stats */
+  files: ChangesetFile[];
+};
+
 /**
  * @purpose Context passed to every node in the graph — MR data, workspace path, and accumulated outputs.
+ * @invariant `base`/`changeset` are set only for a live-built NodeContext (TSK-121); test-seeded
+ *   contexts may leave them absent and drive branching purely through `artifacts`.
  */
 export type NodeContext = {
   /** @purpose MR metadata from VCS */
@@ -39,6 +60,14 @@ export type NodeContext = {
   workspace: string;
   /** @purpose Accumulated artifacts from previous nodes */
   artifacts: RoleArtifacts;
+  /** @purpose Diff base SHA | @invariant ALWAYS `diff_refs.base_sha` from the VCS API — never a locally recomputed merge-base */
+  base?: string;
+  /** @purpose File-level changeset between `base` and HEAD, when a live worktree is available */
+  changeset?: Changeset;
+  /** @purpose VCS handle for effect-node execution (NFC-SV-07) | @invariant Populated by the live context builder; wired into EffectExecutor calls starting TSK-121 P2 */
+  vcs?: VcsInboxPort;
+  /** @purpose State store handle for effect-node idempotency checks (audit log) */
+  store?: StateStore;
 };
 
 /**

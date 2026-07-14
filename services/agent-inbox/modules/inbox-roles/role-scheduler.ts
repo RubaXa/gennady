@@ -1,6 +1,6 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
 // @consumers: serve timer, inbox-api
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-121
 
 import { logger } from '#logger';
 import type { RoleEngine, RegisteredRole } from './role-engine.ts';
@@ -9,13 +9,15 @@ import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
-import { RoleInstance } from './role-instance.ts';
+import { RoleInstance, type RoleInstanceCheckpoint } from './role-instance.ts';
 import { RightsEscalator } from './rights-escalator.ts';
+import { buildNodeContext, fetchDiffRefsLive, type ContextBuilderDeps } from './context-builder.ts';
 // AI-02 noise filter — reused from the CLI pipeline per SV-12 (functions, not spawn).
 // Debt: move classify/build-view into inbox-core alongside the TSK-109 migration.
 import { classifyInbox } from '../../../../cli/cmd/inbox/_core/logic/classify-inbox.logic.ts';
 import { buildInboxView } from '../../../../cli/cmd/inbox/_core/logic/build-inbox-view.logic.ts';
 import type { MrStage } from '../../../../cli/cmd/inbox/_core/logic/classify-mr-stage.logic.ts';
+import type { RoleGraph } from './role-node.ts';
 
 /**
  * @purpose Snapshot of a role instance for external consumers (e.g. BoardProviderReal).
@@ -57,6 +59,15 @@ export type RoleSchedulerConfig = {
   pollingInterval?: number;
   /** @purpose Max active instances overall | @default 3 */
   maxInstances?: number;
+  /**
+   * @purpose Opt-in: build a live NodeContext (worktree/changeset/base/stage/headChanged) at
+   *   assignment time instead of the legacy empty-artifacts start. | @default false
+   * @invariant Off by default so existing VcsInboxMock-based tests keep their zero-network
+   *   behavior; production bootstrap (TSK-121 P3) turns this on explicitly.
+   */
+  buildLiveContext?: boolean;
+  /** @purpose Override for diff_refs resolution — injectable for tests; defaults to `fetchDiffRefsLive` when `buildLiveContext` is on */
+  fetchDiffRefs?: ContextBuilderDeps['fetchDiffRefs'];
 };
 
 /**
@@ -162,6 +173,7 @@ export class RoleScheduler {
           if (!existingInstance && this._shouldAssignRole(mr, role)) {
             const definition = this._config.engine.retrieve(role.name);
             if (definition) {
+              const checkpoint = await this._buildInitialCheckpoint(mr.webUrl, definition.graph);
               const instance = new RoleInstance({
                 id: key,
                 role: role.name,
@@ -170,6 +182,7 @@ export class RoleScheduler {
                 opencode: this._config.opencode,
                 vcs: this._config.vcs,
                 store: this._config.store,
+                checkpoint,
               });
               this._instances.set(key, instance);
               logger.info('[RoleScheduler#tick] [ticking → assigned]', {
@@ -298,6 +311,7 @@ export class RoleScheduler {
       return;
     }
 
+    const checkpoint = await this._buildInitialCheckpoint(mrUrl, definition.graph);
     const instance = new RoleInstance({
       id: key,
       role: roleName,
@@ -307,6 +321,7 @@ export class RoleScheduler {
       vcs: this._config.vcs,
       store: this._config.store,
       rights,
+      checkpoint,
     });
 
     this._instances.set(key, instance);
@@ -479,5 +494,41 @@ export class RoleScheduler {
    */
   protected _shouldAssignRole(mr: VcsActionableMr, role: RegisteredRole): boolean {
     return mr.role === role.name;
+  }
+
+  /**
+   * @purpose Seed initial artifacts from a live NodeContext when `buildLiveContext` is on;
+   *   absent otherwise, so the legacy test-seed path stays unaffected.
+   * @invariant Off by default — live building costs network + git I/O per assignment.
+   * @param mrUrl MR web URL being assigned.
+   * @param graph Role graph; its first node id anchors the checkpoint's resume point.
+   * @returns Checkpoint seeding live artifacts, or undefined when disabled or build failed.
+   */
+  protected async _buildInitialCheckpoint(
+    mrUrl: string,
+    graph: RoleGraph
+  ): Promise<RoleInstanceCheckpoint | undefined> {
+    if (!this._config.buildLiveContext) return undefined;
+
+    try {
+      const nodeContext = await buildNodeContext(mrUrl, {
+        vcs: this._config.vcs,
+        store: this._config.store,
+        fetchDiffRefs: this._config.fetchDiffRefs ?? fetchDiffRefsLive,
+      });
+
+      return {
+        currentNode: graph.nodes[0]?.id ?? '',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: nodeContext.artifacts,
+      };
+    } catch (error) {
+      logger.warn('[RoleScheduler#_buildInitialCheckpoint] [building → degraded]', {
+        mrUrl,
+        error: String(error),
+      });
+      return undefined;
+    }
   }
 }

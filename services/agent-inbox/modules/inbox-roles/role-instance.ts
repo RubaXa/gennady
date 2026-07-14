@@ -1,6 +1,6 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-121
 
 import { join } from 'node:path';
 import { logger } from '#logger';
@@ -26,6 +26,8 @@ import type { StateStore } from '../inbox-core/state-store.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
 import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
+import { EffectExecutor } from './effect-executor.ts';
+import type { ProposedAction } from './effect-executor.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -52,6 +54,8 @@ export type RoleInstanceOpts = {
    *   filled tracks are not re-run after a serve restart.
    */
   checkpoint?: RoleInstanceCheckpoint;
+  /** @purpose Forward to EffectExecutor at effect nodes (TSK-121 P2) | @invariant Default false — dry-run is opt-in, never a silent default */
+  dryRun?: boolean;
 };
 
 /**
@@ -117,6 +121,8 @@ export class RoleInstance {
   protected _askNodeId: string | null;
   /** @purpose Operator answer when exiting ask node */
   protected _answer: string | null;
+  /** @purpose Forwarded to EffectExecutor at effect nodes (TSK-121 P2) */
+  protected _dryRun: boolean;
 
   /**
    * @purpose Create a new role instance.
@@ -142,6 +148,7 @@ export class RoleInstance {
     this._classifier = new OutcomeClassifier();
     this._askNodeId = null;
     this._answer = null;
+    this._dryRun = opts.dryRun ?? false;
   }
 
   /**
@@ -559,6 +566,8 @@ export class RoleInstance {
   /**
    * @purpose Execute an effect node — side effect with idempotency guard.
    * @invariant Effect runs at most once: checked via 'effect_applied' audit marker.
+   * @invariant NFC-SV-07: only `EffectExecutor.execute()` posts vcs-*; absent `ctx.vcs`/`ctx.store`
+   *   degrades to `node.run`-only staging (no throw).
    * @param node Current effect node being executed.
    * @param ctx Node context with MR data and artifacts.
    * @returns Promise that resolves when the effect completes.
@@ -592,12 +601,48 @@ export class RoleInstance {
 
     await node.run(ctx);
 
+    // #region START_EFFECT_EXECUTOR_DISPATCH — invariant: only EffectExecutor performs vcs-*
+    // (NFC-SV-07); ctx.vcs/ctx.store come from RoleInstance's own _buildContext (always set for a
+    // live instance) — the guard exists for hand-built NodeContext fixtures that omit them
+    if (ctx.vcs && ctx.store) {
+      const approvedActions = this._collectProposedActions();
+      if (approvedActions.length > 0) {
+        const executor = new EffectExecutor({
+          vcs: ctx.vcs,
+          store: ctx.store,
+          dryRun: this._dryRun,
+        });
+        const result = await executor.execute(
+          { mr: this.mr, role: this.role, nodeId: node.id },
+          approvedActions
+        );
+        this._artifacts[`${node.id}_result`] = result;
+      }
+    }
+    // #endregion END_EFFECT_EXECUTOR_DISPATCH
+
     // Transition
     const edge = this._resolveEdge(node.id, 'ok');
     if (edge) {
       this.currentNode = edge.to;
       if (edge.to === 'done') this.state = 'done';
     }
+  }
+
+  /**
+   * @purpose Find the `proposedActions` array staged by a session/prep node in accumulated
+   *   artifacts — the bridge from staged proposals to `EffectExecutor.execute()` (NFC-SV-07).
+   * @returns The first `proposedActions` array found, or `[]` when no node staged one.
+   */
+  protected _collectProposedActions(): ProposedAction[] {
+    for (const artifact of Object.values(this._artifacts)) {
+      const obj = artifact as Record<string, unknown> | undefined;
+      if (!obj || typeof obj !== 'object') continue;
+
+      const proposed = obj.proposedActions as ProposedAction[] | undefined;
+      if (Array.isArray(proposed)) return proposed;
+    }
+    return [];
   }
 
   // ─── Recovery ladder ─────────────────────────────────────────────────────────
@@ -740,6 +785,11 @@ export class RoleInstance {
       mr: this._mrContext,
       workspace,
       artifacts: { ...this._artifacts },
+      // NFC-SV-07: effect nodes bind EffectExecutor from these (TSK-121 P2) — always populated
+      // here since RoleInstance itself requires vcs/store; optionality in NodeContext's type is
+      // for hand-built test contexts that bypass this builder.
+      vcs: this._vcs,
+      store: this._store,
     };
   }
 

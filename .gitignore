@@ -31,3 +31,8 @@ ai/drafts
 *.tgz
 # agent-inbox runtime state (registry, drafts, worktrees)
 .gennady/
+
+# e2e (Playwright) artifacts — screenshots, traces, reports
+e2e/**/test-results/
+playwright-report/
+test-results/

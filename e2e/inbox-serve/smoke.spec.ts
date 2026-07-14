@@ -4,6 +4,7 @@
 
 import { test, expect } from '@playwright/test';
 import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+import { shot } from './helpers/shot.ts';
 
 test.describe('inbox-dashboard smoke', () => {
   test('opens dashboard and renders header', async ({ page }) => {
@@ -27,6 +28,8 @@ test.describe('inbox-dashboard smoke', () => {
     // Should have at least one role section
     const roleSections = main.locator('section[aria-label^="Role:"]');
     await expect(roleSections.first()).toBeVisible({ timeout: 10_000 });
+
+    await shot(page, '01-board-queue-and-role-lanes');
   });
 
   test('API error shows banner in header', async ({ page }) => {
@@ -94,6 +97,8 @@ test.describe('inbox-dashboard smoke', () => {
       timeout: 5_000,
     });
     await expect(page.locator('svg[id^="mmd-"]')).toBeVisible({ timeout: 10_000 });
+
+    await shot(page, '02-mr-detail-artifacts-mermaid-actionpanel');
 
     // Navigate to another artifact — content pane swaps to PLAN.md.
     await nav.locator('button', { hasText: 'PLAN.md' }).click();

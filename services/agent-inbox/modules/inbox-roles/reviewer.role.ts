@@ -2,7 +2,7 @@
 //   security lens + code-review diff → synthesize), reply_needed (thread-triage, no full battery),
 //   update-review (delta-only). Parity with the CLI D57/D70 pipeline (NFC-SV-07/08/09).
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-121
 
 import type {
   RoleDefinition,
@@ -260,7 +260,7 @@ const reviewerGraph: RoleGraph = {
         const codeReview = (ctx.artifacts['node_code_review'] as Record<string, unknown>) ?? {};
         return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
           { track, security, codeReview }
-        )}`;
+        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
@@ -271,6 +271,7 @@ const reviewerGraph: RoleGraph = {
         properties: {
           reviewReport: { type: 'object' },
           recommendations: { type: 'array' },
+          proposedActions: { type: 'array' },
         },
       },
       policy: {

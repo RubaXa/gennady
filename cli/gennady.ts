@@ -87,6 +87,17 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       );
       helpLoaded = true;
       break;
+    case 'inbox-eval':
+      console.info('gennady inbox-eval — детерминированный эвал reviewer-пайплайна (S0..S11)');
+      console.info('  npx tsx ~/Developer/gennady/cli/gennady.ts inbox-eval --url <mr>');
+      console.info(
+        '  Флаги: --reports-dir <dir>, --waf <bytes>, --no-dry-run (default dry-run: true, ничего не пишет в GitLab)'
+      );
+      console.info(
+        '  Пишет eval-report.json + .md; exit=0 при status=PASS (все стадии/гейты зелёные), иначе exit=1.'
+      );
+      helpLoaded = true;
+      break;
     case 'vcs-worktree':
       await import('./cmd/vcs-worktree/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -254,6 +265,10 @@ switch (command) {
 
   case 'inbox-review-plan':
     await import('./cmd/inbox-review-plan/index.ts');
+    break;
+
+  case 'inbox-eval':
+    await import('./cmd/inbox-eval/index.ts');
     break;
 
   case 'vcs-worktree':

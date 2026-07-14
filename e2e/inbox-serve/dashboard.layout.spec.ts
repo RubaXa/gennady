@@ -5,6 +5,7 @@
 import { test, expect } from '@playwright/test';
 import { isLeftOf, isBelow } from './helpers/layout.helper.ts';
 import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+import { shot } from './helpers/shot.ts';
 import type { Page } from '@playwright/test';
 
 /**
@@ -143,6 +144,8 @@ test.describe('inbox-dashboard: layout', () => {
     // ArtifactBrowser (left) is left of ActionPanel (right), per TSK-107 P1 layout decision.
     const browserLeftOfPanel = await isLeftOf(artifactBrowser, actionPanel);
     expect(browserLeftOfPanel).toBe(true);
+
+    await shot(page, '06-split-view-browser-left-panel-right');
   });
 
   test('mobile viewport (375x812) — layout does not break', async ({ page }) => {
@@ -183,6 +186,8 @@ test.describe('inbox-dashboard: layout', () => {
       // All columns should be at least 60px wide (readable) at 375px
       expect(inboxBox.width).toBeGreaterThan(60);
     }
+
+    await shot(page, '07-mobile-viewport-375');
   });
 
   test('error state: layout not broken when API returns 500', async ({ page }) => {

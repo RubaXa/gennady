@@ -4,6 +4,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';
+import { shot } from './helpers/shot.ts';
 
 /**
  * @purpose Route MR 510 artifact endpoints to fixtures (dev-seed.ts seeds none yet, TSK-107 P2);
@@ -89,6 +90,8 @@ test.describe('inbox-dashboard: behavioral', () => {
     // Dropdown menu should appear with role options
     const dropdown = page.locator('.bg-popover');
     await expect(dropdown).toBeVisible();
+
+    await shot(page, '03-assign-role-dropdown');
 
     // Select "reviewer" role
     await dropdown.locator('button:has-text("reviewer")').click();
@@ -187,6 +190,8 @@ test.describe('inbox-dashboard: behavioral', () => {
     await expect(doneLane.locator('div[role="listitem"][aria-label*="!510"]').first()).toBeVisible({
       timeout: 5_000,
     });
+
+    await shot(page, '04-reviewer-approve-card-in-DONE-lane');
   });
 
   test('API degraded: error banner appears', async ({ page }) => {
@@ -207,5 +212,7 @@ test.describe('inbox-dashboard: behavioral', () => {
 
     // "API недоступен" text should appear
     await expect(header).toContainText('API недоступен', { timeout: 5_000 });
+
+    await shot(page, '05-api-error-banner');
   });
 });

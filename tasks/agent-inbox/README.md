@@ -33,6 +33,11 @@
 | TSK-115 | DONE   | TSK-106,109,110,111,113 | inbox-serve: entry point + DI bootstrap + OpenCode spawn                                   |
 | TSK-116 | DONE   | —                       | services/ai-kit: компиляция system prompt из AIKit-директив                                |
 | TSK-117 | TODO   | TSK-115                 | inbox-serve: real-smoke (ручной golden-прогон)                                             |
+| TSK-118 | DONE   | TSK-113                 | inbox-eval: детерминированное ядро (diff-hunk + гейты G1–G10 + отчёт)                      |
+| TSK-119 | DONE   | TSK-121,118             | inbox-eval: драйвер эвала поверх реального serve run-mode                                  |
+| TSK-120 | DONE   | TSK-119,107             | inbox-eval: e2e-харнесс + wait-render + скрины (фикстура; real-proof §7 → TSK-122)         |
+| TSK-121 | DONE   | TSK-113,115             | serve run-mode: прогон списка MR через реальный граф (dry-run) + замыкание связки          |
+| TSK-122 | TODO   | TSK-121,113,107,120     | реальный e2e: артефакты на диск + BoardReal + host + живой дашборд → реальные скрины (§7)  |
 
 ## Rewrite queue (D-86)
 
