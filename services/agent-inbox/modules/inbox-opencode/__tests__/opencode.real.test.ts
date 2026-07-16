@@ -458,6 +458,81 @@ describe('OpenCodeReal — toolCalls extraction (stubbed SDK client)', () => {
   });
 });
 
+describe('OpenCodeReal — toolCallStats aggregation (stubbed SDK client)', () => {
+  it('GIVEN 2 completed bash calls, 1 completed read, 1 running bash WHEN toolCallStats(sid) THEN aggregates count+totalMs by tool, sorted by totalMs desc', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096', directory: '/tmp/wt' });
+
+    const fakeClient = {
+      session: {
+        messages: async () => ({
+          data: [
+            {
+              info: { role: 'user' },
+              parts: [{ type: 'text', text: 'ignored — not assistant' }],
+            },
+            {
+              info: { role: 'assistant' },
+              parts: [
+                {
+                  type: 'tool',
+                  tool: 'bash',
+                  state: { status: 'completed', input: {}, time: { start: 1_000, end: 5_000 } },
+                },
+                {
+                  type: 'tool',
+                  tool: 'bash',
+                  state: { status: 'completed', input: {}, time: { start: 0, end: 2_000 } },
+                },
+                {
+                  type: 'tool',
+                  tool: 'read',
+                  state: { status: 'completed', input: {}, time: { start: 0, end: 500 } },
+                },
+                {
+                  // still running — counted, contributes 0ms (no end time yet)
+                  type: 'tool',
+                  tool: 'bash',
+                  state: { status: 'running', input: {}, time: { start: 9_000 } },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const stats = await real.toolCallStats('any-sid');
+
+    assert.strictEqual(stats.length, 2);
+    assert.deepStrictEqual(stats[0], { tool: 'bash', count: 3, totalMs: 6_000 });
+    assert.deepStrictEqual(stats[1], { tool: 'read', count: 1, totalMs: 500 });
+
+    mock.restoreAll();
+  });
+
+  it('GIVEN session.messages server error WHEN toolCallStats(sid) THEN returns empty array', async () => {
+    const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096', directory: '/tmp/wt' });
+
+    const fakeClient = {
+      session: {
+        messages: async () => ({ error: { message: 'not found' } }),
+      },
+    };
+
+    const ensureClientMock = mock.method(OpenCodeReal.prototype, '_ensureClient' as never);
+    ensureClientMock.mock.mockImplementation(() => fakeClient);
+
+    const stats = await real.toolCallStats('any-sid');
+
+    assert.deepStrictEqual(stats, []);
+
+    mock.restoreAll();
+  });
+});
+
 describe('OpenCodeReal — TIMEOUT (minutes) aborts the server-side turn', () => {
   it('GIVEN prompt timeout expressed in minutes WHEN the agent turn never settles THEN returns TIMEOUT and calls abort(sid)', async () => {
     const real = new OpenCodeReal({ baseUrl: 'http://localhost:4096' });

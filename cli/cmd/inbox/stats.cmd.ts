@@ -31,6 +31,22 @@ function pct(n: number): string {
   return `${Math.round(n * 100)}%`;
 }
 
+/** @purpose Cap on distinct tools shown in a node's inline breakdown line. */
+const TOOL_BREAKDOWN_LIMIT = 6;
+
+/**
+ * @purpose Render a compact "tools: bash×42 (180.5s) · read×15 (12.1s)" line for one node.
+ * @param tools Per-tool stats for the node, already sorted totalMs descending.
+ * @returns Formatted line (no leading indent), or '' when there are no tools to show.
+ */
+function renderToolBreakdown(tools: PhaseAnalytics['perNode'][number]['tools']): string {
+  if (!tools || tools.length === 0) return '';
+  const parts = tools
+    .slice(0, TOOL_BREAKDOWN_LIMIT)
+    .map((t) => `${t.tool}×${t.count} (${(t.totalMs / 1000).toFixed(1)}s)`);
+  return `tools: ${parts.join(' · ')}`;
+}
+
 function renderTable(analytics: PhaseAnalytics): string {
   const lines: string[] = [];
 
@@ -56,6 +72,10 @@ function renderTable(analytics: PhaseAnalytics): string {
     lines.push(
       `  ${row.node.padEnd(nodeWidth)}  ${String(row.count).padStart(5)}  ${ms(row.p50).padStart(8)}  ${ms(row.p95).padStart(8)}  ${ms(row.avg).padStart(8)}  ${pct(row.errorRate).padStart(7)}`
     );
+    const breakdown = renderToolBreakdown(row.tools);
+    if (breakdown) {
+      lines.push(style.gray(`      ${breakdown}`));
+    }
   }
   // #endregion END_PER_NODE_TABLE
 

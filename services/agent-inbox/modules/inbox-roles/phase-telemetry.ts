@@ -36,6 +36,18 @@ export type PhaseTimingEntry = {
   parallelGroup?: string;
   /** @purpose Review round/revision number, when known. */
   revision?: number;
+  /** @purpose Per-tool call-count/duration breakdown for this node's session, when available. */
+  tools?: ToolStat[];
+};
+
+/** @purpose Local structural mirror of `ToolCallStat` (opencode.port.ts) — avoids a cross-module import cycle. */
+export type ToolStat = {
+  /** @purpose Tool name (e.g. 'bash', 'read', 'grep') */
+  tool: string;
+  /** @purpose Number of invocations */
+  count: number;
+  /** @purpose Summed duration across completed invocations, in ms */
+  totalMs: number;
 };
 
 /** @purpose Retention window for phase timings — same 7-day mtime idea as gcStaleReports/gcStaleChats. */
@@ -173,7 +185,29 @@ export type PhaseNodeRollup = {
   avg: number;
   /** @purpose Fraction (0..1) of executions that did not reach OK. */
   errorRate: number;
+  /** @purpose Per-tool call-count/duration, summed across every entry for this node, totalMs desc. */
+  tools: ToolStat[];
 };
+
+/**
+ * @purpose Sum per-tool stats from many entries' `tools` arrays into one aggregated, sorted list.
+ * @param lists One `tools` array per entry (possibly undefined/empty).
+ * @returns Aggregated stats sorted by totalMs descending.
+ */
+function aggregateTools(lists: (ToolStat[] | undefined)[]): ToolStat[] {
+  const byTool = new Map<string, { count: number; totalMs: number }>();
+  for (const list of lists) {
+    for (const t of list ?? []) {
+      const entry = byTool.get(t.tool) ?? { count: 0, totalMs: 0 };
+      entry.count += t.count;
+      entry.totalMs += t.totalMs;
+      byTool.set(t.tool, entry);
+    }
+  }
+  return [...byTool.entries()]
+    .map(([tool, { count, totalMs }]) => ({ tool, count, totalMs }))
+    .sort((a, b) => b.totalMs - a.totalMs);
+}
 
 /** @purpose One reconstructed review run (contiguous burst of timings for one MR). */
 export type PhaseRunRollup = {
@@ -295,6 +329,7 @@ export function readPhaseAnalytics(stateDir: string, days: number = 7): PhaseAna
         p95: percentile(durations, 0.95),
         avg: durations.reduce((sum, d) => sum + d, 0) / durations.length,
         errorRate: errCount / list.length,
+        tools: aggregateTools(list.map((e) => e.tools)),
       };
     })
     .sort((a, b) => b.avg - a.avg);

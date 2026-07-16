@@ -139,6 +139,43 @@ describe('PhaseTelemetry', () => {
     assert.equal(analytics.perRun[0].nodeCount, 4);
   });
 
+  it('readPhaseAnalytics rolls up per-tool stats across entries for the same node, summing overlapping tools', () => {
+    const filePath = phaseTimingsPath(stateDir);
+    mkdirSync(join(stateDir, 'agent-inbox', 'telemetry'), { recursive: true });
+
+    const ts = new Date(NOW_MS - 60_000).toISOString();
+    const lines = [
+      entry({
+        ts,
+        node: 'node_a',
+        tools: [
+          { tool: 'bash', count: 3, totalMs: 1000 },
+          { tool: 'read', count: 2, totalMs: 200 },
+        ],
+      }),
+      entry({
+        ts,
+        node: 'node_a',
+        tools: [
+          { tool: 'bash', count: 1, totalMs: 500 },
+          { tool: 'grep', count: 4, totalMs: 100 },
+        ],
+      }),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join('\n');
+    writeFileSync(filePath, `${lines}\n`, 'utf-8');
+
+    const analytics = readPhaseAnalytics(stateDir, 7);
+    const nodeA = analytics.perNode.find((r) => r.node === 'node_a');
+    assert.ok(nodeA);
+    assert.deepEqual(nodeA!.tools, [
+      { tool: 'bash', count: 4, totalMs: 1500 },
+      { tool: 'read', count: 2, totalMs: 200 },
+      { tool: 'grep', count: 4, totalMs: 100 },
+    ]);
+  });
+
   it('readPhaseAnalytics on a missing file returns an empty rollup', () => {
     const analytics = readPhaseAnalytics(stateDir, 7);
     assert.equal(analytics.entryCount, 0);

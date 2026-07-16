@@ -43,6 +43,16 @@ export type ToolCall = {
   path: string;
 };
 
+/** @purpose Per-tool call-count + duration rollup for one session — localizes slowness to a tool. */
+export type ToolCallStat = {
+  /** @purpose Tool name as reported by the agent turn (e.g. 'bash', 'read', 'grep') */
+  tool: string;
+  /** @purpose Number of invocations of this tool in the session, any status */
+  count: number;
+  /** @purpose Summed wall-clock duration across completed invocations, in ms */
+  totalMs: number;
+};
+
 /** @purpose Structured output format descriptor — schema-driven JSON output. */
 export type OpenCodeFormat = {
   /** @purpose Format kind — always json_schema */
@@ -112,6 +122,18 @@ export abstract class OpenCodePort {
    * @returns Ordered tool-call log for `ArtifactValidator` cross-check; empty when unavailable.
    */
   async toolCalls(_sid: string): Promise<ToolCall[]> {
+    return [];
+  }
+
+  /**
+   * @purpose Retrieve per-tool call-count and duration telemetry for a session — localizes
+   * slowness to a specific tool (e.g. bash over-calling) rather than only per-node.
+   * @invariant Default: empty array. Adapters exposing telemetry override. Not abstract — keeps
+   * pre-existing implementers compiling; telemetry is additive.
+   * @param sid Session identifier.
+   * @returns Per-tool stats sorted by totalMs descending; empty when unavailable.
+   */
+  async toolCallStats(_sid: string): Promise<ToolCallStat[]> {
     return [];
   }
 

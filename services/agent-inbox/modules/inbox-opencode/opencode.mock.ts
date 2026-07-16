@@ -11,6 +11,7 @@ import {
   type CreateSessionOpts,
   type PromptOpts,
   type ToolCall,
+  type ToolCallStat,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
 
@@ -43,6 +44,8 @@ export class OpenCodeMock extends OpenCodePort {
   protected _errors: Map<string, OutcomeClass>;
   /** @purpose Map of nodeId → seeded tool-call telemetry for the simulated agent turn */
   protected _toolCalls: Map<string, ToolCall[]>;
+  /** @purpose Map of nodeId → seeded per-tool call-count/duration stats for the simulated turn */
+  protected _toolStats: Map<string, ToolCallStat[]>;
   /** @purpose Active sessions store — sid → SessionHandle */
   protected _sessions: Map<string, SessionHandle>;
   /** @purpose Map of sid → tools flag from createSession — gates whether toolCalls() reports telemetry */
@@ -62,6 +65,7 @@ export class OpenCodeMock extends OpenCodePort {
     this._responses = new Map();
     this._errors = new Map();
     this._toolCalls = new Map();
+    this._toolStats = new Map();
     this._sessions = new Map();
     this._sessionTools = new Map();
     this._sessionModels = new Map();
@@ -102,6 +106,16 @@ export class OpenCodeMock extends OpenCodePort {
       nodeId,
       files.map((path) => ({ tool: 'read', path }))
     );
+  }
+
+  /**
+   * @purpose Seed the per-tool call-count/duration stats an agent turn would report for a node.
+   * @param nodeId The AI-node identifier.
+   * @param stats Per-tool stats to return from toolCallStats() for this node's session.
+   * @sideEffect Overwrites any previously seeded tool-call stats for this nodeId.
+   */
+  seedToolStats(nodeId: string, stats: ToolCallStat[]): void {
+    this._toolStats.set(nodeId, stats);
   }
 
   /**
@@ -147,6 +161,19 @@ export class OpenCodeMock extends OpenCodePort {
     }
     const nodeId = this._sessionLastNode.get(sid);
     return nodeId ? (this._toolCalls.get(nodeId) ?? []) : [];
+  }
+
+  /**
+   * @param sid Session identifier.
+   * @returns Seeded per-tool stats for the session's last prompt, gated by its `tools` flag.
+   * @see {OpenCodePort#toolCallStats}
+   */
+  async toolCallStats(sid: string): Promise<ToolCallStat[]> {
+    if (!this._sessionTools.get(sid)) {
+      return [];
+    }
+    const nodeId = this._sessionLastNode.get(sid);
+    return nodeId ? (this._toolStats.get(nodeId) ?? []) : [];
   }
 
   /**

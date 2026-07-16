@@ -12,6 +12,7 @@ import {
   type PromptOpts,
   type SessionStatus,
   type ToolCall,
+  type ToolCallStat,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
 
@@ -285,6 +286,73 @@ export class OpenCodeReal extends OpenCodePort {
       return [];
     }
     // #endregion END_AGGREGATE_TOOL_CALLS
+  }
+
+  // ── toolCallStats ─────────────────────────────────────────────
+
+  /**
+   * @invariant Counts every tool part regardless of status; only 'completed' parts with numeric
+   *   time.start/end contribute to totalMs — running/errored calls count with 0ms.
+   * @param sid Session identifier.
+   * @returns Per-tool count + totalMs, sorted by totalMs descending; empty on any error.
+   * @see {OpenCodePort#toolCallStats}
+   */
+  override async toolCallStats(sid: string): Promise<ToolCallStat[]> {
+    const client = this._ensureClient();
+    const directory = this._sessionDirs.get(sid) ?? this._directory;
+
+    // #region START_AGGREGATE_TOOL_STATS — per-tool count + duration across full message history
+    try {
+      logger.debug('[OpenCodeReal#toolCallStats] [querying]', { sid });
+
+      const result = await client.session.messages({
+        path: { id: sid },
+        query: directory ? { directory } : undefined,
+      });
+
+      if (result.error || !result.data) {
+        logger.warn('[OpenCodeReal#toolCallStats] [server error → empty]', { sid });
+        return [];
+      }
+
+      const byTool = new Map<string, { count: number; totalMs: number }>();
+      for (const message of result.data) {
+        if (message.info.role !== 'assistant') continue;
+
+        for (const part of message.parts) {
+          if (part.type !== 'tool') continue;
+
+          const entry = byTool.get(part.tool) ?? { count: 0, totalMs: 0 };
+          entry.count++;
+
+          const state = part.state as {
+            status?: string;
+            time?: { start?: unknown; end?: unknown };
+          };
+          if (
+            state?.status === 'completed' &&
+            typeof state.time?.start === 'number' &&
+            typeof state.time?.end === 'number'
+          ) {
+            entry.totalMs += state.time.end - state.time.start;
+          }
+
+          byTool.set(part.tool, entry);
+        }
+      }
+
+      const stats: ToolCallStat[] = [...byTool.entries()]
+        .map(([tool, { count, totalMs }]) => ({ tool, count, totalMs }))
+        .sort((a, b) => b.totalMs - a.totalMs);
+
+      logger.debug('[OpenCodeReal#toolCallStats] [aggregated]', { sid, tools: stats.length });
+      return stats;
+    } catch (err: unknown) {
+      const cause = err instanceof Error ? err : new Error(String(err));
+      logger.warn('[OpenCodeReal#toolCallStats] [error → empty]', { sid, message: cause.message });
+      return [];
+    }
+    // #endregion END_AGGREGATE_TOOL_STATS
   }
 
   // ── continueSignal ────────────────────────────────────────────

@@ -22,7 +22,7 @@ import type {
   ParallelSessionSpec,
 } from './role-node.ts';
 import type { VcsInboxPort, MrContext } from '../inbox-core/vcs-inbox.port.ts';
-import type { OpenCodePort, PromptOpts } from '../inbox-opencode/opencode.port.ts';
+import type { OpenCodePort, PromptOpts, ToolCallStat } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { OpenCodeCallResult } from '../inbox-opencode/errors.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
@@ -555,6 +555,13 @@ export class RoleInstance {
     }
     const remediation = this._classifier.remediate(outcome);
 
+    // Best-effort tool-call stats (TSK-perf) — must be fetched BEFORE the session closes below,
+    // since closing may drop the session server-side and make the query fail.
+    const _telemetryTools =
+      outcome.class === 'OK' && this._sessionId
+        ? await this._opencode.toolCallStats(this._sessionId).catch(() => [])
+        : [];
+
     await recordPhaseTiming(this._store.getStateDir(), {
       ts: new Date().toISOString(),
       mr: this.mr,
@@ -565,6 +572,7 @@ export class RoleInstance {
       ok: outcome.class === 'OK',
       error: outcome.class === 'OK' ? undefined : outcome.signal,
       retries: _telemetryRetries,
+      tools: _telemetryTools,
     });
 
     await this._appendAudit('classified', `Session node "${node.id}" outcome: ${outcome.class}`);
@@ -668,7 +676,8 @@ export class RoleInstance {
     const _recordLensTiming = async (
       result: { id: string; output?: unknown; escalate: boolean },
       continueCount: number,
-      restartCount: number
+      restartCount: number,
+      tools: ToolCallStat[] = []
     ): Promise<{ id: string; output?: unknown; escalate: boolean }> => {
       await recordPhaseTiming(this._store.getStateDir(), {
         ts: new Date().toISOString(),
@@ -681,6 +690,7 @@ export class RoleInstance {
         error: result.escalate ? _telemetryLastError : undefined,
         retries: continueCount + restartCount,
         parallelGroup: parallelGroupId,
+        tools,
       });
       return result;
     };
@@ -749,11 +759,15 @@ export class RoleInstance {
       }
 
       if (outcome.class === 'OK') {
+        // Best-effort tool-call stats — fetched BEFORE closeSession, since closing may drop the
+        // session server-side and make the query fail.
+        const tools = await this._opencode.toolCallStats(sid).catch(() => []);
         await closeSession(sid);
         return _recordLensTiming(
           { id: spec.id, output: outcome.output, escalate: false },
           continueCount,
-          restartCount
+          restartCount,
+          tools
         );
       }
 
