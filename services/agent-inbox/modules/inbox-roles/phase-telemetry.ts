@@ -86,6 +86,64 @@ export async function recordPhaseTiming(stateDir: string, entry: PhaseTimingEntr
   }
 }
 
+/** @purpose One tool call in a trace record — structural, avoids importing the opencode port type. */
+export type ToolTraceCall = {
+  /** @purpose 0-based position in the session's tool sequence */
+  seq: number;
+  /** @purpose Tool name (e.g. 'bash', 'read', 'glob') */
+  tool: string;
+  /** @purpose Short one-line input summary (command / path / pattern) */
+  input: string;
+  /** @purpose Call duration in ms, or 0 when not completed */
+  ms: number;
+  /** @purpose Tool state status (e.g. 'completed', 'error') */
+  status: string;
+};
+
+/** @purpose One session's ordered tool-call trace, appended as a JSON line. */
+export type ToolTraceRecord = {
+  /** @purpose ISO timestamp shared with the phase-timing entry for this node */
+  ts: string;
+  /** @purpose MR web URL the session reviewed */
+  mr: string;
+  /** @purpose Role active at the time (e.g. 'reviewer') */
+  role: string;
+  /** @purpose Session/lens node id */
+  node: string;
+  /** @purpose Ordered tool calls made in the session */
+  calls: ToolTraceCall[];
+};
+
+/**
+ * @purpose Path to the ordered tool-call trace log under a state dir.
+ * @param stateDir Gennady state root.
+ * @returns Absolute path to `<stateDir>/agent-inbox/telemetry/tool-trace.jsonl`.
+ */
+export function toolTracePath(stateDir: string): string {
+  return join(stateDir, 'agent-inbox', 'telemetry', 'tool-trace.jsonl');
+}
+
+/**
+ * @purpose Append one session's ordered tool-call trace as a JSON line. Best-effort — never throws.
+ * @param stateDir Gennady state root.
+ * @param record Trace record for one session node.
+ * @returns Promise resolving once the write attempt completes.
+ * @sideEffect Creates the telemetry dir if absent; appends one line.
+ */
+export async function recordToolTrace(stateDir: string, record: ToolTraceRecord): Promise<void> {
+  const filePath = toolTracePath(stateDir);
+  try {
+    await mkdir(dirname(filePath), { recursive: true });
+    await appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf-8');
+  } catch (cause) {
+    logger.warn('[PhaseTelemetry#recordToolTrace] [recording → failed]', {
+      cause,
+      node: record.node,
+      mr: record.mr,
+    });
+  }
+}
+
 /**
  * @purpose Read and parse every well-formed line of the phase-timings JSONL file.
  * @param filePath Absolute path to phase-timings.jsonl.

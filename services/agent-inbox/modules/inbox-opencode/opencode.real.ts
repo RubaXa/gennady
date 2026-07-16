@@ -13,8 +13,28 @@ import {
   type SessionStatus,
   type ToolCall,
   type ToolCallStat,
+  type ToolTraceEntry,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
+
+/**
+ * @purpose Summarize a tool call's input to one short line — command, path, or pattern — for the
+ *   trace.
+ * @param tool Tool name.
+ * @param input Raw tool input object, if any.
+ * @returns One-line summary, truncated to 300 chars, newlines collapsed.
+ */
+function _summarizeToolInput(tool: string, input: Record<string, unknown> | undefined): string {
+  if (!input) return '';
+  const pick = (k: string): string => (typeof input[k] === 'string' ? (input[k] as string) : '');
+  let raw: string;
+  if (tool === 'bash') raw = pick('command') || pick('cmd');
+  else if (tool === 'read' || tool === 'write' || tool === 'edit') raw = pick('filePath');
+  else if (tool === 'glob' || tool === 'grep')
+    raw = [pick('pattern'), pick('path')].filter(Boolean).join(' @ ');
+  else raw = JSON.stringify(input);
+  return raw.replace(/\s+/g, ' ').trim().slice(0, 300);
+}
 
 /** @purpose Configuration for the OpenCodeReal adapter. */
 export type OpenCodeRealOpts = {
@@ -353,6 +373,68 @@ export class OpenCodeReal extends OpenCodePort {
       return [];
     }
     // #endregion END_AGGREGATE_TOOL_STATS
+  }
+
+  // ── toolCallTrace ─────────────────────────────────────────────
+
+  /**
+   * @invariant Preserves message + part order; input summarized per tool and truncated to 300 chars.
+   * @param sid Session identifier.
+   * @returns Tool calls in session order with input summaries; empty on any error.
+   * @see {OpenCodePort#toolCallTrace}
+   */
+  override async toolCallTrace(sid: string): Promise<ToolTraceEntry[]> {
+    const client = this._ensureClient();
+    const directory = this._sessionDirs.get(sid) ?? this._directory;
+
+    try {
+      const result = await client.session.messages({
+        path: { id: sid },
+        query: directory ? { directory } : undefined,
+      });
+
+      if (result.error || !result.data) {
+        logger.warn('[OpenCodeReal#toolCallTrace] [server error → empty]', { sid });
+        return [];
+      }
+
+      const trace: ToolTraceEntry[] = [];
+      let seq = 0;
+      for (const message of result.data) {
+        if (message.info.role !== 'assistant') continue;
+
+        for (const part of message.parts) {
+          if (part.type !== 'tool') continue;
+
+          const state = part.state as {
+            status?: string;
+            input?: Record<string, unknown>;
+            time?: { start?: unknown; end?: unknown };
+          };
+          const ms =
+            state?.status === 'completed' &&
+            typeof state.time?.start === 'number' &&
+            typeof state.time?.end === 'number'
+              ? state.time.end - state.time.start
+              : 0;
+
+          trace.push({
+            seq: seq++,
+            tool: part.tool,
+            input: _summarizeToolInput(part.tool, state?.input),
+            ms,
+            status: state?.status ?? 'unknown',
+          });
+        }
+      }
+
+      logger.debug('[OpenCodeReal#toolCallTrace] [aggregated]', { sid, calls: trace.length });
+      return trace;
+    } catch (err: unknown) {
+      const cause = err instanceof Error ? err : new Error(String(err));
+      logger.warn('[OpenCodeReal#toolCallTrace] [error → empty]', { sid, message: cause.message });
+      return [];
+    }
   }
 
   // ── continueSignal ────────────────────────────────────────────

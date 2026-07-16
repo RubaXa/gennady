@@ -22,7 +22,12 @@ import type {
   ParallelSessionSpec,
 } from './role-node.ts';
 import type { VcsInboxPort, MrContext } from '../inbox-core/vcs-inbox.port.ts';
-import type { OpenCodePort, PromptOpts, ToolCallStat } from '../inbox-opencode/opencode.port.ts';
+import type {
+  OpenCodePort,
+  PromptOpts,
+  ToolCallStat,
+  ToolTraceEntry,
+} from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { OpenCodeCallResult } from '../inbox-opencode/errors.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
@@ -31,7 +36,7 @@ import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
-import { recordPhaseTiming } from './phase-telemetry.ts';
+import { recordPhaseTiming, recordToolTrace } from './phase-telemetry.ts';
 import { resolveDiskArtifact } from './disk-artifact.ts';
 
 /**
@@ -561,9 +566,14 @@ export class RoleInstance {
       outcome.class === 'OK' && this._sessionId
         ? await this._opencode.toolCallStats(this._sessionId).catch(() => [])
         : [];
+    const _telemetryTrace =
+      outcome.class === 'OK' && this._sessionId
+        ? await this._opencode.toolCallTrace(this._sessionId).catch(() => [])
+        : [];
 
+    const _telemetryTs = new Date().toISOString();
     await recordPhaseTiming(this._store.getStateDir(), {
-      ts: new Date().toISOString(),
+      ts: _telemetryTs,
       mr: this.mr,
       role: this.role,
       node: node.id,
@@ -574,6 +584,15 @@ export class RoleInstance {
       retries: _telemetryRetries,
       tools: _telemetryTools,
     });
+    if (_telemetryTrace.length > 0) {
+      await recordToolTrace(this._store.getStateDir(), {
+        ts: _telemetryTs,
+        mr: this.mr,
+        role: this.role,
+        node: node.id,
+        calls: _telemetryTrace,
+      }).catch(() => {});
+    }
 
     await this._appendAudit('classified', `Session node "${node.id}" outcome: ${outcome.class}`);
 
@@ -677,10 +696,12 @@ export class RoleInstance {
       result: { id: string; output?: unknown; escalate: boolean },
       continueCount: number,
       restartCount: number,
-      tools: ToolCallStat[] = []
+      tools: ToolCallStat[] = [],
+      trace: ToolTraceEntry[] = []
     ): Promise<{ id: string; output?: unknown; escalate: boolean }> => {
+      const ts = new Date().toISOString();
       await recordPhaseTiming(this._store.getStateDir(), {
-        ts: new Date().toISOString(),
+        ts,
         mr: this.mr,
         role: this.role,
         node: spec.id,
@@ -692,6 +713,15 @@ export class RoleInstance {
         parallelGroup: parallelGroupId,
         tools,
       });
+      if (trace.length > 0) {
+        await recordToolTrace(this._store.getStateDir(), {
+          ts,
+          mr: this.mr,
+          role: this.role,
+          node: spec.id,
+          calls: trace,
+        }).catch(() => {});
+      }
       return result;
     };
 
@@ -762,12 +792,14 @@ export class RoleInstance {
         // Best-effort tool-call stats — fetched BEFORE closeSession, since closing may drop the
         // session server-side and make the query fail.
         const tools = await this._opencode.toolCallStats(sid).catch(() => []);
+        const trace = await this._opencode.toolCallTrace(sid).catch(() => []);
         await closeSession(sid);
         return _recordLensTiming(
           { id: spec.id, output: outcome.output, escalate: false },
           continueCount,
           restartCount,
-          tools
+          tools,
+          trace
         );
       }
 

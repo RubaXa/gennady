@@ -12,6 +12,7 @@ import {
   type PromptOpts,
   type ToolCall,
   type ToolCallStat,
+  type ToolTraceEntry,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
 
@@ -174,6 +175,15 @@ export class OpenCodeMock extends OpenCodePort {
     }
     const nodeId = this._sessionLastNode.get(sid);
     return nodeId ? (this._toolStats.get(nodeId) ?? []) : [];
+  }
+
+  /**
+   * @param _sid Session identifier (unused — the mock has no ordered trace to report).
+   * @returns Empty trace — the mock does not simulate an ordered tool sequence.
+   * @see {OpenCodePort#toolCallTrace}
+   */
+  async toolCallTrace(_sid: string): Promise<ToolTraceEntry[]> {
+    return [];
   }
 
   /**

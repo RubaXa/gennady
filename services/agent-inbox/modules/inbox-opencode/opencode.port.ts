@@ -53,6 +53,20 @@ export type ToolCallStat = {
   totalMs: number;
 };
 
+/** @purpose One tool call in session order, with its input — for the deterministic-vs-agent audit. */
+export type ToolTraceEntry = {
+  /** @purpose 0-based position of this call in the session's tool sequence */
+  seq: number;
+  /** @purpose Tool name (e.g. 'bash', 'read', 'glob') */
+  tool: string;
+  /** @purpose Short one-line input summary (bash command / file path / pattern), truncated */
+  input: string;
+  /** @purpose Wall-clock duration of the call in ms, or 0 when not completed */
+  ms: number;
+  /** @purpose Tool state status (e.g. 'completed', 'running', 'error') */
+  status: string;
+};
+
 /** @purpose Structured output format descriptor — schema-driven JSON output. */
 export type OpenCodeFormat = {
   /** @purpose Format kind — always json_schema */
@@ -134,6 +148,18 @@ export abstract class OpenCodePort {
    * @returns Per-tool stats sorted by totalMs descending; empty when unavailable.
    */
   async toolCallStats(_sid: string): Promise<ToolCallStat[]> {
+    return [];
+  }
+
+  /**
+   * @purpose Retrieve the ordered tool-call trace (name + input) for a session — the raw sequence
+   * for classifying each call as deterministic-precomputable vs needs-agent.
+   * @invariant Default: empty array. Adapters exposing telemetry override. Not abstract — keeps
+   * pre-existing implementers compiling; telemetry is additive.
+   * @param sid Session identifier.
+   * @returns Tool calls in session order; empty when unavailable.
+   */
+  async toolCallTrace(_sid: string): Promise<ToolTraceEntry[]> {
     return [];
   }
 
