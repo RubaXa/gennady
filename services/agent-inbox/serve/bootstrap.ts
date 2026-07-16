@@ -28,6 +28,7 @@ import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
 import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
+import { setDryRun, isDryRun } from '../modules/inbox-core/dry-run.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -259,6 +260,14 @@ export type BootstrapConfig = {
   port?: number;
   /** @purpose Root state directory (default: ~/.gennady). */
   stateDir?: string;
+  /**
+   * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — real code path
+   *   minus the final irreversible call, journaled to the dashboard console instead (TSK-131).
+   * @invariant When set, mirrored into `INBOX_DRY_RUN` so every code path (including
+   *   scheduler-driven effect nodes) observes the same flag. Undefined leaves the env-derived
+   *   default untouched.
+   */
+  dryRun?: boolean;
 };
 
 /** @purpose Return value from bootstrap — all service handles needed to run and stop. */
@@ -302,6 +311,13 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   const port = config.port ?? 4174;
   const pollingInterval = 300_000; // 5 minutes
   const stateStore = new StateStore(config.stateDir);
+
+  // #region START_APPLY_DRY_RUN — TSK-131: an explicit dryRun option wins over the ambient
+  // INBOX_DRY_RUN env, and is mirrored back into the env so deeply-nested effect paths agree
+  if (config.dryRun !== undefined) {
+    setDryRun(config.dryRun);
+  }
+  // #endregion END_APPLY_DRY_RUN
 
   // #region START_CHECK_CONFIG
   let configVcsHost: string | undefined;
@@ -443,6 +459,10 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     vcs,
     opencode,
     pollingInterval,
+    // Real serve drives the reviewer graph against a live worktree/changeset (mock mode keeps its
+    // zero-network empty-artifacts start); effect nodes honour the dry-run flag (TSK-131).
+    buildLiveContext: !config.mocks,
+    dryRun: isDryRun(),
   });
   // #endregion END_CREATE_ROLES
 

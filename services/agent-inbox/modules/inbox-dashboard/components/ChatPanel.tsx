@@ -66,6 +66,13 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
         onError: () => {
           setStreaming(false);
         },
+        onDryRun: (_channel, line) => {
+          // INBOX_DRY_RUN (TSK-131): the server suppressed a real external write (MR post / operator
+          // DM) and sent us the intended payload — surface it in the browser console so it is
+          // observable that nothing hit the outside world.
+          // eslint-disable-next-line no-console -- intentional operator-facing dry-run trace
+          console.info(line);
+        },
       });
 
       return unsubscribe;

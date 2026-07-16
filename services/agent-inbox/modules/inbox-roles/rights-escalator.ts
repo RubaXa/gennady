@@ -3,6 +3,7 @@
 // @tasks: TSK-113
 
 import { logger } from '#logger';
+import { isDryRun, emitDryRun } from '../inbox-core/dry-run.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
 import type { RoleInstance } from './role-instance.ts';
@@ -94,6 +95,17 @@ export class RightsEscalator {
       instance: instance.id,
       mr: instance.mr,
     });
+
+    // #region START_DRY_RUN_DM — external-write seam (b), TSK-131: notifying the operator that an MR
+    // is ready is the product's personal-message point. Under dry-run the (future) real transport is
+    // withheld and the intended DM is journaled instead — surfaced to the dashboard browser console.
+    if (isDryRun()) {
+      emitDryRun(
+        'dm',
+        `dm→operator: MR ${instance.mr} готов к решению (узел "${instance.currentNode}")`
+      );
+    }
+    // #endregion END_DRY_RUN_DM
 
     await this._store.appendAudit({
       ts: new Date().toISOString(),

@@ -258,7 +258,18 @@ function materializeReviewJson(ctx: NodeContext): void {
     (ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined) ??
     (ctx.artifacts['node_synthesize_delta'] as Record<string, unknown> | undefined);
   const stateDir = ctx.store?.getStateDir();
-  if (!synth || !stateDir) return;
+  logger.info('[reviewerGraph#materializeReviewJson] [synthesize → writing]', {
+    mr: ctx.mr.webUrl,
+    hasSynth: !!synth,
+    hasStateDir: !!stateDir,
+  });
+  if (!synth || !stateDir) {
+    logger.warn('[reviewerGraph#materializeReviewJson] [synthesize → skipped]', {
+      mr: ctx.mr.webUrl,
+      reason: !synth ? 'no node_synthesize artifact' : 'no stateDir',
+    });
+    return;
+  }
 
   try {
     const report = (synth['reviewReport'] as Record<string, unknown>) ?? {};
@@ -299,6 +310,14 @@ function materializeReviewJson(ctx: NodeContext): void {
       join(dir, 'review.json'),
       JSON.stringify({ verdict, findings, revision }, null, 2)
     );
+    logger.info('[reviewerGraph#materializeReviewJson] [writing → done]', {
+      mr: ctx.mr.webUrl,
+      path: join(dir, 'review.json'),
+      findings: findings.length,
+      sourceActions: actions.length,
+      sourceRecs: recs.length,
+      revision,
+    });
   } catch (cause) {
     logger.warn('[reviewerGraph#materializeReviewJson] [writing → degraded]', {
       mr: ctx.mr.webUrl,

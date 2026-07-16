@@ -68,6 +68,11 @@ export type RoleSchedulerConfig = {
   buildLiveContext?: boolean;
   /** @purpose Override for diff_refs resolution — injectable for tests; defaults to `fetchDiffRefsLive` when `buildLiveContext` is on */
   fetchDiffRefs?: ContextBuilderDeps['fetchDiffRefs'];
+  /**
+   * @purpose Forwarded to every RoleInstance's effect nodes — suppresses the real vcs-* mutation
+   *   under INBOX_DRY_RUN (TSK-131). | @default false — dry-run is opt-in, never a silent default.
+   */
+  dryRun?: boolean;
 };
 
 /**
@@ -182,6 +187,7 @@ export class RoleScheduler {
                 opencode: this._config.opencode,
                 vcs: this._config.vcs,
                 store: this._config.store,
+                dryRun: this._config.dryRun ?? false,
                 checkpoint,
               });
               this._instances.set(key, instance);
@@ -320,6 +326,7 @@ export class RoleScheduler {
       opencode: this._config.opencode,
       vcs: this._config.vcs,
       store: this._config.store,
+      dryRun: this._config.dryRun ?? false,
       rights,
       checkpoint,
     });

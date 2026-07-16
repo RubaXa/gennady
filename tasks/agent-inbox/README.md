@@ -39,7 +39,7 @@
 | TSK-121 | DONE   | TSK-113,115             | serve run-mode: прогон списка MR через реальный граф (dry-run) + замыкание связки                |
 | TSK-122 | DONE   | TSK-121,113,107,120     | реальный e2e: 4 разрыва закрыты (host/артефакты-на-диск/BoardReal/live-дашборд); §7 → 123/124    |
 | TSK-123 | TODO   | TSK-122                 | live-дашборд тикает scheduler → реальный MR рендерит диаграмму + скрин (§7 real-proof, B1)       |
-| TSK-124 | TODO   | TSK-122                 | разбор: session-узлы графа падают SESSION_ERROR против рабочего opencode (B2)                    |
+| TSK-124 | DONE   | TSK-122                 | разбор+фикс: session-узлы графа падают SESSION_ERROR против рабочего opencode (B2)               |
 | TSK-125 | TODO   | —                       | тест-tmp agent-inbox под `~/.gennady` (убрать `os.tmpdir` из границы инструмента)                |
 | TSK-126 | DONE   | TSK-109,110,111,112     | inbox-chat: ChatSession + ContextAssembler + транскрипт-персистентность                          |
 | TSK-127 | DONE   | TSK-126                 | inbox-chat: MutationApplier (revision-CAS + snapshot/undo)                                       |

@@ -5,6 +5,7 @@
 // @tasks: TSK-113, TSK-121
 
 import { logger } from '#logger';
+import { emitDryRun } from '../inbox-core/dry-run.ts';
 import { run as runVcsReact } from '../../../../cli/cmd/vcs-react/vcs-react.cmd.ts';
 import { run as runVcsApprove } from '../../../../cli/cmd/vcs-approve/vcs-approve.cmd.ts';
 import { run as runVcsDraftNote } from '../../../../cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts';
@@ -260,8 +261,12 @@ export class EffectExecutor {
 
       try {
         // #region START_DRY_RUN_SKIP_APPLY — invariant: dry-run still reconciles/dedups and marks
-        // effect_applied (idempotency proven end-to-end); only the real vcs-* call is withheld
-        if (!this._dryRun) {
+        // effect_applied (idempotency proven end-to-end); the real vcs-* call is withheld and the
+        // intended write is journaled instead (external-write seam (a), TSK-131) — real code path
+        // minus the final irreversible mutation, never a mock
+        if (this._dryRun) {
+          emitDryRun('mr', `post→MR ${ctx.mr}: ${this._describeWrite(action)}`);
+        } else {
           await this._apply(ctx, action);
         }
         // #endregion END_DRY_RUN_SKIP_APPLY
@@ -432,6 +437,34 @@ export class EffectExecutor {
     });
     if (!result.ok || result.failed > 0) {
       throw new Error(`vcs-reply failed: ${result.error ?? result.detail ?? 'unknown error'}`);
+    }
+  }
+
+  // ─── Dry-run description ────────────────────────────────────────────────────────
+
+  /**
+   * @purpose Human-readable summary of the write an action WOULD perform — the `<body>` half of a
+   *   `DRY-RUN post→MR <ref>: <body>` journal line (TSK-131). Mirrors `_apply`'s dispatch so the
+   *   suppressed line names exactly what the real call would have posted.
+   * @param action Proposed action being suppressed under dry-run.
+   * @returns One-line description of the intended mutation.
+   */
+  protected _describeWrite(action: ProposedAction): string {
+    switch (action.type) {
+      case 'react':
+        return `react ${action.emoji}${action.remove ? ' (remove)' : ''} on comment ${action.commentId}`;
+      case 'approve':
+        return action.revoke ? 'revoke approval' : 'approve MR';
+      case 'deleteDrafts':
+        return 'delete all my draft notes';
+      case 'resolve':
+        return `${action.resolve ? 'resolve' : 'reopen'} discussion ${action.discussionId}`;
+      case 'reply': {
+        if (action.delete) return `delete note ${action.noteId ?? action.discussionId ?? ''}`.trim();
+        const where = action.discussionId ? `reply in ${action.discussionId}` : 'new discussion';
+        const body = (action.body ?? action.suggestion ?? '').replace(/\s+/g, ' ').trim();
+        return `${where}: ${body}`;
+      }
     }
   }
 

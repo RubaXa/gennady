@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-124 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-112 (OpenCodeReal), TSK-113 (RoleInstance/reviewer.role)
+- **Task-ID:** TSK-124 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-opencode | **Dependencies:** TSK-112 (OpenCodeReal), TSK-113 (RoleInstance/reviewer.role)
 - **Purpose:** reviewer-граф (`node_track_review`/`node_security_lens`/`node_code_review` → `RoleInstance#_executeSession` → `OpenCodeReal#createSession`+`_sendPrompt`) падает почти мгновенно (~десятки мс, слишком быстро для round-trip модели) с `SESSION_ERROR`/`UnknownError: Unexpected server error` — против ТОГО ЖЕ `opencode serve --port 4096`, который на сырой HTTP (POST /session → POST /session/:id/message, с/без `directory`, `tools:{'*':false}`) отвечает за ~5с реальным выводом (`deepseek-v4-pro` через llm-proxy). Значит проблема НЕ в opencode/провайдере/токене, а в собственном lifecycle сессии графа. Найти корневую причину и починить, чтобы реальные session-based находки/синтез/proposedActions потекли end-to-end.
 - **Spec:** [inbox-eval.spec.md](../../specs/agent-inbox/inbox-eval/inbox-eval.spec.md) §7 | **Runtime:** not-implemented | **Verification:** unit, integration
 
@@ -122,5 +122,13 @@
 - [x] `2026-07-14T19:57:00Z` ver `npm run format:check` → pass exit=0
 - [x] `2026-07-14T19:57:05Z` DONE
       **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts]; decisions: [regression_locked=RoleInstance#_executeSession directory wiring (present→ctx.artifacts.worktreePath, absent→node.dir(ctx) fallback), spy_pattern=OpenCodeCreateSessionSpy subclass of OpenCodeMock recording createSession opts]; open: []
+
+### Round 2 — restore after stash-revert
+
+- [x] `2026-07-16T08:20:00Z` insight Round 1 fix had been reverted out of the tree by an unrelated stash-set-aside (`stash@{0}`, "wip: unrelated agent-inbox chat/dashboard/roles work"); re-applied the TSK-124 hunks by hand from that stash READ-ONLY (no `git stash pop/apply`) — `role-instance.ts` (directory:=worktreePath-when-present + `tools: node.policy?.tools===true` forward + `_outputContract`/`_exampleForProp` appended to task text), `role-node.ts` (`SessionPolicy.tools?`), `reviewer.role.ts` (`tools:true` on all 7 session nodes + `materializeReviewJson` producing stable-id `review.json` at both synthesis gates), `types.ts` (`MrDetail.findings[].id?`); left the unrelated SDD-v2 directive changes the stash also bundles untouched
+- [x] `2026-07-16T08:21:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-16T08:22:00Z` ver `npm run test -- services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` → pass exit=0 (17/17 pass, incl. the two TSK-124 directory-wiring regressions)
+- [x] `2026-07-16T08:24:24Z` discovery REAL live run — `npx tsx cli/gennady.ts inbox serve --mrs <real MR vk-workspace/superapp!571> --once` against real GitLab (token OK) + real `opencode serve --port 4096`. Real worktree checked out at `~/.gennady/worktrees/vk-workspace__superapp-571`; the MR classified `reply_needed` → session node `node_thread_triage` COMPLETED a real multi-step model turn (total run ~103s, 11:22:41→11:24:24 local — NOT the pre-fix instant ~1.9s SESSION_ERROR), producing worktree-grounded structured output (6 thread notes citing real diff addresses: `app-metrics-sampler.utils.ts:52-53`, `app-metrics.ts:184`/`:352`, `import at line 25` — proving `tools:true` let the agent actually read the checkout) + a `react` proposedAction. Instance reached terminal `awaiting_operator` at `node_ask` (normal completed-review state awaiting operator post decision), state≠SESSION_ERROR. `review.json` materialization was NOT exercised by this run because MR!571's threads are all resolved (→ `reply_needed` triage branch, not the `review_needed`/`update-review` synthesis gates that call `materializeReviewJson`); that path stays unit-covered only for now
+- [x] `2026-07-16T08:25:00Z` DONE — fix restored from `stash@{0}` after stash-revert; verified live: session node completes with a real model turn (~103s, real worktree-grounded triage), no instant SESSION_ERROR
 
 <!--/SECTION:EXECUTION_LOG-->

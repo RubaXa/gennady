@@ -26,6 +26,7 @@ function gitCmd(args: string[]): string {
   const s = args.join(' ');
   if (s.includes('merge-requests') && s.includes('fetch')) return 'fetch-mr';
   if (s.includes('FETCH_HEAD') && s.includes('rev-parse')) return 'rev-parse-fetch';
+  if (s.includes('rev-parse') && !s.includes('FETCH_HEAD')) return 'rev-parse-head';
   if (s.includes('reset')) return 'reset';
   if (s.includes('worktree') && s.includes('prune')) return 'worktree-prune';
   if (s.includes('worktree') && s.includes('add')) return 'worktree-add';
@@ -205,6 +206,7 @@ describe('prepareMrWorktree', () => {
       'fetch-mr': [''],
       'rev-parse-fetch': ['abc123'],
       reset: [''],
+      'rev-parse-head': ['abc123'],
     };
 
     const result = prepareMrWorktree(cloneDir, iid, worktreeDir);
@@ -212,6 +214,7 @@ describe('prepareMrWorktree', () => {
     assert.strictEqual(result.worktreePath, worktreeDir);
     assert.strictEqual(result.headSha, 'abc123');
     assert.ok(gitCallsMatching('reset'), 'expected git reset to be called');
+    assert.ok(gitCallsMatching('rev-parse'), 'expected rev-parse HEAD verification');
     assert.ok(!gitCallsMatching('worktree add'), 'expected NO worktree add call');
     assert.ok(
       mockUtimesSync.mock.calls.some((c) => c.arguments[0] === worktreeDir),
@@ -271,6 +274,7 @@ describe('prepareMrWorktree', () => {
       'fetch-mr': [''],
       'rev-parse-fetch': ['ghi789'],
       reset: [''],
+      'rev-parse-head': ['ghi789'],
     };
 
     const result = prepareMrWorktree(cloneDir, iid, worktreeDir);

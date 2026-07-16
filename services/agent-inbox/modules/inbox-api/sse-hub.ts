@@ -13,7 +13,8 @@ export type SseFrame =
   | { type: 'turn_done'; turn: ChatTurn }
   | { type: 'mutation'; mutation: MutationProposal }
   | { type: 'refresh' }
-  | { type: 'error'; error: ChatErrorCode; detail: string };
+  | { type: 'error'; error: ChatErrorCode; detail: string }
+  | { type: 'dryrun'; channel: 'mr' | 'dm'; line: string };
 
 /**
  * @purpose Registry of active SSE connections keyed by MR reference — a single channel per MR
@@ -96,6 +97,25 @@ export class SseHub {
   }
 
   /**
+   * @purpose Broadcast one frame to EVERY subscriber across all MR channels — used for process-wide
+   * diagnostics (the dry-run journal, TSK-131) that are not scoped to a single MR's channel.
+   * @param frame Discriminated SSE frame to encode and send to every open connection.
+   * @sideEffect Writes to every open connection in the registry; closed sockets are skipped silently.
+   */
+  broadcastAll(frame: SseFrame): void {
+    const payload = this._encodeFrame(frame);
+    for (const set of this._subscribers.values()) {
+      for (const res of set) {
+        try {
+          res.write(payload);
+        } catch (cause) {
+          logger.debug('[SseHub#broadcastAll] [subscribed → write_failed]', { cause });
+        }
+      }
+    }
+  }
+
+  /**
    * @purpose Encode one SSE frame as wire text — named `event:` line plus a JSON `data:` line.
    * @invariant Exhaustive switch over `frame.type` — an unhandled variant fails to compile (`never`
    * branch), satisfying the union-exhaustiveness contract this module exposes.
@@ -109,6 +129,7 @@ export class SseHub {
       case 'mutation':
       case 'refresh':
       case 'error':
+      case 'dryrun':
         return `event: ${frame.type}\ndata: ${JSON.stringify(frame)}\n\n`;
       default: {
         const exhaustive: never = frame;

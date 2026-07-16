@@ -11,6 +11,7 @@ import { AuditRouter } from './routers/audit.router.ts';
 import { ChatRouter } from './routers/chat.router.ts';
 import { MutateRouter } from './routers/mutate.router.ts';
 import { SseHub } from './sse-hub.ts';
+import { setDryRunBroadcaster } from '../inbox-core/dry-run.ts';
 import { StaticFiles } from './static-files.ts';
 import { setCorsHeaders, handlePreflight, sendJson } from './http-helpers.ts';
 import type { BoardProviderPort } from './board-provider.port.ts';
@@ -90,6 +91,12 @@ export class HttpServer {
         sseHub,
       });
       this._mutateRouter = new MutateRouter({ mutationApplier, sseHub });
+
+      // #region START_WIRE_DRY_RUN_BROADCAST — TSK-131: suppressed external writes (EffectExecutor
+      // VCS mutations, RightsEscalator DMs) fan out over this server's SSE hub to every connected
+      // dashboard, which console.logs them — the browser-observable proof no real write happened
+      setDryRunBroadcaster((entry) => sseHub.broadcastAll({ type: 'dryrun', ...entry }));
+      // #endregion END_WIRE_DRY_RUN_BROADCAST
     }
     // #endregion END_WIRE_CHAT
   }
@@ -156,6 +163,10 @@ export class HttpServer {
         }
         this._sockets.clear();
       }, 5000);
+
+      // Detach the dry-run broadcaster bound to this server's SSE hub so a later server (or test)
+      // does not fan writes out over a closed hub (TSK-131).
+      setDryRunBroadcaster(null);
 
       this._server.close(() => {
         clearTimeout(shutdownTimeout);

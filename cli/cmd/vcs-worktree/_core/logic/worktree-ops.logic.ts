@@ -42,7 +42,7 @@ export function prepareMrWorktree(
   const now = new Date();
 
   // #region START_REUSE_EXISTING_WORKTREE — invariant: fetch + reset avoids full recreate;
-  // failure mode: stale FETCH_HEAD / lock / permission → fall through to FULL_RECREATE
+  // failure mode: stale FETCH_HEAD / lock / permission / reset mismatch → fall through to FULL_RECREATE
   // side effect: git fetch resets FETCH_HEAD in clone to MR head
   if (existsSync(worktreePath)) {
     try {
@@ -56,7 +56,13 @@ export function prepareMrWorktree(
         `merge-requests/${iid}/head`,
       ]);
       const headSha = git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
-      git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', 'FETCH_HEAD']);
+      git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', headSha]);
+      const actualHead = git(['-C', worktreePath, 'rev-parse', 'HEAD']);
+      if (actualHead !== headSha) {
+        throw new Error(
+          `worktree reset mismatch: expected ${headSha.slice(0, 8)}, got ${actualHead.slice(0, 8)}`
+        );
+      }
       try {
         utimesSync(worktreePath, now, now);
       } catch {
