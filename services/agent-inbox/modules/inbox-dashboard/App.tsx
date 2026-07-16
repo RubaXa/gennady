@@ -7,6 +7,7 @@ import { BoardStore } from './services/board-store.tsx';
 import { Header } from './components/Header.tsx';
 import { BoardPage } from './components/BoardPage.tsx';
 import { MrDetailPage } from './components/MrDetailPage.tsx';
+import { installGlobalErrorHandlers } from './services/debug-log.ts';
 
 /**
  * @purpose Root application component — wraps BoardStore and routes via hash.
@@ -15,6 +16,7 @@ export function App() {
   const [hash, setHash] = useState(() => window.location.hash.slice(1) || '/');
 
   useEffect(() => {
+    installGlobalErrorHandlers();
     const handler = () => setHash(window.location.hash.slice(1) || '/');
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);

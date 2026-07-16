@@ -9,6 +9,7 @@ import type {
   ArtifactRef,
   ArtifactContent,
 } from '../../inbox-api/types.ts';
+import { log } from './debug-log.ts';
 
 /** @purpose Base URL for inbox-api. Empty = same-origin: SPA and API share one HttpServer, so
  *   relative paths hit whatever port `inbox serve` runs on. */
@@ -23,15 +24,25 @@ const BASE_URL = '';
  */
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  });
+  const anchor = `api#${(options?.method ?? 'GET').toLowerCase()}`;
+  log(anchor, 'start', path);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...options?.headers },
+      ...options,
+    });
+  } catch (cause) {
+    log(anchor, 'network-error', path, String(cause));
+    throw cause;
+  }
 
   if (!res.ok) {
+    log(anchor, 'http-error', res.status, path);
     throw new Error(`[ApiClient#request] HTTP ${res.status} ${res.statusText} for ${path}`);
   }
 
+  log(anchor, 'ok', res.status, path);
   return res.json() as Promise<T>;
 }
 

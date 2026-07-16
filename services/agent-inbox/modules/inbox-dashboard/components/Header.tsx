@@ -4,6 +4,7 @@
 
 import { Activity, WifiOff } from 'lucide-react';
 import { useBoard } from '../services/board-store.tsx';
+import { DebugLogButton } from './DebugLogButton.tsx';
 
 /**
  * @purpose Dashboard header: title "agent-inbox", API status, polling countdown.
@@ -27,7 +28,12 @@ export function Header() {
           </span>
         )}
       </div>
-      <div className="text-xs text-muted-foreground tabular-nums">Next poll: {pollCountdown}s</div>
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-muted-foreground tabular-nums">
+          Next poll: {pollCountdown}s
+        </span>
+        <DebugLogButton />
+      </div>
     </header>
   );
 }
