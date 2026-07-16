@@ -773,7 +773,7 @@ const reviewerGraph: RoleGraph = {
     { from: 'gate_delta_synthesis', to: 'node_ask', on: 'pass' },
     { from: 'gate_delta_synthesis', to: 'node_synthesize_delta', on: 'fail' },
 
-    { from: 'node_ask', to: 'node_effect', on: 'ok' },
+    { from: 'node_ask', to: 'node_effect', on: 'answered' },
     { from: 'node_effect', to: 'done', on: 'ok' },
   ],
 };

@@ -101,7 +101,10 @@ type ReviewTrack = {
   files: string[];
   lineCount: number;
   focus: string;
-  directive: 'arch-interrogation + code-interrogation' | 'code-interrogation';
+  directive:
+    | 'arch-interrogation + code-interrogation'
+    | 'code-interrogation'
+    | 'security-interrogation';
 };
 
 type ReviewPlan = {
@@ -181,6 +184,88 @@ const SECURITY_PATTERNS: RegExp[] = [
   /key/i,
 ];
 
+// #region START_DEP_MANIFEST_DETECTION
+
+const DEP_MANIFEST_EXACT_NAMES = new Set([
+  'package.json',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  '.npmrc',
+  'npm-shrinkwrap.json',
+  'go.mod',
+  'go.sum',
+  'requirements.txt',
+  'pyproject.toml',
+  'Pipfile',
+  'Pipfile.lock',
+  'setup.py',
+  'setup.cfg',
+  'poetry.lock',
+  'Cargo.toml',
+  'Cargo.lock',
+  'Gemfile',
+  'Gemfile.lock',
+  'composer.json',
+  'composer.lock',
+  'pom.xml',
+  'build.gradle',
+  'build.gradle.kts',
+  'gradle.lockfile',
+  'settings.gradle',
+  'settings.gradle.kts',
+  'mix.exs',
+  'mix.lock',
+  'stack.yaml',
+  'cabal.project',
+  'Package.swift',
+  'Package.resolved',
+  'pubspec.yaml',
+  'pubspec.lock',
+  'build.zig.zon',
+  'deno.json',
+  'deno.jsonc',
+  'deno.lock',
+  'Dockerfile',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+]);
+
+const DEP_MANIFEST_PATTERNS: RegExp[] = [
+  /\.cabal$/i,
+  /\.csproj$/i,
+  /\.fsproj$/i,
+  /\.vbproj$/i,
+  /\.nimble$/i,
+  /\.gemspec$/i,
+  /packages\.config$/i,
+  /paket\.(dependencies|lock)$/i,
+  /Directory\.Packages\.props$/i,
+  /conanfile\.(txt|py)$/i,
+  /vcpkg\.json$/i,
+  /bun\.lockb?$/i,
+  /\.nuspec$/i,
+  /Podfile$/i,
+  /Cartfile$/i,
+  /\.podspec$/i,
+  /^\.tool-versions$/i,
+  /\.python-version$/i,
+];
+
+/**
+ * @purpose Detect dependency manifest files across languages — Node.js, Go, Python, Rust,
+ *   Ruby, PHP, Java, .NET, Elixir, Haskell, Swift, Dart, Zig, Nim, C/C++, Deno, Bun.
+ * @param path File path relative to repo root.
+ * @returns true when the file is a known dependency manifest or lockfile.
+ */
+function isDepManifest(path: string): boolean {
+  const base = path.split('/').pop() ?? path;
+  if (DEP_MANIFEST_EXACT_NAMES.has(base)) return true;
+  return DEP_MANIFEST_PATTERNS.some((r) => r.test(base));
+}
+
+// #endregion END_DEP_MANIFEST_DETECTION
+
 function isSecurityFile(path: string): boolean {
   return SECURITY_PATTERNS.some((r) => r.test(path));
 }
@@ -193,13 +278,19 @@ function classifyTrack(path: string): string {
 }
 
 function getTrackFocus(track: string): string {
+  if (track === 'deps') return 'SUPPLY probe';
   if (track === 'security') return 'SEC+INPUT+AUTHZ+SECRET+SUPPLY+BLAST+INJ probes';
   return TRACK_RULES[track]?.focus ?? 'NAT+IDIOM+LIT+DEP+GLOBAL+BIZ+TYPO probes';
 }
 
 function getTrackDirective(track: string): ReviewTrack['directive'] {
+  if (track === 'deps') return 'security-interrogation';
   if (track === 'security') return 'arch-interrogation + code-interrogation';
   return TRACK_RULES[track]?.directive ?? 'arch-interrogation + code-interrogation';
+}
+
+function isMeaningfulTrack(name: string): boolean {
+  return name !== 'docs' && name !== 'config' && name !== 'assets';
 }
 
 // #endregion END_TRACK_CLASSIFICATION
@@ -219,9 +310,14 @@ export function buildReviewPlan(changeset: Changeset): ReviewPlan {
   const tracks = new Map<string, { files: string[]; lineCount: number }>();
 
   for (const file of changeset.files) {
-    let track = classifyTrack(file.path);
-    if (track === 'logic' && isSecurityFile(file.path)) {
-      track = 'security';
+    let track: string;
+    if (isDepManifest(file.path)) {
+      track = 'deps';
+    } else {
+      track = classifyTrack(file.path);
+      if (isSecurityFile(file.path)) {
+        track = 'security';
+      }
     }
     const entry = tracks.get(track) ?? { files: [], lineCount: 0 };
     entry.files.push(file.path);
@@ -229,9 +325,7 @@ export function buildReviewPlan(changeset: Changeset): ReviewPlan {
     tracks.set(track, entry);
   }
 
-  const meaningfulTracks = [...tracks.entries()].filter(
-    ([name]) => name !== 'docs' && name !== 'config' && name !== 'assets'
-  );
+  const meaningfulTracks = [...tracks.entries()].filter(([name]) => isMeaningfulTrack(name));
 
   const totalLines = changeset.totals.plus + changeset.totals.minus;
   const mode =
