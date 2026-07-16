@@ -255,7 +255,46 @@ export class BoardProviderReal extends BoardProviderPort {
    */
   getReport(mrId: string): MrDetail | null {
     const snap = this._resolveInstance(mrId);
-    if (!snap) return null;
+    if (!snap) {
+      // No live/registered scheduler instance — the review was materialized by an earlier run or a
+      // different process. The dashboard's job is to DISPLAY an already-persisted report, so read it
+      // straight from disk instead of 404-ing (a reviewed MR must be openable after a restart).
+      const disk = this._readDiskReview(mrId);
+      if (!disk) return null;
+      const bang = mrId.lastIndexOf('!');
+      const card = {
+        project: bang > 0 ? mrId.slice(0, bang) : '',
+        iid: bang > 0 ? Number(mrId.slice(bang + 1)) || 0 : 0,
+        webUrl: mrId,
+        title: mrId,
+        description: '',
+        author: '',
+        reviewers: [],
+        approvedBy: [],
+        updatedAt: '',
+        draft: false,
+        state: 'opened',
+        role: undefined,
+        events: [],
+        directlyAddressed: false,
+        todoIds: [],
+        stage: 'review_needed',
+        sourceBranch: '',
+        targetBranch: '',
+      } as MrCard;
+      logger.info('[BoardProviderReal#getReport] [no-instance → disk]', {
+        mrId,
+        findings: disk.findings.length,
+        revision: disk.revision,
+      });
+      return {
+        mr: card,
+        findings: disk.findings,
+        verdict: disk.verdict,
+        audit: [],
+        revision: disk.revision,
+      };
+    }
 
     const polled = this._scheduler.getPolledMr(snap.mr);
     // A live instance carries findings only while its graph is running in-process; a dashboard that
