@@ -32,6 +32,7 @@ import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
 import { recordPhaseTiming } from './phase-telemetry.ts';
+import { resolveDiskArtifact } from './disk-artifact.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -544,7 +545,14 @@ export class RoleInstance {
     const result: OpenCodeCallResult = await this._opencode.prompt(this._sessionId, promptOpts);
     // #endregion END_SESSION_CALL
 
-    const outcome = this._classifier.classify(result);
+    let outcome = this._classifier.classify(result);
+    // TSK-127: artifact nodes never trust response text — a raw OK only means the turn finished;
+    // the agent's JSON result is read + validated from disk, and a missing/invalid file is
+    // reclassified into the SAME outcome vocabulary so the existing continue/restart ladder below
+    // handles it unchanged (one extra `continue` turn, not a second unbounded loop).
+    if (node.artifact && outcome.class === 'OK') {
+      outcome = resolveDiskArtifact(directory, node.artifact);
+    }
     const remediation = this._classifier.remediate(outcome);
 
     await recordPhaseTiming(this._store.getStateDir(), {
@@ -733,7 +741,12 @@ export class RoleInstance {
         ? await this._reviewSessionPool.prompt(sid, promptOpts)
         : await this._opencode.prompt(sid, promptOpts);
 
-      const outcome = this._classifier.classify(result);
+      let outcome = this._classifier.classify(result);
+      // TSK-127: same disk-artifact resolution as _executeSession — a lens's raw OK is only "the
+      // turn finished"; the finding set comes from the validated file, not response text.
+      if (spec.artifact && outcome.class === 'OK') {
+        outcome = resolveDiskArtifact(directory, spec.artifact);
+      }
 
       if (outcome.class === 'OK') {
         await closeSession(sid);

@@ -2,6 +2,8 @@
 // @consumers: SessionPool (dev/e2e), inbox-opencode tests, inbox-roles tests
 // @tasks: TSK-111
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { logger } from '#logger';
 import {
   OpenCodePort,
@@ -11,6 +13,18 @@ import {
   type ToolCall,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
+
+/**
+ * @purpose Seeded side effect simulating the agent writing its JSON result to disk (TSK-127)
+ *   instead of returning it as response text.
+ * @invariant `file` is relative to the session's `directory` — mirrors the real file-write contract.
+ */
+export type WriteArtifactSeed = {
+  /** @purpose Path to write, relative to the session directory */
+  file: string;
+  /** @purpose Raw file content (already-serialized JSON string) */
+  content: string;
+};
 
 /** @purpose Fallback prompt-turn timeout (minutes) when the caller does not pass one | @invariant Kept at the historical 30s-equivalent so pre-migration callers see unchanged behavior */
 const DEFAULT_PROMPT_TIMEOUT_MINUTES = 0.5;
@@ -187,7 +201,7 @@ export class OpenCodeMock extends OpenCodePort {
     }
 
     // #region START_RESOLVE_SEEDED_DATA — check error seeding first, then response seeding, then fallback
-    const nodeId = this._extractNodeId(opts);
+    const nodeId = this._resolveNodeId(session, opts);
     this._sessionLastNode.set(sid, nodeId);
     if (opts.model) {
       this._sessionModels.set(sid, opts.model);
@@ -208,6 +222,11 @@ export class OpenCodeMock extends OpenCodePort {
     const response = this._responses.get(nodeId);
     if (response) {
       session.status = 'completed';
+      const artifactAck = this._writeSeededArtifact(session, response);
+      if (artifactAck) {
+        logger.debug(`[OpenCodeMock#prompt] [running → wrote_artifact] ${sid} node=${nodeId}`);
+        return artifactAck;
+      }
       logger.debug(`[OpenCodeMock#prompt] [running → completed] ${sid} node=${nodeId}`);
       return composeOk(response);
     }
@@ -232,12 +251,19 @@ export class OpenCodeMock extends OpenCodePort {
     }
 
     // continueSignal follows the same seeded-data path as prompt
-    const nodeId = this._extractNodeId(opts);
+    const nodeId = this._resolveNodeId(session, opts);
     this._sessionLastNode.set(sid, nodeId);
     const response = this._responses.get(nodeId);
 
     if (response) {
       session.status = 'completed';
+      const artifactAck = this._writeSeededArtifact(session, response);
+      if (artifactAck) {
+        logger.debug(
+          `[OpenCodeMock#continueSignal] [error → wrote_artifact] ${sid} node=${nodeId}`
+        );
+        return artifactAck;
+      }
       logger.debug(`[OpenCodeMock#continueSignal] [error → completed] ${sid} node=${nodeId}`);
       return composeOk(response);
     }
@@ -245,6 +271,55 @@ export class OpenCodeMock extends OpenCodePort {
     session.status = 'error';
     logger.debug(`[OpenCodeMock#continueSignal] [error → no_recovery] ${sid} node=${nodeId}`);
     return composeError('NO_RESULT', `No seeded recovery data for node "${nodeId}"`);
+  }
+
+  /**
+   * @purpose Resolve the seeded lookup key — prefers the session's own `title` (= node/spec id)
+   *   when seeded, else falls back to schema-title/text-prefix extraction.
+   * @invariant Artifact nodes (TSK-127) carry no `format.schema.title` — title-based resolution
+   *   keeps `seed(nodeId, { writeArtifact })` working without one.
+   * @param session Session handle (`title` set at `createSession` time).
+   * @param opts Prompt options — used only when the title itself isn't seeded.
+   * @returns Stable node identifier string for `_responses`/`_errors` lookup.
+   */
+  protected _resolveNodeId(session: SessionHandle, opts: PromptOpts): string {
+    if (this._responses.has(session.title) || this._errors.has(session.title)) {
+      return session.title;
+    }
+    return this._extractNodeId(opts);
+  }
+
+  /**
+   * @purpose Simulate the agent writing its JSON result to disk, when the seeded response carries
+   *   a `writeArtifact` side effect (TSK-127 disk-artifact protocol).
+   * @param session Session handle — `directory` is the write root.
+   * @param response The seeded response object; only acted on when it has a `writeArtifact` shape.
+   * @returns A one-line ack `OpenCodeCallResult`, or undefined when no artifact write was seeded.
+   * @sideEffect FS: writes `writeArtifact.content` to `join(session.directory, writeArtifact.file)`.
+   */
+  protected _writeSeededArtifact(
+    session: SessionHandle,
+    response: Record<string, unknown>
+  ): OpenCodeCallResult | undefined {
+    const spec = response['writeArtifact'] as { file?: unknown; content?: unknown } | undefined;
+    if (!spec || typeof spec.file !== 'string' || typeof spec.content !== 'string') {
+      return undefined;
+    }
+    // Best-effort like PhaseTelemetry's own mkdir — an unwritable fixture directory (e.g. a
+    // FakeStateStore stub path never meant to exist on disk) degrades to a missing-file outcome
+    // downstream rather than crashing the simulated turn.
+    try {
+      const path = join(session.directory, spec.file);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, spec.content);
+    } catch (cause) {
+      logger.warn('[OpenCodeMock#_writeSeededArtifact] [writing → degraded]', {
+        directory: session.directory,
+        file: spec.file,
+        error: String(cause),
+      });
+    }
+    return composeOk({ text: `Wrote result to ${spec.file}.` });
   }
 
   // derive a node identifier from prompt options for seeded lookup

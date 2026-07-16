@@ -6,6 +6,9 @@
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { ReviewerRole } from '../reviewer.role.ts';
 import { RoleEngine } from '../role-engine.ts';
 import { RoleInstance } from '../role-instance.ts';
@@ -15,9 +18,13 @@ import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 
 class FakeStateStore {
   public audits: AuditEntry[] = [];
+  // TSK-127: real writable tmp dir — disk-artifact lens/synthesize nodes now write+read actual
+  // files under this dir, so a fictional path (the pre-TSK-127 '/home/test/.gennady') no longer
+  // works for these tests.
+  protected _stateDir = mkdtempSync(join(tmpdir(), 'reviewer-role-test-'));
 
   getStateDir() {
-    return '/home/test/.gennady';
+    return this._stateDir;
   }
 
   loadRegistry() {
@@ -89,15 +96,35 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
   it('GIVEN stage не задан (default) WHEN prep THEN полная батарея → synthesize → ask', async () => {
     engine.register(ReviewerRole);
 
+    // TSK-127: lens/synthesize nodes now write their result to a disk artifact instead of
+    // returning it as a structured response — seed `writeArtifact` to simulate the agent's file
+    // write; the executor reads it back via `resolveDiskArtifact`.
     opencode.seed('node_track_review', {
-      findings: [{ id: 1 }],
-      tracksCovered: ['logic'],
+      writeArtifact: {
+        file: '.gennady-artifacts/node_track_review.json',
+        content: JSON.stringify({ findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] }),
+      },
     });
-    opencode.seed('node_security_lens', { findings: [] });
-    opencode.seed('node_code_review', { findings: [{ id: 2 }] });
+    opencode.seed('node_security_lens', {
+      writeArtifact: {
+        file: '.gennady-artifacts/node_security_lens.json',
+        content: JSON.stringify({ findings: [] }),
+      },
+    });
+    opencode.seed('node_code_review', {
+      writeArtifact: {
+        file: '.gennady-artifacts/node_code_review.json',
+        content: JSON.stringify({ findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] }),
+      },
+    });
     opencode.seed('node_synthesize', {
-      reviewReport: { total: 3 },
-      recommendations: ['fix X'],
+      writeArtifact: {
+        file: '.gennady-artifacts/node_synthesize.json',
+        content: JSON.stringify({
+          reviewReport: { verdict: 'changes_requested', total: 3 },
+          proposedActions: [],
+        }),
+      },
     });
 
     const instance = new RoleInstance({
@@ -182,8 +209,13 @@ describe('ReviewerRole — branch: update-review (delta-only)', () => {
       findings: [{ id: 1 }],
       closedComments: ['c1'],
     });
+    // TSK-127: node_synthesize_delta writes its result to a disk artifact instead of returning
+    // it as a structured response.
     opencode.seed('node_synthesize_delta', {
-      reviewReport: { total: 1 },
+      writeArtifact: {
+        file: '.gennady-artifacts/node_synthesize_delta.json',
+        content: JSON.stringify({ reviewReport: { verdict: 'approved', total: 1 } }),
+      },
     });
     // Intentionally NOT seeded: node_track_review/node_security_lens/node_code_review/
     // node_thread_triage — update-review is delta-only, not a full re-review.

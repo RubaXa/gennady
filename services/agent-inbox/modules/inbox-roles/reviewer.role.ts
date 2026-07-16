@@ -222,6 +222,59 @@ function _deriveSeverity(body: string): 'error' | 'warn' | 'info' {
 }
 
 /**
+ * @purpose Task-text suffix instructing a review lens to write its JSON result to disk (TSK-127)
+ *   instead of pasting it into the reply.
+ * @param file Artifact path, relative to the session's working directory.
+ * @returns Markdown instruction suffix appended to a lens's `buildTaskText`.
+ */
+function _lensArtifactInstruction(file: string): string {
+  return `\n\n### Output contract\nWrite your result STRICTLY as JSON to the file \`${file}\` (relative to your working directory) using your file-write tool. Your JSON must have this shape: { "findings": [ { "file": "path or path:line", "line"?: number, "severity"?: "error"|"warn"|"info", "message": "..." }, ... ] } — findings MAY be an empty array for a clean lens. Reply with only a one-line confirmation; do NOT paste the JSON into your reply.`;
+}
+
+/**
+ * @purpose Top-level shape check for a lens's disk artifact — `findings` must be an array.
+ * @param title Schema title (matches the node id).
+ * @returns JSON Schema validated by `resolveDiskArtifact`.
+ */
+function _lensArtifactSchema(title: string): Record<string, unknown> {
+  return {
+    title,
+    type: 'object',
+    required: ['findings'],
+    properties: {
+      findings: { type: 'array' },
+    },
+  };
+}
+
+/**
+ * @purpose Task-text suffix instructing a synthesize node to write its JSON result to disk
+ *   (TSK-127) — same protocol as the lenses, larger synthesis shape.
+ * @param file Artifact path, relative to the session's working directory.
+ * @returns Markdown instruction suffix appended to a synthesize node's `buildTaskText`.
+ */
+function _synthesizeArtifactInstruction(file: string): string {
+  return `\n\n### Output contract\nWrite your result STRICTLY as JSON to the file \`${file}\` (relative to your working directory) using your file-write tool. Your JSON must have this shape: { "reviewReport": { "verdict": "...", "summary": "..." }, "proposedActions": [ { "file": "path", "newLine"?: number, "body": "..." }, ... ] } — proposedActions MAY be an empty array. Reply with only a one-line confirmation; do NOT paste the JSON into your reply.`;
+}
+
+/**
+ * @purpose Top-level shape check for a synthesize node's disk artifact.
+ * @param title Schema title (matches the node id).
+ * @returns JSON Schema validated by `resolveDiskArtifact`.
+ */
+function _synthesizeArtifactSchema(title: string): Record<string, unknown> {
+  return {
+    title,
+    type: 'object',
+    required: ['reviewReport'],
+    properties: {
+      reviewReport: { type: 'object' },
+      proposedActions: { type: 'array' },
+    },
+  };
+}
+
+/**
  * @purpose Read the current `revision` field from an already-materialized `review.json`, so a
  *   fresh materialization bumps it monotonically instead of resetting (D-99 CAS input).
  * @invariant Absent/unreadable/malformed file → `0`, matching `ContextAssembler#_readReviewRevision`'s
@@ -240,17 +293,97 @@ function _readCurrentRevision(dir: string): number {
   }
 }
 
+/** @purpose One normalized finding collected from a lens's validated disk artifact, pre-dedup/pre-id. */
+type CollectedFinding = {
+  file: string;
+  line: number;
+  severity?: string;
+  message: string;
+};
+
+/**
+ * @purpose Read one lens's `findings` array (validated disk JSON — TSK-127) and normalize each
+ *   entry: `file` may carry a trailing `:line`; `message`/`detail` both accepted.
+ * @param artifact The lens's `ctx.artifacts[lensId]` object, or undefined if the lens never ran.
+ * @returns Normalized findings — empty when the artifact is absent or has no findings.
+ */
+function _normalizeLensFindings(artifact: Record<string, unknown> | undefined): CollectedFinding[] {
+  const findings = Array.isArray(artifact?.['findings'])
+    ? (artifact!['findings'] as Array<Record<string, unknown>>)
+    : [];
+
+  return findings
+    .map((f) => {
+      const message =
+        typeof f['message'] === 'string'
+          ? (f['message'] as string)
+          : typeof f['detail'] === 'string'
+            ? (f['detail'] as string)
+            : '';
+      const rawFile = typeof f['file'] === 'string' ? (f['file'] as string) : '';
+      let file = rawFile;
+      let line = typeof f['line'] === 'number' ? (f['line'] as number) : 0;
+      const trailing = rawFile.match(/^(.*):(\d+)$/);
+      if (trailing && !line) {
+        file = trailing[1]!;
+        line = Number(trailing[2]);
+      }
+      const severity = typeof f['severity'] === 'string' ? (f['severity'] as string) : undefined;
+      return { file, line, severity, message };
+    })
+    .filter((f) => f.file && f.message);
+}
+
+/**
+ * @purpose Merge findings from every lens artifact of the active branch — assembled in CODE, never
+ *   from one mega-JSON synthesis response (TSK-127).
+ * @param ctx Node context at a synthesis gate.
+ * @param isDelta True on the update-review branch (`node_delta_review` only).
+ * @returns Deduped findings (by file+line+message), each with a stable `F-<n>` id and severity.
+ */
+function _collectReviewFindings(
+  ctx: NodeContext,
+  isDelta: boolean
+): Array<{ id: string; severity: string; file: string; line: number; message: string }> {
+  const lensIds = isDelta
+    ? ['node_delta_review']
+    : ['node_track_review', 'node_security_lens', 'node_code_review'];
+
+  const collected: CollectedFinding[] = [];
+  for (const lensId of lensIds) {
+    const artifact = ctx.artifacts[lensId] as Record<string, unknown> | undefined;
+    collected.push(..._normalizeLensFindings(artifact));
+  }
+
+  const seen = new Set<string>();
+  const deduped = collected.filter((f) => {
+    const key = `${f.file} ${f.line} ${f.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.map((f, index) => ({
+    id: `F-${index + 1}`,
+    severity: f.severity ?? _deriveSeverity(f.message),
+    file: f.file,
+    line: f.line,
+    message: f.message,
+  }));
+}
+
 /**
  * @purpose Persist the review as STRUCTURED data (`review.json`) next to README.md, so the
  *   dashboard's candidates panel renders real findings and the operator can select/post them.
- * @invariant Only concrete per-line candidates (with a `file` position) become findings; the
- *   general cross-cutting summary (no position) stays in README prose, not the post list.
+ * @invariant Findings are ASSEMBLED IN CODE from the lens artifacts' validated disk JSON
+ *   (`_collectReviewFindings`, TSK-127) — never from the synthesis node's response text.
  * @invariant Each finding carries a stable `id` (`F-<1-based index>`) so `MutationApplier` (TSK-127)
  *   targets it; `revision` increments monotonically (D-99), so a re-review invalidates prior CAS input.
  * @param ctx Node context at a synthesis gate.
  * @sideEffect FS: writes `<reports>/<mr>/review.json` = `{ verdict, findings[], revision }`.
  */
 function materializeReviewJson(ctx: NodeContext): void {
+  const isDelta = !ctx.artifacts['node_synthesize'] && !!ctx.artifacts['node_synthesize_delta'];
   const synth =
     (ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined) ??
     (ctx.artifacts['node_synthesize_delta'] as Record<string, unknown> | undefined);
@@ -272,32 +405,7 @@ function materializeReviewJson(ctx: NodeContext): void {
     const report = (synth['reviewReport'] as Record<string, unknown>) ?? {};
     const verdict =
       typeof report['verdict'] === 'string' ? (report['verdict'] as string) : 'pending';
-    const actions = Array.isArray(synth['proposedActions'])
-      ? (synth['proposedActions'] as Array<Record<string, unknown>>)
-      : [];
-    const recs = Array.isArray(synth['recommendations'])
-      ? (synth['recommendations'] as Array<Record<string, unknown>>)
-      : [];
-    const source = actions.length ? actions : recs;
-
-    const findings = source
-      .map((a, index) => {
-        const message =
-          typeof a['body'] === 'string'
-            ? (a['body'] as string)
-            : typeof a['message'] === 'string'
-              ? (a['message'] as string)
-              : '';
-        const file = typeof a['file'] === 'string' ? (a['file'] as string) : '';
-        const line =
-          typeof a['newLine'] === 'number'
-            ? (a['newLine'] as number)
-            : typeof a['line'] === 'number'
-              ? (a['line'] as number)
-              : 0;
-        return { id: `F-${index + 1}`, severity: _deriveSeverity(message), file, line, message };
-      })
-      .filter((f) => f.file && f.message);
+    const findings = _collectReviewFindings(ctx, isDelta);
 
     const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
     const dir = mrReportsDir(stateDir, ref);
@@ -311,8 +419,6 @@ function materializeReviewJson(ctx: NodeContext): void {
       mr: ctx.mr.webUrl,
       path: join(dir, 'review.json'),
       findings: findings.length,
-      sourceActions: actions.length,
-      sourceRecs: recs.length,
       revision,
     });
   } catch (cause) {
@@ -378,18 +484,14 @@ const reviewerGraph: RoleGraph = {
             const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
             const trackList =
               tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
-            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Write findings with file:line addresses from the changeset.`;
+            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Write findings with file:line addresses from the changeset.${_lensArtifactInstruction('.gennady-artifacts/node_track_review.json')}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          resultSchema: {
-            title: 'node_track_review',
-            type: 'object',
-            properties: {
-              findings: { type: 'array' },
-              tracksCovered: { type: 'array' },
-            },
+          artifact: {
+            file: '.gennady-artifacts/node_track_review.json',
+            schema: _lensArtifactSchema('node_track_review'),
           },
           policy: {
             promptTimeout: 10,
@@ -402,17 +504,14 @@ const reviewerGraph: RoleGraph = {
         {
           id: 'node_security_lens',
           buildTaskText(ctx: NodeContext) {
-            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.`;
+            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.${_lensArtifactInstruction('.gennady-artifacts/node_security_lens.json')}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          resultSchema: {
-            title: 'node_security_lens',
-            type: 'object',
-            properties: {
-              findings: { type: 'array' },
-            },
+          artifact: {
+            file: '.gennady-artifacts/node_security_lens.json',
+            schema: _lensArtifactSchema('node_security_lens'),
           },
           policy: {
             promptTimeout: 10,
@@ -426,17 +525,14 @@ const reviewerGraph: RoleGraph = {
           id: 'node_code_review',
           buildTaskText(ctx: NodeContext) {
             const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
-            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).`;
+            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).${_lensArtifactInstruction('.gennady-artifacts/node_code_review.json')}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          resultSchema: {
-            title: 'node_code_review',
-            type: 'object',
-            properties: {
-              findings: { type: 'array' },
-            },
+          artifact: {
+            file: '.gennady-artifacts/node_code_review.json',
+            schema: _lensArtifactSchema('node_code_review'),
           },
           policy: {
             promptTimeout: 10,
@@ -543,17 +639,14 @@ const reviewerGraph: RoleGraph = {
       id: 'node_synthesize_delta',
       buildTaskText(ctx: NodeContext) {
         const delta = (ctx.artifacts['node_delta_review'] as Record<string, unknown>) ?? {};
-        return `Synthesize the delta-review findings for MR ${ctx.mr.webUrl} into a report: ${JSON.stringify(delta)}`;
+        return `Synthesize the delta-review findings for MR ${ctx.mr.webUrl} into a report: ${JSON.stringify(delta)}${_synthesizeArtifactInstruction('.gennady-artifacts/node_synthesize_delta.json')}`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
       },
-      resultSchema: {
-        title: 'node_synthesize_delta',
-        type: 'object',
-        properties: {
-          reviewReport: { type: 'object' },
-        },
+      artifact: {
+        file: '.gennady-artifacts/node_synthesize_delta.json',
+        schema: _synthesizeArtifactSchema('node_synthesize_delta'),
       },
       policy: {
         promptTimeout: 5,
@@ -590,19 +683,14 @@ const reviewerGraph: RoleGraph = {
         const codeReview = (ctx.artifacts['node_code_review'] as Record<string, unknown>) ?? {};
         return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
           { track, security, codeReview }
-        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.`;
+        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.${_synthesizeArtifactInstruction('.gennady-artifacts/node_synthesize.json')}`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
       },
-      resultSchema: {
-        title: 'node_synthesize',
-        type: 'object',
-        properties: {
-          reviewReport: { type: 'object' },
-          recommendations: { type: 'array' },
-          proposedActions: { type: 'array' },
-        },
+      artifact: {
+        file: '.gennady-artifacts/node_synthesize.json',
+        schema: _synthesizeArtifactSchema('node_synthesize'),
       },
       policy: {
         promptTimeout: 10,

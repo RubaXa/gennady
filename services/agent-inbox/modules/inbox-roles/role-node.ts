@@ -98,6 +98,20 @@ export type SessionPolicy = {
  */
 export type JsonSchema = Record<string, unknown>;
 
+/**
+ * @purpose On-disk artifact contract for a session/lens node — the agent WRITES its JSON result
+ *   to this file instead of returning it as response text.
+ * @invariant `file` is RELATIVE to the session's `dir(ctx)` — never an absolute path.
+ * @invariant Mutually exclusive with `resultSchema`/`format`: presence of `artifact` means the
+ *   executor skips `format:{type:'json_schema'}` entirely (TSK-127).
+ */
+export type ArtifactSpec = {
+  /** @purpose Path to the result file, relative to the session directory */
+  file: string;
+  /** @purpose Optional top-level shape check — required fields + primitive types */
+  schema?: JsonSchema;
+};
+
 // ─── Discriminated node variants ──────────────────────────────────────────────
 
 /**
@@ -156,8 +170,14 @@ export type SessionNode = {
   dir(ctx: NodeContext): string;
   /**
    * @purpose Optional JSON Schema for structured output validation.
+   * @invariant Mutually exclusive with `artifact` — see ArtifactSpec.
    */
   resultSchema?: JsonSchema;
+  /**
+   * @purpose On-disk artifact contract (TSK-127) — when set, the executor skips the
+   *   response-JSON/`format` protocol and instead reads+validates this file after each turn.
+   */
+  artifact?: ArtifactSpec;
   /**
    * @purpose Retry policy: timeout, continue max, restart max.
    */
@@ -239,8 +259,10 @@ export type ParallelSessionSpec = {
    * @returns Absolute path.
    */
   dir(ctx: NodeContext): string;
-  /** @purpose Optional JSON Schema for structured output validation. */
+  /** @purpose Optional JSON Schema for structured output validation. @invariant Mutually exclusive with `artifact`. */
   resultSchema?: JsonSchema;
+  /** @purpose On-disk artifact contract (TSK-127) — see `SessionNode.artifact`. */
+  artifact?: ArtifactSpec;
   /** @purpose Retry policy: timeout, continue max, restart max, model. */
   policy: SessionPolicy;
 };
