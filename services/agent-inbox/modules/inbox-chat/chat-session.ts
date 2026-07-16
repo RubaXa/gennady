@@ -13,15 +13,33 @@ import { ChatTranscript, type TranscriptState } from './chat-transcript.ts';
 import type { ChatTurn, ContextChip, MutationProposal } from './types.ts';
 import { composeChatError, type ChatErrorResponse } from './errors.ts';
 
-/** @purpose Structured-output schema for a chat turn — reuses the resultSchema contract already carried by inbox-opencode (D-90). */
-const CHAT_TURN_RESULT_SCHEMA = {
-  title: 'chat_turn',
-  type: 'object',
-  properties: {
-    answer: { type: 'string' },
-    mutations: { type: 'array' },
-  },
-} as const;
+/**
+ * @purpose Extract mutation proposals from a fenced ```json block in the chat answer (opt-in, D-90);
+ * replaces per-turn json_schema, which broke prose replies.
+ * @param text The model's raw prose answer.
+ * @returns The proposed mutations, or undefined when the turn proposes none.
+ */
+function _extractMutations(text: string): MutationProposal[] | undefined {
+  const blockRe = /```(?:json)?\s*\n?([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+  let found: MutationProposal[] | undefined;
+  while ((match = blockRe.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]!.trim()) as unknown;
+      const arr = Array.isArray(parsed)
+        ? parsed
+        : parsed &&
+            typeof parsed === 'object' &&
+            Array.isArray((parsed as Record<string, unknown>)['mutations'])
+          ? ((parsed as Record<string, unknown>)['mutations'] as unknown[])
+          : null;
+      if (arr && arr.length > 0) found = arr as MutationProposal[];
+    } catch {
+      // non-JSON fenced block (e.g. a code snippet inside the answer) — ignore
+    }
+  }
+  return found;
+}
 
 /** @purpose Outcome of `ChatSession#ask()` — the completed turn, or a `TURN_IN_FLIGHT` rejection (D-104). */
 export type AskResult = { ok: true; turn: ChatTurn } | ChatErrorResponse;
@@ -161,10 +179,11 @@ export class ChatSession {
 
       const context = await this._assembler.assemble({ mrRef: this.mrRef, chips: opts.chips });
 
+      // A chat turn is conversational: the answer is FREE PROSE (streamable), NOT forced JSON.
+      // No `format` → opencode returns the raw text; mutations are parsed opportunistically below.
       const promptResult = await this._pool.prompt(this.sid, {
         system: context.system,
         text: opts.text,
-        format: { type: 'json_schema', schema: CHAT_TURN_RESULT_SCHEMA },
       });
 
       if (!promptResult.ok) {
@@ -179,13 +198,17 @@ export class ChatSession {
         );
       }
 
-      const answerFull =
-        typeof promptResult.output['answer'] === 'string'
-          ? (promptResult.output['answer'] as string)
-          : '';
-      const mutations = Array.isArray(promptResult.output['mutations'])
-        ? (promptResult.output['mutations'] as MutationProposal[])
-        : undefined;
+      const rawText =
+        typeof promptResult.output['text'] === 'string'
+          ? (promptResult.output['text'] as string)
+          : typeof promptResult.output['answer'] === 'string'
+            ? (promptResult.output['answer'] as string)
+            : '';
+      const mutations = _extractMutations(rawText);
+      // Strip any fenced json block (the mutation proposal) so the displayed answer is clean prose;
+      // if the turn was mutation-only (nothing but a block), keep the raw text so the answer is non-empty.
+      const stripped = rawText.replace(/```(?:json)?\s*\n?[\s\S]*?```/g, '').trim();
+      const answerFull = stripped.length > 0 ? stripped : rawText.trim();
 
       const emitted = await this._streamAnswer(answerFull);
       const stopped = this._stopRequested && emitted.length < answerFull.length;

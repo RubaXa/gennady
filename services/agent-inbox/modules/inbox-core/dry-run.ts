@@ -39,8 +39,8 @@ function _readEnvFlag(): boolean {
 }
 
 /**
- * @purpose Turn dry-run on/off explicitly (bootstrap `dryRun` option) — also keeps `INBOX_DRY_RUN`
- *   in sync so child code that only reads the env agrees with an explicitly-configured server.
+ * @purpose Turn dry-run on/off explicitly (bootstrap `dryRun` option) — keeps `INBOX_DRY_RUN` in
+ *   sync so env-only readers agree with an explicit server config.
  * @param on Whether dry-run should be enabled.
  * @sideEffect Mutates module state and `process.env.INBOX_DRY_RUN`.
  */
@@ -68,8 +68,8 @@ export function setDryRunBroadcaster(fn: DryRunBroadcaster | null): void {
 }
 
 /**
- * @purpose Record one suppressed external write — the real code path's final, irreversible call is
- *   replaced by this. Always logs; also broadcasts when a sink is registered.
+ * @purpose Record one suppressed external write, replacing the real code path's final irreversible
+ *   call. Always logs; also broadcasts when a sink is registered.
  * @param channel Originating seam (`mr` VCS mutation | `dm` operator message).
  * @param summary The payload description WITHOUT the `DRY-RUN ` prefix, e.g. `post→MR <ref>: <body>`.
  * @sideEffect Writes a log line; invokes the registered broadcaster (if any).

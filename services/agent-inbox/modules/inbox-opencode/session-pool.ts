@@ -22,12 +22,21 @@ type SessionSlot = {
   sid: string;
 };
 
-/** @purpose Queued create request — stored resolver to unblock when a slot frees up. */
-type QueuedCreate = {
+/** @purpose Options for `SessionPool#create` — title/directory plus the tools/model gates
+ *   `OpenCodePort#createSession` accepts, so pooled callers get the same per-session controls as a direct call. */
+type PoolCreateOpts = {
   /** @purpose Title for the session to create */
   title: string;
   /** @purpose Working directory for the session */
   directory: string;
+  /** @purpose Enable code-navigation tools (read/grep/git) bound to directory | @default false (unchanged pre-existing chat behavior) */
+  tools?: boolean;
+  /** @purpose Per-session default model, e.g. `llm-proxy/deepseek-v4-pro` */
+  model?: string;
+};
+
+/** @purpose Queued create request — stored resolver to unblock when a slot frees up. */
+type QueuedCreate = PoolCreateOpts & {
   /** @purpose Resolver to fulfill the create promise once a slot is available */
   resolve: (sid: string) => void;
   /** @purpose Rejecter to fail the create promise on cleanup or error */
@@ -66,7 +75,7 @@ export class SessionPool {
    * @param opts Title and directory for the new session.
    * @returns Session identifier (sid) from the adapter.
    */
-  async create(opts: { title: string; directory: string }): Promise<string> {
+  async create(opts: PoolCreateOpts): Promise<string> {
     // #region START_IMMEDIATE_CREATE — if a slot is free, create the session right away
     if (this._slots.length < this._config.maxSessions) {
       const handle = await this._config.opencode.createSession(opts);
@@ -84,7 +93,14 @@ export class SessionPool {
     );
 
     return new Promise<string>((resolve, reject) => {
-      this._queue.push({ title: opts.title, directory: opts.directory, resolve, reject });
+      this._queue.push({
+        title: opts.title,
+        directory: opts.directory,
+        tools: opts.tools,
+        model: opts.model,
+        resolve,
+        reject,
+      });
     });
     // #endregion END_QUEUED_CREATE
   }
@@ -139,7 +155,12 @@ export class SessionPool {
     if (next) {
       // Create asynchronously — do not block the release caller
       this._config.opencode
-        .createSession({ title: next.title, directory: next.directory })
+        .createSession({
+          title: next.title,
+          directory: next.directory,
+          tools: next.tools,
+          model: next.model,
+        })
         .then((handle) => {
           this._slots.push({ active: true, sid: handle.sid });
           logger.debug(

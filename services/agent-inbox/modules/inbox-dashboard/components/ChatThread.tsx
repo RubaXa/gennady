@@ -34,8 +34,15 @@ export function ChatThread(props: {
     <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 p-2">
       {turns.map((turn) => (
         <div key={turn.id} className="flex flex-col gap-1.5">
-          <p className="text-[12px] font-medium text-foreground/90">{turn.question}</p>
-          <p className="text-[12px] text-foreground/80 whitespace-pre-wrap">{turn.answer}</p>
+          <p className="text-[12px] font-medium text-foreground/90" data-testid="chat-question">
+            {turn.question}
+          </p>
+          <p
+            className="text-[12px] text-foreground/80 whitespace-pre-wrap"
+            data-testid="chat-answer"
+          >
+            {turn.answer}
+          </p>
           {turn.mutations?.map((mutation, index) => (
             <MutationProposalCard
               key={`${turn.id}-${index}`}
@@ -50,7 +57,11 @@ export function ChatThread(props: {
       ))}
 
       {streaming && (
-        <div aria-live="polite" className="text-[12px] text-foreground/80 whitespace-pre-wrap">
+        <div
+          aria-live="polite"
+          data-testid="chat-streaming"
+          className="text-[12px] text-foreground/80 whitespace-pre-wrap"
+        >
           {streamingText}
         </div>
       )}

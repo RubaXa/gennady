@@ -7,6 +7,7 @@ import type { RoleEngine, RegisteredRole } from './role-engine.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
+import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { RoleInstance, type RoleInstanceCheckpoint } from './role-instance.ts';
@@ -70,9 +71,15 @@ export type RoleSchedulerConfig = {
   fetchDiffRefs?: ContextBuilderDeps['fetchDiffRefs'];
   /**
    * @purpose Forwarded to every RoleInstance's effect nodes — suppresses the real vcs-* mutation
-   *   under INBOX_DRY_RUN (TSK-131). | @default false — dry-run is opt-in, never a silent default.
+   *   under INBOX_DRY_RUN (TSK-131); default false, dry-run is opt-in.
    */
   dryRun?: boolean;
+  /**
+   * @purpose Bounded pool for a role instance's `ParallelNode` lens sessions (TSK-perf) — forwarded
+   *   to every constructed `RoleInstance`. @invariant Optional: absent → instances fall back to
+   *   unbounded per-lens sessions directly against `opencode` (see RoleInstance's own invariant).
+   */
+  reviewSessionPool?: SessionPool;
 };
 
 /**
@@ -188,6 +195,7 @@ export class RoleScheduler {
                 vcs: this._config.vcs,
                 store: this._config.store,
                 dryRun: this._config.dryRun ?? false,
+                reviewSessionPool: this._config.reviewSessionPool,
                 checkpoint,
               });
               this._instances.set(key, instance);
@@ -327,6 +335,7 @@ export class RoleScheduler {
       vcs: this._config.vcs,
       store: this._config.store,
       dryRun: this._config.dryRun ?? false,
+      reviewSessionPool: this._config.reviewSessionPool,
       rights,
       checkpoint,
     });

@@ -10,9 +10,8 @@ import type {
   ArtifactContent,
 } from '../../inbox-api/types.ts';
 
-/** @purpose Base URL for the inbox-api server. Empty = same-origin: the dashboard SPA is served by
- *   the same HttpServer that exposes the API, so relative paths hit whatever port `inbox serve` runs
- *   on (no hardcoded port — the SPA works regardless of the serving port). */
+/** @purpose Base URL for inbox-api. Empty = same-origin: SPA and API share one HttpServer, so
+ *   relative paths hit whatever port `inbox serve` runs on. */
 const BASE_URL = '';
 
 /**

@@ -22,9 +22,8 @@ function lineNumberAtOffset(text: string, charIndex: number): number {
 }
 
 /**
- * @purpose Locate `quote`'s character offsets inside `rawText`, retrying on the quote's first line
- *   alone when the exact match fails — `Selection#toString()` sometimes collapses whitespace the
- *   raw source preserves, so a direct substring match can miss an otherwise-present quote.
+ * @purpose Locate `quote`'s offsets inside `rawText`, retrying on just the first line when exact
+ *   match fails — `Selection#toString()` can collapse whitespace the source preserves.
  * @invariant Never throws; returns `null` (not a sentinel range) when both strategies fail, so the
  *   caller — not this lookup — decides the degrade.
  * @param rawText Full artifact source.
@@ -43,11 +42,10 @@ function locateQuote(rawText: string, quote: string): { start: number; end: numb
 }
 
 /**
- * @purpose Map a selected quote to its real 1-based line range inside an artifact's raw source
- *   (D-115) — the deterministic replacement for absent DOM `data-line` markers.
- * @invariant Degrades to `{ startLine: 1, endLine: 1 }` ONLY when `quote` cannot be located inside
- *   `rawText` at all (stale selection, cross-artifact copy, empty quote) — never when the quote IS
- *   present in `rawText`; that path always returns its real line span.
+ * @purpose Map a selected quote to its real 1-based line range in an artifact's raw source (D-115)
+ *   — replaces absent DOM `data-line` markers.
+ * @invariant Degrades to `{ startLine: 1, endLine: 1 }` only when `quote` is nowhere in `rawText`
+ *   — otherwise it always returns the real line span.
  * @param artifact Artifact name/identifier the fragment came from.
  * @param rawText Full raw source text of `artifact`.
  * @param quote Selected fragment (already trimmed by the caller, but re-trimmed here defensively).
@@ -68,8 +66,8 @@ export function resolveOrigin(artifact: string, rawText: string, quote: string):
 }
 
 /**
- * @purpose Whole-artifact origin for a `mention`-kind chip (D-115) — coarse by design (Risk
- *   accepted): the fragment IS the whole file, so the range spans line 1 to the last line.
+ * @purpose Whole-artifact origin for a `mention`-kind chip (D-115) — coarse by design: fragment is
+ *   the whole file, so range spans line 1 to last line.
  * @param artifact Artifact name/identifier.
  * @param rawText Full raw source text of `artifact`.
  * @returns Origin spanning the entire artifact.

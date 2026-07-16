@@ -50,6 +50,8 @@ export class OpenCodeReal extends OpenCodePort {
   protected _pendingSchemas: Map<string, Record<string, unknown>>;
   /** @purpose Track per-session tools gate (sid → CreateSessionOpts.tools) | @invariant SDK has no session-level tools flag — re-applied on every prompt() call */
   protected _sessionTools: Map<string, boolean>;
+  /** @purpose Track per-session default model (sid → CreateSessionOpts.model) | @invariant SDK has no session-level model field — re-applied on every prompt() call unless PromptOpts.model overrides it */
+  protected _sessionModels: Map<string, string>;
 
   /**
    * @purpose Create an OpenCodeReal adapter bound to a running opencode server.
@@ -64,6 +66,7 @@ export class OpenCodeReal extends OpenCodePort {
     this._sessionDirs = new Map();
     this._pendingSchemas = new Map();
     this._sessionTools = new Map();
+    this._sessionModels = new Map();
     logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
   }
 
@@ -128,6 +131,9 @@ export class OpenCodeReal extends OpenCodePort {
       // the gate is re-applied on every prompt() call via _sessionTools (see AX decision
       // prompt-tools=per-prompt-map-not-session-level).
       this._sessionTools.set(session.id, opts.tools === true);
+      if (opts.model) {
+        this._sessionModels.set(session.id, opts.model);
+      }
 
       logger.debug('[OpenCodeReal#createSession] [created]', {
         sid: session.id,
@@ -365,6 +371,7 @@ export class OpenCodeReal extends OpenCodePort {
       this._sessionDirs.delete(sid);
       this._pendingSchemas.delete(sid);
       this._sessionTools.delete(sid);
+      this._sessionModels.delete(sid);
     }
     // #endregion END_CLOSE
   }
@@ -410,11 +417,20 @@ export class OpenCodeReal extends OpenCodePort {
     // gains tool access mid-turn.
     const toolsEnabled = this._sessionTools.get(sid) ?? false;
 
+    // Per-phase model selection (TSK-perf): PromptOpts.model overrides the session's
+    // CreateSessionOpts.model default; both absent → omit the field, server's own configured
+    // default applies (today: llm-proxy/deepseek-v4-pro — unchanged from pre-model behavior).
+    // Format is `providerID/modelID` (e.g. `llm-proxy/deepseek-v4-flash`) — split on the FIRST
+    // slash only, since providerID itself may be a path-like namespace.
+    const modelStr = opts.model ?? this._sessionModels.get(sid);
+    const model = this._parseModel(modelStr);
+
     try {
       logger.debug('[OpenCodeReal#_sendPrompt] [prompting]', {
         sid,
         hasFormat,
         toolsEnabled,
+        model: modelStr,
         systemLength: system.length,
         partsCount: parts.length,
       });
@@ -425,6 +441,7 @@ export class OpenCodeReal extends OpenCodePort {
             system: system || undefined,
             parts: parts as Array<{ type: 'text'; text: string }>,
             ...(toolsEnabled ? {} : { tools: { '*': false } }),
+            ...(model ? { model } : {}),
           },
           path: { id: sid },
           query: directory ? { directory } : undefined,
@@ -636,6 +653,27 @@ export class OpenCodeReal extends OpenCodePort {
         }
       );
     });
+  }
+
+  /**
+   * @purpose Parse a port-level model string (`providerID/modelID`) into the SDK's
+   *   `session.prompt` body shape.
+   * @param modelStr e.g. `llm-proxy/deepseek-v4-pro`; undefined when no model was selected.
+   * @returns `{ providerID, modelID }` or undefined when `modelStr` is absent/malformed.
+   */
+  protected _parseModel(
+    modelStr: string | undefined
+  ): { providerID: string; modelID: string } | undefined {
+    if (!modelStr) return undefined;
+    const slashIndex = modelStr.indexOf('/');
+    if (slashIndex <= 0 || slashIndex === modelStr.length - 1) {
+      logger.warn('[OpenCodeReal#_parseModel] [malformed → ignored]', { modelStr });
+      return undefined;
+    }
+    return {
+      providerID: modelStr.slice(0, slashIndex),
+      modelID: modelStr.slice(slashIndex + 1),
+    };
   }
 
   /**

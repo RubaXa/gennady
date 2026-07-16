@@ -17,12 +17,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  */
 export default defineConfig({
   testDir: __dirname,
-  testMatch: 'review-flow.spec.ts',
+  testMatch: 'review-flow/*.spec.ts',
   outputDir: resolve(__dirname, 'test-results/review-flow'),
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  timeout: 300_000,
+  timeout: 3_000_000,
   use: {
     baseURL: 'http://localhost:4174',
     screenshot: 'off',

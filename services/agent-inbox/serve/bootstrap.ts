@@ -261,8 +261,8 @@ export type BootstrapConfig = {
   /** @purpose Root state directory (default: ~/.gennady). */
   stateDir?: string;
   /**
-   * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — real code path
-   *   minus the final irreversible call, journaled to the dashboard console instead (TSK-131).
+   * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — journals the
+   *   intended write to the dashboard console instead (TSK-131).
    * @invariant When set, mirrored into `INBOX_DRY_RUN` so every code path (including
    *   scheduler-driven effect nodes) observes the same flag. Undefined leaves the env-derived
    *   default untouched.
@@ -372,16 +372,16 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     }
     // #endregion END_CHECK_OPENCODE_PATH
 
+    // TSK-123 P2: an operator-supplied OPENCODE_PORT means "an opencode serve is already up on
+    // this port, reuse it" — skip findFreePort/spawnOpencode entirely (spawning a second instance
+    // wastes ~20s of retry budget racing the already-bound port and blows the e2e webServer
+    // readiness window for a live run). Falls through to the pre-existing spawn path when unset.
     // #region START_CONNECT_OPENCODE
     const stateDir = stateStore.getStateDir();
     const pidFile = join(stateDir, 'agent-inbox', 'opencode.pid');
     opencodePort = 4096;
     opencodePidFile = null;
 
-    // TSK-123 P2: an operator-supplied OPENCODE_PORT means "an opencode serve is already up on
-    // this port, reuse it" — skip findFreePort/spawnOpencode entirely (spawning a second instance
-    // wastes ~20s of retry budget racing the already-bound port and blows the e2e webServer
-    // readiness window for a live run). Falls through to the pre-existing spawn path when unset.
     const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
     if (reusePort && Number.isFinite(reusePort)) {
       const connected = await retryOpencodeConnect(reusePort, 3, 1000);
@@ -445,13 +445,19 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   // role turns and operator-driven chat turns (TSK-133, SV-11, D-102).
   const chatSessionPool = new SessionPool({ maxSessions: 4, opencode });
 
+  // Bounded pool for the reviewer role's parallel review-lens fan-out (TSK-perf): track-review/
+  // security-lens/code-review run concurrently, each needing its own opencode session (the
+  // instance's single `_sessionId` can only back one turn at a time) — 3 slots matches the fixed
+  // lens count today; the queue safely bounds a future higher-fan-out extension too.
+  const reviewSessionPool = new SessionPool({ maxSessions: 3, opencode });
+
+  // F6: Roles start inactive by default — no auto-activation (mock mode activates after seeding
+  // below; real mode via operator dashboard action). Real serve also drives the reviewer graph
+  // against a live worktree/changeset (mock mode keeps its zero-network empty-artifacts start);
+  // effect nodes honour the dry-run flag (TSK-131).
   // #region START_CREATE_ROLES
   const engine = new RoleEngine();
   await engine.loadAll();
-
-  // F6: Roles start inactive by default — no auto-activation.
-  // In mock mode, roles are activated after seeding (below).
-  // In real mode, operator activates roles via dashboard.
 
   const scheduler = new RoleScheduler({
     engine,
@@ -459,10 +465,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     vcs,
     opencode,
     pollingInterval,
-    // Real serve drives the reviewer graph against a live worktree/changeset (mock mode keeps its
-    // zero-network empty-artifacts start); effect nodes honour the dry-run flag (TSK-131).
     buildLiveContext: !config.mocks,
     dryRun: isDryRun(),
+    reviewSessionPool,
   });
   // #endregion END_CREATE_ROLES
 

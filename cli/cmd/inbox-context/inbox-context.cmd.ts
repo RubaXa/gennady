@@ -19,6 +19,10 @@ import {
   gcStaleReports,
   REPORTS_TTL_MS,
 } from '../inbox/_core/logic/state-paths.logic.ts';
+import {
+  gcStalePhaseTimings,
+  PHASE_TIMINGS_TTL_MS,
+} from '../../../services/agent-inbox/modules/inbox-roles/phase-telemetry.ts';
 import { loadConfig, validateConfig } from '../inbox/_core/logic/inbox-config.logic.ts';
 import { buildInboxClient } from '../inbox/_core/logic/build-inbox-context.logic.ts';
 import { loadRegistry, saveRegistry } from '../inbox/_core/logic/inbox-registry.logic.ts';
@@ -265,6 +269,7 @@ async function run(): Promise<number> {
       mkdirSync(root, { recursive: true });
       gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
       gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
+      gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
       const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
 
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);

@@ -81,8 +81,16 @@ export type SessionPolicy = {
   continueMax: number;
   /** @purpose Max restart attempts before escalating to AWAITING_OPERATOR */
   restartMax: number;
-  /** @purpose Bind code-navigation tools (read/grep/git) to the session cwd | @invariant Absent/false → agent cannot read the worktree and emits its intended tool calls as inert text instead of running them (never producing the final structured result); review/analysis nodes that must inspect the diff set this true */
+  /** @purpose Bind code-navigation tools (read/grep/git) to the session cwd | @invariant Absent/false → agent cannot read the worktree, emitting tool calls as inert text; review/analysis nodes that must inspect the diff set this true */
   tools?: boolean;
+  /**
+   * @purpose Per-phase model selector, e.g. `llm-proxy/deepseek-v4-pro` | `llm-proxy/deepseek-v4-flash`.
+   * @invariant Absent → adapter omits the model field; the opencode server's own configured
+   *   default applies (today: `llm-proxy/deepseek-v4-pro`).
+   * @invariant Single string today (one model per phase) — the seam for a future multi-model
+   *   fan-out is `ParallelNode.sessions`, not a change to this field's shape.
+   */
+  model?: string;
 };
 
 /**
@@ -211,9 +219,55 @@ export type EffectNode = {
 };
 
 /**
+ * @purpose One concurrent lens within a `ParallelNode` fan-out — same fields as `SessionNode`
+ *   minus the `kind` discriminant (parent node carries it once).
+ * @invariant Each spec's `id` doubles as its artifact key (`ctx.artifacts[spec.id]`) — unchanged
+ *   from the standalone `SessionNode` days, so downstream gates/synthesize nodes need no changes.
+ */
+export type ParallelSessionSpec = {
+  /** @purpose Stable node identifier — used for seeding mock responses and as the artifact key */
+  id: string;
+  /**
+   * @purpose Build the concrete task text for this lens's turn.
+   * @param ctx MR context and accumulated artifacts.
+   * @returns Concrete task instruction.
+   */
+  buildTaskText(ctx: NodeContext): string;
+  /**
+   * @purpose Determine the working directory for this lens's session.
+   * @param ctx MR context and accumulated artifacts.
+   * @returns Absolute path.
+   */
+  dir(ctx: NodeContext): string;
+  /** @purpose Optional JSON Schema for structured output validation. */
+  resultSchema?: JsonSchema;
+  /** @purpose Retry policy: timeout, continue max, restart max, model. */
+  policy: SessionPolicy;
+};
+
+/**
+ * @purpose Fan-out node: runs a declared set of independent lens-sessions concurrently, each on
+ *   its own opencode session, then converges — the parallelization seam (TSK-perf).
+ * @invariant Independence precondition (caller's responsibility): all `sessions` read the same
+ *   worktree/changeset and write disjoint artifact keys, converging only at the downstream gate.
+ * @invariant On any lens exhausting its recovery ladder (continueMax/restartMax), the WHOLE node
+ *   escalates to `awaiting_operator` — mirrors a session node's ladder exhaustion, per-lens not per-node.
+ * @invariant Extensibility seam: a future multi-model fan-out adds `ParallelSessionSpec` entries
+ *   per model, reconciled downstream — no change to node shape or execution model.
+ */
+export type ParallelNode = {
+  /** @purpose Discriminant — identifies this node as a fan-out (concurrent-session) node. */
+  kind: 'parallel';
+  /** @purpose Stable node identifier — used for edge resolution (not an artifact key itself) */
+  id: string;
+  /** @purpose Independent lens-sessions to run concurrently */
+  sessions: ParallelSessionSpec[];
+};
+
+/**
  * @purpose Union type of all role graph nodes — discriminated by `kind`.
  */
-export type RoleNode = PrepNode | SessionNode | GateNode | AskNode | EffectNode;
+export type RoleNode = PrepNode | SessionNode | GateNode | AskNode | EffectNode | ParallelNode;
 
 // ─── Edge and graph ───────────────────────────────────────────────────────────
 

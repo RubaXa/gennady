@@ -6,9 +6,8 @@ import type { ChatTurn, ContextChip, MutationProposal } from '../../inbox-chat/t
 import type { ChatErrorCode } from '../../inbox-chat/errors.ts';
 import type { SseFrame } from '../../inbox-api/sse-hub.ts';
 
-/** @purpose Base URL for the inbox-api server. Empty = same-origin (mirrors ApiClient's BASE_URL):
- *   the SPA is served by the same HttpServer as the API, so relative paths hit the serving port —
- *   no hardcoded port. */
+/** @purpose Base URL for inbox-api. Empty = same-origin (mirrors ApiClient's BASE_URL): SPA and
+ *   API share one HttpServer, so relative paths hit the serving port. */
 const BASE_URL = '';
 
 /** @purpose Initial SSE reconnect delay; doubles on each consecutive failure up to MAX_RECONNECT_DELAY_MS. */
@@ -53,8 +52,8 @@ export type ChatStreamHandlers = {
   /** @purpose Fired when review.json changed underneath — caller re-reads detail/artifacts. */
   onRefresh?: () => void;
   /**
-   * @purpose Fired for a suppressed external write under INBOX_DRY_RUN (TSK-131) — the caller logs
-   *   it so the operator sees, in the browser, that no real MR post / operator DM went out.
+   * @purpose Fired for a suppressed write under INBOX_DRY_RUN (TSK-131) — caller logs it so the
+   *   operator sees no real MR post / DM went out.
    * @param channel Originating seam (`mr` VCS mutation | `dm` operator message).
    * @param line The `DRY-RUN …` line, ready to log verbatim.
    */

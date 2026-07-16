@@ -299,3 +299,86 @@ describe('BoardProviderReal.getReport — revision from review.json (TSK-133, D-
     }
   });
 });
+
+describe('BoardProviderReal.executeAction — dual-key resolution (project!iid vs webUrl)', () => {
+  /**
+   * @purpose Snapshot for an instance parked at the ask node, keyed (like every real instance) by
+   *   the full MR webUrl — so _resolveInstance must map the dashboard's `project!iid` back to it.
+   */
+  function awaitingSnap(): RoleInstanceSnapshot {
+    return {
+      key: `reviewer:${MR.webUrl}`,
+      role: 'reviewer',
+      mr: MR.webUrl,
+      state: 'awaiting_operator',
+      currentNode: 'node_ask',
+      findings: [],
+      verdict: 'pending',
+      awaitingOperator: true,
+    };
+  }
+
+  /**
+   * @purpose Scheduler stub whose findInstance matches ONLY the full webUrl (as the real
+   *   RoleScheduler#findInstance does), while listInstances/getPolledMr expose the dual-key snapshot.
+   *   So executeAction MUST resolve `project!iid` → webUrl to reach the instance; a raw
+   *   findInstance(mrId) with the composite key would miss and 404.
+   * @param calls Sink recording the operator answer + whether the instance was advanced.
+   */
+  function schedulerWithAwaitingInstance(calls: {
+    answer?: string;
+    stepped?: boolean;
+  }): RoleScheduler {
+    const instance = {
+      state: 'awaiting_operator' as const,
+      setAnswer: (c: string) => {
+        calls.answer = c;
+      },
+      step: async () => {
+        calls.stepped = true;
+      },
+    };
+    const polled = new Map<string, VcsActionableMr>([[MR.webUrl, MR]]);
+    return {
+      listInstances: () => [awaitingSnap()],
+      listUnassigned: () => [],
+      getPolledMr: (url: string) => polled.get(url),
+      assignManual: async () => {},
+      findInstance: (url: string) => (url === MR.webUrl ? instance : undefined),
+    } as unknown as RoleScheduler;
+  }
+
+  it('resolves the dashboard composite key (project!iid) to the webUrl-keyed instance and advances it', () => {
+    const calls: { answer?: string; stepped?: boolean } = {};
+    const provider = new BoardProviderReal(
+      schedulerWithAwaitingInstance(calls),
+      engineStub(),
+      '/unused-state-dir'
+    );
+
+    // The dashboard routes on `${project}!${iid}` and sends exactly that here — never the webUrl.
+    const result = provider.executeAction(`${MR.project}!${MR.iid}`, {
+      questionId: 'q1',
+      choice: 'post',
+    });
+
+    assert.deepStrictEqual(result, { ok: true });
+    assert.equal(calls.answer, 'post', 'operator choice must reach the resolved instance');
+    assert.equal(calls.stepped, true, 'the instance must be advanced past the ask node');
+  });
+
+  it('returns ok:false for an unknown MR id (no instance resolves)', () => {
+    const calls: { answer?: string; stepped?: boolean } = {};
+    const provider = new BoardProviderReal(
+      schedulerWithAwaitingInstance(calls),
+      engineStub(),
+      '/unused-state-dir'
+    );
+
+    assert.deepStrictEqual(
+      provider.executeAction('nobody/nothing!1', { questionId: 'q', choice: 'post' }),
+      { ok: false }
+    );
+    assert.equal(calls.stepped, undefined, 'no instance must be advanced for an unknown MR');
+  });
+});

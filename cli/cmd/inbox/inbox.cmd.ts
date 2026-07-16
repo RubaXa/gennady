@@ -34,6 +34,10 @@ import {
   gcStaleWorktrees,
   WORKTREE_TTL_MS,
 } from '../vcs-worktree/_core/logic/worktree-ops.logic.ts';
+import {
+  gcStalePhaseTimings,
+  PHASE_TIMINGS_TTL_MS,
+} from '../../../services/agent-inbox/modules/inbox-roles/phase-telemetry.ts';
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -92,6 +96,7 @@ async function run(): Promise<number> {
     try {
       gcStaleWorktrees(worktreesRoot(stateDir), WORKTREE_TTL_MS, Date.now());
       gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
+      gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
     } catch {
       /* gc failures are non-blocking */
     }

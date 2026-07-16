@@ -19,8 +19,10 @@ import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import { MutationApplier } from '../inbox-chat/mutation-applier.ts';
 
-/** @purpose Dependencies backing the Review Chat bridge (`ChatRouter`/`MutateRouter`) — optional so
- * callers without a live `SessionPool` (e.g. isolated unit tests) can omit it (TSK-133). */
+/**
+ * @purpose Dependencies backing the Review Chat bridge (`ChatRouter`/`MutateRouter`) — optional so
+ * callers without a live `SessionPool` (e.g. isolated unit tests) can omit it (TSK-133).
+ */
 export type HttpServerChatConfig = {
   /** @purpose Shared opencode session pool backing every `ChatSession` (SV-11, D-102) */
   pool: SessionPool;
@@ -36,8 +38,10 @@ export type HttpServerConfig = {
   boardProvider: BoardProviderPort;
   /** @purpose Path to static files directory (default: dist/inbox-serve). */
   staticDir?: string;
-  /** @purpose When present, wires the Review Chat bridge (`/chat`, `/chat/stream`, `/chat/undo`,
-   * `/chat/stop`, `/mutate`) live — absent means those routes 404 (TSK-133). */
+  /**
+   * @purpose When present, wires the Review Chat bridge (`/chat`, `/chat/stream`, `/chat/undo`,
+   * `/chat/stop`, `/mutate`) live — absent means those routes 404 (TSK-133).
+   */
   chat?: HttpServerChatConfig;
 };
 
@@ -92,11 +96,10 @@ export class HttpServer {
       });
       this._mutateRouter = new MutateRouter({ mutationApplier, sseHub });
 
-      // #region START_WIRE_DRY_RUN_BROADCAST — TSK-131: suppressed external writes (EffectExecutor
-      // VCS mutations, RightsEscalator DMs) fan out over this server's SSE hub to every connected
-      // dashboard, which console.logs them — the browser-observable proof no real write happened
+      // Wire dry-run broadcast (TSK-131): suppressed external writes (EffectExecutor VCS mutations,
+      // RightsEscalator DMs) fan out over this server's SSE hub to every connected dashboard, which
+      // console.logs them — the browser-observable proof no real write happened.
       setDryRunBroadcaster((entry) => sseHub.broadcastAll({ type: 'dryrun', ...entry }));
-      // #endregion END_WIRE_DRY_RUN_BROADCAST
     }
     // #endregion END_WIRE_CHAT
   }

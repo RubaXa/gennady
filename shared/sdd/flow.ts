@@ -27,9 +27,8 @@ export function detectFlowVersion(root: string): FlowVersion {
 
 /**
  * @purpose Detect the flow version of ONE scope — the mixed-state marker during migration.
- * @invariant On v2 repo every scope is v2. On v1 repo a scope is v2 only when POSITIVELY migrated:
- *   `tasks/<scope>/` gone AND `<scope>.3-tasks.md` exists (written by `sdd-migrate move`). A scope
- *   that never had tasks stays v1-lenient.
+ * @invariant v2 repo: every scope is v2. v1 repo: a scope is v2 only when `tasks/<scope>/` is
+ *   gone AND `<scope>.3-tasks.md` exists; untouched scopes stay v1-lenient.
  * @param repoRoot Absolute repo root (the directory holding `specs/` and `tasks/`).
  * @param scope Scope name (the first path segment under `specs/`).
  * @returns The scope's flow version.

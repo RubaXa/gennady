@@ -15,8 +15,9 @@ import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import type { ChatTurn, ContextChip, MutationProposal } from '../types.ts';
 import { makeTestTmpDir } from '../../inbox-core/test-support/test-tmp.ts';
 
-/** @purpose Node id OpenCodeMock derives from `format.schema.title`, matching ChatSession's resultSchema. */
-const CHAT_TURN_NODE_ID = 'chat_turn';
+// A chat turn no longer forces a json_schema (the answer is free prose), so OpenCodeMock keys the
+// seeded response off the prompt text's FIRST WORD (its no-format fallback in _extractNodeId), not a
+// schema title. Each test seeds by that first word and returns `{ text }` prose.
 
 // ── unified context ──
 
@@ -78,7 +79,7 @@ describe('ChatSession/ContextAssembler/ChatTranscript — type contract', () => 
 describe('ChatSession#ask', () => {
   it('Один ход за раз на sid', async () => {
     const { session, openCodeMock } = createSessionContext();
-    openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'first turn answer', mutations: [] });
+    openCodeMock.seed('question', { text: 'first turn answer' });
 
     const [first, second] = await Promise.all([
       session.ask({ text: 'question one', chips: [] }),
@@ -94,7 +95,7 @@ describe('ChatSession#ask', () => {
 
   it('Stop сохраняет частичный текст', async () => {
     const { session, openCodeMock } = createSessionContext();
-    openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'one two three four five', mutations: [] });
+    openCodeMock.seed('stop', { text: 'one two three four five' });
     const firstTokenReceived = new Promise<void>((resolve) => {
       session.onToken(() => resolve());
     });
@@ -116,7 +117,7 @@ describe('ChatSession#ask', () => {
 
   it('Tool-registry без vcs-* write', async () => {
     const { session, pool, openCodeMock } = createSessionContext();
-    openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'ok', mutations: [] });
+    openCodeMock.seed('hi', { text: 'ok' });
     const createSpy = mock.method(pool, 'create');
     const promptSpy = mock.method(pool, 'prompt');
 
@@ -125,7 +126,7 @@ describe('ChatSession#ask', () => {
     const createArgs = createSpy.mock.calls[0]?.arguments[0] as Record<string, unknown>;
     const promptArgs = promptSpy.mock.calls[0]?.arguments[1] as Record<string, unknown>;
     assert.deepStrictEqual(Object.keys(createArgs).sort(), ['directory', 'title']);
-    assert.deepStrictEqual(Object.keys(promptArgs).sort(), ['format', 'system', 'text']);
+    assert.deepStrictEqual(Object.keys(promptArgs).sort(), ['system', 'text']);
   });
 });
 

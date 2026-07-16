@@ -33,6 +33,8 @@ export class OpenCodeMock extends OpenCodePort {
   protected _sessions: Map<string, SessionHandle>;
   /** @purpose Map of sid → tools flag from createSession — gates whether toolCalls() reports telemetry */
   protected _sessionTools: Map<string, boolean>;
+  /** @purpose Map of sid → last model seen (createSession default or per-prompt override), for per-phase-model tests to assert which model a node requested */
+  protected _sessionModels: Map<string, string>;
   /** @purpose Map of sid → nodeId of the last prompt sent on that session, for toolCalls() correlation */
   protected _sessionLastNode: Map<string, string>;
   /** @purpose Counter for unique session id generation */
@@ -48,6 +50,7 @@ export class OpenCodeMock extends OpenCodePort {
     this._toolCalls = new Map();
     this._sessions = new Map();
     this._sessionTools = new Map();
+    this._sessionModels = new Map();
     this._sessionLastNode = new Map();
     this._sidCounter = 0;
   }
@@ -102,8 +105,21 @@ export class OpenCodeMock extends OpenCodePort {
     };
     this._sessions.set(sid, handle);
     this._sessionTools.set(sid, opts.tools ?? false);
+    if (opts.model) {
+      this._sessionModels.set(sid, opts.model);
+    }
     logger.debug(`[OpenCodeMock#createSession] [idle → created] ${sid} "${opts.title}"`);
     return handle;
+  }
+
+  /**
+   * @purpose Read back the model recorded for a session — createSession default, or the most
+   *   recent per-prompt override (TSK-perf per-phase model selection tests).
+   * @param sid Session identifier.
+   * @returns The last model string seen for this session, or undefined.
+   */
+  getSessionModel(sid: string): string | undefined {
+    return this._sessionModels.get(sid);
   }
 
   /**
@@ -173,6 +189,9 @@ export class OpenCodeMock extends OpenCodePort {
     // #region START_RESOLVE_SEEDED_DATA — check error seeding first, then response seeding, then fallback
     const nodeId = this._extractNodeId(opts);
     this._sessionLastNode.set(sid, nodeId);
+    if (opts.model) {
+      this._sessionModels.set(sid, opts.model);
+    }
 
     // Priority 1: forced error per seedError()
     const errorClass = this._errors.get(nodeId);

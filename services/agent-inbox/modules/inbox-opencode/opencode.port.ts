@@ -27,6 +27,12 @@ export type CreateSessionOpts = {
   directory: string;
   /** @purpose Enable code-navigation tools (read/grep/git) bound to directory | @invariant Absent/false → no tool access; agent write stays confined to its own artifact path regardless */
   tools?: boolean;
+  /**
+   * @purpose Default model for this session's turns, e.g. `llm-proxy/deepseek-v4-pro` |
+   *   @invariant Per-prompt `PromptOpts.model` overrides this default — the SDK has no
+   *   session-level model field, so adapters re-apply this as a fallback on every prompt() call.
+   */
+  model?: string;
 };
 
 /** @purpose A single tool invocation recorded during an agent turn — telemetry fact, not agent self-report. */
@@ -55,6 +61,13 @@ export type PromptOpts = {
   format?: OpenCodeFormat;
   /** @purpose Per-call timeout for the whole agent turn, in minutes (overrides adapter default) | @invariant Unit is minutes, not ms/s — an agent turn is multi-step and long-running */
   timeout?: number;
+  /**
+   * @purpose Per-phase model override for this one prompt call, e.g. `llm-proxy/deepseek-v4-pro` |
+   *   `llm-proxy/deepseek-v4-flash` — format is `providerID/modelID`.
+   * @invariant Absent → adapter omits the model field (falls back to `CreateSessionOpts.model`,
+   *   then the server's own configured default) — never silently forces a specific model.
+   */
+  model?: string;
 };
 
 /**

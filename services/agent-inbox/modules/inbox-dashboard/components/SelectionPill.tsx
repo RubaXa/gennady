@@ -8,13 +8,10 @@ import type { ContextChip, ContextChipKind, ContextChipOrigin } from '../../inbo
 import { resolveOrigin } from '../../inbox-chat/origin.ts';
 
 /**
- * @purpose Derive a chip's file:line origin from the live selection (D-115) via `resolveOrigin`
- *   against the active artifact's raw source — a real quote→offset→line-number computation, not a
- *   DOM marker walk (no rendered artifact in this codebase carries `data-line`/`data-artifact`
- *   markers, so that path never resolved; TSK-132 P1 replaces it).
- * @invariant Degrades to `{ artifact, startLine: 1, endLine: 1 }` when there is no active artifact
- *   (`activeArtifact` null — e.g. selection made outside ArtifactBrowser) or the quote cannot be
- *   located inside its raw text — selection-to-context must never crash the panel.
+ * @purpose Derive a chip's file:line origin from the selection (D-115) via `resolveOrigin`: real
+ *   quote→offset→line, replacing the DOM marker walk no artifact carried (TSK-132 P1).
+ * @invariant Degrades to `{ artifact, startLine: 1, endLine: 1 }` with no active artifact or
+ *   unresolvable quote — selection-to-context must never crash the panel.
  * @param text Selected text (already trimmed by the caller).
  * @param activeArtifact Name + raw text of the artifact currently rendered by ArtifactBrowser, or
  *   `null` when none is active.
@@ -42,10 +39,8 @@ type PillPosition = { top: number; left: number };
  * (`Mod+.`) for operators who select via keyboard, not mouse (NFC-CH-a11y).
  * @invariant Native copy/other mouseup behavior is left untouched — this only observes selection,
  * it never calls `preventDefault()` on mouseup.
- * @param props Callback invoked with a `ContextChip` when the operator attaches the selection; the
- *   composer is expected to gain focus after `onAttach` (CH-01). `activeArtifact` is the name + raw
- *   text of whatever ArtifactBrowser currently renders (D-115, TSK-132) — `null` when none is
- *   active, in which case origin degrades to the route-based `{1,1}` sentinel.
+ * @param props `onAttach` fires with a `ContextChip`, then composer gains focus (CH-01);
+ *   `activeArtifact` is ArtifactBrowser's current name+rawText (D-115, TSK-132), null → `{1,1}` sentinel.
  */
 export function SelectionPill(props: {
   onAttach: (chip: ContextChip) => void;

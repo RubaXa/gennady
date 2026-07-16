@@ -209,9 +209,8 @@ function materializeSynthesisReadme(ctx: NodeContext): void {
 }
 
 /**
- * @purpose Classify a finding's severity from its prose — drives the candidate chip colour and the
- *   AI-13 approve gate (an `error` finding blocks Approve). Conservative: only explicit
- *   blocker/critical/high wording escalates to `error`; medium/warn → `warn`; else `info`.
+ * @purpose Classify a finding's severity from its prose — drives chip colour and the AI-13 approve
+ *   gate; blocker/critical/high → `error`, medium/warn → `warn`, else `info`.
  * @param body Finding/candidate message text.
  * @returns One of `error` | `warn` | `info`.
  */
@@ -242,14 +241,12 @@ function _readCurrentRevision(dir: string): number {
 }
 
 /**
- * @purpose Persist the review as STRUCTURED data (`review.json`) next to README.md, so the dashboard's
- *   candidates panel/action bundle renders the real findings (file:line + severity + message) and the
- *   operator can select/post them — the README prose alone is not machine-addressable.
- * @invariant Only concrete per-line candidates (a `file` position) become findings; the one general
- *   cross-cutting summary action (no position) is left to the README prose, not the post list.
+ * @purpose Persist the review as STRUCTURED data (`review.json`) next to README.md, so the
+ *   dashboard's candidates panel renders real findings and the operator can select/post them.
+ * @invariant Only concrete per-line candidates (with a `file` position) become findings; the
+ *   general cross-cutting summary (no position) stays in README prose, not the post list.
  * @invariant Each finding carries a stable `id` (`F-<1-based index>`) so `MutationApplier` (TSK-127)
- *   can target one deterministically; `revision` increments monotonically across materializations
- *   (D-99) — a re-review after a chat mutation invalidates any turn's CAS input, by design.
+ *   targets it; `revision` increments monotonically (D-99), so a re-review invalidates prior CAS input.
  * @param ctx Node context at a synthesis gate.
  * @sideEffect FS: writes `<reports>/<mr>/review.json` = `{ verdict, findings[], revision }`.
  */
@@ -367,79 +364,89 @@ const reviewerGraph: RoleGraph = {
     },
 
     // ─── review_needed: review-fanout ──────────────────────────────────────────
+    // TSK-perf: track/security/code-review are independent (same worktree, disjoint artifact
+    // keys, converge only at gate_review_filled below) — run them concurrently instead of the
+    // former linear track→security→code chain. Each lens keeps its original id as its artifact
+    // key, so gate_review_filled/node_synthesize below are unchanged.
     {
-      kind: 'session',
-      id: 'node_track_review',
-      buildTaskText(ctx: NodeContext) {
-        const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
-        const trackList =
-          tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
-        return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Write findings with file:line addresses from the changeset.`;
-      },
-      dir(ctx: NodeContext) {
-        return `${ctx.workspace}/worktree`;
-      },
-      resultSchema: {
-        title: 'node_track_review',
-        type: 'object',
-        properties: {
-          findings: { type: 'array' },
-          tracksCovered: { type: 'array' },
+      kind: 'parallel',
+      id: 'node_review_fanout',
+      sessions: [
+        {
+          id: 'node_track_review',
+          buildTaskText(ctx: NodeContext) {
+            const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
+            const trackList =
+              tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
+            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Write findings with file:line addresses from the changeset.`;
+          },
+          dir(ctx: NodeContext) {
+            return `${ctx.workspace}/worktree`;
+          },
+          resultSchema: {
+            title: 'node_track_review',
+            type: 'object',
+            properties: {
+              findings: { type: 'array' },
+              tracksCovered: { type: 'array' },
+            },
+          },
+          policy: {
+            promptTimeout: 10,
+            continueMax: 3,
+            restartMax: 2,
+            tools: true,
+            model: 'llm-proxy/deepseek-v4-pro',
+          },
         },
-      },
-      policy: {
-        promptTimeout: 10,
-        continueMax: 3,
-        restartMax: 2,
-        tools: true,
-      },
-    },
-    {
-      kind: 'session',
-      id: 'node_security_lens',
-      buildTaskText(ctx: NodeContext) {
-        return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.`;
-      },
-      dir(ctx: NodeContext) {
-        return `${ctx.workspace}/worktree`;
-      },
-      resultSchema: {
-        title: 'node_security_lens',
-        type: 'object',
-        properties: {
-          findings: { type: 'array' },
+        {
+          id: 'node_security_lens',
+          buildTaskText(ctx: NodeContext) {
+            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.`;
+          },
+          dir(ctx: NodeContext) {
+            return `${ctx.workspace}/worktree`;
+          },
+          resultSchema: {
+            title: 'node_security_lens',
+            type: 'object',
+            properties: {
+              findings: { type: 'array' },
+            },
+          },
+          policy: {
+            promptTimeout: 10,
+            continueMax: 2,
+            restartMax: 2,
+            tools: true,
+            model: 'llm-proxy/deepseek-v4-pro',
+          },
         },
-      },
-      policy: {
-        promptTimeout: 10,
-        continueMax: 2,
-        restartMax: 2,
-        tools: true,
-      },
-    },
-    {
-      kind: 'session',
-      id: 'node_code_review',
-      buildTaskText(ctx: NodeContext) {
-        const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
-        return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).`;
-      },
-      dir(ctx: NodeContext) {
-        return `${ctx.workspace}/worktree`;
-      },
-      resultSchema: {
-        title: 'node_code_review',
-        type: 'object',
-        properties: {
-          findings: { type: 'array' },
+        {
+          id: 'node_code_review',
+          buildTaskText(ctx: NodeContext) {
+            const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
+            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).`;
+          },
+          dir(ctx: NodeContext) {
+            return `${ctx.workspace}/worktree`;
+          },
+          resultSchema: {
+            title: 'node_code_review',
+            type: 'object',
+            properties: {
+              findings: { type: 'array' },
+            },
+          },
+          policy: {
+            promptTimeout: 10,
+            continueMax: 2,
+            restartMax: 2,
+            tools: true,
+            model: 'llm-proxy/deepseek-v4-pro',
+          },
         },
-      },
-      policy: {
-        promptTimeout: 10,
-        continueMax: 2,
-        restartMax: 2,
-        tools: true,
-      },
+      ],
     },
     {
       kind: 'gate',
@@ -478,6 +485,8 @@ const reviewerGraph: RoleGraph = {
         continueMax: 3,
         restartMax: 2,
         tools: true,
+        // TSK-perf: triage is a fast scan (not a full review battery) — flash model.
+        model: 'llm-proxy/deepseek-v4-flash',
       },
     },
     {
@@ -551,6 +560,7 @@ const reviewerGraph: RoleGraph = {
         continueMax: 2,
         restartMax: 2,
         tools: true,
+        model: 'llm-proxy/deepseek-v4-pro',
       },
     },
     {
@@ -599,6 +609,7 @@ const reviewerGraph: RoleGraph = {
         continueMax: 2,
         restartMax: 2,
         tools: true,
+        model: 'llm-proxy/deepseek-v4-pro',
       },
     },
     {
@@ -650,15 +661,15 @@ const reviewerGraph: RoleGraph = {
     },
   ],
   edges: [
-    { from: 'node_prepare', to: 'node_track_review', on: 'review_needed' },
+    { from: 'node_prepare', to: 'node_review_fanout', on: 'review_needed' },
     { from: 'node_prepare', to: 'node_thread_triage', on: 'reply_needed' },
     { from: 'node_prepare', to: 'node_delta_review', on: 'update-review' },
 
-    { from: 'node_track_review', to: 'node_security_lens', on: 'ok' },
-    { from: 'node_security_lens', to: 'node_code_review', on: 'ok' },
-    { from: 'node_code_review', to: 'gate_review_filled', on: 'ok' },
+    // TSK-perf: track/security/code-review run concurrently inside node_review_fanout (kind:
+    // 'parallel') — see its definition above for why they're independent.
+    { from: 'node_review_fanout', to: 'gate_review_filled', on: 'ok' },
     { from: 'gate_review_filled', to: 'node_synthesize', on: 'pass' },
-    { from: 'gate_review_filled', to: 'node_code_review', on: 'fail' },
+    { from: 'gate_review_filled', to: 'node_review_fanout', on: 'fail' },
     { from: 'node_synthesize', to: 'gate_review_synthesis', on: 'ok' },
     { from: 'gate_review_synthesis', to: 'node_ask', on: 'pass' },
     { from: 'gate_review_synthesis', to: 'node_synthesize', on: 'fail' },

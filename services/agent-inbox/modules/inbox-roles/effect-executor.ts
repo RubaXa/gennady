@@ -443,9 +443,8 @@ export class EffectExecutor {
   // ─── Dry-run description ────────────────────────────────────────────────────────
 
   /**
-   * @purpose Human-readable summary of the write an action WOULD perform — the `<body>` half of a
-   *   `DRY-RUN post→MR <ref>: <body>` journal line (TSK-131). Mirrors `_apply`'s dispatch so the
-   *   suppressed line names exactly what the real call would have posted.
+   * @purpose Human-readable summary of the write an action would perform — the `<body>` half of a
+   *   `DRY-RUN post→MR <ref>: <body>` line (TSK-131), mirroring `_apply`'s dispatch.
    * @param action Proposed action being suppressed under dry-run.
    * @returns One-line description of the intended mutation.
    */
@@ -460,7 +459,8 @@ export class EffectExecutor {
       case 'resolve':
         return `${action.resolve ? 'resolve' : 'reopen'} discussion ${action.discussionId}`;
       case 'reply': {
-        if (action.delete) return `delete note ${action.noteId ?? action.discussionId ?? ''}`.trim();
+        if (action.delete)
+          return `delete note ${action.noteId ?? action.discussionId ?? ''}`.trim();
         const where = action.discussionId ? `reply in ${action.discussionId}` : 'new discussion';
         const body = (action.body ?? action.suggestion ?? '').replace(/\s+/g, ' ').trim();
         return `${where}: ${body}`;

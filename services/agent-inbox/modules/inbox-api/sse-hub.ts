@@ -98,7 +98,7 @@ export class SseHub {
 
   /**
    * @purpose Broadcast one frame to EVERY subscriber across all MR channels — used for process-wide
-   * diagnostics (the dry-run journal, TSK-131) that are not scoped to a single MR's channel.
+   * diagnostics (dry-run journal, TSK-131) not scoped to one MR's channel.
    * @param frame Discriminated SSE frame to encode and send to every open connection.
    * @sideEffect Writes to every open connection in the registry; closed sockets are skipped silently.
    */

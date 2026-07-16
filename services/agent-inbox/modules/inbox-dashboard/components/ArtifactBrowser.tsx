@@ -21,12 +21,8 @@ function pickDefaultArtifact(artifacts: ArtifactRef[]): ArtifactRef | undefined 
 /**
  * @purpose Artifact browser: left-hand nav list over GET /api/mr/:id/artifacts, right-hand render
  *   of the selected artifact via ArtifactView.
- * @param props MR identifier for scoping API calls, plus an optional `refreshToken` — bumping it
- *   (e.g. on an SSE `refresh` frame relayed by the parent) forces a re-fetch of both the artifact
- *   list and the currently open artifact's content (TSK-133). `onActiveArtifactChange` — optional
- *   callback fired whenever the rendered artifact's identity/content changes, so a parent (e.g.
- *   MrDetailPage) can thread `{name, rawText}` into `SelectionPill` for real file:line origin
- *   resolution (D-115).
+ * @param props MR id for API scoping; `refreshToken` bump re-fetches list + content (TSK-133);
+ *   `onActiveArtifactChange` feeds `{name, rawText}` to `SelectionPill` for origin resolution (D-115).
  */
 export function ArtifactBrowser(props: {
   mrId: string;

@@ -59,8 +59,8 @@ beforeEach(() => {
 });
 
 describe('ReviewerRole — graph structure', () => {
-  it('reviewer.role.ts имеет 15 узлов (prepare + 3 ветки + shared synthesize/ask/effect)', () => {
-    assert.strictEqual(ReviewerRole.graph.nodes.length, 15);
+  it('reviewer.role.ts имеет 13 узлов (prepare + review_needed fanout(1)+gate + reply_needed(2) + update-review(4) + shared synthesize/gate/ask/effect)', () => {
+    assert.strictEqual(ReviewerRole.graph.nodes.length, 13);
   });
 
   it('reviewer.role.ts имеет правильное имя и описание', () => {
@@ -80,7 +80,7 @@ describe('ReviewerRole — graph structure', () => {
     engine.register(ReviewerRole);
     const def = engine.retrieve('reviewer');
     assert.ok(def);
-    assert.strictEqual(def.graph.nodes.length, 15);
+    assert.strictEqual(def.graph.nodes.length, 13);
     assert.ok(def.graph.edges.length > 0);
   });
 });
@@ -113,15 +113,9 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
     assert.strictEqual(instance.currentNode, 'node_prepare');
 
     await instance.step(); // node_prepare → review_needed (default branch)
-    assert.strictEqual(instance.currentNode, 'node_track_review');
+    assert.strictEqual(instance.currentNode, 'node_review_fanout');
 
-    await instance.step(); // node_track_review → ok
-    assert.strictEqual(instance.currentNode, 'node_security_lens');
-
-    await instance.step(); // node_security_lens → ok
-    assert.strictEqual(instance.currentNode, 'node_code_review');
-
-    await instance.step(); // node_code_review → ok
+    await instance.step(); // node_review_fanout → all 3 lenses run concurrently → ok
     assert.strictEqual(instance.currentNode, 'gate_review_filled');
 
     await instance.step(); // gate_review_filled → pass (all 3 filled)

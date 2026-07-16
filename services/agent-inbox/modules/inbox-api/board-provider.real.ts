@@ -237,7 +237,13 @@ export class BoardProviderReal extends BoardProviderPort {
     mrId: string,
     _action: { questionId: string; choice: string; payload?: unknown }
   ): { ok: boolean } {
-    const instance = this._scheduler.findInstance(mrId);
+    // The dashboard routes on `#/mr/<project>!<iid>` and passes that short composite key here, but
+    // scheduler instances are keyed by full MR webUrl (assignManual/tick both key on webUrl). Resolve
+    // dual-key the same way getReport does — via _resolveInstance's snapshot — then fetch the real
+    // RoleInstance by its own webUrl. A raw findInstance(mrId) would never match "project!iid" and
+    // every Approve/Post/Skip/Дослать would 404 even while the instance is genuinely awaiting_operator.
+    const snap = this._resolveInstance(mrId);
+    const instance = snap ? this._scheduler.findInstance(snap.mr) : null;
     if (!instance || instance.state !== 'awaiting_operator') {
       return { ok: false };
     }
@@ -274,7 +280,7 @@ export class BoardProviderReal extends BoardProviderPort {
         updatedAt: '',
         draft: false,
         state: 'opened',
-        role: undefined,
+        role: null,
         events: [],
         directlyAddressed: false,
         todoIds: [],
@@ -315,11 +321,9 @@ export class BoardProviderReal extends BoardProviderPort {
 
   /**
    * @purpose Read the structured review (`review.json`) the reviewer pipeline persisted under
-   *   `reports/<mr>/` — the machine-addressable findings the candidates panel renders when no live
-   *   in-memory instance is driving.
-   * @invariant `revision` defaults to `0` for a `review.json` without the field yet — matches
-   *   `ContextAssembler#_readReviewRevision`'s default so a reconnecting chat client and a fresh
-   *   `GET report` agree on the same CAS baseline (D-99).
+   *   `reports/<mr>/` — findings the candidates panel renders with no live instance.
+   * @invariant `revision` defaults to `0` when `review.json` lacks the field — matches
+   *   `ContextAssembler#_readReviewRevision`'s default so client and `GET report` agree on CAS baseline (D-99).
    * @param ref MR `project!iid` composite key (the `mrReportsDir` encoding input).
    * @returns `{ findings, verdict, revision }` or null when absent/unreadable.
    */

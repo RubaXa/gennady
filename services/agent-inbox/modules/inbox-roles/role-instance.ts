@@ -18,9 +18,12 @@ import type {
   GateNode,
   AskNode,
   EffectNode,
+  ParallelNode,
+  ParallelSessionSpec,
 } from './role-node.ts';
 import type { VcsInboxPort, MrContext } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort, PromptOpts } from '../inbox-opencode/opencode.port.ts';
+import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { OpenCodeCallResult } from '../inbox-opencode/errors.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
@@ -28,6 +31,7 @@ import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
+import { recordPhaseTiming } from './phase-telemetry.ts';
 
 /**
  * @purpose Options for creating a RoleInstance.
@@ -56,6 +60,13 @@ export type RoleInstanceOpts = {
   checkpoint?: RoleInstanceCheckpoint;
   /** @purpose Forward to EffectExecutor at effect nodes (TSK-121 P2) | @invariant Default false — dry-run is opt-in, never a silent default */
   dryRun?: boolean;
+  /**
+   * @purpose Bounded pool for `ParallelNode` lens sessions (TSK-perf) — each lens gets its own
+   *   session from this pool instead of sharing the instance's single `_sessionId`.
+   * @invariant Optional: absent → `_executeParallel` falls back to `this._opencode` directly
+   *   (unbounded concurrency, still correct, no shared cap). Production bootstrap wires a real pool (`maxSessions: 3`).
+   */
+  reviewSessionPool?: SessionPool;
 };
 
 /**
@@ -76,8 +87,8 @@ export type RoleInstanceCheckpoint = {
 };
 
 /**
- * @purpose Render a compact JSON example for one schema property, by type — the shape hint the model
- *   needs to close its turn with parseable JSON (not a full JSON-Schema serialization).
+ * @purpose Render a compact JSON example for one schema property, by type — a shape hint so the
+ *   model closes its turn with parseable JSON.
  * @param prop A `resultSchema.properties[k]` descriptor (`{ type }`).
  * @returns A one-token example value (`[]`, `{}`, `"..."`, `0`, `false`, `null`).
  */
@@ -101,11 +112,10 @@ function _exampleForProp(prop: unknown): string {
 }
 
 /**
- * @purpose Build the output-contract suffix appended to a session node's task text — turns the node's
- *   `resultSchema` into an explicit "end your turn with exactly this JSON" instruction.
- * @invariant Appended to the TASK TEXT, never the system directive (schema-in-system made the model
- *   hang). Shape hint only, from `properties` — the item shape of each array is carried by the node's
- *   own task text (e.g. "findings with file:line addresses").
+ * @purpose Build the output-contract suffix appended to a node's task text — turns `resultSchema`
+ *   into an explicit "end your turn with this JSON" instruction.
+ * @invariant Appended to TASK TEXT, never the system directive (schema-in-system made the model
+ *   hang) — item shape only, carried by the node's task text.
  * @param schema The node's `resultSchema`.
  * @returns Markdown suffix instructing the final-message JSON shape.
  */
@@ -165,6 +175,8 @@ export class RoleInstance {
   protected _answer: string | null;
   /** @purpose Forwarded to EffectExecutor at effect nodes (TSK-121 P2) */
   protected _dryRun: boolean;
+  /** @purpose Bounded pool for ParallelNode lens sessions (TSK-perf) — undefined falls back to `this._opencode` directly */
+  protected _reviewSessionPool?: SessionPool;
 
   /**
    * @purpose Create a new role instance.
@@ -191,6 +203,7 @@ export class RoleInstance {
     this._askNodeId = null;
     this._answer = null;
     this._dryRun = opts.dryRun ?? false;
+    this._reviewSessionPool = opts.reviewSessionPool;
   }
 
   /**
@@ -263,6 +276,9 @@ export class RoleInstance {
           break;
         case 'session':
           await this._executeSession(node, ctx);
+          break;
+        case 'parallel':
+          await this._executeParallel(node, ctx);
           break;
         case 'gate':
           await this._executeGate(node, ctx);
@@ -461,10 +477,26 @@ export class RoleInstance {
   protected async _executeSession(node: SessionNode, ctx: NodeContext): Promise<void> {
     this.state = 'running';
 
-    // #region START_SESSION_CALL — invariant: system instruction always comes from services/ai-kit
-    // (buildNodePrompt); the node only contributes the concrete task text (buildTaskText)
+    // TSK-perf telemetry: one PhaseTelemetry entry per executed session node (see phase-telemetry.ts).
+    // `retries` captures the ladder counters as they stood entering this call — reset to 0 below on OK.
+    const _telemetryStart = performance.now();
+    const _telemetryRetries = this.continueCount + this.restartCount;
+    const _telemetryModel = node.policy?.model ?? 'default';
+
+    // System instruction always comes from services/ai-kit (buildNodePrompt); the node only
+    // contributes the concrete task text (buildTaskText). Worktree directory prefers the real
+    // checked-out worktree (context-builder.ts) over node.dir(ctx)'s never-materialized default.
+    // Review/analysis nodes set policy.tools=true so the agent can read the checked-out worktree
+    // (read/grep/git) — without it OpenCodeReal disables tools and the turn narrates as text
+    // instead of yielding final JSON. Per-phase model (TSK-perf): absent policy.model lets the
+    // adapter fall back to the server's configured default. An unmapped node id (no directive
+    // registered in ai-kit's NODE_DIRECTIVE_MAP) degrades to an empty system instruction rather
+    // than failing the session. The system directive carries the review METHOD; the schema is
+    // appended to the task text instead (schema-in-system made the model hang), so the turn's
+    // final message is parseable JSON — otherwise the agent ends on prose and retries until it
+    // escalates to the operator.
+    // #region START_SESSION_CALL
     const taskText = node.buildTaskText(ctx);
-    // Real checked-out worktree (context-builder.ts) over node.dir(ctx)'s never-materialized default — session cwd must exist on disk.
     const worktreePath = ctx.artifacts.worktreePath;
     const directory = typeof worktreePath === 'string' ? worktreePath : node.dir(ctx);
 
@@ -472,17 +504,12 @@ export class RoleInstance {
       const handle = await this._opencode.createSession({
         title: node.id,
         directory,
-        // Review/analysis session nodes declare policy.tools=true so the agent can actually read the
-        // checked-out worktree (read/grep/git). Without it OpenCodeReal sends `tools:{'*':false}`, the
-        // model narrates its intended tool calls as text, and the turn never yields the final
-        // structured result (`[no JSON in response]`).
         tools: node.policy?.tools === true,
+        model: node.policy?.model,
       });
       this._sessionId = handle.sid;
     }
 
-    // Unmapped node id (no directives registered in ai-kit's NODE_DIRECTIVE_MAP) degrades to an
-    // empty system instruction rather than failing the session — the task text still carries intent.
     let system: string;
     try {
       system = await buildNodePrompt(node.id, ctx);
@@ -496,11 +523,6 @@ export class RoleInstance {
 
     const promptOpts: PromptOpts = {
       system,
-      // The system directive carries the review METHOD; the schema is never injected there (a 48KB
-      // directive + schema made the model hang). Instead append a compact output contract to the
-      // task text so, after tool-driven investigation, the turn's FINAL message is the parseable JSON
-      // OpenCodeReal extracts — otherwise the agent ends on prose and the node retries until it
-      // escalates to the operator (the awaiting_operator-without-synthesis failure mode).
       text: node.resultSchema ? `${taskText}${_outputContract(node.resultSchema)}` : taskText,
     };
 
@@ -515,11 +537,27 @@ export class RoleInstance {
       promptOpts.timeout = node.policy.promptTimeout;
     }
 
+    if (node.policy?.model) {
+      promptOpts.model = node.policy.model;
+    }
+
     const result: OpenCodeCallResult = await this._opencode.prompt(this._sessionId, promptOpts);
     // #endregion END_SESSION_CALL
 
     const outcome = this._classifier.classify(result);
     const remediation = this._classifier.remediate(outcome);
+
+    await recordPhaseTiming(this._store.getStateDir(), {
+      ts: new Date().toISOString(),
+      mr: this.mr,
+      role: this.role,
+      node: node.id,
+      model: _telemetryModel,
+      durationMs: performance.now() - _telemetryStart,
+      ok: outcome.class === 'OK',
+      error: outcome.class === 'OK' ? undefined : outcome.signal,
+      retries: _telemetryRetries,
+    });
 
     await this._appendAudit('classified', `Session node "${node.id}" outcome: ${outcome.class}`);
 
@@ -547,6 +585,204 @@ export class RoleInstance {
     } else {
       // Recovery ladder
       await this._applyRecovery(node, remediation, outcome);
+    }
+  }
+
+  /**
+   * @purpose Execute a ParallelNode's lens-sessions concurrently (TSK-perf), cutting wall-clock
+   *   time vs. a linear chain — each lens gets a session since `_sessionId` backs one turn.
+   * @invariant Every lens's output lands in `ctx.artifacts[spec.id]`, same keys the lenses used as
+   *   standalone SessionNodes — downstream gates and synthesize nodes need no changes.
+   * @invariant On any lens exhausting its recovery ladder (continueMax/restartMax), the WHOLE node
+   *   escalates to `awaiting_operator` — mirrors `_applyRecovery`'s `await_operator` branch, evaluated per-lens.
+   * @param node Parallel node with the lens specs to run.
+   * @param ctx Node context with MR data and artifacts.
+   * @returns Promise that resolves once all lenses settle and the graph transitions (or escalates).
+   */
+  protected async _executeParallel(node: ParallelNode, ctx: NodeContext): Promise<void> {
+    this.state = 'running';
+
+    const results = await Promise.all(
+      node.sessions.map((spec) => this._runLensSession(spec, ctx, node.id))
+    );
+
+    const escalated = results.find((r) => r.escalate);
+    if (escalated) {
+      this.state = 'awaiting_operator';
+      await this._appendAudit(
+        'escalated',
+        `Parallel node "${node.id}" — lens "${escalated.id}" exhausted recovery`
+      );
+      return;
+    }
+
+    for (const r of results) {
+      this._artifacts[r.id] = r.output;
+    }
+
+    await this._appendAudit(
+      'classified',
+      `Parallel node "${node.id}" — ${results.length} lenses OK`
+    );
+
+    const edge = this._resolveEdge(node.id, 'ok');
+    if (edge) {
+      this.currentNode = edge.to;
+      this.state = edge.to === 'done' ? 'done' : 'idle';
+    }
+  }
+
+  /**
+   * @purpose Run ONE lens-session to completion with its own local recovery ladder
+   *   (`spec.policy`) — independent of the instance's shared `continueCount`/`restartCount`,
+   *   meaningless across N concurrent lenses.
+   * @invariant Session sourcing: `this._reviewSessionPool` when wired bounds concurrency via its
+   *   FIFO queue; falls back to `this._opencode` directly when absent (still correct, unbounded).
+   * @param spec Lens session spec — task text, working directory, schema, retry policy.
+   * @param ctx Node context with MR data and artifacts.
+   * @param parallelGroupId Fan-out node id (`ParallelNode.id`) this lens belongs to — recorded on
+   *   each PhaseTelemetry entry so per-lens timings group back to their parent.
+   * @returns `{ id, output }` on success, or `{ id, escalate: true }` once the ladder is exhausted.
+   */
+  protected async _runLensSession(
+    spec: ParallelSessionSpec,
+    ctx: NodeContext,
+    parallelGroupId: string
+  ): Promise<{ id: string; output?: unknown; escalate: boolean }> {
+    const worktreePath = ctx.artifacts.worktreePath;
+    const directory = typeof worktreePath === 'string' ? worktreePath : spec.dir(ctx);
+    const taskText = spec.buildTaskText(ctx);
+
+    // TSK-perf telemetry (phase-timings.jsonl) — one entry per lens, recorded at every exit point below.
+    const _telemetryStart = performance.now();
+    const _telemetryModel = spec.policy?.model ?? 'default';
+    let _telemetryLastError: string | undefined;
+    const _recordLensTiming = async (
+      result: { id: string; output?: unknown; escalate: boolean },
+      continueCount: number,
+      restartCount: number
+    ): Promise<{ id: string; output?: unknown; escalate: boolean }> => {
+      await recordPhaseTiming(this._store.getStateDir(), {
+        ts: new Date().toISOString(),
+        mr: this.mr,
+        role: this.role,
+        node: spec.id,
+        model: _telemetryModel,
+        durationMs: performance.now() - _telemetryStart,
+        ok: !result.escalate,
+        error: result.escalate ? _telemetryLastError : undefined,
+        retries: continueCount + restartCount,
+        parallelGroup: parallelGroupId,
+      });
+      return result;
+    };
+
+    let system: string;
+    try {
+      system = await buildNodePrompt(spec.id, ctx);
+    } catch {
+      system = '';
+    }
+
+    const createOpts = {
+      title: spec.id,
+      directory,
+      tools: spec.policy?.tools === true,
+      // Per-phase model (TSK-perf) — absent → adapter omits the field, server default applies.
+      model: spec.policy?.model,
+    };
+
+    const createSession = async (): Promise<string> => {
+      if (this._reviewSessionPool) {
+        return this._reviewSessionPool.create(createOpts);
+      }
+      const handle = await this._opencode.createSession(createOpts);
+      return handle.sid;
+    };
+
+    const closeSession = async (sid: string): Promise<void> => {
+      if (this._reviewSessionPool) {
+        await this._reviewSessionPool.release(sid);
+      } else {
+        await this._opencode.close(sid);
+      }
+    };
+
+    let sid = await createSession();
+
+    const promptOpts: PromptOpts = {
+      system,
+      text: spec.resultSchema ? `${taskText}${_outputContract(spec.resultSchema)}` : taskText,
+    };
+    if (spec.resultSchema) {
+      promptOpts.format = { type: 'json_schema', schema: spec.resultSchema };
+    }
+    if (spec.policy?.promptTimeout) {
+      promptOpts.timeout = spec.policy.promptTimeout;
+    }
+    if (spec.policy?.model) {
+      promptOpts.model = spec.policy.model;
+    }
+
+    const max = spec.policy;
+    let continueCount = 0;
+    let restartCount = 0;
+
+    for (;;) {
+      const result = this._reviewSessionPool
+        ? await this._reviewSessionPool.prompt(sid, promptOpts)
+        : await this._opencode.prompt(sid, promptOpts);
+
+      const outcome = this._classifier.classify(result);
+
+      if (outcome.class === 'OK') {
+        await closeSession(sid);
+        return _recordLensTiming(
+          { id: spec.id, output: outcome.output, escalate: false },
+          continueCount,
+          restartCount
+        );
+      }
+
+      _telemetryLastError = outcome.signal;
+      const remediation = this._classifier.remediate(outcome);
+
+      if (remediation.action === 'continue') {
+        continueCount++;
+        if (continueCount > max.continueMax) {
+          continueCount = 0;
+          restartCount++;
+          if (restartCount > max.restartMax) {
+            await closeSession(sid);
+            return _recordLensTiming({ id: spec.id, escalate: true }, continueCount, restartCount);
+          }
+          await closeSession(sid);
+          sid = await createSession();
+          continue;
+        }
+        // continueSignal has no SessionPool-level equivalent — it targets an EXISTING session,
+        // never creates one, so it does not affect the pool's slot accounting.
+        await this._opencode.continueSignal(sid, {
+          text: remediation.signal ?? 'Retry with the same prompt',
+          model: spec.policy?.model,
+        });
+        continue;
+      }
+
+      if (remediation.action === 'restart') {
+        restartCount++;
+        if (restartCount > max.restartMax) {
+          await closeSession(sid);
+          return _recordLensTiming({ id: spec.id, escalate: true }, continueCount, restartCount);
+        }
+        await closeSession(sid);
+        sid = await createSession();
+        continue;
+      }
+
+      // 'await_operator' (or the unreachable 'proceed' on a non-OK outcome) — no local recovery left.
+      await closeSession(sid);
+      return _recordLensTiming({ id: spec.id, escalate: true }, continueCount, restartCount);
     }
   }
 
@@ -749,6 +985,7 @@ export class RoleInstance {
             const signal = remediation.signal ?? 'Retry with the same prompt';
             await this._opencode.continueSignal(this._sessionId, {
               text: signal,
+              model: node.policy?.model,
             });
           }
           await this._appendAudit(

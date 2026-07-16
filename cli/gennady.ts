@@ -68,6 +68,8 @@ if (restArgs.some((a) => helpFlags.has(a))) {
         await import('./cmd/inbox/config-help.ts').then((m) => m.printHelp());
       } else if (process.argv[3] === 'serve') {
         await import('./cmd/inbox/serve/help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'stats') {
+        await import('./cmd/inbox/stats-help.ts').then((m) => m.printHelp());
       } else {
         await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
       }
@@ -254,6 +256,8 @@ switch (command) {
       await import('./cmd/inbox/config-index.ts');
     } else if (process.argv[3] === 'serve') {
       await import('./cmd/inbox/serve.cmd.ts');
+    } else if (process.argv[3] === 'stats') {
+      await import('./cmd/inbox/stats-index.ts');
     } else {
       await import('./cmd/inbox/index.ts');
     }

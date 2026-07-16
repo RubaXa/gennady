@@ -15,17 +15,13 @@ import { ViewSwitch, type MrDetailView } from './ViewSwitch.tsx';
 import type { ContextChip } from '../../inbox-chat/types.ts';
 import type { MrDetail } from '../../inbox-api/types.ts';
 
-/** @purpose Viewport width below which the permanent ActionPanel/ChatPanel split collapses into a
- *   ViewSwitch + single pane — matches the existing responsive Kanban breakpoint (NFC-SV-03), no
- *   new threshold invented (D-106). */
+/** @purpose Viewport width below which the ActionPanel/ChatPanel split collapses into ViewSwitch +
+ *   single pane — matches the Kanban breakpoint (NFC-SV-03), no new threshold invented (D-106). */
 const NARROW_VIEWPORT_QUERY = '(max-width: 1024px)';
 
 /**
- * @purpose Screen for `#/mr/:id` — replaces the old modal. Fetches the MR report on mount, renders
- *   ArtifactBrowser (left) and, on the right, a permanent ActionPanel↑/ChatPanel↓ split on wide
- *   viewport (D-87) or a ViewSwitch + single active pane on narrow viewport (D-106). Both panels
- *   stay mounted at all times — only hidden via CSS on narrow viewport — so ChatPanel's SSE
- *   subscription is never torn down by a view switch.
+ * @purpose Screen for `#/mr/:id`, replacing the old modal. Renders ArtifactBrowser + ActionPanel/ChatPanel:
+ *   permanent split (wide, D-87) or ViewSwitch (narrow, D-106); both stay mounted, SSE persists.
  * @param props MR identifier from the route.
  */
 export function MrDetailPage(props: { mrId: string }) {
@@ -85,9 +81,8 @@ export function MrDetailPage(props: { mrId: string }) {
   }, []);
 
   /**
-   * @purpose Handle an SSE `refresh` frame relayed by ChatPanel (D-133) — a mutation applied
-   *   elsewhere changed `review.json`/artifacts underneath; re-read the report and bump
-   *   ArtifactBrowser's refreshToken so its list/content re-fetch too.
+   * @purpose Handle ChatPanel's SSE `refresh` frame (D-133): a mutation elsewhere changed
+   *   `review.json`/artifacts; re-read the report and bump ArtifactBrowser's refreshToken to re-fetch.
    */
   const onChatRefresh = () => {
     setRefreshToken((prev) => prev + 1);
@@ -95,8 +90,8 @@ export function MrDetailPage(props: { mrId: string }) {
   };
 
   /**
-   * @purpose Attach a SelectionPill chip into the chat composer and, on narrow viewport, switch to
-   *   the chat pane so the operator sees where the chip landed (CH-01).
+   * @purpose Attach a SelectionPill chip to the chat composer; on narrow viewport, switch to chat
+   *   so the operator sees where it landed (CH-01).
    * @param chip Chip built from the current selection.
    */
   const onAttachChip = (chip: ContextChip) => {

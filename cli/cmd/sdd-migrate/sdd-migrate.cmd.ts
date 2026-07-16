@@ -50,8 +50,8 @@ function findV1Tickets(root: string): string[] {
 }
 
 /**
- * @purpose Execute the `plan` mode — generate the migration layer (one plan file per spec + README
- * tracker) or verify it (`--verify`: drift, coverage, slug collisions).
+ * @purpose Execute `plan` mode — generate the migration layer (one plan file per spec + README
+ * tracker) or verify it (drift, coverage, slug collisions).
  * @invariant Generation is a dry-run by default; only `--write` creates/overwrites plan files.
  * @invariant `--verify` never writes; findings → exit 1.
  * @param root Absolute repo root.
@@ -103,8 +103,8 @@ function runPlan(root: string, opts: { verify: boolean; write: boolean }): Migra
 }
 
 /**
- * @purpose Execute the `ids` mode — apply the approved Task-ID map (TSV file or derived from the
- * migration layer) across the zones, exact IDs on word boundaries only.
+ * @purpose Execute `ids` mode — apply the approved Task-ID map (TSV or derived from the migration
+ * layer) across zones, exact IDs on word boundaries only.
  * @invariant Dry-run by default; `--write` mutates and then gates on zero remaining old IDs.
  * @param root Absolute repo root.
  * @param opts map file path (or fromPlan) + write flag.
