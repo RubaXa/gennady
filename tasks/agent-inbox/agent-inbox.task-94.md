@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-94 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-context | **Dependencies:** TSK-91 (vcsHost из конфига)
+- **Task-ID:** TSK-94 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-context | **Dependencies:** TSK-91 (vcsHost из конфига)
 - **Purpose:** Переработка формата `inbox-context`. Дельта коммитов через `lastReviewedHeadSha` в реестре (промоут из `candidateHeadSha` при финализации).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-16, AI-24 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -109,3 +109,7 @@
 - [x] `<ts>` ver npm run format:check → pass exit=0
 - [x] `<ts>` DONE
       **Handoff →** artifacts: [cli/cmd/inbox-context/inbox-context-cmd.test.ts, cli/cmd/inbox/_core/logic/inbox-registry.test.ts]; decisions: [test-strategy=spawnSync+structural, promoteReviewedHead-tests=full-coverage, command-format-tests=source-inspection]; open: []
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE

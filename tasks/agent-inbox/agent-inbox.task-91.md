@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-91 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** TSK-90 (предоставляет `validateConfig()`, `loadConfig()`, `configPath()` из `inbox-config.logic.ts` и `state-paths.logic.ts`)
+- **Task-ID:** TSK-91 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** TSK-90 (предоставляет `validateConfig()`, `loadConfig()`, `configPath()` из `inbox-config.logic.ts` и `state-paths.logic.ts`)
 - **Purpose:** `inbox.cmd.ts` и `inbox-context.cmd.ts` проверяют конфиг перед основной работой. Если неполный → structured JSON `{"configured": false, "missing": [...]}` вместо ошибки. Флаги `--vcs-host`/`--repos-base` переопределяют конфиг (backward compat).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-20 | **Runtime:** not-implemented | **Verification:** unit + integration
 
@@ -78,3 +78,7 @@
 - [x] `2026-07-05T09:33:47Z` ver npm run test -- cli/cmd/inbox-context/inbox-context-cmd-config.test.ts → pass exit=0
 - [x] `2026-07-05T09:33:47Z` DONE
       **Handoff →** artifacts: [cli/cmd/inbox/_core/logic/inbox-cmd-config.test.ts, cli/cmd/inbox-context/inbox-context-cmd-config.test.ts]; decisions: [all-bdd-scenarios-covered, flag-override-tested-both-flags, text-mode-tested]; open: []
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE

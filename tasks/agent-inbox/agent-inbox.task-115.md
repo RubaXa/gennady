@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-115 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-serve (entry point) | **Dependencies:** TSK-106 (API), TSK-109 (core state), TSK-110 (VCS), TSK-111 (opencode), TSK-113 (roles)
+- **Task-ID:** TSK-115 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-serve (entry point) | **Dependencies:** TSK-106 (API), TSK-109 (core state), TSK-110 (VCS), TSK-111 (opencode), TSK-113 (roles)
 - **Purpose:** Собрать все модули в работающий `gennady inbox serve`: spawn opencode, DI-композиция, запуск сервера, graceful shutdown. Последний интеграционный шаг.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-01, SV-13, §5.1 | **Runtime:** not-implemented | **Verification:** integration
 
@@ -10,8 +10,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 ## 3. Phases
 

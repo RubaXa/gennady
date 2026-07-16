@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-97 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** vcs-draft-note | **Dependencies:** TSK-95 (AI-25 — `--url`); `vcs-draft-note` — существующая команда, меняем только cmd.ts
+- **Task-ID:** TSK-97 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** vcs-draft-note | **Dependencies:** TSK-95 (AI-25 — `--url`); `vcs-draft-note` — существующая команда, меняем только cmd.ts
 - **Purpose:** `vcs-draft-note --url <URL> --delete-all` удаляет все черновики. Ответ по контракту AI-22 при ошибках.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-27 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -68,6 +68,10 @@
 - [x] `2026-07-05T09:33:00Z` discovery npm run format:check → fail exit=1: 7 pre-existing style issues in non-target files (inbox config tests, 5 task markdowns); target file clean
 - [x] `2026-07-05T09:33:00Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts]; decisions: [mock-fetch-sequence=queue-based, delete-all-tests=5-BDD-scenarios]; open: [F1: npm run format:check fails project-wide (7 non-target files), F2: 7 pre-existing test failures in inbox config tests]
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE
 
 ## Audit Rounds
 

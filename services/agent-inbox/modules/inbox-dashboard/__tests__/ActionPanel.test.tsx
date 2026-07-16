@@ -46,6 +46,7 @@ function mockReport(overrides?: Partial<MrDetail> & { role?: 'reviewer' | 'autho
     ],
     verdict: 'request_changes',
     audit: [],
+    revision: 0,
     ...rest,
   };
 }

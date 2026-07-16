@@ -63,6 +63,7 @@
       | `CLOSED_WORLD_DRIFT` | entity present in code but absent from module spec Entity Inventory AND no `intro` log line |
       | `COMPLETENESS_GAP` | entity / contract / scenario promised in spec but not implemented |
       | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
+      | `E2E_SURFACE_VIOLATION` | a test declared e2e / system-level does not drive the product's real shippable entry point: it boots a dev-server / build proxy (e.g. vite) or a mock/custom server instead of the actual entry command; OR exercises internals via `curl`/manual process spawn instead of the real client surface (browser/HTTP client); OR asserts side-effects by reading logs via `tail`/`curl` rather than the on-disk artifacts the product itself writes. `BLOCKER` when the ticket promises e2e/system acceptance |
       | `RULES_COMPLIANCE_VIOLATION` | code violates rules listed in a phase's `Rules:` (any category); OR diff has artefact whose category is unhandled by any active phase |
       | `RULES_CASCADE_MISMATCH` | a phase's `Rules:` list ≠ what scaffolder would derive now from cascade × that phase's `Target Files` + kind |
       | `TASK_ID_DRIFT` | `@tasks` field references non-existent ticket ID (orphan); OR Task-ID duplicated across ticket files (collision); OR `@tasks` field lost prior IDs (regression of append-only) |

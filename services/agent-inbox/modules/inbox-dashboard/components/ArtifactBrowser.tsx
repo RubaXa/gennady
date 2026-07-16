@@ -1,6 +1,6 @@
 // @file: ArtifactBrowser — artifact navigation (REPORT/PLAN/tracks/HISTORY/coverage/tool-log) + selected-artifact render.
 // @consumers: MrDetailPage
-// @tasks: TSK-107
+// @tasks: TSK-107, TSK-133
 
 import { useState, useEffect } from 'react';
 import { FileText, Loader2, AlertTriangle } from 'lucide-react';
@@ -21,10 +21,19 @@ function pickDefaultArtifact(artifacts: ArtifactRef[]): ArtifactRef | undefined 
 /**
  * @purpose Artifact browser: left-hand nav list over GET /api/mr/:id/artifacts, right-hand render
  *   of the selected artifact via ArtifactView.
- * @param props MR identifier for scoping API calls.
+ * @param props MR identifier for scoping API calls, plus an optional `refreshToken` — bumping it
+ *   (e.g. on an SSE `refresh` frame relayed by the parent) forces a re-fetch of both the artifact
+ *   list and the currently open artifact's content (TSK-133). `onActiveArtifactChange` — optional
+ *   callback fired whenever the rendered artifact's identity/content changes, so a parent (e.g.
+ *   MrDetailPage) can thread `{name, rawText}` into `SelectionPill` for real file:line origin
+ *   resolution (D-115).
  */
-export function ArtifactBrowser(props: { mrId: string }) {
-  const { mrId } = props;
+export function ArtifactBrowser(props: {
+  mrId: string;
+  refreshToken?: number | string;
+  onActiveArtifactChange?: (artifact: { name: string; rawText: string } | null) => void;
+}) {
+  const { mrId, refreshToken, onActiveArtifactChange } = props;
   const [artifacts, setArtifacts] = useState<ArtifactRef[]>([]);
   const [selected, setSelected] = useState<ArtifactRef | null>(null);
   const [content, setContent] = useState<ArtifactContent | null>(null);
@@ -33,7 +42,9 @@ export function ArtifactBrowser(props: { mrId: string }) {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingContent, setLoadingContent] = useState(false);
 
-  // Load the artifact list once per MR, then auto-select REPORT.md (or the first entry).
+  // Load the artifact list once per MR, then auto-select REPORT.md (or the first entry). Also
+  // re-runs whenever `refreshToken` changes — the parent bumps it on an SSE `refresh` frame so a
+  // mutation applied elsewhere is reflected here without a full page reload (TSK-133).
   useEffect(() => {
     let cancelled = false;
     setLoadingList(true);
@@ -53,9 +64,10 @@ export function ArtifactBrowser(props: { mrId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [mrId]);
+  }, [mrId, refreshToken]);
 
-  // Fetch content whenever the selected artifact changes.
+  // Fetch content whenever the selected artifact changes, or `refreshToken` bumps (TSK-133) — a
+  // mutation may have changed the currently open artifact's content on disk.
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
@@ -74,7 +86,17 @@ export function ArtifactBrowser(props: { mrId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [mrId, selected]);
+  }, [mrId, selected, refreshToken]);
+
+  // Notify the parent of the currently rendered artifact's identity + raw text (D-115) — feeds
+  // SelectionPill's real file:line origin resolution. Fires `null` while nothing is selected/loaded.
+  useEffect(() => {
+    if (!selected || !content) {
+      onActiveArtifactChange?.(null);
+      return;
+    }
+    onActiveArtifactChange?.({ name: selected.name, rawText: content.content });
+  }, [selected, content, onActiveArtifactChange]);
 
   return (
     <div className="flex gap-3 min-h-0 flex-1">

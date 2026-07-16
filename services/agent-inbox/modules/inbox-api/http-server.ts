@@ -1,6 +1,6 @@
 // @file: HttpServer — node:http server on port 4174 with routing, CORS, static files, graceful shutdown.
 // @consumers: gennady inbox serve (CLI), e2e tests
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-133
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { logger } from '#logger';
@@ -8,9 +8,24 @@ import { BoardRouter } from './routers/board.router.ts';
 import { MrRouter } from './routers/mr.router.ts';
 import { ArtifactRouter } from './routers/artifact.router.ts';
 import { AuditRouter } from './routers/audit.router.ts';
+import { ChatRouter } from './routers/chat.router.ts';
+import { MutateRouter } from './routers/mutate.router.ts';
+import { SseHub } from './sse-hub.ts';
 import { StaticFiles } from './static-files.ts';
 import { setCorsHeaders, handlePreflight, sendJson } from './http-helpers.ts';
 import type { BoardProviderPort } from './board-provider.port.ts';
+import type { SessionPool } from '../inbox-opencode/session-pool.ts';
+import type { StateStore } from '../inbox-core/state-store.ts';
+import { MutationApplier } from '../inbox-chat/mutation-applier.ts';
+
+/** @purpose Dependencies backing the Review Chat bridge (`ChatRouter`/`MutateRouter`) — optional so
+ * callers without a live `SessionPool` (e.g. isolated unit tests) can omit it (TSK-133). */
+export type HttpServerChatConfig = {
+  /** @purpose Shared opencode session pool backing every `ChatSession` (SV-11, D-102) */
+  pool: SessionPool;
+  /** @purpose Shared state store — session/report/transcript root (NFC-05) */
+  store: StateStore;
+};
 
 /** @purpose Configuration for the HttpServer. */
 export type HttpServerConfig = {
@@ -20,6 +35,9 @@ export type HttpServerConfig = {
   boardProvider: BoardProviderPort;
   /** @purpose Path to static files directory (default: dist/inbox-serve). */
   staticDir?: string;
+  /** @purpose When present, wires the Review Chat bridge (`/chat`, `/chat/stream`, `/chat/undo`,
+   * `/chat/stop`, `/mutate`) live — absent means those routes 404 (TSK-133). */
+  chat?: HttpServerChatConfig;
 };
 
 /**
@@ -40,6 +58,10 @@ export class HttpServer {
   protected _artifactRouter: ArtifactRouter;
   /** @purpose Router for audit API endpoints. */
   protected _auditRouter: AuditRouter;
+  /** @purpose Router for Review Chat endpoints — undefined unless `config.chat` is supplied (TSK-133). */
+  protected _chatRouter: ChatRouter | undefined;
+  /** @purpose Router for the mutate endpoint — undefined unless `config.chat` is supplied (TSK-133). */
+  protected _mutateRouter: MutateRouter | undefined;
   /** @purpose Static file server. */
   protected _staticFiles: StaticFiles;
   /** @purpose Track active sockets for graceful shutdown. */
@@ -56,6 +78,20 @@ export class HttpServer {
     this._artifactRouter = new ArtifactRouter(config.boardProvider);
     this._auditRouter = new AuditRouter(config.boardProvider);
     this._staticFiles = new StaticFiles(config.staticDir);
+
+    // #region START_WIRE_CHAT — invariant: ChatRouter and MutateRouter share one SseHub/MutationApplier so both event families broadcast over the same per-MR channel (D-100, D-110, TSK-133)
+    if (config.chat) {
+      const sseHub = new SseHub();
+      const mutationApplier = new MutationApplier({ store: config.chat.store });
+      this._chatRouter = new ChatRouter({
+        pool: config.chat.pool,
+        store: config.chat.store,
+        mutationApplier,
+        sseHub,
+      });
+      this._mutateRouter = new MutateRouter({ mutationApplier, sseHub });
+    }
+    // #endregion END_WIRE_CHAT
   }
 
   /**
@@ -160,6 +196,16 @@ export class HttpServer {
 
     if (this._auditRouter.matches(req)) {
       this._auditRouter.handle(req, res);
+      return;
+    }
+
+    if (this._chatRouter?.matches(req)) {
+      void this._chatRouter.handle(req, res);
+      return;
+    }
+
+    if (this._mutateRouter?.matches(req)) {
+      void this._mutateRouter.handle(req, res);
       return;
     }
 

@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-96 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** vcs-discussions | **Dependencies:** TSK-95 (AI-25 — `--url` через `resolveVcsContext`)
+- **Task-ID:** TSK-96 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** vcs-discussions | **Dependencies:** TSK-95 (AI-25 — `--url` через `resolveVcsContext`)
 - **Purpose:** `vcs-discussions --url <URL> --json --my [--with-drafts]` — фильтр по автору и включение черновиков. Ответ по контракту AI-22 при ошибках.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-26 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -10,7 +10,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [x]    |
 
 ## 3. Phases
@@ -56,7 +56,12 @@
 
 #### P1
 
-- [ ] **Handoff →** artifacts: [vcs-discussions.cmd.ts, help.ts]; decisions: [D49]; open: []
+- [x] `2026-07-15T23:10:00Z` restored: P1 log line was left unclosed (stash-revert/logging gap), но impl фактически доставлен — `cli/cmd/vcs-discussions/vcs-discussions.cmd.ts` (дата 2026-07-08) реализует `--my` (фильтр по `author.username === myLogin` через `getCurrentUser()`), `--with-drafts` (+`listDraftNotes()`, требует `--my` иначе `INVALID_ARGS`), `--url`; `help.ts` обновлён. Подтверждено кодом (строки 51/64/66/144/176) и зелёным P2 (`npm run test -- cli/cmd/vcs-discussions/vcs-discussions.test.ts` → 7/7 pass).
+- [x] `2026-07-15T23:10:00Z` **Handoff →** artifacts: [vcs-discussions.cmd.ts, help.ts]; decisions: [D49]; open: []
+
+#### Round close
+
+- [x] `2026-07-15T23:10:00Z` DONE — Meta восстановлена после stash-revert; исполнение подтверждено кодом + зелёным P2 (7/7).
 
 #### P2
 

@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-100 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** vcs-reply | **Dependencies:** TSK-95 (--url)
+- **Task-ID:** TSK-100 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** vcs-reply | **Dependencies:** TSK-95 (--url)
 - **Purpose:** 5 механических проверок в `vcs-reply` до POST. Код гарантирует формат, модель не может забыть.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-31 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -76,3 +76,7 @@
 - [x] `2026-07-05T09:26:11Z` insight format:check: 6 pre-existing warnings (cli/cmd/inbox-context, cli/cmd/inbox, tasks/agent-inbox/\*.md) → вне Target Files P2; целевые файлы P2 чистые (prettier --check pass)
 - [x] `2026-07-05T09:26:11Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-reply/__tests__/vcs-reply.cmd.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.edit.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.resolve.test.ts]; decisions: [auto-prepend-bot-prefix=confirmed-by-tests, validation-atomic=confirmed-by-tests, skip-on-unavailable=confirmed-by-tests, ticket-§5-path-corrected=type-check+__tests__-glob]; open: []
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE

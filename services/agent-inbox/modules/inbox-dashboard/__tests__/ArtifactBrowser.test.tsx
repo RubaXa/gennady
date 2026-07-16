@@ -141,4 +141,51 @@ describe('ArtifactBrowser', () => {
       await act(async () => cleanup());
     }
   });
+
+  it('re-fetches the artifact list and the open artifact content when refreshToken changes (TSK-133)', async () => {
+    const container = createTestContainer();
+    let root: Awaited<ReturnType<typeof render>>;
+    await act(async () => {
+      root = render(
+        createElement(ArtifactBrowser, { mrId: 'group/project!777', refreshToken: 1 }),
+        container
+      );
+    });
+    await act(async () => {
+      await flush();
+    });
+    await act(async () => {
+      await flush();
+    });
+
+    try {
+      assert.equal(listArtifactsMock.mock.callCount(), 1, 'initial mount fetches the list once');
+      assert.equal(readArtifactMock.mock.callCount(), 1, 'initial mount fetches content once');
+
+      // Bumping refreshToken on the SAME mounted instance (real re-render, not remount) simulates
+      // MrDetailPage relaying an SSE `refresh` frame.
+      await act(async () => {
+        root.render(createElement(ArtifactBrowser, { mrId: 'group/project!777', refreshToken: 2 }));
+      });
+      await act(async () => {
+        await flush();
+      });
+      await act(async () => {
+        await flush();
+      });
+
+      assert.equal(
+        listArtifactsMock.mock.callCount(),
+        2,
+        'refreshToken bump should re-trigger GET /api/mr/:id/artifacts'
+      );
+      assert.equal(
+        readArtifactMock.mock.callCount(),
+        2,
+        'refreshToken bump should also re-fetch the currently open artifact content'
+      );
+    } finally {
+      await act(async () => cleanup());
+    }
+  });
 });

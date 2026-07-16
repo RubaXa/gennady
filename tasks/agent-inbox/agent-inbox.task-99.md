@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-99 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** directives | **Dependencies:** TSK-96 (vcs-discussions), TSK-98 (update-review — precedence rules)
+- **Task-ID:** TSK-99 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** directives | **Dependencies:** TSK-96 (vcs-discussions), TSK-98 (update-review — precedence rules)
 - **Purpose:** Расширить `arch-interrogation` веткой `role=author`. Расширить `posting-rules` секцией `<ReactionMatrix>`. Обновить SKILL.md. **Приоритет директив:** при `role=author` + `headChanged != none` → сначала update-review (проверить что изменилось), затем AuthorMode (обновить сводку).
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-29, AI-30 | **Runtime:** not-implemented | **Verification:** review
 
@@ -101,3 +101,7 @@
 - [x] `2026-07-05T10:21:57Z` ver grep -q "AuthorMode" ai/skills/agent-inbox-take/SKILL.md → pass exit=0
 - [x] `2026-07-05T10:21:57Z` DONE
       **Handoff →** artifacts: [arch-interrogation.directive.xml, posting-rules.directive.xml]; decisions: [D50]; open: []
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE

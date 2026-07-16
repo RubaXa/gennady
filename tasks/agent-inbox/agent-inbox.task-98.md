@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-98 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** directives | **Dependencies:** TSK-94 (headChanged/newCommits в inbox-context), TSK-96 (`vcs-discussions --my --with-drafts` — директива ссылается на эти флаги)
+- **Task-ID:** TSK-98 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** directives | **Dependencies:** TSK-94 (headChanged/newCommits в inbox-context), TSK-96 (`vcs-discussions --my --with-drafts` — директива ссылается на эти флаги)
 - **Purpose:** Новая самостоятельная директива. Загружается когда `headChanged.kind != "none"` **И** моё ревью существует (мои треды непусты или я в `approvedBy`). Иначе — полный `arch-interrogation`.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-28 | **Runtime:** not-implemented | **Verification:** review
 
@@ -90,3 +90,7 @@
 - [x] `2026-07-05T10:18:29Z` ver grep "update-review" ai/skills/agent-inbox-take/SKILL.md → found exit=0
 - [x] `2026-07-05T10:18:29Z` DONE
       **Handoff →** artifacts: [ai/directives/agent-inbox/update-review.directive.xml, ai/skills/agent-inbox/SKILL.md, ai/skills/agent-inbox-take/SKILL.md]; decisions: [D50]; open: []
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE

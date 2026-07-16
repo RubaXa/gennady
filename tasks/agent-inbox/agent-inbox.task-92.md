@@ -2,7 +2,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-92 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-cli | **Dependencies:** TSK-90 (предоставляет `validateConfig()`, `loadConfig()`, `saveConfig()`, `configPath()` из `inbox-config.logic.ts` и `state-paths.logic.ts`)
+- **Task-ID:** TSK-92 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-cli | **Dependencies:** TSK-90 (предоставляет `validateConfig()`, `loadConfig()`, `saveConfig()`, `configPath()` из `inbox-config.logic.ts` и `state-paths.logic.ts`)
 - **Purpose:** CLI-подкоманда `gennady inbox config` для управления `~/.gennady/agent-inbox/config.json`. Агент использует `--set` для записи ответов юзера. Юзер использует `--init` для ручного wizard.
 - **Spec:** [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) AI-21, AI-22 | **Runtime:** not-implemented | **Verification:** unit
 
@@ -109,3 +109,7 @@ gennady inbox config --help             → help-текст
 - [x] 2026-07-05T09:38:27Z ver npm run test -- cli/cmd/inbox/config.test.ts → pass exit=0
 - [x] 2026-07-05T09:38:27Z DONE
       **Handoff →** artifacts: [cli/cmd/inbox/config.test.ts]; decisions: [test-isolation=fresh-state-dir-per-test, init-tests=skipped-pipe-limitation]; open: [TBD: добавить пометку в §4 о невозможности тестирования --init через subprocess]
+
+#### Round close
+
+- [x] `2026-07-15` Meta restored after stash-revert; completion evidenced by Round 1 Final Status: DONE
