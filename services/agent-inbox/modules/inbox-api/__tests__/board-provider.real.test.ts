@@ -367,6 +367,38 @@ describe('BoardProviderReal.executeAction — dual-key resolution (project!iid v
     assert.equal(calls.stepped, true, 'the instance must be advanced past the ask node');
   });
 
+  it('resolves via the instance webUrl when there is NO poll data (manual assign)', () => {
+    const calls: { answer?: string; stepped?: boolean } = {};
+    const instance = {
+      state: 'awaiting_operator' as const,
+      setAnswer: (c: string) => {
+        calls.answer = c;
+      },
+      step: async () => {
+        calls.stepped = true;
+      },
+    };
+    // assignManual never polled — getPolledMr is empty — so resolution MUST derive project!iid by
+    // parsing the instance's webUrl key, else executeAction 404s at awaiting_operator (t8 regression).
+    const scheduler = {
+      listInstances: () => [awaitingSnap()],
+      listUnassigned: () => [],
+      getPolledMr: () => undefined,
+      assignManual: async () => {},
+      findInstance: (url: string) => (url === MR.webUrl ? instance : undefined),
+    } as unknown as RoleScheduler;
+
+    const provider = new BoardProviderReal(scheduler, engineStub(), '/unused-state-dir');
+    const result = provider.executeAction(`${MR.project}!${MR.iid}`, {
+      questionId: 'q1',
+      choice: 'post',
+    });
+
+    assert.deepStrictEqual(result, { ok: true });
+    assert.equal(calls.answer, 'post', 'operator choice must reach the URL-resolved instance');
+    assert.equal(calls.stepped, true, 'the instance must be advanced past the ask node');
+  });
+
   it('returns ok:false for an unknown MR id (no instance resolves)', () => {
     const calls: { answer?: string; stepped?: boolean } = {};
     const provider = new BoardProviderReal(

@@ -17,6 +17,7 @@ import type {
 import type { RoleScheduler, RoleInstanceSnapshot } from '../inbox-roles/role-scheduler.ts';
 import type { RoleEngine, RegisteredRole } from '../inbox-roles/role-engine.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
 import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
@@ -153,9 +154,17 @@ export class BoardProviderReal extends BoardProviderPort {
     const direct = instances.find((i) => i.mr === mrId);
     if (direct) return direct;
 
-    return instances.find((i) => {
+    const byPoll = instances.find((i) => {
       const polled = this._scheduler.getPolledMr(i.mr);
       return polled ? `${polled.project}!${polled.iid}` === mrId : false;
+    });
+    if (byPoll) return byPoll;
+
+    // Derive `project!iid` straight from the instance's webUrl key — a manually-assigned instance has
+    // no poll data, so without this executeAction 404s while genuinely at awaiting_operator.
+    return instances.find((i) => {
+      const parsed = parseVcsUrl(i.mr);
+      return parsed ? `${parsed.repository}!${parsed.iid}` === mrId : false;
     });
   }
 
