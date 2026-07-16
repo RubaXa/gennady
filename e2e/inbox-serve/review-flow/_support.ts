@@ -46,7 +46,9 @@ export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
   stateDir: string;
   reviewPath: string;
 }> {
-  const stateDir = makeTestTmpDir('review-flow-suite-');
+  // A persistent state dir (REVIEW_FLOW_STATE_DIR) lets a debug run keep telemetry/artifacts for
+  // `gennady inbox stats --state-dir …` inspection; unset → an auto-cleaned temp dir (normal CI).
+  const stateDir = process.env.REVIEW_FLOW_STATE_DIR ?? makeTestTmpDir('review-flow-suite-');
   const store = new StateStore(stateDir);
   await store.saveConfig({
     reposBase: join(homedir(), 'Developer'),
@@ -131,7 +133,8 @@ export async function teardown(
       opencodePidFile: app.opencodePidFile,
     });
   }
-  if (stateDir) cleanupTestTmp(stateDir);
+  // Keep a persistent debug state dir (REVIEW_FLOW_STATE_DIR) for post-run `inbox stats` inspection.
+  if (stateDir && !process.env.REVIEW_FLOW_STATE_DIR) cleanupTestTmp(stateDir);
 }
 
 export { cleanupTestTmp, makeTestTmpDir };
