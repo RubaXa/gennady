@@ -161,7 +161,11 @@ export function MrDetailPage(props: { mrId: string }) {
             <div
               className={cn(
                 'min-h-0',
-                narrowViewport ? (activeView === 'candidates' ? 'flex-1 flex' : 'hidden') : 'flex-1'
+                narrowViewport
+                  ? activeView === 'candidates'
+                    ? 'flex-1 flex'
+                    : 'hidden'
+                  : 'shrink-0'
               )}
             >
               <ActionPanel mrId={mrId} report={report} />

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // @file: Approve a GitLab merge request via CLI — resolve context, locate MR, call approve API.
 // @consumers: vcs-approve
 // @tasks: TSK-69, TSK-74

@@ -50,6 +50,7 @@
     "inspector:serve": "tsx ai/inspector/serve.ts",
     "inspector:test": "node --import tsx --test ai/inspector/core/__tests__/*.test.ts ai/inspector/web/__tests__/*.test.ts",
     "inbox-serve:dev": "vite --config services/agent-inbox/modules/inbox-dashboard/vite.config.ts",
+    "inbox-serve:build": "vite build --config services/agent-inbox/modules/inbox-dashboard/vite.config.ts",
     "inspector:e2e": "playwright test --config=ai/inspector/playwright.config.ts",
     "test:e2e:review-flow": "playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts",
     "build": "vite build",

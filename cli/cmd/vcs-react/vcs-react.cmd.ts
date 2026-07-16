@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // @file: Add/remove emoji reactions on MR/PR comments — 👍 🚀 ❤️ etc.
 // @consumers: gennady.ts
 // @tasks: TSK-98
