@@ -11,6 +11,7 @@ import {
   type ValidateError as ReviewPlanValidateError,
 } from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
 import type { ToolCall } from '../inbox-opencode/opencode.port.ts';
+import { extractMermaidBlocks, validateMermaid } from '../../../../shared/mermaid/mermaid.ts';
 
 /** @purpose One schema/coverage violation, file-scoped for point retry by the recovery ladder. */
 export type ValidateError = ReviewPlanValidateError;
@@ -20,30 +21,6 @@ export type ValidateResult = { ok: true } | { ok: false; errors: ValidateError[]
 
 /** @purpose One ```mermaid fenced block extracted from a document body, with its source file for error scoping. */
 type MermaidBlock = { file: string; body: string };
-
-/** @purpose Cached mermaid `parse` fn — mermaid is a browser lib, so it (and its jsdom DOM shim) load once, lazily. */
-let _mermaidParse: ((text: string) => Promise<unknown>) | null = null;
-
-/**
- * @purpose Lazily load mermaid + a jsdom DOM shim (both browser-oriented) only when a diagram is
- *   actually validated.
- * @invariant mermaid reads `window`/`document`/`navigator` from global scope at parse time; jsdom
- *   provides them. The Node CLI has no browser-detection, so these globals are inert elsewhere.
- * @returns mermaid's `parse` — resolves for valid diagram source, rejects (throws) on invalid syntax.
- */
-async function loadMermaidParse(): Promise<(text: string) => Promise<unknown>> {
-  if (_mermaidParse) return _mermaidParse;
-  const { JSDOM } = await import('jsdom');
-  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
-  const g = globalThis as Record<string, unknown>;
-  g.window ??= dom.window;
-  g.document ??= dom.window.document;
-  g.navigator ??= dom.window.navigator;
-  const mermaid = (await import('mermaid')).default;
-  mermaid.initialize({ startOnLoad: false });
-  _mermaidParse = (text: string) => mermaid.parse(text);
-  return _mermaidParse;
-}
 
 /**
  * @purpose Mechanically verifies that a session did the work per plan — structure, not text
@@ -188,14 +165,9 @@ export class ArtifactValidator {
     }
     if (blocks.length === 0) return errors;
 
-    const parse = await loadMermaidParse();
     for (const block of blocks) {
-      try {
-        await parse(block.body);
-      } catch (cause) {
-        const message = cause instanceof Error ? cause.message.split('\n')[0] : String(cause);
-        errors.push({ file: block.file, error: `mermaid: ${message}` });
-      }
+      const err = await validateMermaid(block.body);
+      if (err !== null) errors.push({ file: block.file, error: `mermaid: ${err}` });
     }
     return errors;
   }
@@ -207,26 +179,7 @@ export class ArtifactValidator {
    * @returns Array of mermaid block bodies (fence markers stripped).
    */
   protected _extractMermaidBlocks(file: string, content: string): MermaidBlock[] {
-    const blocks: MermaidBlock[] = [];
-    const lines = content.split('\n');
-    let collecting = false;
-    let current: string[] = [];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!collecting && trimmed.startsWith('```mermaid')) {
-        collecting = true;
-        current = [];
-        continue;
-      }
-      if (collecting && trimmed === '```') {
-        blocks.push({ file, body: current.join('\n') });
-        collecting = false;
-        continue;
-      }
-      if (collecting) current.push(line);
-    }
-    return blocks;
+    return extractMermaidBlocks(content).map((body) => ({ file, body }));
   }
 
   // ─── Shared document parsing (frontmatter + section extraction) ─────────────

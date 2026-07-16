@@ -205,6 +205,9 @@ export class BoardProviderMock extends BoardProviderPort {
       findings: state.findings,
       verdict: state.verdict,
       audit: state.audit,
+      // Mock mode never persists review.json — no CAS revision to surface, same 0 default as a
+      // fresh MR with no disk review yet (D-99, mirrors BoardProviderReal's absent-file default).
+      revision: 0,
     };
   }
 

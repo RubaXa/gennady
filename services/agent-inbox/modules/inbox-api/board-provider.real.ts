@@ -258,12 +258,56 @@ export class BoardProviderReal extends BoardProviderPort {
     if (!snap) return null;
 
     const polled = this._scheduler.getPolledMr(snap.mr);
+    // A live instance carries findings only while its graph is running in-process; a dashboard that
+    // merely DISPLAYS an already-materialized report (the standard serve over a real state dir) has
+    // an idle/registered instance with no in-memory findings. Fall back to the structured review.json
+    // the reviewer pipeline persisted next to README.md so the candidates panel shows the real review.
+    const ref = polled ? `${polled.project}!${polled.iid}` : mrId;
+    const disk = snap.findings.length === 0 ? this._readDiskReview(ref) : null;
+
     return {
       mr: polled ? actionableToMrCard(polled, snap.role) : snapshotToMrCard(snap),
-      findings: snap.findings,
-      verdict: snap.verdict,
+      findings: snap.findings.length ? snap.findings : (disk?.findings ?? []),
+      verdict: snap.verdict || disk?.verdict || '',
       audit: [],
+      revision: disk?.revision ?? 0,
     };
+  }
+
+  /**
+   * @purpose Read the structured review (`review.json`) the reviewer pipeline persisted under
+   *   `reports/<mr>/` — the machine-addressable findings the candidates panel renders when no live
+   *   in-memory instance is driving.
+   * @invariant `revision` defaults to `0` for a `review.json` without the field yet — matches
+   *   `ContextAssembler#_readReviewRevision`'s default so a reconnecting chat client and a fresh
+   *   `GET report` agree on the same CAS baseline (D-99).
+   * @param ref MR `project!iid` composite key (the `mrReportsDir` encoding input).
+   * @returns `{ findings, verdict, revision }` or null when absent/unreadable.
+   */
+  protected _readDiskReview(
+    ref: string
+  ): { findings: MrDetail['findings']; verdict: string; revision: number } | null {
+    try {
+      const file = join(mrReportsDir(this._stateDir, ref), 'review.json');
+      if (!existsSync(file)) return null;
+      const parsed = JSON.parse(readFileSync(file, 'utf-8')) as {
+        verdict?: unknown;
+        findings?: unknown;
+        revision?: unknown;
+      };
+      const findings = Array.isArray(parsed.findings)
+        ? (parsed.findings as MrDetail['findings'])
+        : [];
+      const verdict = typeof parsed.verdict === 'string' ? parsed.verdict : '';
+      const revision = typeof parsed.revision === 'number' ? parsed.revision : 0;
+      return { findings, verdict, revision };
+    } catch (cause) {
+      logger.warn('[BoardProviderReal#_readDiskReview] [reading → degraded]', {
+        ref,
+        error: cause,
+      });
+      return null;
+    }
   }
 
   /**

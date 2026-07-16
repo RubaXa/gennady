@@ -184,7 +184,7 @@
     </Axiom>
 
     <Axiom id="AX_REOPEN_FORMAT">
-      When reopening a task ticket, append to section 7 Execution Log:
+      When reopening a task ticket, append to Execution Log:
 
       ```
       ### Round N — <YYYY-MM-DD>, fix: <one-line reason>

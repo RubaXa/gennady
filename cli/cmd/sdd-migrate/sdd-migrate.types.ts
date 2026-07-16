@@ -28,6 +28,9 @@ export function badInvocation(detail: string): MigrateOutcome {
     message: [
       `[sdd-migrate] ${ERR_CLI_SDD_MIGRATE_BAD_INVOCATION}: ${detail}`,
       '  expected: gennady sdd-migrate anchors (<ticket> | --all [root]) [--write]',
+      '        or: gennady sdd-migrate plan [root] [--write | --verify]',
+      '        or: gennady sdd-migrate ids [root] (--map <tsv> | --from-plan) [--write]',
+      '        or: gennady sdd-migrate move [root] --scope <scope> [--write]',
       '  Without --write it is a dry-run (reports what it would change).',
     ].join('\n'),
   };

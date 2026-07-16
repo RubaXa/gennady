@@ -13,6 +13,7 @@ import {
   checkTaskGraph,
   checkTrackers,
   checkSpecStructure,
+  checkSpecLanguage,
   checkReviewState,
   checkModuleGraph,
   checkScopeDeps,
@@ -24,6 +25,12 @@ import {
 } from '../../../shared/sdd/check.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
+import {
+  detectFlowVersion,
+  detectScopeFlowVersion,
+  type FlowVersion,
+} from '../../../shared/sdd/flow.ts';
+import { checkSpecMermaid } from '../../../shared/sdd/mermaid-check.ts';
 import { parseTrackerRows } from '../../../shared/sdd/tracker.ts';
 import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
 
@@ -141,6 +148,22 @@ function checkSpecRefs(file: string, content: string): Finding[] {
   return findings;
 }
 
+/**
+ * @purpose Flow version governing ONE spec file — per-scope, so a mid-migration (mixed) repo checks
+ * migrated scopes strictly while pre-migration scopes stay lenient.
+ * @invariant Derived from the file's own path (repo root = everything before the `specs` segment),
+ *   so scoped runs (`--all specs/<scope>`) resolve the same answer as full runs (`--all .`).
+ * @param file Absolute spec path.
+ * @returns The scope's flow version; falls back to repo-level detection when no scope segment exists.
+ */
+function specFlowVersion(file: string): FlowVersion {
+  const parts = file.split(sep);
+  const si = parts.lastIndexOf('specs');
+  const repoRoot = si > 0 ? parts.slice(0, si).join(sep) : sep;
+  if (si < 0 || parts.length - si < 3) return detectFlowVersion(repoRoot);
+  return detectScopeFlowVersion(repoRoot, parts[si + 1] as string);
+}
+
 /** @purpose Names of top-level `specs/<dir>` directories that contain a `<dir>.spec.md`. | @param specsRoot Absolute path of the specs/ root. | @returns Scope-spec dir names. */
 function scopeSpecDirs(specsRoot: string): string[] {
   let entries;
@@ -190,6 +213,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTicket(taskPath, content));
     findings.push(...checkRuleLinks(taskPath, content));
     findings.push(...checkSpecRefs(taskPath, content));
+    findings.push(...(await checkSpecMermaid(taskPath, content)));
+    if (specFlowVersion(resolve(taskPath)) === 'v2')
+      findings.push(...checkSpecLanguage(taskPath, content));
     fileCount = 1;
   } else {
     // #region START_ALL — invariant: scan specs/ when present, else the given root
@@ -211,6 +237,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     const ticketRefs: TicketRef[] = [];
     const trackerRowRefs: TrackerRowRef[] = [];
     const moduleEdgesByScope = new Map<string, { edges: GraphEdge[]; scopeFile: string }>();
+    // Every artifact carrying a ```mermaid block is validated through the real parser after the walk
+    // (honest schema check, not presence) — collected here, parsed once mermaid+jsdom load lazily.
+    const mermaidTargets: { file: string; content: string }[] = [];
     for (const file of mdFiles) {
       let content: string;
       try {
@@ -218,6 +247,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
       } catch {
         continue;
       }
+      if (content.includes('```mermaid')) mermaidTargets.push({ file, content });
       if (file === portalFile) {
         findings.push(
           ...checkPortal({
@@ -229,7 +259,12 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         fileCount++;
       } else if (file.endsWith('.spec.md') || file.endsWith('.1-spec.md')) {
         findings.push(...checkSpecLinks(file, content));
-        findings.push(...checkSpecStructure(file, content));
+        // Strict v2 spec rules (mandatory diagram, module floor, folded detail, language lint) fire
+        // per scope: a migrated scope (tasks/<scope>/ removed) is checked strictly while v1
+        // neighbours stay lenient.
+        const specFlow = specFlowVersion(file);
+        findings.push(...checkSpecStructure(file, content, specFlow));
+        if (specFlow === 'v2') findings.push(...checkSpecLanguage(file, content));
         findings.push(...checkReviewState(file, content));
         findings.push(...checkScopeDeps(file, content, portalEdges));
         // Module spec: absolute path …/specs/<scope>/<module>/…/<mod>.spec.md. Group inter-module edges
@@ -252,6 +287,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         findings.push(...checkTicket(file, content));
         findings.push(...checkRuleLinks(file, content));
         findings.push(...checkSpecRefs(file, content));
+        if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
         ticketRefs.push(ticketRef(file, content));
         fileCount++;
       }
@@ -260,6 +296,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
+    }
+    for (const t of mermaidTargets) {
+      findings.push(...(await checkSpecMermaid(t.file, t.content)));
     }
     // #endregion END_ALL
   }

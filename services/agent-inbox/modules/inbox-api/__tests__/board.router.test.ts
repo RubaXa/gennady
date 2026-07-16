@@ -129,11 +129,15 @@ describe('BoardRouter — GET /api/board', () => {
 
   it('returns empty board when no data seeded', async () => {
     const emptyProvider = new BoardProviderMock();
-    const emptyServer = new HttpServer({ port: PORT + 1, boardProvider: emptyProvider });
+    // Port 4195 (not PORT + 1 = 4176) — 4176 collides with mr.router.test.ts's own PORT constant;
+    // node's test runner executes files concurrently, so sharing a port with another suite's
+    // server causes an intermittent EADDRINUSE (pre-existing flake, unrelated to this file).
+    const emptyServerPort = 4195;
+    const emptyServer = new HttpServer({ port: emptyServerPort, boardProvider: emptyProvider });
     await emptyServer.start();
 
     try {
-      const { status, data } = await fetchJson('GET', '/api/board', PORT + 1);
+      const { status, data } = await fetchJson('GET', '/api/board', emptyServerPort);
       assert.strictEqual(status, 200);
 
       const body = data as Record<string, unknown>;

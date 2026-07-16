@@ -314,7 +314,7 @@ graph TD
     alt-opinion -. Runtime .-> cli
     sdd-skills -. Runtime .-> infra-base
     alt-opinion -. Runtime .-> infra-base
-````
+```
 
 ### 8.3 Stack Dependencies
 
@@ -367,3 +367,4 @@ graph TD
 ```
 
 ```
+````

@@ -9,6 +9,7 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { checkReadiness } from '../../../shared/sdd/readiness.ts';
 import { parseScopes, type Scope } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
+import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import {
   badInvocation,
   badRoot,
@@ -17,19 +18,6 @@ import {
   type StateOutcome,
   type StateSnapshot,
 } from './sdd-state.types.ts';
-
-/**
- * @purpose Detect the v1 SDD layout marker — a `tasks/` directory at the project root.
- * @param root Absolute project root.
- * @returns True when `<root>/tasks/` is a directory.
- */
-function isV1Layout(root: string): boolean {
-  try {
-    return statSync(join(root, 'tasks')).isDirectory();
-  } catch {
-    return false;
-  }
-}
 
 /**
  * @purpose Detect whether the gennady CLI is installed for the project.
@@ -65,7 +53,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     return badRoot(root);
   }
 
-  const flowVersion: FlowVersion = isV1Layout(root) ? 'v1' : 'v2';
+  const flowVersion: FlowVersion = detectFlowVersion(root);
 
   // #region START_PORTAL — portal absent is data (project-setup), not an error
   const portalPath = 'specs/README.md';

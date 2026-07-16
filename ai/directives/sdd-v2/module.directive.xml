@@ -64,16 +64,16 @@
     <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
       The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
-      - **Module Map** (`## 8. Module Map`) — append-only rows per module.
-      - **Golden DX Example** (`## 2.` library / `## 3.` product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `## 2. Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+      - **Module Map** (`Module Map`) — append-only rows per module.
+      - **Golden DX Example** (`Golden DX Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
 
       **Bidirectional consistency check** before session close — both directions must pass:
-      - (→) every named abstraction in scope-spec Golden DX has a home in some module's `## 3. Entity Inventory`;
-      - (←) every module with public surface (≥1 entry in `## 4. Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `## 8. Module Decision Log`.
+      - (→) every named abstraction in scope-spec Golden DX has a home in some module's `Entity Inventory`;
+      - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `Module Decision Log`.
 
       Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
 
-      All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `## 9. Inter-Module Dependencies`, never a direct reference to another product scope's modules.
+      All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `Inter-Module Dependencies`, never a direct reference to another product scope's modules.
 
       The `module` flow does NOT write to `specs/README.md` (that is the `root` flow's sole property).
     </Axiom>
@@ -93,7 +93,7 @@
     <Axiom id="AX_APPEND_ONLY_MODULE_ADD">
       In `add-module` mode existing module specs are NOT touched. Only:
       - new `specs/<scope>/<new-module>/<new-module>.spec.md`;
-      - scope spec 8 Module Map: APPEND new module row (append at end). Other rows untouched;
+      - scope spec Module Map: APPEND new module row (append at end). Other rows untouched;
       - scope spec Golden DX Example: rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` (the ONE exception to «other scope-spec sections untouched»).
 
       Touching another module's spec in `add-module` is forbidden. If sibling changes are needed, run the `module` flow again in `refine-module` mode for that specific module.
@@ -104,7 +104,7 @@
 
       Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
 
-      A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `## 9 Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
+      A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
 
       Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same session.
 
@@ -129,6 +129,14 @@
       Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
     </Axiom>
 
+    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every spec carries at least one diagram in an `Overview` section — one glance beats a paragraph. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views — sequence, data-flow, state — wherever a second diagram genuinely helps a reader understand; that is judgment, not a gate. The `Inter-Module Dependencies` graph is machine-parsed and does NOT satisfy the floor.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_PROGRESSIVE_DISCLOSURE">
+      A module spec reads top-down: a human-readable summary on top, heavy contract detail folded beneath. Entity Surfaces and Module Contracts wrap their body in `<details><summary>…</summary>` so a reader sees the shape without wading through every precondition. Held by tooling: `sdd-check` fails an unfolded heavy section (`SDD_SECTION_NOT_FOLDED`). This is the spec-artifact analogue of the chat-output `AX_PROGRESSIVE_DISCLOSURE` — summary first, detail on demand.
+    </Axiom>
+
     <Axiom id="AX_CONSUMER_DRIVEN">
       No consumer — no component (YAGNI). Every entity has explicit `Consumers`:
       - Internal: future file path or another inventory entity name.
@@ -141,11 +149,11 @@
       - Business logic depends on Ports, not Adapters. Preconditions / postconditions / invariants live on Ports. Adapters reference a Port and describe side effects + runtime backing + verification levels.
       - Port introduced only with confirmed v1 variability (≥2 implementations) or explicit test seam. Single implementation without confirmed split → Service or Entity, not Port.
       - Every proposed abstraction requires justification: which current risk / constraint / consumer it closes.
-      - **DbC section shape is flexible.** `## 5. Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsection numbering is optional (`### 5.0`, `### 5.1`, …, or unnumbered `### OperationDef Pattern`).
+      - **DbC section shape is flexible.** `Module Contracts (DbC)` carries any subset of subsections drawn from the entity Type vocabulary (Port, Adapter, Service, Pattern, Utility, Module-level invariants, …). Ports/Adapters are AVAILABLE, not mandatory: single-implementation modules legitimately use Service-only or Pattern-only DbC. Subsections are unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`).
     </Axiom>
 
     <Axiom id="AX_CONTEXT_TO_CONTRACT">
-      DbC is derived from context, not only from DX code. Scope spec 4 Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+      DbC is derived from context, not only from DX code. Scope spec Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
     </Axiom>
 
     <Axiom id="AX_CONTRACTS_TEXTUAL_AGNOSTIC">
@@ -212,7 +220,7 @@
 
     <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
       Final hierarchy contains:
-      - per-module spec 10 Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
+      - per-module spec Handoff: implementation/test files Scaffolder will create; explicit stack dependencies (language, test framework) Scaffolder resolves against `ai/directives/coding/*`, `ai/directives/testing/*`; **Module Rules Additions** layered on scope-wide baseline.
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
 
@@ -327,7 +335,7 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
         (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
         `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
-        `## 9` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
+        `Inter-Module Dependencies` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
         `H_REFINE_BREAKING_NO_IMPACT_LIST`. When a module needs rules beyond the scope-wide
         baseline, fill Module Rules Additions in the Handoff section per `AX_RULE_ACTIVATION`
         (shortlist + considered-skips, operator locks the list; architecture / infra rules get the

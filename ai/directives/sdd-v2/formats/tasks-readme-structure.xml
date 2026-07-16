@@ -15,15 +15,15 @@
 
   ### Completion Rule (baseline)
   A task cannot transition to `[x] DONE` until ALL of (per `AX_DONE_REQUIRES_EVIDENCE`):
-  1. Every phase declared in section 2 Phases Overview has Status `[x]`.
-  2. Every BDD scenario mapped to test ownership in section 6 OR has `Deferred Test Ownership: <task-id>`.
+  1. Every phase declared in Phases Overview has Status `[x]`.
+  2. Every BDD scenario mapped to test ownership in Test Scenario Coverage OR has `Deferred Test Ownership: <task-id>`.
   3. Verification commands relevant to each phase executed; results + exit codes recorded in that phase's Execution Log block.
   4. Canonical case names match real test cases or ticket updated.
   5. `Deferred Runtime Scope` recorded if applicable.
   6. Every introduced-beyond-Inventory entity logged as `<ts> intro <Name> ← <reason>` in the relevant phase block.
   7. Every phase block ends with a typed **Handoff →** line.
 
-  Task-specific additions live in each ticket's section 5.
+  Task-specific additions live in each ticket's Verification section.
 
   ### Execution Log Template
   Canonical token vocabulary (single source of truth; phase-protocol and audit reference this table, do not redefine):

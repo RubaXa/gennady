@@ -88,7 +88,7 @@
 
     <Axiom id="AX_AUDIT_READS_CODE">
       Audit is the only SDD directive allowed to read code. Reading scope is bounded:
-      - all files listed in per-phase `Target Files` under ticket section 3 Phases;
+      - all files listed in per-phase `Target Files` under ticket Phases;
       - artifacts list passed by orchestrator (union of phase Handoffs);
       - related ports/adapters/services in `Spec References`;
       - files flagged in Execution Log `intro <X> ← <Y>` lines;
@@ -109,19 +109,19 @@
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
-      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec 2 Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
+      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_VERIFICATION">
-      For each phase block in section 3 Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<DependsOn>`**.
+      For each phase block in Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind`, **plus transitive closure of every rule's `<DependsOn>`**.
 
       Cascade tiers (sources of truth):
 
       | Tier | Source |
       |---|---|
       | traversed-scopes | Cascade Table in `tasks/<scope>/README.md` traversed-scope rows |
-      | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec 5/4.5 |
-      | module | `tasks/<scope>/README.md` module row + module spec 9 Module Rules Additions |
+      | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec Architecture/Rules |
+      | module | `tasks/<scope>/README.md` module row + module spec Module Rules Additions |
       | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
 
       **Transitive closure check.** For every rule in a phase's `Rules:` list: open its file, read its `<DependsOn>` section. Every entry MUST also appear in the same phase's `Rules:` list (the list is the explicit, fully-resolved closure — scaffolder computes it once at ticket generation per `AX_RULE_ACTIVATION_PLAN`). Missing transitive dep → `RULES_CASCADE_MISMATCH` (`MAJOR`) tagged `unresolved-dependency`. This is the architectural seam: phase-subagent does not walk dependencies at runtime; audit verifies the closure was computed correctly at scaffolding time.
@@ -147,6 +147,23 @@
       → `INSIGHT_BACKFLOW` finding with proposed spec-update diff.
     </Axiom>
 
+    <Axiom id="AX_LANGUAGE_QUALITY_CHECK">
+      Operator-facing prose of the audited artifacts (spec Vision / Requirements / Decision Log
+      bodies, ticket Purpose / Description, README text) must read as a technical document in flat
+      engineering Russian — clear to any engineer on the project, junior developer to architect to
+      security engineer. Two layers:
+      - **Deterministic pre-filter:** `sdd-check` already flags transliterated anglicisms
+        (`SDD_LANGUAGE_CALQUE`, warn) — treat every such warning as a finding to route.
+      - **Semantic judgment (this audit):** flag prose the lint cannot catch — literary or ornate
+        style, metaphors presented as claims, English idioms translated word-for-word, sentences a
+        busy colleague would stumble on. Test: read it aloud as a mid-level developer; if it sounds
+        like a blog showing off rather than an engineering document, it fails.
+
+      → `LANGUAGE_QUALITY` finding with the concrete sentence and a plain-Russian rewrite proposal.
+      Canonical tokens (code, IDs, status tokens, BDD keywords, paths) stay English per
+      `AX_OPERATOR_LANGUAGE` and are never flagged.
+    </Axiom>
+
     <Axiom id="AX_DRIFT_TAXONOMY">
       Findings are classified by type. Every finding has exactly one:
 
@@ -163,6 +180,7 @@
       | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |
       | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
       | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
+      | `LANGUAGE_QUALITY` | operator-facing prose fails `AX_LANGUAGE_QUALITY_CHECK` — calques (from the `SDD_LANGUAGE_CALQUE` pre-filter) or literary/ornate style the deterministic lint cannot catch |
     </Axiom>
 
     <Axiom id="AX_SEVERITY_TAGGING">
@@ -283,7 +301,9 @@
         what is irreducibly semantic: does the implementation satisfy the contract's postconditions /
         invariants in substance; is a `real-runtime` claim actually backed or a stub
         (`AX_RUNTIME_BACKING_VERIFICATION`); capture spec gaps as insights
-        (`AX_INSIGHT_BACKFLOW_CAPTURE`). Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
+        (`AX_INSIGHT_BACKFLOW_CAPTURE`); judge the operator-facing prose as a document
+        (`AX_LANGUAGE_QUALITY_CHECK` — flat technical Russian, readable by any engineer level).
+        Classify each per `AX_DRIFT_TAXONOMY`, severity per `AX_SEVERITY_TAGGING`.
       </Action>
     </Step>
     <Step id="STEP_3_ROUTE">

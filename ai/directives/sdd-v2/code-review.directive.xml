@@ -81,7 +81,7 @@
 
     <Axiom id="AX_AUDIT_READS_CODE">
       Audit is the only SDD directive allowed to read code. Reading scope is bounded:
-      - all files listed in per-phase `Target Files` under ticket section 3 Phases;
+      - all files listed in per-phase `Target Files` under ticket Phases;
       - artifacts list passed by orchestrator (union of phase Handoffs);
       - related ports/adapters/services in `Spec References`;
       - files flagged in Execution Log `intro <X> ← <Y>` lines;

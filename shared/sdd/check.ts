@@ -6,6 +6,7 @@ import { extractSection } from './section.ts';
 import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
 import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
+import type { FlowVersion } from './flow.ts';
 
 /**
  * @purpose One audit finding.
@@ -483,7 +484,7 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
  * @purpose Minimal required section-anchor skeleton per scope-type — the load-bearing sections only.
  * @invariant Keyed by the `scope-type` value; a spec may carry MORE sections (the format grows) but never fewer.
  */
-const REQUIRED_SECTIONS: Record<string, string[]> = {
+export const REQUIRED_SECTIONS: Record<string, string[]> = {
   product: [
     'VISION',
     'GOLDEN_DX',
@@ -509,6 +510,66 @@ const REQUIRED_SECTIONS: Record<string, string[]> = {
   ],
 };
 
+/**
+ * @purpose v2 module-spec load-bearing sections (AX_MODULE_SPEC_FLOOR).
+ * @invariant Applies only under flowVersion='v2'. Diagram presence is a separate check (SDD_NO_DIAGRAM_BLOCK), kept out to avoid a duplicate finding.
+ */
+export const MODULE_REQUIRED_V2: string[] = [
+  'MODULE_VISION',
+  'MODULE_USAGE_EXAMPLE',
+  'ENTITY_INVENTORY',
+  'MODULE_CONTRACTS',
+];
+
+/**
+ * @purpose v2 heavy sections whose detail must fold under `<details>` (AX_SPEC_PROGRESSIVE_DISCLOSURE).
+ * @invariant Checked only when the section is present; presence itself is a separate concern.
+ */
+export const FOLD_REQUIRED_V2: string[] = ['ENTITY_SURFACES', 'MODULE_CONTRACTS'];
+
+/** @purpose True when a section body carries at least one fenced code block (a diagram: mermaid or ASCII). | @param body Section markdown. | @returns Whether ≥1 ``` fence pair is present. */
+function hasFencedBlock(body: string): boolean {
+  return (body.match(/^```/gm) ?? []).length >= 2;
+}
+
+// Curated Cyrillic-anglicism list (AX_OPERATOR_DIALOGUE_STYLE): each entry is a transliterated
+// English term a spec must not carry, plus the plain Russian to use instead. Deliberately short —
+// only unambiguous calques, so the deterministic pre-filter never cries wolf; judgement calls stay
+// with the audit's semantic language check.
+const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
+  { re: /аппрув[а-яё]*/giu, say: 'подтверждение' },
+  { re: /реифицир[а-яё]*/giu, say: 'вынести в данные' },
+  { re: /пайплайн[а-яё]*/giu, say: 'конвейер / цепочка шагов' },
+  { re: /чек(ать|нуть|аем|ается)[а-яё]*/giu, say: 'проверить' },
+  { re: /(по)?фиксить|фиксим|фиксят/giu, say: 'починить' },
+  { re: /дроп(ать|нуть|аем|нем)[а-яё]*/giu, say: 'удалить' },
+  { re: /юза(ть|ем|ю|ется)[а-яё]*/giu, say: 'использовать' },
+  { re: /(за)?имплементи[а-яё]*/giu, say: 'реализовать' },
+];
+
+/**
+ * @purpose Deterministic language lint for operator-facing prose — flag transliterated anglicisms
+ * the language policy bans (flat engineering Russian, no calques).
+ * @invariant Warn-only pre-filter for unambiguous words; document-level judgment stays the audit's job. One finding per word per file.
+ * @param file Artifact path.
+ * @param content Full artifact markdown.
+ * @returns SDD_LANGUAGE_CALQUE warnings, one per distinct calque found.
+ */
+export function checkSpecLanguage(file: string, content: string): Finding[] {
+  const findings: Finding[] = [];
+  for (const { re, say } of CALQUE_PATTERNS) {
+    const matches = [...content.matchAll(re)].map((m) => m[0]);
+    if (matches.length === 0) continue;
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_LANGUAGE_CALQUE',
+      file,
+      message: `«${matches[0]}»${matches.length > 1 ? ` (×${matches.length})` : ''} — англицизм-калька; по-русски: ${say} (AX_OPERATOR_DIALOGUE_STYLE).`,
+    });
+  }
+  return findings;
+}
+
 // Module size budget — soft signals (warn, never a gate) per AX_HIERARCHICAL_SPECS. Tunable, conservative.
 // Many entities → the world is big → decompose into sub-modules. A long spec with a cohesive inventory
 // → not too big, just verbose → compress the spec.
@@ -530,13 +591,18 @@ function countInventoryRows(section: string): number {
 }
 
 /**
- * @purpose Mechanical structure checks for a spec file (.spec.md) — anchor balance + required sections per scope-type.
- * @invariant Pure; the required-sections check applies ONLY to scope specs (those carrying a SCOPE_TYPE section).
+ * @purpose Mechanical structure checks for a spec file (.spec.md) — anchor balance, required sections, and (v2) mandatory diagrams + folded heavy detail.
+ * @invariant Pure. Scope required-sections apply to any scope spec (SCOPE_TYPE present). v2-only rules (module floor, mandatory diagram, `<details>` folding) stay dormant under `flowVersion='v1'`.
  * @param file Spec file path.
  * @param content Full spec markdown.
+ * @param [flowVersion] SDD flow generation; `'v2'` enables the strict spec rules. Defaults to `'v1'`.
  * @returns Findings (possibly empty); errors fail the gate.
  */
-export function checkSpecStructure(file: string, content: string): Finding[] {
+export function checkSpecStructure(
+  file: string,
+  content: string,
+  flowVersion: FlowVersion = 'v1'
+): Finding[] {
   const findings: Finding[] = unbalancedAnchors(content).map((name) => ({
     severity: 'error' as const,
     code: 'SDD_ANCHOR_UNBALANCED',
@@ -609,6 +675,67 @@ export function checkSpecStructure(file: string, content: string): Finding[] {
             code: 'SDD_SPEC_SECTION_MISSING',
             file,
             message: `${type} scope spec is missing required section ${req}.`,
+          });
+        }
+      }
+    }
+  }
+
+  // v2-only strict rules — dormant under v1 so a pre-migration repo stays clean.
+  if (flowVersion === 'v2') {
+    const present = new Set(
+      [...content.matchAll(/<!--SECTION:([A-Z_]+)-->/g)].map((m) => m[1] as string)
+    );
+
+    // Module-spec floor: modules were never section-checked in v1. Under v2 a module spec must carry
+    // its load-bearing sections (AX_MODULE_SPEC_FLOOR).
+    if (isModuleSpec) {
+      for (const req of MODULE_REQUIRED_V2) {
+        if (!present.has(req)) {
+          findings.push({
+            severity: 'error',
+            code: 'SDD_SPEC_SECTION_MISSING',
+            file,
+            message: `module spec is missing required section ${req}.`,
+          });
+        }
+      }
+    }
+
+    // Mandatory diagram: every scope and module spec carries an Overview section with ≥1 diagram
+    // (AX_SPEC_MANDATORY_DIAGRAM). Presence + non-emptiness; the agent adds more diagrams by judgment.
+    if (isScopeSpec || isModuleSpec) {
+      const diag = extractSection(content, 'OVERVIEW');
+      if (diag.status !== 'ok') {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_NO_DIAGRAM_BLOCK',
+          file,
+          message:
+            'Spec has no Overview section — every spec opens with an Overview carrying at least one diagram (AX_SPEC_MANDATORY_DIAGRAM).',
+        });
+      } else if (!hasFencedBlock(diag.content)) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_DIAGRAM_BLOCK_EMPTY',
+          file,
+          message:
+            'Overview section has no diagram — add at least one fenced mermaid or ASCII diagram (AX_SPEC_MANDATORY_DIAGRAM).',
+        });
+      }
+    }
+
+    // Progressive disclosure: heavy module sections fold their detail under `<details>` so the
+    // human-readable summary stays on top (AX_SPEC_PROGRESSIVE_DISCLOSURE). Checked when present.
+    if (isModuleSpec) {
+      for (const s of FOLD_REQUIRED_V2) {
+        const sec = extractSection(content, s);
+        if (sec.status === 'ok' && !/<details[\s>]/i.test(sec.content)) {
+          findings.push({
+            severity: 'error',
+            code: 'SDD_SECTION_NOT_FOLDED',
+            file,
+            message: `Section ${s} does not fold its detail under \`<details>\` — collapse the contract body so the summary stays readable (AX_SPEC_PROGRESSIVE_DISCLOSURE).`,
           });
         }
       }

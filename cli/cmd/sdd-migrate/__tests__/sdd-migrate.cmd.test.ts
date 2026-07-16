@@ -4,7 +4,7 @@
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -92,5 +92,102 @@ describe('SddMigrateCommand', () => {
     const o = await mod.run(argv('frobnicate', ticket));
     assert.strictEqual(o.ok, false);
     if (!o.ok) assert.strictEqual(o.exitCode, 4);
+  });
+
+  describe('plan mode', () => {
+    let root: string;
+
+    const SPEC = [
+      '# demo',
+      '<!--SECTION:SCOPE_TYPE-->',
+      '## scope-type',
+      'library',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '## 1. Vision & Primary Goal',
+      'Текст.',
+    ].join('\n');
+
+    const PLAN_TICKET = [
+      '# Task: TSK-3 — Демо',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-3 | **Status:** [ ] TODO | **Scope:** demo',
+      '- **Purpose:** демо.',
+    ].join('\n');
+
+    beforeEach(() => {
+      root = join(dir, 'plan-proj');
+      rmSync(root, { recursive: true, force: true });
+      mkdirSync(join(root, 'specs', 'demo'), { recursive: true });
+      mkdirSync(join(root, 'tasks', 'demo'), { recursive: true });
+      writeFileSync(join(root, 'specs', 'demo', 'demo.spec.md'), SPEC, 'utf-8');
+      writeFileSync(join(root, 'tasks', 'demo', 'demo.task-3.md'), PLAN_TICKET, 'utf-8');
+    });
+
+    it('dry-run reports units without writing the layer', async () => {
+      const o = await mod.run(argv('plan', root));
+      assert.strictEqual(o.ok, true);
+      if (o.ok) {
+        assert.match(o.text, /DRY-RUN/);
+        assert.match(o.text, /would migration\/demo\/demo\.spec\.migration\.md/);
+      }
+      assert.strictEqual(existsSync(join(root, 'migration')), false);
+    });
+
+    it('--write scaffolds the layer + README; --verify then passes on PLANNED units', async () => {
+      const w = await mod.run(argv('plan', root, '--write'));
+      assert.strictEqual(w.ok, true);
+      assert.ok(existsSync(join(root, 'migration', 'demo', 'demo.spec.migration.md')));
+      assert.ok(existsSync(join(root, 'migration', 'README.md')));
+      const v = await mod.run(argv('plan', root, '--verify'));
+      assert.strictEqual(v.ok, true, JSON.stringify(v));
+    });
+
+    it('--verify fails with exit 1 when the layer is missing', async () => {
+      const v = await mod.run(argv('plan', root, '--verify'));
+      assert.strictEqual(v.ok, false);
+      if (!v.ok) {
+        assert.strictEqual(v.exitCode, 1);
+        assert.match(v.message, /MIG_UNIT_FILE_MISSING/);
+      }
+    });
+  });
+
+  describe('ids mode', () => {
+    let root: string;
+
+    beforeEach(() => {
+      root = join(dir, 'ids-proj');
+      rmSync(root, { recursive: true, force: true });
+      mkdirSync(join(root, 'specs'), { recursive: true });
+      writeFileSync(join(root, 'specs', 'a.md'), 'см. TSK-5 и TSK-50', 'utf-8');
+      writeFileSync(join(root, 'map.tsv'), 'TSK-5\tdemo-feature\n', 'utf-8');
+    });
+
+    it('dry-run по карте считает вхождения, файл не тронут', async () => {
+      const o = await mod.run(argv('ids', root, '--map', join(root, 'map.tsv')));
+      assert.strictEqual(o.ok, true);
+      if (o.ok) assert.match(o.text, /DRY-RUN .* 1 ID .* 1 вхождений/);
+      assert.match(readFileSync(join(root, 'specs', 'a.md'), 'utf-8'), /TSK-5 и TSK-50/);
+    });
+
+    it('--write заменяет и проходит гейт «ноль старых ID»; TSK-50 не тронут', async () => {
+      const o = await mod.run(argv('ids', root, '--map', join(root, 'map.tsv'), '--write'));
+      assert.strictEqual(o.ok, true, JSON.stringify(o));
+      const body = readFileSync(join(root, 'specs', 'a.md'), 'utf-8');
+      assert.match(body, /demo-feature и TSK-50/);
+    });
+
+    it('невалидная карта → exit 1 с перечислением проблем', async () => {
+      writeFileSync(join(root, 'map.tsv'), 'TSK-5\tdemo-feature\nTSK-5\tother\n', 'utf-8');
+      const o = await mod.run(argv('ids', root, '--map', join(root, 'map.tsv')));
+      assert.strictEqual(o.ok, false);
+      if (!o.ok) assert.strictEqual(o.exitCode, 1);
+    });
+
+    it('без --map и --from-plan → exit 4', async () => {
+      const o = await mod.run(argv('ids', root));
+      assert.strictEqual(o.ok, false);
+      if (!o.ok) assert.strictEqual(o.exitCode, 4);
+    });
   });
 });

@@ -3,11 +3,11 @@
   (grammar: `extract-section.sh`). Anchor names are normative per
   `AX_TICKET_SECTION_NAMES_NORMATIVE` — orchestrator (`sdd-execute`) and auditor extract by exact
   string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Each `### P<N>` phase block
-  under `## 3. Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `## 3. Phases` container
+  under `Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `Phases` container
   itself carries NO anchor — extraction is per phase.
 
   Spec content is referenced, never copied (`AX_SSOT_TRACEABILITY`): tickets link to spec sections
-  via Markdown anchors — module spec for contracts / consumers / invariants; scope spec 4 only for
+  via Markdown anchors — module spec for contracts / consumers / invariants; scope spec Requirements & Constraints only for
   cross-cutting constraints. Shared per-module content
   (Execution-Log token vocabulary, baseline Completion Rule, audit hint, file-header rule) lives
   once in `<module>.3-tasks.md` per `AX_TICKET_DEDUPLICATION` — not duplicated here.
@@ -16,7 +16,7 @@
   # Task: <ACRONYM>-<slug> — <Task Title>
 
   <!--SECTION:META-->
-  ## 1. Meta
+  ## Meta
   - **Task-ID:** <ACRONYM>-<slug>   <!-- semantic slug; same slug across branches = same feature (see Slug Registry) -->
   - **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->
   - **Purpose:** <semantic goal one-liner>
@@ -35,7 +35,7 @@
   <!--/SECTION:META-->
 
   <!--SECTION:PHASES_OVERVIEW-->
-  ## 2. Phases Overview
+  ## Phases Overview
   | ID | Kind | Deps | Status |
   |----|------|------|--------|
   | P1 | <kind> | — | [ ] |
@@ -44,7 +44,7 @@
   <!-- Kind ∈ bootstrap | impl | test | config | doc | refactor (fix only on execution). impl and test are ALWAYS separate phases. Orchestrator reads this table to plan. -->
   <!--/SECTION:PHASES_OVERVIEW-->
 
-  ## 3. Phases
+  ## Phases
 
   <!--SECTION:PHASE_P1-->
   ### P1 — <kind>
@@ -69,7 +69,7 @@
   <!--/SECTION:PHASE_P2-->
 
   <!--SECTION:BDD-->
-  ## 4. Acceptance Criteria (BDD)
+  ## Acceptance Criteria (BDD)
   Each scenario is tagged with the requirement it proves and its verification level — this is the
   use-case → `[<ACRONYM>-REQ-N]` → vision chain the operator reviews at scaffold.
 
@@ -85,7 +85,7 @@
   <!--/SECTION:BDD-->
 
   <!--SECTION:VERIFICATION-->
-  ## 5. Verification
+  ## Verification
   | Command | Required by |
   |---------|-------------|
   | <resolved invocation> | <rule-id>, <rule-id> |
@@ -96,12 +96,12 @@
   <!--/SECTION:VERIFICATION-->
 
   <!--SECTION:TEST_COVERAGE-->
-  ## 6. Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
+  ## Test Scenario Coverage   <!-- BLOCKER: an unmapped scenario blocks task close -->
   - Scenario <name> → `<test-file>` :: `<canonical case name>`   <!-- or: Deferred Test Ownership: <Task-ID> -->
   <!--/SECTION:TEST_COVERAGE-->
 
   <!--SECTION:EXECUTION_LOG-->
-  ## 7. Execution Log
+  ## Execution Log
   *(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skeleton is minimal — event lines appear only when the event happens. Token vocabulary lives in `<module>.3-tasks.md`. A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)*
 
   ### Round 1 — <YYYY-MM-DD>, initial
@@ -116,7 +116,7 @@
   <!--/SECTION:EXECUTION_LOG-->
 
   <!--SECTION:DECISION_LOG-->
-  ## 8. Decision Log
+  ## Decision Log
   <!-- local decisions taken during execution, ADR-compact (`<ACRONYM>-D-N · <statement>` → why ↳ rejected). Omit if none beyond the spec. -->
   <!--/SECTION:DECISION_LOG-->
 

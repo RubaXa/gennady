@@ -2,9 +2,9 @@
 //   security lens + code-review diff → synthesize), reply_needed (thread-triage, no full battery),
 //   update-review (delta-only). Parity with the CLI D57/D70 pipeline (NFC-SV-07/08/09).
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts
-// @tasks: TSK-113, TSK-121, TSK-122
+// @tasks: TSK-113, TSK-121, TSK-122, TSK-127
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '#logger';
 import type {
@@ -209,6 +209,105 @@ function materializeSynthesisReadme(ctx: NodeContext): void {
 }
 
 /**
+ * @purpose Classify a finding's severity from its prose — drives the candidate chip colour and the
+ *   AI-13 approve gate (an `error` finding blocks Approve). Conservative: only explicit
+ *   blocker/critical/high wording escalates to `error`; medium/warn → `warn`; else `info`.
+ * @param body Finding/candidate message text.
+ * @returns One of `error` | `warn` | `info`.
+ */
+function _deriveSeverity(body: string): 'error' | 'warn' | 'info' {
+  const b = body.toLowerCase();
+  if (/\b(blocker|critical|high)\b|severity[:=]\s*(error|high)/.test(b)) return 'error';
+  if (/\b(medium|med|warn(?:ing)?)\b/.test(b)) return 'warn';
+  return 'info';
+}
+
+/**
+ * @purpose Read the current `revision` field from an already-materialized `review.json`, so a
+ *   fresh materialization bumps it monotonically instead of resetting (D-99 CAS input).
+ * @invariant Absent/unreadable/malformed file → `0`, matching `ContextAssembler#_readReviewRevision`'s
+ *   default so a first-ever materialization and a pre-TSK-127 file behave identically.
+ * @param dir Report directory (`reports/<mr>/`).
+ * @returns Current `revision`, or `0` when absent.
+ */
+function _readCurrentRevision(dir: string): number {
+  const filePath = join(dir, 'review.json');
+  if (!existsSync(filePath)) return 0;
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<string, unknown>;
+    return typeof parsed['revision'] === 'number' ? (parsed['revision'] as number) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * @purpose Persist the review as STRUCTURED data (`review.json`) next to README.md, so the dashboard's
+ *   candidates panel/action bundle renders the real findings (file:line + severity + message) and the
+ *   operator can select/post them — the README prose alone is not machine-addressable.
+ * @invariant Only concrete per-line candidates (a `file` position) become findings; the one general
+ *   cross-cutting summary action (no position) is left to the README prose, not the post list.
+ * @invariant Each finding carries a stable `id` (`F-<1-based index>`) so `MutationApplier` (TSK-127)
+ *   can target one deterministically; `revision` increments monotonically across materializations
+ *   (D-99) — a re-review after a chat mutation invalidates any turn's CAS input, by design.
+ * @param ctx Node context at a synthesis gate.
+ * @sideEffect FS: writes `<reports>/<mr>/review.json` = `{ verdict, findings[], revision }`.
+ */
+function materializeReviewJson(ctx: NodeContext): void {
+  const synth =
+    (ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined) ??
+    (ctx.artifacts['node_synthesize_delta'] as Record<string, unknown> | undefined);
+  const stateDir = ctx.store?.getStateDir();
+  if (!synth || !stateDir) return;
+
+  try {
+    const report = (synth['reviewReport'] as Record<string, unknown>) ?? {};
+    const verdict =
+      typeof report['verdict'] === 'string' ? (report['verdict'] as string) : 'pending';
+    const actions = Array.isArray(synth['proposedActions'])
+      ? (synth['proposedActions'] as Array<Record<string, unknown>>)
+      : [];
+    const recs = Array.isArray(synth['recommendations'])
+      ? (synth['recommendations'] as Array<Record<string, unknown>>)
+      : [];
+    const source = actions.length ? actions : recs;
+
+    const findings = source
+      .map((a, index) => {
+        const message =
+          typeof a['body'] === 'string'
+            ? (a['body'] as string)
+            : typeof a['message'] === 'string'
+              ? (a['message'] as string)
+              : '';
+        const file = typeof a['file'] === 'string' ? (a['file'] as string) : '';
+        const line =
+          typeof a['newLine'] === 'number'
+            ? (a['newLine'] as number)
+            : typeof a['line'] === 'number'
+              ? (a['line'] as number)
+              : 0;
+        return { id: `F-${index + 1}`, severity: _deriveSeverity(message), file, line, message };
+      })
+      .filter((f) => f.file && f.message);
+
+    const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const dir = mrReportsDir(stateDir, ref);
+    const revision = _readCurrentRevision(dir) + 1;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, 'review.json'),
+      JSON.stringify({ verdict, findings, revision }, null, 2)
+    );
+  } catch (cause) {
+    logger.warn('[reviewerGraph#materializeReviewJson] [writing → degraded]', {
+      mr: ctx.mr.webUrl,
+      error: String(cause),
+    });
+  }
+}
+
+/**
  * @purpose Read pre-seeded stage/headChanged signals from artifacts and pick the branch.
  * @invariant review_needed also materializes the scaffold pipeline to disk (gap-2, TSK-122) —
  *   still no LLM, no vcs-* writes; FS-only, consistent with the prep-node contract.
@@ -273,6 +372,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -295,6 +395,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 2,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -318,6 +419,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 2,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -356,6 +458,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -393,6 +496,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -427,6 +531,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 5,
         continueMax: 2,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -441,6 +546,7 @@ const reviewerGraph: RoleGraph = {
         // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops
         // at awaiting_operator (no operator answer yet) still leaves the real-proof artifact on disk.
         materializeSynthesisReadme(ctx);
+        materializeReviewJson(ctx);
         return { pass: true };
       },
     },
@@ -473,6 +579,7 @@ const reviewerGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 2,
         restartMax: 2,
+        tools: true,
       },
     },
     {
@@ -487,6 +594,7 @@ const reviewerGraph: RoleGraph = {
         // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops
         // at awaiting_operator (no operator answer yet) still leaves the real-proof artifact on disk.
         materializeSynthesisReadme(ctx);
+        materializeReviewJson(ctx);
         return { pass: true };
       },
     },

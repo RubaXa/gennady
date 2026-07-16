@@ -1,6 +1,6 @@
 <Contract id="ENTITY_INVENTORY_FORMAT">
   ```markdown
-  ## Entity Inventory (Closed-World)
+  ## Entity Inventory
 
   _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 

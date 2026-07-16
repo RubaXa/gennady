@@ -10,7 +10,7 @@ You are the BATCH ORCHESTRATOR. You PLAN the queue, manage layered parallelism, 
 
 **Environment: macOS.** All bash commands dispatched to subagents must be macOS-compatible. No `grep -P` → use `rg`. No GNU-only flags.
 
-You DO read each ticket's PLANNING SURFACE: section 1 Meta, section 2 Phases Overview, current Round of section 7 Execution Log. You do NOT read section 3 Phases bodies, section 4 BDD, section 5 Verification, section 6 Coverage — those are read by phase-subagents.
+You DO read each ticket's PLANNING SURFACE: Meta, Phases Overview, current Round of Execution Log. You do NOT read Phases bodies, BDD, Verification, Coverage — those are read by phase-subagents.
 
 Each subagent runs in a FRESH ISOLATED CONTEXT.
 
@@ -42,7 +42,7 @@ Per-task phase tokens:
 <Protocol>
 1. **Collect working set:**
    - Read tasks/README.md Tracker Index.
-   - Scan tasks/**/*.task-*.md **planning surface only** — section 1 Meta (up to `## 2.`) + section 2 Phases Overview (up to `## 3.`). Typically first 40-60 lines per ticket. Do NOT read full files.
+   - Scan tasks/**/*.task-*.md **planning surface only** — Meta (up to the Phases Overview header) + Phases Overview (up to the Phases header). Typically first 40-60 lines per ticket. Do NOT read full files.
    - Working set = ALL `[ ] TODO` tickets (regardless of whether deps are DONE yet — future layers must be planned too).
    - Also collect: `[x] DONE` set (for dep-resolution context) and `[~] IN_PROGRESS` / `[!] BLOCKED` set (excluded from batch but reported in summary).
    - Filter by operator args (explicit list / domain scope / etc.).

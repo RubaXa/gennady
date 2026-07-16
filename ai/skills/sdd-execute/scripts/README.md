@@ -48,7 +48,7 @@ Markdown sections delimited by HTML-comment anchors:
 ```markdown
 <!--SECTION:META-->
 
-## 1. Meta
+## Meta
 
 ...
 
@@ -81,7 +81,7 @@ These scripts know nothing about any specific project. They expect:
 
 - A markdown file with anchored sections (for `extract`).
 - A TypeScript file to lint (for `lint`).
-- A ticket file with `## 7. Execution Log` section (for `check-blockers`).
+- A ticket file with `Execution Log` section (for `check-blockers`).
 - A working directory with `npm` and `tsc` available (for `verify`).
 
 If the project doesn't satisfy these expectations, scripts emit actionable diagnostics; they never silently fail.

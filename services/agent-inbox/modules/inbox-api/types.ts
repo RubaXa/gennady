@@ -40,11 +40,13 @@ export type MrDetail = {
   /** @purpose The MR card info */
   mr: MrCard;
   /** @purpose AI findings from the review pass */
-  findings: Array<{ severity: string; file: string; line: number; message: string }>;
+  findings: Array<{ id?: string; severity: string; file: string; line: number; message: string }>;
   /** @purpose Final verdict (request_changes, approved, commented) */
   verdict: string;
   /** @purpose Audit trail for this MR */
   audit: AuditEntry[];
+  /** @purpose `review.json#revision` at read time — CAS-ready input for a reconnecting `MutationApplier` client | @invariant `0` when no persisted `review.json` exists yet (D-99) */
+  revision: number;
 };
 
 /** @purpose Request body for POST /api/mr/:id/assign. */

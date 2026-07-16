@@ -137,7 +137,7 @@
     </Axiom>
 
     <Axiom id="AX_RULES_RESOLUTION_HARD_FAIL">
-      **All rule references must resolve; missing rule = abort.** Sources: scope spec (5 Effective Rules for infra; 4.5 Rules for product/library), module spec (9 Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
+      **All rule references must resolve; missing rule = abort.** Sources: scope spec (Effective Rules for infra; Rules for product/library), module spec (Handoff Module Rules Additions), task (operator-supplied at STEP_4). Each ref must exist as `ai/directives/<category>/<rule>.xml`. On miss: abort with explicit list. A placeholder rule reference (TBD, `<rule>`, "to be authored", any unresolved name) = abort, never write a ticket against it.
     </Axiom>
 
     <Axiom id="AX_RULES_CASCADE_RESOLUTION">
@@ -145,13 +145,13 @@
 
       Tier order (low → high):
       1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
-      2. **target-scope** — scope spec 5 Effective Rules (infra) or 4.5 Rules (product/library).
-      3. **module:<name>** — module spec 9 Handoff Module Rules Additions (when modules exist).
+      2. **target-scope** — scope spec Effective Rules (infra) or Rules (product/library).
+      3. **module:<name>** — module spec Handoff Module Rules Additions (when modules exist).
       4. **task** — operator-supplied during ticket generation.
 
       Invariants of the materialized cascade:
       - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`.
-      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's section 3 Phases; a ticket-level rule list is a structure violation.
+      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's Phases; a ticket-level rule list is a structure violation.
       - Auditor recomputes the effective set per-phase from these sources and compares with each phase block.
     </Axiom>
 
@@ -159,7 +159,7 @@
       **Rules activate per phase, not per ticket.** `ai/directives/knowledge.xml` (`<Rules>` section) is the canonical rule registry. Invariants of a correctly activated phase:
       - A rule is active for a phase exactly when its `<Triggers>` match THAT PHASE's `Target Files` + `kind` AND its `<SkipWhen>` does not apply. Signal-based only — the directive carries zero hardcoded language/tool knowledge.
       - The phase's `Rules:` bullet list is the **explicit, fully-resolved transitive closure** over `<DependsOn>` — one `[<rule-id>](<rule-file-path>)` per rule, direct + transitive; the phase-subagent reads the list as-is and never walks `<DependsOn>` at runtime.
-      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level section 5 Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
+      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
     </Axiom>
 
     <Axiom id="AX_DAG_AND_TICKET_BOUNDARIES">
@@ -192,7 +192,7 @@
 
       - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
       - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
-      - Each scenario maps to `<test-file>::<canonical case name>` in section 6 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.
@@ -217,13 +217,13 @@
     <Axiom id="AX_EXECUTION_LOG_PLAN_VS_FACT">
       **Scaffolding writes a MINIMAL skeleton; phase-subagent appends event lines as work happens.**
 
-      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in section 2 Phases Overview. Each block contains ONLY the closing lines:
+      - **SKELETON** for Round 1 = under `### Round 1 — <date>, initial`, one `#### P<N>` block per phase declared in Phases Overview. Each block contains ONLY the closing lines:
         ```
         #### P<N>
-        - [ ] `<ts>` ver <cmd from section 5> → <pass|fail> exit=<code>
+        - [ ] `<ts>` ver <cmd from Verification> → <pass|fail> exit=<code>
         - [ ] `<ts>` DONE
         ```
-        No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / section 6 / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
+        No pre-filled `file` / `test` / `cov` / `rules` / `recon` / `sync` lines — those were noise (duplicated Target Files / Test Scenario Coverage / Rules: list / git diff). Event lines (`intro` / `decision` / `tried` / `discovery` / `insight` / `verified` / `BLOCKED`) are APPENDED by the phase agent only when the event actually happens.
       - **FACT** = the closing `[x]` lines have placeholders replaced with real values; preceding event lines exist only if their event happened.
       - Each phase block ends with `**Handoff →** artifacts: [...]; decisions: [...]; open: [...]` line.
       - Round closes with `#### Round close` block (single `DONE`) emitted by orchestrator after the last phase.
@@ -238,7 +238,7 @@
     </Axiom>
 
     <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
-      Every ticket declares its work as an ordered list of phases in `## 2. Phases Overview` (compact table) and `## 3. Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
+      Every ticket declares its work as an ordered list of phases in `Phases Overview` (compact table) and `Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
 
       One phase = one focused unit of work for one subagent. Cross-phase dependencies (`Deps:`) are explicit. The orchestrator dispatches phases sequentially; the phase-subagent reads ONLY its phase's block, its phase's Rules, and prior-phase Handoff payloads.
 
@@ -254,7 +254,7 @@
       - Each phase carries its own `Target Files:` bullet list (NO ticket-level `Target Files` outside phases).
       - Each phase carries `Inputs:` (`none` or list of prior phase IDs whose Handoff it consumes) and `Exit:` (one-line verifiable criterion).
 
-      Forbidden: emitting a ticket without `## 2. Phases Overview` and `## 3. Phases`; collapsing impl + test into one phase (they have different rule sets and different verification commands); emitting Target Files at ticket level instead of per-phase.
+      Forbidden: emitting a ticket without `Phases Overview` and `Phases`; collapsing impl + test into one phase (they have different rule sets and different verification commands); emitting Target Files at ticket level instead of per-phase.
     </Axiom>
 
     <Axiom id="AX_SSOT_TRACEABILITY">
@@ -309,8 +309,8 @@
         the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
         1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
            `depends-on` from the target scope (transitive closure);
-        2. overlay the target-scope tier (scope spec 5 Effective Rules for infra; 4.5 Rules for
-           product/library), then each `module:<name>` tier (module spec 9 Handoff Module Rules
+        2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
+           product/library), then each `module:<name>` tier (module spec Handoff Module Rules
            Additions), then task-tier rules the operator supplied — later tier wins on collision;
         3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
            `H_MISSING_RULE_FILE`);
@@ -346,7 +346,7 @@
            + transitive, all explicit;
         5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
            rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
-           `H_VERIFICATION_COMMAND_MISSING`), and write ticket section 5 Verification table — one row
+           `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row
            per unique alias, Required-by = comma-separated declaring rule IDs.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan

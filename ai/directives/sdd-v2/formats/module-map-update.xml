@@ -1,16 +1,16 @@
 <Contract id="SCOPE_SPEC_MODULE_MAP_UPDATE">
-  **Module Map (`## 8.`) — append-only.** Golden DX Example (`## 2.` library / `## 3.` product) is rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. All other scope-spec sections stay intact.
+  **Module Map — append-only.** Golden DX Example (library / product) is rewritten as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. All other scope-spec sections stay intact.
 
   ```markdown
-  ## 8. Module Map (post-ModuleDecomposition)
+  ## Module Map (post-ModuleDecomposition)
 
   Spec hierarchy is materialized at `specs/<scope>/`. Module specs are at `specs/<scope>/<module>/<module>.spec.md`.
 
-  ### 8.1 Modules
+  ### Modules
   - [<module-1>](./<module-1>/<module-1>.spec.md) — <Purpose>
   - [<module-2>](./<module-2>/<module-2>.spec.md) — <Purpose>
 
-  ### 8.2 Inter-Module Dependency Map
+  ### Inter-Module Dependency Map
   Per-scope module graph. Edge A→B = «module A depends on module B's public surface». Cross-scope edges (to `interface`-type scopes) shown with `Scope Reference` label.
 
   ```mermaid
@@ -21,11 +21,11 @@
     payments -. Scope Reference .-> api
   ```
 
-  ### 8.3 Stack Dependencies
+  ### Stack Dependencies
   - Languages: <list>
   - Test frameworks: <list>
 
-  ### 8.4 Handoff to task-scaffolding
+  ### Handoff to Tasks
   - **Primary input:** `specs/<scope>/<scope>.spec.md` (this file).
   - **Required directives:** all `ai/directives/coding/<lang>-rules.xml` and `ai/directives/testing/<framework>.xml` for the listed stack.
   - **Open risks & validation needs:** <consolidated list across modules>

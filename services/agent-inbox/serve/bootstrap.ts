@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
@@ -23,6 +23,7 @@ import {
 import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
 import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
 import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
+import { SessionPool } from '../modules/inbox-opencode/session-pool.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
 import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
@@ -361,45 +362,73 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     opencodePort = 4096;
     opencodePidFile = null;
 
-    try {
-      opencodePort = await findFreePort();
-    } catch {
-      throw new Error('No free port available in range 4096–4106 for opencode');
-    }
-
-    const proc = await spawnOpencode(stateDir, opencodePort);
-    if (proc && proc.pid) {
-      // Ensure agent-inbox directory exists before writing PID file
-      await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
-      await writeFile(
-        pidFile,
-        JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
-        'utf-8'
-      );
-      opencodePidFile = pidFile;
-      opencode = new OpenCodeReal({
-        directory: stateDir,
-        baseUrl: `http://localhost:${opencodePort}`,
-      });
-      opencodeStatus = `connected (port ${opencodePort})`;
-      opencodeProcess = proc;
-    } else {
-      // Spawn failed — try polling an already-running instance
-      const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+    // TSK-123 P2: an operator-supplied OPENCODE_PORT means "an opencode serve is already up on
+    // this port, reuse it" — skip findFreePort/spawnOpencode entirely (spawning a second instance
+    // wastes ~20s of retry budget racing the already-bound port and blows the e2e webServer
+    // readiness window for a live run). Falls through to the pre-existing spawn path when unset.
+    const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
+    if (reusePort && Number.isFinite(reusePort)) {
+      const connected = await retryOpencodeConnect(reusePort, 3, 1000);
       if (connected) {
+        opencode = new OpenCodeReal({
+          directory: stateDir,
+          baseUrl: `http://localhost:${reusePort}`,
+        });
+        opencodeStatus = `connected (reused port ${reusePort})`;
+        opencodePort = reusePort;
+      } else {
+        degraded = true;
+        opencode = new DegradedOpencode();
+        opencodeStatus = 'degraded (OPENCODE_PORT set but unreachable)';
+        opencodePort = reusePort;
+      }
+    } else {
+      try {
+        opencodePort = await findFreePort();
+      } catch {
+        throw new Error('No free port available in range 4096–4106 for opencode');
+      }
+
+      const proc = await spawnOpencode(stateDir, opencodePort);
+      if (proc && proc.pid) {
+        // Ensure agent-inbox directory exists before writing PID file
+        await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
+        await writeFile(
+          pidFile,
+          JSON.stringify({ pid: proc.pid, port: opencodePort }) + '\n',
+          'utf-8'
+        );
+        opencodePidFile = pidFile;
         opencode = new OpenCodeReal({
           directory: stateDir,
           baseUrl: `http://localhost:${opencodePort}`,
         });
         opencodeStatus = `connected (port ${opencodePort})`;
+        opencodeProcess = proc;
       } else {
-        degraded = true;
-        opencode = new DegradedOpencode();
-        opencodeStatus = 'degraded (opencode not responding)';
+        // Spawn failed — try polling an already-running instance
+        const connected = await retryOpencodeConnect(opencodePort, 3, 2000);
+        if (connected) {
+          opencode = new OpenCodeReal({
+            directory: stateDir,
+            baseUrl: `http://localhost:${opencodePort}`,
+          });
+          opencodeStatus = `connected (port ${opencodePort})`;
+        } else {
+          degraded = true;
+          opencode = new DegradedOpencode();
+          opencodeStatus = 'degraded (opencode not responding)';
+        }
       }
     }
     // #endregion END_CONNECT_OPENCODE
   }
+
+  // Review Chat sessions share the same opencode adapter RoleScheduler drives (mock, real, or
+  // degraded) — one pool, bound after `opencode` is finalized above, feeds both scheduler-driven
+  // role turns and operator-driven chat turns (TSK-133, SV-11, D-102).
+  const chatSessionPool = new SessionPool({ maxSessions: 4, opencode });
+
   // #region START_CREATE_ROLES
   const engine = new RoleEngine();
   await engine.loadAll();
@@ -430,7 +459,11 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       engine.activate(role.name);
     }
 
-    const server = new HttpServer({ port, boardProvider });
+    const server = new HttpServer({
+      port,
+      boardProvider,
+      chat: { pool: chatSessionPool, store: stateStore },
+    });
     // #endregion END_CREATE_SERVER_MOCK
 
     logger.info('[bootstrap] [idle → assembled]', {
@@ -460,7 +493,11 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   // F1: Real mode — BoardProviderReal backed by RoleScheduler; reports/<mr>/ read from the
   // same state dir the reviewer graph materializes to disk (TSK-122 gap-3/gap-4).
   const boardProvider = new BoardProviderReal(scheduler, engine, stateStore.getStateDir());
-  const server = new HttpServer({ port, boardProvider });
+  const server = new HttpServer({
+    port,
+    boardProvider,
+    chat: { pool: chatSessionPool, store: stateStore },
+  });
   // #endregion END_CREATE_SERVER
 
   logger.info('[bootstrap] [idle → assembled]', {

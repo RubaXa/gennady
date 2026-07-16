@@ -1,6 +1,6 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113, TSK-121
+// @tasks: TSK-113, TSK-121, TSK-124
 
 import { join } from 'node:path';
 import { logger } from '#logger';
@@ -74,6 +74,48 @@ export type RoleInstanceCheckpoint = {
   /** @purpose Artifacts already produced by completed nodes — done tracks are not re-run */
   artifacts: RoleArtifacts;
 };
+
+/**
+ * @purpose Render a compact JSON example for one schema property, by type — the shape hint the model
+ *   needs to close its turn with parseable JSON (not a full JSON-Schema serialization).
+ * @param prop A `resultSchema.properties[k]` descriptor (`{ type }`).
+ * @returns A one-token example value (`[]`, `{}`, `"..."`, `0`, `false`, `null`).
+ */
+function _exampleForProp(prop: unknown): string {
+  const type = (prop as { type?: string } | undefined)?.type;
+  switch (type) {
+    case 'array':
+      return '[]';
+    case 'object':
+      return '{}';
+    case 'string':
+      return '"..."';
+    case 'number':
+    case 'integer':
+      return '0';
+    case 'boolean':
+      return 'false';
+    default:
+      return 'null';
+  }
+}
+
+/**
+ * @purpose Build the output-contract suffix appended to a session node's task text — turns the node's
+ *   `resultSchema` into an explicit "end your turn with exactly this JSON" instruction.
+ * @invariant Appended to the TASK TEXT, never the system directive (schema-in-system made the model
+ *   hang). Shape hint only, from `properties` — the item shape of each array is carried by the node's
+ *   own task text (e.g. "findings with file:line addresses").
+ * @param schema The node's `resultSchema`.
+ * @returns Markdown suffix instructing the final-message JSON shape.
+ */
+function _outputContract(schema: unknown): string {
+  const props = (schema as { properties?: Record<string, unknown> } | undefined)?.properties ?? {};
+  const shape = Object.entries(props)
+    .map(([key, prop]) => `"${key}": ${_exampleForProp(prop)}`)
+    .join(', ');
+  return `\n\n### Output contract\nInvestigate with the tools first. Then the FINAL message of your turn must be EXACTLY ONE fenced json code block and NOTHING after it, matching this shape:\n\`\`\`json\n{ ${shape} }\n\`\`\``;
+}
 
 /**
  * @purpose Executes a role graph node-by-node on a single MR.
@@ -422,12 +464,19 @@ export class RoleInstance {
     // #region START_SESSION_CALL — invariant: system instruction always comes from services/ai-kit
     // (buildNodePrompt); the node only contributes the concrete task text (buildTaskText)
     const taskText = node.buildTaskText(ctx);
-    const directory = node.dir(ctx);
+    // Real checked-out worktree (context-builder.ts) over node.dir(ctx)'s never-materialized default — session cwd must exist on disk.
+    const worktreePath = ctx.artifacts.worktreePath;
+    const directory = typeof worktreePath === 'string' ? worktreePath : node.dir(ctx);
 
     if (!this._sessionId) {
       const handle = await this._opencode.createSession({
         title: node.id,
         directory,
+        // Review/analysis session nodes declare policy.tools=true so the agent can actually read the
+        // checked-out worktree (read/grep/git). Without it OpenCodeReal sends `tools:{'*':false}`, the
+        // model narrates its intended tool calls as text, and the turn never yields the final
+        // structured result (`[no JSON in response]`).
+        tools: node.policy?.tools === true,
       });
       this._sessionId = handle.sid;
     }
@@ -447,7 +496,12 @@ export class RoleInstance {
 
     const promptOpts: PromptOpts = {
       system,
-      text: taskText,
+      // The system directive carries the review METHOD; the schema is never injected there (a 48KB
+      // directive + schema made the model hang). Instead append a compact output contract to the
+      // task text so, after tool-driven investigation, the turn's FINAL message is the parseable JSON
+      // OpenCodeReal extracts — otherwise the agent ends on prose and the node retries until it
+      // escalates to the operator (the awaiting_operator-without-synthesis failure mode).
+      text: node.resultSchema ? `${taskText}${_outputContract(node.resultSchema)}` : taskText,
     };
 
     if (node.resultSchema) {

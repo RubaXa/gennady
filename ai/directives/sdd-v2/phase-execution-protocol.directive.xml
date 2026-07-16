@@ -8,7 +8,7 @@
     The orchestrator owns all of: selecting the next phase · running audit · re-running prior phases ·
     syncing the project trackers.
 
-    Phase = atomic unit declared in the ticket `## 3. Phases`. Kind ∈ bootstrap | impl | test | config
+    Phase = atomic unit declared in the ticket `Phases`. Kind ∈ bootstrap | impl | test | config
     | doc | refactor | fix.
   </Mission>
 
@@ -70,9 +70,9 @@
 
     <Axiom id="AX_TICKET_WRITE_SCOPE">
       Phase agent may edit ticket file ONLY in:
-      - this phase's block under `## 7. Execution Log` current Round;
-      - `## 6. Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
-      - `## 2. Phases Overview` Status column for THIS phase ID only.
+      - this phase's block under `Execution Log` current Round;
+      - `Test Scenario Coverage` canonical case names (when test reality differs, phase kind = `test`);
+      - `Phases Overview` Status column for THIS phase ID only.
 
       Anything else (Phases definitions, Rules lists, Target Files, BDD scenarios, Verification table, Dependencies, Meta) → `H_OUT_OF_PHASE_WRITE`. Operator decides via re-planning.
     </Axiom>
@@ -212,7 +212,7 @@
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
-    | `H_PHASE_NOT_FOUND` | Phase ID from the orchestrator matches no block under `## 3. Phases` |
+    | `H_PHASE_NOT_FOUND` | Phase ID from the orchestrator matches no block under `Phases` |
     | `H_PHASE_ALREADY_DONE` | Phase Status is `[x]` and no `fix` reason was passed |
     | `H_RECON_DIVERGENCE` | Recon shows Target Files inconsistent with the phase plan |
     | `H_MISSING_RULE_FILE` | A rule cited in the phase Rules list does not resolve |

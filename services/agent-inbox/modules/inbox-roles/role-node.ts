@@ -81,6 +81,8 @@ export type SessionPolicy = {
   continueMax: number;
   /** @purpose Max restart attempts before escalating to AWAITING_OPERATOR */
   restartMax: number;
+  /** @purpose Bind code-navigation tools (read/grep/git) to the session cwd | @invariant Absent/false → agent cannot read the worktree and emits its intended tool calls as inert text instead of running them (never producing the final structured result); review/analysis nodes that must inspect the diff set this true */
+  tools?: boolean;
 };
 
 /**

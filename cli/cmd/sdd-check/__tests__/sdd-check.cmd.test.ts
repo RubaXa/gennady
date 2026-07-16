@@ -171,6 +171,33 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 0);
   });
 
+  it('--all на смешанном репо: строгие v2-проверки бьют только по мигрированному scope', async () => {
+    const root = join(dir, 'mixed-proj');
+    const MODULE_SPEC = [
+      '# mod',
+      '<!--SECTION:MODULE_VISION-->',
+      '## Module Vision',
+      'x',
+      '<!--/SECTION:MODULE_VISION-->',
+    ].join('\n');
+    mkdirSync(join(root, 'tasks', 'old-scope'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'old-scope', 'mod'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'new-scope', 'mod'), { recursive: true });
+    writeFileSync(join(root, 'specs', 'old-scope', 'mod', 'mod.spec.md'), MODULE_SPEC, 'utf-8');
+    writeFileSync(join(root, 'specs', 'new-scope', 'mod', 'mod.spec.md'), MODULE_SPEC, 'utf-8');
+    // мигрированность scope позитивна: tasks/<scope>/ снесён И co-located индекс существует
+    writeFileSync(
+      join(root, 'specs', 'new-scope', 'new-scope.3-tasks.md'),
+      '# Tasks: new-scope\n',
+      'utf-8'
+    );
+
+    const r = await mod.run(argv('--all', root));
+    assert.strictEqual(r.exitCode, 1);
+    assert.match(r.text, /new-scope[\\/]mod[\\/]mod\.spec\.md[\s\S]*SDD_NO_DIAGRAM_BLOCK/);
+    assert.doesNotMatch(r.text, /old-scope[\\/]mod[\\/]mod\.spec\.md/);
+  });
+
   it('exits 4 with neither --task nor --all, 1 on missing --task file', async () => {
     const none = await mod.run(argv());
     assert.strictEqual(none.exitCode, 4);

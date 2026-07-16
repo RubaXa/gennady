@@ -406,6 +406,31 @@ export * from './other';
     }
   });
 
+  it('should keep the param name when the default value is an identifier, not the default itself', async () => {
+    // purpose: a default like `= SOME_CONST` must not let the default expression's own identifier
+    // overwrite the parameter's name (regression: both are `identifier` nodes under the same parent)
+    // contract: params[0].name === 'zones', not the default's identifier 'ID_REPLACE_ZONES'
+
+    const source =
+      'const ID_REPLACE_ZONES: string[] = [];\nexport function foo(zones: string[] = ID_REPLACE_ZONES): void {}';
+    const { dir, filePath } = setupTempFile('default-ident-param.ts', source);
+    const adapter = new DbcTsAstAdapter();
+
+    try {
+      const result = await adapter.parseFile(filePath);
+      assert.strictEqual(result.ok, true);
+      if (!result.ok) throw new Error('expected ok: true');
+      const entity = result.exported.find((e) => e.name === 'foo');
+      assert.ok(entity, 'no entity found');
+      const { params } = entity!.signature;
+      assert.strictEqual(params.length, 1);
+      assert.strictEqual(params[0]?.name, 'zones');
+      assert.strictEqual(params[0]?.optional, true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('should never throw', async () => {
     // purpose: verify that the adapter never throws, even on garbage input
     // contract: DbcParseResult is always returned; no unhandled exceptions

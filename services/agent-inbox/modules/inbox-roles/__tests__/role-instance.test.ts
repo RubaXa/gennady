@@ -2,7 +2,7 @@
 //   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
 //   buildTaskText contract.
 // @consumers: node:test runner
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-124
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +11,21 @@ import type { RoleGraph } from '../role-node.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
+import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
+
+/**
+ * @purpose Spy on OpenCodeMock#createSession — records the `directory` each call received, so
+ *   TSK-124 regression tests can assert which directory RoleInstance#_executeSession fed in
+ *   (ctx.artifacts.worktreePath vs the node.dir(ctx) fallback) without reaching into private state.
+ */
+class OpenCodeCreateSessionSpy extends OpenCodeMock {
+  public createSessionCalls: CreateSessionOpts[] = [];
+
+  override async createSession(opts: CreateSessionOpts): Promise<SessionHandle> {
+    this.createSessionCalls.push(opts);
+    return super.createSession(opts);
+  }
+}
 
 // Fake StateStore with in-memory audit
 class FakeStateStore {
@@ -177,6 +192,29 @@ function makeTwoNodeGraph(): RoleGraph {
       { from: 'node_a', to: 'node_b', on: 'ok' },
       { from: 'node_b', to: 'done', on: 'ok' },
     ],
+  };
+}
+
+/** @purpose Single-session-node graph used by TSK-124 regression tests — dir() returns a fixed
+ *   marker distinct from any real worktree, so a passing fallback assertion proves createSession
+ *   actually received node.dir(ctx) rather than coincidentally matching a computed workspace path. */
+function makeSingleSessionGraph(): RoleGraph {
+  return {
+    nodes: [
+      {
+        kind: 'session',
+        id: 'node_wt',
+        buildTaskText() {
+          return 'TSK-124 regression task';
+        },
+        dir() {
+          return 'FALLBACK_DIR_MARKER';
+        },
+        resultSchema: { title: 'node_wt', type: 'object', properties: {} },
+        policy: { promptTimeout: 10, continueMax: 1, restartMax: 1 },
+      },
+    ],
+    edges: [{ from: 'node_wt', to: 'done', on: 'ok' }],
   };
 }
 
@@ -407,5 +445,55 @@ describe('RoleInstance — checkpoint restart recovery (SV-13: заполнен�
     assert.strictEqual(instance.state, 'done');
     // node_a's checkpointed artifact survives untouched across the resumed run.
     assert.deepStrictEqual(instance.getCheckpoint().artifacts['node_a'], { done: true });
+  });
+});
+
+describe('RoleInstance — _executeSession directory wiring (TSK-124 regression: B2 root cause)', () => {
+  it('GIVEN ctx.artifacts.worktreePath присутствует WHEN session node запускается THEN createSession получает worktreePath, не node.dir(ctx)', async () => {
+    const spy = new OpenCodeCreateSessionSpy();
+    const realWorktreePath = '/home/test/.gennady/worktrees/test-mr-1';
+    spy.seed('node_wt', { done: true });
+
+    const instance = new RoleInstance({
+      id: 'test:tsk124:present',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/124',
+      graph: makeSingleSessionGraph(),
+      opencode: spy,
+      vcs,
+      store: store as unknown as StateStore,
+      checkpoint: {
+        currentNode: 'node_wt',
+        continueCount: 0,
+        restartCount: 0,
+        artifacts: { worktreePath: realWorktreePath },
+      },
+    });
+
+    await instance.step();
+
+    assert.strictEqual(spy.createSessionCalls.length, 1);
+    assert.strictEqual(spy.createSessionCalls[0]?.directory, realWorktreePath);
+    assert.notStrictEqual(spy.createSessionCalls[0]?.directory, 'FALLBACK_DIR_MARKER');
+  });
+
+  it('GIVEN ctx.artifacts.worktreePath отсутствует WHEN session node запускается THEN createSession получает node.dir(ctx) (старое поведение сохранено)', async () => {
+    const spy = new OpenCodeCreateSessionSpy();
+    spy.seed('node_wt', { done: true });
+
+    const instance = new RoleInstance({
+      id: 'test:tsk124:absent',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/125',
+      graph: makeSingleSessionGraph(),
+      opencode: spy,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step();
+
+    assert.strictEqual(spy.createSessionCalls.length, 1);
+    assert.strictEqual(spy.createSessionCalls[0]?.directory, 'FALLBACK_DIR_MARKER');
   });
 });

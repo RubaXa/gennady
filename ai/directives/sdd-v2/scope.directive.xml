@@ -68,6 +68,10 @@
       For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
     </Axiom>
 
+    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every scope spec carries at least one diagram in an `Overview` section, high up so a reader grasps the scope at a glance — one glance beats a paragraph. The floor is one system-context / high-level view (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views (user flow, data flow) wherever a second diagram genuinely helps; that is judgment, not a gate.
+    </Axiom>
+
     <Axiom id="AX_RUNTIME_BACKING_EXPLICIT">
       For product / library scope specs, runtime backing is declared at the scope level inside Requirements & Constraints under «Runtime Backing & Deferred Scope»:
       - Backing per major capability: `not-implemented` | `simulation` | `real-runtime`.

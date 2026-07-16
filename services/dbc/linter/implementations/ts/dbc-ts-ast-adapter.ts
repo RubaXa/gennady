@@ -362,6 +362,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     let type = 'any';
     let optional = paramNode.type === 'optional_parameter';
     let isRest = false;
+    let sawDefault = false;
 
     for (let i = 0; i < paramNode.childCount; i += 1) {
       const child = paramNode.child(i);
@@ -396,11 +397,15 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
         continue;
       }
 
-      // Default initializer `=` makes a required_parameter effectively optional
+      // Default initializer `=` makes a required_parameter effectively optional. Everything after
+      // it is the default-value expression, not the parameter's own name/type — e.g. `zones:
+      // string[] = ID_REPLACE_ZONES` must not let the default's identifier overwrite `zones`.
       if (child.type === '=') {
         optional = true;
+        sawDefault = true;
         continue;
       }
+      if (sawDefault) continue;
 
       // Identifier / destructuring pattern
       if (

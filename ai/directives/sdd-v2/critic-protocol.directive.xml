@@ -154,8 +154,8 @@
       <Goal>Understand the system, not one spec in isolation.</Goal>
       <Action>
         Resolve the artifact's direct NEIGHBOURHOOD in BOTH directions: what it depends on (scope — `## Scope
-        Dependencies` + portal graph; module — `## 9` depends-on) AND its CONSUMERS — who depends on it (portal
-        reverse edges; module `## 9` Provides-to). For each, pull ONLY its Vision / Goals via
+        Dependencies` + portal graph; module — `Inter-Module Dependencies` depends-on) AND its CONSUMERS — who depends on it (portal
+        reverse edges; module `Inter-Module Dependencies` Provides-to). For each, pull ONLY its Vision / Goals via
         `sdd-extract <dep-spec> VISION` (`MODULE_VISION` for a module) — the tool does the gathering, not
         eyeballing, and the read stays bounded (`AX_ISOLATION`). Consumers matter most: value is consumer-defined
         (`AX_PRODUCT_ARCHITECT_LENS`) — you cannot judge whether the design serves its purpose without seeing who it serves.

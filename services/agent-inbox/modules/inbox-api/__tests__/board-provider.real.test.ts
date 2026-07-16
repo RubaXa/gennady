@@ -14,6 +14,7 @@ import type { RoleScheduler, RoleInstanceSnapshot } from '../../inbox-roles/role
 import type { RoleEngine } from '../../inbox-roles/role-engine.ts';
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
 
 const MR: VcsActionableMr = {
   iid: '14623',
@@ -230,6 +231,71 @@ describe('BoardProviderReal — reports/<mr>/ artifact backing (TSK-122 gap-3)',
       assert.equal(provider.readArtifact(REF, '../../etc/passwd'), null);
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('BoardProviderReal.getReport — revision from review.json (TSK-133, D-99)', () => {
+  /**
+   * @purpose One `done` instance snapshot with empty in-memory findings — forces `getReport` to
+   *   fall through to the on-disk `review.json` read path (`_readDiskReview`), matching the
+   *   "standard serve over a real state dir" scenario the ticket targets.
+   */
+  function idleSnap(): RoleInstanceSnapshot {
+    return {
+      key: `reviewer:${MR.webUrl}`,
+      role: 'reviewer',
+      mr: MR.webUrl,
+      state: 'done',
+      currentNode: 'gate_review_synthesis',
+      findings: [],
+      verdict: '',
+      awaitingOperator: false,
+    };
+  }
+
+  it('getReport returns MrDetail.revision === 3 from a real on-disk review.json', () => {
+    const stateDir = makeTestTmpDir('board-provider-real-revision-');
+    try {
+      const ref = `${MR.project}!${MR.iid}`;
+      const dir = mrReportsDir(stateDir, ref);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, 'review.json'),
+        JSON.stringify({ verdict: 'approved', findings: [], revision: 3 }, null, 2)
+      );
+
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [MR], instances: [idleSnap()] }),
+        engineStub(),
+        stateDir
+      );
+
+      const report = provider.getReport(ref);
+      assert.ok(report, 'expected a report to be resolved');
+      assert.strictEqual(report!.revision, 3);
+    } finally {
+      cleanupTestTmp(stateDir);
+    }
+  });
+
+  it('getReport degrades revision to 0 when no review.json is persisted yet', () => {
+    const stateDir = makeTestTmpDir('board-provider-real-revision-');
+    try {
+      const ref = `${MR.project}!${MR.iid}`;
+      // No reports/<mr>/ dir at all — pure in-memory instance, nothing materialized to disk yet.
+
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [MR], instances: [idleSnap()] }),
+        engineStub(),
+        stateDir
+      );
+
+      const report = provider.getReport(ref);
+      assert.ok(report, 'expected a report to be resolved');
+      assert.strictEqual(report!.revision, 0);
+    } finally {
+      cleanupTestTmp(stateDir);
     }
   });
 });
