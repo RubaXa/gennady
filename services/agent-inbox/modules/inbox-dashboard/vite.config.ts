@@ -84,7 +84,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: resolve(__dirname, '../../../../../dist/inbox-serve'),
+    outDir: resolve(__dirname, '../../../../dist/inbox-serve'),
     emptyOutDir: true,
   },
 });

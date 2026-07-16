@@ -10,8 +10,10 @@ import type {
   ArtifactContent,
 } from '../../inbox-api/types.ts';
 
-/** @purpose Base URL for the inbox-api server (default port 4174). */
-const BASE_URL = 'http://localhost:4174';
+/** @purpose Base URL for the inbox-api server. Empty = same-origin: the dashboard SPA is served by
+ *   the same HttpServer that exposes the API, so relative paths hit whatever port `inbox serve` runs
+ *   on (no hardcoded port — the SPA works regardless of the serving port). */
+const BASE_URL = '';
 
 /**
  * @purpose Thin fetch wrapper with JSON parsing and error handling.

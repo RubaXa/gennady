@@ -6,8 +6,10 @@ import type { ChatTurn, ContextChip, MutationProposal } from '../../inbox-chat/t
 import type { ChatErrorCode } from '../../inbox-chat/errors.ts';
 import type { SseFrame } from '../../inbox-api/sse-hub.ts';
 
-/** @purpose Base URL for the inbox-api server (default port 4174), mirrors ApiClient's BASE_URL. */
-const BASE_URL = 'http://localhost:4174';
+/** @purpose Base URL for the inbox-api server. Empty = same-origin (mirrors ApiClient's BASE_URL):
+ *   the SPA is served by the same HttpServer as the API, so relative paths hit the serving port —
+ *   no hardcoded port. */
+const BASE_URL = '';
 
 /** @purpose Initial SSE reconnect delay; doubles on each consecutive failure up to MAX_RECONNECT_DELAY_MS. */
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
@@ -50,6 +52,13 @@ export type ChatStreamHandlers = {
   onMutation?: (mutation: MutationProposal) => void;
   /** @purpose Fired when review.json changed underneath — caller re-reads detail/artifacts. */
   onRefresh?: () => void;
+  /**
+   * @purpose Fired for a suppressed external write under INBOX_DRY_RUN (TSK-131) — the caller logs
+   *   it so the operator sees, in the browser, that no real MR post / operator DM went out.
+   * @param channel Originating seam (`mr` VCS mutation | `dm` operator message).
+   * @param line The `DRY-RUN …` line, ready to log verbatim.
+   */
+  onDryRun?: (channel: 'mr' | 'dm', line: string) => void;
   /**
    * @purpose Fired on a server-reported error frame
    * @param error Error code
@@ -201,6 +210,9 @@ export class ChatApiClient {
         case 'error':
           handlers.onError?.(frame.error, frame.detail);
           return;
+        case 'dryrun':
+          handlers.onDryRun?.(frame.channel, frame.line);
+          return;
         default: {
           const exhaustive: never = frame;
           throw new Error(
@@ -226,6 +238,7 @@ export class ChatApiClient {
       source.addEventListener('turn_done', onNamedEvent);
       source.addEventListener('mutation', onNamedEvent);
       source.addEventListener('refresh', onNamedEvent);
+      source.addEventListener('dryrun', onNamedEvent);
       source.addEventListener('error', (ev: Event) => {
         // #region START_DISTINGUISH_DATA_ERROR_FROM_TRANSPORT_ERROR — invariant: a named `event: error` SSE frame arrives as MessageEvent (has `data`); a connection failure is a bare Event
         if (ev instanceof MessageEvent) {
