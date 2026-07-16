@@ -22,7 +22,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  timeout: 3_000_000,
+  timeout: 780_000,
   use: {
     baseURL: 'http://localhost:4174',
     screenshot: 'off',

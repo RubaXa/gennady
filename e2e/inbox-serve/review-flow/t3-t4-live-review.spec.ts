@@ -21,9 +21,9 @@ let reviewDir: string;
 let reviewPath: string;
 let materialized = false;
 
-/** @purpose Wall-clock budget for the live tick-drive — the real graph runs ~4 sequential LLM nodes,
- *   several minutes each, so this is intentionally generous (not the ~6 min a single node takes). */
-const DRIVE_DEADLINE_MS = 1_800_000;
+/** @purpose Hard 10-min wall-clock budget for the live drive (env-overridable). Exceeding it FAILS
+ *   the test with the last tick's node, so a stall is localized instead of hanging tens of minutes. */
+const DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 600_000);
 /** @purpose Tick bound — one session node advances per tick; the graph has < ~12 nodes to synthesis. */
 const MAX_TICKS = 40;
 

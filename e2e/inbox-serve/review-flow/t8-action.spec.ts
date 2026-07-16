@@ -17,7 +17,8 @@ let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
 let reachedAwaiting = false;
 
-const DRIVE_DEADLINE_MS = 1_800_000;
+/** Hard 10-min live-drive budget (env-overridable) — a stall fails fast, localized to the last node. */
+const DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 600_000);
 const MAX_TICKS = 40;
 
 test.describe('t8 gate action dry-run', () => {

@@ -86,12 +86,27 @@ export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
 
 /**
  * @purpose Boot the REAL product in-process (mocks:false, dryRun:true) and start its HTTP server.
- * @invariant Reuses the shared `opencode serve` on :4096 (OPENCODE_PORT) instead of spawning one.
+ * @invariant Spawns its OWN proxy-free `opencode serve` (unset proxy, no pinned OPENCODE_PORT).
  * @param stateDir Temp state dir from `makeStateDir`.
  * @returns The bootstrap result (server/scheduler/opencode handles).
  */
 export async function bootReal(stateDir: string): Promise<BootstrapResult> {
-  process.env.OPENCODE_PORT = process.env.OPENCODE_PORT ?? '4096';
+  // The corporate squid proxy blocks the llm-proxy provider (opencode → `fetch failed`). Unset ALL
+  // proxy vars in THIS process so the opencode server bootstrap spawns inherits a proxy-free env,
+  // regardless of how the suite was launched (https provider still routes via HTTP_PROXY/ALL_PROXY).
+  for (const key of [
+    'HTTPS_PROXY',
+    'https_proxy',
+    'HTTP_PROXY',
+    'http_proxy',
+    'ALL_PROXY',
+    'all_proxy',
+  ]) {
+    delete process.env[key];
+  }
+  // Do NOT pin OPENCODE_PORT: let bootstrap findFreePort + spawn its OWN clean opencode instead of
+  // reusing a possibly-proxied long-lived server on :4096.
+  delete process.env.OPENCODE_PORT;
   const app = await bootstrap({ mocks: false, port: PORT, stateDir, dryRun: true });
   await app.server.start();
   return app;
