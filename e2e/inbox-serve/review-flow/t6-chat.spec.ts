@@ -5,9 +5,11 @@
 // @tasks: TSK-131
 
 import { test, expect, type ConsoleMessage } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, MR_REF, BASE_URL } from './_support.ts';
 import { shot } from '../helpers/shot.ts';
+import { ChatTranscript } from '../../../services/agent-inbox/modules/inbox-chat/chat-transcript.ts';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
@@ -69,5 +71,27 @@ test.describe('t6 review chat', () => {
       consoleErrors.map((m) => m.text()),
       `browser console errors during chat: ${consoleErrors.map((m) => m.text()).join(' | ')}`
     ).toEqual([]);
+
+    // D-125 triple-grounding: the UI action (typed question → Enter) must be provable on disk, not
+    // just on screen — read the SAME transcript file ChatSession#ask() persists (chats/<ref>.jsonl)
+    // and confirm the exact question this test typed produced a real, non-empty answer there.
+    const uiAnswerText = (
+      await page.locator('[data-testid="chat-streaming"], [data-testid="chat-answer"]').allInnerTexts()
+    )
+      .join('')
+      .trim();
+
+    const transcriptPath = new ChatTranscript(stateDir!).path(MR_REF);
+    const lines = readFileSync(transcriptPath, 'utf-8').trim().split('\n');
+    const lastTurn = JSON.parse(lines[lines.length - 1]!) as { question: string; answer: string };
+
+    expect(lastTurn.question, 'persisted transcript question must match what was typed in the UI').toBe(
+      'Кратко перечисли находки этого ревью.'
+    );
+    expect(lastTurn.answer.length, 'persisted transcript answer must be non-empty').toBeGreaterThan(0);
+    expect(
+      uiAnswerText.slice(0, 20),
+      'the on-disk answer must be the same text the UI actually rendered, not a different turn'
+    ).toBe(lastTurn.answer.slice(0, 20));
   });
 });
