@@ -1,0 +1,109 @@
+<!-- TSK-136 (D-121/AI-42): base hbs template for selectDirective('session', 'code', mrShape) —
+     migrated content from ai/directives/agent-inbox/code-interrogation.directive.xml, additive
+     mission-adequacy + mrShape-trigger bricks injected below as a new BeliefState section. Distinct
+     file from the pre-existing SDD-skill `code-review.directive.hbs` in this same templates dir —
+     different domain (agent-inbox MR-lens content vs sdd-code-review skill), no collision. -->
+<CodeInterrogation type="directive" ver="1.0"
+  keywords="native stdlib analog, modern idioms, magic literal, constant vs dependency, global dependency, testability, security, business goal alignment, code review checklist">
+  <Mission>
+    Second battery, loaded by `arch-interrogation` on the `review_needed` stage, and selectable on
+    its own as the base directive for `node_code_review` (`track='code'`, TSK-136). The axes A–G of
+    arch-interrogation judge whether an entity should EXIST; these probes judge whether the CODE
+    inside it is written well — seen through the architecture / testability prism, NOT as a linter.
+    Applied per changed unit: entity / module / function / literal. DO-CONFIRM: each probe reports
+    `confirmed` or `flagged`; only `flagged` reaches the operator. We are not a linter and never
+    restate what a compiler/linter already catches.
+  </Mission>
+
+  <ScopeGuard>
+    Skip everything tsc / ESLint / the formatter already enforces in this repository. Raise only
+    logical and architectural judgements tools cannot make: WHY a literal is (or is not) a constant,
+    WHY a dependency is global, whether the code is testable, whether it serves the business goal.
+    Scope strictly to the diff. One `flag` = one real problem, attached to a finding ID (E/R/Q) in
+    the parent directive — never a parallel report. If a probe is inconclusive, say so; do not invent.
+    When `security-interrogation.directive.xml` participates in the same review, security findings
+    are raised THERE — the `SEC` probe below defers to that battery (no double-flagging).
+  </ScopeGuard>
+
+  <Probes>
+    Each probe is one question applied where relevant; report only flags. Codes appear in the «Ось»
+    column of arch-interrogation OutputFormat §9.
+
+    | Code     | Проба (один вопрос) | Flag когда |
+    |----------|---------------------|------------|
+    | `NAT`    | Есть ли в stdlib языка готовый аналог тому, что написано руками? (промис-комбинаторы, `structuredClone`, `Intl`, `URL`, `crypto`, методы Array/Map) | Ручная реализация того, что уже есть в стандартной библиотеке |
+    | `IDIOM`  | Используются ли современные конструкции языка? (`?.`, `??`, деструктуризация, ранний return) | Многословная форма там, где короткая читается лучше — только если снижает ветвление/читаемость, не косметика |
+    | `LIT`    | Литерал, похожий на конфиг/константу — обоснуй ОДНО: (a) нужна именованная константа; (b) намеренно локальна и очевидна | Вынесли бездумно ИЛИ захардкодили смысл/повтор/конфиг — без обоснования любой из сторон |
+    | `DEP`    | Константа или зависимость? То, что конфигурируется снаружи (URL, таймаут, лимит, путь) — параметр, не `const` | Конфигурация зашита литералом/`const` вместо параметра/инъекции |
+    | `GLOBAL` | Почему зависимость берётся глобально (singleton-import, env, `Date.now`, random, fs), а не аргументом? | Необоснованный global — бьёт по тестируемости; нет причины, почему именно глобально |
+    | `TEST`   | Можно ли вызвать это в тесте без сети/времени/фс/случайности? | Скрытый сайд-эффект, который нельзя подменить; логика сцеплена с источником данных |
+    | `SEC`    | Недоверенный вход (юзер/сеть/файл) валидируется? секрет в коде/логе? инъекция (SQL/shell/path)? | Есть вектор; строгость оценивать через бизнес-цель — что и зачем защищаем |
+    | `BIZ`    | Понятна ли из MR бизнес-цель и служит ли ей код? | Цель НЕ ясна из описания → не угадывать: кандидат «попросить автора дописать цель». Код расходится с заявленной целью |
+    | `TYPO`   | Есть ли в изменённых строках опечатки? Проверить текст сообщений, комментариев, строковых литералов. | Найдена вероятная опечатка → suggestion-кандидат: line-comment с fenced-блоком ```suggestion:-0+0, новый текст строки внутри (формат — posting-rules §suggestion) |
+  </Probes>
+
+  <WebSearchGuard>
+    Web-search — дорогая операция, по умолчанию ВЫКЛЮЧЕНА. Сначала репозиторий + знание stdlib.
+    Допустима ТОЛЬКО когда: (1) вердикт реально зависит от внешнего факта, которого нет ни в репо,
+    ни в знании языка — конкретная версия/поведение API, актуальность подхода, известная
+    CVE/deprecation; И (2) один точечный запрос закрывает вопрос. Сначала назови, какой вердикт
+    зависит от запроса; без этого не искать. Не использовать для общих вопросов и того, что и так знаешь.
+  </WebSearchGuard>
+
+  <BeliefState>
+    <!-- TSK-136 (D-122/AI-43): mission-adequacy — always-included, judged in addition to the
+         NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO probes above, never in place of them. -->
+    {{> "axiom/agent-inbox/ax-review-purpose"}}
+
+    {{> "axiom/agent-inbox/ax-simpler-alternative"}}
+
+    {{> "axiom/agent-inbox/ax-complexity-budget"}}
+
+    <Axiom id="AX_NO_DUPLICATION">
+      Applied to code, not ticket prose: before accepting a new symbol, search the repo for an
+      existing equivalent. Reuses the `ax-ticket-deduplication` principle (single authoritative
+      home for one piece of content) — no separate axiom is authored for this, the same principle
+      is read verbatim below.
+      {{> "axiom/scaffold/ax-ticket-deduplication"}}
+    </Axiom>
+
+    <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the
+         orchestrator's statanalysis flagged the corresponding signal on this MR's diff. -->
+    {{#if mrShape.newSymbols}}
+    <Step id="STEP_DEDUP_NEW_SYMBOL">
+      A new exported symbol was introduced (`mrShape.newSymbols`) — dedup-step reusing
+      `ax-ticket-deduplication`: search the repo for an existing equivalent before accepting this
+      one; found → ask whether this is the right layer for it, or a duplicate (`NAT`/`DEP` probes
+      above already partly cover this — this step is the explicit search-first prompt).
+      {{> "axiom/scaffold/ax-ticket-deduplication"}}
+    </Step>
+    {{/if}}
+
+    {{#if mrShape.isTiny}}
+    {{> "axiom/agent-inbox/ax-minimal-change-suspicion"}}
+    {{/if}}
+
+    {{#if mrShape.filterMapChain}}
+    <Step id="STEP_REDUCE_CANDIDATE">
+      A `.filter().map()` chain was added over one collection (`mrShape.filterMapChain`) — ask
+      whether it reduces to a single `reduce()` pass without a readability loss.
+    </Step>
+    {{/if}}
+
+    {{#if mrShape.nestedLoops}}
+    <Step id="STEP_NESTED_LOOP_COMPLEXITY">
+      A loop was added nested inside another loop (`mrShape.nestedLoops`) — complexity-step
+      reusing `ax-scale-proportional-depth`: confirm the nesting is necessary and not flattenable.
+      {{> "axiom/process/ax-scale-proportional-depth"}}
+    </Step>
+    {{/if}}
+  </BeliefState>
+
+  <Output>
+    Каждый flag — кандидат в таблицу §9 основной директивы, код пробы в колонке «Ось»
+    (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`). `BIZ`-неясность даёт ОДИН кандидат
+    уровня MR («попросить автора описать бизнес-цель»), а не шум на каждую сущность. `TYPO` и любая
+    другая точная механическая правка с известным итогом → кандидат `kind: suggestion` (line-comment с fenced-блоком ```suggestion:-0+0, новый текст внутри — формат posting-rules §suggestion), не проза. Отдельного отчёта нет — пробы кормят карточки сущностей и таблицу
+    кандидатов arch-interrogation.
+  </Output>
+</CodeInterrogation>

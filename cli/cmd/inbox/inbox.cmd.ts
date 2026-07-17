@@ -38,6 +38,13 @@ import {
   gcStalePhaseTimings,
   PHASE_TIMINGS_TTL_MS,
 } from '../../../services/agent-inbox/modules/inbox-roles/phase-telemetry.ts';
+import {
+  selectDirective,
+  DirectiveSelectionError,
+  type SessionType,
+  type Track,
+} from '../../../services/ai-kit/selector.ts';
+import type { MrShape } from '../../../services/agent-inbox/modules/inbox-core/context-builder.ts';
 
 function parseOptions(argv: string[]): InboxOptions {
   const has = (flag: string) => argv.includes(flag);
@@ -58,6 +65,55 @@ function parseValue(argv: string[], flag: string): string | undefined {
   if (inline) return inline.slice(flag.length + 1);
   const idx = argv.indexOf(flag);
   return idx !== -1 ? argv[idx + 1] : undefined;
+}
+
+/**
+ * @purpose Parse `--mr-shape=<flag1,flag2,...>` into a fully-populated `MrShape` (D-124/AI-46
+ *   debug dump) — an unlisted flag reads `false`, never `undefined`, matching `computeMrShape`'s
+ *   own invariant.
+ * @param argv Raw CLI arguments.
+ * @returns MrShape with every listed flag name set `true`, the rest `false`.
+ */
+function parseMrShapeFlag(argv: string[]): MrShape {
+  const raw = parseValue(argv, '--mr-shape') ?? '';
+  const flags = new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  return {
+    newSymbols: flags.has('newSymbols'),
+    nestedLoops: flags.has('nestedLoops'),
+    filterMapChain: flags.has('filterMapChain'),
+    isTiny: flags.has('isTiny'),
+    securityHits: flags.has('securityHits'),
+    depManifest: flags.has('depManifest'),
+  };
+}
+
+/**
+ * @purpose Debug-dump entry (D-124/AI-46): print the assembled `(sessionType, track, mrShape)`
+ *   directive without running a review session — proof of correct composition, eyeball + snapshot.
+ * @param argv Raw CLI arguments (`--session-type`, `--track`, `--mr-shape`).
+ * @returns Process exit code.
+ */
+function runDumpDirective(argv: string[]): number {
+  const sessionType = (parseValue(argv, '--session-type') ?? 'session') as SessionType;
+  const track = parseValue(argv, '--track') as Track | undefined;
+  const mrShape = parseMrShapeFlag(argv);
+
+  try {
+    console.info(selectDirective(sessionType, track, mrShape));
+    return 0;
+  } catch (error) {
+    if (error instanceof DirectiveSelectionError) {
+      console.error(style.redBright.bold('✖ Ошибка:'), error.message);
+      return 1;
+    }
+    console.error(style.redBright.bold('✖ Ошибка:'), (error as Error).message ?? String(error));
+    return 1;
+  }
 }
 
 async function runPick(ref: string, vcsSource?: string, configVcsHost?: string): Promise<number> {
@@ -89,6 +145,10 @@ async function runPick(ref: string, vcsSource?: string, configVcsHost?: string):
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
+
+    // D-124/AI-46: debug directive dump — no VCS/state-dir I/O, no review session, pure assembly.
+    if (argv.includes('--dump-directive')) return runDumpDirective(argv);
+
     const stateDir = resolveStateDir(argv);
 
     // #region START_GC_STALE_WORKTREES — best-effort: remove worktrees older than TTL;

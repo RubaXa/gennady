@@ -1,11 +1,14 @@
 // @file: Unit tests for ai-kit compile — buildNodePrompt and buildSystemPrompt.
 // @consumers: node:test runner
-// @tasks: TSK-116
+// @tasks: TSK-116, TSK-136
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { buildNodePrompt, buildSystemPrompt } from '../compile.ts';
+import { NODE_DIRECTIVE_MAP } from '../node-map.ts';
 
 describe('buildNodePrompt', () => {
   it('node_review returns both arch-interrogation and code-interrogation directives', async () => {
@@ -93,4 +96,48 @@ describe('buildSystemPrompt', () => {
       }
     );
   });
+});
+
+// TSK-136 (D-121): the five node-ids explicitly OUTSIDE the selector.ts scope boundary must stay
+// on the static NODE_DIRECTIVE_MAP unchanged — proven by comparing against the same directive
+// files loaded independently (no mock of compile.ts's own collaborators), both with and without a
+// populated ctx.mrShape, since only presence in SELECTOR_NODE_ROUTE (not mrShape) governs routing.
+describe('static out-of-scope node-ids unaffected by selector', () => {
+  const OUT_OF_SCOPE_NODE_IDS = [
+    'node_thread_triage',
+    'node_delta_review',
+    'node_synthesize_delta',
+    'node_self_review',
+    'node_analyze_feedback',
+  ] as const;
+
+  const directiveBase = resolve(import.meta.dirname, '../../../ai/directives/agent-inbox');
+
+  function loadExpectedPrompt(nodeId: string): string {
+    return NODE_DIRECTIVE_MAP[nodeId]
+      .map((name) => readFileSync(resolve(directiveBase, `${name}.directive.xml`), 'utf-8'))
+      .join('\n');
+  }
+
+  for (const nodeId of OUT_OF_SCOPE_NODE_IDS) {
+    it(`${nodeId} resolves through the static NODE_DIRECTIVE_MAP unchanged`, async () => {
+      // non-goal: does not exercise selector.ts — these five node-ids stay outside TSK-136 scope
+      const expected = loadExpectedPrompt(nodeId);
+
+      const withoutMrShape = await buildNodePrompt(nodeId, {});
+      const withMrShape = await buildNodePrompt(nodeId, {
+        mrShape: {
+          newSymbols: true,
+          nestedLoops: false,
+          filterMapChain: false,
+          isTiny: false,
+          securityHits: false,
+          depManifest: false,
+        },
+      });
+
+      assert.strictEqual(withoutMrShape, expected);
+      assert.strictEqual(withMrShape, expected);
+    });
+  }
 });

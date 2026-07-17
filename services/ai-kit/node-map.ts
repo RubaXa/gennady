@@ -1,11 +1,13 @@
 // @file: Mapping from logical node IDs to AIKit directive names.
 // @consumers: compile.ts (buildNodePrompt)
-// @tasks: TSK-116, TSK-113
+// @tasks: TSK-116, TSK-113, TSK-136
 
 /**
  * @purpose Maps node identifiers used by the role engine to their directive file names.
  *   Each directive resolves to `ai/directives/agent-inbox/<name>.directive.xml`.
  * @invariant All directive names in this map correspond to existing files in `ai/directives/agent-inbox/`.
+ * @invariant Four review-lens entries are now a FALLBACK (TSK-136): `compile.ts` prefers
+ *   `selector.ts` when `ctx.mrShape` is populated, this map only when it is absent.
  */
 export const NODE_DIRECTIVE_MAP: Readonly<Record<string, readonly string[]>> = {
   /** Scaffold node: architectural interrogation only (design-time check). */
