@@ -1,7 +1,7 @@
 // @file: Tests for inbox-review-plan command — deterministic track classification, plus the
 //   document-pipeline scaffold/validate modes and the inbox --reset reports cleanup.
 // @consumers: node:test runner
-// @tasks: TSK-102, TSK-103
+// @tasks: TSK-102, TSK-103, TSK-134
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -363,9 +363,66 @@ describe('inbox-review-plan --scaffold', () => {
       const content = readFileSync(result.tasks[0], 'utf8');
       assert.match(content, /status: scaffolded/);
       assert.match(content, /## Область[\s\S]*foo\.ts[\s\S]*\(\+1\/-1\)/);
-      assert.match(content, /## Контекст\s*\n\s*<!-- FILL: orchestrator/);
+      // --scaffold always passes worktreePath (TSK-134): ## Контекст is filled with real
+      // buildTrackContext markdown (commits + hunks), the old FILL-placeholder is gone.
+      assert.match(content, /## Контекст\s*\n\s*\*\*Коммитов \(1\):\*\*/);
+      assert.match(content, /### `foo\.ts`/);
+      assert.ok(!/## Контекст[\s\S]*<!-- FILL: orchestrator/.test(content));
       assert.match(content, /## Находки\s*\n\s*<!-- FILL: agent/);
       assert.match(content, /## Вердикт\s*\n\s*<!-- FILL: agent/);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it('scaffoldReviewReports injects real Context section from real git diff', () => {
+    // integration: real fixture repo (≥2 real commits), real git diff/log, real fs read —
+    // no mock of git/diff anywhere in this scenario (TSK-134 §5 Task-specific Completion).
+    const repo = makeGitRepo('inject');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-scaffold-'));
+    try {
+      writeFileSync(join(repo, 'auth.ts'), 'export const a = 1;\n');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 1;\n');
+      commitAll(repo, 'base');
+
+      writeFileSync(join(repo, 'auth.ts'), 'export const a = 2;\n');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 2;\n');
+      commitAll(repo, 'change 1');
+      writeFileSync(join(repo, 'foo.ts'), 'export const b = 3;\n');
+      commitAll(repo, 'change 2');
+
+      const r = runPlan([
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~2',
+        '--ref',
+        'group/project!77',
+        '--state-dir',
+        stateDir,
+      ]);
+      assert.strictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.tasks.length, 2); // security (auth.ts) + logic (foo.ts)
+
+      for (const taskPath of result.tasks) {
+        const content = readFileSync(taskPath, 'utf8');
+        assert.match(content, /## Контекст\s*\n\s*\*\*Коммитов \(2\):\*\*/);
+        assert.match(content, /```diff/);
+      }
+
+      // security track gets the FULL MR diff (NFC-SV-09), not just auth.ts's own hunk.
+      const securityTask = result.tasks.find((t: string) => t.endsWith('security.task.md'))!;
+      const securityContent = readFileSync(securityTask, 'utf8');
+      assert.match(securityContent, /### `auth\.ts`/);
+      assert.match(securityContent, /### `foo\.ts`/);
+
+      const logicTask = result.tasks.find((t: string) => t.endsWith('logic.task.md'))!;
+      const logicContent = readFileSync(logicTask, 'utf8');
+      assert.match(logicContent, /### `foo\.ts`/);
+      assert.ok(!/### `auth\.ts`/.test(logicContent), 'logic track must not see auth.ts hunks');
     } finally {
       rmSync(repo, { recursive: true, force: true });
       rmSync(stateDir, { recursive: true, force: true });

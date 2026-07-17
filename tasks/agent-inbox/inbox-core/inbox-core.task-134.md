@@ -23,8 +23,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -202,18 +202,52 @@ Contract: `MrShape` — see Spec References (Value Object, новая сущно
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-07-17T08:49:14Z` intro `MrShape` ← новый Value Object, 6-флаговый контракт статанализа (D-123) по Objective
+- [x] `2026-07-17T08:49:14Z` intro `InjectedEntity` ← новый Value Object, структурированное зеркало markdown `## Контекст` для TSK-137
+- [x] `2026-07-17T08:49:14Z` intro `computeMrShape` ← продюсер статанализа, потребляется `buildTrackContext` и напрямую тестами (P2)
+- [x] `2026-07-17T08:49:14Z` intro `buildTrackContext` ← рендер `## Контекст` + продюсер injectedEntities, подключён в `scaffoldReviewReports`
+- [x] `2026-07-17T08:49:14Z` decision worktreePath=опциональный-параметр-scaffoldReviewReports ← тикет называет 4-й параметр `buildTrackContext` как `head`; реальные хунки/коммиты требуют рабочего каталога для git, поэтому реализовано как `worktreePath` (путь, не SHA) — существующий вызов из reviewer.role.ts (вне Target Files этой фазы) не передаёт его и деградирует к старому FILL-плейсхолдеру, регрессии нет
+- [x] `2026-07-17T08:49:14Z` decision security-полный-changeset ← вызывающая сторона (`scaffoldReviewReports` через новую приватную `scopeChangesetForTrack`) передаёт в `buildTrackContext` ПОЛНЫЙ changeset MR для трека `security` (NFC-SV-09) и подмножество своего трека для остальных; `buildTrackContext` сам не пересчитывает принадлежность треку
+- [x] `2026-07-17T08:49:14Z` decision depManifest-минимальный-список ← набор имён dependency-манифестов в `context-builder.ts` — небольшое самодостаточное подмножество (не импортировано из исчерпывающего многоязычного списка `inbox-review-plan.cmd.ts`) — оставляет inbox-core независимым от cli-слоя; оба списка покрывают `package.json`/lock-файлы, частый случай
+- [x] `2026-07-17T08:49:14Z` insight разметка внимания по AI-44 реализована для всех 4 триггеров (newSymbols/isTiny/filterMapChain/nestedLoops) плюс отдельная строка security depth-modulation → §5.3.1, правки спеки не требуются (соответствует уже зафиксированному решению)
+- [x] `2026-07-17T08:49:14Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T08:49:14Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T08:49:14Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-core/context-builder.ts, cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts]; decisions: [worktreePath=опциональный-параметр, security-трек=полный-changeset, depManifest-список=минимальный-самодостаточный]; open: [владелец-P2: в cli/cmd/inbox-review-plan/inbox-review-plan.test.ts существующий сценарий "inline plan" проверяет старый плейсхолдер `<!-- FILL: orchestrator` для `## Контекст` — теперь устарел, так как `--scaffold` всегда передаёт реальный worktreePath и buildTrackContext вливает реальный markdown; P2 должен обновить эту проверку под влитый контент, это в его Target Files/kind=test]
+
+#### P1 — re-run: fix: address audit findings F-01
+
+- [x] `2026-07-17T09:15:00Z` tried F-01 (MAJOR, TASK_ID_DRIFT) — `cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts:4` `@tasks` header не включал TSK-134 → добавлено (append-only, per AX_TASK_ID_INTEGRITY / AX_FILE_HEADER_APPEND_ONLY): `// @tasks: TSK-102, TSK-103, TSK-113, TSK-122, TSK-134`
+- [x] `2026-07-17T09:15:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T09:15:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T09:15:00Z` DONE
+      **Handoff →** artifacts: [cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts]; decisions: [F-01=fixed-header-append-only]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm run test -- 'services/agent-inbox/modules/inbox-core/__tests__/context-builder.test.ts'` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-07-17T08:52:00Z` discovery существующий сценарий "inline plan → single tasks/review.task.md..." в `cli/cmd/inbox-review-plan/inbox-review-plan.test.ts` проверял устаревший FILL-плейсхолдер для `## Контекст` — обновлён под реальный markdown от `buildTrackContext` (P1 Handoff open item)
+- [x] `2026-07-17T08:53:00Z` intro `context-builder.test.ts` ← новый файл, unit+contract покрытие `computeMrShape`/`buildTrackContext` (12 BDD-сценариев §4)
+- [x] `2026-07-17T08:58:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-core/__tests__/context-builder.test.ts'` → pass exit=0
+- [x] `2026-07-17T08:58:00Z` ver `npm run test -- 'cli/cmd/inbox-review-plan/inbox-review-plan.test.ts'` → pass exit=0
+- [x] `2026-07-17T08:58:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T08:58:00Z` ver `gennady lint 2 files` (`<sdd-path> verify` DBC gate) → pass
+- 🛑 `2026-07-17T09:00:43Z` BLOCKED: MANDATORY `<sdd-path> verify` gate's `npm run test` (full project suite, auto-discovered) fails — но НЕ из-за файлов этой фазы: 4 сьюта падают, все воспроизводятся изолированно (`node --import tsx --test <file>` на каждом отдельно, без моих тестов рядом) и не имеют кодового пути к `context-builder.ts`/`inbox-review-plan.cmd.ts`: (1) `chat.router.test.ts` :: `ChatRouter — POST /chat/stop` → `HttpServer#start` Port 4206 already in use; (2) `chat-api-client.integration.test.ts` (оба сценария) → `TypeError: Invalid URL` / `Failed to parse URL from /api/mr/.../mutate` — тест-комментарий ожидает `BASE_URL = http://localhost:4174`, а исходник `chat-api-client.ts` объявляет `BASE_URL = ''` (относительный fetch не резолвится в Node/undici без базы) — рассинхрон предшествует этой сессии; (3) `run-mode.test.ts` :: `reviewer graph → real disk materialization...` и `runMrsOnce — real reviewer graph reaches ask-terminal` → после `node_prepare` currentNode остаётся `node_review_fanout` вместо descend в `node_track_review`/`node_ask` — fanout-descend логика `role-engine.ts`, не задета P1/P2 (`materializeReviewScaffold` вызывает `scaffoldReviewReports` БЕЗ `worktreePath`, деградирует безопасно, per P1 Handoff decision). Все 3 модуля (`inbox-api/chat.router`, `inbox-dashboard/chat-api-client`, `serve/run-mode`+`inbox-roles/role-engine`) вне Target Files этой фазы (`AX_PHASE_SCOPE_LOCK`); ticket §5 команды (узкие, по этому тикету) проходят полностью — `context-builder.test.ts` 7/7 + `buildTrackContext` 5/5, `inbox-review-plan.test.ts` весь файл зелёный.
+  - 🔗 axiom: AX_VERIFICATION_BEFORE_HANDOFF (Error Ownership addendum) vs AX_PHASE_SCOPE_LOCK
+  - 💬 unblock: оператор подтверждает — эти 3 сьюта падают независимо от этого тикета (root cause в `chat-api-client.ts` BASE_URL/относительный fetch, `chat.router.test.ts` порт 4206, `role-engine.ts` fanout-descend) — и либо (a) даёт явное разрешение закрыть Round по узким §5-командам этого тикета (обе цели зелёные), либо (b) заводит отдельные тикеты на 3 найденных дефекта перед закрытием Round
+- ✅ `2026-07-17T09:02:31Z` RESOLVED (ref: blocker above, `2026-07-17T09:00:43Z`) ← оператор выбрал вариант (a): Verification-гейт этого тикета — узкие §5-команды (оба `npm run test -- '<file>'` + `npm run type-check` + format/DBC-lint), не полный проектный `npm run test`; 3 найденных дефекта вне Target Files этой фазы, фиксация не открывается здесь
+- [x] `2026-07-17T09:02:31Z` discovery `chat.router.test.ts` :: `ChatRouter — POST /chat/stop` падает изолированно (`node --import tsx --test` только на этом файле) → `[HttpServer#start] Port 4206 is already in use`; не связано с `context-builder.ts`/`inbox-review-plan.cmd.ts` — кандидат на отдельный тикет (порт-конфликт теста)
+- [x] `2026-07-17T09:02:31Z` discovery `chat-api-client.integration.test.ts` (оба сценария) падает изолированно → `TypeError: Invalid URL` / `Failed to parse URL from /api/mr/.../mutate`; тест-комментарий ожидает `ChatApiClient` `BASE_URL = http://localhost:4174`, исходник `services/agent-inbox/modules/inbox-dashboard/services/chat-api-client.ts` объявляет `BASE_URL = ''` (относительный fetch не резолвится в Node/undici без базы) — рассинхрон предшествует этой сессии, вне Target Files — кандидат на отдельный тикет
+- [x] `2026-07-17T09:02:31Z` discovery `run-mode.test.ts` :: `reviewer graph → real disk materialization...` и `runMrsOnce — real reviewer graph reaches ask-terminal` падают изолированно → после `node_prepare` currentNode остаётся `node_review_fanout` вместо descend в `node_track_review`/`node_ask`; `reviewer.role.ts`'s `materializeReviewScaffold` вызывает `scaffoldReviewReports` БЕЗ `worktreePath` (P1 decision, деградирует безопасно) — root cause в fanout-descend `services/agent-inbox/modules/inbox-roles/role-engine.ts`, не в этом тикете — кандидат на отдельный тикет
+- [x] `2026-07-17T09:05:00Z` tried `npm run format:check` → fail exit=1 (prettier flagged `context-builder.test.ts`) → fixed via `npx prettier --write` on that file, re-ran clean
+- [x] `2026-07-17T09:07:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-core/__tests__/context-builder.test.ts'` → pass exit=0
+- [x] `2026-07-17T09:07:00Z` ver `npm run test -- 'cli/cmd/inbox-review-plan/inbox-review-plan.test.ts'` → pass exit=0
+- [x] `2026-07-17T09:07:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T09:07:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T09:07:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-core/__tests__/context-builder.test.ts, cli/cmd/inbox-review-plan/inbox-review-plan.test.ts]; decisions: [verification-scope=ticket-§5-only-per-operator, git-fixtures=real-repo-no-mocks-for-buildTrackContext]; open: [chat.router.test.ts: порт 4206 already-in-use — изолированный флейк, requires-own-ticket; chat-api-client.integration.test.ts: BASE_URL='' vs тест ожидает http://localhost:4174 — requires-own-ticket; run-mode.test.ts: role-engine.ts fanout-descend не входит в node_track_review после node_prepare — requires-own-ticket]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-07-17T09:08:00Z` DONE
 
 <!--/SECTION:EXECUTION_LOG-->

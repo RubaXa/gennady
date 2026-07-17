@@ -1,7 +1,7 @@
 // @file: review-plan command — deterministic file-to-track classification for fan-out review,
 //   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @consumers: agent-inbox skill (inbox-flow.directive.xml)
-// @tasks: TSK-102, TSK-103, TSK-113, TSK-122
+// @tasks: TSK-102, TSK-103, TSK-113, TSK-122, TSK-134
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -9,6 +9,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveStateDir, mrReportsDir } from '../inbox/_core/logic/state-paths.logic.ts';
 import { findStopWords } from '../../../shared/prompt-lint/stop-words.ts';
+import {
+  buildTrackContext,
+  type InjectedEntity,
+} from '../../../services/agent-inbox/modules/inbox-core/context-builder.ts';
 
 // #region START_ARG_PARSING
 
@@ -485,7 +489,8 @@ function renderTaskTemplate(
   track: string,
   files: string[],
   focus: string,
-  fileStats: Map<string, FileChange>
+  fileStats: Map<string, FileChange>,
+  contextMarkdown?: string
 ): string {
   const frontmatterLines = [
     '---',
@@ -517,7 +522,7 @@ ${scopeLines.join('\n')}
 
 ## Контекст
 
-<!-- FILL: orchestrator — смысл, сущности, prior threads, цели -->
+${contextMarkdown ?? '<!-- FILL: orchestrator — смысл, сущности, prior threads, цели -->'}
 
 ## Находки
 
@@ -579,12 +584,45 @@ type ScaffoldResult = {
   dir: string;
   plan: string;
   tasks: string[];
+  /** @purpose Structured Context-section entities per track, from the buildTrackContext pass that filled the markdown | @invariant Absent track key means no worktreePath was given */
+  injectedEntities: Record<string, InjectedEntity[]>;
 };
 
 function readTaskStatus(taskPath: string): string | null {
   if (!existsSync(taskPath)) return null;
   const { frontmatter } = parseDocument(readFileSync(taskPath, 'utf8'));
   return typeof frontmatter.status === 'string' ? frontmatter.status : null;
+}
+
+/**
+ * @purpose Build the `Changeset` a track's Context-section should be scoped to.
+ * @invariant `security` sees the FULL MR changeset (NFC-SV-09), never narrowed; every other
+ *   track sees exactly its own file list from the Scope section.
+ * @param track Track name.
+ * @param trackFiles This track's own file list (from the review plan).
+ * @param changeset Full MR changeset (all tracks).
+ * @param fileStats Full MR file stats, keyed by path.
+ * @returns Changeset scoped per the invariant above.
+ */
+function scopeChangesetForTrack(
+  track: string,
+  trackFiles: string[],
+  changeset: Changeset,
+  fileStats: Map<string, FileChange>
+): Changeset {
+  if (track === 'security') return changeset;
+  return {
+    files: trackFiles.map((f) => {
+      const stat = fileStats.get(f);
+      return {
+        path: f,
+        status: stat?.status ?? 'M',
+        plus: stat?.plus ?? 0,
+        minus: stat?.minus ?? 0,
+      };
+    }),
+    totals: { files: trackFiles.length, plus: 0, minus: 0 },
+  };
 }
 
 /**
@@ -597,9 +635,12 @@ function readTaskStatus(taskPath: string): string | null {
  * @param base Base SHA the diff was computed against.
  * @param plan Deterministic review plan (mode + tracks).
  * @param changeset File-level diff stats backing the Scope prefill.
- * @returns Paths of PLAN.md, all task files (created or pre-existing), and the report dir.
+ * @param [worktreePath] Local worktree to compute the Context-section from (AI-40/D-119);
+ *   absent (e.g. reviewer.role.ts's current call site) degrades to the pre-existing FILL placeholder.
+ * @returns PLAN.md path, all task files (created or pre-existing), the report dir, and the
+ *   per-track injectedEntities from the buildTrackContext pass that filled the markdown.
  * @sideEffect FS: creates the report dir tree; always writes PLAN.md; writes task/README/HISTORY
- *   only when absent or still `scaffolded`.
+ *   only when absent or still `scaffolded`. With `worktreePath`: spawns git subprocesses.
  * @consumer inbox-review-plan.cmd `run`, reviewer.role.ts `node_prepare` (TSK-122, exported
  *   for in-process reuse per SV-12, never spawned)
  */
@@ -609,7 +650,8 @@ export function scaffoldReviewReports(
   headSha: string,
   base: string,
   plan: ReviewPlan,
-  changeset: Changeset
+  changeset: Changeset,
+  worktreePath?: string
 ): ScaffoldResult {
   const tasksDir = join(dir, 'tasks');
   mkdirSync(tasksDir, { recursive: true });
@@ -641,6 +683,7 @@ export function scaffoldReviewReports(
 
   const tasks: string[] = [];
   const rows: { track: string; files: number; lines: number; focus: string; status: string }[] = [];
+  const injectedEntities: Record<string, InjectedEntity[]> = {};
 
   // #region START_WRITE_TASK_FILES — skip-with-warning on filled files (same head); fresh on new head
   for (const spec of taskSpecs) {
@@ -650,9 +693,29 @@ export function scaffoldReviewReports(
         `⚠ ${spec.taskPath}: status=${existingStatus} — пропущен, не перезаписан (re-scaffold идемпотентен)`
       );
     } else {
+      let contextMarkdown: string | undefined;
+      if (worktreePath) {
+        const scopedChangeset = scopeChangesetForTrack(
+          spec.track,
+          spec.files,
+          changeset,
+          fileStats
+        );
+        const context = buildTrackContext(spec.track, scopedChangeset, base, worktreePath);
+        contextMarkdown = context.markdown;
+        injectedEntities[spec.track] = context.injectedEntities;
+      }
       writeFileSync(
         spec.taskPath,
-        renderTaskTemplate(ref, headSha, spec.track, spec.files, spec.focus, fileStats)
+        renderTaskTemplate(
+          ref,
+          headSha,
+          spec.track,
+          spec.files,
+          spec.focus,
+          fileStats,
+          contextMarkdown
+        )
       );
     }
     tasks.push(spec.taskPath);
@@ -680,7 +743,7 @@ export function scaffoldReviewReports(
   const historyPath = join(dir, 'HISTORY.md');
   if (!existsSync(historyPath)) writeFileSync(historyPath, renderHistoryTemplate(ref));
 
-  return { scaffolded: true, dir, plan: planPath, tasks };
+  return { scaffolded: true, dir, plan: planPath, tasks, injectedEntities };
 }
 
 // #endregion END_SCAFFOLD_BUILDER
@@ -960,7 +1023,7 @@ function runScaffold(argv: string[]): number {
 
   const plan = buildReviewPlan(changeset);
   const dir = mrReportsDir(resolveStateDir(argv), ref);
-  const result = scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset);
+  const result = scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset, worktreePath);
   console.info(JSON.stringify(result));
   return 0;
 }
