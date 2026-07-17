@@ -39,7 +39,12 @@ import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
-import { recordPhaseTiming, recordToolTrace } from './phase-telemetry.ts';
+import {
+  recordPhaseTiming,
+  recordToolTrace,
+  recordSessionPrompt,
+  recordSessionResponse,
+} from './phase-telemetry.ts';
 import { resolveDiskArtifact } from './disk-artifact.ts';
 
 /**
@@ -601,7 +606,27 @@ export class RoleInstance {
       promptOpts.model = node.policy.model;
     }
 
+    // X-ray artifact (D-125): persist the exact prompt/response of this turn so the operator can
+    // open the MR's report dir and see precisely what was sent/received, not a reconstruction.
+    const _xrayRef = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const _xrayPromptPath = await recordSessionPrompt(
+      this._store.getStateDir(),
+      _xrayRef,
+      node.id,
+      {
+        system,
+        text: promptOpts.text ?? '',
+      }
+    );
+
     const result: OpenCodeCallResult = await this._opencode.prompt(this._sessionId, promptOpts);
+    await recordSessionResponse(
+      this._store.getStateDir(),
+      _xrayRef,
+      node.id,
+      _xrayPromptPath,
+      result
+    );
     // #endregion END_SESSION_CALL
 
     let outcome = this._classifier.classify(result);
@@ -827,6 +852,19 @@ export class RoleInstance {
       promptOpts.model = spec.policy.model;
     }
 
+    // X-ray artifact (D-125): same prompt is reused across continue/restart attempts (promptOpts
+    // built once above) — record it once; each attempt's response gets its own file below.
+    const _xrayRef = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const _xrayPromptPath = await recordSessionPrompt(
+      this._store.getStateDir(),
+      _xrayRef,
+      spec.id,
+      {
+        system,
+        text: promptOpts.text ?? '',
+      }
+    );
+
     const max = spec.policy;
     let continueCount = 0;
     let restartCount = 0;
@@ -835,6 +873,13 @@ export class RoleInstance {
       const result = this._reviewSessionPool
         ? await this._reviewSessionPool.prompt(sid, promptOpts)
         : await this._opencode.prompt(sid, promptOpts);
+      await recordSessionResponse(
+        this._store.getStateDir(),
+        _xrayRef,
+        spec.id,
+        _xrayPromptPath,
+        result
+      );
 
       let outcome = this._classifier.classify(result);
       // TSK-127: same disk-artifact resolution as _executeSession — a lens's raw OK is only "the

@@ -4,10 +4,11 @@
 // @consumers: RoleInstance (_executeSession, _runLensSession), CLI `gennady inbox stats`
 // @tasks: TSK-perf
 
-import { appendFile, mkdir } from 'node:fs/promises';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { logger } from '#logger';
+import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose One executed session-node timing, appended as a single flat JSON line.
@@ -141,6 +142,99 @@ export async function recordToolTrace(stateDir: string, record: ToolTraceRecord)
       node: record.node,
       mr: record.mr,
     });
+  }
+}
+
+/**
+ * @purpose Directory of every session turn's exact prompt/response for one MR — the "X-ray" trail.
+ * @param stateDir Gennady state root.
+ * @param ref VCS ref (`project!iid`) the sessions belong to.
+ * @returns Absolute path to `<mrReportsDir>/sessions`.
+ */
+export function sessionArtifactsDir(stateDir: string, ref: string): string {
+  return join(mrReportsDir(stateDir, ref), 'sessions');
+}
+
+/**
+ * @purpose Persist the exact system+task text sent to a session turn, before the call.
+ * @param stateDir Gennady state root.
+ * @param ref VCS ref (`project!iid`).
+ * @param nodeId Session/lens node id (e.g. `node_track_review`).
+ * @param prompt The exact `system`/`text` sent this turn.
+ * @returns Absolute path of the written prompt file, or `null` on write failure (best-effort).
+ * @sideEffect Writes `<sessionArtifactsDir>/<nodeId>__<ISO>.prompt.txt`; logs the path via `logger.info`.
+ */
+export async function recordSessionPrompt(
+  stateDir: string,
+  ref: string,
+  nodeId: string,
+  prompt: { system: string; text: string }
+): Promise<string | null> {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const dir = sessionArtifactsDir(stateDir, ref);
+  const filePath = join(dir, `${nodeId}__${ts}.prompt.txt`);
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      filePath,
+      `=== SYSTEM ===\n${prompt.system}\n\n=== TASK TEXT ===\n${prompt.text}\n`,
+      'utf-8'
+    );
+    logger.info('[PhaseTelemetry#recordSessionPrompt] [recording → saved]', {
+      node: nodeId,
+      filePath,
+    });
+    return filePath;
+  } catch (cause) {
+    logger.warn('[PhaseTelemetry#recordSessionPrompt] [recording → failed]', {
+      cause,
+      node: nodeId,
+      ref,
+    });
+    return null;
+  }
+}
+
+/**
+ * @purpose Persist a session turn's raw response, paired with the prompt file that produced it.
+ * @param stateDir Gennady state root.
+ * @param ref VCS ref (`project!iid`).
+ * @param nodeId Session/lens node id.
+ * @param promptFilePath The exact prompt file this response answers (`null` if the prompt write failed).
+ * @param raw Raw response payload (text, error, or whatever the adapter returned this turn).
+ * @returns Absolute path of the written response file, or `null` on write failure (best-effort).
+ * @sideEffect Writes `<sessionArtifactsDir>/<nodeId>__<ISO>.response.txt`; logs the path.
+ */
+export async function recordSessionResponse(
+  stateDir: string,
+  ref: string,
+  nodeId: string,
+  promptFilePath: string | null,
+  raw: unknown
+): Promise<string | null> {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const dir = sessionArtifactsDir(stateDir, ref);
+  const filePath = join(dir, `${nodeId}__${ts}.response.txt`);
+  const body = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      filePath,
+      `=== ANSWERS PROMPT ===\n${promptFilePath ?? '(prompt write failed — see logs)'}\n\n=== RAW RESPONSE ===\n${body}\n`,
+      'utf-8'
+    );
+    logger.info('[PhaseTelemetry#recordSessionResponse] [recording → saved]', {
+      node: nodeId,
+      filePath,
+    });
+    return filePath;
+  } catch (cause) {
+    logger.warn('[PhaseTelemetry#recordSessionResponse] [recording → failed]', {
+      cause,
+      node: nodeId,
+      ref,
+    });
+    return null;
   }
 }
 
