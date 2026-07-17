@@ -19,14 +19,36 @@ export type SessionHandle = {
   status: SessionStatus;
 };
 
+/**
+ * @purpose Fine-grained per-tool allowlist (D-118..D-123, AI-41) — real enforcement, not declarative.
+ * @invariant Keys are server tool names (`bash`/`read`/`grep`/`write`/`edit`/...). A name absent
+ *   from the map is DENIED — composed fail-closed by `OpenCodeReal#_composeToolsGate`.
+ */
+export type ToolGate = Record<string, boolean>;
+
+/**
+ * @purpose True when a tools gate grants access to at least one tool — used to gate telemetry.
+ * @param gate The gate stored from `CreateSessionOpts.tools` (possibly absent).
+ * @returns Whether any tool is reachable under this gate.
+ */
+export function toolsGateActive(gate: boolean | ToolGate | undefined): boolean {
+  if (gate === true) return true;
+  if (!gate) return false;
+  return Object.values(gate).some(Boolean);
+}
+
 /** @purpose Options for creating a new AI-node session. */
 export type CreateSessionOpts = {
   /** @purpose Human-readable label for the session */
   title: string;
   /** @purpose Working directory — must exist, becomes the session cwd */
   directory: string;
-  /** @purpose Enable code-navigation tools (read/grep/git) bound to directory | @invariant Absent/false → no tool access; agent write stays confined to its own artifact path regardless */
-  tools?: boolean;
+  /**
+   * @purpose Tool access gate for this session.
+   * @invariant `true` → full default toolset; `false`/absent → no tools; a `ToolGate` object →
+   *   fine-grained allowlist, unlisted tool names denied (D-118..D-123).
+   */
+  tools?: boolean | ToolGate;
   /**
    * @purpose Default model for this session's turns, e.g. `llm-proxy/deepseek-v4-pro` |
    *   @invariant Per-prompt `PromptOpts.model` overrides this default — the SDK has no

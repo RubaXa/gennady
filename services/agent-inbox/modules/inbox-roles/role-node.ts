@@ -4,6 +4,7 @@
 
 import type { MrContext, VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
+import type { MrShape, InjectedEntity } from '../inbox-core/context-builder.ts';
 
 /**
  * @purpose Result of a deterministic gate check — pass or fail with reason.
@@ -68,6 +69,41 @@ export type NodeContext = {
   vcs?: VcsInboxPort;
   /** @purpose State store handle for effect-node idempotency checks (audit log) */
   store?: StateStore;
+  /**
+   * @purpose Statanalysis flags (D-123 composition triggers) for directive assembly (TSK-134).
+   * @invariant Populated by `RoleInstance#_buildContext` from the `node_prepare` scaffold pass —
+   *   never hand-built. Reaches `buildNodePrompt(node.id, ctx)`'s `ctx` as-is.
+   * @invariant TSK-136's `selectDirective(sessionType, track, mrShape)` reads it from that same
+   *   `ctx` once `compile.ts` is extended to consume it (coordination note, TSK-113 P5).
+   * @invariant Absent on test-seeded contexts and branches that skip the scaffold pass
+   *   (reply_needed, update-review) — never a template selector by itself (§5.3.1).
+   */
+  mrShape?: MrShape;
+  /**
+   * @purpose Entities mentioned in the injected Context-section markdown of this MR's track
+   *   scaffolds — the same list `buildTrackContext` produced (TSK-134), never re-parsed.
+   * @invariant Populated by `RoleInstance#_buildContext` alongside `mrShape` (same scaffold pass);
+   *   flattened across every scaffolded track.
+   * @invariant Sole carrier from the `node_prepare` producer (TSK-134) to the
+   *   `artifact-validator.ts` gate consumer (TSK-137) — never re-derived from disk/markdown.
+   */
+  injectedEntities?: InjectedEntity[];
+};
+
+/**
+ * @purpose Per-lens tool allowlist (D-118..D-123, AI-41) narrowing a session's tool access below
+ *   the blanket `SessionPolicy.tools` toggle for `review_needed` lenses.
+ * @invariant Really enforced: composed into a fine-grained `ToolGate` sent fail-closed to the
+ *   adapter — every unlisted tool name (write/edit included) is denied, not merely declared.
+ * @invariant All-false (`node_synthesize`, D-120) composes to full denial — zero tools.
+ */
+export type ToolPolicy = {
+  /** @purpose Shell/bash tool access | @invariant MUST be false for review-lens/synthesize nodes (D-118) */
+  bash: boolean;
+  /** @purpose Scoped file-read tool access (files from the task's Scope/Context sections) */
+  read: boolean;
+  /** @purpose Symbol-search (grep) tool access, for symbol-trace dedup (AI-41/D-120) */
+  grep: boolean;
 };
 
 /**
@@ -91,6 +127,11 @@ export type SessionPolicy = {
    *   fan-out is `ParallelNode.sessions`, not a change to this field's shape.
    */
   model?: string;
+  /**
+   * @purpose Per-lens tool allowlist (D-118..D-123) — takes precedence over `tools` when present.
+   * @invariant Composition gap: see `ToolPolicy`'s own invariant.
+   */
+  toolPolicy?: ToolPolicy;
 };
 
 /**
@@ -179,6 +220,18 @@ export type SessionNode = {
    */
   artifact?: ArtifactSpec;
   /**
+   * @purpose Node-declared persistence hook (D-118..D-123) — replaces `artifact`: the engine calls
+   *   this after success and writes the result itself; the session holds no write tool.
+   * @invariant Mutually exclusive with `artifact` in practice — a node declares at most one.
+   * @param ctx Node context (for report-dir resolution via `ctx.store`).
+   * @param output The session's structured OK output.
+   * @returns Absolute `path` + `content` to write, or undefined to skip persistence.
+   */
+  persistResult?(
+    ctx: NodeContext,
+    output: Record<string, unknown>
+  ): { path: string; content: string } | undefined;
+  /**
    * @purpose Retry policy: timeout, continue max, restart max.
    */
   policy: SessionPolicy;
@@ -263,7 +316,17 @@ export type ParallelSessionSpec = {
   resultSchema?: JsonSchema;
   /** @purpose On-disk artifact contract (TSK-127) — see `SessionNode.artifact`. */
   artifact?: ArtifactSpec;
-  /** @purpose Retry policy: timeout, continue max, restart max, model. */
+  /**
+   * @purpose Node-declared persistence hook (D-118..D-123) — see `SessionNode.persistResult`.
+   * @param ctx Node context (for report-dir resolution via `ctx.store`).
+   * @param output The lens's structured OK output.
+   * @returns Absolute `path` + `content` to write, or undefined to skip persistence.
+   */
+  persistResult?(
+    ctx: NodeContext,
+    output: Record<string, unknown>
+  ): { path: string; content: string } | undefined;
+  /** @purpose Retry policy: timeout, continue max, restart max, model, per-lens `toolPolicy`. */
   policy: SessionPolicy;
 };
 

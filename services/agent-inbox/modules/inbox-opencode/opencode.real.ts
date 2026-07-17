@@ -14,6 +14,7 @@ import {
   type ToolCall,
   type ToolCallStat,
   type ToolTraceEntry,
+  type ToolGate,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
 
@@ -70,7 +71,7 @@ export class OpenCodeReal extends OpenCodePort {
   /** @purpose Track pending schemas per session for JSON extraction validation. */
   protected _pendingSchemas: Map<string, Record<string, unknown>>;
   /** @purpose Track per-session tools gate (sid → CreateSessionOpts.tools) | @invariant SDK has no session-level tools flag — re-applied on every prompt() call */
-  protected _sessionTools: Map<string, boolean>;
+  protected _sessionTools: Map<string, boolean | ToolGate>;
   /** @purpose Track per-session default model (sid → CreateSessionOpts.model) | @invariant SDK has no session-level model field — re-applied on every prompt() call unless PromptOpts.model overrides it */
   protected _sessionModels: Map<string, string>;
 
@@ -148,10 +149,9 @@ export class OpenCodeReal extends OpenCodePort {
 
       const session = result.data!;
       this._sessionDirs.set(session.id, directory ?? session.directory);
-      // SDK has no session-level tools flag (confirmed live against @opencode-ai/sdk@1.17.18) —
-      // the gate is re-applied on every prompt() call via _sessionTools (see AX decision
-      // prompt-tools=per-prompt-map-not-session-level).
-      this._sessionTools.set(session.id, opts.tools === true);
+      // SDK has no session-level tools flag — re-applied per prompt() via _sessionTools/
+      // _composeToolsGate (stores the raw boolean|ToolGate; D-118..D-123 real enforcement).
+      this._sessionTools.set(session.id, opts.tools ?? false);
       if (opts.model) {
         this._sessionModels.set(session.id, opts.model);
       }
@@ -562,10 +562,8 @@ export class OpenCodeReal extends OpenCodePort {
     const timeoutMs = opts.timeout != null ? opts.timeout * 60_000 : this._timeout;
 
     // tools gate lives only per-prompt in the SDK (no session-level flag) — re-apply every call.
-    // toolsEnabled=true → omit `tools` (agent's own default tool set applies, confirmed live);
-    // toolsEnabled=false/unset → explicit deny-all so a session created without tools=true never
-    // gains tool access mid-turn.
-    const toolsEnabled = this._sessionTools.get(sid) ?? false;
+    // See `_composeToolsGate` for the boolean/ToolGate → SDK-body composition (D-118..D-123).
+    const toolsGate = this._composeToolsGate(this._sessionTools.get(sid) ?? false);
 
     // Per-phase model selection (TSK-perf): PromptOpts.model overrides the session's
     // CreateSessionOpts.model default; both absent → omit the field, server's own configured
@@ -579,7 +577,7 @@ export class OpenCodeReal extends OpenCodePort {
       logger.debug('[OpenCodeReal#_sendPrompt] [prompting]', {
         sid,
         hasFormat,
-        toolsEnabled,
+        toolsGate,
         model: modelStr,
         systemLength: system.length,
         partsCount: parts.length,
@@ -590,7 +588,7 @@ export class OpenCodeReal extends OpenCodePort {
           body: {
             system: system || undefined,
             parts: parts as Array<{ type: 'text'; text: string }>,
-            ...(toolsEnabled ? {} : { tools: { '*': false } }),
+            ...(toolsGate ? { tools: toolsGate } : {}),
             ...(model ? { model } : {}),
           },
           path: { id: sid },
@@ -776,6 +774,19 @@ export class OpenCodeReal extends OpenCodePort {
       return composeError('SESSION_ERROR', `Unexpected error: ${cause.message}`);
       // #endregion END_CLASSIFY_NETWORK_ERROR
     }
+  }
+
+  /**
+   * @purpose Compose the stored tools gate into the SDK request body's `tools` shape (D-118..D-123).
+   * @invariant `true` → undefined (full toolset). `false` → deny all. A `ToolGate` → fail-closed
+   *   merge; only its explicit `true` entries are granted.
+   * @param gate The stored `CreateSessionOpts.tools` value for this session.
+   * @returns The SDK body's `tools` map, or undefined to omit the field.
+   */
+  protected _composeToolsGate(gate: boolean | ToolGate): Record<string, boolean> | undefined {
+    if (gate === true) return undefined;
+    if (gate === false) return { '*': false };
+    return { '*': false, ...gate };
   }
 
   /**

@@ -6,7 +6,7 @@
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ReviewerRole } from '../reviewer.role.ts';
@@ -15,6 +15,21 @@ import { RoleInstance } from '../role-instance.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
+import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
+
+/**
+ * @purpose Spy on OpenCodeMock#createSession — records the `tools` gate each call received, so
+ *   Round 2 (D-118..D-123) tests can assert the actual `ToolGate`/boolean reaching
+ *   `OpenCodePort.createSession` per lens/synthesize node, without reaching into private state.
+ */
+class OpenCodeCreateSessionSpy extends OpenCodeMock {
+  public createSessionCalls: CreateSessionOpts[] = [];
+
+  override async createSession(opts: CreateSessionOpts): Promise<SessionHandle> {
+    this.createSessionCalls.push(opts);
+    return super.createSession(opts);
+  }
+}
 
 class FakeStateStore {
   public audits: AuditEntry[] = [];
@@ -96,35 +111,19 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
   it('GIVEN stage не задан (default) WHEN prep THEN полная батарея → synthesize → ask', async () => {
     engine.register(ReviewerRole);
 
-    // TSK-127: lens/synthesize nodes now write their result to a disk artifact instead of
-    // returning it as a structured response — seed `writeArtifact` to simulate the agent's file
-    // write; the executor reads it back via `resolveDiskArtifact`.
+    // D-118..D-123 (TSK-113 Round 2, P5 fix F-01): lens/synthesize nodes return their result as a
+    // structured response (`resultSchema`) — no write tool granted, no disk artifact contract —
+    // seed the plain response object directly (same pattern as run-mode.test.ts's fix).
     opencode.seed('node_track_review', {
-      writeArtifact: {
-        file: '.gennady-artifacts/node_track_review.json',
-        content: JSON.stringify({ findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] }),
-      },
+      findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
     });
-    opencode.seed('node_security_lens', {
-      writeArtifact: {
-        file: '.gennady-artifacts/node_security_lens.json',
-        content: JSON.stringify({ findings: [] }),
-      },
-    });
+    opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', {
-      writeArtifact: {
-        file: '.gennady-artifacts/node_code_review.json',
-        content: JSON.stringify({ findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] }),
-      },
+      findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }],
     });
     opencode.seed('node_synthesize', {
-      writeArtifact: {
-        file: '.gennady-artifacts/node_synthesize.json',
-        content: JSON.stringify({
-          reviewReport: { verdict: 'changes_requested', total: 3 },
-          proposedActions: [],
-        }),
-      },
+      reviewReport: { verdict: 'changes_requested', total: 3 },
+      proposedActions: [],
     });
 
     const instance = new RoleInstance({
@@ -253,5 +252,186 @@ describe('ReviewerRole — branch: update-review (delta-only)', () => {
 
     await instance.step(); // node_ask → awaiting_operator
     assert.strictEqual(instance.state, 'awaiting_operator');
+  });
+});
+
+describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-persisted lens results (D-118..D-123)', () => {
+  it('GIVEN все трек-болванки заполнены (fanout done) WHEN node_synthesize запускается THEN createSession получает fully-closed ToolGate и оркестратор уже записал каждый lens-результат на диск (tasks/<lensId>.result.json)', async () => {
+    engine.register(ReviewerRole);
+    const spy = new OpenCodeCreateSessionSpy();
+
+    spy.seed('node_track_review', { findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] });
+    spy.seed('node_security_lens', { findings: [] });
+    spy.seed('node_code_review', { findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] });
+    spy.seed('node_synthesize', {
+      reviewReport: { verdict: 'changes_requested', total: 2 },
+      proposedActions: [],
+    });
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:synthesize-zero-tools',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: ReviewerRole.graph,
+      opencode: spy,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_review_fanout → all 3 lenses run, engine persists each result
+
+    // #region ASSERT_LENS_RESULTS_PERSISTED_BY_ENGINE — not by the lens sessions themselves
+    const tasksDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'project-1', 'tasks');
+    for (const lensId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
+      const path = join(tasksDir, `${lensId}.result.json`);
+      assert.ok(
+        existsSync(path),
+        `${lensId}.result.json must be written by the engine, not the lens session`
+      );
+    }
+    assert.deepStrictEqual(
+      JSON.parse(readFileSync(join(tasksDir, 'node_track_review.result.json'), 'utf-8')),
+      { findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] }
+    );
+    // #endregion ASSERT_LENS_RESULTS_PERSISTED_BY_ENGINE
+
+    await instance.step(); // gate_review_filled → pass
+    await instance.step(); // node_synthesize → ok
+
+    // #region ASSERT_SYNTHESIZE_ZERO_TOOLS — the session itself never gets read/bash/grep
+    const synthesizeCall = spy.createSessionCalls.find((c) => c.title === 'node_synthesize');
+    assert.ok(synthesizeCall, 'node_synthesize must call createSession');
+    assert.deepStrictEqual(synthesizeCall!.tools, { bash: false, read: false, grep: false });
+    // #endregion ASSERT_SYNTHESIZE_ZERO_TOOLS
+  });
+});
+
+describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep allow (D-118..D-123, AI-41)', () => {
+  it('GIVEN node_track_review/node_security_lens/node_code_review WHEN движок конструирует createSession THEN tools несёт {bash:false,read:true,grep:true}', async () => {
+    engine.register(ReviewerRole);
+    const spy = new OpenCodeCreateSessionSpy();
+
+    spy.seed('node_track_review', { findings: [] });
+    spy.seed('node_security_lens', { findings: [] });
+    spy.seed('node_code_review', { findings: [] });
+    spy.seed('node_synthesize', { reviewReport: { verdict: 'approved' }, proposedActions: [] });
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:toolpolicy-lens',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: ReviewerRole.graph,
+      opencode: spy,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_review_fanout → all 3 lenses
+
+    for (const lensId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
+      const call = spy.createSessionCalls.find((c) => c.title === lensId);
+      assert.ok(call, `${lensId} must call createSession`);
+      assert.deepStrictEqual(
+        call!.tools,
+        { bash: false, read: true, grep: true },
+        `${lensId} must get a per-tool ToolGate — bash denied, read+grep granted`
+      );
+    }
+  });
+});
+
+describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revision-CAS', () => {
+  it('GIVEN заполненные болванки после synthesize WHEN gate_review_synthesis THEN review.json пишется с revision=_readCurrentRevision()+1 ДО node_ask', async () => {
+    engine.register(ReviewerRole);
+
+    opencode.seed('node_track_review', {
+      findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
+    });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_synthesize', {
+      reviewReport: { verdict: 'changes_requested' },
+      proposedActions: [],
+    });
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:revision-cas',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: ReviewerRole.graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_review_fanout
+    await instance.step(); // gate_review_filled → pass
+    await instance.step(); // node_synthesize → ok
+
+    const reviewJsonPath = join(
+      store.getStateDir(),
+      'agent-inbox',
+      'reports',
+      'project-1',
+      'review.json'
+    );
+    assert.strictEqual(instance.currentNode, 'gate_review_synthesis');
+    assert.ok(
+      !existsSync(reviewJsonPath),
+      'review.json must not exist before gate_review_synthesis runs'
+    );
+
+    await instance.step(); // gate_review_synthesis → pass — materializeReviewJson fires HERE, before node_ask
+    assert.strictEqual(
+      instance.currentNode,
+      'node_ask',
+      'materializeReviewJson must run before node_ask'
+    );
+
+    const firstWrite = JSON.parse(readFileSync(reviewJsonPath, 'utf-8')) as { revision: number };
+    assert.strictEqual(
+      firstWrite.revision,
+      1,
+      'first materialization starts at revision 1 (_readCurrentRevision()=0 + 1)'
+    );
+
+    // A second full pass over the SAME MR/store re-materializes review.json — CAS revision bumps
+    // monotonically instead of resetting, so a concurrent chat-side MutationApplier write (D-99)
+    // still gets rejected by an up-to-date revision, never a stale 1.
+    opencode.seed('node_track_review', {
+      findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
+    });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_synthesize', {
+      reviewReport: { verdict: 'changes_requested' },
+      proposedActions: [],
+    });
+
+    const secondPass = new RoleInstance({
+      id: 'reviewer:test:revision-cas-2',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: ReviewerRole.graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await secondPass.step(); // node_prepare
+    await secondPass.step(); // node_review_fanout
+    await secondPass.step(); // gate_review_filled
+    await secondPass.step(); // node_synthesize
+    await secondPass.step(); // gate_review_synthesis → re-materializes review.json
+
+    const secondWrite = JSON.parse(readFileSync(reviewJsonPath, 'utf-8')) as { revision: number };
+    assert.strictEqual(
+      secondWrite.revision,
+      2,
+      'a re-review bumps revision monotonically, never resets'
+    );
   });
 });

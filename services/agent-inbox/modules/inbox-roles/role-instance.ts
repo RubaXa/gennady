@@ -2,7 +2,8 @@
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
 // @tasks: TSK-113, TSK-121, TSK-124
 
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
 import { buildNodePrompt } from '../../../ai-kit/compile.ts';
 import type { InstanceState } from './errors.ts';
@@ -15,6 +16,7 @@ import type {
   RoleArtifacts,
   PrepNode,
   SessionNode,
+  SessionPolicy,
   GateNode,
   AskNode,
   EffectNode,
@@ -27,6 +29,7 @@ import type {
   PromptOpts,
   ToolCallStat,
   ToolTraceEntry,
+  ToolGate,
 } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { OpenCodeCallResult } from '../inbox-opencode/errors.ts';
@@ -91,6 +94,57 @@ export type RoleInstanceCheckpoint = {
   /** @purpose Artifacts already produced by completed nodes — done tracks are not re-run */
   artifacts: RoleArtifacts;
 };
+
+/**
+ * @purpose Resolve the tool gate `createSession` accepts from a node's policy (D-118..D-123).
+ * @invariant `toolPolicy` takes precedence over the coarser `tools` flag and passes through as a
+ *   fine-grained `ToolGate` — real per-tool enforcement (`OpenCodeReal#_composeToolsGate`).
+ * @invariant No `toolPolicy` → pre-existing coarse boolean behavior unchanged.
+ * @param policy The node's `SessionPolicy`.
+ * @returns Coarse boolean gate, or a `ToolGate` for fine-grained per-lens allowlisting.
+ */
+function _resolveSessionTools(policy: SessionPolicy | undefined): boolean | ToolGate {
+  if (policy?.toolPolicy) {
+    const { bash, read, grep } = policy.toolPolicy;
+    return { bash, read, grep };
+  }
+  return policy?.tools === true;
+}
+
+/**
+ * @purpose Persist a node's declared `persistResult` output — the ENGINE writes this (D-118..D-123),
+ *   never the agent. Best-effort: a write failure only logs a warning.
+ * @param persistResult The node's `persistResult` hook, if declared.
+ * @param ctx Node context forwarded to the hook.
+ * @param output The node's structured OK output.
+ * @param logLabel One-line label for the warning log on failure (caller + node id).
+ * @sideEffect FS: writes the hook's returned `{path, content}`, creating parent dirs as needed.
+ */
+function _persistNodeResult(
+  persistResult:
+    | ((
+        ctx: NodeContext,
+        output: Record<string, unknown>
+      ) => { path: string; content: string } | undefined)
+    | undefined,
+  ctx: NodeContext,
+  output: Record<string, unknown>,
+  logLabel: string
+): void {
+  if (!persistResult) return;
+  const toPersist = persistResult(ctx, output);
+  if (!toPersist) return;
+  try {
+    mkdirSync(dirname(toPersist.path), { recursive: true });
+    writeFileSync(toPersist.path, toPersist.content);
+  } catch (cause) {
+    logger.warn('[RoleInstance#_persistNodeResult] [writing → degraded]', {
+      node: logLabel,
+      path: toPersist.path,
+      error: String(cause),
+    });
+  }
+}
 
 /**
  * @purpose Render a compact JSON example for one schema property, by type — a shape hint so the
@@ -510,7 +564,7 @@ export class RoleInstance {
       const handle = await this._opencode.createSession({
         title: node.id,
         directory,
-        tools: node.policy?.tools === true,
+        tools: _resolveSessionTools(node.policy),
         model: node.policy?.model,
       });
       this._sessionId = handle.sid;
@@ -597,6 +651,7 @@ export class RoleInstance {
     await this._appendAudit('classified', `Session node "${node.id}" outcome: ${outcome.class}`);
 
     if (outcome.class === 'OK') {
+      _persistNodeResult(node.persistResult, ctx, outcome.output, node.id);
       this._artifacts[node.id] = outcome.output;
       this.continueCount = 0;
       this.restartCount = 0;
@@ -735,7 +790,7 @@ export class RoleInstance {
     const createOpts = {
       title: spec.id,
       directory,
-      tools: spec.policy?.tools === true,
+      tools: _resolveSessionTools(spec.policy),
       // Per-phase model (TSK-perf) — absent → adapter omits the field, server default applies.
       model: spec.policy?.model,
     };
@@ -789,6 +844,7 @@ export class RoleInstance {
       }
 
       if (outcome.class === 'OK') {
+        _persistNodeResult(spec.persistResult, ctx, outcome.output, spec.id);
         // Best-effort tool-call stats — fetched BEFORE closeSession, since closing may drop the
         // session server-side and make the query fail.
         const tools = await this._opencode.toolCallStats(sid).catch(() => []);
@@ -1119,6 +1175,11 @@ export class RoleInstance {
 
   /**
    * @purpose Lazily build the NodeContext from MR context and accumulated artifacts.
+   * @invariant `mrShape`/`injectedEntities` (TSK-113 Round 2) are promoted from `_artifacts`, never
+   *   computed here — `node_prepare`'s `materializeReviewScaffold` (reviewer.role.ts) is the sole
+   *   producer (see `_executePrep`).
+   * @invariant Absent before `node_prepare` runs, or on branches that skip the scaffold pass
+   *   (reply_needed/update-review).
    * @returns NodeContext for the current step.
    */
   protected async _buildContext(): Promise<NodeContext> {
@@ -1130,16 +1191,19 @@ export class RoleInstance {
     // relocatable via --state-dir) — never /tmp. Sanitize the composite id for FS use.
     const slug = this.id.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
     const workspace = join(this._store.getStateDir(), 'agent-inbox', 'workspaces', slug);
+    const artifacts = { ...this._artifacts };
 
     return {
       mr: this._mrContext,
       workspace,
-      artifacts: { ...this._artifacts },
+      artifacts,
       // NFC-SV-07: effect nodes bind EffectExecutor from these (TSK-121 P2) — always populated
       // here since RoleInstance itself requires vcs/store; optionality in NodeContext's type is
       // for hand-built test contexts that bypass this builder.
       vcs: this._vcs,
       store: this._store,
+      mrShape: artifacts['mrShape'] as NodeContext['mrShape'],
+      injectedEntities: artifacts['injectedEntities'] as NodeContext['injectedEntities'],
     };
   }
 

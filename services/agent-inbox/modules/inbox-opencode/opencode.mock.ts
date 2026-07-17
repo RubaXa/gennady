@@ -13,6 +13,8 @@ import {
   type ToolCall,
   type ToolCallStat,
   type ToolTraceEntry,
+  type ToolGate,
+  toolsGateActive,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
 
@@ -49,8 +51,8 @@ export class OpenCodeMock extends OpenCodePort {
   protected _toolStats: Map<string, ToolCallStat[]>;
   /** @purpose Active sessions store — sid → SessionHandle */
   protected _sessions: Map<string, SessionHandle>;
-  /** @purpose Map of sid → tools flag from createSession — gates whether toolCalls() reports telemetry */
-  protected _sessionTools: Map<string, boolean>;
+  /** @purpose Map of sid → tools gate from createSession (boolean or fine-grained ToolGate) — gates whether toolCalls() reports telemetry */
+  protected _sessionTools: Map<string, boolean | ToolGate>;
   /** @purpose Map of sid → last model seen (createSession default or per-prompt override), for per-phase-model tests to assert which model a node requested */
   protected _sessionModels: Map<string, string>;
   /** @purpose Map of sid → nodeId of the last prompt sent on that session, for toolCalls() correlation */
@@ -134,6 +136,8 @@ export class OpenCodeMock extends OpenCodePort {
     };
     this._sessions.set(sid, handle);
     this._sessionTools.set(sid, opts.tools ?? false);
+    // Note: `opts.tools` may be `true`/`false` (blanket gate) or a fine-grained `ToolGate` object
+    // (D-118..D-123) — stored as-is; `toolsGateActive` below normalizes for telemetry gating.
     if (opts.model) {
       this._sessionModels.set(sid, opts.model);
     }
@@ -157,7 +161,7 @@ export class OpenCodeMock extends OpenCodePort {
    * @see {OpenCodePort#toolCalls}
    */
   async toolCalls(sid: string): Promise<ToolCall[]> {
-    if (!this._sessionTools.get(sid)) {
+    if (!toolsGateActive(this._sessionTools.get(sid))) {
       return [];
     }
     const nodeId = this._sessionLastNode.get(sid);
@@ -170,7 +174,7 @@ export class OpenCodeMock extends OpenCodePort {
    * @see {OpenCodePort#toolCallStats}
    */
   async toolCallStats(sid: string): Promise<ToolCallStat[]> {
-    if (!this._sessionTools.get(sid)) {
+    if (!toolsGateActive(this._sessionTools.get(sid))) {
       return [];
     }
     const nodeId = this._sessionLastNode.get(sid);

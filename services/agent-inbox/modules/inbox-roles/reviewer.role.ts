@@ -14,12 +14,31 @@ import type {
   GateResult,
   PrepResult,
   ChangesetFile,
+  ToolPolicy,
 } from './role-node.ts';
 import {
   buildReviewPlan,
   scaffoldReviewReports,
 } from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
 import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  buildTrackContext,
+  type MrShape,
+  type InjectedEntity,
+} from '../inbox-core/context-builder.ts';
+
+/**
+ * @purpose Tool allowlist for the three `review_needed` lens sessions (D-118..D-123, AI-41).
+ * @invariant read+grep only, bash (and write/edit) denied — really enforced at the adapter
+ *   boundary via `ToolGate` composition (see `ToolPolicy`).
+ */
+const REVIEW_LENS_TOOL_POLICY: ToolPolicy = { bash: false, read: true, grep: true };
+
+/**
+ * @purpose Zero-tools allowlist for `node_synthesize` (D-120) — sees only the context injected
+ *   into its task text (filled track scaffolds), never reads/greps/shells on its own.
+ */
+const SYNTHESIZE_TOOL_POLICY: ToolPolicy = { bash: false, read: false, grep: false };
 
 /**
  * @purpose Deterministic branch selector read by `preparePrepNode`.
@@ -33,20 +52,30 @@ type ReviewerStageSignal = 'review_needed' | 'reply_needed' | 'awaiting_reply' |
 /**
  * @purpose Best-effort scaffold materialization (PLAN.md + tasks/*.task.md) for review_needed —
  *   reuses `inbox-review-plan`'s scaffold function (SV-12), never spawns or reimplements it.
- * @invariant Degrade-open: absent changesetFiles/baseSha/headSha/stateDir (e.g. worktree
- *   unavailable, per `context-builder#_prepareWorktreeAndChangeset`) is a silent no-op — scaffold
- *   materialization never blocks the graph.
- * @param ctx Node context — reads `changesetFiles`/`baseSha`/`headSha` staged by `buildNodeContext`.
- * @sideEffect FS: writes PLAN.md/tasks/*.task.md/README.md/HISTORY.md under
- *   `<StateStore.getStateDir()>/agent-inbox/reports/<mr>/` (NFC-05).
+ * @invariant Also the sole producer of `NodeContext.mrShape`/`injectedEntities` (TSK-113 Round 2) —
+ *   both reuse the SAME `buildTrackContext` (TSK-134) pass, never independently recomputed.
+ * @invariant Degrade-open: absent changesetFiles/baseSha/headSha/stateDir is a silent no-op —
+ *   never blocks the graph; returns `{}` in that case.
+ * @invariant `mrShape` reuses the `security` track's full-MR `buildTrackContext` call as the
+ *   canonical statanalysis — one extra git-diff spawn beyond the per-track loop (perf nit, logged).
+ * @param ctx Node context — reads `changesetFiles`/`baseSha`/`headSha`/`worktreePath` staged by
+ *   `buildNodeContext`.
+ * @returns `mrShape`/`injectedEntities` (flattened across scaffolded tracks) for `PrepResult`,
+ *   or `{}` when the scaffold pass degraded/skipped.
+ * @sideEffect FS: writes PLAN.md/tasks/*.task.md/README.md/HISTORY.md under reports dir (NFC-05).
+ *   With `worktreePath`: spawns `git diff`/`git log` subprocesses (TSK-134).
  */
-function materializeReviewScaffold(ctx: NodeContext): void {
+function materializeReviewScaffold(ctx: NodeContext): {
+  mrShape?: MrShape;
+  injectedEntities?: InjectedEntity[];
+} {
   const changesetFiles = ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined;
   const baseSha = ctx.artifacts['baseSha'] as string | undefined;
   const headSha = ctx.artifacts['headSha'] as string | undefined;
+  const worktreePath = ctx.artifacts['worktreePath'] as string | undefined;
   const stateDir = ctx.store?.getStateDir();
 
-  if (!changesetFiles?.length || !baseSha || !headSha || !stateDir) return;
+  if (!changesetFiles?.length || !baseSha || !headSha || !stateDir) return {};
 
   try {
     const files = changesetFiles.map((f) => ({
@@ -67,12 +96,30 @@ function materializeReviewScaffold(ctx: NodeContext): void {
     const plan = buildReviewPlan(changeset);
     const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
     const dir = mrReportsDir(stateDir, ref);
-    scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset);
+    const scaffold = scaffoldReviewReports(
+      dir,
+      ref,
+      headSha,
+      baseSha,
+      plan,
+      changeset,
+      worktreePath
+    );
+    const injectedEntities = Object.values(scaffold.injectedEntities ?? {}).flat();
+
+    if (!worktreePath) return { injectedEntities };
+
+    // #region START_DERIVE_MR_SHAPE — reuses the security track's full-changeset diff pass; see
+    // this function's @invariant on why `security` is the canonical source, not a re-derivation.
+    const { mrShape } = buildTrackContext('security', changeset, baseSha, worktreePath);
+    return { mrShape, injectedEntities };
+    // #endregion END_DERIVE_MR_SHAPE
   } catch (cause) {
     logger.warn('[reviewerGraph#materializeReviewScaffold] [scaffolding → degraded]', {
       mr: ctx.mr.webUrl,
       error: String(cause),
     });
+    return {};
   }
 }
 
@@ -222,13 +269,67 @@ function _deriveSeverity(body: string): 'error' | 'warn' | 'info' {
 }
 
 /**
- * @purpose Task-text suffix instructing a review lens to write its JSON result to disk (TSK-127)
- *   instead of pasting it into the reply.
- * @param file Artifact path, relative to the session's working directory.
- * @returns Markdown instruction suffix appended to a lens's `buildTaskText`.
+ * @purpose Reports-dir path for a lens's engine-persisted result file (D-118..D-123) — the engine
+ *   writes this, the lens session's own tools never include write.
+ * @invariant NOT `tasks/<classify-track>.task.md` — a lens can span several classify-tracks
+ *   (open item, P5 Handoff). Keyed by session id, under the same `tasks/` dir.
+ * @param stateDir `StateStore.getStateDir()`.
+ * @param ref `group/project!iid` MR reference.
+ * @param lensId Session/spec id.
+ * @returns Absolute path for the engine to write/read this lens's structured result.
  */
-function _lensArtifactInstruction(file: string): string {
-  return `\n\n### Output contract\nWrite your result STRICTLY as JSON to the file \`${file}\` (relative to your working directory) using your file-write tool. Your JSON must have this shape: { "findings": [ { "file": "path or path:line", "line"?: number, "severity"?: "error"|"warn"|"info", "message": "..." }, ... ] } — findings MAY be an empty array for a clean lens. Reply with only a one-line confirmation; do NOT paste the JSON into your reply.`;
+function _lensResultPath(stateDir: string, ref: string, lensId: string): string {
+  return join(mrReportsDir(stateDir, ref), 'tasks', `${lensId}.result.json`);
+}
+
+/**
+ * @purpose Build a `persistResult` hook bound to one lens id — the engine calls this after a
+ *   successful outcome and writes the result itself (`RoleInstance#_persistNodeResult`).
+ * @param lensId Session/spec id this hook persists for.
+ * @returns A `persistResult` function — degrade-open (undefined) when `ctx.store` is absent.
+ */
+function _persistLensResult(
+  lensId: string
+): (
+  ctx: NodeContext,
+  output: Record<string, unknown>
+) => { path: string; content: string } | undefined {
+  return (ctx, output) => {
+    const stateDir = ctx.store?.getStateDir();
+    if (!stateDir) return undefined;
+    const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+    return {
+      path: _lensResultPath(stateDir, ref, lensId),
+      content: JSON.stringify(output, null, 2),
+    };
+  };
+}
+
+/**
+ * @purpose Read one lens's engine-persisted result from disk — `node_synthesize`'s zero-tools
+ *   contract: the session never reads anything itself, only this orchestrator-side injection.
+ * @invariant Degrade-open: absent store/file/unparsable content → `fallback` (keeps tests working
+ *   without a real reports dir on disk).
+ * @param ctx Node context — needs `ctx.store` for the reports dir.
+ * @param lensId Lens session id whose result to read.
+ * @param fallback Value to use when the disk read degrades (typically `ctx.artifacts[lensId]`).
+ * @returns The parsed JSON content, or `fallback`.
+ */
+function _readLensResult(
+  ctx: NodeContext,
+  lensId: string,
+  fallback: Record<string, unknown>
+): Record<string, unknown> {
+  const stateDir = ctx.store?.getStateDir();
+  if (!stateDir) return fallback;
+  try {
+    const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+    const path = _lensResultPath(stateDir, ref, lensId);
+    if (!existsSync(path)) return fallback;
+    return JSON.parse(readFileSync(path, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    return fallback;
+  }
 }
 
 /**
@@ -452,8 +553,8 @@ async function preparePrepNode(ctx: NodeContext): Promise<PrepResult> {
     return { branch: 'reply_needed' };
   }
   // Default (stage undefined on first tick, or stage === 'review_needed'): full battery.
-  materializeReviewScaffold(ctx);
-  return { branch: 'review_needed' };
+  const { mrShape, injectedEntities } = materializeReviewScaffold(ctx);
+  return { branch: 'review_needed', artifacts: { mrShape, injectedEntities } };
   // #endregion END_SELECT_BRANCH
 }
 
@@ -484,40 +585,38 @@ const reviewerGraph: RoleGraph = {
             const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
             const trackList =
               tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
-            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Write findings with file:line addresses from the changeset.${_lensArtifactInstruction('.gennady-artifacts/node_track_review.json')}`;
+            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Report findings with file:line addresses from the changeset — an empty findings array is a valid, explicit no-findings result.`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          artifact: {
-            file: '.gennady-artifacts/node_track_review.json',
-            schema: _lensArtifactSchema('node_track_review'),
-          },
+          resultSchema: _lensArtifactSchema('node_track_review'),
+          persistResult: _persistLensResult('node_track_review'),
           policy: {
             promptTimeout: 10,
             continueMax: 3,
             restartMax: 2,
             tools: true,
+            toolPolicy: REVIEW_LENS_TOOL_POLICY,
             model: 'llm-proxy/deepseek-v4-pro',
           },
         },
         {
           id: 'node_security_lens',
           buildTaskText(ctx: NodeContext) {
-            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.${_lensArtifactInstruction('.gennady-artifacts/node_security_lens.json')}`;
+            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          artifact: {
-            file: '.gennady-artifacts/node_security_lens.json',
-            schema: _lensArtifactSchema('node_security_lens'),
-          },
+          resultSchema: _lensArtifactSchema('node_security_lens'),
+          persistResult: _persistLensResult('node_security_lens'),
           policy: {
             promptTimeout: 10,
             continueMax: 2,
             restartMax: 2,
             tools: true,
+            toolPolicy: REVIEW_LENS_TOOL_POLICY,
             model: 'llm-proxy/deepseek-v4-pro',
           },
         },
@@ -525,20 +624,19 @@ const reviewerGraph: RoleGraph = {
           id: 'node_code_review',
           buildTaskText(ctx: NodeContext) {
             const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
-            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).${_lensArtifactInstruction('.gennady-artifacts/node_code_review.json')}`;
+            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
           },
-          artifact: {
-            file: '.gennady-artifacts/node_code_review.json',
-            schema: _lensArtifactSchema('node_code_review'),
-          },
+          resultSchema: _lensArtifactSchema('node_code_review'),
+          persistResult: _persistLensResult('node_code_review'),
           policy: {
             promptTimeout: 10,
             continueMax: 2,
             restartMax: 2,
             tools: true,
+            toolPolicy: REVIEW_LENS_TOOL_POLICY,
             model: 'llm-proxy/deepseek-v4-pro',
           },
         },
@@ -678,25 +776,45 @@ const reviewerGraph: RoleGraph = {
       kind: 'session',
       id: 'node_synthesize',
       buildTaskText(ctx: NodeContext) {
-        const track = (ctx.artifacts['node_track_review'] as Record<string, unknown>) ?? {};
-        const security = (ctx.artifacts['node_security_lens'] as Record<string, unknown>) ?? {};
-        const codeReview = (ctx.artifacts['node_code_review'] as Record<string, unknown>) ?? {};
+        // D-120 zero-tools contract: this reads the lenses' engine-persisted disk results HERE, in
+        // the orchestrator process — the synthesize SESSION itself gets no tools (SYNTHESIZE_TOOL_POLICY
+        // below) and never touches disk; it only sees what this function inlines into its task text.
+        const track = _readLensResult(
+          ctx,
+          'node_track_review',
+          (ctx.artifacts['node_track_review'] as Record<string, unknown>) ?? {}
+        );
+        const security = _readLensResult(
+          ctx,
+          'node_security_lens',
+          (ctx.artifacts['node_security_lens'] as Record<string, unknown>) ?? {}
+        );
+        const codeReview = _readLensResult(
+          ctx,
+          'node_code_review',
+          (ctx.artifacts['node_code_review'] as Record<string, unknown>) ?? {}
+        );
         return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
           { track, security, codeReview }
-        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.${_synthesizeArtifactInstruction('.gennady-artifacts/node_synthesize.json')}`;
+        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
       },
-      artifact: {
-        file: '.gennady-artifacts/node_synthesize.json',
-        schema: _synthesizeArtifactSchema('node_synthesize'),
-      },
+      resultSchema: _synthesizeArtifactSchema('node_synthesize'),
       policy: {
         promptTimeout: 10,
         continueMax: 2,
         restartMax: 2,
         tools: true,
+        // D-120: synthesize sees only what its task text embeds (lens findings, read from disk by
+        // `_readLensResult` in the orchestrator process and JSON.stringify'd above) — it never
+        // navigates the worktree or reads anything itself. `toolPolicy` composes to a fully-denying
+        // `ToolGate` (`{'*': false, bash: false, read: false, grep: false}`) at the createSession
+        // call (`_resolveSessionTools` → `OpenCodeReal#_composeToolsGate`) — really enforced, not
+        // just declared (P5 fix round 2). The final response is structured JSON (`resultSchema`
+        // above), never a disk write — no write tool is granted to this session either.
+        toolPolicy: SYNTHESIZE_TOOL_POLICY,
         model: 'llm-proxy/deepseek-v4-pro',
       },
     },

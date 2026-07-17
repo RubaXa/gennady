@@ -1,13 +1,16 @@
 // @file: Unit tests for inbox-roles RoleInstance — step() per node kind (prep/session/gate),
 //   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
-//   buildTaskText contract.
+//   buildTaskText contract, Round 2 (D-118..D-123) persistResult + per-node ToolPolicy.
 // @consumers: node:test runner
 // @tasks: TSK-113, TSK-124
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { RoleInstance } from '../role-instance.ts';
-import type { RoleGraph } from '../role-node.ts';
+import type { RoleGraph, NodeContext } from '../role-node.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
@@ -53,6 +56,32 @@ interface StateStore {
   loadRegistry(): { version: number; entries: Record<string, unknown> };
   appendAudit(entry: AuditEntry): Promise<void>;
   queryAudit(mr: string): Promise<AuditEntry[]>;
+}
+
+/**
+ * @purpose Real writable tmp-dir StateStore (Round 2, D-118..D-123) — `persistResult` hooks write
+ *   real files under `getStateDir()`; the fixed-string `FakeStateStore` above has no real fs
+ *   backing and cannot prove an engine-side write actually landed on disk.
+ */
+class FakeStateStoreReal {
+  public audits: AuditEntry[] = [];
+  protected _stateDir = mkdtempSync(join(tmpdir(), 'role-instance-test-'));
+
+  getStateDir() {
+    return this._stateDir;
+  }
+
+  loadRegistry() {
+    return { version: 1, entries: {} };
+  }
+
+  async appendAudit(entry: AuditEntry) {
+    this.audits.push(entry);
+  }
+
+  async queryAudit(_mr: string): Promise<AuditEntry[]> {
+    return this.audits;
+  }
 }
 
 // ─── Graph fixtures ─────────────────────────────────────────────────────────────
@@ -215,6 +244,91 @@ function makeSingleSessionGraph(): RoleGraph {
       },
     ],
     edges: [{ from: 'node_wt', to: 'done', on: 'ok' }],
+  };
+}
+
+/** @purpose Single lens-shaped session node declaring `persistResult` (D-118..D-123) — the ENGINE
+ *   writes the returned `{path, content}` after a successful outcome; the node itself never
+ *   touches disk and its `toolPolicy` never grants write (bash/read/grep only). */
+function makePersistResultGraph(): RoleGraph {
+  return {
+    nodes: [
+      {
+        kind: 'session',
+        id: 'node_lens',
+        buildTaskText() {
+          return 'Lens task';
+        },
+        dir(ctx) {
+          return `${ctx.workspace}/lens`;
+        },
+        resultSchema: {
+          title: 'node_lens',
+          type: 'object',
+          properties: { findings: { type: 'array' } },
+        },
+        persistResult(ctx: NodeContext, output: Record<string, unknown>) {
+          const stateDir = ctx.store?.getStateDir();
+          if (!stateDir) return undefined;
+          return { path: join(stateDir, 'lens-result.json'), content: JSON.stringify(output) };
+        },
+        policy: {
+          promptTimeout: 10,
+          continueMax: 1,
+          restartMax: 1,
+          toolPolicy: { bash: false, read: true, grep: true },
+        },
+      },
+    ],
+    edges: [{ from: 'node_lens', to: 'done', on: 'ok' }],
+  };
+}
+
+/** @purpose Lens-shaped node (bash deny/read+grep allow) → synthesize-shaped node (all-false) —
+ *   proves `_resolveSessionTools` passes the REAL per-node `ToolGate` to `createSession`, not a
+ *   single boolean collapsed across every session node. */
+function makeToolPolicyGraph(): RoleGraph {
+  return {
+    nodes: [
+      {
+        kind: 'session',
+        id: 'node_lens_a',
+        buildTaskText() {
+          return 'lens a';
+        },
+        dir(ctx) {
+          return `${ctx.workspace}/lens-a`;
+        },
+        resultSchema: { title: 'node_lens_a', type: 'object', properties: {} },
+        policy: {
+          promptTimeout: 10,
+          continueMax: 1,
+          restartMax: 1,
+          toolPolicy: { bash: false, read: true, grep: true },
+        },
+      },
+      {
+        kind: 'session',
+        id: 'node_synth_a',
+        buildTaskText() {
+          return 'synth a';
+        },
+        dir(ctx) {
+          return `${ctx.workspace}/synth-a`;
+        },
+        resultSchema: { title: 'node_synth_a', type: 'object', properties: {} },
+        policy: {
+          promptTimeout: 10,
+          continueMax: 1,
+          restartMax: 1,
+          toolPolicy: { bash: false, read: false, grep: false },
+        },
+      },
+    ],
+    edges: [
+      { from: 'node_lens_a', to: 'node_synth_a', on: 'ok' },
+      { from: 'node_synth_a', to: 'done', on: 'ok' },
+    ],
   };
 }
 
@@ -495,5 +609,80 @@ describe('RoleInstance — _executeSession directory wiring (TSK-124 regression:
 
     assert.strictEqual(spy.createSessionCalls.length, 1);
     assert.strictEqual(spy.createSessionCalls[0]?.directory, 'FALLBACK_DIR_MARKER');
+  });
+});
+
+describe('RoleInstance — Round 2: session returns structured result, engine persists it (D-118..D-123)', () => {
+  it('GIVEN node_lens завершила ход с находками WHEN _executeSession обрабатывает результат THEN файл на диске пишет ДВИЖОК (persistResult), сессия сама файл не писала', async () => {
+    const spy = new OpenCodeCreateSessionSpy();
+    const realStore = new FakeStateStoreReal();
+    spy.seed('node_lens', { findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] });
+
+    const instance = new RoleInstance({
+      id: 'test:persist-result:1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/300',
+      graph: makePersistResultGraph(),
+      opencode: spy,
+      vcs,
+      store: realStore as unknown as StateStore,
+    });
+
+    await instance.step(); // node_lens → ok → engine calls persistResult and writes the file itself
+
+    assert.strictEqual(instance.currentNode, 'done');
+
+    // #region ASSERT_ENGINE_PERSISTED_NOT_SESSION
+    const resultPath = join(realStore.getStateDir(), 'lens-result.json');
+    assert.ok(
+      existsSync(resultPath),
+      'the ENGINE must write the persistResult file, not the session'
+    );
+    assert.deepStrictEqual(JSON.parse(readFileSync(resultPath, 'utf-8')), {
+      findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
+    });
+    // The session's own tools grant carries no write capability — only the declared ToolPolicy
+    // (bash/read/grep) reaches createSession; 'write'/'edit' are never even a field of ToolGate.
+    assert.deepStrictEqual(spy.createSessionCalls[0]?.tools, {
+      bash: false,
+      read: true,
+      grep: true,
+    });
+    // #endregion ASSERT_ENGINE_PERSISTED_NOT_SESSION
+  });
+});
+
+describe('RoleInstance — Round 2: ToolPolicy per lens — bash deny, read-scoped, grep allowed (D-118..D-123, AI-41)', () => {
+  it('GIVEN lens-подобный узел (toolPolicy read+grep) и synthesize-подобный узел (toolPolicy all-false) WHEN createSession THEN каждый получает СВОЙ ToolGate, не единый boolean на весь граф', async () => {
+    const spy = new OpenCodeCreateSessionSpy();
+    spy.seed('node_lens_a', {});
+    spy.seed('node_synth_a', {});
+
+    const instance = new RoleInstance({
+      id: 'test:toolpolicy:1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/301',
+      graph: makeToolPolicyGraph(),
+      opencode: spy,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // node_lens_a → ok
+    assert.strictEqual(instance.currentNode, 'node_synth_a');
+    await instance.step(); // node_synth_a → ok
+    assert.strictEqual(instance.currentNode, 'done');
+
+    assert.strictEqual(spy.createSessionCalls.length, 2);
+    assert.deepStrictEqual(
+      spy.createSessionCalls[0]?.tools,
+      { bash: false, read: true, grep: true },
+      'lens node: bash denied, read+grep granted'
+    );
+    assert.deepStrictEqual(
+      spy.createSessionCalls[1]?.tools,
+      { bash: false, read: false, grep: false },
+      'synthesize node: fully closed — zero tools'
+    );
   });
 });

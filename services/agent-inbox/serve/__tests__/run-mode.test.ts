@@ -6,7 +6,7 @@
 //   (PLAN.md/README.md with a deterministic changeset-derived mermaid block) round-tripped through
 //   BoardProviderReal.listArtifacts/readArtifact (TSK-122 P3 real-proof integration test).
 // @consumers: node:test runner
-// @tasks: TSK-121, TSK-122
+// @tasks: TSK-121, TSK-122, TSK-113
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,13 +72,15 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
     const vcs = new VcsInboxMock();
     vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
 
+    // D-118..D-123 (TSK-113 P5 fix round 2): lens/synthesize nodes return their result as a
+    // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
+    // response object directly.
     const opencode = new OpenCodeMock();
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: [] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: { verdict: 'changes_requested' },
-      recommendations: [],
       proposedActions: [
         { type: 'reply', body: 'Fix this', position: { file: 'a.ts', newLine: 10 } },
         { type: 'reply', body: 'General note' },
@@ -276,6 +278,9 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     const vcs = new VcsInboxMock();
     vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
 
+    // D-118..D-123 (TSK-113 P5 fix round 2): lens/synthesize nodes return their result as a
+    // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
+    // response object directly.
     const opencode = new OpenCodeMock();
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: ['logic'] });
     opencode.seed('node_security_lens', { findings: [] });
@@ -310,10 +315,11 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     });
 
     await instance.step(); // node_prepare (review_needed default branch) — materializeReviewScaffold
-    assert.strictEqual(instance.currentNode, 'node_track_review');
-    await instance.step(); // node_track_review → ok
-    await instance.step(); // node_security_lens → ok
-    await instance.step(); // node_code_review → ok
+    assert.strictEqual(instance.currentNode, 'node_review_fanout');
+    // TSK-perf: track/security/code-review run concurrently inside one ParallelNode (see
+    // reviewer.role.ts's node_review_fanout) — one step() resolves all three lenses together
+    // (pre-existing graph shape, discovered stale here TSK-113 P5; fixture predates the fan-out).
+    await instance.step(); // node_review_fanout → ok
     assert.strictEqual(instance.currentNode, 'gate_review_filled');
     await instance.step(); // gate_review_filled → pass
     assert.strictEqual(instance.currentNode, 'node_synthesize');

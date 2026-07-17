@@ -3,7 +3,7 @@
 // @tasks: TSK-111
 
 import { logger } from '#logger';
-import type { OpenCodePort, PromptOpts } from './opencode.port.ts';
+import type { OpenCodePort, PromptOpts, ToolGate } from './opencode.port.ts';
 import type { OpenCodeCallResult } from './errors.ts';
 
 /** @purpose Configuration for the session pool. */
@@ -29,8 +29,8 @@ type PoolCreateOpts = {
   title: string;
   /** @purpose Working directory for the session */
   directory: string;
-  /** @purpose Enable code-navigation tools (read/grep/git) bound to directory | @default false (unchanged pre-existing chat behavior) */
-  tools?: boolean;
+  /** @purpose Tool access gate forwarded to `OpenCodePort#createSession` — blanket boolean or fine-grained `ToolGate` (D-118..D-123) | @default false (unchanged pre-existing chat behavior) */
+  tools?: boolean | ToolGate;
   /** @purpose Per-session default model, e.g. `llm-proxy/deepseek-v4-pro` */
   model?: string;
 };
