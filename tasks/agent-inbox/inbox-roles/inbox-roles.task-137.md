@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-137 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-113 (Round 2), TSK-134
+- **Task-ID:** TSK-137 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-113 (Round 2), TSK-134 (producer of `InjectedEntity[]` — `buildTrackContext`'s `injectedEntities` output is the real input to `_verifyInjectionCoverage`, not a type-only reference)
 - **Purpose:** Для injection-сессий `review_needed` (track/security/code + synthesize) переопределить критерий ArtifactValidator «tool-call сверка» (D-86) на **injection-coverage-ledger**: находки обязаны ссылаться на файлы/сущности из влитого `## Контекст` (TSK-134), не на факт вызова инструмента (низко-раундовая инъекционная сессия иначе ложно валится «мало инструментов»). Tool-call лог сессии остаётся в телеметрии (`phase-timings.jsonl`/`tool-trace.jsonl`, уже пишется `phase-telemetry.ts`) — не в граундинге. Гейт для этих линз = **структура + injection-coverage + mermaid** (3 проверки, не 4). Ветки `reply_needed`/`update-review`/author (вне scope refine) сохраняют существующую tool-call сверку без изменений.
 - **Spec References:**
   - Architecture: [§5.3.1 «Гейт-граундинг»](../../../specs/agent-inbox/agent-inbox.spec.md#531-scope-и-инварианты-refine-уточнения-критика-раунд-1)
@@ -34,13 +34,13 @@
 
 ### P1 — impl (injection-coverage-ledger)
 
-- **Objective:** `artifact-validator.ts`: новая проверка `_verifyInjectionCoverage(dir, injectedEntities)` — каждая находка/кандидат в заполненной болванке обязана ссылаться (по `file:line` или имени сущности) на элемент, присутствующий во влитом `## Контекст` (список сущностей/хунков из TSK-134); находка вне инъекции → ошибка. `validate(dir, stage, opts)` для `stage`/`sessionKind` ∈ {`track`, `security`, `code`, `synthesize`} диспетчит `_verifyInjectionCoverage` ВМЕСТО `_verifyToolCallCoverage` (structural + mermaid проверки не трогаются, остаются как есть); для прочих `sessionKind` (`thread_triage`, `delta_review`, `self_review`, `analyze_feedback`) — прежний `_verifyToolCallCoverage` без изменений (regression guard, §5.3.1 scope boundary). Существующий tool-call telemetry-путь (`phase-telemetry.ts`, `gennady inbox stats`, AI-45) не меняется — уже пишет `tool-trace.jsonl` независимо от validate().
+- **Objective:** `artifact-validator.ts`: новая проверка `_verifyInjectionCoverage(dir, injectedEntities)` — `injectedEntities: InjectedEntity[]` (тип из TSK-134's `context-builder.ts`, `{file, line?, symbol?}`) — это РЕАЛЬНЫЙ вывод `buildTrackContext(...).injectedEntities` (TSK-134), передаваемый вызывающей стороной (gate-узел `role-instance.ts`) как есть; `_verifyInjectionCoverage` НЕ парсит `## Контекст` markdown заново для восстановления списка сущностей — консьюмер структурированного producer'а TSK-134, не markdown re-parse. Каждая находка/кандидат в заполненной болванке обязана ссылаться (по `file:line` или имени сущности) на элемент этого списка; находка вне инъекции → ошибка. `validate(dir, stage, opts)` для `stage`/`sessionKind` ∈ {`track`, `security`, `code`, `synthesize`} диспетчит `_verifyInjectionCoverage` ВМЕСТО `_verifyToolCallCoverage` (structural + mermaid проверки не трогаются, остаются как есть); для прочих `sessionKind` (`thread_triage`, `delta_review`, `self_review`, `analyze_feedback`) — прежний `_verifyToolCallCoverage` без изменений (regression guard, §5.3.1 scope boundary). Существующий tool-call telemetry-путь (`phase-telemetry.ts`, `gennady inbox stats`, AI-45) не меняется — уже пишет `tool-trace.jsonl` независимо от validate().
 - **Rules:**
   - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-roles/artifact-validator.ts` (touched)
-- **Inputs:** none (consumes the entity list shape produced by TSK-134's `context-builder.ts`, type-level only)
-- **Exit:** typecheck pass; для injection-сессий gate = структура + injection-coverage + mermaid (tool-call сверка не вызывается); для out-of-scope веток старое поведение неизменно (regression-тест зелен).
+- **Inputs:** TSK-134 handoff (`context-builder.ts` — `buildTrackContext(...).injectedEntities`, real runtime producer, not type-level only)
+- **Exit:** typecheck pass; для injection-сессий gate = структура + injection-coverage + mermaid (tool-call сверка не вызывается); `_verifyInjectionCoverage` вызывается с `injectedEntities`, реально пришедшим из TSK-134's `buildTrackContext` (та же болванка, тот же прогон), не с отдельно распарсенным/hand-built списком; для out-of-scope веток старое поведение неизменно (regression-тест зелен).
 
 <!--/SECTION:PHASE_P1-->
 
@@ -99,11 +99,11 @@ Contract: injected-entity ссылка находки — see Spec References.
 - **When** `validate`
 - **Then** прежний `_verifyToolCallCoverage` вызывается как раньше — поведение идентично pre-TSK-137
 
-**Scenario:** реальная материализация — gate на диске [`integration`]
+**Scenario:** реальная материализация — gate на диске, injectedEntities из реального TSK-134 producer'а [`integration`]
 
-- **Given** реальная временная директория, реальная сматериализованная `tasks/<track>.task.md` (структура из `scaffoldReviewReports`, TSK-134-инъекция `## Контекст` реально записана) + реальные находки, дописанные в файл
-- **When** `validate(dir, 'filled', {sessionKind: 'track'})` читает файл с реального fs (не in-memory строка)
-- **Then** gate возвращает `ok: true` для находок, ссылающихся на реально инъецированные хунки, и `ok: false` при подмене находки на несуществующий файл
+- **Given** реальная временная директория, реальная сматериализованная `tasks/<track>.task.md` (структура из `scaffoldReviewReports`, TSK-134's `buildTrackContext` реально вызван на реальном diff-фикстуре — `## Контекст` записан на диск И `injectedEntities` из ТОГО ЖЕ вызова сохранён/передан вызывающей стороне) + реальные находки, дописанные в файл
+- **When** `validate(dir, 'filled', {sessionKind: 'track', injectedEntities})` читает болванку с реального fs (не in-memory строка) и использует переданный `injectedEntities` как есть (без повторного парсинга `## Контекст`)
+- **Then** gate возвращает `ok: true` для находок, ссылающихся на элементы реального `injectedEntities` (тот же список, что породил `## Контекст`), и `ok: false` при подмене находки на несуществующий файл
 
 <!--/SECTION:BDD-->
 
@@ -125,14 +125,14 @@ Contract: injected-entity ссылка находки — see Spec References.
 
 ## 6. Test Scenario Coverage
 
-| Scenario                                     | Level       | Test File                                                                                   |
-| -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| Форма injected-entity ссылки + отказ         | contract    | `artifact-validator.test.ts` :: `verifyInjectionCoverage rejects unlisted reference`        |
-| Injection-сессии пропускают tool-call сверку | unit        | `artifact-validator.test.ts` :: `validate skips tool-call check for review_needed lenses`   |
-| Находка без grounding — ошибка               | unit        | `artifact-validator.test.ts` :: `validate fails on finding outside injected context`        |
-| Явное no-findings всё ещё требуется          | unit        | `artifact-validator.test.ts` :: `validate still requires explicit no-findings`              |
-| Out-of-scope ветка не регрессирует           | unit        | `artifact-validator.test.ts` :: `validate keeps legacy tool-call check for thread_triage`   |
-| Реальная материализация — gate на диске      | integration | `artifact-validator.test.ts` :: `validate grounds against real injected Context on real fs` |
+| Scenario                                                                                  | Level       | Test File                                                                                                          |
+| ----------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| Форма injected-entity ссылки + отказ                                                      | contract    | `artifact-validator.test.ts` :: `verifyInjectionCoverage rejects unlisted reference`                               |
+| Injection-сессии пропускают tool-call сверку                                              | unit        | `artifact-validator.test.ts` :: `validate skips tool-call check for review_needed lenses`                          |
+| Находка без grounding — ошибка                                                            | unit        | `artifact-validator.test.ts` :: `validate fails on finding outside injected context`                               |
+| Явное no-findings всё ещё требуется                                                       | unit        | `artifact-validator.test.ts` :: `validate still requires explicit no-findings`                                     |
+| Out-of-scope ветка не регрессирует                                                        | unit        | `artifact-validator.test.ts` :: `validate keeps legacy tool-call check for thread_triage`                          |
+| Реальная материализация — gate на диске, injectedEntities из реального TSK-134 producer'а | integration | `artifact-validator.test.ts` :: `validate grounds against real injectedEntities from buildTrackContext on real fs` |
 
 <!--/SECTION:TEST_COVERAGE-->
 

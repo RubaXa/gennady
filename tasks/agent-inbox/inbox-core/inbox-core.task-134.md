@@ -34,14 +34,15 @@
 
 ### P1 — impl (mrShape + context-builder)
 
-- **Objective:** новый модуль `context-builder.ts`: `computeMrShape(changeset, diffText): MrShape` (6 флагов статанализом — new exported symbol в диффе, вложенные циклы, цепочка `filter().map()`, tiny-diff по числу строк, security-триггеры по паттернам/путям, тронутый dependency-манифест); `buildTrackContext(track, changeset, base, head): string` — рендерит `## Контекст` (хунки диффа, ограниченные файлами трека из `## Область`, число+список коммитов base..HEAD, список новых символов, разметка внимания по AI-44-триггерам, вычисленным здесь). `scaffoldReviewReports` (существующий, минимальное оправданное касание) вызывает `buildTrackContext` при материализации каждой `tasks/<track>.task.md`, вписывает `## Контекст` в уже созданный скелет (болванка сама не меняется — секция уже объявлена в шаблоне TSK-103/104, сейчас пустая).
+- **Objective:** новый модуль `context-builder.ts`: `computeMrShape(changeset, diffText): MrShape` (6 флагов статанализом — new exported symbol в диффе, вложенные циклы, цепочка `filter().map()`, tiny-diff по числу строк, security-триггеры по паттернам/путям, тронутый dependency-манифест); экспортированный тип `InjectedEntity = {file: string; line?: number; symbol?: string}` — структурированная форма каждой сущности, которую `buildTrackContext` вливает в разметку; `buildTrackContext(track, changeset, base, head): {markdown: string; injectedEntities: InjectedEntity[]}` — рендерит `## Контекст` (хунки диффа, ограниченные файлами трека из `## Область`, число+список коммитов base..HEAD, список новых символов, разметка внимания по AI-44-триггерам, вычисленным здесь) И параллельно возвращает `injectedEntities` — структурированный список ровно тех файлов/символов, что упомянуты в `markdown` (тот же источник построения, не независимый пересчёт) — это producer, который TSK-137 (`_verifyInjectionCoverage`) потребляет напрямую вместо повторного парсинга markdown. `scaffoldReviewReports` (существующий, минимальное оправданное касание) вызывает `buildTrackContext` при материализации каждой `tasks/<track>.task.md`, вписывает `markdown` в уже созданный скелет (болванка сама не меняется — секция уже объявлена в шаблоне TSK-103/104, сейчас пустая); `injectedEntities` прокидывается вызывающей стороне (TSK-113 Round 2 / TSK-137) наравне с markdown, не отбрасывается.
+  - Когда `mrShape.securityHits === true` ИЛИ `mrShape.depManifest === true` — `buildTrackContext('security', ...)` дополнительно вписывает в `## Контекст` отдельную строку разметки внимания, поднимающую приоритет SUPPLY/INJ/SECRET-проб (§5.3.1 depth-modulation: эти два флага не выбирают шаблон, но модулируют глубину контента security-трека).
 - **Rules:**
   - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
-  - `services/agent-inbox/modules/inbox-core/context-builder.ts` (new)
-  - `cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts` (touched — `scaffoldReviewReports` вызывает `buildTrackContext`)
+  - `services/agent-inbox/modules/inbox-core/context-builder.ts` (new — exports `MrShape`, `InjectedEntity`, `computeMrShape`, `buildTrackContext`)
+  - `cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts` (touched — `scaffoldReviewReports` вызывает `buildTrackContext`, вписывает `.markdown`, пробрасывает `.injectedEntities`)
 - **Inputs:** none
-- **Exit:** typecheck pass; на реальном diff-фикстуре `## Контекст` каждой сматериализованной трек-болванки непустой и содержит только хунки файлов своего трека (не весь дифф); security-трек получает полный дифф (NFC-SV-09 — без урезания по треку).
+- **Exit:** typecheck pass; на реальном diff-фикстуре `## Контекст` каждой сматериализованной трек-болванки непустой и содержит только хунки файлов своего трека (не весь дифф); security-трек получает полный дифф (NFC-SV-09 — без урезания по треку); `buildTrackContext` возвращает `injectedEntities`, поэлементно соответствующий сущностям, упомянутым в `markdown`.
 
 <!--/SECTION:PHASE_P1-->
 
@@ -126,6 +127,27 @@ Contract: `MrShape` — see Spec References (Value Object, новая сущно
 - **When** `buildTrackContext`
 - **Then** `## Контекст` содержит разметку внимания, ссылающуюся на имя нового символа и шаг «нет ли уже такого / тот ли слой» (AI-44)
 
+**Scenario:** injectedEntities — структурированный список соответствует влитой markdown [`unit`]
+
+- **Given** дифф трека `logic` с файлами `A.ts` (новый символ `foo`, строка 12), `B.ts`
+- **When** `buildTrackContext('logic', changeset, base, head)`
+- **Then** `result.injectedEntities` содержит `{file: 'A.ts', line: 12, symbol: 'foo'}` и запись для `B.ts`
+- **And** каждый элемент `injectedEntities` соответствует файлу/символу, реально упомянутому в `result.markdown` (не независимый пересчёт, тот же проход построения)
+
+**Scenario:** securityHits/depManifest поднимают разметку внимания SECURITY-трека [`unit`]
+
+- **Given** `mrShape.securityHits === true` ИЛИ `mrShape.depManifest === true`
+- **When** `buildTrackContext('security', changeset, base, head)`
+- **Then** `## Контекст` содержит дополнительную строку разметки внимания, поднимающую приоритет SUPPLY/INJ/SECRET-проб (§5.3.1 depth-modulation)
+- **And** для `mrShape` без этих флагов такая строка отсутствует
+
+**Scenario:** binary/no-hunk diff — computeMrShape не падает [`unit`]
+
+- **Given** дифф содержит только rename и/или mode-only изменение (без текстовых хунков) для бинарного файла
+- **When** `computeMrShape(changeset, diffText)`
+- **Then** функция не бросает исключение
+- **And** все 6 флагов возвращаются булевыми (`false` там, где сигнал отсутствует, а не `undefined`/throw)
+
 **Scenario:** реальная материализация на реальном git-репо [`integration`]
 
 - **Given** реальный fixture-репозиторий (temp dir, `git init` + ≥2 реальных коммита, реальный diff base..HEAD), реальная файловая система под tmp state-dir
@@ -154,18 +176,21 @@ Contract: `MrShape` — see Spec References (Value Object, новая сущно
 
 ## 6. Test Scenario Coverage
 
-| Scenario                              | Level       | Test File                                                                                              |
-| ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| MrShape — типизированная форма        | contract    | `context-builder.test.ts` :: `computeMrShape rejects invalid changeset`                                |
-| newSymbols detection                  | unit        | `context-builder.test.ts` :: `newSymbols true on new export`                                           |
-| isTiny detection                      | unit        | `context-builder.test.ts` :: `isTiny true on single-line diff`                                         |
-| filterMapChain detection              | unit        | `context-builder.test.ts` :: `filterMapChain true on chain`                                            |
-| nestedLoops detection                 | unit        | `context-builder.test.ts` :: `nestedLoops true on nested for`                                          |
-| securityHits + depManifest modulators | unit        | `context-builder.test.ts` :: `securityHits and depManifest are depth modulators not selectors`         |
-| инъекция ограничена треком            | unit        | `context-builder.test.ts` :: `buildTrackContext bounds hunks to track files`                           |
-| security-трек — полный дифф           | unit        | `context-builder.test.ts` :: `buildTrackContext security gets full changeset`                          |
-| разметка внимания по триггерам        | unit        | `context-builder.test.ts` :: `buildTrackContext marks attention on newSymbols`                         |
-| реальная материализация на git-репо   | integration | `inbox-review-plan.test.ts` :: `scaffoldReviewReports injects real Context section from real git diff` |
+| Scenario                                          | Level       | Test File                                                                                                          |
+| ------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| MrShape — типизированная форма                    | contract    | `context-builder.test.ts` :: `computeMrShape rejects invalid changeset`                                            |
+| newSymbols detection                              | unit        | `context-builder.test.ts` :: `newSymbols true on new export`                                                       |
+| isTiny detection                                  | unit        | `context-builder.test.ts` :: `isTiny true on single-line diff`                                                     |
+| filterMapChain detection                          | unit        | `context-builder.test.ts` :: `filterMapChain true on chain`                                                        |
+| nestedLoops detection                             | unit        | `context-builder.test.ts` :: `nestedLoops true on nested for`                                                      |
+| securityHits + depManifest modulators             | unit        | `context-builder.test.ts` :: `securityHits and depManifest are depth modulators not selectors`                     |
+| инъекция ограничена треком                        | unit        | `context-builder.test.ts` :: `buildTrackContext bounds hunks to track files`                                       |
+| security-трек — полный дифф                       | unit        | `context-builder.test.ts` :: `buildTrackContext security gets full changeset`                                      |
+| разметка внимания по триггерам                    | unit        | `context-builder.test.ts` :: `buildTrackContext marks attention on newSymbols`                                     |
+| injectedEntities соответствует markdown           | unit        | `context-builder.test.ts` :: `buildTrackContext returns injectedEntities matching markdown`                        |
+| securityHits/depManifest — доп. разметка SECURITY | unit        | `context-builder.test.ts` :: `buildTrackContext security track adds attention line on securityHits or depManifest` |
+| binary/no-hunk diff — не падает                   | unit        | `context-builder.test.ts` :: `computeMrShape does not throw on binary or mode-only diff`                           |
+| реальная материализация на git-репо               | integration | `inbox-review-plan.test.ts` :: `scaffoldReviewReports injects real Context section from real git diff`             |
 
 <!--/SECTION:TEST_COVERAGE-->
 

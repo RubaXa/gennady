@@ -34,7 +34,7 @@
 
 ### P1 — impl (аксиомы-кирпичи + базовые hbs-шаблоны + селектор)
 
-- **Objective:** (a) четыре новые аксиомы-кирпичи миссии-адекватности (justify-new — в `ai/kit` их нет): `AX_REVIEW_PURPOSE`, `AX_SIMPLER_ALTERNATIVE`, `AX_COMPLEXITY_BUDGET`, `AX_MINIMAL_CHANGE_SUSPICION`; `AX_NO_DUPLICATION` НЕ создаётся заново — переиспользует существующий `ai/kit/axiom/scaffold/ax-ticket-deduplication.xml` принцип (partial-include или прямая ссылка на тот же кирпич — churn избегается); scale-триггер (nestedLoops→complexity-шаг) переиспользует существующий `ai/kit/axiom/process/ax-scale-proportional-depth.xml`. (b) три новых базовых hbs-шаблона под `ai/kit/templates/sdd-v2/agent-inbox/` (`track-review.directive.hbs`, `security-lens.directive.hbs`, `synthesize.directive.hbs`) — НЕ путать с одноимёнными по духу `code-review.directive.hbs`/`amplify-security.directive.hbs`/`reconcile.directive.hbs` в том же каталоге: те — директивы SDD-воркфлоу (`sdd-code-review`, `sdd-amplify-security`, `sdd-reconcile` скиллы), другой домен контента; паттерн hbs+partial-кирпич копируется, содержимое — из существующих `ai/directives/agent-inbox/{arch,code,security}-interrogation.directive.xml` (миграция контента в brick-форму, не с нуля). (c) `services/ai-kit/selector.ts` — `selectDirective(sessionType, track, mrShape): string`: выбирает базовый hbs-шаблон по `(sessionType, track)`, затем аддитивно доинъецирует partial-кирпичи по 4 флагам `mrShape` (`newSymbols`→dedup-шаг reuse `ax-ticket-deduplication`, `isTiny`→`AX_MINIMAL_CHANGE_SUSPICION`, `filterMapChain`→reduce-шаг, `nestedLoops`→complexity-шаг reuse `ax-scale-proportional-depth`) поверх всегда-включённых `AX_REVIEW_PURPOSE`/`AX_SIMPLER_ALTERNATIVE`/`AX_COMPLEXITY_BUDGET`/`AX_NO_DUPLICATION`; `securityHits`/`depManifest` НЕ читаются этим селектором как ветвящие флаги (per §5.3.1 — они модулируют глубину внутри `security-lens.directive.hbs` контента, не выбор шаблона). (d) `services/ai-kit/compile.ts`/`node-map.ts` (touched) — `buildNodePrompt` маршрутизирует `node_track_review`/`node_security_lens`/`node_code_review`/`node_synthesize` через `selector.ts`; остальные node-id (`node_thread_triage`, `node_delta_review`, `node_synthesize_delta`, `node_self_review`, `node_analyze_feedback`, …) остаются на статичном `NODE_DIRECTIVE_MAP` без изменений (scope boundary §5.3.1).
+- **Objective:** (a) четыре новые аксиомы-кирпичи миссии-адекватности (justify-new — в `ai/kit` их нет): `AX_REVIEW_PURPOSE`, `AX_SIMPLER_ALTERNATIVE`, `AX_COMPLEXITY_BUDGET`, `AX_MINIMAL_CHANGE_SUSPICION`; `AX_NO_DUPLICATION` НЕ создаётся заново — переиспользует существующий `ai/kit/axiom/scaffold/ax-ticket-deduplication.xml` принцип (partial-include или прямая ссылка на тот же кирпич — churn избегается); scale-триггер (nestedLoops→complexity-шаг) переиспользует существующий `ai/kit/axiom/process/ax-scale-proportional-depth.xml`. (b) ЧЕТЫРЕ новых базовых hbs-шаблона под `ai/kit/templates/sdd-v2/agent-inbox/` (`track-review.directive.hbs`, `security-lens.directive.hbs`, `synthesize.directive.hbs`, `code-lens.directive.hbs`) — НЕ путать с одноимёнными по духу `code-review.directive.hbs`/`amplify-security.directive.hbs`/`reconcile.directive.hbs` в том же каталоге: те — директивы SDD-воркфлоу (`sdd-code-review`, `sdd-amplify-security`, `sdd-reconcile` скиллы), другой домен контента, `code-lens.directive.hbs` с ними НЕ коллизирует (отдельное имя файла); паттерн hbs+partial-кирпич копируется, содержимое — из существующих `ai/directives/agent-inbox/{arch,code,security}-interrogation.directive.xml` (миграция контента в brick-форму, не с нуля): `track-review.directive.hbs` ← `arch-interrogation.directive.xml`, `security-lens.directive.hbs` ← `security-interrogation.directive.xml`, `code-lens.directive.hbs` ← `code-interrogation.directive.xml` (это база для `track='code'`/`node_code_review` — без неё `selectDirective('session', 'code', mrShape)` не имеет базового шаблона и мигрированный контент `code-interrogation.directive.xml` остаётся невостребованным). (c) `services/ai-kit/selector.ts` — `selectDirective(sessionType, track, mrShape): string`: выбирает базовый hbs-шаблон по `(sessionType, track)` — `track='logic'`→`track-review.directive.hbs`, `track='security'`→`security-lens.directive.hbs`, `track='code'`→`code-lens.directive.hbs`, `sessionType='synthesize'`→`synthesize.directive.hbs` — затем аддитивно доинъецирует partial-кирпичи по 4 флагам `mrShape` (`newSymbols`→dedup-шаг reuse `ax-ticket-deduplication`, `isTiny`→`AX_MINIMAL_CHANGE_SUSPICION`, `filterMapChain`→reduce-шаг, `nestedLoops`→complexity-шаг reuse `ax-scale-proportional-depth`) поверх всегда-включённых `AX_REVIEW_PURPOSE`/`AX_SIMPLER_ALTERNATIVE`/`AX_COMPLEXITY_BUDGET`/`AX_NO_DUPLICATION`; `securityHits`/`depManifest` НЕ читаются этим селектором как ветвящие флаги (per §5.3.1 — они модулируют глубину внутри `security-lens.directive.hbs` контента, не выбор шаблона). (d) `services/ai-kit/compile.ts`/`node-map.ts` (touched) — `buildNodePrompt` маршрутизирует `node_track_review`/`node_security_lens`/`node_code_review`/`node_synthesize` через `selector.ts`; остальные node-id (`node_thread_triage`, `node_delta_review`, `node_synthesize_delta`, `node_self_review`, `node_analyze_feedback`, …) остаются на статичном `NODE_DIRECTIVE_MAP` без изменений (scope boundary §5.3.1).
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
@@ -45,11 +45,12 @@
   - `ai/kit/templates/sdd-v2/agent-inbox/track-review.directive.hbs` (new)
   - `ai/kit/templates/sdd-v2/agent-inbox/security-lens.directive.hbs` (new)
   - `ai/kit/templates/sdd-v2/agent-inbox/synthesize.directive.hbs` (new)
+  - `ai/kit/templates/sdd-v2/agent-inbox/code-lens.directive.hbs` (new — base for `track='code'`/`node_code_review`, migrated from `ai/directives/agent-inbox/code-interrogation.directive.xml`; distinct file from the pre-existing `code-review.directive.hbs` SDD-skill template, no collision)
   - `services/ai-kit/selector.ts` (new)
   - `services/ai-kit/compile.ts` (touched)
   - `services/ai-kit/node-map.ts` (touched)
 - **Inputs:** none (consumes `MrShape` type from TSK-134's `context-builder.ts`, no runtime coupling beyond the type)
-- **Exit:** typecheck pass; `selectDirective` produces a rendered directive string that includes the base template + exactly the additive bricks matching a given `mrShape` (verified against `ai/kit/lint-axioms.ts` conventions); `node_thread_triage`/`node_delta_review`/author node-ids still resolve unchanged through the static map (no regression).
+- **Exit:** typecheck pass; `selectDirective` produces a rendered directive string that includes the base template + exactly the additive bricks matching a given `mrShape` (verified against `ai/kit/lint-axioms.ts` conventions); `track='code'` resolves to `code-lens.directive.hbs`; all five out-of-scope node-ids (`node_thread_triage`, `node_delta_review`, `node_synthesize_delta`, `node_self_review`, `node_analyze_feedback`) still resolve unchanged through the static map (no regression).
 
 <!--/SECTION:PHASE_P1-->
 
@@ -89,6 +90,13 @@ Contract: собранная директива — see Spec References (ком�
 - **Given** `sessionType='session', track='logic'` против `sessionType='session', track='security'`
 - **Then** первый рендерит `track-review.directive.hbs`, второй — `security-lens.directive.hbs`; тела различаются
 
+**Scenario:** базовый выбор для track='code' — code-lens.directive.hbs [`unit`]
+
+- **Given** `sessionType='session', track='code'` (узел `node_code_review`)
+- **When** `selectDirective('session', 'code', mrShape)`
+- **Then** результат рендерит `code-lens.directive.hbs` (не `track-review.directive.hbs`, не коллизирует с SDD-skill `code-review.directive.hbs`)
+- **And** тело отличается от `track-review.directive.hbs`/`security-lens.directive.hbs`
+
 **Scenario:** newSymbols → dedup-шаг [`unit`]
 
 - **Given** `mrShape.newSymbols === true`
@@ -125,11 +133,11 @@ Contract: собранная директива — see Spec References (ком�
 - **When** `selectDirective` для обоих
 - **Then** набор аддитивных кирпичей идентичен (эти два флага не читаются селектором как триггеры)
 
-**Scenario:** статичные node-id вне scope не регрессируют [`unit`]
+**Scenario:** статичные node-id вне scope не регрессируют, параметризовано по всем пяти [`unit`]
 
-- **Given** `node_thread_triage`
-- **When** `buildNodePrompt('node_thread_triage')`
-- **Then** результат идентичен поведению до этого тикета (статичный `NODE_DIRECTIVE_MAP`, без обращения к `selector.ts`)
+- **Given** каждый из пяти out-of-scope node-id: `node_thread_triage`, `node_delta_review`, `node_synthesize_delta`, `node_self_review`, `node_analyze_feedback`
+- **When** `buildNodePrompt(nodeId)` для КАЖДОГО из них (параметризованный тест или один sweep-тест над списком)
+- **Then** для ВСЕХ пяти результат идентичен поведению до этого тикета (статичный `NODE_DIRECTIVE_MAP`, без обращения к `selector.ts`)
 
 **Scenario:** реальный рендер с диска [`integration`]
 
@@ -157,18 +165,19 @@ Contract: собранная директива — see Spec References (ком�
 
 ## 6. Test Scenario Coverage
 
-| Scenario                                   | Level       | Test File                                                                      |
-| ------------------------------------------ | ----------- | ------------------------------------------------------------------------------ |
-| Форма собранной директивы + всегда-кирпичи | contract    | `selector.test.ts` :: `selectDirective always includes mission bricks`         |
-| Базовый выбор по (sessionType, track)      | unit        | `selector.test.ts` :: `selectDirective picks base template by track`           |
-| newSymbols → dedup                         | unit        | `selector.test.ts` :: `newSymbols adds dedup step`                             |
-| isTiny → AX_MINIMAL_CHANGE_SUSPICION       | unit        | `selector.test.ts` :: `isTiny adds AX_MINIMAL_CHANGE_SUSPICION`                |
-| filterMapChain → reduce-шаг                | unit        | `selector.test.ts` :: `filterMapChain adds reduce step`                        |
-| nestedLoops → complexity-шаг               | unit        | `selector.test.ts` :: `nestedLoops adds complexity step`                       |
-| комбинация флагов аддитивна                | unit        | `selector.test.ts` :: `multiple mrShape flags compose additively`              |
-| securityHits/depManifest не селекторы      | unit        | `selector.test.ts` :: `securityHits and depManifest do not change brick set`   |
-| статичные node-id не регрессируют          | unit        | `compile.test.ts` :: `node_thread_triage unaffected by selector`               |
-| реальный рендер с диска                    | integration | `selector.test.ts` :: `selectDirective renders real hbs+axiom files from disk` |
+| Scenario                                    | Level       | Test File                                                                                                                                                                                                  |
+| ------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Форма собранной директивы + всегда-кирпичи  | contract    | `selector.test.ts` :: `selectDirective always includes mission bricks`                                                                                                                                     |
+| Базовый выбор по (sessionType, track)       | unit        | `selector.test.ts` :: `selectDirective picks base template by track`                                                                                                                                       |
+| Базовый выбор для track='code'              | unit        | `selector.test.ts` :: `selectDirective picks code-lens.directive.hbs for track code`                                                                                                                       |
+| newSymbols → dedup                          | unit        | `selector.test.ts` :: `newSymbols adds dedup step`                                                                                                                                                         |
+| isTiny → AX_MINIMAL_CHANGE_SUSPICION        | unit        | `selector.test.ts` :: `isTiny adds AX_MINIMAL_CHANGE_SUSPICION`                                                                                                                                            |
+| filterMapChain → reduce-шаг                 | unit        | `selector.test.ts` :: `filterMapChain adds reduce step`                                                                                                                                                    |
+| nestedLoops → complexity-шаг                | unit        | `selector.test.ts` :: `nestedLoops adds complexity step`                                                                                                                                                   |
+| комбинация флагов аддитивна                 | unit        | `selector.test.ts` :: `multiple mrShape flags compose additively`                                                                                                                                          |
+| securityHits/depManifest не селекторы       | unit        | `selector.test.ts` :: `securityHits and depManifest do not change brick set`                                                                                                                               |
+| статичные node-id не регрессируют (5 узлов) | unit        | `compile.test.ts` :: `static out-of-scope node-ids unaffected by selector` (parametrized/sweep over node_thread_triage, node_delta_review, node_synthesize_delta, node_self_review, node_analyze_feedback) |
+| реальный рендер с диска                     | integration | `selector.test.ts` :: `selectDirective renders real hbs+axiom files from disk`                                                                                                                             |
 
 <!--/SECTION:TEST_COVERAGE-->
 
