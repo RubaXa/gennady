@@ -82,24 +82,27 @@ class DegradedOpencode extends OpenCodePort {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * @purpose Find a free TCP port in the given range.
- * @param [start] Start of port range (default: 4096).
- * @param [end] End of port range (default: 4106).
- * @returns First free port number.
- * @throws If no free port is found in the range.
+ * @purpose Ask the OS for an ephemeral free TCP port.
+ * @invariant A fixed scan range exhausts under contention and races the later bind. `listen(0)`
+ *   draws from the OS's full ephemeral pool instead.
+ * @returns An OS-assigned free port number.
  */
-async function findFreePort(start: number = 4096, end: number = 4106): Promise<number> {
-  for (let port = start; port <= end; port++) {
-    const free = await new Promise<boolean>((resolve) => {
-      const server = createServer();
-      server.once('error', () => resolve(false));
-      server.listen(port, () => {
-        server.close(() => resolve(true));
+async function findFreePort(): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address !== null ? address.port : null;
+      server.close(() => {
+        if (port === null) {
+          reject(new Error('[findFreePort] OS did not return a port number'));
+        } else {
+          resolve(port);
+        }
       });
     });
-    if (free) return port;
-  }
-  throw new Error(`No free port in range ${start}–${end}`);
+  });
 }
 
 /**
