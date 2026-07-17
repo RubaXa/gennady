@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-137 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-113 (Round 2), TSK-134 (producer of `InjectedEntity[]` — `buildTrackContext`'s `injectedEntities` output is the real input to `_verifyInjectionCoverage`, not a type-only reference)
+- **Task-ID:** TSK-137 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-113 (Round 2), TSK-134 (producer of `InjectedEntity[]` — `buildTrackContext`'s `injectedEntities` output is the real input to `_verifyInjectionCoverage`, not a type-only reference)
 - **Purpose:** Для injection-сессий `review_needed` (track/security/code + synthesize) переопределить критерий ArtifactValidator «tool-call сверка» (D-86) на **injection-coverage-ledger**: находки обязаны ссылаться на файлы/сущности из влитого `## Контекст` (TSK-134), не на факт вызова инструмента (низко-раундовая инъекционная сессия иначе ложно валится «мало инструментов»). Tool-call лог сессии остаётся в телеметрии (`phase-timings.jsonl`/`tool-trace.jsonl`, уже пишется `phase-telemetry.ts`) — не в граундинге. Гейт для этих линз = **структура + injection-coverage + mermaid** (3 проверки, не 4). Ветки `reply_needed`/`update-review`/author (вне scope refine) сохраняют существующую tool-call сверку без изменений.
 - **Spec References:**
   - Architecture: [§5.3.1 «Гейт-граундинг»](../../../specs/agent-inbox/agent-inbox.spec.md#531-scope-и-инварианты-refine-уточнения-критика-раунд-1)
@@ -23,8 +23,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -144,18 +144,33 @@ Contract: injected-entity ссылка находки — see Spec References.
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-07-17T16:43:29Z` discovery `artifact-validator.ts` уже содержит полную реализацию P1 (`SessionKind`, `ValidateOpts`, `INJECTION_GROUNDED_SESSION_KINDS`-диспетчинг в `validate()`, `_parseCandidateRows`, `_verifyInjectionCoverage`) от прерванной предыдущей сессии; код прочитан целиком, переписывание не требуется — Objective/Exit удовлетворены как есть.
+- [x] `2026-07-17T16:43:29Z` intro `SessionKind` ← закрытое множество session-kind значений `NodeContext`, по которым `validate()` выбирает метод граундинга (TSK-137)
+- [x] `2026-07-17T16:43:29Z` intro `ValidateOpts` ← типизированный объект опций (`sessionKind` + `injectedEntities` + `toolCalls`), заменяет голый массив `toolCalls` для injection-граундированных вызовов, сохраняя обратную совместимость через `Array.isArray` (TSK-137)
+- [x] `2026-07-17T16:43:29Z` decision dispatch-branch=sessionKind∈INJECTION_GROUNDED_SESSION_KINDS ← одна точка входа `validate()` остаётся совместимой с легаси голым массивом `toolCalls`
+- [x] `2026-07-17T16:43:29Z` decision injection-grounding-match=file-path-или-symbol-substring ← `candidate.file` совпадает/endsWith/is-endsWith-of `entity.file`, либо `candidate.problem` содержит `entity.symbol`
+- [x] `2026-07-17T16:43:29Z` discovery `role-instance.ts` (TSK-113 Round 2) вызывает только универсальный `GateNode.verify(ctx)`; ни один production-вызов не создаёт `ArtifactValidator` и не вызывает `.validate(...)` нигде в репозитории кроме `artifact-validator.test.ts`. `NodeContext` (`role-node.ts`) несёт реальное, провязанное поле `injectedEntities?: InjectedEntity[]` (заполняется `RoleInstance#_buildContext` из `buildTrackContext`, TSK-134/TSK-113 P5), но поля `sessionKind` на `NodeContext` нет и продюсера для него нет — диспетчинг, построенный в этой фазе, достижим сейчас только через ручной `ValidateOpts` в тестах, не через реальный путь исполнения gate-узла. Провязка вызова gate-узла в `role-instance.ts` (передача `{sessionKind, injectedEntities}`) вне Target Files этого тикета (только `artifact-validator.ts`) — зафиксировано как открытый пункт для отдельной задачи, не блокер этой фазы.
+- [x] `2026-07-17T16:43:29Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T16:43:29Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/artifact-validator.test.ts'` → pass exit=0
+- [x] `2026-07-17T16:43:29Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T16:43:29Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/artifact-validator.ts]; decisions: [dispatch-branch=sessionKind∈INJECTION_GROUNDED_SESSION_KINDS, injection-grounding-match=file-path-or-symbol-substring]; open: [role-instance-gate-wiring: gate-node call site в role-instance.ts не передаёт {sessionKind, injectedEntities} в ArtifactValidator#validate — sessionKind не провязан в NodeContext, диспетчинг этой фазы недостижим в production до отдельной задачи на провязку]
 
 #### P2
 
-- [ ] `<ts>` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/artifact-validator.test.ts'` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-07-17T17:00:35Z` discovery `artifact-validator.test.ts` уже содержал 3 describe-блока (coverage ledger, tool-call cross-check, mermaid validity, TSK-113); ни один тест не покрывал P1's injection-coverage ветвление — все 6 BDD-сценариев §4 требовали нового кода.
+- [x] `2026-07-17T17:00:35Z` decision candidateRows-factory-extension=taskContent() получил опциональный `candidateRows?: string[]` (дефолт `[EMPTY_CANDIDATES_ROW]`, обратная совместимость с существующими вызовами сохранена) ← нужен способ вписать реальные строки-кандидаты для injection-coverage сценариев без ломки существующих unit-тестов
+- [x] `2026-07-17T17:00:35Z` decision integration-scenario-materialization=реальный git-репозиторий (temp dir) + `buildReviewPlan` + `scaffoldReviewReports(..., worktreePath)` → реальный `## Контекст` + реальный `injectedEntities`; синтез (README с mermaid, Находки/Вердикт/status=filled) дописан поверх материализованного скаффолда, т.к. `validate(dir,'filled')` требует полностью валидный отчёт (диаграмма, заполненные секции) для `ok: true`, не только injection-coverage срез
+- [x] `2026-07-17T17:00:35Z` discovery первая версия integration-негативного сценария (bad-file swap) ложно проходила: `problem`-ячейка кандидата содержала имя символа (`realFn`), и `_verifyInjectionCoverage`'s symbol-substring fallback заземлял находку даже после подмены файла на несуществующий — исправлено (problem-текст без имени символа, grounding только через file-match)
+- [x] `2026-07-17T17:00:35Z` tried `<sdd-path> verify <target-file>` (доп. supplemental gate) → typecheck + gennady DBC lint прошли зелено (typecheck 3741ms, lint 1 файл 493ms); процесс завис на этапе test/format gates (окружение — вложенный npm-подпроцесс не возвращал управление в background-shell) и был прерван вручную; test/format уже независимо подтверждены точными §5-командами ниже
+- [x] `2026-07-17T17:00:35Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T17:00:35Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/artifact-validator.test.ts'` → pass exit=0
+- [x] `2026-07-17T17:00:35Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T17:00:35Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/__tests__/artifact-validator.test.ts]; decisions: [candidateRows-factory-extension=taskContent() accepts optional candidateRows override, integration-scenario-materialization=real git repo + buildReviewPlan + scaffoldReviewReports(worktreePath) + real buildTrackContext injectedEntities]; open: [role-instance-gate-wiring: carried from P1 — gate-node call site in role-instance.ts still does not pass {sessionKind, injectedEntities} into ArtifactValidator#validate, unrelated to this ticket's Target Files]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-07-17T17:00:35Z` DONE
 
 <!--/SECTION:EXECUTION_LOG-->

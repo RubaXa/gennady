@@ -1,8 +1,10 @@
 // @file: ArtifactValidator — mechanical validation of session-produced task artifacts: structure/
 //   schema (delegated to inbox-review-plan's own gate), mermaid syntax, coverage ledger (every
-//   Scope file → findings or explicit no-findings), tool-call cross-check (telemetry vs Scope).
+//   Scope file → findings or explicit no-findings), tool-call cross-check (telemetry vs Scope) for
+//   legacy session kinds, injection-coverage-ledger (findings vs injected Context entities) for
+//   review_needed lens sessions (D-86 override, TSK-137).
 // @consumers: RoleInstance (gate nodes)
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-137
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,6 +13,7 @@ import {
   type ValidateError as ReviewPlanValidateError,
 } from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
 import type { ToolCall } from '../inbox-opencode/opencode.port.ts';
+import type { InjectedEntity } from '../inbox-core/context-builder.ts';
 import { extractMermaidBlocks, validateMermaid } from '../../../../shared/mermaid/mermaid.ts';
 
 /** @purpose One schema/coverage violation, file-scoped for point retry by the recovery ladder. */
@@ -19,8 +22,50 @@ export type ValidateError = ReviewPlanValidateError;
 /** @purpose Outcome of ArtifactValidator.validate — mirrors inbox-review-plan's own gate shape. */
 export type ValidateResult = { ok: true } | { ok: false; errors: ValidateError[] };
 
+/**
+ * @purpose Closed set of `NodeContext`-carried session kinds `validate` can branch grounding on
+ *   (TSK-137) | @invariant `review_needed` lens kinds (`track`/`security`/`code`/`synthesize`) get
+ *   injection-coverage grounding; the rest keep the legacy tool-call cross-check (§5.3.1 scope).
+ */
+export type SessionKind =
+  | 'track'
+  | 'security'
+  | 'code'
+  | 'synthesize'
+  | 'thread_triage'
+  | 'delta_review'
+  | 'self_review'
+  | 'analyze_feedback';
+
+/** @purpose `sessionKind` values whose findings are grounded against injected Context entities instead of tool-call telemetry (D-86 override, TSK-137). */
+const INJECTION_GROUNDED_SESSION_KINDS: ReadonlySet<SessionKind> = new Set([
+  'track',
+  'security',
+  'code',
+  'synthesize',
+]);
+
+/**
+ * @purpose Options for `validate`'s `filled`-stage grounding check | @invariant `sessionKind`
+ *   present and injection-grounded → `injectedEntities` (from `buildTrackContext`, TSK-134)
+ *   replaces `toolCalls` for grounding; absent/legacy `sessionKind` → `toolCalls` unchanged.
+ */
+export type ValidateOpts = {
+  /** @purpose Session kind driving the grounding-method branch (TSK-137) */
+  sessionKind?: SessionKind;
+  /** @purpose Tool-call telemetry from the opencode session — legacy (non-injection) grounding only */
+  toolCalls?: ToolCall[];
+  /** @purpose Structured entity list from the same `buildTrackContext` pass that filled the Context section (TSK-134) — never re-parsed from markdown */
+  injectedEntities?: InjectedEntity[];
+};
+
 /** @purpose One ```mermaid fenced block extracted from a document body, with its source file for error scoping. */
 type MermaidBlock = { file: string; body: string };
+
+/** @purpose One row of the Candidates table, cells relevant to injection-coverage grounding. */
+type CandidateRow = { file: string; problem: string };
+
+const CANDIDATE_ROW_EMPTY_CELL = new Set(['', '—', '-', '–']);
 
 /**
  * @purpose Mechanically verifies that a session did the work per plan — structure, not text
@@ -34,21 +79,24 @@ type MermaidBlock = { file: string; body: string };
  */
 export class ArtifactValidator {
   /**
-   * @purpose Validate a scaffolded report directory: schema gate + coverage ledger + tool-call
-   * cross-check + mermaid syntax.
+   * @purpose Validate a report dir: schema gate + coverage ledger + grounding check (injection or
+   * tool-call, per session kind, TSK-137) + mermaid syntax.
    * @param dir Per-MR, per-head report directory (as produced by `inbox-review-plan --scaffold`).
    * @param stage `enriched` gates dispatch (Context filled); `filled` gates synthesis (all sections).
-   * @param [toolCalls] Tool-call telemetry from the opencode session (file paths actually opened) —
-   *   absent/empty telemetry degrades the cross-check open (no false positives when unavailable).
+   * @param [optsOrToolCalls] Legacy bare `toolCalls` array (pre-TSK-137 shape, kept for out-of-scope
+   *   session kinds) or a `ValidateOpts` carrying `sessionKind` + `injectedEntities`.
    * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
    * @sideEffect Reads PLAN.md, `tasks/*.task.md`, and README.md under `dir`; lazily loads mermaid+jsdom when a diagram is present.
    */
   async validate(
     dir: string,
     stage: 'enriched' | 'filled',
-    toolCalls: ToolCall[] = []
+    optsOrToolCalls: ToolCall[] | ValidateOpts = []
   ): Promise<ValidateResult> {
     const errors: ValidateError[] = [];
+    const opts: ValidateOpts = Array.isArray(optsOrToolCalls)
+      ? { toolCalls: optsOrToolCalls }
+      : optsOrToolCalls;
 
     const base = validateReviewReports(dir, stage);
     if (!base.ok) errors.push(...base.errors);
@@ -57,7 +105,17 @@ export class ArtifactValidator {
 
     if (stage === 'filled') {
       errors.push(...this._verifyCoverageLedger(dir));
-      errors.push(...this._verifyToolCallCoverage(dir, toolCalls));
+
+      // #region START_DISPATCH_GROUNDING_METHOD — invariant: review_needed lens sessions (D-86
+      // override, TSK-137) ground findings against injected Context entities, never tool-call
+      // telemetry (a low-round injection session with zero tool calls would otherwise always fail);
+      // every other sessionKind (including absent, pre-TSK-137 callers) keeps the legacy check.
+      if (opts.sessionKind && INJECTION_GROUNDED_SESSION_KINDS.has(opts.sessionKind)) {
+        errors.push(...this._verifyInjectionCoverage(dir, opts.injectedEntities ?? []));
+      } else {
+        errors.push(...this._verifyToolCallCoverage(dir, opts.toolCalls ?? []));
+      }
+      // #endregion END_DISPATCH_GROUNDING_METHOD
     }
 
     return errors.length > 0 ? { ok: false, errors } : { ok: true };
@@ -130,6 +188,78 @@ export class ArtifactValidator {
           errors.push({
             file: taskPath,
             error: `tool-call сверка: файл "${scopeFile}" из Область не открывался агентом`,
+          });
+        }
+      }
+    }
+    return errors;
+  }
+
+  // ─── Injection-coverage ledger (TSK-137, D-86 override for review_needed lenses) ────────────
+
+  /**
+   * @purpose Parse Candidates-table rows (spec §4 columns: id/file/line/problem/axis/kind/severity)
+   * into `{file, problem}` pairs, skipping header/separator rows and the all-dash placeholder row.
+   * @param sectionBody Text of the Candidates section (post-heading, pre-next-heading).
+   * @returns One entry per real candidate row; empty when the table has no data rows.
+   */
+  protected _parseCandidateRows(sectionBody: string): CandidateRow[] {
+    const rows = sectionBody
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('|'))
+      .slice(2); // drop header row + separator row
+
+    const parsed: CandidateRow[] = [];
+    for (const row of rows) {
+      const cells = row
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim().replace(/`/g, ''));
+      if (cells.every((c) => CANDIDATE_ROW_EMPTY_CELL.has(c))) continue;
+
+      const file = cells[1] ?? '';
+      const problem = cells[3] ?? '';
+      if (!file || CANDIDATE_ROW_EMPTY_CELL.has(file)) continue;
+      parsed.push({ file, problem });
+    }
+    return parsed;
+  }
+
+  /**
+   * @purpose Every candidate row must reference an injected Context entity (by file or symbol name)
+   * — grounding, not self-report (TSK-137).
+   * @param dir Report directory containing `tasks/*.task.md`.
+   * @param injectedEntities Structured entity list from the SAME `buildTrackContext` pass that
+   *   filled this task's Context section (TSK-134) — never independently re-parsed from markdown.
+   * @returns One error per candidate row whose file matches no injected entity.
+   */
+  protected _verifyInjectionCoverage(
+    dir: string,
+    injectedEntities: InjectedEntity[]
+  ): ValidateError[] {
+    const errors: ValidateError[] = [];
+    const tasksDir = join(dir, 'tasks');
+    if (!existsSync(tasksDir)) return errors;
+
+    for (const fileName of readdirSync(tasksDir)) {
+      if (!fileName.endsWith('.task.md')) continue;
+      const taskPath = join(tasksDir, fileName);
+      const { body } = this._parseFrontmatter(readFileSync(taskPath, 'utf8'));
+      const candidatesBody = this._extractSection(body, 'Кандидаты') ?? '';
+
+      for (const candidate of this._parseCandidateRows(candidatesBody)) {
+        const grounded = injectedEntities.some(
+          (entity) =>
+            candidate.file === entity.file ||
+            candidate.file.endsWith(entity.file) ||
+            entity.file.endsWith(candidate.file) ||
+            (entity.symbol !== undefined && candidate.problem.includes(entity.symbol))
+        );
+        if (!grounded) {
+          errors.push({
+            file: taskPath,
+            error: `injection-coverage: находка на "${candidate.file}" без grounding в влитом ## Контекст (injectedEntities)`,
           });
         }
       }
