@@ -2,9 +2,12 @@
 //   REAL in-process HttpServer (bootstrap, mocks:false, dryRun:true) and drives one stage; no mocks
 //   or fixtures on the flow. Two seed strategies: an EMPTY temp state (t1/t2/t3/t4 — the real review
 //   runs live), or a temp state PRE-SEEDED with a byte-copy of the operator's already-materialized
-//   real review of vk-workspace/superapp!602 (t5/t6/t7/t8 — render/chat/mutation/action over a real
-//   review without paying the ~20-min live review each time). Copies never touch the operator's real
+//   real review of mail/messenger!159 (t5/t6/t7/t8 — render/chat/mutation/action over a real review
+//   without paying the ~20-min live review each time). Copies never touch the operator's real
 //   ~/.gennady state.
+//   MR_REF was vk-workspace/superapp!602 until 2026-07-18 — that MR was for-real merged on GitLab
+//   (independent of this suite's dry-run actions), dropping it from the actionable board and
+//   breaking any UI-driven "assign" flow; switched to mail/messenger!159 (real, open, non-draft).
 // @consumers: e2e/inbox-serve/review-flow/*.spec.ts
 // @tasks: TSK-131
 
@@ -22,18 +25,27 @@ import {
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose The real test MR the whole suite drives end-to-end. */
-export const MR_URL = 'https://gitlab.corp.mail.ru/vk-workspace/superapp/-/merge_requests/602';
+export const MR_URL = 'https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/159';
 /** @purpose Dashboard hash-route id + `mrReportsDir` ref for MR_URL — `project!iid`. */
-export const MR_REF = 'vk-workspace/superapp!602';
+export const MR_REF = 'mail/messenger!159';
 /** @purpose Port the suite's server listens on. Overridable so a spec can avoid clashing with a
  *   concurrently-running big-test server on 4174. */
 export const PORT = Number(process.env.REVIEW_FLOW_PORT ?? 4174);
 /** @purpose Same-origin base URL for browser specs (page served by the same HttpServer). */
 export const BASE_URL = `http://localhost:${PORT}`;
 
+/** @purpose Flat encoding of MR_REF (`project!iid` → `project-with-__-for-slash-iid`) shared with
+ *   `mrReportsDir`/worktree naming. */
+function _encodedMrRef(): string {
+  const sep = MR_REF.lastIndexOf('!');
+  const project = MR_REF.slice(0, sep);
+  const iid = MR_REF.slice(sep + 1);
+  return `${project.replace(/\//g, '__')}-${iid}`;
+}
+
 /** @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source. */
 export function realReviewSourceDir(): string {
-  return join(homedir(), '.gennady', 'agent-inbox', 'reports', 'vk-workspace__superapp-602');
+  return join(homedir(), '.gennady', 'agent-inbox', 'reports', _encodedMrRef());
 }
 
 /**
@@ -71,12 +83,12 @@ export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
     // Point that at the operator's REAL, already-checked-out worktree for this MR (read-only — chat
     // reviews code, never mutates it, and runs under dryRun) so the chat pipeline gets a genuine
     // working directory instead of a missing dir (which makes opencode error before it ever prompts).
-    const realWorktree = join(homedir(), '.gennady', 'worktrees', 'vk-workspace__superapp-602');
+    const realWorktree = join(homedir(), '.gennady', 'worktrees', _encodedMrRef());
     if (existsSync(realWorktree)) {
       const wtRoot = worktreesRoot(stateDir);
       mkdirSync(wtRoot, { recursive: true });
       try {
-        symlinkSync(realWorktree, join(wtRoot, 'vk-workspace__superapp-602'));
+        symlinkSync(realWorktree, join(wtRoot, _encodedMrRef()));
       } catch {
         /* symlink may already exist — ignore */
       }

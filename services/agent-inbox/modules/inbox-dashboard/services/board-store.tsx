@@ -88,7 +88,7 @@ export function BoardStore(props: { children: ReactNode }) {
     async (mr: MrCard, targetRole: string) => {
       if (!board) return;
 
-      const mrId = `${mr.project}!${mr.iid}`;
+      const mrId = mr.webUrl;
       const prevBoard = board;
 
       // Optimistic update: remove from all lanes, add to target role's inbox

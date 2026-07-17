@@ -1,6 +1,9 @@
 <!-- TSK-136 (D-121/AI-42): base hbs template for selectDirective('session', 'logic', mrShape) —
      migrated content from ai/directives/agent-inbox/arch-interrogation.directive.xml, additive
-     mission-adequacy + mrShape-trigger bricks injected below via Handlebars partials/conditionals. -->
+     mission-adequacy + mrShape-trigger bricks injected below via Handlebars partials/conditionals.
+     TSK-136 Round 2: change stats are read from the task file's already-injected `## Контекст`
+     (TSK-134/TSK-113), not recomputed by the agent via `git diff`/`git log` — live telemetry on
+     `!602` showed the prior wording drove excess round-trips. -->
 <ArchInterrogation keywords="architecture interrogation, entity interrogation, design review, yagni, premature abstraction, boundary check, decomposition, reuse, analog, package extraction, shared library, data ownership, coupling, dependency direction, one-way door, reversibility, helicopter view, c4, visualize, mr review context" type="directive" ver="1.0">
   <Mission>
     Interrogate every entity, data store, and flow introduced or changed by an MR, and emit a helicopter-view picture in which each element carries a justification verdict. Replace the human architect's reflex questions — "why does this exist, is there an analog, how is it done here, is this YAGNI, why two services and not one" — with a fixed, repo-grounded battery applied to all changed code.
@@ -16,7 +19,7 @@
 
   <InputContract>
     Supplied by the consumer (the `agent-inbox` skill):
-    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see &lt;OutputFormat&gt;). `diff_refs` + worktree `path` + `base` for grounded reading. `base` + `path` make the change stats computable (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` for per-file +/− lines; `--name-status` for added/deleted/renamed) — the source for the scope summary required by `AX_CHANGESET_SCALE`.
+    - **Required:** `ref` (`group/project!iid`) and `webUrl` (the MR page URL) — the report is bookended with this link (see &lt;OutputFormat&gt;). `diff_refs` + worktree `path` + `base` for grounded reading. The change stats themselves (per-file +/− lines; added/deleted/renamed) are already computed by the orchestrator and injected into your task file's `## Контекст` section (TSK-134/TSK-113) — read them from there; do NOT recompute via `git diff`/`git log` yourself. This is the source for the scope summary required by `AX_CHANGESET_SCALE`.
     - **Optional:** `title`, `spec_links` (linked spec/ticket/design-doc URLs).
     - **Optional:** `prior_threads` — existing discussion already on the MR (the &lt;Review_Threads&gt; artifact from `vcs-discussions --url &lt;webUrl&gt; --json`: per-thread `file`/`line`/`resolved` and messages tagged `Reviewer` / `Author` / `AI_Agent`, each with `uid`), plus `my_login` (my GitLab username) and `my_drafts` (my unpublished notes from `vcs-discussions --my --with-drafts`). When supplied, they feed `AX_PRIOR_DISCUSSION_AWARENESS`: the interrogation reads them as context and de-duplicates against them. When absent, proceed without prior-discussion awareness and say so in the report.
     No `webUrl` → render the bookend from `ref` as plain text and note the missing link; do not invent a URL.
@@ -263,7 +266,7 @@
     <Step id="STEP_0_INVENTORY">
       <Goal>Enumerate what is on the table.</Goal>
       <Action>
-        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / &lt;OutputFormat&gt; §2.
+        1. Read the changeset scope per `AX_CHANGESET_SCALE` from your task file's already-injected `## Контекст` section (total files changed, lines +/−, new files vs deleted/renamed) — do NOT recompute via `git diff`/`git log` yourself; break the figures down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / &lt;OutputFormat&gt; §2.
         2. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config. Record the count of *new* entities (expansion signal).
         3. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
         4. Zero elements → `H_EMPTY_INVENTORY`.
