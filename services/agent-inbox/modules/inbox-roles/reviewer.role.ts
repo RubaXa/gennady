@@ -4,7 +4,7 @@
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts
 // @tasks: TSK-113, TSK-121, TSK-122, TSK-127
 
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '#logger';
 import type {
@@ -280,6 +280,42 @@ function _deriveSeverity(body: string): 'error' | 'warn' | 'info' {
  */
 function _lensResultPath(stateDir: string, ref: string, lensId: string): string {
   return join(mrReportsDir(stateDir, ref), 'tasks', `${lensId}.result.json`);
+}
+
+/**
+ * @purpose Absolute paths of the classify-track task-blanks `node_prepare` materialized (TSK-134)
+ *   — carry the Context section a lens must read instead of the raw diff.
+ * @invariant Not track-scoped: the three lenses share these files, already split once per changeset.
+ * @param ctx Node context — needs `ctx.store` for the reports dir; degrades open otherwise.
+ * @returns Absolute `tasks/*.task.md` paths, or `[]` when the scaffold never ran or the dir is absent.
+ */
+function _contextTaskBlankPaths(ctx: NodeContext): string[] {
+  const stateDir = ctx.store?.getStateDir();
+  if (!stateDir) return [];
+  const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+  const tasksDir = join(mrReportsDir(stateDir, ref), 'tasks');
+  if (!existsSync(tasksDir)) return [];
+  try {
+    return readdirSync(tasksDir)
+      .filter((f) => f.endsWith('.task.md'))
+      .map((f) => join(tasksDir, f));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * @purpose Task-text suffix (Round 3) pointing a review_needed lens at its already-materialized
+ *   Context section, instead of the recompute-diff-yourself path that drove excess round-trips.
+ * @invariant Degrade-open: no materialized task-blanks → empty suffix, unchanged prior behaviour.
+ * @param ctx Node context — forwarded to `_contextTaskBlankPaths`.
+ * @returns Instruction suffix naming the concrete file paths, or `''` when none exist.
+ */
+function _contextInjectionInstruction(ctx: NodeContext): string {
+  const paths = _contextTaskBlankPaths(ctx);
+  if (paths.length === 0) return '';
+  const fileWord = paths.length === 1 ? 'file' : 'files';
+  return `\n\nContext already computed and written to disk (TSK-134) — read the \`## Контекст\` section of the following ${fileWord} instead of running git diff/log yourself:\n${paths.map((p) => `- ${p}`).join('\n')}`;
 }
 
 /**
@@ -585,7 +621,7 @@ const reviewerGraph: RoleGraph = {
             const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
             const trackList =
               tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
-            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Report findings with file:line addresses from the changeset — an empty findings array is a valid, explicit no-findings result.`;
+            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Report findings with file:line addresses from the changeset — an empty findings array is a valid, explicit no-findings result.${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
@@ -604,7 +640,7 @@ const reviewerGraph: RoleGraph = {
         {
           id: 'node_security_lens',
           buildTaskText(ctx: NodeContext) {
-            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.`;
+            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
@@ -624,7 +660,7 @@ const reviewerGraph: RoleGraph = {
           id: 'node_code_review',
           buildTaskText(ctx: NodeContext) {
             const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
-            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).`;
+            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;

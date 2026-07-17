@@ -6,7 +6,7 @@
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ReviewerRole } from '../reviewer.role.ts';
@@ -16,6 +16,7 @@ import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
+import type { NodeContext, ParallelNode, ParallelSessionSpec } from '../role-node.ts';
 
 /**
  * @purpose Spy on OpenCodeMock#createSession — records the `tools` gate each call received, so
@@ -433,5 +434,59 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       2,
       'a re-review bumps revision monotonically, never resets'
     );
+  });
+});
+
+describe('ReviewerRole — Round 3: buildTaskText carries the injected Context section (D-125 fix)', () => {
+  it('GIVEN a materialized track task-blank on disk WHEN buildTaskText runs for the 3 lens nodes THEN the task text names the concrete file path and tells the agent not to recompute git diff/log itself', async () => {
+    engine.register(ReviewerRole);
+    const def = engine.retrieve('reviewer');
+    assert.ok(def);
+
+    const mrUrl = 'https://gitlab.example.com/project/-/merge_requests/1';
+    const mr = await vcs.getMrContext(mrUrl);
+
+    // #region SETUP_MATERIALIZE_TASK_BLANK — same tasksDir layout node_prepare's scaffold pass writes
+    const tasksDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'project-1', 'tasks');
+    mkdirSync(tasksDir, { recursive: true });
+    const trackTaskPath = join(tasksDir, 'logic.task.md');
+    writeFileSync(trackTaskPath, '## Контекст\ninjected diff hunks + entities go here\n');
+    // #endregion SETUP_MATERIALIZE_TASK_BLANK
+
+    const ctx: NodeContext = {
+      mr,
+      workspace: '/tmp/reviewer-role-test-workspace',
+      artifacts: {},
+      store: store as unknown as StateStore,
+    };
+
+    // #region SETUP_LOCATE_FANOUT_LENSES — the 3 lens ids live inside node_review_fanout's ParallelNode.sessions
+    const fanout = def!.graph.nodes.find((n) => n.id === 'node_review_fanout') as ParallelNode;
+    assert.ok(fanout, 'node_review_fanout must exist in the graph');
+    // #endregion SETUP_LOCATE_FANOUT_LENSES
+
+    for (const nodeId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
+      const node = fanout.sessions.find((s) => s.id === nodeId) as ParallelSessionSpec;
+      assert.ok(node, `${nodeId} must exist in node_review_fanout.sessions`);
+
+      const taskText = node.buildTaskText(ctx);
+
+      // contract: generic string carrying zero words from the injected Context section fails this
+      assert.match(
+        taskText,
+        new RegExp(trackTaskPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${nodeId}'s task text must name the concrete task-blank path`
+      );
+      assert.match(
+        taskText,
+        /## Контекст/,
+        `${nodeId}'s task text must point at the '## Контекст' section`
+      );
+      assert.match(
+        taskText,
+        /instead of running git diff\/log yourself/,
+        `${nodeId}'s task text must tell the agent not to recompute git diff/log itself`
+      );
+    }
   });
 });

@@ -4,8 +4,8 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit); Round 2 additionally: TSK-134 (mrShape + context-injection), TSK-136 (selector.ts — selectDirective)
-- **Reopens:** 1 (2026-07-17 — D-118…D-123 refine: сессии `review_needed`/`synthesize` исполняют свою трек-болванку как задачу и ВОЗВРАЩАЮТ структурированный вывод (без write-tool, NFC-SV-07), оркестратор персистит; ToolPolicy per lens (bash deny/read-scoped/grep); `synthesize` = zero-tools reconcile влитых артефактов; `materializeReviewJson` формально закреплён писателем под D-99)
+- **Task-ID:** TSK-113 | **Status:** [~] IN_PROGRESS | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit); Round 2 additionally: TSK-134 (mrShape + context-injection), TSK-136 (selector.ts — selectDirective)
+- **Reopens:** 2 (2026-07-17 — телеметрия живого прогона `!602` доказала: инъекция `## Контекст` (D-118/D-119/AI-40) вычисляется TSK-134 и пишется в `tasks/<track>.task.md`, но НИКОГДА не доходит до реального текста задания сессии — `buildTaskText` для `node_track_review`/`node_security_lens`/`node_code_review` шлёт одну общую строку без единого слова из влитого контекста. Round-trips НЕ сократились: `node_track_review` = 62 tool-calls (baseline до среза ~29 — стало хуже, не лучше); цель AI-45 (≤10) провалена в разы. Round 3 чинит buildTaskText, чтобы сессия реально получала/использовала влитый контекст вместо самостоятельной разведки)
 - **Purpose:** Движок ролей: граф узлов (prep/session/gate/ask/effect), Scheduler, RoleInstance (step + recovery ladder + восстановление от артефактов), OutcomeClassifier, ArtifactValidator (coverage ledger + tool-call сверка + mermaid), EffectExecutor (все vcs-\* детерминированно, дедуп, идемпотентность), RightsEscalator (нотификации). Reviewer-граф — три ветки (review_needed/reply_needed/update-review); author-граф — self-review + разбор замечаний + FIX_TASK.md. Реврайт под D-86 (полный, паритет с CLI D57/D70). **Round 2 (D-118…D-123):** для веток `review_needed`+`synthesize` — session-узлы исполняют свою `tasks/<track>.task.md` болванку (AI-39), ToolPolicy per lens (AI-41), zero-tools synthesize reconcile (D-120). Ветки `reply_needed`/`update-review`/author — вне scope Round 2 (§5.3.1), остаются как в Round 1.
 - **Spec:** [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, NFC-SV-07/08/09, [§5.3/§5.3.1 (D-118…D-123)](../../specs/agent-inbox/agent-inbox.spec.md#53-review-execution-болванка-driven-сессии--динамическая-сборка-директив-d118d123) | **Runtime:** not-implemented | **Verification:** unit, integration
 <!--/SECTION:META-->
@@ -22,6 +22,8 @@
 | P4  | test | P3   | [x]    |
 | P5  | impl | P4   | [x]    |
 | P6  | test | P5   | [x]    |
+| P7  | impl | P6   | [x]    |
+| P8  | test | P7   | [ ]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -111,6 +113,35 @@
 
 <!--/SECTION:PHASE_P6-->
 
+<!--SECTION:PHASE_P7-->
+
+### P7 — impl (Round 3: реальная инъекция контекста в текст задания сессии)
+
+- **Objective:** Живой прогон на `!602` (Round 2 приёмки) показал `node_track_review` = 62 tool-calls против baseline ~29 — регресс, не прогресс, потому что влитый `## Контекст` (TSK-134's `buildTrackContext`, записан в `tasks/<track>.task.md` через `materializeReviewScaffold`) никогда не попадает в реальный текст задания сессии. `buildTaskText` для `node_track_review`/`node_security_lens`/`node_code_review` (`reviewer.role.ts`, ~584-640) сегодня — одна общая строка («Review MR X, cover tracks Y»), без единого слова из влитого контекста. Чинить: `buildTaskText` должен либо (a) инлайнить влитый `## Контекст` (хунки диффа, коммиты, сущности) прямо в текст задания, либо (b) явно указать агенту читать `## Контекст` своего уже сматериализованного `tasks/<track>.task.md`-файла и НЕ пересчитывать `git diff`/`git log` самостоятельно (директива `track-review.directive.hbs`/`security-lens.directive.hbs`/`code-lens.directive.hbs` сейчас прямо инструктирует агента считать `git -C <path> diff --numstat` самому, TSK-136 P3 в этом же Round убирает эту инструкцию оттуда). Выбор (a)/(b) — на исполнителе фазы, с обоснованием в Execution Log.
+- **Rules:**
+  - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
+- **Target Files:**
+  - `services/agent-inbox/modules/inbox-roles/reviewer.role.ts` (touched — `buildTaskText` для 3 lens-узлов)
+- **Inputs:** P6 handoff (Round 2, DONE); TSK-136 Round 2 P3 handoff (директивы больше не велят агенту пересчитывать diff самому — координация, не hard dependency: эта фаза может закрыться первой, но AI-45 гейт в P8 требует обе половины)
+- **Exit:** typecheck pass; `buildTaskText` для всех 3 lens-узлов содержит либо инлайненный влитый контекст, либо явную инструкцию читать его из `## Контекст` собственного task-blank файла вместо самостоятельного git diff/log.
+
+<!--/SECTION:PHASE_P7-->
+
+<!--SECTION:PHASE_P8-->
+
+### P8 — test (Round 3: телеметрийное доказательство сокращения round-trips)
+
+- **Objective:** Приёмка ОБЯЗАНА быть телеметрийной (D-116/D-125), не по чтению кода. Реальный прогон на `!602` через `npm run test:e2e:review-flow` (`REVIEW_FLOW_STATE_DIR` для сохранения `phase-timings.jsonl`/`tool-trace.jsonl`) должен показать round-trip count для `node_track_review`/`node_security_lens`/`node_code_review` СУЩЕСТВЕННО ниже baseline этого Round'а (62/38/28, зафиксирован в Decision Log выше) — в идеале приближающимся к AI-45 (≤10). Заявление «теперь правильно собрано» без реального прогона до/после — недостаточно.
+- **Rules:**
+  - [testing-common](../../../ai/directives/testing/common.xml)
+  - [node-test](../../../ai/directives/testing/node-test.xml)
+- **Target Files:**
+  - `services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` (touched — юнит-проверка, что `buildTaskText` содержит влитый контекст/инструкцию не пересчитывать diff)
+- **Inputs:** P7 handoff, TSK-136 Round 2 handoff
+- **Exit:** юнит-проверка проходит; живой e2e-прогон на `!602` (или другом реальном MR) зафиксирован в Execution Log с реальными числами round-trips до/после — если сеть/opencode недоступны, честный `test.skip()` с причиной (D-116), не фиктивный успех.
+
+<!--/SECTION:PHASE_P8-->
+
 <!--SECTION:BDD-->
 
 ## 4. BDD
@@ -183,6 +214,19 @@
 - **Given** тот же прогон `gennady inbox serve` на реальном MR, что и предыдущий сценарий
 - **When** тест сверяет три слоя ОДНОГО И ТОГО ЖЕ шага (не три независимых прогона): (1) интерфейсное действие — обращение к штатной точке входа завершилось (review_needed обработан); (2) `tool-trace.jsonl`/`phase-timings.jsonl` содержит запись именно для этого MR/этого узла (по `mr`/`sessionId`, не просто «файл непустой»); (3) `review.json`/`tasks/<track>.task.md` на диске изменились именно этим прогоном (проверка по mtime/содержимому находок, привязанных к этому MR)
 - **Then** все три слоя ссылаются на один и тот же прогон/MR/sessionId — тест провален, если телеметрия или артефакт присутствуют, но не соответствуют именно проверяемому интерфейсному действию (например, устарели от предыдущего прогона)
+
+**Scenario:** buildTaskText реально несёт влитый контекст (Round 3) [`unit`]
+
+- **Given** `NodeContext` с реально заполненным `ctx.artifacts['<track>ContextMarkdown']` (или эквивалентным полем влитого `## Контекст`, TSK-134)
+- **When** `buildTaskText(ctx)` вызывается для `node_track_review`/`node_security_lens`/`node_code_review`
+- **Then** возвращённый текст содержит либо сам влитый контент, либо явную ссылку «читай `## Контекст` своего task-файла, не пересчитывай diff/log» — generic-строка без единого слова из контекста проваливает тест
+
+**Scenario:** живой прогон показывает сокращение round-trips (Round 3) [`e2e`]
+
+- **Given** реальный MR (baseline этого Round'а: `node_track_review`=62, `node_security_lens`=38, `node_code_review`=28 tool-calls, зафиксирован в Decision Log)
+- **When** `npm run test:e2e:review-flow` прогоняется заново с `REVIEW_FLOW_STATE_DIR`
+- **Then** `phase-timings.jsonl`/`tool-trace.jsonl` показывают round-trip count для всех 3 узлов существенно ниже baseline — число зафиксировано в Execution Log как факт, не как утверждение
+- **And** нет opencode/сети → честный `test.skip()` с причиной, не фиктивный успех (D-116)
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -218,6 +262,8 @@
 | Round 2: gate получает injectedEntities того же прогона (не ре-парс/hand-built)     | integration | DEFERRED — owner TSK-137 (`artifact-validator.ts` `_verifyInjectionCoverage`): confirmed Status TODO at P6 execution time; no `validate(dir, stage, {sessionKind, injectedEntities})` call site exists yet anywhere in role-instance.ts/reviewer.role.ts to test against |
 | Round 2: реальный MR через реальный serve — round-trips ≤10/линза (AI-45)           | e2e         | новый e2e-файл под `services/agent-inbox/modules/inbox-roles/__tests__/` или `inbox-eval` (владелец фазы решает конкретный путь при исполнении)                                                                                                                          |
 | Round 2: тройная граунднутость интерфейс↔телеметрия↔артефакт на одном шаге (D-125)  | e2e         | тот же e2e-файл — доп. проверка после round-trips-замера, тот же прогон, без повторного запуска serve                                                                                                                                                                    |
+| Round 3: buildTaskText несёт влитый контекст                                        | unit        | reviewer.role.test.ts                                                                                                                                                                                                                                                    |
+| Round 3: живой прогон показывает сокращение round-trips (baseline 62/38/28)         | e2e         | `npm run test:e2e:review-flow` (`e2e/inbox-serve/review-flow/t3-t4-live-review.spec.ts`), число зафиксировано в Execution Log                                                                                                                                            |
 
 <!--/SECTION:TEST_COVERAGE-->
 
@@ -384,4 +430,46 @@
 
 - [x] `2026-07-17T11:40:00Z` audit round 2 (post-P6, full Round 2 scope) → PASS (B0·M0·m0·I0); mid-round F-01(BLOCKER)/F-02(MAJOR) confirmed fixed; 3 deferred BDD scenarios confirmed genuinely blocked on TSK-136/TSK-137 (both still `[ ] TODO`), not a P6 gap
 - [x] `2026-07-17T11:40:00Z` orchestrator sync trackers → Round 2 closed, ticket Status → DONE
+
+### Round 3 — 2026-07-17, реальная инъекция контекста в текст задания сессии (обнаружено живой телеметрией)
+
+- [x] `2026-07-17T20:50:00Z` discovery живой прогон `npm run test:e2e:review-flow` на `!602` (REVIEW_FLOW_STATE_DIR сохранён) — `phase-timings.jsonl`/`tool-trace.jsonl` реального прогона показывают: `node_security_lens`=38 tool-calls (grep22+read14+bash2), `node_track_review`=62 (read53+grep6+bash3), `node_code_review` 1-я попытка fail (fetch failed, retries=3, 705.9с — сетевой сбой llm-proxy.vkteam.ru, внешняя причина) + 2-я попытка ok=28 (grep11+read15+bash2). Baseline до Round 2 был ~29 для track_review — Round 2 сделал ХУЖЕ, не лучше. AI-45 (≤10) провален в разы. Эти числа — Round 3 baseline для сравнения до/после.
+- [x] `2026-07-17T20:50:00Z` discovery корневая причина в коде (не гипотеза): `buildTaskText` для `node_track_review`/`node_security_lens`/`node_code_review` (`reviewer.role.ts` ~584-640) — одна generic-строка без единого слова из влитого `## Контекст` (TSK-134/TSK-113 Round 2 реально вычисляют и пишут его в `tasks/<track>.task.md`, но сессия его не видит). Директива (`track-review.directive.hbs` ~19) прямо велит агенту самому считать `git -C <path> diff --numstat` — усугубляет проблему.
+
+#### P7
+
+- [x] `2026-07-17T21:00:00Z` discovery `track-review.directive.hbs` (TSK-136 Round 2 P3, already updated on disk before this phase started) confirms design direction (b): `STEP_0_INVENTORY` action 1 now reads "Read the changeset scope ... from your task file's already-injected `## Контекст` section ... do NOT recompute via `git diff`/`git log` yourself" — but names no concrete path, leaving the agent to locate "your task file" itself. `security-lens.directive.hbs`/`code-lens.directive.hbs` carry no equivalent instruction (confirmed by grep — neither references `## Контекст` or a task file), so all 3 lenses depend on `buildTaskText` supplying the concrete path(s); prose alone is not enough.
+- [x] `2026-07-17T21:02:00Z` discovery `ctx.artifacts['tracks']` (read by `node_track_review`'s `buildTaskText`) is never populated anywhere in `role-instance.ts`/`reviewer.role.ts` — confirmed by grep, zero write sites — so the pre-fix `buildTaskText` always fell through to the generic `full diff of <branch>` string; not merely under-detailed, structurally incapable of carrying track info.
+- [x] `2026-07-17T21:04:00Z` discovery `materializeReviewScaffold` (`node_prepare`, already existing) writes `tasks/<classify-track>.task.md` files under `mrReportsDir(stateDir, ref)/tasks/` with the `## Контекст` markdown already filled per classify-track (`buildTrackContext`, TSK-134) — the classify-track partition (`logic`/`security`/`deps`/`tests`/`docs`/`config`/`ui`, from `buildReviewPlan`) does not line up 1:1 with the 3 review-lens session ids (`node_track_review`/`node_security_lens`/`node_code_review` cover 'logic'/'security'/'code'-as-a-review-angle, not matching classify-track names) — no per-lens task-file mapping exists on disk to point at individually.
+- [x] `2026-07-17T21:08:00Z` decision option (b) chosen over (a): `_contextInjectionInstruction(ctx)` (new, `reviewer.role.ts`) lists the absolute paths of every already-materialized `tasks/*.task.md` under the MR's reports dir (via new `_contextTaskBlankPaths`, same `mrReportsDir`/`ctx.store.getStateDir()` computation `_readLensResult` already uses) and instructs the session to read each file's `## Контекст` section instead of running `git diff`/`git log` itself — reused by all 3 lenses (not scoped per-lens) because the classify-track partition does not map 1:1 onto lens ids (see discovery above): re-deriving one path per lens would either duplicate one of the 3 already-computed git-diff passes or invent a mapping that does not exist. Chosen over (a) inlining full diff content per this phase's own guidance (large diffs truncate poorly into task text; a concrete, stable, listed file path is more reliable) and per `AX_EXACT_SCOPE`/`AX_NO_PREMATURE_ABSTRACTIONS` (reuses `_readLensResult`'s existing path-computation pattern, no new module/type).
+- [x] `2026-07-17T21:10:00Z` decision `_contextInjectionInstruction`/`_contextTaskBlankPaths` degrade open (`''`/`[]`) when `ctx.store` is absent or the reports dir was never materialized (no `worktreePath` at prep time, same precondition `materializeReviewScaffold` already documents) — preserves the pre-fix behaviour (session falls back to reading the repo itself) rather than emitting a broken/empty instruction.
+- [x] `2026-07-17T21:12:00Z` decision appended `_contextInjectionInstruction(ctx)` to `node_track_review`/`node_security_lens`/`node_code_review`'s `buildTaskText` return strings only — `node_synthesize` untouched (already reads real `_readLensResult`-injected content since the P5 fix round, not in this phase's Objective/Target Files).
+- [x] `2026-07-17T21:15:00Z` tried first draft of the 2 new JSDoc blocks (`_contextTaskBlankPaths`, `_contextInjectionInstruction`) failed `sdd verify`'s gennady DBC lint 3 times in a row (Cyrillic `` `## Контекст` `` literal inside `@invariant`/`@purpose`, then `@purpose`/`@invariant` word-count over 25) → reworded to describe the section generically ("Context section") in JSDoc prose while keeping the actual Cyrillic `` `## Контекст` `` heading name in the runtime instruction string returned to the session (not JSDoc, not lint-scoped) — final pass clean.
+- [x] `2026-07-17T21:20:00Z` ver `<sdd-path> verify services/agent-inbox/modules/inbox-roles/reviewer.role.ts` → typecheck pass (3127ms), gennady lint pass (581ms) exit=0; broader RUN-ALL `test`/`format` gates below (canonical §5 commands run separately per `AX_ERROR_OWNERSHIP` ownership-check note)
+- [x] `2026-07-17T21:22:00Z` discovery `npm run test`'s RUN-ALL gate failed on `cli/__tests__/e2e/e2e.test.ts` (`npm install failed: install: ENOENT`, `EACCES`, `pack error`) — confirmed pre-existing and unrelated via `git stash`/re-run: identical failures reproduce byte-for-byte with this phase's diff stashed out (sandbox has no network/npm-install access for the CLI e2e harness, not caused by `reviewer.role.ts`). Not fixed here per `AX_ERROR_OWNERSHIP`'s own "direct, mechanical, deterministic consequence of this phase's diff" test — this fails the test either way, so it is not a consequence of this diff.
+- [x] `2026-07-17T21:30:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T21:32:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/*.test.ts'` → fail exit=1 (105 pass / 2 skip / 1 fail — the 1 fail is the pre-existing `reviewer-disk-artifact.test.ts` (TSK-127) "materializeReviewJson merges disk-artifact lens findings" failure, already documented as an open item in this ticket's own P5/P6 Handoffs, confined to a file outside this phase's Target Files — not caused or fixable within `AX_PHASE_SCOPE_LOCK`; the 2 skips are the honest e2e `t.skip()`s already present, unchanged by this phase)
+- [x] `2026-07-17T21:34:00Z` ver `npm run format:check` → pass exit=0
+- [x] `2026-07-17T21:35:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/reviewer.role.ts]; decisions: [fix-mechanism=option(b)-concrete-task-blank-file-paths-not-option(a)-inlined-diff, new-helpers=\_contextTaskBlankPaths+\_contextInjectionInstruction-reuse-\_readLensResult's-mrReportsDir-pattern, scope=shared-across-all-3-lenses-not-per-lens-classify-track-does-not-map-1:1-onto-lens-ids, degrade-open=empty-string-when-store-or-reports-dir-absent-preserves-pre-fix-fallback-behaviour, node_synthesize=untouched-already-fixed-in-P5, ctx.artifacts['tracks']=confirmed-dead-never-populated-pre-existing-not-touched-this-phase, pre-existing-failures=cli-e2e-install-ENOENT-confirmed-via-git-stash-reproduction+reviewer-disk-artifact.test.ts-TSK-127-both-unrelated-to-this-diff]; open: [P8: add unit assertion in reviewer.role.test.ts that buildTaskText's returned string for the 3 lens nodes contains either the injected path list or falls back honestly when absent (BDD "buildTaskText реально несёт влитый контекст"); P8: live e2e re-run on `!602`/other real MR to measure actual round-trip reduction against the Round 3 baseline (62/38/28) — needs `opencode serve --port 4096` running, still not available in this environment per P6's own open item; reviewer-disk-artifact.test.ts (TSK-127, not this ticket's scope): still needs its stale write-tool/artifact-contract assertion rewritten, unchanged from P5/P6 Handoffs; classify-track ↔ lens-id mapping remains coarse (all 3 lenses read the SAME full task-blank set rather than a lens-scoped subset) — acceptable per this phase's reasoning (no real 1:1 mapping exists) but a future phase could narrow it if `buildReviewPlan`'s track taxonomy is ever aligned with the 3 lens ids]
+
+#### P8
+
+- [x] `2026-07-17T18:40:06Z` decision unit assertion locates the 3 lens ids inside `node_review_fanout`'s `ParallelNode.sessions` (not top-level `graph.nodes` — confirmed by grep: `node_track_review`/`node_security_lens`/`node_code_review` are `ParallelSessionSpec` entries, `RoleGraph.nodes` only carries `node_review_fanout` itself); calls `spec.buildTaskText(ctx)` directly on the public `SessionNode`/`ParallelSessionSpec` contract field (`AX_CONTRACT_OVER_IMPLEMENTATION` — no private-state reach)
+- [x] `2026-07-17T18:40:06Z` decision `ctx.mr` built via a real `await vcs.getMrContext(mrUrl)` call on the file's existing `VcsInboxMock` (its default synthetic-context fallback, `_parseMrUrl` → `project: 'project', iid: '1'`) instead of a hand-built `MrContext` literal — keeps the test on a real collaborator per `AX_MOCK_AS_LAST_RESORT`, and matches the `'project-1'` reports-dir naming the file's Round 2 tests already rely on (`mrReportsDir`'s `${project}-${iid}` join)
+- [x] `2026-07-17T18:40:06Z` decision materialize one real `tasks/logic.task.md` file with a literal `## Контекст` heading under the same `store.getStateDir()/agent-inbox/reports/project-1/tasks/` layout `node_prepare`'s scaffold pass writes — asserts against `_contextInjectionInstruction`'s actual output (concrete path + `## Контекст` + "instead of running git diff/log yourself") rather than a substring guess
+- [x] `2026-07-17T18:41:30Z` tried first draft asserted `node.buildTaskText` on `def.graph.nodes.find(n => n.id === 'node_track_review')` directly → failed (`undefined`, `node_track_review must exist in the graph`) — the 3 lens ids are nested under `node_review_fanout.sessions`, not top-level graph nodes; fixed by finding `node_review_fanout` first, then `.sessions.find(...)`
+- [x] `2026-07-17T18:42:10Z` ver `node --test services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` → pass exit=0 (11/11, new case included) — supplemental narrow run before the canonical §5 command
+- [x] `2026-07-17T18:45:00Z` ver `<sdd-path> verify services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` → typecheck pass, gennady lint pass; RUN-ALL test gate surfaced 3 pre-existing failures project-wide (`ChatRouter — POST /chat/stop`, `ChatApiClient integration (real HttpServer...)`, `reviewer.role.ts — materializeReviewJson merges disk-artifact lens findings` (TSK-127)) — confirmed unrelated via `git stash push -- <this phase's test file>` + re-run: identical 3 failures reproduce byte-for-byte with this phase's diff stashed out; format gate (scoped to target file) passed silently
+- [x] `2026-07-17T18:50:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-07-17T18:52:00Z` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/*.test.ts'` → fail exit=1 (106 pass / 2 skip / 1 fail — the 1 fail is the same pre-existing `reviewer-disk-artifact.test.ts` (TSK-127) failure as `sdd verify` surfaced above and as already documented in this ticket's own P5/P6/P7 Handoffs; confined to a file outside this phase's Target Files, not caused or fixable within `AX_PHASE_SCOPE_LOCK`)
+- [x] `2026-07-17T18:53:00Z` ver `npm run format:check` → fail exit=1 (single pre-existing warning on `tasks/agent-inbox/inbox-roles/inbox-roles.task-113.md` itself — documented as pre-existing/unlocalized since this ticket's own P2 Handoff open item; `AX_PERMITTED_BASH_COMMANDS` forbids running `prettier`/`npm run format` directly to fix it from a phase agent)
+- [x] `2026-07-17T18:55:00Z` discovery unset `HTTPS_PROXY`/`HTTP_PROXY` (corporate squid proxy) restores network reachability from this environment to both `gitlab.corp.mail.ru` (302, was `000`) and `https://llm-proxy.vkteam.ru/v1/models` (200) — `e2e/inbox-serve/review-flow/_support.ts`'s `bootReal()` already unsets these vars itself before spawning its own opencode instance (pre-existing code, unchanged), so the live e2e re-run is NOT blocked by the same "opencode/network unavailable" condition P6/P7 recorded — that assumption no longer holds in this run
+- [x] `2026-07-17T19:XX:XXZ` ver `REVIEW_FLOW_STATE_DIR=/Users/k.lebedev/.gennady/scratch/live-proof-tsk137-round3 npm run test:e2e:review-flow` → `<PENDING-FILL-ON-COMPLETION>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### Round close
+
+- [ ] `<ts>` DONE
 <!--/SECTION:EXECUTION_LOG-->
