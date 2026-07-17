@@ -94,7 +94,7 @@
 
 ### P6 — test (Round 2)
 
-- **Objective:** unit-покрытие ToolPolicy-применения + return-контракта сессии + zero-tools synthesize + integration/e2e на реальном MR через реальный serve-пайплайн (D-116) с замером round-trips по `tool-trace.jsonl` (AI-45 гейт).
+- **Objective:** unit-покрытие ToolPolicy-применения + return-контракта сессии + zero-tools synthesize + integration/e2e на реальном MR через реальный serve-пайплайн (D-116) с замером round-trips по `tool-trace.jsonl` (AI-45 гейт). e2e-сценарий сверяет ТРИ слоя ОДНОГО прогона, не проверяет интерфейс изолированно (D-125): интерфейсное действие (`gennady inbox serve` обработал MR) ↔ телеметрийная запись именно для этого MR/sessionId (`tool-trace.jsonl`/`phase-timings.jsonl`) ↔ артефакт на диске изменился именно этим прогоном (`review.json`/`tasks/<track>.task.md` по mtime/содержимому, привязанному к MR) — привязка по общему идентификатору (mr/sessionId), не по факту «файл непустой».
 - **Rules:**
   - [testing-common](../../../ai/directives/testing/common.xml)
   - [node-test](../../../ai/directives/testing/node-test.xml)
@@ -102,7 +102,7 @@
   - `services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts` (touched — ToolPolicy + return-контракт)
   - `services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` (touched — zero-tools synthesize, selectDirective wiring)
 - **Inputs:** P5 handoff
-- **Exit:** все BDD-сценарии Round 2 (§4) покрыты; AI-45 гейт (≤10 round-trips/линза, baseline ~29) подтверждён на ≥2 реальных MR через `tool-trace.jsonl`.
+- **Exit:** все BDD-сценарии Round 2 (§4) покрыты; AI-45 гейт (≤10 round-trips/линза, baseline ~29) подтверждён на ≥2 реальных MR через `tool-trace.jsonl`; тройная граунднутость (D-125) подтверждена — телеметрия и артефакт проверены по общему идентификатору прогона, не по факту существования файла.
 
 <!--/SECTION:PHASE_P6-->
 
@@ -172,6 +172,12 @@
 - **When** `review_needed` проходит track/security/code + synthesize
 - **Then** `tool-trace.jsonl` показывает ≤10 round-trip'ов на линзу-узел (baseline ~29 на `track_review` !602), `review.json` рождается на диске реальным пайплайном
 - **And** нет токена/opencode → тест честно `test.skip()` с причиной, не откат на фикстуру
+
+**Scenario:** тройная граунднутость — интерфейс↔телеметрия↔артефакт на одном шаге (D-125) [`e2e`]
+
+- **Given** тот же прогон `gennady inbox serve` на реальном MR, что и предыдущий сценарий
+- **When** тест сверяет три слоя ОДНОГО И ТОГО ЖЕ шага (не три независимых прогона): (1) интерфейсное действие — обращение к штатной точке входа завершилось (review_needed обработан); (2) `tool-trace.jsonl`/`phase-timings.jsonl` содержит запись именно для этого MR/этого узла (по `mr`/`sessionId`, не просто «файл непустой»); (3) `review.json`/`tasks/<track>.task.md` на диске изменились именно этим прогоном (проверка по mtime/содержимому находок, привязанных к этому MR)
+- **Then** все три слоя ссылаются на один и тот же прогон/MR/sessionId — тест провален, если телеметрия или артефакт присутствуют, но не соответствуют именно проверяемому интерфейсному действию (например, устарели от предыдущего прогона)
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -206,6 +212,7 @@
 | Round 2: реальный mrShape (TSK-134) реально достигает selectDirective               | unit        | role-instance.test.ts                                                                                                                           |
 | Round 2: gate получает injectedEntities того же прогона (не ре-парс/hand-built)     | integration | role-instance.test.ts                                                                                                                           |
 | Round 2: реальный MR через реальный serve — round-trips ≤10/линза (AI-45)           | e2e         | новый e2e-файл под `services/agent-inbox/modules/inbox-roles/__tests__/` или `inbox-eval` (владелец фазы решает конкретный путь при исполнении) |
+| Round 2: тройная граунднутость интерфейс↔телеметрия↔артефакт на одном шаге (D-125)  | e2e         | тот же e2e-файл — доп. проверка после round-trips-замера, тот же прогон, без повторного запуска serve                                           |
 
 <!--/SECTION:TEST_COVERAGE-->
 
