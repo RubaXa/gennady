@@ -4,9 +4,10 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-113 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit)
-- **Purpose:** Движок ролей: граф узлов (prep/session/gate/ask/effect), Scheduler, RoleInstance (step + recovery ladder + восстановление от артефактов), OutcomeClassifier, ArtifactValidator (coverage ledger + tool-call сверка + mermaid), EffectExecutor (все vcs-\* детерминированно, дедуп, идемпотентность), RightsEscalator (нотификации). Reviewer-граф — три ветки (review_needed/reply_needed/update-review); author-граф — self-review + разбор замечаний + FIX_TASK.md. Реврайт под D-86 (полный, паритет с CLI D57/D70).
-- **Spec:** [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, NFC-SV-07/08/09 | **Runtime:** not-implemented | **Verification:** unit
+- **Task-ID:** TSK-113 | **Status:** [~] IN_PROGRESS | **Scope:** agent-inbox | **Module:** inbox-roles | **Dependencies:** TSK-109 (core), TSK-110 (VCS), TSK-111 (opencode), TSK-116 (ai-kit); Round 2 additionally: TSK-134 (mrShape + context-injection)
+- **Reopens:** 1 (2026-07-17 — D-118…D-123 refine: сессии `review_needed`/`synthesize` исполняют свою трек-болванку как задачу и ВОЗВРАЩАЮТ структурированный вывод (без write-tool, NFC-SV-07), оркестратор персистит; ToolPolicy per lens (bash deny/read-scoped/grep); `synthesize` = zero-tools reconcile влитых артефактов; `materializeReviewJson` формально закреплён писателем под D-99)
+- **Purpose:** Движок ролей: граф узлов (prep/session/gate/ask/effect), Scheduler, RoleInstance (step + recovery ladder + восстановление от артефактов), OutcomeClassifier, ArtifactValidator (coverage ledger + tool-call сверка + mermaid), EffectExecutor (все vcs-\* детерминированно, дедуп, идемпотентность), RightsEscalator (нотификации). Reviewer-граф — три ветки (review_needed/reply_needed/update-review); author-граф — self-review + разбор замечаний + FIX_TASK.md. Реврайт под D-86 (полный, паритет с CLI D57/D70). **Round 2 (D-118…D-123):** для веток `review_needed`+`synthesize` — session-узлы исполняют свою `tasks/<track>.task.md` болванку (AI-39), ToolPolicy per lens (AI-41), zero-tools synthesize reconcile (D-120). Ветки `reply_needed`/`update-review`/author — вне scope Round 2 (§5.3.1), остаются как в Round 1.
+- **Spec:** [inbox-roles.spec.md](../../specs/agent-inbox/inbox-roles/inbox-roles.spec.md), [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) SV-04, NFC-SV-07/08/09, [§5.3/§5.3.1 (D-118…D-123)](../../specs/agent-inbox/agent-inbox.spec.md#53-review-execution-болванка-driven-сессии--динамическая-сборка-директив-d118d123) | **Runtime:** not-implemented | **Verification:** unit, integration
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
@@ -19,6 +20,8 @@
 | P2  | impl | P1   | [x]    |
 | P3  | impl | P2   | [x]    |
 | P4  | test | P3   | [x]    |
+| P5  | impl | P4   | [ ]    |
+| P6  | test | P5   | [ ]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -71,6 +74,38 @@
 - **Exit:** Полный цикл tick → prep → session → gate → synthesize → ask → effect; ладдер; дедуп; идемпотентность (двойной постинг при restart не происходит); три ветки reviewer; author FIX_TASK.
 <!--/SECTION:PHASE_P4-->
 
+<!--SECTION:PHASE_P5-->
+
+### P5 — impl (Round 2, D-118…D-123: session↔болванка + ToolPolicy + zero-tools synthesize)
+
+- **Objective:** Для `review_needed`-веток (`node_track_review`/`node_security_lens`/`node_code_review`) и `node_synthesize`: (a) сессия исполняет свою `tasks/<track>.task.md` как задачу — `SessionNode` получает контракт «вернуть структурированное содержимое `## Находки/Кандидаты/Вердикт`» (AI-39), БЕЗ write/edit-инструмента в тулсете сессии (расширяет NFC-SV-07 — убирает даже write-tool, не только vcs-\*); `RoleInstance._executeSession` персистит возвращённое содержимое в файл на диске (оркестратор пишет, не агент, §5.3.1 «Запись находок линзы»). (b) `ToolPolicy` per lens: `bash` deny (git-раскопки заменены инъекцией TSK-134), `read` точечно (файлы из `## Область`/`## Контекст`), `grep` разрешён для трассировки символа (AI-41/D-120) — передаётся в `OpenCodePort.createSession(cwd, tools)` (TSK-111/112) как ограниченный набор инструментов сессии. (c) `node_synthesize` — zero-tools: оркестратор читает заполненные `tasks/<track>.task.md` с диска (после (a)) и вливает их содержимое в контекст директивы synthesize (тот же паттерн инъекции, что AI-40); сессия synthesize не получает read/bash/grep вообще — сводит только из влитого (D-120). (d) `materializeReviewJson` (уже существует, `reviewer.role.ts`) — подтверждён как писатель класса gate/effect под D-99 (та же монотонная ревизия `_readCurrentRevision + 1`, синхронно на `gate_review_synthesis`, ДО `node_ask`/`node_effect`); источник чтения — заполненные болванки (не устаревший `.gennady-artifacts`-путь, если таковой остался с Round 1). (e) Директива каждой сессии собирается через `selectDirective` (TSK-136) вместо статичного `buildNodePrompt`, для нод в scope Round 2 (`node_track_review`/`node_security_lens`/`node_code_review`/`node_synthesize`); `mrShape`/injected-контекст приходят из TSK-134.
+- **Rules:**
+  - [typescript-rules](../../../ai/directives/coding/typescript-rules.xml)
+- **Target Files:**
+  - `services/agent-inbox/modules/inbox-roles/role-node.ts` — `SessionNode`: добавить `toolPolicy` в `policy` (bash deny/read-scoped/grep); `buildTaskText` контракт уточнён — сессия возвращает структурированный результат, не пишет файл
+  - `services/agent-inbox/modules/inbox-roles/role-instance.ts` — `_executeSession` персистит возвращённый результат сессии в `tasks/<track>.task.md` (было: ожидание, что сессия сама записала файл); передаёт `toolPolicy` в `OpenCodePort.createSession`
+  - `services/agent-inbox/modules/inbox-roles/reviewer.role.ts` — `node_track_review`/`node_security_lens`/`node_code_review` переведены на новый контракт возврата; `node_synthesize` — zero-tools, читает заполненные болванки с диска перед вызовом сессии; директива через `selectDirective` (TSK-136) для этих узлов
+- **Inputs:** P4 handoff (existing engine), TSK-134 handoff (`context-builder.ts` — injected `## Контекст`), TSK-136 handoff (`selector.ts`)
+- **Exit:** сессия `review_needed`/`synthesize` не имеет write-tool в тулсете; `ToolPolicy` (bash deny/read-scoped/grep) применяется per lens; `node_synthesize` не получает tools; `materializeReviewJson` пишет под revision-CAS из заполненных болванок; type-check pass.
+
+<!--/SECTION:PHASE_P5-->
+
+<!--SECTION:PHASE_P6-->
+
+### P6 — test (Round 2)
+
+- **Objective:** unit-покрытие ToolPolicy-применения + return-контракта сессии + zero-tools synthesize + integration/e2e на реальном MR через реальный serve-пайплайн (D-116) с замером round-trips по `tool-trace.jsonl` (AI-45 гейт).
+- **Rules:**
+  - [testing-common](../../../ai/directives/testing/common.xml)
+  - [node-test](../../../ai/directives/testing/node-test.xml)
+- **Target Files:**
+  - `services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts` (touched — ToolPolicy + return-контракт)
+  - `services/agent-inbox/modules/inbox-roles/__tests__/reviewer.role.test.ts` (touched — zero-tools synthesize, selectDirective wiring)
+- **Inputs:** P5 handoff
+- **Exit:** все BDD-сценарии Round 2 (§4) покрыты; AI-45 гейт (≤10 round-trips/линза, baseline ~29) подтверждён на ≥2 реальных MR через `tool-trace.jsonl`.
+
+<!--/SECTION:PHASE_P6-->
+
 <!--SECTION:BDD-->
 
 ## 4. BDD
@@ -86,6 +121,45 @@
 - GIVEN рестарт serve с заполненными дорожками WHEN восстановление THEN готовые не переисполняются
 - GIVEN author-MR WHEN граф THEN REPORT.md + FIX_TASK.md + черновики; approve отсутствует
 - GIVEN оператор не реагирует WHEN AWAITING_OPERATOR THEN notifyReady (права не растут)
+
+### Round 2 (D-118…D-123) — session↔болванка + ToolPolicy
+
+**Scenario:** сессия возвращает структурированный результат, не пишет файл [`unit`]
+
+- **Given** сессия `node_track_review` завершила ход с находками
+- **When** `RoleInstance._executeSession` обрабатывает результат
+- **Then** файл `tasks/<track>.task.md` на диске меняет оркестратор (запись — вне тулсета сессии), сессия сама файл не писала (в её тулсете нет write/edit)
+
+**Scenario:** ToolPolicy per lens — bash deny, read точечно, grep разрешён [`unit`]
+
+- **Given** `node_track_review`/`node_security_lens`/`node_code_review`
+- **When** движок конструирует `OpenCodePort.createSession(cwd, tools)`
+- **Then** тулсет НЕ содержит bash; содержит read (точечно — файлы `## Область`/`## Контекст`) и grep
+
+**Scenario:** synthesize — zero tools, читает заполненные болванки [`unit`]
+
+- **Given** все трек-болванки заполнены (Находки/Кандидаты/Вердикт)
+- **When** `node_synthesize` запускается
+- **Then** оркестратор читает содержимое всех `tasks/<track>.task.md` с диска и вливает в контекст директивы synthesize; сессия synthesize получает тулсет = пустой (без read/bash/grep)
+
+**Scenario:** materializeReviewJson — писатель под D-99 revision-CAS [`unit`]
+
+- **Given** заполненные болванки после synthesize
+- **When** `materializeReviewJson` пишет `review.json`
+- **Then** запись идёт под `_readCurrentRevision() + 1`, на `gate_review_synthesis`, до `node_ask`/`node_effect`; конкурентная запись чат-`MutationApplier` (другой писатель, D-99) отклоняется revision-CAS как и раньше
+
+**Scenario:** директива узла собирается динамически (TSK-136) [`unit`]
+
+- **Given** `node_track_review` с реальным `mrShape` (из TSK-134)
+- **When** движок собирает системную директиву узла
+- **Then** вызывается `selector.ts` (TSK-136), не статичный `NODE_DIRECTIVE_MAP`, для этого узла
+
+**Scenario:** реальный MR через реальный serve-пайплайн — round-trips ≤10/линза (AI-45) [`e2e`]
+
+- **Given** реальный MR (≥2 различных реальных MR, D-116 запрещает фикстуру-снапшот) прогнан через штатную точку входа `gennady inbox serve` (реальный GitLab + реальный opencode; допустим только внешний LLM-стык там, где он не под тестом)
+- **When** `review_needed` проходит track/security/code + synthesize
+- **Then** `tool-trace.jsonl` показывает ≤10 round-trip'ов на линзу-узел (baseline ~29 на `track_review` !602), `review.json` рождается на диске реальным пайплайном
+- **And** нет токена/opencode → тест честно `test.skip()` с причиной, не откат на фикстуру
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -101,17 +175,23 @@
 
 ## 6. Test Scenario Coverage
 
-| Scenario                               | Level | Test File                  |
-| -------------------------------------- | ----- | -------------------------- |
-| Scheduler: tick → assign/unassigned    | unit  | role-scheduler.test.ts     |
-| Instance: три ветки reviewer           | unit  | reviewer.role.test.ts      |
-| Instance: recovery ladder              | unit  | role-instance.test.ts      |
-| Instance: восстановление от артефактов | unit  | role-instance.test.ts      |
-| Classifier: класс + сигнал             | unit  | outcome-classifier.test.ts |
-| Validator: coverage ledger + tool-call | unit  | artifact-validator.test.ts |
-| Executor: дедуп + идемпотентность      | unit  | effect-executor.test.ts    |
-| Escalator: notifyReady                 | unit  | rights-escalator.test.ts   |
-| Author: FIX_TASK + no-approve          | unit  | author.role.test.ts        |
+| Scenario                                                                  | Level | Test File                                                                                                                                       |
+| ------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scheduler: tick → assign/unassigned                                       | unit  | role-scheduler.test.ts                                                                                                                          |
+| Instance: три ветки reviewer                                              | unit  | reviewer.role.test.ts                                                                                                                           |
+| Instance: recovery ladder                                                 | unit  | role-instance.test.ts                                                                                                                           |
+| Instance: восстановление от артефактов                                    | unit  | role-instance.test.ts                                                                                                                           |
+| Classifier: класс + сигнал                                                | unit  | outcome-classifier.test.ts                                                                                                                      |
+| Validator: coverage ledger + tool-call                                    | unit  | artifact-validator.test.ts                                                                                                                      |
+| Executor: дедуп + идемпотентность                                         | unit  | effect-executor.test.ts                                                                                                                         |
+| Escalator: notifyReady                                                    | unit  | rights-escalator.test.ts                                                                                                                        |
+| Author: FIX_TASK + no-approve                                             | unit  | author.role.test.ts                                                                                                                             |
+| Round 2: сессия возвращает результат, не пишет файл                       | unit  | role-instance.test.ts                                                                                                                           |
+| Round 2: ToolPolicy per lens (bash deny/read-scoped/grep)                 | unit  | role-instance.test.ts                                                                                                                           |
+| Round 2: synthesize zero-tools, читает заполненные болванки               | unit  | reviewer.role.test.ts                                                                                                                           |
+| Round 2: materializeReviewJson под D-99 revision-CAS                      | unit  | reviewer.role.test.ts                                                                                                                           |
+| Round 2: директива узла через selectDirective (TSK-136)                   | unit  | reviewer.role.test.ts                                                                                                                           |
+| Round 2: реальный MR через реальный serve — round-trips ≤10/линза (AI-45) | e2e   | новый e2e-файл под `services/agent-inbox/modules/inbox-roles/__tests__/` или `inbox-eval` (владелец фазы решает конкретный путь при исполнении) |
 
 <!--/SECTION:TEST_COVERAGE-->
 
@@ -206,4 +286,22 @@
 - [x] `2026-07-13T00:00:00Z` all phases DONE (P1 граф-каркас, P2 движок узлов, P3 роли+wiring, P4 test) — module suite GREEN 74/74
 - [x] `2026-07-13T00:00:00Z` orchestrator sync trackers → audit pending
 - [x] `2026-07-13T00:00:00Z` open architecture gaps carried to batch summary (not silent): effect-node→EffectExecutor binding (NodeContext needs vcs/store), StateStore checkpoint persistence (SV-13 serve-restart), live prep seeding (stage/headChanged from VCS), cmd entrypoint-guard bug — all belong to inbox-core/serve-DI (TSK-115 re-touch) or spawned follow-up tasks, beyond inbox-roles module contract
+
+### Round 2 — 2026-07-17, D-118…D-123 refine (session↔болванка + ToolPolicy + zero-tools synthesize)
+
+#### P5
+
+- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### P6
+
+- [ ] `<ts>` ver `npm run test -- 'services/agent-inbox/modules/inbox-roles/__tests__/*.test.ts'` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### Round close
+
+- [ ] `<ts>` DONE
 <!--/SECTION:EXECUTION_LOG-->

@@ -135,8 +135,9 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
-| agent-inbox       | product        | [README](agent-inbox/README.md)       | 45    | 41/45 |
+| agent-inbox       | product        | [README](agent-inbox/README.md)       | 48    | 40/48 |
 
 ## Decision Log
 
-None — all default choices.
+- **D-201 (2026-07-17, agent-inbox scaffold extend-dag):** TSK-113 (`inbox-roles`) переоткрыт (Reopens: 1) вместо создания нового тикета для «session↔болванка + ToolPolicy» (D-118…D-123 refine). TSK-113 уже владеет `reviewer.role.ts`/`role-instance.ts`/`role-node.ts`/`artifact-validator.ts` (Round 1, DONE) и Round 1 Handoff уже фиксирует открытые разрывы («session узлы не пишут через EffectExecutor», «buildTaskText контракт») ровно в том месте, которое Round 2 закрывает — новый тикет дублировал бы Target Files и контекст. Per `AX_REOPEN_TICKET_FORMAT`: Round 2 добавлен append-only (P5/P6), старые Rounds не тронуты.
+- **D-202 (2026-07-17, agent-inbox scaffold extend-dag):** TSK-137 (ArtifactValidator injection-coverage) остаётся ОТДЕЛЬНЫМ тикетом от TSK-113 Round 2, хотя оба трогают `artifact-validator.ts`/`inbox-roles`. Формально это сходится с «sequential split без (C) = overhead» (`AX_DAG_AND_TICKET_BOUNDARIES`), НО: (a) операторски заданная граница DAG явно разделяет «session-исполнение блванки» (TSK-113 Round 2) от «переопределение критерия гейта» (TSK-137) как разные предметные решения (D-118/AI-39 vs §5.3.1 «Гейт-граундинг»/D-86); (b) TSK-137 зависит от РЕЗУЛЬТАТА TSK-113 Round 2 (заполненные болванки с injected-ссылками), не может стартовать параллельно. Раздельные тикеты сохраняют чистую Round-историю TSK-113 (Round 2 не разрастается третьим предметом).
