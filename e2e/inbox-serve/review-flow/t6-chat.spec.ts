@@ -76,7 +76,9 @@ test.describe('t6 review chat', () => {
     // just on screen — read the SAME transcript file ChatSession#ask() persists (chats/<ref>.jsonl)
     // and confirm the exact question this test typed produced a real, non-empty answer there.
     const uiAnswerText = (
-      await page.locator('[data-testid="chat-streaming"], [data-testid="chat-answer"]').allInnerTexts()
+      await page
+        .locator('[data-testid="chat-streaming"], [data-testid="chat-answer"]')
+        .allInnerTexts()
     )
       .join('')
       .trim();
@@ -85,10 +87,13 @@ test.describe('t6 review chat', () => {
     const lines = readFileSync(transcriptPath, 'utf-8').trim().split('\n');
     const lastTurn = JSON.parse(lines[lines.length - 1]!) as { question: string; answer: string };
 
-    expect(lastTurn.question, 'persisted transcript question must match what was typed in the UI').toBe(
-      'Кратко перечисли находки этого ревью.'
+    expect(
+      lastTurn.question,
+      'persisted transcript question must match what was typed in the UI'
+    ).toBe('Кратко перечисли находки этого ревью.');
+    expect(lastTurn.answer.length, 'persisted transcript answer must be non-empty').toBeGreaterThan(
+      0
     );
-    expect(lastTurn.answer.length, 'persisted transcript answer must be non-empty').toBeGreaterThan(0);
     expect(
       uiAnswerText.slice(0, 20),
       'the on-disk answer must be the same text the UI actually rendered, not a different turn'

@@ -16,16 +16,16 @@
 
 ## 2. Phases Overview
 
-| ID  | Kind | Deps | Status |
-| --- | ---- | ---- | ------ |
+| ID  | Kind | Deps | Status                                                                                                                                                                                                 |
+| --- | ---- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | P1  | impl | —    | `[!] SUPERSEDED — Round 1 scope (chat.spec.ts/chat.aria.spec.ts/chat.layout.spec.ts) не соответствует реальности; см. Round 2 discovery. Не исполнять как описано; Round 2 (P3-P8) — актуальный план.` |
-| P2  | test | P1   | `[!] SUPERSEDED` (см. P1) |
-| P3  | test | —    | [x]    |
-| P4  | test | P3   | [ ]    |
-| P5  | test | P4   | [ ]    |
-| P6  | test | P5   | [ ]    |
-| P7  | test | P6   | [ ]    |
-| P8  | test | P7   | [ ]    |
+| P2  | test | P1   | `[!] SUPERSEDED` (см. P1)                                                                                                                                                                              |
+| P3  | test | —    | [x]                                                                                                                                                                                                    |
+| P4  | test | P3   | [ ]                                                                                                                                                                                                    |
+| P5  | test | P4   | [ ]                                                                                                                                                                                                    |
+| P6  | test | P5   | [ ]                                                                                                                                                                                                    |
+| P7  | test | P6   | [ ]                                                                                                                                                                                                    |
+| P8  | test | P7   | [ ]                                                                                                                                                                                                    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -239,11 +239,11 @@ Contract: см. Spec References (Golden DX §3.3).
 
 ## 5. Verification
 
-| Command                                                                                                                       | Required by      |
-| ------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `npx playwright test --config=e2e/inbox-serve/playwright.config.ts`                                                          | playwright-e2e   |
+| Command                                                                                                                          | Required by      |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `npx playwright test --config=e2e/inbox-serve/playwright.config.ts`                                                              | playwright-e2e   |
 | `npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts e2e/inbox-serve/review-flow/t9-full-flow.spec.ts` | playwright-e2e   |
-| `npm run format:check`                                                                                                        | typescript-rules |
+| `npm run format:check`                                                                                                           | typescript-rules |
 
 - **Task-specific Completion additions:** none beyond project baseline.
 
@@ -253,18 +253,18 @@ Contract: см. Spec References (Golden DX §3.3).
 
 ## 6. Test Scenario Coverage
 
-| Scenario                                                         | Level | Test File           |
-| ---------------------------------------------------------------- | ----- | ------------------- |
-| Постоянный сплит на широком viewport                             | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.layout.spec.ts` НЕ существует на диске (Round 2 discovery); не реализовано, не путать со «сделано» |
-| ViewSwitch на узком viewport                                     | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано |
-| Selection→chip→ask→stream→mutation полный флоу с реальным origin | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.spec.ts` не существует; реальный chat-флоу частично покрыт `t9-full-flow.spec.ts` P6 (без origin file:line chip, TSK-132 отдельно) |
-| Apply мутации обновляет ActionPanel                              | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; частично смежно покрыто `t7-mutation.spec.ts` (set-severity, не через chip) |
-| Undo восстанавливает находку                                     | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде |
-| Stop прерывает генерацию                                         | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде |
-| STALE_REVISION баннер                                            | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде |
-| aria-live на активном стриме                                     | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.aria.spec.ts` не существует; не реализовано |
-| t9 P3-P8: интерфейс↔телеметрия↔артефакт на каждом шаге живого флоу | e2e   | t9-full-flow.spec.ts (по sub-шагу на каждый P3-P8 Exit) |
-| Инкрементальная дисциплина написания теста                       | unit  | Execution Log P3-P8 Handoff-цепочка (аудит сверяет вручную/скриптом) |
+| Scenario                                                           | Level | Test File                                                                                                                                                                                 |
+| ------------------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Постоянный сплит на широком viewport                               | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.layout.spec.ts` НЕ существует на диске (Round 2 discovery); не реализовано, не путать со «сделано»                                 |
+| ViewSwitch на узком viewport                                       | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано                                                                                                       |
+| Selection→chip→ask→stream→mutation полный флоу с реальным origin   | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.spec.ts` не существует; реальный chat-флоу частично покрыт `t9-full-flow.spec.ts` P6 (без origin file:line chip, TSK-132 отдельно) |
+| Apply мутации обновляет ActionPanel                                | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; частично смежно покрыто `t7-mutation.spec.ts` (set-severity, не через chip)                                          |
+| Undo восстанавливает находку                                       | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде                                                                                                 |
+| Stop прерывает генерацию                                           | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде                                                                                                 |
+| STALE_REVISION баннер                                              | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — файл не существует; не реализовано нигде                                                                                                 |
+| aria-live на активном стриме                                       | e2e   | Deferred Test Ownership: TSK-131 Round 1 scope — `chat.aria.spec.ts` не существует; не реализовано                                                                                        |
+| t9 P3-P8: интерфейс↔телеметрия↔артефакт на каждом шаге живого флоу | e2e   | t9-full-flow.spec.ts (по sub-шагу на каждый P3-P8 Exit)                                                                                                                                   |
+| Инкрементальная дисциплина написания теста                         | unit  | Execution Log P3-P8 Handoff-цепочка (аудит сверяет вручную/скриптом)                                                                                                                      |
 
 <!--/SECTION:TEST_COVERAGE-->
 
