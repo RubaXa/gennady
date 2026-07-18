@@ -429,8 +429,7 @@ export class OpenCodeReal extends OpenCodePort {
             status: state?.status ?? 'unknown',
             outputBytes: output !== undefined ? Buffer.byteLength(output, 'utf8') : undefined,
             outputLines: output !== undefined ? output.split('\n').length : undefined,
-            errorSummary:
-              typeof state?.error === 'string' ? state.error.slice(0, 200) : undefined,
+            errorSummary: typeof state?.error === 'string' ? state.error.slice(0, 200) : undefined,
           });
         }
       }
