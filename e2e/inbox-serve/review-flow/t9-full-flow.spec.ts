@@ -279,15 +279,18 @@ test.describe('t9 full flow', () => {
               `"${tabName}" tab did not become active on click`
             ).toHaveAttribute('aria-current', 'true');
             await expect
-              .poll(async () => contentPane.innerText(), {
-                message: `content pane never updated after clicking "${tabName}"`,
-                timeout: 10_000,
-              })
-              .not.toBe(previousText);
+              .poll(
+                async () => {
+                  const text = await contentPane.innerText();
+                  return text !== previousText && text.length > 0;
+                },
+                {
+                  message: `content pane never settled on new non-empty text after clicking "${tabName}"`,
+                  timeout: 10_000,
+                }
+              )
+              .toBe(true);
             const currentText = await contentPane.innerText();
-            expect(currentText.length, `"${tabName}": rendered content is empty`).toBeGreaterThan(
-              0
-            );
             if (tabName !== 'PLAN.md') {
               expect(
                 currentText,
