@@ -3,7 +3,6 @@
 // @consumers: N/A
 // @tasks: TSK-93, TSK-91, TSK-103
 
-import { existsSync, rmSync } from 'node:fs';
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
 import { buildInboxView, type InboxOptions } from './_core/logic/build-inbox-view.logic.ts';
@@ -22,8 +21,7 @@ import {
   resolveStateDir,
   registryPath,
   outDir,
-  worktreesRoot,
-  reportsRoot,
+  mrsRoot,
   gcStaleReports,
   REPORTS_TTL_MS,
   configPath,
@@ -154,8 +152,8 @@ async function run(): Promise<number> {
     // #region START_GC_STALE_WORKTREES — best-effort: remove worktrees older than TTL;
     // failure mode: GC errors do not block inbox — stale worktrees accumulate harmlessly until next run
     try {
-      gcStaleWorktrees(worktreesRoot(stateDir), WORKTREE_TTL_MS, Date.now());
-      gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
+      gcStaleWorktrees(mrsRoot(stateDir), WORKTREE_TTL_MS, Date.now());
+      gcStaleReports(mrsRoot(stateDir), REPORTS_TTL_MS, Date.now());
       gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
     } catch {
       /* gc failures are non-blocking */
@@ -167,13 +165,13 @@ async function run(): Promise<number> {
         registryPath(stateDir),
         outDir(stateDir)
       );
-      const worktrees = removeAllWorktrees(worktreesRoot(stateDir));
+      const worktrees = removeAllWorktrees(mrsRoot(stateDir));
 
       // #region START_RESET_REVIEW_REPORTS — clears the document-pipeline tree (PLAN.md/tasks/
-      // README/HISTORY under every MR); no promotion logic needed, plain recursive delete
-      const reports = reportsRoot(stateDir);
-      const reportsRemoved = existsSync(reports);
-      if (reportsRemoved) rmSync(reports, { recursive: true, force: true });
+      // README/HISTORY under every MR); ttlMs=0 makes gcStaleReports remove every `report/`
+      // subdir unconditionally, leaving sibling `worktree/` dirs untouched (TSK-131)
+      const removedReports = gcStaleReports(mrsRoot(stateDir), 0, Date.now());
+      const reportsRemoved = removedReports.length > 0;
       // #endregion END_RESET_REVIEW_REPORTS
 
       console.info(style.bold('Inbox reset — чистый лист.'));

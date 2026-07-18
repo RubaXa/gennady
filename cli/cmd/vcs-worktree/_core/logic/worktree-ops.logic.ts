@@ -213,9 +213,11 @@ export function removeWorktreeSafe(worktreePath: string): void {
 }
 
 /**
- * @purpose GC: remove worktrees under `root` whose mtime is older than `ttlMs`.
+ * @purpose GC: remove worktrees under `mrsRoot` whose mtime is older than `ttlMs`.
  *   Runs on every prepare so leaked worktrees cannot accumulate unbounded.
- * @param root Worktrees root directory.
+ * @invariant Targets the `worktree/` child of each `<mrsRoot>/<key>/`, leaving a sibling
+ *   `report/` untouched (TSK-131: worktree and report share one parent, GC'd independently).
+ * @param root MRs root (`mrsRoot`).
  * @param ttlMs Max age in ms before a worktree is considered stale.
  * @param nowMs Current time in ms (injected for testability).
  * @returns Paths that were removed.
@@ -226,7 +228,7 @@ export function gcStaleWorktrees(root: string, ttlMs: number, nowMs: number): st
   if (!existsSync(root)) return [];
   const removed: string[] = [];
   for (const name of readdirSync(root)) {
-    const path = join(root, name);
+    const path = join(root, name, 'worktree');
     let mtimeMs: number;
     try {
       const st = statSync(path);
@@ -244,8 +246,9 @@ export function gcStaleWorktrees(root: string, ttlMs: number, nowMs: number): st
 }
 
 /**
- * @purpose Remove every worktree under `root` (manual clean slate).
- * @param root Worktrees root directory.
+ * @purpose Remove every worktree under `mrsRoot` (manual clean slate).
+ * @invariant Targets the `worktree/` child of each `<mrsRoot>/<key>/`, leaving `report/` untouched.
+ * @param root MRs root (`mrsRoot`).
  * @returns Paths that were removed.
  * @sideEffect FS + git: removes all worktree directories.
  * @consumer vcs-worktree.cmd
@@ -254,7 +257,7 @@ export function removeAllWorktrees(root: string): string[] {
   if (!existsSync(root)) return [];
   const removed: string[] = [];
   for (const name of readdirSync(root)) {
-    const path = join(root, name);
+    const path = join(root, name, 'worktree');
     try {
       if (!statSync(path).isDirectory()) continue;
     } catch {

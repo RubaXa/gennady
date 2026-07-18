@@ -6,6 +6,7 @@ import { join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { logger } from '#logger';
 import { buildNodePrompt } from '../../../ai-kit/compile.ts';
+import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { InstanceState } from './errors.ts';
 import type {
   RoleNode,
@@ -563,7 +564,13 @@ export class RoleInstance {
     // #region START_SESSION_CALL
     const taskText = node.buildTaskText(ctx);
     const worktreePath = ctx.artifacts.worktreePath;
-    const directory = typeof worktreePath === 'string' ? worktreePath : node.dir(ctx);
+    // directory = MR's shared parent, not the worktree alone — injected context lives in report/ (TSK-131).
+    const directory =
+      typeof worktreePath === 'string' && ctx.store
+        ? mrRoot(ctx.store.getStateDir(), `${ctx.mr.project}!${ctx.mr.iid}`)
+        : typeof worktreePath === 'string'
+          ? worktreePath
+          : node.dir(ctx);
 
     if (!this._sessionId) {
       const handle = await this._opencode.createSession({

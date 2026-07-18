@@ -15,7 +15,7 @@ import { createVcsClient } from '../../../../cli/cmd/_shared/create-vcs-client.t
 import { ensureClone } from '../../../../cli/cmd/vcs-worktree/_core/logic/locate-clone.logic.ts';
 import { prepareMrWorktree } from '../../../../cli/cmd/vcs-worktree/_core/logic/worktree-ops.logic.ts';
 import {
-  worktreesRoot,
+  mrWorktreeDir,
   clonesRoot,
   reposMapPath,
   configPath,
@@ -138,10 +138,7 @@ async function _prepareWorktreeAndChangeset(
       clonesRoot: clonesRoot(stateDir),
     });
 
-    const worktreePath = join(
-      worktreesRoot(stateDir),
-      `${context.project.replace(/\//g, '__')}-${context.iid}`
-    );
+    const worktreePath = mrWorktreeDir(stateDir, `${context.project}!${context.iid}`);
     const prepared = prepareMrWorktree(clonePath, String(context.iid), worktreePath);
 
     if (!base) {

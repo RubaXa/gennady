@@ -15,6 +15,7 @@ import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
+import { mrRoot } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose Spy on OpenCodeMock#createSession — records the `directory` each call received, so
@@ -563,7 +564,7 @@ describe('RoleInstance — checkpoint restart recovery (SV-13: заполнен�
 });
 
 describe('RoleInstance — _executeSession directory wiring (TSK-124 regression: B2 root cause)', () => {
-  it('GIVEN ctx.artifacts.worktreePath присутствует WHEN session node запускается THEN createSession получает worktreePath, не node.dir(ctx)', async () => {
+  it('GIVEN ctx.artifacts.worktreePath присутствует и ctx.store доступен WHEN session node запускается THEN createSession получает mrRoot (общий родитель worktree/+report/, TSK-131), не голый worktreePath', async () => {
     const spy = new OpenCodeCreateSessionSpy();
     const realWorktreePath = '/home/test/.gennady/worktrees/test-mr-1';
     spy.seed('node_wt', { done: true });
@@ -587,7 +588,13 @@ describe('RoleInstance — _executeSession directory wiring (TSK-124 regression:
     await instance.step();
 
     assert.strictEqual(spy.createSessionCalls.length, 1);
-    assert.strictEqual(spy.createSessionCalls[0]?.directory, realWorktreePath);
+    // A lens session's tools must reach BOTH the worktree and the injected `## Контекст` report
+    // files without an external-directory permission (round-trip investigation) — the shared
+    // parent, not the worktree alone, is the correct sandbox boundary.
+    assert.strictEqual(
+      spy.createSessionCalls[0]?.directory,
+      mrRoot('/home/test/.gennady', 'project!124')
+    );
     assert.notStrictEqual(spy.createSessionCalls[0]?.directory, 'FALLBACK_DIR_MARKER');
   });
 

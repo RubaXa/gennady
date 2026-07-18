@@ -24,6 +24,7 @@ import type { MrContext } from '../../modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../../modules/inbox-opencode/opencode.mock.ts';
 import { BoardProviderReal } from '../../modules/inbox-api/board-provider.real.ts';
 import type { RoleScheduler } from '../../modules/inbox-roles/role-scheduler.ts';
+import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose Fresh StateStore rooted at a temp dir, with `agent-inbox/` pre-created so
@@ -331,7 +332,7 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     // NB: mrContext() (this file's shared helper) hardcodes iid: '1' regardless of the MR URL's own
     // /42/ path segment — the ref below matches that helper's project!iid, not the URL.
     const ref = 'group/project!1';
-    const reportsDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'group__project-1');
+    const reportsDir = mrReportsDir(store.getStateDir(), ref);
 
     // #region ASSERT_REAL_DISK_WRITES — the P1 gap (materialization) closed
     assert.ok(

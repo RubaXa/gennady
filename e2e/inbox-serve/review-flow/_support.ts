@@ -14,7 +14,7 @@
 import { cpSync, existsSync, mkdirSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { worktreesRoot } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { mrWorktreeDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { bootstrap, type BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
@@ -85,10 +85,10 @@ export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
     // working directory instead of a missing dir (which makes opencode error before it ever prompts).
     const realWorktree = join(homedir(), '.gennady', 'worktrees', _encodedMrRef());
     if (existsSync(realWorktree)) {
-      const wtRoot = worktreesRoot(stateDir);
-      mkdirSync(wtRoot, { recursive: true });
+      const targetWorktreePath = mrWorktreeDir(stateDir, MR_REF);
+      mkdirSync(join(targetWorktreePath, '..'), { recursive: true });
       try {
-        symlinkSync(realWorktree, join(wtRoot, _encodedMrRef()));
+        symlinkSync(realWorktree, targetWorktreePath);
       } catch {
         /* symlink may already exist — ignore */
       }

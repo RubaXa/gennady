@@ -17,6 +17,7 @@ import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
 import type { NodeContext, ParallelNode, ParallelSessionSpec } from '../role-node.ts';
+import { mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose Spy on OpenCodeMock#createSession — records the `tools` gate each call received, so
@@ -283,7 +284,7 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
     await instance.step(); // node_review_fanout → all 3 lenses run, engine persists each result
 
     // #region ASSERT_LENS_RESULTS_PERSISTED_BY_ENGINE — not by the lens sessions themselves
-    const tasksDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'project-1', 'tasks');
+    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     for (const lensId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
       const path = join(tasksDir, `${lensId}.result.json`);
       assert.ok(
@@ -372,13 +373,7 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
     await instance.step(); // gate_review_filled → pass
     await instance.step(); // node_synthesize → ok
 
-    const reviewJsonPath = join(
-      store.getStateDir(),
-      'agent-inbox',
-      'reports',
-      'project-1',
-      'review.json'
-    );
+    const reviewJsonPath = join(mrReportsDir(store.getStateDir(), 'project!1'), 'review.json');
     assert.strictEqual(instance.currentNode, 'gate_review_synthesis');
     assert.ok(
       !existsSync(reviewJsonPath),
@@ -447,7 +442,7 @@ describe('ReviewerRole — Round 3: buildTaskText carries the injected Context s
     const mr = await vcs.getMrContext(mrUrl);
 
     // #region SETUP_MATERIALIZE_TASK_BLANK — same tasksDir layout node_prepare's scaffold pass writes
-    const tasksDir = join(store.getStateDir(), 'agent-inbox', 'reports', 'project-1', 'tasks');
+    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     mkdirSync(tasksDir, { recursive: true });
     const trackTaskPath = join(tasksDir, 'logic.task.md');
     writeFileSync(trackTaskPath, '## Контекст\ninjected diff hunks + entities go here\n');

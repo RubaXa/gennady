@@ -3,9 +3,8 @@
 // @tasks: TSK-126
 
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
 import { logger } from '#logger';
-import { worktreesRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import { ContextAssembler } from './context-assembler.ts';
@@ -43,19 +42,6 @@ function _extractMutations(text: string): MutationProposal[] | undefined {
 
 /** @purpose Outcome of `ChatSession#ask()` — the completed turn, or a `TURN_IN_FLIGHT` rejection (D-104). */
 export type AskResult = { ok: true; turn: ChatTurn } | ChatErrorResponse;
-
-/**
- * @purpose Convert an MR reference (`project!iid`) into the flat directory-name encoding shared
- * with `reports/<mr>/`/`chats/<ref>.jsonl` and worktree paths.
- * @param mrRef MR reference `project!iid`.
- * @returns Flat name `<project-with-__-for-slash>-<iid>`.
- */
-function _encodeMrRef(mrRef: string): string {
-  const sep = mrRef.lastIndexOf('!');
-  const project = sep === -1 ? mrRef : mrRef.slice(0, sep);
-  const iid = sep === -1 ? '' : mrRef.slice(sep + 1);
-  return `${project.replace(/\//g, '__')}-${iid}`;
-}
 
 /**
  * @purpose Holds one canonical opencode session per MR — grounded Q&A over report artifacts +
@@ -173,7 +159,9 @@ export class ChatSession {
       if (!this.sid) {
         this.sid = await this._pool.create({
           title: `chat:${this.mrRef}`,
-          directory: join(worktreesRoot(this._stateDir), _encodeMrRef(this.mrRef)),
+          // Shared MR parent (worktree + report siblings, TSK-131) — same fix as review-lens
+          // sessions: a chat turn's tools must reach both without an external-directory permission.
+          directory: mrRoot(this._stateDir, this.mrRef),
         });
       }
 

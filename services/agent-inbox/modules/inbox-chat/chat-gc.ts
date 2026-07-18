@@ -60,7 +60,7 @@ export function gcStaleChats(root: string, ttlMs: number, nowMs: number): string
  * file's delete error never blocks the rest of the sweep, nor other `<mr>` dirs.
  * @invariant Missing `root`, a missing `<mr>` dir, or a missing `snapshots/` subdir all degrade to
  * an empty/skipped result, never an error.
- * @param root Reports root (`reportsRoot(stateDir)`), parent of every `<mr>/snapshots/` dir.
+ * @param root Reports root (e.g. `mrReportsDir`'s parent), parent of every `<mr>/snapshots/` dir.
  * @param ttlMs Max age in ms before a snapshot file is stale.
  * @param nowMs Current time in ms (injected for testability).
  * @returns Paths that were removed.

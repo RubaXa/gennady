@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
 import {
   resolveStateDir,
-  worktreesRoot,
+  mrsRoot,
+  mrWorktreeDir,
   clonesRoot,
   reposMapPath,
 } from '../inbox/_core/logic/state-paths.logic.ts';
@@ -39,7 +40,7 @@ async function run(): Promise<number> {
     const stateDir = resolveStateDir(argv);
 
     if (argv.includes('--cleanup-all')) {
-      const removed = removeAllWorktrees(worktreesRoot(stateDir));
+      const removed = removeAllWorktrees(mrsRoot(stateDir));
       console.info(style.gray(`worktrees removed: ${removed.length}`));
       return 0;
     }
@@ -94,13 +95,13 @@ async function run(): Promise<number> {
       clonesRoot: clonesRoot(stateDir),
     });
 
-    const root = worktreesRoot(stateDir);
+    const root = mrsRoot(stateDir);
     mkdirSync(root, { recursive: true });
     // GC safety net: prune leaked worktrees older than TTL on every prepare,
     // so they cannot grow unbounded even if --cleanup is never called.
     const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
     if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
-    const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
+    const worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
 
     const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
     const baseSha = targetBranch

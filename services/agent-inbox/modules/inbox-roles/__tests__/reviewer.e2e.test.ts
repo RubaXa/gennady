@@ -19,6 +19,7 @@ import { OpenCodeReal } from '../../inbox-opencode/opencode.real.ts';
 import { runMrsOnce, type RunModeDeps } from '../../../serve/run-mode.ts';
 import { toolTracePath, phaseTimingsPath } from '../phase-telemetry.ts';
 import type { ToolTraceRecord, PhaseTimingEntry } from '../phase-telemetry.ts';
+import { mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /**
  * @purpose ≥2 real MRs (D-116 forbids a fixture snapshot) — same fixture MRs already proven
@@ -164,12 +165,7 @@ describe('ReviewerRole — Round 2 e2e: real MR through real `gennady inbox serv
 
       const projectPath = new URL(mr).pathname.split('/-/merge_requests/')[0]!.replace(/^\//, '');
       const iid = new URL(mr).pathname.split('/-/merge_requests/')[1]!;
-      const reportsDir = join(
-        store.getStateDir(),
-        'agent-inbox',
-        'reports',
-        `${projectPath.replace(/\//g, '__')}-${iid}`
-      );
+      const reportsDir = mrReportsDir(store.getStateDir(), `${projectPath}!${iid}`);
       const reviewJsonPath = join(reportsDir, 'review.json');
       assert.ok(existsSync(reviewJsonPath), 'review.json must be written to disk by THIS run');
       const reviewJson = JSON.parse(readFileSync(reviewJsonPath, 'utf-8')) as {

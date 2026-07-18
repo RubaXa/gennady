@@ -11,11 +11,11 @@ import { style } from '../../../shared/common/style.ts';
 import {
   resolveStateDir,
   registryPath,
-  worktreesRoot,
+  mrsRoot,
+  mrWorktreeDir,
   clonesRoot,
   reposMapPath,
   configPath,
-  reportsRoot,
   gcStaleReports,
   REPORTS_TTL_MS,
 } from '../inbox/_core/logic/state-paths.logic.ts';
@@ -323,12 +323,12 @@ async function run(): Promise<number> {
         clonesRoot: clonesRoot(stateDir),
       });
 
-      const root = worktreesRoot(stateDir);
+      const root = mrsRoot(stateDir);
       mkdirSync(root, { recursive: true });
       gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
-      gcStaleReports(reportsRoot(stateDir), REPORTS_TTL_MS, Date.now());
+      gcStaleReports(root, REPORTS_TTL_MS, Date.now());
       gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
-      const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
+      const worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
 
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
       currentHeadSha = prepared.headSha;

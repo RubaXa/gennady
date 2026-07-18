@@ -327,8 +327,9 @@ describe('inbox-review-plan --scaffold', () => {
       const mrDir = dirname(result.plan);
       assert.ok(existsSync(join(mrDir, 'README.md')));
       assert.ok(existsSync(join(mrDir, 'HISTORY.md')));
-      // Flat per-MR dir (no headSha subfolder): PLAN sits directly under reports/<proj-iid>.
-      assert.ok(mrDir.endsWith('group__project-42'));
+      // Flat per-MR dir (no headSha subfolder): PLAN sits directly under mrs/<proj-iid>/report
+      // (TSK-131: report/ is now a sibling of worktree/ under one shared per-MR parent).
+      assert.ok(mrDir.endsWith(join('group__project-42', 'report')));
     } finally {
       rmSync(repo, { recursive: true, force: true });
       rmSync(stateDir, { recursive: true, force: true });
@@ -516,18 +517,20 @@ describe('inbox-review-plan --scaffold', () => {
   it('gcStaleReports removes report dirs older than TTL, keeps fresh ones', () => {
     const root = mkdtempSync(join(tmpdir(), 'inbox-reports-gc-'));
     try {
-      const stale = join(root, 'group__proj-1');
-      const fresh = join(root, 'group__proj-2');
-      mkdirSync(stale, { recursive: true });
-      mkdirSync(fresh, { recursive: true });
+      // TSK-131: gcStaleReports targets the `report/` child of each `<root>/<key>/`, not the
+      // `<key>/` dir itself — `report/` is a sibling of `worktree/` under one shared MR parent.
+      const staleReport = join(root, 'group__proj-1', 'report');
+      const freshReport = join(root, 'group__proj-2', 'report');
+      mkdirSync(staleReport, { recursive: true });
+      mkdirSync(freshReport, { recursive: true });
       const now = Date.parse('2026-01-10T00:00:00Z');
       const old = new Date('2026-01-01T00:00:00Z'); // 9 days → stale (TTL 7d)
-      utimesSync(stale, old, old);
+      utimesSync(staleReport, old, old);
 
       const removed = gcStaleReports(root, 7 * 24 * 60 * 60 * 1000, now);
-      assert.ok(removed.includes(stale));
-      assert.ok(!existsSync(stale));
-      assert.ok(existsSync(fresh));
+      assert.ok(removed.includes(staleReport));
+      assert.ok(!existsSync(staleReport));
+      assert.ok(existsSync(freshReport));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -821,12 +824,12 @@ flowchart TD
 });
 
 describe('inbox --reset clears reports', () => {
-  it('inbox --reset removes reportsRoot(stateDir)', () => {
+  it('inbox --reset removes every <mr>/report/ dir (TSK-131 unified mrs/ layout)', () => {
     const stateDir = mkdtempSync(join(tmpdir(), 'inbox-reset-reports-'));
     try {
-      const reports = join(stateDir, 'agent-inbox', 'reports');
-      mkdirSync(reports, { recursive: true });
-      writeFileSync(join(reports, 'marker.txt'), 'x');
+      const reportDir = join(stateDir, 'agent-inbox', 'mrs', 'group__proj-1', 'report');
+      mkdirSync(reportDir, { recursive: true });
+      writeFileSync(join(reportDir, 'marker.txt'), 'x');
 
       const r = spawnSync(
         'node',
@@ -835,7 +838,7 @@ describe('inbox --reset clears reports', () => {
       );
 
       assert.strictEqual(r.status, 0);
-      assert.ok(!existsSync(reports));
+      assert.ok(!existsSync(reportDir));
     } finally {
       rmSync(stateDir, { recursive: true, force: true });
     }
