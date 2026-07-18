@@ -658,9 +658,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
           .split('\n')
           .filter((line) => line.length > 0)
           .map((line) => JSON.parse(line) as Record<string, unknown>);
-        effectApplied = entries.some(
-          (e) => e['event'] === 'effect_applied' && e['mr'] === MR_URL
-        );
+        effectApplied = entries.some((e) => e['event'] === 'effect_applied' && e['mr'] === MR_URL);
       }
       if (!effectApplied) await page.waitForTimeout(500);
     }

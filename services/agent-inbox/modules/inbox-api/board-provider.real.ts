@@ -259,7 +259,11 @@ export class BoardProviderReal extends BoardProviderPort {
     // a genuine "pipeline stuck, needs investigation" signal, not "review ready for an approve/post
     // decision". Only currentNode === 'node_ask' means setAnswer()+step() have anywhere to go; on
     // an error-escalated instance step() would try to resume the broken node with no valid answer.
-    if (!instance || instance.state !== 'awaiting_operator' || instance.currentNode !== 'node_ask') {
+    if (
+      !instance ||
+      instance.state !== 'awaiting_operator' ||
+      instance.currentNode !== 'node_ask'
+    ) {
       return { ok: false };
     }
 
