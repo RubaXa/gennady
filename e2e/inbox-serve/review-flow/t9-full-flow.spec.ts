@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, BASE_URL, MR_URL, MR_REF } from './_support.ts';
 import { shot } from '../helpers/shot.ts';
+import { waitForRealMermaidRender } from '../helpers/wait-render.ts';
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import {
   sessionArtifactsDir,
@@ -401,5 +402,46 @@ test.describe('t9 full flow', () => {
       progress.awaitingOperator,
       'sub-step 8 (gate_review_synthesis → awaiting_operator) never reached'
     ).toBe(true);
+  });
+
+  test('P5: detail view renders the already-materialized P4 review from disk', async ({ page }) => {
+    // Ticket P5 Objective: no new live drive here — bootReal (beforeAll) is a fresh HTTP+opencode
+    // server, but review.json/README.md/tasks/* are already real on disk from P4's own drive over
+    // the SAME REVIEW_FLOW_STATE_DIR. This sub-step only reads what P4 produced.
+    test.setTimeout(60_000);
+
+    const reviewDir = mrReportsDir(stateDir!, MR_REF);
+    const reviewPath = join(reviewDir, 'review.json');
+    const doc = JSON.parse(readFileSync(reviewPath, 'utf-8')) as { findings: { id: string }[] };
+    const diskFindingsCount = doc.findings.length;
+    expect(diskFindingsCount, 'review.json.findings must be non-empty after P4').toBeGreaterThan(0);
+
+    await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+
+    const nav = page.locator('nav[aria-label="Артефакты"]');
+    await expect(nav).toBeVisible({ timeout: 20_000 });
+
+    await nav.getByRole('button', { name: 'README.md', exact: true }).click();
+    await waitForRealMermaidRender(page, 45_000);
+
+    const candidatesLabel = page.getByText(/Кандидаты \(\d+\)/).first();
+    await expect(candidatesLabel).toBeVisible({ timeout: 10_000 });
+    const labelText = await candidatesLabel.textContent();
+    const match = labelText?.match(/Кандидаты \((\d+)\)/);
+    expect(match, `Кандидаты(N) label not parseable from "${labelText}"`).toBeTruthy();
+    const uiFindingsCount = Number(match![1]);
+
+    // Disk↔UI cross-check (critic round 2, MINOR): the badge number must equal review.json's real
+    // findings.length read directly from disk — not just "a number renders".
+    expect(
+      uiFindingsCount,
+      `UI "Кандидаты (${uiFindingsCount})" must equal review.json findings.length (${diskFindingsCount})`
+    ).toBe(diskFindingsCount);
+
+    await shot(page, 't9-09-detail');
+    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P5 Exit
+    console.info(
+      `[t9] step=detail-rendered findings=${diskFindingsCount} ts=${new Date().toISOString()}`
+    );
   });
 });
