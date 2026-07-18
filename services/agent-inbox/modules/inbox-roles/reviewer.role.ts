@@ -315,7 +315,11 @@ function _contextInjectionInstruction(ctx: NodeContext): string {
   const paths = _contextTaskBlankPaths(ctx);
   if (paths.length === 0) return '';
   const fileWord = paths.length === 1 ? 'file' : 'files';
-  return `\n\nContext already computed and written to disk (TSK-134) — read the \`## Контекст\` section of the following ${fileWord} instead of running git diff/log yourself:\n${paths.map((p) => `- ${p}`).join('\n')}`;
+  // TSK-131 round-trip investigation: these files can be large (a whole-MR diff can exceed
+  // hundreds of KB) — a single `read` call on one can fail outright, and the model was observed
+  // spending 10+ calls oscillating between a failing `read` and a `bash cat` fallback that this
+  // policy denies (no tool feedback tells it why). Both facts stated up front avoid that dead end.
+  return `\n\nContext already computed and written to disk (TSK-134) — read the \`## Контекст\` section of the following ${fileWord} instead of running git diff/log yourself:\n${paths.map((p) => `- ${p}`).join('\n')}\n\nThese files may be large. You have NO bash/shell tool in this turn — do not try \`cat\`/\`head\`/shell commands as a fallback, it will be denied. If a single \`read\` on one of these files fails or is truncated, use \`grep\` against it to pull the specific sections you need instead of retrying the same full read.`;
 }
 
 /**

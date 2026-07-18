@@ -220,13 +220,19 @@ export class RoleScheduler {
         if (
           instance.state === 'idle' ||
           instance.state === 'running' ||
-          instance.state === 'awaiting_operator'
+          instance.state === 'awaiting_operator' ||
+          instance.state === 'escalated'
         ) {
+          // 'escalated' keeps stepping — a fresh step() retries the failing node (pausedUntil above throttles it).
           await instance.step();
 
-          // F2: Track errors — state may have changed to 'error' or 'done' after step()
+          // F2: Track errors — state may have changed to 'error'/'awaiting_operator'/'escalated' after step()
           const currentState: string = instance.state;
-          if (currentState === 'error' || currentState === 'awaiting_operator') {
+          if (
+            currentState === 'error' ||
+            currentState === 'awaiting_operator' ||
+            currentState === 'escalated'
+          ) {
             const count = (this._errorCount.get(key) ?? 0) + 1;
             this._errorCount.set(key, count);
 

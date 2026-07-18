@@ -105,6 +105,7 @@ function stateToLane(state: string): 'inbox' | 'inProgress' | 'awaitingMe' | 'do
     case 'running':
       return 'inProgress';
     case 'awaiting_operator':
+    case 'escalated':
       return 'awaitingMe';
     case 'done':
       return 'done';

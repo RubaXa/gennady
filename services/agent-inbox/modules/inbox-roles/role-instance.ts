@@ -723,7 +723,7 @@ export class RoleInstance {
 
     const escalated = results.find((r) => r.escalate);
     if (escalated) {
-      this.state = 'awaiting_operator';
+      this.state = 'escalated';
       await this._appendAudit(
         'escalated',
         `Parallel node "${node.id}" — lens "${escalated.id}" exhausted recovery`
@@ -1128,7 +1128,7 @@ export class RoleInstance {
           if (this.restartCount > max.restartMax) {
             // P2/S7/D9: close session before escalating to operator
             await this._closeActiveSession();
-            this.state = 'awaiting_operator';
+            this.state = 'escalated';
             await this._appendAudit('escalated', `Recovery exhausted for node "${node.id}"`);
             return;
           }
@@ -1185,7 +1185,7 @@ export class RoleInstance {
       case 'await_operator': {
         // P2/S7/D9: close session before escalating to operator
         await this._closeActiveSession();
-        this.state = 'awaiting_operator';
+        this.state = 'escalated';
         await this._appendAudit('escalated', `Node "${node.id}" requires operator attention`);
         break;
       }

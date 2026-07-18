@@ -41,9 +41,17 @@ export class RoleError extends Error {
 
 /**
  * @purpose Lifecycle state of a RoleInstance.
+ * @invariant `awaiting_operator` is a genuine node_ask decision point; `escalated` is recovery
+ *   exhausted mid-node, needing investigation, not a decision (TSK-131 P7).
  * @consumer RoleInstance, RoleScheduler
  */
-export type InstanceState = 'idle' | 'running' | 'awaiting_operator' | 'done' | 'error';
+export type InstanceState =
+  | 'idle'
+  | 'running'
+  | 'awaiting_operator'
+  | 'escalated'
+  | 'done'
+  | 'error';
 
 /**
  * @purpose Recovery signal emitted by OutcomeClassifier — directs the recovery ladder.

@@ -242,12 +242,14 @@ describe('disk-artifact executor — (c) ladder exhaustion', () => {
 
     // continueMax=1, restartMax=1 → at most a handful of steps before escalation.
     let guard = 0;
-    while (instance.state !== 'awaiting_operator' && instance.state !== 'error' && guard < 10) {
+    while (instance.state !== 'escalated' && instance.state !== 'error' && guard < 10) {
       await instance.step();
       guard++;
     }
 
-    assert.strictEqual(instance.state, 'awaiting_operator');
+    // 'escalated', not 'awaiting_operator' — ladder exhaustion never reaches node_ask (TSK-131 P7:
+    // these two states used to share one literal, wrongly letting a broken run pass as ask-ready).
+    assert.strictEqual(instance.state, 'escalated');
     assert.strictEqual(instance.currentNode, 'test_node');
     assert.ok(
       store.audits.some((a) => a.event === 'escalated'),

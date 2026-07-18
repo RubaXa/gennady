@@ -331,6 +331,7 @@ describe('BoardProviderReal.executeAction — dual-key resolution (project!iid v
   }): RoleScheduler {
     const instance = {
       state: 'awaiting_operator' as const,
+      currentNode: 'node_ask',
       setAnswer: (c: string) => {
         calls.answer = c;
       },
@@ -371,6 +372,7 @@ describe('BoardProviderReal.executeAction — dual-key resolution (project!iid v
     const calls: { answer?: string; stepped?: boolean } = {};
     const instance = {
       state: 'awaiting_operator' as const,
+      currentNode: 'node_ask',
       setAnswer: (c: string) => {
         calls.answer = c;
       },
