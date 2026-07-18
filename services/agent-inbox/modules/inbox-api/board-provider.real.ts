@@ -323,17 +323,20 @@ export class BoardProviderReal extends BoardProviderPort {
     }
 
     const polled = this._scheduler.getPolledMr(snap.mr);
-    // A live instance carries findings only while its graph is running in-process; a dashboard that
-    // merely DISPLAYS an already-materialized report (the standard serve over a real state dir) has
-    // an idle/registered instance with no in-memory findings. Fall back to the structured review.json
-    // the reviewer pipeline persisted next to README.md so the candidates panel shows the real review.
+    // review.json is the authoritative, post-synthesis reconciled result (deduped across lenses)
+    // once it exists on disk. snap.findings (RoleInstance#_extractFindings) reads whichever node
+    // artifact iterates first, including raw pre-synthesis lens results — it can disagree with the
+    // reconciled disk version once synthesis has run (a real bug this comment used to mask: it only
+    // consulted disk when snap.findings was EMPTY, so a stale/raw non-empty in-memory value always
+    // won even after synthesis wrote a corrected review.json). Disk wins whenever it exists; in-memory
+    // is only the fallback for an in-flight review that hasn't reached synthesis yet.
     const ref = polled ? `${polled.project}!${polled.iid}` : mrId;
-    const disk = snap.findings.length === 0 ? this._readDiskReview(ref) : null;
+    const disk = this._readDiskReview(ref);
 
     return {
       mr: polled ? actionableToMrCard(polled, snap.role) : snapshotToMrCard(snap),
-      findings: snap.findings.length ? snap.findings : (disk?.findings ?? []),
-      verdict: snap.verdict || disk?.verdict || '',
+      findings: disk?.findings ?? snap.findings,
+      verdict: disk?.verdict || snap.verdict || '',
       audit: [],
       revision: disk?.revision ?? 0,
     };
