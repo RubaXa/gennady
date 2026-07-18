@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-131 | **Status:** [~] IN_PROGRESS | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies (Round 2/P3-P8):** TSK-108 (существующий e2e-харнесс, DONE), TSK-133 (живые chat-роуты, используются в P6) | **Dependencies (Round 1, superseded — не блокируют P3-P8):** TSK-130 (Review Chat UI), TSK-132 (ContextChip.origin file:line)
+- **Task-ID:** TSK-131 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-dashboard | **Dependencies (Round 2/P3-P8):** TSK-108 (существующий e2e-харнесс, DONE), TSK-133 (живые chat-роуты, используются в P6) | **Dependencies (Round 1, superseded — не блокируют P3-P8):** TSK-130 (Review Chat UI), TSK-132 (ContextChip.origin file:line)
 - **Reopens:** 1 (2026-07-18 — Round 1 (`chat.spec.ts`/`chat.aria.spec.ts`/`chat.layout.spec.ts`) описывает сценарии, которых по факту нет на диске; вместо них под этим же `@tasks: TSK-131` header'ом реально реализован и используется набор `e2e/inbox-serve/review-flow/t1..t8.spec.ts` (product-owned харнесс, `bootReal`/`makeStateDir`, реальный MR `vk-workspace/superapp!602`) — расхождение зафиксировано как discovery в Round 2, Round 1 не переписан (append-only), Round 2 работает с реальным набором. Цель Round 2: эталонный, полностью инкрементальный e2e-тест (`t9-full-flow.spec.ts`) полного цикла ревью через браузер — интерфейсное действие ↔ телеметрия ↔ артефакт на КАЖДОМ шаге флоу (D-125), не только на отдельных узлах)
 - **Purpose (Round 1, superseded — см. ниже):** Playwright e2e для Review Chat поверх существующего харнесса `e2e/inbox-serve/`, реального `gennady inbox serve` (не изолированных моков компонентов) и реальной привязки чипа к file:line: постоянный сплит на широком viewport / `ViewSwitch`+single-pane на узком (D-87, D-106); selection→chip→ask→stream→mutation полный флоу (CH-01…CH-05), где чип несёт РЕАЛЬНЫЙ `origin` (артефакт+строки, D-115), а не только текст выделения; ход реально едет через живой чат-роут (`bootstrap.ts` chat-конфиг из TSK-133) — playwright печатает вопрос, ждёт реального ответа сервера/агента, не таймаута/заглушки; Apply/Reject/Undo с provenance-тегом (CH-09/CH-10); Stop во время генерации (CH-11); `STALE_REVISION`-баннер (D-99/D-101); ARIA `aria-live` на активном стриме (NFC-CH-a11y); скриншот на каждом ключевом шаге флоу (выделение → чип → стрим → мутация → apply).
 - **Purpose (Round 2, актуальный scope — P3-P8):** эталонный, полностью инкрементальный e2e-тест (`t9-full-flow.spec.ts`) всего цикла ревью через браузер на реальном MR `!602` — board assign → план/3 линзы/гейт/синтез (единый живой прогон, P4) → detail view → chat Q&A → действие/постинг (свой живой прогон, P7), с интерфейс↔телеметрия↔артефакт доказательством на каждом шаге (D-125) и скриншотом на каждом действии.
@@ -25,7 +25,7 @@
 | P5  | test | P4   | [x]                                                                                                                                                                                                    |
 | P6  | test | P5   | [x]                                                                                                                                                                                                    |
 | P7  | test | P6   | [x]                                                                                                                                                                                                    |
-| P8  | test | P7   | [ ]                                                                                                                                                                                                    |
+| P8  | test | P7   | [x]                                                                                                                                                                                                    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -381,12 +381,36 @@ Contract: см. Spec References (Golden DX §3.3).
 
 #### P8
 
-- [ ] `<ts>` ver `npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts e2e/inbox-serve/review-flow/t9-full-flow.spec.ts` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-07-18T13:00:00Z` decision Per ticket Exit («ни P4, ни P7 не переисполняются заново»): P8 does NOT re-run the unfiltered §5 command 2 (would re-trigger both P4's and P7's ~15-20min live drives per the scheduler-no-resume-from-disk-checkpoint gap, carried open since P5). Instead assembles the artifact map from the durable, git-committed Execution Log record of P3-P7 (each phase's own real `ver` line + quoted console output + Handoff artifacts) — this IS the "already-produced artifacts" this Exit criterion refers to, not a fresh directory listing.
+- [x] `2026-07-18T13:01:00Z` discovery Attempted to list `test-results/screenshots/*.png` on disk to cross-check all 11 filenames physically present → only `t9-10-chat.png`/`t9-11-action-confirmed.png` exist right now. Root cause: `playwright.review-flow.config.ts`'s `outputDir` is the SAME `test-results/` directory the `shot()` helper (`e2e/inbox-serve/helpers/shot.ts`) writes into, and Playwright's default behavior clears `outputDir` at the start of every invocation — so each of the P7 re-runs this session (v2 through v5, all scoped `-g` invocations of the very same file) wiped out the `t9-01`…`t9-09` files that P3-P6 had produced earlier in this same session. This is a real, honest gap, not hidden: the screenshots directory is gitignored/ephemeral by design (`shot.ts` header comment), so cross-phase persistence was never guaranteed once separate playwright process invocations are involved — the AUTHORITATIVE record for "did each screenshot get produced and match its asserted state" is each phase's own `ver` line + discovery entry above (P3: `t9-01-board-empty.png`/`t9-02-unassigned-poll-result.png`/`t9-02-assigned.png`; P4: `t9-03`…`t9-08`; P5: `t9-09-detail.png`; P6: `t9-10-chat.png`; P7: `t9-11-action-confirmed.png`), each cited at the moment its phase closed DONE, not a live directory snapshot taken after later runs.
+- [x] `2026-07-18T13:05:00Z` DONE — artifact map assembled below (step → console marker → screenshot → disk artifact → phase citation); durations are exact where this session's own raw run logs were read (P4, P7 live-drive ticks), else cited from each phase's own `ver` timestamp (phase-level wall time, not re-derived sub-step-by-sub-step since P3/P5/P6's individual console `ts=` values were not re-captured outside their own phase's run).
+
+**Artifact map (step → console marker → screenshot → disk artifact → source phase):**
+
+| # | Step | Console marker (`[t9] ...`) | Screenshot | Disk artifact | Phase | Timing |
+|---|------|------------------------------|------------|----------------|-------|--------|
+| 1 | Board loads | `step=board-loaded` | `t9-01-board-empty.png` | — | P3 | ts=2026-07-17T22:18:10.819Z |
+| 2 | Unassigned poll (MR actionable) | (discovery, no marker) | `t9-02-unassigned-poll-result.png` | `role-scheduler.ts` actionable poll state | P3 | ~22:20:26Z |
+| 3 | Assigned via UI | `step=assigned-via-ui` | `t9-02-assigned.png` | scheduler instance `role=reviewer` | P3 | ~22:54:52Z |
+| 4 | Prep materialized | `step=prep-materialized tracks=[...]` | `t9-03-planned.png` | `PLAN.md`, `tasks/*.task.md` | P4 | within 9.9min live drive, 2026-07-18T09:10:11Z ver |
+| 5 | Lens track-review | `step=lens-track-review bytes=... toolCalls=...` | `t9-04-track-review-done.png` | `tasks/*.result.json` (partial) | P4 | ″ |
+| 6 | Fanout complete (3 lenses) | `step=fanout-complete lenses=3` | `t9-05-fanout-complete.png` | `tasks/*.result.json` (all 3) | P4 | ″ |
+| 7 | Gate filled passed | `step=gate-filled-passed` | `t9-06-gate-filled.png` | `phase-timings.jsonl` | P4 | ″ |
+| 8 | Synthesized | `step=synthesized retries=0 outcome=success` | `t9-07-synthesized.png` | `review.json` (findings=3) | P4 | ″ |
+| 9 | Gate synthesis → awaiting_operator | `step=awaiting-operator` | `t9-08-gate-synthesis.png` | `review.json`, `README.md` | P4 | ″ |
+| 10 | Detail view renders P4's review | `step=detail-rendered findings=3` | `t9-09-detail.png` | `review.json` (disk↔UI cross-check) | P5 | 2026-07-18T09:33:38Z ver |
+| 11 | Chat Q&A answered | `step=chat-answered answerLen=595` | `t9-10-chat.png` | `chats/mail__messenger-159.jsonl` | P6 | 2026-07-18T10:09:34.900Z (exact, session log) |
+| 12 | Action confirmed (P7's own independent drive) | `step=action-confirmed` | `t9-11-action-confirmed.png` | `audit.jsonl` (`effect_applied`), DRY-RUN console line | P7 | tick6 at 2026-07-18T12:33:40.566Z → confirmed 12:33:44.767Z (exact, session log) |
+
+- [x] `2026-07-18T13:06:00Z` ver `npx tsc --noEmit` (whole project, cheap — no live drive) → pass exit=0
+- [x] `2026-07-18T13:06:30Z` ver `npx tsx cli/gennady.ts lint e2e/inbox-serve/review-flow/t9-full-flow.spec.ts` → pass exit=0
+- [x] `2026-07-18T13:07:00Z` ver `npm run format:check` (whole project) → pass exit=0
+- [x] `2026-07-18T13:07:30Z` DONE
+      **Handoff →** artifacts: [tasks/agent-inbox/inbox-dashboard/inbox-dashboard.task-131.md (artifact map above)]; decisions: [p8-verification-scope=cheap-static-checks-only-no-live-drive-rerun (per Exit's explicit no-P4/P7-rerun constraint); screenshots-dir-is-ephemeral=outputDir-shared-with-shot.ts-gets-cleared-each-playwright-invocation (real gap, logged not hidden); artifact-map-source-of-truth=git-committed-Execution-Log-not-live-directory-listing]; open: [carried from P3-P7 (scheduler-no-resume-from-disk-checkpoint, playwright.config.ts-testIgnore, sdd-verify-test-gate-scope, context-assembler-truncation-may-drop-context, round-trip-counts-above-AI-45-target, role-instance.ts-error-escalation-state-ambiguity, t8-action.spec.ts-not-independently-reverified) — none blocking, all out of this ticket's Target Files or already tracked separately; screenshots-dir-ephemeral — if the operator wants all 11 files simultaneously on disk, a single unfiltered full-suite run would be needed (re-incurring P4+P7's live-drive cost, ~30-40min total), explicitly not done here per Exit]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-07-18T13:10:00Z` sync `tasks/agent-inbox/README.md`/`tasks/README.md` Tracker Index updated to reflect TSK-131 Round 2 (P3-P8) DONE.
+- [x] `2026-07-18T13:10:00Z` DONE
 
 <!--/SECTION:EXECUTION_LOG-->
