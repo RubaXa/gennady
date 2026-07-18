@@ -259,7 +259,10 @@ test.describe('t9 full flow', () => {
               `${f}: ## Контекст still carries the unfilled orchestrator placeholder`
             ).not.toContain('<!-- FILL: orchestrator');
           }
-          await page.goto(BASE_URL);
+          // Detail page (not board) — PLAN.md + tasks/*.md now visible in ArtifactBrowser, distinct
+          // from t9-02's board screenshot, first frame of the growing-artifact-list sequence.
+          await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
           await shot(page, 't9-03-planned');
           progress.prep = true;
           // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
@@ -275,6 +278,10 @@ test.describe('t9 full flow', () => {
         const resultPath = join(tasksDir, 'node_track_review.result.json');
         if (existsSync(resultPath)) {
           const { bytes, toolCalls } = verifyLensArtifacts('node_track_review');
+          // Detail page's ArtifactBrowser shows the growing file list as lenses finish — a real
+          // visual diff from sub-step 3, not a repeat of the board (screenshot-sequence honesty).
+          await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
           await shot(page, 't9-04-track-review-done');
           progress.trackReview = true;
           // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
@@ -294,6 +301,8 @@ test.describe('t9 full flow', () => {
       ) {
         verifyLensArtifacts('node_security_lens');
         verifyLensArtifacts('node_code_review');
+        await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+        await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-05-fanout-complete');
         progress.fanout = true;
         // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
@@ -303,6 +312,8 @@ test.describe('t9 full flow', () => {
 
       // #region START_SUBSTEP_6_GATE_FILLED — state-transition-only proof (ArtifactValidator gap: TSK-137, honest, not silent)
       if (progress.fanout && !progress.gateFilled && inst?.currentNode === 'node_synthesize') {
+        await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+        await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-06-gate-filled');
         progress.gateFilled = true;
         // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
@@ -347,6 +358,8 @@ test.describe('t9 full flow', () => {
         // it happens naturally in THIS run — forcing the failure path is out of this phase's scope.
         expect(['success', 'escalated']).toContain(outcome);
 
+        await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+        await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
         await shot(page, 't9-07-synthesized');
         progress.synthesized = true;
         // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
