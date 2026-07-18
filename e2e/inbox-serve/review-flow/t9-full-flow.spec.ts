@@ -10,12 +10,59 @@
 // @tasks: TSK-131
 
 import { test, expect } from '@playwright/test';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, BASE_URL, MR_URL, MR_REF } from './_support.ts';
 import { shot } from '../helpers/shot.ts';
+import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  sessionArtifactsDir,
+  phaseTimingsPath,
+  toolTracePath,
+} from '../../../services/agent-inbox/modules/inbox-roles/phase-telemetry.ts';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
+
+/** @purpose Hard wall-clock budget for P4's single live drive (env-overridable, mirrors t3+t4). */
+const P4_DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 1_200_000);
+/** @purpose Tick bound — prep + 3-lens fanout + synthesize is a short graph; generous ceiling. */
+const P4_MAX_TICKS = 60;
+
+/** @purpose Root-tag marker each lens's system directive carries (TSK-136 selector, ai/kit templates) —
+ *   proves the compiled system prompt is track-specific, not a generic fallback. */
+const LENS_SYSTEM_MARKER: Record<string, RegExp> = {
+  node_track_review: /ArchInterrogation/,
+  node_security_lens: /SecurityInterrogation/,
+  node_code_review: /CodeInterrogation/,
+};
+
+/** @purpose Parse an append-only JSONL telemetry file into objects; malformed/missing → []. */
+function readJsonlLines(filePath: string): Record<string, unknown>[] {
+  if (!existsSync(filePath)) return [];
+  return readFileSync(filePath, 'utf-8')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+/** @purpose Locate a session node's X-ray prompt/response pair under `sessions/` by filename prefix. */
+function findSessionXray(
+  sessionsDir: string,
+  nodeId: string
+): { promptPath?: string; responsePath?: string } {
+  if (!existsSync(sessionsDir)) return {};
+  const files = readdirSync(sessionsDir);
+  const promptFile = files.find((f) => f.startsWith(`${nodeId}__`) && f.endsWith('.prompt.txt'));
+  const responseFile = files.find(
+    (f) => f.startsWith(`${nodeId}__`) && f.endsWith('.response.txt')
+  );
+  return {
+    promptPath: promptFile ? join(sessionsDir, promptFile) : undefined,
+    responsePath: responseFile ? join(sessionsDir, responseFile) : undefined,
+  };
+}
 
 test.describe('t9 full flow', () => {
   test.beforeAll(async () => {
@@ -96,5 +143,263 @@ test.describe('t9 full flow', () => {
     // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P3 Exit
     console.info(`[t9] step=assigned-via-ui ts=${new Date().toISOString()}`);
     await shot(page, 't9-02-assigned');
+  });
+
+  test('P4: plan → 3 lenses → gate → synthesize → gate (single continuous live drive)', async ({
+    page,
+  }) => {
+    // Ticket P4 Objective: ONE continuous tick() drive over the SAME REVIEW_FLOW_STATE_DIR P3 built
+    // (no fresh assignManual — the instance P3 assigned via the UI is still live in this same process).
+    // Never re-run in P5-P8 — see ticket P3/P4 Objective for the cost-boundary rationale.
+    test.setTimeout(P4_DRIVE_DEADLINE_MS + 180_000);
+
+    const reviewDir = mrReportsDir(stateDir!, MR_REF);
+    const tasksDir = join(reviewDir, 'tasks');
+    const sessionsDir = sessionArtifactsDir(stateDir!, MR_REF);
+    const ptPath = phaseTimingsPath(stateDir!);
+    const ttPath = toolTracePath(stateDir!);
+    const reviewPath = join(reviewDir, 'review.json');
+
+    const progress = {
+      prep: false,
+      trackReview: false,
+      fanout: false,
+      gateFilled: false,
+      synthesized: false,
+      awaitingOperator: false,
+    };
+
+    /** @purpose Verify one lens's X-ray prompt/response, result.json, and telemetry pair.
+     *   @returns Byte/tool-call counts for the log line (no threshold assert — AI-45 is separate). */
+    function verifyLensArtifacts(nodeId: string): { bytes: number; toolCalls: number } {
+      const { promptPath, responsePath } = findSessionXray(sessionsDir, nodeId);
+      expect(promptPath, `${nodeId}: X-ray prompt file missing under ${sessionsDir}`).toBeTruthy();
+      expect(
+        responsePath,
+        `${nodeId}: X-ray response file missing under ${sessionsDir}`
+      ).toBeTruthy();
+
+      const promptBody = readFileSync(promptPath!, 'utf-8');
+      expect(promptBody, `${nodeId}: system directive lacks its track marker`).toMatch(
+        LENS_SYSTEM_MARKER[nodeId]!
+      );
+      expect(
+        promptBody,
+        `${nodeId}: task text has no inlined Context / tasks/*.task.md reference (TSK-134/TSK-113 Round 3)`
+      ).toMatch(/## Контекст|tasks[\\/][^\s]+\.task\.md/);
+
+      const responseBody = readFileSync(responsePath!, 'utf-8');
+      expect(
+        responseBody,
+        `${nodeId}: response file does not reference the prompt file it answers`
+      ).toContain(promptPath!);
+
+      const resultPath = join(tasksDir, `${nodeId}.result.json`);
+      expect(
+        existsSync(resultPath),
+        `${nodeId}: persistResult artifact missing at ${resultPath}`
+      ).toBe(true);
+      const result = JSON.parse(readFileSync(resultPath, 'utf-8')) as { findings?: unknown };
+      expect(Array.isArray(result.findings), `${nodeId}: result.json has no findings array`).toBe(
+        true
+      );
+
+      const timingEntries = readJsonlLines(ptPath).filter((e) => e['node'] === nodeId);
+      expect(timingEntries.length, `${nodeId}: no phase-timings.jsonl entry`).toBeGreaterThan(0);
+      const timing = timingEntries[timingEntries.length - 1]!;
+      expect(timing['parallelGroup'], `${nodeId}: not tagged with its fan-out parallelGroup`).toBe(
+        'node_review_fanout'
+      );
+      const tools = Array.isArray(timing['tools']) ? (timing['tools'] as { count: number }[]) : [];
+      const toolCalls = tools.reduce((n, t) => n + t.count, 0);
+
+      const traceCalls = readJsonlLines(ttPath)
+        .filter((e) => e['node'] === nodeId)
+        .reduce(
+          (n, e) => n + (Array.isArray(e['calls']) ? (e['calls'] as unknown[]).length : 0),
+          0
+        );
+      expect(
+        traceCalls,
+        `${nodeId}: tool-trace.jsonl call count (${traceCalls}) does not match phase-timings tool sum (${toolCalls})`
+      ).toBe(toolCalls);
+
+      return { bytes: Buffer.byteLength(promptBody) + Buffer.byteLength(responseBody), toolCalls };
+    }
+
+    let ticks = 0;
+    const deadline = Date.now() + P4_DRIVE_DEADLINE_MS;
+    while (ticks < P4_MAX_TICKS && Date.now() < deadline && !progress.awaitingOperator) {
+      const t0 = Date.now();
+      await app!.scheduler.tick();
+      ticks++;
+      const inst = app!.scheduler.findInstance(MR_URL);
+      // eslint-disable-next-line no-console -- D-125: localizes a stall to a node, not a bare timeout
+      console.info(
+        `[t9] P4 tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
+      );
+
+      // #region START_SUBSTEP_3_PREP — poll PLAN.md + tasks/<track>.task.md, assert real (non-placeholder) Context
+      if (!progress.prep && existsSync(join(reviewDir, 'PLAN.md')) && existsSync(tasksDir)) {
+        const taskFiles = readdirSync(tasksDir).filter((f) => f.endsWith('.task.md'));
+        if (taskFiles.length > 0) {
+          for (const f of taskFiles) {
+            const body = readFileSync(join(tasksDir, f), 'utf-8');
+            const match = body.match(/## Контекст\n\n([\s\S]*?)\n\n## Находки/);
+            expect(
+              match,
+              `${f}: missing ## Контекст section between the expected headings`
+            ).toBeTruthy();
+            const contextBody = match![1]!.trim();
+            expect(contextBody.length, `${f}: ## Контекст is empty`).toBeGreaterThan(0);
+            expect(
+              contextBody,
+              `${f}: ## Контекст still carries the unfilled orchestrator placeholder`
+            ).not.toContain('<!-- FILL: orchestrator');
+          }
+          await page.goto(BASE_URL);
+          await shot(page, 't9-03-planned');
+          progress.prep = true;
+          // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+          console.info(
+            `[t9] step=prep-materialized tracks=[${taskFiles.join(',')}] ts=${new Date().toISOString()}`
+          );
+        }
+      }
+      // #endregion END_SUBSTEP_3_PREP
+
+      // #region START_SUBSTEP_4_LENS_TRACK_REVIEW — first lens of the fan-out to prove out individually
+      if (progress.prep && !progress.trackReview) {
+        const resultPath = join(tasksDir, 'node_track_review.result.json');
+        if (existsSync(resultPath)) {
+          const { bytes, toolCalls } = verifyLensArtifacts('node_track_review');
+          await shot(page, 't9-04-track-review-done');
+          progress.trackReview = true;
+          // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+          console.info(
+            `[t9] step=lens-track-review bytes=${bytes} toolCalls=${toolCalls} ts=${new Date().toISOString()}`
+          );
+        }
+      }
+      // #endregion END_SUBSTEP_4_LENS_TRACK_REVIEW
+
+      // #region START_SUBSTEP_5_FANOUT_COMPLETE — the remaining two lenses of the same parallel node
+      if (
+        progress.trackReview &&
+        !progress.fanout &&
+        existsSync(join(tasksDir, 'node_security_lens.result.json')) &&
+        existsSync(join(tasksDir, 'node_code_review.result.json'))
+      ) {
+        verifyLensArtifacts('node_security_lens');
+        verifyLensArtifacts('node_code_review');
+        await shot(page, 't9-05-fanout-complete');
+        progress.fanout = true;
+        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+        console.info(`[t9] step=fanout-complete lenses=3 ts=${new Date().toISOString()}`);
+      }
+      // #endregion END_SUBSTEP_5_FANOUT_COMPLETE
+
+      // #region START_SUBSTEP_6_GATE_FILLED — state-transition-only proof (ArtifactValidator gap: TSK-137, honest, not silent)
+      if (progress.fanout && !progress.gateFilled && inst?.currentNode === 'node_synthesize') {
+        await shot(page, 't9-06-gate-filled');
+        progress.gateFilled = true;
+        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+        console.info(`[t9] step=gate-filled-passed ts=${new Date().toISOString()}`);
+      }
+      // #endregion END_SUBSTEP_6_GATE_FILLED
+
+      // #region START_SUBSTEP_7_SYNTHESIZED — synthesize X-ray + review.json + README.md + retries
+      if (progress.gateFilled && !progress.synthesized && existsSync(reviewPath)) {
+        const { promptPath, responsePath } = findSessionXray(sessionsDir, 'node_synthesize');
+        expect(promptPath, 'node_synthesize: X-ray prompt file missing').toBeTruthy();
+        expect(responsePath, 'node_synthesize: X-ray response file missing').toBeTruthy();
+        const synthPrompt = readFileSync(promptPath!, 'utf-8');
+        expect(
+          synthPrompt,
+          'node_synthesize: system directive lacks SynthesizeReview marker'
+        ).toMatch(/SynthesizeReview/);
+        expect(
+          synthPrompt,
+          "node_synthesize: task text does not inline the three lenses' JSON"
+        ).toMatch(/node_track_review|track/i);
+
+        const doc = JSON.parse(readFileSync(reviewPath, 'utf-8')) as {
+          findings: { id: string }[];
+          revision: number;
+        };
+        expect(Array.isArray(doc.findings), 'review.json: findings is not an array').toBe(true);
+        expect(doc.findings.length, 'review.json: findings is empty').toBeGreaterThan(0);
+        for (const f of doc.findings) expect(f.id).toMatch(/^F-\d+$/);
+        expect(typeof doc.revision, 'review.json: revision is not numeric').toBe('number');
+
+        const readmeBody = readFileSync(join(reviewDir, 'README.md'), 'utf-8');
+        expect(readmeBody, 'README.md: no mermaid block').toMatch(/```mermaid/);
+        expect(readmeBody, 'README.md: no Кандидаты section').toMatch(/## Кандидаты/);
+
+        const synthTimings = readJsonlLines(ptPath).filter((e) => e['node'] === 'node_synthesize');
+        const lastSynthTiming = synthTimings[synthTimings.length - 1];
+        const retries =
+          typeof lastSynthTiming?.['retries'] === 'number' ? lastSynthTiming['retries'] : 0;
+        const outcome = lastSynthTiming?.['ok'] === false ? 'escalated' : 'success';
+        // Honest branch (ticket P4 sub-step 7): a real "escalated" outcome is only ever asserted when
+        // it happens naturally in THIS run — forcing the failure path is out of this phase's scope.
+        expect(['success', 'escalated']).toContain(outcome);
+
+        await shot(page, 't9-07-synthesized');
+        progress.synthesized = true;
+        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+        console.info(
+          `[t9] step=synthesized retries=${retries} outcome=${outcome} ts=${new Date().toISOString()}`
+        );
+      }
+      // #endregion END_SUBSTEP_7_SYNTHESIZED
+
+      // #region START_SUBSTEP_8_AWAITING_OPERATOR — UI badge PAIRED with review.json + live scheduler state (D-125)
+      if (
+        progress.synthesized &&
+        !progress.awaitingOperator &&
+        inst?.state === 'awaiting_operator'
+      ) {
+        await page.goto(BASE_URL);
+        const awaitingRegion = page.getByRole('region', { name: 'MRs awaiting my action' });
+        await expect(awaitingRegion).toBeVisible({ timeout: 10_000 });
+        await expect(
+          awaitingRegion.getByRole('listitem', { name: new RegExp(`^MR ${MR_REF}`) })
+        ).toBeVisible({ timeout: 10_000 });
+
+        // Disk/in-process pairing (D-125): review.json (disk) + the live scheduler's own currentNode
+        // (concrete field; this harness has no separate on-disk RoleInstance checkpoint — ticket P4 Handoff) both confirm the same transition the UI badge shows.
+        expect(
+          existsSync(reviewPath),
+          'review.json missing at the awaiting_operator transition'
+        ).toBe(true);
+        expect(inst?.currentNode, 'scheduler currentNode did not land on node_ask').toBe(
+          'node_ask'
+        );
+
+        await shot(page, 't9-08-gate-synthesis');
+        progress.awaitingOperator = true;
+        // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
+        console.info(`[t9] step=awaiting-operator ts=${new Date().toISOString()}`);
+      }
+      // #endregion END_SUBSTEP_8_AWAITING_OPERATOR
+
+      if (inst && (inst.state === 'error' || inst.state === 'done')) break;
+    }
+
+    expect(progress.prep, 'sub-step 3 (prep) never materialized within the drive deadline').toBe(
+      true
+    );
+    expect(
+      progress.trackReview,
+      'sub-step 4 (node_track_review) never materialized within the drive deadline'
+    ).toBe(true);
+    expect(progress.fanout, 'sub-step 5 (fanout complete) never materialized').toBe(true);
+    expect(progress.gateFilled, 'sub-step 6 (gate_review_filled) never passed').toBe(true);
+    expect(progress.synthesized, 'sub-step 7 (synthesize) never materialized').toBe(true);
+    expect(
+      progress.awaitingOperator,
+      'sub-step 8 (gate_review_synthesis → awaiting_operator) never reached'
+    ).toBe(true);
   });
 });

@@ -832,7 +832,9 @@ const reviewerGraph: RoleGraph = {
         );
         return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
           { track, security, codeReview }
-        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.`;
+        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.
+
+You have NO tools in this turn — none at all, not even read-only ones. Everything you need is already inlined in the JSON above. Do not attempt to call, invoke, or write out any tool/function call (in any format — XML tags, JSON, prose describing a call) to read a file, run a command, or verify anything against the repository; you cannot, and any such attempt will fail this turn. Answer directly and only from the inlined JSON.`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
