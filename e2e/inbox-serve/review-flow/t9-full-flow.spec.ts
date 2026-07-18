@@ -259,13 +259,46 @@ test.describe('t9 full flow', () => {
               `${f}: ## Контекст still carries the unfilled orchestrator placeholder`
             ).not.toContain('<!-- FILL: orchestrator');
           }
-          // Detail page (not board) — PLAN.md + tasks/*.md now visible in ArtifactBrowser, distinct
-          // from t9-02's board screenshot, first frame of the growing-artifact-list sequence.
+          // Detail page, then click through every real tab below — proves each one renders.
           await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
-          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({
-            timeout: 20_000,
-          });
+          const artifactNav = page.locator('nav[aria-label="Артефакты"]');
+          await expect(artifactNav).toBeVisible({ timeout: 20_000 });
           await shot(page, 't9-03-planned');
+
+          const contentPane = page.locator('nav[aria-label="Артефакты"] ~ div');
+          let previousText = await contentPane.innerText();
+          const tabsToVerify = ['PLAN.md', ...taskFiles.sort()];
+          for (const tabName of tabsToVerify) {
+            const tabButton = artifactNav.getByRole('button', { name: tabName });
+            await expect(tabButton, `artifact tab "${tabName}" not found in nav`).toBeVisible({
+              timeout: 10_000,
+            });
+            await tabButton.click();
+            await expect(tabButton, `"${tabName}" tab did not become active on click`).toHaveAttribute(
+              'aria-current',
+              'true'
+            );
+            await expect
+              .poll(async () => contentPane.innerText(), {
+                message: `content pane never updated after clicking "${tabName}"`,
+                timeout: 10_000,
+              })
+              .not.toBe(previousText);
+            const currentText = await contentPane.innerText();
+            expect(currentText.length, `"${tabName}": rendered content is empty`).toBeGreaterThan(0);
+            if (tabName !== 'PLAN.md') {
+              expect(currentText, `"${tabName}": rendered pane lacks its own Контекст heading`).toMatch(
+                /Контекст/
+              );
+            }
+            await shot(page, `t9-03-tab-${tabName.replace(/\.task\.md$|\.md$/, '')}`);
+            previousText = currentText;
+          }
+          // eslint-disable-next-line no-console -- D-125: proves every artifact tab genuinely renders
+          console.info(
+            `[t9] step=artifact-tabs-verified tabs=[${tabsToVerify.join(',')}] ts=${new Date().toISOString()}`
+          );
+
           progress.prep = true;
           // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
           console.info(
