@@ -3,7 +3,7 @@
 // @consumers: App (via hash route #/mr/:id)
 // @tasks: TSK-107, TSK-130, TSK-132
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { useBoard } from '../services/board-store.tsx';
 import { formatTimeAgo, cn } from '../lib/utils.ts';
@@ -41,7 +41,7 @@ export function MrDetailPage(props: { mrId: string }) {
 
   const chatPanelRef = useRef<ChatPanelHandle>(null);
 
-  const loadReport = async () => {
+  const loadReport = useCallback(async () => {
     try {
       setError(null);
       const data = await fetchReport(mrId);
@@ -49,7 +49,7 @@ export function MrDetailPage(props: { mrId: string }) {
     } catch (_cause) {
       setError('Не удалось загрузить отчёт');
     }
-  };
+  }, [mrId, fetchReport]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,10 +84,10 @@ export function MrDetailPage(props: { mrId: string }) {
    * @purpose Handle ChatPanel's SSE `refresh` frame (D-133): a mutation elsewhere changed
    *   `review.json`/artifacts; re-read the report and bump ArtifactBrowser's refreshToken to re-fetch.
    */
-  const onChatRefresh = () => {
+  const onChatRefresh = useCallback(() => {
     setRefreshToken((prev) => prev + 1);
     void loadReport();
-  };
+  }, [loadReport]);
 
   /**
    * @purpose Attach a SelectionPill chip to the chat composer; on narrow viewport, switch to chat

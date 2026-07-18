@@ -659,6 +659,13 @@ test.describe('t9 P7 action (own independent live drive)', () => {
       if (!effectApplied) await page.waitForTimeout(500);
     }
 
+    // effectApplied can flip true as early as the FIRST tick above — but emitDryRun's SSE broadcast
+    // still travels HTTP response stream → network → browser EventSource → onmessage → console.info,
+    // asynchronous relative to that tick() call. Asserting immediately races that delivery.
+    for (let i = 0; i < 10 && dryRunLines.length === 0; i++) {
+      await page.waitForTimeout(300);
+    }
+
     await shot(page, 't9-11-action-confirmed');
 
     expect(
@@ -667,7 +674,7 @@ test.describe('t9 P7 action (own independent live drive)', () => {
     ).toBe(true);
     expect(
       dryRunLines.some((l) => l.startsWith('DRY-RUN post→MR')),
-      `expected a "DRY-RUN post→MR …" console line; captured: ${JSON.stringify(dryRunLines)}`
+      `expected a "DRY-RUN post→MR …" console line; captured dryRunLines: ${JSON.stringify(dryRunLines)}; all console: ${JSON.stringify(allConsoleLines)}`
     ).toBe(true);
 
     // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P7 Exit
