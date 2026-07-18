@@ -149,7 +149,7 @@ export function ArtifactView(props: { content: string; kind: ArtifactKind }) {
   // kind === 'md': split fenced blocks (mermaid or otherwise) from prose before handing prose to the reused lite renderer.
   const segments = splitFencedBlocks(content);
   return (
-    <div className="prose-sm max-w-none text-[13px] leading-relaxed [&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_code]:rounded [&_code]:bg-secondary/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]">
+    <div className="prose-sm max-w-none break-words text-[13px] leading-relaxed [&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_code]:rounded [&_code]:bg-secondary/60 [&_code]:break-all [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]">
       {segments.map((segment, idx) =>
         'fenced' in segment ? (
           <FencedBlockView key={idx} block={segment.fenced} />
