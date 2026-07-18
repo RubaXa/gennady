@@ -47,13 +47,13 @@ function splitFencedBlocks(raw: string): Array<{ prose: string } | { fenced: Fen
  */
 function RawSourceBlock(props: { body: string; label?: string }) {
   return (
-    <div className="my-2 rounded-md border border-border bg-secondary/40 overflow-hidden">
+    <div className="my-2 max-w-full rounded-md border border-border bg-secondary/40 overflow-hidden">
       {props.label && (
         <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-amber-300 border-b border-border bg-amber-400/10">
           {props.label}
         </div>
       )}
-      <pre className="p-2.5 text-[12px] font-mono overflow-x-auto whitespace-pre">
+      <pre className="max-w-full overflow-x-auto whitespace-pre p-2.5 font-mono text-[12px]">
         <code>{props.body}</code>
       </pre>
     </div>
