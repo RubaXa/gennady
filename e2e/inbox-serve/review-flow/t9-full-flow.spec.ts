@@ -274,10 +274,10 @@ test.describe('t9 full flow', () => {
               timeout: 10_000,
             });
             await tabButton.click();
-            await expect(tabButton, `"${tabName}" tab did not become active on click`).toHaveAttribute(
-              'aria-current',
-              'true'
-            );
+            await expect(
+              tabButton,
+              `"${tabName}" tab did not become active on click`
+            ).toHaveAttribute('aria-current', 'true');
             await expect
               .poll(async () => contentPane.innerText(), {
                 message: `content pane never updated after clicking "${tabName}"`,
@@ -285,11 +285,14 @@ test.describe('t9 full flow', () => {
               })
               .not.toBe(previousText);
             const currentText = await contentPane.innerText();
-            expect(currentText.length, `"${tabName}": rendered content is empty`).toBeGreaterThan(0);
+            expect(currentText.length, `"${tabName}": rendered content is empty`).toBeGreaterThan(
+              0
+            );
             if (tabName !== 'PLAN.md') {
-              expect(currentText, `"${tabName}": rendered pane lacks its own Контекст heading`).toMatch(
-                /Контекст/
-              );
+              expect(
+                currentText,
+                `"${tabName}": rendered pane lacks its own Контекст heading`
+              ).toMatch(/Контекст/);
             }
             await shot(page, `t9-03-tab-${tabName.replace(/\.task\.md$|\.md$/, '')}`);
             previousText = currentText;
