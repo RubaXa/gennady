@@ -387,20 +387,20 @@ Contract: см. Spec References (Golden DX §3.3).
 
 **Artifact map (step → console marker → screenshot → disk artifact → source phase):**
 
-| # | Step | Console marker (`[t9] ...`) | Screenshot | Disk artifact | Phase | Timing |
-|---|------|------------------------------|------------|----------------|-------|--------|
-| 1 | Board loads | `step=board-loaded` | `t9-01-board-empty.png` | — | P3 | ts=2026-07-17T22:18:10.819Z |
-| 2 | Unassigned poll (MR actionable) | (discovery, no marker) | `t9-02-unassigned-poll-result.png` | `role-scheduler.ts` actionable poll state | P3 | ~22:20:26Z |
-| 3 | Assigned via UI | `step=assigned-via-ui` | `t9-02-assigned.png` | scheduler instance `role=reviewer` | P3 | ~22:54:52Z |
-| 4 | Prep materialized | `step=prep-materialized tracks=[...]` | `t9-03-planned.png` | `PLAN.md`, `tasks/*.task.md` | P4 | within 9.9min live drive, 2026-07-18T09:10:11Z ver |
-| 5 | Lens track-review | `step=lens-track-review bytes=... toolCalls=...` | `t9-04-track-review-done.png` | `tasks/*.result.json` (partial) | P4 | ″ |
-| 6 | Fanout complete (3 lenses) | `step=fanout-complete lenses=3` | `t9-05-fanout-complete.png` | `tasks/*.result.json` (all 3) | P4 | ″ |
-| 7 | Gate filled passed | `step=gate-filled-passed` | `t9-06-gate-filled.png` | `phase-timings.jsonl` | P4 | ″ |
-| 8 | Synthesized | `step=synthesized retries=0 outcome=success` | `t9-07-synthesized.png` | `review.json` (findings=3) | P4 | ″ |
-| 9 | Gate synthesis → awaiting_operator | `step=awaiting-operator` | `t9-08-gate-synthesis.png` | `review.json`, `README.md` | P4 | ″ |
-| 10 | Detail view renders P4's review | `step=detail-rendered findings=3` | `t9-09-detail.png` | `review.json` (disk↔UI cross-check) | P5 | 2026-07-18T09:33:38Z ver |
-| 11 | Chat Q&A answered | `step=chat-answered answerLen=595` | `t9-10-chat.png` | `chats/mail__messenger-159.jsonl` | P6 | 2026-07-18T10:09:34.900Z (exact, session log) |
-| 12 | Action confirmed (P7's own independent drive) | `step=action-confirmed` | `t9-11-action-confirmed.png` | `audit.jsonl` (`effect_applied`), DRY-RUN console line | P7 | tick6 at 2026-07-18T12:33:40.566Z → confirmed 12:33:44.767Z (exact, session log) |
+| #   | Step                                          | Console marker (`[t9] ...`)                      | Screenshot                         | Disk artifact                                          | Phase | Timing                                                                           |
+| --- | --------------------------------------------- | ------------------------------------------------ | ---------------------------------- | ------------------------------------------------------ | ----- | -------------------------------------------------------------------------------- |
+| 1   | Board loads                                   | `step=board-loaded`                              | `t9-01-board-empty.png`            | —                                                      | P3    | ts=2026-07-17T22:18:10.819Z                                                      |
+| 2   | Unassigned poll (MR actionable)               | (discovery, no marker)                           | `t9-02-unassigned-poll-result.png` | `role-scheduler.ts` actionable poll state              | P3    | ~22:20:26Z                                                                       |
+| 3   | Assigned via UI                               | `step=assigned-via-ui`                           | `t9-02-assigned.png`               | scheduler instance `role=reviewer`                     | P3    | ~22:54:52Z                                                                       |
+| 4   | Prep materialized                             | `step=prep-materialized tracks=[...]`            | `t9-03-planned.png`                | `PLAN.md`, `tasks/*.task.md`                           | P4    | within 9.9min live drive, 2026-07-18T09:10:11Z ver                               |
+| 5   | Lens track-review                             | `step=lens-track-review bytes=... toolCalls=...` | `t9-04-track-review-done.png`      | `tasks/*.result.json` (partial)                        | P4    | ″                                                                                |
+| 6   | Fanout complete (3 lenses)                    | `step=fanout-complete lenses=3`                  | `t9-05-fanout-complete.png`        | `tasks/*.result.json` (all 3)                          | P4    | ″                                                                                |
+| 7   | Gate filled passed                            | `step=gate-filled-passed`                        | `t9-06-gate-filled.png`            | `phase-timings.jsonl`                                  | P4    | ″                                                                                |
+| 8   | Synthesized                                   | `step=synthesized retries=0 outcome=success`     | `t9-07-synthesized.png`            | `review.json` (findings=3)                             | P4    | ″                                                                                |
+| 9   | Gate synthesis → awaiting_operator            | `step=awaiting-operator`                         | `t9-08-gate-synthesis.png`         | `review.json`, `README.md`                             | P4    | ″                                                                                |
+| 10  | Detail view renders P4's review               | `step=detail-rendered findings=3`                | `t9-09-detail.png`                 | `review.json` (disk↔UI cross-check)                    | P5    | 2026-07-18T09:33:38Z ver                                                         |
+| 11  | Chat Q&A answered                             | `step=chat-answered answerLen=595`               | `t9-10-chat.png`                   | `chats/mail__messenger-159.jsonl`                      | P6    | 2026-07-18T10:09:34.900Z (exact, session log)                                    |
+| 12  | Action confirmed (P7's own independent drive) | `step=action-confirmed`                          | `t9-11-action-confirmed.png`       | `audit.jsonl` (`effect_applied`), DRY-RUN console line | P7    | tick6 at 2026-07-18T12:33:40.566Z → confirmed 12:33:44.767Z (exact, session log) |
 
 - [x] `2026-07-18T13:06:00Z` ver `npx tsc --noEmit` (whole project, cheap — no live drive) → pass exit=0
 - [x] `2026-07-18T13:06:30Z` ver `npx tsx cli/gennady.ts lint e2e/inbox-serve/review-flow/t9-full-flow.spec.ts` → pass exit=0
