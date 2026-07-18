@@ -148,7 +148,7 @@ export function MrDetailPage(props: { mrId: string }) {
       )}
 
       {report && !loading && !error && (
-        <div className="flex gap-3 min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 gap-3">
           <ArtifactBrowser
             mrId={mrId}
             refreshToken={refreshToken}

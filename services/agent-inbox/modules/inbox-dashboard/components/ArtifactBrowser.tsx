@@ -95,7 +95,7 @@ export function ArtifactBrowser(props: {
   }, [selected, content, onActiveArtifactChange]);
 
   return (
-    <div className="flex gap-3 min-h-0 flex-1">
+    <div className="flex min-h-0 min-w-0 flex-1 gap-3">
       <nav
         aria-label="Артефакты"
         className="w-56 shrink-0 rounded-md border border-border bg-card overflow-y-auto"
