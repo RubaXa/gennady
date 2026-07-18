@@ -9,7 +9,7 @@
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 // @tasks: TSK-131
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type ConsoleMessage } from '@playwright/test';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
@@ -22,6 +22,7 @@ import {
   phaseTimingsPath,
   toolTracePath,
 } from '../../../services/agent-inbox/modules/inbox-roles/phase-telemetry.ts';
+import { ChatTranscript } from '../../../services/agent-inbox/modules/inbox-chat/chat-transcript.ts';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
@@ -442,6 +443,90 @@ test.describe('t9 full flow', () => {
     // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P5 Exit
     console.info(
       `[t9] step=detail-rendered findings=${diskFindingsCount} ts=${new Date().toISOString()}`
+    );
+  });
+
+  test('P6: chat Q&A — real question, real streamed answer, disk transcript cross-check', async ({
+    page,
+  }) => {
+    // Ticket P6 Objective: reuse t6-chat.spec.ts's logic as one more sub-step of this same continuous
+    // flow, over the SAME REVIEW_FLOW_STATE_DIR P3/P4 already populated (no fresh assignManual/tick —
+    // this test only opens a chat session against the already-materialized review + worktree P3 built).
+    test.setTimeout(180_000);
+
+    const consoleErrors: ConsoleMessage[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error') consoleErrors.push(m);
+    });
+
+    await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
+
+    const composer = page.getByPlaceholder('Спросить о ревью...');
+    await expect(composer).toBeVisible({ timeout: 10_000 });
+
+    const question = 'Кратко перечисли находки этого ревью.';
+    await composer.click();
+    await composer.fill(question);
+    await composer.press('Enter');
+
+    // A REAL assistant answer surfaces either as live streaming tokens (data-testid=chat-streaming)
+    // or as a completed turn's answer paragraph (data-testid=chat-answer) — NOT the echoed question.
+    await expect
+      .poll(
+        async () => {
+          const stream = (await page.locator('[data-testid="chat-streaming"]').allInnerTexts())
+            .join('')
+            .trim();
+          const answers = (await page.locator('[data-testid="chat-answer"]').allInnerTexts())
+            .join('')
+            .trim();
+          return (stream + answers).length;
+        },
+        {
+          timeout: 120_000,
+          message: 'expected a real streamed/completed assistant answer (not the echoed question)',
+        }
+      )
+      .toBeGreaterThan(0);
+
+    await shot(page, 't9-10-chat');
+
+    expect(
+      consoleErrors.map((m) => m.text()),
+      `browser console errors during chat: ${consoleErrors.map((m) => m.text()).join(' | ')}`
+    ).toEqual([]);
+
+    // D-125 triple-grounding (same pattern as t6-chat.spec.ts): the UI action (typed question →
+    // Enter) must be provable on disk — read the SAME transcript file ChatSession#ask() persists
+    // (chats/<ref>.jsonl) and confirm the exact question this test typed produced a real answer there.
+    const uiAnswerText = (
+      await page
+        .locator('[data-testid="chat-streaming"], [data-testid="chat-answer"]')
+        .allInnerTexts()
+    )
+      .join('')
+      .trim();
+
+    const transcriptPath = new ChatTranscript(stateDir!).path(MR_REF);
+    const lines = readFileSync(transcriptPath, 'utf-8').trim().split('\n');
+    const lastTurn = JSON.parse(lines[lines.length - 1]!) as { question: string; answer: string };
+
+    expect(
+      lastTurn.question,
+      'persisted transcript question must match what was typed in the UI'
+    ).toBe(question);
+    expect(lastTurn.answer.length, 'persisted transcript answer must be non-empty').toBeGreaterThan(
+      0
+    );
+    expect(
+      uiAnswerText.slice(0, 20),
+      'the on-disk answer must be the same text the UI actually rendered, not a different turn'
+    ).toBe(lastTurn.answer.slice(0, 20));
+
+    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P6 Exit
+    console.info(
+      `[t9] step=chat-answered answerLen=${lastTurn.answer.length} ts=${new Date().toISOString()}`
     );
   });
 });

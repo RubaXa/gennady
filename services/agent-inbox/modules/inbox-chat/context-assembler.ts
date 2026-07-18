@@ -1,6 +1,6 @@
 // @file: ContextAssembler — one turn's system context from report artifacts + chips, MR-derived content wrapped in an explicit untrusted-data block (D-98, extends NFC-07 to inbox-chat).
 // @consumers: ChatSession
-// @tasks: TSK-126, TSK-132
+// @tasks: TSK-126, TSK-132, TSK-131
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,6 +11,9 @@ import type { ContextChip } from './types.ts';
 
 /** @purpose Report filenames read as-is from `reports/<mr>/` when present. */
 const REPORT_FILES = ['README.md', 'PLAN.md'];
+
+/** @purpose Per-file cap on `tasks/*.task.md` content folded into chat context | @invariant Uncapped task files (hundreds of KB each) blow the prompt past what the opencode round trip can complete (TSK-131 P6) */
+const MAX_TASK_FILE_CHARS = 20_000;
 
 /** @purpose Opening marker for the untrusted-data block wrapping report/MR-derived content (D-98). */
 const UNTRUSTED_BLOCK_OPEN = '<untrusted-mr-content>';
@@ -135,7 +138,12 @@ export class ContextAssembler {
     if (existsSync(tasksDir)) {
       for (const name of readdirSync(tasksDir)) {
         try {
-          sections.push(`## tasks/${name}\n${readFileSync(join(tasksDir, name), 'utf-8')}`);
+          const body = readFileSync(join(tasksDir, name), 'utf-8');
+          const truncated = body.length > MAX_TASK_FILE_CHARS;
+          const text = truncated
+            ? `${body.slice(0, MAX_TASK_FILE_CHARS)}\n…[truncated ${body.length - MAX_TASK_FILE_CHARS} more chars]`
+            : body;
+          sections.push(`## tasks/${name}\n${text}`);
         } catch (cause) {
           logger.warn('[ContextAssembler#_readReportArtifacts] [reading → skip_task]', {
             name,
