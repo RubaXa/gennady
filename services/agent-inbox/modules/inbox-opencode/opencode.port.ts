@@ -87,6 +87,12 @@ export type ToolTraceEntry = {
   ms: number;
   /** @purpose Tool state status (e.g. 'completed', 'running', 'error') */
   status: string;
+  /** @purpose Byte length of the tool's raw output text, when available (detail-report sizing). */
+  outputBytes?: number;
+  /** @purpose Newline-delimited line count of the tool's raw output, when available. */
+  outputLines?: number;
+  /** @purpose Error message text when status is 'error' — why the call was denied/failed. */
+  errorSummary?: string;
 };
 
 /** @purpose Structured output format descriptor — schema-driven JSON output. */

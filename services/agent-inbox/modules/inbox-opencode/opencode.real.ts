@@ -410,6 +410,8 @@ export class OpenCodeReal extends OpenCodePort {
             status?: string;
             input?: Record<string, unknown>;
             time?: { start?: unknown; end?: unknown };
+            output?: unknown;
+            error?: unknown;
           };
           const ms =
             state?.status === 'completed' &&
@@ -417,6 +419,7 @@ export class OpenCodeReal extends OpenCodePort {
             typeof state.time?.end === 'number'
               ? state.time.end - state.time.start
               : 0;
+          const output = typeof state?.output === 'string' ? state.output : undefined;
 
           trace.push({
             seq: seq++,
@@ -424,6 +427,10 @@ export class OpenCodeReal extends OpenCodePort {
             input: _summarizeToolInput(part.tool, state?.input),
             ms,
             status: state?.status ?? 'unknown',
+            outputBytes: output !== undefined ? Buffer.byteLength(output, 'utf8') : undefined,
+            outputLines: output !== undefined ? output.split('\n').length : undefined,
+            errorSummary:
+              typeof state?.error === 'string' ? state.error.slice(0, 200) : undefined,
           });
         }
       }

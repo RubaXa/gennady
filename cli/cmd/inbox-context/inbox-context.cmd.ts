@@ -323,12 +323,20 @@ async function run(): Promise<number> {
         clonesRoot: clonesRoot(stateDir),
       });
 
-      const root = mrsRoot(stateDir);
-      mkdirSync(root, { recursive: true });
-      gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
-      gcStaleReports(root, REPORTS_TTL_MS, Date.now());
-      gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
-      const worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
+      // --worktree-dir: explicit override (e.g. an existing worktree predating the
+      // mrs/<key>/worktree layout, TSK-131) — skips this root's GC, caller owns that path's lifecycle.
+      const worktreeDirFlag = parseValue(argv, '--worktree-dir');
+      let worktreePath: string;
+      if (worktreeDirFlag) {
+        worktreePath = worktreeDirFlag;
+      } else {
+        const root = mrsRoot(stateDir);
+        mkdirSync(root, { recursive: true });
+        gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+        gcStaleReports(root, REPORTS_TTL_MS, Date.now());
+        gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
+        worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
+      }
 
       const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
       currentHeadSha = prepared.headSha;

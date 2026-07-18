@@ -99,6 +99,12 @@ export type ToolTraceCall = {
   ms: number;
   /** @purpose Tool state status (e.g. 'completed', 'error') */
   status: string;
+  /** @purpose Byte length of the tool's raw output, when available. */
+  outputBytes?: number;
+  /** @purpose Newline-delimited line count of the tool's raw output, when available. */
+  outputLines?: number;
+  /** @purpose Error message text when status is 'error'. */
+  errorSummary?: string;
 };
 
 /** @purpose One session's ordered tool-call trace, appended as a JSON line. */

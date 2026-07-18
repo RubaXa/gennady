@@ -95,13 +95,22 @@ async function run(): Promise<number> {
       clonesRoot: clonesRoot(stateDir),
     });
 
-    const root = mrsRoot(stateDir);
-    mkdirSync(root, { recursive: true });
-    // GC safety net: prune leaked worktrees older than TTL on every prepare,
-    // so they cannot grow unbounded even if --cleanup is never called.
-    const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
-    if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
-    const worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
+    // --worktree-dir: explicit override for where the worktree is created/reused (e.g. an existing
+    // worktree from before the mrs/<key>/worktree layout, TSK-131) — bypasses the default root's GC
+    // entirely, since a caller-managed path has its own lifecycle, not this command's.
+    const worktreeDirFlag = parseValue(argv, '--worktree-dir');
+    let worktreePath: string;
+    if (worktreeDirFlag) {
+      worktreePath = worktreeDirFlag;
+    } else {
+      const root = mrsRoot(stateDir);
+      mkdirSync(root, { recursive: true });
+      // GC safety net: prune leaked worktrees older than TTL on every prepare,
+      // so they cannot grow unbounded even if --cleanup is never called.
+      const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+      if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
+      worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
+    }
 
     const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
     const baseSha = targetBranch
