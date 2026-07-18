@@ -1,6 +1,6 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-117, TSK-122
+// @tasks: TSK-117, TSK-122, TSK-131
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

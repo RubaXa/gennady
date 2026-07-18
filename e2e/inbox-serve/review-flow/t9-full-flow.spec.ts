@@ -531,12 +531,8 @@ test.describe('t9 full flow', () => {
   });
 });
 
-/** @purpose Hard live-drive budget for P7's own assign+tick loop to awaiting_operator. First run
- *   (this phase) with t8-action.spec.ts's 600_000ms default exhausted the budget mid-fanout (one
- *   `[OpenCodeReal#_sendPrompt] fetch failed` retry burst pushed a single tick to ~594s) and stalled
- *   at `node_synthesize`, never reaching `awaiting_operator` — mirrors P4's own real-world timing
- *   (~9.9 min for prep+3-lens-fanout+synthesize, P4_DRIVE_DEADLINE_MS=1_200_000), so P7 adopts the
- *   same 1_200_000ms default rather than P4's DRIVE_DEADLINE_MS=600_000. */
+/** @purpose Hard live-drive budget for P7's assign+tick drive — mirrors P4's 1_200_000ms
+ *   (t8's 600_000ms default exhausted mid-fanout on a slow retry burst). */
 const P7_DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 1_200_000);
 /** @purpose Tick bound for P7's own drive loop (mirrors t8-action.spec.ts's MAX_TICKS). */
 const P7_MAX_TICKS = 40;
