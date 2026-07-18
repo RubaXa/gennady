@@ -12,7 +12,14 @@ const dashboardDir = resolve(__dirname, '../../services/agent-inbox/modules/inbo
 /** @purpose Playwright config for inbox-serve e2e: boots the dashboard vite dev server (API + SPA) and points tests at it. */
 export default defineConfig({
   testDir: '.',
-  outputDir: resolve(__dirname, 'test-results'),
+  // review-flow/*.spec.ts own their entire lifecycle (own server on a fixed port, see
+  // playwright.review-flow.config.ts) — including them in this config's default testDir scan binds
+  // the same fixed PORT twice under this config's parallel workers, causing EADDRINUSE.
+  testIgnore: '**/review-flow/**',
+  // A dedicated subdir, NOT the shared `test-results/` root — that root also holds
+  // `test-results/screenshots/` (helpers/shot.ts), which Playwright's outputDir-clean-before-run
+  // would otherwise wipe on every invocation of this config, including failed ones.
+  outputDir: resolve(__dirname, 'test-results/pw-artifacts'),
   use: {
     baseURL: 'http://localhost:5174',
   },
