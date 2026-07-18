@@ -772,7 +772,13 @@ export class RoleInstance {
     parallelGroupId: string
   ): Promise<{ id: string; output?: unknown; escalate: boolean }> {
     const worktreePath = ctx.artifacts.worktreePath;
-    const directory = typeof worktreePath === 'string' ? worktreePath : spec.dir(ctx);
+    // directory = MR's shared parent, not the worktree alone — injected context lives in report/ (TSK-131).
+    const directory =
+      typeof worktreePath === 'string' && ctx.store
+        ? mrRoot(ctx.store.getStateDir(), `${ctx.mr.project}!${ctx.mr.iid}`)
+        : typeof worktreePath === 'string'
+          ? worktreePath
+          : spec.dir(ctx);
     const taskText = spec.buildTaskText(ctx);
 
     // TSK-perf telemetry (phase-timings.jsonl) — one entry per lens, recorded at every exit point below.
