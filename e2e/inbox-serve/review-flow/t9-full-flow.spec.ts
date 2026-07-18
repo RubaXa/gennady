@@ -262,7 +262,9 @@ test.describe('t9 full flow', () => {
           // Detail page (not board) — PLAN.md + tasks/*.md now visible in ArtifactBrowser, distinct
           // from t9-02's board screenshot, first frame of the growing-artifact-list sequence.
           await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
-          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
+          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({
+            timeout: 20_000,
+          });
           await shot(page, 't9-03-planned');
           progress.prep = true;
           // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
@@ -281,7 +283,9 @@ test.describe('t9 full flow', () => {
           // Detail page's ArtifactBrowser shows the growing file list as lenses finish — a real
           // visual diff from sub-step 3, not a repeat of the board (screenshot-sequence honesty).
           await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
-          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
+          await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({
+            timeout: 20_000,
+          });
           await shot(page, 't9-04-track-review-done');
           progress.trackReview = true;
           // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P4 Exit
