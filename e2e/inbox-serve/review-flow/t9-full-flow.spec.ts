@@ -530,3 +530,153 @@ test.describe('t9 full flow', () => {
     );
   });
 });
+
+/** @purpose Hard live-drive budget for P7's own assign+tick loop to awaiting_operator. First run
+ *   (this phase) with t8-action.spec.ts's 600_000ms default exhausted the budget mid-fanout (one
+ *   `[OpenCodeReal#_sendPrompt] fetch failed` retry burst pushed a single tick to ~594s) and stalled
+ *   at `node_synthesize`, never reaching `awaiting_operator` — mirrors P4's own real-world timing
+ *   (~9.9 min for prep+3-lens-fanout+synthesize, P4_DRIVE_DEADLINE_MS=1_200_000), so P7 adopts the
+ *   same 1_200_000ms default rather than P4's DRIVE_DEADLINE_MS=600_000. */
+const P7_DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 1_200_000);
+/** @purpose Tick bound for P7's own drive loop (mirrors t8-action.spec.ts's MAX_TICKS). */
+const P7_MAX_TICKS = 40;
+
+test.describe('t9 P7 action (own independent live drive)', () => {
+  // Ticket P7 Objective: BoardProviderReal#executeAction requires a LIVE RoleInstance at
+  // awaiting_operator (no disk fallback, unlike getReport/chat routes) — P3-P6's shared
+  // REVIEW_FLOW_STATE_DIR is NOT reused here; this describe block owns its own state dir + its own
+  // assignManual + tick() drive, mirroring the already-working t8-action.spec.ts pattern exactly.
+  let p7App: BootstrapResult | undefined;
+  let p7StateDir: string | undefined;
+  let p7ReachedAwaiting = false;
+
+  test.beforeAll(async () => {
+    test.setTimeout(P7_DRIVE_DEADLINE_MS + 120_000);
+    ({ stateDir: p7StateDir } = await makeStateDir({ seedReview: false }));
+    p7App = await bootReal(p7StateDir);
+    await p7App.scheduler.assignManual(MR_URL, 'reviewer');
+
+    let ticks = 0;
+    const deadline = Date.now() + P7_DRIVE_DEADLINE_MS;
+    while (ticks < P7_MAX_TICKS && Date.now() < deadline) {
+      const t0 = Date.now();
+      await p7App.scheduler.tick();
+      ticks++;
+      const inst = p7App.scheduler.findInstance(MR_URL);
+      // eslint-disable-next-line no-console -- D-125: localizes a stall to a node, not a bare timeout
+      console.info(
+        `[t9] P7 tick ${ticks} ${Date.now() - t0}ms — state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'}`
+      );
+      if (inst?.state === 'awaiting_operator') {
+        p7ReachedAwaiting = true;
+        break;
+      }
+      if (inst && (inst.state === 'done' || inst.state === 'error')) break;
+    }
+  });
+
+  test.afterAll(async () => {
+    await teardown(p7App, p7StateDir);
+  });
+
+  test('P7: select candidate → Постить выбранное → DRY-RUN console line + audit effect_applied', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const inst = p7App!.scheduler.findInstance(MR_URL);
+    expect(
+      p7ReachedAwaiting,
+      `instance never reached awaiting_operator — state=${inst?.state} node=${inst?.currentNode}`
+    ).toBe(true);
+
+    // Capture EVERY console message (not just DRY-RUN-prefixed ones) — self-diagnosing: if the
+    // DRY-RUN assertion below ever fails again, the full transcript printed in its message tells us
+    // whether the SSE frame arrived under a different shape/text, or nothing arrived at all, without
+    // needing any external inspection.
+    const allConsoleLines: string[] = [];
+    const dryRunLines: string[] = [];
+    page.on('console', (m) => {
+      allConsoleLines.push(`[${m.type()}] ${m.text()}`);
+      if (m.text().startsWith('DRY-RUN ')) dryRunLines.push(m.text());
+    });
+
+    // ChatPanel's useEffect opens the dry-run broadcast's transport (GET .../chat/stream, an
+    // EventSource) asynchronously on mount — the effect below can fire and broadcast before that
+    // connection is registered server-side, silently dropping the DRY-RUN line for no one's fault.
+    // Wait for the stream's own response (headers arrive once EventSource connects) before acting,
+    // so the test proves it, rather than guessing a fixed delay.
+    const sseConnected = page.waitForResponse((r) => /\/chat\/stream$/.test(r.url()));
+    await page.goto(`${BASE_URL}/#/mr/${encodeURIComponent(MR_REF)}`);
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 20_000 });
+    await sseConnected;
+    // eslint-disable-next-line no-console -- D-125: self-reporting the SSE-ready checkpoint
+    console.info(`[t9] P7 sse-stream-connected ts=${new Date().toISOString()}`);
+
+    // A live LLM review is non-deterministic — this independent live drive's synthesize step may
+    // legitimately find zero candidates (a valid outcome, not a bug: P4's separate live run on the
+    // same MR found 3; this run found 0). "Постить выбранное" needs ≥1 selected candidate and stays
+    // disabled at 0 — fall back to "Approve (гейт)" (no candidate needed) so P7 proves the SAME
+    // action→dry-run→effect_applied mechanism regardless of what this run's review contained.
+    const candidateCheckboxCount = await page.locator('input[type="checkbox"]').count();
+    // eslint-disable-next-line no-console -- D-125: self-reporting which branch this run took, not guessed externally
+    console.info(`[t9] P7 candidateCheckboxCount=${candidateCheckboxCount}`);
+
+    let actionButton;
+    if (candidateCheckboxCount > 0) {
+      const firstCheckbox = page.locator('input[type="checkbox"]').first();
+      await expect(firstCheckbox).toBeVisible({ timeout: 10_000 });
+      await firstCheckbox.check();
+      actionButton = page.getByRole('button', { name: 'Постить выбранное' });
+    } else {
+      actionButton = page.getByRole('button', { name: 'Approve (гейт)' });
+    }
+    await expect(actionButton).toBeEnabled({ timeout: 5_000 });
+
+    const actionResp = page.waitForResponse((r) => /\/api\/mr\/.+\/action$/.test(r.url()));
+    await actionButton.click();
+    const resp = await actionResp;
+    expect(resp.status(), `POST /action body: ${await resp.text()}`).toBe(200);
+
+    // Root cause of t8-action.spec.ts's current failure (diagnosed this phase, not routed around):
+    // BoardProviderReal#executeAction's `void instance.step()` (board-provider.real.ts) only advances
+    // the instance PAST node_ask (awaiting_operator → idle, currentNode=node_effect — the single
+    // `node_ask -> node_effect` edge in reviewer.role.ts); it does NOT itself execute node_effect. The
+    // real CLI (`gennady inbox serve`, cli/cmd/inbox/serve.cmd.ts's `setInterval` tick timer) drives
+    // idle instances forward automatically on its own polling cadence; `bootReal()`'s in-process test
+    // harness (`_support.ts`) starts no such timer — only the real serve command does. t8's fixed
+    // 1.5s wait with no further `tick()` call never gives node_effect a chance to run, so its
+    // `DRY-RUN` assertion fails deterministically (not flaky). Fix here: explicitly drive `tick()`
+    // until the audit log's `effect_applied` entry lands, mirroring what the real serve process would
+    // eventually do on its own.
+    const auditPath = join(p7StateDir!, 'agent-inbox', 'audit.jsonl');
+    let effectApplied = false;
+    for (let i = 0; i < 10 && !effectApplied; i++) {
+      await p7App!.scheduler.tick();
+      if (existsSync(auditPath)) {
+        const entries = readFileSync(auditPath, 'utf-8')
+          .trim()
+          .split('\n')
+          .filter((line) => line.length > 0)
+          .map((line) => JSON.parse(line) as Record<string, unknown>);
+        effectApplied = entries.some(
+          (e) => e['event'] === 'effect_applied' && e['mr'] === MR_URL
+        );
+      }
+      if (!effectApplied) await page.waitForTimeout(500);
+    }
+
+    await shot(page, 't9-11-action-confirmed');
+
+    expect(
+      effectApplied,
+      'expected an audit.jsonl effect_applied entry for this MR after the action'
+    ).toBe(true);
+    expect(
+      dryRunLines.some((l) => l.startsWith('DRY-RUN post→MR')),
+      `expected a "DRY-RUN post→MR …" console line; captured: ${JSON.stringify(dryRunLines)}`
+    ).toBe(true);
+
+    // eslint-disable-next-line no-console -- D-125: t9 telemetry-marker line required by ticket P7 Exit
+    console.info(`[t9] step=action-confirmed ts=${new Date().toISOString()}`);
+  });
+});

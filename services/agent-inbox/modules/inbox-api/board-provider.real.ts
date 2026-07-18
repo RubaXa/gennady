@@ -253,7 +253,13 @@ export class BoardProviderReal extends BoardProviderPort {
     // every Approve/Post/Skip/Дослать would 404 even while the instance is genuinely awaiting_operator.
     const snap = this._resolveInstance(mrId);
     const instance = snap ? this._scheduler.findInstance(snap.mr) : null;
-    if (!instance || instance.state !== 'awaiting_operator') {
+    // role-instance.ts's error-recovery ladders (_executeParallel's fan-out escalation,
+    // _applyRecovery's exhausted continue/restart branches) also set state='awaiting_operator'
+    // when a session breaks beyond recovery, WITHOUT advancing currentNode to 'node_ask' — that's
+    // a genuine "pipeline stuck, needs investigation" signal, not "review ready for an approve/post
+    // decision". Only currentNode === 'node_ask' means setAnswer()+step() have anywhere to go; on
+    // an error-escalated instance step() would try to resume the broken node with no valid answer.
+    if (!instance || instance.state !== 'awaiting_operator' || instance.currentNode !== 'node_ask') {
       return { ok: false };
     }
 
