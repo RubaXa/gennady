@@ -65,6 +65,17 @@
       synthesizes — it never runs the battery in its own context. If I catch myself reading MR code to
       analyze it here, STOP and dispatch a subagent instead.
     </Axiom>
+    <Axiom id="AX_MR_BODY_STRUCTURE">
+      The MR description mirrors the README.md structure (TL;DR → change map → architecture →
+      behaviour → scenarios → entities → verdicts → candidates). Heavy sections that obscure the
+      overview (per-topic deep-dives, file table, entity detail cards, candidate table) MUST be
+      wrapped in `<details><summary>` so the description is scannable — the reader sees the verdict
+      at a glance and drills down on demand. Mermaid diagrams stay OUTSIDE collapsed blocks (GitLab
+      renders them; collapsing hides the diagram). Minimal visible (non-collapsed) structure:
+      TL;DR paragraph, change map (Mermaid), key decisions table, boundaries, status. The title
+      follows the project's conventional-commit style: `type(scope): description` — no `+`
+      concatenation, no internal tokens, no raw commit SHAs.
+    </Axiom>
   </BeliefState>
 
   <SessionInvariants>
@@ -182,7 +193,7 @@
     | React | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
     | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
     | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
-    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent |
+    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent. Structure — `AX_MR_BODY_STRUCTURE` |
 
     **`vcs-reply` (JSON array).** reply/line/suggestion forms —
     `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Only in
