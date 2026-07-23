@@ -1,0 +1,92 @@
+# @file: Classifier rules for mr-stats — 10 categories with include/exclude masks.
+# @consumers: Classifier
+# @tasks: TSK-138
+#
+# Категории в порядке приоритета (first-match wins).
+# Порядок: от наиболее специфичных к наиболее широким маскам.
+
+categories:
+  - name: mockFixture
+    include:
+      - '*fixture*'
+      - '*fixtures*'
+      - '*.mock*'
+      - '*.snap'
+      - 'msw/**'
+      - '__fixtures__/**'
+      - '_figma-fixtures/**'
+
+  - name: testingStorybook
+    include:
+      - '*.test.ts'
+      - '*.spec.ts'
+      - '*.stories.*'
+      - 'e2e/**'
+      - '*.integration.test.*'
+      - '.storybook/**'
+
+  - name: uiSvelte
+    include:
+      - '*.svelte'
+      - '*.module.css'
+      - '*.tokens.css'
+      - '*.appearance.css'
+
+  - name: mediaStatic
+    include:
+      - '*.png'
+      - '*.jpg'
+      - '*.svg'
+      - '*.woff2'
+      - '*.html'
+      - '*.map'
+      - 'public/**'
+
+  - name: draftTodo
+    include:
+      - 'draft/**'
+      - 'tmp-*'
+      - '*.todo*'
+
+  - name: specsTasksDocs
+    include:
+      - 'specs/**'
+      - 'tasks/**'
+      - 'docs/**'
+      - '*.md'
+
+  - name: aiSkills
+    include:
+      - 'ai/**'
+      - '.superpowers/**'
+      - '.claude/**'
+
+  - name: infraScripts
+    include:
+      - 'cli/**'
+      - 'scripts/**'
+      - 'types/**'
+      - 'vendor/**'
+      - 'tooling-lab/**'
+
+  - name: configs
+    include:
+      - '*.json'
+      - '*.yml'
+      - '.*rc'
+      - '*.config.*'
+
+  - name: realCode
+    include:
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'packages/**/*.ts'
+      - 'packages/**/*.tsx'
+    exclude:
+      - '*.test.ts'
+      - '*.test.tsx'
+      - '*.spec.ts'
+      - '*.spec.tsx'
+      - '*.stories.*'
+      - '*.svelte'
+      - '*.snap'
