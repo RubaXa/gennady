@@ -249,7 +249,7 @@ function MrDetailRightColumn({ mrId }: { mrId: string }) {
 
 - **Type:** Service
 - **Purpose:** HTTP-клиент к inbox-api.
-- **Public Operations:** `getBoard()`, `assignMr(mrId, role, rights?)`, `actionMr(mrId, action)`, `getReport(mrId)`, `listArtifacts(mrId)`, `readArtifact(mrId, path)`, `getAudit(mrId)`
+- **Public Operations:** `getBoard()`, `assignMr(mrId, role, rights?)`, `actionMr(mrId, action)`, `getReport(mrId)`, `listArtifacts(mrId)`, `readArtifact(mrId, path)`, `getAudit(mrId)`, `recordFixTaskCopy(mrId)` (SV-14/TSK-145 — persisted copy-fix-task event, история/дельта)
 - **Consumers:** `BoardStore`, `MrDetailPage`.
 
 ### `BoardStore`
@@ -436,6 +436,24 @@ services/agent-inbox/modules/inbox-dashboard/
 - **Risk accepted:** None.
 - **Rejected alternatives:** Метод `chat()` на существующем `ApiClient` — смешивает
   fetch-only и SSE-жизненный цикл в одном сервисе.
+
+### D-115 — `ArtifactView`'s markdown рендер санитизируется `DOMPurify` перед `dangerouslySetInnerHTML`
+
+- **Status:** active
+- **Recorded:** pre-commit gate lint:contracts (D-007 unauthorized-disable policy), agent-inbox
+- **Why:** `marked` (используемая библиотека) НЕ экранирует/санитизирует HTML по умолчанию —
+  комментарий у существовавшего `eslint-disable-next-line react/no-danger` утверждал обратное
+  («marked escapes source text»), что фактически неверно. Рендерится markdown из отчётов ревью
+  (`README.md`/task-файлы), текст которых собирает LLM-синтез из диффа MR — потенциально
+  untrusted-контент (см. AX_UNTRUSTED_MR_CONTENT, agent-inbox root spec, TSK-101), способный
+  содержать сырой HTML/скрипты, если модель процитирует их из диффа. `DOMPurify.sanitize()`
+  прогоняется по HTML, который `marked.parse()` уже сгенерировал, перед инъекцией в DOM —
+  закрывает реальный XSS-путь, а не просто документирует принятый риск.
+- **Risk accepted:** None — это фикс, не принятие риска.
+- **Rejected alternatives:** (a) оставить как есть с исправленным комментарием (задокументировать
+  риск, не убирать) — оставляет реальную XSS-дыру открытой ради экономии одной зависимости;
+  (b) переключить `marked` на строгий CommonMark-режим без HTML-passthrough — `marked` не даёт
+  полностью отключить сырой HTML в исходном markdown, санитизация вывода надёжнее.
 
 <!--/SECTION:MODULE_DECISION_LOG-->
 

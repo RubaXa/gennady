@@ -389,13 +389,54 @@ function _lensArtifactSchema(title: string): Record<string, unknown> {
 }
 
 /**
+ * @purpose Pins the per-finding field name — a lens once returned `summary`, silently dropping a
+ *   real finding at collection. Appended to every lens's `buildTaskText`.
+ */
+const LENS_FINDING_SHAPE_INSTRUCTION =
+  ' Each finding: {"file": "path", "line": 123, "severity": "error|warn|info", "message": "..."} — the field is named "message", not "summary"/"detail"/"description".';
+
+/**
+ * @purpose Required non-empty `reviewReport` fields — both synthesis gates fail+retry on gaps
+ *   instead of silently shipping an "n/a" placeholder as final.
+ * @invariant `architectureDiagram` is NOT required here — `_renderSynthesisReadme` already has a
+ *   deterministic fallback (`_buildMinimalChangeGraph`) for it, so its absence is not a defect.
+ */
+const REQUIRED_REVIEW_REPORT_FIELDS = ['summary', 'verdict', 'behavior', 'scenarios'] as const;
+
+/**
+ * @purpose Check a synthesis session's `reviewReport` for missing/empty required fields.
+ * @param reviewReport The `reviewReport` object from a synthesize node's artifact (may be absent).
+ * @returns Field names that are missing, non-string, or blank — empty array when complete.
+ */
+function _missingReviewReportFields(reviewReport: unknown): string[] {
+  const report = (reviewReport ?? {}) as Record<string, unknown>;
+  return REQUIRED_REVIEW_REPORT_FIELDS.filter((key) => {
+    const value = report[key];
+    return typeof value !== 'string' || value.trim().length === 0;
+  });
+}
+
+/**
+ * @purpose Read back a prior gate failure reason so a retry sees WHY it failed, not blind repeat
+ *   (`_fail_reason` was previously diagnostics-only).
+ * @param ctx Node context — reads `${nodeId}_fail_reason` set by `role-instance.ts` on gate fail.
+ * @param nodeId The synthesize node's id (`node_synthesize` | `node_synthesize_delta`).
+ * @returns Corrective instruction prefix, or `''` on a first attempt (no prior failure recorded).
+ */
+function _synthesisRetryHint(ctx: NodeContext, nodeId: string): string {
+  const reason = ctx.artifacts[`${nodeId}_fail_reason`];
+  if (typeof reason !== 'string' || !reason) return '';
+  return `\n\n### Предыдущая попытка не прошла проверку\n${reason}\nИсправь именно это в этот раз — не повторяй тот же неполный ответ.`;
+}
+
+/**
  * @purpose Task-text suffix instructing a synthesize node to write its JSON result to disk
  *   (TSK-127) — same protocol as the lenses, larger synthesis shape.
  * @param file Artifact path, relative to the session's working directory.
  * @returns Markdown instruction suffix appended to a synthesize node's `buildTaskText`.
  */
 function _synthesizeArtifactInstruction(file: string): string {
-  return `\n\n### Output contract\nWrite your result STRICTLY as JSON to the file \`${file}\` (relative to your working directory) using your file-write tool. Your JSON must have this shape: { "reviewReport": { "verdict": "...", "summary": "..." }, "proposedActions": [ { "file": "path", "newLine"?: number, "body": "..." }, ... ] } — proposedActions MAY be an empty array. Reply with only a one-line confirmation; do NOT paste the JSON into your reply.`;
+  return `\n\n### Output contract\nWrite your result STRICTLY as JSON to the file \`${file}\` (relative to your working directory) using your file-write tool. Your JSON must have this shape: { "reviewReport": { "summary": "...", "verdict": "...", "behavior": "что реально меняется в поведении по этому диффу — не «n/a», опиши по факту diff'а", "scenarios": "1-2 конкретных бизнес-сценария, которые это затрагивает" }, "proposedActions": [ { "file": "path", "newLine"?: number, "body": "..." }, ... ] } — proposedActions MAY be an empty array, but reviewReport.summary/verdict/behavior/scenarios are ALL REQUIRED non-empty strings; a gate rejects the result and asks you to retry if any is missing or blank. Reply with only a one-line confirmation; do NOT paste the JSON into your reply.`;
 }
 
 /**
@@ -455,12 +496,17 @@ function _normalizeLensFindings(artifact: Record<string, unknown> | undefined): 
 
   return findings
     .map((f) => {
+      // Accepts `message`/`detail`/`summary` as synonyms — a lens session may drift on the exact
+      // key name despite buildTaskText pinning "message" explicitly (found live: node_track_review
+      // returned `summary`, silently dropped a real finding since only message/detail were checked).
       const message =
         typeof f['message'] === 'string'
           ? (f['message'] as string)
           : typeof f['detail'] === 'string'
             ? (f['detail'] as string)
-            : '';
+            : typeof f['summary'] === 'string'
+              ? (f['summary'] as string)
+              : '';
       const rawFile = typeof f['file'] === 'string' ? (f['file'] as string) : '';
       let file = rawFile;
       let line = typeof f['line'] === 'number' ? (f['line'] as number) : 0;
@@ -554,7 +600,7 @@ function materializeReviewJson(ctx: NodeContext): void {
     mkdirSync(dir, { recursive: true });
     writeFileSync(
       join(dir, 'review.json'),
-      JSON.stringify({ verdict, findings, revision }, null, 2)
+      JSON.stringify({ verdict, findings, revision, role: ctx.mr.myRole }, null, 2)
     );
     logger.info('[reviewerGraph#materializeReviewJson] [writing → done]', {
       mr: ctx.mr.webUrl,
@@ -625,7 +671,7 @@ const reviewerGraph: RoleGraph = {
             const tracks = (ctx.artifacts['tracks'] as string[] | undefined) ?? [];
             const trackList =
               tracks.length > 0 ? tracks.join(', ') : `full diff of ${ctx.mr.sourceBranch}`;
-            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Report findings with file:line addresses from the changeset — an empty findings array is a valid, explicit no-findings result.${_contextInjectionInstruction(ctx)}`;
+            return `Review MR ${ctx.mr.webUrl} (${ctx.mr.sourceBranch} → ${ctx.mr.targetBranch}). Cover tracks: ${trackList}. Report findings with file:line addresses from the changeset — an empty findings array is a valid, explicit no-findings result.${LENS_FINDING_SHAPE_INSTRUCTION}${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
@@ -644,7 +690,7 @@ const reviewerGraph: RoleGraph = {
         {
           id: 'node_security_lens',
           buildTaskText(ctx: NodeContext) {
-            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.${_contextInjectionInstruction(ctx)}`;
+            return `Security lens over the WHOLE changeset of MR ${ctx.mr.webUrl} (NFC-SV-09) — not limited to per-track scope. Report findings with file:line addresses; explicit no-findings if clean.${LENS_FINDING_SHAPE_INSTRUCTION}${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
@@ -664,7 +710,7 @@ const reviewerGraph: RoleGraph = {
           id: 'node_code_review',
           buildTaskText(ctx: NodeContext) {
             const base = (ctx.artifacts['baseSha'] as string | undefined) ?? ctx.mr.targetBranch;
-            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).${_contextInjectionInstruction(ctx)}`;
+            return `Code-review diff base..HEAD (base=${base}) for MR ${ctx.mr.webUrl}. Focus on code-level correctness/simplicity, not architecture (already covered by track review).${LENS_FINDING_SHAPE_INSTRUCTION}${_contextInjectionInstruction(ctx)}`;
           },
           dir(ctx: NodeContext) {
             return `${ctx.workspace}/worktree`;
@@ -741,7 +787,7 @@ const reviewerGraph: RoleGraph = {
       id: 'node_delta_review',
       buildTaskText(ctx: NodeContext) {
         const lastSha = (ctx.artifacts['lastReviewedHeadSha'] as string | undefined) ?? 'unknown';
-        return `Delta review of MR ${ctx.mr.webUrl}: base=${lastSha}..HEAD only. Check whether prior comments are closed and whether the new commits broke anything — do NOT re-review the whole MR.`;
+        return `Delta review of MR ${ctx.mr.webUrl}: base=${lastSha}..HEAD only. Check whether prior comments are closed and whether the new commits broke anything — do NOT re-review the whole MR.${LENS_FINDING_SHAPE_INSTRUCTION}`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
@@ -777,7 +823,7 @@ const reviewerGraph: RoleGraph = {
       id: 'node_synthesize_delta',
       buildTaskText(ctx: NodeContext) {
         const delta = (ctx.artifacts['node_delta_review'] as Record<string, unknown>) ?? {};
-        return `Synthesize the delta-review findings for MR ${ctx.mr.webUrl} into a report: ${JSON.stringify(delta)}${_synthesizeArtifactInstruction('.gennady-artifacts/node_synthesize_delta.json')}`;
+        return `Synthesize the delta-review findings for MR ${ctx.mr.webUrl} into a report: ${JSON.stringify(delta)}${_synthesizeArtifactInstruction('.gennady-artifacts/node_synthesize_delta.json')}${_synthesisRetryHint(ctx, 'node_synthesize_delta')}`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
@@ -801,6 +847,13 @@ const reviewerGraph: RoleGraph = {
         const synth = ctx.artifacts['node_synthesize_delta'] as Record<string, unknown> | undefined;
         if (!synth || !synth.reviewReport) {
           return { pass: false, reason: 'Delta synthesis не заполнен' };
+        }
+        const missing = _missingReviewReportFields(synth.reviewReport);
+        if (missing.length > 0) {
+          return {
+            pass: false,
+            reason: `reviewReport неполный — отсутствуют или пусты поля: ${missing.join(', ')}. Заполни их конкретным содержанием по этому диффу, не "n/a".`,
+          };
         }
         // gap-2 (TSK-122): materialize README.md (with mermaid) to disk right after synthesis
         // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops
@@ -836,9 +889,17 @@ const reviewerGraph: RoleGraph = {
         );
         return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
           { track, security, codeReview }
-        )}. Propose actions (proposedActions) — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues.
+        )}. Reply with a JSON object with two top-level fields: "reviewReport" and "proposedActions".
 
-You have NO tools in this turn — none at all, not even read-only ones. Everything you need is already inlined in the JSON above. Do not attempt to call, invoke, or write out any tool/function call (in any format — XML tags, JSON, prose describing a call) to read a file, run a command, or verify anything against the repository; you cannot, and any such attempt will fail this turn. Answer directly and only from the inlined JSON.`;
+"reviewReport" is REQUIRED and must have ALL FOUR of these non-empty string fields (a gate rejects the result and asks you to retry if any is missing or blank — do not write "n/a" or leave one out):
+- "summary": one paragraph — what this MR does and why, from the three lenses' combined view.
+- "verdict": overall reviewer verdict in one sentence (e.g. "approve", "changes requested — see findings").
+- "behavior": what OBSERVABLE BEHAVIOR actually changes for this diff (not architecture, not code style — what a user/caller/API consumer would notice differently). Describe it concretely from the actual diff; never "n/a".
+- "scenarios": 1-2 concrete business/use-case scenarios this change affects, grounded in what the lenses actually found.
+
+"proposedActions" — do NOT call vcs-* yourself: one 'reply' action with a { file, newLine } position per concrete finding you want posted as a line comment, plus exactly one general 'reply' action with no position summarizing cross-cutting/architectural issues. May be an empty array.
+
+You have NO tools in this turn — none at all, not even read-only ones. Everything you need is already inlined in the JSON above. Do not attempt to call, invoke, or write out any tool/function call (in any format — XML tags, JSON, prose describing a call) to read a file, run a command, or verify anything against the repository; you cannot, and any such attempt will fail this turn. Answer directly and only from the inlined JSON.${_synthesisRetryHint(ctx, 'node_synthesize')}`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
@@ -867,6 +928,13 @@ You have NO tools in this turn — none at all, not even read-only ones. Everyth
         const synth = ctx.artifacts['node_synthesize'] as Record<string, unknown> | undefined;
         if (!synth || !synth.reviewReport) {
           return { pass: false, reason: 'Synthesis не заполнен' };
+        }
+        const missing = _missingReviewReportFields(synth.reviewReport);
+        if (missing.length > 0) {
+          return {
+            pass: false,
+            reason: `reviewReport неполный — отсутствуют или пусты поля: ${missing.join(', ')}. Заполни их конкретным содержанием по этому диффу, не "n/a".`,
+          };
         }
         // gap-2 (TSK-122): materialize README.md (with mermaid) to disk right after synthesis
         // passes — node_ask (next) only reads ctx.artifacts, never disk, so a dry pass that stops

@@ -1,21 +1,30 @@
 // @file: Unit tests for inbox-roles RoleInstance — step() per node kind (prep/session/gate),
 //   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
-//   buildTaskText contract, Round 2 (D-118..D-123) persistResult + per-node ToolPolicy.
+//   buildTaskText contract, Round 2 (D-118..D-123) persistResult + per-node ToolPolicy,
+//   SV-24 escalation gate (shouldEscalateToOperator) + SV-23 autonomous approve dry-run (TSK-143).
 // @consumers: node:test runner
-// @tasks: TSK-113, TSK-124
+// @tasks: TSK-113, TSK-124, TSK-143
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { RoleInstance } from '../role-instance.ts';
-import type { RoleGraph, NodeContext } from '../role-node.ts';
+import {
+  RoleInstance,
+  shouldEscalateToOperator,
+  type ReviewOutcome,
+  type ThreadEscalationSignal,
+} from '../role-instance.ts';
+import type { RoleGraph, NodeContext, AskNode } from '../role-node.ts';
+import type { ThreadDecision } from '../thread-signal-classifier.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
+import type { Discussion } from '../../inbox-core/vcs-inbox.port.ts';
 import type { CreateSessionOpts, SessionHandle } from '../../inbox-opencode/opencode.port.ts';
 import { mrRoot } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { setDryRunBroadcaster, type DryRunEntry } from '../../inbox-core/dry-run.ts';
 
 /**
  * @purpose Spy on OpenCodeMock#createSession — records the `directory` each call received, so
@@ -691,5 +700,136 @@ describe('RoleInstance — Round 2: ToolPolicy per lens — bash deny, read-scop
       { bash: false, read: false, grep: false },
       'synthesize node: fully closed — zero tools'
     );
+  });
+});
+
+// ─── SV-24 escalation gate (shouldEscalateToOperator) — TSK-143 ────────────────────────────────
+
+/** @purpose Minimal Discussion fixture — only the fields `shouldEscalateToOperator`/dispute-summary
+ *   consumers read are populated; the rest default to values a file-less, unresolved thread has. */
+function makeDiscussion(overrides?: Partial<Discussion>): Discussion {
+  return {
+    id: 'thread-1',
+    shortId: 'thread-1',
+    author: 'mr-author',
+    body: 'Finding: this line leaks a file handle.',
+    resolved: false,
+    notes: [],
+    ...overrides,
+  };
+}
+
+/** @purpose One `ThreadEscalationSignal` fixture — a non-dispute, non-ambiguous decision by default. */
+function makeThreadSignal(overrides?: Partial<ThreadEscalationSignal>): ThreadEscalationSignal {
+  const decision: ThreadDecision = { kind: 'skip' };
+  return {
+    decision,
+    thread: makeDiscussion(),
+    ambiguous: false,
+    ...overrides,
+  };
+}
+
+/** @purpose `ReviewOutcome` fixture — zero findings, zero ambiguous threads by default. */
+function makeReviewOutcome(overrides?: Partial<ReviewOutcome>): ReviewOutcome {
+  return {
+    findings: [],
+    ambiguousThreadCount: 0,
+    ...overrides,
+  };
+}
+
+describe('shouldEscalateToOperator — SV-24 closed 4-trigger list (TSK-143)', () => {
+  it('auto-approves when zero findings and all threads closed', () => {
+    const verdict = shouldEscalateToOperator(makeReviewOutcome(), []);
+    assert.deepStrictEqual(verdict, { escalate: false });
+  });
+
+  it('escalates on new delta findings', () => {
+    const reviewOutcome = makeReviewOutcome({ findings: [{ severity: 'warning' }] });
+    const verdict = shouldEscalateToOperator(reviewOutcome, []);
+    assert.deepStrictEqual(verdict, { escalate: true, trigger: 'new_findings' });
+  });
+
+  it('escalates with dispute summary on author disagreement', () => {
+    const thread = makeDiscussion({ body: 'Finding: unclosed handle.' });
+    const signals = [makeThreadSignal({ decision: { kind: 'dispute' }, thread })];
+
+    const verdict = shouldEscalateToOperator(makeReviewOutcome(), signals);
+
+    assert.strictEqual(verdict.escalate, true);
+    assert.strictEqual(verdict.escalate && verdict.trigger, 'dispute');
+    // not just a bare flag — the disputed thread's real content rides along for the summary
+    assert.strictEqual(
+      verdict.escalate && verdict.trigger === 'dispute' ? verdict.disputedThread : undefined,
+      thread
+    );
+  });
+
+  it('escalates on error-severity finding regardless of other state', () => {
+    const reviewOutcome = makeReviewOutcome({
+      findings: [{ severity: 'error' }],
+      ambiguousThreadCount: 1, // present but must NOT win — error_severity outranks it
+    });
+
+    const verdict = shouldEscalateToOperator(reviewOutcome, []);
+    assert.deepStrictEqual(verdict, { escalate: true, trigger: 'error_severity' });
+  });
+
+  it('escalates on classification ambiguity', () => {
+    const reviewOutcome = makeReviewOutcome({ ambiguousThreadCount: 1 });
+    const verdict = shouldEscalateToOperator(reviewOutcome, []);
+    assert.deepStrictEqual(verdict, { escalate: true, trigger: 'ambiguous_classification' });
+  });
+});
+
+// ─── SV-23 autonomous approve dry-run (TSK-143) ────────────────────────────────────────────────
+
+/** @purpose Single ask-node graph — a clean pass reaches `node_ask` directly, with no prior
+ *   artifacts, so `_extractFindings()` is empty and the escalation gate's trigger list is empty. */
+function makeAskOnlyGraph(): RoleGraph {
+  const node: AskNode = {
+    kind: 'ask',
+    id: 'node_ask',
+    question() {
+      return { title: 'Review complete', body: 'No findings, all clear.', choices: ['ok'] };
+    },
+  };
+  return {
+    nodes: [node],
+    edges: [{ from: 'node_ask', to: 'done', on: 'answered' }],
+  };
+}
+
+describe('RoleInstance#_executeAsk — SV-23 autonomous approve dry-run (D-116 pattern, TSK-143)', () => {
+  it('auto-approve dry-run does not post to real MR', async () => {
+    const captured: DryRunEntry[] = [];
+    setDryRunBroadcaster((entry) => captured.push(entry));
+
+    try {
+      const instance = new RoleInstance({
+        id: 'test:auto-approve-dry-run',
+        role: 'reviewer',
+        mr: 'https://gitlab.example.com/project/-/merge_requests/900',
+        graph: makeAskOnlyGraph(),
+        opencode,
+        vcs, // synthetic clean state: no seeded discussions/context — VcsInboxMock defaults to
+        // approvedBy: [] and zero discussions, i.e. the closed trigger list is genuinely empty.
+        store: store as unknown as StateStore,
+        dryRun: true,
+      });
+
+      await instance.step(); // node_ask → escalation gate empty → autonomous ApproveAction (dry-run) → done
+
+      assert.strictEqual(instance.state, 'done');
+      assert.strictEqual(instance.currentNode, 'done');
+      // the real vcs-approve call never fires under dry-run — only the journal line does
+      assert.ok(
+        captured.some((entry) => /DRY-RUN post→MR .*approve/i.test(entry.line)),
+        `expected a DRY-RUN approve journal line, got: ${JSON.stringify(captured)}`
+      );
+    } finally {
+      setDryRunBroadcaster(null);
+    }
   });
 });

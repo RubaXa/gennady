@@ -3,6 +3,7 @@
 /* @tasks: TSK-107 */
 
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
 @theme {
   --color-background: oklch(0.145 0.008 260);

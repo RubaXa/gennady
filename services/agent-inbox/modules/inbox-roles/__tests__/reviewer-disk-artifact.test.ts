@@ -2,7 +2,7 @@
 //   files the agent writes to disk (validated + correction-looped), never from a forced
 //   structured-JSON response that truncates on large MRs.
 // @consumers: node:test runner
-// @tasks: TSK-127
+// @tasks: TSK-127, TSK-141
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,6 +38,17 @@ class FakeStateStore {
   async queryAudit(_mr: string): Promise<AuditEntry[]> {
     return [...this.audits];
   }
+
+  // TSK-141 P1 (role-instance.ts#_promoteReviewedHead) calls these on every synthesis-gate
+  // pass; no-op stubs are sufficient here — the real promote/save round-trip is covered by
+  // mr-watch.test.ts's dedicated scenario.
+  promoteReviewedHeadSha(_webUrl: string) {
+    return this.loadRegistry();
+  }
+
+  saveRegistry() {
+    // no-op — this fake never persists to disk.
+  }
 }
 
 interface StateStore {
@@ -45,6 +56,8 @@ interface StateStore {
   loadRegistry(): { version: 1; entries: {} };
   appendAudit(entry: AuditEntry): Promise<void>;
   queryAudit(mr: string): Promise<AuditEntry[]>;
+  promoteReviewedHeadSha(webUrl: string): { version: 1; entries: {} };
+  saveRegistry(): void;
 }
 
 /** @purpose OpenCodeMock subclass recording every continueSignal call for correction-loop assertions. */
@@ -302,7 +315,12 @@ describe('reviewer.role.ts — materializeReviewJson merges disk-artifact lens f
       writeArtifact: {
         file: synthFile,
         content: JSON.stringify({
-          reviewReport: { verdict: 'changes_requested', summary: 'Found issues' },
+          reviewReport: {
+            verdict: 'changes_requested',
+            summary: 'Found issues',
+            behavior: 'test behavior',
+            scenarios: 'test scenarios',
+          },
           proposedActions: [],
         }),
       },

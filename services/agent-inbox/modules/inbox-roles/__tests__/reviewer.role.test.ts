@@ -124,7 +124,13 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
       findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }],
     });
     opencode.seed('node_synthesize', {
-      reviewReport: { verdict: 'changes_requested', total: 3 },
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+        total: 3,
+      },
       proposedActions: [],
     });
 
@@ -180,6 +186,10 @@ describe('ReviewerRole — branch: reply_needed (thread-triage, без полн�
       opencode,
       vcs,
       store: store as unknown as StateStore,
+      // TSK-143 (SV-23/SV-24): no discussion is seeded on `vcs` for thread 't1' — `getDiscussions`
+      // returns [], so this pass genuinely has zero real thread signals and zero findings. dryRun
+      // keeps the resulting auto-approve from reaching a real vcs-approve call.
+      dryRun: true,
       checkpoint: {
         currentNode: 'node_prepare',
         continueCount: 0,
@@ -197,8 +207,11 @@ describe('ReviewerRole — branch: reply_needed (thread-triage, без полн�
     await instance.step(); // gate_triage → pass
     assert.strictEqual(instance.currentNode, 'node_ask');
 
-    await instance.step(); // node_ask → awaiting_operator
-    assert.strictEqual(instance.state, 'awaiting_operator');
+    // TSK-143 (SV-23/D-134): closed trigger list empty (no findings, no real thread signals) →
+    // autonomous approve, NOT awaiting_operator — the previous unconditional escalation this
+    // ticket replaces.
+    await instance.step(); // node_ask → auto-approve (dry-run) → done
+    assert.strictEqual(instance.state, 'done');
   });
 });
 
@@ -215,7 +228,15 @@ describe('ReviewerRole — branch: update-review (delta-only)', () => {
     opencode.seed('node_synthesize_delta', {
       writeArtifact: {
         file: '.gennady-artifacts/node_synthesize_delta.json',
-        content: JSON.stringify({ reviewReport: { verdict: 'approved', total: 1 } }),
+        content: JSON.stringify({
+          reviewReport: {
+            verdict: 'approved',
+            summary: 'test summary',
+            behavior: 'test behavior',
+            scenarios: 'test scenarios',
+            total: 1,
+          },
+        }),
       },
     });
     // Intentionally NOT seeded: node_track_review/node_security_lens/node_code_review/
@@ -266,7 +287,13 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
     spy.seed('node_security_lens', { findings: [] });
     spy.seed('node_code_review', { findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] });
     spy.seed('node_synthesize', {
-      reviewReport: { verdict: 'changes_requested', total: 2 },
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+        total: 2,
+      },
       proposedActions: [],
     });
 
@@ -317,7 +344,15 @@ describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep
     spy.seed('node_track_review', { findings: [] });
     spy.seed('node_security_lens', { findings: [] });
     spy.seed('node_code_review', { findings: [] });
-    spy.seed('node_synthesize', { reviewReport: { verdict: 'approved' }, proposedActions: [] });
+    spy.seed('node_synthesize', {
+      reviewReport: {
+        verdict: 'approved',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+      },
+      proposedActions: [],
+    });
 
     const instance = new RoleInstance({
       id: 'reviewer:test:toolpolicy-lens',
@@ -354,7 +389,12 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
-      reviewReport: { verdict: 'changes_requested' },
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+      },
       proposedActions: [],
     });
 
@@ -403,7 +443,12 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
-      reviewReport: { verdict: 'changes_requested' },
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+      },
       proposedActions: [],
     });
 
@@ -429,6 +474,58 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       2,
       'a re-review bumps revision monotonically, never resets'
     );
+  });
+});
+
+describe('ReviewerRole — Round 4: lens finding survives field-name drift (live bug: `summary` silently dropped)', () => {
+  it('GIVEN a lens returns its finding text under `summary` (not `message`/`detail`) WHEN gate_review_synthesis materializes review.json THEN the finding is NOT silently dropped', async () => {
+    engine.register(ReviewerRole);
+
+    // Live-found bug (TSK-113 Round 4): node_track_review returned `summary` on a real MR
+    // (vk-workspace/superapp!523) — _normalizeLensFindings only recognized `message`/`detail`,
+    // so the finding text became '' and the `.filter((f) => f.file && f.message)` guard dropped it
+    // entirely — review.json ended up with `findings: []` despite a real, concrete finding on disk.
+    opencode.seed('node_track_review', {
+      findings: [{ file: 'a.ts', line: 1, summary: 'Finding reported via summary field' }],
+    });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_synthesize', {
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'test summary',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
+      },
+      proposedActions: [],
+    });
+
+    const instance = new RoleInstance({
+      id: 'reviewer:test:summary-field-drift',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/1',
+      graph: ReviewerRole.graph,
+      opencode,
+      vcs,
+      store: store as unknown as StateStore,
+    });
+
+    await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_review_fanout
+    await instance.step(); // gate_review_filled → pass
+    await instance.step(); // node_synthesize → ok
+    await instance.step(); // gate_review_synthesis → pass, materializeReviewJson fires
+
+    const reviewJsonPath = join(mrReportsDir(store.getStateDir(), 'project!1'), 'review.json');
+    const review = JSON.parse(readFileSync(reviewJsonPath, 'utf-8')) as {
+      findings: Array<{ file: string; line: number; message: string }>;
+    };
+    assert.strictEqual(
+      review.findings.length,
+      1,
+      'the summary-only finding must survive collection'
+    );
+    assert.strictEqual(review.findings[0]!.message, 'Finding reported via summary field');
   });
 });
 

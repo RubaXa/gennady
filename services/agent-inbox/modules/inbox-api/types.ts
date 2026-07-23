@@ -1,9 +1,10 @@
 // @file: Shared types for inbox-api module — BoardData, RoleView, MrCard, MrDetail, AssignBody, ActionBody.
 // @consumers: inbox-api routers, http-server, board-provider port, inbox-dashboard
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-145
 
 import type { ActionableMr } from '../inbox-mocks/mr.mock.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
+import type { FindingSignature, FindingSignatureDiff } from '../inbox-core/finding-signature.ts';
 
 /** @purpose A role on the serve dashboard with its Kanban lanes — exposed by GET /api/board. */
 export type RoleView = {
@@ -95,4 +96,22 @@ export type ArtifactContent = {
   content: string;
   /** @purpose Render hint, same enum as ArtifactRef.kind */
   kind: ArtifactKind;
+};
+
+/** @purpose Result of recording one "Copy fix task" click, returned by `POST /api/mr/:id/copy-fix-task` (SV-14, TSK-145). */
+export type FixTaskCopyResult = {
+  /** @purpose True when this MR has no prior `copied_fix_task` audit event */
+  isFirst: boolean;
+  /** @purpose Count of `copied_fix_task` events recorded before this call */
+  priorCopyCount: number;
+  /** @purpose Timestamp of the previous `copied_fix_task` event | @invariant null when isFirst */
+  lastCopiedAt: string | null;
+  /** @purpose Findings delta against the LAST prior snapshot | @invariant null when isFirst */
+  delta: FindingSignatureDiff | null;
+};
+
+/** @purpose Detail payload stored in a `copied_fix_task` audit event — the finding signatures at click time. */
+export type FixTaskCopySnapshot = {
+  /** @purpose Signatures of every finding present at this click */
+  signatures: FindingSignature[];
 };

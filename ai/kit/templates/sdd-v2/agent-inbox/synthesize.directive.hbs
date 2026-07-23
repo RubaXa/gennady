@@ -9,10 +9,12 @@
     tools (zero-tool contract, D-120): every finding it reasons over is inlined into its task text
     by the orchestrator; the session only reads that text and reasons.
 
-    Output: `proposedActions` — one `reply` action with a `{ file, newLine }` position per concrete
-    finding to post as a line comment, plus exactly one general `reply` action (no position)
-    summarizing cross-cutting/architectural issues. The synthesize node never calls `vcs-*` itself
-    — posting stays gated at the effect node, downstream of operator consent.
+    Output: `reviewReport` (summary/verdict/behavior/scenarios — ALL four non-empty, a gate rejects
+    and retries this node if any is missing or a placeholder like "n/a") + `proposedActions` — one
+    `reply` action with a `{ file, newLine }` position per concrete finding to post as a line
+    comment, plus exactly one general `reply` action (no position) summarizing cross-cutting/
+    architectural issues. The synthesize node never calls `vcs-*` itself — posting stays gated at
+    the effect node, downstream of operator consent.
   </Mission>
 
   <BeliefState>
@@ -97,11 +99,15 @@
       </Action>
     </Step>
     <Step id="STEP_2_EMIT">
-      <Goal>Emit `proposedActions` — never call `vcs-*` directly.</Goal>
+      <Goal>Emit `reviewReport` + `proposedActions` — never call `vcs-*` directly.</Goal>
       <Action>
-        One `reply` action per concrete finding (`{ file, newLine }` position), plus exactly one
-        general `reply` action (no position) summarizing cross-cutting/architectural issues. Empty
-        merged finding set is a valid, explicit "no findings" result.
+        `reviewReport.summary`/`verdict`/`behavior`/`scenarios` — all four non-empty, grounded in
+        the actual reconciled findings, never "n/a" (a gate rejects and retries this node if any is
+        missing or blank). `proposedActions`: one `reply` action per concrete finding (`{ file,
+        newLine }` position), plus exactly one general `reply` action (no position) summarizing
+        cross-cutting/architectural issues. Empty merged finding set is a valid, explicit
+        "no findings" result — `reviewReport` is still required even when `proposedActions` is
+        empty.
       </Action>
     </Step>
   </ExecutionPlan>

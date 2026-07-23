@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-136 | **Status:** [~] IN_PROGRESS | **Scope:** agent-inbox | **Module:** N/A (scope-level, как TSK-116) | **Dependencies:** TSK-134
+- **Task-ID:** TSK-136 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** N/A (scope-level, как TSK-116) | **Dependencies:** TSK-134
 - **Reopens:** 1 (2026-07-17 — телеметрия живого прогона `!602` доказала: `track-review.directive.hbs`/`security-lens.directive.hbs`/`code-lens.directive.hbs` прямо инструктируют агента самому считать `git diff`/`git log` вместо использования уже влитого `## Контекст` — усугубляет провал AI-45 (round-trips ≤10) наряду с TSK-113 Round 3's `buildTaskText`-пробелом)
 - **Purpose:** Заменить статичный `NODE_DIRECTIVE_MAP`/`buildNodePrompt` (клейка монолитных `ai/directives/agent-inbox/*.directive.xml`) на селектор `(sessionType, track, mrShape)`, собирающий директиву из `ai/kit` (hbs-база + аддитивная композиция аксиом-кирпичей) — ТОЛЬКО для линз `review_needed` (`track`/`security`/`code`) + `synthesize` (§5.3.1 граница refine). Ветки `reply_needed`/`update-review` и author-граф остаются на статике. Реализует AI-42/43/44, D-121/D-122/D-123.
 - **Spec References:**

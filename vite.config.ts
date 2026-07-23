@@ -75,6 +75,11 @@ export default defineConfig({
       },
     },
     outDir: 'dist',
+    // emptyOutDir defaults true, which would recursively wipe `dist/inbox-serve` (the dashboard
+    // SPA's own build output, a sibling directory under this same `dist/`) on every CLI build —
+    // silently breaking `gennady inbox serve` until the SPA is manually rebuilt. Chunk filenames
+    // are content-hashed, so leaving stale CLI chunks around is harmless.
+    emptyOutDir: false,
     target: 'node22',
   },
 });

@@ -1,6 +1,6 @@
 // @file: ApiClient — HTTP client for inbox-api REST endpoints consumed by the dashboard.
 // @consumers: BoardStore
-// @tasks: TSK-107
+// @tasks: TSK-107, TSK-146
 
 import type {
   BoardData,
@@ -8,6 +8,7 @@ import type {
   ApiResponse,
   ArtifactRef,
   ArtifactContent,
+  FixTaskCopyResult,
 } from '../../inbox-api/types.ts';
 import { log } from './debug-log.ts';
 
@@ -140,4 +141,21 @@ export async function readArtifact(mrId: string, path: string): Promise<Artifact
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- D-007: strip ApiResponse ok envelope from artifact content
   const { ok: _, ...content } = data;
   return content as ArtifactContent;
+}
+
+/**
+ * @purpose Record one "Copy fix task" click via POST /api/mr/:id/copy-fix-task (SV-14).
+ * @param mrId MR identifier (e.g. "group/project!510").
+ * @throws {Error} HTTP 404 when the MR is not found (via {@link request}'s non-ok handling).
+ * @returns First-click flag, prior copy count, last-copy timestamp, and findings delta since the last click.
+ * @sideEffect Network: POST /api/mr/:id/copy-fix-task
+ */
+export async function recordFixTaskCopy(mrId: string): Promise<FixTaskCopyResult> {
+  const data = await request<ApiResponse<FixTaskCopyResult>>(
+    `/api/mr/${encodeURIComponent(mrId)}/copy-fix-task`,
+    { method: 'POST' }
+  );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- D-007: strip ApiResponse ok envelope from copy-fix-task result
+  const { ok: _, ...result } = data as ApiResponse<FixTaskCopyResult> & FixTaskCopyResult;
+  return result as unknown as FixTaskCopyResult;
 }

@@ -1,28 +1,89 @@
 // @file: ActionPanel — final action bundle for an MR: reviewer (post/approve/redispatch/skip) or author (publish/react/copy task/update description/redispatch/skip).
 // @consumers: MrDetailPage
-// @tasks: TSK-107
+// @tasks: TSK-107, TSK-146
 
 import { useState } from 'react';
 import { Check, ShieldCheck, RotateCcw, X, ThumbsUp, ClipboardCopy, Pencil } from 'lucide-react';
-import { executeAction } from '../services/api-client.ts';
+import { executeAction, recordFixTaskCopy } from '../services/api-client.ts';
 import { cn } from '../lib/utils.ts';
-import type { MrDetail } from '../../inbox-api/types.ts';
+import type { MrDetail, FixTaskCopyResult } from '../../inbox-api/types.ts';
 
 /** @purpose One finding rendered as a checkable, inline-editable posting candidate. */
 type FindingCandidate = MrDetail['findings'][number];
 
 /**
- * @purpose Build the FIX_TASK.md-style copyable text block for an author from selected findings.
- * @invariant No dedicated FIX_TASK.md generator exists yet — best-effort client-side rendering of the
- *   file:line / message shape.
+ * @purpose Compose the full first-click micro-directive for the author's downstream agent, given MR identity and findings.
+ * @invariant Downstream agent must re-verify each finding against current code — a finding can be wrong or stale.
+ * @param mr MR identity (project/iid/title/webUrl) — lets the receiving agent orient without extra lookups.
  * @param findings Findings to include verbatim.
  * @returns Markdown text ready for clipboard.
  */
-function composeFixTask(findings: FindingCandidate[]): string {
-  const items = findings
-    .map((f) => `- [${f.severity}] ${f.file}:${f.line} — ${f.message}`)
-    .join('\n');
-  return `# FIX_TASK\n\n${items || '(нет находок)'}\n`;
+function composeFixTask(
+  mr: { project: string; iid: number; title: string; webUrl: string },
+  findings: FindingCandidate[]
+): string {
+  const items = findings.length
+    ? findings.map((f) => `- [${f.severity}] ${f.file}:${f.line} — ${f.message}`).join('\n')
+    : '(нет находок)';
+  return `# Задание на исправление — MR "${mr.title}" (${mr.project}!${mr.iid})
+
+Это результат автоматического код-ревью, не твоя собственная находка «с нуля». MR: ${mr.webUrl}
+Ревью-агент прошёл по диффу и оставил замечания ниже. Он мог ошибиться или устареть (если код
+менялся после ревью) — прежде чем править, открой каждый файл:строку и сверь замечание с текущим
+кодом. Не применяй бездумно, реши по каждому пункту сам.
+
+## Находки
+
+${items}
+
+## Что сделать
+Согласен с замечанием → почини. Не согласен или оно больше не актуально → не молчи, скажи
+оператору почему, коротко, по каждому такому пункту.
+`;
+}
+
+/**
+ * @purpose Compose a brief repeat-click message: history plus what changed since the last "Copy fix task" click.
+ * @invariant NOT a full micro-directive (see composeFixTask) — added findings shown in full, resolved by location only, unchanged as a count only.
+ * @param mr MR identity (project/iid/title) for the heading.
+ * @param findings Current findings, used to recover full text for `delta.added` entries (the delta itself carries no message text).
+ * @param delta Signature diff against the last "Copy fix task" click.
+ * @param priorCopyCount Number of prior clicks — this click is number `priorCopyCount + 1`.
+ * @param lastCopiedAt Timestamp of the previous click, verbatim.
+ * @returns Markdown text ready for clipboard.
+ */
+function composeFixTaskDelta(
+  mr: { project: string; iid: number; title: string },
+  findings: FindingCandidate[],
+  delta: NonNullable<FixTaskCopyResult['delta']>,
+  priorCopyCount: number,
+  lastCopiedAt: string
+): string {
+  const addedItems = delta.added.map((signature) => {
+    const match = findings.find((f) => f.file === signature.file && f.line === signature.line);
+    return `- ${signature.file}:${signature.line} — ${match?.message ?? '(текст недоступен)'}`;
+  });
+  const resolvedItems = delta.resolved.map((signature) => `- ${signature.file}:${signature.line}`);
+
+  const noChange = delta.added.length === 0 && delta.resolved.length === 0;
+  const body = noChange
+    ? 'Ничего нового с прошлого раза.'
+    : `## Новое
+
+${addedItems.length ? addedItems.join('\n') : '(нет)'}
+
+## Устранено
+
+${resolvedItems.length ? resolvedItems.join('\n') : '(нет)'}`;
+
+  return `# Копирование №${priorCopyCount + 1} — MR "${mr.title}" (${mr.project}!${mr.iid})
+
+Предыдущее копирование: ${lastCopiedAt}
+
+${body}
+
+без изменений: ${delta.unchanged.length}
+`;
 }
 
 /**
@@ -96,7 +157,28 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
   const publishDrafts = () => void dispatch('post', { kind: 'publish-drafts' });
   const react = () => void dispatch('post', { kind: 'reaction', reaction: 'thumbsup' });
   const updateDescription = () => void dispatch('post', { kind: 'update-description' });
-  const copyFixTask = () => void navigator.clipboard.writeText(composeFixTask(report.findings));
+  const copyFixTask = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await recordFixTaskCopy(mrId);
+      // Server guarantees delta/lastCopiedAt non-null when isFirst is false (D-126, FixTaskCopyResult contract).
+      const text = result.isFirst
+        ? composeFixTask(report.mr, report.findings)
+        : composeFixTaskDelta(
+            report.mr,
+            report.findings,
+            result.delta!,
+            result.priorCopyCount,
+            result.lastCopiedAt!
+          );
+      await navigator.clipboard.writeText(text);
+    } catch (_cause) {
+      setError('Не удалось скопировать задание');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="w-80 shrink-0 rounded-md border border-border bg-card p-3 flex flex-col gap-3">

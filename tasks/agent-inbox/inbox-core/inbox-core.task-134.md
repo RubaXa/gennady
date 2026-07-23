@@ -4,7 +4,7 @@
 
 ## 1. Meta
 
-- **Task-ID:** TSK-134 | **Status:** [ ] TODO | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** None
+- **Task-ID:** TSK-134 | **Status:** [x] DONE | **Scope:** agent-inbox | **Module:** inbox-core | **Dependencies:** None
 - **Purpose:** Оркестраторный шаг перед сессиями: считать `mrShape` (`newSymbols`, `nestedLoops`, `filterMapChain`, `isTiny`, `securityHits`, `depManifest`) статанализом диффа base..HEAD и влить `## Контекст` в каждую сматериализованную трек-болванку `tasks/<track>.task.md` — хунки диффа, ограниченные файлами трека, число+список коммитов, список сущностей (новые символы), разметка внимания. Реализует AI-40/D-119; `mrShape` — вход для TSK-136 (композиция триггеров) и TSK-113 Round 2 (ToolPolicy per lens).
 - **Spec References:**
   - Requirement: [AI-39/AI-40](../../../specs/agent-inbox/agent-inbox.spec.md#413-динамическая-сборка-директив--инъекция-контекста-refine--d118d123)

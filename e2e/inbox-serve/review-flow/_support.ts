@@ -25,9 +25,9 @@ import {
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose The real test MR the whole suite drives end-to-end. */
-export const MR_URL = 'https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/159';
+export const MR_URL = 'https://gitlab.corp.mail.ru/hocuspocus/hocuspocus/-/merge_requests/18';
 /** @purpose Dashboard hash-route id + `mrReportsDir` ref for MR_URL — `project!iid`. */
-export const MR_REF = 'mail/messenger!159';
+export const MR_REF = 'hocuspocus/hocuspocus!18';
 /** @purpose Port the suite's server listens on. Overridable so a spec can avoid clashing with a
  *   concurrently-running big-test server on 4174. */
 export const PORT = Number(process.env.REVIEW_FLOW_PORT ?? 4174);
@@ -45,7 +45,7 @@ function _encodedMrRef(): string {
 
 /** @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source. */
 export function realReviewSourceDir(): string {
-  return join(homedir(), '.gennady', 'agent-inbox', 'reports', _encodedMrRef());
+  return mrReportsDir(join(homedir(), '.gennady'), MR_REF);
 }
 
 /**

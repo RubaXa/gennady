@@ -1,6 +1,6 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
 // @consumers: serve timer, inbox-api
-// @tasks: TSK-113, TSK-121
+// @tasks: TSK-113, TSK-121, TSK-140, TSK-141
 
 import { logger } from '#logger';
 import type { RoleEngine, RegisteredRole } from './role-engine.ts';
@@ -9,10 +9,21 @@ import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { RoleInstance, type RoleInstanceCheckpoint } from './role-instance.ts';
 import { RightsEscalator } from './rights-escalator.ts';
 import { buildNodeContext, fetchDiffRefsLive, type ContextBuilderDeps } from './context-builder.ts';
+import { detectMrEvents, DebounceTracker } from './mr-watch.ts';
+import {
+  scanReportsDir,
+  reconcileActionable,
+  recoverLegacyArtifact,
+  readCanonicalReview,
+  buildResumeCheckpoint,
+  type ReconciliationPlan,
+  type MrReconciliation,
+} from './artifact-recovery.ts';
 // AI-02 noise filter — reused from the CLI pipeline per SV-12 (functions, not spawn).
 // Debt: move classify/build-view into inbox-core alongside the TSK-109 migration.
 import { classifyInbox } from '../../../../cli/cmd/inbox/_core/logic/classify-inbox.logic.ts';
@@ -173,7 +184,13 @@ export class RoleScheduler {
       });
       // #endregion END_POLL_VCS
 
-      // #region START_ASSIGN_NEW_MRS
+      // #region START_ASSIGN_NEW_MRS — invariant: disk reconciliation (SV-15..SV-18) replaces the
+      // old blind `!existingInstance` recreate; `_assignRole` resumes from a canonical/legacy
+      // snapshot when one exists, falling through to the from-zero path otherwise.
+      const diskSnapshots = scanReportsDir(this._config.store.getStateDir());
+      const reconciliation: ReconciliationPlan = reconcileActionable(diskSnapshots, mrs);
+      const reconciliationByUrl = new Map(reconciliation.map((r) => [r.mr.webUrl, r]));
+
       for (const mr of mrs) {
         const existing = registry.entries[mr.webUrl];
         const isNew = !existing;
@@ -183,28 +200,7 @@ export class RoleScheduler {
           const existingInstance = this._instances.get(key);
 
           if (!existingInstance && this._shouldAssignRole(mr, role)) {
-            const definition = this._config.engine.retrieve(role.name);
-            if (definition) {
-              const checkpoint = await this._buildInitialCheckpoint(mr.webUrl, definition.graph);
-              const instance = new RoleInstance({
-                id: key,
-                role: role.name,
-                mr: mr.webUrl,
-                graph: definition.graph,
-                opencode: this._config.opencode,
-                vcs: this._config.vcs,
-                store: this._config.store,
-                dryRun: this._config.dryRun ?? false,
-                reviewSessionPool: this._config.reviewSessionPool,
-                checkpoint,
-              });
-              this._instances.set(key, instance);
-              logger.info('[RoleScheduler#tick] [ticking → assigned]', {
-                role: role.name,
-                mr: mr.webUrl,
-                isNew,
-              });
-            }
+            await this._assignRole(mr, role, key, isNew, reconciliationByUrl.get(mr.webUrl));
           }
         }
       }
@@ -223,6 +219,16 @@ export class RoleScheduler {
           instance.state === 'awaiting_operator' ||
           instance.state === 'escalated'
         ) {
+          // #region START_GATE_ON_MR_EVENTS — degrade-open; scoped to `node_prepare` only (SV-19/20/21)
+          if (
+            instance.currentNode === 'node_prepare' &&
+            this._config.buildLiveContext &&
+            !(await this._shouldAdvanceInstance(instance, registry))
+          ) {
+            continue;
+          }
+          // #endregion END_GATE_ON_MR_EVENTS
+
           // 'escalated' keeps stepping — a fresh step() retries the failing node (pausedUntil above throttles it).
           await instance.step();
 
@@ -509,6 +515,70 @@ export class RoleScheduler {
   }
 
   /**
+   * @purpose Gate `step()` at `node_prepare` (SV-19/20/21): a bare commit bumps a counter; a fresh
+   *   reply arms a quiet window, and `step()` proceeds once it elapses.
+   * @invariant Degrade-open: any failure lets `step()` through unchanged — best-effort, never a hard gate.
+   * @param instance Active role instance being considered for this tick's `step()`.
+   * @param registry Loaded registry — resolves project/iid for the `DebounceTracker` ref.
+   * @returns True when `step()` should proceed this tick.
+   */
+  protected async _shouldAdvanceInstance(
+    instance: RoleInstance,
+    registry: InboxRegistry
+  ): Promise<boolean> {
+    const entry = registry.entries[instance.mr];
+    if (!entry) return true;
+    const ref = `${entry.project}!${entry.iid}`;
+    const tracker = new DebounceTracker(this._config.store.getStateDir());
+
+    try {
+      const nodeContext = await buildNodeContext(instance.mr, {
+        vcs: this._config.vcs,
+        store: this._config.store,
+        fetchDiffRefs: this._config.fetchDiffRefs ?? fetchDiffRefsLive,
+      });
+      const headChanged = nodeContext.artifacts['headChanged'] as string | undefined;
+      const myLogin = await this._config.vcs.getMyLogin();
+      const discussions = await this._config.vcs.getDiscussions(instance.mr, { my: true });
+
+      const pendingSince = tracker.lastEventAt(ref);
+      const since = pendingSince ?? instance.createdAt;
+      const now = new Date().toISOString();
+      const signal = detectMrEvents(discussions, headChanged, myLogin, since);
+
+      // #region START_APPLY_DEBOUNCE — a reply (re)arms the window (SV-20); commit-only never arms it (SV-19).
+      if (signal.hasMyThreadReply) {
+        tracker.recordEvent(ref, now);
+        const elapsed = tracker.shouldTriggerAnalysis(ref, now);
+        if (elapsed) tracker.clear(ref);
+        return elapsed;
+      }
+
+      if (pendingSince !== undefined) {
+        const elapsed = tracker.shouldTriggerAnalysis(ref, now);
+        if (elapsed) tracker.clear(ref);
+        return elapsed;
+      }
+
+      if (signal.hasNewCommit) {
+        logger.debug('[RoleScheduler#_shouldAdvanceInstance] [observing → commit_only]', {
+          mr: instance.mr,
+        });
+        return false;
+      }
+
+      return true;
+      // #endregion END_APPLY_DEBOUNCE
+    } catch (error) {
+      logger.warn('[RoleScheduler#_shouldAdvanceInstance] [observing → degraded]', {
+        mr: instance.mr,
+        error: String(error),
+      });
+      return true;
+    }
+  }
+
+  /**
    * @purpose Match mr.role to role.name for assignment. Works for any role.
    * @param mr Actionable MR.
    * @param role Registered role descriptor.
@@ -516,6 +586,92 @@ export class RoleScheduler {
    */
   protected _shouldAssignRole(mr: VcsActionableMr, role: RegisteredRole): boolean {
     return mr.role === role.name;
+  }
+
+  /**
+   * @purpose Assign a role to an MR — disk-aware (SV-15..SV-18): `resume`/`recover` restores from
+   *   the canonical `review.json` instead of re-running the battery; `fresh` keeps today's path.
+   * @invariant `recover` runs `recoverLegacyArtifact` first (re-verify + materialize), then
+   *   resumes exactly like `resume` — a legacy snapshot never skips re-verification (D-129).
+   * @invariant Recovery/read degrading (no `review.json` ends up on disk) falls through to the
+   *   from-zero path below — never blocks assignment.
+   * @param mr Actionable MR being assigned.
+   * @param role Registered role descriptor.
+   * @param key Composite instance key (`${role}:${mrWebUrl}`).
+   * @param isNew Whether this MR is new to the registry — forwarded to the from-zero path's log only.
+   * @param reconciliation This MR's reconciliation decision, or undefined when reconciliation degraded.
+   * @returns Promise that resolves once the instance is created, or immediately when the role has no definition.
+   * @sideEffect Mutates `this._instances`. May write `review.json` (via `recoverLegacyArtifact`) and clone/fetch a worktree (via `buildNodeContext`/`recoverLegacyArtifact`).
+   */
+  protected async _assignRole(
+    mr: VcsActionableMr,
+    role: RegisteredRole,
+    key: string,
+    isNew: boolean,
+    reconciliation: MrReconciliation | undefined
+  ): Promise<void> {
+    const definition = this._config.engine.retrieve(role.name);
+    if (!definition) return;
+
+    // #region START_RESUME_FROM_DISK — invariant: a canonical/legacy snapshot restores state
+    // instead of re-initializing from zero (SV-15..SV-18); `recover` re-verifies+materializes first.
+    if (reconciliation?.action === 'recover' && reconciliation.snapshot) {
+      await recoverLegacyArtifact(reconciliation.snapshot.dir, mr, {
+        vcs: this._config.vcs,
+        store: this._config.store,
+      });
+    }
+
+    if (
+      (reconciliation?.action === 'resume' || reconciliation?.action === 'recover') &&
+      reconciliation.snapshot
+    ) {
+      const review = readCanonicalReview(reconciliation.snapshot.dir);
+      if (review) {
+        const checkpoint = buildResumeCheckpoint(definition.graph, review);
+        const instance = new RoleInstance({
+          id: key,
+          role: role.name,
+          mr: mr.webUrl,
+          graph: definition.graph,
+          opencode: this._config.opencode,
+          vcs: this._config.vcs,
+          store: this._config.store,
+          dryRun: this._config.dryRun ?? false,
+          reviewSessionPool: this._config.reviewSessionPool,
+          checkpoint,
+        });
+        this._instances.set(key, instance);
+        logger.info('[RoleScheduler#_assignRole] [ticking → resumed]', {
+          role: role.name,
+          mr: mr.webUrl,
+          action: reconciliation.action,
+        });
+        return;
+      }
+      // Recovery degraded (no review.json materialized) — fall through to the from-zero path.
+    }
+    // #endregion END_RESUME_FROM_DISK
+
+    const checkpoint = await this._buildInitialCheckpoint(mr.webUrl, definition.graph);
+    const instance = new RoleInstance({
+      id: key,
+      role: role.name,
+      mr: mr.webUrl,
+      graph: definition.graph,
+      opencode: this._config.opencode,
+      vcs: this._config.vcs,
+      store: this._config.store,
+      dryRun: this._config.dryRun ?? false,
+      reviewSessionPool: this._config.reviewSessionPool,
+      checkpoint,
+    });
+    this._instances.set(key, instance);
+    logger.info('[RoleScheduler#_assignRole] [ticking → assigned]', {
+      role: role.name,
+      mr: mr.webUrl,
+      isNew,
+    });
   }
 
   /**

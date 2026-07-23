@@ -1,8 +1,14 @@
 // @file: BoardProviderPort — abstract boundary for board state access: getBoard, assignMr, executeAction, getReport.
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-145
 
-import type { BoardData, MrDetail, ArtifactRef, ArtifactContent } from './types.ts';
+import type {
+  BoardData,
+  MrDetail,
+  ArtifactRef,
+  ArtifactContent,
+  FixTaskCopyResult,
+} from './types.ts';
 
 /**
  * @purpose Abstraction of board state for the inbox-api layer.
@@ -44,6 +50,17 @@ export abstract class BoardProviderPort {
    * @returns MrDetail on success, null if MR not found.
    */
   abstract getReport(mrId: string): MrDetail | null;
+
+  /**
+   * @purpose Record one "Copy fix task" click — appends a `copied_fix_task` audit snapshot, returns the delta against the LAST one (SV-14, SV-10, D-126, TSK-145).
+   * @invariant Independent of the live-instance requirement `executeAction` enforces — works for any
+   *   MR with a materialized report, including via `getReport`'s disk-fallback path after a restart.
+   * @invariant Every call appends exactly one new `copied_fix_task` audit event.
+   * @param mrId MR identifier (webUrl or `project!iid`).
+   * @returns FixTaskCopyResult on success, null if `getReport(mrId)` finds no report for this MR.
+   * @sideEffect Appends one audit event.
+   */
+  abstract recordFixTaskCopy(mrId: string): Promise<FixTaskCopyResult | null>;
 
   /**
    * @purpose List all review artifacts (REPORT/PLAN/track/HISTORY/coverage) under `reports/<mr>/`.

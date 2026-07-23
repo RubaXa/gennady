@@ -1,6 +1,6 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-117, TSK-122, TSK-131
+// @tasks: TSK-117, TSK-122, TSK-131, TSK-145
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,6 +13,8 @@ import type {
   MrDetail,
   ArtifactRef,
   ArtifactContent,
+  FixTaskCopyResult,
+  FixTaskCopySnapshot,
 } from './types.ts';
 import type { RoleScheduler, RoleInstanceSnapshot } from '../inbox-roles/role-scheduler.ts';
 import type { RoleEngine, RegisteredRole } from '../inbox-roles/role-engine.ts';
@@ -21,6 +23,14 @@ import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
 import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { AuditLog, type AuditEntry } from '../inbox-core/audit-log.ts';
+import {
+  computeFindingSignatures,
+  diffFindingSignatures,
+} from '../inbox-core/finding-signature.ts';
+
+/** @purpose Audit event name recorded on each "Copy fix task" click (SV-10, TSK-145). */
+const COPIED_FIX_TASK_EVENT = 'copied_fix_task';
 
 /** @purpose Known review-document filenames materialized directly under `reports/<mr>/` (TSK-122 gap-2). */
 const KNOWN_REPORT_FILES = ['REPORT.md', 'README.md', 'PLAN.md', 'HISTORY.md'];
@@ -128,6 +138,8 @@ export class BoardProviderReal extends BoardProviderPort {
   protected _engine: RoleEngine;
   /** @purpose Gennady state root — reports/<mr>/ artifacts live under `<stateDir>/agent-inbox/reports/` (TSK-122 gap-3). */
   protected _stateDir: string;
+  /** @purpose Audit log backing `recordFixTaskCopy` — same `<stateDir>/agent-inbox/audit.jsonl` StateStore#appendAudit/queryAudit write to elsewhere (TSK-145). */
+  protected _auditLog: AuditLog;
 
   /**
    * @purpose Create a BoardProviderReal backed by the given scheduler, engine, and state directory.
@@ -140,6 +152,7 @@ export class BoardProviderReal extends BoardProviderPort {
     this._scheduler = scheduler;
     this._engine = engine;
     this._stateDir = stateDir;
+    this._auditLog = new AuditLog(stateDir);
   }
 
   /**
@@ -300,7 +313,7 @@ export class BoardProviderReal extends BoardProviderPort {
         updatedAt: '',
         draft: false,
         state: 'opened',
-        role: null,
+        role: disk.role,
         events: [],
         directlyAddressed: false,
         todoIds: [],
@@ -343,6 +356,82 @@ export class BoardProviderReal extends BoardProviderPort {
   }
 
   /**
+   * @param mrId MR identifier (webUrl or `project!iid`).
+   * @returns FixTaskCopyResult on success, null if `getReport(mrId)` finds no report for this MR.
+   * @see {BoardProviderPort#recordFixTaskCopy}
+   */
+  async recordFixTaskCopy(mrId: string): Promise<FixTaskCopyResult | null> {
+    const report = this.getReport(mrId);
+    if (!report) return null;
+
+    const signatures = computeFindingSignatures(report.findings);
+
+    // #region START_READ_PRIOR_COPIES — invariant: query happens BEFORE this call's own append, so priorCopyCount/delta never counts the event this call is about to write
+    let priorEvents: AuditEntry[];
+    try {
+      priorEvents = (await this._auditLog.query(mrId)).filter(
+        (entry) => entry.event === COPIED_FIX_TASK_EVENT
+      );
+    } catch (cause) {
+      const error = new Error('[BoardProviderReal#recordFixTaskCopy] Audit query failed', {
+        cause,
+      });
+      logger.error('[BoardProviderReal#recordFixTaskCopy] [querying → failed]', { mrId, error });
+      throw error;
+    }
+    // #endregion END_READ_PRIOR_COPIES
+
+    const lastEvent = priorEvents.at(-1);
+    const isFirst = !lastEvent;
+    const delta = lastEvent
+      ? diffFindingSignatures(this._parseFixTaskCopySnapshot(lastEvent).signatures, signatures)
+      : null;
+
+    try {
+      await this._auditLog.append({
+        ts: new Date().toISOString(),
+        mr: mrId,
+        role: report.mr.role ?? 'operator',
+        event: COPIED_FIX_TASK_EVENT,
+        detail: JSON.stringify({ signatures } satisfies FixTaskCopySnapshot),
+      });
+    } catch (cause) {
+      const error = new Error('[BoardProviderReal#recordFixTaskCopy] Audit append failed', {
+        cause,
+      });
+      logger.error('[BoardProviderReal#recordFixTaskCopy] [appending → failed]', { mrId, error });
+      throw error;
+    }
+
+    return {
+      isFirst,
+      priorCopyCount: priorEvents.length,
+      lastCopiedAt: lastEvent?.ts ?? null,
+      delta,
+    };
+  }
+
+  /**
+   * @purpose Parse a `copied_fix_task` audit event's `detail` JSON back into its signature snapshot.
+   * @invariant A malformed/missing detail degrades to an empty snapshot rather than throwing — a
+   *   corrupted historical entry must not block recording a NEW copy.
+   * @param entry Audit entry with `event === 'copied_fix_task'`.
+   * @returns The snapshot recorded at that click, or `{ signatures: [] }` on parse failure.
+   */
+  protected _parseFixTaskCopySnapshot(entry: AuditEntry): FixTaskCopySnapshot {
+    try {
+      const parsed = JSON.parse(entry.detail ?? '{}') as Partial<FixTaskCopySnapshot>;
+      return { signatures: Array.isArray(parsed.signatures) ? parsed.signatures : [] };
+    } catch (cause) {
+      logger.warn('[BoardProviderReal#_parseFixTaskCopySnapshot] [parsing → degraded]', {
+        mr: entry.mr,
+        error: String(cause),
+      });
+      return { signatures: [] };
+    }
+  }
+
+  /**
    * @purpose Read the structured review (`review.json`) the reviewer pipeline persisted under
    *   `reports/<mr>/` — findings the candidates panel renders with no live instance.
    * @invariant `revision` defaults to `0` when `review.json` lacks the field — matches
@@ -350,9 +439,12 @@ export class BoardProviderReal extends BoardProviderPort {
    * @param ref MR `project!iid` composite key (the `mrReportsDir` encoding input).
    * @returns `{ findings, verdict, revision }` or null when absent/unreadable.
    */
-  protected _readDiskReview(
-    ref: string
-  ): { findings: MrDetail['findings']; verdict: string; revision: number } | null {
+  protected _readDiskReview(ref: string): {
+    findings: MrDetail['findings'];
+    verdict: string;
+    revision: number;
+    role: MrCard['role'];
+  } | null {
     try {
       const file = join(mrReportsDir(this._stateDir, ref), 'review.json');
       if (!existsSync(file)) return null;
@@ -360,13 +452,19 @@ export class BoardProviderReal extends BoardProviderPort {
         verdict?: unknown;
         findings?: unknown;
         revision?: unknown;
+        role?: unknown;
       };
       const findings = Array.isArray(parsed.findings)
         ? (parsed.findings as MrDetail['findings'])
         : [];
       const verdict = typeof parsed.verdict === 'string' ? parsed.verdict : '';
       const revision = typeof parsed.revision === 'number' ? parsed.revision : 0;
-      return { findings, verdict, revision };
+      const role = (
+        parsed.role === 'author' || parsed.role === 'reviewer' || parsed.role === 'mentioned'
+          ? parsed.role
+          : null
+      ) as MrCard['role'];
+      return { findings, verdict, revision, role };
     } catch (cause) {
       logger.warn('[BoardProviderReal#_readDiskReview] [reading → degraded]', {
         ref,

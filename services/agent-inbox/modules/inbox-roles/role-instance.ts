@@ -1,9 +1,9 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-124
+// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143
 
 import { join, dirname } from 'node:path';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { logger } from '#logger';
 import { buildNodePrompt } from '../../../ai-kit/compile.ts';
 import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
@@ -23,8 +23,9 @@ import type {
   EffectNode,
   ParallelNode,
   ParallelSessionSpec,
+  ChangesetFile,
 } from './role-node.ts';
-import type { VcsInboxPort, MrContext } from '../inbox-core/vcs-inbox.port.ts';
+import type { VcsInboxPort, MrContext, Discussion } from '../inbox-core/vcs-inbox.port.ts';
 import type {
   OpenCodePort,
   PromptOpts,
@@ -40,6 +41,14 @@ import { OutcomeClassifier } from './outcome-classifier.ts';
 import type { ClassifiedOutcome, RemediationAction } from './outcome-classifier.ts';
 import { EffectExecutor } from './effect-executor.ts';
 import type { ProposedAction } from './effect-executor.ts';
+import { DebounceTracker } from './mr-watch.ts';
+import {
+  classifyThreadSignals,
+  decideThreadAction,
+  type ThreadSignalVerdict,
+  type ThreadDecision,
+  type MrDiffContext,
+} from './thread-signal-classifier.ts';
 import {
   recordPhaseTiming,
   recordToolTrace,
@@ -191,6 +200,118 @@ function _outputContract(schema: unknown): string {
     .map(([key, prop]) => `"${key}": ${_exampleForProp(prop)}`)
     .join(', ');
   return `\n\n### Output contract\nInvestigate with the tools first. Then the FINAL message of your turn must be EXACTLY ONE fenced json code block and NOTHING after it, matching this shape:\n\`\`\`json\n{ ${shape} }\n\`\`\``;
+}
+
+/**
+ * @purpose Gate ids whose PASS marks a completed synthesis — the trigger for promoting
+ *   `lastReviewedHeadSha` (SV-21).
+ * @invariant Owned by `reviewer.role.ts` (TSK-113); not a node-level flag — single consumer today.
+ */
+const SYNTHESIS_GATE_IDS = new Set(['gate_review_synthesis', 'gate_delta_synthesis']);
+
+/**
+ * @purpose Gate id whose PASS triggers SV-22 autonomous thread resolution (D-133), bypassing
+ *   operator approval for rules (a)-(d); a dispute (rule e) still escalates via `node_ask`.
+ * @invariant Owned by `reviewer.role.ts` (TSK-142); single consumer today.
+ */
+const THREAD_TRIAGE_GATE_ID = 'gate_triage';
+
+/**
+ * @purpose Artifact key `_resolveThreadTriageAutonomously` stores per-thread SV-22 signals under —
+ *   read back by `_executeAsk` (a later node) to feed the SV-24 escalation gate.
+ * @invariant Fixed key, not `${node.id}_...` — producer runs at `gate_triage`, consumer runs at
+ *   `node_ask`; a node-id-scoped key would never be found by the reader.
+ */
+const THREAD_ESCALATION_SIGNALS_KEY = 'thread_triage_escalation_signals';
+
+/**
+ * @purpose SV-24 closed trigger list (D-135) — nothing outside these four ever escalates to the operator.
+ */
+export type EscalationTrigger =
+  | 'new_findings'
+  | 'dispute'
+  | 'error_severity'
+  | 'ambiguous_classification';
+
+/**
+ * @purpose Aggregated review-outcome facts `shouldEscalateToOperator` needs, decoupled from the raw
+ *   synth/triage artifact shapes so the gate stays a pure function over primitives.
+ * @invariant `findings` reuses `_extractFindings()`'s shape — no second finding-extraction path.
+ */
+export type ReviewOutcome = {
+  /** @purpose Findings from this pass's synthesis (full or delta review) | @invariant Empty on a pure thread-triage pass (no synthesis ran this pass) */
+  findings: ReadonlyArray<{ severity: string }>;
+  /** @purpose Count of open threads the triage session itself could not classify unambiguously (SV-24 trigger 4) */
+  ambiguousThreadCount: number;
+};
+
+/**
+ * @purpose One open thread's SV-22 decision, paired with its origin thread — lets a dispute be
+ *   materialized into a summary without re-deriving it.
+ */
+export type ThreadEscalationSignal = {
+  /** @purpose SV-22 decision for this thread */
+  decision: ThreadDecision;
+  /** @purpose Originating discussion | @invariant Read further only when `decision.kind === 'dispute'` */
+  thread: Discussion;
+  /** @purpose True when the triage session's own per-thread `status` reads as inconclusive (SV-24 trigger 4) */
+  ambiguous: boolean;
+};
+
+/**
+ * @purpose Result of the SV-24 closed-trigger-list gate: either nothing to escalate (SV-23
+ *   auto-approve applies) or exactly one named trigger fired.
+ */
+export type EscalationVerdict =
+  | { escalate: false }
+  | { escalate: true; trigger: Exclude<EscalationTrigger, 'dispute'> }
+  | { escalate: true; trigger: 'dispute'; disputedThread: Discussion };
+
+/**
+ * @purpose Operator-facing dispute summary (SV-24 trigger 2) — finding, author's argument, code
+ *   context, and assistant recommendation, not just a disputed flag.
+ */
+export type DisputeSummary = {
+  /** @purpose The original finding text (thread's first note) */
+  finding: string;
+  /** @purpose The MR author's disagreement argument (thread's last author note) */
+  authorArgument: string;
+  /** @purpose A few lines of code around the thread's location, when a worktree is available | @invariant Absent when the thread is file-less or the worktree can't be read */
+  codeSnippet?: string;
+  /** @purpose Assistant's suggested next step for the operator */
+  recommendation: string;
+};
+
+/**
+ * @purpose SV-24 (D-135) gate: decides whether a pass must escalate, against a closed list of 4
+ *   triggers — replaces the old unconditional escalation.
+ * @invariant Check order: dispute always wins (richest content); `error_severity` and
+ *   `ambiguous_classification` follow; `new_findings` (weakest signal) is checked last.
+ * @param reviewOutcome Findings + ambiguous-thread count from this pass.
+ * @param threadSignals Per-thread SV-22 decisions from the same pass (empty on a pure synthesis pass).
+ * @returns `{escalate:false}` when the closed trigger list is empty (SV-23 auto-approve applies),
+ *   otherwise the fired trigger.
+ */
+export function shouldEscalateToOperator(
+  reviewOutcome: ReviewOutcome,
+  threadSignals: ThreadEscalationSignal[]
+): EscalationVerdict {
+  const dispute = threadSignals.find((signal) => signal.decision.kind === 'dispute');
+  if (dispute) return { escalate: true, trigger: 'dispute', disputedThread: dispute.thread };
+
+  if (reviewOutcome.findings.some((finding) => finding.severity === 'error')) {
+    return { escalate: true, trigger: 'error_severity' };
+  }
+
+  if (reviewOutcome.ambiguousThreadCount > 0) {
+    return { escalate: true, trigger: 'ambiguous_classification' };
+  }
+
+  if (reviewOutcome.findings.length > 0) {
+    return { escalate: true, trigger: 'new_findings' };
+  }
+
+  return { escalate: false };
 }
 
 /**
@@ -973,6 +1094,15 @@ export class RoleInstance {
     const edge = this._resolveEdge(node.id, condition);
 
     if (result.pass) {
+      this._promoteReviewedHead(node, ctx);
+
+      // SV-22 (D-133): deterministic thread decisions (resolve/react/reply) dispatch here,
+      // autonomously, ahead of the ordinary edge-follow below — a dispute is left for node_ask's
+      // pre-existing operator escalation (unchanged edge), TSK-143 owns replacing it with awaitingMe.
+      if (node.id === THREAD_TRIAGE_GATE_ID) {
+        await this._resolveThreadTriageAutonomously(node, ctx);
+      }
+
       // Just transition — any FS materialization a gate performs already ran inside verify()
       if (edge) {
         this.currentNode = edge.to;
@@ -1004,18 +1134,209 @@ export class RoleInstance {
   }
 
   /**
-   * @purpose Execute an ask node — pause and wait for operator.
+   * @purpose Promote `lastReviewedHeadSha` to the current head once a synthesis gate passes (SV-21).
+   * @invariant `promoteReviewedHeadSha` (TSK-109) only promotes an already-set `candidateHeadSha`;
+   *   this method sets it first so the unchanged promotion logic has a value to act on.
+   * @invariant Only `SYNTHESIS_GATE_IDS` trigger promotion; every other passing gate is a no-op.
+   * @param node Gate node that just passed.
+   * @param ctx Node context — needs `ctx.store` and `ctx.artifacts.headSha`.
+   * @sideEffect Registry: writes `candidateHeadSha`, promotes to `lastReviewedHeadSha`, persists to disk.
+   */
+  protected _promoteReviewedHead(node: GateNode, ctx: NodeContext): void {
+    if (!SYNTHESIS_GATE_IDS.has(node.id)) return;
+    const headSha = ctx.artifacts['headSha'] as string | undefined;
+    if (!headSha || !ctx.store) return;
+
+    try {
+      const registry = ctx.store.loadRegistry();
+      const entry = registry.entries[this.mr];
+      if (!entry) return;
+
+      entry.candidateHeadSha = headSha;
+      ctx.store.promoteReviewedHeadSha(this.mr);
+      ctx.store.saveRegistry();
+
+      logger.info('[RoleInstance#_promoteReviewedHead] [synthesis → promoted]', {
+        instance: this.id,
+        mr: this.mr,
+        node: node.id,
+        headSha,
+      });
+    } catch (cause) {
+      logger.warn('[RoleInstance#_promoteReviewedHead] [synthesis → degraded]', {
+        instance: this.id,
+        mr: this.mr,
+        node: node.id,
+        error: String(cause),
+      });
+    }
+  }
+
+  /**
+   * @purpose SV-22 autonomous pass (D-133): classify every open thread I own and dispatch the
+   *   deterministic decision via the SAME `EffectExecutor` as `node_effect`, same dry-run mode.
+   * @invariant `skip`/`dispute` add nothing to the batch — a dispute is left for the pre-existing
+   *   `node_ask` escalation (TSK-143 owns a dedicated awaitingMe transition).
+   * @invariant Degrades to a no-op on absent `ctx.vcs`/`ctx.store` or a classification failure —
+   *   never resolves anything without a real, successful pass.
+   * @param node The `gate_triage` node that just passed.
+   * @param ctx Node context — reads `node_thread_triage`/`changesetFiles`/`worktreePath`.
+   * @returns Promise that resolves once the pass completes (or degrades) — no data to report.
+   * @sideEffect Network: `getDiscussions`/`getMyLogin` reads, then `EffectExecutor`'s
+   *   react/resolve/reply calls (or their DRY-RUN journal entries).
+   */
+  protected async _resolveThreadTriageAutonomously(
+    node: GateNode,
+    ctx: NodeContext
+  ): Promise<void> {
+    if (!ctx.vcs || !ctx.store) return;
+
+    const triage = ctx.artifacts['node_thread_triage'] as { threads?: unknown[] } | undefined;
+    if (!triage?.threads?.length) return;
+
+    try {
+      const [discussions, myLogin] = await Promise.all([
+        ctx.vcs.getDiscussions(this.mr, { my: true }),
+        ctx.vcs.getMyLogin(),
+      ]);
+
+      const changesetFiles = (ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined) ?? [];
+      const mrDiff: MrDiffContext = {
+        changedFiles: new Set(changesetFiles.map((f) => f.path)),
+        worktreePath: ctx.artifacts['worktreePath'] as string | undefined,
+        authorLogin: ctx.mr.author,
+      };
+
+      const debounce = new DebounceTracker(ctx.store.getStateDir());
+      const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+      const quietPeriodElapsed = debounce.shouldTriggerAnalysis(ref, new Date().toISOString());
+
+      const actions: ProposedAction[] = [];
+      const threadSignals: ThreadEscalationSignal[] = [];
+
+      // invariant: `disputed`/`ambiguous` are read from node_thread_triage's own per-thread
+      // classification (matched by discussion id), never recomputed here
+      for (const thread of discussions) {
+        const triageEntry = triage.threads?.find(
+          (t) => (t as { id?: string })?.id === thread.id
+        ) as { disputed?: boolean; status?: string } | undefined;
+
+        const verdict: ThreadSignalVerdict = {
+          ...classifyThreadSignals(thread, mrDiff, myLogin),
+          disputed: triageEntry?.disputed === true || triageEntry?.status === 'disagree',
+          quietPeriodElapsed,
+        };
+
+        const decision = decideThreadAction(verdict);
+        this._appendThreadDecisionActions(actions, thread, decision);
+        threadSignals.push({
+          decision,
+          thread,
+          ambiguous: triageEntry?.status === 'ambiguous' || triageEntry?.status === 'unclear',
+        });
+      }
+
+      // SV-24 (D-135): persisted for `_executeAsk`'s escalation gate — this pass may run at
+      // gate_triage, several nodes before node_ask actually reads it back.
+      this._artifacts[THREAD_ESCALATION_SIGNALS_KEY] = threadSignals;
+
+      if (actions.length > 0) {
+        const executor = new EffectExecutor({
+          vcs: ctx.vcs,
+          store: ctx.store,
+          dryRun: this._dryRun,
+        });
+        const result = await executor.execute(
+          { mr: this.mr, role: this.role, nodeId: node.id },
+          actions
+        );
+        this._artifacts[`${node.id}_autonomous_result`] = result;
+      }
+    } catch (cause) {
+      logger.warn('[RoleInstance#_resolveThreadTriageAutonomously] [resolving → degraded]', {
+        instance: this.id,
+        node: node.id,
+        error: String(cause),
+      });
+    }
+  }
+
+  /**
+   * @purpose Translate one thread's `ThreadDecision` into the `ProposedAction`s `EffectExecutor`
+   *   understands — reuses `ReactAction`/`ReplyAction`/`ResolveAction` as-is (no new effect kinds).
+   * @param actions Batch accumulator — actions are pushed in dispatch order.
+   * @param thread Discussion the decision was made for.
+   * @param decision Outcome of `decideThreadAction` for this thread.
+   */
+  protected _appendThreadDecisionActions(
+    actions: ProposedAction[],
+    thread: Discussion,
+    decision: ThreadDecision
+  ): void {
+    switch (decision.kind) {
+      case 'resolve_silently':
+        actions.push({
+          type: 'reply',
+          discussionId: thread.id,
+          body: 'Automated check: commit + code re-read confirm this is fixed. Resolving.',
+        });
+        actions.push({ type: 'resolve', discussionId: thread.id, resolve: true });
+        break;
+      case 'react_then_resolve': {
+        const lastNote = thread.notes[thread.notes.length - 1];
+        if (lastNote) actions.push({ type: 'react', commentId: lastNote.id, emoji: '👍' });
+        actions.push({ type: 'resolve', discussionId: thread.id, resolve: true });
+        break;
+      }
+      case 'reply_not_done':
+        actions.push({
+          type: 'reply',
+          discussionId: thread.id,
+          body: 'Automated check: no fix found for this yet after the quiet period. Still open.',
+        });
+        break;
+      case 'skip':
+      case 'dispute':
+        break;
+    }
+  }
+
+  /**
+   * @purpose Execute an ask node — apply the SV-24 escalation gate; auto-approve to `done` on an
+   *   empty trigger list (SV-23), else pause for the operator.
    * @param node Current ask node being executed.
    * @param ctx Node context with MR data and artifacts.
-   * @returns Promise that resolves when the question is posed.
+   * @returns Promise that resolves when the question is posed (or the auto-approve pass completes).
    */
   protected async _executeAsk(node: AskNode, ctx: NodeContext): Promise<void> {
+    const threadSignals =
+      (this._artifacts[THREAD_ESCALATION_SIGNALS_KEY] as ThreadEscalationSignal[] | undefined) ??
+      [];
+    const reviewOutcome: ReviewOutcome = {
+      findings: this._extractFindings(),
+      ambiguousThreadCount: threadSignals.filter((signal) => signal.ambiguous).length,
+    };
+    const verdict = shouldEscalateToOperator(reviewOutcome, threadSignals);
+
+    // #region START_AUTO_APPROVE_ON_CLARITY — SV-23/D-134: closed trigger list empty → autonomous
+    // approve, bypass the operator entirely. Degrades to the ordinary ask below when vcs/store is
+    // absent or the dispatch itself fails — never strands the instance without a real outcome.
+    if (!verdict.escalate && (await this._dispatchAutonomousApprove(node, ctx))) {
+      return;
+    }
+    // #endregion END_AUTO_APPROVE_ON_CLARITY
+
     this.state = 'awaiting_operator';
     this._askNodeId = node.id;
     this._answer = null;
 
-    // Store the question in artifacts for dashboard display
-    this._artifacts[`${node.id}_question`] = node.question(ctx);
+    // Store the question in artifacts for dashboard display — SV-24 trigger 2 (dispute) carries a
+    // summary alongside the flag, not just a bare marker.
+    const question = node.question(ctx);
+    this._artifacts[`${node.id}_question`] =
+      verdict.escalate && verdict.trigger === 'dispute'
+        ? { ...question, disputeSummary: this._buildDisputeSummary(verdict.disputedThread, ctx) }
+        : question;
 
     // Close any active session from previous nodes — ask node has no LLM session
     await this._closeActiveSession();
@@ -1023,7 +1344,91 @@ export class RoleInstance {
     logger.info('[RoleInstance#_executeAsk] [executing → awaiting]', {
       instance: this.id,
       node: node.id,
+      trigger: verdict.escalate ? verdict.trigger : undefined,
     });
+  }
+
+  /**
+   * @purpose SV-23 (D-134): dispatch an autonomous `ApproveAction` through the same `EffectExecutor`
+   *   (same dry-run mode) as SV-22 thread resolution, then transition straight to `done`.
+   * @invariant Degrades to `false` (caller falls back to the ask) on absent `ctx.vcs`/`ctx.store`
+   *   or a dispatch failure — never claims an approve that didn't happen.
+   * @param node The `node_ask` node this pass would otherwise have escalated to.
+   * @param ctx Node context — needs `ctx.vcs`/`ctx.store`.
+   * @returns True when the auto-approve pass completed and the instance is now `done`.
+   * @sideEffect Network: `EffectExecutor`'s vcs-approve call (or its DRY-RUN journal entry).
+   */
+  protected async _dispatchAutonomousApprove(node: AskNode, ctx: NodeContext): Promise<boolean> {
+    if (!ctx.vcs || !ctx.store) return false;
+
+    try {
+      const executor = new EffectExecutor({ vcs: ctx.vcs, store: ctx.store, dryRun: this._dryRun });
+      const result = await executor.execute({ mr: this.mr, role: this.role, nodeId: node.id }, [
+        { type: 'approve' },
+      ]);
+      this._artifacts[`${node.id}_autonomous_result`] = result;
+      this.currentNode = 'done';
+      this.state = 'done';
+
+      logger.info('[RoleInstance#_dispatchAutonomousApprove] [executing → done]', {
+        instance: this.id,
+        node: node.id,
+      });
+      return true;
+    } catch (cause) {
+      logger.warn('[RoleInstance#_dispatchAutonomousApprove] [executing → degraded]', {
+        instance: this.id,
+        node: node.id,
+        error: String(cause),
+      });
+      return false;
+    }
+  }
+
+  /**
+   * @purpose Materialize the SV-24 trigger-2 dispute summary (finding/author argument/code/
+   *   recommendation) so the ask artifact carries substance, not just a disputed flag.
+   * @param thread The disputed discussion.
+   * @param ctx Node context — used for `ctx.mr.author` and the worktree code-snippet read.
+   * @returns Dispute summary for display at the ask node.
+   */
+  protected _buildDisputeSummary(thread: Discussion, ctx: NodeContext): DisputeSummary {
+    const authorNote = [...thread.notes].reverse().find((note) => note.username === ctx.mr.author);
+
+    return {
+      finding: thread.body,
+      authorArgument: authorNote?.body ?? '(автор не ответил в треде)',
+      codeSnippet: this._readDisputeCodeSnippet(thread, ctx),
+      recommendation:
+        'Сверить довод автора с находкой и решить: закрыть тред вручную или настоять на исправлении.',
+    };
+  }
+
+  /**
+   * @purpose Read a few lines of code around a disputed thread's location, for the dispute summary.
+   * @invariant Degrades to `undefined` on a file-less thread or an unreadable worktree — never
+   *   blocks the dispute summary on a missing code snippet.
+   * @param thread The disputed discussion.
+   * @param ctx Node context — supplies `worktreePath`.
+   * @returns A short code snippet, or undefined when unavailable.
+   * @sideEffect FS: reads `thread.file` under `ctx.artifacts.worktreePath`.
+   */
+  protected _readDisputeCodeSnippet(thread: Discussion, ctx: NodeContext): string | undefined {
+    const worktreePath = ctx.artifacts['worktreePath'] as string | undefined;
+    if (!worktreePath || !thread.file || thread.line === undefined) return undefined;
+
+    try {
+      const lines = readFileSync(join(worktreePath, thread.file), 'utf-8').split('\n');
+      const start = Math.max(0, thread.line - 2);
+      const end = Math.min(lines.length, thread.line + 1);
+      return lines.slice(start, end).join('\n');
+    } catch (cause) {
+      logger.warn('[RoleInstance#_readDisputeCodeSnippet] [reading → degraded]', {
+        file: thread.file,
+        error: String(cause),
+      });
+      return undefined;
+    }
   }
 
   /**

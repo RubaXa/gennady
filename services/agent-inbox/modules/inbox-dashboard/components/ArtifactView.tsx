@@ -3,8 +3,8 @@
 // @tasks: TSK-107
 
 import { useEffect, useId, useState } from 'react';
-// @ts-expect-error D-007: ai/inspector/web/markdown.js has no .d.ts (reused as-is, not rewritten); runtime import is unaffected.
-import { renderMarkdown } from '../../../../../ai/inspector/web/markdown.js';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import type { ArtifactKind } from '../../inbox-api/types.ts';
 
 /** @purpose One fenced code block extracted from raw markdown, kept separate from prose so it survives the lite renderer untouched. */
@@ -146,16 +146,25 @@ export function ArtifactView(props: { content: string; kind: ArtifactKind }) {
     return <FencedBlockView block={{ lang: 'mermaid', body: content }} />;
   }
 
-  // kind === 'md': split fenced blocks (mermaid or otherwise) from prose before handing prose to the reused lite renderer.
+  // kind === 'md': split fenced blocks (mermaid or otherwise) from prose before handing prose to
+  // `marked` — headings/tables/blockquotes/links render properly (GitHub-style via the typography
+  // plugin's `prose`/`prose-invert` classes), fenced blocks stay on their own dedicated renderers.
   const segments = splitFencedBlocks(content);
   return (
-    <div className="prose-sm max-w-none break-words text-[13px] leading-relaxed [&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_code]:rounded [&_code]:bg-secondary/60 [&_code]:break-all [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[12px]">
+    <div className="prose prose-sm prose-invert max-w-none break-words [&_code]:break-all">
       {segments.map((segment, idx) =>
         'fenced' in segment ? (
           <FencedBlockView key={idx} block={segment.fenced} />
         ) : (
-          // eslint-disable-next-line react/no-danger -- D-007: reused renderer already escapes text before injecting markup
-          <div key={idx} dangerouslySetInnerHTML={{ __html: renderMarkdown(segment.prose) }} />
+          // eslint-disable-next-line react/no-danger -- D-115 (inbox-dashboard.spec.md): marked does
+          // NOT escape/sanitize by default (source prose can echo untrusted MR content, AX_UNTRUSTED_MR_CONTENT)
+          // — DOMPurify.sanitize runs on marked's output before injection, closing the actual XSS surface.
+          <div
+            key={idx}
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(marked.parse(segment.prose, { async: false })),
+            }}
+          />
         )
       )}
     </div>

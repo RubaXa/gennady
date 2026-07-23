@@ -1,6 +1,7 @@
-// @file: MrRouter — POST /api/mr/:id/assign, POST /api/mr/:id/action, GET /api/mr/:id/report handlers.
+// @file: MrRouter — POST /api/mr/:id/assign, POST /api/mr/:id/action, GET /api/mr/:id/report,
+//   POST /api/mr/:id/copy-fix-task handlers.
 // @consumers: HttpServer
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-145
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';
@@ -11,6 +12,8 @@ import { sendJson, sendError, parseBody } from '../http-helpers.ts';
 const MR_ASSIGN_RE = /^\/api\/mr\/(.+)\/assign$/;
 const MR_ACTION_RE = /^\/api\/mr\/(.+)\/action$/;
 const MR_REPORT_RE = /^\/api\/mr\/(.+)\/report$/;
+/** @purpose Route for SV-14: record one "Copy fix task" click, independent of executeAction's live-instance requirement (TSK-145). */
+const MR_COPY_FIX_TASK_RE = /^\/api\/mr\/(.+)\/copy-fix-task$/;
 
 /** @purpose Closed set of valid OperatorQuestion answers — EffectExecutor dispatches by this value. */
 const VALID_ACTION_CHOICES: ReadonlySet<ActionChoice> = new Set([
@@ -44,7 +47,10 @@ export class MrRouter {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const pathname = url.pathname;
     return (
-      (req.method === 'POST' && (MR_ASSIGN_RE.test(pathname) || MR_ACTION_RE.test(pathname))) ||
+      (req.method === 'POST' &&
+        (MR_ASSIGN_RE.test(pathname) ||
+          MR_ACTION_RE.test(pathname) ||
+          MR_COPY_FIX_TASK_RE.test(pathname))) ||
       (req.method === 'GET' && MR_REPORT_RE.test(pathname))
     );
   }
@@ -66,6 +72,8 @@ export class MrRouter {
         await this._handleAction(req, res, pathname);
       } else if (req.method === 'GET' && MR_REPORT_RE.test(pathname)) {
         await this._handleReport(res, pathname);
+      } else if (req.method === 'POST' && MR_COPY_FIX_TASK_RE.test(pathname)) {
+        await this._handleCopyFixTask(res, pathname);
       }
     } catch (cause) {
       sendError(res, cause);
@@ -178,5 +186,23 @@ export class MrRouter {
     }
 
     sendJson(res, 200, { ok: true, ...report });
+  }
+
+  /**
+   * @purpose Handle POST /api/mr/:id/copy-fix-task — record one "Copy fix task" click (SV-14, TSK-145).
+   * @param res Server response.
+   * @param pathname URL pathname.
+   * @returns Promise that resolves when the response is sent.
+   */
+  protected async _handleCopyFixTask(res: ServerResponse, pathname: string): Promise<void> {
+    const mrId = this._extractMrId(pathname, MR_COPY_FIX_TASK_RE);
+    const result = await this._provider.recordFixTaskCopy(mrId);
+
+    if (!result) {
+      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `MR not found: ${mrId}` });
+      return;
+    }
+
+    sendJson(res, 200, { ok: true, ...result });
   }
 }

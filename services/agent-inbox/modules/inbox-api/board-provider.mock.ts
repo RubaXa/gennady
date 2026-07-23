@@ -1,6 +1,6 @@
 // @file: BoardProviderMock — in-memory mock implementation of BoardProviderPort for dev/e2e.
 // @consumers: inbox-api (DI), inbox-dashboard (dev), e2e tests
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-145
 
 import { BoardProviderPort } from './board-provider.port.ts';
 import type {
@@ -10,8 +10,17 @@ import type {
   MrDetail,
   ArtifactRef,
   ArtifactContent,
+  FixTaskCopyResult,
+  FixTaskCopySnapshot,
 } from './types.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
+import {
+  computeFindingSignatures,
+  diffFindingSignatures,
+} from '../inbox-core/finding-signature.ts';
+
+/** @purpose Audit event name recorded on each "Copy fix task" click (SV-10, TSK-145). */
+const COPIED_FIX_TASK_EVENT = 'copied_fix_task';
 
 /** @purpose One seeded artifact entry — ArtifactRef metadata plus its raw content. */
 type MockArtifact = ArtifactRef & { content: string };
@@ -209,6 +218,54 @@ export class BoardProviderMock extends BoardProviderPort {
       // fresh MR with no disk review yet (D-99, mirrors BoardProviderReal's absent-file default).
       revision: 0,
     };
+  }
+
+  /**
+   * @param mrId MR identifier (webUrl or project!iid).
+   * @returns FixTaskCopyResult on success, null if MR not found.
+   * @see {BoardProviderPort#recordFixTaskCopy}
+   */
+  async recordFixTaskCopy(mrId: string): Promise<FixTaskCopyResult | null> {
+    const state = this._findMr(mrId);
+    if (!state) return null;
+
+    const signatures = computeFindingSignatures(state.findings);
+    const priorEvents = state.audit.filter((entry) => entry.event === COPIED_FIX_TASK_EVENT);
+    const lastEvent = priorEvents.at(-1);
+    const isFirst = !lastEvent;
+    const delta = lastEvent
+      ? diffFindingSignatures(this._parseFixTaskCopySnapshot(lastEvent).signatures, signatures)
+      : null;
+
+    state.audit.push({
+      ts: new Date().toISOString(),
+      mr: mrId,
+      role: state.assignedRole ?? 'operator',
+      event: COPIED_FIX_TASK_EVENT,
+      detail: JSON.stringify({ signatures } satisfies FixTaskCopySnapshot),
+    });
+
+    return {
+      isFirst,
+      priorCopyCount: priorEvents.length,
+      lastCopiedAt: lastEvent?.ts ?? null,
+      delta,
+    };
+  }
+
+  /**
+   * @purpose Parse a `copied_fix_task` audit event's `detail` JSON back into its signature snapshot.
+   * @invariant A malformed/missing detail degrades to an empty snapshot rather than throwing.
+   * @param entry Audit entry with `event === 'copied_fix_task'`.
+   * @returns The snapshot recorded at that click, or `{ signatures: [] }` on parse failure.
+   */
+  protected _parseFixTaskCopySnapshot(entry: AuditEntry): FixTaskCopySnapshot {
+    try {
+      const parsed = JSON.parse(entry.detail ?? '{}') as Partial<FixTaskCopySnapshot>;
+      return { signatures: Array.isArray(parsed.signatures) ? parsed.signatures : [] };
+    } catch {
+      return { signatures: [] };
+    }
   }
 
   /**
