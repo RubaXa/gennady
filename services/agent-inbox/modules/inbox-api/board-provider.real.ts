@@ -1,6 +1,6 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-117, TSK-122, TSK-131, TSK-145
+// @tasks: TSK-117, TSK-122, TSK-131, TSK-145, TSK-155
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,6 +28,8 @@ import {
   computeFindingSignatures,
   diffFindingSignatures,
 } from '../inbox-core/finding-signature.ts';
+import { deriveReviewProgress } from '../inbox-roles/review-progress.ts';
+import { phaseTimingsPath, type PhaseTimingEntry } from '../inbox-roles/phase-telemetry.ts';
 
 /** @purpose Audit event name recorded on each "Copy fix task" click (SV-10, TSK-145). */
 const COPIED_FIX_TASK_EVENT = 'copied_fix_task';
@@ -183,6 +185,40 @@ export class BoardProviderReal extends BoardProviderPort {
   }
 
   /**
+   * @purpose Read the phase-timings JSONL log and filter entries belonging to one MR — the raw
+   *   input `deriveReviewProgress` needs to compute `elapsedMs`/`startedAt` (TSK-155).
+   * @invariant Best-effort: missing/unreadable log or malformed lines degrade to `[]`, mirroring
+   *   `phase-telemetry.ts`'s own read helpers — telemetry is diagnostic-only and must never break
+   *   board rendering.
+   * @param mr MR web URL, matching `PhaseTimingEntry.mr` (the same key `RoleInstance` records under).
+   * @returns Matching entries, unsorted.
+   */
+  protected _readPhaseEntriesForMr(mr: string): PhaseTimingEntry[] {
+    const filePath = phaseTimingsPath(this._stateDir);
+    if (!existsSync(filePath)) return [];
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      const entries: PhaseTimingEntry[] = [];
+      for (const line of content.split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          const entry = JSON.parse(line) as PhaseTimingEntry;
+          if (entry.mr === mr) entries.push(entry);
+        } catch {
+          // skip malformed line — one bad line never blocks the rest
+        }
+      }
+      return entries;
+    } catch (cause) {
+      logger.warn('[BoardProviderReal#_readPhaseEntriesForMr] [reading → degraded]', {
+        mr,
+        error: String(cause),
+      });
+      return [];
+    }
+  }
+
+  /**
    * @returns Board data built from live RoleScheduler instance states.
    * @see {BoardProviderPort#getBoard}
    */
@@ -209,6 +245,19 @@ export class BoardProviderReal extends BoardProviderPort {
 
       const polled = this._scheduler.getPolledMr(snap.mr);
       const card = polled ? actionableToMrCard(polled, snap.role) : snapshotToMrCard(snap);
+
+      // TSK-155: live progress informer — only for MRs with a resolvable RoleInstance (has
+      // currentNode/checkpoint artifacts to derive from); a snapshot alone is not enough
+      // (RoleInstanceSnapshot carries no `artifacts`, see `RoleInstance#getCheckpoint`).
+      const instance = this._scheduler.findInstance(snap.mr);
+      if (instance) {
+        card.progress = deriveReviewProgress({
+          currentNode: instance.currentNode,
+          artifacts: instance.getCheckpoint().artifacts,
+          phaseEntries: this._readPhaseEntriesForMr(snap.mr),
+        });
+      }
+
       const lane = stateToLane(snap.state);
       roleLanes[lane].push(card);
       assignedMrs.add(snap.mr);

@@ -66,6 +66,7 @@
 | TSK-151 | DONE   | —                                     | vcs-worktree: выровнять 5 тестов под layout TSK-131 (STALE-TEST, 1 корень)                                                                        |
 | TSK-152 | DONE   | —                                     | inbox-api+dashboard: chat-тесты под format/same-origin контракт (STALE-TEST)                                                                      |
 | TSK-153 | DONE   | —                                     | inbox-roles+ai-kit: telemetry-clock DI + reviewer-seed + snapshot regen (test-side)                                                               |
+| TSK-155 | DONE   | —                                     | inbox-roles+api+dashboard: прогресс-информер ревью на карточке (стадия/дорожки M из N/таймер) — product-readiness, синергия с TSK-123             |
 | TSK-154 | DONE   | —                                     | mr-stats: герметичность тестов + корректный skip-gating сетевых кейсов                                                                            |
 
 ## Test-hardening тир (adaptive, 2026-07-23 — довершение D-212)

@@ -1,10 +1,13 @@
 // @file: Shared types for inbox-api module — BoardData, RoleView, MrCard, MrDetail, AssignBody, ActionBody.
 // @consumers: inbox-api routers, http-server, board-provider port, inbox-dashboard
-// @tasks: TSK-106, TSK-145
+// @tasks: TSK-106, TSK-145, TSK-155
 
 import type { ActionableMr } from '../inbox-mocks/mr.mock.ts';
 import type { AuditEntry } from '../inbox-core/audit-log.ts';
 import type { FindingSignature, FindingSignatureDiff } from '../inbox-core/finding-signature.ts';
+import type { ReviewProgress } from '../inbox-roles/review-progress.ts';
+
+export type { ReviewProgress };
 
 /** @purpose A role on the serve dashboard with its Kanban lanes — exposed by GET /api/board. */
 export type RoleView = {
@@ -25,8 +28,8 @@ export type RoleView = {
   };
 };
 
-/** @purpose An MR card as displayed in board lanes — thin alias over ActionableMr. */
-export type MrCard = ActionableMr;
+/** @purpose An MR card as displayed in board lanes — ActionableMr plus an optional live review-progress informer (TSK-155). */
+export type MrCard = ActionableMr & { progress?: ReviewProgress };
 
 /** @purpose Complete board state returned by GET /api/board. */
 export type BoardData = {
