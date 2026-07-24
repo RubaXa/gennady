@@ -44,25 +44,71 @@ export const setLogLevel = (level: LogLevel): void => {
   _level = level;
 };
 
+// #region START_RING_BUFFER — in-memory tail of recent lines so a running serve can surface its
+// own diagnostics (the 🐞 dashboard button) without a terminal. Console output is unchanged;
+// this only mirrors. Never persisted.
+/** @purpose Max retained lines — oldest evicted (FIFO) so a long run stays bounded. */
+const RING_CAPACITY = 1000;
+/** @purpose Recent formatted log lines, process memory only. */
+const _ring: string[] = [];
+
+/** @purpose Compact a structured detail payload for the ring, degrading gracefully. */
+function _detailToString(detail: unknown): string {
+  if (detail === undefined) return '';
+  if (detail instanceof Error) return ` ${detail.name}: ${detail.message}`;
+  try {
+    return ` ${JSON.stringify(detail)}`;
+  } catch {
+    return ' [detail]';
+  }
+}
+
+/** @purpose Append one line to the ring buffer with a level tag + ISO timestamp; never throws. */
+function _ringPush(level: LogLevel, message: string, detail: unknown): void {
+  try {
+    const line = `[${new Date().toISOString()}][${level.toUpperCase()}] ${message}${_detailToString(detail)}`;
+    _ring.push(line);
+    if (_ring.length > RING_CAPACITY) _ring.shift();
+  } catch {
+    /* logging must never break the caller */
+  }
+}
+
+/**
+ * @purpose Snapshot recent server-log lines — the `/api/diagnostics` route feeds them to the 🐞
+ *   button so it carries server-side flow diagnostics, not only the browser's.
+ */
+export const snapshotServerLog = (limit?: number): string[] => {
+  if (limit === undefined || limit >= _ring.length) return [..._ring];
+  return _ring.slice(_ring.length - limit);
+};
+
 /**
  * @purpose Logger implementation bound to the runtime console, filtered by the active log level.
- * @sideEffect Console: writes log entries to stderr via console methods.
+ * @invariant The ring captures every call regardless of `_level` — a console-suppressed line
+ *   stays retrievable via 🐞 for post-hoc diagnosis.
+ * @sideEffect Console: writes log entries to stderr via console methods. Mutates the ring buffer.
  */
 export const logger: SimpleLogger = {
   debug: (message, detail?) => {
+    _ringPush('debug', message, detail);
     if (LEVELS[_level] <= LEVELS.debug)
       console.debug(message, ...(detail !== undefined ? [detail] : []));
   },
   info: (message, detail?) => {
+    _ringPush('info', message, detail);
     if (LEVELS[_level] <= LEVELS.info)
       console.info(message, ...(detail !== undefined ? [detail] : []));
   },
   warn: (message, detail?) => {
+    _ringPush('warn', message, detail);
     if (LEVELS[_level] <= LEVELS.warn)
       console.warn(message, ...(detail !== undefined ? [detail] : []));
   },
   error: (message, detail?) => {
+    _ringPush('error', message, detail);
     if (LEVELS[_level] <= LEVELS.error)
       console.error(message, ...(detail !== undefined ? [detail] : []));
   },
 };
+// #endregion END_RING_BUFFER

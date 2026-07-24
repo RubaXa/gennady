@@ -177,6 +177,19 @@ export class BoardProviderMock extends BoardProviderPort {
   }
 
   /**
+   * @param role Role name.
+   * @param active Desired activation state.
+   * @returns Operation result — ok: true on success, ok: false if role not found.
+   * @see {BoardProviderPort#setRoleActive}
+   */
+  setRoleActive(role: string, active: boolean): { ok: boolean } {
+    const entry = this._roles.find((r) => r.name === role);
+    if (!entry) return { ok: false };
+    entry.active = active;
+    return { ok: true };
+  }
+
+  /**
    * /**
    * @param mrId MR identifier (webUrl or project!iid).
    * @param action Action payload with questionId, choice, and optional payload.

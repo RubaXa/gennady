@@ -22,7 +22,8 @@
   "types": "dist/index.d.ts",
   "imports": {
     "#snapshot-path-setup": "./snapshot-path.setup.ts",
-    "#logger": "./services/logger/logger.ts"
+    "#logger": "./services/logger/logger.ts",
+    "#utils/*": "./utils/*"
   },
   "exports": {
     ".": "./services/agent-mon/index.ts",
@@ -71,6 +72,7 @@
     "@mtcute/dispatcher": "^0.29.0",
     "@mtcute/node": "^0.28.2",
     "@opencode-ai/sdk": "^1.17.18",
+    "@playwright/cli": "^0.1.17",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.2",

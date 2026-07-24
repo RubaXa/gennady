@@ -251,6 +251,22 @@ export class BoardProviderReal extends BoardProviderPort {
   }
 
   /**
+   * @param role Role name.
+   * @param active Desired activation state.
+   * @returns Operation result — delegates to RoleEngine.activate/deactivate.
+   * @see {BoardProviderPort#setRoleActive}
+   */
+  setRoleActive(role: string, active: boolean): { ok: boolean } {
+    if (!this._engine.retrieve(role)) return { ok: false };
+    if (active) {
+      this._engine.activate(role);
+    } else {
+      this._engine.deactivate(role);
+    }
+    return { ok: true };
+  }
+
+  /**
    * @param mrId MR identifier (webUrl).
    * @param _action Action payload with questionId, choice, and optional payload.
    * @returns Operation result — finds instance and advances it past ask node.
@@ -298,14 +314,20 @@ export class BoardProviderReal extends BoardProviderPort {
       // No live/registered scheduler instance — the review was materialized by an earlier run or a
       // different process. The dashboard's job is to DISPLAY an already-persisted report, so read it
       // straight from disk instead of 404-ing (a reviewed MR must be openable after a restart).
-      const disk = this._readDiskReview(mrId);
+      // Normalize to `project!iid` first: `_readDiskReview`/`mrReportsDir` key on that form, but
+      // callers (and this method while an instance is live) also pass a full webUrl — without this
+      // the same webUrl that resolved fine mid-review silently 404s once the instance is cleaned up
+      // (live-found 2026-07-23: getReport(webUrl) 200 during review, 404 after done).
+      const parsed = parseVcsUrl(mrId);
+      const ref = parsed ? `${parsed.repository}!${parsed.iid}` : mrId;
+      const disk = this._readDiskReview(ref);
       if (!disk) return null;
-      const bang = mrId.lastIndexOf('!');
+      const bang = ref.lastIndexOf('!');
       const card = {
-        project: bang > 0 ? mrId.slice(0, bang) : '',
-        iid: bang > 0 ? Number(mrId.slice(bang + 1)) || 0 : 0,
+        project: bang > 0 ? ref.slice(0, bang) : '',
+        iid: bang > 0 ? Number(ref.slice(bang + 1)) || 0 : 0,
         webUrl: mrId,
-        title: mrId,
+        title: ref,
         description: '',
         author: '',
         reviewers: [],
@@ -323,6 +345,7 @@ export class BoardProviderReal extends BoardProviderPort {
       } as MrCard;
       logger.info('[BoardProviderReal#getReport] [no-instance → disk]', {
         mrId,
+        ref,
         findings: disk.findings.length,
         revision: disk.revision,
       });

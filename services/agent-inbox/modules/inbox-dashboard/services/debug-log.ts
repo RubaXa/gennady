@@ -10,15 +10,12 @@ const CAPACITY = 500;
 const buffer: string[] = [];
 
 /**
- * @purpose Local wall-clock timestamp `HH:MM:SS.mmm` — short and human-readable, not ISO/UTC, since
- *   a person reads these lines as plain text.
- * @returns The formatted time-of-day string.
+ * @purpose ISO-8601 UTC timestamp — matches the server logger's format so the 🐞 button can
+ *   merge-sort browser and server lines into one chronological timeline (D-113).
+ * @returns The ISO timestamp string.
  */
 function stamp(): string {
-  const d = new Date();
-  const p2 = (n: number): string => String(n).padStart(2, '0');
-  const p3 = (n: number): string => String(n).padStart(3, '0');
-  return `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}.${p3(d.getMilliseconds())}`;
+  return new Date().toISOString();
 }
 
 /**
@@ -74,6 +71,44 @@ export function safeId(id: string | null | undefined): string {
  */
 export function snapshotLogs(): { text: string; count: number } {
   return { text: buffer.join('\n'), count: buffer.length };
+}
+
+/** @purpose Parse the leading `[ISO]` timestamp of a log line to epoch ms, or NaN when absent. */
+function lineTimeMs(line: string): number {
+  const end = line.indexOf(']');
+  if (end <= 0) return NaN;
+  return Date.parse(line.slice(1, end));
+}
+
+/** @purpose Insert an origin tag right after a line's `[ISO]` prefix (prepend when untimed). */
+function injectOrigin(line: string, origin: 'CLIENT' | 'SERVER'): string {
+  const end = line.indexOf(']');
+  if (end <= 0) return `[${origin}] ${line}`;
+  return `${line.slice(0, end + 1)}[${origin}]${line.slice(end + 1)}`;
+}
+
+/**
+ * @purpose Merge client + server log lines into one origin-tagged timeline for 🐞 (D-113); both
+ *   stamp ISO UTC, so a stable sort interleaves them.
+ * @param clientLines Browser ring-buffer lines (ui/api/state/window anchors).
+ * @param serverLines Server ring-buffer lines (level-tagged trace).
+ * @returns One clipboard-ready blob: a header line, then the interleaved `[ISO][CLIENT|SERVER] …`.
+ */
+export function mergeTimeline(clientLines: string[], serverLines: string[]): string {
+  const client = clientLines.filter(Boolean);
+  const server = serverLines.filter(Boolean);
+  const tagged = [
+    ...client.map((l, i) => ({ l: injectOrigin(l, 'CLIENT'), t: lineTimeMs(l), i })),
+    ...server.map((l, i) => ({ l: injectOrigin(l, 'SERVER'), t: lineTimeMs(l), i: i + 1_000_000 })),
+  ];
+  tagged.sort((a, b) => {
+    if (Number.isNaN(a.t) && Number.isNaN(b.t)) return a.i - b.i;
+    if (Number.isNaN(a.t)) return 1;
+    if (Number.isNaN(b.t)) return -1;
+    return a.t - b.t || a.i - b.i;
+  });
+  const header = `# agent-inbox telemetry — ${client.length} client + ${server.length} server lines, merged chronologically (UTC)`;
+  return [header, ...tagged.map((x) => x.l)].join('\n');
 }
 
 // #region START_ERROR_FLAG — global unhandled-error indicator (spec §3.4), wired to a real handler

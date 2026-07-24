@@ -81,7 +81,12 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
-      reviewReport: { verdict: 'changes_requested' },
+      reviewReport: {
+        summary: 'Изменения затрагивают обработку ошибок в клиенте.',
+        verdict: 'changes_requested',
+        behavior: 'Клиент теперь возвращает явную ошибку вместо тихого игнорирования.',
+        scenarios: 'Запрос падает с сетевой ошибкой; повторный запрос после восстановления сети.',
+      },
       proposedActions: [
         { type: 'reply', body: 'Fix this', position: { file: 'a.ts', newLine: 10 } },
         { type: 'reply', body: 'General note' },
@@ -112,6 +117,106 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
       'node_synthesize should stage proposedActions'
     );
     assert.strictEqual((synth.proposedActions as unknown[]).length, 2);
+  });
+});
+
+describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)', () => {
+  /**
+   * @purpose Deterministic fixture emulation of the whole clean-review flow (no live LLM/GitLab):
+   *   3 empty lenses → synthesis with a full, findings-free reviewReport → node_ask sees an empty
+   *   SV-24 trigger list → autonomous approve → done. Locks in checkpoint 11 (auto-approve), which
+   *   until now was only ever verified live.
+   */
+  function seedCleanLenses(opencode: OpenCodeMock): void {
+    opencode.seed('node_track_review', { findings: [] });
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_synthesize', {
+      reviewReport: {
+        summary: 'No issues across the three lenses.',
+        verdict: 'approve',
+        behavior: 'Adds a null-check on the client cache path; no external behavior change.',
+        scenarios: 'Opening a chat while offline; reconnect after a dropped socket.',
+      },
+      proposedActions: [],
+    });
+  }
+
+  it('GIVEN clean synthesis (0 findings) WHEN node_ask reached THEN autonomous approve → done', async () => {
+    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/3';
+
+    const engine = new RoleEngine();
+    await engine.loadAll();
+
+    const vcs = new VcsInboxMock();
+    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
+
+    const opencode = new OpenCodeMock();
+    seedCleanLenses(opencode);
+
+    const store = makeStateStore();
+    const result = await runMrsOnce({
+      mrs: [MR],
+      dryRun: true,
+      deps: { engine, store, vcs, opencode, fetchDiffRefs: async () => undefined },
+    });
+
+    const mrResult = result.results[0];
+    assert.strictEqual(
+      mrResult.state,
+      'done',
+      'a clean verdict must NOT stop at awaiting_operator'
+    );
+    assert.strictEqual((mrResult.board as Record<string, unknown>).currentNode, 'done');
+
+    // The autonomous approve went through EffectExecutor (dry-run) and left its audit marker.
+    const audit = await store.queryAudit(MR);
+    const approve = audit.find(
+      (e) => e.event === 'effect_applied' && String(e.detail).includes('node_ask|approve:false')
+    );
+    assert.ok(approve, 'expected an effect_applied approve marker from the autonomous approve');
+  });
+
+  it('GIVEN a later lens carries an error-severity finding WHEN node_ask reached THEN escalates, NOT auto-approve (SV-24 error_severity)', async () => {
+    // Blind-spot guard: node_ask's escalation gate reads findings via _extractFindings, which must
+    // consider ALL lens artifacts — a clean first lens must not mask an error found by a later one.
+    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/4';
+
+    const engine = new RoleEngine();
+    await engine.loadAll();
+
+    const vcs = new VcsInboxMock();
+    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
+
+    const opencode = new OpenCodeMock();
+    opencode.seed('node_track_review', { findings: [] }); // first lens: clean
+    opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_code_review', {
+      findings: [{ severity: 'error', file: 'db.ts', line: 42, message: 'SQL injection' }],
+    });
+    opencode.seed('node_synthesize', {
+      reviewReport: {
+        summary: 'One blocking issue in the code-review lens.',
+        verdict: 'changes_requested',
+        behavior: 'Query built by string concat — untrusted input reaches the DB driver.',
+        scenarios: 'Any request that flows user input into the affected query.',
+      },
+      proposedActions: [],
+    });
+
+    const store = makeStateStore();
+    const result = await runMrsOnce({
+      mrs: [MR],
+      dryRun: true,
+      deps: { engine, store, vcs, opencode, fetchDiffRefs: async () => undefined },
+    });
+
+    const mrResult = result.results[0];
+    assert.strictEqual(
+      mrResult.state,
+      'awaiting_operator',
+      'an error-severity finding in ANY lens must escalate, never auto-approve'
+    );
   });
 });
 
@@ -287,7 +392,12 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
-      reviewReport: { summary: 'Изменения в логике и тестах', verdict: 'changes_requested' },
+      reviewReport: {
+        summary: 'Изменения в логике и тестах',
+        verdict: 'changes_requested',
+        behavior: 'Добавлена ветка обработки граничного случая в основной логике.',
+        scenarios: 'Вызов с пустым входом; вызов с максимально допустимым значением.',
+      },
       recommendations: [{ message: 'Добавить тест на граничный случай' }],
     });
 

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { RoleView } from '../../inbox-api/types.ts';
 import { KanbanLane } from './KanbanLane.tsx';
+import { useBoard } from '../services/board-store.tsx';
 import { cn } from '../lib/utils.ts';
 
 /**
@@ -15,6 +16,7 @@ import { cn } from '../lib/utils.ts';
 export function RoleBlock(props: { role: RoleView }) {
   const { role } = props;
   const [collapsed, setCollapsed] = useState(false);
+  const { toggleRoleActive } = useBoard();
 
   return (
     <section
@@ -39,8 +41,22 @@ export function RoleBlock(props: { role: RoleView }) {
           {role.name}
         </h2>
         <span
+          role="button"
+          tabIndex={0}
+          aria-label={`${role.active ? 'Деактивировать' : 'Активировать'} роль ${role.name} (авто-назначение)`}
+          onClick={(e) => {
+            e.stopPropagation();
+            void toggleRoleActive(role.name, !role.active);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              void toggleRoleActive(role.name, !role.active);
+            }
+          }}
           className={cn(
-            'rounded-full px-2 py-px text-[11px] font-medium',
+            'rounded-full px-2 py-px text-[11px] font-medium cursor-pointer hover:opacity-80',
             role.active ? 'bg-emerald-400/15 text-emerald-300' : 'bg-white/5 text-muted-foreground'
           )}
         >

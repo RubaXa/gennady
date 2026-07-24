@@ -2,7 +2,7 @@
 //   operator can read `<stateDir>/agent-inbox/telemetry/phase-timings.jsonl` (or `gennady inbox
 //   stats`) to see where review time goes across MRs/nodes/models.
 // @consumers: RoleInstance (_executeSession, _runLensSession), CLI `gennady inbox stats`
-// @tasks: TSK-perf
+// @tasks: TSK-perf, TSK-153
 
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -457,13 +457,18 @@ function buildRuns(entries: PhaseTimingEntry[]): PhaseRunRollup[] {
  *   totals, and the slowest phase — analytics for diagnosing review perf.
  * @param stateDir Gennady state root.
  * @param [days] Trailing window size in days (default 7).
+ * @param [nowMs] Current time in ms (injected for testability; mirrors `gcStalePhaseTimings`).
  * @returns Rollup; `entryCount: 0` and empty arrays when there is no (or no recent) data.
  */
-export function readPhaseAnalytics(stateDir: string, days: number = 7): PhaseAnalytics {
+export function readPhaseAnalytics(
+  stateDir: string,
+  days: number = 7,
+  nowMs: number = Date.now()
+): PhaseAnalytics {
   const filePath = phaseTimingsPath(stateDir);
   const all = readEntries(filePath);
 
-  const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+  const cutoffMs = nowMs - days * 24 * 60 * 60 * 1000;
   const recent = all.filter((e) => {
     const tMs = new Date(e.ts).getTime();
     return Number.isFinite(tMs) && tMs >= cutoffMs;

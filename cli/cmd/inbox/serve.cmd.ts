@@ -5,7 +5,7 @@
 // @tasks: TSK-115, TSK-121, TSK-122
 
 import { style } from '../../../shared/common/style.ts';
-import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
@@ -64,6 +64,56 @@ function parseValue(argv: string[], flag: string): string | undefined {
   if (inline) return inline.slice(flag.length + 1);
   const idx = argv.indexOf(flag);
   return idx !== -1 ? argv[idx + 1] : undefined;
+}
+
+/**
+ * @purpose Resolve run-mode's opencode base URL — attach to a running instance via its
+ *   port-scoped pid file (D-138), else the default port.
+ * @invariant Scans every `opencode-*.pid` for a live one; pass `--opencode-port` to pick
+ *   a specific instance when several are running.
+ * @param stateDir `StateStore.getStateDir()` root (where `agent-inbox/opencode-*.pid` files live).
+ * @param [explicitPort] `--opencode-port` override — skips pid-file discovery entirely when given.
+ * @returns Base URL to connect to.
+ */
+function resolveRunModeOpencodeBaseUrl(stateDir: string, explicitPort?: number): string {
+  if (explicitPort !== undefined) {
+    console.info(style.cyan(`  attaching to opencode on explicit port ${explicitPort}`));
+    return `http://localhost:${explicitPort}`;
+  }
+
+  const agentInboxDir = join(stateDir, 'agent-inbox');
+  let pidFiles: string[] = [];
+  try {
+    pidFiles = readdirSync(agentInboxDir).filter(
+      (f) => f.startsWith('opencode-') && f.endsWith('.pid')
+    );
+  } catch {
+    return 'http://localhost:4096';
+  }
+
+  for (const file of pidFiles) {
+    try {
+      const { pid, port } = JSON.parse(readFileSync(join(agentInboxDir, file), 'utf-8')) as {
+        pid: number;
+        port: number;
+      };
+      if (isOpencodePid(pid)) {
+        console.info(
+          style.cyan(
+            `  attaching to running opencode on port ${port} (pid ${pid}, from ${file}${
+              pidFiles.length > 1
+                ? ` — ${pidFiles.length} instances found, pass --opencode-port to pick another`
+                : ''
+            })`
+          )
+        );
+        return `http://localhost:${port}`;
+      }
+    } catch {
+      /* corrupted/stale pid file — try the next one */
+    }
+  }
+  return 'http://localhost:4096';
 }
 
 /**
@@ -130,9 +180,19 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
     const vcs: VcsInboxPort = mocks
       ? new VcsInboxMock()
       : new VcsInboxReal({ host: vcsHost, token: process.env.GITLAB_PERSONAL_TOKEN });
+    // gap (found live 2026-07-23, debugging an already-running `gennady inbox serve`): the
+    // opencode port is chosen dynamically at boot (bootstrap.ts) and recorded in opencode.pid —
+    // hardcoding 4096 here made run-mode unable to attach to that already-running instance for
+    // debugging a stuck MR. Read the pid file when live and reachable; fall back to 4096 otherwise
+    // (e.g. a fresh opencode serve spawned separately with the default port).
+    const opencodePortArg = parseValue(argv, '--opencode-port');
+    const opencodePort = opencodePortArg ? Number(opencodePortArg) : undefined;
+    const opencodeBaseUrl = mocks
+      ? undefined
+      : resolveRunModeOpencodeBaseUrl(store.getStateDir(), opencodePort);
     const opencode: OpenCodePort = mocks
       ? new OpenCodeMock()
-      : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: 'http://localhost:4096' });
+      : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: opencodeBaseUrl });
 
     // invariant: --mocks must stay network-free; the live default (fetchDiffRefsLive) would
     // still hit the real GitLab API otherwise
@@ -170,15 +230,20 @@ async function run(): Promise<number> {
     console.info(style.bold('gennady inbox serve'));
     console.info('');
 
-    // D-85: Check if another instance is already running (S1: verify PID via isOpencodePid)
+    // D-85/D-138: refuse to start only if THIS SAME PORT already has a live instance
+    // (pid file scoped per-port so a different port never falsely conflicts).
     const defaultStateDir = join(homedir(), '.gennady');
-    const pidFile = join(defaultStateDir, 'agent-inbox', 'opencode.pid');
+    const pidFile = join(defaultStateDir, 'agent-inbox', `opencode-${port ?? 4174}.pid`);
     if (existsSync(pidFile)) {
       try {
         const raw = readFileSync(pidFile, 'utf-8');
-        const { pid, port } = JSON.parse(raw) as { pid: number; port: number };
+        const { pid, port: opencodePort } = JSON.parse(raw) as { pid: number; port: number };
         if (isOpencodePid(pid)) {
-          console.info(style.yellow(`⚠ Уже запущен на порту ${port} (PID ${pid})`));
+          console.info(
+            style.yellow(
+              `⚠ Уже запущен на порту ${port ?? 4174} (opencode PID ${pid}:${opencodePort})`
+            )
+          );
           return 0;
         }
         // Stale PID file — remove and continue

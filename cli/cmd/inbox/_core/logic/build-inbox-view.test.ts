@@ -73,12 +73,12 @@ describe('buildInboxView', () => {
     assert.strictEqual(all.hidden.approved, 0);
   });
 
-  it('hides awaiting_reply/idle when stages are known (no reaction needed from me)', () => {
+  it('hides reply_needed/review_needed noise-free, and idle/mentioned when stages are known', () => {
     const items = [
       raw({ iid: '1', role: 'reviewer' }),
       raw({ iid: '2', role: 'reviewer' }),
-      raw({ iid: '3', role: 'reviewer' }),
-      raw({ iid: '4', role: 'reviewer' }),
+      raw({ iid: '3', role: 'mentioned' }),
+      raw({ iid: '4', role: 'mentioned' }),
     ];
     const stages = stageMap({
       '1': 'reply_needed',
@@ -100,8 +100,8 @@ describe('buildInboxView', () => {
     assert.strictEqual(all.hidden.waiting, 0);
   });
 
-  it('keeps an author idle MR (needs my self-review summary) but hides reviewer idle', () => {
-    const items = [raw({ iid: '1', role: 'author' }), raw({ iid: '2', role: 'reviewer' })];
+  it('keeps an author idle MR (needs my self-review summary) but hides mentioned idle', () => {
+    const items = [raw({ iid: '1', role: 'author' }), raw({ iid: '2', role: 'mentioned' })];
     const stages = stageMap({ '1': 'idle', '2': 'idle' });
     const view = buildInboxView(items, opt(), NOW, new Map(), stages);
     assert.strictEqual(view.total, 1);
@@ -117,8 +117,33 @@ describe('buildInboxView', () => {
     assert.strictEqual(view.hidden.waiting, 1);
   });
 
-  it('shows an awaiting_reply MR when delta is updated (silent push changed something)', () => {
+  it('never hides a reviewer MR for being awaiting_reply — a comment is not a GitLab approve', () => {
+    // A reviewer who already left a comment (stage flips to awaiting_reply) still
+    // owes GitLab a formal approve; the MR must keep showing until approvedBy
+    // actually contains them (D-116 live finding: messenger!162 vanished from the
+    // board after one review comment, while GitLab still listed it as pending).
     const items = [raw({ iid: '1', role: 'reviewer' }), raw({ iid: '2', role: 'reviewer' })];
+    const stages = stageMap({ '1': 'awaiting_reply', '2': 'awaiting_reply' });
+    const view = buildInboxView(items, opt(), NOW, new Map(), stages, 'k.lebedev');
+    assert.strictEqual(view.total, 2);
+    assert.strictEqual(view.hidden.waiting, 0);
+
+    // But once GitLab records my actual approval, it is correctly hidden.
+    const approved = [raw({ iid: '1', role: 'reviewer', approvedBy: ['k.lebedev'] })];
+    const approvedView = buildInboxView(
+      approved,
+      opt(),
+      NOW,
+      new Map(),
+      stageMap({ '1': 'awaiting_reply' }),
+      'k.lebedev'
+    );
+    assert.strictEqual(approvedView.total, 0);
+    assert.strictEqual(approvedView.hidden.approved, 1);
+  });
+
+  it('shows a mentioned awaiting_reply MR when delta is updated (silent push changed something)', () => {
+    const items = [raw({ iid: '1', role: 'mentioned' }), raw({ iid: '2', role: 'mentioned' })];
     const stages = stageMap({ '1': 'awaiting_reply', '2': 'awaiting_reply' });
     const deltas = new Map([
       ['https://x/1', 'updated'],

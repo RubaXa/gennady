@@ -4,8 +4,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { BoardData, MrCard } from '../../inbox-api/types.ts';
-import { getBoard, assignMr, executeAction, getReport } from './api-client.ts';
+import { getBoard, assignMr, setRoleActive, executeAction, getReport } from './api-client.ts';
 import type { MrDetail } from '../../inbox-api/types.ts';
+import { log } from './debug-log.ts';
 
 /** @purpose Shape of the board context value exposed to consumers. */
 type BoardContextValue = {
@@ -21,6 +22,8 @@ type BoardContextValue = {
   refresh: () => Promise<void>;
   /** @purpose Assign an MR to a role with optimistic update. */
   assignMrToRole: (mr: MrCard, targetRole: string) => Promise<void>;
+  /** @purpose Toggle a role's activation state (gates auto-assignment, SV-07). */
+  toggleRoleActive: (role: string, active: boolean) => Promise<void>;
   /** @purpose Execute an operator action on an MR. */
   executeMrAction: (mrId: string, questionId: string, choice: string) => Promise<void>;
   /** @purpose Fetch detailed report for an MR. */
@@ -50,7 +53,13 @@ export function BoardStore(props: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const data = await getBoard();
-      setBoard(data);
+      // Telemetry: log every status change this poll surfaced (lane moves, role flips, new/gone
+      // MRs) against the last snapshot — the "изменения статуса" half of the 🐞 user-path trace.
+      setBoard((prev) => {
+        const changes = diffBoardStates(prev, data);
+        if (changes.length) log('state#board', changes.join(' | '));
+        return data;
+      });
       setError(null);
     } catch (cause) {
       setError('API недоступен');
@@ -87,6 +96,7 @@ export function BoardStore(props: { children: ReactNode }) {
   const assignMrToRole = useCallback(
     async (mr: MrCard, targetRole: string) => {
       if (!board) return;
+      log('ui#assign-mr', `${mr.project}!${mr.iid}`, '→', targetRole);
 
       const mrId = mr.webUrl;
       const prevBoard = board;
@@ -114,6 +124,33 @@ export function BoardStore(props: { children: ReactNode }) {
   );
 
   /**
+   * @purpose Toggle a role's activation state with optimistic local update, rollback on failure.
+   * @param role Role name.
+   * @param active Desired activation state.
+   */
+  const toggleRoleActive = useCallback(
+    async (role: string, active: boolean) => {
+      if (!board) return;
+      log('ui#role-toggle', role, active ? 'activate' : 'deactivate');
+
+      const prevBoard = board;
+      setBoard({
+        ...board,
+        roles: board.roles.map((r) => (r.name === role ? { ...r, active } : r)),
+      });
+
+      try {
+        await setRoleActive(role, active);
+        await refresh(); // Re-sync with server state
+      } catch (cause) {
+        setBoard(prevBoard); // Rollback on failure
+        setError('Не удалось изменить активность роли');
+      }
+    },
+    [board, refresh]
+  );
+
+  /**
    * @purpose Execute an operator action on an MR.
    * @param mrId MR identifier.
    * @param questionId Question ID.
@@ -121,6 +158,7 @@ export function BoardStore(props: { children: ReactNode }) {
    */
   const executeMrAction = useCallback(
     async (mrId: string, questionId: string, choice: string) => {
+      log('ui#mr-action', mrId, `q=${questionId}`, `choice=${choice}`);
       try {
         await executeAction(mrId, questionId, choice);
         await refresh();
@@ -137,6 +175,7 @@ export function BoardStore(props: { children: ReactNode }) {
    * @returns Detailed MR report.
    */
   const fetchReport = useCallback(async (mrId: string): Promise<MrDetail> => {
+    log('ui#open-report', mrId);
     return getReport(mrId);
   }, []);
 
@@ -149,6 +188,7 @@ export function BoardStore(props: { children: ReactNode }) {
         pollCountdown,
         refresh,
         assignMrToRole,
+        toggleRoleActive,
         executeMrAction,
         fetchReport,
       }}
@@ -193,4 +233,51 @@ function removeMrFromBoard(board: BoardData, mr: MrCard): BoardData {
     })),
     unassigned: filterLane(board.unassigned),
   };
+}
+
+/**
+ * @purpose Flatten a board into `mrKey → placement` so two snapshots can be diffed for telemetry.
+ * @param board Board snapshot.
+ * @returns Map of `project!iid` to a human-readable placement (`role/lane` or `unassigned`).
+ */
+function placementMap(board: BoardData): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const role of board.roles) {
+    for (const [lane, cards] of Object.entries(role.lanes)) {
+      for (const c of cards) m.set(`${c.project}!${c.iid}`, `${role.name}/${lane}`);
+    }
+  }
+  for (const c of board.unassigned) m.set(`${c.project}!${c.iid}`, 'unassigned');
+  return m;
+}
+
+/**
+ * @purpose Diff two board snapshots into telemetry lines — role-activation flips and per-MR
+ *   placement changes (lane moves, new/removed cards) — for 🐞 status-change tracing.
+ * @param prev Previous board snapshot (null on first load).
+ * @param next Latest board snapshot.
+ * @returns Ordered change descriptions; empty when nothing moved.
+ */
+function diffBoardStates(prev: BoardData | null, next: BoardData): string[] {
+  const changes: string[] = [];
+  if (!prev) return changes;
+
+  const prevActive = new Map(prev.roles.map((r) => [r.name, r.active]));
+  for (const r of next.roles) {
+    if (prevActive.get(r.name) !== r.active) {
+      changes.push(`role ${r.name} ${r.active ? 'activated' : 'deactivated'}`);
+    }
+  }
+
+  const before = placementMap(prev);
+  const after = placementMap(next);
+  for (const [mr, place] of after) {
+    const was = before.get(mr);
+    if (was === undefined) changes.push(`+ ${mr} appeared @ ${place}`);
+    else if (was !== place) changes.push(`~ ${mr} moved ${was} → ${place}`);
+  }
+  for (const [mr] of before) {
+    if (!after.has(mr)) changes.push(`- ${mr} left the board`);
+  }
+  return changes;
 }

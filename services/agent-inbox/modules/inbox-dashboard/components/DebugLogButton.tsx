@@ -6,7 +6,13 @@
 import { useEffect, useState } from 'react';
 import { Bug } from 'lucide-react';
 import { cn } from '../lib/utils.ts';
-import { snapshotLogs, subscribeErrorState, clearErrorState } from '../services/debug-log.ts';
+import {
+  snapshotLogs,
+  subscribeErrorState,
+  clearErrorState,
+  mergeTimeline,
+} from '../services/debug-log.ts';
+import { fetchServerLog } from '../services/api-client.ts';
 
 /**
  * @purpose 🐞 button: copies buffered logs to the clipboard and toasts the count; on clipboard
@@ -20,14 +26,18 @@ export function DebugLogButton() {
 
   const copyLogs = async (): Promise<void> => {
     const { text, count } = snapshotLogs();
+    // Pull the server-log tail too — a review-flow failure (lens/synthesis/effect) lives
+    // server-side and would be absent from the browser buffer alone. Never blocks the copy.
+    const serverLines = await fetchServerLog();
+    const blob = mergeTimeline(count ? text.split('\n') : [], serverLines);
     try {
-      await navigator.clipboard.writeText(text);
-      setToast(`Логи скопированы (${count})`);
+      await navigator.clipboard.writeText(blob);
+      setToast(`Телеметрия скопирована (клиент ${count} + сервер ${serverLines.length})`);
       clearErrorState();
     } catch {
       setToast('Буфер обмена недоступен');
     }
-    window.setTimeout(() => setToast(null), 2500);
+    window.setTimeout(() => setToast(null), 3000);
   };
 
   return (

@@ -34,6 +34,15 @@ export abstract class BoardProviderPort {
   abstract assignMr(mrId: string, role: string, rights?: Record<string, unknown>): { ok: boolean };
 
   /**
+   * @purpose Activate or deactivate a role — gates auto-assignment (SV-07). Manual
+   *   per-MR assignment (assignMr) works regardless of this flag.
+   * @param role Role name (reviewer, author, mentioned).
+   * @param active Desired activation state.
+   * @returns { ok: true } on success, { ok: false } if the role is not registered.
+   */
+  abstract setRoleActive(role: string, active: boolean): { ok: boolean };
+
+  /**
    * @purpose Execute an operator action on an MR (answer an OperatorQuestion).
    * @param mrId MR identifier (webUrl).
    * @param action Action payload with questionId, choice, and optional payload.

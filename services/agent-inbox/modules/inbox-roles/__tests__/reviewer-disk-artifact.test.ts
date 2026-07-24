@@ -2,7 +2,7 @@
 //   files the agent writes to disk (validated + correction-looped), never from a forced
 //   structured-JSON response that truncates on large MRs.
 // @consumers: node:test runner
-// @tasks: TSK-127, TSK-141
+// @tasks: TSK-127, TSK-141, TSK-153
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -280,50 +280,35 @@ describe('reviewer.role.ts — materializeReviewJson merges disk-artifact lens f
     const stateDir = mkdtempSync(join(tmpdir(), 'reviewer-disk-artifact-d-'));
     const store = new FakeStateStore(stateDir);
 
-    const trackFile = '.gennady-artifacts/node_track_review.json';
-    const securityFile = '.gennady-artifacts/node_security_lens.json';
-    const codeFile = '.gennady-artifacts/node_code_review.json';
-    const synthFile = '.gennady-artifacts/node_synthesize.json';
-
+    // node_track_review/node_security_lens/node_code_review are structured-JSON sessions
+    // (`resultSchema`, no `artifact:` disk-write spec) in the real ReviewerRole.graph — same
+    // zero-tools shape as node_synthesize below — so they must be seeded as direct objects too;
+    // a `writeArtifact` wrapper here would only fake-write a file `_persistLensResult` never reads,
+    // leaving `ctx.artifacts[lensId]` as the mock's ack text instead of `{ findings: [...] }`.
     opencode.seed('node_track_review', {
-      writeArtifact: {
-        file: trackFile,
-        content: JSON.stringify({
-          findings: [
-            { file: 'a.ts', line: 10, message: 'Issue A' },
-            { file: 'b.ts:5', message: 'Issue B' },
-          ],
-        }),
-      },
+      findings: [
+        { file: 'a.ts', line: 10, message: 'Issue A' },
+        { file: 'b.ts:5', message: 'Issue B' },
+      ],
     });
     opencode.seed('node_security_lens', {
-      writeArtifact: {
-        file: securityFile,
-        // Duplicate of the track lens's "Issue A" — must be deduped, not double-counted.
-        content: JSON.stringify({ findings: [{ file: 'a.ts', line: 10, message: 'Issue A' }] }),
-      },
+      // Duplicate of the track lens's "Issue A" — must be deduped, not double-counted.
+      findings: [{ file: 'a.ts', line: 10, message: 'Issue A' }],
     });
     opencode.seed('node_code_review', {
-      writeArtifact: {
-        file: codeFile,
-        content: JSON.stringify({
-          findings: [{ file: 'c.ts', line: 1, message: 'Issue C', severity: 'warn' }],
-        }),
-      },
+      findings: [{ file: 'c.ts', line: 1, message: 'Issue C', severity: 'warn' }],
     });
+    // node_synthesize is a zero-tools structured-JSON session (D-120) — its result comes straight
+    // from resultSchema, never from a disk write, so it must be seeded as a direct object, not a
+    // `writeArtifact` side effect (which would only fake-write a file no one reads for this node).
     opencode.seed('node_synthesize', {
-      writeArtifact: {
-        file: synthFile,
-        content: JSON.stringify({
-          reviewReport: {
-            verdict: 'changes_requested',
-            summary: 'Found issues',
-            behavior: 'test behavior',
-            scenarios: 'test scenarios',
-          },
-          proposedActions: [],
-        }),
+      reviewReport: {
+        verdict: 'changes_requested',
+        summary: 'Found issues',
+        behavior: 'test behavior',
+        scenarios: 'test scenarios',
       },
+      proposedActions: [],
     });
 
     const instance = new RoleInstance({

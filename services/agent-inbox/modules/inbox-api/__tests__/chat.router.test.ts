@@ -1,7 +1,7 @@
 // @file: Integration tests for ChatRouter — async POST /chat (D-89), TURN_IN_FLIGHT rejection
 //   (D-104), and POST /chat/stop delegation to ChatSession#stop (CH-11).
 // @consumers: node:test runner
-// @tasks: TSK-129
+// @tasks: TSK-129, TSK-152
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,9 +13,6 @@ import { SessionPool } from '../../inbox-opencode/session-pool.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import type { PromptOpts } from '../../inbox-opencode/opencode.port.ts';
 import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
-
-/** @purpose Node id OpenCodeMock derives from `format.schema.title`, matching ChatSession's resultSchema (mirrors chat-session.test.ts). */
-const CHAT_TURN_NODE_ID = 'chat_turn';
 
 /** @purpose Helper to POST a JSON body and collect the response. */
 function postJson(
@@ -133,7 +130,9 @@ describe('ChatRouter — POST /chat', () => {
   it('POST /chat не блокирует ответ', async () => {
     // invariant: the 202 response must arrive well before ChatSession.ask()'s simulated turn resolves (D-89)
     const mrRef = 'group/proj!10';
-    ctx.openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'slow answer', mutations: [] });
+    // OpenCodeMock keys off the prompt text's first word when no format.schema.title is sent
+    // (mirrors chat-session.test.ts) — the posted text below is 'question one'.
+    ctx.openCodeMock.seed('question', { answer: 'slow answer', mutations: [] });
     const originalPrompt = ctx.pool.prompt.bind(ctx.pool);
     mock.method(ctx.pool, 'prompt', async (sid: string, opts: PromptOpts) => {
       await new Promise((r) => setTimeout(r, 300));
@@ -153,7 +152,8 @@ describe('ChatRouter — POST /chat', () => {
 
   it('POST /chat при in-flight ходе', async () => {
     const mrRef = 'group/proj!11';
-    ctx.openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'slow answer', mutations: [] });
+    // both posted texts start with 'question' ('question one' / 'question two') — one seed covers both
+    ctx.openCodeMock.seed('question', { answer: 'slow answer', mutations: [] });
     const originalPrompt = ctx.pool.prompt.bind(ctx.pool);
     mock.method(ctx.pool, 'prompt', async (sid: string, opts: PromptOpts) => {
       await new Promise((r) => setTimeout(r, 150));
@@ -178,7 +178,7 @@ describe('ChatRouter — POST /chat', () => {
 
 describe('ChatRouter — POST /chat/stop', () => {
   let ctx: ChatRouterContext;
-  const PORT = 4206;
+  const PORT = 4207;
 
   before(async () => {
     ctx = await createChatRouterContext(PORT);
@@ -192,7 +192,8 @@ describe('ChatRouter — POST /chat/stop', () => {
     // observation focus: ack latency (<200ms, CH-11) + the eventual turn_done frame carrying
     // `stopped: true`, which is only possible if the router truly delegated to ChatSession#stop
     const mrRef = 'group/proj!12';
-    ctx.openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'one two three four five', mutations: [] });
+    // posted text below is 'stop me' — OpenCodeMock keys off its first word
+    ctx.openCodeMock.seed('stop', { answer: 'one two three four five', mutations: [] });
 
     const streamClient = await connectSseClient(PORT, mrRef);
     await streamClient.waitForNext(); // initial `retry:` hint

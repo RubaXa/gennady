@@ -1,7 +1,7 @@
 // @file: Unit tests for PhaseTelemetry — JSONL append, 7-day GC, and analytics rollup
 //   (p50/p95/avg/error-rate per node, per-run totals, slowest phase).
 // @consumers: node:test runner
-// @tasks: TSK-perf
+// @tasks: TSK-perf, TSK-153
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -112,7 +112,7 @@ describe('PhaseTelemetry', () => {
       .join('\n');
     writeFileSync(filePath, `${lines}\n`, 'utf-8');
 
-    const analytics = readPhaseAnalytics(stateDir, 7);
+    const analytics = readPhaseAnalytics(stateDir, 7, NOW_MS);
 
     assert.equal(analytics.entryCount, 4); // the 10-day-old entry is excluded
 
@@ -166,7 +166,7 @@ describe('PhaseTelemetry', () => {
       .join('\n');
     writeFileSync(filePath, `${lines}\n`, 'utf-8');
 
-    const analytics = readPhaseAnalytics(stateDir, 7);
+    const analytics = readPhaseAnalytics(stateDir, 7, NOW_MS);
     const nodeA = analytics.perNode.find((r) => r.node === 'node_a');
     assert.ok(nodeA);
     assert.deepEqual(nodeA!.tools, [
@@ -177,7 +177,7 @@ describe('PhaseTelemetry', () => {
   });
 
   it('readPhaseAnalytics on a missing file returns an empty rollup', () => {
-    const analytics = readPhaseAnalytics(stateDir, 7);
+    const analytics = readPhaseAnalytics(stateDir, 7, NOW_MS);
     assert.equal(analytics.entryCount, 0);
     assert.deepEqual(analytics.perNode, []);
     assert.deepEqual(analytics.perRun, []);

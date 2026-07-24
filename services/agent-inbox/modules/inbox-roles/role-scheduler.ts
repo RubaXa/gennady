@@ -546,6 +546,13 @@ export class RoleScheduler {
       const now = new Date().toISOString();
       const signal = detectMrEvents(discussions, headChanged, myLogin, since);
 
+      // Live bug (2026-07-23, D-138): SV-20's "wait for a reply to MY thread" debounce assumes a
+      // thread of mine already exists. `discussions` is `{my:true}`-filtered — empty means I've
+      // never posted here, so `hasMyThreadReply` can never fire and a lone `hasNewCommit` would
+      // block this MR's first pass forever (stalled `mail/messenger!164` over an hour, invisible
+      // on the board). A review I haven't started yet isn't the "watch an active review" case.
+      if (discussions.length === 0) return true;
+
       // #region START_APPLY_DEBOUNCE — a reply (re)arms the window (SV-20); commit-only never arms it (SV-19).
       if (signal.hasMyThreadReply) {
         tracker.recordEvent(ref, now);

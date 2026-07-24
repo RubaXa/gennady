@@ -565,33 +565,37 @@ export class RoleInstance {
     line: number;
     message: string;
   }> {
+    // UNION across ALL artifacts, not the first match (bug fixed 2026-07-23, D-139): the review
+    // fan-out stores each lens under its own artifact key (node_track_review/security_lens/
+    // code_review). Returning only the FIRST artifact with a `findings` array let a clean first
+    // lens mask an error-severity finding a later lens raised — node_ask's SV-24 gate then saw 0
+    // findings and auto-approved an MR with a real blocking issue. Collect from every artifact's
+    // `findings`/`recommendations` array and dedupe by identity; over-counting only ever escalates
+    // (safe), under-counting silently approved (the defect).
+    const out: Array<{ severity: string; file: string; line: number; message: string }> = [];
+    const seen = new Set<string>();
+    const push = (r: Record<string, unknown>): void => {
+      const f = {
+        severity: (r.severity as string) ?? 'info',
+        file: (r.file as string) ?? '',
+        line: (r.line as number) ?? 0,
+        message: (r.message as string) ?? '',
+      };
+      const key = `${f.severity}|${f.file}|${f.line}|${f.message}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(f);
+    };
+
     for (const artifact of Object.values(this._artifacts)) {
       const obj = artifact as Record<string, unknown> | undefined;
       if (!obj || typeof obj !== 'object') continue;
-
-      // Check for recommendations (from synthesize-like nodes)
       const recs = obj.recommendations as Array<Record<string, unknown>> | undefined;
-      if (Array.isArray(recs)) {
-        return recs.map((r) => ({
-          severity: (r.severity as string) ?? 'info',
-          file: (r.file as string) ?? '',
-          line: (r.line as number) ?? 0,
-          message: (r.message as string) ?? '',
-        }));
-      }
-
-      // Check for findings (from scaffold-like nodes)
+      if (Array.isArray(recs)) for (const r of recs) push(r);
       const findings = obj.findings as Array<Record<string, unknown>> | undefined;
-      if (Array.isArray(findings)) {
-        return findings.map((f) => ({
-          severity: (f.severity as string) ?? 'info',
-          file: (f.file as string) ?? '',
-          line: (f.line as number) ?? 0,
-          message: (f.message as string) ?? '',
-        }));
-      }
+      if (Array.isArray(findings)) for (const f of findings) push(f);
     }
-    return [];
+    return out;
   }
 
   /**

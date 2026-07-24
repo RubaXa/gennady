@@ -3,10 +3,12 @@
 // @tasks: TSK-115, TSK-117, TSK-122, TSK-123
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { logger } from '#logger';
+import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
 import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
@@ -381,9 +383,33 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     // readiness window for a live run). Falls through to the pre-existing spawn path when unset.
     // #region START_CONNECT_OPENCODE
     const stateDir = stateStore.getStateDir();
-    const pidFile = join(stateDir, 'agent-inbox', 'opencode.pid');
+    // D-138: pid file scoped by `--port` — a shared name let concurrent instances clobber it.
+    const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
     opencodePort = 4096;
     opencodePidFile = null;
+
+    // D-138: transparent, port-scoped-only conflict check — orphaned child from a crashed prior instance on THIS port.
+    if (existsSync(pidFile)) {
+      try {
+        const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
+          pid: number;
+          port: number;
+        };
+        if (isOpencodePid(orphanPid)) {
+          logger.warn('[bootstrap] [starting → orphan_found]', {
+            port,
+            pid: orphanPid,
+            reason: `pid file for inbox-serve port ${port} still points at a live opencode process — a previous instance on this port exited without cleanup`,
+          });
+          await terminateOrphanedOpencode(
+            orphanPid,
+            `starting a fresh gennady inbox serve on port ${port}`
+          );
+        }
+      } catch {
+        /* stale/corrupt pid file — overwritten below regardless */
+      }
+    }
 
     const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
     if (reusePort && Number.isFinite(reusePort)) {
@@ -410,7 +436,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
       const proc = await spawnOpencode(stateDir, opencodePort);
       if (proc && proc.pid) {
-        // Ensure agent-inbox directory exists before writing PID file
         await mkdir(join(stateDir, 'agent-inbox'), { recursive: true });
         await writeFile(
           pidFile,

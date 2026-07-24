@@ -279,6 +279,42 @@ describe('BoardProviderReal.getReport — revision from review.json (TSK-133, D-
     }
   });
 
+  it('getReport(webUrl) reads disk review after the instance is gone — normalizes webUrl → project!iid', () => {
+    // Live bug (2026-07-23): with NO live instance, the disk-fallback passed the raw mrId straight
+    // to `_readDiskReview`/`mrReportsDir`, which key on `project!iid`. A full webUrl (which resolves
+    // fine while an instance is live, via _resolveInstance's direct match) then produced a wrong
+    // path and 404'd — the same webUrl that returned 200 mid-review 404'd once the review reached
+    // `done` and its instance was cleaned up. getReport must accept either key on the disk path too.
+    const stateDir = makeTestTmpDir('board-provider-real-webUrl-');
+    try {
+      const dir = mrReportsDir(stateDir, `${MR.project}!${MR.iid}`);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, 'review.json'),
+        JSON.stringify({ verdict: 'approve', findings: [], revision: 1, role: 'reviewer' }, null, 2)
+      );
+
+      // No live instances at all — forces the disk-fallback branch.
+      const provider = new BoardProviderReal(
+        schedulerStub({ unassigned: [], instances: [] }),
+        engineStub(),
+        stateDir
+      );
+
+      const byUrl = provider.getReport(MR.webUrl);
+      assert.ok(byUrl, 'expected disk report resolved by full webUrl');
+      assert.strictEqual(byUrl!.verdict, 'approve');
+      assert.strictEqual(byUrl!.mr.project, MR.project);
+      assert.strictEqual(byUrl!.mr.iid, Number(MR.iid));
+
+      const byRef = provider.getReport(`${MR.project}!${MR.iid}`);
+      assert.ok(byRef, 'expected disk report resolved by project!iid');
+      assert.strictEqual(byRef!.verdict, 'approve');
+    } finally {
+      cleanupTestTmp(stateDir);
+    }
+  });
+
   it('getReport degrades revision to 0 when no review.json is persisted yet', () => {
     const stateDir = makeTestTmpDir('board-provider-real-revision-');
     try {

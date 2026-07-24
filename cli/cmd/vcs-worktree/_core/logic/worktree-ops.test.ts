@@ -101,10 +101,10 @@ describe('WORKTREE_TTL_MS', () => {
 
 describe('gcStaleWorktrees', () => {
   it('removes stale worktrees when TTL is zero', () => {
-    const w1 = join(dir, 'stale-1');
-    const w2 = join(dir, 'stale-2');
-    mkdirSync(w1);
-    mkdirSync(w2);
+    const w1 = join(dir, 'stale-1', 'worktree');
+    const w2 = join(dir, 'stale-2', 'worktree');
+    mkdirSync(w1, { recursive: true });
+    mkdirSync(w2, { recursive: true });
 
     const removed = gcStaleWorktrees(dir, 0, Date.now() + 1000);
 
@@ -114,8 +114,8 @@ describe('gcStaleWorktrees', () => {
   });
 
   it('keeps fresh worktrees when TTL is large', () => {
-    const w1 = join(dir, 'fresh-1');
-    mkdirSync(w1);
+    const w1 = join(dir, 'fresh-1', 'worktree');
+    mkdirSync(w1, { recursive: true });
 
     const removed = gcStaleWorktrees(dir, 999999999999, Date.now());
 
@@ -153,10 +153,10 @@ describe('gcStaleWorktrees', () => {
 
 describe('removeAllWorktrees', () => {
   it('removes all directories under root', () => {
-    const w1 = join(dir, 'wt-1');
-    const w2 = join(dir, 'wt-2');
-    mkdirSync(w1);
-    mkdirSync(w2);
+    const w1 = join(dir, 'wt-1', 'worktree');
+    const w2 = join(dir, 'wt-2', 'worktree');
+    mkdirSync(w1, { recursive: true });
+    mkdirSync(w2, { recursive: true });
 
     const removed = removeAllWorktrees(dir);
 
@@ -308,8 +308,8 @@ describe('prepareMrWorktree', () => {
   it('stale worktree removed by GC, then prepareMrWorktree creates new', () => {
     const wtsRoot = join(dir, 'wts');
     mkdirSync(wtsRoot);
-    const wtDir = join(wtsRoot, 'mr-510');
-    mkdirSync(wtDir);
+    const wtDir = join(wtsRoot, 'mr-510', 'worktree');
+    mkdirSync(wtDir, { recursive: true });
 
     const removed = gcStaleWorktrees(wtsRoot, 0, Date.now() + 1000);
     assert.deepStrictEqual(removed, [wtDir], 'GC should remove stale worktree');

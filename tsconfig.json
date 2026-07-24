@@ -29,6 +29,7 @@
     "baseUrl": ".",
     "paths": {
       "#logger": ["./services/logger/logger.ts"],
+      "#utils/*": ["./utils/*"],
       "@shared/*": ["shared/*"],
       "@services/*": ["services/*"]
     }
@@ -39,6 +40,7 @@
     "cli/**/*",
     "scripts/**/*",
     "assistant/**/*",
+    "utils/**/*",
     "index.ts",
     "vite.config.ts"
   ],

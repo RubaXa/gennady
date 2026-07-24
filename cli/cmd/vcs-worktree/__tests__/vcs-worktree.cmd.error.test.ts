@@ -35,7 +35,8 @@ mock.module('../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts', {
 mock.module('../../inbox/_core/logic/state-paths.logic.ts', {
   namedExports: {
     resolveStateDir: () => '/tmp/gennady-test',
-    worktreesRoot: () => '/tmp/gennady-test/worktrees',
+    mrsRoot: () => '/tmp/gennady-test/agent-inbox/mrs',
+    mrWorktreeDir: () => '/tmp/gennady-test/agent-inbox/mrs/group__repo-510/worktree',
     clonesRoot: () => '/tmp/gennady-test/clones',
     reposMapPath: () => '/tmp/gennady-test/repos.json',
   },

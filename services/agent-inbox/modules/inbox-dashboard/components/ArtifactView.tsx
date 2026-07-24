@@ -4,8 +4,30 @@
 
 import { useEffect, useId, useState } from 'react';
 import { marked } from 'marked';
-import DOMPurify from 'dompurify';
+import createDOMPurify from 'dompurify';
 import type { ArtifactKind } from '../../inbox-api/types.ts';
+
+/** @purpose Minimal sanitizer surface this module needs. */
+type Sanitizer = { sanitize: (html: string) => string };
+
+/** @purpose Cached sanitizer instance — built lazily so it binds to whichever `window` exists at first render, not at module-import time. */
+let sanitizer: Sanitizer | null = null;
+
+/**
+ * @purpose Resolve a working DOMPurify sanitizer regardless of environment.
+ * @invariant dompurify self-initializes when `window` exists at import time (browser bundles);
+ *   otherwise it stays a bare factory — call it with `window` once ready.
+ * @returns A sanitizer with a `.sanitize(html)` method.
+ */
+function getSanitizer(): Sanitizer {
+  if (sanitizer) return sanitizer;
+  const purify = createDOMPurify as unknown;
+  sanitizer =
+    typeof purify === 'function'
+      ? (purify as (w: typeof window) => Sanitizer)(window)
+      : (purify as Sanitizer);
+  return sanitizer;
+}
 
 /** @purpose One fenced code block extracted from raw markdown, kept separate from prose so it survives the lite renderer untouched. */
 type FencedBlock = {
@@ -162,7 +184,7 @@ export function ArtifactView(props: { content: string; kind: ArtifactKind }) {
           <div
             key={idx}
             dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(marked.parse(segment.prose, { async: false })),
+              __html: getSanitizer().sanitize(marked.parse(segment.prose, { async: false })),
             }}
           />
         )

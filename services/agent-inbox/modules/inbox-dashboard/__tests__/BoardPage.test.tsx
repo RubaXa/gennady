@@ -43,6 +43,7 @@ const BOARD: BoardData = {
 
 const getBoardMock = mock.fn(async () => BOARD);
 const assignMrMock = mock.fn(async () => undefined);
+const setRoleActiveMock = mock.fn(async () => undefined);
 const executeActionMock = mock.fn(async () => undefined);
 const getReportMock = mock.fn(async () => {
   throw new Error('not used in BoardPage tests');
@@ -52,6 +53,7 @@ mock.module(API_CLIENT_PATH, {
   namedExports: {
     getBoard: getBoardMock,
     assignMr: assignMrMock,
+    setRoleActive: setRoleActiveMock,
     executeAction: executeActionMock,
     getReport: getReportMock,
   },

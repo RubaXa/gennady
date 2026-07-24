@@ -3,7 +3,7 @@
 //   booted inbox-api HttpServer with the chat bridge wired to a real SessionPool[OpenCodeMock] +
 //   real StateStore over a real makeTestTmpDir tree, and a real on-disk review.json for /mutate CAS.
 // @consumers: node:test runner
-// @tasks: TSK-130
+// @tasks: TSK-130, TSK-152
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,20 +17,38 @@ import { mrReportsDir } from '../../../../../cli/cmd/inbox/_core/logic/state-pat
 import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
 import type { MutationProposal, ChatTurn } from '../../inbox-chat/types.ts';
 
-/** @purpose Node id OpenCodeMock derives from `format.schema.title`, matching ChatSession's resultSchema (mirrors chat-session.test.ts, chat.router.test.ts). */
-const CHAT_TURN_NODE_ID = 'chat_turn';
+/** @purpose Absolute origin the test's HttpServer listens on — see `ORIGIN_RESOLUTION` region below. */
+const TEST_SERVER_PORT = 4174;
+const ORIGIN = `http://localhost:${TEST_SERVER_PORT}`;
 
-// #region START_REAL_EVENTSOURCE_POLYFILL — invariant: the test env's Node process has global
-// `fetch` (Node 22) but not global `EventSource` without --experimental-eventsource; `ChatApiClient`
-// is never edited to accept an injected EventSource, so a *real* standards-compliant implementation
-// (undici — the same one Node's own --experimental-eventsource flag wires up) is installed on
-// `globalThis` before the SUT is imported, per policy ("real Node ones or a real polyfill, NOT a
-// hand-fake").
-if (typeof globalThis.EventSource === 'undefined') {
-  const { EventSource } = await import('undici');
-  (globalThis as unknown as { EventSource: unknown }).EventSource = EventSource;
+// #region START_ORIGIN_RESOLUTION — invariant: ChatApiClient.BASE_URL is intentionally '' (same-origin
+// design, mirrors ApiClient, D-114/240a3514) and is never edited to accept an injected base. A browser
+// resolves a relative fetch/EventSource URL against `document.location`; a raw Node process has no such
+// document, so this harness supplies the missing origin at the transport boundary — test-only, the SUT
+// still issues the same relative paths it would in a real browser tab served from this HttpServer.
+function resolveAgainstOrigin(input: string): string {
+  return input.startsWith('/') ? `${ORIGIN}${input}` : input;
 }
-// #endregion END_REAL_EVENTSOURCE_POLYFILL
+
+const realFetch = globalThis.fetch;
+globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+  const resolved = typeof input === 'string' ? resolveAgainstOrigin(input) : input;
+  return realFetch(resolved as RequestInfo, init);
+}) as typeof fetch;
+
+// the test env's Node process has global `fetch` (Node 22) but not global `EventSource` without
+// --experimental-eventsource; `ChatApiClient` is never edited to accept an injected EventSource, so a
+// *real* standards-compliant implementation (undici — the same one Node's own
+// --experimental-eventsource flag wires up) is installed on `globalThis`, per policy ("real Node ones
+// or a real polyfill, NOT a hand-fake"), wrapped only to resolve the relative URL against ORIGIN.
+const { EventSource: RealEventSource } = await import('undici');
+class AbsoluteOriginEventSource extends RealEventSource {
+  constructor(url: string, eventSourceInitDict?: unknown) {
+    super(resolveAgainstOrigin(url), eventSourceInitDict as never);
+  }
+}
+(globalThis as unknown as { EventSource: unknown }).EventSource = AbsoluteOriginEventSource;
+// #endregion END_ORIGIN_RESOLUTION
 
 const { ChatApiClient } = await import('../services/chat-api-client.ts');
 
@@ -57,10 +75,10 @@ function wait(ms: number): Promise<void> {
 }
 
 describe('ChatApiClient integration (real HttpServer, real fetch, real EventSource)', () => {
-  // ChatApiClient hardcodes BASE_URL = http://localhost:4174 (same as HttpServer's default port,
-  // matching ApiClient's convention) — the real server under test must listen there too, there is
-  // no injection point to point the client elsewhere.
-  const PORT = 4174;
+  // ChatApiClient's BASE_URL is '' (same-origin design) — the real server under test listens on
+  // TEST_SERVER_PORT, and the ORIGIN_RESOLUTION harness above supplies that origin for the raw
+  // fetch/EventSource calls the client issues with relative paths.
+  const PORT = TEST_SERVER_PORT;
   let stateDir: string;
   let server: HttpServer;
   let openCodeMock: OpenCodeMock;
@@ -87,7 +105,9 @@ describe('ChatApiClient integration (real HttpServer, real fetch, real EventSour
 
   it('subscribes over a real SSE stream and receives real token + turn_done frames for a posted turn', async () => {
     const mrRef = 'group/proj!930';
-    openCodeMock.seed(CHAT_TURN_NODE_ID, { answer: 'real answer', mutations: [] });
+    // OpenCodeMock keys off the prompt text's first word when no format.schema.title is sent
+    // (mirrors chat-session.test.ts) — the posted text below is 'what does this MR do?'.
+    openCodeMock.seed('what', { answer: 'real answer', mutations: [] });
 
     const tokens: string[] = [];
     let doneTurn: ChatTurn | null = null;

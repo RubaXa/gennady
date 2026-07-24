@@ -324,6 +324,42 @@ services/agent-inbox/modules/inbox-api/
 - **Rejected alternatives:** Инлайнить логику CAS/снапшота в `MutateRouter` — God-роутер,
   нарушает `AX_MODULARITY_LIMITS` и декомпозицию по подсистемам (D-76/D-91).
 
+### D-112 — `getReport` disk-fallback нормализует ключ в `project!iid` до чтения диска
+
+- **Status:** active
+- **Recorded:** 2026-07-23, live-verification (`INBOX_DRY_RUN=1`)
+- **Why:** `getReport(mrId)` при живом инстансе резолвит и webUrl, и `project!iid` (через
+  `_resolveInstance`'s dual-key). Но ветка disk-fallback (когда инстанс завершился и удалён из
+  памяти после auto-approve→done) передавала сырой `mrId` прямо в `_readDiskReview`/`mrReportsDir`,
+  а те ключуются ТОЛЬКО по `project!iid`. Живой баг: `getReport(webUrl)` возвращал 200 с вердиктом,
+  пока инстанс `!630` был в работе, и начинал отдавать 404 на том же webUrl после `done`+cleanup,
+  хотя `review.json` лежал на диске. Фикс: нормализовать `mrId` через `parseVcsUrl` в начале
+  fallback (тот же приём, что уже в `_resolveInstance`), затем единый `ref` и в путь диска, и в
+  поля карточки `project`/`iid`.
+- **Risk accepted:** None — оба формата ключа теперь работают на обеих ветках (live + disk).
+- **Rejected alternatives:** Требовать от всех вызывающих только `project!iid` — молчаливо ломает
+  любой вызов с webUrl после cleanup (именно так баг и проявился); нормализация в одной точке
+  дешевле и симметрична live-ветке.
+
+### D-113 — `GET /api/diagnostics` + серверный ring-buffer логов для кнопки 🐞
+
+- **Status:** active
+- **Recorded:** 2026-07-23, live-verification (`INBOX_DRY_RUN=1`)
+- **Why:** Кнопка-жук на дашборде собирала ТОЛЬКО фронтовый ring-buffer (`debug-log.ts`) — но сбои
+  флоу ревью (линза/синтез/эффект, `execution_error`, `action_failed`) происходят на СЕРВЕРЕ и в
+  этот лог не попадают, так что оператор, нажав жука при «что-то пошло не так», приносил бы лог без
+  причины. Добавлены: (1) bounded ring-buffer в `services/logger/logger.ts` (`snapshotServerLog`) —
+  захватывает КАЖДЫЙ вызов независимо от console-уровня (подавленный debug остаётся доступен
+  постфактум); (2) `GET /api/diagnostics` (`DiagnosticsRouter`) отдаёт хвост серверных строк;
+  (3) `DebugLogButton` тянет `fetchServerLog()` и склеивает `BROWSER LOG` + `SERVER LOG` в один блоб
+  клипборда, никогда не блокируя копирование при недоступном сервере.
+- **Risk accepted:** Логи держатся только в памяти процесса (не персистятся) — при рестарте serve
+  хвост теряется; это осознанно (приватность + ограниченность), для post-hoc разбора активной
+  сессии достаточно.
+- **Rejected alternatives:** Тянуть серверный лог из файла/`tail` руками (нарушает
+  «продукт-владеет-рантаймом», нет у дашборда доступа к stdout процесса); слать каждую строку по SSE
+  (шум + связывает диагностику с живым сокетом, тогда как жук нужен именно когда что-то сломалось).
+
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

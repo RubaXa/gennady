@@ -48,6 +48,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 /**
+ * @purpose Fetch the recent server-log tail via GET /api/diagnostics — the SERVER side of 🐞
+ *   (lens/synthesis/effect failures are server-side, invisible to the browser buffer).
+ * @returns Recent server-log lines, oldest first; empty array on any failure (never throws).
+ * @sideEffect Network: GET /api/diagnostics
+ */
+export async function fetchServerLog(): Promise<string[]> {
+  try {
+    const data = await request<ApiResponse<{ lines: string[] }>>('/api/diagnostics');
+    const payload = data as unknown as { lines?: string[] };
+    return Array.isArray(payload.lines) ? payload.lines : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * @purpose Fetch the full board state from GET /api/board.
  * @returns Board data with roles and unassigned MRs.
  * @sideEffect Network: GET /api/board
@@ -89,6 +105,21 @@ export async function assignMr(
   await request(`/api/mr/${encodeURIComponent(mrId)}/assign`, {
     method: 'POST',
     body: JSON.stringify({ role, rights }),
+  });
+}
+
+/**
+ * @purpose Activate or deactivate a role via POST /api/role/:name/activate — the only
+ *   real-mode entry point for auto-assignment (SV-07); manual assign ignores this flag.
+ * @param role Role name (reviewer, author, mentioned).
+ * @param active Desired activation state.
+ * @returns Promise that resolves when the toggle is sent.
+ * @sideEffect Network: POST /api/role/:name/activate
+ */
+export async function setRoleActive(role: string, active: boolean): Promise<void> {
+  await request(`/api/role/${encodeURIComponent(role)}/activate`, {
+    method: 'POST',
+    body: JSON.stringify({ active }),
   });
 }
 

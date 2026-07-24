@@ -159,10 +159,15 @@ export function buildInboxView(
     // BUT: if the MR was updated since my last visit (delta != 'idle'), something
     // changed — show it even if the stage says "waiting", because a silent push
     // (new commits, no comment) leaves the stage untouched.
+    // EXCEPT: a reviewer's own comment doesn't clear GitLab's "review requested"
+    // flag — only a formal approve does (handled above via approvedBy). Hiding a
+    // reviewer MR just because they last spoke would make it vanish from the inbox
+    // forever the moment they leave one comment, even though GitLab still lists it
+    // as awaiting their review.
     const stage = stages.get(mr.webUrl) ?? 'idle';
     const delta = deltas.get(mr.webUrl) ?? 'idle';
     const reactionless =
-      (stage === 'awaiting_reply' && delta === 'idle') ||
+      (stage === 'awaiting_reply' && delta === 'idle' && mr.role !== 'reviewer') ||
       (stage === 'idle' && mr.role !== 'author');
     if (!options.all && stagesKnown && reactionless) {
       hidden.waiting++;

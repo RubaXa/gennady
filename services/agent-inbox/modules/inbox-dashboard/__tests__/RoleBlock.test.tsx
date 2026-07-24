@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { RoleBlock } from '../components/RoleBlock.tsx';
+import { BoardStore } from '../services/board-store.tsx';
 import { mockActionableMr } from '../../inbox-mocks/mr.mock.ts';
 import type { RoleView } from '../../inbox-api/types.ts';
 
@@ -28,27 +29,36 @@ describe('RoleBlock', () => {
     };
   }
 
+  /**
+   * @purpose RoleBlock reads useBoard() for the activation toggle — wrap with the
+   *   real provider (renderToString never runs its fetch effect, so this stays a
+   *   pure, network-free render).
+   */
+  function renderRoleBlock(role: RoleView): string {
+    return renderToString(createElement(BoardStore, null, createElement(RoleBlock, { role })));
+  }
+
   it('renders role name', async () => {
     const role = mockRoleView();
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     assert.ok(html.includes('reviewer'));
   });
 
   it('renders active badge when role is active', async () => {
     const role = mockRoleView({ active: true });
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     assert.ok(html.includes('active'));
   });
 
   it('renders inactive badge when role is inactive', async () => {
     const role = mockRoleView({ active: false });
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     assert.ok(html.includes('inactive'));
   });
 
   it('renders all four Kanban lane titles', async () => {
     const role = mockRoleView();
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     assert.ok(html.includes('INBOX'));
     assert.ok(html.includes('PROGRESS'));
     assert.ok(html.includes('AWAITING'));
@@ -73,7 +83,7 @@ describe('RoleBlock', () => {
       },
     });
 
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     assert.ok(html.includes('Inbox MR'));
     assert.ok(html.includes('Progress MR'));
     assert.ok(html.includes('Awaiting MR'));
@@ -81,7 +91,7 @@ describe('RoleBlock', () => {
 
   it('renders empty lanes with placeholder', async () => {
     const role = mockRoleView();
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     // Each empty lane has a dash placeholder
     const dashCount = (html.match(/—/g) ?? []).length;
     assert.ok(dashCount >= 4, `Expected 4 dash placeholders, got ${dashCount}`);
@@ -98,7 +108,7 @@ describe('RoleBlock', () => {
       },
     });
 
-    const html = renderToString(createElement(RoleBlock, { role }));
+    const html = renderRoleBlock(role);
     // Should show count "1" near INBOX lane
     assert.ok(html.includes('INBOX') || true);
   });
