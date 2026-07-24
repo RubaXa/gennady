@@ -11,6 +11,7 @@ import { run as runVcsApprove } from '../../../../cli/cmd/vcs-approve/vcs-approv
 import { run as runVcsDraftNote } from '../../../../cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts';
 import { main as postVcsReply } from '../../../../cli/cmd/vcs-reply/vcs-reply.cmd.ts';
 import { resolveVcsContext } from '../../../../cli/cmd/_shared/vcs-context-resolver.ts';
+import { fetchDiffRefsLive } from './context-builder.ts';
 import type { VcsDiscussionPosition } from '../../../vcs-client/abstract/vcs-client-merge-discussions.ts';
 import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
@@ -279,13 +280,15 @@ export class EffectExecutor {
         });
         outcomes.push({ action, status: 'applied' });
       } catch (cause) {
-        const error = new Error('[EffectExecutor#execute] Action failed', { cause });
+        // Surface the ACTUAL failure reason — previously this logged a wrapped Error object that
+        // serialized to `{}`, hiding the real cause (the positioned-reply 500s were invisible).
+        const message = (cause as Error)?.message ?? String(cause);
         logger.error('[EffectExecutor#execute] [executing → action_failed]', {
           mr: ctx.mr,
           action: action.type,
-          error,
+          error: message,
         });
-        outcomes.push({ action, status: 'failed', error: (cause as Error).message });
+        outcomes.push({ action, status: 'failed', error: message });
       }
     }
 
@@ -429,15 +432,62 @@ export class EffectExecutor {
     }>
   ): Promise<void> {
     const mrContext = await this._vcs.getMrContext(ctx.mr);
+    const stdinJsonArray = await this._enrichReplyPositions(ctx.mr, payload);
     const result = await postVcsReply({
       project: mrContext.project,
       iid: mrContext.iid,
       host: this._vcs.getHost() || undefined,
-      stdinJsonArray: payload,
+      stdinJsonArray,
     });
     if (!result.ok || result.failed > 0) {
-      throw new Error(`vcs-reply failed: ${result.error ?? result.detail ?? 'unknown error'}`);
+      const detail = result.error ?? result.detail ?? '';
+      throw new Error(
+        `vcs-reply failed: sent=${result.sent} failed=${result.failed}${detail ? ` — ${detail}` : ''}`
+      );
     }
+  }
+
+  // Why: session-proposed positions carry only `{ file, newLine }` (the model has no diff SHAs), and
+  // GitLab rejects such a line comment with a 500 — every positioned reply failed in production until
+  // the position was completed with the MR's diff refs here.
+  /**
+   * @purpose Complete a reply's diff position (`newPath` + base/start/head SHAs) from the MR's diff
+   *   refs; degrade to a general note when refs are missing.
+   * @param mr MR web URL — diff-refs source.
+   * @param payload Reply items whose `position` may be partial (`{ file, newLine }`).
+   * @returns Payload with each position enriched, or the item demoted to a note.
+   * @sideEffect Network: one diff-refs lookup when any position lacks SHAs.
+   */
+  protected async _enrichReplyPositions<
+    T extends { body?: string; position?: VcsDiscussionPosition },
+  >(mr: string, payload: T[]): Promise<T[]> {
+    const needsRefs = payload.some(
+      (p) => p.position && (!p.position.baseSha || !p.position.headSha || !p.position.startSha)
+    );
+    const refs = needsRefs ? await fetchDiffRefsLive(mr) : undefined;
+
+    return payload.map((item) => {
+      if (!item.position) return item;
+      const pos = item.position as VcsDiscussionPosition & { file?: string };
+      const newPath = pos.newPath || pos.file;
+      const baseSha = pos.baseSha || refs?.baseSha;
+      const headSha = pos.headSha || refs?.headSha;
+      const startSha = pos.startSha || refs?.startSha || baseSha;
+
+      if (!newPath || !baseSha || !headSha || !startSha) {
+        // Cannot build a valid line position — demote to a general note, keeping the file:line anchor
+        // in the body so the reviewer's intent is not lost.
+        const anchor = newPath ? `\`${newPath}${pos.newLine ? `:${pos.newLine}` : ''}\`\n\n` : '';
+        const { position: _dropped, ...rest } = item;
+        logger.warn('[EffectExecutor#_enrichReplyPositions] [position → degraded_to_note]', {
+          mr,
+          newPath: newPath ?? '(none)',
+        });
+        return { ...(rest as T), body: item.body ? anchor + item.body : item.body };
+      }
+
+      return { ...item, position: { ...pos, newPath, baseSha, startSha, headSha } };
+    });
   }
 
   // ─── Dry-run description ────────────────────────────────────────────────────────
