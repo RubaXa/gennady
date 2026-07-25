@@ -9,7 +9,7 @@ import type { ChildProcess } from 'node:child_process';
 import type { HttpServer } from '../modules/inbox-api/http-server.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
 import type { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
-import { isOpencodePid } from './pid-utils.ts';
+import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 
 /**
  * @purpose Configuration for graceful shutdown.
@@ -67,7 +67,7 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
       const { pid } = JSON.parse(raw) as { pid: number; port: number };
 
       // S1: Verify PID belongs to opencode before killing (prevent recycled PID kill)
-      if (!isOpencodePid(pid)) {
+      if (!(await isOpencodePid(pid))) {
         logger.info('[gracefulShutdown] PID belongs to different process — skipping kill', { pid });
         try {
           await unlink(config.opencodePidFile);
@@ -76,34 +76,8 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
         }
         // fall through to continue shutdown
       } else {
-        logger.info('[gracefulShutdown] killing opencode by PID', { pid });
-
-        try {
-          process.kill(pid, 'SIGTERM');
-        } catch {
-          /* process already dead */
-        }
-
-        await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (!isOpencodePid(pid)) {
-              clearTimeout(forceKill);
-              clearInterval(check);
-              resolve();
-            }
-          }, 200);
-
-          const forceKill = setTimeout(() => {
-            clearInterval(check);
-            try {
-              process.kill(pid, 'SIGKILL');
-            } catch {
-              /* ignore */
-            }
-            resolve();
-          }, 5000);
-        });
-
+        logger.info('[gracefulShutdown] terminating opencode by PID', { pid });
+        await terminateOrphanedOpencode(pid, 'graceful shutdown');
         try {
           await unlink(config.opencodePidFile);
         } catch {

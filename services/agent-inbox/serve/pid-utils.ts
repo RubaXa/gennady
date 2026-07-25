@@ -5,19 +5,24 @@
 // @consumers: gracefulShutdown, serve.cmd.ts, bootstrap.ts
 // @tasks: TSK-115, TSK-117
 
-import { execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { logger } from '#logger';
+
+const execFileAsync = promisify(execFile);
 
 /**
  * @purpose Verify a PID belongs to an opencode process (prevents recycled PID kills).
- * Uses `ps -p <pid> -o comm=` on macOS.
+ * Uses `ps -p <pid> -o comm=` on macOS (async, non-blocking).
  * @param pid Process ID to verify.
  * @returns True if the PID's command name contains "opencode".
  */
-export function isOpencodePid(pid: number): boolean {
+export async function isOpencodePid(pid: number): Promise<boolean> {
   try {
-    const comm = execSync(`ps -p ${pid} -o comm=`, { encoding: 'utf-8' }).trim();
-    return comm.toLowerCase().includes('opencode');
+    const { stdout } = await execFileAsync('ps', ['-p', String(pid), '-o', 'comm='], {
+      encoding: 'utf-8',
+    });
+    return stdout.trim().toLowerCase().includes('opencode');
   } catch {
     return false;
   }
@@ -54,7 +59,7 @@ export async function terminateOrphanedOpencode(
   const deadline = Date.now() + graceMs;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 200));
-    if (!isOpencodePid(pid)) {
+    if (!(await isOpencodePid(pid))) {
       logger.info('[terminateOrphanedOpencode] [terminating → stopped]', {
         pid,
         signal: 'SIGTERM',
@@ -76,7 +81,7 @@ export async function terminateOrphanedOpencode(
   }
 
   await new Promise((resolve) => setTimeout(resolve, 300));
-  const stillAlive = isOpencodePid(pid);
+  const stillAlive = await isOpencodePid(pid);
   logger.info(
     stillAlive
       ? '[terminateOrphanedOpencode] [escalating → failed] process survived SIGKILL'

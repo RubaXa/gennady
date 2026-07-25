@@ -3,7 +3,7 @@
 // @tasks: TSK-115, TSK-117, TSK-122, TSK-123
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
-import { writeFile, mkdir, readFile } from 'node:fs/promises';
+import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -377,25 +377,42 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     }
     // #endregion END_CHECK_OPENCODE_PATH
 
-    // TSK-123 P2: an operator-supplied OPENCODE_PORT means "an opencode serve is already up on
-    // this port, reuse it" — skip findFreePort/spawnOpencode entirely (spawning a second instance
-    // wastes ~20s of retry budget racing the already-bound port and blows the e2e webServer
-    // readiness window for a live run). Falls through to the pre-existing spawn path when unset.
+    // TSK-123 P2: OPENCODE_PORT means reuse an already-running opencode serve.
+    // Falls through to the spawn path when unset.
+    // D-138: pid file scoped by port; orphan check at start + cleanup before spawn.
     // #region START_CONNECT_OPENCODE
     const stateDir = stateStore.getStateDir();
-    // D-138: pid file scoped by `--port` — a shared name let concurrent instances clobber it.
     const pidFile = join(stateDir, 'agent-inbox', `opencode-${port}.pid`);
     opencodePort = 4096;
     opencodePidFile = null;
 
-    // D-138: transparent, port-scoped-only conflict check — orphaned child from a crashed prior instance on THIS port.
     if (existsSync(pidFile)) {
       try {
         const { pid: orphanPid } = JSON.parse(await readFile(pidFile, 'utf-8')) as {
           pid: number;
           port: number;
         };
-        if (isOpencodePid(orphanPid)) {
+        if (await isOpencodePid(orphanPid)) {
+          // Distinguish orphan opencode (serve dead) from legitimate running serve
+          let httpAlive = false;
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 2000);
+            const response = await fetch(`http://localhost:${port}/api/board`, {
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            httpAlive = response.ok;
+          } catch {
+            /* HTTP not responding — orphan */
+          }
+
+          if (httpAlive) {
+            throw new Error(
+              `Already running on port ${port}. Stop the existing instance first or use a different --port.`
+            );
+          }
+
           logger.warn('[bootstrap] [starting → orphan_found]', {
             port,
             pid: orphanPid,
@@ -405,8 +422,16 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
             orphanPid,
             `starting a fresh gennady inbox serve on port ${port}`
           );
+          try {
+            await unlink(pidFile);
+          } catch {
+            /* ignore */
+          }
         }
-      } catch {
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Already running')) {
+          throw e;
+        }
         /* stale/corrupt pid file — overwritten below regardless */
       }
     }

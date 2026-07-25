@@ -10,7 +10,10 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
-import { isOpencodePid } from '../../../services/agent-inbox/serve/pid-utils.ts';
+import {
+  isOpencodePid,
+  terminateOrphanedOpencode,
+} from '../../../services/agent-inbox/serve/pid-utils.ts';
 import { runMrsOnce, resolveRunModeVcsHost } from '../../../services/agent-inbox/serve/run-mode.ts';
 import { loadSeedState, type SeedState } from '../../../services/agent-inbox/serve/state-seed.ts';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
@@ -75,7 +78,10 @@ function parseValue(argv: string[], flag: string): string | undefined {
  * @param [explicitPort] `--opencode-port` override — skips pid-file discovery entirely when given.
  * @returns Base URL to connect to.
  */
-function resolveRunModeOpencodeBaseUrl(stateDir: string, explicitPort?: number): string {
+async function resolveRunModeOpencodeBaseUrl(
+  stateDir: string,
+  explicitPort?: number
+): Promise<string> {
   if (explicitPort !== undefined) {
     console.info(style.cyan(`  attaching to opencode on explicit port ${explicitPort}`));
     return `http://localhost:${explicitPort}`;
@@ -97,7 +103,7 @@ function resolveRunModeOpencodeBaseUrl(stateDir: string, explicitPort?: number):
         pid: number;
         port: number;
       };
-      if (isOpencodePid(pid)) {
+      if (await isOpencodePid(pid)) {
         console.info(
           style.cyan(
             `  attaching to running opencode on port ${port} (pid ${pid}, from ${file}${
@@ -189,7 +195,7 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
     const opencodePort = opencodePortArg ? Number(opencodePortArg) : undefined;
     const opencodeBaseUrl = mocks
       ? undefined
-      : resolveRunModeOpencodeBaseUrl(store.getStateDir(), opencodePort);
+      : await resolveRunModeOpencodeBaseUrl(store.getStateDir(), opencodePort);
     const opencode: OpenCodePort = mocks
       ? new OpenCodeMock()
       : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: opencodeBaseUrl });
@@ -226,31 +232,62 @@ async function run(): Promise<number> {
     }
     // #endregion END_RUN_MODE_DISPATCH
 
+    // D-85/D-138: refuse to start only if THIS SAME PORT already has a live instance
+    // (pid file scoped per-port so a different port never falsely conflicts).
+    // If opencode is alive but serve is dead → orphan → clean and continue.
+    const defaultStateDir = join(homedir(), '.gennady');
+    const pidFile = join(defaultStateDir, 'agent-inbox', `opencode-${port ?? 4174}.pid`);
+
     // #region START_BOOTSTRAP — assemble DI, verify config and adapters
     console.info(style.bold('gennady inbox serve'));
     console.info('');
 
-    // D-85/D-138: refuse to start only if THIS SAME PORT already has a live instance
-    // (pid file scoped per-port so a different port never falsely conflicts).
-    const defaultStateDir = join(homedir(), '.gennady');
-    const pidFile = join(defaultStateDir, 'agent-inbox', `opencode-${port ?? 4174}.pid`);
     if (existsSync(pidFile)) {
       try {
         const raw = readFileSync(pidFile, 'utf-8');
         const { pid, port: opencodePort } = JSON.parse(raw) as { pid: number; port: number };
-        if (isOpencodePid(pid)) {
-          console.info(
-            style.yellow(
-              `⚠ Уже запущен на порту ${port ?? 4174} (opencode PID ${pid}:${opencodePort})`
-            )
+        if (await isOpencodePid(pid)) {
+          const servePort = port ?? 4174;
+          let httpAlive = false;
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 2000);
+            const response = await fetch(`http://localhost:${servePort}/api/board`, {
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            httpAlive = response.ok;
+          } catch {
+            /* HTTP not responding — orphan */
+          }
+
+          if (httpAlive) {
+            console.info(
+              style.yellow(
+                `⚠ Уже запущен на порту ${servePort} (opencode PID ${pid}:${opencodePort})`
+              )
+            );
+            return 0;
+          }
+
+          // Orphan: opencode process is alive but serve HTTP is dead — clean up
+          console.info(style.yellow('⚠ Обнаружен orphan-процесс opencode — очистка...'));
+          await terminateOrphanedOpencode(
+            pid,
+            `orphan detected at serve.cmd.ts pre-check for port ${servePort}`
           );
-          return 0;
-        }
-        // Stale PID file — remove and continue
-        try {
-          unlinkSync(pidFile);
-        } catch {
-          /* ignore */
+          try {
+            unlinkSync(pidFile);
+          } catch {
+            /* ignore */
+          }
+        } else {
+          // Stale PID file — remove and continue
+          try {
+            unlinkSync(pidFile);
+          } catch {
+            /* ignore */
+          }
         }
       } catch {
         /* Corrupted PID file — ignore and continue */
