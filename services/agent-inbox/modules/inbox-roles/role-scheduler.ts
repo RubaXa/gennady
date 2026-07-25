@@ -17,10 +17,12 @@ import { buildNodeContext, fetchDiffRefsLive, type ContextBuilderDeps } from './
 import { detectMrEvents, DebounceTracker } from './mr-watch.ts';
 import {
   scanReportsDir,
+  scanCurrentReportsDir,
   reconcileActionable,
   recoverLegacyArtifact,
   readCanonicalReview,
   buildResumeCheckpoint,
+  legacyReportDir,
   type ReconciliationPlan,
   type MrReconciliation,
 } from './artifact-recovery.ts';
@@ -28,6 +30,7 @@ import {
 // Debt: move classify/build-view into inbox-core alongside the TSK-109 migration.
 import { classifyInbox } from '../../../../cli/cmd/inbox/_core/logic/classify-inbox.logic.ts';
 import { buildInboxView } from '../../../../cli/cmd/inbox/_core/logic/build-inbox-view.logic.ts';
+import { mrKey, mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { MrStage } from '../../../../cli/cmd/inbox/_core/logic/classify-mr-stage.logic.ts';
 import type { RoleGraph } from './role-node.ts';
 
@@ -187,7 +190,10 @@ export class RoleScheduler {
       // #region START_ASSIGN_NEW_MRS — invariant: disk reconciliation (SV-15..SV-18) replaces the
       // old blind `!existingInstance` recreate; `_assignRole` resumes from a canonical/legacy
       // snapshot when one exists, falling through to the from-zero path otherwise.
-      const diskSnapshots = scanReportsDir(this._config.store.getStateDir());
+      const diskSnapshots = [
+        ...scanReportsDir(this._config.store.getStateDir()),
+        ...scanCurrentReportsDir(this._config.store.getStateDir()),
+      ];
       const reconciliation: ReconciliationPlan = reconcileActionable(diskSnapshots, mrs);
       const reconciliationByUrl = new Map(reconciliation.map((r) => [r.mr.webUrl, r]));
 
@@ -337,7 +343,9 @@ export class RoleScheduler {
       return;
     }
 
-    const checkpoint = await this._buildInitialCheckpoint(mrUrl, definition.graph);
+    const checkpoint =
+      (await this._tryResumeFromDisk(mrUrl, definition.graph)) ??
+      (await this._buildInitialCheckpoint(mrUrl, definition.graph));
     const instance = new RoleInstance({
       id: key,
       role: roleName,
@@ -712,6 +720,53 @@ export class RoleScheduler {
       logger.warn('[RoleScheduler#_buildInitialCheckpoint] [building → degraded]', {
         mrUrl,
         error: String(error),
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * @purpose Check legacy + current report trees for an already-materialized review.
+   *   Build a resume checkpoint when found so the instance skips the review battery.
+   * @invariant Degrade-open: a missing VCS response, absent `review.json`, or a read failure all
+   *   return `undefined` — the caller falls through to the from-zero path.
+   * @param mrUrl MR web URL.
+   * @param graph Role graph for checkpoint construction.
+   * @returns Resume checkpoint, or `undefined` when disk is empty / unreadable / unreachable.
+   * @sideEffect Network: `vcs.getMrContext` fetch (one lightweight metadata call). FS: reads
+   *   `review.json` from whichever tree provides it first.
+   */
+  protected async _tryResumeFromDisk(
+    mrUrl: string,
+    graph: RoleGraph
+  ): Promise<RoleInstanceCheckpoint | undefined> {
+    try {
+      const mrContext = await this._config.vcs.getMrContext(mrUrl);
+      const ref = `${mrContext.project}!${mrContext.iid}`;
+      const stateDir = this._config.store.getStateDir();
+
+      const currentDir = mrReportsDir(stateDir, ref);
+      let review = readCanonicalReview(currentDir);
+
+      if (!review) {
+        const legacyDir = legacyReportDir(stateDir, mrKey(ref));
+        review = readCanonicalReview(legacyDir);
+      }
+
+      if (review) {
+        logger.info('[RoleScheduler#_tryResumeFromDisk] [idle → resume]', {
+          mr: mrUrl,
+          verdict: review.verdict,
+          revision: review.revision,
+        });
+        return buildResumeCheckpoint(graph, review);
+      }
+
+      return undefined;
+    } catch (cause) {
+      logger.debug('[RoleScheduler#_tryResumeFromDisk] [looking → degraded]', {
+        mr: mrUrl,
+        error: String(cause),
       });
       return undefined;
     }

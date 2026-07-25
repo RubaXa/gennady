@@ -102,6 +102,16 @@ export function legacyReportsRoot(stateDir: string): string {
 }
 
 /**
+ * @purpose Root of the current (post-TSK-131) per-MR tree — `<stateDir>/agent-inbox/mrs`.
+ * @invariant Contains one `<mrKey>/` dir per MR, each with `worktree/` + `report/` children.
+ * @param stateDir Gennady state root.
+ * @returns Absolute `<stateDir>/agent-inbox/mrs` path.
+ */
+export function currentReportsRoot(stateDir: string): string {
+  return join(stateDir, 'agent-inbox', 'mrs');
+}
+
+/**
  * @purpose Absolute path of one MR's legacy report directory — `dirName` uses the same `mrKey`
  *   encoding `reconcileActionable` computes per actionable MR.
  * @param stateDir Gennady state root.
@@ -160,6 +170,49 @@ export function scanReportsDir(stateDir: string): MrArtifactSnapshot[] {
     }
     if (!isDirectory) continue;
     snapshots.push({ dirName, dir, format: _detectArtifactFormat(dir) });
+  }
+  return snapshots;
+}
+
+/**
+ * @purpose Scan the CURRENT (post-TSK-131) per-MR tree for `report/` dirs containing a canonical
+ *   `review.json` — `mrs/<key>/report/` layout, sibling to the legacy flat `reports/` tree.
+ * @invariant `dirName` = the `<mrKey>` directory name under `mrs/`; `dir` = `report/` inside it.
+ * @param stateDir Gennady state root.
+ * @returns One snapshot per MR whose `report/` dir holds a recognizable artifact shape.
+ * @sideEffect FS: reads `currentReportsRoot` directory listing + per-key `report/` marker files.
+ */
+export function scanCurrentReportsDir(stateDir: string): MrArtifactSnapshot[] {
+  const root = currentReportsRoot(stateDir);
+  if (!existsSync(root)) return [];
+
+  let entries: string[];
+  try {
+    entries = readdirSync(root);
+  } catch (cause) {
+    logger.warn('[scanCurrentReportsDir] [scanning → degraded]', { root, error: String(cause) });
+    return [];
+  }
+
+  const snapshots: MrArtifactSnapshot[] = [];
+  for (const dirName of entries) {
+    const mrDir = join(root, dirName);
+    let isDirectory: boolean;
+    try {
+      isDirectory = statSync(mrDir).isDirectory();
+    } catch {
+      continue;
+    }
+    if (!isDirectory) continue;
+
+    const reportDir = join(mrDir, 'report');
+    try {
+      if (!statSync(reportDir).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+
+    snapshots.push({ dirName, dir: reportDir, format: _detectArtifactFormat(reportDir) });
   }
   return snapshots;
 }
@@ -231,18 +284,32 @@ export function buildResumeCheckpoint(
   review: PersistedReviewJson
 ): RoleInstanceCheckpoint {
   const askNode = graph.nodes.find((n) => n.kind === 'ask');
+  const findings = review.findings.map((f) => ({
+    file: f.file,
+    line: f.line,
+    severity: f.severity,
+    message: f.message,
+  }));
 
   return {
     currentNode: askNode?.id ?? graph.nodes[0]?.id ?? '',
     continueCount: 0,
     restartCount: 0,
     artifacts: {
-      // Generic key: RoleInstance#_extractFindings/_extractVerdict scan ALL artifacts for
-      // `.findings`/`.verdict` — no role-specific node id required to surface recovered data.
       diskRecovery: {
         verdict: review.verdict,
         findings: review.findings,
         revision: review.revision,
+      },
+      node_synthesize: {
+        reviewReport: {
+          summary: `Auto-recovered from disk — ${review.findings.length} findings, verdict: ${review.verdict}`,
+          verdict: review.verdict,
+          behavior: 'n/a — recovered from disk after serve restart',
+          scenarios: 'n/a — recovered from disk after serve restart',
+        },
+        recommendations: findings,
+        proposedActions: [],
       },
     },
   };
