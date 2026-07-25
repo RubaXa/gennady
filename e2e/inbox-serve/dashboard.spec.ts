@@ -215,4 +215,26 @@ test.describe('inbox-dashboard: behavioral', () => {
 
     await shot(page, '05-api-error-banner');
   });
+
+  test('deep-link shows artifact content, not spinner (regression: loading state race)', async ({
+    page,
+  }) => {
+    await routeArtifacts510(page);
+    await page.goto('/#/mr/group%2Fproject!510');
+
+    // Artifact browser nav must be visible — proves the spinner disappeared and content mounted
+    await expect(page.locator('nav[aria-label="Артефакты"]')).toBeVisible({ timeout: 10_000 });
+
+    // Content area must not show the loading spinner
+    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 5_000 });
+
+    // Artifact content (REPORT.md default) must contain text from the mock fixture
+    const contentPane = page.locator('nav[aria-label="Артефакты"] + div');
+    await expect(contentPane.locator('text=Summary of findings')).toBeVisible({ timeout: 10_000 });
+
+    // ARIA snapshot must contain artifact content — proves ArtifactView rendered
+    const snapshot = await page.ariaSnapshot();
+    expect(snapshot).toContain('Potential null reference');
+    expect(snapshot).toContain('REPORT.md');
+  });
 });

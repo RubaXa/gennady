@@ -6,7 +6,7 @@ import { useBoard } from '../services/board-store.tsx';
 import { AwaitingQueue } from './AwaitingQueue.tsx';
 import { RoleBlock } from './RoleBlock.tsx';
 import { UnassignedBlock } from './UnassignedBlock.tsx';
-import { Loader2 } from 'lucide-react';
+import { BoardSkeleton } from './BoardSkeleton.tsx';
 
 /**
  * @purpose Main dashboard page with awaiting queue on top, role blocks below.
@@ -15,20 +15,8 @@ import { Loader2 } from 'lucide-react';
 export function BoardPage() {
   const { board, loading } = useBoard();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!board) {
-    return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        No board data available.
-      </div>
-    );
+  if (loading || !board) {
+    return <BoardSkeleton />;
   }
 
   // Aggregate all awaitingMe cards across all roles for the top queue

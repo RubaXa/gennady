@@ -125,6 +125,44 @@ test.describe('inbox-dashboard: ARIA snapshots', () => {
     expect(snapshot).toContain('Approve');
   });
 
+  test('cold start: skeleton shown instead of false zeros', async ({ page }) => {
+    // Route /api/board with a 2-second delay so the skeleton is observable
+    let boardRouteHit = false;
+    await page.route('**/api/board', async (route) => {
+      boardRouteHit = true;
+      await new Promise((r) => setTimeout(r, 2_000));
+      await route.continue();
+    });
+
+    await page.goto('/');
+
+    // Skeleton should be visible — main has aria-label="Loading dashboard"
+    const main = page.locator('main');
+    await expect(main).toBeVisible({ timeout: 5_000 });
+
+    const coldSnapshot = await captureAriaSnapshot(page);
+
+    // Must NOT show false zeros — the bug this test guards against
+    expect(coldSnapshot).not.toContain('БЕЗ РОЛИ');
+
+    // Skeleton aria markers should be present
+    expect(coldSnapshot).toContain('Loading dashboard');
+    expect(coldSnapshot).toContain('Loading role block');
+
+    // Wait for the real board to replace the skeleton
+    await expect(page.locator('section[aria-label="Role: reviewer"]')).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // After real load, skeleton markers must be gone and real data must appear
+    const warmSnapshot = await captureAriaSnapshot(page);
+    expect(warmSnapshot).not.toContain('Loading dashboard');
+    expect(warmSnapshot).toContain('reviewer');
+    expect(warmSnapshot).toContain('INBOX');
+    expect(warmSnapshot).toContain('author');
+    expect(warmSnapshot).toContain('mentioned');
+  });
+
   test('error state: "API недоступен" text is visible', async ({ page }) => {
     // Intercept API calls to simulate error
     await page.route('**/api/board', async (route) => {

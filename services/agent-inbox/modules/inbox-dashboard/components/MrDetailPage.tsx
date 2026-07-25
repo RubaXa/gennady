@@ -42,12 +42,15 @@ export function MrDetailPage(props: { mrId: string }) {
   const chatPanelRef = useRef<ChatPanelHandle>(null);
 
   const loadReport = useCallback(async () => {
+    setLoading(true);
     try {
       setError(null);
       const data = await fetchReport(mrId);
       setReport(data);
     } catch (_cause) {
       setError('Не удалось загрузить отчёт');
+    } finally {
+      setLoading(false);
     }
   }, [mrId, fetchReport]);
 
@@ -147,7 +150,7 @@ export function MrDetailPage(props: { mrId: string }) {
         </div>
       )}
 
-      {report && !loading && !error && (
+      {!loading && !error && (
         <div className="flex min-h-0 min-w-0 flex-1 gap-3">
           <ArtifactBrowser
             mrId={mrId}
@@ -168,7 +171,7 @@ export function MrDetailPage(props: { mrId: string }) {
                   : 'shrink-0'
               )}
             >
-              <ActionPanel mrId={mrId} report={report} />
+              {report && <ActionPanel mrId={mrId} report={report} />}
             </div>
 
             <div
