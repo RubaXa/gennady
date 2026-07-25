@@ -29,7 +29,7 @@ export type ChatComposerHandle = {
   /** @purpose Move keyboard focus into the composer's textarea. */
   focus: () => void;
   /**
- * @purpose Append text at the current cursor position.
+   * @purpose Append text at the current cursor position.
    * @param text Text to append.
    */
   appendText: (text: string) => void;
