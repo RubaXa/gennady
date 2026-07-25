@@ -309,6 +309,11 @@ export class BoardProviderReal extends BoardProviderPort {
     if (!this._engine.retrieve(role)) return { ok: false };
     if (active) {
       this._engine.activate(role);
+      // Activation must take effect NOW, not on the next poll (up to 300s away): kick an immediate
+      // tick so a newly-active role picks up and (re)assigns its actionable MRs — including restoring
+      // MRs already under review — instead of the operator staring at an empty board until the timer.
+      // Fire-and-forget: the HTTP response returns at once; tick() self-guards re-entrancy.
+      void this._scheduler.tick();
     } else {
       this._engine.deactivate(role);
     }
