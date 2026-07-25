@@ -3,8 +3,11 @@
 // @consumers: cli/cmd/inbox-review-plan (scaffoldReviewReports), inbox-roles NodeContext builder (TSK-113 Round 2)
 // @tasks: TSK-134, TSK-113
 
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { logger } from '#logger';
+
+const gitAsync = promisify(execFile);
 
 // #region START_INPUT_TYPES
 
@@ -203,13 +206,14 @@ function parseUnifiedDiff(diffText: string): ParsedFileDiff[] {
  * @throws {Error} The git process exits non-zero.
  * @sideEffect Spawns a git subprocess.
  */
-function runGit(args: string[], worktreePath: string): string {
+async function runGit(args: string[], worktreePath: string): Promise<string> {
   try {
-    return execFileSync('git', args, {
-      cwd: worktreePath,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    return (
+      await gitAsync('git', args, {
+        cwd: worktreePath,
+        encoding: 'utf8',
+      })
+    ).stdout.trim();
   } catch (cause) {
     const error = new Error(`[buildTrackContext] git ${args.join(' ')} failed`, { cause });
     logger.error('[buildTrackContext] [computing → failed]', { error });
@@ -255,17 +259,17 @@ function renderAttentionLines(track: string, shape: MrShape, newSymbolNames: str
  *   statanalysis from the same diff pass (TSK-113 Round 2) — reused, not independently recomputed.
  * @sideEffect Spawns `git diff`/`git log` subprocesses against `worktreePath`.
  */
-export function buildTrackContext(
+export async function buildTrackContext(
   track: string,
   changeset: ChangesetInput,
   base: string,
   worktreePath: string
-): { markdown: string; injectedEntities: InjectedEntity[]; mrShape: MrShape } {
+): Promise<{ markdown: string; injectedEntities: InjectedEntity[]; mrShape: MrShape }> {
   const paths = changeset.files.map((f) => f.path);
   const diffText = paths.length
-    ? runGit(['diff', `${base}..HEAD`, '--', ...paths], worktreePath)
+    ? await runGit(['diff', `${base}..HEAD`, '--', ...paths], worktreePath)
     : '';
-  const commitLog = runGit(['log', '--oneline', `${base}..HEAD`], worktreePath);
+  const commitLog = await runGit(['log', '--oneline', `${base}..HEAD`], worktreePath);
   const commits = commitLog ? commitLog.split('\n') : [];
 
   const shape = computeMrShape(changeset, diffText);

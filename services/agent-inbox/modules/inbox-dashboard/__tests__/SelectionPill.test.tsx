@@ -71,7 +71,7 @@ describe('SelectionPill', () => {
 
       const button = container.querySelector('button');
       assert.ok(button, 'pill rendered once the debounce window elapses');
-      assert.match(button!.textContent ?? '', /Спросить · В контекст/);
+      assert.match(button!.textContent ?? '', /Спросить про это/);
     } finally {
       mock.timers.reset();
       act(() => cleanup());
@@ -228,6 +228,54 @@ describe('SelectionPill', () => {
         startLine: 1,
         endLine: 1,
       });
+    } finally {
+      mock.timers.reset();
+      act(() => cleanup());
+    }
+  });
+
+  it('после выделения текста контекст появляется в DOM — кнопка видна и чип содержит origin', () => {
+    // Проверка полного пути: выделение → кнопка в DOM → клик → чип с корректным контекстом.
+    const attached: ContextChip[] = [];
+    const container = createTestContainer();
+    const rawText = 'HEADER\n\nflagged review line\n\nFOOTER';
+    stubNonEmptySelection('flagged review line');
+    mock.timers.enable({ apis: ['setTimeout'] });
+
+    try {
+      act(() => {
+        render(
+          createElement(SelectionPill, {
+            onAttach: (chip) => attached.push(chip),
+            activeArtifact: { name: 'README.md', rawText },
+          }),
+          container
+        );
+      });
+
+      act(() => {
+        document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      });
+      act(() => {
+        mock.timers.tick(SELECTION_DEBOUNCE_MS);
+      });
+
+      const button = container.querySelector('button');
+      assert.ok(button, 'кнопка контекста появилась в DOM после выделения');
+
+      act(() => {
+        button!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+
+      assert.equal(attached.length, 1, 'чип прикреплён через onAttach');
+      assert.equal(attached[0]!.kind, 'selection');
+      assert.equal(attached[0]!.quote, 'flagged review line');
+      assert.deepStrictEqual(attached[0]!.origin, {
+        artifact: 'README.md',
+        startLine: 3,
+        endLine: 3,
+      });
+      assert.equal(container.querySelector('button'), null, 'кнопка исчезла после attach');
     } finally {
       mock.timers.reset();
       act(() => cleanup());

@@ -135,7 +135,7 @@ export function SelectionPill(props: {
       className="z-50 flex items-center gap-1.5 rounded-full border border-border bg-popover px-2.5 py-1 text-[12px] font-medium text-foreground shadow-md hover:bg-accent transition-colors"
     >
       <MessageSquarePlus className="h-3.5 w-3.5" />
-      Спросить · В контекст
+      Спросить про это
     </button>
   );
 }

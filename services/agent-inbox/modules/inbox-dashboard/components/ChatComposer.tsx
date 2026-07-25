@@ -28,6 +28,9 @@ function estimateTokenCount(text: string, chips: ContextChip[]): number {
 export type ChatComposerHandle = {
   /** @purpose Move keyboard focus into the composer's textarea. */
   focus: () => void;
+  /** @purpose Append text at the current cursor position.
+   *  @param text Text to append. */
+  appendText: (text: string) => void;
 };
 
 /**
@@ -52,6 +55,17 @@ export const ChatComposer = forwardRef<
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
+    appendText: (text: string) => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const current = el.value;
+      el.value = current.slice(0, start) + text + current.slice(end);
+      setText(el.value);
+      el.selectionStart = el.selectionEnd = start + text.length;
+      el.focus();
+    },
   }));
 
   const tokenCount = estimateTokenCount(text, chips);

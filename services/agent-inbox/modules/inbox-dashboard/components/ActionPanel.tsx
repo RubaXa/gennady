@@ -104,6 +104,7 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
   const [redispatchFocus, setRedispatchFocus] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postResult, setPostResult] = useState<'success' | 'error' | null>(null);
 
   const hasBlockingFinding = report.findings.some((f) => f.severity === 'error');
 
@@ -136,9 +137,12 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
   const dispatch = async (choice: string, payload?: unknown) => {
     setBusy(true);
     setError(null);
+    setPostResult(null);
     try {
       await executeAction(mrId, 'review-decision', choice, payload);
+      if (choice === 'post') setPostResult('success');
     } catch (_cause) {
+      if (choice === 'post') setPostResult('error');
       setError('Не удалось выполнить действие');
     } finally {
       setBusy(false);
@@ -188,7 +192,17 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
 
       <div className="flex flex-col gap-1.5 overflow-y-auto max-h-64">
         {report.findings.map((finding, idx) => (
-          <div key={idx} className="rounded-md border border-border/80 bg-secondary/30 p-2">
+          <div
+            key={idx}
+            className={cn(
+              'rounded-md border p-2 transition-colors',
+              selected.has(idx)
+                ? 'border-blue-400/60 bg-blue-400/10'
+                : 'border-border/80 bg-secondary/30'
+            )}
+            aria-checked={selected.has(idx)}
+            role="checkbox"
+          >
             <label className="flex items-start gap-2 text-[12px] cursor-pointer">
               <input
                 type="checkbox"
@@ -247,6 +261,18 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
       )}
 
       {error && <p className="text-[12px] text-destructive">{error}</p>}
+
+      {postResult && (
+        <p
+          className={cn(
+            'text-[12px] font-medium',
+            postResult === 'success' ? 'text-emerald-400' : 'text-destructive'
+          )}
+          aria-live="polite"
+        >
+          {postResult === 'success' ? '✅ Запощено' : '❌ Ошибка'}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-1.5 mt-auto pt-1">
         {isAuthor ? (

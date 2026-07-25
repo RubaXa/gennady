@@ -106,6 +106,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
      */
     const attachChip = useCallback((chip: ContextChip) => {
       setActiveChips((prev) => [...prev, chip]);
+      const contextPrefix = `На основе ${chip.origin.artifact}:${chip.origin.startLine}-${chip.origin.endLine}: ${chip.quote}`;
+      composerRef.current?.appendText(contextPrefix + '\n');
       composerRef.current?.focus();
     }, []);
 

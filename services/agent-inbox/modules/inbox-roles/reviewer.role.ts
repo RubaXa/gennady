@@ -65,10 +65,10 @@ type ReviewerStageSignal = 'review_needed' | 'reply_needed' | 'awaiting_reply' |
  * @sideEffect FS: writes PLAN.md/tasks/*.task.md/README.md/HISTORY.md under reports dir (NFC-05).
  *   With `worktreePath`: spawns `git diff`/`git log` subprocesses (TSK-134).
  */
-function materializeReviewScaffold(ctx: NodeContext): {
+async function materializeReviewScaffold(ctx: NodeContext): Promise<{
   mrShape?: MrShape;
   injectedEntities?: InjectedEntity[];
-} {
+}> {
   const changesetFiles = ctx.artifacts['changesetFiles'] as ChangesetFile[] | undefined;
   const baseSha = ctx.artifacts['baseSha'] as string | undefined;
   const headSha = ctx.artifacts['headSha'] as string | undefined;
@@ -96,7 +96,7 @@ function materializeReviewScaffold(ctx: NodeContext): {
     const plan = buildReviewPlan(changeset);
     const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
     const dir = mrReportsDir(stateDir, ref);
-    const scaffold = scaffoldReviewReports(
+    const scaffold = await scaffoldReviewReports(
       dir,
       ref,
       headSha,
@@ -111,7 +111,7 @@ function materializeReviewScaffold(ctx: NodeContext): {
 
     // #region START_DERIVE_MR_SHAPE — reuses the security track's full-changeset diff pass; see
     // this function's @invariant on why `security` is the canonical source, not a re-derivation.
-    const { mrShape } = buildTrackContext('security', changeset, baseSha, worktreePath);
+    const { mrShape } = await buildTrackContext('security', changeset, baseSha, worktreePath);
     return { mrShape, injectedEntities };
     // #endregion END_DERIVE_MR_SHAPE
   } catch (cause) {
@@ -639,7 +639,7 @@ async function preparePrepNode(ctx: NodeContext): Promise<PrepResult> {
     return { branch: 'reply_needed' };
   }
   // Default (stage undefined on first tick, or stage === 'review_needed'): full battery.
-  const { mrShape, injectedEntities } = materializeReviewScaffold(ctx);
+  const { mrShape, injectedEntities } = await materializeReviewScaffold(ctx);
   return { branch: 'review_needed', artifacts: { mrShape, injectedEntities } };
   // #endregion END_SELECT_BRANCH
 }

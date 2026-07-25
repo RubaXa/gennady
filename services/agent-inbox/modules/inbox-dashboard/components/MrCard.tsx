@@ -15,6 +15,25 @@ const STAGE_BADGE: Record<string, { label: string; className: string }> = {
   idle: { label: 'Idle', className: 'bg-white/8 text-muted-foreground' },
 };
 
+/** @purpose Display label + tint strip color for an MR role — surfaces the operator's relationship to each MR. */
+const ROLE_BADGE: Record<string, { label: string; className: string; stripClass: string }> = {
+  author: {
+    label: 'Автор',
+    className: 'bg-blue-400/15 text-blue-300',
+    stripClass: 'border-l-blue-500 border-l-[3px]',
+  },
+  reviewer: {
+    label: 'Ревьюер',
+    className: 'bg-emerald-400/15 text-emerald-300',
+    stripClass: 'border-l-emerald-500 border-l-[3px]',
+  },
+  mentioned: {
+    label: 'Упомянут',
+    className: 'bg-purple-400/15 text-purple-300',
+    stripClass: 'border-l-purple-500 border-l-[3px]',
+  },
+};
+
 /**
  * @purpose Resolve the graph-node badge for a stage value, falling back to the raw string for unknown stages.
  * @param stage Pipeline stage (AI-04).
@@ -98,6 +117,9 @@ export function MrCard(props: { mr: MrCardType; className?: string }) {
   const { mr, className } = props;
   const mrKey = `${mr.project}!${mr.iid}`;
   const stageBadge = resolveStageBadge(mr.stage);
+  const roleBadge = mr.role ? ROLE_BADGE[mr.role] : null;
+  const roleLabel = roleBadge?.label ?? 'Без роли';
+  const tooltipText = mr.role ? `${roleLabel} · ${stageBadge.label}` : stageBadge.label;
 
   /**
    * @purpose Navigate to MR detail via hash router.
@@ -112,10 +134,12 @@ export function MrCard(props: { mr: MrCardType; className?: string }) {
       className={cn(
         'group relative rounded-md border border-border/80 bg-card p-2.5 cursor-pointer',
         'hover:border-primary/50 hover:bg-accent/40 transition-colors',
+        roleBadge?.stripClass,
         className
       )}
       role="listitem"
-      aria-label={`MR ${mr.project}!${mr.iid}: ${mr.title}`}
+      aria-label={`${roleLabel} · MR ${mr.project}!${mr.iid}: ${mr.title}`}
+      title={tooltipText}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -125,6 +149,13 @@ export function MrCard(props: { mr: MrCardType; className?: string }) {
           </div>
           <p className="text-[13px] font-medium leading-snug line-clamp-2">{mr.title}</p>
           <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
+            {roleBadge && (
+              <span
+                className={cn('rounded px-1.5 py-px text-[10px] font-medium', roleBadge.className)}
+              >
+                {roleBadge.label}
+              </span>
+            )}
             <span
               className={cn('rounded px-1.5 py-px text-[10px] font-medium', stageBadge.className)}
             >

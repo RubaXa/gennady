@@ -138,7 +138,7 @@ describe('computeMrShape', () => {
 });
 
 describe('buildTrackContext', () => {
-  it('buildTrackContext bounds hunks to track files', () => {
+  it('buildTrackContext bounds hunks to track files', async () => {
     const repo = makeGitRepo();
     try {
       writeFiles(repo, {
@@ -163,7 +163,7 @@ describe('buildTrackContext', () => {
         ],
       };
 
-      const { markdown } = buildTrackContext('logic', scoped, 'HEAD~1', repo);
+      const { markdown } = await buildTrackContext('logic', scoped, 'HEAD~1', repo);
       assert.match(markdown, /### `A\.ts`/);
       assert.match(markdown, /### `B\.ts`/);
       assert.ok(!/### `C\.ts`/.test(markdown), 'C.ts must not appear — outside the track');
@@ -172,7 +172,7 @@ describe('buildTrackContext', () => {
     }
   });
 
-  it('buildTrackContext security gets full changeset', () => {
+  it('buildTrackContext security gets full changeset', async () => {
     const repo = makeGitRepo();
     try {
       writeFiles(repo, {
@@ -196,7 +196,7 @@ describe('buildTrackContext', () => {
         ],
       };
 
-      const { markdown } = buildTrackContext('security', fullChangeset, 'HEAD~1', repo);
+      const { markdown } = await buildTrackContext('security', fullChangeset, 'HEAD~1', repo);
       assert.match(markdown, /### `A\.ts`/);
       assert.match(markdown, /### `B\.ts`/);
       assert.match(markdown, /### `C\.ts`/);
@@ -205,7 +205,7 @@ describe('buildTrackContext', () => {
     }
   });
 
-  it('buildTrackContext marks attention on newSymbols', () => {
+  it('buildTrackContext marks attention on newSymbols', async () => {
     const repo = makeGitRepo();
     try {
       writeFiles(repo, { 'a.ts': '// filler\n' });
@@ -214,7 +214,7 @@ describe('buildTrackContext', () => {
       commitAll(repo, 'change');
 
       const changeset = { files: [{ path: 'a.ts', status: 'M', plus: 1, minus: 0 }] };
-      const { markdown } = buildTrackContext('logic', changeset, 'HEAD~1', repo);
+      const { markdown } = await buildTrackContext('logic', changeset, 'HEAD~1', repo);
 
       assert.match(markdown, /Разметка внимания/);
       assert.match(markdown, /Новый экспортируемый символ `bar`/);
@@ -224,7 +224,7 @@ describe('buildTrackContext', () => {
     }
   });
 
-  it('buildTrackContext returns injectedEntities matching markdown', () => {
+  it('buildTrackContext returns injectedEntities matching markdown', async () => {
     const repo = makeGitRepo();
     try {
       const filler = Array.from({ length: 11 }, (_, i) => `// line${i + 1}`).join('\n') + '\n';
@@ -246,7 +246,12 @@ describe('buildTrackContext', () => {
         ],
       };
 
-      const { markdown, injectedEntities } = buildTrackContext('logic', changeset, 'HEAD~1', repo);
+      const { markdown, injectedEntities } = await buildTrackContext(
+        'logic',
+        changeset,
+        'HEAD~1',
+        repo
+      );
 
       // observation focus: injectedEntities is a structured mirror of markdown, not an
       // independent recomputation — every entry must correspond to something markdown mentions.
@@ -263,7 +268,7 @@ describe('buildTrackContext', () => {
     }
   });
 
-  it('buildTrackContext security track adds attention line on securityHits or depManifest', () => {
+  it('buildTrackContext security track adds attention line on securityHits or depManifest', async () => {
     const repo = makeGitRepo();
     try {
       writeFiles(repo, { 'package.json': '{}\n', 'plain.ts': 'const a = 1;\n' });
@@ -279,10 +284,15 @@ describe('buildTrackContext', () => {
       };
       const plainOnlyChangeset = { files: [{ path: 'plain.ts', status: 'M', plus: 1, minus: 1 }] };
 
-      const withDepManifest = buildTrackContext('security', fullChangeset, 'HEAD~1', repo);
+      const withDepManifest = await buildTrackContext('security', fullChangeset, 'HEAD~1', repo);
       assert.match(withDepManifest.markdown, /Повышенный приоритет/);
 
-      const withoutModulators = buildTrackContext('security', plainOnlyChangeset, 'HEAD~1', repo);
+      const withoutModulators = await buildTrackContext(
+        'security',
+        plainOnlyChangeset,
+        'HEAD~1',
+        repo
+      );
       assert.ok(
         !/Повышенный приоритет/.test(withoutModulators.markdown),
         'no depManifest/securityHits → no depth-modulation attention line'

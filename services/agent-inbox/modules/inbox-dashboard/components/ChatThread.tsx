@@ -34,6 +34,18 @@ export function ChatThread(props: {
     <div className="flex flex-col gap-2.5 overflow-y-auto flex-1 p-2">
       {turns.map((turn) => (
         <div key={turn.id} className="flex flex-col gap-1.5">
+          {turn.chips.length > 0 && (
+            <ul aria-label="Контекст вопроса" className="flex flex-wrap gap-1">
+              {turn.chips.map((chip, idx) => (
+                <li
+                  key={idx}
+                  className="rounded-full border border-border bg-secondary/40 px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {chip.origin.artifact}:{chip.origin.startLine}-{chip.origin.endLine}
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="text-[12px] font-medium text-foreground/90" data-testid="chat-question">
             {turn.question}
           </p>

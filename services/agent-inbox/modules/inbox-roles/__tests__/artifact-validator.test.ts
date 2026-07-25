@@ -462,7 +462,7 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
       };
       const plan = buildReviewPlan(changeset);
       reportDir = mkdtempSync(join(tmpdir(), 'inbox-artifact-validator-report-'));
-      const scaffold = scaffoldReviewReports(
+      const scaffold = await scaffoldReviewReports(
         reportDir,
         'group/project!1',
         'headsha1',

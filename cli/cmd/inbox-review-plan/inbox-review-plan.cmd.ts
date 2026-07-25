@@ -644,7 +644,7 @@ function scopeChangesetForTrack(
  * @consumer inbox-review-plan.cmd `run`, reviewer.role.ts `node_prepare` (TSK-122, exported
  *   for in-process reuse per SV-12, never spawned)
  */
-export function scaffoldReviewReports(
+export async function scaffoldReviewReports(
   dir: string,
   ref: string,
   headSha: string,
@@ -652,7 +652,7 @@ export function scaffoldReviewReports(
   plan: ReviewPlan,
   changeset: Changeset,
   worktreePath?: string
-): ScaffoldResult {
+): Promise<ScaffoldResult> {
   const tasksDir = join(dir, 'tasks');
   mkdirSync(tasksDir, { recursive: true });
 
@@ -701,7 +701,7 @@ export function scaffoldReviewReports(
           changeset,
           fileStats
         );
-        const context = buildTrackContext(spec.track, scopedChangeset, base, worktreePath);
+        const context = await buildTrackContext(spec.track, scopedChangeset, base, worktreePath);
         contextMarkdown = context.markdown;
         injectedEntities[spec.track] = context.injectedEntities;
       }
@@ -993,7 +993,7 @@ function resolveHeadSha(worktreePath: string): string {
   }).trim();
 }
 
-function runScaffold(argv: string[]): number {
+async function runScaffold(argv: string[]): Promise<number> {
   const worktreePath = getFlagValue(argv, '--path');
   const baseSha = getFlagValue(argv, '--base');
   const ref = getFlagValue(argv, '--ref');
@@ -1023,7 +1023,15 @@ function runScaffold(argv: string[]): number {
 
   const plan = buildReviewPlan(changeset);
   const dir = mrReportsDir(resolveStateDir(argv), ref);
-  const result = scaffoldReviewReports(dir, ref, headSha, baseSha, plan, changeset, worktreePath);
+  const result = await scaffoldReviewReports(
+    dir,
+    ref,
+    headSha,
+    baseSha,
+    plan,
+    changeset,
+    worktreePath
+  );
   console.info(JSON.stringify(result));
   return 0;
 }
@@ -1091,7 +1099,7 @@ export async function run(): Promise<number> {
   const validateDir = getFlagValue(argv, '--validate');
   if (validateDir) return runValidate(argv, validateDir);
 
-  if (hasFlag(argv, '--scaffold')) return runScaffold(argv);
+  if (hasFlag(argv, '--scaffold')) return await runScaffold(argv);
 
   const worktreePath = getFlagValue(argv, '--path');
   const baseSha = getFlagValue(argv, '--base');
