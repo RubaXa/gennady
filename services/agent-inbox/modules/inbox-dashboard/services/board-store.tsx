@@ -114,7 +114,11 @@ export function BoardStore(props: { children: ReactNode }) {
 
       try {
         await assignMr(mrId, targetRole);
-        await refresh(); // Re-sync with server state
+        // Do NOT re-sync immediately: POST /assign returns 200 BEFORE the server finishes
+        // assignManual (getMrContext takes ~1-2s), so an immediate refresh reads stale server
+        // state and clobbers the optimistic move — the card visibly flashes back to unassigned.
+        // Reconcile after a short delay; the periodic poll is the backstop.
+        setTimeout(() => void refresh(), 3000);
       } catch (cause) {
         setBoard(prevBoard); // Rollback on failure
         setError('Не удалось назначить MR');
@@ -141,7 +145,10 @@ export function BoardStore(props: { children: ReactNode }) {
 
       try {
         await setRoleActive(role, active);
-        await refresh(); // Re-sync with server state
+        // Activation kicks a server-side tick (assign/restore) that briefly blocks the event loop;
+        // an immediate refresh would race it and clobber the optimistic toggle. Reconcile after a
+        // delay so the tick's assignments are visible in one clean sync; periodic poll backs it up.
+        setTimeout(() => void refresh(), 3000);
       } catch (cause) {
         setBoard(prevBoard); // Rollback on failure
         setError('Не удалось изменить активность роли');
