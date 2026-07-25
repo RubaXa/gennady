@@ -142,7 +142,9 @@ async function retryOpencodeConnect(
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
 
-      if (response.ok) {
+      if (response.status > 0) {
+        // opencode requires auth on all endpoints (returns 401) — any HTTP
+        // response proves the server is alive and listening
         logger.info('[bootstrap] opencode server is reachable');
         return true;
       }
@@ -226,7 +228,8 @@ async function spawnOpencode(
         const response = await fetch(`http://localhost:${port}/`, { signal: controller.signal });
         clearTimeout(timeout);
 
-        if (response.ok) {
+        if (response.status > 0) {
+          // opencode requires auth on all endpoints — any response proves it is alive
           healthy = true;
           logger.info('[bootstrap] opencode serve is reachable (spawned)');
           break;
