@@ -104,23 +104,42 @@ export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
  * @param stateDir Temp state dir from `makeStateDir`.
  * @returns The bootstrap result (server/scheduler/opencode handles).
  */
-export async function bootReal(stateDir: string): Promise<BootstrapResult> {
-  // The corporate squid proxy blocks the llm-proxy provider (opencode → `fetch failed`). Unset ALL
-  // proxy vars in THIS process so the opencode server bootstrap spawns inherits a proxy-free env,
-  // regardless of how the suite was launched (https provider still routes via HTTP_PROXY/ALL_PROXY).
-  for (const key of [
-    'HTTPS_PROXY',
-    'https_proxy',
-    'HTTP_PROXY',
-    'http_proxy',
-    'ALL_PROXY',
-    'all_proxy',
-  ]) {
-    delete process.env[key];
+/** @purpose Proxy handling mode for bootReal(). */
+export type ProxyMode = 'auto' | 'clean' | 'none';
+
+/**
+ * @purpose Boot the REAL product in-process (mocks:false, dryRun:true) and start its HTTP server.
+ * @invariant Spawns its OWN proxy-free `opencode serve` (unset proxy, no pinned OPENCODE_PORT).
+ * @param stateDir Temp state dir from `makeStateDir`.
+ * @param proxyMode 'auto' — keep env proxy as-is; 'clean' — delete proxy vars (legacy); 'none' — ensure no proxy.
+ * @returns The bootstrap result (server/scheduler/opencode handles).
+ */
+export async function bootReal(
+  stateDir: string,
+  proxyMode: ProxyMode = 'auto'
+): Promise<BootstrapResult> {
+  const proxyKeys = [
+    'HTTPS_PROXY', 'https_proxy',
+    'HTTP_PROXY', 'http_proxy',
+    'ALL_PROXY', 'all_proxy',
+  ];
+
+  if (proxyMode === 'clean' || proxyMode === 'none') {
+    // The corporate squid proxy blocks the llm-proxy provider (opencode → `fetch failed`). Unset ALL
+    // proxy vars so the spawned opencode inherits a proxy-free env.
+    for (const key of proxyKeys) {
+      delete process.env[key];
+    }
   }
+  // 'auto': keep whatever proxy is in the environment
+
   // Do NOT pin OPENCODE_PORT: let bootstrap findFreePort + spawn its OWN clean opencode instead of
   // reusing a possibly-proxied long-lived server on :4096.
   delete process.env.OPENCODE_PORT;
+  // Unset OPENCODE_SERVER_PASSWORD — if set, opencode requires Basic auth on its HTTP API,
+  // and the SDK does not provide credentials → 401 on every request.
+  // Without it, opencode runs unsecured (localhost-only), which is correct for tests.
+  delete process.env.OPENCODE_SERVER_PASSWORD;
   const app = await bootstrap({ mocks: false, port: PORT, stateDir, dryRun: true });
   await app.server.start();
   return app;
