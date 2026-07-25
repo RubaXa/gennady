@@ -3,7 +3,10 @@
 // @consumers: RoleScheduler
 // @tasks: TSK-121, TSK-122
 
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { logger } from '#logger';
@@ -58,12 +61,16 @@ export type ContextBuilderDeps = {
  * @throws When the git process exits non-zero.
  * @sideEffect Spawns a git subprocess.
  */
-function git(args: string[], cwd: string): string {
-  return execFileSync('git', args, {
+async function git(args: string[], cwd: string): Promise<string> {
+  // Async (not execFileSync): the scheduler tick runs on the same event loop as the HTTP server,
+  // and a synchronous git fetch/diff (seconds) froze the loop — the board 500'd/ECONNRESET and the
+  // report view hung on its spinner while a tick was working. Awaited execFile keeps HTTP responsive.
+  const { stdout } = await execFileAsync('git', args, {
     cwd,
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-  }).trim();
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return stdout.trim();
 }
 
 /**
@@ -147,14 +154,14 @@ async function _prepareWorktreeAndChangeset(
 
     // #region START_COMPUTE_CHANGESET — invariant: diff is always base..HEAD where base is the
     // injected diff_refs.base_sha; this function never derives base itself (see AX in buildNodeContext)
-    const nameStatus = git(['diff', '--name-status', base, 'HEAD'], prepared.worktreePath)
+    const nameStatus = (await git(['diff', '--name-status', base, 'HEAD'], prepared.worktreePath))
       .split('\n')
       .filter(Boolean)
       .map((line) => {
         const [status, ...pathParts] = line.split('\t');
         return { status, path: pathParts.join('\t') };
       });
-    const numstat = git(['diff', '--numstat', base, 'HEAD'], prepared.worktreePath)
+    const numstat = (await git(['diff', '--numstat', base, 'HEAD'], prepared.worktreePath))
       .split('\n')
       .filter(Boolean);
 
@@ -188,16 +195,16 @@ async function _prepareWorktreeAndChangeset(
  * @param currentHeadSha Current resolved head SHA.
  * @returns Head-change classification, or undefined when the current head is unknown.
  */
-function _classifyHeadChanged(
+async function _classifyHeadChanged(
   worktreePath: string,
   lastReviewedHeadSha: string | undefined,
   currentHeadSha: string | undefined
-): string | undefined {
+): Promise<string | undefined> {
   if (!currentHeadSha) return undefined;
   if (!lastReviewedHeadSha || lastReviewedHeadSha === currentHeadSha) return 'none';
 
   try {
-    git(['merge-base', '--is-ancestor', lastReviewedHeadSha, 'HEAD'], worktreePath);
+    await git(['merge-base', '--is-ancestor', lastReviewedHeadSha, 'HEAD'], worktreePath);
     return 'fast_forward';
   } catch {
     return 'rewritten';
@@ -238,7 +245,7 @@ export async function buildNodeContext(
     stateDir
   );
   const headChanged = worktreePath
-    ? _classifyHeadChanged(worktreePath, lastReviewedHeadSha, headSha)
+    ? await _classifyHeadChanged(worktreePath, lastReviewedHeadSha, headSha)
     : undefined;
 
   const changeset: Changeset | undefined = changesetFiles ? { files: changesetFiles } : undefined;
