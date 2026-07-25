@@ -152,7 +152,7 @@ async function run(): Promise<number> {
     // #region START_GC_STALE_WORKTREES — best-effort: remove worktrees older than TTL;
     // failure mode: GC errors do not block inbox — stale worktrees accumulate harmlessly until next run
     try {
-      gcStaleWorktrees(mrsRoot(stateDir), WORKTREE_TTL_MS, Date.now());
+      await gcStaleWorktrees(mrsRoot(stateDir), WORKTREE_TTL_MS, Date.now());
       gcStaleReports(mrsRoot(stateDir), REPORTS_TTL_MS, Date.now());
       gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
     } catch {
@@ -165,7 +165,7 @@ async function run(): Promise<number> {
         registryPath(stateDir),
         outDir(stateDir)
       );
-      const worktrees = removeAllWorktrees(mrsRoot(stateDir));
+      const worktrees = await removeAllWorktrees(mrsRoot(stateDir));
 
       // #region START_RESET_REVIEW_REPORTS — clears the document-pipeline tree (PLAN.md/tasks/
       // README/HISTORY under every MR); ttlMs=0 makes gcStaleReports remove every `report/`

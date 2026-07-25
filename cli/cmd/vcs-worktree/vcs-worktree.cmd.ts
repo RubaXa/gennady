@@ -40,14 +40,14 @@ async function run(): Promise<number> {
     const stateDir = resolveStateDir(argv);
 
     if (argv.includes('--cleanup-all')) {
-      const removed = removeAllWorktrees(mrsRoot(stateDir));
+      const removed = await removeAllWorktrees(mrsRoot(stateDir));
       console.info(style.gray(`worktrees removed: ${removed.length}`));
       return 0;
     }
 
     const cleanup = parseValue(argv, '--cleanup');
     if (cleanup) {
-      removeWorktreeAt(cleanup);
+      await removeWorktreeAt(cleanup);
       console.info(style.gray(`worktree removed: ${cleanup}`));
       return 0;
     }
@@ -89,7 +89,7 @@ async function run(): Promise<number> {
     const targetBranch = mr?.target_branch ?? '';
     const diffRefs = mr?.diff_refs;
 
-    const clonePath = ensureClone(project, host, token, {
+    const clonePath = await ensureClone(project, host, token, {
       reposBase,
       reposMapPath: reposMapPath(stateDir),
       clonesRoot: clonesRoot(stateDir),
@@ -107,14 +107,14 @@ async function run(): Promise<number> {
       mkdirSync(root, { recursive: true });
       // GC safety net: prune leaked worktrees older than TTL on every prepare,
       // so they cannot grow unbounded even if --cleanup is never called.
-      const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+      const gced = await gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
       if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
       worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
     }
 
-    const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
+    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath);
     const baseSha = targetBranch
-      ? resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
+      ? await resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
       : '';
 
     console.info(style.bold(`worktree ready — ${ref}`));

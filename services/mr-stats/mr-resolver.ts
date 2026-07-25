@@ -95,16 +95,16 @@ export async function retrieveMrMetadata(
  * @returns Worktree path and head SHA.
  * @sideEffect FS + network: may clone repo; creates worktree.
  */
-export function resolveWorktreePath(
+export async function resolveWorktreePath(
   project: string,
   host: string,
   token: string,
   iid: number
-): { clonePath: string; worktreePath: string; headSha: string } {
+): Promise<{ clonePath: string; worktreePath: string; headSha: string }> {
   const stateDir = resolveStateDir([]);
   const reposBase = join(homedir(), 'Developer');
 
-  const clonePath = ensureClone(project, host, token, {
+  const clonePath = await ensureClone(project, host, token, {
     reposBase,
     reposMapPath: reposMapPath(stateDir),
     clonesRoot: clonesRoot(stateDir),
@@ -115,7 +115,7 @@ export function resolveWorktreePath(
   mkdirSync(root, { recursive: true });
   const worktreeDir = mrWorktreeDir(stateDir, ref);
 
-  const { worktreePath: resolvedPath, headSha } = prepareMrWorktree(
+  const { worktreePath: resolvedPath, headSha } = await prepareMrWorktree(
     clonePath,
     String(iid),
     worktreeDir
@@ -127,10 +127,11 @@ export function resolveWorktreePath(
 /**
  * @purpose Clean up a worktree — remove the directory and prune git metadata.
  * @param worktreePath Absolute path to the worktree directory.
+ * @returns Resolves when the worktree is cleaned up.
  * @sideEffect FS + git: removes worktree.
  */
-export function removeWorktree(worktreePath: string): void {
-  removeWorktreeAt(worktreePath);
+export async function removeWorktree(worktreePath: string): Promise<void> {
+  await removeWorktreeAt(worktreePath);
 }
 
 // #region START_GIT_DIFF_OPS — git diff operations on worktrees

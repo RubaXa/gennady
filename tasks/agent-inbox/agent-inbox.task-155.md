@@ -183,6 +183,7 @@ Contract: см. Spec References.
       **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/__tests__/review-progress.test.ts, services/agent-inbox/modules/inbox-dashboard/__tests__/MrCard.progress.test.tsx]; decisions: [all-5-canonical-test-names-used-verbatim-from-section-6-no-renames-needed, MrCard-render-test-asserts-via-DOM-text-not-internal-helper-imports-per-P2-handoff-seam, ssr-comment-stripping-helper-local-to-test-file-not-a-product-change]; open: [format-check-baseline-drift (P1 open item, still unrelated/unfixed): tasks/agent-inbox/{README.md,agent-inbox.task-155.md} fail prettier --check — pre-existing, outside P3 Target Files, surfaced for operator/audit; sdd-verify-script-mismatch (P2 open item, unresolved): `sdd verify` auto-discovery calls non-existent npm scripts "typecheck"/"test:coverage" — pre-existing tool drift, not fixed here per scope lock]
 
 #### Round close
+
 - [x] `2026-07-24T05:30:00Z` sync agent-inbox+root
 - [x] `2026-07-24T05:30:00Z` DONE — live browser visual proof (ticking timer on a real MR) deferred to TSK-123 per this ticket's Deferred Runtime Scope; component-level DOM render verified by MrCard.progress.test.tsx
 

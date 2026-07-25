@@ -2,9 +2,19 @@
 // @consumers: vcs-worktree.cmd
 // @tasks: TSK-93
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync, rmSync, utimesSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { readdir, stat, utimes, access } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+
+function git(args: string[], cwd?: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, { cwd, encoding: 'utf8' }, (err, stdout) => {
+      if (err) return reject(err);
+      resolve((stdout as string).trim());
+    });
+  });
+}
 
 /** @purpose Result of preparing a read-only worktree for an MR. */
 export type PreparedWorktree = {
@@ -16,10 +26,6 @@ export type PreparedWorktree = {
 
 /** @purpose Worktree TTL: 7 days in ms | @invariant Equals 7 * 24 * 60 * 60 * 1000 */
 export const WORKTREE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-function git(args: string[], cwd?: string): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-}
 
 /**
  * @purpose Fetch MR head and prepare a detached, hooks-disabled worktree.
@@ -34,19 +40,26 @@ function git(args: string[], cwd?: string): string {
  * @sideEffect Network: git fetch; FS: creates or reuses the worktree directory, updates mtime.
  * @consumer vcs-worktree.cmd
  */
-export function prepareMrWorktree(
+export async function prepareMrWorktree(
   clonePath: string,
   iid: string,
   worktreePath: string
-): PreparedWorktree {
+): Promise<PreparedWorktree> {
   const now = new Date();
 
   // #region START_REUSE_EXISTING_WORKTREE — invariant: fetch + reset avoids full recreate;
   // failure mode: stale FETCH_HEAD / lock / permission / reset mismatch → fall through to FULL_RECREATE
   // side effect: git fetch resets FETCH_HEAD in clone to MR head
-  if (existsSync(worktreePath)) {
+  let wtExists = false;
+  try {
+    await access(worktreePath);
+    wtExists = true;
+  } catch {
+    /* path does not exist */
+  }
+  if (wtExists) {
     try {
-      git([
+      await git([
         '-C',
         clonePath,
         '-c',
@@ -55,16 +68,16 @@ export function prepareMrWorktree(
         'origin',
         `merge-requests/${iid}/head`,
       ]);
-      const headSha = git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
-      git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', headSha]);
-      const actualHead = git(['-C', worktreePath, 'rev-parse', 'HEAD']);
+      const headSha = await git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
+      await git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', headSha]);
+      const actualHead = await git(['-C', worktreePath, 'rev-parse', 'HEAD']);
       if (actualHead !== headSha) {
         throw new Error(
           `worktree reset mismatch: expected ${headSha.slice(0, 8)}, got ${actualHead.slice(0, 8)}`
         );
       }
       try {
-        utimesSync(worktreePath, now, now);
+        await utimes(worktreePath, now, now);
       } catch {
         /* best-effort mtime update */
       }
@@ -77,9 +90,9 @@ export function prepareMrWorktree(
 
   // #region START_FULL_RECREATE_WORKTREE — invariant: delete any leftover + prune + fetch + add;
   // failure mode: all paths (fetch, rev-parse, worktree add) throw → propagates to caller
-  if (existsSync(worktreePath)) removeWorktreeSafe(worktreePath);
-  git(['-C', clonePath, 'worktree', 'prune']);
-  git([
+  if (wtExists) await removeWorktreeSafe(worktreePath);
+  await git(['-C', clonePath, 'worktree', 'prune']);
+  await git([
     '-C',
     clonePath,
     '-c',
@@ -88,8 +101,8 @@ export function prepareMrWorktree(
     'origin',
     `merge-requests/${iid}/head`,
   ]);
-  const headSha = git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
-  git([
+  const headSha = await git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
+  await git([
     '-C',
     clonePath,
     '-c',
@@ -101,7 +114,7 @@ export function prepareMrWorktree(
     headSha,
   ]);
   try {
-    utimesSync(worktreePath, now, now);
+    await utimes(worktreePath, now, now);
   } catch {
     /* best-effort mtime update */
   }
@@ -121,20 +134,20 @@ export function prepareMrWorktree(
  * @sideEffect Network: git fetch of the target branch; may deepen a shallow clone.
  * @consumer vcs-worktree.cmd, inbox-context.cmd
  */
-export function resolveBaseSha(
+export async function resolveBaseSha(
   clonePath: string,
   targetBranch: string,
   headSha: string,
   diffRefBase?: string
-): string {
-  git(['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'fetch', 'origin', targetBranch]);
+): Promise<string> {
+  await git(['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'fetch', 'origin', targetBranch]);
 
   let mergeBase: string;
   try {
-    mergeBase = git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+    mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
   } catch {
     // #region START_SHALLOW_DEEPEN — shallow clone: no common ancestor; unshallow and retry
-    git([
+    await git([
       '-C',
       clonePath,
       '-c',
@@ -144,7 +157,7 @@ export function resolveBaseSha(
       'origin',
       targetBranch,
     ]);
-    mergeBase = git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+    mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
     // #endregion END_SHALLOW_DEEPEN
   }
 
@@ -152,10 +165,16 @@ export function resolveBaseSha(
   // rebased onto master; deepen history and recalculate so we diff from the actual new fork point.
   if (diffRefBase && diffRefBase !== mergeBase) {
     try {
-      const isAncestor =
-        git(['-C', clonePath, 'merge-base', '--is-ancestor', mergeBase, diffRefBase]) === '';
-      if (isAncestor) {
-        git([
+      const result = await git([
+        '-C',
+        clonePath,
+        'merge-base',
+        '--is-ancestor',
+        mergeBase,
+        diffRefBase,
+      ]);
+      if (result === '') {
+        await git([
           '-C',
           clonePath,
           '-c',
@@ -165,7 +184,7 @@ export function resolveBaseSha(
           'origin',
           targetBranch,
         ]);
-        mergeBase = git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+        mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
       }
     } catch {
       // non-ancestor — keep the original mergeBase
@@ -179,30 +198,32 @@ export function resolveBaseSha(
 /**
  * @purpose Remove a worktree, deriving its owning clone from the worktree path.
  * @param worktreePath Worktree to remove.
+ * @returns Resolves when the worktree is removed.
  * @sideEffect FS: removes the worktree directory; prunes git metadata.
  * @consumer vcs-worktree.cmd
  */
-export function removeWorktreeAt(worktreePath: string): void {
-  const commonDir = git([
+export async function removeWorktreeAt(worktreePath: string): Promise<void> {
+  const commonDir = await git([
     '-C',
     worktreePath,
     'rev-parse',
     '--path-format=absolute',
     '--git-common-dir',
   ]);
-  git(['-C', dirname(commonDir), 'worktree', 'remove', '--force', worktreePath]);
+  await git(['-C', dirname(commonDir), 'worktree', 'remove', '--force', worktreePath]);
 }
 
 /**
  * @purpose Best-effort removal: proper `git worktree remove`, falling back to a
  *   plain directory delete when the worktree metadata is broken.
  * @param worktreePath Worktree to remove.
+ * @returns Resolves when the worktree is removed.
  * @sideEffect FS: removes the directory; prunes git metadata when possible.
  * @consumer worktree GC
  */
-export function removeWorktreeSafe(worktreePath: string): void {
+export async function removeWorktreeSafe(worktreePath: string): Promise<void> {
   try {
-    removeWorktreeAt(worktreePath);
+    await removeWorktreeAt(worktreePath);
   } catch {
     try {
       rmSync(worktreePath, { recursive: true, force: true });
@@ -224,21 +245,33 @@ export function removeWorktreeSafe(worktreePath: string): void {
  * @sideEffect FS + git: removes stale worktree directories.
  * @consumer vcs-worktree.cmd
  */
-export function gcStaleWorktrees(root: string, ttlMs: number, nowMs: number): string[] {
-  if (!existsSync(root)) return [];
+export async function gcStaleWorktrees(
+  root: string,
+  ttlMs: number,
+  nowMs: number
+): Promise<string[]> {
+  let rootExists = false;
+  try {
+    await access(root);
+    rootExists = true;
+  } catch {
+    /* root does not exist */
+  }
+  if (!rootExists) return [];
   const removed: string[] = [];
-  for (const name of readdirSync(root)) {
+  const names = await readdir(root);
+  for (const name of names) {
     const path = join(root, name, 'worktree');
     let mtimeMs: number;
     try {
-      const st = statSync(path);
+      const st = await stat(path);
       if (!st.isDirectory()) continue;
       mtimeMs = st.mtimeMs;
     } catch {
       continue;
     }
     if (nowMs - mtimeMs > ttlMs) {
-      removeWorktreeSafe(path);
+      await removeWorktreeSafe(path);
       removed.push(path);
     }
   }
@@ -253,17 +286,26 @@ export function gcStaleWorktrees(root: string, ttlMs: number, nowMs: number): st
  * @sideEffect FS + git: removes all worktree directories.
  * @consumer vcs-worktree.cmd
  */
-export function removeAllWorktrees(root: string): string[] {
-  if (!existsSync(root)) return [];
+export async function removeAllWorktrees(root: string): Promise<string[]> {
+  let rootExists = false;
+  try {
+    await access(root);
+    rootExists = true;
+  } catch {
+    /* root does not exist */
+  }
+  if (!rootExists) return [];
   const removed: string[] = [];
-  for (const name of readdirSync(root)) {
+  const names = await readdir(root);
+  for (const name of names) {
     const path = join(root, name, 'worktree');
     try {
-      if (!statSync(path).isDirectory()) continue;
+      const st = await stat(path);
+      if (!st.isDirectory()) continue;
     } catch {
       continue;
     }
-    removeWorktreeSafe(path);
+    await removeWorktreeSafe(path);
     removed.push(path);
   }
   return removed;

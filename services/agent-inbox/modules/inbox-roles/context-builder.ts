@@ -139,14 +139,14 @@ async function _prepareWorktreeAndChangeset(
     }
     const reposBase = config?.reposBase ?? join(homedir(), 'Developer');
 
-    const clonePath = ensureClone(context.project, context.host, context.token, {
+    const clonePath = await ensureClone(context.project, context.host, context.token, {
       reposBase,
       reposMapPath: reposMapPath(stateDir),
       clonesRoot: clonesRoot(stateDir),
     });
 
     const worktreePath = mrWorktreeDir(stateDir, `${context.project}!${context.iid}`);
-    const prepared = prepareMrWorktree(clonePath, String(context.iid), worktreePath);
+    const prepared = await prepareMrWorktree(clonePath, String(context.iid), worktreePath);
 
     if (!base) {
       return { worktreePath: prepared.worktreePath, headSha: prepared.headSha };

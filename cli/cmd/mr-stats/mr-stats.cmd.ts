@@ -140,7 +140,7 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
 
   if (hasRef) {
     try {
-      const resolved = resolveWorktreePath(project, host, token, iid);
+      const resolved = await resolveWorktreePath(project, host, token, iid);
       clonePath = resolved.clonePath;
       worktreePath = resolved.worktreePath;
       headSha = resolved.headSha;
@@ -356,7 +356,7 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
   } finally {
     if (worktreePath) {
       try {
-        removeWorktree(worktreePath);
+        await removeWorktree(worktreePath);
       } catch {
         logger.warn('[mr-stats#run] [cleanup → failed]');
       }

@@ -317,7 +317,7 @@ async function run(): Promise<number> {
 
     if (!skipWorktree) {
       const reposBase = reposBaseFlag ?? cfg.reposBase ?? join(homedir(), 'Developer');
-      const clonePath = ensureClone(project, host, token, {
+      const clonePath = await ensureClone(project, host, token, {
         reposBase,
         reposMapPath: reposMapPath(stateDir),
         clonesRoot: clonesRoot(stateDir),
@@ -332,13 +332,13 @@ async function run(): Promise<number> {
       } else {
         const root = mrsRoot(stateDir);
         mkdirSync(root, { recursive: true });
-        gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+        await gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
         gcStaleReports(root, REPORTS_TTL_MS, Date.now());
         gcStalePhaseTimings(stateDir, PHASE_TIMINGS_TTL_MS, Date.now());
         worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
       }
 
-      const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
+      const prepared = await prepareMrWorktree(clonePath, iid, worktreePath);
       currentHeadSha = prepared.headSha;
       let baseSha = '';
       if (targetBranch) {
@@ -352,7 +352,12 @@ async function run(): Promise<number> {
         } catch {}
         // #endregion END_ENSURE_FRESH_TARGET
         try {
-          baseSha = resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha);
+          baseSha = await resolveBaseSha(
+            clonePath,
+            targetBranch,
+            prepared.headSha,
+            diffRefs?.base_sha
+          );
         } catch {
           baseSha = '';
         }

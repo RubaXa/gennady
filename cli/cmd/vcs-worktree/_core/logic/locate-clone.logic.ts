@@ -2,10 +2,19 @@
 // @consumers: vcs-worktree.cmd
 // @tasks: N/A
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { exec, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readdir, stat, access, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadReposMap, resolveClonePath } from '../../../inbox/_core/logic/repos-map.logic.ts';
+
+const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
+
+async function git(args: string[], cwd?: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', args, { cwd, encoding: 'utf8' });
+  return stdout.trim();
+}
 
 /**
  * @purpose Extract the project path (group/.../name) from a git remote URL.
@@ -34,12 +43,9 @@ export function projectFromRemoteUrl(url: string): string | null {
   return cleaned || null;
 }
 
-function originUrl(dir: string): string | null {
+async function originUrl(dir: string): Promise<string | null> {
   try {
-    return execFileSync('git', ['-C', dir, 'remote', 'get-url', 'origin'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    return await git(['-C', dir, 'remote', 'get-url', 'origin']);
   } catch {
     return null;
   }
@@ -53,25 +59,32 @@ function originUrl(dir: string): string | null {
  * @sideEffect FS + git: reads directories and origin remotes.
  * @consumer ensureClone
  */
-export function findCloneByRemote(baseDir: string, project: string): string | null {
-  if (!existsSync(baseDir)) return null;
+export async function findCloneByRemote(baseDir: string, project: string): Promise<string | null> {
+  try {
+    await access(baseDir);
+  } catch {
+    return null;
+  }
   const candidates: string[] = [];
-  for (const top of readdirSync(baseDir)) {
+  const topEntries = await readdir(baseDir);
+  for (const top of topEntries) {
     const topPath = join(baseDir, top);
     try {
-      if (!statSync(topPath).isDirectory()) continue;
+      const st = await stat(topPath);
+      if (!st.isDirectory()) continue;
     } catch {
       continue;
     }
     candidates.push(topPath);
     try {
-      for (const sub of readdirSync(topPath)) candidates.push(join(topPath, sub));
+      const subEntries = await readdir(topPath);
+      for (const sub of subEntries) candidates.push(join(topPath, sub));
     } catch {
       /* skip unreadable */
     }
   }
   for (const dir of candidates) {
-    const url = originUrl(dir);
+    const url = await originUrl(dir);
     if (url && projectFromRemoteUrl(url) === project) return dir;
   }
   return null;
@@ -99,25 +112,32 @@ export type CloneOptions = {
  * @sideEffect FS + network: may clone the repository.
  * @consumer vcs-worktree.cmd
  */
-export function ensureClone(
+export async function ensureClone(
   project: string,
   host: string,
   token: string,
   opts: CloneOptions
-): string {
+): Promise<string> {
   const mapped = resolveClonePath(loadReposMap(opts.reposMapPath), project);
-  if (mapped && existsSync(mapped)) return mapped;
+  if (mapped) {
+    try {
+      await access(mapped);
+      return mapped;
+    } catch {
+      /* mapped path does not exist */
+    }
+  }
 
-  const found = findCloneByRemote(opts.reposBase, project);
+  const found = await findCloneByRemote(opts.reposBase, project);
   if (found) return found;
 
-  mkdirSync(opts.clonesRoot, { recursive: true });
+  await mkdir(opts.clonesRoot, { recursive: true });
   const dest = join(opts.clonesRoot, project.replace(/\//g, '__'));
-  if (!existsSync(dest)) {
+  try {
+    await access(dest);
+  } catch {
     const cloneUrl = `https://oauth2:${token}@${host}/${project}.git`;
-    execFileSync('git', ['clone', '--depth', '1', '--no-single-branch', cloneUrl, dest], {
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
+    await execAsync(`git clone --depth 1 --no-single-branch ${cloneUrl} "${dest}"`);
   }
   return dest;
 }
