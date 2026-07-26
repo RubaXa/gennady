@@ -49,6 +49,7 @@ function resolveStageBadge(stage: string): { label: string; className: string } 
  * @returns Zero-padded clock string.
  */
 function formatElapsedClock(elapsedMs: number): string {
+  if (!Number.isFinite(elapsedMs)) return '--:--';
   const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');

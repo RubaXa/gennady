@@ -107,6 +107,7 @@ function _earliestStartMs(phaseEntries: PhaseTimingEntry[]): number | null {
     const finishMs = new Date(entry.ts).getTime();
     if (!Number.isFinite(finishMs)) continue;
     const startMs = finishMs - entry.durationMs;
+    if (!Number.isFinite(startMs)) continue;
     if (earliest === null || startMs < earliest) earliest = startMs;
   }
   return earliest;
@@ -139,8 +140,9 @@ export function deriveReviewProgress(input: {
   );
 
   const startMs = _earliestStartMs(phaseEntries);
-  const elapsedMs = startMs === null ? 0 : Math.max(0, nowMs - startMs);
-  const startedAt = startMs === null ? null : new Date(startMs).toISOString();
+  const startMsValid = startMs !== null && Number.isFinite(startMs);
+  const elapsedMs = startMsValid ? Math.max(0, nowMs - startMs!) : 0;
+  const startedAt = startMsValid ? new Date(startMs!).toISOString() : null;
 
   return {
     stage,

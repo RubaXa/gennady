@@ -108,9 +108,12 @@ export async function bootReal(stateDir: string): Promise<BootstrapResult> {
   // The corporate squid proxy blocks the llm-proxy provider (opencode → `fetch failed`). Unset ALL
   // proxy vars in THIS process so the opencode server bootstrap spawns inherits a proxy-free env.
   for (const key of [
-    'HTTPS_PROXY', 'https_proxy',
-    'HTTP_PROXY', 'http_proxy',
-    'ALL_PROXY', 'all_proxy',
+    'HTTPS_PROXY',
+    'https_proxy',
+    'HTTP_PROXY',
+    'http_proxy',
+    'ALL_PROXY',
+    'all_proxy',
   ]) {
     delete process.env[key];
   }
