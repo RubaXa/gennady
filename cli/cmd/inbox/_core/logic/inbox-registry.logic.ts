@@ -28,6 +28,10 @@ export type RegistryEntry = {
   lastReviewedHeadSha?: string;
   /** @purpose HEAD SHA at which I last approved — set when myLogin is in approvedBy; basis for approval-reset detection */
   lastApprovedHeadSha?: string;
+  /** @purpose Role the operator explicitly assigned (SV-08) | @invariant Distinct from `role` (last-sighting classification) — survives restarts and is restored regardless of role activation */
+  assignedRole?: string;
+  /** @purpose ISO timestamp of that explicit assignment */
+  assignedAt?: string;
 };
 
 /** @purpose The whole registry document persisted to disk. */

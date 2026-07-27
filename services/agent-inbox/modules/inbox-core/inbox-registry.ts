@@ -174,6 +174,65 @@ export class InboxRegistryAccess {
   }
 
   /**
+   * @purpose Persist the operator's explicit role assignment (SV-08) so it survives a restart.
+   * @invariant Writes `assignedRole`/`assignedAt`, never the classifier's `role` field — a restart
+   *   must restore what the operator chose, not what the last sighting happened to classify.
+   * @param webUrl MR web URL being assigned.
+   * @param role Role name the operator picked.
+   * @param [entrySeed] Project/iid used when the MR has no registry entry yet.
+   * @sideEffect Writes the registry file (tmp + rename).
+   */
+  recordAssignment(
+    webUrl: string,
+    role: string,
+    entrySeed?: { project: string; iid: string }
+  ): void {
+    if (!this._registry) this.load();
+    const now = new Date().toISOString();
+    const existing = this._registry!.entries[webUrl];
+
+    if (existing) {
+      existing.assignedRole = role;
+      existing.assignedAt = now;
+    } else if (entrySeed) {
+      this._registry!.entries[webUrl] = {
+        project: entrySeed.project,
+        iid: entrySeed.iid,
+        role: null,
+        stage: '',
+        lastSeenUpdatedAt: '',
+        firstSeenAt: now,
+        lastClassifiedAt: now,
+        assignedRole: role,
+        assignedAt: now,
+      };
+    } else {
+      logger.warn('[InboxRegistryAccess#recordAssignment] [assigning → skipped] No entry or seed', {
+        webUrl,
+      });
+      return;
+    }
+
+    this.save();
+    logger.info('[InboxRegistryAccess#recordAssignment] [assigning → persisted]', { webUrl, role });
+  }
+
+  /**
+   * @purpose Drop a persisted assignment once its instance reaches a terminal state.
+   * @param webUrl MR web URL to clear.
+   * @sideEffect Writes the registry file when an assignment was present.
+   */
+  clearAssignment(webUrl: string): void {
+    if (!this._registry) this.load();
+    const entry = this._registry!.entries[webUrl];
+    if (!entry?.assignedRole) return;
+    delete entry.assignedRole;
+    delete entry.assignedAt;
+    this.save();
+    logger.info('[InboxRegistryAccess#clearAssignment] [clearing → cleared]', { webUrl });
+  }
+
+  /**
    * @purpose Atomically persist the registry to disk.
    * @sideEffect Creates parent directories, writes file via tmp + rename.
    */

@@ -118,6 +118,30 @@ export class StateStore {
     this._registry.save();
   }
 
+  /**
+   * @purpose Persist the operator's explicit role assignment so a restart restores it (SV-08).
+   * @param webUrl MR web URL being assigned.
+   * @param role Role name the operator picked.
+   * @param [entrySeed] Project/iid for an MR with no registry entry yet.
+   * @sideEffect Writes to `<stateDir>/inbox-registry.json`.
+   */
+  recordAssignment(
+    webUrl: string,
+    role: string,
+    entrySeed?: { project: string; iid: string }
+  ): void {
+    this._registry.recordAssignment(webUrl, role, entrySeed);
+  }
+
+  /**
+   * @purpose Drop a persisted assignment when its instance reaches a terminal state.
+   * @param webUrl MR web URL to clear.
+   * @sideEffect Writes to `<stateDir>/inbox-registry.json`.
+   */
+  clearAssignment(webUrl: string): void {
+    this._registry.clearAssignment(webUrl);
+  }
+
   // audit log append/query through AuditLog
 
   /**

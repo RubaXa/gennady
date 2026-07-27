@@ -11,6 +11,7 @@ import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
+import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { RoleInstance, type RoleInstanceCheckpoint } from './role-instance.ts';
 import { RightsEscalator } from './rights-escalator.ts';
 import { buildNodeContext, fetchDiffRefsLive, type ContextBuilderDeps } from './context-builder.ts';
@@ -187,6 +188,11 @@ export class RoleScheduler {
       });
       // #endregion END_POLL_VCS
 
+      // Restore what the operator assigned before the last restart (SV-08). Instances are in-memory
+      // only, so without this an assigned MR came back as "без роли" after every restart — and role
+      // activation does not help, since roles boot inactive and auto-assign is gated on that.
+      await this._restoreAssignedInstances(registry);
+
       // #region START_ASSIGN_NEW_MRS — invariant: disk reconciliation (SV-15..SV-18) replaces the
       // old blind `!existingInstance` recreate; `_assignRole` resumes from a canonical/legacy
       // snapshot when one exists, falling through to the from-zero path otherwise.
@@ -361,6 +367,24 @@ export class RoleScheduler {
     });
 
     this._instances.set(key, instance);
+
+    // Persist the operator's choice: instances live in memory only, so without this marker a
+    // restart dropped the assignment and the MR reappeared as "без роли" (live bug, 2026-07-27).
+    // Restored on the next tick by `_restoreAssignedInstances`, regardless of role activation.
+    try {
+      const parsed = parseVcsUrl(mrUrl);
+      this._config.store.recordAssignment(
+        mrUrl,
+        roleName,
+        parsed ? { project: parsed.repository, iid: String(parsed.iid) } : undefined
+      );
+    } catch (cause) {
+      logger.warn('[RoleScheduler#assignManual] [assigned → persist_failed]', {
+        key,
+        error: (cause as Error).message,
+      });
+    }
+
     logger.info('[RoleScheduler#assignManual] [assigning → assigned]', { key });
 
     // Advance past node_prepare immediately — the SV-19/20/21 debounce gate
@@ -372,6 +396,56 @@ export class RoleScheduler {
         key,
         error: (cause as Error).message,
       });
+    }
+  }
+
+  /**
+   * @purpose Recreate instances for MRs the operator assigned before a restart (SV-08).
+   * @invariant Independent of role activation (SV-08) — resumes from disk when a snapshot exists.
+   * @param registry Loaded registry carrying `assignedRole` markers.
+   * @returns Promise resolving once all pending assignments have instances.
+   * @sideEffect Creates RoleInstances; drops markers whose role no longer exists.
+   */
+  protected async _restoreAssignedInstances(registry: InboxRegistry): Promise<void> {
+    for (const [mrUrl, entry] of Object.entries(registry.entries)) {
+      const roleName = entry.assignedRole;
+      if (!roleName) continue;
+
+      const key = this._instanceKey(roleName, mrUrl);
+      if (this._instances.has(key)) continue;
+
+      const definition = this._config.engine.retrieve(roleName);
+      if (!definition) {
+        this._config.store.clearAssignment(mrUrl);
+        continue;
+      }
+
+      try {
+        const checkpoint =
+          (await this._tryResumeFromDisk(mrUrl, definition.graph)) ??
+          (await this._buildInitialCheckpoint(mrUrl, definition.graph));
+        this._instances.set(
+          key,
+          new RoleInstance({
+            id: key,
+            role: roleName,
+            mr: mrUrl,
+            graph: definition.graph,
+            opencode: this._config.opencode,
+            vcs: this._config.vcs,
+            store: this._config.store,
+            dryRun: this._config.dryRun ?? false,
+            reviewSessionPool: this._config.reviewSessionPool,
+            checkpoint,
+          })
+        );
+        logger.info('[RoleScheduler#_restoreAssignedInstances] [ticking → restored]', { key });
+      } catch (cause) {
+        logger.warn('[RoleScheduler#_restoreAssignedInstances] [ticking → restore_failed]', {
+          key,
+          error: (cause as Error).message,
+        });
+      }
     }
   }
 
