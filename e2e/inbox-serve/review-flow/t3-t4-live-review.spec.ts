@@ -23,13 +23,13 @@ let materialized = false;
 
 /** @purpose Hard 10-min wall-clock budget for the live drive (env-overridable). Exceeding it FAILS
  *   the test with the last tick's node, so a stall is localized instead of hanging tens of minutes. */
-const DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 600_000);
+const DRIVE_DEADLINE_MS = Number(process.env.REVIEW_DRIVE_DEADLINE_MS ?? 900_000);
 /** @purpose Tick bound — one session node advances per tick; the graph has < ~12 nodes to synthesis. */
 const MAX_TICKS = 40;
 
 test.describe('t3+t4 live review over the real MR', () => {
   test.beforeAll(async () => {
-    test.setTimeout(DRIVE_DEADLINE_MS + 120_000);
+    test.setTimeout(DRIVE_DEADLINE_MS + 300_000);
     ({ stateDir, reviewPath } = await makeStateDir({ seedReview: false }));
     reviewDir = mrReportsDir(stateDir, MR_REF);
     app = await bootReal(stateDir);

@@ -22,11 +22,7 @@ describe('deriveReviewProgress — author role stages', () => {
     assert.strictEqual(progress.stageLabel, 'Саморевью');
     assert.strictEqual(progress.tracksPlanned, 3);
     assert.strictEqual(progress.tracksDone, 0);
-    assert.deepStrictEqual(progress.tracksInProgress, [
-      'саморевью',
-      'анализ фидбека',
-      'синтез',
-    ]);
+    assert.deepStrictEqual(progress.tracksInProgress, ['саморевью', 'анализ фидбека', 'синтез']);
     assert.ok(progress.elapsedMs > 500_000, 'clock should show ~10 min elapsed');
     assert.ok(progress.startedAt !== null, 'startedAt should be set from instanceCreatedAt');
     assert.strictEqual(progress.activity, 'Саморевью кода');
@@ -110,11 +106,7 @@ describe('deriveReviewProgress — author role stages', () => {
     assert.strictEqual(progress.stageLabel, 'Ревью');
     assert.strictEqual(progress.tracksPlanned, 3);
     assert.strictEqual(progress.tracksDone, 0);
-    assert.deepStrictEqual(progress.tracksInProgress, [
-      'трек-ревью',
-      'безопасность',
-      'код-ревью',
-    ]);
+    assert.deepStrictEqual(progress.tracksInProgress, ['трек-ревью', 'безопасность', 'код-ревью']);
   });
 
   it('enrich stage shows correctly for reviewer', () => {
