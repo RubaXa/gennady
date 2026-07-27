@@ -42,7 +42,10 @@ test.describe('Живое наблюдение за ревью MR', () => {
     const log: string[] = [];
     const seenNodes = new Set<string>();
 
-    function note(msg: string) { console.log(msg); log.push(msg); }
+    function note(msg: string) {
+      console.log(msg);
+      log.push(msg);
+    }
 
     // ═══ Шаг 0: холодный старт ═══
     await page.goto(BASE);
@@ -89,7 +92,7 @@ test.describe('Живое наблюдение за ревью MR', () => {
       await page.waitForTimeout(2000);
       const inboxLane = reviewerBlock.locator('[aria-label="INBOX lane"]');
       const cards = inboxLane.locator('div[role="listitem"]');
-      if (await cards.count().catch(() => 0) > 0) {
+      if ((await cards.count().catch(() => 0)) > 0) {
         mrInInbox = true;
         break;
       }
@@ -110,14 +113,18 @@ test.describe('Живое наблюдение за ревью MR', () => {
       await page.goto(BASE);
       await page.waitForTimeout(1000);
 
-      const inboxLane = page.locator('section[aria-label="Role: reviewer"] [aria-label="INBOX lane"]');
+      const inboxLane = page.locator(
+        'section[aria-label="Role: reviewer"] [aria-label="INBOX lane"]'
+      );
       const mrCards = inboxLane.locator('div[role="listitem"]');
       const count = await mrCards.count().catch(() => 0);
       if (count === 0) {
         // MR мог уйти в DONE или другую линию
-        const doneLane = page.locator('section[aria-label="Role: reviewer"] [aria-label="DONE lane"]');
+        const doneLane = page.locator(
+          'section[aria-label="Role: reviewer"] [aria-label="DONE lane"]'
+        );
         const doneCards = doneLane.locator('div[role="listitem"]');
-        if (await doneCards.count().catch(() => 0) > 0) {
+        if ((await doneCards.count().catch(() => 0)) > 0) {
           note('📸 Финал: MR в DONE!');
           await shot(page, `0${stepNum}-done`);
           stepNum++;
@@ -127,8 +134,11 @@ test.describe('Живое наблюдение за ревью MR', () => {
       }
 
       // Читаем aria-label карточки (содержит стадию)
-      const cardLabel = await mrCards.first().getAttribute('aria-label').catch(() => '');
-      
+      const cardLabel = await mrCards
+        .first()
+        .getAttribute('aria-label')
+        .catch(() => '');
+
       // Проверяем серверное состояние
       const inst = app!.scheduler.findInstance(MR_URL);
       const node = inst?.currentNode ?? 'n/a';
@@ -151,7 +161,9 @@ test.describe('Живое наблюдение за ревью MR', () => {
       // Запускаем тик (если scheduler ещё жив)
       try {
         await app!.scheduler.tick();
-      } catch { /* ok */ }
+      } catch {
+        /* ok */
+      }
     }
 
     // ═══ Шаг 4: детальная страница MR ═══

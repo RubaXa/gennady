@@ -29,7 +29,7 @@ export type SessionType = 'session' | 'synthesize';
  * @purpose Review track a `session`-kind directive is assembled for — selects the base template.
  *   Irrelevant for `sessionType='synthesize'` (single base template regardless of track).
  */
-export type Track = 'logic' | 'security' | 'code';
+export type Track = 'logic' | 'security' | 'code' | 'enrich';
 
 /**
  * @purpose Thrown when `(sessionType, track)` does not resolve to a known base template.
@@ -49,10 +49,11 @@ export class DirectiveSelectionError extends Error {
   }
 }
 
-const BASE_TEMPLATE_BY_TRACK: Readonly<Record<Track, string>> = {
+const BASE_TEMPLATE_BY_TRACK: Readonly<Record<string, string>> = {
   logic: 'track-review.directive.hbs',
   security: 'security-lens.directive.hbs',
   code: 'code-lens.directive.hbs',
+  enrich: 'enrich.directive.hbs',
 };
 
 const SYNTHESIZE_TEMPLATE = 'synthesize.directive.hbs';

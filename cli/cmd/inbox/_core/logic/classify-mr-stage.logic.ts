@@ -60,14 +60,17 @@ export function flattenNotes(discussions: unknown[]): RawNote[] {
  * @param notes Flattened discussion notes.
  * @param myLogin My GitLab username.
  * @param role My role on the MR.
+ * @param [forceReview] When true, force `review_needed` regardless of discussion state — enables re-review, double review, fresh adversarial pass.
  * @returns Stage: review_needed, reply_needed, awaiting_reply, or idle.
  * @consumer inbox.cmd
  */
 export function classifyMrStage(
   notes: RawNote[],
   myLogin: string,
-  role: VcsActionableRole | null
+  role: VcsActionableRole | null,
+  forceReview = false
 ): MrStage {
+  if (forceReview && role === 'reviewer') return 'review_needed';
   const ts = (n: RawNote) => Date.parse(n.updated_at ?? n.created_at ?? '') || 0;
   const real = notes.filter((n) => !n.system);
   const mine = real.filter((n) => n.author?.username === myLogin);
@@ -116,13 +119,15 @@ export function lastNoteAuthor(notes: RawNote[]): string {
  * @param notes Flattened discussion notes.
  * @param myLogin My GitLab username.
  * @param role My role on the MR.
+ * @param [forceReview] When true, force `review_needed` regardless of discussion state.
  * @returns Work packet with stage, role, review flag, and open notes.
  * @consumer inbox.cmd
  */
 export function buildWorkPacket(
   notes: RawNote[],
   myLogin: string,
-  role: VcsActionableRole | null
+  role: VcsActionableRole | null,
+  forceReview = false
 ): WorkPacket {
   const ts = (n: RawNote) => Date.parse(n.updated_at ?? n.created_at ?? '') || 0;
   const real = notes.filter((n) => !n.system);
@@ -138,6 +143,6 @@ export function buildWorkPacket(
       body: n.body ?? '',
     }));
 
-  const stage = classifyMrStage(notes, myLogin, role);
+  const stage = classifyMrStage(notes, myLogin, role, forceReview);
   return { stage, role, needsReview: stage === 'review_needed', openNotes };
 }

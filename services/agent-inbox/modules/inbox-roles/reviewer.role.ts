@@ -656,6 +656,108 @@ const reviewerGraph: RoleGraph = {
       run: preparePrepNode,
     },
 
+    // ─── review_needed: enrich (D-130) ──────────────────────────────────────────
+    // One LLM session deepens ALL mechanically-scaffolded .task.md files before
+    // lens dispatch. Reads source files, MR description, prior threads, project
+    // structure; writes enriched ## Контекст into each .task.md. Full toolset
+    // (bash, read, grep, write, websearch, webfetch) — needs write to overwrite
+    // .task.md files and web search for industry research.
+    {
+      kind: 'session',
+      id: 'node_enrich',
+      buildTaskText(ctx: NodeContext) {
+        const stateDir = ctx.store?.getStateDir();
+        if (!stateDir) return 'Enrich task files — no stateDir available.';
+        const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+        const taskDir = join(mrReportsDir(stateDir, ref), 'tasks');
+
+        let taskFilesStr = '';
+        try {
+          const names = readdirSync(taskDir).filter((f) => f.endsWith('.task.md'));
+          taskFilesStr = names
+            .map((name) => {
+              const content = readFileSync(join(taskDir, name), 'utf-8');
+              return `### ${name}\n\`\`\`markdown\n${content}\n\`\`\``;
+            })
+            .join('\n\n');
+        } catch {
+          taskFilesStr = '(no .task.md files found)';
+        }
+
+        return `Enrich the mechanically-scaffolded task files for MR ${ctx.mr.webUrl}.
+
+## MR Description
+${ctx.mr.description || '(none — description is empty)'}
+
+## Task Files to Enrich
+${taskFilesStr}
+
+For each .task.md file above:
+1. Read 2-3 key files from its ## Область to understand the entities.
+2. Write an enriched ## Контекст section (entities, boundaries, MR goal alignment, discussion context, systemic risks, web research).
+3. Adjust ## Область if files are misassigned or missing across tracks.
+4. Set frontmatter status: enriched.
+
+Worktree path: ${ctx.artifacts.worktreePath ?? '(not available)'}
+`;
+      },
+      dir(ctx: NodeContext) {
+        const stateDir = ctx.store?.getStateDir();
+        if (!stateDir) return ctx.workspace;
+        const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+        return mrReportsDir(stateDir, ref);
+      },
+      policy: {
+        promptTimeout: 10,
+        continueMax: 2,
+        restartMax: 1,
+        tools: true,
+        model: 'llm-proxy/deepseek-v4-pro',
+      },
+    },
+    {
+      kind: 'gate',
+      id: 'gate_enrich',
+      verify(ctx: NodeContext): GateResult {
+        const stateDir = ctx.store?.getStateDir();
+        if (!stateDir) return { pass: false, reason: 'No stateDir — cannot read task files' };
+        const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
+        const taskDir = join(mrReportsDir(stateDir, ref), 'tasks');
+
+        try {
+          const names = readdirSync(taskDir).filter((f) => f.endsWith('.task.md'));
+          if (names.length === 0)
+            return { pass: false, reason: 'No .task.md files in report/tasks/' };
+
+          for (const name of names) {
+            const content = readFileSync(join(taskDir, name), 'utf-8');
+            // Check frontmatter status
+            if (!/^status:\s*enriched\b/m.test(content) && !/^status:\s*filled\b/m.test(content)) {
+              return { pass: false, reason: `${name}: status is not 'enriched' or 'filled'` };
+            }
+            // Check ## Контекст is non-empty (collect lines between ## Контекст and next ## heading or EOF)
+            const lines = content.split('\n');
+            let inContext = false;
+            const ctxLines: string[] = [];
+            for (const line of lines) {
+              if (/^##\s+Контекст/.test(line)) {
+                inContext = true;
+                continue;
+              }
+              if (inContext && /^##\s/.test(line)) break;
+              if (inContext) ctxLines.push(line);
+            }
+            if (ctxLines.join('').trim().length === 0) {
+              return { pass: false, reason: `${name}: ## Контекст is empty` };
+            }
+          }
+          return { pass: true };
+        } catch {
+          return { pass: false, reason: 'Cannot read task files' };
+        }
+      },
+    },
+
     // ─── review_needed: review-fanout ──────────────────────────────────────────
     // TSK-perf: track/security/code-review are independent (same worktree, disjoint artifact
     // keys, converge only at gate_review_filled below) — run them concurrently instead of the
@@ -977,7 +1079,10 @@ You have NO tools in this turn — none at all, not even read-only ones. Everyth
     },
   ],
   edges: [
-    { from: 'node_prepare', to: 'node_review_fanout', on: 'review_needed' },
+    { from: 'node_prepare', to: 'node_enrich', on: 'review_needed' },
+    { from: 'node_enrich', to: 'gate_enrich', on: 'ok' },
+    { from: 'gate_enrich', to: 'node_review_fanout', on: 'pass' },
+    { from: 'gate_enrich', to: 'node_enrich', on: 'fail' },
     { from: 'node_prepare', to: 'node_thread_triage', on: 'reply_needed' },
     { from: 'node_prepare', to: 'node_delta_review', on: 'update-review' },
 

@@ -48,4 +48,12 @@ describe('selectDirective snapshot (D-124/AI-46)', () => {
   it('renders security-lens base with isTiny active', (t) => {
     t.assert.snapshot(selectDirective('session', 'security', { ...NO_FLAGS, isTiny: true }));
   });
+
+  it('renders enrich base with no active mrShape flags', (t) => {
+    t.assert.snapshot(selectDirective('session', 'enrich', NO_FLAGS));
+  });
+
+  it('renders enrich base with isTiny active', (t) => {
+    t.assert.snapshot(selectDirective('session', 'enrich', { ...NO_FLAGS, isTiny: true }));
+  });
 });

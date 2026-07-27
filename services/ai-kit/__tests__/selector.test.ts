@@ -144,6 +144,19 @@ describe('selectDirective', () => {
     assert.match(result, /<ArchInterrogation/);
     assert.doesNotMatch(result, /\{\{[>#/]/);
   });
+
+  it('enrich track renders EnrichDirective root with additivity', () => {
+    const result = selectDirective('session', 'enrich', { ...NO_FLAGS, isTiny: true });
+
+    assert.match(result, /<EnrichDirective/);
+    assert.match(result, /AX_ENRICH_SCOPE/);
+    assert.match(result, /AX_ENRICH_SYSTEMIC_ROOT_CAUSE/);
+    assert.match(result, /AX_ENRICH_WEB_RESEARCH/);
+    // isTiny flag injects ax-minimal-change-suspicion
+    assert.match(result, /AX_MINIMAL_CHANGE_SUSPICION/);
+    // no unresolved Handlebars syntax
+    assert.doesNotMatch(result, /\{\{[>#/]/);
+  });
 });
 
 describe('selectDirective — synthesize sessionType', () => {

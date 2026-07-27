@@ -235,6 +235,7 @@ async function run(): Promise<number> {
     const stateDir = resolveStateDir(argv);
     const skipWorktree = argv.includes('--skip-worktree');
     const skipThreads = argv.includes('--skip-threads');
+    const forceReview = argv.includes('--force-review');
 
     const url = parseValue(argv, '--url');
     const ref = parseValue(argv, '--ref');
@@ -364,6 +365,18 @@ async function run(): Promise<number> {
       }
 
       if (baseSha) {
+        if (forceReview && diffRefs?.base_sha && baseSha === prepared.headSha) {
+          try {
+            execFileSync(
+              'git',
+              ['merge-base', '--is-ancestor', diffRefs.base_sha, prepared.headSha],
+              { cwd: prepared.worktreePath, stdio: 'ignore' }
+            );
+            baseSha = diffRefs.base_sha;
+          } catch {
+            /* not an ancestor — keep computed baseSha */
+          }
+        }
         changeset = computeChangeset(prepared.worktreePath, baseSha);
       }
 
@@ -405,8 +418,8 @@ async function run(): Promise<number> {
         client.MergeDiscussions!.listDraftNotes({ project, iid }),
       ]);
       const notes = flattenNotes(allDiscussions);
-      stage = classifyMrStage(notes, myLogin, myRole);
-      const packet = buildWorkPacket(notes, myLogin, myRole);
+      stage = classifyMrStage(notes, myLogin, myRole, forceReview);
+      const packet = buildWorkPacket(notes, myLogin, myRole, forceReview);
       openQuestions = packet.openNotes.length;
       lastAuthorStr = lastNoteAuthor(notes);
 

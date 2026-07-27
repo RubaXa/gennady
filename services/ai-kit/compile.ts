@@ -52,6 +52,7 @@ const SELECTOR_NODE_ROUTE: Readonly<Record<string, { sessionType: SessionType; t
   node_track_review: { sessionType: 'session', track: 'logic' },
   node_security_lens: { sessionType: 'session', track: 'security' },
   node_code_review: { sessionType: 'session', track: 'code' },
+  node_enrich: { sessionType: 'session', track: 'enrich' },
   node_synthesize: { sessionType: 'synthesize' },
 };
 

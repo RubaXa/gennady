@@ -23,11 +23,15 @@ test.describe('Полный путь с засеянным ревью', () => {
     test.setTimeout(600_000);
     ({ stateDir } = await makeStateDir({ seedReview: true }));
     app = await bootReal(stateDir);
-    
+
     // Активируем reviewer
-    try { await app!.scheduler.assignManual(MR_URL, 'reviewer'); } catch {}
+    try {
+      await app!.scheduler.assignManual(MR_URL, 'reviewer');
+    } catch {}
     // Даём тик чтобы загрузить ревью с диска
-    try { await app!.scheduler.tick(); } catch {}
+    try {
+      await app!.scheduler.tick();
+    } catch {}
   });
 
   test.afterAll(async () => {
@@ -72,7 +76,7 @@ test.describe('Полный путь с засеянным ревью', () => {
     const inboxLane = reviewer.locator('[aria-label="INBOX lane"]');
     const mrCard = inboxLane.locator('div[role="listitem"]').first();
     const viewBtn = inboxLane.locator('button[aria-label^="View MR"]').first();
-    
+
     if (await viewBtn.isVisible().catch(() => false)) {
       await viewBtn.evaluate((el: HTMLButtonElement) => el.click());
       await page.waitForTimeout(5000);
@@ -99,7 +103,10 @@ test.describe('Полный путь с засеянным ревью', () => {
     } else {
       console.log('Артефакты не найдены — проверяю URL и контент');
       const url = page.url();
-      const body = await page.locator('main').textContent().catch(() => '');
+      const body = await page
+        .locator('main')
+        .textContent()
+        .catch(() => '');
       console.log(`URL: ${url}`);
       console.log(`Body (первые 300): ${body?.slice(0, 300)}`);
     }
@@ -110,13 +117,15 @@ test.describe('Полный путь с засеянным ревью', () => {
     const skipBtn = page.locator('button:has-text("Skip")');
     const postBtn = page.locator('button:has-text("Постить")');
     const backBtn = page.locator('button[aria-label="Назад к доске"]');
-    
+
     const hasCandidates = await candidatesText.isVisible().catch(() => false);
     const hasApprove = await approveBtn.isVisible().catch(() => false);
     const hasSkip = await skipBtn.isVisible().catch(() => false);
     const hasPost = await postBtn.isVisible().catch(() => false);
-    
-    console.log(`ActionPanel: кандидаты=${hasCandidates} approve=${hasApprove} skip=${hasSkip} post=${hasPost}`);
+
+    console.log(
+      `ActionPanel: кандидаты=${hasCandidates} approve=${hasApprove} skip=${hasSkip} post=${hasPost}`
+    );
     await shot(page, '06-action-panel');
 
     // ── Шаг 7: Финал — борд ──
@@ -129,10 +138,18 @@ test.describe('Полный путь с засеянным ревью', () => {
     await shot(page, '07-board-final');
 
     // ── Статистика борда ──
-    for (const aria of ['MRs awaiting my action', 'Role: reviewer', 'Role: author', 'Unassigned MRs']) {
+    for (const aria of [
+      'MRs awaiting my action',
+      'Role: reviewer',
+      'Role: author',
+      'Unassigned MRs',
+    ]) {
       const el = page.locator(`section[aria-label="${aria}"]`);
       if (await el.isVisible({ timeout: 3000 }).catch(() => false)) {
-        const h2 = await el.locator('h2').textContent().catch(() => '');
+        const h2 = await el
+          .locator('h2')
+          .textContent()
+          .catch(() => '');
         // Считаем карточки
         const cards = el.locator('div[role="listitem"]');
         const cardCount = await cards.count().catch(() => 0);

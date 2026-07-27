@@ -83,8 +83,8 @@ beforeEach(() => {
 });
 
 describe('ReviewerRole — graph structure', () => {
-  it('reviewer.role.ts имеет 13 узлов (prepare + review_needed fanout(1)+gate + reply_needed(2) + update-review(4) + shared synthesize/gate/ask/effect)', () => {
-    assert.strictEqual(ReviewerRole.graph.nodes.length, 13);
+  it('reviewer.role.ts имеет 15 узлов (prepare + enrich(2) + review_needed fanout(1)+gate + reply_needed(2) + update-review(4) + shared synthesize/gate/ask/effect)', () => {
+    assert.strictEqual(ReviewerRole.graph.nodes.length, 15);
   });
 
   it('reviewer.role.ts имеет правильное имя и описание', () => {
@@ -104,13 +104,13 @@ describe('ReviewerRole — graph structure', () => {
     engine.register(ReviewerRole);
     const def = engine.retrieve('reviewer');
     assert.ok(def);
-    assert.strictEqual(def.graph.nodes.length, 13);
+    assert.strictEqual(def.graph.nodes.length, 15);
     assert.ok(def.graph.edges.length > 0);
   });
 });
 
 describe('ReviewerRole — branch: review_needed (fan-out + security lens + code-review)', () => {
-  it('GIVEN stage не задан (default) WHEN prep THEN полная батарея → synthesize → ask', async () => {
+  it('GIVEN stage не задан (default) WHEN prep THEN enrich → review fanout → synthesize → ask', async () => {
     engine.register(ReviewerRole);
 
     // D-118..D-123 (TSK-113 Round 2, P5 fix F-01): lens/synthesize nodes return their result as a
@@ -123,6 +123,7 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
     opencode.seed('node_code_review', {
       findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }],
     });
+    opencode.seed('node_enrich', {});
     opencode.seed('node_synthesize', {
       reviewReport: {
         verdict: 'changes_requested',
@@ -133,6 +134,18 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
       },
       proposedActions: [],
     });
+
+    // D-130: pre-create .task.md files with status: enriched so gate_enrich passes
+    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(tasksDir, { recursive: true });
+    writeFileSync(
+      join(tasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nEntities: FrameModel, isFrameElement.\nBoundary: packages/blocks — framework layer.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
+    );
+    writeFileSync(
+      join(tasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nLook at WHOLE diff. Check addElement call sites.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
+    );
 
     const instance = new RoleInstance({
       id: 'reviewer:test:review_needed',
@@ -147,6 +160,12 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
     assert.strictEqual(instance.currentNode, 'node_prepare');
 
     await instance.step(); // node_prepare → review_needed (default branch)
+    assert.strictEqual(instance.currentNode, 'node_enrich');
+
+    await instance.step(); // node_enrich → ok
+    assert.strictEqual(instance.currentNode, 'gate_enrich');
+
+    await instance.step(); // gate_enrich → pass (task files have status:enriched)
     assert.strictEqual(instance.currentNode, 'node_review_fanout');
 
     await instance.step(); // node_review_fanout → all 3 lenses run concurrently → ok
@@ -286,6 +305,7 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
     spy.seed('node_track_review', { findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] });
     spy.seed('node_security_lens', { findings: [] });
     spy.seed('node_code_review', { findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] });
+    spy.seed('node_enrich', {});
     spy.seed('node_synthesize', {
       reviewReport: {
         verdict: 'changes_requested',
@@ -307,11 +327,29 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
       store: store as unknown as StateStore,
     });
 
+    // D-130: pre-create .task.md files so gate_enrich passes
+    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(tasksDir, { recursive: true });
+    writeFileSync(
+      join(tasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+    writeFileSync(
+      join(tasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+
     await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_enrich → ok
+    await instance.step(); // gate_enrich → pass
     await instance.step(); // node_review_fanout → all 3 lenses run, engine persists each result
+    assert.strictEqual(
+      instance.currentNode,
+      'gate_review_filled',
+      'after fanout, should be at gate_review_filled'
+    );
 
     // #region ASSERT_LENS_RESULTS_PERSISTED_BY_ENGINE — not by the lens sessions themselves
-    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     for (const lensId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
       const path = join(tasksDir, `${lensId}.result.json`);
       assert.ok(
@@ -344,6 +382,7 @@ describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep
     spy.seed('node_track_review', { findings: [] });
     spy.seed('node_security_lens', { findings: [] });
     spy.seed('node_code_review', { findings: [] });
+    spy.seed('node_enrich', {});
     spy.seed('node_synthesize', {
       reviewReport: {
         verdict: 'approved',
@@ -364,7 +403,21 @@ describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep
       store: store as unknown as StateStore,
     });
 
+    // D-130: pre-create .task.md files so gate_enrich passes
+    const tpTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(tpTasksDir, { recursive: true });
+    writeFileSync(
+      join(tpTasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+    writeFileSync(
+      join(tpTasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+
     await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_enrich → ok
+    await instance.step(); // gate_enrich → pass
     await instance.step(); // node_review_fanout → all 3 lenses
 
     for (const lensId of ['node_track_review', 'node_security_lens', 'node_code_review']) {
@@ -388,6 +441,7 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
     });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_enrich', {});
     opencode.seed('node_synthesize', {
       reviewReport: {
         verdict: 'changes_requested',
@@ -408,7 +462,21 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       store: store as unknown as StateStore,
     });
 
+    // D-130: pre-create .task.md files so gate_enrich passes
+    const revTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(revTasksDir, { recursive: true });
+    writeFileSync(
+      join(revTasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+    writeFileSync(
+      join(revTasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+
     await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_enrich → ok
+    await instance.step(); // gate_enrich → pass
     await instance.step(); // node_review_fanout
     await instance.step(); // gate_review_filled → pass
     await instance.step(); // node_synthesize → ok
@@ -462,7 +530,11 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       store: store as unknown as StateStore,
     });
 
+    // D-130: .task.md files already exist from first pass (status: enriched) — gate_enrich will pass
+
     await secondPass.step(); // node_prepare
+    await secondPass.step(); // node_enrich
+    await secondPass.step(); // gate_enrich → pass
     await secondPass.step(); // node_review_fanout
     await secondPass.step(); // gate_review_filled
     await secondPass.step(); // node_synthesize
@@ -490,6 +562,7 @@ describe('ReviewerRole — Round 4: lens finding survives field-name drift (live
     });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_enrich', {});
     opencode.seed('node_synthesize', {
       reviewReport: {
         verdict: 'changes_requested',
@@ -510,7 +583,21 @@ describe('ReviewerRole — Round 4: lens finding survives field-name drift (live
       store: store as unknown as StateStore,
     });
 
+    // D-130: pre-create .task.md files so gate_enrich passes
+    const driftTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(driftTasksDir, { recursive: true });
+    writeFileSync(
+      join(driftTasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+    writeFileSync(
+      join(driftTasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
+    );
+
     await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_enrich → ok
+    await instance.step(); // gate_enrich → pass
     await instance.step(); // node_review_fanout
     await instance.step(); // gate_review_filled → pass
     await instance.step(); // node_synthesize → ok
