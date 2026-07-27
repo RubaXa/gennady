@@ -10,7 +10,7 @@
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runMrsOnce, type RunModeDeps } from '../run-mode.ts';
@@ -45,6 +45,43 @@ function makeStateStore(): StateStore {
   return new StateStore(stateDir);
 }
 
+/**
+ * Stand in for what the enrich session does with its write tool: the flow is
+ * scaffold (mechanical) → enrich (LLM session, full toolset) → gate(enriched) → lenses.
+ * OpenCodeMock cannot write files, so the fixture lays down the same on-disk result the real
+ * session produces — PLAN.md plus a task file carrying `status: enriched` and a filled
+ * `## Контекст`. `gate_enrich` stays REAL: it validates these actual files, not a stub.
+ */
+function seedEnrichedTaskFiles(store: StateStore, ref: string, headSha = 'head1111'): void {
+  const dir = mrReportsDir(store.getStateDir(), ref);
+  const tasksDir = join(dir, 'tasks');
+  mkdirSync(tasksDir, { recursive: true });
+
+  // Keep the scaffolder's own headSha when it already produced a PLAN.md — the validator rejects a
+  // task file whose headSha does not match the plan's.
+  const planPath = join(dir, 'PLAN.md');
+  const planSha = existsSync(planPath)
+    ? (/^headSha:\s*(\S+)/m.exec(readFileSync(planPath, 'utf8'))?.[1] ?? headSha)
+    : headSha;
+  if (!existsSync(planPath)) {
+    writeFileSync(planPath, `---\nref: ${ref}\nheadSha: ${planSha}\n---\n\n# План ревью\n`, 'utf8');
+  }
+
+  const body = (track: string): string =>
+    `---\ntrack: ${track}\nstatus: enriched\nheadSha: ${planSha}\n---\n\n` +
+    `## Область\n\n- services/agent-inbox/foo.ts\n\n` +
+    `## Контекст\n\nЦель MR — добавить проверку граничного случая. Смотреть точку входа и её вызовы.\n\n` +
+    `## Находки\n\n<!-- FILL -->\n\n## Кандидаты\n\n<!-- FILL -->\n\n## Вердикт\n\n<!-- FILL -->\n`;
+
+  // Enrich EVERY blank the scaffolder produced (one per track) — leaving one unenriched keeps
+  // gate_enrich red, exactly as it would in production.
+  const existing = readdirSync(tasksDir).filter((f) => f.endsWith('.task.md'));
+  const targets = existing.length > 0 ? existing : ['logic.task.md'];
+  for (const name of targets) {
+    writeFileSync(join(tasksDir, name), body(name.replace(/\.task\.md$/, '')), 'utf8');
+  }
+}
+
 function mrContext(webUrl: string, myRole: string | null): MrContext {
   return {
     project: 'group/project',
@@ -77,6 +114,7 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
     // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
     // response object directly.
     const opencode = new OpenCodeMock();
+    opencode.seed('node_enrich', { ok: true });
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: [] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
@@ -94,6 +132,7 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
     });
 
     const store = makeStateStore();
+    seedEnrichedTaskFiles(store, 'group/project!1');
     const deps: RunModeDeps = {
       engine,
       store,
@@ -128,6 +167,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
    *   until now was only ever verified live.
    */
   function seedCleanLenses(opencode: OpenCodeMock): void {
+    opencode.seed('node_enrich', { ok: true });
     opencode.seed('node_track_review', { findings: [] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
@@ -155,6 +195,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
     seedCleanLenses(opencode);
 
     const store = makeStateStore();
+    seedEnrichedTaskFiles(store, 'group/project!1');
     const result = await runMrsOnce({
       mrs: [MR],
       dryRun: true,
@@ -189,6 +230,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
     vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
 
     const opencode = new OpenCodeMock();
+    opencode.seed('node_enrich', { ok: true });
     opencode.seed('node_track_review', { findings: [] }); // first lens: clean
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', {
@@ -205,6 +247,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
     });
 
     const store = makeStateStore();
+    seedEnrichedTaskFiles(store, 'group/project!1');
     const result = await runMrsOnce({
       mrs: [MR],
       dryRun: true,
@@ -388,6 +431,7 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
     // response object directly.
     const opencode = new OpenCodeMock();
+    opencode.seed('node_enrich', { ok: true });
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: ['logic'] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
@@ -426,6 +470,15 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     });
 
     await instance.step(); // node_prepare (review_needed default branch) — materializeReviewScaffold
+    assert.strictEqual(instance.currentNode, 'node_enrich');
+
+    // The enrich session (full toolset) rewrites the scaffolded blanks with real context; the mock
+    // cannot write files, so lay down the same on-disk result before stepping it — gate_enrich below
+    // then validates the REAL files, exactly as in production.
+    seedEnrichedTaskFiles(store, 'group/project!1');
+    await instance.step(); // node_enrich → ok
+    assert.strictEqual(instance.currentNode, 'gate_enrich');
+    await instance.step(); // gate_enrich → pass (task files carry status: enriched + Контекст)
     assert.strictEqual(instance.currentNode, 'node_review_fanout');
     // TSK-perf: track/security/code-review run concurrently inside one ParallelNode (see
     // reviewer.role.ts's node_review_fanout) — one step() resolves all three lenses together

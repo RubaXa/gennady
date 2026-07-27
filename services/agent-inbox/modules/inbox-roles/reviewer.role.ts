@@ -5,7 +5,7 @@
 // @tasks: TSK-113, TSK-121, TSK-122, TSK-127
 
 import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { logger } from '#logger';
 import type {
   RoleDefinition,
@@ -708,7 +708,7 @@ For each .task.md file above:
 3. Include the MR metadata above (ref, webUrl, base, worktree) in each track's ## Контекст so lenses can navigate the worktree.
 4. Adjust ## Область if files are misassigned or missing across tracks.
 5. Set frontmatter status: enriched.
-`;
+${_synthesisRetryHint(ctx, 'node_enrich')}`;
       },
       dir(ctx: NodeContext) {
         const stateDir = ctx.store?.getStateDir();
@@ -734,7 +734,13 @@ For each .task.md file above:
         const dir = mrReportsDir(stateDir, ref);
         const result = validateReviewReports(dir, 'enriched');
         if (!result.ok) {
-          return { pass: false, reason: result.errors.map((e) => e.error).join('; ') };
+          // Per-file reasons, not a lump: the retry prompt names exactly which task files are still
+          // blanks, so the enrich session finishes those instead of re-running blindly
+          // (fed back through `node_enrich_fail_reason` by `_synthesisRetryHint`).
+          return {
+            pass: false,
+            reason: result.errors.map((e) => `${basename(e.file)}: ${e.error}`).join('; '),
+          };
         }
         return { pass: true };
       },
