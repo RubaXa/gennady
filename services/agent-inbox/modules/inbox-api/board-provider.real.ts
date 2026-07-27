@@ -255,6 +255,7 @@ export class BoardProviderReal extends BoardProviderPort {
           currentNode: instance.currentNode,
           artifacts: instance.getCheckpoint().artifacts,
           phaseEntries: this._readPhaseEntriesForMr(snap.mr),
+          role: snap.role,
         });
       }
 

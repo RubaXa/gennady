@@ -327,10 +327,18 @@ async function run(): Promise<number> {
     // #endregion END_STATUS_BAR
 
     // #region START_SIGNAL_HANDLERS
+    let shuttingDown = false;
     const shutdown = async (signal: string, exitCode: number = 0) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
       console.info('');
       console.info(style.dim(`Received ${signal}, shutting down...`));
       clearInterval(tickTimer);
+      // Force exit after 15s regardless of graceful shutdown completion
+      const forceExit = setTimeout(() => {
+        console.info(style.dim('Shutdown timed out — forcing exit.'));
+        process.exit(1);
+      }, 15_000);
       try {
         await gracefulShutdown({
           server: result.server,
@@ -342,6 +350,7 @@ async function run(): Promise<number> {
       } catch {
         // Individual shutdown errors are logged inside gracefulShutdown
       }
+      clearTimeout(forceExit);
       process.exit(exitCode);
     };
 

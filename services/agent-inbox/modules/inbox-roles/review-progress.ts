@@ -37,9 +37,12 @@ const LENS_LABELS: Record<string, string> = {
   node_code_review: 'код-ревью',
 };
 
-/** @purpose Closed-set stage token + Russian label per reviewer-graph node id. */
+/** @purpose Closed-set stage token + Russian label per graph node id (reviewer + author + shared). */
 const NODE_STAGE: Record<string, { stage: string; stageLabel: string }> = {
+  // reviewer
   node_prepare: { stage: 'planning', stageLabel: 'Планирование' },
+  node_enrich: { stage: 'planning', stageLabel: 'Обогащение контекста' },
+  gate_enrich: { stage: 'planning', stageLabel: 'Проверка обогащения' },
   node_review_fanout: { stage: 'reviewing', stageLabel: 'Ревью' },
   node_track_review: { stage: 'reviewing', stageLabel: 'Ревью' },
   node_security_lens: { stage: 'reviewing', stageLabel: 'Ревью' },
@@ -56,6 +59,11 @@ const NODE_STAGE: Record<string, { stage: string; stageLabel: string }> = {
   gate_delta: { stage: 'delta', stageLabel: 'Дельта-ревью' },
   node_synthesize_delta: { stage: 'delta', stageLabel: 'Дельта-ревью' },
   gate_delta_synthesis: { stage: 'delta', stageLabel: 'Дельта-ревью' },
+  // author
+  node_self_review: { stage: 'reviewing', stageLabel: 'Саморевью' },
+  node_analyze_feedback: { stage: 'reviewing', stageLabel: 'Анализ фидбека' },
+  gate_analysis: { stage: 'reviewing', stageLabel: 'Проверка анализа' },
+  gate_synthesis: { stage: 'synthesis', stageLabel: 'Синтез' },
 };
 
 /** @purpose Fallback stage for a node id absent from `NODE_STAGE` (unknown/future graph node). */
@@ -64,6 +72,8 @@ const UNKNOWN_STAGE = { stage: 'unknown', stageLabel: 'Неизвестно' } a
 /** @purpose Short (Russian) activity description per node id — finer-grained than `stageLabel`. */
 const NODE_ACTIVITY: Record<string, string> = {
   node_prepare: 'Подготовка контекста',
+  node_enrich: 'Обогащение контекста задач',
+  gate_enrich: 'Проверка обогащения',
   node_review_fanout: 'Ревью линз (параллельно)',
   node_track_review: 'Ревью: трек-ревью',
   node_security_lens: 'Ревью: безопасность',
@@ -80,6 +90,10 @@ const NODE_ACTIVITY: Record<string, string> = {
   gate_delta: 'Проверка дельты',
   node_synthesize_delta: 'Синтез дельты',
   gate_delta_synthesis: 'Проверка синтеза дельты',
+  node_self_review: 'Саморевью кода',
+  node_analyze_feedback: 'Анализ отзывов ревьюеров',
+  gate_analysis: 'Проверка анализа',
+  gate_synthesis: 'Проверка синтеза',
 };
 
 /**
@@ -126,16 +140,19 @@ export function deriveReviewProgress(input: {
   artifacts: Record<string, unknown>;
   phaseEntries: PhaseTimingEntry[];
   nowMs?: number;
+  /** @purpose Role name — drives lens-track counter (reviewer=3 lenses, author=0). */
+  role?: string;
 }): ReviewProgress {
-  const { currentNode, artifacts, phaseEntries, nowMs = Date.now() } = input;
+  const { currentNode, artifacts, phaseEntries, nowMs = Date.now(), role } = input;
 
   const { stage, stageLabel } = NODE_STAGE[currentNode] ?? UNKNOWN_STAGE;
   const activity = NODE_ACTIVITY[currentNode] ?? stageLabel;
 
-  const tracksPlanned = LENS_NODE_IDS.length;
-  const doneIds = LENS_NODE_IDS.filter((id) => _isLensDone(artifacts[id]));
+  const lensIds = role === 'author' ? [] : LENS_NODE_IDS;
+  const tracksPlanned = lensIds.length;
+  const doneIds = lensIds.filter((id) => _isLensDone(artifacts[id]));
   const tracksDone = doneIds.length;
-  const tracksInProgress = LENS_NODE_IDS.filter((id) => !doneIds.includes(id)).map(
+  const tracksInProgress = lensIds.filter((id) => !doneIds.includes(id)).map(
     (id) => LENS_LABELS[id]!
   );
 

@@ -126,6 +126,8 @@ export function MrCard(props: { mr: MrCardType; className?: string }) {
    * @purpose Navigate to MR detail via hash router.
    */
   const openDetail = () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) return;
     window.location.hash = `#/mr/${encodeURIComponent(mrKey)}`;
   };
 
