@@ -142,8 +142,10 @@ export function deriveReviewProgress(input: {
   nowMs?: number;
   /** @purpose Role name — drives lens-track counter (reviewer=3 lenses, author=0). */
   role?: string;
+  /** @purpose ISO timestamp the instance was created — fallback clock when no phase telemetry yet. */
+  instanceCreatedAt?: string;
 }): ReviewProgress {
-  const { currentNode, artifacts, phaseEntries, nowMs = Date.now(), role } = input;
+  const { currentNode, artifacts, phaseEntries, nowMs = Date.now(), role, instanceCreatedAt } = input;
 
   const { stage, stageLabel } = NODE_STAGE[currentNode] ?? UNKNOWN_STAGE;
   const activity = NODE_ACTIVITY[currentNode] ?? stageLabel;
@@ -152,14 +154,19 @@ export function deriveReviewProgress(input: {
   const tracksPlanned = lensIds.length;
   const doneIds = lensIds.filter((id) => _isLensDone(artifacts[id]));
   const tracksDone = doneIds.length;
-  const tracksInProgress = lensIds
-    .filter((id) => !doneIds.includes(id))
-    .map((id) => LENS_LABELS[id]!);
+  const tracksInProgress = lensIds.filter((id) => !doneIds.includes(id)).map(
+    (id) => LENS_LABELS[id]!
+  );
 
   const startMs = _earliestStartMs(phaseEntries);
-  const startMsValid = startMs !== null && Number.isFinite(startMs);
-  const elapsedMs = startMsValid ? Math.max(0, nowMs - startMs!) : 0;
-  const startedAt = startMsValid ? new Date(startMs!).toISOString() : null;
+  // Fallback: use instance creation time when phase telemetry hasn't been recorded yet
+  // (LLM call is still in progress, so no phase timing entry exists).
+  const fallbackStartMs =
+    startMs === null && instanceCreatedAt ? new Date(instanceCreatedAt).getTime() : null;
+  const effectiveStartMs = startMs ?? fallbackStartMs;
+  const startMsValid = effectiveStartMs !== null && Number.isFinite(effectiveStartMs);
+  const elapsedMs = startMsValid ? Math.max(0, nowMs - effectiveStartMs!) : 0;
+  const startedAt = startMsValid ? new Date(effectiveStartMs!).toISOString() : null;
 
   return {
     stage,

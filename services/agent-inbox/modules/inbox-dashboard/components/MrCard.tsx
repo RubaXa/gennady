@@ -66,13 +66,17 @@ function formatElapsedClock(elapsedMs: number): string {
  * @sideEffect Starts a 1s `setInterval` while `startedAt` is present; cleared on unmount or `startedAt` change.
  */
 function useLiveElapsedMs(startedAt: string | null, staticElapsedMs: number): number {
-  const [elapsedMs, setElapsedMs] = useState(() =>
-    startedAt ? Date.now() - new Date(startedAt).getTime() : staticElapsedMs
-  );
+  const [elapsedMs, setElapsedMs] = useState(() => {
+    if (!startedAt) return Number.isFinite(staticElapsedMs) ? staticElapsedMs : 0;
+    const startTime = new Date(startedAt).getTime();
+    if (!Number.isFinite(startTime)) return 0;
+    return Date.now() - startTime;
+  });
 
   useEffect(() => {
     if (!startedAt) return;
     const startTime = new Date(startedAt).getTime();
+    if (!Number.isFinite(startTime)) return;
     const tick = () => setElapsedMs(Date.now() - startTime);
     tick();
     const intervalId = setInterval(tick, 1000);
@@ -97,9 +101,11 @@ function ReviewProgressInformer(props: { progress: ReviewProgress }) {
         {progress.stage === 'synthesis' && <Sparkles className="h-3 w-3 text-purple-300" />}
         {progress.stageLabel}
       </span>
-      <span className="shrink-0">
-        {progress.tracksDone}/{progress.tracksPlanned} дорожек
-      </span>
+      {progress.tracksPlanned > 0 && (
+        <span className="shrink-0">
+          {progress.tracksDone}/{progress.tracksPlanned} дорожек
+        </span>
+      )}
       {progress.tracksInProgress.length > 0 && (
         <span className="truncate min-w-0">идут: {progress.tracksInProgress.join(', ')}</span>
       )}
