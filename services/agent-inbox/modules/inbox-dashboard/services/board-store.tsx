@@ -114,11 +114,10 @@ export function BoardStore(props: { children: ReactNode }) {
 
       try {
         await assignMr(mrId, targetRole);
-        // Do NOT re-sync immediately: POST /assign returns 200 BEFORE the server finishes
-        // assignManual (getMrContext takes ~1-2s), so an immediate refresh reads stale server
-        // state and clobbers the optimistic move — the card visibly flashes back to unassigned.
-        // Reconcile after a short delay; the periodic poll is the backstop.
-        setTimeout(() => void refresh(), 3000);
+        // assignManual is async (VCS context + worktree = 5-20s). Wait long enough
+        // for the server to finish before reconciling, so the refresh doesn't read
+        // stale state and clobber the optimistic move. Periodic poll is the backstop.
+        setTimeout(() => void refresh(), 15_000);
       } catch (cause) {
         setBoard(prevBoard); // Rollback on failure
         setError('Не удалось назначить MR');

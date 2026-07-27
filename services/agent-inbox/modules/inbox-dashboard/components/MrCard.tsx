@@ -101,11 +101,9 @@ function ReviewProgressInformer(props: { progress: ReviewProgress }) {
         {progress.stage === 'synthesis' && <Sparkles className="h-3 w-3 text-purple-300" />}
         {progress.stageLabel}
       </span>
-      {progress.tracksPlanned > 0 && (
-        <span className="shrink-0">
-          {progress.tracksDone}/{progress.tracksPlanned} дорожек
-        </span>
-      )}
+      <span className="shrink-0">
+        {progress.tracksDone}/{progress.tracksPlanned} дорожек
+      </span>
       {progress.tracksInProgress.length > 0 && (
         <span className="truncate min-w-0">идут: {progress.tracksInProgress.join(', ')}</span>
       )}

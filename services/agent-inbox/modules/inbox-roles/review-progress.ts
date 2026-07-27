@@ -28,13 +28,21 @@ export type ReviewProgress = {
 };
 
 /** @purpose The three fixed review-fanout lens node ids (review_needed branch, reviewer.role.ts). */
-const LENS_NODE_IDS = ['node_track_review', 'node_security_lens', 'node_code_review'] as const;
+const REVIEWER_LENS_IDS = ['node_track_review', 'node_security_lens', 'node_code_review'] as const;
 
-/** @purpose Human (Russian) label per lens node id — used for `tracksInProgress`. */
-const LENS_LABELS: Record<string, string> = {
+/** @purpose The three session-stage node ids for the author pipeline (author.role.ts). */
+const AUTHOR_STAGE_IDS = ['node_self_review', 'node_analyze_feedback', 'node_synthesize'] as const;
+
+/** @purpose Human (Russian) label per stage node id — used for `tracksInProgress`. */
+const STAGE_LABELS: Record<string, string> = {
+  // reviewer
   node_track_review: 'трек-ревью',
   node_security_lens: 'безопасность',
   node_code_review: 'код-ревью',
+  // author
+  node_self_review: 'саморевью',
+  node_analyze_feedback: 'анализ фидбека',
+  node_synthesize: 'синтез',
 };
 
 /** @purpose Closed-set stage token + Russian label per graph node id (reviewer + author + shared). */
@@ -145,18 +153,25 @@ export function deriveReviewProgress(input: {
   /** @purpose ISO timestamp the instance was created — fallback clock when no phase telemetry yet. */
   instanceCreatedAt?: string;
 }): ReviewProgress {
-  const { currentNode, artifacts, phaseEntries, nowMs = Date.now(), role, instanceCreatedAt } = input;
+  const {
+    currentNode,
+    artifacts,
+    phaseEntries,
+    nowMs = Date.now(),
+    role,
+    instanceCreatedAt,
+  } = input;
 
   const { stage, stageLabel } = NODE_STAGE[currentNode] ?? UNKNOWN_STAGE;
   const activity = NODE_ACTIVITY[currentNode] ?? stageLabel;
 
-  const lensIds = role === 'author' ? [] : LENS_NODE_IDS;
+  const lensIds = role === 'author' ? AUTHOR_STAGE_IDS : REVIEWER_LENS_IDS;
   const tracksPlanned = lensIds.length;
-  const doneIds = lensIds.filter((id) => _isLensDone(artifacts[id]));
+  const doneIds = [...lensIds].filter((id) => _isLensDone(artifacts[id]));
   const tracksDone = doneIds.length;
-  const tracksInProgress = lensIds.filter((id) => !doneIds.includes(id)).map(
-    (id) => LENS_LABELS[id]!
-  );
+  const tracksInProgress = [...lensIds]
+    .filter((id) => !doneIds.includes(id))
+    .map((id) => STAGE_LABELS[id]!);
 
   const startMs = _earliestStartMs(phaseEntries);
   // Fallback: use instance creation time when phase telemetry hasn't been recorded yet
