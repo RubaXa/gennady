@@ -45,7 +45,7 @@
 | A1  | Сервер поднимается, борд отдаёт данные     | `review-flow/t1-startup.spec.ts`        | 🟢     | 1 passed (2.0s), 2026-07-27                                                 |
 | A2  | Назначение роли создаёт живой instance     | `review-flow/t2-assign.spec.ts`         | 🟢     | 1 passed (50.7s), 2026-07-27                                                |
 | A3  | Живое ревью идёт по стадиям                | `review-flow/t3-t4-live-review.spec.ts` | ⛔     | node_enrich роняет opencode-сервер (fetch failed), 2026-07-27/28 — см. ниже |
-| A4  | Детальный вид MR + артефакты               | `review-flow/t5-detail.spec.ts`         | ⬜     | —                                                                           |
+| A4  | Детальный вид MR + артефакты               | `review-flow/t5-detail.spec.ts`         | 🟢     | 1 passed (2.6s), 2026-07-28                                                 |
 | A5  | Полный проход одного MR от начала до конца | `review-flow/t9-full-flow.spec.ts`      | ⬜     | —                                                                           |
 
 ## B. То, что оператор видит первым (UI-регрессии из живого прогона 2026-07-24/27)
@@ -94,6 +94,7 @@
 - 2026-07-27 · C3/C4 · 🟢 6/6 · 72866cd
 - 2026-07-27 · A3 попытка 1 · ❌ beforeAll hook timeout 720000ms exceeded · —
 - 2026-07-28 · A3 попытка 2 (после фикса дедлайна) · ❌ node_enrich fetch failed × 4 сессии подряд, RoleScheduler paused after 3 errors · —
+- 2026-07-28 · A4 · 🟢 1 passed (2.6s) · —
 
 ### A3 — диагноз (⛔ нужно решение оператора)
 
