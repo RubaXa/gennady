@@ -19,6 +19,7 @@ import type {
 import {
   buildReviewPlan,
   scaffoldReviewReports,
+  validateReviewReports,
 } from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
 import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import {
@@ -686,6 +687,15 @@ const reviewerGraph: RoleGraph = {
 
         return `Enrich the mechanically-scaffolded task files for MR ${ctx.mr.webUrl}.
 
+## MR Metadata
+- ref: ${ref}
+- webUrl: ${ctx.mr.webUrl}
+- sourceBranch: ${ctx.mr.sourceBranch}
+- targetBranch: ${ctx.mr.targetBranch}
+- base: ${ctx.base ?? '(not available)'}
+- worktree: ${ctx.artifacts.worktreePath ?? '(not available)'}
+- author: ${ctx.mr.author ?? '(unknown)'}
+
 ## MR Description
 ${ctx.mr.description || '(none — description is empty)'}
 
@@ -695,10 +705,9 @@ ${taskFilesStr}
 For each .task.md file above:
 1. Read 2-3 key files from its ## Область to understand the entities.
 2. Write an enriched ## Контекст section (entities, boundaries, MR goal alignment, discussion context, systemic risks, web research).
-3. Adjust ## Область if files are misassigned or missing across tracks.
-4. Set frontmatter status: enriched.
-
-Worktree path: ${ctx.artifacts.worktreePath ?? '(not available)'}
+3. Include the MR metadata above (ref, webUrl, base, worktree) in each track's ## Контекст so lenses can navigate the worktree.
+4. Adjust ## Область if files are misassigned or missing across tracks.
+5. Set frontmatter status: enriched.
 `;
       },
       dir(ctx: NodeContext) {
@@ -722,39 +731,12 @@ Worktree path: ${ctx.artifacts.worktreePath ?? '(not available)'}
         const stateDir = ctx.store?.getStateDir();
         if (!stateDir) return { pass: false, reason: 'No stateDir — cannot read task files' };
         const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
-        const taskDir = join(mrReportsDir(stateDir, ref), 'tasks');
-
-        try {
-          const names = readdirSync(taskDir).filter((f) => f.endsWith('.task.md'));
-          if (names.length === 0)
-            return { pass: false, reason: 'No .task.md files in report/tasks/' };
-
-          for (const name of names) {
-            const content = readFileSync(join(taskDir, name), 'utf-8');
-            // Check frontmatter status
-            if (!/^status:\s*enriched\b/m.test(content) && !/^status:\s*filled\b/m.test(content)) {
-              return { pass: false, reason: `${name}: status is not 'enriched' or 'filled'` };
-            }
-            // Check ## Контекст is non-empty (collect lines between ## Контекст and next ## heading or EOF)
-            const lines = content.split('\n');
-            let inContext = false;
-            const ctxLines: string[] = [];
-            for (const line of lines) {
-              if (/^##\s+Контекст/.test(line)) {
-                inContext = true;
-                continue;
-              }
-              if (inContext && /^##\s/.test(line)) break;
-              if (inContext) ctxLines.push(line);
-            }
-            if (ctxLines.join('').trim().length === 0) {
-              return { pass: false, reason: `${name}: ## Контекст is empty` };
-            }
-          }
-          return { pass: true };
-        } catch {
-          return { pass: false, reason: 'Cannot read task files' };
+        const dir = mrReportsDir(stateDir, ref);
+        const result = validateReviewReports(dir, 'enriched');
+        if (!result.ok) {
+          return { pass: false, reason: result.errors.map((e) => e.error).join('; ') };
         }
+        return { pass: true };
       },
     },
 

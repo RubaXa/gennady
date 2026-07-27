@@ -185,13 +185,19 @@ prepare (prep, детерминированный):
   fast-LLM классификатор (слой 2) → Vectors в PLAN.md (intent, костыли); недоступен → skip
   ── выбор ветки ──
   │
-  ├─ review_needed → review-fanout
+  ├─ review_needed → enrich → gate(enriched) → review-fanout
   ├─ reply_needed  → thread-triage
   └─ update-review → delta-review
 
 review-fanout:
   session×N (по дорожке + security-линза + code-review base..HEAD) → gate(filled)
   → synthesize(session) → gate(synthesis) → ask → effect → done
+
+enrich:
+  session (одна LLM-сессия с полным набором инструментов: read, grep, write, websearch)
+  → читает все .task.md + MR description + worktree → обогащает ## Контекст каждого
+  трека (сущности, границы, цель MR, обсуждения, системные риски, web-исследование)
+  → gate(enriched): validateReviewReports(dir, 'enriched')
 
 thread-triage:
   session (аннотировать треды: owner/goal/nextActor/status; проверить фиксы против

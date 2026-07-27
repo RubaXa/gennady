@@ -82,6 +82,16 @@ beforeEach(() => {
   store = new FakeStateStore();
 });
 
+/**
+ * @purpose D-130: create PLAN.md in the report dir so validateReviewReports(dir, 'enriched')
+ *   passes — must exist alongside the .task.md files each test already creates.
+ */
+function ensurePlanMd(store: FakeStateStore): void {
+  const dir = mrReportsDir(store.getStateDir(), 'project!1');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'PLAN.md'), '---\n---\n\n# Plan\n');
+}
+
 describe('ReviewerRole — graph structure', () => {
   it('reviewer.role.ts имеет 15 узлов (prepare + enrich(2) + review_needed fanout(1)+gate + reply_needed(2) + update-review(4) + shared synthesize/gate/ask/effect)', () => {
     assert.strictEqual(ReviewerRole.graph.nodes.length, 15);
@@ -124,6 +134,20 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
       findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }],
     });
     opencode.seed('node_enrich', {});
+
+    // D-130: create PLAN.md + .task.md files so gate_enrich passes validateReviewReports
+    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
+    mkdirSync(tasksDir, { recursive: true });
+    ensurePlanMd(store);
+    writeFileSync(
+      join(tasksDir, 'logic.task.md'),
+      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nEntities: FrameModel.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
+    );
+    writeFileSync(
+      join(tasksDir, 'security.task.md'),
+      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nLook at WHOLE diff.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
+    );
+
     opencode.seed('node_synthesize', {
       reviewReport: {
         verdict: 'changes_requested',
@@ -134,18 +158,6 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
       },
       proposedActions: [],
     });
-
-    // D-130: pre-create .task.md files with status: enriched so gate_enrich passes
-    const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
-    mkdirSync(tasksDir, { recursive: true });
-    writeFileSync(
-      join(tasksDir, 'logic.task.md'),
-      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nEntities: FrameModel, isFrameElement.\nBoundary: packages/blocks — framework layer.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
-    );
-    writeFileSync(
-      join(tasksDir, 'security.task.md'),
-      '---\nstatus: enriched\n---\n\n## Область\n\n## Контекст\nLook at WHOLE diff. Check addElement call sites.\n\n## Находки\n\n## Кандидаты\n\n## Вердикт\n'
-    );
 
     const instance = new RoleInstance({
       id: 'reviewer:test:review_needed',
@@ -330,6 +342,7 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
     // D-130: pre-create .task.md files so gate_enrich passes
     const tasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     mkdirSync(tasksDir, { recursive: true });
+    ensurePlanMd(store);
     writeFileSync(
       join(tasksDir, 'logic.task.md'),
       '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
@@ -406,6 +419,7 @@ describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep
     // D-130: pre-create .task.md files so gate_enrich passes
     const tpTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     mkdirSync(tpTasksDir, { recursive: true });
+    ensurePlanMd(store);
     writeFileSync(
       join(tpTasksDir, 'logic.task.md'),
       '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
@@ -465,6 +479,7 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
     // D-130: pre-create .task.md files so gate_enrich passes
     const revTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     mkdirSync(revTasksDir, { recursive: true });
+    ensurePlanMd(store);
     writeFileSync(
       join(revTasksDir, 'logic.task.md'),
       '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
@@ -586,6 +601,7 @@ describe('ReviewerRole — Round 4: lens finding survives field-name drift (live
     // D-130: pre-create .task.md files so gate_enrich passes
     const driftTasksDir = join(mrReportsDir(store.getStateDir(), 'project!1'), 'tasks');
     mkdirSync(driftTasksDir, { recursive: true });
+    ensurePlanMd(store);
     writeFileSync(
       join(driftTasksDir, 'logic.task.md'),
       '---\nstatus: enriched\n---\n\n## Контекст\ntest\n'
