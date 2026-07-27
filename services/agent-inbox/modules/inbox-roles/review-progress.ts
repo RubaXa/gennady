@@ -152,9 +152,9 @@ export function deriveReviewProgress(input: {
   const tracksPlanned = lensIds.length;
   const doneIds = lensIds.filter((id) => _isLensDone(artifacts[id]));
   const tracksDone = doneIds.length;
-  const tracksInProgress = lensIds.filter((id) => !doneIds.includes(id)).map(
-    (id) => LENS_LABELS[id]!
-  );
+  const tracksInProgress = lensIds
+    .filter((id) => !doneIds.includes(id))
+    .map((id) => LENS_LABELS[id]!);
 
   const startMs = _earliestStartMs(phaseEntries);
   const startMsValid = startMs !== null && Number.isFinite(startMs);

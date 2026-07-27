@@ -259,7 +259,12 @@ export class BoardProviderReal extends BoardProviderPort {
         });
       }
 
-      const lane = stateToLane(snap.state);
+      let lane: 'inbox' | 'inProgress' | 'awaitingMe' | 'done' = stateToLane(snap.state);
+      // After the first node, 'idle' means "waiting for next tick", not "not started" —
+      // show it in InProgress so the operator sees forward motion.
+      if (lane === 'inbox' && instance && instance.currentNode !== 'node_prepare') {
+        lane = 'inProgress';
+      }
       roleLanes[lane].push(card);
       assignedMrs.add(snap.mr);
     }
@@ -294,9 +299,11 @@ export class BoardProviderReal extends BoardProviderPort {
     }
     // #endregion END_VALIDATE_MR_URL
 
-    // Fire-and-forget: assignManual is async but we don't await here
-    // because the port is synchronous. The scheduler handles it eventually.
-    void this._scheduler.assignManual(mrId, role, rights);
+    // Fire-and-forget assignManual, then kick an immediate tick so the newly-assigned
+    // instance advances past 'idle' → 'inProgress' without waiting for the poll (up to 300s).
+    void this._scheduler.assignManual(mrId, role, rights).then(() => {
+      void this._scheduler.tick();
+    });
     return { ok: true };
   }
 
