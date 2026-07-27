@@ -362,6 +362,17 @@ export class RoleScheduler {
 
     this._instances.set(key, instance);
     logger.info('[RoleScheduler#assignManual] [assigning → assigned]', { key });
+
+    // Advance past node_prepare immediately — the SV-19/20/21 debounce gate
+    // only applies at node_prepare, and the operator explicitly requested action.
+    try {
+      await instance.step();
+    } catch (cause) {
+      logger.warn('[RoleScheduler#assignManual] [assigned → step_failed]', {
+        key,
+        error: (cause as Error).message,
+      });
+    }
   }
 
   /**
