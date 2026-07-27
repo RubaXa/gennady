@@ -111,11 +111,13 @@ const NODE_ACTIVITY: Record<string, string> = {
  * @returns True when the lens produced a valid (array `findings`) result.
  */
 function _isLensDone(artifact: unknown): boolean {
-  return (
-    !!artifact &&
-    typeof artifact === 'object' &&
-    Array.isArray((artifact as Record<string, unknown>)['findings'])
-  );
+  if (!artifact || typeof artifact !== 'object') return false;
+  const obj = artifact as Record<string, unknown>;
+  // Lens artifacts: { findings: [...] }
+  if (Array.isArray(obj['findings'])) return true;
+  // Synthesis artifacts: { reviewReport: {...} }
+  if (obj['reviewReport'] && typeof obj['reviewReport'] === 'object') return true;
+  return false;
 }
 
 /**

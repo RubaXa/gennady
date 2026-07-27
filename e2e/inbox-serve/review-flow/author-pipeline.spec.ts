@@ -2,7 +2,7 @@
 //   Assigns a real MR as author, verifies lane placement, progress counters, and stage transitions.
 // @usage: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts author-pipeline.spec.ts
 import { test, expect } from '@playwright/test';
-import { shot } from './helpers/shot.ts';
+import { shot } from '../helpers/shot.ts';
 
 const SERVER = 'http://localhost:4174';
 const MR_URL = 'https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/172';
@@ -29,16 +29,17 @@ async function fetchBoard(page: any): Promise<BoardResponse> {
   return response;
 }
 
-function findMrInRole(board: BoardResponse, role: string): {
+function findMrInRole(
+  board: BoardResponse,
+  role: string
+): {
   lane: string;
   progress: any;
 } | null {
   const roleBlock = board.roles?.find((r: any) => r.name === role);
   if (!roleBlock) return null;
   for (const laneName of ['inbox', 'inProgress', 'awaitingMe', 'done'] as const) {
-    const card = (roleBlock.lanes[laneName] as any[]).find(
-      (c: any) => c.webUrl === MR_URL
-    );
+    const card = (roleBlock.lanes[laneName] as any[]).find((c: any) => c.webUrl === MR_URL);
     if (card) return { lane: laneName, progress: card.progress };
   }
   return null;
@@ -118,7 +119,9 @@ test.describe('Author pipeline — e2e proof', () => {
     }
 
     // ═══ STEP 5: Final verification ═══
-    expect(stagesSeen.size, 'should observe at least 2 stage transitions').toBeGreaterThanOrEqual(1);
+    expect(stagesSeen.size, 'should observe at least 2 stage transitions').toBeGreaterThanOrEqual(
+      1
+    );
     console.log(`[author-pipeline] Stages observed: ${[...stagesSeen].join(' → ')}`);
   });
 });
