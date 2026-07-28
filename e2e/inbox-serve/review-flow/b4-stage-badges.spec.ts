@@ -62,7 +62,10 @@ test.describe('B4 stage badges', () => {
         `[b4] tick ${ticks} state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'} badge=${mr?.progress?.stageLabel ?? 'n/a'}`
       );
 
-      if (inst && (inst.state === 'done' || inst.state === 'error' || inst.state === 'awaiting_operator'))
+      if (
+        inst &&
+        (inst.state === 'done' || inst.state === 'error' || inst.state === 'awaiting_operator')
+      )
         break;
     }
 
