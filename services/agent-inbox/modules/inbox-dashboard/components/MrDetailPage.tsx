@@ -4,7 +4,7 @@
 // @tasks: TSK-107, TSK-130, TSK-132
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Clock } from 'lucide-react';
 import { useBoard } from '../services/board-store.tsx';
 import { formatTimeAgo, cn } from '../lib/utils.ts';
 import { ArtifactBrowser } from './ArtifactBrowser.tsx';
@@ -20,6 +20,16 @@ import type { MrDetail } from '../../inbox-api/types.ts';
 const NARROW_VIEWPORT_QUERY = '(max-width: 1024px)';
 
 /**
+ * @purpose Tell a legit "no report yet" 404 apart from a real failure — empty state reads
+ *   "not started" (B7), not a scary error.
+ * @param cause The caught fetchReport rejection.
+ * @returns Whether `cause` is api-client's HTTP 404 error shape.
+ */
+function _isReportNotStarted(cause: unknown): boolean {
+  return cause instanceof Error && /HTTP 404/.test(cause.message);
+}
+
+/**
  * @purpose Screen for `#/mr/:id`, replacing the old modal. Renders ArtifactBrowser + ActionPanel/ChatPanel:
  *   permanent split (wide, D-87) or ViewSwitch (narrow, D-106); both stay mounted, SSE persists.
  * @param props MR identifier from the route.
@@ -30,6 +40,7 @@ export function MrDetailPage(props: { mrId: string }) {
   const [report, setReport] = useState<MrDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notStarted, setNotStarted] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState<{ name: string; rawText: string } | null>(
     null
   );
@@ -45,10 +56,12 @@ export function MrDetailPage(props: { mrId: string }) {
     setLoading(true);
     try {
       setError(null);
+      setNotStarted(false);
       const data = await fetchReport(mrId);
       setReport(data);
-    } catch (_cause) {
-      setError('Не удалось загрузить отчёт');
+    } catch (cause) {
+      if (_isReportNotStarted(cause)) setNotStarted(true);
+      else setError('Не удалось загрузить отчёт');
     } finally {
       setLoading(false);
     }
@@ -60,10 +73,14 @@ export function MrDetailPage(props: { mrId: string }) {
       setLoading(true);
       try {
         setError(null);
+        setNotStarted(false);
         const data = await fetchReport(mrId);
         if (!cancelled) setReport(data);
-      } catch (_cause) {
-        if (!cancelled) setError('Не удалось загрузить отчёт');
+      } catch (cause) {
+        if (!cancelled) {
+          if (_isReportNotStarted(cause)) setNotStarted(true);
+          else setError('Не удалось загрузить отчёт');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -140,7 +157,17 @@ export function MrDetailPage(props: { mrId: string }) {
         </div>
       )}
 
-      {error && (
+      {!loading && notStarted && (
+        <div
+          role="status"
+          className="flex flex-col items-center justify-center flex-1 gap-2 text-muted-foreground"
+        >
+          <Clock className="h-5 w-5" />
+          Ревью ещё не начато — назначьте роль или активируйте её, чтобы начать
+        </div>
+      )}
+
+      {!loading && error && (
         <div
           role="alert"
           className="flex items-center justify-center flex-1 gap-2 text-destructive"
@@ -150,7 +177,7 @@ export function MrDetailPage(props: { mrId: string }) {
         </div>
       )}
 
-      {!loading && !error && (
+      {!loading && !error && !notStarted && (
         <div className="flex min-h-0 min-w-0 flex-1 gap-3">
           <ArtifactBrowser
             mrId={mrId}
