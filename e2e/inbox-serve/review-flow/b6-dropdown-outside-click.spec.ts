@@ -30,7 +30,9 @@ test.describe('B6 dropdown outside click', () => {
     const unassignedRegion = page.getByRole('region', { name: 'Unassigned MRs' });
     await expect(unassignedRegion).toBeVisible({ timeout: 10_000 });
 
-    const firstAssignButton = unassignedRegion.getByRole('button', { name: /Assign .+ to role/ }).first();
+    const firstAssignButton = unassignedRegion
+      .getByRole('button', { name: /Assign .+ to role/ })
+      .first();
     await firstAssignButton.click();
 
     const menu = page.getByRole('button', { name: 'reviewer', exact: true });
