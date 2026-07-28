@@ -33,6 +33,38 @@ const REVIEWER_LENS_IDS = ['node_track_review', 'node_security_lens', 'node_code
 /** @purpose The three session-stage node ids for the author pipeline (author.role.ts). */
 const AUTHOR_STAGE_IDS = ['node_self_review', 'node_analyze_feedback', 'node_synthesize'] as const;
 
+/**
+ * @purpose Nodes where the fixed 3-lens counter applies — excludes triage/delta nodes, which
+ *   never run the review-fanout lenses (live bug, 2026-07-28: 0/3 shown there).
+ */
+const REVIEWER_TRACKED_NODES = new Set([
+  'node_prepare',
+  'node_enrich',
+  'gate_enrich',
+  'node_review_fanout',
+  'node_track_review',
+  'node_security_lens',
+  'node_code_review',
+  'gate_review_filled',
+  'node_synthesize',
+  'gate_review_synthesis',
+  'node_ask',
+  'node_effect',
+  'done',
+]);
+
+/** @purpose Author-pipeline nodes where the 3-stage counter is meaningful. */
+const AUTHOR_TRACKED_NODES = new Set([
+  'node_self_review',
+  'node_analyze_feedback',
+  'gate_analysis',
+  'node_synthesize',
+  'gate_synthesis',
+  'node_ask',
+  'node_effect',
+  'done',
+]);
+
 /** @purpose Human (Russian) label per stage node id — used for `tracksInProgress`. */
 const STAGE_LABELS: Record<string, string> = {
   // reviewer
@@ -122,16 +154,21 @@ function _isLensDone(artifact: unknown): boolean {
 
 /**
  * @purpose Earliest start across entries — `entry.ts` is a finish time, so start = ts − durationMs.
+ * @invariant Excludes entries before `notBeforeMs` — the log is MR-keyed, not run-keyed; a
+ *   resumed instance would otherwise clock elapsed time since its first-ever run.
  * @param phaseEntries Phase-timing entries for the MR under review (any order).
- * @returns Earliest start in epoch ms, or null when `phaseEntries` is empty.
+ * @param [notBeforeMs] Exclude entries whose derived start is earlier than this (the current
+ *   instance's `createdAt`, when known).
+ * @returns Earliest start in epoch ms, or null when no entry qualifies.
  */
-function _earliestStartMs(phaseEntries: PhaseTimingEntry[]): number | null {
+function _earliestStartMs(phaseEntries: PhaseTimingEntry[], notBeforeMs?: number): number | null {
   let earliest: number | null = null;
   for (const entry of phaseEntries) {
     const finishMs = new Date(entry.ts).getTime();
     if (!Number.isFinite(finishMs)) continue;
     const startMs = finishMs - entry.durationMs;
     if (!Number.isFinite(startMs)) continue;
+    if (notBeforeMs !== undefined && startMs < notBeforeMs) continue;
     if (earliest === null || startMs < earliest) earliest = startMs;
   }
   return earliest;
@@ -168,18 +205,21 @@ export function deriveReviewProgress(input: {
   const activity = NODE_ACTIVITY[currentNode] ?? stageLabel;
 
   const lensIds = role === 'author' ? AUTHOR_STAGE_IDS : REVIEWER_LENS_IDS;
-  const tracksPlanned = lensIds.length;
-  const doneIds = [...lensIds].filter((id) => _isLensDone(artifacts[id]));
+  const trackedNodes = role === 'author' ? AUTHOR_TRACKED_NODES : REVIEWER_TRACKED_NODES;
+  const tracksApplicable = trackedNodes.has(currentNode);
+  const tracksPlanned = tracksApplicable ? lensIds.length : 0;
+  const doneIds = tracksApplicable ? [...lensIds].filter((id) => _isLensDone(artifacts[id])) : [];
   const tracksDone = doneIds.length;
-  const tracksInProgress = [...lensIds]
-    .filter((id) => !doneIds.includes(id))
-    .map((id) => STAGE_LABELS[id]!);
+  const tracksInProgress = tracksApplicable
+    ? [...lensIds].filter((id) => !doneIds.includes(id)).map((id) => STAGE_LABELS[id]!)
+    : [];
 
-  const startMs = _earliestStartMs(phaseEntries);
+  const instanceCreatedMs = instanceCreatedAt ? new Date(instanceCreatedAt).getTime() : undefined;
+  const startMs = _earliestStartMs(phaseEntries, instanceCreatedMs);
   // Fallback: use instance creation time when phase telemetry hasn't been recorded yet
   // (LLM call is still in progress, so no phase timing entry exists).
   const fallbackStartMs =
-    startMs === null && instanceCreatedAt ? new Date(instanceCreatedAt).getTime() : null;
+    startMs === null && instanceCreatedMs !== undefined ? instanceCreatedMs : null;
   const effectiveStartMs = startMs ?? fallbackStartMs;
   const startMsValid = effectiveStartMs !== null && Number.isFinite(effectiveStartMs);
   const elapsedMs = startMsValid ? Math.max(0, nowMs - effectiveStartMs!) : 0;

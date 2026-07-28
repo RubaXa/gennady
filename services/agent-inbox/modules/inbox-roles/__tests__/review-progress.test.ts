@@ -70,4 +70,42 @@ describe('deriveReviewProgress', () => {
     assert.strictEqual(progress.elapsedMs, 25_000);
     assert.strictEqual(progress.startedAt, new Date(startMs).toISOString());
   });
+
+  it('ignores phase entries from a previous run when the instance was just (re)created (live bug, 2026-07-28)', () => {
+    // contract: an instance resumed from disk must report elapsed since ITS creation, not since the
+    // MR's first-ever review days earlier — phase-timings.jsonl is append-only and MR-keyed, so old
+    // entries from a prior completed review must not leak into a freshly re-assigned instance's clock.
+
+    const oldRunEntry = mockPhaseEntry({ ts: '2026-07-23T10:04:43.785Z', durationMs: 243_058 });
+    const instanceCreatedAt = '2026-07-28T13:57:20.077Z';
+    const nowMs = new Date(instanceCreatedAt).getTime() + 5_000;
+
+    const progress = deriveReviewProgress({
+      currentNode: 'node_thread_triage',
+      artifacts: {},
+      phaseEntries: [oldRunEntry],
+      instanceCreatedAt,
+      nowMs,
+    });
+
+    assert.strictEqual(progress.elapsedMs, 5_000, 'must count from re-assignment, not 2026-07-23');
+    assert.strictEqual(progress.startedAt, instanceCreatedAt);
+  });
+
+  it('reports 0 planned tracks outside the review-fanout branch (live bug, 2026-07-28)', () => {
+    // contract: node_thread_triage (reply_needed sub-flow) never runs the 3 review-fanout lenses —
+    // showing "0/3 трек-ревью/безопасность/код-ревью" there falsely implies a fresh full review is
+    // about to start, when the instance is really just checking existing GitLab discussion threads.
+
+    const progress = deriveReviewProgress({
+      currentNode: 'node_thread_triage',
+      artifacts: {},
+      phaseEntries: [],
+      role: 'reviewer',
+    });
+
+    assert.strictEqual(progress.tracksPlanned, 0);
+    assert.strictEqual(progress.tracksDone, 0);
+    assert.deepStrictEqual(progress.tracksInProgress, []);
+  });
 });
