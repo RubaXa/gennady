@@ -104,6 +104,8 @@ export type ToolPolicy = {
   read: boolean;
   /** @purpose Symbol-search (grep) tool access, for symbol-trace dedup (AI-41/D-120) */
   grep: boolean;
+  /** @purpose File-write tool access | @invariant only `node_enrich` needs this (overwrites `.task.md`) */
+  write?: boolean;
 };
 
 /**

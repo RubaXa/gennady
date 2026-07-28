@@ -860,7 +860,8 @@ function validateTaskFile(
   taskPath: string,
   stage: 'enriched' | 'filled',
   planHeadSha: string | undefined,
-  errors: ValidateError[]
+  errors: ValidateError[],
+  requireWebResearch = false
 ): void {
   const { frontmatter, body } = parseDocument(readFileSync(taskPath, 'utf8'));
 
@@ -882,6 +883,10 @@ function validateTaskFile(
   }
 
   validateSectionFilled(taskPath, body, 'Контекст', errors);
+  // Gated only when the caller's network toggle is on (AX_ENRICH_WEB_RESEARCH_SECTION).
+  if (stage === 'enriched' && requireWebResearch) {
+    validateSectionFilled(taskPath, body, 'Веб-исследование', errors);
+  }
   if (stage === 'filled') {
     validateSectionFilled(taskPath, body, 'Находки', errors);
     validateSectionFilled(taskPath, body, 'Вердикт', errors);
@@ -915,14 +920,15 @@ function pushStopWordErrors(path: string, text: string, errors: ValidateError[])
  *   never text length or quality (that is the directives' job, per D57).
  * @param dir Per-MR, per-head report directory to validate.
  * @param stage `enriched` gates dispatch (Context filled); `filled` gates synthesis (all sections).
+ * @param [opts] `requireWebResearch` — enriched stage only, also gate on a web-research section.
  * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
  * @sideEffect Reads PLAN.md and every `tasks/*.task.md` file under `dir`.
- * @consumers inbox-review-plan.cmd `run`, ArtifactValidator (agent-inbox, TSK-113 — wraps this
- *   gate instead of duplicating it; see services/agent-inbox/modules/inbox-roles/artifact-validator.ts)
+ * @consumers inbox-review-plan.cmd `run`, ArtifactValidator (agent-inbox, TSK-113)
  */
 export function validateReviewReports(
   dir: string,
-  stage: 'enriched' | 'filled'
+  stage: 'enriched' | 'filled',
+  opts?: { requireWebResearch?: boolean }
 ): { ok: true } | { ok: false; errors: ValidateError[] } {
   const errors: ValidateError[] = [];
 
@@ -946,12 +952,11 @@ export function validateReviewReports(
   }
 
   for (const taskPath of taskFiles) {
-    validateTaskFile(taskPath, stage, planHeadSha, errors);
+    validateTaskFile(taskPath, stage, planHeadSha, errors, opts?.requireWebResearch ?? false);
   }
 
   // #region START_VALIDATE_README_DIAGRAM — synthesis must carry a diagram, never just prose.
-  // The reviewer's #1 challenge is COMPREHENSION (Bacchelli & Bird 2013), so the tool forces at
-  // least one diagram into the synthesis rather than trusting the agent to remember (D59).
+  // Comprehension is the reviewer's #1 challenge (Bacchelli & Bird 2013) — forces ≥1 diagram (D59).
   if (stage === 'filled') {
     const readmePath = join(dir, 'README.md');
     if (!existsSync(readmePath)) {

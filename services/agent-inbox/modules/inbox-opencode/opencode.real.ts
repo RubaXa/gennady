@@ -3,6 +3,7 @@
 // @tasks: TSK-112
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
+import { Agent as UndiciAgent } from 'undici';
 import type { TextPart } from '@opencode-ai/sdk';
 import { logger } from '#logger';
 import {
@@ -45,6 +46,13 @@ export type OpenCodeRealOpts = {
   directory?: string;
   /** @purpose Prompt timeout in milliseconds (default: 300_000 = 5min). */
   timeout?: number;
+  /**
+   * @purpose Dispatcher for the SDK's fetch calls — disable timeouts, or undici kills a long
+   *   agentic turn with a bare "fetch failed" at 300s.
+   * @invariant Absent → SDK's default fetch, unmodified — required so tests intercepting the
+   *   network via `setGlobalDispatcher`/`MockAgent` are not silently bypassed.
+   */
+  dispatcher?: UndiciAgent;
 };
 
 /**
@@ -66,6 +74,8 @@ export class OpenCodeReal extends OpenCodePort {
   protected _timeout: number;
   /** @purpose Lazily initialized SDK client — created on first use. */
   protected _client: OpencodeClient | null;
+  /** @purpose Optional long-timeout dispatcher (see `OpenCodeRealOpts.dispatcher`) — undefined in tests. */
+  protected _dispatcher: UndiciAgent | undefined;
   /** @purpose Track session directory mappings (sid → directory) for per-session binding. */
   protected _sessionDirs: Map<string, string>;
   /** @purpose Track pending schemas per session for JSON extraction validation. */
@@ -89,6 +99,7 @@ export class OpenCodeReal extends OpenCodePort {
     this._pendingSchemas = new Map();
     this._sessionTools = new Map();
     this._sessionModels = new Map();
+    this._dispatcher = opts.dispatcher;
     logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
   }
 
@@ -102,6 +113,14 @@ export class OpenCodeReal extends OpenCodePort {
       this._client = createOpencodeClient({
         baseUrl: this._baseUrl,
         directory: this._directory,
+        // Only override fetch when a dispatcher was explicitly provided (production) — the SDK's
+        // own `req.timeout = false` fallback does not reach undici's actual per-connection
+        // timeout, so long agentic turns die at ~300s without this (see `dispatcher` invariant on
+        // `OpenCodeRealOpts`). Absent `_dispatcher` → SDK default fetch, unmodified — tests that
+        // intercept the network via `setGlobalDispatcher`/`MockAgent` depend on this.
+        ...(this._dispatcher
+          ? { fetch: (req: Request) => fetch(req, { dispatcher: this._dispatcher } as RequestInit) }
+          : {}),
       });
       logger.debug('[OpenCodeReal#_ensureClient] [client created]', {
         baseUrl: this._baseUrl,

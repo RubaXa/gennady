@@ -7,6 +7,7 @@ import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
+import { Agent as UndiciAgent } from 'undici';
 import { logger } from '#logger';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
@@ -439,6 +440,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       }
     }
 
+    // Shared across all OpenCodeReal instances this process creates — see `OpenCodeRealOpts.dispatcher`.
+    const opencodeDispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
+
     const reusePort = process.env.OPENCODE_PORT ? Number(process.env.OPENCODE_PORT) : null;
     if (reusePort && Number.isFinite(reusePort)) {
       const connected = await retryOpencodeConnect(reusePort, 3, 1000);
@@ -446,6 +450,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         opencode = new OpenCodeReal({
           directory: stateDir,
           baseUrl: `http://localhost:${reusePort}`,
+          dispatcher: opencodeDispatcher,
         });
         opencodeStatus = `connected (reused port ${reusePort})`;
         opencodePort = reusePort;
@@ -474,6 +479,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         opencode = new OpenCodeReal({
           directory: stateDir,
           baseUrl: `http://localhost:${opencodePort}`,
+          dispatcher: opencodeDispatcher,
         });
         opencodeStatus = `connected (port ${opencodePort})`;
         opencodeProcess = proc;
@@ -484,6 +490,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           opencode = new OpenCodeReal({
             directory: stateDir,
             baseUrl: `http://localhost:${opencodePort}`,
+            dispatcher: opencodeDispatcher,
           });
           opencodeStatus = `connected (port ${opencodePort})`;
         } else {

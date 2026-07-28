@@ -431,6 +431,27 @@ function _synthesisRetryHint(ctx: NodeContext, nodeId: string): string {
 }
 
 /**
+ * @purpose Single source of truth for `node_enrich`'s websearch/webfetch toggle — drives the
+ *   prompt, the tool gate, and the `gate_enrich` validator requirement together.
+ * @invariant Off by default (configurable, not the live-run blocker — see e2e/CHECKLIST.md).
+ *   Set `AGENT_INBOX_ENRICH_NETWORK=1` to turn research back on.
+ * @returns Whether node_enrich should research the web and gate on that section.
+ */
+function _enrichWebResearchRequired(): boolean {
+  return process.env.AGENT_INBOX_ENRICH_NETWORK === '1';
+}
+
+/**
+ * @purpose Model selector for `node_enrich` — configurable, not hardcoded; enrichment is cheaper
+ *   than review judgment and does not need the heavier review model.
+ * @invariant Defaults to a flash-tier model; `AGENT_INBOX_ENRICH_MODEL` overrides it.
+ * @returns The `providerID/modelID` string node_enrich's session should use.
+ */
+function _enrichModel(): string {
+  return process.env.AGENT_INBOX_ENRICH_MODEL ?? 'llm-proxy/deepseek-v4-flash';
+}
+
+/**
  * @purpose Task-text suffix instructing a synthesize node to write its JSON result to disk
  *   (TSK-127) — same protocol as the lenses, larger synthesis shape.
  * @param file Artifact path, relative to the session's working directory.
@@ -663,6 +684,16 @@ const reviewerGraph: RoleGraph = {
     // structure; writes enriched ## Контекст into each .task.md. Full toolset
     // (bash, read, grep, write, websearch, webfetch) — needs write to overwrite
     // .task.md files and web search for industry research.
+    // AGENT_INBOX_ENRICH_NETWORK=1 restores websearch/webfetch — off by default while
+    // checklist A3/A5 (e2e/CHECKLIST.md) is red; disabling this toggle did NOT clear the
+    // opencode fetch-failed stall on its own, so the live blocker's root cause is still open —
+    // this stays off until that is actually found, not because it's confirmed the cause.
+    // The toggle is dynamic on BOTH ends, not just a tool gate: with it off, the prompt itself
+    // tells the agent the tools are unavailable and drops the research step; with it on, the
+    // prompt adds an explicit ## Веб-исследование step and `gate_enrich` requires that section
+    // to exist (`_enrichWebResearchRequired`). `AGENT_INBOX_ENRICH_MODEL` (`_enrichModel`)
+    // separately picks the session model — defaults to a flash-tier model since enriching task
+    // blanks doesn't need review-grade reasoning.
     {
       kind: 'session',
       id: 'node_enrich',
@@ -685,6 +716,15 @@ const reviewerGraph: RoleGraph = {
           taskFilesStr = '(no .task.md files found)';
         }
 
+        const researchStep = _enrichWebResearchRequired()
+          ? `6. Research prior art / industry context for this change with websearch/webfetch and write
+   what you found (or an explicit "нет релевантных источников — <причина>" if truly nothing
+   applies) into a separate top-level ## Веб-исследование section in each task file (sibling to
+   ## Контекст).`
+          : `Note: websearch/webfetch are DISABLED for this run (AGENT_INBOX_ENRICH_NETWORK is unset) —
+   do not attempt web research; ## Контекст relies only on the repo, MR description, and prior
+   discussion threads. Do not create a ## Веб-исследование section.`;
+
         return `Enrich the mechanically-scaffolded task files for MR ${ctx.mr.webUrl}.
 
 ## MR Metadata
@@ -704,10 +744,11 @@ ${taskFilesStr}
 
 For each .task.md file above:
 1. Read 2-3 key files from its ## Область to understand the entities.
-2. Write an enriched ## Контекст section (entities, boundaries, MR goal alignment, discussion context, systemic risks, web research).
+2. Write an enriched ## Контекст section (entities, boundaries, MR goal alignment, discussion context, systemic risks).
 3. Include the MR metadata above (ref, webUrl, base, worktree) in each track's ## Контекст so lenses can navigate the worktree.
 4. Adjust ## Область if files are misassigned or missing across tracks.
 5. Set frontmatter status: enriched.
+${researchStep}
 ${_synthesisRetryHint(ctx, 'node_enrich')}`;
       },
       dir(ctx: NodeContext) {
@@ -716,13 +757,21 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
         const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
         return mrReportsDir(stateDir, ref);
       },
-      policy: {
-        promptTimeout: 10,
-        continueMax: 2,
-        restartMax: 1,
-        tools: true,
-        model: 'llm-proxy/deepseek-v4-pro',
-      },
+      policy: _enrichWebResearchRequired()
+        ? {
+            promptTimeout: 10,
+            continueMax: 2,
+            restartMax: 1,
+            tools: true,
+            model: _enrichModel(),
+          }
+        : {
+            promptTimeout: 10,
+            continueMax: 2,
+            restartMax: 1,
+            toolPolicy: { bash: true, read: true, grep: true, write: true },
+            model: _enrichModel(),
+          },
     },
     {
       kind: 'gate',
@@ -732,7 +781,9 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
         if (!stateDir) return { pass: false, reason: 'No stateDir — cannot read task files' };
         const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
         const dir = mrReportsDir(stateDir, ref);
-        const result = validateReviewReports(dir, 'enriched');
+        const result = validateReviewReports(dir, 'enriched', {
+          requireWebResearch: _enrichWebResearchRequired(),
+        });
         if (!result.ok) {
           // Per-file reasons, not a lump: the retry prompt names exactly which task files are still
           // blanks, so the enrich session finishes those instead of re-running blindly

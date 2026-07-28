@@ -120,8 +120,8 @@ export type RoleInstanceCheckpoint = {
  */
 function _resolveSessionTools(policy: SessionPolicy | undefined): boolean | ToolGate {
   if (policy?.toolPolicy) {
-    const { bash, read, grep } = policy.toolPolicy;
-    return { bash, read, grep };
+    const { bash, read, grep, write } = policy.toolPolicy;
+    return write === undefined ? { bash, read, grep } : { bash, read, grep, write };
   }
   return policy?.tools === true;
 }
