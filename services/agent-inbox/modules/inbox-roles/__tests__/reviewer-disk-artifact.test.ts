@@ -6,7 +6,7 @@
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ReviewerRole } from '../reviewer.role.ts';
@@ -273,12 +273,46 @@ describe('disk-artifact executor — (c) ladder exhaustion', () => {
 
 // ─── (d) materializeReviewJson merges lens findings, dedupes, assigns F-ids ─────
 
+/**
+ * @purpose Stand in for what the real enrich session does with its write tool (bash/read/write,
+ *   no JSON reply): lays down PLAN.md (if node_prepare's scaffold didn't already) plus every
+ *   scaffolded task file carrying `status: enriched` and a filled `## Контекст`, so `gate_enrich`
+ *   (real, unstubbed) validates actual files — same fixture as `run-mode.test.ts`.
+ */
+function seedEnrichedTaskFiles(stateDir: string, ref: string, headSha = 'head1111'): void {
+  const dir = mrReportsDir(stateDir, ref);
+  const tasksDir = join(dir, 'tasks');
+  mkdirSync(tasksDir, { recursive: true });
+
+  const planPath = join(dir, 'PLAN.md');
+  const planSha = existsSync(planPath)
+    ? (/^headSha:\s*(\S+)/m.exec(readFileSync(planPath, 'utf8'))?.[1] ?? headSha)
+    : headSha;
+  if (!existsSync(planPath)) {
+    writeFileSync(planPath, `---\nref: ${ref}\nheadSha: ${planSha}\n---\n\n# План ревью\n`, 'utf8');
+  }
+
+  const body = (track: string): string =>
+    `---\ntrack: ${track}\nstatus: enriched\nheadSha: ${planSha}\n---\n\n` +
+    `## Область\n\n- services/agent-inbox/foo.ts\n\n` +
+    `## Контекст\n\nЦель MR — добавить проверку граничного случая. Смотреть точку входа и её вызовы.\n\n` +
+    `## Находки\n\n<!-- FILL -->\n\n## Кандидаты\n\n<!-- FILL -->\n\n## Вердикт\n\n<!-- FILL -->\n`;
+
+  const existing = readdirSync(tasksDir).filter((f) => f.endsWith('.task.md'));
+  const targets = existing.length > 0 ? existing : ['logic.task.md'];
+  for (const name of targets) {
+    writeFileSync(join(tasksDir, name), body(name.replace(/\.task\.md$/, '')), 'utf8');
+  }
+}
+
 describe('reviewer.role.ts — materializeReviewJson merges disk-artifact lens findings', () => {
   it('GIVEN 3 lens artifacts with an overlapping finding WHEN gate_review_synthesis passes THEN review.json has deduped F-id findings', async () => {
     const opencode = new OpenCodeMock();
     const mrUrl = 'https://gitlab.example.com/project/-/merge_requests/104';
     const stateDir = mkdtempSync(join(tmpdir(), 'reviewer-disk-artifact-d-'));
     const store = new FakeStateStore(stateDir);
+
+    opencode.seed('node_enrich', { ok: true });
 
     // node_track_review/node_security_lens/node_code_review are structured-JSON sessions
     // (`resultSchema`, no `artifact:` disk-write spec) in the real ReviewerRole.graph — same
@@ -321,7 +355,10 @@ describe('reviewer.role.ts — materializeReviewJson merges disk-artifact lens f
       store: store as unknown as StateStore,
     });
 
-    await instance.step(); // node_prepare → review_needed
+    await instance.step(); // node_prepare → review_needed (scaffolds PLAN.md + task blanks)
+    await instance.step(); // node_enrich → ok
+    seedEnrichedTaskFiles(stateDir, 'project!104');
+    await instance.step(); // gate_enrich → pass
     await instance.step(); // node_review_fanout → all 3 lenses OK
     await instance.step(); // gate_review_filled → pass
     await instance.step(); // node_synthesize → ok

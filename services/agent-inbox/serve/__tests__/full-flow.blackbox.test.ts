@@ -8,7 +8,14 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setupMockAgent, type InterceptedRequest, type MockReply } from '#utils/test/mock-http.ts';
@@ -17,6 +24,7 @@ import { RoleEngine } from '../../modules/inbox-roles/role-engine.ts';
 import { StateStore } from '../../modules/inbox-core/state-store.ts';
 import { VcsInboxReal } from '../../modules/inbox-core/vcs-inbox.real.ts';
 import { OpenCodeReal } from '../../modules/inbox-opencode/opencode.real.ts';
+import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 
 const HOST = 'gitlab.test';
 const OPENCODE_BASE = 'http://opencode.test';
@@ -73,6 +81,38 @@ function restMr(): Record<string, unknown> {
     approved_by: [],
     description: '',
   };
+}
+
+/**
+ * @purpose Stand in for what the real enrich session does with its write tool (bash/read/write,
+ *   no JSON reply): lays down the same on-disk result — PLAN.md plus every scaffolded task file
+ *   carrying `status: enriched` and a filled `## Контекст` — so `gate_enrich` (real, unstubbed)
+ *   validates actual files, matching `run-mode.test.ts`'s identical fixture.
+ */
+function seedEnrichedTaskFiles(store: StateStore, ref: string, headSha = 'head1111'): void {
+  const dir = mrReportsDir(store.getStateDir(), ref);
+  const tasksDir = join(dir, 'tasks');
+  mkdirSync(tasksDir, { recursive: true });
+
+  const planPath = join(dir, 'PLAN.md');
+  const planSha = existsSync(planPath)
+    ? (/^headSha:\s*(\S+)/m.exec(readFileSync(planPath, 'utf8'))?.[1] ?? headSha)
+    : headSha;
+  if (!existsSync(planPath)) {
+    writeFileSync(planPath, `---\nref: ${ref}\nheadSha: ${planSha}\n---\n\n# План ревью\n`, 'utf8');
+  }
+
+  const body = (track: string): string =>
+    `---\ntrack: ${track}\nstatus: enriched\nheadSha: ${planSha}\n---\n\n` +
+    `## Область\n\n- services/agent-inbox/foo.ts\n\n` +
+    `## Контекст\n\nЦель MR — добавить проверку граничного случая. Смотреть точку входа и её вызовы.\n\n` +
+    `## Находки\n\n<!-- FILL -->\n\n## Кандидаты\n\n<!-- FILL -->\n\n## Вердикт\n\n<!-- FILL -->\n`;
+
+  const existing = readdirSync(tasksDir).filter((f) => f.endsWith('.task.md'));
+  const targets = existing.length > 0 ? existing : ['logic.task.md'];
+  for (const name of targets) {
+    writeFileSync(join(tasksDir, name), body(name.replace(/\.task\.md$/, '')), 'utf8');
+  }
 }
 
 /** The assistant-message envelope OpenCode's session.prompt returns (info + JSON-fenced parts). */
@@ -152,13 +192,28 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
     );
     // #endregion SETUP_GITLAB_INTERCEPTS
 
-    // #region SETUP_OPENCODE_INTERCEPTS — 3 fanned-out lens sessions + 1 synthesis session
+    // Created here (not after discovery) so the enrich reply closure below can seed its files —
+    // context-builder's ensureClone short-circuits on this same dir via repos.json regardless.
+    const store = makeStateStore();
+    const ref = `${PROJECT}!${IID}`;
+
+    // #region SETUP_OPENCODE_INTERCEPTS — enrich + 3 fanned-out lens sessions + 1 synthesis session
     const sessionCreateTracker = mockEnv.interceptMultiple('POST', `${OPENCODE_BASE}/session`, [
       sessionCreateReply,
       sessionCreateReply,
       sessionCreateReply,
       sessionCreateReply,
+      sessionCreateReply,
     ]);
+
+    const enrichMessageTracker = mockEnv.interceptOnce(
+      'POST',
+      `${OPENCODE_BASE}/session/ses_node_enrich/message`,
+      () => {
+        seedEnrichedTaskFiles(store, ref);
+        return { status: 200, body: { info: { id: 'msg_enrich', role: 'assistant' }, parts: [{ type: 'text', text: 'Enriched all task files.' }] } };
+      }
+    );
 
     const trackMessageTracker = mockEnv.interceptOnce(
       'POST',
@@ -211,7 +266,6 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
 
     const engine = new RoleEngine();
     await engine.loadAll();
-    const store = makeStateStore();
     const opencode = new OpenCodeReal({ baseUrl: OPENCODE_BASE });
 
     const deps: RunModeDeps = {
@@ -244,7 +298,8 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
       'MR-context REST endpoint must have been hit'
     );
     assert.ok(userTracker.getAttemptCount() > 0, '/user REST endpoint must have been hit');
-    assert.strictEqual(sessionCreateTracker.getAttemptCount(), 4);
+    assert.strictEqual(sessionCreateTracker.getAttemptCount(), 5);
+    assert.strictEqual(enrichMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(trackMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(securityMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(codeReviewMessageTracker.getAttemptCount(), 1);

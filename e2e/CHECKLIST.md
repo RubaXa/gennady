@@ -95,7 +95,7 @@
 | D2  | async git в worktree-ops (тяжёлый fetch вне event-loop) | ⬜     | context-builder уже async (6c322b5)                   |
 | D3  | Изолированный тест выделение→контекст→чат без MR        | ⬜     | —                                                     |
 | D4  | Визуал: читаемость, автор vs агент в чате               | ⬜     | —                                                     |
-| D5  | Полный `npm run test` зелёный                           | ⬜     | был 0 fail на 5f9b23c; после правок не перепроверялся |
+| D5  | Полный `npm run test` зелёный                           | 🟢     | 2310 pass / 0 fail / 7 skipped, 2026-07-28 — 2 пред-существовавших фейла найдены и пофикшены |
 
 ---
 
@@ -131,6 +131,10 @@
 - 2026-07-28 · B10 попытка 2 (жду .prose перед селекшеном) · ❌ мой локатор искал selectedText в title через hasText — не так работает hasText · —
 - 2026-07-28 · B10 попытка 3 (правильный локатор + trim) · ❌ transient createSession failed (реальный LLM инфра-сбой) · —
 - 2026-07-28 · B10 попытка 4 (ретрай) · 🟢 1 passed (9.7s) — раздел B полностью закрыт · —
+- 2026-07-28 · D5 попытка 1 (`npm run test`) · ❌ 2 fail: `full-flow.blackbox.test.ts` + `reviewer-disk-artifact.test.ts` — оба пред-существовавшие (node_enrich не засеян) · —
+- 2026-07-28 · D5 фикс full-flow.blackbox.test.ts (5-я сессия + seedEnrichedTaskFiles в reply-колбэке) · 🟢 1 passed · —
+- 2026-07-28 · D5 фикс reviewer-disk-artifact.test.ts (те же 2 доп. step()+seed) · 🟢 4/4 · —
+- 2026-07-28 · D5 финал (`npm run test`) · 🟢 2310 pass / 0 fail / 7 skipped · —
 
 ### A3 — реальный root cause найден и исправлен (было ⛔, теперь 🟢)
 
