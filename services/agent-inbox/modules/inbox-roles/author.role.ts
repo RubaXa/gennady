@@ -59,8 +59,7 @@ const authorGraph: RoleGraph = {
       kind: 'session',
       id: 'node_analyze_feedback',
       buildTaskText(ctx: NodeContext) {
-        const discussions = (ctx.artifacts['discussions'] as unknown[] | undefined) ?? [];
-        return `Analyze reviewer feedback on MR ${ctx.mr.webUrl} (main input — vcs-discussions --all, ${discussions.length} threads pre-fetched). For each comment, classify: 🔧 needs a code fix / 💬 needs a reply / 👍 agree. Do not post anything yet.`;
+        return `Fetch and analyze reviewer discussion threads on MR ${ctx.mr.webUrl}. For each comment, classify: 🔧 needs a code fix / 💬 needs a reply / 👍 agree. Do not post anything yet.`;
       },
       dir(ctx: NodeContext) {
         return `${ctx.workspace}/worktree`;
@@ -76,6 +75,7 @@ const authorGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
+        tools: true,
       },
     },
     {
