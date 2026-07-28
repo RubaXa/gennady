@@ -36,7 +36,10 @@ test.describe('B1 cold start', () => {
 
     // While the (delayed) fetch is in flight: skeleton visible, no lane counts on screen yet.
     const skeleton = page.getByRole('status', { name: 'Loading dashboard' });
-    await expect(skeleton, 'BoardSkeleton must render during the in-flight /api/board fetch').toBeVisible({
+    await expect(
+      skeleton,
+      'BoardSkeleton must render during the in-flight /api/board fetch'
+    ).toBeVisible({
       timeout: 1000,
     });
     expect(boardRouteHit, 'test route must have actually intercepted /api/board').toBe(true);
@@ -51,6 +54,8 @@ test.describe('B1 cold start', () => {
     await expect(skeleton, 'skeleton must disappear once real data has loaded').toBeHidden({
       timeout: 5000,
     });
-    await expect(page.getByRole('region', { name: 'Unassigned MRs' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('region', { name: 'Unassigned MRs' })).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
