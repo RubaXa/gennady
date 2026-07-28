@@ -258,8 +258,9 @@ export class RoleScheduler {
           instance.state === 'awaiting_operator' ||
           instance.state === 'escalated'
         ) {
-          // #region START_GATE_ON_MR_EVENTS — degrade-open; scoped to `node_prepare` only (SV-19/20/21)
+          // #region START_GATE_ON_MR_EVENTS — reviewer-only debounce gate (SV-19/20/21, live bug 2026-07-28: author self-review isn't a "wait for reply" conversation)
           if (
+            instance.role === 'reviewer' &&
             instance.currentNode === 'node_prepare' &&
             this._config.buildLiveContext &&
             !(await this._shouldAdvanceInstance(instance, effectiveRegistry))
