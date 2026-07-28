@@ -5,7 +5,34 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request as httpRequest } from 'node:http';
+import { spawn, execFile, type ChildProcess } from 'node:child_process';
+import { promisify } from 'node:util';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { bootstrap, type BootstrapResult } from '../bootstrap.ts';
+import { StateStore } from '../../modules/inbox-core/state-store.ts';
+
+const execFileAsync = promisify(execFile);
+
+/**
+ * @purpose Poll `ps -p <pid>` until the process is gone or `timeoutMs` elapses (D1).
+ * @param pid Process to watch.
+ * @param timeoutMs Give up and return `false` after this long.
+ * @returns True once the pid is confirmed gone.
+ */
+async function waitForProcessExit(pid: number, timeoutMs = 5000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await execFileAsync('ps', ['-p', String(pid)]);
+    } catch {
+      return true; // `ps` exits non-zero when the pid no longer exists
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
+}
 
 /**
  * @purpose Open a raw connection to an SSE route and resolve with just the response status/headers
@@ -196,5 +223,62 @@ describe('bootstrap — real mode (spawns a real opencode serve process)', () =>
       /text\/event-stream/,
       'chat/stream must be a real SSE connection'
     );
+  });
+});
+
+describe('bootstrap — orphan opencode restart (D1)', () => {
+  const PORT = 4188;
+  let stateDir: string;
+  let orphan: ChildProcess;
+  let result: BootstrapResult | undefined;
+
+  before(async () => {
+    // A REAL opencode process (not a mock) standing in for a previous `gennady inbox serve`
+    // instance's child that outlived its own parent's cleanup — isOpencodePid's `ps -o comm=`
+    // check requires the real binary, a stub process name would not pass it.
+    orphan = spawn('opencode', ['serve', '--port', '0'], { stdio: 'ignore', detached: false });
+    await new Promise<void>((resolve, reject) => {
+      orphan.once('spawn', () => resolve());
+      orphan.once('error', reject);
+    });
+
+    stateDir = mkdtempSync(join(tmpdir(), 'gennady-orphan-restart-'));
+    mkdirSync(join(stateDir, 'agent-inbox'), { recursive: true });
+    await new StateStore(stateDir).saveConfig({
+      reposBase: stateDir,
+      vcsHost: 'gitlab.test',
+    });
+    // Pid file scoped by PORT (bootstrap's own HTTP port) per D-138 — nothing is actually
+    // listening on PORT yet, so bootstrap's own httpAlive check correctly reads "not alive",
+    // and the recorded pid (a real, live opencode process) reads as a genuine orphan.
+    writeFileSync(
+      join(stateDir, 'agent-inbox', `opencode-${PORT}.pid`),
+      JSON.stringify({ pid: orphan.pid, port: PORT }),
+      'utf-8'
+    );
+  });
+
+  after(async () => {
+    await result?.server.stop();
+    result?.opencodeProcess?.kill('SIGTERM');
+    orphan.kill('SIGKILL'); // best-effort — the test itself proves bootstrap already terminated it
+  });
+
+  it('detects the stale pid, terminates the real orphan, and boots a fresh connected opencode', async () => {
+    result = await bootstrap({ mocks: false, port: PORT, stateDir });
+    await result.server.start();
+
+    assert.strictEqual(
+      result.degraded,
+      false,
+      `expected a fresh connected opencode after orphan cleanup, got: ${result.opencodeStatus}`
+    );
+    assert.ok(
+      result.opencodeStatus.includes('connected'),
+      `expected connected, got: ${result.opencodeStatus}`
+    );
+
+    const orphanGone = await waitForProcessExit(orphan.pid!);
+    assert.ok(orphanGone, 'the orphaned opencode process must actually be terminated, not just logged as such');
   });
 });
