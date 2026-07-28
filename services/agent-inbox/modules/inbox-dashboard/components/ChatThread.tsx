@@ -13,6 +13,8 @@ import { MutationProposalCard, type MutationProposalStatus } from './MutationPro
  */
 export function ChatThread(props: {
   turns: ChatTurn[];
+  /** @purpose Just-sent question, echoed before the real turn lands (B9) — null when idle. */
+  pendingQuestion: string | null;
   streamingText: string;
   streaming: boolean;
   resolveMutationStatus: (turn: ChatTurn, mutationIndex: number) => MutationProposalStatus;
@@ -22,6 +24,7 @@ export function ChatThread(props: {
 }) {
   const {
     turns,
+    pendingQuestion,
     streamingText,
     streaming,
     resolveMutationStatus,
@@ -67,6 +70,15 @@ export function ChatThread(props: {
           ))}
         </div>
       ))}
+
+      {pendingQuestion !== null && (
+        <p
+          className="text-[12px] font-medium text-foreground/90"
+          data-testid="chat-pending-question"
+        >
+          {pendingQuestion}
+        </p>
+      )}
 
       {streaming && (
         <div

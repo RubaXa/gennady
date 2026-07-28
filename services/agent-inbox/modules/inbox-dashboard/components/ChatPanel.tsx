@@ -39,6 +39,8 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
     const [activeChips, setActiveChips] = useState<ContextChip[]>([]);
     const [streaming, setStreaming] = useState(false);
     const [streamingText, setStreamingText] = useState('');
+    /** @purpose Optimistic echo of the just-sent question (CH: B9) — cleared once the real turn lands. */
+    const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
     const [mutationStatuses, setMutationStatuses] = useState<
       Record<string, MutationProposalStatus>
     >({});
@@ -59,12 +61,14 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
           setTurns((prev) => [...prev, turn]);
           setStreaming(false);
           setStreamingText('');
+          setPendingQuestion(null);
         },
         onRefresh: () => {
           onRefresh?.();
         },
         onError: () => {
           setStreaming(false);
+          setPendingQuestion(null);
         },
         onDryRun: (_channel, line) => {
           // INBOX_DRY_RUN (TSK-131): the server suppressed a real external write (MR post / operator
@@ -84,9 +88,13 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
     const sendTurn = useCallback(
       (text: string) => {
         setStreaming(true);
+        setPendingQuestion(text);
         void clientRef.current
           .postTurn(mrId, { text, chips: activeChips })
-          .catch(() => setStreaming(false));
+          .catch(() => {
+            setStreaming(false);
+            setPendingQuestion(null);
+          });
         setActiveChips([]);
       },
       [mrId, activeChips]
@@ -202,6 +210,7 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
         )}
         <ChatThread
           turns={turns}
+          pendingQuestion={pendingQuestion}
           streamingText={streamingText}
           streaming={streaming}
           resolveMutationStatus={resolveMutationStatus}

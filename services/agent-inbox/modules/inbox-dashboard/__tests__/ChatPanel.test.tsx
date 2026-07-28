@@ -335,6 +335,7 @@ describe('ChatThread', () => {
       render(
         createElement(ChatThread, {
           turns: [],
+          pendingQuestion: null,
           streamingText: 'partial answer so far',
           streaming: true,
           resolveMutationStatus: (): MutationProposalStatus => 'pending',
