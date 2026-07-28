@@ -2,7 +2,7 @@
 // @consumers: BoardPage
 // @tasks: TSK-107
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, UserPlus } from 'lucide-react';
 import type { MrCard as MrCardType } from '../../inbox-api/types.ts';
 import { MrCard } from './MrCard.tsx';
@@ -72,6 +72,16 @@ export function UnassignedBlock(props: { cards: MrCardType[] }) {
  */
 function UnassignedMrCard({ mr, onAssign }: { mr: MrCardType; onAssign: (role: string) => void }) {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const onOutsideClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', onOutsideClick);
+    return () => document.removeEventListener('mousedown', onOutsideClick);
+  }, [showMenu]);
 
   return (
     <div className="relative" role="listitem">
@@ -79,7 +89,7 @@ function UnassignedMrCard({ mr, onAssign }: { mr: MrCardType; onAssign: (role: s
         <div className="flex-1">
           <MrCard mr={mr} />
         </div>
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border/80"
