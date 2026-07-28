@@ -49,15 +49,25 @@ export function ChatThread(props: {
               ))}
             </ul>
           )}
-          <p className="text-[12px] font-medium text-foreground/90" data-testid="chat-question">
-            {turn.question}
-          </p>
-          <p
-            className="text-[12px] text-foreground/80 whitespace-pre-wrap"
-            data-testid="chat-answer"
-          >
-            {turn.answer}
-          </p>
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
+              Вы
+            </span>
+            <p className="text-[12px] font-medium text-foreground/90" data-testid="chat-question">
+              {turn.question}
+            </p>
+          </div>
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Агент
+            </span>
+            <p
+              className="text-[12px] text-foreground/80 whitespace-pre-wrap"
+              data-testid="chat-answer"
+            >
+              {turn.answer}
+            </p>
+          </div>
           {turn.mutations?.map((mutation, index) => (
             <MutationProposalCard
               key={`${turn.id}-${index}`}
@@ -72,21 +82,31 @@ export function ChatThread(props: {
       ))}
 
       {pendingQuestion !== null && (
-        <p
-          className="text-[12px] font-medium text-foreground/90"
-          data-testid="chat-pending-question"
-        >
-          {pendingQuestion}
-        </p>
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
+            Вы
+          </span>
+          <p
+            className="text-[12px] font-medium text-foreground/90"
+            data-testid="chat-pending-question"
+          >
+            {pendingQuestion}
+          </p>
+        </div>
       )}
 
       {streaming && (
-        <div
-          aria-live="polite"
-          data-testid="chat-streaming"
-          className="text-[12px] text-foreground/80 whitespace-pre-wrap"
-        >
-          {streamingText}
+        <div>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Агент
+          </span>
+          <div
+            aria-live="polite"
+            data-testid="chat-streaming"
+            className="text-[12px] text-foreground/80 whitespace-pre-wrap"
+          >
+            {streamingText}
+          </div>
         </div>
       )}
     </div>

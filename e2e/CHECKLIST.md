@@ -94,7 +94,7 @@
 | D1  | Рестарт при orphan-opencode + устаревший pid            | 🟢     | новый тест `bootstrap.test.ts`, реальный процесс opencode, 1 passed (1.2s) 2026-07-28; 3× полный `npm run test` зелёный                                                                                                                                                                                         |
 | D2  | async git в worktree-ops (тяжёлый fetch вне event-loop) | 🟢     | новый тест `worktree-ops.event-loop.test.ts`: 8 реальных worktree, 164мс, таймер тикнул 72 раза — не заблокировано                                                                                                                                                                                              |
 | D3  | Изолированный тест выделение→контекст→чат без MR        | 🟢     | уже покрыто существующими тестами: `SelectionPill.test.tsx` (6/6, выделение→чип, изолированно) + `ChatPanel.test.tsx` тест «ChatComposer отображает artifact#L<start>-L<end>» (чип→композер чата, изолированно) — оба прогнаны 2026-07-28, 13/13 pass/0 fail; B10 покрывает то же самое живьём как надмножество |
-| D4  | Визуал: читаемость, автор vs агент в чате               | ⬜     | —                                                                                                                                                                                                                                                                                                               |
+| D4  | Визуал: читаемость, автор vs агент в чате               | 🟢     | был реальный баг — вопрос и ответ визуально неотличимы (тот же размер/цвет, только font-weight/opacity); подтверждено скриншотом реального билда через `gennady inbox serve` + статичный HTML-снимок разметки `ChatThread.tsx` на реальном скомпилированном CSS. Пофиксил: метки «Вы»/«Агент» над каждой репликой. `ChatPanel.test.tsx` 7/7 + живой `b9-chat-optimistic.spec.ts` 1 passed (33.4s) после фикса, 2026-07-28 |
 | D5  | Полный `npm run test` зелёный                           | 🟢     | 2310 pass / 0 fail / 7 skipped, 2026-07-28 — 2 пред-существовавших фейла найдены и пофикшены                                                                                                                                                                                                                    |
 
 ---
@@ -113,6 +113,8 @@
 - 2026-07-28 · A5 · ⛔ P4 node_enrich fetch failed (тот же блокер A3), P5-P7 каскад · —
 - 2026-07-28 · A3 попытка 3 (websearch off, модель не менялась) · ❌ node_enrich fetch failed × 2 сессии, всё ещё ~300с · —
 - 2026-07-28 · D3 · 🟢 13/13 pass (SelectionPill.test.tsx + ChatPanel.test.tsx) · —
+- 2026-07-28 · D4 · ❌ реальный баг найден живьём (скриншот) — вопрос/ответ визуально неотличимы · —
+- 2026-07-28 · D4 фикс (метки Вы/Агент в ChatThread.tsx) · 🟢 ChatPanel.test.tsx 7/7 + b9-chat-optimistic.spec.ts 1 passed (33.4s) · —
 - 2026-07-28 · A3 попытка 4 (модель → deepseek-v4-flash) · ❌ почти дошёл (gate_review_synthesis на tick9), но уложился ровно в дедлайн теста · —
 - 2026-07-28 · root cause · undici headersTimeout/bodyTimeout 300000мс дефолт, SDK's `req.timeout=false` не отключает его — 2 несогласованных таймаута · —
 - 2026-07-28 · A3 попытка 5 (dispatcher fix + флеш-модель) · 🟢 2 passed (11.7m) · —
