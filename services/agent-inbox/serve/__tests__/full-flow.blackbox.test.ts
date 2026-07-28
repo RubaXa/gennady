@@ -211,7 +211,13 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
       `${OPENCODE_BASE}/session/ses_node_enrich/message`,
       () => {
         seedEnrichedTaskFiles(store, ref);
-        return { status: 200, body: { info: { id: 'msg_enrich', role: 'assistant' }, parts: [{ type: 'text', text: 'Enriched all task files.' }] } };
+        return {
+          status: 200,
+          body: {
+            info: { id: 'msg_enrich', role: 'assistant' },
+            parts: [{ type: 'text', text: 'Enriched all task files.' }],
+          },
+        };
       }
     );
 
