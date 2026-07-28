@@ -307,6 +307,12 @@ async function run(): Promise<number> {
 
     // Run the first tick immediately (non-blocking)
     void result.scheduler.tick();
+
+    // Instance stepping is local work, unlike tick's rate-limited VCS poll — a short own timer.
+    const ADVANCE_INTERVAL_MS = 3_000;
+    const advanceTimer = setInterval(() => {
+      void result.scheduler.advanceInstances();
+    }, ADVANCE_INTERVAL_MS);
     // #endregion END_TICK_TIMER
 
     // #region START_STATUS_BAR
@@ -334,6 +340,7 @@ async function run(): Promise<number> {
       console.info('');
       console.info(style.dim(`Received ${signal}, shutting down...`));
       clearInterval(tickTimer);
+      clearInterval(advanceTimer);
       // Force exit after 15s regardless of graceful shutdown completion
       const forceExit = setTimeout(() => {
         console.info(style.dim('Shutdown timed out — forcing exit.'));

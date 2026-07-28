@@ -52,6 +52,7 @@ const authorGraph: RoleGraph = {
         promptTimeout: 10,
         continueMax: 3,
         restartMax: 2,
+        tools: true,
       },
     },
     {

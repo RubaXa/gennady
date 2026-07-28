@@ -121,6 +121,8 @@ export class RoleScheduler {
   protected _lastPolled: Map<string, VcsActionableMr>;
   /** @purpose Notifies the operator on AWAITING_OPERATOR + reminds on idle (TSK-113 P3 wiring) */
   protected _rightsEscalator: RightsEscalator;
+  /** @purpose Whether `advanceInstances` is currently running — guards against overlap with `tick`. */
+  protected _advancing: boolean;
 
   /** @purpose Max consecutive errors before pausing an instance (F2) */
   private static readonly MAX_ERRORS = 3;
@@ -140,6 +142,7 @@ export class RoleScheduler {
     this._pausedUntil = new Map();
     this._lastPolled = new Map();
     this._rightsEscalator = new RightsEscalator({ store: config.store });
+    this._advancing = false;
   }
 
   /**
@@ -218,6 +221,30 @@ export class RoleScheduler {
       }
       // #endregion END_ASSIGN_NEW_MRS
 
+      await this.advanceInstances(registry);
+    } finally {
+      this._ticking = false;
+      this._stopped = false;
+      logger.debug('[RoleScheduler#tick] [ticking → idle]');
+    }
+  }
+
+  /**
+   * @purpose Step every live instance one graph node, decoupled from `tick`'s slow VCS poll.
+   *   Called from `tick` and its own fast timer (serve.cmd.ts).
+   * @invariant Self-guarding — a call already in progress is skipped, not queued.
+   * @param [registry] Preloaded registry (tick already has one); loaded fresh when omitted.
+   * @returns Promise that resolves when this pass over all instances completes.
+   */
+  async advanceInstances(registry?: InboxRegistry): Promise<void> {
+    if (this._advancing) {
+      logger.debug('[RoleScheduler#advanceInstances] [idle → skipped] Already in progress');
+      return;
+    }
+    this._advancing = true;
+    try {
+      const effectiveRegistry = registry ?? this._config.store.loadRegistry();
+
       // #region START_ADVANCE_INSTANCES
       for (const [key, instance] of this._instances) {
         const pausedUntil = this._pausedUntil.get(key);
@@ -235,7 +262,7 @@ export class RoleScheduler {
           if (
             instance.currentNode === 'node_prepare' &&
             this._config.buildLiveContext &&
-            !(await this._shouldAdvanceInstance(instance, registry))
+            !(await this._shouldAdvanceInstance(instance, effectiveRegistry))
           ) {
             continue;
           }
@@ -256,7 +283,7 @@ export class RoleScheduler {
 
             if (count >= RoleScheduler.MAX_ERRORS) {
               logger.warn(
-                '[RoleScheduler#tick] [ticking → paused] Instance paused after N errors',
+                '[RoleScheduler#advanceInstances] [advancing → paused] Instance paused after N errors',
                 {
                   mr: instance.mr,
                   role: instance.role,
@@ -282,7 +309,7 @@ export class RoleScheduler {
           await this._rightsEscalator.notifyReady(instance);
           await this._rightsEscalator.remindIdle(instance);
         } catch (error) {
-          logger.warn('[RoleScheduler#tick] [ticking → escalation_failed]', {
+          logger.warn('[RoleScheduler#advanceInstances] [advancing → escalation_failed]', {
             key,
             error: String(error),
           });
@@ -296,14 +323,15 @@ export class RoleScheduler {
           this._instances.delete(key);
           this._errorCount.delete(key);
           this._pausedUntil.delete(key);
-          logger.debug('[RoleScheduler#tick] [ticking → cleaned]', { key, state: instance.state });
+          logger.debug('[RoleScheduler#advanceInstances] [advancing → cleaned]', {
+            key,
+            state: instance.state,
+          });
         }
       }
       // #endregion END_CLEANUP_DONE
     } finally {
-      this._ticking = false;
-      this._stopped = false;
-      logger.debug('[RoleScheduler#tick] [ticking → idle]');
+      this._advancing = false;
     }
   }
 
