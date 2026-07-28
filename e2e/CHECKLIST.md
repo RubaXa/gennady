@@ -46,7 +46,7 @@
 | A2  | Назначение роли создаёт живой instance     | `review-flow/t2-assign.spec.ts`         | 🟢     | 1 passed (50.7s), 2026-07-27                      |
 | A3  | Живое ревью идёт по стадиям                | `review-flow/t3-t4-live-review.spec.ts` | 🟢     | 2 passed (11.7m), 2026-07-28 — см. диагноз ниже   |
 | A4  | Детальный вид MR + артефакты               | `review-flow/t5-detail.spec.ts`         | 🟢     | 1 passed (2.6s), 2026-07-28                       |
-| A5  | Полный проход одного MR от начала до конца | `review-flow/t9-full-flow.spec.ts`      | ⬜     | было ⛔ на том же блокере — перепрогнать с фиксом |
+| A5  | Полный проход одного MR от начала до конца | `review-flow/t9-full-flow.spec.ts`      | ⛔     | 2 passed / 3 failed / 1 skipped (17.4m) — см. диагноз ниже |
 
 ## B. То, что оператор видит первым (UI-регрессии из живого прогона 2026-07-24/27)
 
@@ -100,6 +100,7 @@
 - 2026-07-28 · A3 попытка 4 (модель → deepseek-v4-flash) · ❌ почти дошёл (gate_review_synthesis на tick9), но уложился ровно в дедлайн теста · —
 - 2026-07-28 · root cause · undici headersTimeout/bodyTimeout 300000мс дефолт, SDK's `req.timeout=false` не отключает его — 2 несогласованных таймаута · —
 - 2026-07-28 · A3 попытка 5 (dispatcher fix + флеш-модель) · 🟢 2 passed (11.7m) · —
+- 2026-07-28 · A5 перепрогон с фиксом A3 · ⛔ 2 passed/3 failed/1 skipped (17.4m) — P4-P6 на отдельном известном блокере TSK-131, P7 полностью прошёл · —
 
 ### A3 — реальный root cause найден и исправлен (было ⛔, теперь 🟢)
 
@@ -131,7 +132,27 @@
 **Итог:** `t3-t4-live-review.spec.ts` — 2 passed (11.7m), 2026-07-28, полный живой проход
 prepare→enrich→lenses→synthesize→ask, без единого `fetch failed`.
 
-### A5 — перепрогнать с фиксом (было ⛔ на том же блокере, теперь ⬜)
+### A5 — перепрогнан с фиксом A3: 2 passed / 3 failed / 1 skipped (⛔ новый, отдельный блокер)
 
-Раньше падал на идентичном `node_enrich fetch failed` в P4 — тот же диспетчерный баг, не отдельный дефект.
-Не перепрогнан ещё с фиксом A3 — следующий пункт очереди.
+Диспетчерный баг A3 подтверждён исправленным: **P7** (`t9 P7 action (own independent live drive)`,
+это отдельный собственный живой прогон внутри того же файла) прошёл целиком — `node_review_fanout →
+gate_review_filled → node_synthesize`, дошёл до постинга DRY-RUN действия, 0 `fetch failed`. **P3 sub-step
+1** (борд грузится) тоже 🟢.
+
+**P4/P5/P6 падают каскадом от одной причины, уже задокументированной в самом тесте (TSK-131), не
+связанной с A3:** P4 явно рассчитывает, что P3 назначил роль РЕАЛЬНЫМ кликом в UI («no fresh
+assignManual — the instance P3 assigned via the UI is still live in this same process» —
+[t9-full-flow.spec.ts:154](../e2e/inbox-serve/review-flow/t9-full-flow.spec.ts)). Но кнопка «Assign»
+для этого MR не рендерится — `RoleScheduler#_filterActionable`
+([role-scheduler.ts:572-590](../services/agent-inbox/modules/inbox-roles/role-scheduler.ts)) отфильтровывает
+его через approved-by-me/idle/stale-draft логику. Тест это УЖЕ знает и не падает молча на этом месте —
+сам себя помечает `test.fixme()` с явным указанием на тикет («Ticket P3: an absent UI element is
+escalated as a discovery, never routed around»). Из-за этого P4 просто крутит 60 пустых тиков
+(`state=none node=n/a`, 5.4 мин) без инстанса и честно проваливается на своём ассерте; P5/P6 — чистый
+каскад (нечего проверять на диске).
+
+**Не чинил** — это не A3 и не угадывание: причина указана самим тестом с точным путём (`role-scheduler.ts`)
+и номером тикета. Вопрос на решение оператора: реальный MR `hocuspocus/hocuspocus!18` сейчас
+approved-by-me/idle/stale-draft на GitLab (тогда фильтр работает верно, и тестовую фикстуру нужно менять
+на другой MR), или `_filterActionable` ошибочно исключает валидный MR (тогда это баг фильтра) — не
+проверял живое состояние MR на GitLab самостоятельно, т.к. это решение по данным, не по коду.
