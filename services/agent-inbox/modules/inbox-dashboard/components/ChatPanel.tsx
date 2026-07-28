@@ -89,12 +89,10 @@ export const ChatPanel = forwardRef<ChatPanelHandle, { mrId: string; onRefresh?:
       (text: string) => {
         setStreaming(true);
         setPendingQuestion(text);
-        void clientRef.current
-          .postTurn(mrId, { text, chips: activeChips })
-          .catch(() => {
-            setStreaming(false);
-            setPendingQuestion(null);
-          });
+        void clientRef.current.postTurn(mrId, { text, chips: activeChips }).catch(() => {
+          setStreaming(false);
+          setPendingQuestion(null);
+        });
         setActiveChips([]);
       },
       [mrId, activeChips]
