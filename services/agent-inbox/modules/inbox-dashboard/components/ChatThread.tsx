@@ -50,9 +50,7 @@ export function ChatThread(props: {
             </ul>
           )}
           <div>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
-              Вы
-            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-primary">Вы</span>
             <p className="text-[12px] font-medium text-foreground/90" data-testid="chat-question">
               {turn.question}
             </p>
@@ -83,9 +81,7 @@ export function ChatThread(props: {
 
       {pendingQuestion !== null && (
         <div>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
-            Вы
-          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-primary">Вы</span>
           <p
             className="text-[12px] font-medium text-foreground/90"
             data-testid="chat-pending-question"
