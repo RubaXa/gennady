@@ -279,6 +279,9 @@ describe('bootstrap — orphan opencode restart (D1)', () => {
     );
 
     const orphanGone = await waitForProcessExit(orphan.pid!);
-    assert.ok(orphanGone, 'the orphaned opencode process must actually be terminated, not just logged as such');
+    assert.ok(
+      orphanGone,
+      'the orphaned opencode process must actually be terminated, not just logged as such'
+    );
   });
 });
