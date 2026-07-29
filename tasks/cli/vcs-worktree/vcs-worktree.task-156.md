@@ -116,9 +116,9 @@ Contract: see Spec References (FR-WT-07).
 ## 5. Verification
 
 | Command                                                                            | Required by      |
-| ----------------------------------------------------------------------------------- | ----------------- |
-| `tsc --noEmit`                                                                       | typescript-rules  |
-| `node --import tsx --test cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts`   | node-test         |
+| ---------------------------------------------------------------------------------- | ---------------- |
+| `tsc --noEmit`                                                                     | typescript-rules |
+| `node --import tsx --test cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts` | node-test        |
 
 - **Task-specific Completion additions:** None beyond project baseline
 <!--/SECTION:VERIFICATION-->
@@ -152,7 +152,7 @@ _(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skele
   - 💬 unblock: расширить `mock.module('node:fs', ...)` в `cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts` (строки ~75-79), добавив `existsSync, readdirSync, readFileSync, symlinkSync` в `namedExports` (делегируя к реальным одноимённым импортам из `node:fs`) — либо добавить этот файл в Target Files фазы P1/фикс-фазы, либо оператор одобряет точечное расширение мока.
 - ✅ `2026-07-29T00:00:00Z` RESOLVED: оператор отклонил расширение мока — вместо этого архитектурный фикс через DI (per `AX_BLOCKER_RESOLUTION_TRAIL`). `linkWorktreeDependencies` больше не импортирует `node:fs` статически; принимает `fsDeps: WorktreeLinkFsDeps` параметром. `prepareMrWorktree` получает необязательный 4-й параметр `linkFsDeps?`, форвардит без собственного импорта из `node:fs`. Реальные fs-функции подключаются только в composition root `vcs-worktree.cmd.ts`. `worktree-ops.test.ts` не трогается — не участвует в Target Files. Заодно из списка кандидатов исключены `.env`/`.env.local`/`.env.development` (риск утечки секретов через код недоверенного MR) — см. Meta Purpose и `specs/cli/cli.spec.md` D-019. Ticket P1 Objective/Target Files/BDD переписаны под новую архитектуру. Фаза перезапускается.
 
-#### P1 — re-run: fix: DI redesign (без .env* кандидатов) per RESOLVED выше
+#### P1 — re-run: fix: DI redesign (без .env\* кандидатов) per RESOLVED выше
 
 - [x] `2026-07-29T17:34:53Z` intro `WorktreeLinkFsDeps` ← DI-интерфейс для fs-зависимостей `linkWorktreeDependencies`, чтобы модуль не импортировал `node:fs` статически (устраняет конфликт с глобальным `mock.module('node:fs', ...)` в `worktree-ops.test.ts`)
 - [x] `2026-07-29T17:34:53Z` decision candidates=`node_modules,vendor,.venv,venv,__pypackages__` (без `.env*`) ← оператор исключил `.env`/`.env.local`/`.env.development` из кандидатов на симлинк — секреты не должны быть достижимы из кода недоверенного MR-автора (D-019)
@@ -175,7 +175,6 @@ _(Round = one execute-then-audit attempt. Per-phase blocks within a Round. Skele
 - [x] `2026-07-29T17:41:11Z` discovery `<sdd-path> verify` format:check fails project-wide (`prettier --check .`), но только на pre-existing dirty `specs/**` (запрещено трогать per `AX_SPEC_NEVER_EDITED`) и таблице секции 5 тикета (вне `AX_TICKET_WRITE_SCOPE`) — тот же паттерн, что P1 уже задокументировал; `worktree-links.test.ts` individually проходит `prettier --check` чисто
 - [x] `2026-07-29T17:41:11Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts]; decisions: [test-fs=real-tmpdir+real-node:fs-fsDeps, symlink-failure-scenario=pre-occupied-destination-file, workspace-fixture=worktree-package-dirs-precreated]; open: []
-
 
 #### Round close
 

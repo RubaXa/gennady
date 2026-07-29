@@ -10,13 +10,30 @@ import { join } from 'node:path';
  *   (`vcs-worktree.cmd.ts`); no other consumer of `prepareMrWorktree` is affected.
  */
 export type WorktreeLinkFsDeps = {
-  /** @purpose Check whether a path exists | @param path Filesystem path to check | @returns True when the path exists */
+  /**
+   * @purpose Check whether a path exists
+   * @param path Filesystem path to check
+   * @returns True when the path exists
+  */
   existsSync: (path: string) => boolean;
-  /** @purpose List directory entry names | @param path Directory to list | @returns Entry names directly under path */
+  /**
+   * @purpose List directory entry names
+   * @param path Directory to list
+   * @returns Entry names directly under path
+  */
   readdirSync: (path: string) => string[];
-  /** @purpose Read a file as text | @param path File to read | @param encoding Text encoding | @returns File content as a string */
+  /**
+   * @purpose Read a file as text
+   * @param path File to read
+   * @param encoding Text encoding
+   * @returns File content as a string
+  */
   readFileSync: (path: string, encoding: 'utf8') => string;
-  /** @purpose Create a symlink | @param target Path the symlink points to | @param path Symlink location to create */
+  /**
+   * @purpose Create a symlink
+   * @param target Path the symlink points to
+   * @param path Symlink location to create
+  */
   symlinkSync: (target: string, path: string) => void;
 };
 
