@@ -1,11 +1,13 @@
 // @file: Git worktree operations for read-only MR review (hooks disabled).
 // @consumers: vcs-worktree.cmd
-// @tasks: TSK-93
+// @tasks: TSK-93, TSK-156
 
 import { execFile } from 'node:child_process';
 import { readdir, stat, utimes, access } from 'node:fs/promises';
 import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { linkWorktreeDependencies } from './worktree-links.logic.ts';
+import type { WorktreeLinkFsDeps } from './worktree-links.logic.ts';
 
 function git(args: string[], cwd?: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -36,14 +38,18 @@ export const WORKTREE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * @param clonePath Local clone of the project.
  * @param iid Merge request internal ID.
  * @param worktreePath Absolute path where the worktree is created.
+ * @param [linkFsDeps] Injected `node:fs` surface for dependency symlinking (FR-WT-07).
+ *   Omitted → symlinking is skipped, preserving prior behavior for opted-out callers.
  * @returns The worktree path and resolved head SHA.
- * @sideEffect Network: git fetch; FS: creates or reuses the worktree directory, updates mtime.
+ * @sideEffect Network: git fetch; FS: creates or reuses the worktree directory, updates mtime,
+ *   and (when `linkFsDeps` is provided) symlinks known dependency directories from the clone.
  * @consumer vcs-worktree.cmd
  */
 export async function prepareMrWorktree(
   clonePath: string,
   iid: string,
-  worktreePath: string
+  worktreePath: string,
+  linkFsDeps?: WorktreeLinkFsDeps
 ): Promise<PreparedWorktree> {
   const now = new Date();
 
@@ -81,6 +87,7 @@ export async function prepareMrWorktree(
       } catch {
         /* best-effort mtime update */
       }
+      if (linkFsDeps) linkWorktreeDependencies(clonePath, worktreePath, linkFsDeps);
       return { worktreePath, headSha };
     } catch {
       /* fetch or reset failed → fall through to full recreate */
@@ -118,6 +125,7 @@ export async function prepareMrWorktree(
   } catch {
     /* best-effort mtime update */
   }
+  if (linkFsDeps) linkWorktreeDependencies(clonePath, worktreePath, linkFsDeps);
   return { worktreePath, headSha };
   // #endregion END_FULL_RECREATE_WORKTREE
 }

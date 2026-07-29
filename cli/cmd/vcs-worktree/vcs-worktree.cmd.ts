@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-worktree — prepare/cleanup a read-only worktree for MR review.
 // @consumers: N/A
-// @tasks: N/A, TSK-70
+// @tasks: N/A, TSK-70, TSK-156
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
@@ -22,6 +22,7 @@ import {
   removeAllWorktrees,
   WORKTREE_TTL_MS,
 } from './_core/logic/worktree-ops.logic.ts';
+import type { WorktreeLinkFsDeps } from './_core/logic/worktree-links.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
@@ -112,7 +113,10 @@ async function run(): Promise<number> {
       worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
     }
 
-    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath);
+    // FR-WT-07: composition root for real fs deps — the only call site that links
+    // dependency directories into the prepared worktree (best-effort, secrets excluded).
+    const linkFsDeps: WorktreeLinkFsDeps = { existsSync, readdirSync, readFileSync, symlinkSync };
+    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath, linkFsDeps);
     const baseSha = targetBranch
       ? await resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
       : '';
