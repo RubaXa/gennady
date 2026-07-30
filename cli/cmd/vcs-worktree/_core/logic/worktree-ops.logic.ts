@@ -1,6 +1,6 @@
 // @file: Git worktree operations for read-only MR review (hooks disabled).
 // @consumers: vcs-worktree.cmd
-// @tasks: TSK-93, TSK-156
+// @tasks: TSK-93, TSK-168, TSK-169
 
 import { execFile } from 'node:child_process';
 import { readdir, stat, utimes, access } from 'node:fs/promises';
@@ -16,6 +16,32 @@ function git(args: string[], cwd?: string): Promise<string> {
       resolve((stdout as string).trim());
     });
   });
+}
+
+/**
+ * @purpose Best-effort `git submodule update --init --recursive` inside a prepared worktree (FR-WT-08).
+ * @invariant Never throws: network failure or missing access to a private submodule must not
+ *   fail `prepareMrWorktree` — the worktree remains reviewable without submodules.
+ * @invariant Runs with `core.hooksPath=/dev/null` — untrusted MR code must not run submodule hooks either.
+ * @invariant No `.gitmodules` pre-check — the git command is itself a safe no-op without submodules.
+ * @param worktreePath Absolute path to the prepared worktree.
+ * @sideEffect Network + FS: fetches and checks out submodule content inside the worktree.
+ */
+async function initWorktreeSubmodules(worktreePath: string): Promise<void> {
+  try {
+    await git([
+      '-C',
+      worktreePath,
+      '-c',
+      'core.hooksPath=/dev/null',
+      'submodule',
+      'update',
+      '--init',
+      '--recursive',
+    ]);
+  } catch {
+    /* best-effort: network failure or inaccessible private submodule — worktree stays usable without it */
+  }
 }
 
 /** @purpose Result of preparing a read-only worktree for an MR. */
@@ -40,16 +66,18 @@ export const WORKTREE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * @param worktreePath Absolute path where the worktree is created.
  * @param [linkFsDeps] Injected `node:fs` surface for dependency symlinking (FR-WT-07).
  *   Omitted → symlinking is skipped, preserving prior behavior for opted-out callers.
+ * @param [initSubmodules] Run submodule init after symlinking (FR-WT-08). Default `false` — no behavior change.
  * @returns The worktree path and resolved head SHA.
- * @sideEffect Network: git fetch; FS: creates or reuses the worktree directory, updates mtime,
- *   and (when `linkFsDeps` is provided) symlinks known dependency directories from the clone.
+ * @sideEffect Network: git fetch; FS: creates or reuses the worktree, updates mtime,
+ *   symlinks dependency dirs, initializes submodules — each gated by its own param.
  * @consumer vcs-worktree.cmd
  */
 export async function prepareMrWorktree(
   clonePath: string,
   iid: string,
   worktreePath: string,
-  linkFsDeps?: WorktreeLinkFsDeps
+  linkFsDeps?: WorktreeLinkFsDeps,
+  initSubmodules = false
 ): Promise<PreparedWorktree> {
   const now = new Date();
 
@@ -88,6 +116,7 @@ export async function prepareMrWorktree(
         /* best-effort mtime update */
       }
       if (linkFsDeps) linkWorktreeDependencies(clonePath, worktreePath, linkFsDeps);
+      if (initSubmodules) await initWorktreeSubmodules(worktreePath);
       return { worktreePath, headSha };
     } catch {
       /* fetch or reset failed → fall through to full recreate */
@@ -126,6 +155,7 @@ export async function prepareMrWorktree(
     /* best-effort mtime update */
   }
   if (linkFsDeps) linkWorktreeDependencies(clonePath, worktreePath, linkFsDeps);
+  if (initSubmodules) await initWorktreeSubmodules(worktreePath);
   return { worktreePath, headSha };
   // #endregion END_FULL_RECREATE_WORKTREE
 }

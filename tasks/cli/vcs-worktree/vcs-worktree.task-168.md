@@ -1,10 +1,10 @@
-# Task: TSK-156 — vcs-worktree: детерминированный симлинкинг зависимостей (FR-WT-07)
+# Task: TSK-168 — vcs-worktree: детерминированный симлинкинг зависимостей (FR-WT-07)
 
 <!--SECTION:META-->
 
 ## 1. Meta
 
-- **Task-ID:** TSK-156
+- **Task-ID:** TSK-168
 - **Status:** [x] DONE
 - **Purpose:** После создания/переиспользования worktree (`prepareMrWorktree`) детерминированно симлинковать known-dependency-директории из клона-источника (node_modules, monorepo-workspaces, vendor, .venv) по best-effort принципу — worktree становится пригодным для запуска тестов, а не только для чтения диффа. Секреты (`.env*`) намеренно исключены (D-019 доп. решение) — worktree чекаутит код потенциально недоверенного MR-автора
 - **Scope:** `cli`
@@ -132,7 +132,7 @@ Contract: see Spec References (FR-WT-07).
 - Scenario «Секреты не входят в список кандидатов» → `cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts` :: `never links .env even when present`
 - Scenario «Monorepo workspace симлинкуется per-package» → `cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts` :: `symlinks workspace packages`
 - Scenario «Ошибка одного симлинка не прерывает остальные» → `cli/cmd/vcs-worktree/_core/logic/worktree-links.test.ts` :: `does not throw when one candidate fails`
-- Scenario «`prepareMrWorktree` без `linkFsDeps` пропускает шаг симлинкинга» → Deferred Test Ownership: TSK-156 (уже покрыто существующим `cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts`, который вызывает `prepareMrWorktree` без 4-го аргумента и не входит в Target Files этой задачи — доказательство: набор проходит без изменений после P1)
+- Scenario «`prepareMrWorktree` без `linkFsDeps` пропускает шаг симлинкинга» → Deferred Test Ownership: TSK-168 (уже покрыто существующим `cli/cmd/vcs-worktree/_core/logic/worktree-ops.test.ts`, который вызывает `prepareMrWorktree` без 4-го аргумента и не входит в Target Files этой задачи — доказательство: набор проходит без изменений после P1)
   <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

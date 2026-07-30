@@ -143,7 +143,8 @@ graph TD
 | [TSK-69](vcs-approve/vcs-approve.task-69.md)                   | vcs-approve: команда approve GitLab MR через API                           | vcs-approve          | TSK-67, TSK-68                 | `[x]` DONE | 0       |
 | [TSK-70](vcs-refactor/vcs-refactor.task-70.md)                 | Рефакторинг review-issues, vcs-reply, vcs-worktree на vcs-context-resolver | N/A                  | TSK-68                         | `[x]` DONE | 0       |
 | [TSK-72](vcs-reply-resolve/vcs-reply-resolve.task-72.md)       | vcs-reply: resolve/reopen discussion через stdin JSON                      | vcs-reply            | TSK-71                         | `[x]` DONE | 0       |
-| [TSK-156](vcs-worktree/vcs-worktree.task-156.md)               | vcs-worktree: детерминированный симлинкинг зависимостей (FR-WT-07)         | vcs-worktree         | None                           | `[x]` DONE | 0       |
+| [TSK-168](vcs-worktree/vcs-worktree.task-168.md)               | vcs-worktree: детерминированный симлинкинг зависимостей (FR-WT-07)         | vcs-worktree         | None                           | `[x]` DONE | 0       |
+| [TSK-169](vcs-worktree/vcs-worktree.task-169.md)               | vcs-worktree: git submodule update --init --recursive (FR-WT-08)           | vcs-worktree         | TSK-168                        | `[ ]` TODO | 0       |
 
 ## Notes
 

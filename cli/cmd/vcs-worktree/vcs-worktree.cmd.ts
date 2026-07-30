@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-worktree — prepare/cleanup a read-only worktree for MR review.
 // @consumers: N/A
-// @tasks: N/A, TSK-70, TSK-156
+// @tasks: N/A, TSK-70, TSK-168, TSK-169
 
 import { mkdirSync, existsSync, readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -116,7 +116,9 @@ async function run(): Promise<number> {
     // FR-WT-07: composition root for real fs deps — the only call site that links
     // dependency directories into the prepared worktree (best-effort, secrets excluded).
     const linkFsDeps: WorktreeLinkFsDeps = { existsSync, readdirSync, readFileSync, symlinkSync };
-    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath, linkFsDeps);
+    // FR-WT-08: this command reviews MR code directly in the worktree, so submodules must be
+    // present too (best-effort) — unlike other prepareMrWorktree callers, which don't opt in.
+    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath, linkFsDeps, true);
     const baseSha = targetBranch
       ? await resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
       : '';

@@ -1,6 +1,6 @@
 // @file: Unit tests for linkWorktreeDependencies on a real temp filesystem (clone/worktree pair).
 // @consumers: node:test runner
-// @tasks: TSK-156
+// @tasks: TSK-168
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

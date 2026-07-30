@@ -1,6 +1,6 @@
 // @file: Deterministic best-effort symlinking of known dependency directories into a prepared worktree.
 // @consumers: worktree-ops.logic (prepareMrWorktree)
-// @tasks: TSK-156
+// @tasks: TSK-168
 
 import { join } from 'node:path';
 

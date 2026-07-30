@@ -1,6 +1,6 @@
 // @file: Unit tests for worktree-ops (gcStaleWorktrees, TTL constant, removeAllWorktrees, prepareMrWorktree).
 // @consumers: node:test runner
-// @tasks: TSK-93
+// @tasks: TSK-93, TSK-169
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,6 +21,7 @@ function gitCmd(args: string[]): string {
   if (s.includes('FETCH_HEAD') && s.includes('rev-parse')) return 'rev-parse-fetch';
   if (s.includes('rev-parse') && !s.includes('FETCH_HEAD')) return 'rev-parse-head';
   if (s.includes('reset')) return 'reset';
+  if (s.includes('submodule') && s.includes('update')) return 'submodule-update';
   if (s.includes('worktree') && s.includes('prune')) return 'worktree-prune';
   if (s.includes('worktree') && s.includes('add')) return 'worktree-add';
   if (s.includes('worktree') && s.includes('remove')) return 'worktree-remove';
@@ -337,5 +338,62 @@ describe('prepareMrWorktree', () => {
     assert.strictEqual(result.headSha, 'fresh456');
     assert.ok(gitCallsMatching('worktree add'), 'expected worktree add after GC');
     assert.ok(!gitCallsMatching('reset'), 'expected NO reset since worktree was GCd');
+  });
+
+  it('runs submodule update --init --recursive when initSubmodules=true', async () => {
+    mkdirSync(worktreeDir);
+    gitResponses = {
+      'fetch-mr': [''],
+      'rev-parse-fetch': ['abc123'],
+      reset: [''],
+      'rev-parse-head': ['abc123'],
+      'submodule-update': [''],
+    };
+
+    const result = await prepareMrWorktree(cloneDir, iid, worktreeDir, undefined, true);
+
+    assert.strictEqual(result.worktreePath, worktreeDir);
+    assert.strictEqual(result.headSha, 'abc123');
+    const submoduleCall = mockExecFile.mock.calls.find((c) =>
+      (c.arguments[1] as string[]).includes('submodule')
+    );
+    assert.ok(submoduleCall, 'expected submodule update call');
+    assert.ok(
+      (submoduleCall!.arguments[1] as string[]).join(' ').includes('core.hooksPath=/dev/null'),
+      'expected hooksPath disabled for submodule call'
+    );
+  });
+
+  it('does not throw when submodule update fails', async () => {
+    mkdirSync(worktreeDir);
+    gitResponses = {
+      'fetch-mr': [''],
+      'rev-parse-fetch': ['abc123'],
+      reset: [''],
+      'rev-parse-head': ['abc123'],
+      'submodule-update': [new Error('network unreachable')],
+    };
+
+    const result = await prepareMrWorktree(cloneDir, iid, worktreeDir, undefined, true);
+
+    assert.strictEqual(result.worktreePath, worktreeDir);
+    assert.strictEqual(result.headSha, 'abc123');
+  });
+
+  it('skips submodule update when initSubmodules omitted', async () => {
+    mkdirSync(worktreeDir);
+    gitResponses = {
+      'fetch-mr': [''],
+      'rev-parse-fetch': ['abc123'],
+      reset: [''],
+      'rev-parse-head': ['abc123'],
+    };
+
+    await prepareMrWorktree(cloneDir, iid, worktreeDir);
+
+    assert.ok(
+      !gitCallsMatching('submodule'),
+      'expected NO submodule call when initSubmodules omitted'
+    );
   });
 });
