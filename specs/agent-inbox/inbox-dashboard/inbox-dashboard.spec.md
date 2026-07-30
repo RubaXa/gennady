@@ -20,7 +20,8 @@ React 19 + Tailwind v4 (`@tailwindcss/vite`, `@tailwindcss/typography`) + CVA /
 `cn()` (shadcn-стиль, **без внешнего ui-кита** — компоненты собственные поверх Tailwind;
 токены в `styles/index.css`). Сборка Vite → `dist/inbox-serve` (раздаёт inbox-api).
 Хэш-роутер. Макеты всех экранов/виджетов — [ux-mockups.md](ux-mockups.md) (нормативны
-по составу, не по пикселям).
+по составу, не по пикселям); сценарии использования с диаграммами переходов —
+[ux-usecases.md](ux-usecases.md).
 
 ## 1.1 Навигация и переходы
 

@@ -1,325 +1,147 @@
-# Module: inbox-core
+# Module: inbox-core (v2 — полный рерайт)
 
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md)
+> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
+> D-302 (журнал решений = датасет), D-305 (барьер готовности), D-317 (лента событий:
+> журнал + `lastReadAt` → непрочитанное/📬)
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Фундамент agent-inbox. Общее состояние (config, registry, audit) и VCS-интеграция.
-Переиспользуется и CLI, и serve-режимом. Все остальные модули зависят от inbox-core.
+Состояние и истина agent-inbox: **журнал событий (event store)** как единственный
+источник истины, реестр как кэш, конфиг, барьер готовности, dry-run. Очередь, лента,
+доска и датасет решений — проекции журнала.
 
 <!--/SECTION:MODULE_VISION-->
 
-<!--SECTION:MODULE_USAGE_EXAMPLE-->
+## 2. Журнал событий (`events.jsonl` на MR)
 
-## 2. Module Usage Example
-
-```ts
-import { StateStore, VcsInboxMock, VcsInboxReal } from '@/inbox-core';
-
-const store = new StateStore({ stateDir: '~/.gennady' });
-
-// dev/e2e: мок-данные
-const vcs = new VcsInboxMock();
-vcs.seed({ mrs: [...], contexts: {...} });
-
-// production: реальный VCS
-// const vcs = new VcsInboxReal({ config, token });
-
-const mrs = await vcs.getActionable();
-
-// дельта
-const registry = await store.loadRegistry();
-registry.updateDelta(mrs);
-await store.saveRegistry(registry);
-
-// ошибки структурированы
-// NETWORK → retry, AUTH → проверить токен, NOT_FOUND → MR удалён
+```json
+{"ts":"...","mr":"mail/messenger!174","kind":"task_status","taskId":"#14","actor":"queue","payload":{...}}
 ```
 
-<!--/SECTION:MODULE_USAGE_EXAMPLE-->
+Kinds: `task_created|task_status|artifact_produced|gitlab_event|widget_bump|proposal|
+decision|chat_turn|mutation|system`.
 
-<!--SECTION:ENTITY_INVENTORY-->
+**Контракт JournalPort (каноника — здесь; ссылка из корня §5.3):**
 
-## 3. Entity Inventory (Closed-World)
+- `append(entry)`: per-MR **один писатель в момент времени** — in-process очередь
+  сериализует продюсеров (sync/queue/chat/api). Запись — **строчный append** (одна
+  JSON-строка, O_APPEND + fsync); tmp+rename для журнала НЕ используется (остаётся для
+  реестра/конфига — иначе конкурентные append теряют записи). Каждая запись получает
+  монотонный `seq` (per MR).
+- `read()` / `since(cursor)`: порядок = `seq`; `cursor = seq` последней прочитанной;
+  `since(cursor) → {entries, nextCursor}` (основа пагинации ленты).
+- Гарантии: append-only; fsync-запись переживает краш; битый хвост (обрыв строки после
+  краша) отбрасывается при реплее.
+- MR-less события (boot, system, dryrun) — глобальный журнал `agent-inbox/events.jsonl`
+  (тот же контракт, `mr='system'`).
 
-_Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+**Payloads по kind (`ts, seq, mr, kind` — всегда обязательны):**
 
-| Name            | Type         | Purpose                                                                  |
-| --------------- | ------------ | ------------------------------------------------------------------------ |
-| `InboxConfig`   | Value Object | Конфиг: reposBase, vcsHost. Structured signal `configured: false`.       |
-| `InboxRegistry` | Value Object | Реестр MR: дельта (NEW/↑/idle), candidateHeadSha, lastReviewedHeadSha.   |
-| `AuditLog`      | Value Object | JSON Lines лог событий serve-режима. Append-only.                        |
-| `StateStore`    | Service      | Единая точка доступа к файлам состояния. Атомарность, миграции.          |
-| `VcsInboxPort`  | Port         | Абстракция VCS: `getActionable()`, `getMrContext()`, `getDiscussions()`. |
-| `VcsInboxMock`  | Adapter      | Реализация `VcsInboxPort` на мок-данных (для разработки и e2e).          |
-| `VcsInboxReal`  | Adapter      | Реализация `VcsInboxPort` через vcs-client (GitLab/GitHub).              |
+| kind              | продюсер       | payload (обязательное)                                         |
+| ----------------- | -------------- | -------------------------------------------------------------- |
+| task_created      | queue          | taskId, type, params, dependsOn, dedupKey, priority, createdBy |
+| task_status       | queue          | taskId, status, progress?, error?                              |
+| artifact_produced | pipeline       | taskId, path, producedBy{sessionId, model}                     |
+| gitlab_event      | vcs            | event (commits/threads/pipeline/approval), data                |
+| widget_bump       | api            | widgetId, lastActivity                                         |
+| proposal          | queue/pipeline | proposalId, capability, payload, producedBy                    |
+| decision          | api            | proposalId, verdict, diff?, actor                              |
+| chat_turn         | chat           | turnId, anchor?, role (operator/machine)                       |
+| mutation          | chat           | path, revision, snapshotId                                     |
+| system            | core           | event (boot/phase/dryrun/error), data                          |
 
-<!--/SECTION:ENTITY_INVENTORY-->
+### 2.1 Датасет решений (D-302) — первоклассная сущность
 
-<!--SECTION:ENTITY_SURFACES-->
-
-## 4. Entity Surfaces
-
-### `InboxConfig`
-
-- **Type:** Value Object
-- **Purpose:** Конфиг agent-inbox: reposBase, vcsHost. Структурированный сигнал при отсутствии.
-- **Public Properties:** `reposBase: string`, `vcsHost: string`, `configured: boolean`
-- **Public Operations:**
-  - `load()` — читает `config.json`, валидирует структуру, возвращает InboxConfig или `{ configured: false, missing: [...] }`
-  - `save(partial)` — атомарно обновляет ключи
-  - `unset(key)` — удаляет ключ
-- **Lifecycle:** Создаётся StateStore при старте, перечитывается при изменении.
-- **Errors & Degradation:** Повреждённый JSON → `configured: false` (не ошибка). Нечитаемый файл → `CONFIG` error (AI-22).
-- **Consumers:** Internal — `StateStore`, `inbox-api`; External — CLI `inbox config`.
-
-### `InboxRegistry`
-
-- **Type:** Value Object
-- **Purpose:** Реестр MR: дельта, stage, headSha для отслеживания изменений.
-- **Public Properties:** `entries: Record<webUrl, { project, iid, role, stage, lastSeenUpdatedAt, firstSeenAt, lastClassifiedAt, lastReviewedHeadSha?, lastApprovedHeadSha? }>`
-- **Public Operations:**
-  - `load()` — читает `inbox-registry.json`
-  - `updateDelta(mrs)` — вычисляет дельту: NEW / ↑ / idle
-  - `promoteReviewedHeadSha(webUrl)` — финализация разбора
-  - `save()` — атомарная запись
-- **Lifecycle:** Загружается при старте. Обновляется при каждом getActionable.
-- **Errors & Degradation:** Файл отсутствует → пустой реестр (не ошибка).
-- **Consumers:** Internal — `VcsInbox`, `inbox-roles`; External — CLI `inbox --json`.
-
-### `AuditLog`
-
-- **Type:** Value Object
-- **Purpose:** JSON Lines лог событий serve-режима. Только serve, не CLI.
-- **Public Properties:** Записи: `{ ts, mr, role, event, detail }`
-- **Public Operations:**
-  - `append(event)` — дописывает строку в `audit.jsonl`
-  - `query(mr)` — читает все события по MR
-  - `rotate()` — ротация при превышении размера
-- **Lifecycle:** Создаётся при первом событии serve. Append-only.
-- **Errors & Degradation:** Ошибка записи → логгируется, не блокирует.
-- **Consumers:** Internal — `inbox-api`; External — none.
-
-### `StateStore`
-
-- **Type:** Service
-- **Purpose:** Единая точка доступа к файловому состоянию `~/.gennady/agent-inbox/`.
-- **Public Operations:**
-  - `getStateDir()` → `string` — корень состояния (`~/.gennady` по умолчанию, `--state-dir` переопределяет). Единственный источник пути для всего, что пишется на диск (NFC-05): рабочие/сессионные директории узлов, worktrees, отчёты строятся от него, не от `os.tmpdir()`.
-  - `loadConfig()` → `InboxConfig`
-  - `saveConfig(partial)` → void
-  - `loadRegistry()` → `InboxRegistry`
-  - `saveRegistry(registry)` → void
-  - `loadAuditLog()` → `AuditLog`
-  - `appendAudit(event)` → void
-  - `queryAudit(mr)` → `AuditEntry[]`
-- **Lifecycle:** Singleton, инициализируется при старте.
-- **Errors & Degradation:** Ошибка записи → error code (AI-22).
-- **Consumers:** Internal — все модули agent-inbox; External — CLI-команды.
-
-### `VcsInboxPort`
-
-- **Type:** Port
-- **Purpose:** Абстракция доступа к VCS (GitLab/GitHub). Позволяет подменить real → mock для тестов.
-- **Public Operations:**
-  - `getActionable()` → `ActionableMr[]`
-  - `getMrContext(webUrl)` → `MrContext`
-  - `getDiscussions(webUrl, opts)` → `Discussion[]`
-- **Consumers:** Internal — `inbox-roles`, `inbox-api`, CLI-команды.
-
-### `VcsInboxMock`
-
-- **Type:** Adapter
-- **Implements:** `VcsInboxPort`
-- **Purpose:** Мок-реализация VCS для разработки дашборда и e2e-тестов. Возвращает предзагруженные данные.
-- **Public Operations:**
-  - `seed(mrs, contexts)` — загрузить мок-данные
-  - `getActionable()` — возвращает seeded MR
-- **Lifecycle:** Создаётся с начальными данными. Используется только в dev/e2e-окружении.
-- **Consumers:** DI-контейнер (внедряется вместо VcsInboxReal).
-
-### `VcsInboxReal`
-
-- **Type:** Adapter
-- **Implements:** `VcsInboxPort`
-- **Purpose:** Реальная VCS-интеграция через существующий `vcs-client`. Provider-agnostic. Без кэша.
-- **Public Operations:**
-  - `getActionable()` → `ActionableMr[]`
-  - `getMrContext(webUrl)` → `MrContext`
-  - `getDiscussions(webUrl, opts)` → `Discussion[]`
-- **Lifecycle:** Зависит от InboxConfig и токена.
-- **Errors & Degradation:** `NETWORK` / `AUTH` / `RATE_LIMIT` / `NOT_FOUND` (AI-22).
-- **Consumers:** Internal — `inbox-roles`, `inbox-api`; External — CLI `inbox`, `inbox-context`.
-<!--/SECTION:ENTITY_SURFACES-->
-
-<!--SECTION:MODULE_CONTRACTS-->
-
-## 5. Module Contracts (DbC)
-
-### Port: `VcsInboxPort`
-
-- **Runtime Backing:** `real-runtime` (VcsInboxReal), `simulation` (VcsInboxMock)
-- **Verification Levels:** `contract`, `unit`, `integration`
-- **Deferred Runtime Scope:** None
-
-**Contract (DbC):**
-
-- **Preconditions:** `InboxConfig.configured === true` (только для VcsInboxReal)
-- **Postconditions:**
-  - `getActionable()` → `ActionableMr[]` (может быть пустым)
-  - `getMrContext(webUrl)` → `MrContext`
-  - `getDiscussions(webUrl)` → `Discussion[]`
-- **Invariants:**
-  - VcsInboxMock: возвращает seeded данные, детерминирован
-  - VcsInboxReal: без кэша, каждый вызов = запрос к API
-
-### Adapter: `VcsInboxMock`
-
-- **Implements:** `VcsInboxPort`
-- **Runtime Backing:** `simulation`
-- **Verification Levels:** `unit`
-- **Side Effects:** None (чистые данные из памяти)
-
-### Adapter: `VcsInboxReal`
-
-- **Implements:** `VcsInboxPort`
-- **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `integration`
-- **Side Effects:** HTTPS-запросы к GitLab/GitHub API. Нормализация ответов.
-- **Errors:** `NETWORK` / `AUTH` / `RATE_LIMIT` / `NOT_FOUND` (AI-22).
-
-### Service: `StateStore`
-
-- **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `contract`, `unit`, `integration`
-- **Deferred Runtime Scope:** None
-
-**Contract (DbC):**
-
-- **Preconditions:**
-  - `stateDir` — абсолютный путь, существует или будет создан
-  - Вызов `save*` только после успешного `load*`
-- **Postconditions:**
-  - После `saveConfig` — `config.json` записан атомарно (tmp + rename)
-  - После `saveRegistry` — `inbox-registry.json` записан атомарно
-  - После `appendAudit` — одна строка дописана в `audit.jsonl`
-  - `loadConfig` при отсутствии файла → `{ configured: false, missing: [...] }`
-  - `loadRegistry` при отсутствии файла → пустой реестр
-- **Invariants:**
-  - config.json, registry.json, audit.jsonl — валидный JSON после атомарной записи
-  - Повреждённый config.json → `{ configured: false }`, исходный файл не модифицируется
-  - Несовместимый version → `CONFIG` error
-
-### Service: `InboxRegistry`
-
-- **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `contract`, `unit`
-- **Deferred Runtime Scope:** None
-
-**Contract (DbC):**
-
-- **Preconditions:**
-  - `updateDelta(mrs)` — mrs из `VcsInbox.getActionable()`
-  - `promoteReviewedHeadSha(webUrl)` — запись существует
-- **Postconditions:**
-  - MR нет в реестре → `NEW`
-  - `lastSeenUpdatedAt` изменился → `↑`
-  - `lastSeenUpdatedAt` не изменился → `idle`
-  - `promoteReviewedHeadSha` → обновляет `lastReviewedHeadSha`
-- **Invariants:**
-  - Один webUrl = одна запись
-  - `lastReviewedHeadSha` не может быть новее `lastSeenUpdatedAt`
-  <!--/SECTION:MODULE_CONTRACTS-->
-
-<!--SECTION:PUBLIC_OPTIONS-->
-
-## 6. Public Options & Policies
-
-| Option      | Bound To                 | Status                                                    |
-| ----------- | ------------------------ | --------------------------------------------------------- |
-| `stateDir`  | `StateStore` constructor | active — `~/.gennady` default, override via `--state-dir` |
-| `reposBase` | `InboxConfig`            | active — из config.json или `--repos-base` флага          |
-| `vcsHost`   | `InboxConfig`            | active — из config.json или `--vcs-host` флага            |
-
-<!--/SECTION:PUBLIC_OPTIONS-->
-
-<!--SECTION:FILE_STRUCTURE-->
-
-## 7. File Structure
-
-```
-services/agent-inbox/modules/inbox-core/
-├── inbox-config.ts          # InboxConfig: load, save, validate
-├── inbox-registry.ts        # InboxRegistry: load, delta, promote, save
-├── audit-log.ts             # AuditLog: append, query, rotate
-├── state-store.ts           # StateStore: единая точка доступа
-├── vcs-inbox.port.ts        # VcsInboxPort: абстракция
-├── vcs-inbox.mock.ts        # VcsInboxMock: мок-реализация
-├── vcs-inbox.real.ts        # VcsInboxReal: vcs-client интеграция
-├── errors.ts                # Коды ошибок (AI-22)
-├── __tests__/
-│   ├── inbox-config.test.ts
-│   ├── inbox-registry.test.ts
-│   ├── audit-log.test.ts
-│   ├── state-store.test.ts
-│   ├── vcs-inbox.mock.test.ts
-│   └── vcs-inbox.port.test.ts
+```json
+{"kind":"proposal","proposalId":"p-881","capability":"post_findings","mr":"...",
+ "payload":{"findings":["F-1","F-2"]},"producedBy":{"sessionId":"...","taskId":"#11","model":"..."}}
+{"kind":"decision","proposalId":"p-881","verdict":"accept|edit|reject",
+ "diff":"...","ts":"...","actor":"operator"}
 ```
 
-**File Mapping:**
+- Каждое предложение машины (постинг, реакция, резолв, аппрув, ответ в тред) пишется как
+  `proposal`; решение оператора — как `decision` (accept/edit/reject + diff при edit).
+- Метрики: `accept-rate` и `edit-rate` **per capability**; порог градации (стартовый:
+  accept ≥ 90% на выборке ≥ 20) → capability переходит в auto-mode (с лентой
+  автодействий + undo).
+- Потребители: inbox-eval (метрики схожести), dashboard (индикатор градации),
+  аналитика (какие типы решений машине не удаются).
+- Замкнутый набор capability: `post_findings|post_reply|react|resolve|approve|
+update_description`. `accept-rate` вычисляет **inbox-eval** по журналу; текущий режим
+  capability (`proposal|auto`) хранится в реестре-кэше `capabilities{}`, переключается
+  по порогу; queue применяет: `proposal` → виджет решения, `auto` → effect + запись в
+  ленту + undo.
 
-- `inbox-config.ts` — `InboxConfig`
-- `inbox-registry.ts` — `InboxRegistry`
-- `audit-log.ts` — `AuditLog`
-- `state-store.ts` — `StateStore`
-- `vcs-inbox.port.ts` — `VcsInboxPort`
-- `vcs-inbox.mock.ts` — `VcsInboxMock`
-- `vcs-inbox.real.ts` — `VcsInboxReal`
-- `errors.ts` — Error codes
-<!--/SECTION:FILE_STRUCTURE-->
+## 3. Реестр — только кэш
 
-<!--SECTION:MODULE_DECISION_LOG-->
+`inbox-registry.json` остаётся кэшем (никогда не источник истины). Поля (все —
+пересобираемые из GitLab + журналов):
 
-## 8. Module Decision Log
+| Поле                  | Форма                   | Назначение                                                           |
+| --------------------- | ----------------------- | -------------------------------------------------------------------- |
+| `lastSeenUpdatedAt`   | ISO ts                  | дельта-опрос                                                         |
+| `lastReviewedHeadSha` | sha                     | детект новых коммитов (🔀)                                           |
+| `lastReadAt`          | ISO ts                  | непрочитанное/📬 (D-317): unread = записи журнала после `lastReadAt` |
+| `capabilities`        | `{cap: proposal\|auto}` | режимы градации (§2.1)                                               |
+| `assignedRole`        | `author\|reviewer`      | **только** override для mentioned-only MR (D-304)                    |
 
-- `InboxRegistry.updateDelta()` mutates in-memory registry: sets `lastSeenUpdatedAt` / `firstSeenAt` for NEW entries, updates `lastSeenUpdatedAt` for ↑ entries — avoids rebuild of entire registry on every tick
-- `VcsInboxReal._resolveInboxClient()` — provider-aware client factory that resolves the correct vcs-client implementation at call time; throws for unsupported providers (e.g. GitHub)
-- All `VcsInboxReal` methods (`getActionable`, `getMrContext`, `getDiscussions`) use `_resolveInboxClient()` for identity lookups — single resolution point per operation
-- `AuditLog`: serial lock via Promise chain prevents TOCTOU rotation race — consecutive appends queued sequentially, avoiding interleaved writes during rotation
-- `AuditLog.query()`: sort by `Date.getTime()` (numeric comparison), not lexicographic `localeCompare` — ensures correct chronological order regardless of timezone format
+## 4. Барьер готовности (D-305)
 
-<!--/SECTION:MODULE_DECISION_LOG-->
+Фазы: `connect → poll → reconcile → restore → ready` (+`failed` с причиной и retry).
+Контракт `GET /api/boot` → `{phase, progress: {done, total, label}, ready, error?}`.
+Bootstrap порядок: config → журналы → **api listen** (до фаз — иначе фазы невидимы по
+HTTP) → `connect` (vcs connect) → `poll` (первый опрос) → `reconcile` (сверка
+реестр/диск) → `restore` (восстановление очередей из журналов) → `ready`.
+Worktree — не фаза (лениво, фоном).
 
-<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+## 5. Конфиг и dry-run
 
-## 9. Inter-Module Dependencies
+`agent-inbox/config.json`: `{version: 1, reposBase: path, vcsHost: string}`; при
+отсутствии/битом файле — `{configured: false, missing[]}` (без throw), boot → фаза
+`failed` с причиной. Dry-run: подавляет **все** `effect_*` задачи (ни один эффект не
+уходит в GitLab); каждый подавленный эффект = запись `system` с payload `dryrun` в
+журнал MR; SSE-кадр `dryrun` эмитит inbox-api по этой записи.
 
-- **Depends on:** none (фундамент)
-- **Scope Reference (cross-scope):** `vcs` (`../../vcs/vcs.spec.md`) — VcsClient inbox/discussions/identity
-- **Provides to:** `inbox-api`, `inbox-roles`, `inbox-dashboard`, `inbox-opencode`
+## 6. Хранилище (как было, без изменений адресов)
 
-```mermaid
-graph TD
-    inbox-api --> inbox-core
-    inbox-dashboard --> inbox-core
-    inbox-roles --> inbox-core
-    inbox-opencode --> inbox-core
-    inbox-core -. Scope Reference .-> vcs
+```
+~/.gennady/
+├── inbox-registry.json              # кэш
+└── agent-inbox/
+    ├── config.json
+    ├── mrs/<group__proj-iid>/
+    │   ├── events.jsonl             # ЖУРНАЛ (истина)
+    │   ├── worktree/
+    │   └── report/ (PLAN/README/review.json/tasks/sessions/)
+    └── telemetry/ (phase-timings, tool-trace)
 ```
 
-<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+## 7. Приёмка
 
-<!--SECTION:HANDOFF-->
+1. Краш сервера → рестарт → очереди и лента восстановлены из `events.jsonl`; карточки
+   не деградировали.
+2. Каждое предложение и каждое решение пишутся в журнал (проверка записей proposal/
+   decision на реальном потоке).
+3. `/api/boot` отражает фазы; падение фазы видимо с причиной и retry.
+4. Реестр: удаление файла не ломает доску (пересборка из GitLab + журналов).
 
-## 10. Handoff to task-scaffolding
+## Critic Rounds
 
-- **Implementation files to be created:** 6 файлов (см. File Structure)
-- **Test files to be created:** 5 файлов (см. `__tests__/`)
-- **Stack dependencies:**
-  - Language: TypeScript (resolves to `ai/directives/coding/typescript-rules.xml`)
-  - Test framework: node:test (resolves to `ai/directives/testing/node-test.xml`)
-- **Module Rules Additions:** None
-- **Open risks:** None
-<!--/SECTION:HANDOFF-->
+### Round 1 — 2026-07-29
+
+- Verdict: NEEDS_WORK (1 CRITICAL, 4 MAJOR)
+- Accepted: 6 — контракт JournalPort (cursor/seq/конкурентные писатели; tmp+rename терял бы записи), payloads по kind, порядок слушателя boot (фазы были невидимы по HTTP), самоссылки «как сейчас» (config/dry-run/append), содержание D-317 (lastReadAt → 📬), снятие ложного владения D-329
+- Rejected: 0
+- Reconcile: JournalPort → каноника здесь, корень §5.3 ссылается (EXTEND); snapshots → REUSE `report/snapshots/`
+- Changes: §2 контракт JournalPort + таблица payloads; §2.1 механика capability (замкнутый набор, хранение режима, кто переключает); §3 поля реестра; §4 порядок bootstrap + progress {done,total,label}; §5 config-схема и dry-run; шапка — D-329 убран
+
+### Round 2 — 2026-07-29
+
+- Stop: лимит оператора (2 раунда); R2-валидация не вернулась (пустой отчёт диспетчей) — правки R1 в силе, статус: недовалидировано
+
+## Handoff Rules Additions
+
+- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
+- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы

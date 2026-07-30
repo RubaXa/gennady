@@ -1,146 +1,113 @@
-<!--SECTION:SCOPE_TYPE-->
+# Module: inbox-eval (v2 — полный рерайт)
 
-## scope-type
+> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
+> D-302 (метрики из датасета решений), §10 корневой спеки (приёмка)
 
-module (eval harness for the agent-inbox reviewer pipeline)
+<!--SECTION:MODULE_VISION-->
 
-<!--/SECTION:SCOPE_TYPE-->
+## 1. Module Vision
 
-<!--SECTION:VISION-->
+Харнесс приёмки и измерения: прогон сценариев S1–S8 на **реальном MR** (моки — только
+для UI-разработки, никогда для приёмки/демо — урок D-116) + **метрики схожести решений**
+из датасета журнала — количественный путь к финальной цели (автоном-эмулятор).
 
-## 1. Vision & Primary Goal
+<!--/SECTION:MODULE_VISION-->
 
-Детерминированный, **воспроизводимый и проверяемый** эвал reviewer-пайплайна agent-inbox на
-зафиксированном реальном MR. Прогоняет весь путь ревью по стадиям и проверяет каждый **гейт**
-булевой ассерцией с уликой (evidence). Итог — машинный отчёт `eval-report.json` + человекочитаемый
-`eval-report.md`; ненулевой exit при любом красном гейте. Каждый реальный слом из
-`SESSION-REFLECTION.md` (base SHA, cleanup при re-scaffold, WAF на теле, line_code вне diff-hunk,
-`|` в таблице, имена секций) закодирован явным гейтом и ловится ДО постинга.
+## 2. Сценарные прогоны
 
-**Что проверяет предметно:** что пайплайн проходит все стадии и все гейты на реальных данных —
-то есть «машинерия» ревью работает и не даёт агенту пропустить шаг.
+| Прогон           | Проверяет                                 | Критерий PASS (измеримый)                                                                          |
+| ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| boot (S1)        | фазы → ready                              | все фазы ≤ 5 мин; после ready ни одна карточка не сменила группу внимания >1 раза                  |
+| role_pickup (S2) | роль → очередь; mentioned → «ждут других» | журнал: `task_created` pipeline-задачи; ноль ручных актов                                          |
+| pipeline (S3)    | слои 1–2, coverage, синтез с указателями  | PLAN.md содержит mandatory-дорожки; verdict-гейт в журнале; X-ray синтеза без инлайна результатов  |
+| events (S4/S5)   | коммит/тред → задача → виджет             | после пуша: `task_created(verify_fix\|delta_review)` ≤ 3 мин; после треда: `thread_triage` ≤ 3 мин |
+| chat (S6)        | якорь → маршрут → ответ/мутация           | ответ содержит якорь; мутация: revision+1, `mutation` в журнале, undo возвращает снапшот           |
+| effects (S7)     | идемпотентность, права резолва            | повторный effect → ровно 1 маркер аудита; resolve чужого → rejection + причина                     |
+| autonomy (S8)    | proposal → decision → градация            | proposal/decision в журнале; при accept ≥ 90% (n≥20) capability=auto в реестре                     |
+| parallel         | 2 MR, неблокирование                      | задача MR-B: queued→running ≤ 30 сек при running задаче MR-A (инцидент 2026-07-28)                 |
+| crash_recovery   | краш → восстановление                     | set(карточки до) == set(карточки после); очереди целы                                              |
+| coverage_gate    | недочит → гейт → continue                 | гейт fail со списком файлов; `continue` той же сессии закрыл чеклист                               |
 
-<!--/SECTION:VISION-->
+### 2.1 Поверхность харнесса
 
-<!--SECTION:NON_GOALS-->
+`gennady inbox eval --mr <url> [--runs <list>] [--report <path>]` → пишет отчёт
+(default `~/.gennady/agent-inbox/eval-reports/<ts>.json`); exit code 0 = все прогоны
+PASS. REUSE: развивает существующий run-mode харнесс (TSK-119/121), не новый вход.
 
-## 2. Coverage & Non-Coverage (честно)
+### 2.2 `eval-report.json`
 
-**Проверяется детерминированно (гейты ниже):** контекст MR и корректный base SHA; scaffold +
-cleanup; валидация enriched/filled/README; coverage ledger; tool-call сверка; mermaid-валидность;
-точные имена секций; экранирование `|`; для каждого предложенного линейного замечания — что строка
-реально в diff-hunk; размер общего комментария < WAF-порога; дедуп/идемпотентность постинга.
+```json
+{"mr":"...","ts":"...","runs":[{"id":"pipeline","status":"pass|fail","evidence":["..."]}],
+ "metrics":{"acceptRate":{"post_findings":{"rate":0.94,"n":31}},"editRate":{...},
+ "timeToDecisionSec":{...}},"verdict":"pass|fail"}
+```
 
-**НЕ проверяется этим эвалом (и почему):**
+Тренд: append-only `eval-reports/trend.jsonl` (строка на прогон).
 
-- **Качество самого ревью** (релевантность/полнота находок) — недетерминировано, это отдельный
-  слой LLM-эвалов (см. EV-09, отдельная задача); здесь проверяется только валидность артефактов.
-- **Реальный постинг в GitLab** — намеренно **dry-run**: эвал НЕ пишет в !1296. Реальный постинг
-  верифицируется отдельным эвалом на заведомо тестовом MR.
-- **Serve-режим (граф ролей)** — этот эвал гоняет CLI-пайплайн (то, что работает сегодня);
-  serve-вариант — расширение после замыкания конвейера (EV-10).
-- **Контент fan-out сессий** — агентно и недетерминировано по тексту; проверяется только валидность
-  их артефактов (filled-стадия), не формулировки.
+### 2.3 Предусловия стенда
 
-<!--/SECTION:NON_GOALS-->
+- MR: оператор — author или reviewer; ≥2 файла в диффе; для S5 — неотвеченный тред
+  (или скрипт создаёт через API).
+- Токен: scopes `api` (discussions) + `write` (пуш коммита в ветку MR для S4).
+- Fault-injection: S4 — скрипт пушит коммит; crash_recovery — SIGKILL серверу при
+  running задаче; coverage_gate — чеклист дорожки патчится доп. файлом до запуска.
+- Таймауты: sync ~1/мин → ожидание событий ≤ 3 мин.
 
-<!--SECTION:STAGES-->
+## 3. Метрики автономии (из датасета D-302)
 
-## 3. Стадии пайплайна (каждая → PASS-проверка)
+| Метрика                      | Источник              | Цель                                                                               |
+| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| accept-rate per capability   | proposal/decision     | ≥ порога D-302 (accept ≥ 90%, n ≥ 20) → градация в auto; отчёт обязан показывать n |
+| edit-rate + edit-diff размер | decision.verdict=edit | informational (не гейт): куда машина недотягивает                                  |
+| time-to-decision оператора   | ts proposal→decision  | informational: экономия времени человека                                           |
+| coverage-факт                | tool-trace × чеклист  | 100% прочтения                                                                     |
 
-| ID  | Стадия            | Команда/действие                                   | PASS-проверка (детерминированная)                                            |
-| --- | ----------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
-| S0  | clean-slate       | `rm -rf reports/<mr>/`                             | папка отчёта MR пуста перед прогоном                                         |
-| S1  | preflight         | `inbox --json`                                     | exit=0, `configured:true`, целевой MR присутствует                           |
-| S2  | context           | `inbox-context --url <mr>`                         | exit=0, `worktree` существует, `diff_refs.base_sha` непуст, changeset непуст |
-| S3  | scaffold          | `inbox-review-plan --scaffold --base <base> --ref` | PLAN.md + tasks/\*.task.md + README.md + HISTORY.md созданы                  |
-| S4  | enrich            | наполнить `## Контекст` в task-файлах              | все task-файлы имеют непустой Контекст                                       |
-| S5  | validate-enriched | `inbox-review-plan --validate --stage enriched`    | exit=0, `ok:true`                                                            |
-| S6  | fan-out           | сабагенты заполняют дорожки                        | все task-файлы `status: filled`                                              |
-| S7  | validate-filled   | `inbox-review-plan --validate --stage filled`      | exit=0, `ok:true`                                                            |
-| S8  | synthesize        | написать README.md по эталону                      | README.md существует, секции по эталону                                      |
-| S9  | validate-readme   | `inbox-review-plan --validate`                     | exit=0, `ok:true`                                                            |
-| S10 | post-precheck     | проверка предложенных действий ДО постинга         | все линейные — в diff-hunk; тело общего < порога (см. гейты)                 |
-| S11 | post (dry-run)    | EffectExecutor в dry-run                           | публикуемо только валидное; дедуп; в GitLab ничего не пишется                |
+Отчёт: `eval-report.json` + человекочитаемая сводка + тренд по времени (как растёт
+схожесть решений).
 
-<!--/SECTION:STAGES-->
+## 4. Политика моков
 
-<!--SECTION:GATES-->
+Моки допустимы только для разработки UI. Любая приёмка, демо и скриншоты — реальный
+GitLab, реальный MR, реальный журнал (урок: demo на моках скрыл реальные баги,
+2026-07-22). Mock-слой описан в отдельной существующей спеке `inbox-mocks`; здесь —
+только политика его использования.
 
-## 4. Гейты (булевые инварианты, из SESSION-REFLECTION)
+## 4.1 Non-goals
 
-| ID  | Гейт                 | Инвариант                                                                         | Улика (как проверяем)                                                | Слом в рефлексии |
-| --- | -------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------- |
-| G1  | base-sha-source      | base = `diff_refs.base_sha` из `inbox-context`, НЕ пересчитанный `git merge-base` | использованный base == `context.diff_refs.base_sha`                  | Шаг 3            |
-| G2  | scaffold-cleanup     | повторный `--scaffold` не оставляет stale task-файлов                             | после re-scaffold в tasks/ только актуальные дорожки                 | Шаг 4            |
-| G3  | validate-enriched-ok | enriched-стадия валидна                                                           | `--validate --stage enriched` → `ok:true`                            | Шаг 6            |
-| G4  | table-pipe-escaped   | нет незаэкранированного `\|` внутри ячеек Markdown-таблиц                         | валидатор не падает на token; либо линт таблиц                       | Шаг 8            |
-| G5  | validate-filled-ok   | filled-стадия валидна (+ coverage ledger + tool-call сверка)                      | `--validate --stage filled` → `ok:true`                              | Шаг 8            |
-| G6  | section-name-exact   | системные заголовки README точны (`## Архитектура`, без `(C4)`)                   | `--validate` (README) → `ok:true`                                    | Шаг 9            |
-| G7  | mermaid-valid        | все mermaid-блоки синтаксически валидны                                           | ArtifactValidator mermaid-парсер → без ошибок                        | (новый)          |
-| G8  | line-in-diff-hunk    | каждое линейное замечание — на строке, реально входящей в diff-hunk               | `git diff --unified=0 base..HEAD -- <file>` содержит целевой newLine | Шаг 15c,g        |
-| G9  | body-size-under-waf  | тело общего комментария < порога (по умолчанию 8KB)                               | `len(body) < threshold`                                              | Шаг 15c          |
-| G10 | post-idempotent      | повторный dry-run постинг не даёт дублей (`effect_applied`)                       | второй прогон S11 → 0 новых действий                                 | Шаг 15c (дубли)  |
+Не CI-интеграция · не нагрузочное тестирование · не автозапуск по расписанию · не
+замена unit/e2e-тестам репозитория.
 
-**«Все гейты пройдены» = G1..G10 зелёные И S0..S11 завершены без обрыва.**
+## 5. Приёмка
 
-<!--/SECTION:GATES-->
+§2 — полный регрессионный набор; **релизный гейт**: прогоны pipeline, parallel,
+crash_recovery + метрики (при n ≥ 20 per capability).
 
-<!--SECTION:SURFACE-->
+1. Прогон pipeline на реальном MR: PASS + скриншоты стадий (план, дорожки, синтез,
+   виджеты).
+2. Метрики §3 посчитаны из реального журнала (выборка: неделя И n ≥ 20, что позже).
+3. Parallel-прогон воспроизводит инцидент и доказывает неблокирование.
 
-## 5. Surface (что строим)
+## Critic Rounds
 
-- `services/agent-inbox/modules/inbox-eval/eval-driver.ts` — тонкий драйвер: гоняет РЕАЛЬНЫЙ граф
-  через `runMrsOnce` (serve run-mode, TSK-121) на списке MR + seed-состоянии, прогоняет гейты
-  G1–G10 (TSK-118) по произведённым артефактам, собирает `eval-report.json` + `.md`, exit≠0 при
-  любом красном гейте. НЕ переоркестрирует пайплайн (прежняя форма `eval-harness.ts` отменена).
-- `services/agent-inbox/modules/inbox-eval/gates.ts` — реализация G1..G10 (чистые проверки:
-  вход — артефакты/контекст/diff, выход — `{gate, pass, evidence}`).
-- `services/agent-inbox/modules/inbox-eval/diff-hunk.ts` — парсер `git diff --unified=0` → карта
-  файл→диапазоны newLine (для G8).
-- `services/agent-inbox/modules/inbox-eval/eval-report.ts` — типы + сериализация отчёта.
-- e2e-обёртка: `e2e/inbox-serve/reviewer-eval.spec.ts` — гоняет harness на fixture MR, снимает
-  скрины дашборда на значимых стадиях (по выбранной событийной модели), ассертит `eval-report`.
-- CLI: `gennady inbox-eval --url <mr> [--live|--fixture]` — запуск эвала.
+### Round 1 — 2026-07-29
 
-**Fixture MR (по умолчанию):** `vk-workspace/superapp!571` или `calendar/board!1296` — параметризуемо.
-Пререквизиты среды (у оператора уже есть под скилл): токен к `gitlab.corp.mail.ru`, opencode+KLM.
+- Verdict: NEEDS_WORK (6 MAJOR, 5 MINOR, 1 INFO)
+- Accepted: 9 — прогоны S2/S6/S8 добавлены, §2 vs §5 (полный набор vs релизный гейт), гейты переведены на измеримые критерии PASS, точка входа CLI `gennady inbox eval`, схема eval-report.json + trend.jsonl, предусловия стенда + fault-injection, D-116 раскрыт инлайном, выборка n≥20 вместо «недели», non-goals + владение inbox-mocks
+- Rejected: 0
+- Reconcile: CLI eval → REUSE существующий run-mode харнесс (TSK-119/121), не новый вход
+- Changes: §2 полная таблица + §2.1–2.3; §3 пороги D-302 + n; §4 D-116/mocks/non-goals; §5 релизный гейт
 
-<!--/SECTION:SURFACE-->
+### Round 2 — 2026-07-29
 
-<!--SECTION:BDD-->
+- Stop: лимит оператора (2 раунда); R2-валидация не вернулась (пустой отчёт диспетчей) — правки R1 в силе, статус: недовалидировано
 
-## 6. BDD (ключевые)
+## Handoff Rules Additions
 
-- GIVEN fixture MR WHEN эвал S2 THEN base == diff_refs.base_sha (G1), не пересчитанный merge-base
-- GIVEN повторный scaffold WHEN S3 THEN нет stale task-файлов (G2)
-- GIVEN filled-артефакты с `|` в ячейке WHEN S7 THEN G4 краснеет с указанием файла/строки
-- GIVEN README с `## Архитектура (C4)` WHEN S9 THEN G6 краснеет
-- GIVEN линейное замечание на строке вне diff-hunk WHEN S10 THEN G8 краснеет ДО постинга
-- GIVEN тело общего комментария > 8KB WHEN S10 THEN G9 краснеет
-- GIVEN два прогона S11 подряд WHEN dry-run THEN второй даёт 0 новых действий (G10)
-- GIVEN все гейты зелёные WHEN эвал завершён THEN `eval-report.json.status == "PASS"`, exit=0
+- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
+- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
 
-<!--/SECTION:BDD-->
+## 4.2 Drift-sentinel
 
-<!--SECTION:REAL_PROOF-->
-
-## 7. Обязательный артефакт: реальные скрины реального прогона
-
-Эвал считается верифицированным ТОЛЬКО когда предъявлен **живой прогон на реальном MR**
-(`EVAL_MR_URL`, напр. `vk-workspace/superapp!571` / `calendar/board!1296`), а не только моки/фикстуры.
-Обязательные скрины (в gitignored `e2e/inbox-serve/test-results/screenshots/eval-real-*`):
-
-- `01-plan` — настоящий PLAN.md этого MR (дорожки fan_out).
-- `02-report-diagram` — REPORT.md с **реально отрисованной** mermaid-диаграммой: в DOM
-  `svg[id^="mmd-"]` с узлами/рёбрами. НЕ допускается кадр с меткой «отрисовка…» или raw-source —
-  это провал требования (диаграмма должна быть НАРИСОВАНА, а не в процессе).
-- `03-track` — артефакт реальной дорожки (находки/кандидаты/вердикт).
-- `04-actionpanel` — предложенные действия (линейные замечания + общий комментарий).
-- `05-eval-report` — итог: `status` + таблица гейтов G1–G10.
-
-**Инвариант R-01:** скрин `02-report-diagram` невалиден, если mermaid не дорисован (placeholder/raw).
-E2e ждёт настоящий `<svg>` (helper `wait-render`) с генеровым таймаутом, иначе падает — не снимает
-недорисованное. Моки/фикстуры остаются как быстрый регресс-чек, но НЕ заменяют живой прогон.
-
-<!--/SECTION:REAL_PROOF-->
+Прогоны на реальном MR — единственный слой, ловящий расхождение «фейк/кассета vs
+реальность» (TSK-166). Падение прогона при зелёных кассетных тестах = сигнал дрейфа
+внешнего API → кассеты перезаписываются, контракт-сьют обновляется.
