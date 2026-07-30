@@ -93,14 +93,14 @@ e2e/inbox-serve/
 
 - **Depends on:** `inbox-core` (типы ActionableMr, MrContext)
 - **Scope Reference (cross-scope):** None
-- **Provides to:** `inbox-api` (тесты), `inbox-dashboard` (e2e), `inbox-roles` (тесты), `inbox-opencode` (тесты)
+- **Provides to:** `inbox-api` (тесты), `inbox-dashboard` (e2e), `inbox-queue`/`inbox-pipeline` (тесты), `inbox-opencode` (тесты)
 
 ```mermaid
 graph TD
     inbox-mocks --> inbox-core
     inbox-api -. test .-> inbox-mocks
     inbox-dashboard -. test .-> inbox-mocks
-    inbox-roles -. test .-> inbox-mocks
+    inbox-queue -. test .-> inbox-mocks
 ```
 
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->

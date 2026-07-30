@@ -32,7 +32,7 @@
 
 `gennady inbox eval --mr <url> [--runs <list>] [--report <path>]` → пишет отчёт
 (default `~/.gennady/agent-inbox/eval-reports/<ts>.json`); exit code 0 = все прогоны
-PASS. REUSE: развивает существующий run-mode харнесс (TSK-119/121), не новый вход.
+PASS. REUSE: развивает существующий run-mode харнесс (`services/agent-inbox/serve/run-mode.ts`, путь `--mrs --once`), не новый вход.
 
 ### 2.2 `eval-report.json`
 
