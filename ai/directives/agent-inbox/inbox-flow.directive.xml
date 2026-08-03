@@ -70,11 +70,29 @@
       behaviour → scenarios → entities → verdicts → candidates). Heavy sections that obscure the
       overview (per-topic deep-dives, file table, entity detail cards, candidate table) MUST be
       wrapped in `<details><summary>` so the description is scannable — the reader sees the verdict
-      at a glance and drills down on demand. Mermaid diagrams stay OUTSIDE collapsed blocks (GitLab
-      renders them; collapsing hides the diagram). Minimal visible (non-collapsed) structure:
-      TL;DR paragraph, change map (Mermaid), key decisions table, boundaries, status. The title
-      follows the project's conventional-commit style: `type(scope): description` — no `+`
-      concatenation, no internal tokens, no raw commit SHAs.
+      at a glance and drills down on demand. Fold aggressively: only ONE orienting diagram (the
+      overview change map) and the TL;DR/status line stay visible by default — every other diagram
+      (before→after fix diagrams, C4/architecture, sequence flows, per-topic deep-dives) goes INSIDE
+      a `<details><summary>` alongside its explanation. GitLab still renders Mermaid inside an opened
+      `<details>` block — collapsing costs one click, not the diagram. The `<summary>` text itself
+      must carry the gist (e.g. "🔴 Блокер N — <one-line problem> (было → стало)") so the reader
+      knows what is behind the fold without opening it. Minimal visible (non-collapsed) structure:
+      TL;DR paragraph, ONE change-map diagram (Mermaid), status line. The title follows the project's
+      conventional-commit style: `type(scope): description` — no `+` concatenation, no internal
+      tokens, no raw commit SHAs.
+    </Axiom>
+
+    <Axiom id="AX_MR_BODY_NO_STATIC_DIFFSTAT">
+      NEVER put aggregate diff-size numbers in the MR description — file count, `+N/−M` line totals,
+      "K файлов изменено" and the like, whether in the TL;DR, a table, or a `<details>` summary.
+      GitLab's own diff view already shows this, live, updated on every push — the description's copy
+      is a snapshot that goes stale the moment the next commit lands (exactly what happened on
+      MR!177: "4 коммита · 30 файлов · +1001/−115" was already wrong before the round that added it
+      finished). This is distinct from review-outcome counts (findings per track, verdict tallies for
+      a completed round) — those describe what happened in a review, not the current diff's size, and
+      stay in scope. Per-file category tables that exist ONLY to restate diff numbers (file → path,
+      +lines, −lines) are redundant with GitLab's diff tab — drop them; name specific files in prose
+      only where the reader needs to know WHICH files, not how big the change was.
     </Axiom>
   </BeliefState>
 
