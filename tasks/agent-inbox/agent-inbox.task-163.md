@@ -134,6 +134,7 @@
 - re-anchor → `anchor.test.ts` :: `anchor resolves by quote after mutation else stale`
 - история → `mutation-flow.test.ts` :: `chat history survives restart via journal`
 - CAS → `mutation-flow.test.ts` :: `cas conflict is visible and undo is lifo per artifact`
+- undo LIFO → `mutation-flow.test.ts` :: `undo unwinds snapshots lifo per artifact`
 
 - read-only → `mutation-flow.test.ts` :: `operator session cannot write`
 - elementId-якорь → `anchor.test.ts` :: `non text anchor resolves by elementId else stale`

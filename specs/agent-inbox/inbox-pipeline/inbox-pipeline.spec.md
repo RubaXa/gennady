@@ -13,6 +13,8 @@
 всегда), **интеллект расширяет** (слой 3 advisory). Ревью задаёт вопросы обоснованности,
 а не только ищет баги построчно.
 
+Классы реализации: `PlanTemplate` (§2), `TriggerRegistry` (§3), `LensRegistry` (§4), `CoverageGate` (§6), `FindingsJournal` (§5), `GateVerdict` (§2.1).
+
 <!--/SECTION:MODULE_VISION-->
 
 ## 2. План-шаблон (DAG)

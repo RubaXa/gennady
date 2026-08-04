@@ -12,6 +12,8 @@ HTTP-сервер (zero-dep `node:http`) + SSE. Тонкая прослойка:
 VCS-sync в DTO для дашборда. Никакой бизнес-логики; доска и лента никогда не читаются
 из летучей памяти executors — только из журнала + sync-снимка (D-306).
 
+Классы реализации: `BoardProjection`, `FeedProjection` (§1), `EnqueueRouter`, `DecisionRouter` (§2).
+
 <!--/SECTION:MODULE_VISION-->
 
 ## 2. REST

@@ -12,6 +12,8 @@
 цикл сессий (создание → паркинг → резюм → закрытие), единый приоритетный пул,
 компиляция промптов, X-ray и tool-телеметрия.
 
+Классы реализации: `SessionLifecycle` (§3), `SessionRegistry` (§3), `UnifiedPool` (§2), `PromptCompiler` (§4).
+
 <!--/SECTION:MODULE_VISION-->
 
 ## 2. Сервер и пул

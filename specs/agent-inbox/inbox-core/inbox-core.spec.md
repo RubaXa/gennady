@@ -12,6 +12,8 @@
 источник истины, реестр как кэш, конфиг, барьер готовности, dry-run. Очередь, лента,
 доска и датасет решений — проекции журнала.
 
+Классы реализации: `EventJournal` (§2), `DecisionJournal` + `CapabilityModes` (§2.1), `BootReadiness` (§4).
+
 <!--/SECTION:MODULE_VISION-->
 
 ## 2. Журнал событий (`events.jsonl` на MR)
