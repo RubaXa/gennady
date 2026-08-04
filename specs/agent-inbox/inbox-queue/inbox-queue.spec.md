@@ -35,7 +35,7 @@
 ## 3. Реестр типов задач
 
 **Грамматика ссылок** (dependsOn/parallelWith/exclusiveWith): `type-name` ·
-`glob (track_*)` · `allOf(glob)` (все задачи группы done) · `producerOf(artifactRef)` ·
+`glob (track_*)` · `allOf(glob)` (все задачи группы done; фильтр по маркеру плана: `allOf(track_*: mandatory)` — advisory-задачи слоя 3 не держат гейт) · `producerOf(artifactRef)` ·
 `external(precondition)` (напр. решение оператора). Pipeline-стадии — тоже типы задач
 (первые 5 строк реестра).
 
@@ -58,6 +58,8 @@
 | `mutate_artifact(a)`                         | —                        | producerOf(a), mutate(a) | —                                          | reuse_producer     | 👤       |
 | `chat_question`                              | всё (read-only)          | —                        | —                                          | operator_chat      | 👤       |
 | `effect_*` (post/react/resolve/approve/edit) | —                        | другие effect\_\*        | external(решение оператора)                | — (движок)         | 👤       |
+| `tail_author`                                | —                        | —                        | gate_verdict                               | task               | 🏗       |
+| `tail_reviewer`                              | —                        | —                        | gate_verdict                               | task               | 🏗       |
 
 ## 4. Правила исполнения
 

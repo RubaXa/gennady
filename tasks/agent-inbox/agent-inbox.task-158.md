@@ -34,7 +34,7 @@
 
 ### P1 — impl
 
-- **Objective:** VcsPort поверх vcs-client: twoTierSync (poll-поля + detail по расписанию), myRole, attention-функция (6 строк + fallback «оценочно»), stage (внутренний) + маппинг, lastReviewedHeadSha reader, BackgroundVerifier (~1/мин активные → gitlab_event), Effects (postNote/react/resolve/approve/editDescription с правами D-323 и маркером после подтверждения).
+- **Objective:** VcsPort поверх vcs-client: twoTierSync (poll-поля + detail по расписанию), myRole, attention-функция (6 строк + fallback «оценочно»), stage (внутренний) + маппинг, lastReviewedHeadSha reader, BackgroundVerifier (~1/мин активные → записи gitlab_event в журнал; НЕ вызывает очередь — задачи ставит inbox-queue по событиям, циклической зависимости нет), Effects (postNote/react/resolve/approve/editDescription с правами D-323 и маркером после подтверждения).
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
@@ -43,7 +43,7 @@
   - `services/agent-inbox/modules/inbox-vcs/attention.ts`
   - `services/agent-inbox/modules/inbox-vcs/effects.ts`
   - `services/agent-inbox/modules/inbox-vcs/background-verify.ts`
-- **Inputs:** TSK-156 P1 handoff (EventJournal для gitlab_event)
+- **Inputs:** TSK-156 P1 handoff (EventJournal: gitlab_event writer; JournalPort контракт — inbox-core §2)
 - **Exit:** `npm run type-check` exit 0; внимание покрывает все 6 строк + fallback
 <!--/SECTION:PHASE_P1-->
 

@@ -72,10 +72,10 @@
 
 ## 5. Поверхности (internal)
 
-| Порт           | Методы                                                                                    |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| `ChatPort`     | ask(mr, text, anchor?) → stream · stop(mr) · history(mr) (проекция `chat_turn` журнала)   |
-| `MutationPort` | propose(mr, anchor, intent) → taskId · apply({path, revision, content}) · undo(mr, path?) |
+| Порт           | Методы                                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ChatPort`     | ask(mr, text, anchor?) → stream handle (потребляется SSE inbox-api) · stop(mr) · history(mr) (проекция `chat_turn`; запись `{turnId: "t-<seq>", role, anchor?, excerpt}`) |
+| `MutationPort` | propose(mr, anchor, intent) → taskId · apply({path, revision, content}) · undo(mr, path?)                                                                                 |
 
 Маршрут вопроса выбирает SessionRouter (inbox-queue §4.2): `ask()` проходит через него
 всегда; ответ сессии-продюсера появляется в том же треде (`history(mr)`).

@@ -39,6 +39,10 @@
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
+  - `services/agent-inbox/modules/inbox-dashboard/dashboard-entry.tsx` (app-shell: entry, роутер, токены)
+  - `services/agent-inbox/modules/inbox-dashboard/App.tsx`
+  - `services/agent-inbox/modules/inbox-dashboard/index.html`
+  - `services/agent-inbox/modules/inbox-dashboard/styles/index.css`
   - `services/agent-inbox/modules/inbox-dashboard/screens/LoadingScreen.tsx`
   - `services/agent-inbox/modules/inbox-dashboard/board/AttentionBoard.tsx`
   - `services/agent-inbox/modules/inbox-dashboard/board/MrCard.tsx`
@@ -53,7 +57,7 @@
 
 ### P2 — test
 
-- **Objective:** unit/integration тесты: карточка A (все поля), жизненный цикл виджетов (bump/скрытые/одноразовые), оптимизм (⏳ мгновенно), read-cursor, degraded, decision/undo.
+- **Objective:** unit/integration тесты: карточка A (все поля), жизненный цикл виджетов (bump/скрытые/одноразовые), оптимизм (⏳ мгновенно), read-cursor, degraded, decision/undo. Харнесс .tsx: node:test + `react-dom/server` renderToString (строковые рендер-ассерты, как в v1-тестах); DOM-поведение — только в P3 e2e.
 - **Rules:**
   - [node-test](../../ai/directives/testing/node-test.xml)
 - **Target Files:**
@@ -110,7 +114,7 @@
 
 **Scenario:** e2e загрузка→доска→лента→decision [`e2e`]
 
-- **Given** реальный serve + реальный MR (dry-run эффектов)
+- **Given** serve на temp stateDir с seed-фикстурой TSK-166 (2 МР в заданных состояниях; dry-run эффектов)
 - **When** прогон сценария
 - **Then** фазы → ready без мерцания; лента с виджетами; decision → effect-задача в очереди + dryrun-маркер виден (под dry-run эффект не исполняется); скриншоты стадий
 

@@ -26,11 +26,17 @@
 GitLab participants/mention notes); до detail-яруса роль mentioned считается
 предположительной.
 
+**AttentionState:** 5 значений + флаг `estimated: boolean` (не 6-е значение). Вход `deriveAttention({myRole, lastReviewedHeadSha, headSha, threads[], approvals{n,m,approvedByMe}, estimated})`. Строки 🔀 и ✅ вычисляются из poll-полей (sha, approvals), не из stage.
+
 **Внимание без detail-яруса (fallback):** для MR ещё без detail внимание вычисляется
 консервативно по poll-полям: sha изменился/нет моего ревью head → ⏳; остальное → 😴 с
 пометкой «оценочно» (карточка показывает, что данные уточняются). Строки оси 💬
 уточняются при первом detail-sync — «на каждом sync» читается как «на каждом
 detail-sync».
+
+## 2.1 Sync-снимок (DTO для inbox-api и seed-фикстур)
+
+`SyncSnapshot = {mr, role, attention, stage, approvals{n,m,approvedBy[]}, reviewers[], ci, threads{open,total,awaitingMe}, headSha, lastReviewedHeadSha, updatedAt, estimated}` — снимок последнего sync на MR; источник данных BoardProjection и `seedMr` (TSK-166).
 
 ## 3. Ось внимания (детерминированная функция)
 
@@ -57,9 +63,11 @@ detail-sync».
 
 Активные MR (есть очередь/работа) опрашиваются ~1/мин (дешёвый poll по sha/updatedAt):
 
-- sha изменился → `compareSha` → enqueue `verify_fix` (я автор) или `delta_review`
-  (я ревьюер); supersede неисполняющейся задачи того же типа.
-- новые discussions → enqueue `thread_triage`.
+- sha изменился → `compareSha` → запись `gitlab_event(new_commits)` в журнал.
+- новые discussions → запись `gitlab_event(new_threads)` в журнал.
+
+BackgroundVerifier **не вызывает очередь** (нет циклической зависимости vcs↔queue): события читает inbox-queue и сама ставит `verify_fix`/`delta_review`/`thread_triage` со supersede по dedupKey.
+
 - изменился pipeline → 🦊-событие в ленту (failed → enqueue разбор падения).
 
 ## 5. Эффекты (единственная точка записи в GitLab)

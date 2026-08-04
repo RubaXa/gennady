@@ -15,18 +15,18 @@
 
 ## 2. Сценарные прогоны
 
-| Прогон           | Проверяет                                 | Критерий PASS (измеримый)                                                                          |
-| ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| boot (S1)        | фазы → ready                              | все фазы ≤ 5 мин; после ready ни одна карточка не сменила группу внимания >1 раза                  |
-| role_pickup (S2) | роль → очередь; mentioned → «ждут других» | журнал: `task_created` pipeline-задачи; ноль ручных актов                                          |
-| pipeline (S3)    | слои 1–2, coverage, синтез с указателями  | PLAN.md содержит mandatory-дорожки; verdict-гейт в журнале; X-ray синтеза без инлайна результатов  |
-| events (S4/S5)   | коммит/тред → задача → виджет             | после пуша: `task_created(verify_fix\|delta_review)` ≤ 3 мин; после треда: `thread_triage` ≤ 3 мин |
-| chat (S6)        | якорь → маршрут → ответ/мутация           | ответ содержит якорь; мутация: revision+1, `mutation` в журнале, undo возвращает снапшот           |
-| effects (S7)     | идемпотентность, права резолва            | повторный effect → ровно 1 маркер аудита; resolve чужого → rejection + причина                     |
-| autonomy (S8)    | proposal → decision → градация            | proposal/decision в журнале; при accept ≥ 90% (n≥20) capability=auto в реестре                     |
-| parallel         | 2 MR, неблокирование                      | задача MR-B: queued→running ≤ 30 сек при running задаче MR-A (инцидент 2026-07-28)                 |
-| crash_recovery   | краш → восстановление                     | set(карточки до) == set(карточки после); очереди целы                                              |
-| coverage_gate    | недочит → гейт → continue                 | гейт fail со списком файлов; `continue` той же сессии закрыл чеклист                               |
+| Прогон           | Проверяет                                 | Критерий PASS (измеримый)                                                                                                                    |
+| ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| boot (S1)        | фазы → ready                              | все фазы ≤ 5 мин; после ready ни одна карточка не сменила группу внимания >1 раза                                                            |
+| role_pickup (S2) | роль → очередь; mentioned → «ждут других» | журнал: `task_created` pipeline-задачи; ноль ручных актов                                                                                    |
+| pipeline (S3)    | слои 1–2, coverage, синтез с указателями  | PLAN.md содержит mandatory-дорожки; verdict-гейт в журнале; X-ray синтеза без инлайна результатов                                            |
+| events (S4/S5)   | коммит/тред → задача → виджет             | после пуша: `task_created(verify_fix\|delta_review)` ≤ 3 мин; после треда: `thread_triage` ≤ 3 мин                                           |
+| chat (S6)        | якорь → маршрут → ответ/мутация           | ответ содержит якорь; мутация: revision+1, `mutation` в журнале, undo возвращает снапшот                                                     |
+| effects (S7)     | идемпотентность, права резолва            | повторный effect → ровно 1 маркер аудита; resolve чужого → rejection + причина                                                               |
+| autonomy (S8)    | proposal → decision → градация            | proposal/decision в журнале; при accept ≥ 90% (n≥20) capability=auto в реестре                                                               |
+| parallel         | 2 MR, неблокирование                      | задача MR-B: queued→running ≤ 30 сек при running задаче MR-A (инцидент 2026-07-28). Прогон — на **seed-паре MR** (TSK-166, детерминированно) |
+| crash_recovery   | краш → восстановление                     | set(карточки до) == set(карточки после); очереди целы                                                                                        |
+| coverage_gate    | недочит → гейт → continue                 | гейт fail со списком файлов; `continue` той же сессии закрыл чеклист                                                                         |
 
 ### 2.1 Поверхность харнесса
 
@@ -37,9 +37,17 @@ PASS. REUSE: развивает существующий run-mode харнесс
 ### 2.2 `eval-report.json`
 
 ```json
-{"mr":"...","ts":"...","runs":[{"id":"pipeline","status":"pass|fail","evidence":["..."]}],
- "metrics":{"acceptRate":{"post_findings":{"rate":0.94,"n":31}},"editRate":{...},
- "timeToDecisionSec":{...}},"verdict":"pass|fail"}
+{
+  "mr": "...",
+  "ts": "...",
+  "runs": [{ "id": "pipeline", "status": "pass|fail", "evidence": ["..."] }],
+  "metrics": {
+    "acceptRate": { "<capability>": { "rate": 0.94, "n": 31 } },
+    "editRate": { "<capability>": { "rate": 0.12, "n": 31 } },
+    "timeToDecisionSec": { "median": 740, "p90": 3600 }
+  },
+  "verdict": "pass|fail"
+}
 ```
 
 Тренд: append-only `eval-reports/trend.jsonl` (строка на прогон).

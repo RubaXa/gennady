@@ -17,10 +17,17 @@
 ## 2. Журнал событий (`events.jsonl` на MR)
 
 ```json
-{"ts":"...","mr":"mail/messenger!174","kind":"task_status","taskId":"#14","actor":"queue","payload":{...}}
+{
+  "ts": "...",
+  "seq": 41,
+  "mr": "mail/messenger!174",
+  "kind": "task_status",
+  "actor": "queue",
+  "payload": { "taskId": "#14", "status": "running" }
+}
 ```
 
-Kinds: `task_created|task_status|artifact_produced|gitlab_event|widget_bump|proposal|
+Конверт един: `{ts, seq, mr, kind, actor, payload}` — **все** kind-специфичные поля живут внутри `payload`. Kinds: `task_created|task_status|artifact_produced|gitlab_event|widget_bump|proposal|
 decision|chat_turn|mutation|system`.
 
 **Контракт JournalPort (каноника — здесь; ссылка из корня §5.3):**
@@ -39,18 +46,18 @@ decision|chat_turn|mutation|system`.
 
 **Payloads по kind (`ts, seq, mr, kind` — всегда обязательны):**
 
-| kind              | продюсер       | payload (обязательное)                                         |
-| ----------------- | -------------- | -------------------------------------------------------------- |
-| task_created      | queue          | taskId, type, params, dependsOn, dedupKey, priority, createdBy |
-| task_status       | queue          | taskId, status, progress?, error?                              |
-| artifact_produced | pipeline       | taskId, path, producedBy{sessionId, model}                     |
-| gitlab_event      | vcs            | event (commits/threads/pipeline/approval), data                |
-| widget_bump       | api            | widgetId, lastActivity                                         |
-| proposal          | queue/pipeline | proposalId, capability, payload, producedBy                    |
-| decision          | api            | proposalId, verdict, diff?, actor                              |
-| chat_turn         | chat           | turnId, anchor?, role (operator/machine)                       |
-| mutation          | chat           | path, revision, snapshotId                                     |
-| system            | core           | event (boot/phase/dryrun/error), data                          |
+| kind              | продюсер       | payload (обязательное)                                                                                                                            |
+| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| task_created      | queue          | taskId, type, params, dependsOn, dedupKey, priority, createdBy                                                                                    |
+| task_status       | queue          | taskId, status, progress?, error?                                                                                                                 |
+| artifact_produced | pipeline       | taskId, path, producedBy{sessionId, model}                                                                                                        |
+| gitlab_event      | vcs            | event (commits/threads/pipeline/approval), data                                                                                                   |
+| widget_bump       | api            | widgetId, lastActivity                                                                                                                            |
+| proposal          | queue/pipeline | proposalId, capability, payload, producedBy                                                                                                       |
+| decision          | api            | proposalId, verdict, diff?, actor                                                                                                                 |
+| chat_turn         | chat           | turnId, anchor?, role (operator/machine)                                                                                                          |
+| mutation          | chat           | path, revision, snapshotId                                                                                                                        |
+| system            | core           | event (boot/phase/dryrun/effect_applied/error), data; для effect_applied data = `{effectId}` (маркер идемпотентности эффектов, hash(mr+тип+цель)) |
 
 ### 2.1 Датасет решений (D-302) — первоклассная сущность
 
@@ -69,7 +76,7 @@ decision|chat_turn|mutation|system`.
 - Потребители: inbox-eval (метрики схожести), dashboard (индикатор градации),
   аналитика (какие типы решений машине не удаются).
 - Замкнутый набор capability: `post_findings|post_reply|react|resolve|approve|
-update_description`. `accept-rate` вычисляет **inbox-eval** по журналу; текущий режим
+update_description`. `accept-rate` — **чистая функция над журналом, живёт здесь** (inbox-eval её рендерит); выборка — последние 20 решений per capability (rolling); при n < 20 градация запрещена. Текущий режим
   capability (`proposal|auto`) хранится в реестре-кэше `capabilities{}`, переключается
   по порогу; queue применяет: `proposal` → виджет решения, `auto` → effect + запись в
   ленту + undo.
@@ -100,9 +107,7 @@ Worktree — не фаза (лениво, фоном).
 
 `agent-inbox/config.json`: `{version: 1, reposBase: path, vcsHost: string}`; при
 отсутствии/битом файле — `{configured: false, missing[]}` (без throw), boot → фаза
-`failed` с причиной. Dry-run: подавляет **все** `effect_*` задачи (ни один эффект не
-уходит в GitLab); каждый подавленный эффект = запись `system` с payload `dryrun` в
-журнал MR; SSE-кадр `dryrun` эмитит inbox-api по этой записи.
+`failed` с причиной. Dry-run: флаг `dryRun` в `agent-inbox/config.json` (или env override). Здесь живут: флаг + запись о подавлении (kind `system`, payload `{event:"dryrun", effectId}`). Сама супрессия — в executor очереди (inbox-queue §4.1); SSE-кадр `dryrun` эмитит inbox-api по записи.
 
 ## 6. Хранилище (как было, без изменений адресов)
 

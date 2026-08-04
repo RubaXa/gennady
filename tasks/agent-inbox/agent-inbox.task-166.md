@@ -35,7 +35,7 @@
 
 ### P1 — impl
 
-- **Objective:** (1) `seedMr({ref, events[], sync})` — пишет events.jsonl + sync-снимок в temp stateDir (любое состояние MR без GitLab); (2) Cassette recorder/replayer поверх `utils/test/mock-http.ts` (запись реальных GraphQL/opencode ответов, санитизация токенов); (3) PortContractSuite — один тест-файл порта, дважды: против фейка и против реального адаптера на кассетах (расхождение = красный тест); (4) DTO-фабрики всех 7 типов виджетов + MrCard для компонентных тестов дашборда.
+- **Objective:** (1) `seedMr({ref, events[], sync})` — пишет events.jsonl + sync-снимок в temp stateDir (любое состояние MR без GitLab); (2) Cassette recorder/replayer поверх `utils/test/mock-http.ts`. Формат: файл на host (`test/cassettes/<host>.jsonl`), запись `{matchKey: method+url+sha256(body), response, ts}`; токены заменяются плейсхолдерами при записи; (3) PortContractSuite — один тест-файл порта, дважды: против фейка и против реального адаптера на кассетах (расхождение = красный тест); (4) DTO-фабрики всех 7 типов виджетов + MrCard для компонентных тестов дашборда.
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**

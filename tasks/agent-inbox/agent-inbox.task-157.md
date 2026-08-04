@@ -41,7 +41,7 @@
   - `services/agent-inbox/modules/inbox-core/decision-journal.ts`
   - `services/agent-inbox/modules/inbox-core/capability-modes.ts`
   - `services/agent-inbox/modules/inbox-core/boot-readiness.ts`
-  - `services/agent-inbox/modules/inbox-core/state-store.ts`
+  - `services/agent-inbox/modules/inbox-core/state-store.ts` (монтирование новых полей/модулей: capabilities, lastReadAt, boot-readiness — v1-агрегатор состояния, расширяется, не переписывается)
 - **Inputs:** TSK-156 P1 handoff (EventJournal)
 - **Exit:** `npm run type-check` exit 0; фазы эмитятся в правильном порядке
 <!--/SECTION:PHASE_P1-->

@@ -31,6 +31,8 @@ VCS-sync в DTO для дашборда. Никакой бизнес-логик�
 
 ## 3. SSE-фреймы (один канал на MR для всего)
 
+Wire-формат: `{event: <frame>, data: {...}}` (JSON на кадр). Роутеры — REUSE идиомы v1 zero-dep `http-server.ts` (chain of routers). Traversal root артефактов — `mrs/<key>/report/`.
+
 Топология: `:ref` = encodeURIComponent целиком (`mail%2Fmessenger!174`). Страница MR
 держит один стрим; страница доски поллит `/api/board` 10–15 сек; `board_hint` и
 `dryrun` дублируются во **все активные MR-каналы** (дополнительного глобального стрима
@@ -61,8 +63,11 @@ VCS-sync в DTO для дашборда. Никакой бизнес-логик�
 artifact `{path,title,attachments[]}`, gitlab `{event,data,taskId?}`, plan `{stage,tracksDone,tracksTotal,queuePosition}`, progress `{events[]}`, action `{effect,result}`.
 `anchors` — мета-якоря по схеме inbox-chat §2.
 
-Ошибки домена — structured `{error: {code, message, anchor?}}`; UI показывает как
-состояние виджета, не глотает (D-309).
+Ошибки домена — structured `{error: {code, message, anchor?}}`; коды — замкнутый набор (`not_found|invalid_input|conflict|degraded|forbidden`); статус-политика: доменные → 4xx+envelope, непредвиденные → 500. UI показывает как состояние виджета, не глотает (D-309).
+
+`lastReadAt`: обновляется при каждой выдаче `/feed` до max(ts выданных записей); unread/📬 = записи журнала после `lastReadAt` (inbox-core §3).
+
+`payload` FeedWidget — **discriminated union по `type`** (схемы per-type §4).
 
 ## 5. Раздача статики
 

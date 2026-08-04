@@ -37,6 +37,11 @@ prepare_env(детерм.) → plan(детерм.) → enrich(flash) → fan-out
 журнал); LLM-стадии — лесенка continue/restart (inbox-opencode §5); слой 3 при отказе —
 skip (advisory), слои 1–2 — эскалация после исчерпания лесенки.
 
+### 2.0 `review.json` схема
+
+`{verdict: APPROVE|REQUEST_CHANGES|COMMENT, revision: int, findings: [{id: "F-n", severity, file, line, summary, source: [{model, sessionId}], state: new|posted|hidden|disputed}]}`.
+ID присваивает synthesize последовательно (F-1..F-n) — мультимодель не порождает коллизий: кластеризация по (file, line±2, нормализованный summary), кластер = один id, `source` — массив моделей кластера.
+
 ### 2.1 gate_verdict (контракт)
 
 Проверяет: `review.json` — схема (verdict присутствует; каждая находка F-n имеет
@@ -53,6 +58,8 @@ Fail → возврат в `synthesize` с причинами; после 2 не
 | 3️⃣ интеллект        | enrich                     | advisory                        | `proposed`         |
 
 Гейты требуют завершения слоёв 1–2; слой 3 не блокирует вердикт.
+
+Классификация слоя 1 (changeset → mandatory-дорожки, 100% файлов) = **REUSE** логики `buildReviewPlan`/TRACK_RULES v1 (`cli/cmd/inbox-review-plan/`), не новый алгоритм.
 
 **Реестр триггеров (стартовый):** единый синтаксис — **glob-паттерны**; реестр =
 декларативный TS-модуль в inbox-pipeline (код-владение, вынос в конфиг — отдельное
@@ -117,8 +124,7 @@ continue → эскалация оператору.
 | fetch_threads (детерм.) → classify (🔧/💬/👍) → фактчек → verify_fix (по новым коммитам) → propose_replies (👍 / 👍+резолв / текст) | dedup находок с чужими тредами (совпадает+👍 → скрытые; не согласны → возражение; отвечено+инсайт → 👍+инсайт) → post candidates → approve по решению оператора (виджет; GitLab approve — действие, не стадия пайплайна) |
 | резолв — только свои треды и бота (в своих MR)                                                                                      | постинг — кандидатами, approve — по гейту оператора                                                                                                                                                                      |
 
-Шаги хвоста — те же типы задач, что ставят события sync (S4/S5): переиспользуемые,
-переставляемые в очередь независимо. `delta_review` — отдельный мини-DAG:
+Хвост исполняется как **одна задача** `tail_author`/`tail_reviewer` (шаги — внутренние стадии, не отдельные типы очереди). Событийные verify_fix/thread_triage — самостоятельные типы (inbox-queue §3), ставятся по gitlab_event из журнала. `delta_review` — отдельный мини-DAG:
 prepare → delta-changeset (`lastReviewedHeadSha..HEAD`) → затронутые дорожки →
 synthesize_delta → gate_verdict; supersede неисполняющейся delta per D-307.
 

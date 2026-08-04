@@ -34,7 +34,7 @@
 
 ### P1 — impl
 
-- **Objective:** TaskRegistry (16 типов, грамматика ссылок type-name/glob/allOf/producerOf/external), TaskQueuePort (enqueue с dedupKey, next(mr), state, supersede), Executor per MR (правила §4.1: приоритеты, exclusive, waiting_dep/cancelled, FIFO+override, эффекты последовательно), SessionRouter (таблица §4.2), восстановление (running→queued, эффекты по маркеру), queue-visibility события в журнал.
+- **Objective:** TaskRegistry (16 типов, грамматика ссылок type-name/glob/allOf/producerOf/external), TaskQueuePort (enqueue с dedupKey, next(mr), state, supersede), Executor per MR (правила §4.1: приоритеты числовые+FIFO+aging, exclusive, waiting_dep/cancelled, batch next(), эффекты последовательно; пул сессий НЕ здесь — владелец inbox-opencode, потребление через SessionRouterPort), SessionRouter (таблица §4.2), восстановление (running→queued, эффекты по маркеру), queue-visibility события в журнал.
 - **Rules:**
   - [typescript-rules](../../ai/directives/coding/typescript-rules.xml)
 - **Target Files:**
@@ -42,7 +42,6 @@
   - `services/agent-inbox/modules/inbox-queue/task-queue.ts`
   - `services/agent-inbox/modules/inbox-queue/executor.ts`
   - `services/agent-inbox/modules/inbox-queue/session-router.ts`
-  - `services/agent-inbox/modules/inbox-queue/session-pool.ts`
 - **Inputs:** TSK-157 (DecisionJournal), TSK-158 (gitlab_event), TSK-160 (пул сессий)
 - **Exit:** `npm run type-check` exit 0; резолвер правил проходит всю таблицу §3
 <!--/SECTION:PHASE_P1-->
