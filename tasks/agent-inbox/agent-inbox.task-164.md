@@ -42,7 +42,8 @@
   - `services/agent-inbox/modules/inbox-dashboard/dashboard-entry.tsx` (app-shell: entry, роутер, токены)
   - `services/agent-inbox/modules/inbox-dashboard/App.tsx`
   - `services/agent-inbox/modules/inbox-dashboard/index.html`
-  - `services/agent-inbox/modules/inbox-dashboard/styles/index.css`
+  - `services/agent-inbox/modules/inbox-dashboard/styles/index.css` (токены Carbon & Steel из design-system.md: цвета/типографика Geist+JetBrains Mono/плотность/глубина)
+  - `services/agent-inbox/modules/inbox-dashboard/lib/icons.ts` (inline-SVG подмножество Material Symbols — не CDN)
   - `services/agent-inbox/modules/inbox-dashboard/screens/LoadingScreen.tsx`
   - `services/agent-inbox/modules/inbox-dashboard/board/AttentionBoard.tsx`
   - `services/agent-inbox/modules/inbox-dashboard/board/MrCard.tsx`

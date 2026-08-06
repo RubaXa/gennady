@@ -21,9 +21,15 @@ React SPA из трёх экранов: **Загрузка → Доска вни
 React 19 + Tailwind v4 (`@tailwindcss/vite`, `@tailwindcss/typography`) + CVA /
 `cn()` (shadcn-стиль, **без внешнего ui-кита** — компоненты собственные поверх Tailwind;
 токены в `styles/index.css`). Сборка Vite → `dist/inbox-serve` (раздаёт inbox-api).
-Хэш-роутер. Макеты всех экранов/виджетов — [ux-mockups.md](ux-mockups.md) (нормативны
-по составу, не по пикселям); сценарии использования с диаграммами переходов —
-[ux-usecases.md](ux-usecases.md).
+Хэш-роутер.
+
+**Дизайн-система: [design-system.md](design-system.md) (Carbon & Steel, холодная
+палитра)** — токены цветов/типографики/плотности, правила глубины (тональные слои,
+1px бордеры, без теней), severity/status-семантика. Ключевые компонентные решения:
+😴 = вертикальный rail 64px · empty-state dashed · находки = компактные строки с
+раскрытием в diff-note · план = горизонтальный step-flow · sticky-бар решения ·
+hover-ghost действия · quick-chips чата. Макеты — [ux-mockups.md](ux-mockups.md);
+переходы — [ux-usecases.md](ux-usecases.md); проход по элементам — [ux-walkthrough.md](ux-walkthrough.md).
 
 ## 1.1 Навигация и переходы
 
