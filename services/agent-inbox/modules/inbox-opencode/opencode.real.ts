@@ -1,10 +1,11 @@
 // @file: OpenCodeReal — production adapter implementing OpenCodePort via @opencode-ai/sdk.
 // @consumers: SessionPool (production), DI container, inbox-roles
-// @tasks: TSK-112
+// @tasks: TSK-112, TSK-160
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
 import { Agent as UndiciAgent } from 'undici';
 import type { TextPart } from '@opencode-ai/sdk';
+import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { logger } from '#logger';
 import {
   OpenCodePort,
@@ -17,7 +18,7 @@ import {
   type ToolTraceEntry,
   type ToolGate,
 } from './opencode.port.ts';
-import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
+import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
 
 /**
  * @purpose Summarize a tool call's input to one short line — command, path, or pattern — for the
@@ -84,6 +85,10 @@ export class OpenCodeReal extends OpenCodePort {
   protected _sessionTools: Map<string, boolean | ToolGate>;
   /** @purpose Track per-session default model (sid → CreateSessionOpts.model) | @invariant SDK has no session-level model field — re-applied on every prompt() call unless PromptOpts.model overrides it */
   protected _sessionModels: Map<string, string>;
+  /** @purpose Track parked sessions — sid → parkedAt ISO timestamp | @invariant Only sessions marked via park() appear here */
+  protected _parkedSessions: Map<string, string>;
+  /** @purpose Directory for tool-trace JSONL output | @invariant Default: 'telemetry' relative to session directory */
+  protected _toolTraceDir: string;
 
   /**
    * @purpose Create an OpenCodeReal adapter bound to a running opencode server.
@@ -99,6 +104,8 @@ export class OpenCodeReal extends OpenCodePort {
     this._pendingSchemas = new Map();
     this._sessionTools = new Map();
     this._sessionModels = new Map();
+    this._parkedSessions = new Map();
+    this._toolTraceDir = 'telemetry';
     this._dispatcher = opts.dispatcher;
     logger.debug('[OpenCodeReal#ctor] [created]', { baseUrl: this._baseUrl });
   }
@@ -462,7 +469,88 @@ export class OpenCodeReal extends OpenCodePort {
     }
   }
 
-  // ── continueSignal ────────────────────────────────────────────
+  // ── messages ─────────────────────────────────────────────────
+
+  /**
+   * @purpose Retrieve the full message history for a session — the raw SDK response with
+   *   role-annotated parts.
+   * @param sid Session identifier.
+   * @returns Array of messages from the session, or empty on error / not found.
+   */
+  async messages(
+    sid: string
+  ): Promise<Array<{ role: string; parts: Array<Record<string, unknown>> }>> {
+    const client = this._ensureClient();
+    const directory = this._sessionDirs.get(sid) ?? this._directory;
+
+    // #region START_FETCH_MESSAGES — GET /session/{id}/messages
+    try {
+      logger.debug('[OpenCodeReal#messages] [querying]', { sid });
+
+      const result = await client.session.messages({
+        path: { id: sid },
+        query: directory ? { directory } : undefined,
+      });
+
+      if (result.error || !result.data) {
+        logger.warn('[OpenCodeReal#messages] [server error → empty]', { sid });
+        return [];
+      }
+
+      const messages: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
+      for (const msg of result.data) {
+        messages.push({
+          role: msg.info.role,
+          parts: msg.parts.map((p) => ({
+            type: p.type,
+            tool: 'tool' in p ? p.tool : undefined,
+            state: 'state' in p ? p.state : undefined,
+            text: 'text' in p ? (p as TextPart).text : undefined,
+          })),
+        });
+      }
+
+      logger.debug('[OpenCodeReal#messages] [fetched]', { sid, count: messages.length });
+      return messages;
+    } catch (err: unknown) {
+      const cause = err instanceof Error ? err : new Error(String(err));
+      logger.warn('[OpenCodeReal#messages] [error → empty]', { sid, message: cause.message });
+      return [];
+    }
+    // #endregion END_FETCH_MESSAGES
+  }
+
+  // ── park ──────────────────────────────────────────────────────
+
+  /**
+   * @purpose Mark a session as parked — keeps it alive on the server but idle.
+   * @invariant Parked sessions can be resumed via resume(); no HTTP call — purely local state.
+   * @param sid Session identifier.
+   * @returns Promise that resolves when the park state is recorded.
+   */
+  async park(sid: string): Promise<void> {
+    this._parkedSessions.set(sid, new Date().toISOString());
+    logger.info('[OpenCodeReal#park] [work → park]', { sid });
+  }
+
+  // ── resume ────────────────────────────────────────────────────
+
+  /**
+   * @purpose Resume a parked session — clears park state, keeps session alive.
+   * @invariant No HTTP call — the session was kept alive on the server. Caller should verify
+   *   TTL before resuming (use SessionLifecycle).
+   * @param sid Session identifier.
+   * @returns true when the session was parked and is now resumed; false if it wasn't parked.
+   */
+  async resume(sid: string): Promise<boolean> {
+    if (!this._parkedSessions.has(sid)) {
+      logger.debug('[OpenCodeReal#resume] [resuming → not_parked]', { sid });
+      return false;
+    }
+    this._parkedSessions.delete(sid);
+    logger.info('[OpenCodeReal#resume] [park → work]', { sid });
+    return true;
+  }
 
   /**
    * @param sid Session identifier.
@@ -547,6 +635,7 @@ export class OpenCodeReal extends OpenCodePort {
       this._pendingSchemas.delete(sid);
       this._sessionTools.delete(sid);
       this._sessionModels.delete(sid);
+      this._parkedSessions.delete(sid);
     }
     // #endregion END_CLOSE
   }
@@ -698,6 +787,7 @@ export class OpenCodeReal extends OpenCodePort {
           sid,
           textLength: fullText.length,
         });
+        void this._writeToolTrace(sid, directory);
         return composeOk({ text: fullText, raw: fullText });
       }
 
@@ -766,6 +856,7 @@ export class OpenCodeReal extends OpenCodePort {
       }
 
       logger.debug('[OpenCodeReal#_sendPrompt] [completed — structured]', { sid });
+      void this._writeToolTrace(sid, directory);
       return composeOk(parsed as Record<string, unknown>);
     } catch (err: unknown) {
       const cause = err instanceof Error ? err : new Error(String(err));
@@ -878,6 +969,44 @@ export class OpenCodeReal extends OpenCodePort {
   }
 
   /**
+   * @purpose Write the session's tool-call trace to telemetry/tool-trace.jsonl.
+   * @invariant Appends one JSON line per tool call to the trace file — durable record for
+   *   coverage-gate and deterministic-vs-agent audit (D-316).
+   * @param sid Session identifier.
+   * @param [directory] Session directory for building the telemetry path.
+   * @returns Promise that resolves when the trace is written.
+   * @sideEffect Appends lines to telemetry/tool-trace.jsonl in the session directory.
+   */
+  protected async _writeToolTrace(sid: string, directory?: string): Promise<void> {
+    try {
+      const trace = await this.toolCallTrace(sid);
+      if (trace.length === 0) return;
+
+      const baseDir = directory ?? this._directory ?? '.';
+      const telemetryDir = `${baseDir}/${this._toolTraceDir}`;
+      if (!existsSync(telemetryDir)) {
+        mkdirSync(telemetryDir, { recursive: true });
+      }
+
+      const filePath = `${telemetryDir}/tool-trace.jsonl`;
+      // #region START_WRITE_TRACE_LINES — one JSON line per tool call
+      for (const entry of trace) {
+        appendFileSync(filePath, JSON.stringify({ sid, ...entry }) + '\n');
+      }
+      // #endregion END_WRITE_TRACE_LINES
+
+      logger.debug('[OpenCodeReal#_writeToolTrace] [writing → written]', {
+        sid,
+        lines: trace.length,
+        filePath,
+      });
+    } catch (cause) {
+      const error = new Error('[OpenCodeReal#_writeToolTrace] Trace write failed', { cause });
+      logger.warn('[OpenCodeReal#_writeToolTrace] [writing → failed]', { error });
+    }
+  }
+
+  /**
    * @purpose Generate a plausible example JSON from a JSON Schema for the prompt.
    * @param schema The JSON Schema to generate an example from.
    * @returns An example object matching the schema structure.
@@ -972,4 +1101,44 @@ export class OpenCodeReal extends OpenCodePort {
 
     return errors;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Outcome classification & recovery ladder (TSK-160)
+// ═══════════════════════════════════════════════════════════════
+
+/** @purpose Recovery action after classifying a prompt outcome. */
+export type LadderAction = 'continue' | 'restart' | 'accept';
+
+/**
+ * @purpose Classify a prompt result into an outcome class — used to drive the recovery ladder.
+ * @param result The discriminated result from a prompt call.
+ * @returns Outcome class — OK when result is ok: true, otherwise the error class.
+ */
+export function classifyOutcome(result: OpenCodeCallResult): OutcomeClass {
+  if (result.ok) return 'OK';
+  return result.error.class;
+}
+
+/**
+ * @purpose Resolve the recovery ladder action given the number of previous failures and the
+ *   current outcome.
+ * @invariant First failure (non-OK) → continue. Second failure → restart. Third+ → accept
+ *   (avoids infinite loops).
+ * @invariant OK outcome always returns 'accept' — no recovery needed.
+ * @param previousFailures Number of consecutive failures before this call (0-based).
+ * @param currentOutcome Classified outcome of the current prompt result.
+ * @returns Recovery action: continue, restart, or accept.
+ */
+export function resolveOutcomeLadder(
+  previousFailures: number,
+  currentOutcome: OutcomeClass
+): LadderAction {
+  if (currentOutcome === 'OK') return 'accept';
+
+  const attempt = previousFailures + 1;
+  if (attempt === 1) return 'continue';
+  if (attempt === 2) return 'restart';
+
+  return 'accept';
 }

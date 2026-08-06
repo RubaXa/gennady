@@ -12,7 +12,7 @@
 цикл сессий (создание → паркинг → резюм → закрытие), единый приоритетный пул,
 компиляция промптов, X-ray и tool-телеметрия.
 
-Классы реализации: `SessionLifecycle` (§3), `SessionRegistry` (§3), `UnifiedPool` (§2), `PromptCompiler` (§4).
+Классы реализации: `SessionLifecycle` (§3), `SessionRegistry` (§3), `UnifiedPool` (§2), `PromptCompiler` (§4); типы `SessionState`, `SessionPriority`, функция `classifyOutcome` (§5, лесенка). Aging пула: конфиг, дефолт 60с (уточнение 2026-08-06 — вместо 10 мин: LLM-ходы минуты, 10 мин редко срабатывало бы).
 
 <!--/SECTION:MODULE_VISION-->
 
