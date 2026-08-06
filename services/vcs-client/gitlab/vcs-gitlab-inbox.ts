@@ -1,6 +1,6 @@
 // @file: GitLab GraphQL implementation of the actionable inbox port.
 // @consumers: VcsGitlabClient
-// @tasks: TSK-75
+// @tasks: TSK-75, TSK-158
 
 import { VcsClientInbox } from '../abstract/vcs-client-inbox.ts';
 import type {
@@ -20,10 +20,11 @@ type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => 
  *   the todos connection (verified against the live instance).
  */
 const MR_FIELDS = `iid title webUrl updatedAt draft state
-  description
+  description sha approvalsRequired
   author { username }
   reviewers { nodes { username } }
   approvedBy { nodes { username } }
+  headPipeline { status }
   project { fullPath }`;
 
 const ACTIONABLE_QUERY = `{
@@ -87,9 +88,12 @@ type MrNode = {
   draft?: boolean;
   state?: string;
   description?: string;
+  sha?: string;
+  approvalsRequired?: number;
   author?: { username?: string } | null;
   reviewers?: UserConn | null;
   approvedBy?: UserConn | null;
+  headPipeline?: { status?: string } | null;
   project?: { fullPath?: string } | null;
 };
 
@@ -122,6 +126,9 @@ type Accumulator = {
     | 'author'
     | 'reviewers'
     | 'approvedBy'
+    | 'headSha'
+    | 'pipelineStatus'
+    | 'approvalsRequired'
   >;
   role: VcsActionableRole | null;
   events: Set<VcsActionableEvent>;
@@ -181,6 +188,9 @@ export class VcsGitlabInbox extends VcsClientInbox {
             author: node.author?.username ?? '',
             reviewers: usernames(node.reviewers),
             approvedBy: usernames(node.approvedBy),
+            headSha: node.sha,
+            pipelineStatus: node.headPipeline?.status,
+            approvalsRequired: node.approvalsRequired,
           },
           role: null,
           events: new Set(),
@@ -223,6 +233,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
       events: [...entry.events],
       directlyAddressed: entry.directlyAddressed,
       todoIds: entry.todoIds,
+      approvalsRequired: entry.base.approvalsRequired,
     }));
   }
 

@@ -1,6 +1,6 @@
 // @file: Normalized "merge request awaiting my reaction" shape for the inbox port.
 // @consumers: VcsClient
-// @tasks: TSK-75
+// @tasks: TSK-75, TSK-158
 
 /**
  * @purpose My relationship to a merge request — the axis the inbox groups by.
@@ -64,4 +64,10 @@ export type VcsActionableMr = {
   directlyAddressed: boolean;
   /** @purpose GitLab todo IDs linked to this MR from the todo source | @invariant Empty for connection-only sources (reviewRequested/authored) */
   todoIds: string[];
+  /** @purpose Head commit SHA from GraphQL | @invariant May be absent for poll-only tier; filled by detail tier via getByIid */
+  headSha?: string;
+  /** @purpose CI pipeline status from GraphQL headPipeline | @invariant May be absent for poll-only; filled by detail tier */
+  pipelineStatus?: string;
+  /** @purpose Number of required approvals from project settings | @invariant May be absent when not exposed by VCS */
+  approvalsRequired?: number;
 };
