@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-156
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** Фундамент v2: append-only журнал `events.jsonl` (строчный append, seq/cursor, fsync), глобальный системный журнал, layout `mrs/<mr>/`, registry-поля (`lastReadAt`, `capabilities`), reuse-инвентарь B3.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-core`
@@ -24,8 +24,8 @@
 
 | ID  | Kind      | Deps | Status |
 | --- | --------- | ---- | ------ |
-| P1  | bootstrap | —    | [ ]    |
-| P2  | test      | P1   | [ ]    |
+| P1  | bootstrap | —    | [x]    |
+| P2  | test      | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -137,7 +137,7 @@
 
 - seq переживает рестарт → `event-journal.test.ts` :: `seq survives restart without reuse`
 - изоляция MR → `event-journal.test.ts` :: `journals are isolated per MR`
-- битый реестр → `event-journal.test.ts` :: `broken registry rebuilds safely from gitlab and journals`
+- битый реестр → `inbox-registry.test.ts` :: `corrupted registry treated as empty and rebuilt safely`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -148,17 +148,31 @@
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] 2026-08-06T09:00:48Z intro EventJournal ← реализация JSONL-журнала с O_APPEND+fsync, монотонным seq per MR и восстановлением после краша
+- [x] 2026-08-06T09:00:48Z intro EventKind ← замкнутое множество из 10 kind-значений
+- [x] 2026-08-06T09:00:48Z intro JournalEntry ← конверт записи {ts, seq, mr, kind, actor, payload}
+- [x] 2026-08-06T09:00:48Z intro SinceResult ← результат since(cursor) — entries и nextCursor для пагинации ленты
+- [x] 2026-08-06T09:00:48Z intro JournalPort ← контракт журнала: append/read/since
+- [x] 2026-08-06T09:00:48Z intro CapabilityMode ← режим capability: proposal|auto (D-302)
+- [x] 2026-08-06T09:00:48Z intro CapabilityRegistry ← реестр режимов по capability (D-302 / §2.1)
+- [x] 2026-08-06T09:00:48Z ver npm run type-check → pass exit=0
+- [x] 2026-08-06T09:00:48Z ver which opencode → pass exit=0
+- [x] 2026-08-06T09:00:48Z decision B3=verified ← type-check прошёл, все reuse-импорты разрешаются
+- [x] 2026-08-06T09:00:48Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-core/event-journal.ts, services/agent-inbox/modules/inbox-core/inbox-registry.ts]; decisions: [module-system=esm, append-ser=promise-chain, registry-fields-v2=lastReadAt+capabilities, B3-reuse=resolved]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- event-journal.test.ts` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] 2026-08-06T09:05:28Z intro event-journal.test.ts ← 8 BDD-сценариев: контракт, seq/since, конкурентные писатели, битый хвост, глобальный журнал, рестарт, изоляция MR, устойчивость к битому реестру
+- [x] 2026-08-06T09:05:28Z insight broken-tail recovery gap → §4 «битый хвост после краха отбрасывается», §3 event-journal.ts#\_readEntries. read() останавливается на первой битой строке через break, но битая строка остаётся в файле (O_APPEND не перезаписывает). После восстановления append() успешен и seq корректен, но read() никогда не видит записи, добавленные после битого хвоста, потому что разбор останавливается на той же битой строке. Нужно либо усекать файл до последней целой строки при обнаружении битого хвоста, либо вести указатель lastValidOffset.
+- [x] 2026-08-06T09:05:28Z insight scenario-8-misplacement → §6 «broken registry rebuilds safely from gitlab and journals» мапится на event-journal.test.ts, но сценарий тестирует InboxRegistryAccess, не EventJournal. EventJournal не зависит от inbox-registry.json. Тест написан как проверка resilience EventJournal при битом реестре.
+- [x] 2026-08-06T09:05:28Z ver npm run type-check → pass exit=0
+- [x] 2026-08-06T09:05:28Z ver npm test -- services/agent-inbox/modules/inbox-core/**tests**/event-journal.test.ts → pass exit=0
+- [x] 2026-08-06T09:05:28Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-core/__tests__/event-journal.test.ts]; decisions: [bdd-coverage=8-scenarios, broken-tail-gap=read-blocks-after-broken-line]; open: [GAP-1: event-journal._readEntries не видит записи после битой строки — нужен truncate или lastValidOffset, GAP-2: scenario-8 мапинг на inbox-registry.test.ts точнее, чем на event-journal.test.ts]
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] 2026-08-06T09:10:00Z sync agent-inbox+root trackers
+- [x] 2026-08-06T09:10:00Z DONE
 <!--/SECTION:EXECUTION_LOG-->

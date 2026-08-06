@@ -1,6 +1,6 @@
 // @file: InboxRegistry wrapper — delta computation, promote, atomic save over CLI registry logic.
 // @consumers: StateStore, CLI inbox commands
-// @tasks: TSK-109
+// @tasks: TSK-109, TSK-156
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -10,6 +10,7 @@ import {
   saveRegistry as saveRegistryRaw,
   promoteReviewedHead,
   type InboxRegistry,
+  type RegistryEntry,
 } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 
 /** @purpose Tag for a delta entry — MR is brand-new to the registry. */
@@ -47,6 +48,23 @@ export type MrForDelta = {
   iid: string;
   /** @purpose MR updatedAt timestamp */
   updatedAt: string;
+};
+
+/** @purpose Capability granularity mode — proposal (operator decides) or auto (machine acts) (D-302). */
+export type CapabilityMode = 'proposal' | 'auto';
+
+/** @purpose Per-capability mode registry — keyed by capability name (D-302 / §2.1). */
+export type CapabilityRegistry = Record<string, CapabilityMode>;
+
+/**
+ * @purpose Enhanced registry entry with v2 fields (D-302, D-317).
+ * @invariant lastReadAt and capabilities are optional — absent until first use.
+ */
+type RegistryEntryV2 = RegistryEntry & {
+  /** @purpose ISO timestamp when the operator last read this MR's event feed (D-317) */
+  lastReadAt?: string;
+  /** @purpose Per-capability mode registry (D-302) */
+  capabilities?: CapabilityRegistry;
 };
 
 /**
@@ -230,6 +248,57 @@ export class InboxRegistryAccess {
     delete entry.assignedAt;
     this.save();
     logger.info('[InboxRegistryAccess#clearAssignment] [clearing → cleared]', { webUrl });
+  }
+
+  /**
+   * @purpose Record the timestamp when the operator last read this MR's event feed (D-317).
+   * @param webUrl MR web URL key.
+   * @param [ts] ISO timestamp; defaults to now.
+   * @sideEffect Mutates in-memory entry; caller persists via save().
+   */
+  recordLastRead(webUrl: string, ts?: string): void {
+    if (!this._registry) this.load();
+    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    if (!entry) {
+      logger.debug('[InboxRegistryAccess#recordLastRead] [recording → not_found]', { webUrl });
+      return;
+    }
+    entry.lastReadAt = ts ?? new Date().toISOString();
+    logger.debug('[InboxRegistryAccess#recordLastRead] [recording → recorded]', {
+      webUrl,
+      lastReadAt: entry.lastReadAt,
+    });
+  }
+
+  /**
+   * @purpose Retrieve per-MR capability modes for graduated autonomy (D-302 / §2.1).
+   * @param webUrl MR web URL key.
+   * @returns Capability registry; empty object when absent.
+   */
+  retrieveCapabilities(webUrl: string): CapabilityRegistry {
+    if (!this._registry) this.load();
+    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    return entry?.capabilities ?? {};
+  }
+
+  /**
+   * @purpose Store per-MR capability modes for graduated autonomy (D-302).
+   * @param webUrl MR web URL key.
+   * @param capabilities Updated capability registry.
+   * @sideEffect Mutates in-memory entry; caller persists via save().
+   */
+  storeCapabilities(webUrl: string, capabilities: CapabilityRegistry): void {
+    if (!this._registry) this.load();
+    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    if (!entry) {
+      logger.debug('[InboxRegistryAccess#storeCapabilities] [storing → not_found]', { webUrl });
+      return;
+    }
+    entry.capabilities = capabilities;
+    logger.debug('[InboxRegistryAccess#storeCapabilities] [storing → stored]', {
+      webUrl,
+      caps: Object.keys(capabilities).length,
+    });
   }
 
   /**
