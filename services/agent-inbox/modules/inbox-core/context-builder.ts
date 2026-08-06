@@ -212,6 +212,7 @@ async function runGit(args: string[], worktreePath: string): Promise<string> {
       await gitAsync('git', args, {
         cwd: worktreePath,
         encoding: 'utf8',
+        maxBuffer: 1024 * 1024 * 100,
       })
     ).stdout.trim();
   } catch (cause) {
