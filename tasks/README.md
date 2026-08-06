@@ -154,7 +154,7 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
-| agent-inbox       | product        | [README](agent-inbox/README.md)       | 11    | 4/11  |
+| agent-inbox       | product        | [README](agent-inbox/README.md)       | 11    | 5/11  |
 | mr-stats          | product        | [README](mr-stats/README.md)          | 2     | 2/2   |
 
 ## Decision Log
