@@ -286,6 +286,89 @@ describe('inbox-review-plan', () => {
   });
 });
 
+describe('inbox-review-plan contract track', () => {
+  it('changed JSDoc/comment → mandatory contract track over those files', () => {
+    const repo = makeGitRepo('contract');
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const x = 1;\n');
+      writeFileSync(join(repo, 'bar.ts'), 'export const y = 1;\n');
+      commitAll(repo, 'base');
+      // foo.ts gains a JSDoc contract; bar.ts changes code only.
+      writeFileSync(
+        join(repo, 'foo.ts'),
+        '/** @purpose The x value | @invariant >= 0 */\nexport const x = 1;\n'
+      );
+      writeFileSync(join(repo, 'bar.ts'), 'export const y = 2;\n');
+      commitAll(repo, 'change');
+
+      const r = runPlan(['--path', repo, '--base', 'HEAD~1']);
+      assert.strictEqual(r.status, 0);
+      const plan = JSON.parse(r.stdout.trim());
+      const contract = plan.tracks.find((t: { name: string }) => t.name === 'contract');
+      assert.ok(contract, 'contract track should exist when a JSDoc changed');
+      assert.strictEqual(contract.directive, 'contract-interrogation');
+      assert.ok(contract.files.includes('foo.ts'), 'foo.ts (JSDoc changed) in contract track');
+      assert.ok(!contract.files.includes('bar.ts'), 'bar.ts (code-only) NOT in contract track');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('code-only change → no contract track', () => {
+    const repo = makeGitRepo('contract-none');
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const x = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), 'export const x = 2;\n');
+      commitAll(repo, 'change');
+
+      const r = runPlan(['--path', repo, '--base', 'HEAD~1']);
+      assert.strictEqual(r.status, 0);
+      const plan = JSON.parse(r.stdout.trim());
+      assert.strictEqual(
+        plan.tracks.find((t: { name: string }) => t.name === 'contract'),
+        undefined
+      );
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('--scaffold: contract track gets its own contract.task.md even in inline mode', () => {
+    const repo = makeGitRepo('contract-scaffold');
+    const stateDir = mkdtempSync(join(tmpdir(), 'inbox-contract-'));
+    try {
+      writeFileSync(join(repo, 'foo.ts'), 'export const x = 1;\n');
+      commitAll(repo, 'base');
+      writeFileSync(join(repo, 'foo.ts'), '// note: x is the seed\nexport const x = 1;\n');
+      commitAll(repo, 'change');
+
+      const r = runPlan([
+        '--scaffold',
+        '--path',
+        repo,
+        '--base',
+        'HEAD~1',
+        '--ref',
+        'group/project!7',
+        '--state-dir',
+        stateDir,
+      ]);
+      assert.strictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      const names = result.tasks.map((t: string) => t.split('/').pop());
+      assert.ok(
+        names.includes('contract.task.md'),
+        'contract.task.md materialized as its own track'
+      );
+      assert.ok(names.includes('review.task.md'), 'inline review blob still present alongside');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('inbox-review-plan --scaffold', () => {
   it('fan_out plan (security+logic+tests) → PLAN.md + 3 track task files + README.md + HISTORY.md (flat per-MR dir)', () => {
     const repo = makeGitRepo('fanout');

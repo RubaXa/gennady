@@ -130,6 +130,7 @@ describe('ReviewerRole — branch: review_needed (fan-out + security lens + code
       findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
     });
     opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_code_review', {
       findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }],
     });
@@ -316,6 +317,7 @@ describe('ReviewerRole — Round 2: node_synthesize zero-tools, reads engine-per
 
     spy.seed('node_track_review', { findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }] });
     spy.seed('node_security_lens', { findings: [] });
+    spy.seed('node_contract_review', { findings: [] });
     spy.seed('node_code_review', { findings: [{ file: 'b.ts', line: 2, message: 'Issue B' }] });
     spy.seed('node_enrich', {});
     spy.seed('node_synthesize', {
@@ -394,6 +396,7 @@ describe('ReviewerRole — Round 2: ToolPolicy per lens — bash deny, read/grep
 
     spy.seed('node_track_review', { findings: [] });
     spy.seed('node_security_lens', { findings: [] });
+    spy.seed('node_contract_review', { findings: [] });
     spy.seed('node_code_review', { findings: [] });
     spy.seed('node_enrich', {});
     spy.seed('node_synthesize', {
@@ -454,6 +457,7 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
     });
     opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_enrich', {});
     opencode.seed('node_synthesize', {
@@ -524,6 +528,7 @@ describe('ReviewerRole — Round 2: materializeReviewJson writer under D-99 revi
       findings: [{ file: 'a.ts', line: 1, message: 'Issue A' }],
     });
     opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: {
@@ -576,6 +581,7 @@ describe('ReviewerRole — Round 4: lens finding survives field-name drift (live
       findings: [{ file: 'a.ts', line: 1, summary: 'Finding reported via summary field' }],
     });
     opencode.seed('node_security_lens', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
     opencode.seed('node_enrich', {});
     opencode.seed('node_synthesize', {

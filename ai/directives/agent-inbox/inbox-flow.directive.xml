@@ -47,6 +47,10 @@
       Step 0):
       - Scout / change map → `visual-vocabulary.directive.xml`.
       - Review pass (arch/code) → `arch-interrogation` + `code-interrogation`.
+      - Contract track (the plan emits it when the diff touched a JSDoc contract / `#region` /
+        comment) → `contract-interrogation.directive.xml` — MANDATORY concentration audit across ALL
+        changed contracts (spec-exists · no-bloat · no-changelog, judged against each file's own
+        coding rules).
       - Synthesis → `golden-chat-output.example.md`.
       - Update branch → `update-review.directive.xml` (only when headChanged + my review exists).
       - Posting → `posting-rules.directive.xml` — NEVER before the posting step.
@@ -410,6 +414,10 @@
       `<SelfCheck>`; anchor `AX_ADVERSARIAL_DEFAULT`, `AX_CHANGESET_SCALE`, `AX_PRIOR_DISCUSSION_AWARENESS`)
       + `code-interrogation.directive.xml` (`<Probes>` NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO;
       `<ScopeGuard>`). The orchestrator does NOT run the battery itself (`AX_INDEPENDENT_ANALYSIS`).
+      The `contract` track's subagent (present whenever `inbox-review-plan` detected a changed JSDoc /
+      `#region` / comment) instead loads `contract-interrogation.directive.xml` and runs its three
+      checks over every changed contract — a mandatory track, judged against each file's governing
+      coding rules (resolved from its SDD phase, injected into `## Контекст` at enrichment).
     - **Step 4 synthesis** → `golden-chat-output.example.md` (structure reference; RE_READ arch per REMIT).
     - **Update branch** → `update-review.directive.xml` (only when headChanged + my review exists).
      - **Step 8 posting** → `posting-rules.directive.xml` — NEVER before the posting step.

@@ -98,6 +98,62 @@ function computeChangeset(worktreePath: string, baseSha: string): Changeset {
 
 // #endregion END_DIFF_PARSING
 
+// #region START_CONTRACT_CHANGE_DETECTION — content-level scan the numstat-only changeset can't do:
+// which files changed a comment / JSDoc contract / #region banner, so the plan can add the mandatory
+// contract track (spec-exists + no-bloat + no-changelog) as a separate vector across all of them.
+
+const CODE_FILE_EXT =
+  /\.(ts|tsx|js|jsx|mjs|cjs|svelte|vue|go|py|rb|rs|java|kt|php|c|cc|cpp|h|hpp|cs|swift|scala)$/;
+
+/**
+ * @purpose True when a diff hunk line is a comment, JSDoc line, or `#region`/`#endregion` banner.
+ * @param content Added/removed line body — the raw diff line with its leading `+`/`-` stripped.
+ * @returns Whether the line touches the comment/contract surface.
+ */
+function isContractCommentLine(content: string): boolean {
+  const t = content.trim();
+  if (t === '') return false;
+  if (t.includes('#region') || t.includes('#endregion')) return true;
+  return /^(\/\/|\/\*|\*\/|\*|\/\*\*)/.test(t);
+}
+
+/**
+ * @purpose Code files whose diff added/removed a comment, JSDoc contract, or `#region` line.
+ * @invariant Scans hunk body only (single `+`/`-`), code files only; degrades to `[]` on git error.
+ * @param worktreePath Local git worktree.
+ * @param baseSha Base SHA the diff is computed against.
+ * @returns Sorted, deduped paths — empty when nothing on the contract surface changed.
+ */
+export function computeContractChangedFiles(worktreePath: string, baseSha: string): string[] {
+  let diff: string;
+  try {
+    diff = execFileSync('git', ['-C', worktreePath, 'diff', '--unified=0', `${baseSha}..HEAD`], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }) as string;
+  } catch {
+    return [];
+  }
+
+  const changed = new Set<string>();
+  let currentFile: string | null = null;
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('+++ b/')) {
+      const path = line.slice('+++ b/'.length);
+      currentFile = CODE_FILE_EXT.test(path) ? path : null;
+      continue;
+    }
+    if (line.startsWith('+++ ') || line.startsWith('--- ') || line.startsWith('@@')) continue;
+    if (!currentFile) continue;
+    if ((line.startsWith('+') || line.startsWith('-')) && isContractCommentLine(line.slice(1))) {
+      changed.add(currentFile);
+    }
+  }
+  return [...changed].sort();
+}
+
+// #endregion END_CONTRACT_CHANGE_DETECTION
+
 // #region START_REVIEW_PLAN_TYPES
 
 type ReviewTrack = {
@@ -108,7 +164,8 @@ type ReviewTrack = {
   directive:
     | 'arch-interrogation + code-interrogation'
     | 'code-interrogation'
-    | 'security-interrogation';
+    | 'security-interrogation'
+    | 'contract-interrogation';
 };
 
 type ReviewPlan = {
@@ -281,15 +338,23 @@ function classifyTrack(path: string): string {
   return 'logic';
 }
 
+// Vector, not per-language rules: the check binds to whatever coding rules governed each file (its
+// SDD phase Rules — typescript-rules for .ts, the Svelte rules for .svelte, …); the orchestrator
+// resolves and injects those per file into ## Контекст at enrichment. Focus states WHAT to check.
+const CONTRACT_TRACK_FOCUS =
+  'CONTRACT — по каждому изменённому контракту/комментарию: (1) есть ли спека; (2) не распух ли по правилам кодирования ЭТОГО файла (contract-budget: пересказ → удалить); (3) не changelog ли (переписать блок, не дописать). Правила берутся из фазы SDD-задачи файла — оркестратор дописывает их в ## Контекст.';
+
 function getTrackFocus(track: string): string {
   if (track === 'deps') return 'SUPPLY probe';
   if (track === 'security') return 'SEC+INPUT+AUTHZ+SECRET+SUPPLY+BLAST+INJ probes';
+  if (track === 'contract') return CONTRACT_TRACK_FOCUS;
   return TRACK_RULES[track]?.focus ?? 'NAT+IDIOM+LIT+DEP+GLOBAL+BIZ+TYPO probes';
 }
 
 function getTrackDirective(track: string): ReviewTrack['directive'] {
   if (track === 'deps') return 'security-interrogation';
   if (track === 'security') return 'arch-interrogation + code-interrogation';
+  if (track === 'contract') return 'contract-interrogation';
   return TRACK_RULES[track]?.directive ?? 'arch-interrogation + code-interrogation';
 }
 
@@ -306,11 +371,14 @@ const INLINE_MAX_LINES = 300;
 
 /**
  * @purpose Classify a changeset into inline/fan_out review tracks — deterministic, no LLM.
+ * @invariant `contractFiles` non-empty adds one mandatory `contract` overlay track spanning them
+ *   all — separate vector, not a file partition, so it never shifts inline/fan_out mode.
  * @param changeset File-level diff stats to classify.
+ * @param [contractFiles] Files whose diff touched a comment/JSDoc/#region (`computeContractChangedFiles`).
  * @returns Review plan: mode + per-track file/line groupings.
  * @consumer inbox-review-plan.cmd `run`, reviewer.role.ts `node_prepare` (TSK-122)
  */
-export function buildReviewPlan(changeset: Changeset): ReviewPlan {
+export function buildReviewPlan(changeset: Changeset, contractFiles: string[] = []): ReviewPlan {
   const tracks = new Map<string, { files: string[]; lineCount: number }>();
 
   for (const file of changeset.files) {
@@ -348,6 +416,20 @@ export function buildReviewPlan(changeset: Changeset): ReviewPlan {
       focus: getTrackFocus(name),
       directive: getTrackDirective(name),
     }));
+
+  if (contractFiles.length > 0) {
+    const fileStats = new Map(changeset.files.map((f) => [f.path, f]));
+    reviewTracks.push({
+      name: 'contract',
+      files: contractFiles,
+      lineCount: contractFiles.reduce((n, f) => {
+        const stat = fileStats.get(f);
+        return n + (stat ? stat.plus + stat.minus : 0);
+      }, 0),
+      focus: getTrackFocus('contract'),
+      directive: getTrackDirective('contract'),
+    });
+  }
 
   return {
     mode,
@@ -657,22 +739,34 @@ export async function scaffoldReviewReports(
   mkdirSync(tasksDir, { recursive: true });
 
   const fileStats = new Map(changeset.files.map((f) => [f.path, f]));
+  // contract is a mandatory OVERLAY vector, never folded into the inline review blob — its own
+  // task file in both modes so the check runs as a distinct track over all changed contracts.
+  const contractTracks = plan.tracks.filter((t) => t.name === 'contract');
+  const partitionTracks = plan.tracks.filter((t) => t.name !== 'contract');
   const taskSpecs: { track: string; files: string[]; focus: string; taskPath: string }[] =
     plan.mode === 'inline'
       ? [
           {
             track: 'review',
-            files: plan.tracks.flatMap((t) => t.files),
-            focus: plan.tracks.map((t) => t.focus).join('; '),
+            files: partitionTracks.flatMap((t) => t.files),
+            focus: partitionTracks.map((t) => t.focus).join('; '),
             taskPath: join(tasksDir, 'review.task.md'),
           },
         ]
-      : plan.tracks.map((t) => ({
+      : partitionTracks.map((t) => ({
           track: t.name,
           files: t.files,
           focus: t.focus,
           taskPath: join(tasksDir, `${t.name}.task.md`),
         }));
+  for (const t of contractTracks) {
+    taskSpecs.push({
+      track: t.name,
+      files: t.files,
+      focus: t.focus,
+      taskPath: join(tasksDir, `${t.name}.task.md`),
+    });
+  }
 
   // New head = fresh visit in the reused flat dir → refresh everything; same head → idempotent skip.
   const planPath = join(dir, 'PLAN.md');
@@ -1026,7 +1120,7 @@ async function runScaffold(argv: string[]): Promise<number> {
     return 1;
   }
 
-  const plan = buildReviewPlan(changeset);
+  const plan = buildReviewPlan(changeset, computeContractChangedFiles(worktreePath, baseSha));
   const dir = mrReportsDir(resolveStateDir(argv), ref);
   const result = await scaffoldReviewReports(
     dir,
@@ -1129,7 +1223,7 @@ export async function run(): Promise<number> {
     return 1;
   }
 
-  const plan = buildReviewPlan(changeset);
+  const plan = buildReviewPlan(changeset, computeContractChangedFiles(worktreePath, baseSha));
   console.info(JSON.stringify(plan));
   return 0;
 }

@@ -339,6 +339,7 @@ describe('reviewer.role.ts — materializeReviewJson merges disk-artifact lens f
     opencode.seed('node_code_review', {
       findings: [{ file: 'c.ts', line: 1, message: 'Issue C', severity: 'warn' }],
     });
+    opencode.seed('node_contract_review', { findings: [] });
     // node_synthesize is a zero-tools structured-JSON session (D-120) — its result comes straight
     // from resultSchema, never from a disk write, so it must be seeded as a direct object, not a
     // `writeArtifact` side effect (which would only fake-write a file no one reads for this node).

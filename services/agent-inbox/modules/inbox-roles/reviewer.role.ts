@@ -18,6 +18,7 @@ import type {
 } from './role-node.ts';
 import {
   buildReviewPlan,
+  computeContractChangedFiles,
   scaffoldReviewReports,
   validateReviewReports,
 } from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
@@ -94,7 +95,8 @@ async function materializeReviewScaffold(ctx: NodeContext): Promise<{
       },
     };
 
-    const plan = buildReviewPlan(changeset);
+    const contractFiles = worktreePath ? computeContractChangedFiles(worktreePath, baseSha) : [];
+    const plan = buildReviewPlan(changeset, contractFiles);
     const ref = `${ctx.mr.project}!${ctx.mr.iid}`;
     const dir = mrReportsDir(stateDir, ref);
     const scaffold = await scaffoldReviewReports(
@@ -556,7 +558,7 @@ function _collectReviewFindings(
 ): Array<{ id: string; severity: string; file: string; line: number; message: string }> {
   const lensIds = isDelta
     ? ['node_delta_review']
-    : ['node_track_review', 'node_security_lens', 'node_code_review'];
+    : ['node_track_review', 'node_security_lens', 'node_code_review', 'node_contract_review'];
 
   const collected: CollectedFinding[] = [];
   for (const lensId of lensIds) {
@@ -867,6 +869,30 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
             model: 'llm-proxy/deepseek-v4-pro',
           },
         },
+        // Mandatory contract-quality lens (TSK-contract): scoped by the plan's `contract` track
+        // (`tasks/contract.task.md`, present only when a JSDoc/#region/comment actually changed).
+        // Vector, not per-language: checks each changed contract against the coding rules that
+        // govern its file — spec-exists, no-bloat (contract-budget), no-changelog. Absent that
+        // task file (no contract changed) → explicit empty findings, a valid pass.
+        {
+          id: 'node_contract_review',
+          buildTaskText(ctx: NodeContext) {
+            return `Contract-quality lens over MR ${ctx.mr.webUrl}. Scope: the \`contract\` track (\`tasks/contract.task.md\`) — every changed JSDoc contract, #region banner, and comment. If that task file is absent, no contract changed: return an empty findings array. For each changed contract, check it against the coding rules that GOVERN THAT FILE — its SDD phase Rules (e.g. \`ai/directives/coding/typescript-rules.xml\` for .ts, the Svelte rules for .svelte); the orchestrator injected the applicable rules into ## Контекст. Report a finding when: (1) no spec backs a rule the comment restates; (2) the contract is bloated — restatement of code or spec (delete it), @invariant >3 per entity, or a tag over its budget; (3) it reads as a changelog (grew by appending instead of a whole-block rewrite). Keep @purpose/@param/@returns; the prunable tags are @invariant/@pre/@post/@sideEffect and plain comments. file:line addresses; explicit no-findings if clean.${LENS_FINDING_SHAPE_INSTRUCTION}${_contextInjectionInstruction(ctx)}`;
+          },
+          dir(ctx: NodeContext) {
+            return `${ctx.workspace}/worktree`;
+          },
+          resultSchema: _lensArtifactSchema('node_contract_review'),
+          persistResult: _persistLensResult('node_contract_review'),
+          policy: {
+            promptTimeout: 10,
+            continueMax: 2,
+            restartMax: 2,
+            tools: true,
+            toolPolicy: REVIEW_LENS_TOOL_POLICY,
+            model: 'llm-proxy/deepseek-v4-pro',
+          },
+        },
       ],
     },
     {
@@ -876,8 +902,14 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
         const track = ctx.artifacts['node_track_review'] as Record<string, unknown> | undefined;
         const security = ctx.artifacts['node_security_lens'] as Record<string, unknown> | undefined;
         const codeReview = ctx.artifacts['node_code_review'] as Record<string, unknown> | undefined;
-        if (!track || !security || !codeReview) {
-          return { pass: false, reason: 'Review-fanout не заполнен: track/security/code-review' };
+        const contract = ctx.artifacts['node_contract_review'] as
+          | Record<string, unknown>
+          | undefined;
+        if (!track || !security || !codeReview || !contract) {
+          return {
+            pass: false,
+            reason: 'Review-fanout не заполнен: track/security/code-review/contract',
+          };
         }
         return { pass: true };
       },
@@ -1028,8 +1060,13 @@ ${_synthesisRetryHint(ctx, 'node_enrich')}`;
           'node_code_review',
           (ctx.artifacts['node_code_review'] as Record<string, unknown>) ?? {}
         );
-        return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, and code review into a unified report: ${JSON.stringify(
-          { track, security, codeReview }
+        const contract = _readLensResult(
+          ctx,
+          'node_contract_review',
+          (ctx.artifacts['node_contract_review'] as Record<string, unknown>) ?? {}
+        );
+        return `Synthesize review findings for MR ${ctx.mr.webUrl} from track review, security lens, code review, and contract-quality lens into a unified report: ${JSON.stringify(
+          { track, security, codeReview, contract }
         )}. Reply with a JSON object with two top-level fields: "reviewReport" and "proposedActions".
 
 "reviewReport" is REQUIRED and must have ALL FOUR of these non-empty string fields (a gate rejects the result and asks you to retry if any is missing or blank — do not write "n/a" or leave one out):
