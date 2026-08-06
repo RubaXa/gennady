@@ -41,8 +41,10 @@ type SessionSlot = {
   sid: string;
 };
 
-/** @purpose Options for `SessionPool#create` — title/directory plus the tools/model gates
- *   `OpenCodePort#createSession` accepts, so pooled callers get the same per-session controls as a direct call. */
+/**
+ * @purpose Options for `SessionPool#create` — title/directory plus the tools/model gates
+ * `OpenCodePort#createSession` accepts, so pooled callers get the same per-session controls as a direct call.
+ */
 export type PoolCreateOpts = {
   /** @purpose Title for the session to create */
   title: string;

@@ -20,7 +20,7 @@ type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => 
  *   the todos connection (verified against the live instance).
  */
 const MR_FIELDS = `iid title webUrl updatedAt draft state
-  description sha approvalsRequired
+  description diffHeadSha approvalsRequired
   author { username }
   reviewers { nodes { username } }
   approvedBy { nodes { username } }
@@ -88,7 +88,7 @@ type MrNode = {
   draft?: boolean;
   state?: string;
   description?: string;
-  sha?: string;
+  diffHeadSha?: string;
   approvalsRequired?: number;
   author?: { username?: string } | null;
   reviewers?: UserConn | null;
@@ -188,7 +188,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
             author: node.author?.username ?? '',
             reviewers: usernames(node.reviewers),
             approvedBy: usernames(node.approvedBy),
-            headSha: node.sha,
+            headSha: node.diffHeadSha,
             pipelineStatus: node.headPipeline?.status,
             approvalsRequired: node.approvalsRequired,
           },
