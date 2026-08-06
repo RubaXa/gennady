@@ -1,6 +1,6 @@
 // @file: StateStore — unified access point to all file-backed state (config, registry, audit) under ~/.gennady.
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, inbox-opencode, CLI
-// @tasks: TSK-109
+// @tasks: TSK-109, TSK-157
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -9,6 +9,7 @@ import { logger } from '#logger';
 import { InboxConfig, type ConfigLoadResult } from './inbox-config.ts';
 import { InboxRegistryAccess, type MrForDelta, type DeltaResult } from './inbox-registry.ts';
 import { AuditLog, type AuditEntry } from './audit-log.ts';
+import { type CapabilityRegistry } from './capability-modes.ts';
 import type { InboxConfig as InboxConfigRaw } from '../../../../cli/cmd/inbox/_core/logic/inbox-config.logic.ts';
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 
@@ -140,6 +141,38 @@ export class StateStore {
    */
   clearAssignment(webUrl: string): void {
     this._registry.clearAssignment(webUrl);
+  }
+
+  // lastReadAt / capabilities / boot-readiness — D-302, D-317, D-305
+
+  /**
+   * @purpose Record the timestamp when the operator last read this MR's event feed (D-317).
+   * @param webUrl MR web URL key.
+   * @param [ts] ISO timestamp; defaults to now.
+   * @sideEffect Mutates in-memory entry; caller persists via saveRegistry().
+   */
+  recordLastRead(webUrl: string, ts?: string): void {
+    this._registry.recordLastRead(webUrl, ts);
+  }
+
+  /**
+   * @purpose Retrieve per-MR capability modes for graduated autonomy (D-302).
+   * @param webUrl MR web URL key.
+   * @returns Capability registry; empty object when absent.
+   */
+  retrieveCapabilities(webUrl: string): CapabilityRegistry {
+    const raw = this._registry.retrieveCapabilities(webUrl);
+    return raw as CapabilityRegistry;
+  }
+
+  /**
+   * @purpose Store per-MR capability modes for graduated autonomy (D-302).
+   * @param webUrl MR web URL key.
+   * @param capabilities Updated capability registry.
+   * @sideEffect Mutates in-memory entry; caller persists via saveRegistry().
+   */
+  storeCapabilities(webUrl: string, capabilities: CapabilityRegistry): void {
+    this._registry.storeCapabilities(webUrl, capabilities);
   }
 
   // audit log append/query through AuditLog

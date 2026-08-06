@@ -48,7 +48,7 @@ graph TD
 | Task-ID                            | Title                                          | Module          | Dependencies              | Status     |
 | ---------------------------------- | ---------------------------------------------- | --------------- | ------------------------- | ---------- |
 | [TSK-156](agent-inbox.task-156.md) | Bootstrap: журнал событий + layout             | inbox-core      | None                      | `[x]` DONE |
-| [TSK-157](agent-inbox.task-157.md) | inbox-core: датасет решений + готовность       | inbox-core      | TSK-156                   | `[ ]` TODO |
+| [TSK-157](agent-inbox.task-157.md) | inbox-core: датасет решений + готовность       | inbox-core      | TSK-156                   | `[x]` DONE |
 | [TSK-158](agent-inbox.task-158.md) | inbox-vcs: sync + внимание + эффекты           | inbox-vcs       | TSK-156                   | `[x]` DONE |
 | [TSK-159](agent-inbox.task-159.md) | inbox-queue: реестр типов + executors          | inbox-queue     | TSK-157, TSK-158, TSK-160 | `[ ]` TODO |
 | [TSK-160](agent-inbox.task-160.md) | inbox-opencode: TTL-паркинг + пул + промпты    | inbox-opencode  | TSK-156                   | `[ ]` TODO |
