@@ -15,6 +15,8 @@
 
 <!--/SECTION:MODULE_VISION-->
 
+> История v1-харнесса (обязательна к прочтению исполнителем): [EVAL-BUILD-REFLECTION.md](EVAL-BUILD-REFLECTION.md).
+
 ## 2. Сценарные прогоны
 
 | Прогон           | Проверяет                                 | Критерий PASS (измеримый)                                                                                                                    |

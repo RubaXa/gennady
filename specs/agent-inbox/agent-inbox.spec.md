@@ -244,17 +244,17 @@ flowchart TD
   EVAL -.-> QUE
 ```
 
-| Модуль            | Ответственность                                                                              | Происхождение  |
-| ----------------- | -------------------------------------------------------------------------------------------- | -------------- |
-| `inbox-core`      | журнал событий/решений (event store), конфиг, реестр-кэш, барьер готовности, dry-run         | rework         |
-| `inbox-vcs`       | двухъярусный sync, контракты GitLab, детерминированная ось внимания, верификация исправлений | split          |
-| `inbox-queue`     | реестр типов задач + правила, per-MR executors, маршрутизация сессий, приоритетный пул       | **новое**      |
-| `inbox-pipeline`  | план-шаблон, 3 слоя дорожек, реестр линз, мульти-модель, coverage-гейты, синтез, role-хвосты | **новое**      |
-| `inbox-opencode`  | сессии (создание/паркинг/TTL), пулы, tool-телеметрия, промпт-компиляция                      | reuse + extend |
-| `inbox-chat`      | operator-сессия, мета-якоря, MutationApplier (CAS+снапшоты)                                  | reuse core     |
-| `inbox-api`       | REST/SSE, DTO-проекции (доска/лента/очередь), enqueue                                        | rework         |
-| `inbox-dashboard` | экран загрузки, доска двух осей, лента-виджеты, чат-колонка                                  | rewrite        |
-| `inbox-eval`      | прогон на реальном MR, метрики схожести решений; моки — только для UI-разработки             | keep           |
+| Модуль                                                       | Ответственность                                                                                                                   | Происхождение  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| [`inbox-core`](inbox-core/inbox-core.spec.md)                | журнал событий/решений (event store), конфиг, реестр-кэш, барьер готовности, dry-run                                              | rework         |
+| [`inbox-vcs`](inbox-vcs/inbox-vcs.spec.md)                   | двухъярусный sync, контракты GitLab, детерминированная ось внимания, верификация исправлений                                      | split          |
+| [`inbox-queue`](inbox-queue/inbox-queue.spec.md)             | реестр типов задач + правила, per-MR executors, маршрутизация сессий, приоритетный пул                                            | **новое**      |
+| [`inbox-pipeline`](inbox-pipeline/inbox-pipeline.spec.md)    | план-шаблон, 3 слоя дорожек, реестр линз, мульти-модель, coverage-гейты, синтез, role-хвосты                                      | **новое**      |
+| [`inbox-opencode`](inbox-opencode/inbox-opencode.spec.md)    | сессии (создание/паркинг/TTL), пулы, tool-телеметрия, промпт-компиляция                                                           | reuse + extend |
+| [`inbox-chat`](inbox-chat/inbox-chat.spec.md)                | operator-сессия, мета-якоря, MutationApplier (CAS+снапшоты)                                                                       | reuse core     |
+| [`inbox-api`](inbox-api/inbox-api.spec.md)                   | REST/SSE, DTO-проекции (доска/лента/очередь), enqueue                                                                             | rework         |
+| [`inbox-dashboard`](inbox-dashboard/inbox-dashboard.spec.md) | экран загрузки, доска двух осей, лента-виджеты, чат-колонка                                                                       | rewrite        |
+| [`inbox-eval`](inbox-eval/inbox-eval.spec.md)                | прогон на реальном MR, метрики схожести решений; моки — только для UI-разработки ([inbox-mocks](inbox-mocks/inbox-mocks.spec.md)) | keep           |
 
 Переиспользуется (не трогаем по сути): OutcomeClassifier, PhaseTelemetry/X-ray,
 EffectExecutor, context-builder (worktree/changeset), MutationApplier, VCS-клиент.
