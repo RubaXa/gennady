@@ -5,10 +5,12 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-161
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
+- **Reopens:** 1 (2026-08-06 — audit: отсутствовал gate-verdict.test.ts; добавлен)
 - **Purpose:** Единый ревью-пайплайн: план-DAG (prepare→plan→enrich→fan-out→gate_coverage→synthesize→gate_verdict→хвост), 3 слоя дорожек, линзы-волны, мульти-модель (N артефактов + findings.jsonl), coverage-гейт по tool-trace, синтез с read-тулами, role-хвосты + delta_review мини-DAG.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-pipeline`
+- **Reopens:** 1
 - **Dependencies:** TSK-159
 - **Spec References:**
   - Module spec: [inbox-pipeline](../../specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md) §2–§8
@@ -23,8 +25,8 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [ ]    |
-| P2  | test | P1   | [ ]    |
+| P1  | impl | —    | [x]    |
+| P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -125,12 +127,37 @@
 
 ## 6. Test Scenario Coverage
 
-- типинг-контракт → `plan-template.test.ts` :: `contract: lens and track specs discriminated`
-- триггеры+слои → `plan-template.test.ts` :: `deps manifest spawns triggered track and mandatory coverage is full`
-- волны → `plan-template.test.ts` :: `lens inputs create DAG waves`
-- coverage → `coverage-gate.test.ts` :: `underread fails gate and continue completes checklist`
-- мульти-модель → `synthesize.test.ts` :: `multi model synthesis marks consensus dispute unique`
-- gate_verdict → `synthesize.test.ts` :: `verdict gate blocks incomplete review json`
+- contract → `plan-template.test.ts` :: `contract: lens and track specs discriminated`
+- depsVuln → `plan-template.test.ts` :: `deps manifest spawns triggered track and mandatory coverage is full`
+- layer1 → `plan-template.test.ts` :: `layer 1 mandatory always present covers all core files`
+- layer2 → `plan-template.test.ts` :: `layer 2 triggered spawns from triggers when files match glob patterns`
+- layer3 → `plan-template.test.ts` :: `layer 3 proposed tracks are allocated as empty placeholder for enrich stage`
+- coverage100 → `plan-template.test.ts` :: `mandatory plus triggered tracks cover all changed files at 100 percent`
+- deterministic → `plan-template.test.ts` :: `deterministic output: same changeset produces identical track ordering and stage structure`
+- dagWaves → `plan-template.test.ts` :: `lens inputs create DAG waves`
+- pass → `coverage-gate.test.ts` :: `all files read returns pass with empty missing list`
+- missing → `coverage-gate.test.ts` :: `missing file returns fail with missing file list`
+- partial → `coverage-gate.test.ts` :: `partial read detected from tool trace is reported as missing`
+- deleted → `coverage-gate.test.ts` :: `deleted files are excluded from checklist`
+- binary → `coverage-gate.test.ts` :: `binary files are excluded from checklist`
+- continue2 → `coverage-gate.test.ts` :: `max continue equals 2: first continue ok, second continue last chance, third throws escalation`
+- emptyChecklist → `coverage-gate.test.ts` :: `empty checklist returns pass with nothing to check`
+- consensus → `synthesize.test.ts` :: `two models same finding marks consensus`
+- dispute → `synthesize.test.ts` :: `two models different findings on same line marks dispute`
+- unique → `synthesize.test.ts` :: `only one model has finding marks unique`
+- empty → `synthesize.test.ts` :: `empty model results produce empty synthesized output`
+- majority → `synthesize.test.ts` :: `three plus models: majority agreement yields consensus plus unique for outlier`
+- source → `synthesize.test.ts` :: `findings carry source model and runId`
+- verdictCount → `tails.test.ts` :: `summary includes verdict finding count and MR info`
+- emptyFindings → `tails.test.ts` :: `empty findings produces no issues found default`
+- severityOrder → `tails.test.ts` :: `top findings are ordered by severity: error before warning before info`
+- disputeReply → `tails.test.ts` :: `dispute findings trigger proposed reply for operator decision`
+- groupedByMark → `tails.test.ts` :: `findings are grouped by mark counts: consensus dispute unique`
+- verdictErrors → `tails.test.ts` :: `recommended verdict is REQUEST_CHANGES when errors present`
+- verdictApprove → `tails.test.ts` :: `recommended verdict is APPROVE when no findings exist`
+- dedup → `tails.test.ts` :: `existing thread on same file line deduplicates as reply action`
+- skipDispute → `tails.test.ts` :: `disputed findings are skipped from posting candidates`
+- recommendations → `tails.test.ts` :: `recommendations include dispute and consensus counts for reviewer`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -141,17 +168,51 @@
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-06T21:21:20Z` intro PlanTemplate ← ядро: детерминированный DAG-план из changeset (prepare→plan→enrich→fan-out→gate_coverage→synthesize→gate_verdict→tails), 3 слоя дорожек
+- [x] `2026-08-06T21:21:20Z` intro TriggerRegistry ← реестр glob-правил (стартовые: deps-vuln, secrets, spec-compliance, migration-safety), матчер glob→regex без зависимостей
+- [x] `2026-08-06T21:21:20Z` intro LensRegistry ← 7 стартовых линз (architecture, business, specs, tests, security, optimization, code-lines), DAG-волны по inputs, mandatory/proposed фильтр
+- [x] `2026-08-06T21:21:20Z` intro CoverageGate ← проверка tool-trace.jsonl против чеклиста, предикат частичных чтений, исключения удалённых/бинарных, max continue=2
+- [x] `2026-08-06T21:21:20Z` intro FindingsJournal ← append-only findings.jsonl (O_APPEND+fsync), F-n нумерация, source:model атрибуция
+- [x] `2026-08-06T21:21:20Z` intro Synthesize ← мульти-модель синтез: кластеризация по (file, line bucket, normalized summary), разметка consensus/dispute/unique, запись в findings.jsonl
+- [x] `2026-08-06T21:21:20Z` intro GateVerdict ← валидация review.json по §2.1 критериям: verdict, file:line на каждой находке, revision, до 2 попыток → эскалация
+- [x] `2026-08-06T21:21:20Z` intro AuthorTail ← подготовка нотификации автору: сводка находок, топ-5, proposed replies
+- [x] `2026-08-06T21:21:20Z` intro ReviewerTail ← сводка ревьюверу: recommended verdict, posting candidates, dedup, decision recommendations
+- [x] `2026-08-06T21:21:20Z` decision layer1-classification=REUSE_v1 ← TRACK_RULES портированы из cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts, не новый алгоритм (per §3)
+- [x] `2026-08-06T21:21:20Z` decision glob-impl=inline ← без внешних зависимостей (мини-конвертер ** / * / ? / {a,b} → regex), чтобы не тянуть picomatch/minimatch
+- [x] `2026-08-06T21:21:20Z` decision cluster-key=file:lineBucket:normSummary ← кластеризация по (файл, line/5 bucket, нормализованный summary до 80 символов) — детерминированный дедуп между моделями
+- [x] `2026-08-06T21:27:45Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-06T21:27:45Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/plan-template.ts, services/agent-inbox/modules/inbox-pipeline/trigger-registry.ts, services/agent-inbox/modules/inbox-pipeline/lens-registry.ts, services/agent-inbox/modules/inbox-pipeline/coverage-gate.ts, services/agent-inbox/modules/inbox-pipeline/findings-journal.ts, services/agent-inbox/modules/inbox-pipeline/synthesize.ts, services/agent-inbox/modules/inbox-pipeline/gate-verdict.ts, services/agent-inbox/modules/inbox-pipeline/tails/author-tail.ts, services/agent-inbox/modules/inbox-pipeline/tails/reviewer-tail.ts]; decisions: [layer1-classification=REUSE_v1, glob-impl=inline, cluster-key=file:lineBucket:normSummary, trigger-starters={deps-vuln|secrets|spec-compliance|migration-safety}, lens-starters={architecture|business|specs|tests|security|optimization|codelines}, coverage-max-continue=2, gate-verdict-max-attempts=2]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- inbox-pipeline/__tests__` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-06T21:37:11Z` intro PlanTemplate.test.ts ← 8 cases: contract, deps trigger, 3 layers, 100% coverage, deterministic output, DAG waves
+- [x] `2026-08-06T21:37:11Z` intro CoverageGate.test.ts ← 7 cases: pass, fail/missing, partial read, deleted exclusion, binary exclusion, max continue=2, empty checklist
+- [x] `2026-08-06T21:37:11Z` intro Synthesize.test.ts ← 6 cases: consensus, dispute, unique, empty, majority, source attribution
+- [x] `2026-08-06T21:37:11Z` intro Tails.test.ts ← 10 cases (4 author + 6 reviewer): verdict/summary, empty default, severity order, dispute reply, mark counts, verdict derivation, dedup, skip dispute, recommendations
+- [x] `2026-08-06T21:37:11Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-06T21:37:11Z` ver `npm test -- services/agent-inbox/modules/inbox-pipeline/__tests__/` → pass exit=0
+- [x] `2026-08-06T21:37:11Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/__tests__/plan-template.test.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/coverage-gate.test.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/synthesize.test.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/tails.test.ts]; decisions: [test-runner=node-test, assertion-lib=node:assert/strict, mock-strategy=as-cast-without-mock.fn, coverage-gate-requires-tempfiles=true]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] 2026-08-06T21:45:00Z sync agent-inbox+root trackers
+- [x] 2026-08-06T21:45:00Z DONE
+
+### Round 2 — 2026-08-06, audit-driven fix: F-01 (missing gate-verdict.test.ts)
+
+#### P2 — re-run: fix: address audit finding F-01 — missing gate-verdict.test.ts
+
+- [x] `2026-08-06T21:45:34Z` intro GateVerdict.test.ts ← 8 cases: verdict missing, finding без file:line, empty findings pass, empty summary fail, revision отсутствует, невалидный verdict, isEscalated после 2 попыток, полный review.json pass
+- [x] `2026-08-06T21:45:34Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-06T21:45:34Z` ver `npm test -- "services/agent-inbox/modules/inbox-pipeline/__tests__/gate-verdict.test.ts"` → pass exit=0
+- [x] `2026-08-06T21:45:34Z` ver `npm test -- "services/agent-inbox/modules/inbox-pipeline/__tests__/*.test.ts"` → pass exit=0
+- [x] `2026-08-06T21:45:34Z` discovery sdd verify (full suite): 5 pre-existing integration test failures (full-flow, runMrsOnce — real GitLab env required), unrelated to gate-verdict; all inbox-pipeline gates pass
+- [x] `2026-08-06T21:45:34Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/__tests__/gate-verdict.test.ts]; decisions: [test-runner=node-test, assertion-lib=node:assert/strict, gate-verdict-test-cases=8, all-inbox-pipeline-tests=39-pass-0-fail]; open: []
+
+#### Round close
+
+- [x] 2026-08-06T22:00:00Z DONE
 <!--/SECTION:EXECUTION_LOG-->

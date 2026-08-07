@@ -52,8 +52,8 @@ graph TD
 | [TSK-158](agent-inbox.task-158.md) | inbox-vcs: sync + внимание + эффекты           | inbox-vcs       | TSK-156                   | `[x]` DONE |
 | [TSK-159](agent-inbox.task-159.md) | inbox-queue: реестр типов + executors          | inbox-queue     | TSK-157, TSK-158, TSK-160 | `[x]` DONE |
 | [TSK-160](agent-inbox.task-160.md) | inbox-opencode: TTL-паркинг + пул + промпты    | inbox-opencode  | TSK-156                   | `[x]` DONE |
-| [TSK-161](agent-inbox.task-161.md) | inbox-pipeline: план + слои + линзы + гейты    | inbox-pipeline  | TSK-159                   | `[ ]` TODO |
-| [TSK-162](agent-inbox.task-162.md) | inbox-api: REST/SSE + DTO-проекции             | inbox-api       | TSK-158, TSK-159          | `[ ]` TODO |
+| [TSK-161](agent-inbox.task-161.md) | inbox-pipeline: план + слои + линзы + гейты   | inbox-pipeline  | TSK-159                   | `[x]` DONE |
+| [TSK-162](agent-inbox.task-162.md) | inbox-api: REST/SSE + DTO-проекции             | inbox-api       | TSK-158, TSK-159          | `[x]` DONE |
 | [TSK-163](agent-inbox.task-163.md) | inbox-chat: якоря + operator-сессия + мутации  | inbox-chat      | TSK-162                   | `[ ]` TODO |
 | [TSK-164](agent-inbox.task-164.md) | inbox-dashboard: загрузка/доска/лента/чат      | inbox-dashboard | TSK-162, TSK-166          | `[ ]` TODO |
 | [TSK-165](agent-inbox.task-165.md) | inbox-eval: харнесс S1–S8 + метрики            | inbox-eval      | TSK-161, TSK-164, TSK-166 | `[ ]` TODO |
