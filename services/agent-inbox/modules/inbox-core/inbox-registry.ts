@@ -4,14 +4,18 @@
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { logger } from '#logger';
+import { mrKey } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import {
   loadRegistry as loadRegistryRaw,
   saveRegistry as saveRegistryRaw,
   promoteReviewedHead,
   type InboxRegistry,
-  type RegistryEntry,
 } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
+import { EventJournal } from './event-journal.ts';
+import { DecisionJournal } from './decision-journal.ts';
+import { CapabilityModes } from './capability-modes.ts';
 
 /** @purpose Tag for a delta entry — MR is brand-new to the registry. */
 export type DeltaTag = 'NEW';
@@ -55,17 +59,6 @@ export type CapabilityMode = 'proposal' | 'auto';
 
 /** @purpose Per-capability mode registry — keyed by capability name (D-302 / §2.1). */
 export type CapabilityRegistry = Record<string, CapabilityMode>;
-
-/**
- * @purpose Enhanced registry entry with v2 fields (D-302, D-317).
- * @invariant lastReadAt and capabilities are optional — absent until first use.
- */
-type RegistryEntryV2 = RegistryEntry & {
-  /** @purpose ISO timestamp when the operator last read this MR's event feed (D-317) */
-  lastReadAt?: string;
-  /** @purpose Per-capability mode registry (D-302) */
-  capabilities?: CapabilityRegistry;
-};
 
 /**
  * @purpose Abstractions over the inbox MR registry persisted at `<stateDir>/inbox-registry.json`.
@@ -138,6 +131,7 @@ export class InboxRegistryAccess {
           lastSeenUpdatedAt: mr.updatedAt,
           firstSeenAt: now,
           lastClassifiedAt: now,
+          capabilities: this._rebuildCapabilitiesFromJournal(mr),
         };
         result.NEW.push({ webUrl: mr.webUrl, tag: 'NEW' });
         // #endregion END_DELTA_NEW
@@ -258,7 +252,7 @@ export class InboxRegistryAccess {
    */
   recordLastRead(webUrl: string, ts?: string): void {
     if (!this._registry) this.load();
-    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    const entry = this._registry!.entries[webUrl];
     if (!entry) {
       logger.debug('[InboxRegistryAccess#recordLastRead] [recording → not_found]', { webUrl });
       return;
@@ -277,7 +271,7 @@ export class InboxRegistryAccess {
    */
   retrieveCapabilities(webUrl: string): CapabilityRegistry {
     if (!this._registry) this.load();
-    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    const entry = this._registry!.entries[webUrl];
     return entry?.capabilities ?? {};
   }
 
@@ -289,7 +283,7 @@ export class InboxRegistryAccess {
    */
   storeCapabilities(webUrl: string, capabilities: CapabilityRegistry): void {
     if (!this._registry) this.load();
-    const entry = this._registry!.entries[webUrl] as RegistryEntryV2 | undefined;
+    const entry = this._registry!.entries[webUrl];
     if (!entry) {
       logger.debug('[InboxRegistryAccess#storeCapabilities] [storing → not_found]', { webUrl });
       return;
@@ -299,6 +293,45 @@ export class InboxRegistryAccess {
       webUrl,
       caps: Object.keys(capabilities).length,
     });
+  }
+
+  /**
+   * @purpose Persist a capability cache by canonical `project!iid` ref used by API routes.
+   * @param ref Canonical MR ref (`project!iid`).
+   * @param capabilities Per-capability modes to cache.
+   * @returns True when the entry was found and updated.
+   */
+  storeCapabilitiesForRef(ref: string, capabilities: CapabilityRegistry): boolean {
+    if (!this._registry) this.load();
+    const entry = Object.values(this._registry!.entries).find(
+      (candidate) => `${candidate.project}!${candidate.iid}` === ref
+    );
+    if (!entry) {
+      logger.warn('[InboxRegistryAccess#storeCapabilitiesForRef] [storing → not_found]', { ref });
+      return false;
+    }
+    entry.capabilities = capabilities;
+    this.save();
+    return true;
+  }
+
+  /**
+   * @purpose Rebuild autonomy modes from an MR's durable event journal after registry loss.
+   * @invariant A missing journal means no decisions exist yet, so the capability cache defaults empty.
+   * @param mr GitLab MR used to resolve the canonical per-MR journal path.
+   * @returns Capability modes derived from proposal/decision events.
+   */
+  protected _rebuildCapabilitiesFromJournal(mr: MrForDelta): CapabilityRegistry {
+    const ref = `${mr.project}!${mr.iid}`;
+    const journalPath = join(this._stateDir, 'agent-inbox', 'mrs', mrKey(ref), 'events.jsonl');
+    if (!existsSync(journalPath)) return {};
+
+    // #region START_REBUILD_CAPABILITIES_FROM_DURABLE_EVENTS
+    // invariant: the journal is the source of truth; the registry only caches its derived modes
+    const journal = new EventJournal(journalPath);
+    const decisionJournal = new DecisionJournal(journal);
+    return CapabilityModes.computeRegistry(decisionJournal.computeAllAcceptRates());
+    // #endregion END_REBUILD_CAPABILITIES_FROM_DURABLE_EVENTS
   }
 
   /**

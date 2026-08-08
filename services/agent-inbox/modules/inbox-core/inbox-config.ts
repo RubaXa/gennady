@@ -116,7 +116,9 @@ export class InboxConfig {
    * @returns Promise that resolves when the config is saved.
    * @sideEffect Atomic write to disk via tmp + rename.
    */
-  async save(partial: Partial<Pick<InboxConfigRaw, 'reposBase' | 'vcsHost'>>): Promise<void> {
+  async save(
+    partial: Partial<Pick<InboxConfigRaw, 'reposBase' | 'vcsHost' | 'dryRun'>>
+  ): Promise<void> {
     logger.debug('[InboxConfig#save] [idle → saving]', { keys: Object.keys(partial) });
 
     // #region START_RESOLVE_BASE_CONFIG
@@ -136,6 +138,7 @@ export class InboxConfig {
       version: base.version,
       reposBase: partial.reposBase ?? base.reposBase,
       vcsHost: partial.vcsHost ?? base.vcsHost,
+      dryRun: partial.dryRun ?? base.dryRun,
     };
 
     try {
@@ -148,6 +151,19 @@ export class InboxConfig {
       throw error;
     }
     // #endregion END_MERGE_AND_PERSIST
+  }
+
+  /**
+   * @purpose Read the persisted dry-run default without conflating it with config completeness.
+   * @returns Persisted dry-run flag; undefined when never set.
+   */
+  async loadDryRun(): Promise<boolean | undefined> {
+    try {
+      const raw = await loadConfigRaw(this.configPath);
+      return raw?.dryRun;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -177,6 +193,7 @@ export class InboxConfig {
       version: this._rawConfig.version,
       reposBase: key === 'reposBase' ? undefined : this._rawConfig.reposBase,
       vcsHost: key === 'vcsHost' ? undefined : this._rawConfig.vcsHost,
+      dryRun: this._rawConfig.dryRun,
     };
 
     try {

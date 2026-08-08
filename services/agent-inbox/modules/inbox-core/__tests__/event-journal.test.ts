@@ -123,7 +123,7 @@ describe('EventJournal', () => {
       path,
       '{"ts":"2026-01-01T00:00:00Z","seq":1,"mr":"g/project!42","kind":"task_created"}\n' +
         '{"ts":"2026-01-01T00:00:01Z","seq":2,"mr":"g/project!42","kind":"task_status"}\n' +
-        '{"ts":"2026-01-01T00:00:02Z","seq":3,"mr":"g/project!42","kind":"broken tail\n'
+        '{"ts":"2026-01-01T00:00:02Z","seq":3,"mr":"g/project!42","kind":"broken tail'
     );
     // #endregion END_BROKEN_TAIL_SETUP
 
@@ -237,20 +237,5 @@ describe('EventJournal', () => {
       sinceA.entries.every((e) => e.mr === 'g/project!1'),
       true
     );
-  });
-
-  it('broken registry rebuilds safely from gitlab and journals', async () => {
-    // contract: EventJournal resilience — works even when sibling inbox-registry.json is broken
-    // note: scenario primarily tests InboxRegistryAccess; EventJournal has no dependency on registry
-
-    const brokenReg = join(tmpDir, 'inbox-registry.json');
-    writeFileSync(brokenReg, 'not-valid-json{{{');
-
-    const journal = new EventJournal(join(tmpDir, 'resilient.jsonl'));
-    const seq = await journal.append(makeBase());
-    assert.strictEqual(seq, 1);
-
-    const entries = journal.read();
-    assert.strictEqual(entries.length, 1);
   });
 });

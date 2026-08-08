@@ -33,7 +33,10 @@ export class StateStore {
    * @param [stateDir] Root state directory (defaults to ~/.gennady).
    */
   constructor(stateDir?: string) {
-    this._stateDir = stateDir ?? join(homedir(), '.gennady');
+    // The CLI and its Playwright proof share this explicit override.  It preserves the default
+    // operator state while letting a real `gennady inbox serve` process boot against an isolated,
+    // journal-seeded directory without test-only dependency injection.
+    this._stateDir = stateDir ?? process.env.GENNADY_STATE_DIR ?? join(homedir(), '.gennady');
     this._config = new InboxConfig(this._stateDir);
     this._registry = new InboxRegistryAccess(this._stateDir);
     this._auditLog = new AuditLog(this._stateDir);
@@ -62,7 +65,9 @@ export class StateStore {
    * @returns Promise that resolves when the config is saved.
    * @sideEffect Creates `<stateDir>/agent-inbox/` directory; writes config atomically.
    */
-  async saveConfig(partial: Partial<Pick<InboxConfigRaw, 'reposBase' | 'vcsHost'>>): Promise<void> {
+  async saveConfig(
+    partial: Partial<Pick<InboxConfigRaw, 'reposBase' | 'vcsHost' | 'dryRun'>>
+  ): Promise<void> {
     logger.debug('[StateStore#saveConfig] [idle → saving]', { keys: Object.keys(partial) });
 
     // #region START_ENSURE_STATE_DIR
@@ -79,6 +84,14 @@ export class StateStore {
     // #endregion END_ENSURE_STATE_DIR
 
     await this._config.save(partial);
+  }
+
+  /**
+   * @purpose Read durable dry-run configuration before external effect paths are assembled.
+   * @returns Persisted mode, or undefined when no explicit local preference exists.
+   */
+  async loadDryRun(): Promise<boolean | undefined> {
+    return this._config.loadDryRun();
   }
 
   // load/delta/promote/save through InboxRegistryAccess

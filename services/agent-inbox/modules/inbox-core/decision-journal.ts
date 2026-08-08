@@ -51,6 +51,8 @@ export type DecisionRecord = {
   diff?: string;
   /** @purpose Operator identifier */
   actor: string;
+  /** @purpose MR ref inherited from the proposal when omitted by a legacy caller. */
+  mr?: string;
 };
 
 /** @purpose Acceptance metrics for a single capability over a rolling window. */
@@ -128,9 +130,15 @@ export class DecisionJournal {
     });
 
     // #region START_WRITE_DECISION_EVENT
+    const mr = record.mr ?? this._proposalMr(record.proposalId);
+    if (!mr) {
+      throw new Error(
+        `[DecisionJournal#writeDecision] Cannot persist decision ${record.proposalId} without its MR`
+      );
+    }
     return this._journal.append({
       ts: new Date().toISOString(),
-      mr: '',
+      mr,
       kind: 'decision',
       actor: record.actor,
       payload: {
@@ -227,6 +235,25 @@ export class DecisionJournal {
     }
     return map;
     // #endregion END_MAP_PROPOSALS
+  }
+
+  /**
+   * @purpose Resolve a decision's canonical MR from its durable proposal event.
+   * @param proposalId Proposal identity.
+   * @returns MR ref when the proposal exists.
+   */
+  protected _proposalMr(proposalId: string): string | undefined {
+    const entries = this._journal.read();
+    for (let index = entries.length - 1; index >= 0; index--) {
+      const entry = entries[index];
+      if (
+        entry.kind === 'proposal' &&
+        (entry.payload as Record<string, unknown>)?.proposalId === proposalId
+      ) {
+        return entry.mr || undefined;
+      }
+    }
+    return undefined;
   }
 
   /**

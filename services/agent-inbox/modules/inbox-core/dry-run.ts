@@ -5,7 +5,7 @@
 //   running HttpServer wires one to its SseHub), fanned out to every connected dashboard so the SPA
 //   surfaces it in the browser console.
 // @consumers: EffectExecutor, RightsEscalator, HttpServer (broadcaster), bootstrap (enable), serve.cmd
-// @tasks: TSK-131
+// @tasks: TSK-131, TSK-157
 
 import { logger } from '#logger';
 
@@ -18,16 +18,21 @@ export type DryRunEntry = {
   channel: DryRunChannel;
   /** @purpose Human-readable line, prefixed `DRY-RUN ` — logged and broadcast verbatim */
   line: string;
+  /** @purpose MR affected by the suppressed write, when the caller has one. */
+  mr?: string;
 };
 
 /** @purpose Sink a registered consumer (the HttpServer's SSE hub) plugs in to receive suppressed writes. */
 export type DryRunBroadcaster = (entry: DryRunEntry) => void;
+/** @purpose Durable journal sink injected by bootstrap. */
+export type DryRunRecorder = (entry: DryRunEntry) => Promise<void>;
 
 /** @purpose Process-wide enable flag; seeded from `INBOX_DRY_RUN` env, overridable via `setDryRun`. */
 let _enabled = _readEnvFlag();
 
 /** @purpose Optional live broadcaster — set by the running server, cleared on shutdown. */
 let _broadcaster: DryRunBroadcaster | null = null;
+let _recorder: DryRunRecorder | null = null;
 
 /**
  * @purpose Read the `INBOX_DRY_RUN` env flag (accepts `1`/`true`, case-insensitive).
@@ -68,14 +73,30 @@ export function setDryRunBroadcaster(fn: DryRunBroadcaster | null): void {
 }
 
 /**
+ * @purpose Attach durable recorder.
+ * @param fn Recorder or null to detach.
+ */
+export function setDryRunRecorder(fn: DryRunRecorder | null): void {
+  _recorder = fn;
+}
+
+/**
  * @purpose Record one suppressed external write, replacing the real code path's final irreversible
  *   call. Always logs; also broadcasts when a sink is registered.
  * @param channel Originating seam (`mr` VCS mutation | `dm` operator message).
  * @param summary The payload description WITHOUT the `DRY-RUN ` prefix, e.g. `post→MR <ref>: <body>`.
+ * @param [mr] Canonical MR ref when the suppressed effect is MR-scoped.
+ * @returns Completion after durable recording.
  * @sideEffect Writes a log line; invokes the registered broadcaster (if any).
  */
-export function emitDryRun(channel: DryRunChannel, summary: string): void {
+export async function emitDryRun(
+  channel: DryRunChannel,
+  summary: string,
+  mr?: string
+): Promise<void> {
   const line = `DRY-RUN ${summary}`;
   logger.info(`[dry-run] ${line}`);
-  _broadcaster?.({ channel, line });
+  const entry = { channel, line, mr };
+  await _recorder?.(entry);
+  _broadcaster?.(entry);
 }

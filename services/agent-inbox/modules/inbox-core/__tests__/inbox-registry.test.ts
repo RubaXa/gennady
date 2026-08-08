@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-core InboxRegistryAccess — delta NEW/↑/idle, promoteReviewedHeadSha.
 // @consumers: node:test runner
-// @tasks: TSK-109
+// @tasks: TSK-109, TSK-156
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,6 +8,9 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { InboxRegistryAccess, type MrForDelta } from '../inbox-registry.ts';
+import { EventJournal } from '../event-journal.ts';
+import { DecisionJournal } from '../decision-journal.ts';
+import { mrKey } from '../../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type {
   InboxRegistry,
   RegistryEntry,
@@ -148,15 +151,42 @@ describe('InboxRegistryAccess — дельта NEW/↑/idle', () => {
     assert.strictEqual(delta.NEW.length, 1);
   });
 
-  it('GIVEN corrupted registry file WHEN updateDelta THEN treated as empty (all NEW)', () => {
+  it('GIVEN corrupted registry and durable GitLab/journal inputs WHEN updateDelta THEN rebuilds entries with default read cursor and journal-derived capabilities', async () => {
+    // contract: the registry is a cache; GitLab rebuilds MR identity while journals rebuild autonomy modes
+    // failure mode: corrupted JSON must not erase an earned auto-mode or throw during boot
+
+    // #region START_REBUILD_REGISTRY_SETUP_DURABLE_INPUTS
     const regPath = join(tmpDir, 'inbox-registry.json');
     writeFileSync(regPath, 'not-json{{{', 'utf8');
+    const mr = {
+      webUrl: 'https://x/1',
+      project: 'g/p',
+      iid: '1',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    const journalPath = join(tmpDir, 'agent-inbox', 'mrs', mrKey('g/p!1'), 'events.jsonl');
+    const decisions = new DecisionJournal(new EventJournal(journalPath));
+    for (let index = 0; index < 20; index += 1) {
+      const proposalId = `proposal-${index}`;
+      await decisions.writeProposal({
+        proposalId,
+        capability: 'post_findings',
+        mr: 'g/p!1',
+        payload: {},
+        producedBy: { sessionId: 'test' },
+      });
+      await decisions.writeDecision({ proposalId, verdict: 'accept', actor: 'operator' });
+    }
+    // #endregion END_REBUILD_REGISTRY_SETUP_DURABLE_INPUTS
+
     const access = new InboxRegistryAccess(tmpDir);
-    const mrs: MrForDelta[] = [
-      { webUrl: 'https://x/1', project: 'g/p', iid: '1', updatedAt: '2026-01-01T00:00:00Z' },
-    ];
-    const delta = access.updateDelta(mrs);
+    const delta = access.updateDelta([mr]);
     assert.strictEqual(delta.NEW.length, 1);
+    access.save();
+    const rebuilt = access.load().entries[mr.webUrl];
+    assert.strictEqual(rebuilt.lastReadAt, undefined);
+    assert.strictEqual(rebuilt.capabilities?.post_findings, 'auto');
+    assert.strictEqual(rebuilt.capabilities?.approve, 'proposal');
   });
 });
 

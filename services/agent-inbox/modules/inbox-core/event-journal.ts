@@ -10,6 +10,7 @@ import {
   fsyncSync,
   closeSync,
   readFileSync,
+  truncateSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
 import { logger } from '#logger';
@@ -171,13 +172,14 @@ export class EventJournal implements JournalPort {
   }
 
   /**
-   * @purpose Read all whole entries from the JSONL file, stopping at the first broken line
+   * @purpose Read all whole entries from the JSONL file, discarding an unterminated crash tail
    * @returns Parsed entries; empty array when file absent or unreadable
+   * @sideEffect Removes only an unterminated final line before a later append can merge into it
    */
   protected _readEntries(): JournalEntry[] {
     if (!existsSync(this._filePath)) return [];
     try {
-      const raw = readFileSync(this._filePath, 'utf8');
+      const raw = this._discardUnterminatedTail(readFileSync(this._filePath, 'utf8'));
       const entries: JournalEntry[] = [];
       // #region START_PARSE_LINES — invariant: corrupt line is skipped with an error log (never silently); valid entries after a torn write stay visible (multi-process writers can corrupt mid-file)
       for (const [index, line] of raw.split('\n').entries()) {
@@ -197,6 +199,24 @@ export class EventJournal implements JournalPort {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * @purpose Remove a torn final JSONL line left without its terminating newline
+   * @param raw Current journal contents
+   * @returns Contents containing only complete newline-terminated records
+   * @sideEffect Truncates the file to the last newline when a crash tail is found
+   */
+  protected _discardUnterminatedTail(raw: string): string {
+    if (raw.length === 0 || raw.endsWith('\n')) return raw;
+
+    const completeLength = raw.lastIndexOf('\n') + 1;
+    truncateSync(this._filePath, completeLength);
+    logger.error('[EventJournal#read] [replaying → unterminated_tail_discarded]', {
+      filePath: this._filePath,
+      discardedBytes: raw.length - completeLength,
+    });
+    return raw.slice(0, completeLength);
   }
 
   /**

@@ -79,6 +79,8 @@ export type MrMetadata = {
   mergedAt: string;
   /** @purpose GitLab username of MR author */
   author: string;
+  /** @purpose Pinned merge-base SHA from MR creation (diff_refs.base_sha) — the only valid diff base; locally recomputed merge-base shifts on merge. */
+  diffRefsBaseSha: string;
 };
 
 /** @purpose Duplicate detection report from jscpd. */
