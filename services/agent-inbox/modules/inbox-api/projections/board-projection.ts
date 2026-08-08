@@ -17,8 +17,8 @@ export type BoardProjectionResult = {
   groups: Record<AttentionState, MrRef[]>;
   /** @purpose Flat card list — every MR card in board order */
   cards: MrCard[];
-  /** @purpose Sync health indicator — `degraded` when any snapshot is poll-only (estimated) */
-  syncState: 'ok' | 'degraded';
+  /** @purpose Sync health indicator — `degraded` when any snapshot is poll-only (estimated), `syncing` while the first truth load is still in flight */
+  syncState: 'ok' | 'degraded' | 'syncing';
 };
 
 /**
@@ -37,6 +37,10 @@ export class BoardProjection {
   protected _hub: SseHub | null;
   /** @purpose Optional live truth loader, invoked by the HTTP board boundary before projection. */
   protected _loadSnapshots: (() => Promise<SyncSnapshot[]>) | null;
+  /** @purpose In-flight refresh — single-flight so concurrent board polls never stack syncs. */
+  protected _refreshing: Promise<void> | null;
+  /** @purpose Completion time of the last successful truth load; null = never loaded. */
+  protected _lastRefreshedAt: number | null;
 
   /**
    * @purpose Create a BoardProjection backed by snapshots, journal, registry, and optional SSE hub.
@@ -58,6 +62,29 @@ export class BoardProjection {
     this._registry = registry;
     this._hub = hub ?? null;
     this._loadSnapshots = loadSnapshots ?? null;
+    this._refreshing = null;
+    // Constructor-seeded snapshots count as warm truth — only an empty cache starts cold
+    // ('syncing'), e.g. the real-mode slow bootstrap path.
+    this._lastRefreshedAt = snapshots.length > 0 ? Date.now() : null;
+  }
+
+  /**
+   * @purpose Whether the cached truth is older than the given TTL (or never loaded).
+   * @param ttlMs Max acceptable cache age in milliseconds.
+   * @returns True when a background refresh should be triggered.
+   */
+  isStale(ttlMs: number): boolean {
+    return this._lastRefreshedAt === null || Date.now() - this._lastRefreshedAt > ttlMs;
+  }
+
+  /**
+   * @purpose Fire-and-forget truth refresh — failures are logged inside refreshFromTruth;
+   *   the stale cache remains the serving authority.
+   */
+  refreshInBackground(): void {
+    void this.refreshFromTruth().catch(() => {
+      /* failure already logged by refreshFromTruth — stale cache stays authoritative */
+    });
   }
 
   /**
@@ -66,6 +93,7 @@ export class BoardProjection {
    */
   updateSnapshots(snapshots: SyncSnapshot[]): void {
     this._snapshots = snapshots;
+    this._lastRefreshedAt = Date.now();
     logger.debug('[BoardProjection#updateSnapshots] [idle → updated]', {
       count: snapshots.length,
     });
@@ -81,10 +109,27 @@ export class BoardProjection {
    */
   async refreshFromTruth(): Promise<void> {
     if (!this._loadSnapshots) return;
+    if (!this._refreshing) {
+      const run = this._doRefresh();
+      this._refreshing = run;
+      const clear = (): void => {
+        if (this._refreshing === run) this._refreshing = null;
+      };
+      void run.then(clear, clear);
+    }
+    return this._refreshing;
+  }
 
+  /**
+   * @purpose Execute one truth load and install its snapshots atomically.
+   * @throws {Error} When the authoritative sync source rejects.
+   * @returns Completion after the current truth snapshot is installed.
+   * @sideEffect Network: delegates to SyncService#twoTierSync through the composition root.
+   */
+  protected async _doRefresh(): Promise<void> {
     logger.debug('[BoardProjection#refreshFromTruth] [stale → synchronizing]');
     try {
-      const snapshots = await this._loadSnapshots();
+      const snapshots = await this._loadSnapshots!();
       this.updateSnapshots(snapshots);
       logger.info('[BoardProjection#refreshFromTruth] [synchronizing → current]', {
         count: snapshots.length,
@@ -124,7 +169,13 @@ export class BoardProjection {
 
     // #region START_DETECT_DEGRADED — sync is degraded when any snapshot is poll-only (estimated=true); broadcast board_hint to all connected dashboards
     const hasEstimated = this._snapshots.some((s) => s.estimated);
-    const syncState = hasEstimated ? 'degraded' : 'ok';
+    // Cold load in flight → 'syncing' so the SPA can show progress instead of an empty board.
+    const syncState =
+      this._lastRefreshedAt === null && this._refreshing !== null
+        ? 'syncing'
+        : hasEstimated
+          ? 'degraded'
+          : 'ok';
 
     if (syncState === 'degraded' && this._hub) {
       this._hub.broadcastAll({ type: 'board_hint', timestamp: new Date().toISOString() });

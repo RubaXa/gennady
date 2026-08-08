@@ -174,8 +174,8 @@ describe('bootstrap — mock mode', () => {
     const board = data as Record<string, unknown>;
     assert.ok(Array.isArray(board.cards), 'board.cards should be an array');
     assert.ok(
-      board.syncState === 'ok' || board.syncState === 'degraded',
-      'board.syncState should be ok|degraded'
+      board.syncState === 'ok' || board.syncState === 'degraded' || board.syncState === 'syncing',
+      'board.syncState should be ok|degraded|syncing'
     );
   });
 

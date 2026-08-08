@@ -156,6 +156,8 @@ export class HttpServer {
   protected _streamRouter: StreamRouter | undefined;
   /** @purpose SseHub shared between stream router and board projection — created when inboxApi is configured, reused by chat if present. */
   protected _sseHub: SseHub | undefined;
+  /** @purpose Live board projection — retained so late-arriving sync snapshots can warm the board cache. */
+  protected _boardProjection: BoardProjection | undefined;
   /** @purpose Static file server. */
   protected _staticFiles: StaticFiles;
   /** @purpose Track connection sockets so they can be unreffed at stop(). */
@@ -208,6 +210,14 @@ export class HttpServer {
   }
 
   /**
+   * @purpose Push freshly synced snapshots into the live board projection (slow-bootstrap path).
+   * @param snapshots Fresh twoTierSync snapshots.
+   */
+  updateInboxSnapshots(snapshots: SyncSnapshot[]): void {
+    this._boardProjection?.updateSnapshots(snapshots);
+  }
+
+  /**
    * @purpose Assemble optional routers at construction and after bootstrap DI completes.
    * @param config Runtime dependencies to wire.
    */
@@ -221,6 +231,7 @@ export class HttpServer {
     this._decisionRouter = undefined;
     this._streamRouter = undefined;
     this._sseHub = undefined;
+    this._boardProjection = undefined;
 
     // #region START_WIRE_CHAT — invariant: ChatRouter and MutateRouter share one SseHub/MutationApplier so both event families broadcast over the same per-MR channel (D-100, D-110, TSK-133)
     if (config.chat) {
@@ -291,6 +302,7 @@ export class HttpServer {
       const feedProjection = new FeedProjection(config.inboxApi.journal, config.inboxApi.registry);
 
       this._boardRouter.setProjection(boardProjection);
+      this._boardProjection = boardProjection;
       this._stateRouter = new StateRouter(config.inboxApi.queue, boardProjection, feedProjection);
       this._feedRouter = new FeedRouter(feedProjection);
       this._streamRouter = new StreamRouter(hub);

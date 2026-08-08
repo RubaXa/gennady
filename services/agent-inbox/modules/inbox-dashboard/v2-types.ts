@@ -95,8 +95,8 @@ export type BoardV2 = {
   groups: Record<Attention, string[]>;
   /** @purpose Canonical cards to render in those lanes. */
   cards: MrCardV2[];
-  /** @purpose Sync health; degraded means last confirmed data remains visible. */
-  syncState: 'ok' | 'degraded';
+  /** @purpose Sync health; degraded means last confirmed data remains visible, syncing means the first truth load is still in flight. */
+  syncState: 'ok' | 'degraded' | 'syncing';
 };
 
 /** @purpose Observable boot readiness used by LoadingScreen. */

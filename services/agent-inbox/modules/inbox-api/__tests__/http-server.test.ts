@@ -322,8 +322,20 @@ describe('HttpServer — live VCS board truth (TSK-158)', () => {
     await server.start();
     const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
     try {
-      const { status, data } = await fetchText('/api/board', port);
-      const payload = JSON.parse(data) as {
+      // Stale-while-revalidate contract: the first request serves the (empty) cache instantly
+      // and triggers the authoritative load in the background…
+      const first = await fetchText('/api/board', port);
+      const firstPayload = JSON.parse(first.data) as { cards: unknown[]; syncState: string };
+      assert.strictEqual(first.status, 200);
+      assert.strictEqual(firstPayload.cards.length, 0);
+      assert.strictEqual(firstPayload.syncState, 'syncing');
+
+      // …the background load settles into the projection cache (poll past the loader's
+      // resolution — snapshot installation trails the sourceCalls increment by a microtask)…
+      const deadline = Date.now() + 5000;
+      let status = 0;
+      let data = '';
+      let payload: {
         cards: Array<{
           title: string;
           ref: string;
@@ -331,11 +343,18 @@ describe('HttpServer — live VCS board truth (TSK-158)', () => {
           myRole: string | null;
           work: { state: string };
         }>;
-      };
-
-      assert.strictEqual(status, 200);
+        syncState: string;
+      } = { cards: [], syncState: 'syncing' };
+      while (Date.now() < deadline) {
+        ({ status, data } = await fetchText('/api/board', port));
+        payload = JSON.parse(data) as typeof payload;
+        if (payload.cards.length === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
       assert.strictEqual(sourceCalls, 1);
+      assert.strictEqual(status, 200);
       assert.strictEqual(payload.cards.length, 1);
+      assert.strictEqual(payload.syncState, 'ok');
       assert.strictEqual(payload.cards[0]?.title, 'authoritative VCS title');
       assert.strictEqual(payload.cards[0]?.ref, 'group/live-project!158');
       assert.strictEqual(payload.cards[0]?.author, 'alice');

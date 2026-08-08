@@ -21,14 +21,18 @@ export class BoardRouter {
   protected _provider: BoardProviderPort;
   /** @purpose Board projection — when set, board is projected from sync+journal (D-306). */
   protected _projection: BoardProjection | null;
+  /** @purpose Max cache age before a board request triggers a background truth refresh. */
+  protected _refreshTtlMs: number;
 
   /**
    * @purpose Create a BoardRouter bound to a board provider.
    * @param provider BoardProviderPort implementation (mock or real).
+   * @param [refreshTtlMs] Truth-cache TTL before background revalidation (default 120s).
    */
-  constructor(provider: BoardProviderPort) {
+  constructor(provider: BoardProviderPort, refreshTtlMs = 120_000) {
     this._provider = provider;
     this._projection = null;
+    this._refreshTtlMs = refreshTtlMs;
   }
 
   /**
@@ -61,7 +65,9 @@ export class BoardRouter {
     try {
       // #region START_BRANCH_PROJECTION_OR_LEGACY — use BoardProjection when wired (D-306); fallback to provider
       if (this._projection) {
-        await this._projection.refreshFromTruth();
+        // Serve the cached projection instantly; a full twoTierSync takes minutes on a real
+        // inbox, so truth refresh runs in the background when the cache is stale.
+        if (this._projection.isStale(this._refreshTtlMs)) this._projection.refreshInBackground();
         const result = this._projection.project();
         sendJson(res, 200, { ok: true, ...result });
         return;

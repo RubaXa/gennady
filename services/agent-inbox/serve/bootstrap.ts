@@ -571,7 +571,10 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
           { elapsedMs: TIMEOUT_MS }
         );
         void trackedSync.then((snapshots) => {
-          if (snapshots) registerActive(snapshots);
+          if (snapshots) {
+            registerActive(snapshots);
+            server.updateInboxSnapshots(snapshots);
+          }
         });
       }
     }

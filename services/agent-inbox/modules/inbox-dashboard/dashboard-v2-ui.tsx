@@ -134,7 +134,7 @@ export function MrCard(props: { card: MrCardV2; onOpen: (ref: string) => void })
  */
 export function AttentionBoard(props: {
   cards: MrCardV2[];
-  syncState: 'ok' | 'degraded';
+  syncState: 'ok' | 'degraded' | 'syncing';
   lastUpdated?: number | null;
   onOpen: (ref: string) => void;
 }) {
@@ -148,7 +148,11 @@ export function AttentionBoard(props: {
         <span className="v2-board-title">
           Agent Inbox v2 <span className="v2-sync-dot" data-sync={props.syncState} />
           <small>
-            {props.syncState === 'ok' ? 'ok' : 'degraded'}{' '}
+            {props.syncState === 'syncing'
+              ? 'синхронизация…'
+              : props.syncState === 'ok'
+                ? 'ok'
+                : 'degraded'}{' '}
             {props.lastUpdated != null
               ? `· обновлено ${Math.round((Date.now() - props.lastUpdated) / 1000)}с назад`
               : ''}
@@ -179,6 +183,11 @@ export function AttentionBoard(props: {
       {props.syncState === 'degraded' && (
         <div className="v2-degraded" role="status">
           ⚠ Синхронизация на паузе: показаны последние подтверждённые данные
+        </div>
+      )}
+      {props.syncState === 'syncing' && (
+        <div className="v2-syncing" role="status">
+          ⏳ Идёт первая синхронизация с GitLab — на большом инбоксе это занимает пару минут
         </div>
       )}
       <div className="v2-lanes">

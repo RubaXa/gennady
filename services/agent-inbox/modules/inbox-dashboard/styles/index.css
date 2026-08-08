@@ -101,6 +101,16 @@ body {
   background: var(--ds-primary-container);
   animation: pulse 2s infinite;
 }
+.v2-sync-dot[data-sync='syncing'] {
+  background: var(--ds-steel);
+  animation: pulse 1.2s infinite;
+}
+.v2-syncing {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--ds-secondary);
+  border-bottom: 1px solid var(--ds-outline);
+}
 @keyframes pulse {
   0%,
   100% {
