@@ -78,7 +78,7 @@
         import { setupMockAgent } from '#utils/test/mock-http.ts';
 
         describe('VendorClient', () => {
-            let mockEnv: ReturnType<typeof setupMockAgent>;
+            let mockEnv: ReturnType&lt;typeof setupMockAgent&gt;;
             let client: VendorClient;
 
             beforeEach(() => {
@@ -285,4 +285,14 @@
       <Expected>Empty on new/changed test files.</Expected>
     </Hook>
   </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Each changed test protects a public contract with deterministic inputs and direct Node assertions.
+    ✅ The test file uses one context factory and keeps mutable state local to each case.
+    ✅ Non-trivial setup, trigger, observation, and assertion phases use intentful paired anchors.
+    ✅ Focused test, typecheck, and forbidden-pattern checks pass before handoff.
+
+    ❌ Tests inspect protected/private SUT state or share mutable describe-level state.
+    ❌ A regression is covered only by a mock call count rather than its observable contract result.
+  </RewardCriteria>
 </NodeTestRules>

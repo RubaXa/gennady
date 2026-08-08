@@ -76,7 +76,7 @@
     </Axiom>
 
     <Axiom id="AX_RESULT_UNWRAP_ON_SUCCESS_PATHS">
-      If the SUT returns `Result<T>`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
+      If the SUT returns `Result&lt;T&gt;`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
     </Axiom>
 
     <Axiom id="AX_FOCUSED_ERROR_ASSERTIONS">
@@ -192,6 +192,41 @@
     </Axiom>
 
   </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_TEST_CONTRACT_BYPASS">
+      <Bad>A test reads protected SUT state, mutates private fields, or mocks the SUT method it claims to verify.</Bad>
+      <WhyBad>It proves an implementation detail or a test double rather than the public contract, so a behavior-preserving refactor becomes a false regression or fabricated green result.</WhyBad>
+      <Good>Drive the SUT through its public surface and observe returned values, emitted events, or collaborator calls at an injected boundary.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_UNDECLARED_TEST_GATE">
+      <Bad>A required type-check, test, coverage, or formatting command is skipped or reported as green without its actual exit status.</Bad>
+      <WhyBad>It turns the completion gate into fiction and hides environment or repository blockers from the ticket owner.</WhyBad>
+      <Good>Run the applicable verification hook and record the command result; when blocked, record the blocker explicitly with its owner.</Good>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_TEST_TYPECHECK">
+      <Purpose>Verify that test fixtures, injected doubles, and contract assertions remain type-safe with the project source.</Purpose>
+      <Command>npm run type-check</Command>
+    </Hook>
+    <Hook id="HOOK_TEST_RUNNER">
+      <Purpose>Run the ticket-scoped test command so executable contract scenarios prove their public behavior.</Purpose>
+      <Command>npm test -- &quot;&lt;ticket-scoped-test-glob&gt;&quot;</Command>
+    </Hook>
+    <Hook id="HOOK_TEST_FORMAT">
+      <Purpose>Check deterministic formatting of changed test and ticket artifacts.</Purpose>
+      <Command>npx prettier --check &lt;changed-test-and-ticket-files&gt;</Command>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Tests protect public behavior through explicit injection seams and deterministic per-case context.
+    ✅ Non-trivial case flow remains recoverable through intentful paired phase anchors.
+    ✅ BDD coverage and any deferred ownership are recorded honestly in the ticket.
+    ✅ Applicable type-check, test, and formatting hooks have an actual result; blockers remain explicit.
+  </RewardCriteria>
 
   <Definitions>
     <Definition id="DEF_NON_TRIVIAL_CASE">

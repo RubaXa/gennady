@@ -150,7 +150,7 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
   }
   // #endregion END_PREPARE_WORKTREE
 
-  // #region START_FETCH_CHANGES — use glab mr diff for authoritative MR diff
+  // #region START_FETCH_CHANGES — use git diff with pinned MR base for authoritative diff
   let changes: Array<{
     path: string;
     added: number;
@@ -162,12 +162,18 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
     commentRemoved: number;
     blankRemoved: number;
   }> = [];
+  const diffBase = metadata.diffRefsBaseSha;
   try {
-    const diffOutput = execFileSync('glab', ['mr', 'diff', String(iid), '--repo', project], {
+    const diffArgs =
+      diffBase && headSha
+        ? ['-C', clonePath, 'diff', `${diffBase}..${headSha}`]
+        : ['mr', 'diff', String(iid), '--repo', project];
+    const diffTool = diffBase && headSha ? 'git' : 'glab';
+    const diffOutput = execFileSync(diffTool, diffArgs, {
       encoding: 'utf8',
       maxBuffer: 100 * 1024 * 1024,
       timeout: 30_000,
-      ...(clonePath ? { cwd: clonePath } : {}),
+      ...(clonePath && diffTool === 'git' ? { cwd: clonePath } : {}),
     } as any);
 
     const isComment = (l: string) =>
@@ -284,13 +290,16 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
         let commentLines: LineDiff = { added: 0, removed: 0 };
         let blankLines: LineDiff = { added: 0, removed: 0 };
         const rcFileSet = new Set(filesInCategory);
-        if (rcFileSet.size > 0) {
-          const diffForRc = execFileSync('glab', ['mr', 'diff', String(iid), '--repo', project], {
-            encoding: 'utf8',
-            maxBuffer: 100 * 1024 * 1024,
-            timeout: 30_000,
-            ...(clonePath ? { cwd: clonePath } : {}),
-          } as any);
+        if (rcFileSet.size > 0 && clonePath && diffBase && headSha) {
+          const diffForRc = execFileSync(
+            'git',
+            ['-C', clonePath, 'diff', `${diffBase}..${headSha}`],
+            {
+              encoding: 'utf8',
+              maxBuffer: 100 * 1024 * 1024,
+              timeout: 30_000,
+            } as any
+          );
           const isCmt = (l: string) => /^\s*(\/\/|\/\*|\*|#)/.test(l);
           const isBlk = (l: string) => /^\s*$/.test(l);
           let cf = '';
@@ -317,7 +326,7 @@ export async function run(rawArgs: string[]): Promise<MrStatsOutcome> {
           if (headSha && worktreePath) {
             entityDelta = await computeEntityDelta(
               clonePath,
-              `${headSha}^`,
+              diffBase,
               worktreePath,
               filesInCategory
             );

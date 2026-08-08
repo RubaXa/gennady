@@ -14,6 +14,8 @@ export type InboxConfig = {
   reposBase?: string;
   /** @purpose VCS hostname without scheme */
   vcsHost?: string;
+  /** @purpose Persisted dry-run default; environment/explicit serve option may override it. */
+  dryRun?: boolean;
 };
 
 /** @purpose Internal result of config validation — reports which required keys are missing. */

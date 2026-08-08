@@ -1,6 +1,6 @@
 // @file: Persistent global registry of inbox MRs we have already classified.
 // @consumers: inbox.cmd
-// @tasks: N/A, TSK-94
+// @tasks: N/A, TSK-94, TSK-156
 
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -32,6 +32,10 @@ export type RegistryEntry = {
   assignedRole?: string;
   /** @purpose ISO timestamp of that explicit assignment */
   assignedAt?: string;
+  /** @purpose ISO timestamp of the latest consumed MR feed event (D-317) */
+  lastReadAt?: string;
+  /** @purpose Rebuilt per-capability autonomy modes; registry remains a cache (D-302) */
+  capabilities?: Record<string, 'proposal' | 'auto'>;
 };
 
 /** @purpose The whole registry document persisted to disk. */
@@ -42,7 +46,7 @@ export type InboxRegistry = {
   entries: Record<string, RegistryEntry>;
 };
 
-const EMPTY: InboxRegistry = { version: 1, entries: {} };
+const emptyRegistry = (): InboxRegistry => ({ version: 1, entries: {} });
 
 /**
  * @purpose Load the registry, tolerating a missing or corrupt file.
@@ -52,12 +56,12 @@ const EMPTY: InboxRegistry = { version: 1, entries: {} };
  * @consumer inbox.cmd
  */
 export function loadRegistry(path: string): InboxRegistry {
-  if (!existsSync(path)) return { version: 1, entries: {} };
+  if (!existsSync(path)) return emptyRegistry();
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as InboxRegistry;
-    return parsed && typeof parsed === 'object' && parsed.entries ? parsed : { ...EMPTY };
+    return parsed && typeof parsed === 'object' && parsed.entries ? parsed : emptyRegistry();
   } catch {
-    return { ...EMPTY };
+    return emptyRegistry();
   }
 }
 

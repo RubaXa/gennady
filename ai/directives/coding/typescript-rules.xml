@@ -27,7 +27,7 @@
     </Axiom>
 
     <Axiom id="AX_MODERN_TS_DENSITY">
-      Modern TS/JS is mandatory. Use optional chaining (`?.`), nullish coalescing (`??`), logical assignment (`||=`, `&&=`, `??=`). Avoid verbose `if`-checks. Semantic density reduces visual noise, shrinks the surface for nullable-check bugs, and makes the code recoverable by an agent in one pass.
+      Modern TS/JS is mandatory. Use optional chaining (`?.`), nullish coalescing (`??`), logical assignment (`||=`, `&amp;&amp;=`, `??=`). Avoid verbose `if`-checks. Semantic density reduces visual noise, shrinks the surface for nullable-check bugs, and makes the code recoverable by an agent in one pass.
     </Axiom>
 
     <Axiom id="AX_TELEOLOGICAL_NAMING">
@@ -43,7 +43,7 @@
     </Axiom>
 
     <Axiom id="AX_IMPLEMENTATION_HIDING_IN_PUBLIC">
-      Public methods do not leak implementation. Forbidden infrastructure words in public APIs: `Db`, `Sql`, `Http` (exception: serializer layers, where this IS the contract). Leaking transport into a public name breaks Ports & Adapters and binds consumers to a concrete implementation.
+      Public methods do not leak implementation. Forbidden infrastructure words in public APIs: `Db`, `Sql`, `Http` (exception: serializer layers, where this IS the contract). Leaking transport into a public name breaks Ports &amp; Adapters and binds consumers to a concrete implementation.
     </Axiom>
 
     <Axiom id="AX_EXACT_SCOPE">
@@ -111,7 +111,7 @@
     <Axiom id="AX_ANCHOR_FORMAT">
       Anchors: `// #region START_[CONTEXT]_[INTENT]` / `// #endregion END_[CONTEXT]_[INTENT]`. Uppercase tokens. Parity mandatory: every `START_X` must have `END_X` in the same file. START_/END_ on top of `#region`/`#endregion` is intentional — paired uppercase tokens are attention anchors for sliding-window LLMs and XML-like span delimiters for long-context retrieval.
 
-      When a block has a non-obvious invariant or failure boundary, attach payload inside the anchor (outside it is detached from the block it protects): ONE payload kind → inline on the opening line `// #region START_[NAME] — <key>: <value>`; 2+ kinds → separate comment lines immediately after the opening anchor. Greppable: `#(region|endregion)\s+(START|END)_[A-Z0-9_]+`.
+      When a block has a non-obvious invariant or failure boundary, attach payload inside the anchor (outside it is detached from the block it protects): ONE payload kind → inline on the opening line `// #region START_[NAME] — &lt;key&gt;: &lt;value&gt;`; 2+ kinds → separate comment lines immediately after the opening anchor. Greppable: `#(region|endregion)\s+(START|END)_[A-Z0-9_]+`.
     </Axiom>
 
     <Axiom id="AX_ANCHOR_COVERAGE_NONTRIVIAL">
@@ -137,7 +137,7 @@
     </Axiom>
 
     <Axiom id="AX_COMMENT_PLACEMENT">
-      Function body starts with executable code. Hidden constraints belong in JSDoc (`@invariant`, `@sideEffect`, `@throws`, `@pre`, `@post`); block-level invariants inside `// #region START_<NAME>` anchors. No narrative brief or rule-summary at method head — JSDoc + signature is the canonical contract surface.
+      Function body starts with executable code. Hidden constraints belong in JSDoc (`@invariant`, `@sideEffect`, `@throws`, `@pre`, `@post`); block-level invariants inside `// #region START_&lt;NAME&gt;` anchors. No narrative brief or rule-summary at method head — JSDoc + signature is the canonical contract surface.
     </Axiom>
 
     <Axiom id="AX_COMMENT_DENSITY">
@@ -169,9 +169,9 @@
       File-level meta uses line-comments (`// @tag`), never a JSDoc block — distinct syntactic class from entity JSDoc so LLMs and grep distinguish file-scope from entity-scope unambiguously.
 
       Block of consecutive `//` lines at the very top of the file, before any `import`:
-      `// @file: <what the file holds>` *(mandatory)*
-      `// @consumers: <ConsumerName>` *(optional; omit when no uniform consumer)*
-      `// @tasks: <TASK-ID>[, TASK-ID...]` *(optional; may be added later)*
+      `// @file: &lt;what the file holds&gt;` *(mandatory)*
+      `// @consumers: &lt;ConsumerName&gt;` *(optional; omit when no uniform consumer)*
+      `// @tasks: &lt;TASK-ID&gt;[, TASK-ID...]` *(optional; may be added later)*
 
       `@purpose` is NOT a file-level tag — it belongs exclusively to entities. Local entities inherit `@consumers` from file level and MUST NOT redeclare it unless their consumer diverges.
 
@@ -253,7 +253,7 @@
   <CodePatterns>
     <Pattern id="PT_MODULE_AND_DATA_TYPE">
       <Intent>Exported data shape: `type`, domain prefix, single-line JSDoc per field, no duplication of TS structure.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: ERP catalog item shape shared across the synchronization pipeline.
         // @consumers: ErpSynchronizationWorker
@@ -267,13 +267,13 @@
             syncedAt: number;
         };
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>Data shape with no runtime behavior → `type` + entity `@purpose`. Shared context declared once in file-level `// @file:` / `// @consumers:` header; entity does NOT redeclare `@consumers`.</Why>
     </Pattern>
 
     <Pattern id="PT_SERVICE_CONTRACT_INTERFACE">
       <Intent>Service interface: precise optional-tag order, SLA in `@invariant`, side effects exposed explicitly.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: Contract surface for vendor reservation integration.
         // @consumers: OrderFulfillmentPipeline
@@ -295,13 +295,13 @@
             reserveStock(idempotencyKey: string): Promise<string>;
         }
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>`interface` because this is a polymorphism point (Port), not a data shape. Invariants encode resilience policy that would otherwise be lost in the implementation.</Why>
     </Pattern>
 
     <Pattern id="PT_DIRECT_IMPLEMENTATION_WITH_LOG_AND_ERROR">
       <Intent>Implementation of an existing contract: root keeps `@purpose` + `@implements`; inherited members use `@see`; method body starts with executable code; non-trivial blocks wrapped in compact-form `#region START_...` / `#endregion END_...` anchors.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: HTTP implementation of the VendorGateway contract.
         // @consumers: OrderFulfillmentPipeline
@@ -343,13 +343,13 @@
             }
         }
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>All mandatory protocols together: `// @file:` header, `@implements` on root, `@see` on member, executable-first body, compact single-payload anchor (invariant inlined on `#region` line), Trace-Prefixed log + error, cause-chain.</Why>
     </Pattern>
 
     <Pattern id="PT_ASYNC_OPERATION_WITH_TIMING">
       <Intent>Async operation with `performance.now()` timing, state transitions in logs, Catch-Log-Recover.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: Timed execution helper for long-running async action.
         // @consumers: TaskOrchestrator
@@ -383,13 +383,13 @@
           }
         }
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>Timing justified — operation is long. State transitions explicit. Error path loses neither context (Trace-Prefix + detail) nor cause-chain.</Why>
     </Pattern>
 
     <Pattern id="PT_TYPE_NARROWING_AND_MODERN_OPERATORS">
       <Intent>Plain branching without anchors where control flow is self-evident; modern operators yield density without losing intent.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: Strategy selection helpers for path-aware processing.
         // @consumers: StrategyPlanner
@@ -419,18 +419,18 @@
           return 'primary';
         }
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>Branch is trivial (no independent policy / side effect / refactor hazard) → anchors redundant per `AX_ANCHOR_TRIVIAL_EXCEPTION`. `?.` provides narrowing without verbose checks.</Why>
     </Pattern>
 
     <Pattern id="PT_EXPRESSIVE_TERSENESS">
       <Intent>Modern TS operators replace verbose null-checks without losing meaning.</Intent>
-      <Snippet language="typescript">
+      <Snippet language="typescript"><![CDATA[
         ```typescript
         const avatarUrl = user?.profile?.getAvatar?.();
         cachedImages[avatarUrl] ||= await fetchImage(avatarUrl);
         ```
-      </Snippet>
+      ]]></Snippet>
       <Why>The equivalent of 6 lines of `if`-nesting is compressed to 2 without loss of semantics. Canonical «high-signal idiomatic TypeScript».</Why>
     </Pattern>
   </CodePatterns>
@@ -439,7 +439,7 @@
     <AntiPattern id="AP_ATOMIC_NOISE_ANCHORS">
       <Bad>Anchors around a single `const`; anchor name `START_CHECK_RETRIES` (names syntax, not intent); comment restates the `if`; `Error("Limit")` without Trace-Prefix or cause.</Bad>
       <WhyBad>Atomic noise (violates `AX_ANCHOR_TRIVIAL_EXCEPTION`); name violates `AX_ANCHOR_INTENTFUL_NAMES`; comment violates `AX_COMMENT_VOCABULARY`; Error violates `AX_TRACE_PREFIXED_ERRORS`, `AX_ERROR_CHAINING_CAUSE`.</WhyBad>
-      <Good language="typescript">
+      <Good language="typescript"><![CDATA[
         ```typescript
         const maxRetries = 3;
 
@@ -453,13 +453,13 @@
         }
         // #endregion END_ENFORCE_RETRY_POLICY
         ```
-      </Good>
+      ]]></Good>
     </AntiPattern>
 
     <AntiPattern id="AP_FALSE_PRIVATE_AND_ENUM">
       <Bad>`enum OrderState { NEW, PAID, SHIPPED }`; `class OrderManager { constructor(private repo: OrderRepo) {} #lastState: OrderState = OrderState.NEW; public process(orderId: string) {} }`.</Bad>
       <WhyBad>`enum` breaks under native Node TS (`AX_NO_TRANSPILE_ONLY_CONSTRUCTS`). Constructor parameter property `private repo` transpile-only. `#lastState` blocks reflection (`AX_TRUTHFUL_ENCAPSULATION`). `OrderManager` is semantic noise (`AX_TELEOLOGICAL_NAMING`). `process` generic verb (`AX_VERB_PRECISION`). `public` redundant.</WhyBad>
-      <Good language="typescript">
+      <Good language="typescript"><![CDATA[
         ```typescript
         // @file: Order lifecycle primitives for checkout domain.
         // @consumers: CheckoutPipeline
@@ -480,13 +480,13 @@
             settleCharge(orderId: string): Promise<void> { /* ... */ }
         }
         ```
-      </Good>
+      ]]></Good>
     </AntiPattern>
 
     <AntiPattern id="AP_BARE_CONSOLE_AND_LOST_CAUSE">
       <Bad>`console.log("fetching user " + JSON.stringify({ id }));` then `catch (e) { console.error("failed " + e); throw new Error("fetch failed"); }`.</Bad>
       <WhyBad>`console.*` forbidden (`AX_STRUCTURED_LOGGING`). Object serialized into message string (`AX_LOG_MESSAGE_PURITY`). No Trace-Prefix or state transition (`AX_LOG_MESSAGE_FORMAT`). `new Error` without `{ cause }` loses debug chain (`AX_ERROR_CHAINING_CAUSE`). No Trace-Prefix in error (`AX_TRACE_PREFIXED_ERRORS`). `e` concatenated into string — stack lost.</WhyBad>
-      <Good language="typescript">
+      <Good language="typescript"><![CDATA[
         ```typescript
         // @file: User retrieval entry point against the primary store.
         // @consumers: SessionRouter
@@ -512,13 +512,13 @@
             }
         }
         ```
-      </Good>
+      ]]></Good>
     </AntiPattern>
 
     <AntiPattern id="AP_REDUNDANT_JSDOC_DUPLICATION">
       <Bad>`/** @purpose User DTO. @param id The id field, type string. @param name The name field, type string. @returns Returns a User object with id and name. */ export type User = { id: string; name: string; };`.</Bad>
       <WhyBad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_FLAT_JSDOC_FOR_PROPERTIES`). `User DTO` carries no business meaning.</WhyBad>
-      <Good language="typescript">
+      <Good language="typescript"><![CDATA[
         ```typescript
         // @file: Identity shape exposed by session-related APIs.
         // @consumers: SessionRouter
@@ -531,7 +531,7 @@
             name: string;
         };
         ```
-      </Good>
+      ]]></Good>
     </AntiPattern>
   </AntiPatterns>
 
@@ -567,7 +567,7 @@
     ✅ Trivial guards and single-action branches NOT wrapped in anchors.
     ✅ Error messages contain Trace-Prefix; rethrow uses `{ cause }`; catch blocks follow Catch-Log-Recover (log + throw OR log + `return fail()` per surrounding contract).
     ✅ Logs through shared logger from `#logger`; format `[Trace-Prefix] [stateA → stateB] Description`; primitives in message, objects in detail.
-    ✅ Modern TS operators (`?.`, `??`, `||=`, `&&=`, `??=`) instead of verbose null-checks.
+    ✅ Modern TS operators (`?.`, `??`, `||=`, `&amp;&amp;=`, `??=`) instead of verbose null-checks.
     ✅ Class fields declared explicitly in body; `readonly` on field declaration; `protected _foo` over `private`/`#`.
     ✅ Names express teleology (business goal), not topology (pattern); precise verbs; public names do NOT leak transport.
     ✅ Complex functions declare resilience / strategy guarantees via `@invariant`; body starts with executable code.

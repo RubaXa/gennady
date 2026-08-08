@@ -630,10 +630,8 @@ export async function run(argv: string[] = process.argv): Promise<number> {
 
   try {
     const vcsContext = await resolveVcsContext(vcsCliArgs);
-    const projectVal: string =
-      (args.project as string | undefined) ?? vcsContext.project;
-    const iidVal: string =
-      (args.iid as string | undefined) ?? String(vcsContext.iid ?? '');
+    const projectVal: string = (args.project as string | undefined) ?? vcsContext.project;
+    const iidVal: string = (args.iid as string | undefined) ?? String(vcsContext.iid ?? '');
     const result = await main({
       project: projectVal,
       iid: iidVal,
