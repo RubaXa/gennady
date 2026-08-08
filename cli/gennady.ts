@@ -70,6 +70,19 @@ if (restArgs.some((a) => helpFlags.has(a))) {
         await import('./cmd/inbox/serve/help.ts').then((m) => m.printHelp());
       } else if (process.argv[3] === 'stats') {
         await import('./cmd/inbox/stats-help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'eval') {
+        console.info(
+          'gennady inbox eval — харнесс приёмки: 10 сценарных прогонов + метрики автономии'
+        );
+        console.info('  gennady inbox eval --mr <url> [--runs <list>] [--report <path>]');
+        console.info('  --mr <url>     GitLab MR URL (обязателен)');
+        console.info(
+          '  --runs <list>  список прогонов через запятую (boot,role_pickup,pipeline,...)'
+        );
+        console.info(
+          '  --report <path> путь к eval-report.json (default: ~/.gennady/agent-inbox/eval-reports/<ts>.json)'
+        );
+        console.info('  exit 0 = все прогоны PASS; exit 1 = хотя бы один FAIL');
       } else {
         await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
       }
@@ -262,6 +275,8 @@ switch (command) {
       await import('./cmd/inbox/serve.cmd.ts');
     } else if (process.argv[3] === 'stats') {
       await import('./cmd/inbox/stats-index.ts');
+    } else if (process.argv[3] === 'eval') {
+      await import('./cmd/inbox/eval.cmd.ts');
     } else {
       await import('./cmd/inbox/index.ts');
     }
