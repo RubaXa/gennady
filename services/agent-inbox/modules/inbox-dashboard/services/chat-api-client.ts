@@ -212,6 +212,11 @@ export class ChatApiClient {
         case 'dryrun':
           handlers.onDryRun?.(frame.channel, frame.line);
           return;
+        case 'board_hint':
+        case 'task_update':
+        case 'widget_update':
+          // Per-MR SSE frames handled by the inbox dashboard, not the chat stream — no-op here
+          return;
         default: {
           const exhaustive: never = frame;
           throw new Error(

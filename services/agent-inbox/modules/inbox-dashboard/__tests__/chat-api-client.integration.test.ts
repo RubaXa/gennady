@@ -3,7 +3,7 @@
 //   booted inbox-api HttpServer with the chat bridge wired to a real SessionPool[OpenCodeMock] +
 //   real StateStore over a real makeTestTmpDir tree, and a real on-disk review.json for /mutate CAS.
 // @consumers: node:test runner
-// @tasks: TSK-130, TSK-152
+// @tasks: TSK-130, TSK-152, TSK-162
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,8 +18,7 @@ import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/te
 import type { MutationProposal, ChatTurn } from '../../inbox-chat/types.ts';
 
 /** @purpose Absolute origin the test's HttpServer listens on — see `ORIGIN_RESOLUTION` region below. */
-const TEST_SERVER_PORT = 4174;
-const ORIGIN = `http://localhost:${TEST_SERVER_PORT}`;
+let origin = '';
 
 // #region START_ORIGIN_RESOLUTION — invariant: ChatApiClient.BASE_URL is intentionally '' (same-origin
 // design, mirrors ApiClient, D-114/240a3514) and is never edited to accept an injected base. A browser
@@ -27,7 +26,7 @@ const ORIGIN = `http://localhost:${TEST_SERVER_PORT}`;
 // document, so this harness supplies the missing origin at the transport boundary — test-only, the SUT
 // still issues the same relative paths it would in a real browser tab served from this HttpServer.
 function resolveAgainstOrigin(input: string): string {
-  return input.startsWith('/') ? `${ORIGIN}${input}` : input;
+  return input.startsWith('/') ? `${origin}${input}` : input;
 }
 
 const realFetch = globalThis.fetch;
@@ -76,9 +75,9 @@ function wait(ms: number): Promise<void> {
 
 describe('ChatApiClient integration (real HttpServer, real fetch, real EventSource)', () => {
   // ChatApiClient's BASE_URL is '' (same-origin design) — the real server under test listens on
-  // TEST_SERVER_PORT, and the ORIGIN_RESOLUTION harness above supplies that origin for the raw
+  // a kernel-assigned port, and the ORIGIN_RESOLUTION harness above supplies that origin for the raw
   // fetch/EventSource calls the client issues with relative paths.
-  const PORT = TEST_SERVER_PORT;
+  const PORT = 0;
   let stateDir: string;
   let server: HttpServer;
   let openCodeMock: OpenCodeMock;
@@ -95,6 +94,7 @@ describe('ChatApiClient integration (real HttpServer, real fetch, real EventSour
       chat: { pool, store },
     });
     await server.start();
+    origin = `http://localhost:${server.listeningPort() ?? assert.fail('Expected kernel-assigned port')}`;
     client = new ChatApiClient();
   });
 

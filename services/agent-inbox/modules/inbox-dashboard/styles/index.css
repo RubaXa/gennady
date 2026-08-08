@@ -39,3 +39,256 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/* Carbon & Steel v2: tonal surfaces, crisp one-pixel rules, no drop shadows. */
+.v2-app {
+  min-height: 100vh;
+  background: #0d1117;
+  color: #e6edf3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  font:
+    14px Geist,
+    Inter,
+    system-ui,
+    sans-serif;
+}
+.v2-board,
+.v2-mr {
+  padding: 28px;
+  min-width: 0;
+}
+.v2-kicker {
+  color: #7d8590;
+  letter-spacing: 0.14em;
+  font:
+    600 11px 'JetBrains Mono',
+    monospace;
+  margin: 0 0 8px;
+}
+.v2-board h1,
+.v2-mr h1,
+.v2-loading h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+.v2-group {
+  border-top: 1px solid #30363d;
+  padding: 18px 0;
+}
+.v2-group h2 {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin: 0 0 10px;
+  color: #c9d1d9;
+}
+.v2-group h2 small {
+  color: #7d8590;
+  margin-left: 6px;
+}
+.v2-group.sleeping {
+  opacity: 0.72;
+}
+.v2-card-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.v2-card {
+  display: grid;
+  text-align: left;
+  gap: 6px;
+  background: #161b22;
+  color: inherit;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+}
+.v2-card:hover {
+  border-color: #58a6ff;
+  background: #1c2128;
+}
+.v2-card span {
+  color: #8b949e;
+  font-size: 12px;
+}
+.v2-card strong {
+  font-size: 14px;
+  color: #f0f6fc;
+}
+.v2-card em {
+  color: #58a6ff;
+  font-style: normal;
+}
+.v2-work {
+  border-top: 1px solid #30363d;
+  padding-top: 7px;
+}
+.v2-degraded,
+.v2-error {
+  border: 1px solid #d29922;
+  background: #2b2110;
+  color: #f2cc60;
+  border-radius: 5px;
+  padding: 9px 11px;
+  margin-bottom: 16px;
+}
+.v2-error button {
+  margin-left: 10px;
+}
+.v2-empty {
+  border: 1px dashed #484f58;
+  color: #7d8590;
+  padding: 10px;
+  margin: 0;
+  border-radius: 5px;
+}
+.v2-loading {
+  grid-column: 1 / -1;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+.v2-loading section {
+  width: min(460px, 90vw);
+  border: 1px solid #30363d;
+  padding: 28px;
+  background: #161b22;
+}
+.v2-phases {
+  margin: 24px 0;
+  display: grid;
+  gap: 8px;
+  color: #7d8590;
+}
+.v2-phases .active {
+  color: #58a6ff;
+}
+.v2-secondary {
+  border: 1px solid #484f58;
+  background: transparent;
+  color: #c9d1d9;
+  padding: 7px 10px;
+  border-radius: 4px;
+}
+.v2-chat {
+  border-left: 1px solid #30363d;
+  background: #0d1117;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.v2-chat header {
+  padding: 16px;
+  border-bottom: 1px solid #30363d;
+  display: flex;
+  justify-content: space-between;
+}
+.v2-chat small,
+.v2-muted {
+  color: #7d8590;
+}
+.v2-chat-body {
+  flex: 1;
+  padding: 16px;
+}
+.v2-chips {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px;
+}
+.v2-chat form {
+  display: flex;
+  gap: 6px;
+  padding: 12px;
+  border-top: 1px solid #30363d;
+}
+.v2-chat input {
+  flex: 1;
+  min-width: 0;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #e6edf3;
+  padding: 8px;
+  border-radius: 4px;
+}
+.v2-chat button,
+.v2-actions button,
+.v2-mr header button {
+  background: #21262d;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.v2-chat button:disabled,
+.v2-widget button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.v2-feed {
+  display: grid;
+  gap: 10px;
+  max-width: 900px;
+}
+.v2-widget {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  background: #161b22;
+}
+.v2-widget header {
+  display: flex;
+  justify-content: space-between;
+  color: #8b949e;
+}
+.v2-widget h3 {
+  margin: 0;
+  color: #e6edf3;
+  font-size: 14px;
+}
+.v2-widget ul {
+  padding-left: 18px;
+}
+.v2-widget li {
+  margin: 7px 0;
+}
+.v2-widget li button {
+  margin-left: 8px;
+}
+.v2-actions {
+  display: flex;
+  gap: 6px;
+}
+.v2-pending {
+  color: #58a6ff;
+}
+.v2-divider {
+  color: #58a6ff;
+  font:
+    11px 'JetBrains Mono',
+    monospace;
+  text-transform: uppercase;
+  margin: 18px 0 8px;
+}
+@media (max-width: 900px) {
+  .v2-app {
+    grid-template-columns: 1fr;
+  }
+  .v2-chat {
+    min-height: 280px;
+    height: 280px;
+    position: static;
+    border-left: 0;
+    border-top: 1px solid #30363d;
+  }
+  .v2-board,
+  .v2-mr {
+    padding: 18px;
+  }
+}
