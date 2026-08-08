@@ -45,20 +45,23 @@ graph TD
 
 ## Tracker
 
-| Task-ID                            | Title                                           | Module          | Dependencies              | Status                                     |
-| ---------------------------------- | ----------------------------------------------- | --------------- | ------------------------- | ------------------------------------------ |
-| [TSK-156](agent-inbox.task-156.md) | Bootstrap: журнал событий + layout              | inbox-core      | None                      | `[x]` DONE                                 |
-| [TSK-157](agent-inbox.task-157.md) | inbox-core: датасет решений + готовность        | inbox-core      | TSK-156                   | `[x]` DONE                                 |
-| [TSK-158](agent-inbox.task-158.md) | inbox-vcs: sync + внимание + эффекты            | inbox-vcs       | TSK-156                   | `[x]` DONE                                 |
-| [TSK-159](agent-inbox.task-159.md) | inbox-queue: реестр типов + executors           | inbox-queue     | TSK-157, TSK-158, TSK-160 | `[x]` DONE                                 |
-| [TSK-160](agent-inbox.task-160.md) | inbox-opencode: TTL-паркинг + пул + промпты     | inbox-opencode  | TSK-156                   | `[x]` DONE                                 |
-| [TSK-161](agent-inbox.task-161.md) | inbox-pipeline: план + слои + линзы + гейты     | inbox-pipeline  | TSK-159                   | `[x]` DONE                                 |
-| [TSK-162](agent-inbox.task-162.md) | inbox-api: REST/SSE + DTO-проекции              | inbox-api       | TSK-158, TSK-159          | `[x]` DONE                                 |
-| [TSK-163](agent-inbox.task-163.md) | inbox-chat: якоря + operator-сессия + мутации   | inbox-chat      | TSK-162                   | `[x]` DONE                                 |
-| [TSK-164](agent-inbox.task-164.md) | inbox-dashboard: загрузка/доска/лента/чат       | inbox-dashboard | TSK-162, TSK-166          | `[ ]` BLOCKED (P3 real-serve visual proof) |
-| [TSK-165](agent-inbox.task-165.md) | inbox-eval: харнесс S1–S8 + метрики             | inbox-eval      | TSK-161, TSK-164, TSK-166 | `[ ]` TODO                                 |
-| [TSK-166](agent-inbox.task-166.md) | test-infra: seed-DSL + контракт-сьют + кассеты  | test-infra      | TSK-156, TSK-158          | `[x]` DONE                                 |
-| [TSK-167](agent-inbox.task-167.md) | test-suite health: изоляция integration-раннера | test-infra      | None                      | `[ ]` TODO                                 |
+| Task-ID                            | Title                                                            | Module          | Dependencies              | Status     |
+| ---------------------------------- | ---------------------------------------------------------------- | --------------- | ------------------------- | ---------- |
+| [TSK-156](agent-inbox.task-156.md) | Bootstrap: журнал событий + layout                               | inbox-core      | None                      | `[x]` DONE |
+| [TSK-157](agent-inbox.task-157.md) | inbox-core: датасет решений + готовность                         | inbox-core      | TSK-156                   | `[x]` DONE |
+| [TSK-158](agent-inbox.task-158.md) | inbox-vcs: sync + внимание + эффекты                             | inbox-vcs       | TSK-156                   | `[x]` DONE |
+| [TSK-159](agent-inbox.task-159.md) | inbox-queue: реестр типов + executors                            | inbox-queue     | TSK-157, TSK-158, TSK-160 | `[x]` DONE |
+| [TSK-160](agent-inbox.task-160.md) | inbox-opencode: TTL-паркинг + пул + промпты                      | inbox-opencode  | TSK-156                   | `[x]` DONE |
+| [TSK-161](agent-inbox.task-161.md) | inbox-pipeline: план + слои + линзы + гейты                      | inbox-pipeline  | TSK-159                   | `[x]` DONE |
+| [TSK-162](agent-inbox.task-162.md) | inbox-api: REST/SSE + DTO-проекции                               | inbox-api       | TSK-158, TSK-159          | `[x]` DONE |
+| [TSK-163](agent-inbox.task-163.md) | inbox-chat: якоря + operator-сессия + мутации                    | inbox-chat      | TSK-162                   | `[x]` DONE |
+| [TSK-164](agent-inbox.task-164.md) | inbox-dashboard: загрузка/доска/лента/чат                        | inbox-dashboard | TSK-162, TSK-166          | `[x]` DONE |
+| [TSK-165](agent-inbox.task-165.md) | inbox-eval: харнесс S1–S8 + метрики                              | inbox-eval      | TSK-161, TSK-164, TSK-166 | `[x]` DONE |
+| [TSK-166](agent-inbox.task-166.md) | test-infra: seed-DSL + контракт-сьют + кассеты                   | test-infra      | TSK-156, TSK-158          | `[x]` DONE |
+| [TSK-167](agent-inbox.task-167.md) | test-suite health: изоляция integration-раннера                  | test-infra      | None                      | `[x]` DONE |
+| [TSK-168](agent-inbox.task-168.md) | test-honesty: раскатка over-skip + shutdown hygiene              | test-infra      | TSK-167                   | `[x]` DONE |
+| [TSK-169](agent-inbox.task-169.md) | inbox-dashboard: UI по Carbon & Steel (design-system compliance) | inbox-dashboard | TSK-164                   | `[x]` DONE |
+| [TSK-170](agent-inbox.task-170.md) | serve: утечка хэндлов, orphan-restart, вынос v1-легаси red       | inbox-api/serve | TSK-167                   | `[x]` DONE |
 
 ## Notes
 

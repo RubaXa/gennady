@@ -1,6 +1,6 @@
 // @file: DashboardV2Ui — loading, attention board, feed widgets, and permanent chat column.
 // @consumers: App
-// @tasks: TSK-164
+// @tasks: TSK-164 TSK-169
 
 import { useEffect, useMemo, useState } from 'react';
 import type {
@@ -12,13 +12,20 @@ import type {
   MrStateV2,
 } from './v2-types.ts';
 
-const GROUPS: { key: Attention; label: string }[] = [
+const ACTIVE_GROUPS: { key: Attention; label: string }[] = [
   { key: '⏳', label: 'ЖДУТ МОЁ РЕВЬЮ' },
   { key: '💬', label: 'ЖДУТ МОЙ ОТВЕТ' },
   { key: '🔀', label: 'ЖДУТ РЕ-РЕВЬЮ' },
   { key: '✅', label: 'ЖДУТ АППРУВ / РЕЗОЛВ' },
-  { key: '😴', label: 'ЖДУТ ДРУГИХ' },
 ];
+
+const ACCENT_STYLE: Record<Attention, string> = {
+  '⏳': 'v2-accent-review',
+  '💬': 'v2-accent-reply',
+  '🔀': 'v2-accent-rereview',
+  '✅': 'v2-accent-approve',
+  '😴': 'v2-accent-sleeping',
+};
 
 const workLabel: Record<MrCardV2['work']['state'], string> = {
   idle: '○ Нет работы',
@@ -75,19 +82,38 @@ export function LoadingScreen(props: {
 }
 
 /**
- * @purpose Four-row canonical card A: identity, title, counters, durable work.
+ * @purpose Four-row canonical card A with left accent bar for the attention group.
  * @param props Canonical card and board navigation callback.
  */
 export function MrCard(props: { card: MrCardV2; onOpen: (ref: string) => void }) {
   const { card, onOpen } = props;
+  const roleIcon = card.myRole === 'author' ? '👤' : card.myRole === 'reviewer' ? '👁' : null;
+  const [elapsed, setElapsed] = useState(0);
+  const startedAt = card.work.startedAt ? new Date(card.work.startedAt).getTime() : null;
+  useEffect(() => {
+    setElapsed(0);
+    if (startedAt == null) return;
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+  const timerText =
+    startedAt != null
+      ? `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
+      : null;
   return (
     <button className="v2-card" onClick={() => onOpen(card.ref)} aria-label={`Открыть ${card.ref}`}>
-      <span>
-        👤 {card.author} · {card.myRole ?? 'нет роли'} <b>{card.ref}</b> <em>{card.attention}</em>{' '}
-        📬{card.counters.unread}
+      <span className={ACCENT_STYLE[card.attention]} />
+      <span className="v2-card-row">
+        {roleIcon && <span>{roleIcon}</span>}
+        <span>{card.attention}</span>
+        <b>{card.ref}</b>
+        {card.counters.newCommits > 0 && <em>🔀{card.counters.newCommits}</em>}
+        <span>📬{card.counters.unread}</span>
       </span>
       <strong>{card.title}</strong>
-      <span>
+      <span className="v2-card-row">
         ✅ {card.counters.approvals} · 👁{' '}
         {card.counters.reviewers.filter((reviewer) => reviewer.voted).length}/
         {card.counters.reviewers.length} · 🏗 {card.counters.ci ?? '—'} · 💬 {card.counters.threads}{' '}
@@ -96,51 +122,90 @@ export function MrCard(props: { card: MrCardV2; onOpen: (ref: string) => void })
       <span className="v2-work">
         {workLabel[card.work.state]} · {card.work.label}
         {card.work.taskId ? ` ${card.work.taskId}` : ''}
+        {timerText != null && <span className="v2-timer"> · ⏱{timerText}</span>}
       </span>
     </button>
   );
 }
 
 /**
- * @purpose Render every stable attention group, retaining visibly empty lanes and degraded state.
- * @param props Board projection and MR navigation callback.
+ * @purpose Render every stable attention group as horizontal kanban lanes with accent bars, plus a 64px sleeping rail.
+ * @param props Board projection, last-updated timestamp, and MR navigation callback.
  */
 export function AttentionBoard(props: {
   cards: MrCardV2[];
   syncState: 'ok' | 'degraded';
+  lastUpdated?: number | null;
   onOpen: (ref: string) => void;
 }) {
+  const sleeping = props.cards.filter((card) => card.attention === '😴');
+  const sleepFire = sleeping.filter(
+    (card) => card.counters.newCommits > 0 || card.counters.awaitingMe > 0
+  ).length;
   return (
     <main className="v2-board">
+      <header className="v2-board-header">
+        <span className="v2-board-title">
+          Agent Inbox v2 <span className="v2-sync-dot" data-sync={props.syncState} />
+          <small>
+            {props.syncState === 'ok' ? 'ok' : 'degraded'}{' '}
+            {props.lastUpdated != null
+              ? `· обновлено ${Math.round((Date.now() - props.lastUpdated) / 1000)}с назад`
+              : ''}
+          </small>
+        </span>
+        <nav className="v2-tabs" role="tablist">
+          <button role="tab" aria-selected="true">
+            Board
+          </button>
+          <button
+            role="tab"
+            aria-selected="false"
+            disabled
+            aria-label="Active MR view (not yet routed)"
+          >
+            Active MR
+          </button>
+          <button
+            role="tab"
+            aria-selected="false"
+            disabled
+            aria-label="Queue view (not yet routed)"
+          >
+            Queue
+          </button>
+        </nav>
+      </header>
       {props.syncState === 'degraded' && (
         <div className="v2-degraded" role="status">
           ⚠ Синхронизация на паузе: показаны последние подтверждённые данные
         </div>
       )}
-      <header>
-        <p className="v2-kicker">ATTENTION BOARD</p>
-        <h1>Доска внимания</h1>
-      </header>
-      {GROUPS.map((group) => {
-        const cards = props.cards.filter((card) => card.attention === group.key);
-        return (
-          <section
-            className={group.key === '😴' ? 'v2-group sleeping' : 'v2-group'}
-            key={group.key}
-          >
-            <h2>
-              {group.key} {group.label} <small>{cards.length}</small>
-            </h2>
-            <div className="v2-card-grid">
-              {cards.length ? (
+      <div className="v2-lanes">
+        {ACTIVE_GROUPS.map((group) => {
+          const cards = props.cards.filter((card) => card.attention === group.key);
+          return (
+            <div className="v2-lane" key={group.key}>
+              <h2>
+                {group.key} {group.label} <small>{cards.length}</small>
+              </h2>
+              {cards.length > 0 ? (
                 cards.map((card) => <MrCard key={card.ref} card={card} onOpen={props.onOpen} />)
               ) : (
-                <p className="v2-empty">пусто</p>
+                <div className="v2-lane-empty">
+                  <span className="v2-empty-icon">done_all</span>
+                  <span>пусто</span>
+                </div>
               )}
             </div>
-          </section>
-        );
-      })}
+          );
+        })}
+      </div>
+      <aside className="v2-rail" aria-label="ждут других">
+        <span className="v2-rail-label">ЖДУТ ДРУГИХ</span>
+        <span className="v2-rail-count">{sleeping.length}</span>
+        {sleepFire > 0 && <span className="v2-rail-fire">🔥{sleepFire}</span>}
+      </aside>
     </main>
   );
 }
@@ -170,6 +235,262 @@ function Widget(props: {
     progress: '🔧 Прогресс',
     action: '⚡ Действие',
   };
+
+  if (widget.type === 'findings') {
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [showHidden, setShowHidden] = useState(false);
+    const toggleExpand = (id: string) =>
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    const visible = items.filter((item) => !item.hidden);
+    const hidden = items.filter((item) => item.hidden);
+    const factchecked = items.filter((item) => String(item.factcheck) === 'verified').length;
+    return (
+      <article
+        className="v2-widget"
+        data-widget-type="findings"
+        onMouseUp={(event) => {
+          const quote = window.getSelection()?.toString().trim();
+          if (!quote) return;
+          const target =
+            event.target instanceof HTMLElement ? event.target.closest('[data-anchor-id]') : null;
+          const elementId = target?.getAttribute('data-anchor-id') ?? undefined;
+          const anchor = widget.anchors.find(
+            (candidate) => !elementId || candidate.elementId === elementId
+          );
+          if (anchor)
+            onSelectAnchor({ ...anchor, quote, fragment: { start: 0, end: quote.length } });
+        }}
+      >
+        <header>
+          <h3>
+            {heading[widget.type]} ({items.length}) · factcheck {factchecked}/{items.length}
+          </h3>
+          <time>{new Date(widget.lastActivity).toLocaleTimeString()}</time>
+        </header>
+        {visible.map((item, index) => {
+          const id = String(item.id ?? index);
+          const severity = String(item.severity ?? '');
+          const severityLabel =
+            severity.toUpperCase() === 'HIGH' || severity === 'high' ? 'HIGH' : 'MED';
+          const severityClass =
+            severity.toUpperCase() === 'HIGH' || severity === 'high'
+              ? 'v2-finding-badge-high'
+              : 'v2-finding-badge-med';
+          const file = item.file ? String(item.file) : '';
+          const line = item.line != null ? String(item.line) : '';
+          const location = file ? (line ? `${file}:${line}` : file) : '';
+          const diffLines = Array.isArray(item.diff)
+            ? (item.diff as { type: string; num?: number; text: string }[])
+            : [];
+          return (
+            <div key={id} data-anchor-id={id}>
+              <div
+                className="v2-finding-row"
+                onClick={() => toggleExpand(id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') toggleExpand(id);
+                }}
+              >
+                <span className={`v2-finding-badge ${severityClass}`}>{severityLabel}</span>
+                <span className="v2-finding-summary">{String(item.summary ?? '')}</span>
+                <span className="v2-finding-location">{location}</span>
+                <span className="v2-finding-toggle">{expandedIds.has(id) ? '▴' : '▾'}</span>
+              </div>
+              {expandedIds.has(id) && (
+                <div className="v2-finding-diff">
+                  {file ? (
+                    <div className="v2-finding-diff-header">
+                      <span>{location}</span>
+                      <span>in GitLab ↗</span>
+                    </div>
+                  ) : null}
+                  {diffLines.length > 0 ? (
+                    <div className="v2-finding-diff-lines">
+                      {diffLines.map((dline, di) => (
+                        <div key={di} className={`v2-finding-diff-line ${dline.type}`}>
+                          <span className="v2-diff-num">{dline.num ?? ''}</span>
+                          <span className="v2-diff-sign">
+                            {dline.type === 'add' ? '+' : dline.type === 'remove' ? '-' : ''}
+                          </span>
+                          <span className="v2-diff-text">{dline.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="v2-finding-diff-lines">
+                      <span
+                        className="v2-diff-text"
+                        style={{
+                          padding: '8px 10px',
+                          display: 'block',
+                          color: 'var(--ds-secondary)',
+                        }}
+                      >
+                        (diff-данные появятся после первого раунда ревью)
+                      </span>
+                    </div>
+                  )}
+                  <div className="v2-finding-diff-actions">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction('post');
+                      }}
+                      title="Постить"
+                    >
+                      📮
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction('edit');
+                      }}
+                      title="Править"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction('delete');
+                      }}
+                      title="Удалить"
+                    >
+                      🗑
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction('deepen');
+                      }}
+                      title="Углубить"
+                    >
+                      🔎
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAction('widen_search');
+                      }}
+                      title="Вширь"
+                    >
+                      🌐
+                    </button>
+                  </div>
+                  <div className={`v2-finding-factcheck ${String(item.factcheck ?? '')}`}>
+                    {item.factcheck === 'verified' ? (
+                      <>✔ Factcheck: Verified</>
+                    ) : item.factcheck === 'debunked' ? (
+                      <>✘ Factcheck: Debunked</>
+                    ) : (
+                      <>○ Factcheck: Pending</>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {items.length > 0 && (
+          <div className="v2-finding-footer">
+            <button onClick={() => onAction('post_selected')}>
+              📮 Постить выбранные ({items.length})
+            </button>
+            <button onClick={() => onAction('fact_check')}>✅ Фактчек всех</button>
+            <button onClick={() => onAction('widen_search')}>🌐 Вширь</button>
+          </div>
+        )}
+        {hidden.length > 0 && (
+          <div
+            className="v2-finding-hidden"
+            onClick={() => setShowHidden(!showHidden)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setShowHidden(!showHidden);
+            }}
+          >
+            Скрытые ({hidden.length}) {showHidden ? '▴' : '▸'}
+          </div>
+        )}
+        {showHidden && hidden.length > 0 && (
+          <div style={{ padding: '4px 0' }}>
+            {hidden.map((item, index) => (
+              <div
+                key={String(item.id ?? index)}
+                className="v2-finding-row"
+                style={{ opacity: 0.5 }}
+              >
+                <span className="v2-finding-badge v2-finding-badge-med">
+                  {String(item.severity ?? 'MED')}
+                </span>
+                <span className="v2-finding-summary">{String(item.summary ?? '')}</span>
+                <span className="v2-finding-location">{String(item.file ?? '')}</span>
+                <span />
+              </div>
+            ))}
+          </div>
+        )}
+        {pending && <p className="v2-pending">⏳ {pending}</p>}
+      </article>
+    );
+  }
+
+  if (widget.type === 'plan') {
+    const stage = String(widget.payload.stage ?? widget.payload.title ?? '');
+    const tracksDone = Number(widget.payload.tracksDone ?? 0);
+    const tracksTotal = Number(widget.payload.tracksTotal ?? 0);
+    const pct = tracksTotal > 0 ? Math.round((tracksDone / tracksTotal) * 100) : 0;
+    const stages = [
+      { key: 'logic', label: 'Logic Rev' },
+      { key: 'tests', label: 'Tests Rev' },
+      { key: 'security', label: 'Security Audit' },
+    ];
+    const queuePos =
+      widget.payload.queuePosition != null ? Number(widget.payload.queuePosition) : null;
+    return (
+      <article className="v2-widget" data-widget-type="plan">
+        <header>
+          <h3>
+            {heading[widget.type]} · {stage}
+          </h3>
+          <time>{new Date(widget.lastActivity).toLocaleTimeString()}</time>
+        </header>
+        <div className="v2-plan-flow">
+          {stages.map((s, i) => {
+            const done = tracksDone > i;
+            const active = tracksDone === i;
+            return (
+              <span key={s.key}>
+                {i > 0 && <span className="v2-plan-sep">──</span>}
+                <span className={`v2-plan-stage ${done ? 'done' : active ? 'active' : 'pending'}`}>
+                  {done ? '✔' : active ? '⏳' : '○'} {s.label}
+                </span>
+              </span>
+            );
+          })}
+          {queuePos != null && (
+            <span style={{ marginLeft: 'auto', color: 'var(--ds-secondary)', fontSize: '12px' }}>
+              Queue: Pos {queuePos}
+            </span>
+          )}
+        </div>
+        {tracksTotal > 0 && (
+          <div className="v2-plan-progress">
+            <div className="v2-plan-progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+        )}
+        {pending && <p className="v2-pending">⏳ {pending}</p>}
+      </article>
+    );
+  }
+
   return (
     <article
       className="v2-widget"
@@ -177,8 +498,6 @@ function Widget(props: {
       onMouseUp={(event) => {
         const quote = window.getSelection()?.toString().trim();
         if (!quote) return;
-        // A selected quote belongs to the concrete widget and element under the pointer, rather
-        // than arbitrarily inheriting the first durable anchor on a multi-anchor widget.
         const target =
           event.target instanceof HTMLElement ? event.target.closest('[data-anchor-id]') : null;
         const elementId = target?.getAttribute('data-anchor-id') ?? undefined;
@@ -227,15 +546,36 @@ function Widget(props: {
           )}
         </p>
       )}
-      {widget.type === 'findings' && (
-        <div className="v2-actions">
-          <button onClick={() => onAction('fact_check')}>✅ фактчек</button>
-          <button onClick={() => onAction('deepen')}>🔎 углубить</button>
-          <button onClick={() => onAction('widen_search')}>🌐 вширь</button>
-        </div>
-      )}
       {pending && <p className="v2-pending">⏳ {pending}</p>}
     </article>
+  );
+}
+
+/**
+ * @purpose Sticky decision bar pinned above the feed per §5′ of ux-mockups.
+ * @param props Computed verdict data and decision/action callbacks.
+ */
+function StickyDecisionBar(props: {
+  verdict: string;
+  findingsCount: number;
+  factchecked: number;
+  onDecision: (action: 'skip' | 'edit' | 'post_all') => void;
+}) {
+  return (
+    <div className="v2-sticky-bar" aria-label="Панель решения">
+      <div className="v2-sticky-bar-label">
+        ⚡ Ждёт решения: <b>{props.verdict}</b>
+        {' · '}
+        {props.findingsCount} находок
+        {' · '}
+        factcheck {props.factchecked}/{props.findingsCount}
+      </div>
+      <div className="v2-sticky-bar-actions">
+        <button onClick={() => props.onDecision('skip')}>Skip</button>
+        <button onClick={() => props.onDecision('edit')}>Edit</button>
+        <button onClick={() => props.onDecision('post_all')}>Post All</button>
+      </div>
+    </div>
   );
 }
 
@@ -337,8 +677,20 @@ export function ChatColumn(props: {
         </button>
       </div>
       <div className="v2-chips">
-        <button>Спросить</button>
-        <button>Объяснить</button>
+        <button
+          onClick={() => {
+            setText('Спросить про ');
+          }}
+        >
+          Спросить
+        </button>
+        <button
+          onClick={() => {
+            setText('Объясни ');
+          }}
+        >
+          Объяснить
+        </button>
       </div>
       <form
         onSubmit={async (event) => {
@@ -390,8 +742,8 @@ export function HeaderInformer(props: { card: MrCardV2 | undefined }) {
 }
 
 /**
- * @purpose Compose the opened MR header, informer, and server-projected feed.
- * @param props MR route state and feed interaction callbacks.
+ * @purpose Compose the opened MR header, informer, sticky decision bar, and server-projected feed.
+ * @param props MR route state, feed interaction callbacks, and decision/verdict awareness.
  */
 export function MrFeedScreen(props: {
   refName: string;
@@ -400,9 +752,29 @@ export function MrFeedScreen(props: {
   onAction: (type: string) => void;
   pending: string | null;
   onSelectAnchor: (anchor: FeedWidget['anchors'][number]) => void;
+  onDecision?: (action: 'skip' | 'edit' | 'post_all') => void;
+  verdict?: string;
 }) {
+  const findings = useMemo(() => {
+    const items: Record<string, unknown>[] = [];
+    for (const w of props.state?.widgets ?? []) {
+      if (w.type === 'findings' && Array.isArray(w.payload.items))
+        items.push(...(w.payload.items as Record<string, unknown>[]));
+    }
+    return items;
+  }, [props.state]);
+  const factchecked = findings.filter((it) => String(it.factcheck) === 'verified').length;
+  const showSticky = findings.length > 0 && props.onDecision;
   return (
     <main className="v2-mr">
+      {showSticky && (
+        <StickyDecisionBar
+          verdict={props.verdict ?? 'Review'}
+          findingsCount={findings.length}
+          factchecked={factchecked}
+          onDecision={props.onDecision!}
+        />
+      )}
       <header>
         <button onClick={props.onBack}>← Доска</button>
         <p className="v2-kicker">{props.refName}</p>

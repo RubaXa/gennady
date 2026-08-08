@@ -1,10 +1,10 @@
-# Task: TSK-169 — vcs-worktree: git submodule update --init --recursive (FR-WT-08)
+# Task: TSK-171 — vcs-worktree: git submodule update --init --recursive (FR-WT-08)
 
 <!--SECTION:META-->
 
 ## 1. Meta
 
-- **Task-ID:** TSK-169
+- **Task-ID:** TSK-171
 - **Status:** [ ] TODO
 - **Purpose:** После подготовки worktree (`prepareMrWorktree`) реально инициализировать git submodules внутри самого worktree (`git submodule update --init --recursive`), best-effort и opt-in — НЕ симлинк на submodule-директорию клона (submodule жёстко привязан к конкретному SHA родителя; MR мог сменить эту версию, и симлинк на клон показал бы неверный коммит)
 - **Scope:** `cli`

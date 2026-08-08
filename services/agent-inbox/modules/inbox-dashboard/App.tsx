@@ -1,6 +1,6 @@
 // @file: App — v2 inbox dashboard: boot → attention board → MR feed with permanent chat.
 // @consumers: dashboard-entry
-// @tasks: TSK-164
+// @tasks: TSK-164 TSK-169
 
 import { useCallback, useEffect, useState } from 'react';
 import { dashboardV2Api } from './dashboard-v2-api.ts';
@@ -29,6 +29,7 @@ export function App() {
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [liveTurns, setLiveTurns] = useState<ChatTranscriptTurn[]>([]);
   const [undoSnapshotId, setUndoSnapshotId] = useState<string | null>(null);
+  const [boardLastUpdated, setBoardLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
     const handler = () => setHash(window.location.hash.slice(1) || '/');
@@ -46,6 +47,7 @@ export function App() {
   const refreshBoard = useCallback(async () => {
     const next = await dashboardV2Api.board();
     setBoard(next);
+    setBoardLastUpdated(Date.now());
   }, []);
   const refreshState = useCallback(async () => {
     if (!mrId) return;
@@ -159,6 +161,9 @@ export function App() {
     setPending(result.taskId ?? 'dry-run: решение принято');
     await refreshState();
   };
+  const handleStickyDecision = (action: 'skip' | 'edit' | 'post_all') => {
+    void runAction(`sticky_${action}`);
+  };
   const undo = async (snapshotId: string) => {
     if (!mrId) return;
     await dashboardV2Api.undo(mrId, snapshotId);
@@ -184,11 +189,13 @@ export function App() {
           onAction={(type) => void runAction(type)}
           pending={pending}
           onSelectAnchor={setChatAnchor}
+          onDecision={handleStickyDecision}
         />
       ) : (
         <AttentionBoard
           cards={board?.cards ?? []}
           syncState={board?.syncState ?? 'ok'}
+          lastUpdated={boardLastUpdated}
           onOpen={openMr}
         />
       )}

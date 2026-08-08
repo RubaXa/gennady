@@ -1,6 +1,6 @@
 // @file: HttpServer — node:http server on port 4174 with routing, CORS, static files, graceful shutdown.
 // @consumers: gennady inbox serve (CLI), e2e tests
-// @tasks: TSK-106, TSK-133, TSK-157, TSK-158, TSK-162, TSK-163
+// @tasks: TSK-106, TSK-133, TSK-157, TSK-158, TSK-162, TSK-163, TSK-170
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { logger } from '#logger';
@@ -158,8 +158,8 @@ export class HttpServer {
   protected _sseHub: SseHub | undefined;
   /** @purpose Static file server. */
   protected _staticFiles: StaticFiles;
-  /** @purpose Track active sockets for graceful shutdown. */
-  protected _sockets: Set<unknown> = new Set();
+  /** @purpose Track connection sockets so they can be unreffed at stop(). */
+  protected _sockets: Set<import('node:net').Socket> = new Set();
 
   /**
    * @purpose Create an HttpServer with routing wired to the given board provider.
@@ -377,25 +377,36 @@ export class HttpServer {
         return;
       }
 
+      const srv = this._server;
       logger.info('[HttpServer#stop] [listening → stopping]', { port: this._config.port });
 
-      const shutdownTimeout = setTimeout(() => {
-        for (const socket of this._sockets) {
-          (socket as { destroy(): void }).destroy();
-        }
-        this._sockets.clear();
-      }, 5000);
-
-      // Detach the dry-run broadcaster bound to this server's SSE hub so a later server (or test)
-      // does not fan writes out over a closed hub (TSK-131).
       setDryRunBroadcaster(null);
 
-      this._server.close(() => {
-        clearTimeout(shutdownTimeout);
-        logger.info('[HttpServer#stop] [stopping → stopped]');
+      let stopped = false;
+      const finish = async () => {
+        if (stopped) return;
+        stopped = true;
+        clearTimeout(fallback);
+        srv.removeListener('close', finish);
+        // Unref all tracked sockets so they never pin the event loop.
+        for (const socket of this._sockets) {
+          socket.unref();
+        }
+        this._sockets.clear();
+        srv.unref();
         this._server = null;
+        // Yield one tick to let libuv process native handle cleanup before resolve.
+        await new Promise((r) => setTimeout(r, 0));
+        logger.info('[HttpServer#stop] [stopping → stopped]');
         resolve();
-      });
+      };
+
+      const fallback = setTimeout(() => finish(), 2000);
+
+      srv.on('close', finish);
+      srv.closeIdleConnections();
+      srv.closeAllConnections();
+      srv.close();
     });
   }
 

@@ -1,6 +1,6 @@
 // @file: gracefulShutdown — SIGTERM/SIGINT handler: cancels OpenCode sessions, stops scheduler, closes HTTP server.
 // @consumers: gennady inbox serve CLI
-// @tasks: TSK-115, TSK-117
+// @tasks: TSK-115, TSK-117, TSK-170
 
 import { readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -148,17 +148,19 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
   try {
     // Race server.stop() against a timeout — resolve cleanly either way.
     // Caller (serve.cmd.ts) handles process.exit() code.
+    let timeoutTimer: NodeJS.Timeout | undefined;
     const stopPromise = config.server.stop().then(() => {
       logger.info('[gracefulShutdown] [stopping → stopped] HTTP server closed');
     });
     const timeoutPromise = new Promise<void>((resolve) => {
-      setTimeout(() => {
+      timeoutTimer = setTimeout(() => {
         logger.warn('[gracefulShutdown] server close timed out');
         resolve();
       }, timeout);
     });
 
     await Promise.race([stopPromise, timeoutPromise]);
+    clearTimeout(timeoutTimer);
   } catch (cause) {
     logger.error('[gracefulShutdown] [stopping → failed]', {
       error: (cause as Error).message,

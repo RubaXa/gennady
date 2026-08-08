@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -477,7 +477,26 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     // The first real poll is deliberate: it makes the production truth port live rather than a
     // diagnostic-only handle. Active snapshots are registered before the minute verifier starts.
     await advanceBoot('poll');
-    initialSyncSnapshots = await syncService.twoTierSync();
+    try {
+      const TIMEOUT_MS = 30_000;
+      initialSyncSnapshots = await Promise.race([
+        syncService.twoTierSync(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('[bootstrap] twoTierSync timed out')),
+            TIMEOUT_MS
+          ).unref()
+        ),
+      ]);
+    } catch (cause) {
+      logger.warn(
+        '[bootstrap] [twoTierSync → failed] VCS unreachable during bootstrap — continuing with empty snapshots; sync will retry on next poll',
+        {
+          error: (cause as Error).message,
+        }
+      );
+      initialSyncSnapshots = [];
+    }
     for (const snapshot of initialSyncSnapshots.filter((item) => item.role !== null)) {
       backgroundVerifier.register({
         webUrl: snapshot.mr.webUrl,

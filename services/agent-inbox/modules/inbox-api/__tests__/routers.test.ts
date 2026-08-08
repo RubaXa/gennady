@@ -1,6 +1,6 @@
 // @file: Router contract tests — DTO closed-world validation, enqueue dedup, decision lifecycle, artifact path traversal, boot endpoint, HttpServer→projection wiring (F-02).
 // @consumers: node:test runner
-// @tasks: TSK-162
+// @tasks: TSK-162, TSK-167
 
 import { describe, it, mock, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -564,6 +564,7 @@ describe('HttpServer — inboxApi v2 wiring (F-02)', () => {
 
     const journal: EventJournal = {
       since: mock.fn((_cursor: number) => ({ entries: [], nextCursor: 0 })),
+      read: mock.fn(() => []),
     } as unknown as EventJournal;
 
     const registry: InboxRegistryAccess = {
