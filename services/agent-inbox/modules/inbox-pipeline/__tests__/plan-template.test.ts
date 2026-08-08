@@ -8,9 +8,7 @@ import { PlanTemplate } from '../plan-template.ts';
 import type { ChangesetEntry, TrackSource } from '../plan-template.ts';
 import type { TriggerRegistry, TriggeredTrack } from '../trigger-registry.ts';
 
-function createTriggerRegistry(
-  resolve?: (files: string[]) => TriggeredTrack[]
-): TriggerRegistry {
+function createTriggerRegistry(resolve?: (files: string[]) => TriggeredTrack[]): TriggerRegistry {
   return {
     resolve: mock.fn(resolve ?? (() => [])),
   } as unknown as TriggerRegistry;
@@ -39,9 +37,7 @@ describe('PlanTemplate', () => {
     assert.ok(mandatory.length >= 1);
     for (const track of result.tracks) {
       const s: TrackSource = track.source;
-      assert.ok(
-        s === 'mandatory' || s.startsWith('triggered:') || s === 'proposed'
-      );
+      assert.ok(s === 'mandatory' || s.startsWith('triggered:') || s === 'proposed');
     }
   });
 
@@ -55,10 +51,7 @@ describe('PlanTemplate', () => {
     };
     const registry = createTriggerRegistry(() => [depsVuln]);
     const template = new PlanTemplate(registry);
-    const changeset: ChangesetEntry[] = [
-      entry('package.json'),
-      entry('src/index.ts'),
-    ];
+    const changeset: ChangesetEntry[] = [entry('package.json'), entry('src/index.ts')];
 
     const plan = template.generate('test/project!42', changeset);
 
@@ -111,10 +104,7 @@ describe('PlanTemplate', () => {
       return [];
     });
     const template = new PlanTemplate(registry);
-    const changeset: ChangesetEntry[] = [
-      entry('.env.local', 'added'),
-      entry('src/foo.ts'),
-    ];
+    const changeset: ChangesetEntry[] = [entry('.env.local', 'added'), entry('src/foo.ts')];
 
     const plan = template.generate('test/project!42', changeset);
 
@@ -186,10 +176,7 @@ describe('PlanTemplate', () => {
   it('lens inputs create DAG waves', () => {
     const registry = createTriggerRegistry();
     const template = new PlanTemplate(registry);
-    const changeset: ChangesetEntry[] = [
-      entry('src/index.ts'),
-      entry('tests/index.test.ts'),
-    ];
+    const changeset: ChangesetEntry[] = [entry('src/index.ts'), entry('tests/index.test.ts')];
 
     const plan = template.generate('test/project!42', changeset);
 

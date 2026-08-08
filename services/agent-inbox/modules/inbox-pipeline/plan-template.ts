@@ -54,10 +54,7 @@ export type ChangesetEntry = {
 // purpose: mirrors buildReviewPlan TRACK_RULES v1 from cli/cmd/inbox-review-plan,
 // adapted as a pure in-memory classifier for the pipeline module
 
-const TRACK_RULES: Record<
-  string,
-  { patterns: RegExp[]; focus: string }
-> = {
+const TRACK_RULES: Record<string, { patterns: RegExp[]; focus: string }> = {
   tests: {
     patterns: [/\.(test|spec)\.(ts|tsx|js|jsx)$/, /__tests__\//],
     focus: 'TEST probe',
@@ -135,7 +132,9 @@ export class PlanTemplate {
    * @returns Deterministic ReviewPlan with stages and tracks.
    */
   generate(mr: string, changeset: ChangesetEntry[]): ReviewPlan {
-    logger.debug(`[PlanTemplate#generate] [idle → generating] ${mr}`, { fileCount: changeset.length });
+    logger.debug(`[PlanTemplate#generate] [idle → generating] ${mr}`, {
+      fileCount: changeset.length,
+    });
 
     // #region START_LAYER1_MANDATORY — classify every file into mandatory tracks, 100% coverage
     const mandatoryTrackMap = new Map<string, ChangesetEntry[]>();

@@ -143,7 +143,9 @@ export class TriggerRegistry {
    * @returns Array of triggered tracks — one per distinct trackId with merged matched files.
    */
   resolve(changedFiles: string[]): TriggeredTrack[] {
-    logger.debug('[TriggerRegistry#resolve] [idle → resolving]', { fileCount: changedFiles.length });
+    logger.debug('[TriggerRegistry#resolve] [idle → resolving]', {
+      fileCount: changedFiles.length,
+    });
 
     // #region START_TRACK_AGGREGATION — map trackId → aggregated triggered track
     const trackMap = new Map<string, TriggeredTrack>();
@@ -182,7 +184,9 @@ export class TriggerRegistry {
     // #endregion END_TRACK_AGGREGATION
 
     const result = [...trackMap.values()];
-    logger.info('[TriggerRegistry#resolve] [resolving → done]', { triggeredTrackCount: result.length });
+    logger.info('[TriggerRegistry#resolve] [resolving → done]', {
+      triggeredTrackCount: result.length,
+    });
     return result;
   }
 }

@@ -160,12 +160,18 @@ describe('Synthesize', () => {
     const journal = createMockJournal();
     const synth = new Synthesize(journal);
     const results: ModelResult[] = [
-      createModelResult('deepseek', 'logic', [
-        createFinding({ file: 'a.ts', line: 1, summary: 'bug' }),
-      ], 'run-001'),
-      createModelResult('kimi', 'logic', [
-        createFinding({ file: 'a.ts', line: 1, summary: 'bug' }),
-      ], 'run-002'),
+      createModelResult(
+        'deepseek',
+        'logic',
+        [createFinding({ file: 'a.ts', line: 1, summary: 'bug' })],
+        'run-001'
+      ),
+      createModelResult(
+        'kimi',
+        'logic',
+        [createFinding({ file: 'a.ts', line: 1, summary: 'bug' })],
+        'run-002'
+      ),
     ];
 
     const findings = await synth.synthesize(results);

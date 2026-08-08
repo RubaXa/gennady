@@ -1,6 +1,6 @@
 // @file: OpenCodeMock — deterministic adapter simulating ALL outcome classes for dev/e2e testing.
 // @consumers: SessionPool (dev/e2e), inbox-opencode tests, inbox-roles tests
-// @tasks: TSK-111
+// @tasks: TSK-111, TSK-160
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -14,6 +14,7 @@ import {
   type ToolCallStat,
   type ToolTraceEntry,
   type ToolGate,
+  type OpenCodeMessage,
   toolsGateActive,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
@@ -59,6 +60,8 @@ export class OpenCodeMock extends OpenCodePort {
   protected _sessionLastNode: Map<string, string>;
   /** @purpose Counter for unique session id generation */
   protected _sidCounter: number;
+  /** @purpose Parked session identifiers — mock parity with the real lifecycle contract. */
+  protected _parkedSessions: Set<string>;
 
   /**
    * @purpose Create an empty mock — call seed()/seedError() before use.
@@ -74,6 +77,7 @@ export class OpenCodeMock extends OpenCodePort {
     this._sessionModels = new Map();
     this._sessionLastNode = new Map();
     this._sidCounter = 0;
+    this._parkedSessions = new Set();
   }
 
   /**
@@ -201,6 +205,33 @@ export class OpenCodeMock extends OpenCodePort {
   }
 
   /**
+   * @param sid Session identifier to keep available for continuation.
+   * @returns Promise that resolves after local park state is recorded.
+   * @see {OpenCodePort#park}
+   */
+  async park(sid: string): Promise<void> {
+    if (this._sessions.has(sid)) this._parkedSessions.add(sid);
+  }
+
+  /**
+   * @param sid Session identifier to resume.
+   * @returns Whether the session was previously parked.
+   * @see {OpenCodePort#resume}
+   */
+  async resume(sid: string): Promise<boolean> {
+    return this._parkedSessions.delete(sid);
+  }
+
+  /**
+   * @param _sid Session identifier (the mock retains no message history).
+   * @returns Empty history, preserving the adapter contract.
+   * @see {OpenCodePort#messages}
+   */
+  async messages(_sid: string): Promise<OpenCodeMessage[]> {
+    return [];
+  }
+
+  /**
    * @param sid Session identifier.
    * @returns Promise that resolves when the session is marked terminated.
    * @see {OpenCodePort#abort}
@@ -224,6 +255,7 @@ export class OpenCodeMock extends OpenCodePort {
       session.status = 'terminated';
     }
     this._sessions.delete(sid);
+    this._parkedSessions.delete(sid);
     logger.debug(`[OpenCodeMock#close] [any → closed] ${sid}`);
   }
 

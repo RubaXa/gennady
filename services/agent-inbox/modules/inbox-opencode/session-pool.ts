@@ -1,6 +1,6 @@
 // @file: SessionPool / UnifiedPool — bounded pool of OpenCode sessions with priority queuing (👤>🦊>🏗), no preemption, aging.
 // @consumers: inbox-roles (for role-agent session management)
-// @tasks: TSK-111, TSK-160
+// @tasks: TSK-111, TSK-159, TSK-160
 
 import { logger } from '#logger';
 import type { OpenCodePort, PromptOpts, ToolGate } from './opencode.port.ts';
@@ -31,6 +31,21 @@ export type SessionPoolConfig = {
    * @invariant Default: 60s. Set to 0 to disable aging.
    */
   agingThresholdMs?: number;
+  /**
+   * @purpose Register a newly acquired adapter session in the boot-owned lifecycle domain.
+   * @invariant The callback runs before the sid becomes visible to a pool caller, so a reachable
+   *   chat or role session cannot bypass SessionRegistry/SessionLifecycle.
+   * @param sid Server-issued session identifier.
+   * @param opts Pool request carrying routing identity.
+   * @returns Completion once lifecycle registration is durable in memory.
+   */
+  onSessionCreated?: (sid: string, opts: PoolCreateOpts) => void | Promise<void>;
+  /**
+   * @purpose Delegate registered terminal closes to the boot-owned lifecycle; true means lifecycle owns adapter, registry, and slot cleanup.
+   * @param sid Terminal server session identifier.
+   * @returns True when lifecycle handled the close; false selects direct-adapter fallback.
+   */
+  onSessionRelease?: (sid: string) => boolean | Promise<boolean>;
 };
 
 /** @purpose Internal slot tracking an active session within the pool. */
@@ -59,10 +74,21 @@ export type PoolCreateOpts = {
    * @invariant Default: 'background' — pre-existing callers without priority selection keep FIFO-ish behavior.
    */
   priority?: SessionPriority;
+  /**
+   * @purpose Durable routing identity for the lifecycle registry, supplied by the chat/role
+   *   caller that owns the task and MR.
+   */
+  registration?: {
+    taskId: string;
+    mr: string;
+    artifacts?: string[];
+  };
 };
 
 /** @purpose Queued create request — stored resolver to unblock when a slot frees up. */
-type QueuedCreate = Required<PoolCreateOpts> & {
+type QueuedCreate = Omit<Required<PoolCreateOpts>, 'registration'> & {
+  /** @purpose Optional lifecycle identity preserved while the request waits for capacity. */
+  registration?: PoolCreateOpts['registration'];
   /** @purpose Resolver to fulfill the create promise once a slot is available */
   resolve: (sid: string) => void;
   /** @purpose Rejecter to fail the create promise on cleanup or error */
@@ -113,7 +139,7 @@ export class SessionPool {
   async create(opts: PoolCreateOpts): Promise<string> {
     // #region START_IMMEDIATE_CREATE — if a slot is free, create the session right away
     if (this._slots.length < this._config.maxSessions) {
-      const handle = await this._config.opencode.createSession(opts);
+      const handle = await this._createAndRegister(opts);
       this._slots.push({ active: true, sid: handle.sid });
       logger.debug(
         `[SessionPool#create] [queued → active] ${handle.sid} (${this._slots.length}/${this._config.maxSessions})`
@@ -134,6 +160,7 @@ export class SessionPool {
         tools: opts.tools ?? false,
         model: opts.model ?? '',
         priority: opts.priority ?? 'background',
+        registration: opts.registration,
         resolve,
         reject,
         enqueuedAt: Date.now(),
@@ -174,7 +201,12 @@ export class SessionPool {
       return;
     }
 
-    // #region START_CLOSE_AND_DRAIN_QUEUE — close the session, free the slot, unblock next queued request
+    // Registered production sessions must travel through SessionLifecycle: it owns adapter
+    // termination and registry removal, while its onClosed hook only evicts this slot. Keeping
+    // those responsibilities split avoids pool → lifecycle → pool recursive close calls.
+    if (await this._config.onSessionRelease?.(sid)) return;
+
+    // #region START_CLOSE_AND_DRAIN_QUEUE — legacy/unregistered fallback
     try {
       await this._config.opencode.close(sid);
     } catch (cause) {
@@ -190,6 +222,19 @@ export class SessionPool {
 
     await this._drainNext();
     // #endregion END_CLOSE_AND_DRAIN_QUEUE
+  }
+
+  /**
+   * @purpose Remove a session already terminally closed by SessionLifecycle and admit next work.
+   * @param sid Closed server session identifier.
+   * @returns Promise that resolves once capacity and the priority queue are reconciled.
+   */
+  async evictClosed(sid: string): Promise<void> {
+    const idx = this._slots.findIndex((slot) => slot.active && slot.sid === sid);
+    if (idx === -1) return;
+    this._slots.splice(idx, 1);
+    logger.debug('[SessionPool#evictClosed] [closed → released]', { sid });
+    await this._drainNext();
   }
 
   /**
@@ -217,6 +262,15 @@ export class SessionPool {
    */
   activeCount(): number {
     return this._slots.length;
+  }
+
+  /**
+   * @purpose Determine whether a specific session can still accept pooled work.
+   * @param sid Session identifier to verify.
+   * @returns Whether the session occupies an active pool slot.
+   */
+  isActive(sid: string): boolean {
+    return this._slots.some((slot) => slot.active && slot.sid === sid);
   }
 
   /**
@@ -328,11 +382,13 @@ export class SessionPool {
     if (!next) return;
 
     try {
-      const handle = await this._config.opencode.createSession({
+      const handle = await this._createAndRegister({
         title: next.title,
         directory: next.directory,
         tools: next.tools,
         model: next.model || undefined,
+        priority: next.priority,
+        registration: next.registration,
       });
       this._slots.push({ active: true, sid: handle.sid });
       logger.debug(
@@ -346,6 +402,22 @@ export class SessionPool {
       logger.error('[SessionPool#_drainNext] [queued → failed]', { error });
       next.reject(error);
     }
+  }
+
+  /**
+   * @purpose Acquire a live adapter session and synchronously admit it to the lifecycle domain.
+   * @param opts Pool create request including optional task/MR registration metadata.
+   * @returns Server-issued session handle after registration completes.
+   */
+  protected async _createAndRegister(opts: PoolCreateOpts): Promise<{ sid: string }> {
+    const handle = await this._config.opencode.createSession({
+      title: opts.title,
+      directory: opts.directory,
+      tools: opts.tools,
+      model: opts.model,
+    });
+    await this._config.onSessionCreated?.(handle.sid, opts);
+    return handle;
   }
 }
 

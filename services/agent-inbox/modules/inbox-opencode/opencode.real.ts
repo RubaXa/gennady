@@ -17,6 +17,7 @@ import {
   type ToolCallStat,
   type ToolTraceEntry,
   type ToolGate,
+  type OpenCodeMessage,
 } from './opencode.port.ts';
 import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
 
@@ -477,9 +478,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param sid Session identifier.
    * @returns Array of messages from the session, or empty on error / not found.
    */
-  async messages(
-    sid: string
-  ): Promise<Array<{ role: string; parts: Array<Record<string, unknown>> }>> {
+  async messages(sid: string): Promise<OpenCodeMessage[]> {
     const client = this._ensureClient();
     const directory = this._sessionDirs.get(sid) ?? this._directory;
 
@@ -497,7 +496,7 @@ export class OpenCodeReal extends OpenCodePort {
         return [];
       }
 
-      const messages: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
+      const messages: OpenCodeMessage[] = [];
       for (const msg of result.data) {
         messages.push({
           role: msg.info.role,

@@ -26,6 +26,7 @@ function createContext(ttlMs?: number) {
   const lifecycle = new SessionLifecycle(
     registry,
     journal,
+    undefined,
     ttlMs ? { idleTtlMs: ttlMs } : undefined
   );
   return { registry, journalAppend, lifecycle };
@@ -169,8 +170,7 @@ describe('SessionLifecycle', () => {
       const resumed = await lifecycle.resume('sid-1');
 
       assert.strictEqual(resumed, false);
-      const entry = registry.lookup('sid-1');
-      assertState(entry?.state, 'close');
+      assert.strictEqual(registry.lookup('sid-1'), undefined);
     });
 
     it('should resume multiple times within TTL', async () => {
@@ -189,14 +189,13 @@ describe('SessionLifecycle', () => {
   });
 
   describe('#close', () => {
-    it('should transition any state → close and journal event', async () => {
+    it('should close the adapter session, clear routing, and journal the terminal transition', async () => {
       const { registry, journalAppend, lifecycle } = createContext();
       seedSession(registry, { state: 'work' });
 
       await lifecycle.close('sid-1');
 
-      const entry = registry.lookup('sid-1');
-      assertState(entry?.state, 'close');
+      assert.strictEqual(registry.lookup('sid-1'), undefined);
       assert.strictEqual(journalAppend.mock.callCount(), 1);
     });
 
@@ -210,7 +209,7 @@ describe('SessionLifecycle', () => {
   });
 
   describe('#reapExpired', () => {
-    it('should close only expired parked sessions, leaving fresh ones', () => {
+    it('should close only expired parked sessions, leaving fresh ones', async () => {
       const { registry, lifecycle } = createContext(30_000);
       const expiredAt = new Date(Date.now() - 60_000).toISOString();
       const freshAt = new Date(Date.now() - 5_000).toISOString();
@@ -229,23 +228,23 @@ describe('SessionLifecycle', () => {
       });
       seedSession(registry, { sessionId: 'working', taskId: 't3', state: 'work' });
 
-      const expired = lifecycle.reapExpired();
+      const expired = await lifecycle.reapExpired();
 
       assert.deepStrictEqual(expired, ['expired']);
-      assertState(registry.lookup('expired')?.state, 'close');
+      assert.strictEqual(registry.lookup('expired'), undefined);
       assertState(registry.lookup('fresh')?.state, 'park');
       assertState(registry.lookup('working')?.state, 'work');
     });
 
-    it('should return empty array when no parked sessions', () => {
+    it('should return empty array when no parked sessions', async () => {
       const { lifecycle } = createContext();
 
-      const expired = lifecycle.reapExpired();
+      const expired = await lifecycle.reapExpired();
 
       assert.deepStrictEqual(expired, []);
     });
 
-    it('should respect custom TTL', () => {
+    it('should respect custom TTL', async () => {
       const { registry, lifecycle } = createContext(5_000);
       const barelyFresh = new Date(Date.now() - 7_000).toISOString();
       seedSession(registry, {
@@ -255,7 +254,7 @@ describe('SessionLifecycle', () => {
         parkedAt: barelyFresh,
       });
 
-      const expired = lifecycle.reapExpired();
+      const expired = await lifecycle.reapExpired();
 
       assert.deepStrictEqual(expired, ['s1']);
     });
@@ -281,7 +280,7 @@ describe('SessionLifecycle', () => {
   });
 
   describe('custom TTL', () => {
-    it('should default to 45 minutes when no config provided', () => {
+    it('should default to 45 minutes when no config provided', async () => {
       const { registry, lifecycle } = createContext();
       seedSession(registry, {
         sessionId: 's1',
@@ -290,7 +289,7 @@ describe('SessionLifecycle', () => {
         parkedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
       });
 
-      const expired = lifecycle.reapExpired();
+      const expired = await lifecycle.reapExpired();
 
       assert.deepStrictEqual(expired, []);
     });

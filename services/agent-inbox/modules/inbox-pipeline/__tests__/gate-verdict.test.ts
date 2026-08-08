@@ -46,9 +46,7 @@ describe('GateVerdict', () => {
 
   it('finding without file:line returns fail with file line required reason', () => {
     const review = validReview({
-      findings: [
-        finding({ file: undefined, line: undefined }),
-      ],
+      findings: [finding({ file: undefined, line: undefined })],
     });
 
     const result = gate.validate(review);
@@ -103,6 +101,18 @@ describe('GateVerdict', () => {
     assert.strictEqual(gate.isEscalated(), false);
 
     gate.validate(review);
+    assert.strictEqual(gate.isEscalated(), true);
+  });
+
+  it('escalates after two failed validations rather than two total attempts', () => {
+    const invalid = validReview();
+    delete invalid.verdict;
+
+    gate.validate(validReview());
+    gate.validate(invalid);
+    assert.strictEqual(gate.isEscalated(), false);
+
+    gate.validate(invalid);
     assert.strictEqual(gate.isEscalated(), true);
   });
 

@@ -1,6 +1,6 @@
 // @file: OpenCodePort — abstraction over an OpenCode AI-node session for structured prompting.
 // @consumers: SessionPool, inbox-roles, DI container
-// @tasks: TSK-111
+// @tasks: TSK-111, TSK-160
 
 import type { OpenCodeCallResult } from './errors.ts';
 
@@ -122,6 +122,14 @@ export type PromptOpts = {
   model?: string;
 };
 
+/** @purpose A normalized session message retained by OpenCode adapters for lifecycle telemetry. */
+export type OpenCodeMessage = {
+  /** @purpose Author role reported by OpenCode. */
+  role: string;
+  /** @purpose Raw message parts, intentionally adapter-neutral. */
+  parts: Array<Record<string, unknown>>;
+};
+
 /**
  * @purpose Abstraction over an OpenCode AI-node session for structured prompting.
  * @invariant Preconditions: non-empty system/text; existing directory path.
@@ -154,6 +162,15 @@ export abstract class OpenCodePort {
    * @returns Current status — may be stale by a few ms.
    */
   abstract status(sid: string): Promise<SessionStatus>;
+
+  /** @purpose Keep a live server session idle and eligible for same-session continuation. */
+  abstract park(sid: string): Promise<void>;
+
+  /** @purpose Resume a previously parked live server session. */
+  abstract resume(sid: string): Promise<boolean>;
+
+  /** @purpose Return the complete message history used by tool-trace and continuation checks. */
+  abstract messages(sid: string): Promise<OpenCodeMessage[]>;
 
   /**
    * @purpose Retrieve tool-call telemetry accumulated during the session's last agent turn —

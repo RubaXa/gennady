@@ -5,6 +5,7 @@
 import { logger } from '#logger';
 import type { EventJournal } from '../inbox-core/event-journal.ts';
 import type { SessionRegistry } from './session-registry.ts';
+import type { OpenCodePort } from './opencode.port.ts';
 
 /** @purpose Lifecycle states a session traverses — idle → work → park → close. */
 export type SessionState = 'idle' | 'work' | 'park' | 'close';
@@ -16,6 +17,12 @@ export type SessionLifecycleConfig = {
    *   longer are closed by reapExpired().
    */
   idleTtlMs?: number;
+  /**
+   * @purpose Releases the pool capacity for a session terminally closed by this lifecycle.
+   * @param sessionId Terminally closed server session identifier.
+   * @returns Completion once shared pool capacity is reconciled.
+   */
+  onClosed?: (sessionId: string) => void | Promise<void>;
 };
 
 const DEFAULT_IDLE_TTL_MS = 45 * 60 * 1000;
@@ -34,17 +41,29 @@ export class SessionLifecycle {
   protected _journal: EventJournal;
   /** @purpose Idle TTL in milliseconds — parked sessions older than this are reaped. */
   protected _ttlMs: number;
+  /** @purpose Live adapter bound by bootstrap; absent only in isolated legacy unit tests. */
+  protected _opencode: OpenCodePort | undefined;
+  /** @purpose Callback into the shared pool so TTL close cannot leave a stale occupied slot. */
+  protected _onClosed: ((sessionId: string) => void | Promise<void>) | undefined;
 
   /**
    * @purpose Create a session lifecycle manager bound to a registry and journal.
    * @param registry Session registry for state storage.
    * @param journal Event journal for lifecycle event logging.
+   * @param [opencode] Live adapter to park, resume, and close the actual server session.
    * @param [config] Optional TTL override — defaults to 45 minutes.
    */
-  constructor(registry: SessionRegistry, journal: EventJournal, config?: SessionLifecycleConfig) {
+  constructor(
+    registry: SessionRegistry,
+    journal: EventJournal,
+    opencode?: OpenCodePort,
+    config?: SessionLifecycleConfig
+  ) {
     this._registry = registry;
     this._journal = journal;
+    this._opencode = opencode;
     this._ttlMs = config?.idleTtlMs ?? DEFAULT_IDLE_TTL_MS;
+    this._onClosed = config?.onClosed;
     logger.debug('[SessionLifecycle#constructor] [init → ready]', { ttlMs: this._ttlMs });
   }
 
@@ -80,6 +99,7 @@ export class SessionLifecycle {
       logger.debug('[SessionLifecycle#park] [parking → not_found]', { sessionId });
       return;
     }
+    await this._opencode?.park(sessionId);
     entry.state = 'park';
     entry.parkedAt = new Date().toISOString();
     const seq = await this._journal.append({
@@ -134,6 +154,11 @@ export class SessionLifecycle {
     }
     // #endregion END_CHECK_TTL
 
+    if (this._opencode && !(await this._opencode.resume(sessionId))) {
+      logger.info('[SessionLifecycle#resume] [park → unavailable]', { sessionId });
+      await this.close(sessionId);
+      return false;
+    }
     entry.state = 'work';
     entry.parkedAt = undefined;
     await this._journal.append({
@@ -148,7 +173,7 @@ export class SessionLifecycle {
   }
 
   /**
-   * @purpose Permanently close a session — terminal state, registry entry remains for audit.
+   * @purpose Permanently close a session and clear its routing entry after durable journaling.
    * @param sessionId Session identifier.
    * @returns Promise that resolves when the close is journaled.
    */
@@ -160,6 +185,7 @@ export class SessionLifecycle {
     }
     const prevState = entry.state;
     entry.state = 'close';
+    await this._opencode?.close(sessionId);
     const seq = await this._journal.append({
       ts: new Date().toISOString(),
       mr: entry.mr,
@@ -168,13 +194,15 @@ export class SessionLifecycle {
       payload: { sessionId, transition: `${prevState}→close` },
     });
     logger.info('[SessionLifecycle#close] [close]', { sessionId, prevState, seq });
+    this._registry.remove(sessionId);
+    await this._onClosed?.(sessionId);
   }
 
   /**
    * @purpose Reap expired parked sessions — closes every parked session older than TTL.
    * @returns Array of session IDs that were closed.
    */
-  reapExpired(): string[] {
+  async reapExpired(): Promise<string[]> {
     const parked = this._registry.listByState('park');
     const now = Date.now();
     const expired: string[] = [];
@@ -184,7 +212,7 @@ export class SessionLifecycle {
       if (entry.parkedAt) {
         const parkedMs = now - new Date(entry.parkedAt).getTime();
         if (parkedMs > this._ttlMs) {
-          void this.close(entry.sessionId);
+          await this.close(entry.sessionId);
           expired.push(entry.sessionId);
         }
       }

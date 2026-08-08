@@ -42,7 +42,11 @@ type ClusterKey = string;
  * @returns Lowercase, trimmed, punctuation-stripped string.
  */
 function normalizeSummary(summary: string): string {
-  return summary.toLowerCase().replace(/[.,;:!?]/g, '').replace(/\s+/g, ' ').trim();
+  return summary
+    .toLowerCase()
+    .replace(/[.,;:!?]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // #endregion END_NORMALIZE
@@ -88,7 +92,9 @@ export class Synthesize {
    * @param resultPaths Map of model identifier → file path for result JSON.
    * @returns Array of ModelResult with parsed findings.
    */
-  loadResults(resultPaths: Map<string, { track: string; path: string; runId: string }>): ModelResult[] {
+  loadResults(
+    resultPaths: Map<string, { track: string; path: string; runId: string }>
+  ): ModelResult[] {
     logger.debug('[Synthesize#loadResults] [idle → loading]', { modelCount: resultPaths.size });
 
     const results: ModelResult[] = [];
@@ -104,7 +110,11 @@ export class Synthesize {
         });
       } catch (cause) {
         const error = new Error(`[Synthesize#loadResults] Failed to load ${info.path}`, { cause });
-        logger.error('[Synthesize#loadResults] [loading → failed]', { error, model, path: info.path });
+        logger.error('[Synthesize#loadResults] [loading → failed]', {
+          error,
+          model,
+          path: info.path,
+        });
         throw error;
       }
     }
@@ -124,7 +134,9 @@ export class Synthesize {
    * @sideEffect Appends synthesized findings to findings.jsonl.
    */
   async synthesize(modelResults: ModelResult[]): Promise<FindingEntry[]> {
-    logger.debug('[Synthesize#synthesize] [idle → synthesizing]', { modelCount: modelResults.length });
+    logger.debug('[Synthesize#synthesize] [idle → synthesizing]', {
+      modelCount: modelResults.length,
+    });
 
     // #region START_CLUSTERING — group findings by (file, line bucket, normalized summary)
     const clusters = new Map<ClusterKey, RawFinding[]>();

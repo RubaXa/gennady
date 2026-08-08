@@ -11,6 +11,12 @@ export type ToolTrace = {
   tool: string;
   /** @purpose File path this tool operated on */
   file?: string;
+  /** @purpose Zero-based byte/line offset for paged reads. */
+  offset?: number;
+  /** @purpose Requested page length for paged reads. */
+  limit?: number;
+  /** @purpose Total file length reported by the read tool when known. */
+  fileSize?: number;
   /** @purpose ISO timestamp of the invocation */
   ts?: string;
 };
@@ -26,6 +32,9 @@ export type CoverageVerdict = {
   /** @purpose Files excluded from checklist (deleted/binary/generated) */
   excludedFiles: string[];
 };
+
+/** @purpose Same-session continuation seam used when coverage asks a worker to read missed files. */
+export type CoverageContinue = (missingFiles: string[], attempt: number) => Promise<ToolTrace[]>;
 
 // #region START_EXCLUSION_PATTERNS — files that gate skips as non-reviewable
 // purpose: deleted files aren't readable; binary/generated files carry no human-review signal
@@ -79,34 +88,70 @@ function isExcluded(filePath: string, action?: string): boolean {
  * @param tracePath Path to tool-trace.jsonl.
  * @returns Set of file paths that were read.
  */
-function parseReadFiles(tracePath: string): Set<string> {
+function parseReadFiles(tracePath: string | ToolTrace[]): Set<string> {
+  if (Array.isArray(tracePath)) return coveredFiles(tracePath);
   if (!existsSync(tracePath)) return new Set();
   try {
     const raw = readFileSync(tracePath, 'utf8');
-    const readFiles = new Set<string>();
+    const entries: ToolTrace[] = [];
     for (const line of raw.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
         const entry = JSON.parse(trimmed) as ToolTrace;
-        if ((entry.tool === 'read' || entry.tool === 'edit') && entry.file) {
-          readFiles.add(entry.file);
+        if (entry.tool === 'read' && entry.file) {
+          entries.push(entry);
         }
       } catch {
         // skip corrupt lines
       }
     }
-    return readFiles;
+    return coveredFiles(entries);
   } catch {
     return new Set();
   }
+}
+
+function coveredFiles(entries: ToolTrace[]): Set<string> {
+  const reads = new Map<string, ToolTrace[]>();
+  for (const entry of entries) {
+    if (entry.tool !== 'read' || !entry.file) continue;
+    const fileEntries = reads.get(entry.file) ?? [];
+    fileEntries.push(entry);
+    reads.set(entry.file, fileEntries);
+  }
+  return new Set(
+    [...reads.entries()]
+      .filter(([, fileEntries]) => fileEntries.some((entry) => isFullRead(fileEntries, entry)))
+      .map(([file]) => file)
+  );
+}
+
+/**
+ * @purpose Determine whether one full read or contiguous offset/limit pages cover a file to EOF.
+ * @invariant Bare reads are full; paged reads need fileSize and contiguous pages from zero to EOF.
+ */
+function isFullRead(entries: ToolTrace[], candidate: ToolTrace): boolean {
+  if (candidate.offset == null && candidate.limit == null) return true;
+  const fileSize = entries.find((entry) => entry.fileSize != null)?.fileSize;
+  if (fileSize == null) return false;
+  const ranges = entries
+    .filter((entry) => entry.offset != null && entry.limit != null)
+    .map((entry) => ({ start: entry.offset!, end: entry.offset! + entry.limit! }))
+    .sort((a, b) => a.start - b.start);
+  let end = 0;
+  for (const range of ranges) {
+    if (range.start > end) return false;
+    end = Math.max(end, range.end);
+  }
+  return end >= fileSize;
 }
 
 /**
  * @purpose Coverage verifier: compares must-read checklist (file list) against actual tool-trace reads.
  * @invariant Max 2 continue attempts before escalation — gate fails with continueCount ≥ 2.
  * @invariant Deleted, binary, and generated files are excluded from the checklist before comparison.
- * @invariant A file is covered when the tool-trace shows at least one read interaction.
+ * @invariant A file is covered only by one unpaged full read or offset/limit pages through EOF.
  */
 export class CoverageGate {
   /** @purpose Number of continue attempts already made for this MR */
@@ -129,12 +174,12 @@ export class CoverageGate {
    */
   check(
     checklist: string[],
-    toolTracePath: string,
+    toolTracePath: string | ToolTrace[],
     deletedFiles: string[] = []
   ): CoverageVerdict {
     logger.debug('[CoverageGate#check] [idle → checking]', {
       checklistCount: checklist.length,
-      tracePath: toolTracePath,
+      tracePath: Array.isArray(toolTracePath) ? 'in-memory trace' : toolTracePath,
     });
 
     // #region START_EXCLUSION — remove deleted/binary/generated files from checklist
@@ -177,7 +222,7 @@ export class CoverageGate {
    */
   continueCheck(
     checklist: string[],
-    toolTracePath: string,
+    toolTracePath: string | ToolTrace[],
     deletedFiles: string[] = []
   ): CoverageVerdict {
     this._continueCount += 1;
@@ -194,6 +239,38 @@ export class CoverageGate {
     }
 
     return this.check(checklist, toolTracePath, deletedFiles);
+  }
+
+  /**
+   * @purpose Drive coverage recovery through the same worker session for at most two continuations.
+   * @invariant The caller owns one live session; this gate never starts a replacement session,
+   * because a replacement loses the agent's already-read context and violates D-316.
+   * @param checklist Files that must be read.
+   * @param trace Initial factual worker trace.
+   * @param continueSameSession Callback that returns the updated trace after one same-session turn.
+   * @param [deletedFiles] Deleted files excluded from coverage.
+   * @returns Passing verdict or throws after the second failed continuation to escalate.
+   */
+  async recoverWithContinue(
+    checklist: string[],
+    trace: ToolTrace[],
+    continueSameSession: CoverageContinue,
+    deletedFiles: string[] = []
+  ): Promise<CoverageVerdict> {
+    let currentTrace = trace;
+    let verdict = this.check(checklist, currentTrace, deletedFiles);
+    while (verdict.status === 'fail' && this._continueCount < 2) {
+      currentTrace = await continueSameSession(verdict.missingFiles, this._continueCount + 1);
+      verdict = this.continueCheck(checklist, currentTrace, deletedFiles);
+    }
+    if (verdict.status === 'fail') {
+      const error = new Error(
+        `[CoverageGate#recoverWithContinue] Coverage remains incomplete after 2 same-session continues: ${verdict.missingFiles.join(', ')}`
+      );
+      logger.error('[CoverageGate#recoverWithContinue] [continuing → escalation_limit]', { error });
+      throw error;
+    }
+    return verdict;
   }
 
   /**

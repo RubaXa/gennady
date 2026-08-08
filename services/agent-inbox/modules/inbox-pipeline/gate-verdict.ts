@@ -82,11 +82,7 @@ const SECTION_2_1_CRITERIA: ReadonlyArray<{
   },
 ];
 
-const VALID_VERDICTS = new Set<ReviewVerdictStatus>([
-  'APPROVE',
-  'REQUEST_CHANGES',
-  'COMMENT',
-]);
+const VALID_VERDICTS = new Set<ReviewVerdictStatus>(['APPROVE', 'REQUEST_CHANGES', 'COMMENT']);
 
 // #endregion END_VALIDATION_CRITERIA
 
@@ -98,12 +94,15 @@ const VALID_VERDICTS = new Set<ReviewVerdictStatus>([
 export class GateVerdict {
   /** @purpose Number of validation attempts made */
   protected _attemptCount: number;
+  /** @purpose Number of validations that actually failed in this review cycle. */
+  protected _failedValidationCount: number;
 
   /**
    * @purpose Create a GateVerdict with zero attempts.
    */
   constructor() {
     this._attemptCount = 0;
+    this._failedValidationCount = 0;
     logger.debug('[GateVerdict#constructor] [init → ready]');
   }
 
@@ -135,13 +134,14 @@ export class GateVerdict {
     const status = reasons.length === 0 ? 'pass' : 'fail';
 
     if (status === 'fail') {
+      this._failedValidationCount += 1;
       logger.warn('[GateVerdict#validate] [validating → fail]', {
         reasons,
         attemptCount: this._attemptCount,
       });
 
       // #region START_ESCALATION_CHECK — max 2 attempts, then escalate
-      if (this._attemptCount >= 2) {
+      if (this._failedValidationCount >= 2) {
         logger.error('[GateVerdict#validate] [validating → escalation]', {
           maxAttempts: 2,
           finalReasons: reasons,
@@ -157,10 +157,10 @@ export class GateVerdict {
 
   /**
    * @purpose Check whether escalation is triggered (attempts exhausted).
-   * @returns true when validation has been attempted ≥ 2 times and is still failing.
+   * @returns true when two validations have failed (successful validations do not escalate).
    */
   isEscalated(): boolean {
-    return this._attemptCount >= 2;
+    return this._failedValidationCount >= 2;
   }
 
   /**
@@ -168,6 +168,7 @@ export class GateVerdict {
    */
   reset(): void {
     this._attemptCount = 0;
+    this._failedValidationCount = 0;
     logger.debug('[GateVerdict#reset] [any → ready]');
   }
 }

@@ -4,43 +4,24 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { CoverageGate } from '../coverage-gate.ts';
-import type { CoverageVerdict } from '../coverage-gate.ts';
+import type { ToolTrace } from '../coverage-gate.ts';
 
-let tmpDir: string;
-
-beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'coverage-gate-'));
-});
-
-afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true });
-});
-
-function writeTrace(lines: string[]): string {
-  const path = join(tmpDir, 'tool-trace.jsonl');
-  writeFileSync(path, lines.join('\n') + '\n', 'utf8');
-  return path;
-}
-
-function readEntry(file: string): string {
-  return JSON.stringify({ tool: 'read', file, ts: '2026-08-06T12:45:00Z' });
+function readEntry(file: string, extra: Partial<ToolTrace> = {}): ToolTrace {
+  return { tool: 'read', file, ts: '2026-08-06T12:45:00Z', ...extra };
 }
 
 describe('CoverageGate', () => {
   it('all files read returns pass with empty missing list', () => {
-    const tracePath = writeTrace([
+    const trace = [
       readEntry('src/index.ts'),
       readEntry('src/utils.ts'),
       readEntry('tests/spec.test.ts'),
-    ]);
+    ];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'src/utils.ts', 'tests/spec.test.ts'];
 
-    const verdict = gate.check(checklist, tracePath);
+    const verdict = gate.check(checklist, trace);
 
     assert.strictEqual(verdict.status, 'pass');
     assert.strictEqual(verdict.missingFiles.length, 0);
@@ -48,38 +29,37 @@ describe('CoverageGate', () => {
   });
 
   it('missing file returns fail with missing file list', () => {
-    const tracePath = writeTrace([
-      readEntry('src/index.ts'),
-      readEntry('src/utils.ts'),
-    ]);
+    const trace = [readEntry('src/index.ts'), readEntry('src/utils.ts')];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'src/utils.ts', 'tests/missing.test.ts'];
 
-    const verdict = gate.check(checklist, tracePath);
+    const verdict = gate.check(checklist, trace);
 
     assert.strictEqual(verdict.status, 'fail');
     assert.deepStrictEqual(verdict.missingFiles, ['tests/missing.test.ts']);
   });
 
   it('partial read detected from tool trace is reported as missing', () => {
-    // contract: a file absent from tool-trace is missing — not partially read
-    const tracePath = writeTrace([readEntry('src/index.ts')]);
+    const trace = [
+      readEntry('src/index.ts'),
+      readEntry('src/helpers.ts', { offset: 0, limit: 20, fileSize: 100 }),
+    ];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'src/helpers.ts'];
 
-    const verdict = gate.check(checklist, tracePath);
+    const verdict = gate.check(checklist, trace);
 
     assert.strictEqual(verdict.status, 'fail');
     assert.deepStrictEqual(verdict.missingFiles, ['src/helpers.ts']);
   });
 
   it('deleted files are excluded from checklist', () => {
-    const tracePath = writeTrace([readEntry('src/index.ts')]);
+    const trace = [readEntry('src/index.ts')];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'src/obsolete.ts'];
     const deletedFiles = ['src/obsolete.ts'];
 
-    const verdict = gate.check(checklist, tracePath, deletedFiles);
+    const verdict = gate.check(checklist, trace, deletedFiles);
 
     assert.strictEqual(verdict.status, 'pass');
     assert.ok(verdict.excludedFiles.includes('src/obsolete.ts'));
@@ -87,11 +67,11 @@ describe('CoverageGate', () => {
   });
 
   it('binary files are excluded from checklist', () => {
-    const tracePath = writeTrace([readEntry('src/index.ts')]);
+    const trace = [readEntry('src/index.ts')];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'assets/logo.png', 'assets/icon.svg'];
 
-    const verdict = gate.check(checklist, tracePath);
+    const verdict = gate.check(checklist, trace);
 
     assert.strictEqual(verdict.status, 'pass');
     assert.ok(verdict.excludedFiles.some((f) => f === 'assets/logo.png'));
@@ -99,20 +79,17 @@ describe('CoverageGate', () => {
   });
 
   it('max continue equals 2: first continue ok, second continue last chance, third throws escalation', () => {
-    const tracePath = writeTrace([readEntry('src/index.ts')]);
+    const trace = [readEntry('src/index.ts')];
     const gate = new CoverageGate();
     const checklist = ['src/index.ts', 'src/utils.ts'];
 
     // first continue — ok (continueCount becomes 1)
-    const verdict1 = gate.continueCheck(checklist, tracePath);
+    const verdict1 = gate.continueCheck(checklist, trace);
     assert.strictEqual(verdict1.status, 'fail');
     assert.strictEqual(verdict1.continueCount, 1);
 
     // second continue — ok, last chance (continueCount becomes 2)
-    const updatedTrace = writeTrace([
-      readEntry('src/index.ts'),
-      readEntry('src/utils.ts'),
-    ]);
+    const updatedTrace = [readEntry('src/index.ts'), readEntry('src/utils.ts')];
     const verdict2 = gate.continueCheck(checklist, updatedTrace);
     assert.strictEqual(verdict2.status, 'pass');
     assert.strictEqual(verdict2.continueCount, 2);
@@ -127,11 +104,44 @@ describe('CoverageGate', () => {
     );
   });
 
+  it('continues the same worker twice, then escalates when its trace still misses coverage', async () => {
+    const gate = new CoverageGate();
+    const sessions: Array<{ missing: string[]; attempt: number }> = [];
+
+    await assert.rejects(
+      () =>
+        gate.recoverWithContinue(['src/index.ts'], [], async (missing, attempt) => {
+          sessions.push({ missing, attempt });
+          return [];
+        }),
+      /after 2 same-session continues/
+    );
+    assert.deepStrictEqual(sessions, [
+      { missing: ['src/index.ts'], attempt: 1 },
+      { missing: ['src/index.ts'], attempt: 2 },
+    ]);
+  });
+
+  it('passes after a same-session continuation contributes the missing factual read', async () => {
+    const gate = new CoverageGate();
+    const verdict = await gate.recoverWithContinue(
+      ['src/index.ts', 'src/utils.ts'],
+      [readEntry('src/index.ts')],
+      async (missing, attempt) => {
+        assert.deepStrictEqual(missing, ['src/utils.ts']);
+        assert.strictEqual(attempt, 1);
+        return [readEntry('src/index.ts'), readEntry('src/utils.ts')];
+      }
+    );
+    assert.strictEqual(verdict.status, 'pass');
+    assert.strictEqual(verdict.continueCount, 1);
+  });
+
   it('empty checklist returns pass with nothing to check', () => {
-    const tracePath = writeTrace([]);
+    const trace: ToolTrace[] = [];
     const gate = new CoverageGate();
 
-    const verdict = gate.check([], tracePath);
+    const verdict = gate.check([], trace);
 
     assert.strictEqual(verdict.status, 'pass');
     assert.strictEqual(verdict.missingFiles.length, 0);
