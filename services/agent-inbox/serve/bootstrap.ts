@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -13,6 +13,21 @@ import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
 import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
+import { VcsGitlabPort } from '../modules/inbox-vcs/vcs-gitlab.port.ts';
+import type { VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
+import { SyncService } from '../modules/inbox-vcs/sync.ts';
+import { BackgroundVerifier } from '../modules/inbox-vcs/background-verify.ts';
+import { EventJournal } from '../modules/inbox-core/event-journal.ts';
+import { DecisionJournal } from '../modules/inbox-core/decision-journal.ts';
+import { BootReadiness } from '../modules/inbox-core/boot-readiness.ts';
+import { InboxRegistryAccess } from '../modules/inbox-core/inbox-registry.ts';
+import { CapabilityModes } from '../modules/inbox-core/capability-modes.ts';
+import { mrKey } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { InMemoryTaskQueue } from '../modules/inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../modules/inbox-queue/task-registry.ts';
+import { SessionRouter } from '../modules/inbox-queue/session-router.ts';
+import { PipelineRuntime } from '../modules/inbox-pipeline/pipeline-runtime.ts';
+import { VcsGitlabClient } from '../../vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../modules/inbox-opencode/opencode.mock.ts';
 import { OpenCodeReal } from '../modules/inbox-opencode/opencode.real.ts';
@@ -22,16 +37,19 @@ import {
   type PromptOpts,
   type SessionHandle,
   type SessionStatus,
+  type OpenCodeMessage,
 } from '../modules/inbox-opencode/opencode.port.ts';
 import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
 import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
 import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
 import { SessionPool } from '../modules/inbox-opencode/session-pool.ts';
+import { SessionRegistry } from '../modules/inbox-opencode/session-registry.ts';
+import { SessionLifecycle } from '../modules/inbox-opencode/session-lifecycle.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
 import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
-import { setDryRun, isDryRun } from '../modules/inbox-core/dry-run.ts';
+import { setDryRun, isDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -61,6 +79,18 @@ class DegradedOpencode extends OpenCodePort {
 
   async status(_sid: string): Promise<SessionStatus> {
     return 'terminated';
+  }
+
+  async park(_sid: string): Promise<void> {
+    /* no-op in degraded mode */
+  }
+
+  async resume(_sid: string): Promise<boolean> {
+    return false;
+  }
+
+  async messages(_sid: string): Promise<OpenCodeMessage[]> {
+    return [];
   }
 
   async continueSignal(sid: string, _opts: PromptOpts): Promise<OpenCodeCallResult> {
@@ -277,11 +307,17 @@ export type BootstrapConfig = {
    *   default untouched.
    */
   dryRun?: boolean;
+  /**
+   * @purpose Observe shared boot state after HTTP becomes live.
+   * @param state Current immutable readiness snapshot.
+   * @returns Completion of the optional observer.
+   */
+  onBootState?: (state: ReturnType<BootReadiness['snapshot']>) => void | Promise<void>;
 };
 
 /** @purpose Return value from bootstrap — all service handles needed to run and stop. */
 export type BootstrapResult = {
-  /** @purpose The HTTP server instance (not yet started). */
+  /** @purpose The HTTP server instance, already listening while bootstrap phases run. */
   server: HttpServer;
   /** @purpose The role scheduler (timer not yet started). */
   scheduler: RoleScheduler;
@@ -303,6 +339,24 @@ export type BootstrapResult = {
   opencodePidFile: string | null;
   /** @purpose Port opencode is running on (null in mock/degraded mode). */
   opencodePort: number | null;
+  /** @purpose Concrete inbox-vcs port in real runtime; absent in mock mode. */
+  vcsTruth: VcsPort | null;
+  /** @purpose Real two-tier GitLab sync service; absent in mock mode. */
+  syncService: SyncService | null;
+  /** @purpose Real background GitLab verifier; absent in mock mode. */
+  backgroundVerifier: BackgroundVerifier | null;
+  /** @purpose The one boot-owned registry shared by every OpenCode session path. */
+  sessionRegistry: SessionRegistry;
+  /** @purpose Lifecycle bound to the real adapter; owns park/resume/TTL cleanup. */
+  sessionLifecycle: SessionLifecycle;
+  /** @purpose One lifecycle-aware pool shared by operator chat and scheduler role sessions. */
+  sessionPool: SessionPool;
+  /** @purpose Timer driving lifecycle TTL cleanup; unref'd so it never pins CLI exit. */
+  lifecycleReaper: NodeJS.Timeout;
+  /** @purpose Shared queue-backed pipeline lifecycle, reachable from the booted runtime. */
+  pipeline: PipelineRuntime;
+  /** @purpose Shared readiness lifecycle serving GET /api/boot. */
+  bootReadiness: BootReadiness;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -320,37 +374,70 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   const port = config.port ?? 4174;
   const pollingInterval = 300_000; // 5 minutes
   const stateStore = new StateStore(config.stateDir);
+  const bootReadiness = new BootReadiness();
+  // D-305: the diagnostics surface must be observable before configuration and every external
+  // phase. It is rebound to the complete runtime only after those dependencies are assembled.
+  const server = new HttpServer({
+    port,
+    boardProvider: new BoardProviderMock(),
+    bootReadiness,
+  });
+  await server.start();
+  const observeBoot = async (): Promise<void> => {
+    await config.onBootState?.(bootReadiness.snapshot());
+  };
+  const advanceBoot = async (phase: Parameters<BootReadiness['transition']>[0]): Promise<void> => {
+    bootReadiness.transition(phase);
+    await observeBoot();
+  };
+  await observeBoot();
 
   // #region START_APPLY_DRY_RUN — TSK-131: an explicit dryRun option wins over the ambient
   // INBOX_DRY_RUN env, and is mirrored back into the env so deeply-nested effect paths agree
+  const persistedDryRun = await stateStore.loadDryRun();
   if (config.dryRun !== undefined) {
     setDryRun(config.dryRun);
+  } else if (persistedDryRun !== undefined && process.env.INBOX_DRY_RUN === undefined) {
+    setDryRun(persistedDryRun);
   }
   // #endregion END_APPLY_DRY_RUN
 
   // #region START_CHECK_CONFIG
   let configVcsHost: string | undefined;
+  let configLoaded = false;
+  let configFailure = false;
 
   if (config.mocks) {
-    // In mock mode, config is optional for VCS — mock returns seeded data.
-    // Still try to load config for the status bar.
     try {
       const result = await stateStore.loadConfig();
       if (result.configured) {
         configVcsHost = result.vcsHost;
+        configLoaded = true;
+      } else {
+        bootReadiness.setConfigStatus(false, result.missing);
       }
-    } catch {
-      /* config load failure is non-blocking in mock mode */
+    } catch (cause) {
+      bootReadiness.setConfigStatus(false, ['reposBase', 'vcsHost']);
+      logger.warn('[bootstrap] [config → degraded]', { cause });
     }
   } else {
-    // Production mode: config is required
     const result = await stateStore.loadConfig();
     if (!result.configured) {
-      throw new Error('agent-inbox не настроен. Запустите gennady inbox config --init');
+      bootReadiness.setConfigStatus(false, result.missing);
+      bootReadiness.fail('agent-inbox не настроен. Запустите gennady inbox config --init');
+      await observeBoot();
+      configFailure = true;
+    } else {
+      configVcsHost = result.vcsHost;
+      configLoaded = true;
     }
-    configVcsHost = result.vcsHost;
   }
+  if (configLoaded) bootReadiness.setConfigStatus(true);
+  const useMocks = config.mocks || configFailure;
   // #endregion END_CHECK_CONFIG
+
+  // A failed production config still starts a read-only failed boot surface; external adapters
+  // are intentionally not constructed until the operator fixes the configuration.
 
   let vcs: VcsInboxPort;
   let opencode: OpenCodePort;
@@ -359,8 +446,14 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let opencodeProcess: ChildProcess | null = null;
   let opencodePidFile: string | null = null;
   let opencodePort: number | null = null;
+  let vcsTruth: VcsPort | null = null;
+  let syncService: SyncService | null = null;
+  let backgroundVerifier: BackgroundVerifier | null = null;
+  let vcsJournal: EventJournal | null = null;
+  let vcsRegistry: InboxRegistryAccess | null = null;
+  let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
 
-  if (config.mocks) {
+  if (useMocks) {
     vcs = new VcsInboxMock();
     opencode = new OpenCodeMock();
     opencodeStatus = 'mock (dev/e2e)';
@@ -371,6 +464,31 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       host: configVcsHost,
       token,
     });
+    const baseUrl = `https://${configVcsHost}/api/v4`;
+    vcsTruth = new VcsGitlabPort(
+      new VcsGitlabClient({ token: token ?? '', baseUrl }),
+      configVcsHost ?? ''
+    );
+    const inboxStateDir = join(stateStore.getStateDir(), 'agent-inbox');
+    vcsJournal = new EventJournal(join(inboxStateDir, 'events.jsonl'));
+    vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
+    syncService = new SyncService(vcsTruth, vcsRegistry, vcsJournal);
+    backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
+    // The first real poll is deliberate: it makes the production truth port live rather than a
+    // diagnostic-only handle. Active snapshots are registered before the minute verifier starts.
+    await advanceBoot('poll');
+    initialSyncSnapshots = await syncService.twoTierSync();
+    for (const snapshot of initialSyncSnapshots.filter((item) => item.role !== null)) {
+      backgroundVerifier.register({
+        webUrl: snapshot.mr.webUrl,
+        project: snapshot.mr.project,
+        iid: snapshot.mr.iid,
+        lastKnownSha: snapshot.headSha,
+        lastKnownUpdatedAt: snapshot.updatedAt,
+      });
+    }
+    backgroundVerifier.start();
+    await advanceBoot('reconcile');
     // #endregion END_CREATE_VCS
 
     // #region START_CHECK_OPENCODE_PATH
@@ -503,16 +621,62 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     // #endregion END_CONNECT_OPENCODE
   }
 
-  // Review Chat sessions share the same opencode adapter RoleScheduler drives (mock, real, or
-  // degraded) — one pool, bound after `opencode` is finalized above, feeds both scheduler-driven
-  // role turns and operator-driven chat turns (TSK-133, SV-11, D-102).
-  const chatSessionPool = new SessionPool({ maxSessions: 4, opencode });
-
-  // Bounded pool for the reviewer role's parallel review-lens fan-out (TSK-perf): track-review/
-  // security-lens/code-review run concurrently, each needing its own opencode session (the
-  // instance's single `_sessionId` can only back one turn at a time) — 3 slots matches the fixed
-  // lens count today; the queue safely bounds a future higher-fan-out extension too.
-  const reviewSessionPool = new SessionPool({ maxSessions: 3, opencode });
+  const lifecycleJournal =
+    vcsJournal ?? new EventJournal(join(stateStore.getStateDir(), 'agent-inbox', 'events.jsonl'));
+  // D-302: an MR write belongs in that MR's canonical decision/event journal. emitDryRun awaits
+  // this recorder before broadcasting, so SSE can never outrun the durable source of truth.
+  setDryRunRecorder(async (entry) => {
+    if (entry.mr) {
+      await new DecisionJournal(
+        new EventJournal(
+          join(stateStore.getStateDir(), 'agent-inbox', 'mrs', mrKey(entry.mr), 'events.jsonl')
+        )
+      ).recordDryRunSuppression(entry.mr, entry.line);
+      return;
+    }
+    await lifecycleJournal.append({
+      ts: new Date().toISOString(),
+      mr: entry.mr ?? '',
+      kind: 'system',
+      actor: 'core',
+      payload: { event: 'dryrun', effectId: entry.line },
+    });
+  });
+  const sessionRegistry = new SessionRegistry();
+  let chatSessionPool: SessionPool;
+  const sessionLifecycle = new SessionLifecycle(sessionRegistry, lifecycleJournal, opencode, {
+    onClosed: async (sessionId) => chatSessionPool.evictClosed(sessionId),
+  });
+  // Register at the only pool acquisition seam, before a chat/role caller receives its SID.
+  chatSessionPool = new SessionPool({
+    maxSessions: 4,
+    opencode,
+    onSessionCreated: (sessionId, opts) => {
+      const registration = opts.registration;
+      if (!registration) return;
+      sessionRegistry.register({
+        sessionId,
+        taskId: registration.taskId,
+        mr: registration.mr,
+        artifacts: registration.artifacts ?? [],
+        model: opts.model,
+        state: 'idle',
+      });
+      sessionLifecycle.startWork(sessionId);
+    },
+    onSessionRelease: async (sessionId) => {
+      if (!sessionRegistry.lookup(sessionId)) return false;
+      await sessionLifecycle.close(sessionId);
+      return true;
+    },
+  });
+  // One unified priority pool is deliberately injected into chat and role scheduling. A second
+  // pool would let each path exceed the configured cap and defeat cross-path prioritization.
+  const reviewSessionPool = chatSessionPool;
+  const lifecycleReaper = setInterval(() => {
+    void sessionLifecycle.reapExpired();
+  }, 60_000);
+  lifecycleReaper.unref();
 
   // F6: Roles start inactive by default — no auto-activation (mock mode activates after seeding
   // below; real mode via operator dashboard action). Real serve also drives the reviewer graph
@@ -522,40 +686,110 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   const engine = new RoleEngine();
   await engine.loadAll();
 
+  // One boot-owned queue is shared by scheduler, HTTP and its durable Executor lifecycle.
+  const pipelineRegistry = new TaskRegistry();
+  const pipelineQueue = new InMemoryTaskQueue(pipelineRegistry);
+  const chatSessionRouter = new SessionRouter(chatSessionPool, pipelineRegistry);
+  const resolveDecisionJournal = (mr: string): DecisionJournal =>
+    new DecisionJournal(
+      new EventJournal(
+        join(stateStore.getStateDir(), 'agent-inbox', 'mrs', mrKey(mr), 'events.jsonl')
+      )
+    );
+  const pipeline = new PipelineRuntime(
+    pipelineQueue,
+    pipelineRegistry,
+    lifecycleJournal,
+    undefined,
+    stateStore.getStateDir(),
+    opencode,
+    vcsRegistry
+      ? async (proposal) => {
+          const journal = resolveDecisionJournal(proposal.mr);
+          await journal.writeProposal(proposal);
+          const capabilities = CapabilityModes.computeRegistry(journal.computeAllAcceptRates());
+          vcsRegistry.storeCapabilitiesForRef(proposal.mr, capabilities);
+          logger.info('[bootstrap] [pipeline_proposal → capability_modes_persisted]', {
+            mr: proposal.mr,
+            proposalId: proposal.proposalId,
+          });
+        }
+      : undefined
+  );
+  pipeline.start();
+
   const scheduler = new RoleScheduler({
     engine,
     store: stateStore,
     vcs,
     opencode,
     pollingInterval,
-    buildLiveContext: !config.mocks,
+    buildLiveContext: !useMocks,
     dryRun: isDryRun(),
     reviewSessionPool,
+    pipeline,
   });
   // #endregion END_CREATE_ROLES
 
   const loadedRoles = engine.list();
+  // The readiness owner advances exactly once through the public D-305 sequence. The HTTP
+  // router receives this same object, so no local router state can drift from production boot.
+  if (bootReadiness.snapshot().phase !== 'failed') {
+    // Mock boot still traverses the same observable sequence without pretending an external
+    // poll happened. Real mode has already completed poll/reconcile around SyncService.
+    if (bootReadiness.snapshot().phase === 'connect') await advanceBoot('poll');
+    if (bootReadiness.snapshot().phase === 'poll') await advanceBoot('reconcile');
+    await advanceBoot('restore');
+  }
+  // The HTTP task surface uses the exact queue passed to the scheduler's PipelineRuntime above.
 
-  if (config.mocks) {
+  if (useMocks) {
     // #region START_CREATE_SERVER_MOCK
     // F1: Mock mode — BoardProviderMock + seedDevData
     const boardProvider = new BoardProviderMock();
     await seedDevData(boardProvider);
+    const mockRegistry = new InboxRegistryAccess(stateStore.getStateDir());
+    const snapshotsPath = join(stateStore.getStateDir(), 'agent-inbox', 'sync-snapshots.json');
+    const loadMockSnapshots = async () => {
+      if (!existsSync(snapshotsPath)) return [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
+      return JSON.parse(await readFile(snapshotsPath, 'utf-8')) as Awaited<
+        ReturnType<SyncService['twoTierSync']>
+      >;
+    };
+    const mockSnapshots = await loadMockSnapshots();
 
     // F6: In mock/dev mode, activate roles after seeding for BDD parity
     for (const role of loadedRoles) {
       engine.activate(role.name);
     }
 
-    const server = new HttpServer({
+    await server.attachRuntime({
       port,
       boardProvider,
-      chat: { pool: chatSessionPool, store: stateStore },
+      chat: {
+        pool: chatSessionPool,
+        store: stateStore,
+        queue: pipelineQueue,
+        journal: lifecycleJournal,
+        sessionRouter: chatSessionRouter,
+        taskRegistry: pipelineRegistry,
+      },
+      inboxApi: {
+        queue: pipelineQueue,
+        decisionJournal: new DecisionJournal(lifecycleJournal),
+        resolveDecisionJournal,
+        journal: lifecycleJournal,
+        registry: mockRegistry,
+        snapshots: mockSnapshots,
+        loadSnapshots: loadMockSnapshots,
+      },
+      bootReadiness,
     });
+    if (bootReadiness.snapshot().phase !== 'failed') await advanceBoot('ready');
     // #endregion END_CREATE_SERVER_MOCK
 
     logger.info('[bootstrap] [idle → assembled]', {
-      mocks: config.mocks,
+      mocks: useMocks,
       port,
       roles: loadedRoles.map((r) => r.name),
       opencodeStatus,
@@ -574,6 +808,15 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       opencodeProcess,
       opencodePidFile,
       opencodePort,
+      vcsTruth,
+      syncService,
+      backgroundVerifier,
+      sessionRegistry,
+      sessionLifecycle,
+      sessionPool: chatSessionPool,
+      lifecycleReaper,
+      pipeline,
+      bootReadiness,
     };
   }
 
@@ -581,15 +824,41 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   // F1: Real mode — BoardProviderReal backed by RoleScheduler; reports/<mr>/ read from the
   // same state dir the reviewer graph materializes to disk (TSK-122 gap-3/gap-4).
   const boardProvider = new BoardProviderReal(scheduler, engine, stateStore.getStateDir());
-  const server = new HttpServer({
+  if (!syncService || !vcsJournal || !vcsRegistry) {
+    throw new Error('[bootstrap] Production VCS truth dependencies were not assembled');
+  }
+  await server.attachRuntime({
     port,
     boardProvider,
-    chat: { pool: chatSessionPool, store: stateStore },
+    chat: {
+      pool: chatSessionPool,
+      store: stateStore,
+      queue: pipelineQueue,
+      journal: lifecycleJournal,
+      sessionRouter: chatSessionRouter,
+      taskRegistry: pipelineRegistry,
+    },
+    inboxApi: {
+      queue: pipelineQueue,
+      decisionJournal: new DecisionJournal(vcsJournal),
+      resolveDecisionJournal,
+      onDecision: async (mr, journal) => {
+        const capabilities = CapabilityModes.computeRegistry(journal.computeAllAcceptRates());
+        vcsRegistry.storeCapabilitiesForRef(mr, capabilities);
+        logger.info('[bootstrap] [decision → capability_modes_persisted]', { mr, capabilities });
+      },
+      journal: vcsJournal,
+      registry: vcsRegistry,
+      snapshots: initialSyncSnapshots,
+      loadSnapshots: () => syncService.twoTierSync(),
+    },
+    bootReadiness,
   });
+  if (bootReadiness.snapshot().phase !== 'failed') await advanceBoot('ready');
   // #endregion END_CREATE_SERVER
 
   logger.info('[bootstrap] [idle → assembled]', {
-    mocks: config.mocks,
+    mocks: useMocks,
     port,
     roles: loadedRoles.map((r) => r.name),
     opencodeStatus,
@@ -608,5 +877,14 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     opencodeProcess,
     opencodePidFile: opencodePidFile ?? null,
     opencodePort: opencodePort ?? null,
+    vcsTruth,
+    syncService,
+    backgroundVerifier,
+    sessionRegistry,
+    sessionLifecycle,
+    sessionPool: chatSessionPool,
+    lifecycleReaper,
+    pipeline,
+    bootReadiness,
   };
 }

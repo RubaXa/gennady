@@ -19,6 +19,9 @@ import {
 import type { RoleGraph, NodeContext, AskNode } from '../role-node.ts';
 import type { ThreadDecision } from '../thread-signal-classifier.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
+import { SessionPool } from '../../inbox-opencode/session-pool.ts';
+import { SessionLifecycle } from '../../inbox-opencode/session-lifecycle.ts';
+import { SessionRegistry } from '../../inbox-opencode/session-registry.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 import type { Discussion } from '../../inbox-core/vcs-inbox.port.ts';
@@ -451,6 +454,56 @@ describe('RoleInstance — session (buildTaskText) → gate transition', () => {
 
     await instance.step(); // gate → fail → back to scaffold
     assert.strictEqual(instance.currentNode, 'node_scaffold');
+  });
+
+  it('GIVEN production role pool WHEN a terminal session step completes THEN lifecycle terminates adapter, clears registry, and releases capacity once', async () => {
+    const adapter = new OpenCodeMock();
+    const registry = new SessionRegistry();
+    const journal = { append: async () => 1 } as never;
+    let pool: SessionPool;
+    const lifecycle = new SessionLifecycle(registry, journal, adapter, {
+      onClosed: async (sid) => pool.evictClosed(sid),
+    });
+    pool = new SessionPool({
+      maxSessions: 1,
+      opencode: adapter,
+      onSessionCreated: (sid, opts) => {
+        const registration = opts.registration!;
+        registry.register({
+          sessionId: sid,
+          taskId: registration.taskId,
+          mr: registration.mr,
+          artifacts: registration.artifacts ?? [],
+          model: opts.model,
+          state: 'idle',
+        });
+        lifecycle.startWork(sid);
+      },
+      onSessionRelease: async (sid) => {
+        if (!registry.lookup(sid)) return false;
+        await lifecycle.close(sid);
+        return true;
+      },
+    });
+    adapter.seed('node_scaffold', { findings: [{ id: 1 }], summary: 'done' });
+    const instance = new RoleInstance({
+      id: 'lifecycle:1',
+      role: 'reviewer',
+      mr: 'https://gitlab.example.com/project/-/merge_requests/160',
+      graph: makeGraphWithGate(),
+      opencode: adapter,
+      vcs,
+      store: store as unknown as StateStore,
+      reviewSessionPool: pool,
+    });
+
+    await instance.step();
+
+    assert.strictEqual(pool.activeCount(), 0);
+    assert.strictEqual(registry.all().length, 0);
+    assert.strictEqual(await adapter.status('mock-session-1'), 'terminated');
+    await pool.release('mock-session-1');
+    assert.strictEqual(pool.activeCount(), 0, 'terminal release remains exactly-once');
   });
 });
 

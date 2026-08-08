@@ -9,16 +9,15 @@ import { bootstrap } from '../bootstrap.ts';
 import { gracefulShutdown } from '../shutdown.ts';
 
 describe('gracefulShutdown — mock mode', () => {
-  const PORT = 4186;
-
   it('stops server cleanly — new requests fail after shutdown', async () => {
-    const result = await bootstrap({ mocks: true, port: PORT });
+    const result = await bootstrap({ mocks: true, port: 0 });
     await result.server.start();
+    const port = result.server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
 
     // Verify server is alive
     await new Promise<void>((resolve, reject) => {
       const req = httpRequest(
-        { hostname: 'localhost', port: PORT, path: '/api/board', method: 'GET' },
+        { hostname: 'localhost', port, path: '/api/board', method: 'GET' },
         (res) => {
           let body = '';
           res.on('data', (chunk: Buffer) => (body += chunk.toString()));
@@ -39,7 +38,7 @@ describe('gracefulShutdown — mock mode', () => {
     try {
       await new Promise<void>((resolve, reject) => {
         const req = httpRequest(
-          { hostname: 'localhost', port: PORT, path: '/api/board', method: 'GET' },
+          { hostname: 'localhost', port, path: '/api/board', method: 'GET' },
           () => resolve()
         );
         req.on('error', () => reject(new Error('Expected connection refused')));
@@ -59,7 +58,7 @@ describe('gracefulShutdown — mock mode', () => {
   });
 
   it('shutdown is idempotent — double shutdown does not throw', async () => {
-    const result = await bootstrap({ mocks: true, port: PORT + 1 });
+    const result = await bootstrap({ mocks: true, port: 0 });
     await result.server.start();
     await gracefulShutdown({ server: result.server });
     // Second shutdown should not throw
@@ -67,7 +66,7 @@ describe('gracefulShutdown — mock mode', () => {
   });
 
   it('shutdown with custom timeout does not hang', async () => {
-    const result = await bootstrap({ mocks: true, port: PORT + 2 });
+    const result = await bootstrap({ mocks: true, port: 0 });
     await result.server.start();
 
     const start = Date.now();

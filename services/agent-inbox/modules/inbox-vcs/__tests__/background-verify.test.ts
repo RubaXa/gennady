@@ -81,7 +81,7 @@ describe('BackgroundVerifier — MR tracking', () => {
 });
 
 describe('BackgroundVerifier — sha change detection', () => {
-  it('should write gitlab_event(new_commits) on sha change', async () => {
+  it('writes gitlab_event(new_commits) through the public verification SUT', async () => {
     // contract: sha differs from tracked lastKnownSha → journal entry with event=new_commits
     // invariant: tracked.lastKnownSha is updated after journal write
 
@@ -119,33 +119,7 @@ describe('BackgroundVerifier — sha change detection', () => {
       lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
     });
 
-    // Directly test _detectShaChange via protected method access
-    await (
-      verifier as unknown as {
-        _detectShaChange: (
-          tracked: {
-            webUrl: string;
-            project: string;
-            iid: string;
-            lastKnownSha: string;
-            lastKnownUpdatedAt: string;
-          },
-          mr: { webUrl: string; updatedAt: string }
-        ) => Promise<void>;
-      }
-    )._detectShaChange(
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        project: 'g/proj',
-        iid: '42',
-        lastKnownSha: 'oldsha123',
-        lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        updatedAt: '2026-01-02T00:00:00Z',
-      }
-    );
+    await verifier.verifyOnce();
 
     const entries = journal.read();
     const newCommits = entries.find((e) => e.payload?.event === 'new_commits');
@@ -178,32 +152,24 @@ describe('BackgroundVerifier — sha change detection', () => {
     const journal = new EventJournal(join(tmpDir, 'sha-same.jsonl'));
     const { verifier } = makeVerifier(stub, journal);
 
-    await (
-      verifier as unknown as {
-        _detectShaChange: (
-          tracked: {
-            webUrl: string;
-            project: string;
-            iid: string;
-            lastKnownSha: string;
-            lastKnownUpdatedAt: string;
+    verifier.register({
+      webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+      project: 'g/proj',
+      iid: '42',
+      lastKnownSha: 'same123',
+      lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
+      knownDiscussionIds: [],
+    });
+    stub.getInbox = mock.fn(
+      async () =>
+        [
+          {
+            webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+            updatedAt: '2026-01-02T00:00:00Z',
           },
-          mr: { webUrl: string; updatedAt: string }
-        ) => Promise<void>;
-      }
-    )._detectShaChange(
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        project: 'g/proj',
-        iid: '42',
-        lastKnownSha: 'same123',
-        lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        updatedAt: '2026-01-02T00:00:00Z',
-      }
+        ] as never
     );
+    await verifier.verifyOnce();
 
     const entries = journal.read();
     const newCommits = entries.filter((e) => e.payload?.event === 'new_commits');
@@ -217,32 +183,23 @@ describe('BackgroundVerifier — sha change detection', () => {
     const journal = new EventJournal(join(tmpDir, 'sha-skip.jsonl'));
     const { verifier } = makeVerifier(stub, journal);
 
-    await (
-      verifier as unknown as {
-        _detectShaChange: (
-          tracked: {
-            webUrl: string;
-            project: string;
-            iid: string;
-            lastKnownSha: string;
-            lastKnownUpdatedAt: string;
+    verifier.register({
+      webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+      project: 'g/proj',
+      iid: '42',
+      lastKnownSha: 'abc123',
+      lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
+    });
+    stub.getInbox = mock.fn(
+      async () =>
+        [
+          {
+            webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+            updatedAt: '2026-01-01T00:00:00Z',
           },
-          mr: { webUrl: string; updatedAt: string }
-        ) => Promise<void>;
-      }
-    )._detectShaChange(
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        project: 'g/proj',
-        iid: '42',
-        lastKnownSha: 'abc123',
-        lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        updatedAt: '2026-01-01T00:00:00Z',
-      }
+        ] as never
     );
+    await verifier.verifyOnce();
 
     assert.strictEqual(stub.getMrDetail.mock.callCount(), 0);
   });
@@ -257,35 +214,79 @@ describe('BackgroundVerifier — sha change detection', () => {
     const journal = new EventJournal(join(tmpDir, 'detail-fail.jsonl'));
     const { verifier } = makeVerifier(stub, journal);
 
-    await (
-      verifier as unknown as {
-        _detectShaChange: (
-          tracked: {
-            webUrl: string;
-            project: string;
-            iid: string;
-            lastKnownSha: string;
-            lastKnownUpdatedAt: string;
+    verifier.register({
+      webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+      project: 'g/proj',
+      iid: '42',
+      lastKnownSha: 'oldsha123',
+      lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
+    });
+    stub.getInbox = mock.fn(
+      async () =>
+        [
+          {
+            webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+            updatedAt: '2026-01-02T00:00:00Z',
           },
-          mr: { webUrl: string; updatedAt: string }
-        ) => Promise<void>;
-      }
-    )._detectShaChange(
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        project: 'g/proj',
-        iid: '42',
-        lastKnownSha: 'oldsha123',
-        lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
-        updatedAt: '2026-01-02T00:00:00Z',
-      }
+        ] as never
     );
+    await verifier.verifyOnce();
 
     const entries = journal.read();
     assert.strictEqual(entries.length, 0, 'no journal entry on detail fetch failure');
+  });
+});
+
+describe('BackgroundVerifier — fresh discussions', () => {
+  it('writes gitlab_event(new_threads) for discussion ids absent at registration', async () => {
+    const stub = new StubVcs();
+    stub.getInbox = mock.fn(
+      async () =>
+        [
+          {
+            webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+            updatedAt: '2026-01-02T00:00:00Z',
+          },
+        ] as never
+    );
+    stub.getMrDetail = mock.fn(async () => ({
+      project: 'g/proj',
+      iid: '42',
+      webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+      title: 'MR',
+      description: '',
+      author: 'author',
+      reviewers: [],
+      approvedBy: [],
+      updatedAt: '2026-01-02T00:00:00Z',
+      state: 'opened',
+      headSha: 'same',
+      pipelineStatus: null,
+      userNotesCount: 1,
+      draft: false,
+    }));
+    stub.getDiscussions = mock.fn(async () => ({
+      discussions: [
+        { id: 'known', resolved: false, notes: [] },
+        { id: 'fresh', resolved: false, notes: [] },
+      ],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    }));
+    const { verifier, journal } = makeVerifier(stub);
+    verifier.register({
+      webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+      project: 'g/proj',
+      iid: '42',
+      lastKnownSha: 'same',
+      lastKnownUpdatedAt: '2026-01-01T00:00:00Z',
+      knownDiscussionIds: ['known'],
+    });
+    await verifier.verifyOnce();
+    assert.deepStrictEqual(
+      journal.read().find((entry) => entry.payload?.event === 'new_threads')?.payload
+        ?.discussionIds,
+      ['fresh']
+    );
   });
 });
 

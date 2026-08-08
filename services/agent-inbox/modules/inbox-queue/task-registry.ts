@@ -1,6 +1,6 @@
 // @file: TaskRegistry — 19 task types (pipeline, pattern, event, user, effect), formal reference grammar (type-name/glob/allOf/producerOf/external), dedup key computation, supersede logic
 // @consumers: Executor, InMemoryTaskQueue
-// @tasks: TSK-159
+// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
 
@@ -218,6 +218,48 @@ export class TaskRegistry {
       sessionPolicy: 'task',
       priority: PRIORITY_TIERS.event,
     });
+    // delta_review is an executable mini-DAG, not an opaque event marker:
+    // prepare → changed range → affected tracks → synthesize → verdict.
+    this._addType({
+      name: 'delta_prepare',
+      parallelWith: [],
+      exclusiveWith: [],
+      dependsOn: [typeRef('delta_review')],
+      sessionPolicy: 'engine',
+      priority: PRIORITY_TIERS.event,
+    });
+    this._addType({
+      name: 'delta_changeset',
+      parallelWith: [],
+      exclusiveWith: [],
+      dependsOn: [typeRef('delta_prepare')],
+      sessionPolicy: 'engine',
+      priority: PRIORITY_TIERS.event,
+    });
+    this._addType({
+      name: 'delta_tracks',
+      parallelWith: [],
+      exclusiveWith: [],
+      dependsOn: [typeRef('delta_changeset')],
+      sessionPolicy: 'task',
+      priority: PRIORITY_TIERS.event,
+    });
+    this._addType({
+      name: 'synthesize_delta',
+      parallelWith: [],
+      exclusiveWith: [],
+      dependsOn: [typeRef('delta_tracks')],
+      sessionPolicy: 'task',
+      priority: PRIORITY_TIERS.event,
+    });
+    this._addType({
+      name: 'gate_verdict_delta',
+      parallelWith: [],
+      exclusiveWith: [],
+      dependsOn: [typeRef('synthesize_delta')],
+      sessionPolicy: 'engine',
+      priority: PRIORITY_TIERS.event,
+    });
     this._addType({
       name: 'verify_fix',
       parallelWith: [],
@@ -323,7 +365,13 @@ export class TaskRegistry {
    * @returns The TaskType definition.
    */
   resolveType(name: string): TaskType {
-    const resolved = this._types.get(name);
+    // Fan-out nodes are concrete instances (`track_logic`, `lens_security`) while the
+    // registry owns their policy as pattern definitions. Resolve the concrete instance
+    // through its declared pattern instead of making the runtime invent a second policy.
+    const resolved =
+      this._types.get(name) ??
+      (name.startsWith('track_') ? this._types.get('track_*') : undefined) ??
+      (name.startsWith('lens_') ? this._types.get('lens_*') : undefined);
     if (!resolved) {
       const error = new Error(`[TaskRegistry#resolveType] Unknown task type: ${name}`);
       logger.error(`[TaskRegistry#resolveType] [lookup → not_found] ${name}`, { error });
@@ -398,9 +446,11 @@ export class TaskRegistry {
           const filteredInstances = instances.filter((inst) =>
             this._matchesFilter(inst, ref.filter!)
           );
-          return ref.refs.every((inner) => this._evaluateWithFilter(inner, filteredInstances));
+          return ref.refs.every((inner) =>
+            this._evaluateAllOf(inner, new Set(), filteredInstances)
+          );
         }
-        return ref.refs.every((inner) => this.evaluateReference(inner, completedTypes, instances));
+        return ref.refs.every((inner) => this._evaluateAllOf(inner, completedTypes, instances));
       }
 
       case 'producer_of': {
@@ -479,6 +529,30 @@ export class TaskRegistry {
       case 'external':
         return false;
     }
+  }
+
+  /**
+   * @purpose Evaluate an aggregate dependency. A glob inside `allOf` means every concrete
+   * matching fan-out node is done, whereas a standalone glob remains an existence check.
+   * @param ref Nested dependency reference.
+   * @param completedTypes Completed task-type names.
+   * @param instances Full MR queue.
+   * @returns True only when the aggregate's concrete work is complete.
+   */
+  protected _evaluateAllOf(
+    ref: TaskReference,
+    completedTypes: Set<string>,
+    instances: TaskInstance[]
+  ): boolean {
+    if (ref.kind === 'glob') {
+      const regex = this._globToRegex(ref.pattern);
+      const matches = instances.filter((inst) => regex.test(inst.type));
+      return matches.length > 0 && matches.every((inst) => inst.status === 'done');
+    }
+    if (ref.kind === 'all_of') {
+      return ref.refs.every((inner) => this._evaluateAllOf(inner, completedTypes, instances));
+    }
+    return this.evaluateReference(ref, completedTypes, instances);
   }
 
   /**

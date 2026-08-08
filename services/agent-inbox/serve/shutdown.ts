@@ -9,6 +9,7 @@ import type { ChildProcess } from 'node:child_process';
 import type { HttpServer } from '../modules/inbox-api/http-server.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
 import type { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
+import type { BackgroundVerifier } from '../modules/inbox-vcs/background-verify.ts';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 
 /**
@@ -28,6 +29,8 @@ export type ShutdownConfig = {
   opencodePidFile?: string | null;
   /** @purpose Optional scheduler to stop before closing HTTP server. */
   scheduler?: RoleScheduler;
+  /** @purpose Optional GitLab verifier timer started by the real serve composition root. */
+  backgroundVerifier?: BackgroundVerifier | null;
 };
 
 /**
@@ -135,6 +138,10 @@ export async function gracefulShutdown(config: ShutdownConfig): Promise<void> {
     }
   }
   // #endregion END_STOP_SCHEDULER
+
+  if (config.backgroundVerifier) {
+    config.backgroundVerifier.stop();
+  }
 
   // #region START_CLOSE_SERVER
   // Stop the HTTP server — stop accepting new connections, drain active ones.

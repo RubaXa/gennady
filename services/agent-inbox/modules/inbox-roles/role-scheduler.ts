@@ -1,6 +1,6 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
 // @consumers: serve timer, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-140, TSK-141
+// @tasks: TSK-113, TSK-121, TSK-140, TSK-141, TSK-157, TSK-161
 
 import { logger } from '#logger';
 import type { RoleEngine, RegisteredRole } from './role-engine.ts';
@@ -8,6 +8,7 @@ import type { StateStore } from '../inbox-core/state-store.ts';
 import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
+import type { PipelineRuntime } from '../inbox-pipeline/pipeline-runtime.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
@@ -95,6 +96,11 @@ export type RoleSchedulerConfig = {
    *   unbounded per-lens sessions directly against `opencode` (see RoleInstance's own invariant).
    */
   reviewSessionPool?: SessionPool;
+  /**
+   * @purpose Shared pipeline entrypoint owned by serve bootstrap.
+   * @invariant Role pickup and a newly observed head both materialize work in this same queue.
+   */
+  pipeline?: PipelineRuntime;
 };
 
 /**
@@ -156,6 +162,15 @@ export class RoleScheduler {
   }
 
   /**
+   * @purpose Derive the durable MR identity shared by pipeline tasks, proposal journals and capability cache.
+   * @param mr Actionable VCS MR carrying authoritative project and IID fields.
+   * @returns Canonical `project!iid` reference, never the transport-only web URL.
+   */
+  protected _canonicalMrRef(mr: VcsActionableMr): string {
+    return `${mr.project}!${mr.iid}`;
+  }
+
+  /**
    * @purpose Execute one full tick: poll VCS, compute delta, assign/update instances, advance active.
    * @invariant Tick is mutually exclusive — concurrent ticks are skipped.
    * @returns Promise that resolves when the tick completes.
@@ -209,6 +224,21 @@ export class RoleScheduler {
       for (const mr of mrs) {
         const existing = registry.entries[mr.webUrl];
         const isNew = !existing;
+
+        // The VCS detail head and registry's accepted SHA form the production new-commit seam.
+        const lastReviewedHeadSha = existing?.lastReviewedHeadSha;
+        if (
+          mr.role !== null &&
+          mr.headSha &&
+          lastReviewedHeadSha &&
+          mr.headSha !== lastReviewedHeadSha
+        ) {
+          await this._config.pipeline?.startDeltaReview(
+            this._canonicalMrRef(mr),
+            lastReviewedHeadSha,
+            mr.headSha
+          );
+        }
 
         for (const role of activeRoles) {
           const key = this._instanceKey(role.name, mr.webUrl);
@@ -796,6 +826,14 @@ export class RoleScheduler {
       checkpoint,
     });
     this._instances.set(key, instance);
+    await this._config.pipeline?.startReview(this._canonicalMrRef(mr), {
+      role: role.name === 'author' ? 'author' : 'reviewer',
+      changeset: (
+        (checkpoint?.artifacts['changesetFiles'] as
+          | Array<{ path: string; action: 'added' | 'modified' | 'deleted' }>
+          | undefined) ?? []
+      ).map(({ path, action }) => ({ path, action })),
+    });
     logger.info('[RoleScheduler#_assignRole] [ticking → assigned]', {
       role: role.name,
       mr: mr.webUrl,

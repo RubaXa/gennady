@@ -17,6 +17,16 @@ import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionabl
 /** @purpose Internal stage mapping: review_needed | reply_needed | awaiting_reply | idle — computed from discussions. */
 export type MrStage = 'review_needed' | 'reply_needed' | 'awaiting_reply' | 'idle';
 
+/** @purpose Dependencies controlling retry timing for the sync boundary. */
+export type SyncServiceConfig = {
+  /**
+   * @purpose Delay function used after GitLab explicitly asks the client to retry later.
+   * @param delayMs Server-directed wait duration in milliseconds.
+   * @returns Completion after the requested delay.
+   */
+  sleep?: (delayMs: number) => Promise<void>;
+};
+
 /** @purpose Sync snapshot — DTO for inbox-api, board projection, and seed fixtures. */
 export type SyncSnapshot = {
   /** @purpose Original actionable MR from poll tier */
@@ -84,18 +94,28 @@ export class SyncService {
   protected _journal: EventJournal;
   /** @purpose Authenticated user login — resolved lazily */
   protected _myLogin: string | null;
+  /** @purpose Injectable delay keeps Retry-After behaviour observable without real-time test waits. */
+  protected _sleep: (delayMs: number) => Promise<void>;
 
   /**
    * @purpose Create a SyncService bound to a VCS port, registry, and journal.
    * @param vcs VCS port for network calls.
    * @param registry Registry for lastReviewedHeadSha lookups.
    * @param journal Event journal for gitlab_event entries.
+   * @param [config] Optional retry-timing dependencies.
    */
-  constructor(vcs: VcsPort, registry: InboxRegistryAccess, journal: EventJournal) {
+  constructor(
+    vcs: VcsPort,
+    registry: InboxRegistryAccess,
+    journal: EventJournal,
+    config?: SyncServiceConfig
+  ) {
     this._vcs = vcs;
     this._registry = registry;
     this._journal = journal;
     this._myLogin = null;
+    this._sleep =
+      config?.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
   }
 
   /**
@@ -107,7 +127,7 @@ export class SyncService {
     logger.debug('[SyncService#twoTierSync] [idle → polling]');
 
     // #region START_POLL_TIER — single cheap GraphQL call for all actionable MRs
-    const mrs = await this._vcs.getInbox();
+    const mrs = await this._getInboxWithRetryAfter();
     logger.info('[SyncService#twoTierSync] [polling → poll_fetched]', { count: mrs.length });
 
     await this._resolveMyLogin();
@@ -175,6 +195,39 @@ export class SyncService {
       estimated: snapshots.filter((s) => s.estimated).length,
     });
     return snapshots;
+  }
+
+  /**
+   * @purpose Poll GitLab, respecting its explicit Retry-After instruction once before surfacing an error.
+   * @invariant Only a 429-style error carrying a positive retryAfter value is retried; unrelated failures retain
+   *   their original semantics.
+   * @returns Actionable MRs from the successful poll attempt.
+   * @sideEffect May wait for GitLab's requested backoff period before one retry.
+   */
+  protected async _getInboxWithRetryAfter(): ReturnType<VcsPort['getInbox']> {
+    try {
+      return await this._vcs.getInbox();
+    } catch (cause) {
+      const retryAfterMs = this._readRetryAfterMs(cause);
+      if (retryAfterMs === null) throw cause;
+
+      logger.warn('[SyncService#twoTierSync] [polling → rate_limited]', { retryAfterMs });
+      await this._sleep(retryAfterMs);
+      logger.info('[SyncService#twoTierSync] [rate_limited → retrying]', { retryAfterMs });
+      return this._vcs.getInbox();
+    }
+  }
+
+  /**
+   * @purpose Normalize GitLab's Retry-After metadata from a rate-limit failure.
+   * @param cause Rejection received from the VCS adapter.
+   * @returns Delay in milliseconds, or null when the failure is not a retryable 429 response.
+   */
+  protected _readRetryAfterMs(cause: unknown): number | null {
+    if (!(cause instanceof Error) || !/\b429\b/.test(cause.message)) return null;
+    const retryAfter = (cause as Error & { retryAfter?: unknown }).retryAfter;
+    const seconds = typeof retryAfter === 'number' ? retryAfter : Number(retryAfter);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null;
   }
 
   /**

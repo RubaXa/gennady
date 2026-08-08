@@ -1,6 +1,6 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143
+// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160
 
 import { join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
@@ -698,13 +698,24 @@ export class RoleInstance {
           : node.dir(ctx);
 
     if (!this._sessionId) {
-      const handle = await this._opencode.createSession({
+      const createOpts = {
         title: node.id,
         directory,
         tools: _resolveSessionTools(node.policy),
         model: node.policy?.model,
-      });
-      this._sessionId = handle.sid;
+        priority: 'reviewer' as const,
+        registration: {
+          taskId: `${this.role}:${node.id}`,
+          mr: this.mr,
+          artifacts: Object.keys(ctx.artifacts),
+        },
+      };
+      if (this._reviewSessionPool) {
+        this._sessionId = await this._reviewSessionPool.create(createOpts);
+      } else {
+        const handle = await this._opencode.createSession(createOpts);
+        this._sessionId = handle.sid;
+      }
     }
 
     let system: string;
@@ -751,7 +762,9 @@ export class RoleInstance {
       }
     );
 
-    const result: OpenCodeCallResult = await this._opencode.prompt(this._sessionId, promptOpts);
+    const result: OpenCodeCallResult = this._reviewSessionPool
+      ? await this._reviewSessionPool.prompt(this._sessionId, promptOpts)
+      : await this._opencode.prompt(this._sessionId, promptOpts);
     await recordSessionResponse(
       this._store.getStateDir(),
       _xrayRef,
@@ -825,10 +838,7 @@ export class RoleInstance {
       }
 
       // Close session after success
-      if (this._sessionId) {
-        await this._opencode.close(this._sessionId);
-        this._sessionId = null;
-      }
+      await this._closeActiveSession();
     } else {
       // Recovery ladder
       await this._applyRecovery(node, remediation, outcome);
@@ -956,6 +966,11 @@ export class RoleInstance {
       tools: _resolveSessionTools(spec.policy),
       // Per-phase model (TSK-perf) — absent → adapter omits the field, server default applies.
       model: spec.policy?.model,
+      registration: {
+        taskId: `${this.role}:${spec.id}`,
+        mr: this.mr,
+        artifacts: Object.keys(ctx.artifacts),
+      },
     };
 
     const createSession = async (): Promise<string> => {
@@ -1702,7 +1717,11 @@ export class RoleInstance {
         instance: this.id,
         sessionId: this._sessionId,
       });
-      await this._opencode.close(this._sessionId);
+      if (this._reviewSessionPool) {
+        await this._reviewSessionPool.release(this._sessionId);
+      } else {
+        await this._opencode.close(this._sessionId);
+      }
       this._sessionId = null;
     }
   }

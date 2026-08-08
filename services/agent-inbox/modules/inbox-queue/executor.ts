@@ -1,6 +1,6 @@
 // @file: Executor — per-MR queue loop: priority+FIFO+aging, exclusive mode (effects sequential), waiting_dep/cancelled states, crash recovery (running→queued, effects by marker), journal-backed visibility events
 // @consumers: inbox-roles (role scheduler), inbox-api (inbox serve)
-// @tasks: TSK-159
+// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
 import type { JournalPort } from '../inbox-core/event-journal.ts';
@@ -176,7 +176,10 @@ export class Executor {
     // #endregion END_SELECT_READY
 
     // #region START_ENSURE_WAITING_DEP — tasks with unsatisfied deps move to waiting_dep for visibility
-    for (const t of queuedTasks) {
+    // `TaskQueuePort.next()` deliberately exposes only dependency-ready tasks. Inspect the full
+    // queue here so blocked work remains observable as `waiting_dep`, rather than silently
+    // remaining queued because it was omitted from the ready projection.
+    for (const t of allTasks) {
       if (!this._allDepsSatisfied(t, allTasks, completedTypes) && t.status === 'queued') {
         this._queue.transition(this._mr, t.taskId, 'waiting_dep');
         try {

@@ -23,12 +23,20 @@ function makeTask(type: string, overrides?: Partial<TaskInstance>): TaskInstance
   };
 }
 
-function makeRouter(): { router: SessionRouter; createFn: ReturnType<typeof mock.fn> } {
-  const createFn = mock.fn(async () => `session-${Math.random().toString(36).slice(2)}`);
-  const mockPool = { create: createFn } as unknown as SessionPool;
+function makeRouter(
+  isActive = (_sid: string) => true,
+  createSession = async () => `session-${Math.random().toString(36).slice(2)}`
+): {
+  router: SessionRouter;
+  createFn: ReturnType<typeof mock.fn>;
+  isActiveFn: ReturnType<typeof mock.fn>;
+} {
+  const createFn = mock.fn(createSession);
+  const isActiveFn = mock.fn(isActive);
+  const mockPool = { create: createFn, isActive: isActiveFn } as unknown as SessionPool;
   const registry = new TaskRegistry();
   const router = new SessionRouter(mockPool, registry);
-  return { router, createFn };
+  return { router, createFn, isActiveFn };
 }
 
 describe('session routing table is honored', () => {
@@ -113,5 +121,29 @@ describe('session routing edge cases', () => {
 
     assert.strictEqual(sid2, sid1);
     assert.strictEqual(createFn.mock.callCount(), 1);
+  });
+
+  it('reuse_producer with closed cached session → replaces it before routing', async () => {
+    // invariant: a released producer session must never be returned from the router cache.
+
+    // #region START_REPLACE_CLOSED_PRODUCER_SETUP_ROUTER
+    const sessionIds = ['session-closed', 'session-replacement'];
+    const { router, createFn, isActiveFn } = makeRouter(
+      (sid) => sid !== 'session-closed',
+      async () => sessionIds.shift() ?? 'unexpected-session'
+    );
+    // #endregion END_REPLACE_CLOSED_PRODUCER_SETUP_ROUTER
+
+    // #region START_REPLACE_CLOSED_PRODUCER_TRIGGER_ROUTE_TWICE
+    const initialSessionId = await router.route(makeTask('deepen'), 'mr1');
+    const replacementSessionId = await router.route(makeTask('deepen', { taskId: '#2' }), 'mr1');
+    // #endregion END_REPLACE_CLOSED_PRODUCER_TRIGGER_ROUTE_TWICE
+
+    // #region START_REPLACE_CLOSED_PRODUCER_ASSERT_LIVENESS_GUARD
+    assert.strictEqual(initialSessionId, 'session-closed');
+    assert.strictEqual(replacementSessionId, 'session-replacement');
+    assert.strictEqual(isActiveFn.mock.callCount(), 1);
+    assert.strictEqual(createFn.mock.callCount(), 2);
+    // #endregion END_REPLACE_CLOSED_PRODUCER_ASSERT_LIVENESS_GUARD
   });
 });

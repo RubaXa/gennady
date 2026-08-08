@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { EventJournal } from '../../inbox-core/event-journal.ts';
+import { InboxRegistryAccess } from '../../inbox-core/inbox-registry.ts';
 import {
   VcsPort,
   type VcsDiscussion,
@@ -15,6 +16,7 @@ import {
   type DiscussionsPage,
 } from '../vcs-port.ts';
 import { Effects } from '../effects.ts';
+import { SyncService } from '../sync.ts';
 
 let tmpDir: string;
 
@@ -338,37 +340,52 @@ describe('Effects — SSRF validation', () => {
   });
 });
 
-describe('Effects — rate limit backoff', () => {
-  it('rate limit backs off without failing sync', async () => {
-    // contract: when VCS throws a rate-limit error, Effects propagates it cleanly — sync caller retries
-    // invariant: Effects does NOT swallow rate-limit errors; caller receives them for backoff handling
-
+describe('SyncService — rate limit backoff', () => {
+  it('rate limit backs off and completes the two-tier poll', async () => {
+    // Given GraphQL's inbox poll responds 429 + Retry-After once, the sync boundary must delay
+    // by that explicit server instruction and retry the poll rather than exercising an unrelated effect.
     const stub = new StubVcs();
-    stub.postNote = mock.fn(async () => {
-      const err = new Error('HTTP 429 Too Many Requests');
-      (err as Record<string, unknown>).retryAfter = 30;
-      throw err;
+    let pollAttempts = 0;
+    stub.getInbox = mock.fn(async () => {
+      pollAttempts += 1;
+      if (pollAttempts === 1) {
+        const error = new Error('GitLab GraphQL request failed: 429 Too Many Requests');
+        (error as Error & { retryAfter?: number }).retryAfter = 30;
+        throw error;
+      }
+      return [
+        {
+          webUrl: 'https://gitlab.example.com/g/proj/-/merge_requests/42',
+          project: 'g/proj',
+          iid: '42',
+          role: null,
+          approvedBy: [],
+          approvalsRequired: 0,
+          pipelineStatus: null,
+          headSha: 'abc123',
+          draft: false,
+          updatedAt: '2026-08-08T00:00:00Z',
+        },
+      ];
     });
     const journal = new EventJournal(join(tmpDir, 'rate-limit.jsonl'));
-    const { effects } = makeEffects(stub, journal);
+    const delays: number[] = [];
+    const sync = new SyncService(stub, new InboxRegistryAccess(tmpDir), journal, {
+      sleep: async (delayMs) => {
+        delays.push(delayMs);
+      },
+    });
 
-    await assert.rejects(
-      () =>
-        effects.postNote(
-          { project: 'g/proj', iid: '42', body: 'rate limit test body content here' },
-          'g/proj!42'
-        ),
-      (error: unknown) => {
-        assert.ok(error instanceof Error);
-        assert.match((error as Error).message, /Post failed/);
-        return true;
-      }
+    const snapshots = await sync.twoTierSync();
+
+    assert.strictEqual(stub.getInbox.mock.callCount(), 2, 'poll is retried once after 429');
+    assert.deepStrictEqual(delays, [30_000], 'Retry-After seconds become the backoff delay');
+    assert.strictEqual(snapshots.length, 1, 'successful retry preserves a healthy sync result');
+    assert.strictEqual(
+      snapshots[0].estimated,
+      true,
+      'poll-only snapshot remains semantically valid'
     );
-
-    // No confirmed marker — caller can retry safely
-    const entries = journal.read();
-    const confirmed = entries.filter((e) => e.payload?.status === 'confirmed');
-    assert.strictEqual(confirmed.length, 0);
   });
 });
 

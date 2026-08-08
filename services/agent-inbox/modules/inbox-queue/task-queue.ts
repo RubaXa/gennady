@@ -1,9 +1,9 @@
 // @file: TaskQueuePort + InMemoryTaskQueue — per-MR isolated queues with dedup by dedupKey, supersede (queued only), FIFO ordering, state management
 // @consumers: Executor
-// @tasks: TSK-159
+// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
-import type { TaskInstance, TaskStatus, TaskRegistry } from './task-registry.ts';
+import { typeRef, type TaskInstance, type TaskStatus, type TaskRegistry } from './task-registry.ts';
 
 /** @purpose Result of enqueue — the assigned taskId and its position in queue. */
 export type EnqueueResult = {
@@ -141,12 +141,18 @@ export class InMemoryTaskQueue implements TaskQueuePort {
     // #region START_NEW_INSTANCE — create a fresh task instance
     const taskId = this._nextId(mr);
     const priority = params.priority != null ? Number(params.priority) : resolved.priority;
+    const declaredDependencies = Array.isArray(params.dependsOn)
+      ? params.dependsOn.filter((value): value is string => typeof value === 'string').map(typeRef)
+      : [];
     const instance: TaskInstance = {
       taskId,
       type,
       status: 'queued',
       params,
-      dependsOn: resolved.dependsOn,
+      // A concrete lens can depend on another concrete lens. Keep that edge on the instance:
+      // the registry policy supplies the common `enrich` edge and the materialized DAG adds
+      // the per-lens input edge without mutating the immutable registry.
+      dependsOn: [...resolved.dependsOn, ...declaredDependencies],
       dedupKey: key,
       priority,
       createdBy: (params.createdBy as string) ?? 'unknown',
@@ -166,7 +172,21 @@ export class InMemoryTaskQueue implements TaskQueuePort {
     const queue = this._queues.get(mr);
     if (!queue || queue.length === 0) return [];
 
-    return queue.filter((inst) => inst.status === 'queued');
+    const completedTypes = new Set(
+      queue.filter((inst) => inst.status === 'done').map((inst) => inst.type)
+    );
+    return queue
+      .filter(
+        (inst) =>
+          inst.status === 'queued' &&
+          inst.dependsOn.every((ref) =>
+            this._registry.evaluateReference(ref, completedTypes, queue)
+          )
+      )
+      .sort(
+        (left, right) =>
+          right.priority - left.priority || queue.indexOf(left) - queue.indexOf(right)
+      );
   }
 
   /** @see {TaskQueuePort#state} in ./task-queue.ts */

@@ -18,6 +18,8 @@ type TrackedMr = {
   lastKnownSha: string;
   /** @purpose Last known updatedAt timestamp */
   lastKnownUpdatedAt: string;
+  /** @purpose IDs present at registration; later IDs are emitted as new_threads exactly once. */
+  knownDiscussionIds?: string[];
 };
 
 /** @purpose Configuration for BackgroundVerifier interval and behaviour. */
@@ -98,6 +100,14 @@ export class BackgroundVerifier {
   }
 
   /**
+   * @purpose Run one verification cycle on demand, without exposing protected implementation details to callers/tests.
+   * @returns Resolves after poll, commit and discussion detection complete.
+   */
+  async verifyOnce(): Promise<void> {
+    await this._pollCycle();
+  }
+
+  /**
    * @purpose Remove an MR from background tracking — called when MR becomes inactive.
    * @param webUrl MR web URL to unregister.
    */
@@ -122,7 +132,7 @@ export class BackgroundVerifier {
         const tracked = this._tracked.get(mr.webUrl);
         if (!tracked) continue;
 
-        await this._detectShaChange(tracked, mr);
+        await this._detectChanges(tracked, mr);
       }
 
       logger.debug('[BackgroundVerifier#_pollCycle] [polling → completed]', {
@@ -143,7 +153,7 @@ export class BackgroundVerifier {
    * @returns Resolves after detection; writes journal entry if SHA changed.
    * @sideEffect Journal: gitlab_event(new_commits) when SHA changed.
    */
-  protected async _detectShaChange(
+  protected async _detectChanges(
     tracked: TrackedMr,
     mr: { webUrl: string; updatedAt: string }
   ): Promise<void> {
@@ -176,6 +186,25 @@ export class BackgroundVerifier {
 
         tracked.lastKnownSha = newSha;
       }
+      const discussions = await this._vcs.getDiscussions(tracked.project, tracked.iid);
+      const known = new Set(tracked.knownDiscussionIds ?? []);
+      const newDiscussionIds = discussions.discussions
+        .filter((discussion) => !known.has(discussion.id))
+        .map((discussion) => discussion.id);
+      if (newDiscussionIds.length > 0) {
+        await this._journal.append({
+          ts: new Date().toISOString(),
+          mr: tracked.webUrl,
+          kind: 'gitlab_event',
+          actor: 'background-verify',
+          payload: { event: 'new_threads', discussionIds: newDiscussionIds },
+        });
+        logger.info('[BackgroundVerifier#_detectChanges] [detecting → new_threads]', {
+          webUrl: tracked.webUrl,
+          count: newDiscussionIds.length,
+        });
+      }
+      tracked.knownDiscussionIds = discussions.discussions.map((discussion) => discussion.id);
       tracked.lastKnownUpdatedAt = mr.updatedAt;
     } catch (cause) {
       logger.debug(

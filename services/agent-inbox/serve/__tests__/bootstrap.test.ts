@@ -1,6 +1,6 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
 // @consumers: node:test runner
-// @tasks: TSK-115
+// @tasks: TSK-115, TSK-160
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,12 +103,13 @@ async function fetchJson(path: string, port: number): Promise<{ status: number; 
 }
 
 describe('bootstrap — mock mode', () => {
-  const PORT = 4185;
   let result: BootstrapResult;
+  let port: number;
 
   before(async () => {
-    result = await bootstrap({ mocks: true, port: PORT });
+    result = await bootstrap({ mocks: true, port: 0 });
     await result.server.start();
+    port = result.server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -123,12 +124,37 @@ describe('bootstrap — mock mode', () => {
     assert.ok(result.opencodeStatus.includes('mock'), 'opencodeStatus should mention mock');
     assert.ok(result.roles.includes('reviewer'), 'roles should include reviewer');
     assert.ok(result.roles.includes('author'), 'roles should include author');
-    assert.strictEqual(result.port, PORT);
+    assert.strictEqual(result.port, 0);
     assert.ok(result.pollingInterval > 0, 'pollingInterval should be positive');
   });
 
+  it('binds the boot-owned lifecycle to the live adapter and clears TTL-closed routing', async () => {
+    const sid = await result.sessionPool.create({
+      title: 'lifecycle-proof',
+      directory: process.cwd(),
+      registration: {
+        taskId: 'TSK-160-proof',
+        mr: 'https://gitlab.test/group/project/-/merge_requests/160',
+      },
+    });
+    assert.strictEqual(result.sessionRegistry.lookup(sid)?.state, 'work');
+
+    await result.sessionLifecycle.park(sid);
+    assert.strictEqual(await result.sessionLifecycle.resume(sid), true);
+    await result.sessionLifecycle.park(sid);
+    await result.sessionLifecycle.close(sid);
+
+    assert.strictEqual(result.sessionRegistry.lookup(sid), undefined);
+    assert.strictEqual(await result.opencode.status(sid), 'terminated');
+    assert.strictEqual(
+      result.sessionPool.isActive(sid),
+      false,
+      'closed session must free pool slot'
+    );
+  });
+
   it('server responds to /api/board with 200 and valid JSON', async () => {
-    const { status, data } = await fetchJson('/api/board', PORT);
+    const { status, data } = await fetchJson('/api/board', port);
 
     assert.strictEqual(status, 200);
     assert.ok(typeof data === 'object' && data !== null);
@@ -143,16 +169,15 @@ describe('bootstrap — mock mode', () => {
   });
 
   it('server returns 404 for unknown API routes', async () => {
-    const { status, data } = await fetchJson('/api/nonexistent', PORT);
+    const { status, data } = await fetchJson('/api/nonexistent', port);
 
     assert.strictEqual(status, 404);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(body.error, { code: 'not_found', message: 'Unknown API route' });
   });
 
   it('server returns SPA fallback for non-API routes', async () => {
-    const { status } = await fetchJson('/some-page', PORT);
+    const { status } = await fetchJson('/some-page', port);
 
     // SPA fallback returns 200 with HTML (content-type check is done in http-server tests)
     assert.strictEqual(status, 200);
@@ -161,7 +186,7 @@ describe('bootstrap — mock mode', () => {
   it('/api/mr/:id/chat/stream is LIVE (real SSE 200), not 404 — chat bridge actually wired (TSK-133)', async () => {
     const { status, contentType } = await probeSseRoute(
       '/api/mr/group%2Fproj%21930/chat/stream',
-      PORT
+      port
     );
 
     assert.strictEqual(status, 200, 'chat/stream must be a live SSE route, not a 404 fallback');
@@ -181,15 +206,16 @@ describe('bootstrap — default port', () => {
 });
 
 describe('bootstrap — real mode (spawns a real opencode serve process)', () => {
-  const PORT = 4186;
   let result: BootstrapResult;
+  let port: number;
 
   before(async () => {
     // real mode: no --mocks, real VcsInboxReal/OpenCodeReal wiring, real `opencode serve` child
     // process spawned + health-polled by bootstrap itself (spawnOpencode) — genuinely exercises
     // the non-mock HttpServer construction call site (bootstrap.ts's second `new HttpServer(...)`).
-    result = await bootstrap({ mocks: false, port: PORT });
+    result = await bootstrap({ mocks: false, port: 0 });
     await result.server.start();
+    port = result.server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -214,7 +240,7 @@ describe('bootstrap — real mode (spawns a real opencode serve process)', () =>
   it('/api/mr/:id/chat/stream is LIVE (real SSE 200) in real mode too — not gated behind --mocks', async () => {
     const { status, contentType } = await probeSseRoute(
       '/api/mr/group%2Fproj%21931/chat/stream',
-      PORT
+      port
     );
 
     assert.strictEqual(status, 200, 'chat/stream must be live in real mode, not a 404 fallback');
@@ -227,7 +253,7 @@ describe('bootstrap — real mode (spawns a real opencode serve process)', () =>
 });
 
 describe('bootstrap — orphan opencode restart (D1)', () => {
-  const PORT = 4188;
+  const port = 0;
   let stateDir: string;
   let orphan: ChildProcess;
   let result: BootstrapResult | undefined;
@@ -248,12 +274,12 @@ describe('bootstrap — orphan opencode restart (D1)', () => {
       reposBase: stateDir,
       vcsHost: 'gitlab.test',
     });
-    // Pid file scoped by PORT (bootstrap's own HTTP port) per D-138 — nothing is actually
-    // listening on PORT yet, so bootstrap's own httpAlive check correctly reads "not alive",
+    // Pid file scoped by the kernel-assigned-port request (`0`) per D-138 — nothing is actually
+    // listening yet, so bootstrap's own httpAlive check correctly reads "not alive",
     // and the recorded pid (a real, live opencode process) reads as a genuine orphan.
     writeFileSync(
-      join(stateDir, 'agent-inbox', `opencode-${PORT}.pid`),
-      JSON.stringify({ pid: orphan.pid, port: PORT }),
+      join(stateDir, 'agent-inbox', `opencode-${port}.pid`),
+      JSON.stringify({ pid: orphan.pid, port }),
       'utf-8'
     );
   });
@@ -265,7 +291,7 @@ describe('bootstrap — orphan opencode restart (D1)', () => {
   });
 
   it('detects the stale pid, terminates the real orphan, and boots a fresh connected opencode', async () => {
-    result = await bootstrap({ mocks: false, port: PORT, stateDir });
+    result = await bootstrap({ mocks: false, port, stateDir });
     await result.server.start();
 
     assert.strictEqual(

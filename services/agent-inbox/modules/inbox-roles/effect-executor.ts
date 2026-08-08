@@ -266,7 +266,7 @@ export class EffectExecutor {
         // intended write is journaled instead (external-write seam (a), TSK-131) — real code path
         // minus the final irreversible mutation, never a mock
         if (this._dryRun) {
-          emitDryRun('mr', `post→MR ${ctx.mr}: ${this._describeWrite(action)}`);
+          await emitDryRun('mr', `post→MR ${ctx.mr}: ${this._describeWrite(action)}`, ctx.mr);
         } else {
           await this._apply(ctx, action);
         }

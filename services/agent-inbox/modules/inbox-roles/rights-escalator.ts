@@ -100,9 +100,10 @@ export class RightsEscalator {
     // is ready is the product's personal-message point. Under dry-run the (future) real transport is
     // withheld and the intended DM is journaled instead — surfaced to the dashboard browser console.
     if (isDryRun()) {
-      emitDryRun(
+      await emitDryRun(
         'dm',
-        `dm→operator: MR ${instance.mr} готов к решению (узел "${instance.currentNode}")`
+        `dm→operator: MR ${instance.mr} готов к решению (узел "${instance.currentNode}")`,
+        instance.mr
       );
     }
     // #endregion END_DRY_RUN_DM

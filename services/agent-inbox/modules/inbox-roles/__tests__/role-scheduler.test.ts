@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-roles RoleScheduler — tick, assignManual, activeCount.
 // @consumers: node:test runner
-// @tasks: TSK-113
+// @tasks: TSK-113, TSK-157, TSK-161
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,6 +8,9 @@ import { RoleEngine } from '../role-engine.ts';
 import { RoleScheduler } from '../role-scheduler.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
+import { InMemoryTaskQueue } from '../../inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../../inbox-queue/task-registry.ts';
+import { PipelineRuntime } from '../../inbox-pipeline/pipeline-runtime.ts';
 import type { AuditEntry } from '../../inbox-core/audit-log.ts';
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 
@@ -186,6 +189,38 @@ describe('RoleScheduler — tick', () => {
     await scheduler.tick();
     // No instances because MR role is 'reviewer', but only 'author' is active
     assert.strictEqual(scheduler.activeCount(), 0);
+  });
+
+  it('GIVEN production scheduler pickup and a newer head WHEN tick THEN it starts root and delta pipeline DAGs', async () => {
+    const mr = makeMr({ headSha: 'head-2' });
+    vcs.seed([mr]);
+    opencode.seed('node_scaffold', { findings: [{ id: 1 }], summary: 'Done' });
+    engine.activate('reviewer');
+    store.registry = {
+      entries: {
+        [mr.webUrl]: { lastReviewedHeadSha: 'head-1' },
+      },
+    };
+    const queue = new InMemoryTaskQueue(new TaskRegistry());
+    const scheduler = new RoleScheduler({
+      engine,
+      vcs,
+      opencode,
+      store: store as unknown as StateStoreLike,
+      pipeline: new PipelineRuntime(queue),
+    });
+
+    await scheduler.tick();
+
+    const canonicalRef = `${mr.project}!${mr.iid}`;
+    const queuedTypes = queue.state(canonicalRef).map((task) => task.type);
+    assert.ok(queuedTypes.includes('prepare_env'), 'role pickup must call startReview');
+    assert.ok(queuedTypes.includes('delta_review'), 'new head must call startDeltaReview');
+    assert.deepEqual(
+      [...queue.all().keys()],
+      [canonicalRef],
+      'scheduler must never partition production pipeline work by transport web URL'
+    );
   });
 });
 

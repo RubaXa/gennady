@@ -128,12 +128,24 @@ export class SessionRouter implements SessionRouterPort {
   protected async _routeReuseProducer(task: TaskInstance, mr: string): Promise<string> {
     const mrMap = this._producerSessions.get(mr);
     const existing = mrMap?.get(task.type);
-    if (existing) {
+
+    // #region START_REUSE_ACTIVE_PRODUCER — cached producer is reusable only while its pool slot remains active
+    if (existing && this._pool.isActive(existing)) {
       logger.debug(
         `[SessionRouter#route_reuse] [existing → reused] mr=${mr} type=${task.type} sid=${existing}`
       );
       return existing;
     }
+    // #endregion END_REUSE_ACTIVE_PRODUCER
+
+    // #region START_EVICT_INACTIVE_PRODUCER — stale cache entry must not direct new work into a released session
+    if (existing) {
+      mrMap?.delete(task.type);
+      logger.debug(
+        `[SessionRouter#route_reuse] [cached → closed] mr=${mr} type=${task.type} sid=${existing}`
+      );
+    }
+    // #endregion END_EVICT_INACTIVE_PRODUCER
 
     const opts: PoolCreateOpts = {
       title: `${mr}::${task.type}`,
