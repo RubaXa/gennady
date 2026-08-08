@@ -1,7 +1,7 @@
 // @file: Integration tests for ChatRouter — async POST /chat (D-89), TURN_IN_FLIGHT rejection
 //   (D-104), and POST /chat/stop delegation to ChatSession#stop (CH-11).
 // @consumers: node:test runner
-// @tasks: TSK-129, TSK-152
+// @tasks: TSK-129, TSK-152, TSK-162, TSK-163
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,6 +13,10 @@ import { SessionPool } from '../../inbox-opencode/session-pool.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
 import type { PromptOpts } from '../../inbox-opencode/opencode.port.ts';
 import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
+import { EventJournal } from '../../inbox-core/event-journal.ts';
+import { InMemoryTaskQueue } from '../../inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../../inbox-queue/task-registry.ts';
+import { composeError } from '../../inbox-opencode/errors.ts';
 
 /** @purpose Helper to POST a JSON body and collect the response. */
 function postJson(
@@ -101,13 +105,21 @@ async function createChatRouterContext(port: number): Promise<ChatRouterContext>
   const store = new StateStore(stateDir);
   const openCodeMock = new OpenCodeMock();
   const pool = new SessionPool({ maxSessions: 5, opencode: openCodeMock });
+  const queue = new InMemoryTaskQueue(new TaskRegistry());
+  const journal = new EventJournal(`${stateDir}/events.jsonl`);
   const server = new HttpServer({
     port,
     boardProvider: new BoardProviderMock(),
-    chat: { pool, store },
+    chat: { pool, store, queue, journal },
   });
   await server.start();
-  return { stateDir, server, port, openCodeMock, pool };
+  return {
+    stateDir,
+    server,
+    port: server.listeningPort() ?? assert.fail('Expected kernel-assigned port'),
+    openCodeMock,
+    pool,
+  };
 }
 
 async function destroyChatRouterContext(ctx: ChatRouterContext): Promise<void> {
@@ -117,10 +129,9 @@ async function destroyChatRouterContext(ctx: ChatRouterContext): Promise<void> {
 
 describe('ChatRouter — POST /chat', () => {
   let ctx: ChatRouterContext;
-  const PORT = 4205;
 
   before(async () => {
-    ctx = await createChatRouterContext(PORT);
+    ctx = await createChatRouterContext(0);
   });
 
   after(async () => {
@@ -140,7 +151,7 @@ describe('ChatRouter — POST /chat', () => {
     });
 
     const started = performance.now();
-    const { status, data } = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, PORT, {
+    const { status, data } = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, ctx.port, {
       text: 'question one',
     });
     const elapsedMs = performance.now() - started;
@@ -160,28 +171,64 @@ describe('ChatRouter — POST /chat', () => {
       return originalPrompt(sid, opts);
     });
 
-    const first = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, PORT, {
+    const first = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, ctx.port, {
       text: 'question one',
     });
-    const second = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, PORT, {
+    const second = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, ctx.port, {
       text: 'question two',
     });
 
     assert.strictEqual(first.status, 202);
     assert.strictEqual(second.status, 409);
-    const secondBody = second.data as { ok: boolean; error: string; detail: string };
-    assert.strictEqual(secondBody.ok, false);
-    assert.strictEqual(secondBody.error, 'TURN_IN_FLIGHT');
-    assert.match(secondBody.detail, /^Turn already in flight on sid=/);
+    const secondBody = second.data as { error: { code: string; message: string } };
+    assert.strictEqual(secondBody.error.code, 'conflict');
+    assert.match(secondBody.error.message, /^Turn already in flight on sid=/);
+  });
+
+  it('невалидный MR escape возвращает structured HTTP error вместо unhandled rejection', async () => {
+    const { status, data } = await postJson('/api/mr/%E0%A4%A/chat', ctx.port, {
+      text: 'will not be routed',
+    });
+
+    assert.strictEqual(status, 500);
+    assert.deepStrictEqual(data, {
+      error: { code: 'degraded', message: 'Internal server error' },
+    });
+  });
+
+  it('context overflow переиздаёт turn через durable digest без duplicate SSE answer', async () => {
+    const mrRef = 'group/proj!overflow';
+    ctx.openCodeMock.seed('overflow', { answer: 'recovered answer', mutations: [] });
+    const originalPrompt = ctx.pool.prompt.bind(ctx.pool);
+    let calls = 0;
+    mock.method(ctx.pool, 'prompt', async (sid: string, opts: PromptOpts) => {
+      calls += 1;
+      if (calls === 1)
+        return composeError('SESSION_ERROR', 'context overflow: token limit reached');
+      return originalPrompt(sid, opts);
+    });
+
+    const streamClient = await connectSseClient(ctx.port, mrRef);
+    await streamClient.waitForNext();
+    const result = await postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, ctx.port, {
+      text: 'overflow question',
+    });
+    assert.equal(result.status, 202);
+
+    let frame = '';
+    while (!frame.startsWith('event: turn_done')) frame = await streamClient.waitForNext();
+    const payload = JSON.parse(frame.split('data: ')[1] ?? '{}') as { turn: { answer: string } };
+    assert.equal(payload.turn.answer, 'recovered answer');
+    assert.equal(calls, 2);
+    streamClient.destroy();
   });
 });
 
 describe('ChatRouter — POST /chat/stop', () => {
   let ctx: ChatRouterContext;
-  const PORT = 4207;
 
   before(async () => {
-    ctx = await createChatRouterContext(PORT);
+    ctx = await createChatRouterContext(0);
   });
 
   after(async () => {
@@ -195,16 +242,16 @@ describe('ChatRouter — POST /chat/stop', () => {
     // posted text below is 'stop me' — OpenCodeMock keys off its first word
     ctx.openCodeMock.seed('stop', { answer: 'one two three four five', mutations: [] });
 
-    const streamClient = await connectSseClient(PORT, mrRef);
+    const streamClient = await connectSseClient(ctx.port, mrRef);
     await streamClient.waitForNext(); // initial `retry:` hint
 
-    void postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, PORT, { text: 'stop me' });
+    void postJson(`/api/mr/${encodeURIComponent(mrRef)}/chat`, ctx.port, { text: 'stop me' });
     await streamClient.waitForNext(); // first `token` frame confirms the turn is streaming
 
     const stopStart = performance.now();
     const { status, data } = await postJson(
       `/api/mr/${encodeURIComponent(mrRef)}/chat/stop`,
-      PORT,
+      ctx.port,
       {}
     );
     const stopElapsedMs = performance.now() - stopStart;

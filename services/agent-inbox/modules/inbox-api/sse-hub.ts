@@ -1,6 +1,6 @@
 // @file: SseHub — per-MR SSE subscriber registry; one broadcast channel per MR serves both token stream and mutation/refresh events to every connected client (D-100, D-110).
-// @consumers: ChatRouter, MutateRouter (TSK-129)
-// @tasks: TSK-129
+// @consumers: ChatRouter, MutateRouter (TSK-129), StreamRouter, BoardProjection
+// @tasks: TSK-129, TSK-162
 
 import type { ServerResponse } from 'node:http';
 import { logger } from '#logger';
@@ -11,10 +11,19 @@ import type { ChatErrorCode } from '../inbox-chat/errors.ts';
 export type SseFrame =
   | { type: 'token'; token: string }
   | { type: 'turn_done'; turn: ChatTurn }
-  | { type: 'mutation'; mutation: MutationProposal }
+  | { type: 'mutation'; mutation: MutationProposal; snapshotId?: string }
   | { type: 'refresh' }
   | { type: 'error'; error: ChatErrorCode; detail: string }
-  | { type: 'dryrun'; channel: 'mr' | 'dm'; line: string };
+  | { type: 'dryrun'; channel: 'mr' | 'dm'; line: string }
+  | { type: 'board_hint'; timestamp: string }
+  | { type: 'task_update'; taskId: string; status: string; progress?: string }
+  | {
+      type: 'widget_update';
+      widgetId: string;
+      bump?: string;
+      resolved?: boolean;
+      payload?: unknown;
+    };
 
 /**
  * @purpose Registry of active SSE connections keyed by MR reference — a single channel per MR
@@ -130,6 +139,9 @@ export class SseHub {
       case 'refresh':
       case 'error':
       case 'dryrun':
+      case 'board_hint':
+      case 'task_update':
+      case 'widget_update':
         return `event: ${frame.type}\ndata: ${JSON.stringify(frame)}\n\n`;
       default: {
         const exhaustive: never = frame;

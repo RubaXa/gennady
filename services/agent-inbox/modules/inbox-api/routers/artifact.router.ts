@@ -1,10 +1,11 @@
 // @file: ArtifactRouter — GET /api/mr/:id/artifacts, GET /api/mr/:id/artifact?path= for the artifact browser.
 // @consumers: HttpServer
-// @tasks: TSK-106, TSK-122
+// @tasks: TSK-106, TSK-122, TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { logger } from '#logger';
 import type { BoardProviderPort } from '../board-provider.port.ts';
-import { sendJson, sendError } from '../http-helpers.ts';
+import { sendDomainError, sendJson, sendError } from '../http-helpers.ts';
 
 /** @purpose Regex pattern for matching GET /api/mr/:id/artifacts (list) requests. */
 const ARTIFACTS_LIST_RE = /^\/api\/mr\/(.+)\/artifacts$/;
@@ -66,6 +67,7 @@ export class ArtifactRouter {
         this._handleContent(res, pathname, url.searchParams.get('path'));
       }
     } catch (cause) {
+      logger.error('[ArtifactRouter#handle] [artifact → failed]', { cause });
       sendError(res, cause);
     }
   }
@@ -103,22 +105,14 @@ export class ArtifactRouter {
 
     // #region START_BLOCK_ARTIFACT_PATH_TRAVERSAL — invariant: path must resolve strictly inside reports/<mr>/
     if (!rawPath || !isSafeArtifactPath(rawPath)) {
-      sendJson(res, 400, {
-        ok: false,
-        error: 'CONFIG',
-        detail: 'Missing or unsafe path parameter',
-      });
+      sendDomainError(res, 400, 'invalid_input', 'Artifact path is missing or unsafe', 'path');
       return;
     }
     // #endregion END_BLOCK_ARTIFACT_PATH_TRAVERSAL
 
     const artifact = this._provider.readArtifact(mrId, rawPath);
     if (!artifact) {
-      sendJson(res, 404, {
-        ok: false,
-        error: 'NOT_FOUND',
-        detail: `Artifact not found: ${rawPath}`,
-      });
+      sendDomainError(res, 404, 'not_found', `Artifact not found: ${rawPath}`, 'path');
       return;
     }
 

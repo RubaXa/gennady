@@ -1,8 +1,11 @@
-// @file: HTTP helpers — sendJson, sendError, parseBody shared between HttpServer and routers.
+// @file: HTTP helpers — sendJson, sendDomainError, sendError, parseBody shared between HttpServer and routers.
 // @consumers: HttpServer, BoardRouter, MrRouter, AuditRouter
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
+
+/** @purpose Closed set of domain error codes per spec §4 — maps to 4xx HTTP responses. */
+export type ApiErrorCode = 'not_found' | 'invalid_input' | 'conflict' | 'degraded' | 'forbidden';
 
 /**
  * @purpose Send a JSON response with the given status code.
@@ -20,12 +23,36 @@ export function sendJson(res: ServerResponse, statusCode: number, data: unknown)
 }
 
 /**
- * @purpose Send a generic error response (500) for unexpected errors.
+ * @purpose Send a domain error response — structured envelope per spec §4: {error:{code,message,anchor?}}.
+ *   Domain errors → 4xx status; code from the closed ApiErrorCode set.
  * @param res Server response object.
- * @param _cause The error that triggered this response.
+ * @param statusCode HTTP status code (4xx for domain errors).
+ * @param code Machine-readable error code from the closed ApiErrorCode set.
+ * @param message Human-readable error message.
+ * @param [anchor] Optional anchor for UI to navigate to the failing field/section.
+ */
+export function sendDomainError(
+  res: ServerResponse,
+  statusCode: number,
+  code: ApiErrorCode,
+  message: string,
+  anchor?: string
+): void {
+  const body: { error: { code: string; message: string; anchor?: string } } = {
+    error: { code, message },
+  };
+  if (anchor) body.error.anchor = anchor;
+  sendJson(res, statusCode, body);
+}
+
+/**
+ * @purpose Send a generic error response (500) for unexpected/internal errors.
+ *   Uses the structured {error:{code,message}} envelope with code='degraded'.
+ * @param res Server response object.
+ * @param _cause The error that triggered this response — preserved for logging, not sent to client.
  */
 export function sendError(res: ServerResponse, _cause: unknown): void {
-  sendJson(res, 500, { ok: false, error: 'NETWORK', detail: 'Internal server error' });
+  sendJson(res, 500, { error: { code: 'degraded', message: 'Internal server error' } });
 }
 
 /**

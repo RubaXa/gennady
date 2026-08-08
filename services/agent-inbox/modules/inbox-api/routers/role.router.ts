@@ -4,7 +4,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';
-import { sendJson, sendError, parseBody } from '../http-helpers.ts';
+import { sendDomainError, sendJson, sendError, parseBody } from '../http-helpers.ts';
 
 /** @purpose Regex pattern for matching POST /api/role/:name/activate requests. */
 const ROLE_ACTIVATE_RE = /^\/api\/role\/([^/]+)\/activate$/;
@@ -53,21 +53,13 @@ export class RoleRouter {
     try {
       const body = await parseBody<ActivateBody>(req);
       if (!body || typeof body.active !== 'boolean') {
-        sendJson(res, 400, {
-          ok: false,
-          error: 'CONFIG',
-          detail: 'Missing required field: active',
-        });
+        sendDomainError(res, 400, 'invalid_input', 'Missing required field: active', 'active');
         return;
       }
 
       const result = this._provider.setRoleActive(roleName, body.active);
       if (!result.ok) {
-        sendJson(res, 404, {
-          ok: false,
-          error: 'NOT_FOUND',
-          detail: `Role not found: ${roleName}`,
-        });
+        sendDomainError(res, 404, 'not_found', `Role not found: ${roleName}`, 'role');
         return;
       }
 

@@ -32,7 +32,11 @@ import type { OpenCodePort } from '../../../services/agent-inbox/modules/inbox-o
  */
 function parseOptions(argv: string[]): { mocks: boolean; port?: number } {
   const mocks = argv.includes('--mocks');
-  const portArg = argv.find((a) => a.startsWith('--port='));
+  // Some embedded runners preserve a sparse argv slot after the nested `inbox serve` command;
+  // CLI parsing must ignore it instead of failing before the real HTTP process starts.
+  const portArg = argv.find(
+    (arg): arg is string => typeof arg === 'string' && arg.startsWith('--port=')
+  );
   const port = portArg ? Number(portArg.slice('--port='.length)) : undefined;
 
   if (port !== undefined && (!Number.isFinite(port) || port < 1 || port > 65535)) {
@@ -63,7 +67,9 @@ const FIXTURE_SEED: SeedState = { version: 1, mrs: { [FIXTURE_MR_URL]: { state: 
  * @returns The flag's value, or undefined when absent.
  */
 function parseValue(argv: string[], flag: string): string | undefined {
-  const inline = argv.find((a) => a.startsWith(`${flag}=`));
+  const inline = argv.find(
+    (arg): arg is string => typeof arg === 'string' && arg.startsWith(`${flag}=`)
+  );
   if (inline) return inline.slice(flag.length + 1);
   const idx = argv.indexOf(flag);
   return idx !== -1 ? argv[idx + 1] : undefined;
@@ -353,6 +359,7 @@ async function run(): Promise<number> {
           opencodeProcess: result.opencodeProcess,
           opencodePidFile: result.opencodePidFile,
           scheduler: result.scheduler,
+          backgroundVerifier: result.backgroundVerifier,
         });
       } catch {
         // Individual shutdown errors are logged inside gracefulShutdown

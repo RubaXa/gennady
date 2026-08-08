@@ -5,8 +5,17 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request as httpRequest } from 'node:http';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { HttpServer } from '../http-server.ts';
 import { BoardProviderMock } from '../board-provider.mock.ts';
+import { EventJournal } from '../../inbox-core/event-journal.ts';
+import { InboxRegistryAccess } from '../../inbox-core/inbox-registry.ts';
+import { DecisionJournal } from '../../inbox-core/decision-journal.ts';
+import { InMemoryTaskQueue } from '../../inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../../inbox-queue/task-registry.ts';
+import type { SyncSnapshot } from '../../inbox-vcs/sync.ts';
 
 /** @purpose Helper to make an HTTP request and collect response as text. */
 function fetchText(
@@ -43,12 +52,15 @@ function fetchText(
 describe('HttpServer — SPA fallback', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4180;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    const listeningPort = server.listeningPort();
+    if (!listeningPort) throw new Error('SPA fallback test server did not bind a TCP port');
+    port = listeningPort;
   });
 
   after(async () => {
@@ -56,7 +68,7 @@ describe('HttpServer — SPA fallback', () => {
   });
 
   it('returns 200 with HTML body for unknown non-API routes (SPA fallback)', async () => {
-    const { status, data, headers } = await fetchText('/some-page', PORT);
+    const { status, data, headers } = await fetchText('/some-page', port);
 
     assert.strictEqual(status, 200);
     assert.ok(headers['content-type']?.includes('text/html'), 'Content-Type should be text/html');
@@ -64,17 +76,18 @@ describe('HttpServer — SPA fallback', () => {
   });
 
   it('returns 404 for unknown API routes', async () => {
-    const { status, data } = await fetchText('/api/unknown', PORT);
+    const { status, data } = await fetchText('/api/unknown', port);
 
     assert.strictEqual(status, 404);
 
-    const body = JSON.parse(data) as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    const body = JSON.parse(data) as { error: { code: string; message: string; anchor?: string } };
+    assert.deepStrictEqual(body, {
+      error: { code: 'not_found', message: 'Unknown API route' },
+    });
   });
 
   it('handles CORS preflight (OPTIONS)', async () => {
-    const { status, headers } = await fetchText('/api/board', PORT, {
+    const { status, headers } = await fetchText('/api/board', port, {
       method: 'OPTIONS',
       headers: { origin: 'http://localhost:5173' },
     });
@@ -85,23 +98,22 @@ describe('HttpServer — SPA fallback', () => {
 });
 
 describe('HttpServer — graceful shutdown', () => {
-  const PORT = 4181;
-
   it('start and stop succeed without errors', async () => {
     const provider = new BoardProviderMock();
-    const server = new HttpServer({ port: PORT, boardProvider: provider });
+    const server = new HttpServer({ port: 0, boardProvider: provider });
 
     await server.start();
+    const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
 
     // Verify the server responds
-    const { status } = await fetchText('/api/board', PORT);
+    const { status } = await fetchText('/api/board', port);
     assert.strictEqual(status, 200);
 
     await server.stop();
 
     // After stop, new requests should fail
     try {
-      await fetchText('/api/board', PORT);
+      await fetchText('/api/board', port);
       assert.fail('Expected request to fail after server stop');
     } catch {
       // Expected: connection refused
@@ -110,12 +122,13 @@ describe('HttpServer — graceful shutdown', () => {
 
   it('active requests are handled during shutdown', async () => {
     const provider = new BoardProviderMock();
-    const server = new HttpServer({ port: PORT + 1, boardProvider: provider });
+    const server = new HttpServer({ port: 0, boardProvider: provider });
 
     await server.start();
+    const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
 
     // Start a request — it will have an active connection
-    const requestPromise = fetchText('/api/board', PORT + 1);
+    const requestPromise = fetchText('/api/board', port);
 
     // Wait a small tick for the request to establish connection
     await new Promise((r) => setTimeout(r, 50));
@@ -129,7 +142,7 @@ describe('HttpServer — graceful shutdown', () => {
 
   it('double stop is safe', async () => {
     const provider = new BoardProviderMock();
-    const server = new HttpServer({ port: PORT + 2, boardProvider: provider });
+    const server = new HttpServer({ port: 0, boardProvider: provider });
 
     await server.start();
     await server.stop();
@@ -139,7 +152,7 @@ describe('HttpServer — graceful shutdown', () => {
 
   it('double start rejects', async () => {
     const provider = new BoardProviderMock();
-    const server = new HttpServer({ port: PORT + 3, boardProvider: provider });
+    const server = new HttpServer({ port: 0, boardProvider: provider });
 
     await server.start();
     try {
@@ -150,5 +163,184 @@ describe('HttpServer — graceful shutdown', () => {
       assert.ok((err as Error).message.includes('already running'));
     }
     await server.stop();
+  });
+});
+
+describe('HttpServer — live VCS board truth (TSK-158)', () => {
+  it('serves canonical running work from the durable journal without external VCS calls', async () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'gennady-board-work-'));
+    const journal = new EventJournal(join(stateDir, 'events.jsonl'));
+    const registry = new InboxRegistryAccess(stateDir);
+    const snapshot: SyncSnapshot = {
+      mr: {
+        iid: '162',
+        project: 'group/api',
+        webUrl: 'https://gitlab.example.com/group/api/-/merge_requests/162',
+        title: 'canonical API card',
+        description: '',
+        author: 'alice',
+        reviewers: ['bob'],
+        approvedBy: [],
+        updatedAt: '2026-08-08T00:00:00.000Z',
+        draft: false,
+        state: 'opened',
+        role: 'reviewer',
+        events: [],
+        directlyAddressed: false,
+        todoIds: [],
+      },
+      role: 'reviewer',
+      attention: '⏳',
+      stage: 'review_needed',
+      approvals: { n: 0, m: 1, approvedBy: [] },
+      reviewers: ['bob'],
+      ci: { status: 'pending' },
+      threads: { open: 0, total: 0, awaitingMe: 0 },
+      headSha: 'head-162',
+      lastReviewedHeadSha: null,
+      updatedAt: '2026-08-08T00:00:00.000Z',
+      estimated: false,
+    };
+    await journal.append({
+      ts: '2026-08-08T00:00:01.000Z',
+      mr: 'group/api!162',
+      kind: 'task_created',
+      actor: 'queue',
+      payload: { taskId: '#162', type: 'review' },
+    });
+    await journal.append({
+      ts: '2026-08-08T00:00:02.000Z',
+      mr: 'group/api!162',
+      kind: 'task_status',
+      actor: 'queue',
+      payload: { taskId: '#162', status: 'running' },
+    });
+    const server = new HttpServer({
+      port: 0,
+      boardProvider: new BoardProviderMock(),
+      inboxApi: {
+        queue: new InMemoryTaskQueue(new TaskRegistry()),
+        decisionJournal: new DecisionJournal(journal),
+        journal,
+        registry,
+        snapshots: [snapshot],
+      },
+    });
+
+    await server.start();
+    const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
+    try {
+      const { status, data } = await fetchText('/api/board', port);
+      const payload = JSON.parse(data) as {
+        cards: Array<{
+          ref: string;
+          author: string;
+          myRole: string | null;
+          work: Record<string, unknown>;
+        }>;
+      };
+      assert.strictEqual(status, 200);
+      assert.deepStrictEqual(payload.cards[0], {
+        ref: 'group/api!162',
+        title: 'canonical API card',
+        author: 'alice',
+        myRole: 'reviewer',
+        attention: '⏳',
+        counters: {
+          approvals: '0/1',
+          reviewers: [{ user: 'bob', voted: false }],
+          ci: 'pending',
+          threads: '0/0',
+          awaitingMe: 0,
+          newCommits: 0,
+          unread: 0,
+        },
+        work: {
+          state: 'running',
+          label: 'review',
+          taskId: '#162',
+          startedAt: '2026-08-08T00:00:02.000Z',
+        },
+      });
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('refreshes /api/board from the configured SyncService source instead of the legacy provider', async () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'gennady-live-board-'));
+    const journal = new EventJournal(join(stateDir, 'events.jsonl'));
+    const registry = new InboxRegistryAccess(stateDir);
+    let sourceCalls = 0;
+    const snapshot: SyncSnapshot = {
+      mr: {
+        iid: '158',
+        project: 'group/live-project',
+        webUrl: 'https://gitlab.example.com/group/live-project/-/merge_requests/158',
+        title: 'authoritative VCS title',
+        description: '',
+        author: 'alice',
+        reviewers: ['bob'],
+        approvedBy: [],
+        updatedAt: '2026-08-08T00:00:00.000Z',
+        draft: false,
+        state: 'opened',
+        role: 'reviewer',
+        events: [],
+        directlyAddressed: false,
+        todoIds: [],
+      },
+      role: 'reviewer',
+      attention: '⏳',
+      stage: 'review_needed',
+      approvals: { n: 0, m: 1, approvedBy: [] },
+      reviewers: ['bob'],
+      ci: { status: 'pending' },
+      threads: { open: 0, total: 0, awaitingMe: 0 },
+      headSha: 'head-158',
+      lastReviewedHeadSha: null,
+      updatedAt: '2026-08-08T00:00:00.000Z',
+      estimated: false,
+    };
+    const server = new HttpServer({
+      port: 0,
+      boardProvider: new BoardProviderMock(),
+      inboxApi: {
+        queue: new InMemoryTaskQueue(new TaskRegistry()),
+        decisionJournal: new DecisionJournal(journal),
+        journal,
+        registry,
+        snapshots: [],
+        loadSnapshots: async () => {
+          sourceCalls += 1;
+          return [snapshot];
+        },
+      },
+    });
+
+    await server.start();
+    const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
+    try {
+      const { status, data } = await fetchText('/api/board', port);
+      const payload = JSON.parse(data) as {
+        cards: Array<{
+          title: string;
+          ref: string;
+          author: string;
+          myRole: string | null;
+          work: { state: string };
+        }>;
+      };
+
+      assert.strictEqual(status, 200);
+      assert.strictEqual(sourceCalls, 1);
+      assert.strictEqual(payload.cards.length, 1);
+      assert.strictEqual(payload.cards[0]?.title, 'authoritative VCS title');
+      assert.strictEqual(payload.cards[0]?.ref, 'group/live-project!158');
+      assert.strictEqual(payload.cards[0]?.author, 'alice');
+      assert.strictEqual(payload.cards[0]?.myRole, 'reviewer');
+    } finally {
+      await server.stop();
+    }
   });
 });

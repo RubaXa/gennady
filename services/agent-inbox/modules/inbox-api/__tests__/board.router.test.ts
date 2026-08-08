@@ -49,12 +49,13 @@ function fetchJson(
 describe('BoardRouter — GET /api/board', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4175;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -73,7 +74,7 @@ describe('BoardRouter — GET /api/board', () => {
       unassigned: [mr1],
     });
 
-    const { status, data } = await fetchJson('GET', '/api/board', PORT);
+    const { status, data } = await fetchJson('GET', '/api/board', port);
     assert.strictEqual(status, 200);
 
     const body = data as Record<string, unknown>;
@@ -93,7 +94,7 @@ describe('BoardRouter — GET /api/board', () => {
       unassigned: [mr1],
     });
 
-    const { status } = await fetchJson('GET', '/api/board', PORT);
+    const { status } = await fetchJson('GET', '/api/board', port);
     assert.strictEqual(status, 200);
 
     // Verify CORS header via raw request
@@ -102,7 +103,7 @@ describe('BoardRouter — GET /api/board', () => {
         const req = request(
           {
             hostname: 'localhost',
-            port: PORT,
+            port,
             path: '/api/board',
             method: 'GET',
             headers: { origin: 'http://localhost:5173' },
@@ -129,12 +130,10 @@ describe('BoardRouter — GET /api/board', () => {
 
   it('returns empty board when no data seeded', async () => {
     const emptyProvider = new BoardProviderMock();
-    // Port 4195 (not PORT + 1 = 4176) — 4176 collides with mr.router.test.ts's own PORT constant;
-    // node's test runner executes files concurrently, so sharing a port with another suite's
-    // server causes an intermittent EADDRINUSE (pre-existing flake, unrelated to this file).
-    const emptyServerPort = 4195;
-    const emptyServer = new HttpServer({ port: emptyServerPort, boardProvider: emptyProvider });
+    const emptyServer = new HttpServer({ port: 0, boardProvider: emptyProvider });
     await emptyServer.start();
+    const emptyServerPort =
+      emptyServer.listeningPort() ?? assert.fail('Expected kernel-assigned port');
 
     try {
       const { status, data } = await fetchJson('GET', '/api/board', emptyServerPort);

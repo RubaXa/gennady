@@ -182,12 +182,13 @@ function fetchJson(
 describe('MrRouter — POST /api/mr/:id/copy-fix-task', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4180;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -200,7 +201,7 @@ describe('MrRouter — POST /api/mr/:id/copy-fix-task', () => {
     const { status, data } = await fetchJson(
       'POST',
       `/api/mr/${encodeURIComponent(mrId)}/copy-fix-task`,
-      PORT
+      port
     );
 
     assert.strictEqual(status, 200);
@@ -210,16 +211,19 @@ describe('MrRouter — POST /api/mr/:id/copy-fix-task', () => {
     assert.strictEqual(body.delta, null);
   });
 
-  it('returns NOT_FOUND for unknown MR', async () => {
+  it('returns the canonical not_found envelope for an unknown MR', async () => {
     const { status, data } = await fetchJson(
       'POST',
       `/api/mr/${encodeURIComponent('https://unknown.example.com/mr/999')}/copy-fix-task`,
-      PORT
+      port
     );
 
     assert.strictEqual(status, 404);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(body.error, {
+      code: 'not_found',
+      message: 'MR not found: https://unknown.example.com/mr/999',
+      anchor: 'mr',
+    });
   });
 });

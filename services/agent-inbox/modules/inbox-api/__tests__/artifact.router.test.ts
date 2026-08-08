@@ -1,6 +1,6 @@
 // @file: Integration tests for ArtifactRouter — list artifacts, read content, path-traversal guard.
 // @consumers: node:test runner
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-162
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,7 +46,7 @@ function fetchJson(
 describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4190;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
@@ -71,8 +71,11 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
       }
     );
 
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    const listeningPort = server.listeningPort();
+    if (!listeningPort) throw new Error('ArtifactRouter test server did not bind a TCP port');
+    port = listeningPort;
   });
 
   after(async () => {
@@ -83,7 +86,7 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
 
   it('lists artifacts for an MR', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifacts`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 200);
     const body = data as { ok: boolean; artifacts: Array<{ name: string; path: string }> };
@@ -95,7 +98,7 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
 
   it('returns an empty list for unknown MR', async () => {
     const path = `/api/mr/${encodeURIComponent('https://unknown.example.com/mr/999')}/artifacts`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 200);
     const body = data as { ok: boolean; artifacts: unknown[] };
@@ -105,7 +108,7 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
 
   it('returns artifact content for a valid path', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent('REPORT.md')}`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 200);
     const body = data as { ok: boolean; content: string; kind: string };
@@ -116,7 +119,7 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
 
   it('returns artifact content for a nested path', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent('tracks/coverage.json')}`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 200);
     const body = data as { ok: boolean; content: string; kind: string };
@@ -126,41 +129,57 @@ describe('ArtifactRouter — GET /api/mr/:id/artifacts + /api/mr/:id/artifact', 
 
   it('returns 404 for an unknown artifact path', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent('MISSING.md')}`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 404);
-    const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(data, {
+      error: {
+        code: 'not_found',
+        message: 'Artifact not found: MISSING.md',
+        anchor: 'path',
+      },
+    });
   });
 
   it('returns 400 when path is missing', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 400);
-    const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'CONFIG');
+    assert.deepStrictEqual(data, {
+      error: {
+        code: 'invalid_input',
+        message: 'Artifact path is missing or unsafe',
+        anchor: 'path',
+      },
+    });
   });
 
   it('returns 400 for a path-traversal attempt (../../etc/passwd)', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent('../../etc/passwd')}`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 400);
-    const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'CONFIG');
+    assert.deepStrictEqual(data, {
+      error: {
+        code: 'invalid_input',
+        message: 'Artifact path is missing or unsafe',
+        anchor: 'path',
+      },
+    });
   });
 
   it('returns 400 for an absolute path attempt', async () => {
     const path = `/api/mr/${encodeURIComponent(mrId)}/artifact?path=${encodeURIComponent('/etc/passwd')}`;
-    const { status, data } = await fetchJson('GET', path, PORT);
+    const { status, data } = await fetchJson('GET', path, port);
 
     assert.strictEqual(status, 400);
-    const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'CONFIG');
+    assert.deepStrictEqual(data, {
+      error: {
+        code: 'invalid_input',
+        message: 'Artifact path is missing or unsafe',
+        anchor: 'path',
+      },
+    });
   });
 });

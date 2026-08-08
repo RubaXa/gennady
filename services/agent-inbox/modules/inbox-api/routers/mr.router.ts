@@ -6,7 +6,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { BoardProviderPort } from '../board-provider.port.ts';
 import type { AssignBody, ActionBody, ActionChoice } from '../types.ts';
-import { sendJson, sendError, parseBody } from '../http-helpers.ts';
+import { sendDomainError, sendJson, sendError, parseBody } from '../http-helpers.ts';
 
 /** @purpose Regex patterns for matching MR routes. */
 const MR_ASSIGN_RE = /^\/api\/mr\/(.+)\/assign$/;
@@ -107,14 +107,14 @@ export class MrRouter {
     const body = await parseBody<AssignBody>(req);
 
     if (!body || !body.role) {
-      sendJson(res, 400, { ok: false, error: 'CONFIG', detail: 'Missing required field: role' });
+      sendDomainError(res, 400, 'invalid_input', 'Missing required field: role', 'role');
       return;
     }
 
     const result = this._provider.assignMr(mrId, body.role, body.rights);
 
     if (!result.ok) {
-      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `MR not found: ${mrId}` });
+      sendDomainError(res, 404, 'not_found', `MR not found: ${mrId}`, 'mr');
       return;
     }
 
@@ -137,21 +137,19 @@ export class MrRouter {
     const body = await parseBody<ActionBody>(req);
 
     if (!body || !body.questionId || !body.choice) {
-      sendJson(res, 400, {
-        ok: false,
-        error: 'CONFIG',
-        detail: 'Missing required fields: questionId, choice',
-      });
+      sendDomainError(res, 400, 'invalid_input', 'Missing required fields: questionId, choice');
       return;
     }
 
     // #region START_VALIDATE_ACTION_CHOICE — invariant: EffectExecutor only dispatches the closed choice set
     if (!VALID_ACTION_CHOICES.has(body.choice)) {
-      sendJson(res, 400, {
-        ok: false,
-        error: 'CONFIG',
-        detail: `Invalid choice: ${body.choice} (expected one of post, approve, redispatch, skip)`,
-      });
+      sendDomainError(
+        res,
+        400,
+        'invalid_input',
+        `Invalid choice: ${body.choice} (expected one of post, approve, redispatch, skip)`,
+        'choice'
+      );
       return;
     }
     // #endregion END_VALIDATE_ACTION_CHOICE
@@ -163,7 +161,7 @@ export class MrRouter {
     });
 
     if (!result.ok) {
-      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `MR not found: ${mrId}` });
+      sendDomainError(res, 404, 'not_found', `MR not found: ${mrId}`, 'mr');
       return;
     }
 
@@ -181,7 +179,7 @@ export class MrRouter {
     const report = this._provider.getReport(mrId);
 
     if (!report) {
-      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `MR not found: ${mrId}` });
+      sendDomainError(res, 404, 'not_found', `MR not found: ${mrId}`, 'mr');
       return;
     }
 
@@ -199,7 +197,7 @@ export class MrRouter {
     const result = await this._provider.recordFixTaskCopy(mrId);
 
     if (!result) {
-      sendJson(res, 404, { ok: false, error: 'NOT_FOUND', detail: `MR not found: ${mrId}` });
+      sendDomainError(res, 404, 'not_found', `MR not found: ${mrId}`, 'mr');
       return;
     }
 

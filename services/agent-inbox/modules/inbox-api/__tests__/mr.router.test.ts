@@ -50,12 +50,13 @@ function fetchJson(
 describe('MrRouter — POST /api/mr/:id/assign', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4176;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -75,7 +76,7 @@ describe('MrRouter — POST /api/mr/:id/assign', () => {
     });
 
     const assignPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/assign`;
-    const { status, data } = await fetchJson('POST', assignPath, PORT, {
+    const { status, data } = await fetchJson('POST', assignPath, port, {
       role: 'reviewer',
     });
 
@@ -95,26 +96,30 @@ describe('MrRouter — POST /api/mr/:id/assign', () => {
     const { status, data } = await fetchJson(
       'POST',
       `/api/mr/${encodeURIComponent('https://unknown.example.com/mr/999')}/assign`,
-      PORT,
+      port,
       { role: 'reviewer' }
     );
 
     assert.strictEqual(status, 404);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(body.error, {
+      code: 'not_found',
+      message: 'MR not found: https://unknown.example.com/mr/999',
+      anchor: 'mr',
+    });
   });
 });
 
 describe('MrRouter — POST /api/mr/:id/action', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4177;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -135,11 +140,11 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
 
     // First assign to a role
     const assignPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/assign`;
-    await fetchJson('POST', assignPath, PORT, { role: 'reviewer' });
+    await fetchJson('POST', assignPath, port, { role: 'reviewer' });
 
     // Then execute action
     const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
-    const { status, data } = await fetchJson('POST', actionPath, PORT, {
+    const { status, data } = await fetchJson('POST', actionPath, port, {
       questionId: 'q1',
       choice: 'approve',
     });
@@ -159,14 +164,17 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
     const { status, data } = await fetchJson(
       'POST',
       `/api/mr/${encodeURIComponent('https://unknown.example.com/mr/999')}/action`,
-      PORT,
+      port,
       { questionId: 'q1', choice: 'approve' }
     );
 
     assert.strictEqual(status, 404);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(body.error, {
+      code: 'not_found',
+      message: 'MR not found: https://unknown.example.com/mr/999',
+      anchor: 'mr',
+    });
   });
 
   it('returns 400 for missing required fields', async () => {
@@ -181,11 +189,14 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
     });
 
     const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
-    const { status, data } = await fetchJson('POST', actionPath, PORT, {});
+    const { status, data } = await fetchJson('POST', actionPath, port, {});
 
     assert.strictEqual(status, 400);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
+    assert.deepStrictEqual(body.error, {
+      code: 'invalid_input',
+      message: 'Missing required fields: questionId, choice',
+    });
   });
 
   it('returns 400 for an unknown choice value', async () => {
@@ -200,15 +211,18 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
     });
 
     const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
-    const { status, data } = await fetchJson('POST', actionPath, PORT, {
+    const { status, data } = await fetchJson('POST', actionPath, port, {
       questionId: 'q1',
       choice: 'reject',
     });
 
     assert.strictEqual(status, 400);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'CONFIG');
+    assert.deepStrictEqual(body.error, {
+      code: 'invalid_input',
+      message: 'Invalid choice: reject (expected one of post, approve, redispatch, skip)',
+      anchor: 'choice',
+    });
   });
 
   for (const choice of ['post', 'approve', 'redispatch', 'skip'] as const) {
@@ -224,7 +238,7 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
       });
 
       const actionPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/action`;
-      const { status, data } = await fetchJson('POST', actionPath, PORT, {
+      const { status, data } = await fetchJson('POST', actionPath, port, {
         questionId: 'q1',
         choice,
         payload: choice === 'redispatch' ? { focus: 'security' } : undefined,
@@ -239,12 +253,13 @@ describe('MrRouter — POST /api/mr/:id/action', () => {
 describe('MrRouter — GET /api/mr/:id/report', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4178;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -274,7 +289,7 @@ describe('MrRouter — GET /api/mr/:id/report', () => {
     );
 
     const reportPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/report`;
-    const { status, data } = await fetchJson('GET', reportPath, PORT);
+    const { status, data } = await fetchJson('GET', reportPath, port);
 
     assert.strictEqual(status, 200);
 
@@ -293,25 +308,29 @@ describe('MrRouter — GET /api/mr/:id/report', () => {
     const { status, data } = await fetchJson(
       'GET',
       `/api/mr/${encodeURIComponent('https://unknown.example.com/mr/999')}/report`,
-      PORT
+      port
     );
 
     assert.strictEqual(status, 404);
     const body = data as Record<string, unknown>;
-    assert.strictEqual(body.ok, false);
-    assert.strictEqual(body.error, 'NOT_FOUND');
+    assert.deepStrictEqual(body.error, {
+      code: 'not_found',
+      message: 'MR not found: https://unknown.example.com/mr/999',
+      anchor: 'mr',
+    });
   });
 });
 
 describe('MrRouter — GET /api/mr/:id/audit', () => {
   let server: HttpServer;
   let provider: BoardProviderMock;
-  const PORT = 4179;
+  let port: number;
 
   before(async () => {
     provider = new BoardProviderMock();
-    server = new HttpServer({ port: PORT, boardProvider: provider });
+    server = new HttpServer({ port: 0, boardProvider: provider });
     await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
   });
 
   after(async () => {
@@ -330,7 +349,7 @@ describe('MrRouter — GET /api/mr/:id/audit', () => {
     });
 
     const auditPath = `/api/mr/${encodeURIComponent(mr.webUrl)}/audit`;
-    const { status, data } = await fetchJson('GET', auditPath, PORT);
+    const { status, data } = await fetchJson('GET', auditPath, port);
 
     assert.strictEqual(status, 200);
 
@@ -338,5 +357,47 @@ describe('MrRouter — GET /api/mr/:id/audit', () => {
     assert.strictEqual(body.ok, true);
     assert.ok(Array.isArray(body.events));
     assert.ok((body.events as Array<unknown>).length > 0);
+  });
+});
+
+describe('RoleRouter — POST /api/role/:name/activate', () => {
+  let server: HttpServer;
+  let provider: BoardProviderMock;
+  let port: number;
+
+  before(async () => {
+    provider = new BoardProviderMock();
+    provider.seed({ roles: [{ name: 'reviewer', active: true }], unassigned: [] });
+    server = new HttpServer({ port: 0, boardProvider: provider });
+    await server.start();
+    port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
+  });
+
+  after(async () => {
+    await server.stop();
+  });
+
+  it('returns the canonical invalid_input envelope for a malformed activation', async () => {
+    const { status, data } = await fetchJson('POST', '/api/role/reviewer/activate', port, {});
+
+    assert.strictEqual(status, 400);
+    assert.deepStrictEqual(data, {
+      error: {
+        code: 'invalid_input',
+        message: 'Missing required field: active',
+        anchor: 'active',
+      },
+    });
+  });
+
+  it('returns the canonical not_found envelope for an unknown role', async () => {
+    const { status, data } = await fetchJson('POST', '/api/role/unknown/activate', port, {
+      active: true,
+    });
+
+    assert.strictEqual(status, 404);
+    assert.deepStrictEqual(data, {
+      error: { code: 'not_found', message: 'Role not found: unknown', anchor: 'role' },
+    });
   });
 });
