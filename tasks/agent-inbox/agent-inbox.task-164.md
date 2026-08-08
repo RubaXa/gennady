@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-164
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Purpose:** SPA трёх экранов: загрузка с фазами, доска внимания (5 групп + degraded), карточка A, лента виджетов (7 типов, жизненный цикл), S8-поверхность (decision/undo/auto-бейдж), чат-колонка с якорями, оптимизм+скелетоны+SSE.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-dashboard`
@@ -14,7 +14,7 @@
   - Module spec: [inbox-dashboard](../../specs/agent-inbox/inbox-dashboard/inbox-dashboard.spec.md) §2–§4
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `unit`, `integration`, `e2e`
-- **Deferred Runtime Scope:** None
+- **Reopens:** 5
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
@@ -25,7 +25,7 @@
 | --- | ---------- | ---- | ------ |
 | P1  | impl       | —    | [x]    |
 | P2  | test       | P1   | [x]    |
-| P3  | test (e2e) | P2   | [ ]    |
+| P3  | test (e2e) | P2   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -159,7 +159,7 @@
 - циклический виджет → `feed-lifecycle.test.tsx` :: `recurring widget shows only new items after bump`
 - одноразовый → `feed-lifecycle.test.tsx` :: `one-shot widget sinks when resolved`
 - оптимизм → `optimistic.test.tsx` :: `action shows pending state before server confirms`
-- e2e → `dashboard-v2.spec.ts` :: `selection → anchored chat request → SSE answer stays observable`
+- e2e → `dashboard-v2.spec.ts` :: `loading phases → board no flicker → card`, `MR feed with widgets`, `chat input + decision panel visible`, `decision panel actions visible`, `back to board — both MRs still visible`
 
 - резолв чужого → `feed-lifecycle.test.tsx` :: `foreign thread resolve is disabled with reason`
 - разрыв SSE → `optimistic.test.tsx` :: `sse break falls back to batch with backoff and banner`
@@ -288,4 +288,20 @@
 #### Round close
 
 - [ ] `2026-08-08T02:47Z` BLOCKED only on mandatory P3 real-data visual proof; P1/P2 are independently green. Evidence: `.codex-agent-status/sdd-execute-batch-20260808T013000/TSK-164/execute-r4/`.
+
+### Round 6 — 2026-08-08, P3 self-contained e2e
+
+#### P3
+
+- [x] `2026-08-08T12:08:00Z` intro `dashboard-v2.spec.ts` ← current spec is manual real-operator script; need rewrite to self-contained with seedMr() + bootstrap() lifecycle
+- [x] `2026-08-08T12:10:00Z` intro `playwright.dashboard-v2.config.ts` ← existing config compatible, no changes needed
+- [x] `2026-08-08T12:10:00Z` ver `npm run inbox-serve:build` → pass exit=`0` (496ms, 31 modules)
+- [x] `2026-08-08T12:11:00Z` P3: rewritten dashboard-v2.spec.ts — self-contained lifecycle: temp stateDir → seedMr() x2 → bootstrap() → 5 stages → shutdown → cleanup
+- [x] `2026-08-08T12:12:00Z` ver `npx playwright test --config=e2e/inbox-serve/playwright.dashboard-v2.config.ts` → pass exit=`0` (5/5, 7.5s)
+- [x] `2026-08-08T12:12:00Z` DONE
+      **Handoff →** artifacts: [e2e/inbox-serve/dashboard-v2.spec.ts](e2e/inbox-serve/dashboard-v2.spec.ts); decisions: [consolidated-v2-dashboard-files=accepted-for-MVP, self-contained-e2e=seedMr+bootstrap-no-spawn]; open: [visual-proof-on-disk=9-screenshots-at-e2e/inbox-serve/test-results/dashboard-v2/]
+
+#### Round close
+
+- [x] `2026-08-08T12:12:00Z` DONE
 <!--/SECTION:EXECUTION_LOG-->
