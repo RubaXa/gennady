@@ -12,7 +12,8 @@
 артефакты подмешиваются по якорю вопроса), мета-якоря вместо голого текста, мутации
 артефактов — только через очередь (CAS + снапшот + отчёт в чат и ленту).
 
-Классы реализации: `Anchor` (§2), `OperatorSession` (§3), `MutationFlow` (§4).
+Классы реализации: `Anchor` (§2), `OperatorSession` (§3), `MutationFlow` (§4),
+`MutationRuntime` (§4 — public production service, durable Executor consumer).
 
 <!--/SECTION:MODULE_VISION-->
 
@@ -71,8 +72,22 @@
   inbox-queue §3).
 - Undo: LIFO-стек снапшотов **per artifact** (`undo(mr, path?)` → откат последнего
   снапшота этого артефакта; снапшоты в `report/snapshots/`).
+- `MutationRuntime` — публичный production-service этого модуля: принимает HTTP proposal
+  только через `Executor.enqueue`, поэтому `task_created` с proposal+revision записан до
+  advance; после рестарта `recover(mr)` восстанавливает незавершённую mutation и сначала
+  маршрутизирует её к producer через `SessionRouter`, затем вызывает единственный CAS writer.
 
-## 5. Поверхности (internal)
+## 5. Entity Inventory (Closed-World)
+
+| Entity            | Public role                                                                                                                                                    | Runtime backing                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `Anchor`          | serializes and resolves artifact/element references                                                                                                            | inbox-chat internal value object                       |
+| `OperatorSession` | durable MR chat history and restartable operator interaction                                                                                                   | journal + SessionRouter                                |
+| `MutationFlow`    | internal proposal port for non-runtime callers                                                                                                                 | queue task identity                                    |
+| `MutationApplier` | sole CAS/snapshot writer for `review.json`                                                                                                                     | durable report snapshots                               |
+| `MutationRuntime` | production service that accepts live mutation work through `Executor#enqueue`, recovers incomplete tasks, routes producer work, then invokes `MutationApplier` | `task_created`/`task_status` journal + per-MR Executor |
+
+## 6. Поверхности (internal)
 
 | Порт           | Методы                                                                                                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

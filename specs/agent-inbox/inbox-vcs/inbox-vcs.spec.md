@@ -93,9 +93,9 @@ GitLab недоступен → syncState: degraded (корень §6.5).
 
 ## 6. Поверхности
 
-| Порт      | Методы                                                                                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `VcsPort` | getInbox, getMrDetail, getDiscussions, compareSha, postNote(…, discussionId?), react, resolve, approve, editDescription, getHost (SSRF-валидация входящих URL, deeplink) |
+| Порт      | Методы                                                                                                                                                                                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VcsPort` | 12 методов: getCurrentUserLogin (identity), getInbox, getMrDetail, getDiscussions, compareSha, postNote(…, discussionId?), postDiscussion (alias нового треда), react, resolve, approve, editDescription, getHost (SSRF-валидация входящих URL, deeplink) |
 
 ## 7. Приёмка
 

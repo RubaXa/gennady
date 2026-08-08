@@ -6,7 +6,7 @@
 
 - **Task-ID:** TSK-160
 - **Status:** [x] DONE
-- **Reopens:** 1 (2026-08-06 — audit: отсутствовал session-registry.test.ts; добавлен P2-раунд с 20 контракт-тестами)
+- **Reopens:** 4 (2026-08-08 — audit R4: terminal RoleInstance release теперь проходит через boot-owned lifecycle без двойного освобождения слота)
 - **Purpose:** Один opencode-сервер, жизненный цикл сессии create→work→park(TTL)→resume→close, session registry, единый приоритетный пул, единый маршрут промптов (Handlebars+кирпичи, указатели), X-ray + tool-trace (источник coverage-гейта), outcome-лесенка.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-opencode`
@@ -59,6 +59,8 @@
   - `services/agent-inbox/modules/inbox-opencode/__tests__/session-lifecycle.test.ts`
   - `services/agent-inbox/modules/inbox-opencode/__tests__/session-pool.test.ts`
   - `services/agent-inbox/modules/inbox-opencode/__tests__/prompt-compile.test.ts`
+  - `services/agent-inbox/modules/inbox-opencode/__tests__/session-registry.test.ts`
+  - `services/agent-inbox/serve/__tests__/bootstrap.test.ts`
 - **Inputs:** P1 handoff
 - **Exit:** все BDD-сценарии §4 покрыты; `npm test` по файлам exit 0
 <!--/SECTION:PHASE_P2-->
@@ -133,15 +135,16 @@
 
 ## 6. Test Scenario Coverage
 
-- типинг-контракт → `session-registry.test.ts` :: `contract: opencode port and session registry`
+- типинг-контракт → `session-registry.test.ts` :: `SessionRegistry`
 - park/resume → `session-lifecycle.test.ts` :: `should resume within TTL, returning true`
-- TTL close → `session-lifecycle.test.ts` :: `should return false for closed session` (+ reaper suite)
+- TTL close → `session-lifecycle.test.ts` :: `should close the adapter session, clear routing, and journal the terminal transition` (+ `should close only expired parked sessions, leaving fresh ones`)
 - пул → `session-pool.test.ts` :: `GIVEN pool with maxSessions=3 WHEN create() THEN returns sid` (+ priority/aging suite)
-- указатели → `prompt-compile.test.ts` :: `compiled prompt carries pointers not inlined content`
+- указатели → `prompt-compile.test.ts` :: `should emit task pointer as a file path, not inline content` (+ `should list artifact file paths, not their content`)
 
-- лесенка → `session-lifecycle.test.ts` :: `outcome classification drives continue restart ladder`
-- один сервер → `session-lifecycle.test.ts` :: `stale pid yields exactly one opencode server`
-- TTL-resume → `session-lifecycle.test.ts` :: `expired session is not resurrected new session gets artifact pointer`
+- лесенка → `session-lifecycle.test.ts` :: `resolveOutcomeLadder` :: `should return continue on first non-OK outcome` / `should return restart on second non-OK outcome`
+- один сервер → `bootstrap.test.ts` :: `detects the stale pid, terminates the real orphan, and boots a fresh connected opencode`
+- TTL-resume → `session-lifecycle.test.ts` :: `should close expired parked session and return false`
+- reachable lifecycle → `bootstrap.test.ts` :: `binds the boot-owned lifecycle to the live adapter and clears TTL-closed routing`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -196,6 +199,80 @@
 #### Round close
 
 - [x] 2026-08-06T12:10:00Z DONE
+
+### Round 3 — 2026-08-08, audit-driven remediation: F-01..F-05 (runtime lifecycle)
+
+#### P1
+
+- [x] 2026-08-08T23:10:00Z decision UnifiedPool=single-bootstrap-instance ← chat and RoleScheduler receive the same priority pool; no independent capacity remains
+- [x] 2026-08-08T23:10:00Z intro boot-owned SessionRegistry + SessionLifecycle ← lifecycle is bound to the finalized OpenCode adapter and a 60s unref'd TTL reaper is reachable from bootstrap
+- [x] 2026-08-08T23:10:00Z intro OpenCodePort park/resume/messages ← real, mock, and degraded adapters implement the complete module-spec surface
+- [x] 2026-08-08T23:10:00Z decision lifecycle close=adapter-close+registry-remove ← expired/dead sessions cannot be resumed through stale routing
+- [x] 2026-08-08T23:10:00Z targets ← [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-opencode/opencode.port.ts, services/agent-inbox/modules/inbox-opencode/opencode.real.ts, services/agent-inbox/modules/inbox-opencode/opencode.mock.ts, services/agent-inbox/modules/inbox-opencode/session-lifecycle.ts]
+- [x] 2026-08-08T23:10:00Z ver npm run type-check → pass exit=0
+- [x] 2026-08-08T23:10:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-opencode/opencode.port.ts, services/agent-inbox/modules/inbox-opencode/opencode.real.ts, services/agent-inbox/modules/inbox-opencode/opencode.mock.ts, services/agent-inbox/modules/inbox-opencode/session-lifecycle.ts]; decisions: [UnifiedPool=single-bootstrap-instance, lifecycle=boot-owned-and-adapter-bound, close=clears-registry]; open: []
+
+#### P2
+
+- [x] 2026-08-08T23:10:00Z intro bootstrap lifecycle integration ← booted runtime proves adapter park/resume/close and registry clearing
+- [x] 2026-08-08T23:10:00Z decision BDD names=verbatim-reconciled ← §6 now points to exact existing test names; P2 target inventory includes registry and bootstrap coverage
+- [x] 2026-08-08T23:10:00Z ver npm run type-check → pass exit=0
+- [x] 2026-08-08T23:10:00Z ver npm test -- "services/agent-inbox/modules/inbox-opencode/**tests**/\*.test.ts" → pass exit=0 (158 tests)
+- [x] 2026-08-08T23:10:00Z ver node --import tsx --test --experimental-test-module-mocks --test-name-pattern="binds the boot-owned lifecycle" services/agent-inbox/serve/**tests**/bootstrap.test.ts → pass exit=0
+- [x] 2026-08-08T23:10:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-opencode/opencode.port.ts, services/agent-inbox/modules/inbox-opencode/opencode.real.ts, services/agent-inbox/modules/inbox-opencode/opencode.mock.ts, services/agent-inbox/modules/inbox-opencode/session-lifecycle.ts, services/agent-inbox/serve/__tests__/bootstrap.test.ts]; decisions: [UnifiedPool=single-bootstrap-instance, lifecycle=boot-owned-and-adapter-bound, close=clears-registry]; open: []
+
+#### Round close
+
+- [x] 2026-08-08T23:10:00Z DONE
+
+### Round 4 — 2026-08-08, audit-driven remediation: reachable session registration
+
+#### P1
+
+- [x] 2026-08-08T23:16:00Z intro lifecycle-aware pool acquisition ← `SessionPool` invokes bootstrap registration before returning a chat/role SID; registration captures `{taskId, mr, artifacts, model}` and starts work
+- [x] 2026-08-08T23:16:00Z decision lifecycle close=pool-eviction ← terminal TTL/explicit close releases the shared pool slot and drains queued work
+- [x] 2026-08-08T23:16:00Z targets ← [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-opencode/session-pool.ts, services/agent-inbox/modules/inbox-opencode/session-lifecycle.ts, services/agent-inbox/modules/inbox-chat/chat-session.ts, services/agent-inbox/modules/inbox-roles/role-instance.ts]
+- [x] 2026-08-08T23:16:00Z ver npm run type-check → pass exit=0
+- [x] 2026-08-08T23:16:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-opencode/session-pool.ts, services/agent-inbox/modules/inbox-opencode/session-lifecycle.ts, services/agent-inbox/modules/inbox-chat/chat-session.ts, services/agent-inbox/modules/inbox-roles/role-instance.ts]; decisions: [pool-acquisition=registry-before-sid-visible, lifecycle-close=evicts-shared-pool-slot]; open: []
+
+#### P2
+
+- [x] 2026-08-08T23:16:00Z intro reachable bootstrap proof ← boot-owned `sessionPool.create()` registers a live adapter session, then park→resume→close clears both routing and pool capacity
+- [x] 2026-08-08T23:16:00Z targets ← [services/agent-inbox/serve/__tests__/bootstrap.test.ts]
+- [x] 2026-08-08T23:16:00Z ver node --import tsx --test --experimental-test-module-mocks --test-name-pattern="binds the boot-owned lifecycle" services/agent-inbox/serve/**tests**/bootstrap.test.ts → pass exit=0 (1 test)
+- [x] 2026-08-08T23:16:00Z ver npm test -- "services/agent-inbox/modules/inbox-opencode/**tests**/\*.test.ts" → pass exit=0 (158 tests)
+- [x] 2026-08-08T23:16:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/__tests__/bootstrap.test.ts]; decisions: [bootstrap-proof=uses-production-composition-seam-not-direct-adapter-registration]; open: []
+
+#### Round close
+
+- [x] 2026-08-08T23:16:00Z DONE
+
+### Round 5 — 2026-08-08, audit R3 blocker remediation: terminal role release
+
+#### P1
+
+- [x] 2026-08-08T23:22:00Z decision terminal pooled role close=lifecycle-owned ← `SessionPool.release()` delegates registered sessions to SessionLifecycle; lifecycle closes the adapter and clears SessionRegistry, then its `onClosed` hook evicts exactly one pool slot without recursion
+- [x] 2026-08-08T23:22:00Z intro primary RoleInstance session via shared pool ← regular session nodes now use the same lifecycle-aware pool as parallel lenses, preserving direct-adapter fallback for isolated callers
+- [x] 2026-08-08T23:22:00Z targets ← [services/agent-inbox/modules/inbox-opencode/session-pool.ts, services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-roles/role-instance.ts]
+- [x] 2026-08-08T23:22:00Z ver npm run type-check → pass exit=0
+- [x] 2026-08-08T23:22:00Z DONE
+
+#### P2
+
+- [x] 2026-08-08T23:22:00Z intro terminal role/pool integration proof ← actual RoleInstance session success invokes SessionPool.release and proves adapter termination, registry removal, capacity release, and idempotent second release
+- [x] 2026-08-08T23:22:00Z targets ← [services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts]
+- [x] 2026-08-08T23:22:00Z ver node --import tsx --test services/agent-inbox/modules/inbox-roles/**tests**/role-instance.test.ts → pass exit=0 (19 tests)
+- [x] 2026-08-08T23:22:00Z ver node --import tsx --test services/agent-inbox/modules/inbox-opencode/**tests**/session-pool.test.ts → pass exit=0 (21 tests)
+- [x] 2026-08-08T23:22:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-opencode/session-pool.ts, services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-roles/role-instance.ts, services/agent-inbox/modules/inbox-roles/__tests__/role-instance.test.ts]; decisions: [registered-release=lifecycle-owned, lifecycle-onClosed=evict-only, role-primary-session=shared-pool]; open: []
+
+#### Round close
+
+- [x] 2026-08-08T23:22:00Z DONE
 <!--/SECTION:EXECUTION_LOG-->
 
 <!--SECTION:AUDIT_ROUNDS-->
@@ -211,4 +288,9 @@
 
 - Verdict: FAIL — ticket-hygiene: нет Audit Rounds секции, нет Reopens, §6 не verbatim, сущности не в спеке.
 - Fix (verification round): секция добавлена, Reopens: 1, §6 выровнен, F-05 → спека.
+
+### Audit R3 — 2026-08-08
+
+- Verdict: FAIL — 🔴 3 runtime gaps (two pools, lifecycle not booted, incomplete OpenCodePort), 🟠 2 coverage/log gaps.
+- Fix: Round 3 binds one pool and reachable lifecycle/reaper, completes the port/adapters, adds boot integration proof and reconciles P2/§6.
 <!--/SECTION:AUDIT_ROUNDS-->

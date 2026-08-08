@@ -13,6 +13,17 @@ import type { VcsUser } from '../entities/vcs-user.type.ts';
 
 type RequestFn = (path: string, init?: RequestInit) => Promise<unknown>;
 
+/** @purpose Error enriched with the server-directed retry delay for a 429 response. */
+type GitlabRequestError = Error & { retryAfter?: number };
+
+/** @purpose Preserve GitLab's Retry-After header at the caller-owned retry boundary. */
+function createGitlabRequestError(response: Response, message: string): GitlabRequestError {
+  const error = new Error(message) as GitlabRequestError;
+  const retryAfter = Number(response.headers.get('retry-after'));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfter = retryAfter;
+  return error;
+}
+
 /**
  * @purpose Options for creating a GitLab API client: base URL and access token.
  * @consumer VcsGitlabClient
@@ -70,7 +81,10 @@ export class VcsGitlabClient extends VcsClient {
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(`GitLab request failed: ${response.status} ${response.statusText} ${text}`);
+        throw createGitlabRequestError(
+          response,
+          `GitLab request failed: ${response.status} ${response.statusText} ${text}`
+        );
       }
       if (responseType === 'text') {
         return response.text();
@@ -95,7 +109,8 @@ export class VcsGitlabClient extends VcsClient {
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        throw new Error(
+        throw createGitlabRequestError(
+          response,
           `GitLab GraphQL request failed: ${response.status} ${response.statusText} ${text}`
         );
       }

@@ -6,6 +6,7 @@
 
 - **Task-ID:** TSK-156
 - **Status:** [x] DONE
+- **Reopens:** 2
 - **Purpose:** Фундамент v2: append-only журнал `events.jsonl` (строчный append, seq/cursor, fsync), глобальный системный журнал, layout `mrs/<mr>/`, registry-поля (`lastReadAt`, `capabilities`), reuse-инвентарь B3.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-core`
@@ -137,7 +138,7 @@
 
 - seq переживает рестарт → `event-journal.test.ts` :: `seq survives restart without reuse`
 - изоляция MR → `event-journal.test.ts` :: `journals are isolated per MR`
-- битый реестр → `inbox-registry.test.ts` :: `corrupted registry treated as empty and rebuilt safely`
+- битый реестр → `inbox-registry.test.ts` :: `GIVEN corrupted registry and durable GitLab/journal inputs WHEN updateDelta THEN rebuilds entries with default read cursor and journal-derived capabilities`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -175,4 +176,40 @@
 
 - [x] 2026-08-06T09:10:00Z sync agent-inbox+root trackers
 - [x] 2026-08-06T09:10:00Z DONE
+
+### Round 2 — 2026-08-08, audit-reconciliation
+
+#### P1/P2
+
+- [x] 2026-08-08T00:00:00Z reconciliation GAP-1=confirmed-and-remediated ← Round 1 correctly identified that a corrupt line must not hide later valid entries; current replay already skips corrupt mid-file lines, and now removes an unterminated final crash tail before append so a subsequent JSON record cannot merge into it.
+- [x] 2026-08-08T00:00:00Z reconciliation registry-scenario-owner=inbox-registry.test.ts ← removed the duplicate, non-exercising registry assertion from `event-journal.test.ts`; the BDD scenario remains covered by `InboxRegistryAccess — GIVEN corrupted registry file WHEN updateDelta THEN treated as empty (all NEW)`.
+- [x] 2026-08-08T00:00:00Z test `truncated tail is discarded on replay` strengthened ← fixture has no final newline; replay truncates only the torn tail and the following append/read yields seq 3 as a separate valid entry.
+- [x] 2026-08-08T00:00:00Z ver `npm test -- services/agent-inbox/modules/inbox-core/__tests__/event-journal.test.ts` → pass (8/8)
+- [x] 2026-08-08T00:00:00Z ver `npm test -- services/agent-inbox/modules/inbox-core/__tests__/inbox-registry.test.ts` → pass (10/10)
+- [x] 2026-08-08T00:00:00Z ver `npm run type-check` → pass exit=0; `npx prettier --check` (3 changed files) → pass; `git diff --check` → pass; `which opencode` → `/opt/homebrew/bin/opencode`
+- [x] 2026-08-08T00:00:00Z DONE
+
+### Round 3 — 2026-08-08, audit-r1-remediation
+
+#### P1
+
+- [x] 2026-08-08T00:00:00Z remediation registry-rebuild=implemented ← `updateDelta()` reconstructs a lost/corrupt registry entry from GitLab MR identity and its canonical per-MR `events.jsonl`; `lastReadAt` defaults absent and `capabilities` are rederived from durable proposal/decision history.
+- [x] 2026-08-08T00:00:00Z remediation empty-registry-alias=removed ← each missing/corrupt load creates independent entries, preventing one recovery from leaking into a later boot.
+- [x] 2026-08-08T00:00:00Z ver `npm run type-check` → pass exit=0
+- [x] 2026-08-08T00:00:00Z DONE
+      **Handoff →** artifacts: [cli/cmd/inbox/_core/logic/inbox-registry.logic.ts, services/agent-inbox/modules/inbox-core/inbox-registry.ts]; decisions: [registry-rebuild=GitLab-identity+per-MR-journal, lastReadAt=default-absent, capabilities=journal-derived]; open: []
+
+#### P2
+
+- [x] 2026-08-08T00:00:00Z test registry-recovery-BDD ← corrupt `inbox-registry.json` plus 20 accepted durable `post_findings` decisions rebuilds the MR as NEW, preserves default `lastReadAt`, restores `post_findings=auto`, and defaults unearned `approve=proposal`.
+- [x] 2026-08-08T00:00:00Z ver `npm test -- services/agent-inbox/modules/inbox-core/__tests__/inbox-registry.test.ts` → pass (10/10)
+- [x] 2026-08-08T00:00:00Z ver `npm test -- services/agent-inbox/modules/inbox-core/__tests__/event-journal.test.ts` → pass (8/8)
+- [x] 2026-08-08T00:00:00Z ver `npm run type-check` → pass exit=0; `npx gennady lint` (2 production files) → clean; `npx prettier --check` (3 changed TypeScript files + ticket) → pass; `git diff --check` → pass
+- [x] 2026-08-08T00:00:00Z DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-core/__tests__/inbox-registry.test.ts]; decisions: [BDD-scenario-owner=inbox-registry.test.ts, recovery-inputs=GitLab+journals]; open: []
+
+#### Round close
+
+- [x] 2026-08-08T00:00:00Z audit-r1 findings F-01/F-02 remediated
+- [x] 2026-08-08T00:00:00Z DONE
 <!--/SECTION:EXECUTION_LOG-->

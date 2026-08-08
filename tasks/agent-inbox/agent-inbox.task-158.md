@@ -6,6 +6,7 @@
 
 - **Task-ID:** TSK-158
 - **Status:** [x] DONE
+- **Reopens:** 5
 - **Purpose:** Слой правды GitLab: poll/detail ярусы, роль из GitLab, детерминированная ось внимания + fallback без detail, стадия (внутренняя), фон-верификация ~1/мин, эффекты с правами и failure-матрицей.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-vcs`
@@ -70,7 +71,7 @@
 
 **Scenario:** типинг-контракт VcsPort/AttentionState [`contract`]
 
-- **Given** порт (11 методов) и замкнутый AttentionState (5 значений + «оценочно»)
+- **Given** порт (12 методов: 10 базовых + getCurrentUserLogin + postDiscussion) и замкнутый AttentionState (5 значений + «оценочно»)
 - **When** type-check
 - **Then** postNote принимает опциональный discussionId; discussions несут position {path,line,headSha}
 
@@ -121,10 +122,10 @@
 
 ## 5. Verification
 
-| Command                                                         | Required by      |
-| --------------------------------------------------------------- | ---------------- |
-| `npm run type-check`                                            | typescript-rules |
-| `npm test -- services/agent-inbox/modules/inbox-vcs/__tests__/` | node-test        |
+| Command                                                                    | Required by      |
+| -------------------------------------------------------------------------- | ---------------- |
+| `npm run type-check`                                                       | typescript-rules |
+| `npm test -- "services/agent-inbox/modules/inbox-vcs/__tests__/*.test.ts"` | node-test        |
 
 <!--/SECTION:VERIFICATION-->
 
@@ -141,11 +142,13 @@
 - T4: смена sha → 🔀 → `attention.test.ts` :: `T4: sha change for non-reviewer → 🔀 (re-review needed)`
 - T5: myLogin из getCurrentUser → `effects.test.ts` :: `T5: getCurrentUserLogin returns my login, not first inbox author`
 - резолв чужого → `effects.test.ts` :: `resolve of foreign thread is rejected deterministically`
-- rate-limit → `effects.test.ts` :: `rate limit backs off without failing sync`
+- rate-limit → `effects.test.ts` :: `rate limit backs off and completes the two-tier poll`
 
 - сбой сети на эффекте → `effects.test.ts` :: `network failure on effect leaves no marker and retries safely`
 - SSRF → `effects.test.ts` :: `foreign host url is rejected`
 - пагинация → `background-verify.test.ts` :: `discussions pagination is fully traversed`
+- GitLab REST pagination backing → `vcs-gitlab-merge-discussions.pagination.test.ts` :: `collects every REST page before returning discussions to inbox-vcs`
+- GitLab approval denominator backing → `vcs-gitlab-inbox.test.ts` :: `getActionable — exposes GraphQL approvalsRequired for the poll-tier approval denominator`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -262,4 +265,78 @@
 
 - [x] 2026-08-06T11:00:00Z sync agent-inbox+root trackers (already DONE from R1)
 - [x] 2026-08-06T11:00:00Z DONE
+
+### Reconciliation — 2026-08-08, audit-remediation follow-up
+
+- [x] `2026-08-08T00:00:00+03:00` reconcile `§5-test-command` → the previous directory argument is invalid for this ESM/tsx runner; the normative command now uses the verified quoted `*.test.ts` glob.
+- [x] `2026-08-08T00:00:00+03:00` reconcile `VcsGitlabClient discussion pagination` → concrete `VcsGitlabMergeDiscussions#getAll` traverses REST pages at `per_page=100`; regression coverage proves a 100+ discussion result reaches the consumer intact. `VcsPort` cursor pages remain the inbox-vcs boundary contract, while the concrete client supplies the full REST source.
+- [x] `2026-08-08T00:00:00+03:00` reconcile `approvals backing` → concrete `VcsGitlabInbox` requests and normalizes GraphQL `approvalsRequired`; `SyncService` preserves that poll-tier denominator when REST detail does not expose it. Regression coverage verifies both query and value propagation.
+
+### Round 4 — 2026-08-08, audit-driven remediation: B1 real adapter, M verifier discussions/BDD, inventory + execution-log validity
+
+#### P1
+
+- [x] `2026-08-08T01:00:00+03:00` intro `VcsGitlabPort` → concrete production adapter covers all 12 `VcsPort` methods through `VcsGitlabClient`; real `bootstrap` composes it from configured host/token and exposes the truth port in its runtime result.
+- [x] `2026-08-08T01:00:00+03:00` intro `BackgroundVerifier.verifyOnce` + `new_threads` detection → public SUT performs poll/detail/discussion check and appends only discussion IDs absent from registration baseline.
+- [x] `2026-08-08T01:00:00+03:00` reconcile surface inventory → module spec and BDD now name the same 12 methods (10 base operations plus identity and new-discussion alias).
+- [x] `2026-08-08T01:00:00+03:00` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T01:00:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-vcs/vcs-gitlab.port.ts, services/agent-inbox/modules/inbox-vcs/background-verify.ts, services/agent-inbox/serve/bootstrap.ts]; decisions: [real-runtime=VcsGitlabPort composed in bootstrap, verifier=new_threads journal event, test-SUT=verifyOnce, VcsPort-inventory=12]; open: []
+
+#### P2
+
+- [x] `2026-08-08T01:00:00+03:00` intro BDD regression → fresh discussion is emitted as `gitlab_event(new_threads)` through `verifyOnce`; SHA tests use the public verifier surface, no protected casts.
+- [x] `2026-08-08T01:00:00+03:00` ver `npm test -- "services/agent-inbox/modules/inbox-vcs/__tests__/*.test.ts"` → pass exit=0
+- [x] `2026-08-08T01:00:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-vcs/__tests__/background-verify.test.ts]; decisions: [fresh-discussion=baseline-diff, public-SUT=true]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T01:00:00+03:00` sync task/spec traceability
+- [x] `2026-08-08T01:00:00+03:00` DONE
+
+### Round 5 — 2026-08-08, audit-driven remediation: production lifecycle + Retry-After sync
+
+#### P1
+
+- [x] `2026-08-08T01:45:00+03:00` wire real `SyncService` + `BackgroundVerifier` in the production `bootstrap` composition root ← the concrete `VcsGitlabPort` now performs the initial truth poll, registers active MRs, and starts the minute verifier; the returned handles remain available for lifecycle observability.
+- [x] `2026-08-08T01:45:00+03:00` wire verifier shutdown ← `gracefulShutdown` stops the production verifier timer with the scheduler/server lifecycle.
+- [x] `2026-08-08T01:45:00+03:00` intro Retry-After retry boundary ← `SyncService.twoTierSync` delays once for explicit GitLab `429 + Retry-After`, then retries the authoritative poll without converting a successful retry into a failed sync.
+- [x] `2026-08-08T01:45:00+03:00` preserve GitLab Retry-After ← `VcsGitlabClient` attaches the response header value to its 429 error so the sync boundary can apply the server-directed delay.
+- [x] `2026-08-08T01:45:00+03:00` ver `npm run type-check` → pass exit=0
+
+#### P2
+
+- [x] `2026-08-08T01:45:00+03:00` intro rate-limit integration regression ← a `SyncService.twoTierSync` test injects `429 + retryAfter=30`, observes the `30_000ms` backoff, exactly one retry, and a successful poll-only snapshot; it no longer tests unrelated `Effects.postNote` rejection.
+- [x] `2026-08-08T01:45:00+03:00` ver `npm test -- "services/agent-inbox/modules/inbox-vcs/__tests__/*.test.ts"` → pass exit=0 (36 tests)
+- [x] `2026-08-08T01:45:00+03:00` ver Prettier scoped check → pass
+
+#### Round close
+
+- [x] `2026-08-08T01:45:00+03:00` traceability reconciled: task BDD rate-limit scenario now names its real SyncService proof; production Runtime Backing is lifecycle-wired rather than diagnostic-only.
+- [x] `2026-08-08T01:45:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/serve/shutdown.ts, services/agent-inbox/modules/inbox-vcs/sync.ts, services/vcs-client/gitlab/vcs-gitlab-client.ts, services/agent-inbox/modules/inbox-vcs/__tests__/effects.test.ts]; decisions: [production-sync=initial-poll+active-registration, production-verifier=start-stop-lifecycle, rate-limit=one-explicit-Retry-After-retry, test-delay=injected-no-real-wait]; open: []
+
+### Round 6 — 2026-08-08, audit-r3 remediation: live board truth + directive integrity
+
+#### P1
+
+- [x] `2026-08-08T02:10:00+03:00` wire live SyncSnapshot truth → production bootstrap injects `SyncService.twoTierSync` through `HttpServer` into `BoardProjection`; every `/api/board` refreshes VCS snapshots before projecting, rather than reading the legacy board provider.
+- [x] `2026-08-08T02:10:00+03:00` repair `typescript-rules.xml` → escaped XML text and fenced code examples are CDATA-wrapped, restoring the active coding directive as a parseable rule source.
+- [x] `2026-08-08T02:10:00+03:00` reconcile runtime ownership → changed production roots carry TSK-158 ownership; `VcsGitlabPort` declares its direct `VcsPort` implementation contract.
+- [x] `2026-08-08T02:10:00+03:00` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T02:10:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-api/http-server.ts, services/agent-inbox/modules/inbox-api/routers/board.router.ts, services/agent-inbox/modules/inbox-api/projections/board-projection.ts, services/agent-inbox/modules/inbox-vcs/vcs-gitlab.port.ts, ai/directives/coding/typescript-rules.xml]; decisions: [board-truth=SyncService-refresh-per-request, legacy-provider=not-used-when-projection-wired, directive=well-formed-XML]; open: []
+
+#### P2
+
+- [x] `2026-08-08T02:10:00+03:00` intro HTTP integration regression → a live `HttpServer` request proves `/api/board` calls the injected SyncService source and emits its VCS MR instead of an empty legacy mock board.
+- [x] `2026-08-08T02:10:00+03:00` ver focused VCS/API runtime tests + scoped lint + xmllint + Prettier/diff → pass exit=0
+- [x] `2026-08-08T02:10:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-api/__tests__/http-server.test.ts]; decisions: [proof=real-node-http-server, snapshot-source=called-on-board-request]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T02:10:00+03:00` sync task traceability; Reopens=5 for six immutable execution rounds
+- [x] `2026-08-08T02:10:00+03:00` DONE
 <!--/SECTION:EXECUTION_LOG-->

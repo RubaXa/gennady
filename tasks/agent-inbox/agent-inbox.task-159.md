@@ -5,7 +5,8 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-159
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
+- **Reopens:** 6 (Rounds 2–7: audit-driven remediation and evidence reconciliation)
 - **Purpose:** Исполнительное ядро: реестр 16 типов с формальной грамматикой ссылок, per-MR executors (ноль глобальных мьютексов), дедуп/supersede, приоритеты+aging, восстановление из журнала, маршрутизация сессий, видимое «⏳ ждёт очередь».
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-queue`
@@ -23,7 +24,7 @@
 
 | ID  | Kind | Deps | Status |
 | --- | ---- | ---- | ------ |
-| P1  | impl | —    | [!]    |
+| P1  | impl | —    | [x]    |
 | P2  | test | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
@@ -53,6 +54,7 @@
 - **Objective:** тесты: два MR параллельно (контроль инцидента), дедуп, supersede, exclusive эффектов, восстановление после краха, маршрутизация сессий, aging.
 - **Rules:**
   - [node-test](../../ai/directives/testing/node-test.xml)
+  - [testing-common](../../ai/directives/testing/common.xml) (inherited by node-test)
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-queue/__tests__/executor.test.ts`
   - `services/agent-inbox/modules/inbox-queue/__tests__/task-registry.test.ts`
@@ -120,10 +122,10 @@
 
 ## 5. Verification
 
-| Command                                                           | Required by      |
-| ----------------------------------------------------------------- | ---------------- |
-| `npm run type-check`                                              | typescript-rules |
-| `npm test -- services/agent-inbox/modules/inbox-queue/__tests__/` | node-test        |
+| Command                                                                      | Required by      |
+| ---------------------------------------------------------------------------- | ---------------- |
+| `npm run type-check`                                                         | typescript-rules |
+| `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` | node-test        |
 
 <!--/SECTION:VERIFICATION-->
 
@@ -146,6 +148,7 @@
 
 - session routing table is honored → `session-router.test.ts` :: `deepen → reuse_producer (creates new session)`, `deepen → reuse_producer (reuses existing session)`, `fact_check → new_fresh (always creates new session)`, `mutate_artifact → reuse_producer`, `chat_question → operator_chat (per-MR singleton)`, `engine task → returns undefined (passthrough)`
 - session routing edge cases → `session-router.test.ts` :: `reuse_producer with no alive producer session → creates new fresh`, `reuse_producer with alive session → returns existing sessionId`
+- closed producer session is replaced before routing → `session-router.test.ts` :: `reuse_producer with closed cached session → replaces it before routing`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -216,4 +219,91 @@
 #### Round close
 
 - [ ] `<ts>` DONE
+
+### Round 3 — 2026-08-07, audit-remediation reconciliation
+
+#### P1/P2 — evidence reconciliation
+
+- [x] 2026-08-07T21:23:13Z discovery tracker_ticket_state_discrepancy → agent-inbox tracker and committed `3da27e9` marked TSK-159 DONE, while ticket Meta was TODO and P1 was `[!]`; the only unresolved Round 2 item was a repository-wide, out-of-scope legacy-test contamination, not a task-scope defect
+- [x] 2026-08-07T21:23:13Z ver `npm run type-check` → pass exit=0
+- [x] 2026-08-07T21:23:13Z ver `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` → pass exit=0 (39 tests, 0 failures)
+- [x] 2026-08-07T21:23:13Z ver `npx prettier --check` on 4 implementation + 3 TSK-159 test files → pass exit=0
+- [x] 2026-08-07T21:23:13Z ver `npx tsx cli/gennady.ts lint services/agent-inbox/modules/inbox-queue/` → pass exit=0
+- [x] 2026-08-07T21:23:13Z decision scoped_gate_reconciliation = task exit criteria and all listed BDD coverage pass; ticket status and P1 reconciled to DONE, while the historical Round 2 blocker is retained unchanged for traceability
+
+#### Round close
+
+- [x] 2026-08-07T21:23:13Z DONE
+
+### Round 4 — 2026-08-08, audit-r1 remediation: producer liveness + test-rule cascade
+
+#### P1 — SessionRouter liveness
+
+- [x] 2026-08-08T00:00:00Z decision cached_producer_liveness = `SessionRouter` verifies the cached producer `sid` through `SessionPool#isActive`; an inactive `sid` is evicted before a replacement session is created ← inbox-queue spec §4.2 (`deepen`: same session only if alive)
+- [x] 2026-08-08T00:00:00Z intro `SessionPool#isActive` ← narrow active-slot query for consumers that must not route work into a released session
+- [x] 2026-08-08T00:00:00Z ver `npx tsx cli/gennady.ts lint services/agent-inbox/modules/inbox-queue/session-router.ts services/agent-inbox/modules/inbox-queue/__tests__/session-router.test.ts services/agent-inbox/modules/inbox-opencode/session-pool.ts` → pass exit=0
+
+#### P2 — regression and rule cascade
+
+- [x] 2026-08-08T00:00:00Z intro `reuse_producer with closed cached session → replaces it before routing` ← verifies the router returns a replacement `sid` after a cached producer reports inactive, rather than returning the closed cached `sid`
+- [x] 2026-08-08T00:00:00Z decision test_rule_cascade = P2 explicitly lists `node-test` and its inherited `testing-common` baseline; `node-test.xml` now carries a minimal `RewardCriteria` section
+- [x] 2026-08-08T00:00:00Z ver `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` → pass exit=0 (40 tests, 0 failures)
+- [x] 2026-08-08T00:00:00Z ver `npx prettier --check` on changed TypeScript, test, and ticket files → pass exit=0
+- [x] 2026-08-08T00:00:00Z ver `git diff --check` → pass exit=0
+- 🛑 2026-08-08T00:00:00Z BLOCKED: `npm run type-check` → exit=2 from unrelated pre-existing `services/agent-inbox/modules/inbox-core/inbox-registry.ts:15` (`RegistryEntry` declared but never read); no TSK-159 type errors reported
+- 🛑 2026-08-08T00:00:00Z BLOCKED: XML parser validation of `ai/directives/testing/node-test.xml` → existing unescaped TypeScript generic in a `<Snippet>` at line 81 makes the whole directive non-well-formed; the appended `RewardCriteria` structure is textually well-scoped, but unrelated XML repair is out of scope
+
+#### Round close
+
+- 🛑 2026-08-08T00:00:00Z BLOCKED: task-scope remediation is complete, but mandatory repository type-check cannot reach exit=0 because of the unrelated inbox-core error recorded above
+  **Handoff →** artifacts: [services/agent-inbox/modules/inbox-opencode/session-pool.ts, services/agent-inbox/modules/inbox-queue/session-router.ts, services/agent-inbox/modules/inbox-queue/__tests__/session-router.test.ts, ai/directives/testing/node-test.xml]; decisions: [cached_producer_liveness=verify_active_then_evict_and_replace, test_rule_cascade=node-test+testing-common, reopens=3]; open: [repository type-check failure in inbox-core, pre-existing node-test.xml XML escaping defect]
+
+### Round 5 — 2026-08-08, follow-up: current repository gate and rule-validity reconciliation
+
+#### P1/P2 — verification follow-up
+
+- [x] 2026-08-08T00:41:00Z discovery prior_blockers_resolved → the TSK-156 correction restored the repository type-check; the one unescaped `ReturnType<typeof setupMockAgent>` in `node-test.xml` was escaped, so the full directive parses as XML
+- [x] 2026-08-08T00:41:00Z decision cached_producer_liveness_rule_validity = active reuse and stale-cache eviction are separate intentful anchors; the closed-session regression uses anchored SETUP/TRIGGER/ASSERT phases under inherited `testing-common` rules
+- [x] 2026-08-08T00:41:00Z ver `npm run type-check` → pass exit=0
+- [x] 2026-08-08T00:41:00Z ver `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` → pass exit=0 (40 tests, 0 failures)
+- [x] 2026-08-08T00:41:00Z ver `xmllint --noout ai/directives/testing/node-test.xml` → pass exit=0
+- [x] 2026-08-08T00:41:00Z ver Prettier (changed TypeScript + ticket), task-scope gennady lint, forbidden-pattern smoke grep, and `git diff --check` → pass exit=0
+
+#### Round close
+
+- [x] 2026-08-08T00:41:00Z DONE — TSK-159 remains factually DONE; Round 4 BLOCKED entries are retained as historical evidence, not current blockers
+
+### Round 6 — 2026-08-08, audit-r5 remediation: complete inherited test rules and close historical blocker trail
+
+#### P1 — ownership and repository-gate reconciliation
+
+- [x] 2026-08-08T01:35:00Z intro `SessionPool#isActive` ownership ← `services/agent-inbox/modules/inbox-opencode/session-pool.ts` now declares `TSK-159` in `@tasks`, preserving the owning TSK-160 identifier while making the liveness change traceable to this task
+- [x] 2026-08-08T01:35:00Z ✅ RESOLVED Round 2 BLOCKED `sdd verify test gate` → the TSK-159 scoped queue command `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` passes (40 tests, 0 failures); the historic repository-wide test-isolation incident remains evidence only and is not this task's exit gate
+- [x] 2026-08-08T01:35:00Z ✅ RESOLVED Round 4 BLOCKED `npm run type-check` → exit=0 after the inbox-core correction recorded by TSK-156
+
+#### P2 — inherited directive validity and regression verification
+
+- [x] 2026-08-08T01:35:00Z decision testing_common_universal_sections = activated `testing-common.xml` now exposes `AntiPatterns`, `VerificationHooks`, and `RewardCriteria` alongside `BeliefState`, matching the audit-required rule-file surface
+- [x] 2026-08-08T01:35:00Z ✅ RESOLVED Round 4 BLOCKED XML parser validation → `xmllint --noout ai/directives/testing/node-test.xml ai/directives/testing/common.xml` exits 0 after the node-test generic escaping and testing-common structural completion
+- [x] 2026-08-08T01:35:00Z ✅ RESOLVED Round 4 BLOCKED task-scope remediation cannot close → all current P1/P2 gates pass: type-check exit=0, queue tests 40/40, task-scope lint exit=0, XML validation exit=0, Prettier exit=0, and `git diff --check` exit=0
+- [x] 2026-08-08T01:35:00Z ver `npm run type-check` → pass exit=0
+- [x] 2026-08-08T01:35:00Z ver `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/*.test.ts"` → pass exit=0 (40 tests, 0 failures)
+- [x] 2026-08-08T01:35:00Z ver task-scope gennady lint, XML validation, Prettier, and `git diff --check` → pass exit=0
+
+#### Round close
+
+- [x] 2026-08-08T01:35:00Z DONE — P1/P2 pass; reopens=4; four historical BLOCKED entries are explicitly resolved with current verification evidence
+
+### Round 7 — 2026-08-08, audit-r6 remediation: canonical BDD coverage traceability
+
+#### P2 — scenario-to-test mapping reconciliation
+
+- [x] 2026-08-07T22:32:23Z discovery canonical_bdd_mapping_gap → the existing closed-session liveness regression passed but was absent from the canonical Test Scenario Coverage mapping; the test name and behavior remain unchanged
+- [x] 2026-08-07T22:32:23Z intro `reuse_producer with closed cached session → replaces it before routing` ← canonical BDD mapping now points to the existing `session-router.test.ts` regression, proving a closed cached producer session is replaced before routing
+- [x] 2026-08-07T22:32:23Z ver `npm test -- "services/agent-inbox/modules/inbox-queue/__tests__/session-router.test.ts"` → pass exit=0 (9 tests, 0 failures)
+- [x] 2026-08-07T22:32:23Z ver Prettier (ticket) and `git diff --check` → pass exit=0
+
+#### Round close
+
+- [x] 2026-08-07T22:32:23Z DONE — canonical BDD-to-test traceability is complete; reopens=5
 <!--/SECTION:EXECUTION_LOG-->

@@ -68,6 +68,7 @@ export async function retrieveMrMetadata(
     target_branch?: string;
     merged_at?: string;
     author?: { username?: string };
+    diff_refs?: { base_sha?: string; start_sha?: string; head_sha?: string };
   } | null;
 
   if (!mr) {
@@ -83,6 +84,7 @@ export async function retrieveMrMetadata(
     targetBranch: mr.target_branch ?? '',
     mergedAt: mr.merged_at ?? '',
     author: mr.author?.username ?? '',
+    diffRefsBaseSha: mr.diff_refs?.base_sha ?? '',
   };
 }
 

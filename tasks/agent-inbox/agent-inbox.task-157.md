@@ -6,6 +6,7 @@
 
 - **Task-ID:** TSK-157
 - **Status:** [x] DONE
+- **Reopens:** 3 (Rounds 2–4: independent-audit runtime remediation)
 - **Purpose:** Proposal/Decision записи (D-302), capability-режимы (`proposal|auto`, порог 90%/20), барьер готовности (фазы + `/api/boot` контракт), dry-run контракт.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-core`
@@ -41,7 +42,10 @@
   - `services/agent-inbox/modules/inbox-core/decision-journal.ts`
   - `services/agent-inbox/modules/inbox-core/capability-modes.ts`
   - `services/agent-inbox/modules/inbox-core/boot-readiness.ts`
-  - `services/agent-inbox/modules/inbox-core/state-store.ts` (монтирование новых полей/модулей: capabilities, lastReadAt, boot-readiness — v1-агрегатор состояния, расширяется, не переписывается)
+- `services/agent-inbox/modules/inbox-core/state-store.ts` (монтирование новых полей/модулей: capabilities, lastReadAt, boot-readiness — v1-агрегатор состояния, расширяется, не переписывается)
+- `services/agent-inbox/serve/bootstrap.ts` (live boot HTTP lifecycle and MR-scoped persistence wiring)
+- `services/agent-inbox/modules/inbox-api/http-server.ts` (early boot surface, runtime attach)
+- `services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts` (production proposal persistence seam)
 - **Inputs:** TSK-156 P1 handoff (EventJournal)
 - **Exit:** `npm run type-check` exit 0; фазы эмитятся в правильном порядке
 <!--/SECTION:PHASE_P1-->
@@ -55,7 +59,8 @@
   - [node-test](../../ai/directives/testing/node-test.xml)
 - **Target Files:**
   - `services/agent-inbox/modules/inbox-core/__tests__/decision-journal.test.ts`
-  - `services/agent-inbox/modules/inbox-core/__tests__/boot-readiness.test.ts`
+- `services/agent-inbox/modules/inbox-core/__tests__/boot-readiness.test.ts`
+- `services/agent-inbox/modules/inbox-api/__tests__/foundation-runtime.integration.test.ts`
 - **Inputs:** P1 handoff
 - **Exit:** все BDD-сценарии §4 покрыты; `npm test` по файлам exit 0
 <!--/SECTION:PHASE_P2-->
@@ -128,6 +133,9 @@
 - записи+accept-rate → `decision-journal.test.ts` :: `proposal and decision are journaled and rated per capability`
 - градация по порогу (per-row) → `decision-journal.test.ts` :: `remains proposal at n=19 even at 100% accept rate`, `graduates to auto at n=20 with 100% accept rate`, `graduates to auto at 18 accept + 2 reject (90% of 20)`, `remains proposal at 17 accept + 3 reject (85% of 20)`, `remains proposal when rate is NaN (zero decisions)`
 - фазы (per-row) → `boot-readiness.test.ts` :: `provides snapshot before any transition`, `transitions connect→poll and progress is monotonic`, `transitions poll→reconcile`, `transitions reconcile→restore`, `transitions restore→ready and marks ready=true`, `silently skips duplicate phase transition (no regression)`, `silently ignores backward transition (no regression, no throw)`, `fail() transitions to failed with reason`, `listener fires on every phase transition`, `listener fires on fail()`
+- public lifecycle → `foundation-runtime.integration.test.ts` :: `serves real /api/boot snapshots before and through every bootstrap phase`
+- canonical dry-run persistence → `foundation-runtime.integration.test.ts` :: `persists MR-scoped dry-run before its live broadcaster can observe it`
+- canonical reviewer-tail persistence → `pipeline-runtime.integration.test.ts` :: `persists a reviewer tail proposal and capability cache under its canonical MR ref`
 - dry-run → `decision-journal.test.ts` :: `dry run suppresses all effects with journal trail`
 - битый config → `boot-readiness.test.ts` :: `broken config yields failed phase without throw`, `config status settable independently of phase transitions`
 - граница порога → covered by per-row graduation tests above
@@ -175,4 +183,65 @@
 
 - [x] 2026-08-06T11:25:00Z sync agent-inbox+root trackers
 - [x] 2026-08-06T11:25:00Z DONE
+
+### Round 2 — 2026-08-08, audit remediation
+
+#### P1
+
+- [x] `2026-08-08T00:26:00Z` wire `BootReadiness` as the single bootstrap/HTTP `/api/boot` state source; snapshot now includes `ready`, configuration state and missing fields
+- [x] `2026-08-08T00:26:00Z` persist `dryRun` in inbox config and route every suppressed effect through durable `system/dryrun` recording before SSE broadcast
+- [x] `2026-08-08T00:26:00Z` scope decision/proposal journal selection by canonical MR ref; decisions inherit a proposal MR instead of writing an empty MR
+- [x] `2026-08-08T00:26:00Z` recompute and atomically persist D-302 capability modes after a live MR decision
+
+#### P2
+
+- [x] `2026-08-08T00:26:00Z` intro `foundation-runtime.integration.test.ts` ← BDD: shared `/api/boot` readiness and MR-scoped proposal/decision durable journal
+- [x] `2026-08-08T00:26:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:26:00Z` ver focused core/API/bootstrap tests → pass (46/46)
+- [x] `2026-08-08T00:26:00Z` ver `npx tsx cli/gennady.ts lint` (changed runtime files) → pass
+- [x] `2026-08-08T00:26:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-api/routers/boot.router.ts, services/agent-inbox/modules/inbox-api/routers/decision.router.ts, services/agent-inbox/modules/inbox-core/dry-run.ts, services/agent-inbox/modules/inbox-api/__tests__/foundation-runtime.integration.test.ts]; decisions: [one-shared-boot-readiness, decision-journals-per-MR, dryrun-durable-before-SSE]; open: [independent audit]
+
+### Round 3 — 2026-08-08, audit-r2 runtime remediation
+
+#### P1
+
+- [x] `2026-08-08T03:40:00+03:00` wire `HttpServer` to listen before config/connect/poll/reconcile/restore and attach the complete runtime only before ready
+- [x] `2026-08-08T03:40:00+03:00` wire reviewer pipeline tail to persist `post_findings` proposal in canonical MR `DecisionJournal`, then recompute/persist D-302 capability cache
+- [x] `2026-08-08T03:40:00+03:00` persist MR dry-run `system/dryrun` in canonical MR journal before SSE broadcaster
+
+#### P2
+
+- [x] `2026-08-08T03:40:00+03:00` intro `foundation-runtime.integration.test.ts` ← BDD: public bootstrap HTTP probes observe connect→poll→reconcile→restore→ready, and MR dry-run persistence
+- [x] `2026-08-08T03:40:00+03:00` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T03:40:00+03:00` ver `npx tsx --test services/agent-inbox/modules/inbox-api/__tests__/foundation-runtime.integration.test.ts services/agent-inbox/modules/inbox-core/__tests__/decision-journal.test.ts services/agent-inbox/modules/inbox-core/__tests__/boot-readiness.test.ts` → pass 24/24
+- [x] `2026-08-08T03:40:00+03:00` ver `npx tsx --test services/agent-inbox/serve/__tests__/bootstrap.test.ts services/agent-inbox/serve/__tests__/shutdown.test.ts` → pass exit=0
+- [x] `2026-08-08T03:40:00+03:00` ver `npx prettier --check` changed files → pass
+- [x] `2026-08-08T03:40:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-api/http-server.ts, services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-api/__tests__/foundation-runtime.integration.test.ts]; decisions: [early-live-boot-surface, phased-http-observation, MR-canonical-dryrun-before-SSE, pipeline-proposal-and-capability-persistence]; open: [independent audit]
+
+#### Round close
+
+- [x] `2026-08-08T03:40:00+03:00` task traceability reconciled; Reopens=2 for three immutable execution rounds
+- [x] `2026-08-08T03:40:00+03:00` DONE
+
+### Round 4 — 2026-08-08, audit-r3 canonical MR identity remediation
+
+#### P1
+
+- [x] `2026-08-08T03:50:00+03:00` wire `RoleScheduler` root and delta pipeline starts to canonical `project!iid`, retaining web URLs only for VCS/role-instance transport
+- [x] `2026-08-08T03:50:00+03:00` preserve the same canonical ref through reviewer-tail proposal persistence and `storeCapabilitiesForRef` cache recomputation
+
+#### P2
+
+- [x] `2026-08-08T03:50:00+03:00` intro `pipeline-runtime.integration.test.ts` ← BDD: reviewer tail writes canonical proposal journal and refreshes canonical capability cache
+- [x] `2026-08-08T03:50:00+03:00` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T03:50:00+03:00` ver focused core/scheduler/pipeline/bootstrap tests → pass
+- [x] `2026-08-08T03:50:00+03:00` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-roles/role-scheduler.ts, services/agent-inbox/modules/inbox-roles/__tests__/role-scheduler.test.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts]; decisions: [pipeline-identity=project!iid, reviewer-tail-journal-and-capability-cache-share-ref]; open: [independent audit]
+
+#### Round close
+
+- [x] `2026-08-08T03:50:00+03:00` task traceability reconciled; Reopens=3 for four immutable execution rounds
+- [x] `2026-08-08T03:50:00+03:00` DONE
 <!--/SECTION:EXECUTION_LOG-->

@@ -6,11 +6,10 @@
 
 - **Task-ID:** TSK-161
 - **Status:** [x] DONE
-- **Reopens:** 1 (2026-08-06 — audit: отсутствовал gate-verdict.test.ts; добавлен)
+- **Reopens:** 8 (2026-08-08 — audit remediation rounds 2–9)
 - **Purpose:** Единый ревью-пайплайн: план-DAG (prepare→plan→enrich→fan-out→gate_coverage→synthesize→gate_verdict→хвост), 3 слоя дорожек, линзы-волны, мульти-модель (N артефактов + findings.jsonl), coverage-гейт по tool-trace, синтез с read-тулами, role-хвосты + delta_review мини-DAG.
 - **Scope:** `agent-inbox`
 - **Module:** `inbox-pipeline`
-- **Reopens:** 1
 - **Dependencies:** TSK-159
 - **Spec References:**
   - Module spec: [inbox-pipeline](../../specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md) §2–§8
@@ -49,6 +48,12 @@
   - `services/agent-inbox/modules/inbox-pipeline/gate-verdict.ts`
   - `services/agent-inbox/modules/inbox-pipeline/tails/author-tail.ts`
   - `services/agent-inbox/modules/inbox-pipeline/tails/reviewer-tail.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts`
+  - `services/agent-inbox/modules/inbox-queue/task-queue.ts`
+  - `services/agent-inbox/modules/inbox-queue/task-registry.ts`
+  - `services/agent-inbox/modules/inbox-queue/executor.ts`
+  - `services/agent-inbox/modules/inbox-roles/role-scheduler.ts`
+  - `services/agent-inbox/serve/bootstrap.ts`
 - **Inputs:** TSK-159 (queue), TSK-160 (сессии/tool-trace), TSK-158 (changeset/discussions)
 - **Exit:** `npm run type-check` exit 0; gate_verdict резолвит §2.1 критерии
 <!--/SECTION:PHASE_P1-->
@@ -65,6 +70,9 @@
   - `services/agent-inbox/modules/inbox-pipeline/__tests__/coverage-gate.test.ts`
   - `services/agent-inbox/modules/inbox-pipeline/__tests__/synthesize.test.ts`
   - `services/agent-inbox/modules/inbox-pipeline/__tests__/tails.test.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts`
+  - `services/agent-inbox/modules/inbox-queue/__tests__/executor.test.ts`
+  - `services/agent-inbox/modules/inbox-roles/__tests__/role-scheduler.test.ts`
 - **Inputs:** P1 handoff
 - **Exit:** все BDD-сценарии §4 покрыты; `npm test` по файлам exit 0
 <!--/SECTION:PHASE_P2-->
@@ -116,10 +124,10 @@
 
 ## 5. Verification
 
-| Command                                                              | Required by      |
-| -------------------------------------------------------------------- | ---------------- |
-| `npm run type-check`                                                 | typescript-rules |
-| `npm test -- services/agent-inbox/modules/inbox-pipeline/__tests__/` | node-test        |
+| Command                                                                          | Required by      |
+| -------------------------------------------------------------------------------- | ---------------- |
+| `npm run type-check`                                                             | typescript-rules |
+| `npx tsx --test services/agent-inbox/modules/inbox-pipeline/__tests__/*.test.ts` | node-test        |
 
 <!--/SECTION:VERIFICATION-->
 
@@ -141,6 +149,8 @@
 - deleted → `coverage-gate.test.ts` :: `deleted files are excluded from checklist`
 - binary → `coverage-gate.test.ts` :: `binary files are excluded from checklist`
 - continue2 → `coverage-gate.test.ts` :: `max continue equals 2: first continue ok, second continue last chance, third throws escalation`
+- sameSessionContinue → `coverage-gate.test.ts` :: `continues the same worker twice, then escalates when its trace still misses coverage`
+- sameSessionPass → `coverage-gate.test.ts` :: `passes after a same-session continuation contributes the missing factual read`
 - emptyChecklist → `coverage-gate.test.ts` :: `empty checklist returns pass with nothing to check`
 - consensus → `synthesize.test.ts` :: `two models same finding marks consensus`
 - dispute → `synthesize.test.ts` :: `two models different findings on same line marks dispute`
@@ -158,6 +168,9 @@
 - dedup → `tails.test.ts` :: `existing thread on same file line deduplicates as reply action`
 - skipDispute → `tails.test.ts` :: `disputed findings are skipped from posting candidates`
 - recommendations → `tails.test.ts` :: `recommendations include dispute and consensus counts for reviewer`
+- lensInstanceEdge → `pipeline-runtime.integration.test.ts` :: `releases root and delta nodes only after their declared dependencies finish`
+- liveWorkerArtifacts → `pipeline-runtime.integration.test.ts` :: `drives the production dispatcher to durable artifacts and recovers queued DAG from journal`
+- runtimeSameSessionEscalation → `pipeline-runtime.integration.test.ts` :: `continues one live worker session twice and records an operator escalation when coverage stays incomplete`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->
@@ -178,7 +191,7 @@
 - [x] `2026-08-06T21:21:20Z` intro AuthorTail ← подготовка нотификации автору: сводка находок, топ-5, proposed replies
 - [x] `2026-08-06T21:21:20Z` intro ReviewerTail ← сводка ревьюверу: recommended verdict, posting candidates, dedup, decision recommendations
 - [x] `2026-08-06T21:21:20Z` decision layer1-classification=REUSE_v1 ← TRACK_RULES портированы из cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts, не новый алгоритм (per §3)
-- [x] `2026-08-06T21:21:20Z` decision glob-impl=inline ← без внешних зависимостей (мини-конвертер ** / * / ? / {a,b} → regex), чтобы не тянуть picomatch/minimatch
+- [x] `2026-08-06T21:21:20Z` decision glob-impl=inline ← без внешних зависимостей (мини-конвертер \*_ / _ / ? / {a,b} → regex), чтобы не тянуть picomatch/minimatch
 - [x] `2026-08-06T21:21:20Z` decision cluster-key=file:lineBucket:normSummary ← кластеризация по (файл, line/5 bucket, нормализованный summary до 80 символов) — детерминированный дедуп между моделями
 - [x] `2026-08-06T21:27:45Z` ver `npm run type-check` → pass exit=0
 - [x] `2026-08-06T21:27:45Z` DONE
@@ -215,4 +228,150 @@
 #### Round close
 
 - [x] 2026-08-06T22:00:00Z DONE
+
+### Round 3 — 2026-08-08, audit-driven runtime and contract remediation
+
+#### P1
+
+- [x] `2026-08-08T00:00:00Z` fix CoverageGate ← full read now requires an unpaged read or contiguous offset/limit pages through EOF; `edit` no longer counts as evidence
+- [x] `2026-08-08T00:00:00Z` fix GateVerdict ← operator escalation is driven by two failed validations, not attempts separated by successful validation
+- [x] `2026-08-08T00:00:00Z` fix PipelineRuntime ← boot-owned queue materializes the production root DAG and `delta_review` mini-DAG
+- [x] `2026-08-08T00:00:00Z` fix TaskRegistry ← delta prepare → changeset → affected tracks → synthesize_delta → gate_verdict_delta is explicit and dependency-linked
+
+#### P2
+
+- [x] `2026-08-08T00:00:00Z` test ← in-memory ToolTrace injection removes unit fixture writes; partial page and successful-intermediate validation are covered
+- [x] `2026-08-08T00:00:00Z` test ← PipelineRuntime integration proves root and delta task nodes reach the same shared queue
+- [x] `2026-08-08T00:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:00:00Z` ver focused pipeline + queue tests → pass
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/coverage-gate.ts, services/agent-inbox/modules/inbox-pipeline/gate-verdict.ts, services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-queue/task-registry.ts]; decisions: [coverage-eof-required=true, gate-verdict-counts-consecutive-failures=true, pipeline-runtime-uses-boot-owned-queue=true, delta-mini-dag-is-explicit=true]; open: [runtime scheduler wiring deferred to next audit round]
+
+#### Round close
+
+- [x] `2026-08-08T00:00:00Z` DONE
+
+### Round 4 — 2026-08-08, audit-r2 runtime queue remediation
+
+#### P1
+
+- [x] `2026-08-08T00:00:00Z` fix bootstrap + RoleScheduler ← один boot-owned PipelineRuntime передан scheduler; role pickup вызывает startReview, poll с изменившимся headSha вызывает startDeltaReview
+- [x] `2026-08-08T00:00:00Z` fix InMemoryTaskQueue.next ← возвращает только queued задачи с удовлетворёнными dependsOn в priority+FIFO порядке; Executor сохраняет waiting_dep-видимость по полному набору
+- [x] `2026-08-08T00:00:00Z` fix ownership ← TSK-161 добавлен append-only в изменённые runtime/queue заголовки, включая TaskRegistry
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-roles/role-scheduler.ts, services/agent-inbox/modules/inbox-queue/task-queue.ts, services/agent-inbox/modules/inbox-queue/executor.ts, services/agent-inbox/modules/inbox-queue/task-registry.ts]; decisions: [scheduler-is-production-pipeline-seam=true, delta-trigger=polled-headSha-diff, next-returns-dependency-ready-only, blocked-tasks-remain-waiting_dep-visible]; open: []
+
+#### P2
+
+- [x] `2026-08-08T00:00:00Z` test PipelineRuntime ← root prepare→plan→enrich and delta_review→delta_prepare public queue ordering covered
+- [x] `2026-08-08T00:00:00Z` test RoleScheduler ← production scheduler tick with role pickup and a newer head proves startReview + startDeltaReview materialize the shared queue
+- [x] `2026-08-08T00:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:00:00Z` ver focused pipeline + queue + scheduler tests → pass 65/65
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts, services/agent-inbox/modules/inbox-queue/__tests__/executor.test.ts, services/agent-inbox/modules/inbox-roles/__tests__/role-scheduler.test.ts]; decisions: [test-runner=node-test, production-seam-covered=RoleScheduler.tick]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:00:00Z` DONE
+
+### Round 5 — 2026-08-08, audit-r3 concrete DAG and executor lifecycle remediation
+
+#### P1
+
+- [x] `2026-08-08T00:00:00Z` fix PipelineRuntime ← materializes concrete `track_*` and mandatory `lens_*` fan-out, preserves lens input wave (`lens_architecture ← lens_tests`), and chooses exactly one role tail
+- [x] `2026-08-08T00:00:00Z` fix queue contract ← concrete pattern task types resolve through their registry policy; `allOf(glob)` now waits for every materialized matching task and cannot pass on an empty group
+- [x] `2026-08-08T00:00:00Z` fix production lifecycle ← bootstrap starts one journal-backed per-MR Executor drainer for the same pipeline queue exposed through HTTP; `stop()` is safe and leaves queued work intact
+
+#### P2
+
+- [x] `2026-08-08T00:00:00Z` test PipelineRuntime ← integration proves durable executor drains fan-out in dependency order and reaches `tail_author` only after concrete tracks/lenses
+- [x] `2026-08-08T00:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:00:00Z` ver focused pipeline + queue + scheduler tests → pass 80/80
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts, services/agent-inbox/modules/inbox-queue/task-registry.ts, services/agent-inbox/modules/inbox-queue/task-queue.ts, services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-roles/role-scheduler.ts, specs/agent-inbox/inbox-queue/inbox-queue.spec.md]; decisions: [fanout=concrete-track-and-lens-tasks, allOf-glob=nonempty-universal-barrier, executor-owner=PipelineRuntime-bootstrap, role-tail=single-author-or-reviewer]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:00:00Z` DONE
+
+### Round 6 — 2026-08-08, audit-r4 durable production execution remediation
+
+#### P1
+
+- [x] `2026-08-08T00:00:00Z` fix PipelineRuntime ← every materialized root/delta node now uses `Executor.enqueue`, so `task_created` is journaled and `Executor.recover()` rebuilds the DAG after restart
+- [x] `2026-08-08T00:00:00Z` fix production dispatcher ← bootstrap injects the state root; deterministic stage execution writes PLAN.md, fan-out `tasks/*.result.json`, coverage, review.json, verdict and role-tail artifacts
+- [x] `2026-08-08T00:00:00Z` fix scheduler seam ← role and delta starts are awaited, ensuring durable DAG creation completes before a production poll proceeds
+
+#### P2
+
+- [x] `2026-08-08T00:00:00Z` test PipelineRuntime ← production integration drives full fan-out to durable artifacts and reconstructs the queued DAG in a fresh queue from the journal
+- [x] `2026-08-08T00:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:00:00Z` ver focused pipeline + queue recovery + scheduler tests → pass 27/27
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts, services/agent-inbox/serve/bootstrap.ts, services/agent-inbox/modules/inbox-roles/role-scheduler.ts]; decisions: [materialization=Executor.enqueue-only, production-runner=durable-stage-artifacts, restart-recovery=journal-replay]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:00:00Z` DONE
+
+### Round 7 — 2026-08-08, audit-r5 real orchestration and boot recovery remediation
+
+#### P1
+
+- [x] `2026-08-08T00:00:00Z` fix PipelineRuntime ← stage runner now consumes actual changeset/tool-trace inputs and invokes PlanTemplate + TriggerRegistry, LensRegistry, CoverageGate, FindingsJournal/Synthesize and GateVerdict; it persists their computed plan, lens, coverage, review and verdict artifacts instead of fixed pass artifacts.
+- [x] `2026-08-08T00:00:00Z` fix boot lifecycle ← `PipelineRuntime.start()` invokes public `recover()` before its drainer, replaying every MR found in the durable task journal; scheduler passes its live checkpoint changeset to the runtime.
+
+#### P2
+
+- [x] `2026-08-08T00:00:00Z` test PipelineRuntime ← durable integration proves plan-triggered fan-out and artifacts, a real missing tool-read fails `gate_coverage`, and restart recovery occurs through public boot lifecycle rather than protected cast.
+- [x] `2026-08-08T00:00:00Z` ver `node --import tsx --test services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts` → pass 5/5
+- [x] `2026-08-08T00:00:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:00:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts, services/agent-inbox/modules/inbox-roles/role-scheduler.ts]; decisions: [production-runner=domain-service-orchestration, coverage=real-tool-trace-input, boot-recovery=public-before-drain]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:00:00Z` DONE
+
+### Round 8 — 2026-08-08, audit-r6 live worker, lens edge and coverage continuation remediation
+
+#### P1
+
+- [x] `2026-08-08T00:06:00Z` fix PipelineRuntime ← LensSpec.inputs materializes into the concrete `dependsOn` edge of each `lens_*` task; `lens_architecture` cannot run before `lens_tests` completes.
+- [x] `2026-08-08T00:06:00Z` fix production fan-out ← bootstrap injects OpenCodePort; every track/lens invokes a real worker session, records factual tool reads and persists named `tasks/<node>.<model>.result.json` with validated model findings. Synthesize reloads those durable results after restart instead of using empty JSON.
+- [x] `2026-08-08T00:06:00Z` fix CoverageGate ← `recoverWithContinue` keeps one worker-session callback for exactly two retry turns, then emits an operator escalation when reads remain incomplete.
+
+#### P2
+
+- [x] `2026-08-08T00:06:00Z` test ← integration seeds the OpenCode seam, proves non-empty named worker results feed `review.json`, validates concrete lens dependency and retains the failing factual coverage path.
+- [x] `2026-08-08T00:06:00Z` test ← coverage unit cases prove same-session first/second continuation and escalation/pass outcomes.
+- [x] `2026-08-08T00:06:00Z` ver `npx tsc --noEmit` → pass exit=0
+- [x] `2026-08-08T00:06:00Z` ver `npx tsx --test services/agent-inbox/modules/inbox-pipeline/__tests__/*.test.ts` → pass 47/47
+- [x] `2026-08-08T00:06:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-pipeline/coverage-gate.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/coverage-gate.test.ts, services/agent-inbox/serve/bootstrap.ts]; decisions: [lens-inputs=concrete-instance-dependsOn, production-fanout=OpenCodePort-worker-results, synthesis=reload-named-durable-results, coverage-retry=same-session-max-2]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:06:00Z` DONE
+
+### Round 9 — 2026-08-08, audit-r7 production same-session coverage remediation
+
+#### P1
+
+- [x] `2026-08-08T00:16:00Z` fix PipelineRuntime ← fan-out worker sessions are retained through `gate_coverage`; an under-read invokes `CoverageGate.recoverWithContinue` through `OpenCodePort.continueSignal` on one existing SID, never a replacement session.
+- [x] `2026-08-08T00:16:00Z` fix coverage terminal path ← after two incomplete same-session continuations, runtime writes `coverage.json` plus `operator-escalation.json` (`operator_action_required`) before failing the durable gate task; all retained sessions then close.
+
+#### P2
+
+- [x] `2026-08-08T00:16:00Z` test PipelineRuntime ← integration records exactly two continuation calls on one SID and asserts the durable operator escalation with the missing file and `continueCount=2`.
+- [x] `2026-08-08T00:16:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-08T00:16:00Z` ver `npx tsx --test services/agent-inbox/modules/inbox-pipeline/__tests__/*.test.ts` → pass 48/48
+- [x] `2026-08-08T00:16:00Z` ver Prettier + diff check → pass
+- [x] `2026-08-08T00:16:00Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts, services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.integration.test.ts]; decisions: [coverage-continuation=existing-last-live-worker-session, retry-budget=two-same-sid-turns, incomplete-coverage=durable-operator-escalation-before-fail]; open: []
+
+#### Round close
+
+- [x] `2026-08-08T00:16:00Z` DONE
+
 <!--/SECTION:EXECUTION_LOG-->
