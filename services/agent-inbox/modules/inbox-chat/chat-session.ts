@@ -1,6 +1,6 @@
 // @file: ChatSession — per-MR opencode session from the shared SessionPool: one turn at a time, stream+Stop, read/local-only tool-scope (D-88, D-103).
 // @consumers: inbox-api ChatRouter (TSK-129)
-// @tasks: TSK-126
+// @tasks: TSK-126, TSK-160
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '#logger';
@@ -119,6 +119,14 @@ export class ChatSession {
   }
 
   /**
+   * @purpose Adopt the SID chosen by the shared queue SessionRouter before asking OpenCode.
+   * @param sid Operator-chat session selected for this MR, if the task is engine-only.
+   */
+  adoptSid(sid: string | undefined): void {
+    if (sid) this.sid = sid;
+  }
+
+  /**
    * @purpose Subscribe to streamed answer chunks for the SSE bridge (`inbox-api`, TSK-129).
    * @param cb Called with each chunk as it is emitted.
    */
@@ -162,6 +170,7 @@ export class ChatSession {
           // Shared MR parent (worktree + report siblings, TSK-131) — same fix as review-lens
           // sessions: a chat turn's tools must reach both without an external-directory permission.
           directory: mrRoot(this._stateDir, this.mrRef),
+          registration: { taskId: `chat:${this.mrRef}`, mr: this.mrRef },
         });
       }
 
