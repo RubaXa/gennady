@@ -6,7 +6,7 @@
 //   (PLAN.md/README.md with a deterministic changeset-derived mermaid block) round-tripped through
 //   BoardProviderReal.listArtifacts/readArtifact (TSK-122 P3 real-proof integration test).
 // @consumers: node:test runner
-// @tasks: TSK-121, TSK-122, TSK-113
+// @tasks: TSK-121, TSK-122, TSK-113, TSK-167, TSK-170
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -125,6 +125,7 @@ describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: [] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: {
         summary: 'Изменения затрагивают обработку ошибок в клиенте.',
@@ -178,6 +179,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
     opencode.seed('node_track_review', { findings: [] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: {
         summary: 'No issues across the three lenses.',
@@ -243,6 +245,7 @@ describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)
     opencode.seed('node_code_review', {
       findings: [{ severity: 'error', file: 'db.ts', line: 42, message: 'SQL injection' }],
     });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: {
         summary: 'One blocking issue in the code-review lens.',
@@ -442,6 +445,7 @@ describe('reviewer graph → real disk materialization → BoardProviderReal rou
     opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: ['logic'] });
     opencode.seed('node_security_lens', { findings: [] });
     opencode.seed('node_code_review', { findings: [] });
+    opencode.seed('node_contract_review', { findings: [] });
     opencode.seed('node_synthesize', {
       reviewReport: {
         summary: 'Изменения в логике и тестах',

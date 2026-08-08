@@ -2,7 +2,7 @@
 //   serialization per sid (D-104), stop()-truncated replay (D-95/CH-11), tool-registry shape
 //   (D-103), and transcript rehydrate across a simulated restart (D-97/SV-13).
 // @consumers: node:test runner
-// @tasks: TSK-126
+// @tasks: TSK-126, TSK-167
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -125,7 +125,7 @@ describe('ChatSession#ask', () => {
 
     const createArgs = createSpy.mock.calls[0]?.arguments[0] as Record<string, unknown>;
     const promptArgs = promptSpy.mock.calls[0]?.arguments[1] as Record<string, unknown>;
-    assert.deepStrictEqual(Object.keys(createArgs).sort(), ['directory', 'title']);
+    assert.deepStrictEqual(Object.keys(createArgs).sort(), ['directory', 'registration', 'title']);
     assert.deepStrictEqual(Object.keys(promptArgs).sort(), ['system', 'text']);
   });
 });

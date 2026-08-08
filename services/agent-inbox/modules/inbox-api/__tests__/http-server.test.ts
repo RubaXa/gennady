@@ -1,6 +1,6 @@
 // @file: Integration tests for HttpServer — SPA fallback, graceful shutdown, CORS preflight.
 // @consumers: node:test runner
-// @tasks: TSK-106
+// @tasks: TSK-106, TSK-167
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -150,18 +150,19 @@ describe('HttpServer — graceful shutdown', () => {
     await server.stop();
   });
 
-  it('double start rejects', async () => {
+  it('double start is a safe no-op (bootstrap may call start after boot)', async () => {
     const provider = new BoardProviderMock();
     const server = new HttpServer({ port: 0, boardProvider: provider });
 
     await server.start();
-    try {
-      await server.start();
-      assert.fail('Expected double start to reject');
-    } catch (err) {
-      assert.ok(err instanceof Error);
-      assert.ok((err as Error).message.includes('already running'));
-    }
+    const port = server.listeningPort() ?? assert.fail('Expected kernel-assigned port');
+
+    // Re-start must not rebind or fail — bootstrap owns the live server acquired during boot.
+    await server.start();
+    assert.strictEqual(server.listeningPort(), port);
+
+    const { status } = await fetchText('/api/board', port);
+    assert.strictEqual(status, 200);
     await server.stop();
   });
 });

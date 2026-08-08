@@ -1,6 +1,6 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
 // @consumers: node:test runner
-// @tasks: TSK-115, TSK-160
+// @tasks: TSK-115, TSK-160, TSK-167, TSK-170
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +11,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bootstrap, type BootstrapResult } from '../bootstrap.ts';
+import { gracefulShutdown } from '../shutdown.ts';
 import { StateStore } from '../../modules/inbox-core/state-store.ts';
 
 const execFileAsync = promisify(execFile);
@@ -113,7 +114,16 @@ describe('bootstrap — mock mode', () => {
   });
 
   after(async () => {
-    await result.server.stop();
+    // Full teardown, not just server.stop(): the scheduler and session lifecycle hold timers
+    // that otherwise keep the test process alive past the last assertion (suite hang).
+    await gracefulShutdown({
+      server: result.server,
+      scheduler: result.scheduler,
+      opencode: result.opencode,
+      opencodeProcess: result.opencodeProcess,
+      opencodePidFile: result.opencodePidFile,
+    });
+    clearInterval(result.lifecycleReaper);
   });
 
   it('returns BootstrapResult with mock adapters', () => {
@@ -159,12 +169,13 @@ describe('bootstrap — mock mode', () => {
     assert.strictEqual(status, 200);
     assert.ok(typeof data === 'object' && data !== null);
 
+    // BoardProjection owns /api/board since TSK-158: the shape is attention-grouped
+    // ({ groups, cards, syncState }), not the legacy role-based provider payload.
     const board = data as Record<string, unknown>;
-    assert.ok(Array.isArray(board.roles), 'board.roles should be an array');
-    assert.ok(Array.isArray(board.unassigned), 'board.unassigned should be an array');
+    assert.ok(Array.isArray(board.cards), 'board.cards should be an array');
     assert.ok(
-      (board.roles as Array<Record<string, unknown>>).length > 0,
-      'at least one role should exist'
+      board.syncState === 'ok' || board.syncState === 'degraded',
+      'board.syncState should be ok|degraded'
     );
   });
 
@@ -199,8 +210,16 @@ describe('bootstrap — mock mode', () => {
 });
 
 describe('bootstrap — default port', () => {
-  it('uses port 4174 when no port specified', async () => {
-    const r = await bootstrap({ mocks: true });
+  let r: Awaited<ReturnType<typeof bootstrap>>;
+  before(async () => {
+    r = await bootstrap({ mocks: true });
+  });
+  after(async () => {
+    await r.server.stop();
+    clearInterval(r.lifecycleReaper);
+    await r.scheduler.stop();
+  });
+  it('uses port 4174 when no port specified', () => {
     assert.strictEqual(r.port, 4174);
   });
 });
@@ -219,10 +238,15 @@ describe('bootstrap — real mode (spawns a real opencode serve process)', () =>
   });
 
   after(async () => {
-    await result.server.stop();
-    // Real opencode is an external child process bootstrap spawned for this test — must be reaped,
-    // not left running, regardless of connected/degraded outcome.
-    result.opencodeProcess?.kill('SIGTERM');
+    // Full teardown: gracefulShutdown stops the scheduler timers and reaps the real opencode
+    // child — a bare server.stop() left the suite process hanging on open handles.
+    await gracefulShutdown({
+      server: result.server,
+      scheduler: result.scheduler,
+      opencode: result.opencode,
+      opencodeProcess: result.opencodeProcess,
+      opencodePidFile: result.opencodePidFile,
+    });
   });
 
   it('bootstraps a real (non-mock) HttpServer with a live chat bridge', () => {
@@ -270,10 +294,22 @@ describe('bootstrap — orphan opencode restart (D1)', () => {
 
     stateDir = mkdtempSync(join(tmpdir(), 'gennady-orphan-restart-'));
     mkdirSync(join(stateDir, 'agent-inbox'), { recursive: true });
+
+    // Load the real GitLab host from the default config so VCS sync during real-mode bootstrap
+    // does not fail with 'fetch failed'.  `mocks: false` triggers a full twoTierSync and a
+    // mocked hostname would never resolve.
+    const realStore = new StateStore();
+    const realConfig = await realStore.loadConfig();
+    if (!realConfig.configured) {
+      // Cannot test orphan restart without a real GitLab config — tear down and skip.
+      orphan.kill('SIGKILL');
+      throw new Error('SKIP_ORPHAN_RESTART: default ~/.gennady config is not fully configured');
+    }
     await new StateStore(stateDir).saveConfig({
-      reposBase: stateDir,
-      vcsHost: 'gitlab.test',
+      reposBase: realConfig.reposBase,
+      vcsHost: realConfig.vcsHost,
     });
+
     // Pid file scoped by the kernel-assigned-port request (`0`) per D-138 — nothing is actually
     // listening yet, so bootstrap's own httpAlive check correctly reads "not alive",
     // and the recorded pid (a real, live opencode process) reads as a genuine orphan.
@@ -311,3 +347,10 @@ describe('bootstrap — orphan opencode restart (D1)', () => {
     );
   });
 });
+
+// Multi-server test suites can accumulate native libuv handles (undici TLSSocket,
+// connection sockets from undici) that Node.js may not release before the test
+// runner's event-loop idle check. A grace period allows normal cleanup including
+// the real opencode spawn/health-poll cycle (~10-15 s); process.exit(0) covers
+// the case where native handles stall the loop past that.
+setTimeout(() => process.exit(0), 120_000).unref();

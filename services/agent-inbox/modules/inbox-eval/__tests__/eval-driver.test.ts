@@ -5,7 +5,7 @@
 //   (oversized body → G9 fail; missing base data → no fabricated G1 pass) → status=FAIL; (c) G2-G8
 //   are never emitted as fabricated-pass — absent, never green without data (honesty invariant).
 // @consumers: node:test runner
-// @tasks: TSK-119
+// @tasks: TSK-119, TSK-167
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -4,7 +4,7 @@
 //   opencode.real.blackbox.test.ts (each adapter alone, D-212) by proving the SAME network seam
 //   holds when both are wired together through the real reviewer graph, not a hand-built one.
 // @consumers: node:test runner
-// @tasks: TSK-150
+// @tasks: TSK-150, TSK-167, TSK-170
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -197,8 +197,9 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
     const store = makeStateStore();
     const ref = `${PROJECT}!${IID}`;
 
-    // #region SETUP_OPENCODE_INTERCEPTS — enrich + 3 fanned-out lens sessions + 1 synthesis session
+    // #region SETUP_OPENCODE_INTERCEPTS — enrich + 4 fanned-out lens sessions + 1 synthesis session
     const sessionCreateTracker = mockEnv.interceptMultiple('POST', `${OPENCODE_BASE}/session`, [
+      sessionCreateReply,
       sessionCreateReply,
       sessionCreateReply,
       sessionCreateReply,
@@ -236,6 +237,11 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
     const codeReviewMessageTracker = mockEnv.interceptOnce(
       'POST',
       `${OPENCODE_BASE}/session/ses_node_code_review/message`,
+      assistantJson({ findings: [] })
+    );
+    const contractMessageTracker = mockEnv.interceptOnce(
+      'POST',
+      `${OPENCODE_BASE}/session/ses_node_contract_review/message`,
       assistantJson({ findings: [] })
     );
     // CRITICAL (TSK-149 lesson, per ticket): gate_review_synthesis requires reviewReport with ALL
@@ -304,11 +310,12 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
       'MR-context REST endpoint must have been hit'
     );
     assert.ok(userTracker.getAttemptCount() > 0, '/user REST endpoint must have been hit');
-    assert.strictEqual(sessionCreateTracker.getAttemptCount(), 5);
+    assert.strictEqual(sessionCreateTracker.getAttemptCount(), 6);
     assert.strictEqual(enrichMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(trackMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(securityMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(codeReviewMessageTracker.getAttemptCount(), 1);
+    assert.strictEqual(contractMessageTracker.getAttemptCount(), 1);
     assert.strictEqual(synthesizeMessageTracker.getAttemptCount(), 1);
     // #endregion ASSERT_BOTH_BACKENDS_ACTUALLY_INTERCEPTED
   });
