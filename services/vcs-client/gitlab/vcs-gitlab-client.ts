@@ -74,6 +74,9 @@ export class VcsGitlabClient extends VcsClient {
       const { responseType, ...fetchInit } = init as RequestInit & { responseType?: string };
       const response = await fetch(`${options.baseUrl}${path}`, {
         ...fetchInit,
+        // Match the GraphQL 15s ceiling — default fetch has no timeout, so a stalled REST
+        // connection would otherwise hang the caller (e.g. twoTierSync) forever.
+        signal: fetchInit.signal ?? AbortSignal.timeout(15_000),
         headers: {
           'PRIVATE-TOKEN': options.token,
           ...(fetchInit.headers ?? {}),

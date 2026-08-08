@@ -163,13 +163,23 @@ export class OpenCodeReal extends OpenCodePort {
       });
 
       if (result.error) {
-        const errMsg =
-          typeof result.error === 'object' && 'message' in result.error
-            ? String((result.error as { message: unknown }).message)
-            : 'Session creation failed';
+        // Non-2xx without JSON body (e.g. 401 auth) carries no message — surface status + raw payload.
+        const rawMessage = (result.error as unknown as { message?: unknown })?.message;
+        const status = result.response?.status;
+        let rawError: string;
+        try {
+          rawError = JSON.stringify(result.error) ?? String(result.error);
+        } catch {
+          rawError = String(result.error);
+        }
+        const errMsg = rawMessage
+          ? String(rawMessage)
+          : `Session creation failed${status !== undefined ? ` (HTTP ${status})` : ''}`;
         logger.warn('[OpenCodeReal#createSession] [server error]', {
           title: opts.title,
+          status,
           error: errMsg,
+          rawError,
         });
         throw new Error(`OpenCodeReal: createSession failed — ${errMsg}`);
       }

@@ -208,6 +208,24 @@ async function spawnOpencode(
   maxHealthChecks: number = 10,
   maxSpawnRetries: number = 3
 ): Promise<ChildProcess | null> {
+  // Strip leaked desktop-session server auth: when gennady serve is launched from an
+  // opencode desktop shell, OPENCODE_SERVER_* reaches the spawned child and forces Basic
+  // Auth on it — while our SDK client never sends credentials (observed: 401 empty body
+  // on POST /session, surfacing only as a generic 'Session creation failed').
+  const childEnv = { ...process.env };
+  let strippedServerAuth = false;
+  for (const key of ['OPENCODE_SERVER_USERNAME', 'OPENCODE_SERVER_PASSWORD'] as const) {
+    if (childEnv[key] !== undefined) {
+      delete childEnv[key];
+      strippedServerAuth = true;
+    }
+  }
+  if (strippedServerAuth) {
+    logger.warn(
+      '[bootstrap] [config → sanitized] OPENCODE_SERVER_* inherited from parent env — stripping for spawned opencode serve (desktop-session leak would force Basic Auth on the child)'
+    );
+  }
+
   for (let attempt = 1; attempt <= maxSpawnRetries; attempt++) {
     logger.info(
       `[bootstrap] spawning opencode serve on port ${port} (attempt ${attempt}/${maxSpawnRetries})`
@@ -219,6 +237,7 @@ async function spawnOpencode(
         stdio: 'pipe',
         detached: false,
         cwd,
+        env: childEnv,
       });
 
       // Forward opencode stdout/stderr to logger for diagnostics
@@ -451,6 +470,21 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let backgroundVerifier: BackgroundVerifier | null = null;
   let vcsJournal: EventJournal | null = null;
   let vcsRegistry: InboxRegistryAccess | null = null;
+  // Single-flight slot for the heavy twoTierSync (a real 155-MR sync takes minutes): the
+  // initial bootstrap sync and any board-triggered refresh must share one in-flight promise
+  // instead of competing for GitLab.
+  let inflightSync: ReturnType<SyncService['twoTierSync']> | null = null;
+  const runSyncShared = (service: SyncService): ReturnType<SyncService['twoTierSync']> => {
+    if (!inflightSync) {
+      const raw = service.twoTierSync();
+      inflightSync = raw;
+      const clear = (): void => {
+        if (inflightSync === raw) inflightSync = null;
+      };
+      void raw.then(clear, clear);
+    }
+    return inflightSync;
+  };
   let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
 
   if (useMocks) {
@@ -474,37 +508,72 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
     syncService = new SyncService(vcsTruth, vcsRegistry, vcsJournal);
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
-    // The first real poll is deliberate: it makes the production truth port live rather than a
-    // diagnostic-only handle. Active snapshots are registered before the minute verifier starts.
+    // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
     await advanceBoot('poll');
-    try {
+    {
+      // Observe the sync to settlement: a bounded wait must never fabricate 'VCS unreachable' for a slow-but-healthy sync (155 MRs ≈ minutes).
       const TIMEOUT_MS = 30_000;
-      initialSyncSnapshots = await Promise.race([
-        syncService.twoTierSync(),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('[bootstrap] twoTierSync timed out')),
-            TIMEOUT_MS
-          ).unref()
-        ),
-      ]);
-    } catch (cause) {
-      logger.warn(
-        '[bootstrap] [twoTierSync → failed] VCS unreachable during bootstrap — continuing with empty snapshots; sync will retry on next poll',
-        {
-          error: (cause as Error).message,
+      const syncStartedAt = Date.now();
+      let syncSettled = false;
+      // Serve logs at warn level: the settlement closing the slow-warn must be warn too.
+      let slowWarned = false;
+      const verifier = backgroundVerifier;
+      const registerActive = (snapshots: Awaited<ReturnType<SyncService['twoTierSync']>>): void => {
+        for (const snapshot of snapshots.filter((item) => item.role !== null)) {
+          verifier.register({
+            webUrl: snapshot.mr.webUrl,
+            project: snapshot.mr.project,
+            iid: snapshot.mr.iid,
+            lastKnownSha: snapshot.headSha,
+            lastKnownUpdatedAt: snapshot.updatedAt,
+          });
+        }
+      };
+      const trackedSync = runSyncShared(syncService).then(
+        (snapshots) => {
+          syncSettled = true;
+          const detail = {
+            durationMs: Date.now() - syncStartedAt,
+            snapshots: snapshots.length,
+            active: snapshots.filter((item) => !item.estimated).length,
+          };
+          if (slowWarned) logger.warn('[bootstrap] [twoTierSync → completed]', detail);
+          else logger.info('[bootstrap] [twoTierSync → completed]', detail);
+          return snapshots;
+        },
+        (cause: unknown) => {
+          syncSettled = true;
+          logger.warn('[bootstrap] [twoTierSync → failed]', {
+            durationMs: Date.now() - syncStartedAt,
+            error: cause instanceof Error ? cause.message : String(cause),
+          });
+          return null;
         }
       );
-      initialSyncSnapshots = [];
-    }
-    for (const snapshot of initialSyncSnapshots.filter((item) => item.role !== null)) {
-      backgroundVerifier.register({
-        webUrl: snapshot.mr.webUrl,
-        project: snapshot.mr.project,
-        iid: snapshot.mr.iid,
-        lastKnownSha: snapshot.headSha,
-        lastKnownUpdatedAt: snapshot.updatedAt,
-      });
+      const settled = await Promise.race([
+        trackedSync,
+        new Promise<null>((resolve) => {
+          const timer = setTimeout(() => resolve(null), TIMEOUT_MS);
+          timer.unref();
+        }),
+      ]);
+      if (settled !== null) {
+        initialSyncSnapshots = settled;
+        registerActive(settled);
+      } else if (syncSettled) {
+        logger.warn(
+          '[bootstrap] [twoTierSync → failed] continuing with empty snapshots; sync will retry on next poll'
+        );
+      } else {
+        slowWarned = true;
+        logger.warn(
+          '[bootstrap] [twoTierSync → slow] initial sync still running — startup continues; active MRs register when it settles',
+          { elapsedMs: TIMEOUT_MS }
+        );
+        void trackedSync.then((snapshots) => {
+          if (snapshots) registerActive(snapshots);
+        });
+      }
     }
     backgroundVerifier.start();
     await advanceBoot('reconcile');
@@ -846,6 +915,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   if (!syncService || !vcsJournal || !vcsRegistry) {
     throw new Error('[bootstrap] Production VCS truth dependencies were not assembled');
   }
+  // `let` captures lose CFA narrowing inside closures — rebind after the guard above.
+  const syncServiceForBoard = syncService;
   await server.attachRuntime({
     port,
     boardProvider,
@@ -869,7 +940,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       journal: vcsJournal,
       registry: vcsRegistry,
       snapshots: initialSyncSnapshots,
-      loadSnapshots: () => syncService.twoTierSync(),
+      loadSnapshots: () => runSyncShared(syncServiceForBoard),
     },
     bootReadiness,
   });
