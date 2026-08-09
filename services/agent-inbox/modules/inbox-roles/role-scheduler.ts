@@ -252,6 +252,13 @@ export class RoleScheduler {
       // #endregion END_ASSIGN_NEW_MRS
 
       await this.advanceInstances(registry);
+    } catch (cause) {
+      // tick зовётся fire-and-forget (`void tick()`) — он не имеет права rejectить: unhandled
+      // rejection убивает весь процесс (живой инцидент: транзиентный сетевой сбой GitLab
+      // уронил serve). Логируем и даём следующему тику повторить.
+      logger.warn('[RoleScheduler#tick] [ticking → failed]', {
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
     } finally {
       this._ticking = false;
       this._stopped = false;

@@ -167,13 +167,13 @@ export class BoardProjection {
     }
     // #endregion END_BUILD_CARDS
 
-    // #region START_DETECT_DEGRADED — sync is degraded when any snapshot is poll-only (estimated=true); broadcast board_hint to all connected dashboards
-    const hasEstimated = this._snapshots.some((s) => s.estimated);
+    // #region START_DETECT_DEGRADED — degraded only when an ACTIVE MR's detail fetch failed (snapshot.degraded); poll-only inactive MRs are normal operation. Broadcast board_hint to all connected dashboards
+    const anyDegraded = this._snapshots.some((s) => s.degraded === true);
     // Cold load in flight → 'syncing' so the SPA can show progress instead of an empty board.
     const syncState =
       this._lastRefreshedAt === null && this._refreshing !== null
         ? 'syncing'
-        : hasEstimated
+        : anyDegraded
           ? 'degraded'
           : 'ok';
 

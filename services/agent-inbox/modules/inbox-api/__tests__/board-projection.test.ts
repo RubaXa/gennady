@@ -119,7 +119,7 @@ describe('BoardProjection', () => {
       assert.strictEqual(result.cards.length, 1);
     });
 
-    it('syncState is ok when no snapshot is estimated', () => {
+    it('syncState is ok when no snapshot is degraded', () => {
       const snap = makeSnapshot({ estimated: false });
       const journal = makeMockJournal();
       const registry = makeMockRegistry();
@@ -130,8 +130,19 @@ describe('BoardProjection', () => {
       assert.strictEqual(result.syncState, 'ok');
     });
 
-    it('syncState is degraded when any snapshot is estimated, groups preserved', () => {
-      const snap = makeSnapshot({ estimated: true, attention: '✅' as AttentionState });
+    it('syncState stays ok for poll-only INACTIVE snapshots (estimated is normal operation)', () => {
+      const snap = makeSnapshot({ estimated: true, attention: '😴' as AttentionState });
+      const journal = makeMockJournal();
+      const registry = makeMockRegistry();
+      const proj = new BoardProjection([snap], journal, registry);
+
+      const result = proj.project();
+
+      assert.strictEqual(result.syncState, 'ok');
+    });
+
+    it('syncState is degraded when an active snapshot reports a failed detail fetch', () => {
+      const snap = makeSnapshot({ degraded: true, attention: '✅' as AttentionState });
       const journal = makeMockJournal();
       const registry = makeMockRegistry();
       const proj = new BoardProjection([snap], journal, registry);
@@ -257,7 +268,7 @@ describe('BoardProjection', () => {
     });
 
     it('degraded sync emits board_hint via SseHub to all channels', () => {
-      const snap = makeSnapshot({ estimated: true, attention: '✅' as AttentionState });
+      const snap = makeSnapshot({ degraded: true, attention: '✅' as AttentionState });
       const journal = makeMockJournal();
       const registry = makeMockRegistry();
 

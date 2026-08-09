@@ -4,7 +4,7 @@
 
 import { logger } from '#logger';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import { CoverageGate, type ToolTrace } from './coverage-gate.ts';
 import { FindingsJournal } from './findings-journal.ts';
@@ -523,16 +523,19 @@ export class PipelineRuntime {
     }
 
     const title = `pipeline_${task.type}`;
+    // Session root = MR root (parent of reportDir): the checked-out repo lives in ./worktree
+    // and prior-step artifacts in ./report — rooting at reportDir alone left the sources
+    // outside the session's allowed paths and workers narrated "no access" prose (NO_RESULT).
     const session = await this._opencode.createSession({
       title,
-      directory: reportDir,
+      directory: dirname(reportDir),
       tools: { read: true, grep: true },
     });
     try {
       const result = await this._opencode.prompt(session.sid, {
         system:
           'Review the assigned MR scope. Return only structured findings backed by files you read.',
-        text: `Worker ${task.type}; MR ${String(task.params.mr)}; files: ${files.join(', ') || '(no changed files)'}`,
+        text: `Worker ${task.type}; MR ${String(task.params.mr)}; files: ${files.join(', ') || '(no changed files)'} — read sources under ./worktree/ (repo checkout), prior-step artifacts under ./report/`,
         format: {
           type: 'json_schema',
           schema: {

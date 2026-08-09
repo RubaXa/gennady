@@ -150,6 +150,26 @@ describe('RoleScheduler — tick', () => {
     assert.strictEqual(scheduler.activeCount(), 0);
   });
 
+  it('GIVEN VCS падает WHEN tick THEN tick не rejectит (fire-and-forget безопасен) и следующий тик работает', async () => {
+    const scheduler = new RoleScheduler({
+      engine,
+      vcs,
+      opencode,
+      store: store as unknown as StateStoreLike,
+    });
+
+    // Сетевой сбой GitLab не должен убивать процесс через unhandled rejection (live bug).
+    (vcs as { getActionable: () => Promise<VcsActionableMr[]> }).getActionable = async () => {
+      throw new Error('NETWORK: fetch failed');
+    };
+    await scheduler.tick();
+
+    // После восстановления сети тик снова выполняется штатно.
+    vcs.seed([makeMr()]);
+    await scheduler.tick();
+    assert.strictEqual(scheduler.activeCount(), 0);
+  });
+
   it('GIVEN роль не соответствует MR role WHEN tick THEN не назначена', async () => {
     // MR is for 'reviewer' role but we activate only 'author'
     const mr = makeMr({ role: 'reviewer' });

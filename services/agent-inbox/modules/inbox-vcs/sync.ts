@@ -53,6 +53,8 @@ export type SyncSnapshot = {
   updatedAt: string;
   /** @purpose Whether attention was computed from poll-only fields */
   estimated: boolean;
+  /** @purpose Whether the detail tier failed and this active snapshot fell back to partial data */
+  degraded?: boolean;
 };
 
 /** @purpose Poll-tier fields extracted from VcsActionableMr — used before detail tier is available. */
@@ -160,6 +162,7 @@ export class SyncService {
 
       // #region START_DETAIL_TIER — active MR: fetch discussions and detail for full attention
       let enrichedPoll = { ...poll };
+      let detailFailed = false;
       try {
         const detail = await this._vcs.getMrDetail(poll.project, poll.iid);
         enrichedPoll = {
@@ -172,6 +175,7 @@ export class SyncService {
           },
         };
       } catch {
+        detailFailed = true;
         logger.debug(
           '[SyncService#twoTierSync] [detail_fetch → skipped] getMrDetail failed, using poll-only',
           {
@@ -182,9 +186,17 @@ export class SyncService {
 
       const discussions = await this._fetchAllDiscussions(enrichedPoll.project, enrichedPoll.iid);
       const attention = this._computeFullAttention(enrichedPoll, lastReviewedHeadSha, discussions);
-      snapshots.push(
-        this._buildSnapshot(mr, enrichedPoll, attention, lastReviewedHeadSha, discussions)
+      const snapshot = this._buildSnapshot(
+        mr,
+        enrichedPoll,
+        attention,
+        lastReviewedHeadSha,
+        discussions
       );
+      // Inactivity-driven poll-only snapshots are normal operation; only a failed detail
+      // fetch on an ACTIVE MR marks the board degraded.
+      if (detailFailed) snapshot.degraded = true;
+      snapshots.push(snapshot);
       // #endregion END_DETAIL_TIER
     }
     // #endregion END_POLL_TIER
