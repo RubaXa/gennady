@@ -116,6 +116,8 @@ describe('seedMr', () => {
       assert.deepStrictEqual((board as { cards: unknown[] }).cards[0], {
         ref: 'group/project!42',
         title: 'Seeded MR',
+        description: '',
+        webUrl: 'https://gitlab.example.com/group/project/-/merge_requests/42',
         author: 'author',
         myRole: 'author',
         attention: '💬',
@@ -155,6 +157,8 @@ describe('seedMr', () => {
     assert.deepStrictEqual(createMrCard(), {
       ref: 'group/project!42',
       title: 'feat: deterministic dashboard fixture',
+      description: 'Deterministic fixture description for the MR header.',
+      webUrl: 'https://gitlab.example.com/group/project/-/merge_requests/42',
       author: 'author',
       myRole: 'reviewer',
       attention: '💬',

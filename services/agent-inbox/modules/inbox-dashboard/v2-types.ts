@@ -21,6 +21,10 @@ export type MrCardV2 = {
   ref: string;
   /** @purpose Latest synchronized merge-request title. */
   title: string;
+  /** @purpose MR description body — clamped in the header with an expander. */
+  description?: string;
+  /** @purpose Canonical VCS web URL for the GitLab ↗ link. */
+  webUrl?: string;
   /** @purpose VCS author displayed in the identity row. */
   author: string;
   /** @purpose Current operator role, absent when it is not known. */

@@ -227,6 +227,8 @@ export class BoardProjection {
     return {
       ref: mrKey,
       title: snap.mr.title,
+      description: snap.mr.description,
+      webUrl,
       author: snap.mr.author,
       myRole: snap.role,
       attention: snap.attention,

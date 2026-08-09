@@ -73,6 +73,8 @@ export function createMrCard(overrides: Partial<MrCard> = {}): MrCard {
   return {
     ref: 'group/project!42',
     title: 'feat: deterministic dashboard fixture',
+    description: 'Deterministic fixture description for the MR header.',
+    webUrl: 'https://gitlab.example.com/group/project/-/merge_requests/42',
     author: 'author',
     myRole: 'reviewer',
     attention: '💬',

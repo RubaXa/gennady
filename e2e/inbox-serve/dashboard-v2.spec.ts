@@ -267,7 +267,7 @@ test.describe('dashboard v2 self-contained e2e (TSK-169 design-system proof)', (
     await elementShot(page, 'aside.v2-rail', '03-rail', { fullPage: false });
   });
 
-  test('(4) card with live timer — two frames', async ({ page }) => {
+  test('(4) work-state rows — no phantom timer on non-live states', async ({ page }) => {
     await page.goto(`http://localhost:${PORT}/#/`, { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('main.v2-board')).toBeVisible({
@@ -276,20 +276,17 @@ test.describe('dashboard v2 self-contained e2e (TSK-169 design-system proof)', (
 
     const card41 = page.getByRole('button', { name: /Открыть group\/project!41/ });
     await expect(card41).toBeVisible({ timeout: 10_000 });
-    const timer1 = card41.locator('.v2-timer');
 
-    await expect(timer1).toBeVisible({ timeout: 10_000 });
-    const text1 = await timer1.textContent();
-    await elementShot(page, 'button[aria-label*="group/project!41"]', '04a-timer-frame1', {
-      fullPage: false,
-    });
+    // Живая работа — running/queued. waiting_dep (⏸ ждёт зависимости) после crash-recovery —
+    // НЕ живая: таймера быть не должно, иначе карточка врёт про активность (live-дефект приёмки).
+    await expect(card41.locator('.v2-timer')).toHaveCount(0);
+    await expect(card41).toContainText('Ждёт зависимости');
 
-    await page.waitForTimeout(2100);
+    const card42 = page.getByRole('button', { name: /Открыть group\/project!42/ });
+    await expect(card42).toContainText('Нет активной задачи');
+    await expect(card42.locator('.v2-timer')).toHaveCount(0);
 
-    const text2 = await timer1.textContent();
-    expect(text2).not.toBe(text1);
-
-    await elementShot(page, 'button[aria-label*="group/project!41"]', '04b-timer-frame2', {
+    await elementShot(page, 'button[aria-label*="group/project!41"]', '04-work-state-no-timer', {
       fullPage: false,
     });
   });

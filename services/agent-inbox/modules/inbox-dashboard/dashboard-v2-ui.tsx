@@ -90,16 +90,19 @@ export function MrCard(props: { card: MrCardV2; onOpen: (ref: string) => void })
   const roleIcon = card.myRole === 'author' ? '👤' : card.myRole === 'reviewer' ? '👁' : null;
   const [elapsed, setElapsed] = useState(0);
   const startedAt = card.work.startedAt ? new Date(card.work.startedAt).getTime() : null;
+  // Таймер — только у живой работы: у done/failed startedAt сохраняется, и без гейта
+  // таймер тикает вечно, показывая «активность» там, где её нет.
+  const isLive = card.work.state === 'running' || card.work.state === 'queued';
   useEffect(() => {
     setElapsed(0);
-    if (startedAt == null) return;
+    if (!isLive || startedAt == null) return;
     const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [startedAt]);
+  }, [startedAt, isLive]);
   const timerText =
-    startedAt != null
+    isLive && startedAt != null
       ? `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
       : null;
   return (
@@ -741,12 +744,54 @@ export function HeaderInformer(props: { card: MrCardV2 | undefined }) {
   return (
     <section className="v2-header-informer" aria-label="Информер MR">
       <span>✅ {props.card.counters.approvals}</span>
-      <span>👁 {props.card.counters.reviewers.filter((reviewer) => reviewer.voted).length}</span>
+      <span>
+        👁 {props.card.counters.reviewers.filter((reviewer) => reviewer.voted).length}/
+        {props.card.counters.reviewers.length}
+      </span>
       <span>🏗 {props.card.counters.ci ?? '—'}</span>
       <span>💬 {props.card.counters.threads}</span>
       <span>🔀 {props.card.counters.newCommits}</span>
       <span>📬 {props.card.counters.unread}</span>
     </section>
+  );
+}
+
+/** @purpose Role glyph for the MR header identity row. */
+function roleGlyph(myRole: string | null): string {
+  if (myRole === 'author') return '👤';
+  if (myRole === 'reviewer') return '👁';
+  if (myRole === 'mentioned') return '💬';
+  return '·';
+}
+
+/** @purpose Human attention label for the MR header status row. */
+const ATTENTION_LABEL: Record<string, string> = {
+  '⏳': 'ждёт моё ревью',
+  '💬': 'ждёт мой ответ',
+  '🔀': 'ждёт ре-ревью',
+  '✅': 'ждёт аппрув / резолв',
+  '😴': 'ждёт других',
+};
+
+/**
+ * @purpose MR description with clamp + expander (mockup section 4 description row).
+ * @param props Full description body from the card DTO.
+ */
+function DescriptionRow(props: { description: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const text = props.description.trim();
+  if (!text) return null;
+  return (
+    <p className={`v2-mr-description${expanded ? ' expanded' : ''}`}>
+      {text}{' '}
+      <button
+        type="button"
+        className="v2-mr-description-toggle"
+        onClick={() => setExpanded((prev) => !prev)}
+      >
+        {expanded ? 'свернуть ▴' : 'ещё ▾'}
+      </button>
+    </p>
   );
 }
 
@@ -786,9 +831,34 @@ export function MrFeedScreen(props: {
       )}
       <header>
         <button onClick={props.onBack}>← Доска</button>
-        <p className="v2-kicker">{props.refName}</p>
+        <p className="v2-kicker">
+          {roleGlyph(props.state?.card?.myRole ?? null)} {props.refName}
+          {' · '}
+          {props.state?.card?.author ?? ''}
+          {props.state?.card?.webUrl ? (
+            <>
+              {' '}
+              <a
+                className="v2-gitlab-link"
+                href={props.state.card.webUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitLab ↗
+              </a>
+            </>
+          ) : null}
+        </p>
         <h1>{props.state?.card?.title ?? 'Загрузка MR…'}</h1>
+        <p className="v2-attention-line">
+          {props.state?.card
+            ? `${props.state.card.attention} ${ATTENTION_LABEL[props.state.card.attention] ?? ''}`
+            : ''}
+        </p>
         <HeaderInformer card={props.state?.card} />
+        {props.state?.card?.description ? (
+          <DescriptionRow description={props.state.card.description} />
+        ) : null}
       </header>
       <FeedList
         state={props.state}

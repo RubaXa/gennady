@@ -35,6 +35,10 @@ export type MrCard = {
   ref: string;
   /** @purpose Current title from the synchronized VCS snapshot. */
   title: string;
+  /** @purpose MR description body from the VCS snapshot (may be long — UI clamps). */
+  description: string;
+  /** @purpose Canonical VCS web URL for the GitLab ↗ link. */
+  webUrl: string;
   /** @purpose VCS author login. */
   author: string;
   /** @purpose Authenticated operator role for this MR, null when VCS cannot determine it. */

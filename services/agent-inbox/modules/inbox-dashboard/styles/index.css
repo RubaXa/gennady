@@ -111,6 +111,41 @@ body {
   color: var(--ds-secondary);
   border-bottom: 1px solid var(--ds-outline);
 }
+.v2-attention-line {
+  margin: 2px 0 4px;
+  font-size: 13px;
+  color: var(--ds-secondary);
+}
+.v2-gitlab-link {
+  color: var(--ds-steel);
+  text-decoration: none;
+  font-size: 12px;
+}
+.v2-gitlab-link:hover {
+  text-decoration: underline;
+}
+.v2-mr-description {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ds-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.v2-mr-description.expanded {
+  display: block;
+  overflow: visible;
+}
+.v2-mr-description-toggle {
+  background: none;
+  border: none;
+  color: var(--ds-steel);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 4px;
+}
 @keyframes pulse {
   0%,
   100% {

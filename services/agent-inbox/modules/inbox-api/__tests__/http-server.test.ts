@@ -244,6 +244,8 @@ describe('HttpServer — live VCS board truth (TSK-158)', () => {
       assert.deepStrictEqual(payload.cards[0], {
         ref: 'group/api!162',
         title: 'canonical API card',
+        description: '',
+        webUrl: 'https://gitlab.example.com/group/api/-/merge_requests/162',
         author: 'alice',
         myRole: 'reviewer',
         attention: '⏳',

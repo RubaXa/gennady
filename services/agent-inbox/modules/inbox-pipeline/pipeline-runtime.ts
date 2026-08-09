@@ -418,8 +418,31 @@ export class PipelineRuntime {
         const synthesized = await synthesize.synthesize(
           modelResults.length > 0 ? modelResults : seededResults
         );
-        const review = { ...synthesize.buildReviewJson(synthesized), verdict: 'COMMENT' };
+        const review: ReviewJson = {
+          ...(synthesize.buildReviewJson(synthesized) as ReviewJson),
+          verdict: 'COMMENT',
+        };
         await this._writeArtifact(reportDir, 'review.json', review);
+        // Публикуем итог ревью в ленту: без widget_bump feed состоит из одних progress-записей,
+        // и оператор не видит, что ревью вообще состоялось (live-дефект приёмки S3).
+        await this._journal.append({
+          ts: new Date().toISOString(),
+          mr,
+          kind: 'widget_bump',
+          actor: 'pipeline',
+          payload: {
+            verdict: review.verdict ?? 'COMMENT',
+            revision: review.revision ?? 1,
+            items: (review.findings ?? []).map((finding) => ({
+              id: finding.id,
+              severity: finding.severity,
+              file: finding.file ?? '',
+              line: finding.line ?? 0,
+              summary: finding.summary ?? '',
+              state: 'open',
+            })),
+          },
+        });
         return;
       }
       if (task.type.startsWith('gate_verdict')) {
