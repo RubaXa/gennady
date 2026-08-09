@@ -126,7 +126,13 @@ export class InMemoryTaskQueue implements TaskQueuePort {
         return { taskId: existing.taskId, position: this._queuedCount(mr) };
       }
 
-      // #region START_SUPERSEDE_QUEUED — replace the queued version in-place
+      // #region START_SUPERSEDE_QUEUED — replace the queued version in-place; failed → retry
+      // failed-задача обязана воскресать: иначе одна неудача навсегда блокирует downstream
+      // (waiting_dep), и ни один повторный startDeltaReview цепочку не перезапустит.
+      if (existing.status === 'failed') existing.status = 'queued';
+      if (existing.status === 'done' || existing.status === 'cancelled') {
+        return { taskId: existing.taskId, position: this._queuedCount(mr) };
+      }
       existing.params = params;
       existing.priority = params.priority != null ? Number(params.priority) : resolved.priority;
       existing.createdAt = new Date().toISOString();

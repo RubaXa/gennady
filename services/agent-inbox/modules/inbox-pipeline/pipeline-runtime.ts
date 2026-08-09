@@ -534,7 +534,7 @@ export class PipelineRuntime {
     try {
       const result = await this._opencode.prompt(session.sid, {
         system:
-          'Review the assigned MR scope. Return only structured findings backed by files you read.',
+          'Review the assigned MR scope. Return ONLY one ```json fenced code block matching the schema — no prose before or after. Empty result is {"findings": []}.',
         text: `Worker ${task.type}; MR ${String(task.params.mr)}; files: ${files.join(', ') || '(no changed files)'} — read sources under ./worktree/ (repo checkout), prior-step artifacts under ./report/`,
         format: {
           type: 'json_schema',
