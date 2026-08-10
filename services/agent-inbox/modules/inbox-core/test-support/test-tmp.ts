@@ -1,25 +1,25 @@
-// @file: Test-only helper for isolated temp directories that stay inside the agent-inbox state boundary (~/.gennady).
+// @file: Test-only helper for isolated temp directories that stay outside the production state boundary.
 // @consumers: agent-inbox test suites (cli/cmd/inbox*, services/agent-inbox/**)
-// @tasks: TSK-125
+// @tasks: TSK-125, TSK-172
 
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { StateStore } from '../state-store.ts';
+import { composeDefaultReviewRuntimeRoots } from '../runtime-profile.port.ts';
 
 /**
  * @purpose Root directory under which every isolated test temp dir is created.
- * @invariant Lives inside `StateStore.getStateDir()` (defaults to `~/.gennady`) — never `os.tmpdir()`, per NFC-05.
+ * @invariant Lives under the dedicated OS-temp test namespace and never inside production `~/.gennady`.
  * @sideEffect Creates the root directory (recursive) if absent.
  */
 function resolveTestTmpRoot(): string {
-  const scratchTestRoot = join(new StateStore().getStateDir(), 'scratch', 'test');
+  const scratchTestRoot = join(composeDefaultReviewRuntimeRoots().test, 'scratch');
   mkdirSync(scratchTestRoot, { recursive: true });
   return scratchTestRoot;
 }
 
 /**
  * @purpose Create an isolated temp directory for one test (or test suite), scoped under the agent-inbox state boundary.
- * @invariant Directory is created under `<StateStore.getStateDir()>/scratch/test/`, never `os.tmpdir()`.
+ * @invariant Directory is created under the dedicated test root, never the production root.
  * @param prefix Directory name prefix (test-identifying); a random suffix is appended by `mkdtempSync`.
  * @returns Absolute path to the freshly created, empty temp directory.
  * @sideEffect Creates the scratch/test root (if absent) and one new directory inside it.

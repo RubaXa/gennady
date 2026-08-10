@@ -1,12 +1,13 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
+import { randomUUID } from 'node:crypto';
 import { Agent as UndiciAgent } from 'undici';
 import { logger } from '#logger';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
@@ -50,6 +51,18 @@ import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
 import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
 import { setDryRun, isDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
+import {
+  BootstrapSafetyError,
+  ReviewRuntimeProfile,
+} from '../modules/inbox-core/runtime-profile.ts';
+import {
+  RuntimeProfilePort,
+  composeDefaultReviewRuntimeRoots,
+} from '../modules/inbox-core/runtime-profile.port.ts';
+import type { ReviewRuntimeProfileSpec } from '../modules/inbox-core/types/review-runtime-profile-spec.type.ts';
+import type { ReviewRuntimeRoots } from '../modules/inbox-core/types/review-runtime-roots.type.ts';
+import type { ReviewRuntimeBinding } from '../modules/inbox-core/types/review-runtime-binding.type.ts';
+import type { buildNodeContext } from '../modules/inbox-roles/context-builder.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -318,6 +331,14 @@ export type BootstrapConfig = {
   port?: number;
   /** @purpose Root state directory (default: ~/.gennady). */
   stateDir?: string;
+  /** @purpose Explicit runtime capability binding; omitted value derives from legacy mocks mode. */
+  runtimeProfile?: ReviewRuntimeProfileSpec;
+  /** @purpose Overrides for the three pairwise-disjoint namespace roots. */
+  runtimeRoots?: Partial<ReviewRuntimeRoots>;
+  /** @purpose Controlled content-context seam used by integration composition; production uses the live builder. */
+  buildContentContext?: typeof buildNodeContext;
+  /** @purpose Reopen an existing test run read-only instead of creating a fresh run. */
+  reopenRun?: boolean;
   /**
    * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — journals the
    *   intended write to the dashboard console instead (TSK-131).
@@ -376,7 +397,11 @@ export type BootstrapResult = {
   pipeline: PipelineRuntime;
   /** @purpose Shared readiness lifecycle serving GET /api/boot. */
   bootReadiness: BootReadiness;
+  /** @purpose Validated physical runtime binding shared by all stateful adapters. */
+  runtimeBinding: ReviewRuntimeBinding;
 };
+
+export { BootstrapSafetyError };
 
 // ═══════════════════════════════════════════════════════════════
 // Main bootstrap
@@ -392,7 +417,6 @@ export type BootstrapResult = {
 export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResult> {
   const port = config.port ?? 4174;
   const pollingInterval = 300_000; // 5 minutes
-  const stateStore = new StateStore(config.stateDir);
   const bootReadiness = new BootReadiness();
   // D-305: the diagnostics surface must be observable before configuration and every external
   // phase. It is rebound to the complete runtime only after those dependencies are assembled.
@@ -411,10 +435,55 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   };
   await observeBoot();
 
+  // #region START_BIND_RUNTIME_SAFETY_BOUNDARY
+  const defaultProfile: ReviewRuntimeProfileSpec = config.mocks
+    ? {
+        stateNamespace: 'mock',
+        externalIoPolicy: 'deterministic-mock',
+        runId: `boot-${randomUUID()}`,
+      }
+    : { stateNamespace: 'production', externalIoPolicy: 'real-work' };
+  let runtimeBinding: ReviewRuntimeBinding;
+  try {
+    const runtimeProfile = ReviewRuntimeProfile.compose(config.runtimeProfile ?? defaultProfile);
+    const usesMockAdapters = runtimeProfile.stateNamespace === 'mock';
+    if (Boolean(config.mocks) !== usesMockAdapters) {
+      throw new Error(
+        '[bootstrap] Legacy mocks switch conflicts with the explicit runtime profile namespace'
+      );
+    }
+    const runtimeRoots = {
+      ...composeDefaultReviewRuntimeRoots(),
+      ...config.runtimeRoots,
+    };
+    runtimeBinding = await new RuntimeProfilePort(runtimeRoots).openProfile(runtimeProfile, {
+      reopenReadOnly: config.reopenRun,
+      stateRootOverride: config.stateDir,
+    });
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    bootReadiness.fail(`[bootstrap] Runtime safety binding failed: ${detail}`);
+    await observeBoot();
+    await server.stop();
+    const error = new BootstrapSafetyError(
+      '[bootstrap] Runtime safety binding failed before adapters started',
+      bootReadiness.snapshot(),
+      cause
+    );
+    logger.error('[bootstrap] [connect → failed] Runtime safety boundary rejected boot', {
+      error,
+    });
+    throw error;
+  }
+  const stateStore = new StateStore(runtimeBinding);
+  // #endregion END_BIND_RUNTIME_SAFETY_BOUNDARY
+
   // #region START_APPLY_DRY_RUN — TSK-131: an explicit dryRun option wins over the ambient
   // INBOX_DRY_RUN env, and is mirrored back into the env so deeply-nested effect paths agree
   const persistedDryRun = await stateStore.loadDryRun();
-  if (config.dryRun !== undefined) {
+  if (runtimeBinding.profile.externalIoPolicy === 'real-readonly') {
+    setDryRun(true);
+  } else if (config.dryRun !== undefined) {
     setDryRun(config.dryRun);
   } else if (persistedDryRun !== undefined && process.env.INBOX_DRY_RUN === undefined) {
     setDryRun(persistedDryRun);
@@ -815,7 +884,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     vcs,
     opencode,
     pollingInterval,
-    buildLiveContext: !useMocks,
+    buildLiveContext: !useMocks || config.buildContentContext !== undefined,
+    bootReadiness,
+    buildContentContext: config.buildContentContext,
     dryRun: isDryRun(),
     reviewSessionPool,
     pipeline,
@@ -908,6 +979,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       lifecycleReaper,
       pipeline,
       bootReadiness,
+      runtimeBinding,
     };
   }
 
@@ -979,5 +1051,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     lifecycleReaper,
     pipeline,
     bootReadiness,
+    runtimeBinding,
   };
 }

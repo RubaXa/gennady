@@ -28,6 +28,7 @@ coverage
 .gennadyrc
 ai/drafts
 .claude/
+.codex-agent-status/
 *.tgz
 # agent-inbox runtime state (registry, drafts, worktrees)
 .gennady/

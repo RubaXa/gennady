@@ -1,6 +1,6 @@
 // @file: StateStore — unified access point to all file-backed state (config, registry, audit) under ~/.gennady.
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, inbox-opencode, CLI
-// @tasks: TSK-109, TSK-157
+// @tasks: TSK-109, TSK-157, TSK-172
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -12,6 +12,8 @@ import { AuditLog, type AuditEntry } from './audit-log.ts';
 import { type CapabilityRegistry } from './capability-modes.ts';
 import type { InboxConfig as InboxConfigRaw } from '../../../../cli/cmd/inbox/_core/logic/inbox-config.logic.ts';
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
+import type { ReviewRuntimeBinding } from './types/review-runtime-binding.type.ts';
+import type { ReviewRuntimeProfile } from './runtime-profile.ts';
 
 /**
  * @purpose Singleton access to file-backed agent-inbox state: config, registry, audit.
@@ -27,16 +29,22 @@ export class StateStore {
   protected _registry: InboxRegistryAccess;
   /** @purpose Audit log sub-service. */
   protected _auditLog: AuditLog;
+  /** @purpose Validated profile that selected this state root, when composed by bootstrap. */
+  protected _runtimeProfile: ReviewRuntimeProfile | null;
 
   /**
    * @purpose Create a StateStore with all sub-services bound to the given state directory.
-   * @param [stateDir] Root state directory (defaults to ~/.gennady).
+   * @param [state] Root state directory or validated runtime binding (defaults to production compatibility root).
    */
-  constructor(stateDir?: string) {
+  constructor(state?: string | ReviewRuntimeBinding) {
     // The CLI and its Playwright proof share this explicit override.  It preserves the default
     // operator state while letting a real `gennady inbox serve` process boot against an isolated,
     // journal-seeded directory without test-only dependency injection.
-    this._stateDir = stateDir ?? process.env.GENNADY_STATE_DIR ?? join(homedir(), '.gennady');
+    this._stateDir =
+      typeof state === 'string'
+        ? state
+        : (state?.stateRoot ?? process.env.GENNADY_STATE_DIR ?? join(homedir(), '.gennady'));
+    this._runtimeProfile = typeof state === 'object' ? state.profile : null;
     this._config = new InboxConfig(this._stateDir);
     this._registry = new InboxRegistryAccess(this._stateDir);
     this._auditLog = new AuditLog(this._stateDir);
@@ -57,6 +65,14 @@ export class StateStore {
    */
   getStateDir(): string {
     return this._stateDir;
+  }
+
+  /**
+   * @purpose Expose the validated runtime profile that owns this store.
+   * @returns Immutable profile, or null for legacy explicitly rooted callers.
+   */
+  getRuntimeProfile(): ReviewRuntimeProfile | null {
+    return this._runtimeProfile;
   }
 
   /**

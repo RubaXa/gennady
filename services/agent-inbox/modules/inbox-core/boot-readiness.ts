@@ -1,6 +1,6 @@
 // @file: BootReadiness — boot-phase state machine: connect→poll→reconcile→restore→ready/failed with progress tracking
 // @consumers: inbox-api, bootstrap
-// @tasks: TSK-157
+// @tasks: TSK-157, TSK-172
 
 import { logger } from '#logger';
 
@@ -26,6 +26,9 @@ export type BootProgress = {
   label: string;
 };
 
+/** @purpose Observable lazy preparation state for one MR content worktree. */
+export type WorktreePreparationState = 'deferred' | 'preparing' | 'ready' | 'failed';
+
 /** @purpose Full boot state snapshot exposed via /api/boot (D-305). */
 export type BootState = {
   /** @purpose Current phase identifier */
@@ -40,6 +43,8 @@ export type BootState = {
   configured: boolean;
   /** @purpose Missing config keys when configured=false */
   missing: string[];
+  /** @purpose Per-content-key lazy worktree state; absent keys remain deferred and uncreated. */
+  worktrees: Record<string, WorktreePreparationState>;
 };
 
 /** @purpose Callback invoked on every boot state transition — registered before connect. */
@@ -66,6 +71,10 @@ export class BootReadiness {
   protected _missing: string[] = [];
   /** @purpose Registered transition listeners. */
   protected _listeners: BootTransitionListener[] = [];
+  /** @purpose Observable states only for content worktrees that crossed the lazy barrier. */
+  protected _worktrees = new Map<string, WorktreePreparationState>();
+  /** @purpose Single-flight preparation promises keyed by content identity. */
+  protected _worktreePreparations = new Map<string, Promise<unknown>>();
 
   /**
    * @purpose Create a BootReadiness instance — snapshot available immediately, before connect.
@@ -86,7 +95,54 @@ export class BootReadiness {
       error: this._error,
       configured: this._configured,
       missing: [...this._missing],
+      worktrees: Object.fromEntries(this._worktrees),
     };
+  }
+
+  /**
+   * @purpose Run the first content worktree preparation only after boot reaches read-ready state.
+   * @invariant No worktree is created by boot phases; concurrent/repeated calls for one key share one preparation.
+   * @param key Stable MR/content identity shown in the observable worktree state map.
+   * @param prepare Actual content task that materializes or reuses the worktree.
+   * @throws {Error} Before ready or when preparation fails.
+   * @returns The first successful preparation result for this key.
+   * @sideEffect Runs caller-supplied filesystem/network preparation at most once after ready.
+   */
+  async prepareWorktreeOnce<T>(key: string, prepare: () => Promise<T>): Promise<T> {
+    if (!this._ready) {
+      throw new Error('[BootReadiness#prepareWorktreeOnce] Content worktree is behind ready');
+    }
+
+    const existing = this._worktreePreparations.get(key);
+    if (existing) return existing as Promise<T>;
+
+    this._worktrees.set(key, 'preparing');
+    this._notifyListeners();
+
+    // #region START_RUN_LAZY_WORKTREE_PREPARATION
+    const preparation = prepare()
+      .then((result) => {
+        this._worktrees.set(key, 'ready');
+        this._notifyListeners();
+        logger.info(`[BootReadiness#prepareWorktreeOnce] [preparing → ready] ${key}`);
+        return result;
+      })
+      .catch((cause: unknown) => {
+        this._worktrees.set(key, 'failed');
+        this._worktreePreparations.delete(key);
+        this._notifyListeners();
+        const error = new Error(
+          `[BootReadiness#prepareWorktreeOnce] Worktree preparation failed for ${key}`,
+          { cause }
+        );
+        logger.error(`[BootReadiness#prepareWorktreeOnce] [preparing → failed] ${key}`, {
+          error,
+        });
+        throw error;
+      });
+    this._worktreePreparations.set(key, preparation);
+    return preparation;
+    // #endregion END_RUN_LAZY_WORKTREE_PREPARATION
   }
 
   /**

@@ -1,6 +1,6 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
 // @consumers: serve timer, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-140, TSK-141, TSK-157, TSK-161
+// @tasks: TSK-113, TSK-121, TSK-140, TSK-141, TSK-157, TSK-161, TSK-172
 
 import { logger } from '#logger';
 import type { RoleEngine, RegisteredRole } from './role-engine.ts';
@@ -9,6 +9,7 @@ import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { PipelineRuntime } from '../inbox-pipeline/pipeline-runtime.ts';
+import type { BootReadiness } from '../inbox-core/boot-readiness.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
@@ -85,6 +86,10 @@ export type RoleSchedulerConfig = {
   buildLiveContext?: boolean;
   /** @purpose Override for diff_refs resolution — injectable for tests; defaults to `fetchDiffRefsLive` when `buildLiveContext` is on */
   fetchDiffRefs?: ContextBuilderDeps['fetchDiffRefs'];
+  /** @purpose Shared ready barrier that owns observable lazy content-worktree preparation. */
+  bootReadiness?: BootReadiness;
+  /** @purpose Controlled context builder seam; production defaults to `buildNodeContext`. */
+  buildContentContext?: typeof buildNodeContext;
   /**
    * @purpose Forwarded to every RoleInstance's effect nodes — suppresses the real vcs-* mutation
    *   under INBOX_DRY_RUN (TSK-131); default false, dry-run is opt-in.
@@ -863,11 +868,15 @@ export class RoleScheduler {
     if (!this._config.buildLiveContext) return undefined;
 
     try {
-      const nodeContext = await buildNodeContext(mrUrl, {
-        vcs: this._config.vcs,
-        store: this._config.store,
-        fetchDiffRefs: this._config.fetchDiffRefs ?? fetchDiffRefsLive,
-      });
+      const buildContentContext = (): ReturnType<typeof buildNodeContext> =>
+        (this._config.buildContentContext ?? buildNodeContext)(mrUrl, {
+          vcs: this._config.vcs,
+          store: this._config.store,
+          fetchDiffRefs: this._config.fetchDiffRefs ?? fetchDiffRefsLive,
+        });
+      const nodeContext = this._config.bootReadiness
+        ? await this._config.bootReadiness.prepareWorktreeOnce(mrUrl, buildContentContext)
+        : await buildContentContext();
 
       return {
         currentNode: graph.nodes[0]?.id ?? '',

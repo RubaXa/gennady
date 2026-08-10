@@ -28,20 +28,29 @@ if (state.changeBatch.verificationDue) scheduleVerification(state.changeBatch);
 
 _Это полный список публичных сущностей `inbox-core`. Новая публичная сущность требует обновления spec._
 
-| Name                   | Type         | Purpose                                                      |
-| ---------------------- | ------------ | ------------------------------------------------------------ |
-| `ReviewEvent`          | Event        | Версионированный факт, изменяющий локальную модель MR.       |
-| `ReviewState`          | Entity       | Восстанавливаемое актуальное состояние одного MR.            |
-| `ReviewParticipation`  | Value Object | Причины участия оператора и responsibility group.            |
-| `ReviewLifecycle`      | Value Object | Tracking, terminal и operator-completed состояние MR.        |
-| `ReviewChangeBatch`    | Entity       | Накопленная unapplied delta и сроки её верификации.          |
-| `ReviewConfig`         | Value Object | Публичные локальные политики runtime.                        |
-| `JournalPort`          | Port         | Append/replay событий с crash recovery.                      |
-| `ArtifactStorePort`    | Port         | Адресуемое хранение evidence и review artifacts.             |
-| `ClockPort`            | Port         | Время и таймеры с controlled test implementation.            |
-| `RuntimeProfilePort`   | Port         | Физически разделённые production/test/mock namespaces.       |
-| `ReviewRuntimeProfile` | Value Object | Допустимая комбинация state namespace и external I/O policy. |
-| `BootReadiness`        | Service      | Наблюдаемый boot/reconcile/restore barrier.                  |
+| Name                               | Type         | Purpose                                                               |
+| ---------------------------------- | ------------ | --------------------------------------------------------------------- |
+| `ReviewEvent`                      | Event        | Версионированный факт, изменяющий локальную модель MR.                |
+| `ReviewState`                      | Entity       | Восстанавливаемое актуальное состояние одного MR.                     |
+| `ReviewParticipation`              | Value Object | Причины участия оператора и responsibility group.                     |
+| `ReviewLifecycle`                  | Value Object | Tracking, terminal и operator-completed состояние MR.                 |
+| `ReviewChangeBatch`                | Entity       | Накопленная unapplied delta и сроки её верификации.                   |
+| `ReviewConfig`                     | Value Object | Публичные локальные политики runtime.                                 |
+| `JournalPort`                      | Port         | Append/replay событий с crash recovery.                               |
+| `ArtifactStorePort`                | Port         | Адресуемое хранение evidence и review artifacts.                      |
+| `ClockPort`                        | Port         | Время и таймеры с controlled test implementation.                     |
+| `RuntimeProfilePort`               | Port         | Физически разделённые production/test/mock namespaces.                |
+| `ReviewRuntimeProfile`             | Value Object | Допустимая комбинация state namespace и external I/O policy.          |
+| `ReviewStateNamespace`             | Type         | Закрытый набор production/test/mock state namespaces.                 |
+| `ReviewExternalIoPolicy`           | Type         | Закрытый набор допустимых external I/O capabilities.                  |
+| `ReviewRuntimeProfileSpec`         | Type         | Декларативный вход для composition gate профиля.                      |
+| `ReviewRuntimeRoots`               | Type         | Три физически разделённых namespace root.                             |
+| `ReviewRuntimeBinding`             | Type         | Проверенная связь профиля с каноническим state root.                  |
+| `OpenRuntimeProfileOptions`        | Type         | Controlled policy fresh/reopen/explicit-root открытия.                |
+| `composeDefaultReviewRuntimeRoots` | Function     | Default production/test/mock roots без пересечения.                   |
+| `BootReadiness`                    | Service      | Наблюдаемый boot/reconcile/restore и lazy-worktree barrier.           |
+| `WorktreePreparationState`         | Type         | Наблюдаемая deferred/preparing/ready/failed фаза content worktree.    |
+| `BootstrapSafetyError`             | Error        | Failed boot snapshot и cause отказа safety/storage до старта adapter. |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -139,11 +148,22 @@ _Это полный список публичных сущностей `inbox-c
 - **Errors & Degradation:** an invalid or unsafe combination fails before adapters start.
 - **Consumers:** composition root, mocks and eval.
 
+### Runtime profile support surface
+
+- **Types:** `ReviewStateNamespace`, `ReviewExternalIoPolicy`, `ReviewRuntimeProfileSpec`,
+  `ReviewRuntimeRoots`, `ReviewRuntimeBinding`, `OpenRuntimeProfileOptions`.
+- **Function:** `composeDefaultReviewRuntimeRoots` resolves pairwise-disjoint production, test and
+  mock parents before `RuntimeProfilePort` canonicalizes them.
+- **Error:** `BootstrapSafetyError` carries the failed `BootReadiness` snapshot and original cause
+  when profile validation or namespace binding rejects boot before adapters start.
+- **Consumers:** composition root, `StateStore`, integration/eval harnesses.
+
 ### `BootReadiness`
 
 - **Type:** Service
 - **Public Properties:** phase, progress, readiness, failure.
-- **Public Operations:** advance connect→poll→reconcile→restore→ready; retry recoverable phase.
+- **Public Operations:** advance connect→poll→reconcile→restore→ready; prepare the first content
+  worktree once after ready and expose `WorktreePreparationState`; retry recoverable phase.
 - **Lifecycle:** one per process.
 - **Events Emitted:** boot phase changed.
 - **Errors & Degradation:** read-only UI may open explicitly before ready; effects remain disabled.

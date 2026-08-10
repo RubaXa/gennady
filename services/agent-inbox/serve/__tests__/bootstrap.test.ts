@@ -1,18 +1,20 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
 // @consumers: node:test runner
-// @tasks: TSK-115, TSK-160, TSK-167, TSK-170
+// @tasks: TSK-115, TSK-160, TSK-167, TSK-170, TSK-172
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { request as httpRequest } from 'node:http';
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { bootstrap, type BootstrapResult } from '../bootstrap.ts';
+import { bootstrap, BootstrapSafetyError, type BootstrapResult } from '../bootstrap.ts';
 import { gracefulShutdown } from '../shutdown.ts';
 import { StateStore } from '../../modules/inbox-core/state-store.ts';
+import type { ContextBuilderDeps } from '../../modules/inbox-roles/context-builder.ts';
+import type { NodeContext } from '../../modules/inbox-roles/role-node.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -221,6 +223,111 @@ describe('bootstrap — default port', () => {
   });
   it('uses port 4174 when no port specified', () => {
     assert.strictEqual(r.port, 4174);
+  });
+});
+
+describe('bootstrap — runtime safety boundary', () => {
+  it('real effects without allowlist fail before adapters start', async () => {
+    const observed: string[] = [];
+
+    await assert.rejects(
+      () =>
+        bootstrap({
+          mocks: false,
+          port: 0,
+          runtimeProfile: {
+            stateNamespace: 'test',
+            externalIoPolicy: 'real-effects',
+            runId: 'unsafe-effects-172',
+          },
+          onBootState: (state) => {
+            observed.push(state.phase);
+          },
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof BootstrapSafetyError);
+        assert.strictEqual(error.bootState.phase, 'failed');
+        assert.match(error.bootState.error ?? '', /effect allowlist identity/i);
+        return true;
+      }
+    );
+
+    assert.deepStrictEqual(observed, ['connect', 'failed']);
+  });
+
+  it('ready boot defers worktree until the first content task', async () => {
+    const stateDir = mkdtempSync(join(tmpdir(), 'gennady-lazy-worktree-'));
+    const contentKey = 'https://gitlab.test/group/project/-/merge_requests/172';
+    const worktreePath = join(stateDir, 'agent-inbox', 'worktrees', 'group-project-172');
+    let releasePreparation: (() => void) | undefined;
+    let markPreparationStarted: (() => void) | undefined;
+    const preparationGate = new Promise<void>((resolve) => {
+      releasePreparation = resolve;
+    });
+    const preparationStarted = new Promise<void>((resolve) => {
+      markPreparationStarted = resolve;
+    });
+    const buildContentContext = mock.fn(
+      async (mrUrl: string, deps: ContextBuilderDeps): Promise<NodeContext> => {
+        mkdirSync(worktreePath, { recursive: true });
+        markPreparationStarted?.();
+        await preparationGate;
+        return {
+          mr: await deps.vcs.getMrContext(mrUrl),
+          workspace: join(stateDir, 'agent-inbox', 'workspaces', 'group-project-172'),
+          artifacts: { worktreePath },
+          vcs: deps.vcs,
+          store: deps.store,
+        };
+      }
+    );
+    const result = await bootstrap({
+      mocks: true,
+      port: 0,
+      stateDir,
+      buildContentContext,
+    });
+    const worktreeStates: string[] = [];
+    result.bootReadiness.onTransition((state) => {
+      const worktreeState = state.worktrees[contentKey];
+      if (worktreeState) worktreeStates.push(worktreeState);
+    });
+
+    try {
+      // #region START_LAZY_WORKTREE_ASSERT_READY_BARRIER
+      assert.strictEqual(result.bootReadiness.snapshot().phase, 'ready');
+      assert.strictEqual(existsSync(worktreePath), false);
+      assert.deepStrictEqual(result.bootReadiness.snapshot().worktrees, {});
+      // #endregion END_LAZY_WORKTREE_ASSERT_READY_BARRIER
+
+      const assignments = Promise.all([
+        result.scheduler.assignManual(contentKey, 'reviewer'),
+        result.scheduler.assignManual(contentKey, 'reviewer'),
+      ]);
+      await preparationStarted;
+
+      assert.strictEqual(result.bootReadiness.snapshot().worktrees[contentKey], 'preparing');
+      assert.strictEqual(existsSync(worktreePath), true);
+      releasePreparation?.();
+      await assignments;
+
+      // #region START_LAZY_WORKTREE_ASSERT_SINGLE_FLIGHT
+      assert.strictEqual(buildContentContext.mock.callCount(), 1);
+      assert.strictEqual(existsSync(worktreePath), true);
+      assert.strictEqual(result.bootReadiness.snapshot().worktrees[contentKey], 'ready');
+      assert.deepStrictEqual(worktreeStates, ['preparing', 'ready']);
+      // #endregion END_LAZY_WORKTREE_ASSERT_SINGLE_FLIGHT
+    } finally {
+      await gracefulShutdown({
+        server: result.server,
+        scheduler: result.scheduler,
+        opencode: result.opencode,
+        opencodeProcess: result.opencodeProcess,
+        opencodePidFile: result.opencodePidFile,
+      });
+      clearInterval(result.lifecycleReaper);
+      rmSync(stateDir, { recursive: true });
+    }
   });
 });
 
