@@ -11,8 +11,8 @@
       Outputs:
       - `tasks/README.md` — project-level tracker (Entry Points, Tracker Index, High-Level cross-scope DAG, Decision Log). No global Cascade Table here — each scope has its own.
       - `tasks/<scope>/README.md` — per-scope tracker: Cascade Table (derived from scope graph), intra-scope DAG, Tracker.
-      - `tasks/<scope>/<scope>.task-NN.md` — compact tickets for scope-level tasks.
-      - `tasks/<scope>/<module>/<module>.task-NN.md` — module-level tickets (when modules exist in scope).
+      - `tasks/<scope>/<scope>.{PREFIX}-{NNN}.md` — compact tickets for scope-level tasks (new convention). Legacy files: `<scope>.task-NN.md`.
+      - `tasks/<scope>/<module>/<module>.{PREFIX}-{NNN}.md` — module-level tickets (new convention). Legacy files: `<module>.task-NN.md`.
       - `tasks/integration/` — cross-scope integration tickets (optional; only when a dedicated `integration` scope is registered in Scope Graph).
 
       Next phase: `sdd-execute` consumes one ticket at a time, dispatches phase-subagents per ticket's Phases Overview, then `audit`.
@@ -62,7 +62,7 @@
     <Axiom id="AX_EXTEND_DAG_PRESERVES_EXISTING_IDS">
       **In `extend-dag`, existing Task-IDs and ticket files are immutable.**
 
-      - New tasks get next sequential `TSK-NN` after max existing.
+      - New tasks get next `TSK-{PREFIX}-{NNN}` from that directory's README counter (per `AX_TASK_ID_UNIQUENESS`).
       - Existing tickets are NOT regenerated even if upstream specs changed — that is the orchestrator's reopen scenario via `sdd-execute`, not regeneration.
       - `add-scope` upstream → scaffold only for the new scope.
       - `add-module` or `refine-module` upstream → scaffold only for the new/changed surface; unchanged-surface tickets untouched.
@@ -158,13 +158,22 @@
     </Axiom>
 
     <Axiom id="AX_TASK_ID_UNIQUENESS">
-      **`TSK-NN` is project-wide unique, sequential, immutable.**
+      **Task IDs use path-based prefixes: `TSK-{PREFIX}-{NNN}`.**
 
-      - Before generating a ticket, scan `tasks/**/*.task-*.md` for collisions.
-      - ID never changes — even if ticket file moves between scopes.
-      - Code references via file headers point to IDs, not paths.
-      - Auditor cross-checks via `AX_TASK_ID_INTEGRITY`.
-      - Collision = abort; operator resolves.
+      Format rules:
+      - `PREFIX` — derived from the task file's directory path relative to `tasks/` (top-down):
+        - Single-word segment → first letter (e.g., `storage` → `S`, `entity` → `E`).
+        - Hyphenated segment → acronym of all words (e.g., `storage-query` → `SQ`, `runtime-host` → `RH`, `vkt-messenger` → `VM`).
+        - Collision within same parent: extend the ambiguous segment by one more distinguishing character (e.g., `runtime-host` → `RHO` vs `runtime-health` → `RHLT`).
+      - `NNN` — zero-padded 3-digit counter, per-directory, tracked in that directory's README (`Last prefix: NNN`). Starts at `001`.
+      - Every directory README MUST list its assigned prefix under `## Prefix`.
+
+      Immutability: ID never changes — even if ticket file moves between scopes.
+      Code references via file headers (`@tasks:`) point to IDs, not paths.
+      Auditor cross-checks via `AX_TASK_ID_INTEGRITY`.
+      Collision (same prefix + same NNN) = abort; derive a new NNN from the directory README counter.
+
+      Example IDs: `TSK-IB-001`, `TSK-TDSQ-003`, `TSK-TDRHO-001`, `TSK-VMENC-002`.
     </Axiom>
 
     <Axiom id="AX_REOPEN_TICKET_FORMAT">
@@ -201,13 +210,13 @@
       Required file-level fields in execution profile:
       - `@file` — mandatory; what the file holds.
       - `@consumers` — mandatory; one or more consumers (see `AX_CONSUMERS_TAG_SEMANTICS`).
-      - `@tasks` — mandatory; associated `TSK-NN` list.
+      - `@tasks` — mandatory; associated `TSK-{PREFIX}-NNN` list (legacy `TSK-NN` IDs remain valid for pre-convention tickets).
 
       Canonical header shape:
       ```
       // @file: <what the file holds>
       // @consumers: <consumer-1, consumer-2, ...>
-      // @tasks: TSK-04, TSK-12
+      // @tasks: TSK-TDE-001, TSK-TDRHO-002
       ```
     </Axiom>
 
@@ -248,10 +257,19 @@
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
-      - **Phase agreement.** Agent never closes a phase autonomously. Signal `STATUS=READY_TO_ADVANCE`; operator confirms. Emit Phase Progress every round.
-      - **Neutral + critical.** Operator asks to merge tasks, skip a test, accept low coverage → surface the risk, demand justification. No auto-agreement.
-      - **Confidence explicit.** LOW / MEDIUM / HIGH stated. Under LOW: do not lock the DAG, do not close TASK_GENERATION.
-      - **Context budget.** Long dialogues: top-3 questions; compact Phase Progress; do not repeat full DAG when 1–2 edges changed.
+      Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      **Phase agreement.** Agent never closes a phase autonomously. Signal `STATUS=READY_TO_ADVANCE`; operator confirms. Emit Phase Progress every round.
+
+      **Neutral + critical.** Operator asks to merge tasks, skip a test, accept low coverage → surface the risk, demand justification. No auto-agreement.
+
+      **Confidence explicit.** LOW / MEDIUM / HIGH stated. Under LOW: do not lock the DAG, do not close TASK_GENERATION.
+
+      **Context budget.** Long dialogues: top-3 questions; compact Phase Progress; do not repeat full DAG when 1–2 edges changed.
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence lives in the dim service line, not narrated each round.
     </Axiom>
 
     <Axiom id="AX_DECISION_LOG_REQUIRED">
@@ -259,14 +277,67 @@
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
-      **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
       - Ticket body text (Purpose, Description, BDD scenario content after `Given` / `When` / `Then`, Decision Log `Why` / `Risk`).
       - README content (Decision Log entries, Notes, descriptions).
       - Halt messages emitted to the operator.
       - Phase Progress free-text fields.
 
-      English regardless of context: code paths, file names, axiom IDs (`AX_*`), Trace anchors, IDs (`TSK-NN` / `D-NNN` / `H_*`), severity / status tokens (`TODO` / `IN_PROGRESS` / `DONE` / `BLOCKED`), BDD keywords, verification-level tokens, runtime-backing tokens, structural section headings, field labels.
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `<ACR>-<slug>` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Why:**`, `**Recorded:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">
@@ -344,7 +415,7 @@
     | `H_INCOMPLETE_SCOPE_SPEC` | Scope spec present but Discovery/required sections incomplete |
     | `H_MISSING_RULES` | Any cascade source OR transitive `<DependsOn>` references a missing rule file |
     | `H_RULES_CYCLE` | Transitive `<DependsOn>` closure encounters a cycle between rule files |
-    | `H_ID_COLLISION` | Generated `TSK-NN` collides with existing |
+    | `H_ID_COLLISION` | Generated `TSK-{PREFIX}-{NNN}` collides with existing (same prefix + same NNN in same directory) |
     | `H_OPERATOR_REJECT` | Operator refuses Cascade Table / DAG / batch / final review |
     | `H_LOW_CONFIDENCE` | Confidence LOW at DAG or task generation |
     | `H_VERIFICATION_COMMAND_MISSING` | RequiresVerification alias not found in infra-spec Verification Commands |
@@ -362,7 +433,7 @@
         4. For each product/library scope with 8 Module Map, read module specs.
         5. Scope graph detection per `AX_SCOPE_GRAPH_DETECTION`. All absent → `H_NO_SPECS`.
         6. Mode detection per `AX_MODE_AUTO_DETECT_OR_HALT`. On `H_AMBIGUOUS_MODE` halt with operator question.
-        7. In `extend-dag`: read existing `tasks/README.md`, per-scope READMEs, ticket files; capture max `TSK-NN` and current DAG.
+        7. In `extend-dag`: read existing `tasks/README.md`, per-scope READMEs, ticket files; read `Last prefix: NNN` from each affected directory README to determine next available counter; capture current DAG.
         8. Proceed to STEP_1.
       </Action>
     </Step>
@@ -388,7 +459,7 @@
            - Owner=`external-prereq-scope` → add cross-scope dependency edge (already declared in Scope Dependencies; verify consistency).
            - Owner=`operator-action` → record in tracker index as an external prerequisite blocking Phase 0.
         3. Analyze Entity Inventory + Contracts + Inter-Module Dependencies per module spec. Cross-scope dependencies from scope graph edges.
-        4. Form post-bootstrap tickets per `AX_DAG_AND_TICKET_BOUNDARIES` (default: one per coherent spec unit — one ticket per module-spec for product/library; one ticket per discrete capability for infra/contracts). Subdivide only when (P) parallel-executable or (C) context overflow. Assign sequential `TSK-NN` (project-wide; bootstrap tickets numbered first).
+        4. Form post-bootstrap tickets per `AX_DAG_AND_TICKET_BOUNDARIES` (default: one per coherent spec unit — one ticket per module-spec for product/library; one ticket per discrete capability for infra/contracts). Subdivide only when (P) parallel-executable or (C) context overflow. Assign `TSK-{PREFIX}-{NNN}` per `AX_TASK_ID_UNIQUENESS` (derive PREFIX from directory, increment NNN from directory README counter).
         5. Check: no cycles; no context-overflow tickets per (C); no missing prerequisites; every non-bootstrap ticket depends (transitively) on all bootstrap tickets of the same scope.
         5. Phase Progress + Approval Check (Mermaid graph). STOP.
       </Action>
@@ -413,9 +484,9 @@
         2. Verify ID uniqueness per `AX_TASK_ID_UNIQUENESS`. Collision → `H_ID_COLLISION`.
         3. Decompose into phases per `AX_PHASES_DECLARED_IN_HEADER`. Compute scope-level cascade per `AX_RULES_CASCADE_RESOLUTION`; for each phase, derive `Rules:` list per `AX_RULE_ACTIVATION_PLAN` (per-phase filtering by Target Files + kind).
         4. Determine ticket path:
-           - Scope-level task: `tasks/<scope>/<scope>.task-NN.md`.
-           - Module-level task: `tasks/<scope>/<module>/<module>.task-NN.md`.
-           - Cross-scope integration: `tasks/integration/<label>.task-NN.md`.
+           - Scope-level task: `tasks/<scope>/<scope>.{PREFIX}-{NNN}.md`.
+           - Module-level task: `tasks/<scope>/<module>/<module>.{PREFIX}-{NNN}.md`.
+           - Cross-scope integration: `tasks/integration/<label>.{PREFIX}-{NNN}.md`.
         5. Draft section 4 BDD per `AX_TICKET_HAS_BDD_AND_TESTS`, including the mandatory `contract`-level typing scenario for each DbC contract in Spec References.
         6. **BDD review pass — isolated subagent.** Dispatch ONE general-purpose subagent with clean context; inputs = module spec slice + contract anchors + Requirements & Constraints + draft section 4 only; question = «какие negative / corner / trust-boundary / failure-mode сценарии отсутствуют?». Merge approved candidates into section 4 + section 6; append the full reviewed checklist (merged / rejected with reason) to section 8 Decision Log. Out-of-scope proposals (new entities / phases / contracts) → rejected, surfaced to operator at STEP_5.
         7. Validate every contract in Spec References has its typing scenario mapped to a real test file under a `test` phase of THIS ticket. Missing → `H_TYPING_SCENARIO_MISSING` (name offending contract).
@@ -426,9 +497,10 @@
     </Step>
 
     <Step id="STEP_5_REVIEW">
-      <Goal>Final operator agreement.</Goal>
+      <Goal>Final operator agreement + interactive handoff.</Goal>
       <Action>
         TRACE_HEADER (STACK `ROOT__REVIEW`). List created files with traceability links. Approval Check. STOP.
+        On approval: handoff menu per `NEXT_STEP_MENU_FORMAT` (`ai/directives/sdd/interview-protocol.xml`) — one AskUserQuestion, never prose «запусти /sdd-X». Candidates: «Проверить таски критиком (рекомендую)» · «Критик + сразу execute первой pickable» · «Сразу execute (sdd-execute)» · «Закончить сессию». On pick — run the chain directly, stopping between links only on failure.
       </Action>
     </Step>
   </ExecutionPlan>
@@ -467,7 +539,7 @@
 
       <!--SECTION:META-->
       ## 1. Meta
-      - **Task-ID:** <TSK-NN>
+      - **Task-ID:** <TSK-{PREFIX}-NNN>
       - **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->
       - **Purpose:** <semantic goal one-liner>
       - **Scope:** <scope-name>
@@ -675,6 +747,11 @@
       ```markdown
       # Tasks: <scope-name>
 
+      ## Prefix
+      `<PREFIX>` — derived per `AX_TASK_ID_UNIQUENESS`.
+
+      Last prefix: <NNN>
+
       ## Scope Spec
       - [Scope spec](../../specs/<scope>/<scope>.spec.md)
 
@@ -699,14 +776,14 @@
       ## Intra-Scope DAG
       ```mermaid
       graph TD
-        TSK-04 --> TSK-05
-        TSK-06 --> TSK-04
+        TSK-IB-001 --> TSK-IB-002
+        TSK-IB-003 --> TSK-IB-001
       ```
 
       ## Tracker
       | Task-ID | Title | Module | Dependencies | Status | Reopens |
       |---------|-------|--------|--------------|--------|---------|
-      | [TSK-04](payments/payments.task-04.md) | Implement StripePaymentAdapter | payments | TSK-01, TSK-03 | `[ ]` TODO | 0 |
+      | [TSK-BPAY-001](payments/payments.BPAY-001.md) | Implement StripePaymentAdapter | payments | TSK-IB-001, TSK-IB-003 | `[ ]` TODO | 0 |
 
       ## Notes
       [Optional: scope-specific execution notes, deviations, deferred items.]

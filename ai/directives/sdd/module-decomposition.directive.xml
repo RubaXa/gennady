@@ -1,4 +1,4 @@
-<SddModuleDecomposition keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, module-rules, rule-activation, modes, add-module, refine-module, sdd-phase-2" type="directive" ver="3.0">
+<SddModuleDecomposition keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, file-structure, module-rules, rule-activation, modes, add-module, refine-module, interview-protocol, spec-diagrams, lang-pass, next-step-menu, sdd-phase-2" type="directive" ver="4.0">
   <DirectiveContext>
     <Mission>
       Turn the approved scope spec into a hierarchy of module specs with a complete entity inventory, an explicit public surface for every entity, strict DbC contracts, and a designed file structure.
@@ -10,7 +10,7 @@
 
       Out of scope here: task tickets, BDD scenarios, execution plans, coding/testing rules linkage — those belong to `task-scaffolding`.
 
-      **Glossary.** Second scope session. Phase agent = subagent under `phase-execution-protocol` (phase 4, dispatched by `sdd-execute` orchestrator). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs). scope-type ∈ {product, library} — this directive is NOT applicable to infrastructure or contracts scopes.
+      **Glossary.** Phase agent = subagent under `phase-execution-protocol` (phase 4, dispatched by `sdd-execute` orchestrator). Scaffolder = `task-scaffolding` agent (phase 3, consumes these specs).
     </Mission>
   </DirectiveContext>
 
@@ -122,6 +122,10 @@
       Entity inventory is a closed world. For every module the agent lists ALL entities explicitly. Phrases like «и т.д.», «etc.», «and similar» are forbidden. Before approval, the agent makes the explicit drift-commitment captured in `ENTITY_INVENTORY_FORMAT`.
     </Axiom>
 
+    <Axiom id="AX_REUSE_FIRST_ACROSS_MODULES">
+      Before a drafted entity enters this module's Entity Inventory, check sibling/dependency modules' own Entity Inventories (and the live codebase, when readable) for an existing entity serving the same purpose — same REUSE > EXTEND > JUSTIFY > ESCALATE discipline as `critic.directive.xml` `AX_REUSE_FIRST`, applied here at authoring time instead of at review time. REUSE/EXTEND → the entity does not enter this module's inventory; reference the owning module instead. JUSTIFY → one-line rationale in the entity's own Purpose cell. An unexamined duplicate across modules is not closed-world — it's cross-module sprawl (mirrors `critic.directive.xml` `AP_ENTITY_SPRAWL`).
+    </Axiom>
+
     <Axiom id="AX_ENTITY_SURFACE_COMPLETENESS">
       Entity surface is exhaustive per `ENTITY_SURFACE_FORMAT`: Type, Public Properties, Public Operations (intent-level, no language signatures), Lifecycle, Events, Errors & Degradation, Consumers. No private detail — that is Executor's job.
     </Axiom>
@@ -146,7 +150,7 @@
     </Axiom>
 
     <Axiom id="AX_AGNOSTICISM">
-      Contracts are language-agnostic. No language-specific syntax in DbC. Vocabulary: Port, Adapter, Entity, Command, Query, Event. Concrete signatures belong to Executor.
+      Contracts are language-independent. No language-specific syntax in DbC. Vocabulary: Port, Adapter, Entity, Command, Query, Event. Concrete signatures belong to Executor.
     </Axiom>
 
     <Axiom id="AX_NAMESPACE_NAMING">
@@ -163,7 +167,7 @@
       - `Verification Levels` (multi-value): subset of `contract` | `unit` | `integration` | `e2e`.
       - `Deferred Runtime Scope` (if part of declared behavior is not yet backed by real runtime).
 
-      Simulation must not masquerade as runtime: declaring `real-runtime` while the implementation is simulation-only without explicit `Deferred Runtime Scope` is forbidden.
+      Declaring `real-runtime` while the implementation is simulation-only, without an explicit `Deferred Runtime Scope`, is forbidden.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_OPTION_DROP">
@@ -186,11 +190,17 @@
     </Axiom>
 
     <Axiom id="AX_Q_IDS">
-      Index questions with `Q_<SEMANTICID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`.
+      Index questions with `Q_<SEMANTIC_ID>:`. Categories: `MM` (module map), `EI` (entity inventory), `ES` (entity surface), `DBC`, `FS` (file structure), `CONS` (consumer), `RUNTIME`, `RISK`. UPPER_SNAKE_CASE; collision → suffix `_2`, `_3`. Q-IDs are internal indexing; delivery to the operator follows `AX_INTERVIEW_VIA_PROTOCOL`.
     </Axiom>
 
-    <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
-      Hidden assumptions break the model. In every meaningful frame ask: canonical source of truth for this entity? degradation when dependency unavailable? where is runtime simulation? who validates input at this boundary? trust boundary between two modules?
+    <Axiom id="AX_OPERATOR_SAFEGUARD">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
+
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
     </Axiom>
 
     <Axiom id="AX_YAGNI_OVERENGINEERING_GUARD">
@@ -198,11 +208,13 @@
     </Axiom>
 
     <Axiom id="AX_DIALOGUE_DISCIPLINE">
-      - Phase agreement: agent never closes a phase autonomously; signals `STATUS=READY_TO_ADVANCE`; operator confirms. Phase Progress every meaningful round with per-module / per-entity counters («5/12 entities approved in module X»).
-      - Neutral + critical: no auto-agree. Every operator proposal — check vs scope spec + locked constraints; identify risks/trade-offs; demand justification on contradiction or risk acceptance; record only with explicit operator rationale.
-      - Confidence explicit (LOW / MEDIUM / HIGH). Under LOW: do not lock decomposition, do not move to next phase.
-      - No repeat questions: return only on new conflict or newly-introduced dependency.
-      - Context budget: long dialogues — top-3 questions; Working State as delta; compact Phase Progress; do not repeat full inventory if 1–2 entities changed.
+      Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
     </Axiom>
 
     <Axiom id="AX_STATELESS_ARTIFACT">
@@ -210,13 +222,121 @@
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
-      **Directive prose (axioms, halt names, step procedures, contract identifiers, structural section headings) — English.**
-      **Operator-facing artifact prose and operator-facing messages — Russian.** Russian applies to:
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
       - Module spec body text (Module Vision, entity Purpose, contract DbC pre / post / invariant content, Decision Log `Why` / `Risk`).
       - Halt messages emitted to the operator.
       - Phase Progress free-text fields.
 
-      English regardless of context: code, JSDoc, file paths, type / entity / method names, axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `H_*`), severity / status tokens, structural section headings, field labels (`**Status:**`, `**Why:**`, `**Type:**`, `**Runtime Backing:**`).
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `<ACR>-<slug>` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Why:**`, `**Recorded:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
+
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+
+    <Axiom id="AX_INTERVIEW_VIA_PROTOCOL">
+      HOW questions reach the operator is owned by `ai/directives/sdd/interview-protocol.xml` —
+      loaded lazily at STEP_1 entry (READ in full) and in force through STEP_5. Развилки (module
+      boundary variants, an entity's fate, a Port's variability) go one question per message —
+      «Вопрос X из Y», full material, ASCII where the difference is structural, `AskUserQuestion`
+      with options in printed order; default confirmations (per-entity batch approvals, naming)
+      stay batched. Thread-pulling and the coverage map replace fixed question counts. This
+      directive keeps only WHAT to ask; delivery mechanics are never restated here.
+    </Axiom>
+
+    <Axiom id="AX_MODULE_SPEC_DIAGRAMS">
+      Every module spec carries an UNNUMBERED `## Diagrams` section immediately after Module
+      Vision — per `SPEC_DIAGRAMS_SECTION_FORMAT` in `ai/directives/sdd/visual-vocabulary.xml`.
+      Module minimum: границы модуля (что внутри / что снаружи + направление зависимостей) +
+      sequence главного вызова публичной поверхности. Shapes are agreed as chat ASCII during
+      STEP_1–STEP_4 (`AX_CHAT_BEFORE_SPEC`); STEP_6 only converts them to mermaid. A module spec
+      without the section or its minimum does not pass STEP_6. If the minimum is not covered AND
+      no chat ASCII exists from the interview for the missing shape (`AX_CHAT_BEFORE_SPEC`),
+      surface the gap to the operator for manual resolution — never generate diagrams unilaterally
+      at write-time.
+    </Axiom>
+
+    <Axiom id="AX_LANG_PASS_ON_WRITE">
+      Module specs are not «written» until their language is checked. After assembling the files
+      in STEP_6 and BEFORE operator review: read `ai/directives/language/examples.md` +
+      `ai/directives/language/lang-lint.directive.xml`, apply to each written/updated module spec,
+      fix in place. Report as one line («язык проверен: N правок по M файлам»). Never skipped.
+    </Axiom>
+
+    <Axiom id="AX_NEXT_STEP_MENU">
+      The session never ends with prose «предлагаю запустить /sdd-X». After STEP_6 approval,
+      render the handoff menu per `NEXT_STEP_MENU_FORMAT` (interview-protocol) — one
+      AskUserQuestion. Candidates: «Критик по модульным спекам (рекомендую)» · «Scaffold + критик
+      следом» · «Сразу scaffold» · «Закончить сессию». On pick — run the chain directly
+      (`sdd-critic` / `sdd-scaffold`), stopping between links only on failure.
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TO_TASK_SCAFFOLDING">
@@ -242,7 +362,7 @@
   </HaltConditions>
 
   <GoldenExample>
-    Reference fragment of `specs/backend/payments/payments.spec.md` showing one assembled Port + Adapter pair with Inventory, Surfaces, DbC, Inter-Module Dependencies. Composition reference; individual Output_Contracts describe parts.
+    Reference fragment of `specs/backend/payments/payments.spec.md` showing one assembled Port + Adapter pair with Inventory, Surfaces, DbC, Inter-Module Dependencies. Composition reference; individual OutputContracts describe parts.
 
     ```markdown
     ## 2. Module Usage Example
@@ -261,7 +381,7 @@
 
     ## 3. Entity Inventory (Closed-World)
 
-    _Это полный список сущностей модуля `payments`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+    _Это полный список сущностей модуля `payments`. Любое введение сущности execution-агентом помимо этого списка считается расхождением со спекой и требует обновления спеки._
 
     | Name | Type | Purpose |
     |------|------|---------|
@@ -335,9 +455,9 @@
     <Step id="STEP_1_MODULE_MAP">
       <Goal>Agree on scope decomposition into modules.</Goal>
       <Action>
-        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP`).
-        2. Decomposition Variants (per `AX_MODULE_BOUNDARY_BY_OPERATOR`): 2–3 variants by axis (feature / architectural layer / data ownership / lifecycle). Each: modules with one-sentence Purpose; pros/cons (cohesion, coupling, evolution); hierarchy depth (flat vs nested).
-        3. Critical Analysis: which variant scales worse, simpler for current team/scope, where artificial-boundary risk lurks.
+        1. TRACE_HEADER (STACK `ROOT__MODULE_MAP`). **Load `ai/directives/sdd/interview-protocol.xml` (READ in full)** — per `AX_INTERVIEW_VIA_PROTOCOL` it governs operator questions from here through STEP_5.
+        2. Decomposition Variants (per `AX_MODULE_BOUNDARY_BY_OPERATOR`): 2–3 variants by axis (feature / architectural layer / data ownership / lifecycle). Each: modules with one-sentence Purpose; pros/cons (cohesion, coupling, evolution); hierarchy depth (flat vs nested). The variant pick is a развилка — one message per protocol, each variant's module graph drawn as chat ASCII (structural difference → picture, per visual-vocabulary).
+        3. Critical Analysis: which variant scales worse, simpler for current team/scope, where a module boundary may be artificial.
         4. Phase Progress + Approval Check.
         5. After choice: Mandatory Rationale Pull («Why this variant? What's critical? What's consciously sacrificed?») → scope spec Decision Log `D-NNN`.
 
@@ -351,9 +471,10 @@
         For each module:
         1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI_<MODULE>`).
         2. Entity Inventory Draft: complete list. Each entity = `<Name>` + Type + 1-sentence Purpose.
-        3. Cross-check vs scope spec High-Level Architecture: explicitly list which abstractions found a home. Gaps surfaced explicitly. (Golden DX coverage check — at session close per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`.)
-        4. Closed-World Commitment per `AX_CLOSED_WORLD_INVENTORY`.
-        5. Phase Progress + Approval Check. STOP per module.
+        3. Reuse-first check per `AX_REUSE_FIRST_ACROSS_MODULES`: for each drafted entity, search sibling/dependency modules for an existing match. REUSE/EXTEND → drop from this draft, reference the existing owner; JUSTIFY → keep with a one-line rationale in Purpose.
+        4. Cross-check vs scope spec High-Level Architecture: explicitly list which abstractions found a home. Gaps surfaced explicitly. (Golden DX coverage check — at session close per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`.)
+        5. Closed-World Commitment per `AX_CLOSED_WORLD_INVENTORY`.
+        6. Phase Progress + Approval Check. STOP per module.
 
         All inventories must be approved before STEP_3 → otherwise `H_INVENTORY_NOT_APPROVED`.
       </Action>
@@ -366,7 +487,7 @@
         1. TRACE_HEADER (STACK `ROOT__MODULE_MAP__EI__ES_<MODULE>_<ENTITY>`).
         2. Surface Draft per `ENTITY_SURFACE_FORMAT`.
         3. Consumers: Internal (file path or entity name), External (CLI/API/Browser/…). No consumer in v1 → mark candidate for removal or `deferred`.
-        4. ≥1 uncomfortable question per `AX_UNCOMFORTABLE_QUESTIONS`.
+        4. ≥1 developing question per `AX_OPERATOR_SAFEGUARD`.
         5. Phase Progress + Approval Check (per entity or batch).
 
         After all surfaces of a module are approved, BEFORE STEP_4 for that module:
@@ -407,6 +528,7 @@
         1. TRACE_HEADER (STACK `ROOT__FINAL_HIERARCHY`).
         2. For each module — `specs/<scope>/<module>/<module>.spec.md` per `MODULE_SPEC_MARKDOWN_STRUCTURE`.
            - Module spec 1 MUST link back to `../../<scope>.spec.md` (parent scope spec).
+           - `## Diagrams` present right after Module Vision with the module minimum (per `AX_MODULE_SPEC_DIAGRAMS`) — mermaid conversions of shapes already shown in chat.
         3. **Scope spec 8 Module Map update (per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`):**
            - `initial`: WRITE 8 Module Map with one row per module.
            - `add-module`: APPEND a row for the new module in 8 Module Map.
@@ -414,7 +536,9 @@
         4. Rewrite scope-spec Golden DX Example as composition view per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`.
         5. Cross-scope dependencies declared in module spec 9 Inter-Module Dependencies as Scope Reference entries (pointing to contracts-type scope specs), per `AX_CROSS_SCOPE_DEPENDENCIES` in discovery.
         6. Run bidirectional consistency check per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP`. Any direction fails → fix and re-run; do NOT proceed to operator review with inconsistency.
-        7. Output for review. STOP.
+        7. **Language pass** per `AX_LANG_PASS_ON_WRITE` on every written/updated module spec — fix in place before showing.
+        8. Output for review. STOP.
+        9. On approval: handoff menu per `AX_NEXT_STEP_MENU` — one AskUserQuestion, chains first-class, never prose «запусти /sdd-X».
       </Action>
     </Step>
   </ExecutionPlan>
@@ -437,8 +561,8 @@
 
     <Contract id="PHASE_PROGRESS_FORMAT">
       ```markdown
-      🎯 Phase Progress — <STEPNAME>
-        🧩 Module:    <CURRENTMODULE> (or N/A)
+      🎯 Phase Progress — <STEP_NAME>
+        🧩 Module:    <CURRENT_MODULE> (or N/A)
         ✅ Closed:    <agreed>
         ⏳ Open:      <under discussion>
         🛑 Blocking:  <if any, else —>
@@ -448,14 +572,15 @@
     </Contract>
 
     <Contract id="DECISION_LOG_ENTRY_FORMAT">
+      No `Status` field (`AX_NO_DECORATIVE_FIELD` in `discovery.directive.xml`) — presumed current unless the title says otherwise.
+
       ```markdown
       ### D-NNN — <short title>
-      - **Status:** active | superseded | rejected | deferred
       - **Recorded:** session ModuleDecomposition, <scope-name>
       - **Why:** <operator's own wording>
       - **Risk accepted:** <if any>
       - **Rejected alternatives:** <list with brief reasons>
-      - **Supersedes:** D-NNN (when superseding a prior decision)
+      - **Supersedes:** D-NNN (when superseding — old entry's title gets `(superseded by D-NNN)`)
       ```
     </Contract>
 
@@ -463,7 +588,7 @@
       ```markdown
       ## Entity Inventory (Closed-World)
 
-      _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+      _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается расхождением со спекой и требует обновления спеки._
 
       | Name | Type | Purpose |
       |------|------|---------|
@@ -536,6 +661,11 @@
       ## 1. Module Vision
       [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
       <!--/SECTION:MODULE_VISION-->
+
+      <!--SECTION:DIAGRAMS-->
+      ## Diagrams
+      [Per `SPEC_DIAGRAMS_SECTION_FORMAT` (visual-vocabulary). Минимум: границы модуля (внутри/снаружи + зависимости) + sequence главного вызова. Каждая диаграмма в `<details>`, mermaid + подпись.]
+      <!--/SECTION:DIAGRAMS-->
 
       <!--SECTION:MODULE_USAGE_EXAMPLE-->
       ## 2. Module Usage Example

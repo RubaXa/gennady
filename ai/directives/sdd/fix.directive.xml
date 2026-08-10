@@ -54,6 +54,26 @@
               4. Set Status → `[ ] TODO`, increment Reopens
               5. Sync tracker
       Multiple findings in the same task → one reopen Round with all fixes grouped into phases.
+
+      Any fix (Category A/B/C, including operator-interview-driven fixes made without a formal reopen) that introduces a new exported function/utility applies `critic.directive.xml` `AX_REUSE_FIRST` (REUSE > EXTEND > JUSTIFY > ESCALATE) BEFORE the fix is written — check the Entity Inventory of the relevant module spec(s), and of the target directory's own module spec if `Target Files` touch a `*/shared/`-style directory. Note the REUSE/EXTEND/JUSTIFY decision in `PLAN_TABLE_FORMAT` at STEP_5_PLAN. A reopened Category C task additionally gets this for free at phase-execution time (`phase-execution-protocol.xml` `AX_INTRODUCED_DISCIPLINE`) — this line covers the direct-fix path that skips phase-execution entirely.
+    </Axiom>
+
+    <Axiom id="AX_VERIFY_CLAIM_AGAINST_CODE">
+      A finding's stated MECHANISM (why it's a bug, what the code allegedly does, what the fix
+      allegedly achieves) is a claim, not a fact — from a bot or a human. Before classifying OR
+      rejecting any finding, read the actual current code at the cited location and check the claim
+      against it. This applies in both directions:
+      - Do not accept a finding's proposed fix if its stated mechanism doesn't match the code
+        (e.g. a "reduce allocations" claim that miscounts how many objects a spread actually
+        allocates, or a "verified elsewhere" claim about a framework primitive you haven't opened).
+      - Do not reject a finding as "just style" without checking whether the current code already
+        follows a documented project convention (e.g. this project's own `must`+`try/catch` Result
+        pattern) that the finding's suggested rewrite would actually violate.
+
+      A rejection or an acceptance is only as strong as the evidence cited for it. "The finding
+      looks reasonable" and "the finding looks like nitpicking" are both insufficient — open the
+      framework/storage source, the project's own documented conventions, and any sibling code the
+      finding claims to mirror, before writing the verdict into PLAN_TABLE_FORMAT.
     </Axiom>
 
     <Axiom id="AX_TEST_MANDATE">
@@ -64,7 +84,6 @@
       - Uses the canonical test name format from the original task's BDD section
 
       A fix without a regression test is incomplete and must not be dispatched.
-    </Axiom>
     </Axiom>
 
     <Axiom id="AX_OPERATOR_AGREEMENT">
@@ -105,6 +124,79 @@
     <Axiom id="AX_VERIFY_AT_END">
       After all tasks complete, run sdd-check. All checks must PASS.
       If sdd-check finds issues → classify them as new findings → ask operator → fix cycle repeats.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** Russian applies to:
+      - fix-plan table cell text (the "What", "Why agent failed", "Spec gap", "Fix", "What to add" cells)
+      - reopen reasons (the `fix: <reason>` line of each Round)
+      - operator-facing messages (plan presentation, agreement prompts, the final fix summary)
+      - Execution Log free-text (Round reasons and any text appended to the ticket log)
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`D-NNN` / `<ACR>-<slug>` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Why:**`, `**Recorded:**`).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete, not smart-sounding.
+      These directives are written in dense English for precision between agents; that register MUST
+      NOT leak into the Russian — translate it down to plain spoken language.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_SAFEGUARD">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
+
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
+    </Axiom>
+
+    <Axiom id="AX_NO_PROCESS_NARRATION">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
     </Axiom>
   </BeliefState>
 
