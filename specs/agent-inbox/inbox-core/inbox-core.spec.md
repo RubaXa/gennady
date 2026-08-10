@@ -39,6 +39,11 @@ _Это полный список публичных сущностей `inbox-c
 | `JournalPort`                      | Port         | Append/replay событий с crash recovery.                               |
 | `ArtifactStorePort`                | Port         | Адресуемое хранение evidence и review artifacts.                      |
 | `ClockPort`                        | Port         | Время и таймеры с controlled test implementation.                     |
+| `SystemClock`                      | Adapter      | Production wall-clock и cancellable timer implementation.             |
+| `ControlledClock`                  | Adapter      | Детерминированные время и таймеры для test/mock runtime.              |
+| `InMemoryJournal`                  | Adapter      | Детерминированный JournalPort для test/mock runtime.                  |
+| `InMemoryArtifactStore`            | Adapter      | Изолированный ArtifactStorePort для test/mock runtime.                |
+| `LocalArtifactStore`               | Adapter      | Atomic profile-rooted artifact storage для production runtime.        |
 | `RuntimeProfilePort`               | Port         | Физически разделённые production/test/mock namespaces.                |
 | `ReviewRuntimeProfile`             | Value Object | Допустимая комбинация state namespace и external I/O policy.          |
 | `ReviewStateNamespace`             | Type         | Закрытый набор production/test/mock state namespaces.                 |
@@ -138,6 +143,21 @@ _Это полный список публичных сущностей `inbox-c
 - **Errors & Degradation:** never cross profile boundaries; failed durable writes are not acknowledged.
 - **Consumers:** all runtime modules and tests.
 
+### `SystemClock`, `ControlledClock`, `InMemoryJournal`, `InMemoryArtifactStore`, `LocalArtifactStore`
+
+- **Type:** Adapters.
+- **Public Properties:** implementation identity; latest health through the implemented port.
+- **Public Operations:** exactly the corresponding `ClockPort`, `JournalPort` or `ArtifactStorePort`
+  operations; `ControlledClock` additionally advances deterministic test time.
+- **Lifecycle:** process-scoped; local durable adapters retain acknowledged bytes across restart,
+  in-memory adapters retain only process-local test state.
+- **Events Emitted:** storage failures are exposed by failed health and trace-prefixed errors; timer
+  callbacks create canonical verification-request events through the production consumer.
+- **Errors & Degradation:** invalid schedule/address and failed durable I/O are rejected visibly;
+  cancellations never invoke the callback.
+- **Consumers:** production composition (`SystemClock`, `LocalArtifactStore`), deterministic contract
+  and integration tests (`ControlledClock`, in-memory adapters).
+
 ### `ReviewRuntimeProfile`
 
 - **Type:** Value Object
@@ -182,6 +202,8 @@ _Это полный список публичных сущностей `inbox-c
 - Production, test and mock roots cannot resolve to the same physical namespace.
 - Every observed MR event accumulates into the current change batch and postpones its quiet deadline.
 - Any human discussion reply schedules verification through the debounce deadline; manual verification bypasses both timers.
+- Real `SyncService` composition appends canonical observations, folds `ReviewState` and re-arms the
+  next deadline with `SystemClock`; the timer appends `verification_requested(mode=timer)` durably.
 
 ### Storage ports
 

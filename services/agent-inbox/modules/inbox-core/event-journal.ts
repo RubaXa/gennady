@@ -1,6 +1,6 @@
 // @file: EventJournal — append-only JSONL journal: per-MR monotonic seq, O_APPEND+fsync, broken-tail recovery, global system journal
 // @consumers: inbox-core services, queue, pipeline, chat, api
-// @tasks: TSK-156
+// @tasks: TSK-156, TSK-173
 
 import {
   existsSync,
@@ -14,6 +14,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import { logger } from '#logger';
+import { ReviewEvent } from './types/review-event.type.ts';
 
 /** @purpose Closed set of 10 event kinds — drives payload shape and producer routing */
 export type EventKind =
@@ -58,6 +59,15 @@ export type SinceResult = {
  * @invariant O_APPEND + fsync per line; broken tail transparently discarded on read
  */
 export interface JournalPort {
+  /** @purpose Stable adapter identity exposed to runtime diagnostics. */
+  readonly identity: string;
+
+  /**
+   * @purpose Report the latest observable durable-storage health.
+   * @returns Current adapter health and optional failure detail.
+   */
+  health(): { status: 'healthy' | 'failed'; detail?: string };
+
   /**
    * @purpose Append one event, assigning the next monotonic seq (per-MR)
    * @param entry Event envelope without seq
@@ -79,6 +89,22 @@ export interface JournalPort {
    * @returns Newer entries and the next cursor for subsequent calls
    */
   since(cursor: number): SinceResult;
+
+  /**
+   * @purpose Durably append one validated canonical review event.
+   * @param event Canonical versioned event.
+   * @throws {Error} When validation or durable append fails.
+   * @returns Assigned monotonic journal sequence after fsync.
+   * @sideEffect Writes one JSON line to the journal.
+   */
+  appendReviewEvent(event: ReviewEvent): Promise<number>;
+
+  /**
+   * @purpose Replay canonical review events and reject unsupported versions or kinds visibly.
+   * @throws {Error} When a complete journal record is not a supported ReviewEvent.
+   * @returns Validated events in append order after torn-tail recovery.
+   */
+  replayReviewEvents(): ReviewEvent[];
 }
 
 /**
@@ -89,12 +115,23 @@ export interface JournalPort {
  * @invariant Broken tail (partial line after crash) is discarded on read — journal remains appendable
  */
 export class EventJournal implements JournalPort {
+  /** @purpose Stable production adapter identity. */
+  readonly identity = 'local-event-journal';
   /** @purpose Absolute path to the JSONL file */
   protected _filePath: string;
   /** @purpose Highest seq seen — restored from disk on construction, incremented on each append */
   protected _lastSeq: number;
   /** @purpose Promise chain for serializing writes — only one fsync in flight at a time */
   protected _writeChain: Promise<void>;
+  /** @purpose Latest observed durable adapter failure, cleared after successful writes. */
+  protected _healthFailure: string | null = null;
+
+  /** @see {JournalPort#health} */
+  health(): { status: 'healthy' | 'failed'; detail?: string } {
+    return this._healthFailure
+      ? { status: 'failed', detail: this._healthFailure }
+      : { status: 'healthy' };
+  }
 
   /**
    * @purpose Open an event journal at the given file path
@@ -118,6 +155,7 @@ export class EventJournal implements JournalPort {
           const seq = this._lastSeq;
           const full: JournalEntry = { ...entry, seq };
           this._writeLine(full);
+          this._healthFailure = null;
           logger.debug('[EventJournal#append] [writing → written]', {
             seq,
             mr: entry.mr,
@@ -127,6 +165,7 @@ export class EventJournal implements JournalPort {
         } catch (cause) {
           this._lastSeq -= 1;
           const error = new Error('[EventJournal#append] Write failed', { cause });
+          this._healthFailure = error.message;
           logger.error('[EventJournal#append] [writing → failed]', {
             error,
             filePath: this._filePath,
@@ -148,6 +187,54 @@ export class EventJournal implements JournalPort {
     const entries = all.filter((e) => e.seq > cursor);
     const nextCursor = all.length > 0 ? all[all.length - 1].seq : cursor;
     return { entries, nextCursor };
+  }
+
+  /** @see {JournalPort#appendReviewEvent} */
+  appendReviewEvent(event: ReviewEvent): Promise<number> {
+    const canonical = ReviewEvent.validate(event.toJSON());
+    return new Promise<number>((resolve, reject) => {
+      this._writeChain = this._writeChain.then(() => {
+        // #region START_DURABLE_CANONICAL_APPEND
+        try {
+          this._lastSeq += 1;
+          const seq = this._lastSeq;
+          this._writeLine({ ...canonical.toJSON(), seq });
+          this._healthFailure = null;
+          logger.debug('[EventJournal#appendReviewEvent] [writing → written]', {
+            seq,
+            mr: canonical.identifyMr(),
+            kind: canonical.kind,
+          });
+          resolve(seq);
+        } catch (cause) {
+          this._lastSeq -= 1;
+          const error = new Error('[EventJournal#appendReviewEvent] Durable append failed', {
+            cause,
+          });
+          this._healthFailure = error.message;
+          logger.error('[EventJournal#appendReviewEvent] [writing → failed]', { error });
+          reject(error);
+        }
+        // #endregion END_DURABLE_CANONICAL_APPEND
+      });
+    });
+  }
+
+  /** @see {JournalPort#replayReviewEvents} */
+  replayReviewEvents(): ReviewEvent[] {
+    const entries = this._readEntries();
+    // #region START_REJECT_UNSUPPORTED_CANONICAL_RECORDS_VISIBLY
+    try {
+      return entries.map((entry) => ReviewEvent.validate(entry));
+    } catch (cause) {
+      const error = new Error(
+        '[EventJournal#replayReviewEvents] Unsupported complete journal record quarantined',
+        { cause }
+      );
+      logger.error('[EventJournal#replayReviewEvents] [replaying → rejected]', { error });
+      throw error;
+    }
+    // #endregion END_REJECT_UNSUPPORTED_CANONICAL_RECORDS_VISIBLY
   }
 
   /**
@@ -224,7 +311,7 @@ export class EventJournal implements JournalPort {
    * @param entry Complete journal entry
    * @sideEffect Appends one JSON line + fsync to the journal file
    */
-  protected _writeLine(entry: JournalEntry): void {
+  protected _writeLine(entry: unknown): void {
     const line = JSON.stringify(entry) + '\n';
     // #region START_APPEND_FSYNC — invariant: O_APPEND + fsync guarantees durability; each line is one write call
     const fd = openSync(this._filePath, 'a');

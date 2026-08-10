@@ -1,11 +1,16 @@
 // @file: SyncService — two-tier sync orchestrator: poll all MRs, detail for active/visible, derive myRole/attention/stage, produce SyncSnapshot.
 // @consumers: inbox-queue, inbox-api
-// @tasks: TSK-158
+// @tasks: TSK-158, TSK-173
 
 import { logger } from '#logger';
+import { randomUUID } from 'node:crypto';
 import type { VcsPort, VcsDiscussion } from './vcs-port.ts';
 import type { InboxRegistryAccess } from '../inbox-core/inbox-registry.ts';
-import type { EventJournal } from '../inbox-core/event-journal.ts';
+import type { EventJournal, JournalPort } from '../inbox-core/event-journal.ts';
+import type { ClockPort } from '../inbox-core/ports/clock.port.ts';
+import { ReviewConfig } from '../inbox-core/review-config.ts';
+import { ReviewState } from '../inbox-core/state/review-state.ts';
+import { ReviewEvent } from '../inbox-core/types/review-event.type.ts';
 import {
   deriveAttention,
   type AttentionState,
@@ -25,6 +30,12 @@ export type SyncServiceConfig = {
    * @returns Completion after the requested delay.
    */
   sleep?: (delayMs: number) => Promise<void>;
+  /** @purpose Canonical journal, policy and clock used by the real review-state runtime path. */
+  canonicalReview?: {
+    journal: JournalPort;
+    config: ReviewConfig;
+    clock: ClockPort;
+  };
 };
 
 /** @purpose Sync snapshot — DTO for inbox-api, board projection, and seed fixtures. */
@@ -98,6 +109,10 @@ export class SyncService {
   protected _myLogin: string | null;
   /** @purpose Injectable delay keeps Retry-After behaviour observable without real-time test waits. */
   protected _sleep: (delayMs: number) => Promise<void>;
+  /** @purpose Optional canonical state runtime enabled by the production composition root. */
+  protected _canonicalReview: SyncServiceConfig['canonicalReview'];
+  /** @purpose Per-MR cancellation handles for superseded quiet/debounce deadlines. */
+  protected _verificationTimers = new Map<string, { cancel(): void }>();
 
   /**
    * @purpose Create a SyncService bound to a VCS port, registry, and journal.
@@ -118,6 +133,7 @@ export class SyncService {
     this._myLogin = null;
     this._sleep =
       config?.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+    this._canonicalReview = config?.canonicalReview;
   }
 
   /**
@@ -201,12 +217,96 @@ export class SyncService {
     }
     // #endregion END_POLL_TIER
 
+    if (this._canonicalReview) await this._recordCanonicalReviewObservations(snapshots);
+
     logger.info('[SyncService#twoTierSync] [polling → completed]', {
       total: snapshots.length,
       active: snapshots.filter((s) => !s.estimated).length,
       estimated: snapshots.filter((s) => s.estimated).length,
     });
     return snapshots;
+  }
+
+  /**
+   * @purpose Durably ingest real sync snapshots into journal-backed ReviewState and re-arm ClockPort timers.
+   * @param snapshots Settled real GitLab observations from this sync pass.
+   * @returns Completion after every observation is durable and its timer is armed.
+   * @sideEffect Appends canonical events and schedules timer-driven verification requests.
+   */
+  protected async _recordCanonicalReviewObservations(snapshots: SyncSnapshot[]): Promise<void> {
+    const runtime = this._canonicalReview!;
+    // #region START_INGEST_REAL_CANONICAL_REVIEW_STATE
+    for (const snapshot of snapshots) {
+      const occurredAt = snapshot.updatedAt || runtime.clock.now();
+      const participation = {
+        author: snapshot.mr.author === this._myLogin || snapshot.mr.role === 'author',
+        reviewer:
+          snapshot.reviewers.includes(this._myLogin ?? '') || snapshot.mr.role === 'reviewer',
+        assignee: false,
+        mentioned: snapshot.mr.role === 'mentioned' || snapshot.mr.directlyAddressed,
+        commented: snapshot.threads.total > 0,
+        approved: snapshot.approvals.approvedBy.includes(this._myLogin ?? ''),
+        estimated: snapshot.estimated ? ['assignee', 'commented'] : ['assignee'],
+      };
+      const event = ReviewEvent.validate({
+        version: 1,
+        id: `sync-${randomUUID()}`,
+        mr: { project: snapshot.mr.project, iid: snapshot.mr.iid },
+        kind: 'mr_observed',
+        actor: { kind: 'system', id: 'gitlab-sync' },
+        occurredAt,
+        payload: {
+          state:
+            snapshot.mr.state === 'opened'
+              ? 'open'
+              : snapshot.mr.state === 'merged'
+                ? 'merged'
+                : 'closed',
+          participation,
+          ...(snapshot.headSha ? { headSha: snapshot.headSha } : {}),
+          descriptionRevision: snapshot.mr.description,
+          approvals: snapshot.approvals,
+          threads: snapshot.threads,
+        },
+      });
+      const events = runtime.journal
+        .replayReviewEvents()
+        .filter((candidate) => candidate.identifyMr() === event.identifyMr());
+      const latestObserved = [...events]
+        .reverse()
+        .find((candidate) => candidate.kind === 'mr_observed');
+      const observationChanged =
+        !latestObserved ||
+        latestObserved.occurredAt !== event.occurredAt ||
+        JSON.stringify(latestObserved.payload) !== JSON.stringify(event.payload);
+      if (observationChanged) {
+        await runtime.journal.appendReviewEvent(event);
+        events.push(event);
+      }
+      const state = ReviewState.fold(events, runtime.config);
+      const deadline = state.changeBatch().nextVerificationAt();
+      this._verificationTimers.get(event.identifyMr())?.cancel();
+      if (!deadline) continue;
+      const handle = runtime.clock.schedule(deadline, () => {
+        const request = ReviewEvent.validate({
+          version: 1,
+          id: `timer-${randomUUID()}`,
+          mr: event.mr,
+          kind: 'verification_requested',
+          actor: { kind: 'system', id: runtime.clock.identity },
+          occurredAt: runtime.clock.now(),
+          payload: { mode: 'timer' },
+        });
+        void runtime.journal.appendReviewEvent(request).catch((cause: unknown) => {
+          logger.error('[SyncService#_recordCanonicalReviewObservations] [timer → failed]', {
+            error: new Error('Canonical timer request append failed', { cause }),
+            mr: event.identifyMr(),
+          });
+        });
+      });
+      this._verificationTimers.set(event.identifyMr(), handle);
+    }
+    // #endregion END_INGEST_REAL_CANONICAL_REVIEW_STATE
   }
 
   /**

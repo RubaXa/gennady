@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -19,6 +19,8 @@ import type { VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
 import { SyncService } from '../modules/inbox-vcs/sync.ts';
 import { BackgroundVerifier } from '../modules/inbox-vcs/background-verify.ts';
 import { EventJournal } from '../modules/inbox-core/event-journal.ts';
+import { ReviewConfig } from '../modules/inbox-core/review-config.ts';
+import { SystemClock } from '../modules/inbox-core/adapters/system-clock.ts';
 import { DecisionJournal } from '../modules/inbox-core/decision-journal.ts';
 import { BootReadiness } from '../modules/inbox-core/boot-readiness.ts';
 import { InboxRegistryAccess } from '../modules/inbox-core/inbox-registry.ts';
@@ -575,7 +577,15 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     const inboxStateDir = join(stateStore.getStateDir(), 'agent-inbox');
     vcsJournal = new EventJournal(join(inboxStateDir, 'events.jsonl'));
     vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
-    syncService = new SyncService(vcsTruth, vcsRegistry, vcsJournal);
+    const reviewConfig = new ReviewConfig({ stateRoots: [runtimeBinding.stateRoot] });
+    reviewConfig.verifyStateRoot(runtimeBinding.stateRoot);
+    syncService = new SyncService(vcsTruth, vcsRegistry, vcsJournal, {
+      canonicalReview: {
+        journal: stateStore.openReviewJournal(),
+        config: reviewConfig,
+        clock: new SystemClock(),
+      },
+    });
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
     // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
     await advanceBoot('poll');

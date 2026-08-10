@@ -1,10 +1,12 @@
 // @file: StateStore — unified access point to all file-backed state (config, registry, audit) under ~/.gennady.
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, inbox-opencode, CLI
-// @tasks: TSK-109, TSK-157, TSK-172
+// @tasks: TSK-109, TSK-157, TSK-172, TSK-173
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdir } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { logger } from '#logger';
 import { InboxConfig, type ConfigLoadResult } from './inbox-config.ts';
 import { InboxRegistryAccess, type MrForDelta, type DeltaResult } from './inbox-registry.ts';
@@ -14,6 +16,9 @@ import type { InboxConfig as InboxConfigRaw } from '../../../../cli/cmd/inbox/_c
 import type { InboxRegistry } from '../../../../cli/cmd/inbox/_core/logic/inbox-registry.logic.ts';
 import type { ReviewRuntimeBinding } from './types/review-runtime-binding.type.ts';
 import type { ReviewRuntimeProfile } from './runtime-profile.ts';
+import { EventJournal } from './event-journal.ts';
+import { ReviewConfig } from './review-config.ts';
+import { ReviewState } from './state/review-state.ts';
 
 /**
  * @purpose Singleton access to file-backed agent-inbox state: config, registry, audit.
@@ -228,5 +233,83 @@ export class StateStore {
   async queryAudit(mr: string): Promise<AuditEntry[]> {
     logger.debug('[StateStore#queryAudit] [idle → querying]', { mr });
     return this._auditLog.query(mr);
+  }
+
+  /**
+   * @purpose Open the canonical profile-rooted review event journal used for state reconstruction.
+   * @returns Durable journal bound beneath this store's validated runtime root.
+   * @sideEffect Creates the journal parent directory when absent.
+   */
+  openReviewJournal(): EventJournal {
+    return new EventJournal(join(this._stateDir, 'agent-inbox', 'review-events.jsonl'));
+  }
+
+  /**
+   * @purpose Rebuild and atomically replace the disposable canonical review-state registry.
+   * @invariant Registry bytes depend only on journal append order, config and optional observation time.
+   * @param [config] Validated lifecycle and verification timing policy.
+   * @param [now] Optional controlled instant used only for projected verificationDue.
+   * @throws {Error} When replay rejects an event or the cache cannot be atomically persisted.
+   * @returns Deterministically key-sorted registry snapshot.
+   * @sideEffect Reads the canonical journal and atomically writes review-state-registry.json.
+   */
+  async rebuildReviewStateRegistry(
+    config = new ReviewConfig(),
+    now?: string
+  ): Promise<Record<string, Record<string, unknown>>> {
+    const events = this.openReviewJournal().replayReviewEvents();
+    const grouped = new Map<string, typeof events>();
+    // #region START_REBUILD_DISPOSABLE_PROJECTIONS_FROM_JOURNAL
+    for (const event of events) {
+      const key = event.identifyMr();
+      const group = grouped.get(key) ?? [];
+      group.push(event);
+      grouped.set(key, group);
+    }
+
+    const registry: Record<string, Record<string, unknown>> = {};
+    for (const key of [...grouped.keys()].sort()) {
+      registry[key] = ReviewState.fold(grouped.get(key)!, config).toSnapshot(now);
+    }
+    // #endregion END_REBUILD_DISPOSABLE_PROJECTIONS_FROM_JOURNAL
+
+    const directory = join(this._stateDir, 'agent-inbox');
+    const target = join(directory, 'review-state-registry.json');
+    const temporary = `${target}.${randomUUID()}.tmp`;
+    // #region START_ATOMICALLY_REPLACE_REVIEW_REGISTRY_CACHE
+    try {
+      await mkdir(directory, { recursive: true });
+      await writeFile(temporary, `${JSON.stringify(registry, null, 2)}\n`, 'utf8');
+      await rename(temporary, target);
+      return registry;
+    } catch (cause) {
+      const error = new Error('[StateStore#rebuildReviewStateRegistry] Cache write failed', {
+        cause,
+      });
+      logger.error('[StateStore#rebuildReviewStateRegistry] [rebuilding → failed]', {
+        error,
+        target,
+      });
+      throw error;
+    }
+    // #endregion END_ATOMICALLY_REPLACE_REVIEW_REGISTRY_CACHE
+  }
+
+  /**
+   * @purpose Read the disposable review-state cache without treating it as canonical truth.
+   * @returns Persisted registry or an empty cache when absent.
+   */
+  async loadReviewStateRegistry(): Promise<Record<string, Record<string, unknown>>> {
+    const target = join(this._stateDir, 'agent-inbox', 'review-state-registry.json');
+    // #region START_READ_DISPOSABLE_REVIEW_CACHE
+    try {
+      return JSON.parse(await readFile(target, 'utf8')) as Record<string, Record<string, unknown>>;
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code === 'ENOENT') return {};
+      const error = new Error('[StateStore#loadReviewStateRegistry] Cache read failed', { cause });
+      logger.error('[StateStore#loadReviewStateRegistry] [reading → failed]', { error, target });
+      throw error;
+    }
+    // #endregion END_READ_DISPOSABLE_REVIEW_CACHE
   }
 }

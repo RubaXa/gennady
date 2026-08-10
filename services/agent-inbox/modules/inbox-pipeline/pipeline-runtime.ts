@@ -1,6 +1,6 @@
 // @file: PipelineRuntime — boot-owned materializer and executor lifecycle for review/delta DAGs.
 // @consumers: agent-inbox serve bootstrap, RoleScheduler
-// @tasks: TSK-157, TSK-161
+// @tasks: TSK-157, TSK-161, TSK-173
 
 import { logger } from '#logger';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
@@ -14,6 +14,7 @@ import { PlanTemplate, type ChangesetEntry, type ReviewPlan } from './plan-templ
 import { Synthesize, type ModelResult } from './synthesize.ts';
 import { TriggerRegistry } from './trigger-registry.ts';
 import type { JournalEntry, JournalPort } from '../inbox-core/event-journal.ts';
+import { ReviewEvent } from '../inbox-core/types/review-event.type.ts';
 import type { OpenCodePort, ToolCall } from '../inbox-opencode/opencode.port.ts';
 import type { ProposalRecord } from '../inbox-core/decision-journal.ts';
 import { Executor } from '../inbox-queue/executor.ts';
@@ -22,7 +23,13 @@ import type { TaskQueuePort } from '../inbox-queue/task-queue.ts';
 
 /** @purpose Test-only journal preserving the Executor seam for pure DAG materialization. */
 class VolatileJournal implements JournalPort {
+  readonly identity = 'volatile-pipeline-journal';
   protected _entries: JournalEntry[] = [];
+  protected _reviewEvents: ReviewEvent[] = [];
+
+  health(): { status: 'healthy' } {
+    return { status: 'healthy' };
+  }
 
   async append(entry: Omit<JournalEntry, 'seq'>): Promise<number> {
     const seq = this._entries.length + 1;
@@ -37,6 +44,15 @@ class VolatileJournal implements JournalPort {
   since(cursor: number) {
     const entries = this._entries.filter((entry) => entry.seq > cursor);
     return { entries, nextCursor: this._entries.at(-1)?.seq ?? cursor };
+  }
+
+  async appendReviewEvent(event: ReviewEvent): Promise<number> {
+    this._reviewEvents.push(ReviewEvent.validate(event.toJSON()));
+    return this._reviewEvents.length;
+  }
+
+  replayReviewEvents(): ReviewEvent[] {
+    return this._reviewEvents.map((event) => ReviewEvent.validate(event.toJSON()));
   }
 }
 
