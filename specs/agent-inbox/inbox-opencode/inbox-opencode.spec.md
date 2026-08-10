@@ -1,70 +1,125 @@
-# Module: inbox-opencode (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-311 (один сервер, TTL-паркинг), D-312 (единый маршрут промптов), D-313 (указатели,
-> не дифы), D-316 (tool-trace)
+# Module: inbox-opencode
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Адаптер `opencode serve`: единственный дочерний процесс на весь agent-inbox, жизненный
-цикл сессий (создание → паркинг → резюм → закрытие), единый приоритетный пул,
-компиляция промптов, X-ray и tool-телеметрия.
-
-Классы реализации: `SessionLifecycle` (§3), `SessionRegistry` (§3), `UnifiedPool` (§2), `PromptCompiler` (§4); типы `SessionState`, `SessionPriority`, функция `classifyOutcome` (§5, лесенка). Aging пула: конфиг, дефолт 60с (уточнение 2026-08-06 — вместо 10 мин: LLM-ходы минуты, 10 мин редко срабатывало бы).
+Agent runtime boundary: compiled prompts, structured outcomes, context-aware session routing
+and auditable tool traces. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. Сервер и пул
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-- Один `opencode serve` (spawn + health-poll + pid-файл, как сейчас; zero-timeout
-  dispatcher для длинных ходов).
-- **Единый приоритетный пул** вместо раздвоённых chat=4/review=3: лимит — конфиг;
-  👤-задачи вытесняют фоновые из очереди пула.
+## 2. Module Usage Example
 
-## 3. Жизненный цикл сессии (D-311, D-331)
-
-```
-create → work → park (idle-TTL 30–60 мин) → resume (та же сессия, продолжение)
-       → close (TTL / supersede / явное)
+```ts
+const session = await sessions.route(task.sessionPolicy);
+const result = await agentRuntime.run(session, promptCompiler.compile(task));
+schemas.assert(task.type, result.output);
 ```
 
-Session registry: `sessionId ↔ {taskId, mr, artifacts[], model}` — основа связности
-`producedBy` и маршрутизации «та же сессия».
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-## 4. Промпт-компиляция (D-312, D-313)
+<!--SECTION:ENTITY_INVENTORY-->
 
-Единый маршрут для всех задач: Handlebars-шаблоны (`ai/kit/templates/**`) +
-кирпичи-partials (`ai/kit/**/*.xml`), рендер по контексту задачи (mrShape, роль,
-линза). Статическая конкатенация директив запрещена. Контракт: system = директивы;
-task = указатели (файлы/SHA/пути — контент добывает агент); JSON-схема — в тексте
-задачи (урок: схема в system вешала модель).
+## 3. Entity Inventory (Closed-World)
 
-## 5. Телеметрия
+| Name                     | Type         | Purpose                                              |
+| ------------------------ | ------------ | ---------------------------------------------------- |
+| `AgentRuntimePort`       | Port         | Execute and continue structured agent work.          |
+| `OpenCodeAgentAdapter`   | Adapter      | Real OpenCode-compatible implementation.             |
+| `AgentPromptCompiler`    | Service      | Compile pointer-based versioned prompts.             |
+| `AgentSchemaRegistry`    | Service      | Validate task outcomes.                              |
+| `AgentSession`           | Entity       | Task or operator context identity.                   |
+| `AgentSessionPool`       | Service      | Limit and prioritize concurrent sessions.            |
+| `AgentSessionLifecycle`  | Service      | Create, continue, park, restore and expire sessions. |
+| `AgentOutcomeClassifier` | Service      | Classify transport, schema and task outcomes.        |
+| `AgentCoverageTrace`     | Value Object | Observed file/tool activity used by coverage gate.   |
 
-- X-ray: prompt/response каждого хода → `report/sessions/<node>__<ts>.txt` (как сейчас).
-- Tool-trace: `session.messages` после хода → `telemetry/tool-trace.jsonl` —
-  **источник coverage-гейта** (D-316).
-- Outcome-классификация исходов (ok/timeout/parse_error/schema_mismatch/…) —
-  переезжает сюда из inbox-roles вместе с лесенкой continue/restart (исполняет
-  inbox-queue).
+<!--/SECTION:ENTITY_INVENTORY-->
 
-## 6. Поверхности
+<!--SECTION:ENTITY_SURFACES-->
 
-| Порт           | Методы                                                                        |
-| -------------- | ----------------------------------------------------------------------------- |
-| `OpenCodePort` | createSession, prompt, continue, park, resume, close, abort, status, messages |
+## 4. Entity Surfaces
 
-## 7. Приёмка
+### Runtime and adapter
 
-1. Один дочерний процесс opencode на сервер (pid-файл, health-check).
-2. Паркинг: задача `deepen` резюмирует ту же сессию (в X-ray — continuation, не новый
-   system-промпт).
-3. Tool-trace пишется на каждый ход и доступен coverage-гейту.
-4. Промпт любой задачи собран единым маршрутом и содержит указатели, не инлайн-данные.
+- **Public Operations:** run, continue, stream, cancel and inspect session outcome.
+- **Lifecycle:** one shared server; bounded session pool.
+- **Errors & Degradation:** unavailable runtime fails affected tasks visibly; it does not fabricate output.
+- **Consumers:** pipeline and chat.
 
-## Handoff Rules Additions
+### Prompt/schema services
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+- **Public Operations:** compile task intent with artifact/SHA pointers; validate versioned structured output.
+- **Lifecycle:** stateless registries loaded at boot.
+- **Errors & Degradation:** schema mismatch is retryable task failure with raw evidence retained.
+- **Consumers:** all agent tasks.
+
+### Session services and trace
+
+- **Public Operations:** route by required context, park with TTL, restore metadata, expose tool trace.
+- **Lifecycle:** producer continuation stays in the same session; fact-check/widen may use a new session; one persistent operator session per MR.
+- **Errors & Degradation:** expired context requires explicit fresh run; coverage cannot be inferred without trace.
+- **Consumers:** queue, pipeline, eval.
+<!--/SECTION:ENTITY_SURFACES-->
+
+<!--SECTION:MODULE_CONTRACTS-->
+
+## 5. Module Contracts (DbC)
+
+- Prompts pass stable paths, SHA and artifact addresses instead of copying repository content inline.
+- Every result is attributed to session, task and model.
+- Session choice follows semantic context, not arbitrary reuse.
+- Runtime backing: OpenCode-compatible server; test double for deterministic tests.
+- Verification: contract, integration and real review e2e.
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+
+## 6. Public Options & Policies
+
+- Session TTL is configurable; exact default remains an implementation policy within 30–60 minutes.
+- Pool concurrency and priorities cannot override per-MR task ordering.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-opencode/
+├── ports/
+├── adapters/
+├── prompts/
+├── schemas/
+├── sessions/
+└── outcomes/
+```
+
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- `D-AGENT-01`: `AgentRuntimePort` generalizes the existing OpenCode port; no parallel hierarchy.
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md) artifact/session metadata.
+- **Provides to:** [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [chat](../inbox-chat/inbox-chat.spec.md).
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Rename/adapt current port without replacing working session registry, pool and lifecycle.
+- Move outcome classifier and phase telemetry from legacy roles.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

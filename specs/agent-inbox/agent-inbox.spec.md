@@ -1,4 +1,4 @@
-# agent-inbox: Scope Specification (v2 — полный рерайт)
+# agent-inbox: Scope Specification (v0 pivot)
 
 <!--SECTION:SCOPE_TYPE-->
 
@@ -8,504 +8,613 @@ product
 
 <!--/SECTION:SCOPE_TYPE-->
 
-> **Статус:** v2, полный рерайт по итогам дизайн-сессии 2026-07-28/29. v1 сохранён в
-> git-истории. Модульные спеки (`inbox-*`) и DAG тасок регенерируются из этого документа
-> после его утверждения. Одна спека — одно согласование.
-
-> **Правило наполнения корня (анти-монстр):** в корне живут только — vision/иерархия
-> целей, карта сценариев (одна UC-диаграмма), карта модулей, реестр решений (строка на
-> решение), перечень поверхност (строка на поверхность), non-goals, приёмка. Детали —
-> в модульных спеках: секвенс-диаграммы, API-таблицы, реестры (типов задач, линз,
-> триггеров), UX-макеты, DTO, BDD. Новая функциональность = новая строка в карте/реестре
-> корня + деталь в модуле-владельце. Рост любой секции корня = триггер пересмотра.
->
-> Текущие детальные секции — временно здесь для единого согласования; после
-> регенерации модульных спек: S1/S2 → `inbox-core`+`inbox-vcs`, S3/S4/S5 →
-> `inbox-pipeline`+`inbox-queue`, S6 → `inbox-chat`+`inbox-queue`, §5 → `inbox-api` +
-> модули портов, §6 → `inbox-queue`+`inbox-pipeline`, §7 → `inbox-dashboard`.
-
 <!--SECTION:VISION-->
 
-## 1. Vision & иерархия целей
+## 1. Vision & Primary Goal
 
-Локальная **машина ревью** для моих GitLab MR: сама находит, что требует моей реакции,
-сама готовит всю фактуру, работает как настоящий ревьюер с бесконечным временем.
+Agent Inbox — локальный однопользовательский ассистент ревьювера для GitLab. Он сам
+находит все актуальные MR, в которых оператор участвует, собирает полную фактуру по
+реальному коду, независимо перепроверяет MR, чужие ревью и дискуссии, а затем приносит
+оператору готовые решения. Оператор остаётся ответственным за решение, но не собирает
+контекст руками и не переходит в GitLab для выполнения обычного review-flow.
 
-| Стадия         | Цель                                                                                           | Критерий «мы там»                                                  |
-| -------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 🏁 **Финал**   | Автономный ревьюер: **схожие решения в схожих ситуациях, как человек**, с бесконечным временем | решения машины ≈ решения оператора (измеряется по журналу решений) |
-| **2**          | Второй ревьювер: всё изучает, всё готовит; человек только подтверждает/правит                  | оператор не собирает контекст руками вообще                        |
-| **1 (сейчас)** | Ассистент-фактчекер: приносит всю фактуру, оператор решает                                     | нулевая ручная сборка контекста                                    |
+Первая полезная версия обязана замкнуть реальный цикл:
 
-**Градуированная автономия (D-302):** каждая capability (react, resolve, post, approve)
-стартует в режиме «предложение». Журнал фиксирует _предложение машины vs решение
-оператора_ (accept / edit / reject). Capability переходит в auto-mode при высоком
-accept-rate. Журнал событий = журнал решений = датасет для финальной цели.
+`обнаружить MR → полностью проверить → подготовить пакет → применить в GitLab →
+отследить изменения → верифицировать → завершить`.
 
-**Dogfooding:** первый пользователь — мы сами (этот репозиторий, корп. GitLab).
-Удобство разработчика-оператора — первичный критерий.
+Это локальный инструмент, а не SaaS-платформа: один оператор, один GitLab-аккаунт,
+один процесс, локальное состояние. Распределённость, tenancy и серверная
+мультипользовательская авторизация не являются архитектурными целями.
 
 <!--/SECTION:VISION-->
 
-## 2. Use Cases (диаграммы через призму сценариев)
+<!--SECTION:PROJECT_TYPE-->
 
-> Читаемый рендер всех кейсов (ASCII-переходы + неочевидные детали, включая UI-уровень
-> UC-9…15): [inbox-dashboard/ux-usecases.md](inbox-dashboard/ux-usecases.md).
+## 2. Project Type
 
-<!--SECTION:USE_CASES-->
+- **Type:** app[spa]
+- **Why this type:** основной интерфейс — локальный dashboard и MR workspace в
+браузере; CLI только запускает и обслуживает приложение.
+<!--/SECTION:PROJECT_TYPE-->
 
-### 2.0 Карта сценариев
+<!--SECTION:GOLDEN_DX-->
+
+## 3. Approved Golden UX Example
+
+1. Оператор запускает Agent Inbox; [core](./inbox-core/inbox-core.spec.md#2-module-usage-example)
+   восстанавливает локальное состояние, а [VCS](./inbox-vcs/inbox-vcs.spec.md#2-module-usage-example)
+   синхронизирует реальные MR. После boot видны две очереди: **Ревью** и **Мои / назначенные**.
+2. [Review runtime](./review-runtime/index.md) параллельно собирает фактуру и выполняет
+   полное role-invariant review каждого MR.
+3. Карточка показывает роль, фактическое состояние, текущую работу, новые события и
+   необходимость решения.
+4. Оператор открывает MR и видит хронологическую ленту smart widgets: описание,
+   артефакты, findings, дискуссии, дельту, план и подготовленные действия.
+5. [Queue](./inbox-queue/inbox-queue.spec.md#2-module-usage-example) формирует гибридный
+   пакет. Оператор снимает ненужные чекбоксы, выбирает
+   вариант во взаимоисключающих группах и нажимает **Применить выбранные**.
+6. Действия немедленно выполняются в GitLab без второго подтверждения; результат и
+   частичная ошибка видны возле каждого действия.
+7. Для исправлений оператор использует [handoff](./inbox-chat/inbox-chat.spec.md#2-module-usage-example):
+   нажимает **Сгенерировать задание**, копирует краткие
+   инструкции со ссылками на артефакты и передаёт их DEV-агенту.
+8. После push оператор нажимает **Верифицировать изменения** либо ждёт фоновой
+   проверки накопленной дельты.
+9. Подтверждённо исправленные разрешённые треды закрываются автоматически; ранее
+   выраженный approve восстанавливается, если review coverage доказан и blocking-
+   проблем нет.
+10. После merge/close оператор при необходимости обновляет описание и нажимает
+    **Завершить**.
+
+Degradation path: если GitLab, agent runtime или локальный effect executor недоступен,
+задача не теряется и не повторяется вслепую. UI показывает наблюдаемую ошибку,
+reconciliation сверяет реальное состояние, после чего доступен безопасный retry.
+
+<!--/SECTION:GOLDEN_DX-->
+
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+## 4. Requirements & Constraints
+
+### 4.1 Functional Requirements
+
+#### MR discovery and lifecycle
+
+- **FR-001** — На первом запуске импортировать только открытые MR, где оператор явно
+  является author, assignee или reviewer либо участвовал через mention, comment или
+  approval.
+- **FR-002** — MR без активности более трёх месяцев не отображать, включая уже
+  отслеживаемый merged/closed MR без нажатого **Завершить**. Локальная история
+  сохраняется; новое событие возвращает отслеживаемый MR в видимую выборку.
+- **FR-003** — Уже отслеживаемый merged/closed MR в пределах activity horizon
+  сохранять и явно маркировать до нажатия **Завершить**. Кнопка доступна только для
+  merged/closed; за пределами horizon карточка скрывается автоматически.
+- **FR-004** — **Обновить описание** доступно на карточке любого MR всегда.
+- **FR-005** — MR отображается ровно один раз. Пересечение ролей разрешается в пользу
+  колонки **Мои / назначенные**, остальные роли остаются бейджами.
+
+#### Full review and cross-review
+
+- **FR-006** — Для любого подходящего MR выполнять одинаково полное независимое
+  ревью; роль не уменьшает глубину анализа и влияет только на права и допустимые
+  эффекты.
+- **FR-007** — Проверять реальный код, цель MR, архитектуру, спецификации, тесты,
+  security и оптимальность; coverage подтверждать фактическим чтением, а не
+  самоотчётом агента.
+- **FR-008** — Чужие findings, approvals и дискуссии считать отдельным входом для
+  cross-review: перепроверять, соглашаться реакцией, дополнять, возражать или задавать
+  вопрос, сохраняя provenance каждого вывода.
+- **FR-009** — Если полный review coverage не доказан, запрещено предлагать или
+  автоматически восстанавливать approve.
+
+#### Events and delta verification
+
+- **FR-010** — Любое изменение MR — commit, описание, новый/изменённый тред, ответ,
+  approval или другой наблюдаемый event — накапливается и оттягивает quiet timer.
+- **FR-011** — Любой человеческий ответ в дискуссии запускает верификацию после
+  конфигурируемого debounce (начальное значение 5 минут), независимо от смысла ответа.
+- **FR-012** — При отсутствии новых событий конфигурируемый quiet timeout (начальное
+  значение 10 минут) запускает проверку накопленной дельты.
+- **FR-013** — Новые события не прерывают уже выполняющуюся задачу; актуальная
+  delta-задача supersede/dedup предыдущие ожидающие задачи и закрывает разрыв.
+- **FR-014** — В v0 любое новое событие помечает весь неприменённый пакет устаревшим.
+  Устаревший пакет остаётся видимым, но недоступен до повторной проверки.
+- **FR-015** — **Верифицировать изменения** немедленно, без debounce, проверяет дельту
+  от baseline последнего задания, связанные findings и весь накопленный diff.
+
+#### Hybrid decision package and GitLab effects
+
+- **FR-016** — Один review round формирует один гибридный пакет на MR: независимые
+  рекомендации — чекбоксы, взаимоисключающие решения — single-choice, зависимые
+  действия — упорядоченные группы. Рекомендации выбраны по умолчанию.
+- **FR-017** — Нажатие **Применить выбранные** является достаточным подтверждением и
+  немедленно создаёт реальные GitLab effect-задачи; дополнительного confirm-screen нет.
+- **FR-018** — Поддержать comment/reply, reaction, resolve/reopen разрешённого треда,
+  approve/unapprove, request changes и edit description.
+- **FR-019** — Независимые действия продолжаются после частичной ошибки. Ошибка
+  блокирует только зависимые действия; каждый effect имеет собственный статус и retry.
+- **FR-020** — Effects идемпотентны. При потерянном/неопределённом ответе система
+  сначала читает GitLab и только затем решает, требуется ли повтор.
+- **FR-021** — Разрешено резолвить собственные треды оператора и треды явно
+  allowlisted review-ботов в MR, где оператор author; остальные чужие треды не
+  изменяются.
+
+#### Blocking semantics and intent-preserving automation
+
+- **FR-022** — Finding/thread имеет семантику `blocking | non-blocking`. Открытые
+  non-blocking треды не препятствуют approve.
+- **FR-023** — Approve, поставленный при открытом треде, является наблюдаемым сигналом,
+  что этот тред non-blocking, пока оператор явно не изменил решение.
+- **FR-024** — Подтверждённо исправленный разрешённый тред может быть автоматически
+  resolved.
+- **FR-025** — Если оператор ранее approve-нул MR, а GitLab сбросил approval после
+  push, ассистент автоматически восстанавливает approve после доказанного coverage и
+  при отсутствии blocking-проблем.
+- **FR-026** — Отказ автора исправлять non-blocking замечание не блокирует
+  восстановление approve, но принятие аргумента автора не автоматизируется: оператору
+  предлагаются согласие+resolve, возражение или дополнительный вопрос.
+- **FR-027** — Политики ручного/автоматического выполнения расширяются через единый
+  каталог типизированных действий; автоматизация не имеет отдельного executor.
+
+#### DEV-agent handoff
+
+- **FR-028** — На любом MR независимо от роли доступна кнопка **Сгенерировать
+  задание**.
+- **FR-029** — Задание — короткая инструкция для DEV-агента: актуальный SHA, цель,
+  выбранные findings, изменившиеся части артефактов, обязательные пути/якоря для
+  чтения и критерии проверки. Полный контент артефактов не дублируется без причины.
+- **FR-030** — По умолчанию генерируется delta-задание от последнего handoff; доступен
+  явный вариант с полным контекстом.
+- **FR-031** — **Скопировать задание** копирует текст в clipboard. Скачивание файла и
+  встроенный редактор задания не требуются в v0.
+- **FR-032** — Finding или выбранную группу findings можно скопировать как отдельное
+  задание; любой reviewer может подхватить работу, даже если не является author.
+
+#### Dashboard and MR workspace
+
+- **FR-033** — Основной dashboard — две колонки ответственности: **Ревью** и
+  **Мои / назначенные**. Внутри каждой — приоритетная очередь: требуется решение,
+  агент работает, ждём внешнего события, без действий.
+- **FR-034** — Карточка компактно показывает роли, title, approvals, reviewers, CI,
+  threads, unread/new commits, текущую работу, таймер и все причины внимания.
+- **FR-035** — MR workspace — хронологическая лента smart widgets с `lastActivity`,
+  read/unread и разделителем нового: Findings, Awaiting Threads, Artifact Post,
+  GitLab Event, Progress Group, Current Plan и одноразовые Action outcomes.
+- **FR-036** — Ошибка или ожидание принадлежат конкретному виджету/действию и не
+  заменяют MR workspace пустым глобальным состоянием.
+- **FR-037** — Постоянный MR-scoped chat принимает мета-якорь
+  `widget + fragment + artifact`, объясняет и углубляет фактуру; основные действия
+  остаются контекстными элементами виджетов, а не командами чата.
+
+#### Test runtime
+
+- **FR-038** — Production, test и mock используют физически разные state namespaces;
+  reset теста не может прочитать, изменить или удалить рабочее состояние.
+- **FR-039** — Каждый test run по умолчанию получает чистый `run-id`; сохранённый run
+  можно повторно открыть для диагностики.
+- **FR-040** — Mock mode детерминированно моделирует GitLab read/effect события,
+  время, частичные ошибки, approval reset и recovery.
+- **FR-041** — Real-readonly принимает явный пул MR, выполняет precondition probe и
+  выдаёт `PASS | FAIL | SKIP | INCONCLUSIVE` с наблюдаемой причиной. Изменение внешнего
+  состояния во время сценария даёт `INCONCLUSIVE`, а не ложный `FAIL`.
+- **FR-042** — Полностью пропущенный прогон не считается зелёным; отчёт показывает
+  обязательные сценарии, фактически выполненные сценарии и легитимные skips.
+- **FR-043** — Real-effects разрешён только для явно allowlisted тестовых MR/проектов;
+  произвольный рабочий MR никогда не становится effect-target только из-за попадания
+  в discovery pool.
+
+### 4.2 Non-Functional Constraints
+
+- **NFR-001** — Один локальный процесс и один оператор; сложная распределённая
+  инфраструктура запрещена без нового подтверждённого use case.
+- **NFR-002** — Реальные GitLab sync/effects, agent runtime, persistence и dashboard
+  обязательны в первой полезной версии; simulation не заменяет acceptance.
+- **NFR-003** — Per-MR очереди независимы; разные MR обрабатываются параллельно без
+  глобального mutex.
+- **NFR-004** — После crash восстанавливаются очередь, решения, smart-widget feed и
+  незавершённые effects без потери и слепого повтора.
+- **NFR-005** — Все findings, artifacts, proposals, decisions, автоматические действия
+  и outcomes имеют `mr`, `sha/cursor`, `task`, `session/model`, время и provenance.
+- **NFR-006** — Работа, ожидание, деградация и ошибка наблюдаемы в UI в течение всего
+  lifecycle.
+- **NFR-007** — Порты создаются только на реальных change/trust boundaries, имеющих
+  минимум два потребителя или production+test adapters; interface-per-class запрещён.
+- **NFR-008** — Приёмка UI выполняется на реальных GitLab данных по AGENTS.md; mock
+  используется для детерминированного покрытия, но не как визуальное доказательство
+  production-flow.
+- **NFR-009** — Carbon & Steel: глубокие carbon surfaces, safety orange `#fc6d26`,
+  steel secondary, Geist для UI, JetBrains Mono для metadata/code, 1px borders,
+  tonal layering без декоративных теней, базовый radius 8px, высокая информационная
+  плотность IDE/cockpit. Основные UX-референсы: две компактные очереди dashboard,
+  двухколоночный MR workspace с Agent Terminal, findings/threads/plan widgets.
+
+### 4.3 Out-of-Scope v0
+
+- Multi-user, multi-account, tenancy, remote deployment и SaaS.
+- Мобильный native client.
+- Точечная инвалидация отдельных действий пакета.
+- Автономное принятие новых неоднозначных решений за оператора.
+- Полная копия административного GitLab UI.
+- Скачиваемые файлы заданий и inline-редактор задания.
+- Обязательная plugin-system или внешний scheduler.
+
+### 4.4 Runtime Backing & Deferred Scope
+
+| Capability                                    | Posture                           |
+| --------------------------------------------- | --------------------------------- |
+| GitLab discovery, facts and effects           | `real-runtime`                    |
+| Full review and delta verification            | `real-runtime`                    |
+| Local journal, queues, artifacts and recovery | `real-runtime`                    |
+| Dashboard, MR workspace and clipboard handoff | `real-runtime`                    |
+| Production/test/mock state isolation          | `real-runtime`                    |
+| Deterministic GitLab test adapter             | `simulation` for exhaustive tests |
+| Selective action invalidation                 | `not-implemented` (deferred)      |
+| Multi-user/remote runtime                     | `not-implemented` (out-of-scope)  |
+
+Trust boundaries requiring real hooks: GitLab token and permissions, GitLab effect
+reconciliation, agent-runtime tool trace for coverage, filesystem namespace isolation,
+browser clipboard permission.
+
+### 4.5 Rules
+
+| Rule                                | Category | Source                                                                                 |
+| ----------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `typescript-rules`                  | coding   | `ai/directives/coding/typescript-rules.xml`                                            |
+| `testing-common` + `node-test`      | testing  | `ai/directives/testing/common.xml`, `ai/directives/testing/node-test.xml`              |
+| `playwright-cli` → `playwright-e2e` | testing  | `ai/directives/testing/playwright-cli.xml`, `ai/directives/testing/playwright-e2e.xml` |
+
+No new infrastructure or architecture rule is activated: this pivot does not replace
+the repository toolchain, and the selected architecture is fully specified below.
+
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+<!--SECTION:ARCHITECTURE-->
+
+## 5. High-Level Architecture
+
+Selected variant: **hexagonal journal-first modular monolith**.
 
 ```mermaid
 flowchart LR
-  OP["👤 Оператор"]
-  GL["🦊 GitLab"]
-  subgraph SYS["agent-inbox"]
-    UC1(["S1 Запуск и синхронизация"])
-    UC2(["S2 Авто-подхват роли"])
-    UC3(["S3 Ревью-пайплайн"])
-    UC4(["S4 Новые коммиты"])
-    UC5(["S5 Новые треды"])
-    UC6(["S6 Чат с якорями"])
-    UC7(["S7 Действия в GitLab"])
-    UC8(["S8 Градуированная автономия"])
-  end
-  OP --> UC1
-  GL --> UC1
-  UC1 --> UC2 --> UC3
-  GL --> UC4
-  GL --> UC5
-  UC3 --> UC7
-  UC4 --> UC3
-  UC5 --> UC7
-  OP --> UC6
-  UC6 --> UC3
-  OP --> UC7
-  UC7 --> UC8
+  GL[GitLab] --> VR[VcsReadPort]
+  VR --> ING[Event ingestion]
+  ING --> J[Per-MR JournalPort]
+  J --> DOM[Domain state + policies]
+  DOM --> REV[Review orchestrator]
+  REV --> AR[AgentRuntimePort]
+  REV --> ART[ArtifactStorePort]
+  DOM --> PKG[Decision packages]
+  PKG --> FX[VcsEffectPort]
+  FX --> GL
+  J --> PROJ[ProjectionPort]
+  PROJ --> UI[Dashboard + MR workspace]
 ```
 
-### S1. Запуск: фазы → ready → доска
+Stable domain chain:
 
-```mermaid
-sequenceDiagram
-  participant UI as Дашборд
-  participant SRV as Server
-  participant GL as GitLab
-  UI->>SRV: GET /api/boot
-  SRV->>GL: connect + inbox poll (пример: 141 событие → N МР)
-  SRV->>SRV: сверка с реестром/диском
-  SRV->>SRV: восстановление очередей (из журналов)
-  SRV-->>UI: {phase, progress, ready:false}
-  Note over UI: экран фаз (§8.1), read-only по кнопке
-  SRV-->>UI: {ready:true}
-  UI->>SRV: GET /api/board → все MR в состояниях внимания
-```
+`event → MR state → review evidence → proposal → operator/automatic decision → effect
+→ reconciled outcome`.
 
-Правила: доска закрыта до `ready` (read-only по кнопке); worktree — лениво, не фаза;
-падение фазы = видимая ошибка + retry (D-305).
+Domain entities and events do not expose GitLab DTO, OpenCode session DTO, JSONL rows
+or SSE messages. Versioned event/action contracts form the migration boundary.
 
-### S2. Авто-подхват роли и постановка в очередь
+Required ports:
 
-```mermaid
-sequenceDiagram
-  participant GL as GitLab
-  participant SRV as Server
-  GL-->>SRV: inbox: myRole=author|reviewer|mentioned
-  SRV->>SRV: ось внимания (детерминированная, §6.2)
-  alt роль author|reviewer
-    SRV->>SRV: создать очередь MR, enqueue pipeline-задач
-  else mentioned-only
-    SRV->>SRV: доска «😴 Ждут других» (без очереди)
-  end
-```
+| Port                 | Current adapters                                   | Confirmed reason to exist             |
+| -------------------- | -------------------------------------------------- | ------------------------------------- |
+| `VcsReadPort`        | GitLab real, mock                                  | production and deterministic tests    |
+| `VcsEffectPort`      | real, readonly guard, mock-effects                 | real actions and safe test modes      |
+| `AgentRuntimePort`   | OpenCode, test double                              | review execution and repeatable tests |
+| `JournalPort`        | local append-only, in-memory test                  | recovery and isolated test runs       |
+| `ArtifactStorePort`  | local files, in-memory test                        | durable evidence and mock scenarios   |
+| `ClockPort`          | system, controlled test clock                      | debounce/quiet timers without sleeps  |
+| `TaskExecutorPort`   | local per-MR executor, deterministic test executor | parallel runtime and tests            |
+| `ProjectionPort`     | dashboard/feed projections                         | UI transport independent of domain    |
+| `RuntimeProfilePort` | production/test/mock namespaces                    | hard state isolation                  |
 
-Роль — факт из GitLab, не ручной акт; «без роли» = только упомянут (D-304).
+Policies and action types are registries inside the domain, not infrastructure ports.
+Dependencies are wired in one composition root. Every adapter implements a shared
+contract-test kit. v0 uses one process and local files; ports are not permission to add
+distributed infrastructure.
 
-### S3. Ревью-пайплайн (план → дорожки → синтез)
+### 5.1 Rejected Alternatives
 
-```mermaid
-flowchart TD
-  A[prepare_env детерм.] --> B[plan детерм.]
-  B --> C["enrich (flash)"]
-  C --> D{"fan-out"}
-  D --> T1["track: файлы + чеклист"]
-  D --> T2["track: security zero-trust"]
-  D --> T3["triggered: deps-vuln / secrets / specs / migrations"]
-  D --> L1["линза: 🏛 архитектура"]
-  D --> L2["линза: 🧪 тесты"]
-  T1 & T2 & T3 & L1 & L2 --> G[gate_coverage детерм.]
-  G -->|"не дочитал"| G
-  G --> S["synthesize (pro, с read-тулами)"]
-  S --> V[gate_verdict детерм.]
-  V --> TAIL{"хвост роли"}
-  TAIL -->|author| AU["fetch_threads → verify → propose_replies"]
-  TAIL -->|reviewer| RE["dedup → post candidates → approve gate"]
-```
+- **SQLite-centric workflow as canonical model:** convenient queries, but makes replay,
+  provenance and deterministic scenario reproduction secondary concerns. SQLite may
+  later replace the journal adapter without changing domain contracts.
+- **Session-first assistant:** quicker prototype, but agent context becomes a hidden
+  source of truth and weakens recovery, coverage proof and testing.
+- **Microservices/plugin platform:** no confirmed local use case; operational cost
+contradicts v0 constraints.
+<!--/SECTION:ARCHITECTURE-->
 
-Слои дорожек (D-328): 1️⃣ механический пол (всегда) · 2️⃣ детерминированные триггеры
-(всегда при совпадении паттерна) · 3️⃣ интеллектуальное расширение enrich (advisory).
-Гейты требуют слои 1–2.
+<!--SECTION:DECISION_LOG-->
 
-### S4. Новые коммиты → верификация → предложенные ответы
+## 6. Decision Log
 
-```mermaid
-sequenceDiagram
-  participant GL as GitLab
-  participant Q as Очередь MR
-  participant UI as Лента
-  GL-->>SRV: sync (активные MR ~1/мин): sha изменился
-  SRV->>Q: enqueue verify_fix / delta_review (supersede старой)
-  Q-->>UI: 🦊-виджет «+2 коммита → задача #14»
-  Q->>Q: выполнение (по правилам типов)
-  Q-->>UI: 💬-виджет: предложенные ответы на исправленные треды
-```
+### Superseded v2 decisions (body preserved)
 
-### S5. Новые треды → триаж → виджет «Ждут мой ответ»
+| ID    | Status              | Original decision                                                         |
+| ----- | ------------------- | ------------------------------------------------------------------------- |
+| D-301 | superseded by D-332 | Иерархия: автономный эмулятор → второй ревьювер → ассистент-фактчекер     |
+| D-302 | superseded by D-335 | Любая capability стартует proposal-only и переходит в auto по accept-rate |
+| D-303 | superseded by D-333 | Единый pipeline с role-specific author/reviewer tails                     |
+| D-304 | superseded by D-333 | Роль author/reviewer/mentioned из GitLab; mentioned-only без очереди      |
+| D-305 | active              | Барьер ready, наблюдаемые фазы и ленивый worktree                         |
+| D-306 | superseded by D-336 | Ось внимания как основные dashboard-группы                                |
+| D-307 | active              | Per-MR очередь, параллелизм между MR, priority и supersede                |
+| D-308 | superseded by D-336 | Одинаковая четырёхстрочная карточка в attention-board                     |
+| D-309 | active              | Оптимистичный UI; ошибка является видимым состоянием                      |
+| D-310 | active              | SSE per MR и reconciliation polling                                       |
+| D-311 | active              | Один agent server и TTL-паркинг task sessions                             |
+| D-312 | active              | Единый стандарт prompt compilation                                        |
+| D-313 | active              | Агент читает контент по указателям вместо inline-копирования              |
+| D-314 | active              | Детерминированный план с интеллектуальным enrichment                      |
+| D-315 | active              | File checklists и обязательный пофайловый отчёт                           |
+| D-316 | active              | Coverage gate по tool trace                                               |
+| D-317 | active              | Feed событий/решений с read/unread                                        |
+| D-318 | active              | Smart widgets: cyclic и one-shot lifecycle                                |
+| D-319 | superseded by D-332 | Ассистент приносит фактуру, а operator выполняет решение вне closed loop  |
+| D-320 | active              | Спеки и задачи можно регенерировать в v0                                  |
+| D-321 | active              | Постоянный MR chat с meta anchors                                         |
+| D-322 | superseded by D-334 | Дедуп чужих findings по трём фиксированным исходам                        |
+| D-323 | superseded by D-335 | Только proposal reactions и ограниченный dev-agent report                 |
+| D-324 | superseded by D-334 | Фоновая проверка каждого нового SHA примерно раз в минуту                 |
+| D-325 | active              | MR header с описанием, состояниями и quick actions                        |
+| D-326 | active              | Review lenses расширяются декларативно                                    |
+| D-327 | active              | Multi-model artifacts и synthesis, default one model                      |
+| D-328 | active              | Механический, trigger и intelligent review layers                         |
+| D-329 | superseded by D-339 | Модульная карта v2 без обязательной hexagonal migration boundary          |
+| D-330 | active              | Typed task registry с dependency/exclusion/supersede/session policy       |
+| D-331 | active              | Session routing зависит от требуемого контекста                           |
 
-```mermaid
-sequenceDiagram
-  GL-->>SRV: sync: новые discussions
-  SRV->>Q: enqueue thread_triage
-  Q->>Q: классификация (🔧 фикс / 💬 ответ / 👍 согласие) + фактчек
-  Q-->>UI: 💬-виджет: готовые реакции (👍 / 👍+резолв / текст)
-  Note over UI: резолв — только свои треды и треды бота (D-323)
-```
+### D-332 — Closed-loop local reviewer assistant (rework)
 
-### S6. Чат с якорями → маршрутизация сессий
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-301, D-319
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** первая стадия считалась fact-check assistant, а GitLab effect loop не был критерием полезности.
+- **Now:** первая полезная версия полностью обрабатывает MR и выполняет подтверждённые действия в GitLab без перехода оператора в GitLab UI.
+- **Why:** «Если я не смогу через этот инструмент выполнить действия с GitLab, то мне он не нужен».
+- **Risk accepted:** реальный effect runtime увеличивает объём v0.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-333 — Role-invariant full review and inclusive discovery (rework)
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-303, D-304
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** author/reviewer имели разные tails, а mentioned-only не запускал очередь.
+- **Now:** роль влияет только на права и UX-группу; любой participation signal запускает одинаково полное review и cross-review.
+- **Why:** агент пишет любой MR, а оператор всегда отвечает за решение; чужой контекст нужно перепроверять.
+- **Risk accepted:** больше вычислительной работы на каждый MR.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-334 — Accumulated event verification (rework)
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-322, D-324
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** новый SHA почти сразу запускал фоновую проверку, а thread cross-review имел узкие фиксированные исходы.
+- **Now:** любые MR events накапливаются; human reply, debounce, quiet timeout или ручная команда запускают связанную delta/thread verification.
+- **Why:** ассистент должен реагировать как активный человек, а не бездумно проверять каждый commit.
+- **Risk accepted:** v0 целиком инвалидирует неприменённый пакет.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-335 — Hybrid packages and intent-preserving automation (rework)
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-302, D-323
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** все capabilities начинались только как proposals и применялись по одной.
+- **Now:** оператор применяет выбранный гибридный пакет сразу; исправленные треды и восстановление прежнего approve могут выполняться автоматически после доказанных gates.
+- **Why:** пакет сохраняет общий контекст, а восстановление уже выраженного intent не является новым решением за оператора.
+- **Risk accepted:** частичные outcomes требуют dependency-aware execution и reconciliation.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-336 — Responsibility queues instead of attention Kanban (rework)
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-306, D-308
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** MR распределялись по нескольким attention columns.
+- **Now:** две колонки ответственности содержат по одной карточке MR; множественные причины внимания отображаются внутри приоритетной карточки.
+- **Why:** у MR нормально иметь несколько одновременных состояний, но дублирование карточек разрушает рабочую очередь.
+- **Risk accepted:** альтернативный четырёхколоночный attention-Kanban откладывается.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-337 — Artifact-addressed DEV handoff
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox
+- **Why:** любой reviewer должен иметь возможность передать найденную работу своему DEV-агенту без копирования всей фактуры.
+- **Risk accepted:** нужно хранить baseline каждого handoff.
+- **Rejected alternatives:** скачиваемый файл; полное inline-дублирование артефактов; задания только для author.
+
+### D-338 — Isolated adaptive test runtime
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox
+- **Why:** тесты должны объяснять результат через реально наблюдаемое состояние GitLab и никогда не зависеть от рабочего локального state.
+- **Risk accepted:** real test report имеет `SKIP` и `INCONCLUSIVE`, а не только бинарный результат.
+- **Rejected alternatives:** reset рабочего `~/.gennady`; фиктивные данные как единственная acceptance; effects на произвольных MR.
+
+### D-339 — Hexagonal journal-first local architecture (rework)
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, pivot
+- **Supersedes:** D-329
+- **Pre-rework state:** git ref `8283e9ab8ee19bd7069e1734b1c48997fd1be45d`
+- **Was:** модульная карта фиксировала реализации, но не строгие migration boundaries.
+- **Now:** versioned domain events/actions и узкие ports отделяют GitLab, agent runtime, journal, clock, executor, projections и runtime profiles.
+- **Why:** архитектуру должно быть возможно заменить по частям, не усложняя локальный v0.
+- **Risk accepted:** полная смена domain semantics всё равно потребует миграции.
+- **Downstream invalidation:** see Pivot Invalidation List.
+
+### D-340 — Carbon & Steel as visual source of truth
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox
+- **Why:** текущий сервер визуально расходится с согласованной IDE/cockpit моделью; прототипы задают дизайн-зерно, а не точную компоновку.
+- **Risk accepted:** ранние prototype screens отсутствуют; поведение определяется spec, внешний вид — сохранёнными правилами и v3 references.
+- **Rejected alternatives:** копирование текущего UI; свободная новая палитра.
+
+### D-341 — Hybrid hierarchical module specifications
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, agent-inbox
+- **Why:** Project Manager задаёт видение и проблемы, а архитектурная детализация остаётся ответственностью агента; небольшие module specs должны помещаться в контекст и связываться индексами и cross-links.
+- **Risk accepted:** появляются навигационные index-файлы, которые не являются runtime-модулями и не должны дублировать дочерние контракты.
+- **Rejected alternatives:** плоский список всех модулей без смысловых групп; вертикальные use-case модули, смешивающие VCS, runtime, persistence и UI.
+<!--/SECTION:DECISION_LOG-->
+
+<!--SECTION:SCOPE_DEPENDENCIES-->
+
+## 7. Scope Dependencies
+
+- **Depends on:** `infra-base`, `vcs`, `cli`, `ai-skills`.
+- **External services/tools:** GitLab API, OpenCode-compatible agent runtime, browser
+  clipboard API.
+- **Provides to:** local operator only; no public multi-user service contract.
+<!--/SECTION:SCOPE_DEPENDENCIES-->
+
+<!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+## 8. Bootstrap Requirements
+
+| Requirement                                 | Kind          | Owner                 | Resolution                                                                                             |
+| ------------------------------------------- | ------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Node.js/npm/Vite/React/Playwright toolchain | tool          | external-prereq-scope | Exists in `package.json` and `infra-base`                                                              |
+| GitLab read/effect API contracts            | external-type | external-prereq-scope | Extend/reuse `vcs`; missing action surfaces become explicit `vcs` prerequisite tasks                   |
+| GitLab token and identity                   | env           | operator-action       | Operator provides the existing GitLab PAT environment/config; boot reports missing/invalid credentials |
+| OpenCode-compatible runtime                 | tool          | operator-action       | `opencode` binary/runtime must be available; boot reports unavailable/version mismatch                 |
+| Production/test/mock state roots            | structural    | this-scope-task       | Create disjoint runtime-profile namespaces; test reset accepts test `run-id` only                      |
+| Real-effects test allowlist                 | file          | operator-action       | Operator configures explicit project/MR allowlist; absent allowlist disables real-effects mode         |
+| Browser clipboard permission                | service       | operator-action       | Clipboard action reports permission failure and never falls back to file download                      |
+
+No new third-party package is required by the selected architecture.
+
+<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+<!--SECTION:MODULE_MAP-->
+
+## 9. Module Map
+
+### 9.1 Canonical modules
+
+| Module                                                       | Ownership                                                                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| [inbox-core](./inbox-core/inbox-core.spec.md)                | Events, MR state, participation and lifecycle; artifact persistence, journal and runtime-profile ports. |
+| [inbox-vcs](./inbox-vcs/inbox-vcs.spec.md)                   | GitLab reads, effects, permissions and reconciliation.                                                  |
+| [inbox-pipeline](./inbox-pipeline/inbox-pipeline.spec.md)    | Full/delta/cross-review, evidence, review artifacts, coverage and synthesis.                            |
+| [inbox-queue](./inbox-queue/inbox-queue.spec.md)             | Tasks, action/effect intents, hybrid packages, decisions, automation and domain outcomes.               |
+| [inbox-opencode](./inbox-opencode/inbox-opencode.spec.md)    | Agent runtime, prompts, sessions and tool traces.                                                       |
+| [inbox-chat](./inbox-chat/inbox-chat.spec.md)                | MR chat, artifact mutation and DEV-agent handoff.                                                       |
+| [inbox-api](./inbox-api/inbox-api.spec.md)                   | Journal-backed projections, commands and SSE.                                                           |
+| [inbox-dashboard](./inbox-dashboard/inbox-dashboard.spec.md) | Carbon & Steel board and MR workspace.                                                                  |
+| [inbox-mocks](./inbox-mocks/inbox-mocks.spec.md)             | Deterministic isolated test runtime.                                                                    |
+| [inbox-eval](./inbox-eval/inbox-eval.spec.md)                | Contract, adaptive real-readonly and real-effects validation.                                           |
+
+Navigation: [review runtime](./review-runtime/index.md),
+[operator assistant](./operator-assistant/index.md), [verification](./verification/index.md).
+
+### 9.2 Dependency map
+
+Every edge is `module --> dependency`.
 
 ```mermaid
 flowchart LR
-  SEL["выделение текста<br/>(мета-якорь: widget+fragment+artifact)"]
-  SEL --> ROUTE{"маршрут (D-331)"}
-  ROUTE -->|"вопрос по артефакту"| OPS["operator-сессия MR<br/>(персистентная, read-тулы)"]
-  ROUTE -->|"углубление находки"| SAME["та же таск-сессия<br/>(если жива, TTL-паркинг)"]
-  ROUTE -->|"фактчек / вширь"| NEW["новая свежая сессия<br/>(adversarial)"]
-  ROUTE -->|"изменить артефакт"| TASK["mutate_artifact в очередь<br/>(CAS + снапшот)"]
+  VCS[inbox-vcs] --> Core[inbox-core]
+  Pipeline[inbox-pipeline] --> Core
+  Pipeline --> VCS
+  Pipeline --> Agent[inbox-opencode]
+  Queue[inbox-queue] --> Pipeline
+  Queue --> Core
+  Queue --> VCS
+  Agent --> Core
+  Chat[inbox-chat] --> Core
+  Chat --> Pipeline
+  Chat --> Agent
+  API[inbox-api] --> Core
+  API --> Pipeline
+  API --> Queue
+  API --> Chat
+  Dashboard[inbox-dashboard] --> API
+  Mocks[inbox-mocks] -. test adapter .-> Core
+  Mocks -. test adapter .-> VCS
+  Mocks -. test adapter .-> Agent
+  Mocks -. test adapter .-> Queue
+  Mocks -. test adapter .-> API
+  Eval[inbox-eval] --> API
+  Eval --> VCS
+  Eval --> Mocks
+  Eval --> Core
+  Eval --> Pipeline
+  Eval --> Queue
+  Eval --> Agent
+  Eval --> Chat
+  Eval --> Dashboard
 ```
 
-### S7. Действия в GitLab (эффекты)
-
-POST/react/resolve/approve/edit-description — задачи типа `effect`: последовательные
-(`exclusiveWith`), идемпотентные (маркер в журнале), с правом резолва по D-323. Каждый
-эффект = одноразовый виджет ленты (resolved → тонет, D-318). Undo автодействия (S8) =
-компенсирующий эффект, где VCS позволяет (unapprove/unresolve/delete-note), иначе —
-видимая пометка оператору.
-
-```mermaid
-sequenceDiagram
-  participant OP as Оператор
-  participant Q as Очередь MR
-  participant GL as GitLab
-  OP->>Q: решение (постить / react / resolve / approve)
-  Q->>Q: effect-задача (exclusiveWith, идемпотентность)
-  Q->>GL: выполнение эффекта
-  Q-->>OP: ⚡ одноразовый виджет в ленте (resolved → тонет)
-```
-
-### S8. Градуированная автономия
-
-```mermaid
-flowchart LR
-  P["предложение машины"] --> D{"решение оператора"}
-  D -->|accept| J1["журнал: accept"]
-  D -->|edit| J2["журнал: edit (+diff)"]
-  D -->|reject| J3["журнал: reject"]
-  J1 & J2 & J3 --> M["accept-rate per capability"]
-  M -->|">= порога"| AUTO["auto-mode capability"]
-  AUTO --> UI2["лента: автодействие + undo"]
-```
-
-<!--/SECTION:USE_CASES-->
-
-## 3. Архитектура: модули
-
-<!--SECTION:MODULES-->
-
-```mermaid
-flowchart TD
-  subgraph core[" "]
-    CORE[inbox-core<br/>журнал, реестр-кэш, готовность]
-    VCS[inbox-vcs<br/>sync poll/detail, ось внимания]
-    QUE[inbox-queue<br/>реестр типов, executors, сессии]
-    PIP[inbox-pipeline<br/>план, слои, линзы, гейты, синтез]
-  end
-  OC[inbox-opencode<br/>сессии, TTL-паркинг, телеметрия]
-  CHAT[inbox-chat<br/>operator-сессия, якоря, мутации]
-  API[inbox-api<br/>REST/SSE, проекции DTO]
-  UI[inbox-dashboard<br/>загрузка/доска/лента/чат]
-  EVAL[inbox-eval + inbox-mocks<br/>харнесс «схожести решений»]
-  VCS --> QUE --> PIP
-  CORE --> QUE
-  PIP --> OC
-  QUE --> OC
-  QUE --> API
-  CHAT --> QUE
-  API --> UI
-  EVAL -.-> QUE
-```
-
-| Модуль                                                       | Ответственность                                                                                                                   | Происхождение  |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| [`inbox-core`](inbox-core/inbox-core.spec.md)                | журнал событий/решений (event store), конфиг, реестр-кэш, барьер готовности, dry-run                                              | rework         |
-| [`inbox-vcs`](inbox-vcs/inbox-vcs.spec.md)                   | двухъярусный sync, контракты GitLab, детерминированная ось внимания, верификация исправлений                                      | split          |
-| [`inbox-queue`](inbox-queue/inbox-queue.spec.md)             | реестр типов задач + правила, per-MR executors, маршрутизация сессий, приоритетный пул                                            | **новое**      |
-| [`inbox-pipeline`](inbox-pipeline/inbox-pipeline.spec.md)    | план-шаблон, 3 слоя дорожек, реестр линз, мульти-модель, coverage-гейты, синтез, role-хвосты                                      | **новое**      |
-| [`inbox-opencode`](inbox-opencode/inbox-opencode.spec.md)    | сессии (создание/паркинг/TTL), пулы, tool-телеметрия, промпт-компиляция                                                           | reuse + extend |
-| [`inbox-chat`](inbox-chat/inbox-chat.spec.md)                | operator-сессия, мета-якоря, MutationApplier (CAS+снапшоты)                                                                       | reuse core     |
-| [`inbox-api`](inbox-api/inbox-api.spec.md)                   | REST/SSE, DTO-проекции (доска/лента/очередь), enqueue                                                                             | rework         |
-| [`inbox-dashboard`](inbox-dashboard/inbox-dashboard.spec.md) | экран загрузки, доска двух осей, лента-виджеты, чат-колонка                                                                       | rewrite        |
-| [`inbox-eval`](inbox-eval/inbox-eval.spec.md)                | прогон на реальном MR, метрики схожести решений; моки — только для UI-разработки ([inbox-mocks](inbox-mocks/inbox-mocks.spec.md)) | keep           |
-
-Переиспользуется (не трогаем по сути): OutcomeClassifier, PhaseTelemetry/X-ray,
-EffectExecutor, context-builder (worktree/changeset), MutationApplier, VCS-клиент.
-Выбрасывается: RoleScheduler/RoleInstance/два графа/review-progress/колонки-роли.
-
-<!--/SECTION:MODULES-->
-
-## 4. Сущности (closed-world inventory)
-
-<!--SECTION:ENTITIES-->
-
-| Сущность                      | Ключ                                                                         | Назначение                                                                             |
-| ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `MrRef`                       | `project!iid` (project = path-with-namespace GitLab, напр. `mail/messenger`) | идентичность MR                                                                        |
-| `MrCard`                      | MrRef                                                                        | DTO карточки: роль, внимание, счётчики (✅ n/m, 👁, 🏗, 💬, 🔀, 📬), работа            |
-| `AttentionState`              | —                                                                            | детерминированная ось внимания (§6.2): review/reply/commits/approve/others             |
-| `WorkState`                   | —                                                                            | ось работы: queued/planning/reviewing/verifying/synthesis/awaiting/error/done          |
-| `TaskInstance`                | `taskId` (`#N` на MR)                                                        | задача в очереди: type, status, params, dependsOn, dedupKey, priority                  |
-| `TaskType`                    | имя типа                                                                     | запись реестра: parallelWith/exclusiveWith/dependsOn/supersedes/sessionPolicy/priority |
-| `SessionInstance`             | `sessionId`                                                                  | таск-сессия (TTL-паркинг) или operator-сессия (персистентная)                          |
-| `ArtifactRef`                 | путь                                                                         | артефакт + `producedBy: {sessionId, taskId, model}`                                    |
-| `LensSpec`                    | id линзы                                                                     | декларативная запись: вопрос, директива, модель(и), триггеры, входы других линз        |
-| `TrackSpec`                   | id дорожки                                                                   | источник `mandatory\|triggered:<rule>\|proposed`, чеклист файлов                       |
-| `JournalEntry`                | cursor                                                                       | запись журнала: событие задачи/GitLab/решения/чата (источник истины)                   |
-| `FeedWidget`                  | widgetId                                                                     | проекция журнала: тип, lastActivity, resolved, payload, якоря                          |
-| `Proposal` / `DecisionRecord` | id                                                                           | предложение машины + решение оператора (accept/edit/reject) — датасет автономии        |
-| `ReviewVerdict`               | `review.json`                                                                | канонический результат: verdict, findings[F-n], revision                               |
-
-<!--/SECTION:ENTITIES-->
-
-## 5. Публичные поверхности (API)
-
-<!--SECTION:PUBLIC_API-->
-
-> **Владение:** это контракт-**сводка** для единого согласования. Канонический дом
-> таблиц — модульные спеки: REST/SSE → `inbox-api.spec.md`, порты → спеки
-> модулей-владельцев (`inbox-vcs`, `inbox-opencode`, `inbox-queue`, `inbox-core`).
-> После регенерации модульных спек здесь остаётся только перечень поверхност.
-
-### 5.1 REST (публичный контракт дашборда)
-
-| Метод | Путь                          | Назначение                                                         |
-| ----- | ----------------------------- | ------------------------------------------------------------------ |
-| GET   | `/api/boot`                   | фазы загрузки, ready-флаг, прогресс                                |
-| GET   | `/api/board`                  | доска: группы внимания + карточки + «ждут других»                  |
-| GET   | `/api/state?mr=<ref>`         | батч-реконсиляция: карточка + очередь + виджеты                    |
-| GET   | `/api/mr/:ref/feed?cursor=`   | лента (проекция журнала, пагинация)                                |
-| POST  | `/api/mr/:ref/task`           | enqueue `{type, params}` → `{taskId, position}` (дедуп на сервере) |
-| GET   | `/api/mr/:ref/artifact?path=` | артефакт (markdown/mermaid/json)                                   |
-| POST  | `/api/mr/:ref/chat`           | вопрос с опциональным мета-якорем                                  |
-| POST  | `/api/mr/:ref/decision`       | решение по proposal: accept/edit/reject + payload                  |
-| GET   | `/api/mr/:ref/stream`         | SSE-канал всё-в-одном                                              |
-| GET   | `/api/diagnostics`            | хвост серверного лога                                              |
-
-### 5.2 SSE-фреймы
-
-| Фрейм                           | Назначение                                                 |
-| ------------------------------- | ---------------------------------------------------------- |
-| `task_update`                   | смена статуса задачи (queued/running/done/failed + taskId) |
-| `widget_update`                 | обновление виджета ленты (bump/resolved/payload)           |
-| `board_hint`                    | инвалидация доски (клиент догоняет `/api/board`)           |
-| `token` / `turn_done` / `error` | стрим чата (как сейчас)                                    |
-| `mutation` / `refresh`          | мутации артефактов (CAS) — как сейчас                      |
-
-### 5.3 Internal API (порты между модулями)
-
-| Порт                | Методы                                                                                                | Реализация                       |
-| ------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `VcsPort`           | getInbox, getMrDetail, getDiscussions, postNote, react, resolve, approve, editDescription, compareSha | vcs-client (GitLab)              |
-| `OpenCodePort`      | createSession, prompt, continue, park, resume, close, abort, messages(tool-trace)                     | opencode serve                   |
-| `TaskQueuePort`     | enqueue(dedupKey), next(rules), state, supersede                                                      | inbox-queue                      |
-| `JournalPort`       | append, read, since(cursor)                                                                           | inbox-core                       |
-| `SessionRouterPort` | route(anchor/intent) → session                                                                        | inbox-queue + inbox-opencode     |
-| `ProjectionPort`    | board(), feed(mr), queue(mr)                                                                          | inbox-api поверх журнала+реестра |
-
-<!--/SECTION:PUBLIC_API-->
-
-## 6. Модель исполнения
-
-<!--SECTION:EXECUTION-->
-
-### 6.1 Очередь и правила типов (D-307, D-330)
-
-Per-MR executor; между MR — полный параллелизм (предел — приоритетный пул сессий);
-**ноль глобальных мьютексов**. Приоритеты: 👤 пользовательские > 🦊 событийные >
-🏗 пайплайн. Supersede по dedupKey. Новые коммиты не убивают идущие задачи — дельта
-в хвост. **Канонический реестр типов задач — inbox-queue §3** (11 типов, включая
-`thread_triage` и `delta_review`).
-
-### 6.2 Ось внимания (детерминированная, серверная)
-
-`⏳ ревью · 💬 ответ/фикс · 🔀 ре-ревью (коммиты) · ✅ аппрув · 😴 ждут других` —
-функция от данных sync (роль, треды, sha, approvals). Не вычисляется из «живого
-инстанса»; инстанс не источник истины для UI.
-
-### 6.3 Сессии (D-311, D-331)
-
-Маршрутизация: валидация/гейт → та же; углубить → та же (если жива); фактчек/вширь →
-новая свежая; мутация артефакта → та же (или новая с артефактом); свободный чат →
-operator-сессия MR. Таск-сессии паркуются с idle-TTL (конфиг, дефолт 45 мин, диапазон
-30–60). Артефакты и находки
-несут `producedBy` — вопрос разрешается в сессию-продюсера.
-
-### 6.4 Пайплайн (D-303, D-326–D-328, D-314–D-316)
-
-Три слоя дорожек (механический пол / триггеры / интеллект). Линзы = декларативные
-записи (🏛🎯📜🧪🔐⚡ + 🧾 код-строки). Мульти-модель: `models[]`, N именованных
-артефактов, синтез консенсус/спор/уникальные (дефолт 1 модель). Чеклисты файлов в
-каждой дорожке; coverage-гейт по **tool-trace** (не по самоотчёту). Синтез с
-read-тулами, указатели вместо инлайна. Промпты — единый маршрут Handlebars+кирпичи
-(D-312); статическая конкатенация умирает.
-
-### 6.5 Отказы зависимостей в steady-state (D-309)
-
-| Отказ                          | Состояние                                                                  |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| GitLab недоступен/токен протух | sync на паузе + `syncState: degraded` на доске (видимо, не молча)          |
-| opencode serve упал            | очередь ждёт рестарта + алерт-виджет; задачи не теряются (журнал)          |
-| модель: таймаут/ошибка         | задача `failed` → лесенка continue/restart (inbox-opencode §5) → эскалация |
-
-<!--/SECTION:EXECUTION-->
-
-## 7. UX-контракты
-
-<!--SECTION:UX-->
-
-### 7.1 Загрузка (D-305)
-
-Экран фаз: connect → опрос inbox → сверка реестр/диск → восстановление очередей →
-ready; read-only по кнопке; падение фазы = видимая ошибка + retry.
-
-### 7.2 Доска и карточка (D-306, D-308)
-
-Группы по вниманию: `⏳ ЖДУТ МОЁ РЕВЬЮ · 💬 ЖДУТ МОЙ ОТВЕТ · 🔀 ЖДУТ РЕ-РЕВЬЮ ·
-✅ ЖДУТ АППРУВ/РЕЗОЛВ · 😴 ЖДУТ ДРУГИХ (сворачиваемая)`. Карточка — вариант A (4 строки: идентичность+📬🔀 ·
-заголовок · ✅n/m 👁 🏗 💬⏳ · ⚙ работа+таймер).
-
-### 7.3 Лента виджетов (D-317, D-318)
-
-Умные виджеты: Находки (группа: severity, file:line, разворот в diff-note; дедуп с
-чужими тредами: скрытые/возражение/👍+инсайт) · Треды-ждут-меня (готовые реакции, репорт
-для dev-агента после фактчека) · Артефакт-пост (FB-style, mermaid как «фото») ·
-**Текущий план** (активная стадия, прогресс дорожек M/N, позиция в очереди) ·
-GitLab-событие (сигнал → задача) · Прогресс (схлопнутый). Жизненный цикл: циклические всплывают по новому содержимому,
-одноразовые тонут при resolved. Непрочитанное: разделитель «новое с прошлого визита» +
-📬 на карточке. Шапка МР (D-325): описание, состояния, быстрые действия по текущему
-ожиданию.
-
-### 7.4 Чат-колонка (D-321)
-
-Постоянная правая колонка на всех страницах; выделение → мета-якорь (виджет+фрагмент+
-артефакт); чат мутирует артефакты через очередь (CAS+снапшот+отчёт); operator-сессия
-персистентная, артефакты по якорю.
-
-<!--/SECTION:UX-->
-
-## 8. Реестр решений (Decision Log)
-
-<!--SECTION:DECISIONS-->
-
-| ID    | Решение                                                                                                                                                                    |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D-301 | Иерархия целей: финал (автоном-эмулятор) > стадия 2 (второй ревьювер) > стадия 1 (ассистент-фактчекер)                                                                     |
-| D-302 | Градуированная автономия: proposal → accept-rate/edit-rate → auto (порог: accept ≥ 90% на выборке ≥ 20); журнал решений = датасет                                          |
-| D-303 | Единый пайплайн для обеих ролей; различия только в хвосте (author: треды/верификация/отчёт; reviewer: реакции/постинг)                                                     |
-| D-304 | Роль = факт из GitLab; «без роли» = только mentioned; авто-подхват в очередь                                                                                               |
-| D-305 | Барьер готовности: доска после ready; фазы с прогрессом; worktree лениво                                                                                                   |
-| D-306 | Две оси: внимание (GitLab, детерминированно) × работа (очередь); смерть трём словарям                                                                                      |
-| D-307 | Per-MR очередь/DAG, ноль глобальных мьютексов; приоритеты 👤>🦊>🏗; supersede                                                                                              |
-| D-308 | Карточка идентичная для всех MR, вариант A; CI в первой итерации                                                                                                           |
-| D-309 | Оптимистичный UI со скелетонами/статусами; ошибка = видимое состояние, не амнезия                                                                                          |
-| D-310 | Транспорт: SSE-на-MR-для-всего + батч-реконсиляция; taskId синхронно при enqueue; доска — poll `/api/board` 10–15с, `board_hint`/`dryrun` шлются во все активные MR-каналы |
-| D-311 | Один opencode-сервер; таск-сессии с TTL-паркингом                                                                                                                          |
-| D-312 | Единый стандарт промптов (Handlebars+кирпичи); смерть статической карте                                                                                                    |
-| D-313 | Контент добывает агент; промпт несёт указатели (файлы/SHA/пути), не дифы                                                                                                   |
-| D-314 | Планирование двухъярусное: детерм-черновик + flash-обогащение + семантические триггеры                                                                                     |
-| D-315 | Чеклисты файлов в дорожках; обязательный пофайловый отчёт                                                                                                                  |
-| D-316 | Coverage-гейт по tool-trace, не по самоотчёту; недочит → continue той же сессии                                                                                            |
-| D-317 | Лента событий/решений с read/unread и 📬-счётчиком                                                                                                                         |
-| D-318 | Лента = умные виджеты; циклические vs одноразовые; скрытые/история внутри                                                                                                  |
-| D-319 | Цель-образ: ассистент приносит фактуру → оператор решает → автомат наблюдается                                                                                             |
-| D-320 | Спеки переписываются с нуля (этот документ); модули/таски регенерируются                                                                                                   |
-| D-321 | Чат — перманентная колонка; мета-якоря; мутации артефактов через очередь                                                                                                   |
-| D-322 | Дедуп находок с чужими тредами: совпадает+👍 → скрытые; не согласны → возражение; отвечено+инсайт → 👍+инсайт                                                              |
-| D-323 | Треды-виджет с готовыми реакциями; репорт dev-агенту только после фактчека и только мои дискуссии; резолв — только свои треды и бота (в своих MR)                          |
-| D-324 | Фон-верификация активных MR (~1/мин): коммиты → верификация → предложенные ответы                                                                                          |
-| D-325 | Шапка-информер MR: описание + состояния + быстрые действия по ожиданию                                                                                                     |
-| D-326 | Измерения ревью (линзы) — декларативные записи; расширение без кода                                                                                                        |
-| D-327 | Мульти-модель: models[], N именованных артефактов, синтез консенсус/спор/уникальные; дефолт 1 модель                                                                       |
-| D-328 | Три слоя дорожек: механический пол / детерминированные триггеры / интеллектуальное расширение (advisory)                                                                   |
-| D-329 | Модульная карта: 8 модулей + eval; переиспользование X-ray/EffectExecutor/MutationApplier/VCS                                                                              |
-| D-330 | Реестр типов задач с правилами (parallel/exclusive/dependsOn/supersede/sessionPolicy/priority)                                                                             |
-| D-331 | Маршрутизация сессий: та же vs новая — таблица (валидация/углубление → та же; фактчек/вширь → новая)                                                                       |
-
-<!--/SECTION:DECISIONS-->
-
-## 9. Non-goals
-
-<!--SECTION:NON_GOALS-->
-
-- Не заменяем GitLab UI целиком (ревью кода построчно — там; мы — над ним).
-- Не автопостинг без градации (стадия 1 — только предложения).
-- Не мобильный клиент (responsive — да, натив — нет).
-- Не мультипользовательность (один оператор, локальный сервер).
-- Не экономика/бюджеты моделей (отдельный трек позже; механизм не ограничен ею).
-
-<!--/SECTION:NON_GOALS-->
-
-## 10. Приёмка и проверка
-
-<!--SECTION:ACCEPTANCE-->
-
-1. **S1–S8 воспроизводятся на реальном MR** (без моков; AGENTS.md visual-proof):
-   скриншоты фаз загрузки, доски, ленты, виджетов, чата-мутации.
-2. **Параллелизм:** два MR в работе одновременно — прогресс одного не блокирует другой
-   (контрольный сценарий по мотивам инцидента 2026-07-28).
-3. **Coverage-гейт:** дорожка с непрочитанным файлом не проходит; continue доезжает.
-4. **Eval-харнесс:** прогон S3 на реальном MR с отчётом PASS + метрика
-   «предложенные vs принятые решения» (зародыш D-302).
-5. Журнал: после краша сервера состояние очередей и ленты восстанавливается из
-   `events.jsonl` без потери карточек.
-
-<!--/SECTION:ACCEPTANCE-->
-
-## Critic Rounds
-
-### Round 1 — 2026-07-29
-
-- Verdict: NEEDS_WORK (3 MAJOR + уточнения)
-- Accepted: 4 — реестр типов «как в диалоге» (самоссылка невалидна) → каноника делегирована inbox-queue §3; транспорт доски (board_hint/dryrun во все MR-каналы + poll 10–15с); failure-матрица steady-state (GitLab/opencode/модель); уточнения (141=пример, MrRef=path-with-namespace, TTL=конфиг 45 мин, аудит=журнал, undo=компенсирующий эффект)
-- Rejected: 0
-- Reconcile: реестр типов → REUSE inbox-queue §3 (уже полный)
-- Changes: §6.1 ссылка на реестр; D-310 транспорт доски; §6.5 failure-матрица; мелкие уточнения S1/S7/§4/§6.3
-
-### Round 2 — 2026-07-29
-
-- Stop: лимит оператора (2 раунда); валидация R2 для core/chat/eval не вернулась (пустые отчёты диспетчей) — правки R1 остаются в силе, отмечено как риск-недовалидация
-
-## 11. Rules (cascade source, product 4.5)
-
-| Category | Rule                                                                                                                                | Активация                        |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| coding   | [typescript-rules](../../ai/directives/coding/typescript-rules.xml)                                                                 | все impl-фазы с \*.ts            |
-| testing  | [node-test](../../ai/directives/testing/node-test.xml) (+ testing-common)                                                           | все test-фазы (раннер node:test) |
-| testing  | [playwright-cli](../../ai/directives/testing/playwright-cli.xml) → [playwright-e2e](../../ai/directives/testing/playwright-e2e.xml) | e2e-фазы дашборда/eval           |
-
-## 12. Bootstrap Requirements (product §8)
-
-| #   | Requirement                                                                                                                                              | Owner           | Resolution                                   |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | -------------------------------------------- |
-| B1  | Бинарь `opencode` доступен в PATH (спавн `opencode serve`)                                                                                               | operator-action | `which opencode` exit 0 (уже есть в среде)   |
-| B2  | GitLab token (`GITLAB_PERSONAL_TOKEN`) для real-режима                                                                                                   | operator-action | env присутствует (уже используется v1)       |
-| B3  | Инвентарь reuse-звеньев v1 зафиксирован в коде v2: OutcomeClassifier, PhaseTelemetry/X-ray, EffectExecutor, context-builder, MutationApplier, VCS-клиент | this-scope-task | импорты разрешаются, type-check проходит     |
-| B4  | Дисциплина сборки SPA: `npm run inbox-serve:build` → `dist/inbox-serve` после изменений dashboard                                                        | this-scope-task | команда задокументирована в тикете dashboard |
+### 9.3 Stack and scaffolding handoff
+
+- Languages: TypeScript 5+, React/TSX for dashboard.
+- Runtime: Node.js 22+, local files, GitLab API, OpenCode-compatible agent runtime.
+- Tests: node:test and Playwright; shared port contract kit.
+- Task scaffolding consumes the root spec plus all ten module specs; navigation indexes
+do not own implementation tickets.
+<!--/SECTION:MODULE_MAP-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to module-decomposition
+
+- **Primary input:** `specs/agent-inbox/agent-inbox.spec.md`
+- **Areas requiring decomposition:** all ownership areas in Module Map.
+- **Named abstractions:** `ReviewEvent`, `ReviewState`, `ReviewEvidence`,
+  `ReviewFinding`, `ReviewArtifact`, `ReviewProposal`, `ReviewDecision`,
+  `ReviewEffect`, `ReviewOutcome`, `ReviewActionPackage`, `ReviewHandoff`,
+  `RuntimeProfilePort` and ports from §5.
+- **Bootstrap tickets ready for cascade:** state namespaces, VCS gaps, real-effects
+  allowlist and contract-test kit.
+- **Open risks:** exact GitLab participation-query completeness; GitLab semantics of
+  request-changes; browser clipboard permissions; coverage proof reliability; live
+  event churn during real tests.
+
+### 10.1 Pivot Invalidation List
+
+- **Module specs requiring refine:**
+  - `inbox-core` — runtime profiles, event contracts, lifecycle and 3-month eligibility;
+  - `inbox-vcs` — inclusive participation, full effect catalog and reconciliation;
+  - `inbox-queue` — hybrid package dependencies, stale-package and auto policies;
+  - `inbox-pipeline` — role-invariant full/cross/delta review and hard coverage gate;
+  - `inbox-opencode` — `AgentRuntimePort` contract and coverage trace;
+  - `inbox-chat` — clipboard handoff and artifact-addressed task generation;
+  - `inbox-api` — responsibility queues, packages, outcomes and test-run DTO;
+  - `inbox-dashboard` — two queues, Carbon & Steel MR workspace and direct effects;
+  - `inbox-eval` / `inbox-mocks` — isolated mock/real-readonly/real-effects modes;
+  - any legacy role module — remove role-specific review depth; retain permission policy only.
+- **Tasks regenerated:** historical TSK-156…170 remain immutable DONE evidence; the
+  pivot execution DAG is TSK-172…183 and does not depend on obsolete role/attention contracts.
+- **Rules to revisit:** none; active coding/testing rules remain valid.
+
+### Acceptance after downstream regeneration
+
+1. Golden UX is completed on a real allowlisted GitLab MR without opening GitLab UI.
+2. Two simultaneous MR progress independently and recover after process termination.
+3. Coverage failure prevents approve; verified fix resolves allowed threads and restores
+   prior approve only when gates pass.
+4. Hybrid package demonstrates immediate real effects and a partial failure with
+   independent continuation plus safe retry.
+5. Clipboard full/delta handoff and manual verification work from stored baselines.
+6. Mock suite covers all branches; adaptive real suite reports observed preconditions,
+   legitimate skips and never reports all-skipped as green.
+7. Mandatory visual proof uses rebuilt production dashboard with real GitLab and real
+local state, not mock/demo seeding.
+<!--/SECTION:HANDOFF-->

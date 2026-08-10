@@ -1,168 +1,153 @@
-# Module: inbox-pipeline (v2 — новый модуль)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-303 (единый пайплайн), D-312–D-316 (промпты/контент/планирование/чеклисты/coverage),
-> D-326–D-328 (линзы, мульти-модель, три слоя), D-322–D-323 (хвосты/дедуп/треды)
+# Module: inbox-pipeline
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Единый ревью-пайплайн для обеих ролей (различия — только в хвосте). План-шаблон
-инстанцируется на MR как DAG задач inbox-queue. **Механика гарантирует** (слои 1–2
-всегда), **интеллект расширяет** (слой 3 advisory). Ревью задаёт вопросы обоснованности,
-а не только ищет баги построчно.
-
-Классы реализации: `PlanTemplate` (§2), `TriggerRegistry` (§3), `LensRegistry` (§4), `CoverageGate` (§6), `FindingsJournal` (§5), `GateVerdict` (§2.1).
+Полноценный role-invariant review: план, evidence, findings, artifacts, cross-review,
+delta verification, hard coverage gate и synthesis. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. План-шаблон (DAG)
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
+## 2. Module Usage Example
+
+```ts
+const result = await orchestrator.review(intent);
+if (!result.coverage.proven) throw new ReviewCoverageError(result.coverage.gaps);
+await proposals.prepare(result.synthesis);
 ```
-prepare_env(детерм.) → plan(детерм.) → enrich(flash) → fan-out[дорожки+линзы]
-→ gate_coverage(детерм.) → synthesize(pro, read-тулы) → gate_verdict(детерм.) → хвост роли
+
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
+
+<!--SECTION:ENTITY_INVENTORY-->
+
+## 3. Entity Inventory (Closed-World)
+
+| Name                  | Type         | Purpose                                                 |
+| --------------------- | ------------ | ------------------------------------------------------- |
+| `ReviewIntent`        | Value Object | Full, delta, thread or manual verification request.     |
+| `ReviewPlan`          | Entity       | Deterministic review lanes and file checklist.          |
+| `ReviewEvidence`      | Value Object | Traceable fact about current code/MR.                   |
+| `ReviewFinding`       | Entity       | Verified actionable issue with severity and provenance. |
+| `ReviewArtifact`      | Entity       | Durable analysis output addressed by MR/task/revision.  |
+| `ReviewCoverage`      | Value Object | Proof that required files and lenses were inspected.    |
+| `ReviewOrchestrator`  | Service      | Execute the shared review DAG.                          |
+| `ReviewDeltaVerifier` | Service      | Verify accumulated change batch against prior evidence. |
+| `ReviewCrossReviewer` | Service      | Recheck discussions and other reviewers' claims.        |
+| `ReviewSynthesis`     | Entity       | Fact summary, verdict and proposed actions.             |
+
+<!--/SECTION:ENTITY_INVENTORY-->
+
+<!--SECTION:ENTITY_SURFACES-->
+
+## 4. Entity Surfaces
+
+### `ReviewIntent`, `ReviewPlan`
+
+- **Type:** Value Object / Entity
+- **Public Operations:** bind MR revision and batch; derive required lanes/files; track progress.
+- **Lifecycle:** one plan per task; same DAG for every participation role.
+- **Errors & Degradation:** missing context stops the affected gate rather than shrinking review silently.
+- **Consumers:** orchestrator and dashboard projections.
+
+### `ReviewEvidence`, `ReviewFinding`, `ReviewArtifact`
+
+- **Type:** Value Object / Entity
+- **Public Operations:** attribute to source, SHA, task, session and model; classify finding/thread as blocking or non-blocking; supersede with newer evidence.
+- **Lifecycle:** immutable revisions; findings retain resolution history.
+- **Errors & Degradation:** stale or unverified material cannot support a positive decision.
+- **Consumers:** synthesis, packages, feed, handoff.
+
+### `ReviewCoverage`
+
+- **Type:** Value Object
+- **Public Operations:** compare required checklist with observed tool trace; enumerate gaps.
+- **Lifecycle:** recomputed after every continuation.
+- **Errors & Degradation:** absent trace equals unproven coverage.
+- **Consumers:** verdict gate, eval.
+
+### `ReviewOrchestrator`, `ReviewDeltaVerifier`, `ReviewCrossReviewer`
+
+- **Type:** Service
+- **Public Operations:** prepare, plan, enrich, execute lanes, enforce coverage, synthesize; verify batch; assess threads and prior reviews.
+- **Lifecycle:** task-scoped; continuation reuses producer context when required.
+- **Errors & Degradation:** lane failure is visible and retryable; it cannot be omitted from synthesis.
+- **Consumers:** queue and chat.
+
+### `ReviewSynthesis`
+
+- **Type:** Entity
+- **Public Operations:** summarize facts, risks, threads, verdict and candidate actions with provenance.
+- **Lifecycle:** belongs to one MR revision/change batch and becomes stale on any new MR event.
+- **Errors & Degradation:** conflicting evidence is surfaced, not arbitrarily collapsed.
+- **Consumers:** action package, API, operator.
+<!--/SECTION:ENTITY_SURFACES-->
+
+<!--SECTION:MODULE_CONTRACTS-->
+
+## 5. Module Contracts (DbC)
+
+- Full review is mandatory regardless of author/reviewer/assignee/mention participation.
+- Worktree/context preparation is lazy and task-scoped; first discovery does not eagerly materialize every repository.
+- Review execution preserves mechanical checks, event-triggered verification and intelligent semantic analysis as observable layers of one DAG.
+- Other reviews and discussions are additional evidence requiring independent verification.
+- Delta is measured against stored batch/evidence baselines; missing baseline triggers full review.
+- A positive verdict and approve proposal require proven coverage and no blocking finding.
+- Non-blocking threads may coexist with approve.
+- An approval observed while a thread is open is evidence that the thread is non-blocking until the operator explicitly changes that decision.
+- Author refusal on a non-blocking thread produces operator alternatives—agree and resolve, object, or ask a question—without blocking prior-approve restoration.
+- Runtime backing: real agent runtime in production, deterministic adapter in tests.
+- Verification: unit, contract, integration, real-MR e2e.
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+
+## 6. Public Options & Policies
+
+- Review lenses are declarative and additive.
+- v0 invalidates the complete unapplied synthesis/package on every new MR event.
+- Default model count is one; multi-model attribution remains supported but not required.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-pipeline/
+├── types/
+├── planning/
+├── review/
+├── verification/
+├── coverage/
+└── synthesis/
 ```
 
-| Стадия        | Тип     | Артефакт                                                            |
-| ------------- | ------- | ------------------------------------------------------------------- |
-| prepare_env   | детерм. | worktree, changeset, SHA                                            |
-| plan          | детерм. | черновые дорожки + **минимальный PLAN.md (слои 1–2, гарантирован)** |
-| enrich        | flash   | PLAN.md обогащён контекстом, чеклисты, семантические задачи         |
-| fan-out       | pro ×N  | `tasks/*.result.json` (+ `.<model>` при мульти-модели)              |
-| gate_coverage | детерм. | verdict по tool-trace                                               |
-| synthesize    | pro     | README.md, review.json, findings                                    |
-| gate_verdict  | детерм. | итоговый verdict (см. §2.1)                                         |
-| хвост         | смесь   | author: propose_replies · reviewer: post candidates                 |
+<!--/SECTION:FILE_STRUCTURE-->
 
-Политика отказа стадии: детерм. стадии не падают молча (ошибка = failed задача +
-журнал); LLM-стадии — лесенка continue/restart (inbox-opencode §5); слой 3 при отказе —
-skip (advisory), слои 1–2 — эскалация после исчерпания лесенки.
+<!--SECTION:MODULE_DECISION_LOG-->
 
-### 2.0 `review.json` схема
+## 8. Module Decision Log
 
-`{verdict: APPROVE|REQUEST_CHANGES|COMMENT, revision: int, findings: [{id: "F-n", severity, file, line, summary, source: [{model, sessionId}], state: new|posted|hidden|disputed}]}`.
-ID присваивает synthesize последовательно (F-1..F-n) — мультимодель не порождает коллизий: кластеризация по (file, line±2, нормализованный summary), кластер = один id, `source` — массив моделей кластера.
+- `D-PIPE-01`: participation changes permissions and presentation, never review depth.
+- `D-PIPE-02`: tool trace, not agent self-report, proves coverage.
+<!--/SECTION:MODULE_DECISION_LOG-->
 
-### 2.1 gate_verdict (контракт)
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
-Проверяет: `review.json` — схема (verdict присутствует; каждая находка F-n имеет
-file:line и summary); полнота слоёв 1–2 (все mandatory/triggered-дорожки завершены).
-Fail → возврат в `synthesize` с причинами; после 2 неудач — эскалация оператору
-(виджет решения).
+## 9. Inter-Module Dependencies
 
-## 3. Три слоя дорожек (D-328)
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md), [VCS](../inbox-vcs/inbox-vcs.spec.md), [opencode](../inbox-opencode/inbox-opencode.spec.md).
+- **Provides to:** [queue](../inbox-queue/inbox-queue.spec.md), [chat](../inbox-chat/inbox-chat.spec.md), [API](../inbox-api/inbox-api.spec.md), [eval](../inbox-eval/inbox-eval.spec.md).
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
-| Слой                | Источник                   | Гарантия                        | Маркер в PLAN.md   |
-| ------------------- | -------------------------- | ------------------------------- | ------------------ |
-| 1️⃣ механический пол | классификация changeset    | всегда, 100% файлов в чеклистах | `mandatory`        |
-| 2️⃣ триггеры         | реестр «паттерн → дорожка» | всегда при совпадении           | `triggered:<rule>` |
-| 3️⃣ интеллект        | enrich                     | advisory                        | `proposed`         |
+<!--SECTION:HANDOFF-->
 
-Гейты требуют завершения слоёв 1–2; слой 3 не блокирует вердикт.
+## 10. Handoff to task-scaffolding
 
-Классификация слоя 1 (changeset → mandatory-дорожки, 100% файлов) = **REUSE** логики `buildReviewPlan`/TRACK_RULES v1 (`cli/cmd/inbox-review-plan/`), не новый алгоритм.
-
-**Реестр триггеров (стартовый):** единый синтаксис — **glob-паттерны**; реестр =
-декларативный TS-модуль в inbox-pipeline (код-владение, вынос в конфиг — отдельное
-решение). Записи: `go.mod|package.json|манифесты` → deps-vuln дорожка (веб-ресёрч
-уязвимостей зависимостей) · секрет-паттерны (`.env*`, новые файлы с
-`(?i)(secret|token|password|api[_-]?key)`) → secrets · `specs/**` → spec-compliance ·
-миграции → migration-safety.
-
-## 4. Линзы — измерения ревью (D-326)
-
-`LensSpec = {id, вопрос, директива, models[], триггеры-применимости, inputs: [другие линзы]}`.
-Добавление измерения = запись, не код. `inputs` создаёт **волны DAG**: линза стартует
-после завершения линз-входов (🧪 → 🏛); внутри волны — параллельно. Линзы плана —
-**mandatory** (в гейте, как дорожки слоя 1); enrich может добавить `proposed`-линзы
-(advisory). Крах линзы: лесенка continue/restart → эскалация (не тихий skip).
-Стартовый набор:
-
-| Линза           | Вопрос                                  | Входы |
-| --------------- | --------------------------------------- | ----- |
-| 🏛 архитектура  | обоснован ли дизайн; сигналы формы кода | 🧪    |
-| 🎯 бизнес-цели  | код делает то, ради чего MR?            | —     |
-| 📜 спецификации | согласие со спеками                     | —     |
-| 🧪 тесты        | покрытие целей проекта; хаки как сигнал | —     |
-| 🔐 security     | уязвимости всего диффа (zero trust)     | —     |
-| ⚡ оптимизация  | алгоритмическая/системная оптимальность | —     |
-| 🧾 код-строки   | построчное ревью (файловые дорожки)     | —     |
-
-## 5. Мульти-модель (D-327)
-
-`models[]` в спеке задачи (дефолт — 1). N именованных артефактов
-`<track>.<model>.result.json` — атрибуция полная. Общий артефакт с несколькими
-писателями запрещён; единственное исключение — **findings-журнал `findings.jsonl`
-(append-only, per MR)**: каждая находка — строка `{id, source: model, ...}`, гонок нет
-(строчный append, как журнал событий); канонический `review.json findings[F-n]`
-выводится из него при синтезе (дедуп по id).
-Синтез по N артефактам: ✅ консенсус · ⚡ спор (секция в виджете Находки + подъём в
-шапку быстрых действий — inbox-dashboard) · ○ уникальные.
-
-## 6. Чеклисты и coverage (D-315, D-316)
-
-Каждая дорожка несёт markdown-чеклист файлов (`- [ ] path (+a/-d) — фокус`) +
-семантические задачи из enrich (docs↔code, границы ядра↔домена, spec↔code…).
-Агент отчитывается по каждому пункту. **Гейт сверяет не отчёт, а tool-trace**
-(файлы, реально открытые `read`): засчитывается полный read или цепочка
-offset/limit-чтений до конца файла; удалённые/бинарные/генерируемые файлы исключаются
-из чеклиста планом. Недочит → `continue` той же сессии с явным списком; максимум 2
-continue → эскалация оператору.
-
-## 7. Промпты и контент (D-312, D-313)
-
-Единый маршрут: Handlebars-шаблоны + кирпичи-partials (`ai/kit/**`) — **XML/HTML-like
-стандарт директив** с id-секциями и перекрёстными ссылками (рендер — inbox-opencode §4);
-статическая конкатенация запрещена. System = директивы (миссия, вектора обоснованности, аксиомы,
-перекрёстные ссылки по id-секциям); task = **указатели** (файлы, SHA, пути артефактов —
-контент добывает агент); JSON-схема — в тексте задачи (урок сохранён). Synthesize
-получает read+grep и указатели на результаты дорожек (не инлайн).
-
-## 8. Хвосты ролей (D-303, D-322, D-323)
-
-| 👤 author                                                                                                                           | 👁 reviewer                                                                                                                                                                                                              |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| fetch_threads (детерм.) → classify (🔧/💬/👍) → фактчек → verify_fix (по новым коммитам) → propose_replies (👍 / 👍+резолв / текст) | dedup находок с чужими тредами (совпадает+👍 → скрытые; не согласны → возражение; отвечено+инсайт → 👍+инсайт) → post candidates → approve по решению оператора (виджет; GitLab approve — действие, не стадия пайплайна) |
-| резолв — только свои треды и бота (в своих MR)                                                                                      | постинг — кандидатами, approve — по гейту оператора                                                                                                                                                                      |
-
-Хвост исполняется как **одна задача** `tail_author`/`tail_reviewer` (шаги — внутренние стадии, не отдельные типы очереди). Событийные verify_fix/thread_triage — самостоятельные типы (inbox-queue §3), ставятся по gitlab_event из журнала. `delta_review` — отдельный мини-DAG:
-prepare → delta-changeset (`lastReviewedHeadSha..HEAD`) → затронутые дорожки →
-synthesize_delta → gate_verdict; supersede неисполняющейся delta per D-307.
-
-## 9. Приёмка
-
-1. PLAN.md содержит слои 1–2 всегда; триггеры срабатывают на deps-манифесте и секрете.
-2. Coverage-гейт: дорожка с непрочитанным файлом (по tool-trace) не проходит; continue
-   доезжает и закрывает чеклист.
-3. Мульти-модель (models.length=2): два именованных артефакта, синтез разметил
-   консенсус/спор/уникальные.
-4. Synthesize не инлайнит данные: в X-ray промпте — указатели, не содержимое.
-5. Author-хвост: на MR с тредами ревьюеров предложены реакции; резолв недоступен для
-   чужих тредов.
-6. Reviewer-хвост: на MR с чужими тредами dedup выдал скрытые/возражение/👍+инсайт
-   корректно (каждая находка в одном из состояний).
-7. gate_verdict: блокирует review.json без verdict или находку без file:line; возврат в
-   synthesize с причинами зафиксирован в журнале.
-8. Слой 3: падение proposed-дорожки не блокирует вердикт (запись в журнале, вердикт
-   выдан).
-9. Отказ enrich: минимальный PLAN.md (слои 1–2) существует и пайплайн продолжился.
-
-## Critic Rounds
-
-### Round 1 — 2026-07-29
-
-- Verdict: NEEDS_WORK (2 CRITICAL, 6 MAJOR)
-- Accepted: 11 — gate_verdict без контракта (CRITICAL) → §2.1; lens inputs vs плоский fan-out (CRITICAL) → волны DAG; enrich-failure уносил PLAN.md → минимальный PLAN.md из plan + политика отказов; coverage-границы (частичные чтения/удалённые/бинарные/max continue=2); findings-journal merge (findings.jsonl append-only, source: model); реестр триггеров (glob-only, TS-модуль, секрет-паттерны конкретизированы); линзы mandatory + крах ≠ skip; место delta_review (мини-DAG); «⚡ спор» → секция виджета Находки; approve = действие по решению оператора, не стадия; приёмка хвостов/гейта/слоя-3/отказов (§9.6–9.9)
-- Rejected: 0
-- Reconcile: findings.jsonl → REUSE механика журнала (строчный append)
-- Changes: §2 таблица+§2.1+политика отказов; §3 реестр; §4 волны/статус линз; §5 merge; §6 предикат; §8 хвосты/delta; §9 приёмка
-
-### Round 2 — 2026-07-29
-
-- Stop: лимит оператора (2 раунда)
-
-## Handoff Rules Additions
-
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+- Modify existing `PipelineRuntime`; preserve current coverage and session continuation machinery.
+- Move reusable artifact/trace logic out of legacy roles before deleting them.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

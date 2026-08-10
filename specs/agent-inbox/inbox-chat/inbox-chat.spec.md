@@ -1,125 +1,133 @@
-# Module: inbox-chat (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · модуль детализирует
-> решения родителя: D-321 (чат-колонка/якоря/мутации), D-331 (operator-сессия в
-> маршрутизации), D-318 (чат-события в ленте)
+# Module: inbox-chat
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Разговорная поверхность машины ревью. **Персистентная operator-сессия на MR** (read-тулы,
-артефакты подмешиваются по якорю вопроса), мета-якоря вместо голого текста, мутации
-артефактов — только через очередь (CAS + снапшот + отчёт в чат и ленту).
-
-Классы реализации: `Anchor` (§2), `OperatorSession` (§3), `MutationFlow` (§4),
-`MutationRuntime` (§4 — public production service, durable Executor consumer).
+MR-scoped operator dialogue, artifact anchors/mutations and clipboard handoff to a DEV-agent.
+Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. Мета-якорь (D-321)
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-```json
-{
-  "widgetId": "findings",
-  "artifactPath": "tasks/logic.result.json",
-  "fragment": { "start": 1204, "end": 1389 },
-  "quote": "…fixed 50ms…"
-}
+## 2. Module Usage Example
+
+```ts
+await chat.ask(mr, question, artifactAnchor);
+const handoff = await handoffs.generate(mr, { mode: 'delta' });
+await handoffs.acknowledgeDelivery(handoff.id, browserDeliveryReceipt);
 ```
 
-Выделение в любом виджете/артефакте сериализуется в якорь и путешествует с вопросом.
-Ответ машины ссылается на якорь (клик → подсветка фрагмента). Это замена «голому тексту»
-и комментариям: связь всегда разрешима в артефакт и сессию-продюсера (`producedBy`).
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-Точности якоря:
+<!--SECTION:ENTITY_INVENTORY-->
 
-- `fragment.start/end` — **символьные офсеты в сыром файле артефакта** (не в DOM).
-- Разрешение: сначала **поиск по `quote`**, офсеты — fallback-подсказка. После мутации,
-  сдвинувшей офсеты, якорь остаётся разрешимым по quote; если quote не найден — якорь
-  помечается `stale` (видимо в UI, без потери треда).
-- `quote` — одновременно re-anchor и отображение в сообщении.
-- Нетекстовые виджеты (mermaid-«фото», треды GitLab): якорь на уровне элемента —
-  `{widgetId, elementId}` без fragment/quote.
+## 3. Entity Inventory (Closed-World)
 
-## 3. Operator-сессия
+| Name                     | Type         | Purpose                                                       |
+| ------------------------ | ------------ | ------------------------------------------------------------- |
+| `ReviewChatSession`      | Entity       | Persistent operator dialogue for one MR.                      |
+| `ReviewChatTurn`         | Event        | Attributed operator or agent message.                         |
+| `ReviewAnchor`           | Value Object | Widget, fragment and artifact address.                        |
+| `ReviewMutation`         | Entity       | Versioned artifact change with undo snapshot.                 |
+| `ReviewHandoff`          | Entity       | Clipboard-ready DEV-agent instruction.                        |
+| `ReviewHandoffSnapshot`  | Entity       | Baseline for later delta handoff.                             |
+| `ReviewHandoffGenerator` | Service      | Generate full or delta instruction from artifacts.            |
+| `ReviewHandoffDelivery`  | Event        | Acknowledged clipboard delivery used to advance the baseline. |
 
-- Одна на MR, персистентная; read-only тулы (read/grep — без записи и без vcs-write).
-- Артефакты/фрагменты подмешиваются в контекст **по якорю** (retrieval-подход): сессии
-  не нужно было читать всё заранее.
-- Персистентность через рестарты: opencode-сессия эфемерна (пересоздаётся), а
-  **история треда = записи `chat_turn` журнала MR** (inbox-core) — `history(mr)` это
-  проекция журнала, поэтому рестарт сервера/opencode не теряет разговор.
-- Переполнение контекста → прозрачный рестарт с дайджестом (дайджест строит сама
-  operator-сессия суммаризацией треда; in-flight вопрос перевыпускается после рестарта;
-  для оператора — тот же тред).
-- Стрим токенов + Stop: SSE-кадры `token`/`turn_done`/`error` (контракт — inbox-api §3).
+<!--/SECTION:ENTITY_INVENTORY-->
 
-## 4. Мутации через очередь
+<!--SECTION:ENTITY_SURFACES-->
 
-Просьба изменить артефакт («объясни по-другому», «перепиши сводку») — это
-`mutate_artifact`-задача в inbox-queue, а не синхронная правка:
+## 4. Entity Surfaces
 
+### Chat, turns and anchors
+
+- **Public Operations:** ask, stream, attach anchor, route follow-up to required session.
+- **Lifecycle:** one persistent chat per MR; turns are append-only journal events.
+- **Errors & Degradation:** unavailable agent preserves pending question and supports retry.
+- **Consumers:** dashboard and agent runtime.
+
+### Artifact mutation
+
+- **Public Operations:** propose, apply after decision, record revision, undo from snapshot.
+- **Lifecycle:** serialized per artifact; every mutation is attributable.
+- **Errors & Degradation:** revision conflict rejects mutation and refreshes current artifact.
+- **Consumers:** chat and artifact viewer.
+
+### Handoff and clipboard
+
+- **Public Operations:** generate full context or delta since prior acknowledged delivery; acknowledge delivered text and advance baseline.
+- **Lifecycle:** generation creates a pending handoff; baseline advances only after the browser confirms successful clipboard write.
+- **Errors & Degradation:** an unacknowledged handoff remains pending and cannot consume the delta baseline.
+- **Consumers:** operator and external DEV-agent.
+<!--/SECTION:ENTITY_SURFACES-->
+
+<!--SECTION:MODULE_CONTRACTS-->
+
+## 5. Module Contracts (DbC)
+
+- Handoff is available on every tracked MR, independent of participation role.
+- Default repeat handoff contains changed artifact fragments and required artifact pointers.
+- Full mode references the complete current artifact set without embedding repository content.
+- Every handoff includes current SHA, MR goal, selected findings, changed artifact fragments, mandatory paths/anchors and verification criteria.
+- A single finding or an operator-selected finding group can be generated as a task through the same generator and baseline model.
+- Empty delta produces an explicit “no artifact changes since delivered baseline” instruction; a missing required artifact blocks generation and lists the missing address.
+- Anchors survive feed reorder through stable widget/fragment/artifact identity.
+
+### Handoff delivery contract
+
+- **Preconditions:** candidate belongs to the current MR/baseline and receipt confirms browser clipboard success.
+- **Postconditions:** one delivery event is journaled and the next delta uses this candidate as baseline.
+- **Invariants:** generation or failed clipboard write never advances the baseline.
+- **Runtime Backing:** real local generator plus browser receipt through API; deterministic test adapters.
+- **Verification Levels:** unit, integration and browser e2e.
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+
+## 6. Public Options & Policies
+
+- Handoff mode: `delta` by default, `full` explicitly.
+- Clipboard only; downloadable task files are out of scope.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-chat/
+├── chat/
+├── anchors/
+├── mutations/
+├── handoff/
+└── handoff/delivery-events/
 ```
-чат-просьба → enqueue mutate_artifact({anchor, intent}) → сессия-продюсер (или новая)
-→ MutationApplier: снапшот (report/snapshots/<artifact>.<rev>) → CAS-запись (revision)
-→ отчёт в чат + 📄-событие в ленту
-```
 
-- Контракт: `propose(mr, anchor, intent) → taskId`; `apply({path, revision, content})`
-  (CAS: revision обязана совпадать с текущей, иначе — **видимая ошибка оператору, без
-  тихой перезаписи**); мутации одного артефакта сериализованы (exclusiveWith,
-  inbox-queue §3).
-- Undo: LIFO-стек снапшотов **per artifact** (`undo(mr, path?)` → откат последнего
-  снапшота этого артефакта; снапшоты в `report/snapshots/`).
-- `MutationRuntime` — публичный production-service этого модуля: принимает HTTP proposal
-  только через `Executor.enqueue`, поэтому `task_created` с proposal+revision записан до
-  advance; после рестарта `recover(mr)` восстанавливает незавершённую mutation и сначала
-  маршрутизирует её к producer через `SessionRouter`, затем вызывает единственный CAS writer.
+<!--/SECTION:FILE_STRUCTURE-->
 
-## 5. Entity Inventory (Closed-World)
+<!--SECTION:MODULE_DECISION_LOG-->
 
-| Entity            | Public role                                                                                                                                                    | Runtime backing                                        |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `Anchor`          | serializes and resolves artifact/element references                                                                                                            | inbox-chat internal value object                       |
-| `OperatorSession` | durable MR chat history and restartable operator interaction                                                                                                   | journal + SessionRouter                                |
-| `MutationFlow`    | internal proposal port for non-runtime callers                                                                                                                 | queue task identity                                    |
-| `MutationApplier` | sole CAS/snapshot writer for `review.json`                                                                                                                     | durable report snapshots                               |
-| `MutationRuntime` | production service that accepts live mutation work through `Executor#enqueue`, recovers incomplete tasks, routes producer work, then invokes `MutationApplier` | `task_created`/`task_status` journal + per-MR Executor |
+## 8. Module Decision Log
 
-## 6. Поверхности (internal)
+- `D-CHAT-01`: existing fix-task copy is extracted and extended, not reimplemented in React.
+<!--/SECTION:MODULE_DECISION_LOG-->
 
-| Порт           | Методы                                                                                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ChatPort`     | ask(mr, text, anchor?) → stream handle (потребляется SSE inbox-api) · stop(mr) · history(mr) (проекция `chat_turn`; запись `{turnId: "t-<seq>", role, anchor?, excerpt}`) |
-| `MutationPort` | propose(mr, anchor, intent) → taskId · apply({path, revision, content}) · undo(mr, path?)                                                                                 |
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
-Маршрут вопроса выбирает SessionRouter (inbox-queue §4.2): `ask()` проходит через него
-всегда; ответ сессии-продюсера появляется в том же треде (`history(mr)`).
+## 9. Inter-Module Dependencies
 
-## 6. Приёмка
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md), [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [opencode](../inbox-opencode/inbox-opencode.spec.md).
+- **Provides directly to:** [API](../inbox-api/inbox-api.spec.md). Dashboard consumes chat state transitively through API.
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
-1. Выделение → вопрос → ответ содержит кликабельный якорь на фрагмент.
-2. Мутация: артефакт обновлён, в чате краткий отчёт, в ленте 📄-событие «обновлён через
-   чат»; undo возвращает снапшот.
-3. Вопрос про находку маршрутизируется в сессию-продюсера (по `producedBy`), а не в
-   пустую.
+<!--SECTION:HANDOFF-->
 
-## Critic Rounds
+## 10. Handoff to task-scaffolding
 
-### Round 1 — 2026-07-29
-
-- Verdict: NEEDS_WORK (13 confusion-points + 1 противоречие)
-- Accepted: 8 — якорь vs мутация (re-anchor по quote + stale-флаг), единицы fragment (символьные офсеты сырого файла), сигнатуры MutationPort (apply({path,revision,content}), undo LIFO per artifact, CAS-конфликт = видимая ошибка), персистентность через chat_turn журнала, маршрутизация через SessionRouter (явно), «как сейчас» раскрыто, intent в параметрах mutate-задачи, формулировка шапки
-- Rejected: 0
-- Reconcile: MutationApplier → REUSE существующий; снапшоты → REUSE `report/snapshots/`
-- Changes: §2 точности якоря; §3 персистентность/дайджест; §4 контракт мутаций; §5 порты + роутер
-
-### Round 2 — 2026-07-29
-
-- Stop: лимит оператора (2 раунда); R2-валидация не вернулась (пустой отчёт диспетчей) — правки R1 в силе, статус: недовалидировано
-
-## Handoff Rules Additions
-
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+- Preserve current transcript, anchor and mutation machinery.
+- Extract `composeFixTask`/delta behavior from the legacy dashboard component.
+- Stack: TypeScript; node:test and browser integration tests. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

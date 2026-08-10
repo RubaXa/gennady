@@ -1,211 +1,152 @@
-# Module: inbox-dashboard (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-305 (загрузка), D-306/308 (доска+карточка), D-309 (оптимизм/скелетоны),
-> D-317/318 (лента-виджеты), D-321 (чат-колонка), D-325 (шапка)
+# Module: inbox-dashboard
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-React SPA из трёх экранов: **Загрузка → Доска внимания → Лента MR**. Всё живое:
-оптимистичные действия, скелетоны, SSE + батч-реконсиляция. Ни один экран не показывает
-«пусто», когда на самом деле «грузится» или «идёт работа».
-
-Компоненты реализации: §4 (инвентарь 15 штук).
+Carbon & Steel cockpit: две очереди ответственности, одна карточка на MR, умная лента,
+артефакты, чат и непосредственное применение GitLab actions. Parent: [agent-inbox](../agent-inbox.spec.md).
+Visual references: [design system](./design-system.md), [use cases](./ux-usecases.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 1.0 Стек и UI-kit
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-React 19 + Tailwind v4 (`@tailwindcss/vite`, `@tailwindcss/typography`) + CVA /
-`cn()` (shadcn-стиль, **без внешнего ui-кита** — компоненты собственные поверх Tailwind;
-токены в `styles/index.css`). Сборка Vite → `dist/inbox-serve` (раздаёт inbox-api).
-Хэш-роутер.
+## 2. Module Usage Example
 
-**Дизайн-система: [design-system.md](design-system.md) (Carbon & Steel, холодная
-палитра)** — токены цветов/типографики/плотности, правила глубины (тональные слои,
-1px бордеры, без теней), severity/status-семантика. Ключевые компонентные решения:
-😴 = вертикальный rail 64px · empty-state dashed · находки = компактные строки с
-раскрытием в diff-note · план = горизонтальный step-flow · sticky-бар решения ·
-hover-ghost действия · quick-chips чата. Макеты — [ux-mockups.md](ux-mockups.md);
-переходы — [ux-usecases.md](ux-usecases.md); проход по элементам — [ux-walkthrough.md](ux-walkthrough.md).
-
-## 1.1 Навигация и переходы
-
-| Маршрут          | Экран         | Переходы                                                             |
-| ---------------- | ------------- | -------------------------------------------------------------------- |
-| `#/` (нет ready) | LoadingScreen | `ready` → авто-редирект на доску; «Открыть сейчас» → доска read-only |
-| `#/`             | Доска         | клик по карточке → `#/mr/:ref`                                       |
-| `#/mr/:ref`      | Лента MR      | назад → доска; смена `:ref` без размонтирования чат-колонки          |
-
-Чат-колонка смонтирована на уровне App и живёт на всех маршрутах (контекст меняется с
-маршрутом). Неизвестный маршрут → доска.
-
-## 1.2 Состояние клиента
-
-Три стора, всё — проекции сервера (сервер = источник; клиент не хранит правды):
-
-| Стор                      | Данные                        | Источник                                |
-| ------------------------- | ----------------------------- | --------------------------------------- |
-| BootStore                 | фазы, ready                   | `/api/boot` poll до ready               |
-| BoardStore                | группы + карточки + syncState | `/api/board` poll 10–15с + `board_hint` |
-| MrStore (per открытый MR) | виджеты, очередь, чат         | `/api/state` батч 3–5с + SSE стрим      |
-
-Оптимистичный оверлей: `pendingByTaskId` (клиентская карта ⏳-состояний поверх сторов;
-снимается по `task_update`/реконсиляции). Непрочитанное — серверный `lastReadAt`
-(клиент не считает сам).
-
-## 2. Экраны
-
-### 2.1 Загрузка (до ready)
-
-Фазы с прогрессом (✅/⏳/○), восстанавливаемые очереди по мере готовности, кнопка
-«Открыть сейчас (read-only)», ошибка фазы — видимая + retry (D-305).
-
-### 2.2 Доска внимания
-
-Группы: `⏳ ЖДУТ МОЁ РЕВЬЮ · 💬 ЖДУТ МОЙ ОТВЕТ · 🔀 ЖДУТ РЕ-РЕВЬЮ · ✅ ЖДУТ АППРУВ/РЕЗОЛВ ·
-😴 ЖДУТ ДРУГИХ` (сворачиваемая, с 🔥-бейджем активности). Пустая группа не скрывается —
-компактная полоса с явным «пусто». Быстрых действий на карточке нет: доска = чтение,
-действия — внутри МР (2026-07-30). В шапке доски — индикатор `syncState: degraded`
-(когда sync на паузе, корень §6.5: видимо, не молча). Карточка — **вариант A** (4 строки):
-
-```
-┌──────────────────────────────────────────────────┐
-│ 👤 ⏳ mail/messenger!174            🔀+2   📬3    │
-│ Починка ретраев в очереди сообщений              │
-│ ✅ 2/3 аппрува   👁✅ 👁⏳   🏗✓   💬 4/9 · ⏳2 мне │
-│ ⚙ Синтез · 03:41                                 │
-└──────────────────────────────────────────────────┘
+```tsx
+<ResponsibilityQueues onOpen={openMr} />
+<MrWorkspace mr={selectedMr} onApplyPackage={applySelection} onVerify={verifyNow} />
+await clipboard.writeAndAcknowledge(generatedHandoff);
 ```
 
-CI (🏗) — в первой итерации (D-308).
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-### 2.3 Лента MR (главный экран)
+<!--SECTION:ENTITY_INVENTORY-->
 
-Шапка-информер (D-325): описание, состояния (✅/👁/🏗/💬/🔀/📬), быстрые действия по
-текущему ожиданию. Ниже — лента виджетов + перманентная чат-колонка справа **на всех
-страницах** (D-321).
+## 3. Entity Inventory (Closed-World)
 
-**Каталог виджетов:**
+| Name                   | Type            | Purpose                                                      |
+| ---------------------- | --------------- | ------------------------------------------------------------ |
+| `ResponsibilityQueue`  | UI Entity       | Review or owned/assigned prioritized MR list.                |
+| `ReviewMrCard`         | UI Entity       | Unique compact MR summary and processing state.              |
+| `ReviewStateChip`      | UI Value Object | One simultaneous reason for attention or progress.           |
+| `ReviewFeed`           | UI Entity       | Chronological smart-widget stream.                           |
+| `ReviewWidget`         | UI Entity       | Findings, thread, artifact, event, progress or action block. |
+| `ReviewPackageWidget`  | UI Entity       | Editable checkbox action package and outcomes.               |
+| `ReviewArtifactViewer` | UI Entity       | Addressable full artifact and selection context.             |
+| `ReviewChatPanel`      | UI Entity       | Persistent anchored MR conversation.                         |
+| `ReviewHandoffControl` | UI Entity       | Full/delta clipboard handoff control.                        |
+| `ClipboardAdapter`     | Adapter         | Browser clipboard write and delivery acknowledgement.        |
+| `ReviewDesignSystem`   | Pattern         | Carbon & Steel tokens, typography and interaction states.    |
 
-| Виджет                    | Содержимое                                                                                           | Действия                                                                                   |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 🔍 Находки (группа)       | находки со severity, file:line, разворот в diff-note; дедуп-состояния (скрытые/возражение/👍+инсайт) | постить все/по одной, править, удалить, фактчек, углубить, вширь                           |
-| 💬 Треды ждут меня        | тред + фактчек-статус + готовые реакции                                                              | 👍, 👍+резолв (только свои/бота), текст, репорт dev-агенту (после фактчека, мои дискуссии) |
-| 📄 Артефакт-пост          | FB-style: свёрнутый пост, mermaid/графики как «фото» в шапке                                         | развернуть, обсудить (якорь в чат)                                                         |
-| 🦊 GitLab-событие         | внешний сигнал + порождённая задача                                                                  | перейти к задаче                                                                           |
-| 📋 Текущий план           | активная стадия, прогресс дорожек M/N, позиция в очереди (включая «⏳ ждёт освобождения пула»)       | перейти к дорожке/задаче                                                                   |
-| 🔧 Прогресс               | мелкие события пайплайна                                                                             | авто-схлопнут в группы                                                                     |
-| ⚡ Действие (одноразовый) | выполненный эффект (постинг/реакция/аппрув)                                                          | resolved → тонет навсегда                                                                  |
+<!--/SECTION:ENTITY_INVENTORY-->
 
-**Жизненный цикл (D-318):** циклические всплывают по `lastActivity`, показывают только
-новое/необработанное; обработанное — в истории виджета. Одноразовые — resolved=true →
-не всплывают; новое событие = новый инстанс.
+<!--SECTION:ENTITY_SURFACES-->
 
-**Непрочитанное (D-317):** разделитель «Новое с прошлого визита» + 📬-счётчик на
-карточке; прочтение — при открытии MR. Курсор прочитанного — **серверный**
-(`lastReadAt` в реестре, inbox-core §3): выдача `/api/mr/:ref/feed` обновляет его —
-📬 доски и разделитель ленты не расходятся.
+## 4. Entity Surfaces
 
-**Решения и автономия (S8):** виджет решения → `POST /decision` (accept/edit/reject) →
-⏳ taskId; автодействия auto-mode помечены бейджем 🤖 и несут **undo** (компенсирующий
-эффект — ActionWidget); индикатор градации capability (proposal/auto) в шапке.
+### Queues, card and chips
 
-## 3. Живость (D-309, D-310)
+- **Public Operations:** sort by `decision-required → agent-working → external-wait → no-action`, then urgency/activity; open MR; show roles, title, approvals, reviewers, CI, thread counts, unread, new commits, current work, verification timer and simultaneous attention states.
+- **Lifecycle:** an MR appears in exactly one queue; a terminal MR within the activity horizon exposes Complete; description update is always available while the card is visible.
+- **Errors & Degradation:** stale/degraded data is visible on the card.
+- **Consumers:** operator.
 
-- Действие → оптимистичное состояние «⏳ #N» мгновенно (taskId приходит синхронно;
-  локальный отклик < 100 мс).
-- SSE на открытом MR; разрыв → батч `/api/state` каждые 3–5 сек (экспоненциальный
-  backoff до 30 сек + баннер «соединение потеряно»); доска — 10–15 сек.
-- Виджет без данных — скелетон своей формы; ошибка задачи — ❌ + retry в виджете;
-  истинно-пустые состояния — честные тексты («МР пока нет», «лента пуста»), не ложные.
+### Feed and widgets
 
-**Фрейм → поведение клиента:**
+- **Public Operations:** render cyclic and one-shot widgets, unread boundary, expand history, invoke contextual actions.
+- **Lifecycle:** cyclic widgets bump by last activity; resolved one-shot events sink into history.
+- **Errors & Degradation:** failure stays inside the affected widget with retry.
+- **Consumers:** operator.
 
-| Фрейм                       | Реакция                                                            |
-| --------------------------- | ------------------------------------------------------------------ |
-| `task_update`               | статус задачи в PlanWidget/виджете-владельце                       |
-| `widget_update`             | bump/resolved/payload виджета ленты                                |
-| `board_hint`                | догнать `/api/board`                                               |
-| `token`/`turn_done`/`error` | стрим/финиш/ошибка пузыря чата                                     |
-| `mutation`/`refresh`        | превью мутации; инвалидация ArtifactFullView (догнать `/artifact`) |
-| `dryrun`                    | info-строка в чате                                                 |
+### Package, artifact, chat and handoff
 
-**Экран → endpoints:** Загрузка → `/api/boot` · Доска → `/api/board` · Лента →
-`/api/mr/:ref/feed?cursor=` (пагинация курсором), `/api/state`, `/api/mr/:ref/stream` ·
-Действия → `/task`, `/decision`, `/chat` · Артефакт → `/artifact?path=`.
+- **Public Operations:** select/edit/apply actions; inspect/anchor artifacts; chat; verify now; copy full/delta task.
+- **Lifecycle:** package refreshes on invalidation; applied actions display independent outcomes.
+- **Errors & Degradation:** clipboard/effect/chat failures remain local and actionable.
+- **Consumers:** operator and DEV-agent via clipboard.
+- **Stale package:** remains visible with old revision, invalidation reason, disabled apply controls and link/status for replacement verification.
 
-- Выделение текста в любом виджете/артефакте → пилюля «💬 Спросить» с мета-якорем
-  (виджет + фрагмент + артефакт) → чат-колонка.
+### Clipboard adapter
 
-**Кнопка → задача (D-310):** (f = находка, p = паттерн, a = артефакт)
+- **Public Operations:** write generated text; acknowledge delivery only after browser success.
+- **Lifecycle:** browser-scoped and invoked by `ReviewHandoffControl`.
+- **Errors & Degradation:** permission failure leaves the previous handoff baseline unchanged and offers retry without file fallback.
+- **Consumers:** handoff control.
 
-| Кнопка                                  | Задача в очередь        |
-| --------------------------------------- | ----------------------- |
-| ✅ фактчек                              | `fact_check(f)`         |
-| 🔎 углубить                             | `deepen(f)`             |
-| 🌐 вширь                                | `widen_search(p)`       |
-| 📮 постить / 👍 / 👍+резолв / ✅ аппрув | `effect_*`              |
-| 💬 спросить                             | `chat_question(anchor)` |
-| ✏️ изменить артефакт                    | `mutate_artifact(a)`    |
+### Design system
 
-## 4. Компоненты (инвентарь)
+- **Public Operations:** provide carbon surfaces, GitLab orange accent, Geist and JetBrains Mono, dense cockpit states.
+- **Lifecycle:** shared by all dashboard screens.
+- **Errors & Degradation:** accessible labels and non-colour status cues are mandatory.
+- **Consumers:** all UI entities.
+<!--/SECTION:ENTITY_SURFACES-->
 
-`LoadingScreen · AttentionBoard · MrCard · FeedList · FindingsWidget · ThreadsWidget ·
-ArtifactPost · ArtifactFullView · PlanWidget · GitlabEvent · ProgressGroup ·
-ActionWidget · ChatColumn · SelectionPill · HeaderInformer`
+<!--SECTION:MODULE_CONTRACTS-->
 
-Инлайн-состав: diff-note — внутри FindingsWidget (разворот находки) и ArtifactFullView;
-история виджета — внутри каждого виджета (сворачиваемая секция); алерт opencode —
-состояние PlanWidget. Отображение оси работы на карточке (⚙-строка):
+## 5. Module Contracts (DbC)
 
-| WorkState             | Отображение                                |
-| --------------------- | ------------------------------------------ |
-| queued / planning     | ⏳ «В очереди #N» / 🗂 «Планирование»      |
-| reviewing / verifying | 🔍 «Ревью, дорожка M/N» / 🧪 «Верификация» |
-| synthesis             | ✨ «Синтез»                                |
-| awaiting              | ⏸ «Ждёт моего решения»                     |
-| error                 | ❌ + retry                                 |
-| done                  | ✔ «Готово»                                 |
+- Columns are `Review` and `Mine / Assigned`; state chips do not duplicate cards.
+- Cards older than the three-month activity horizon are absent even when terminal and not manually completed; their local history is retained outside the active dashboard.
+- “Complete” exists only for merged/closed MR; “Update description” always exists.
+- Recommended package actions start selected; alternatives and dependencies are understandable before apply.
+- Apply is immediate for non-fatal GitLab writes; per-action progress/outcomes remain visible.
+- Active MR feed is smart-widget chronology, not fixed sections or raw event log.
+- The feed includes Findings, Awaiting Threads, Artifact Post, GitLab Event, Progress Group, Current Plan and one-shot Action Outcome widgets plus a new-since-last-read boundary.
+- Runtime backing: production React/Vite bundle against real local API; visual e2e and real-MR proof.
+<!--/SECTION:MODULE_CONTRACTS-->
 
-## 4.1 Non-goals
+<!--SECTION:PUBLIC_OPTIONS-->
 
-Не построчное ревью кода (это GitLab UI) · не редактирование кода · не мобильный натив
-(responsive — да) · не мультипользовательские режимы.
+## 6. Public Options & Policies
 
-Сборка: `npm run inbox-serve:build` → `dist/inbox-serve` (обязательная пересборка после
-изменений — урок о протухшем бандле).
+- Board is the v0 default; alternative board modes are deferred.
+- Agent terminal/chat supplements contextual actions and never replaces them.
+- Responsive layout may switch panels but must preserve mounted task/chat state.
+<!--/SECTION:PUBLIC_OPTIONS-->
 
-## 5. Приёмка (visual proof, реальный MR)
+<!--SECTION:FILE_STRUCTURE-->
 
-1. Скриншоты: фазы загрузки → готовая доска (без мерцания) → карточка A со всеми полями.
-2. Лента: bump находок после новых коммитов показывает только новые; запощенные скрыты.
-3. Треды: готовые реакции; резолв недоступен на чужом треде (disabled + причина).
-4. Чат: выделение → вопрос → ответ с якорем; мутация артефакта + отчёт.
-5. Оптимизм: действие → ⏳ мгновенно; SSE подтверждает; ошибка → ❌+retry.
+## 7. File Structure
 
-## Critic Rounds
+```text
+inbox-dashboard/
+├── app/
+├── board/
+├── workspace/widgets/
+├── artifacts/
+├── chat/
+├── handoff/
+├── services/
+└── styles/
+```
 
-### Round 1 — 2026-07-29 (добивочная волна)
+Retire unused role/Kanban components and the competing monolithic UI after feature migration.
 
-- Verdict: NEEDS_WORK (3 MAJOR, 6 MINOR, 1 INFO)
-- Accepted: 9 — MAJOR: degraded без UI (индикатор в шапке доски), SSE-контракт клиента неполон (таблица фрейм→поведение), нет поверхности S8 (decision flow, undo, бейдж auto-mode); MINOR: D-322→D-310 метка, карта экран→endpoint, инлайн-состав (diff-note/история/алерт), WorkState→отображение таблица, backoff/пустые состояния, non-goals, глоссарий f/p/a + серверный read-cursor, порог <100 мс оптимизма
-- Rejected: 0
-- Reconcile: read-cursor → REUSE lastReadAt реестра (inbox-core §3) + выдача /feed обновляет (добавлено в inbox-api §2)
-- Changes: §2.2 degraded-индикатор; §2.3 read-cursor + S8-поверхность; §3 живость/фреймы/endpoints/глоссарий; §4 инлайн-состав + WorkState + non-goals
+<!--/SECTION:FILE_STRUCTURE-->
 
-## Handoff Rules Additions
+<!--SECTION:MODULE_DECISION_LOG-->
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts/tsx)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
-- [playwright-cli](../../../ai/directives/testing/playwright-cli.xml) → [playwright-e2e](../../../ai/directives/testing/playwright-e2e.xml) — e2e экранов
+## 8. Module Decision Log
 
-## 5.1 Testing doctrine (урок v1)
+- `D-UI-01`: behaviour follows product specs; Carbon & Steel references govern visual language.
+- `D-UI-02`: one component tree remains after migration.
+<!--/SECTION:MODULE_DECISION_LOG-->
 
-Не «всё приложение одним e2e». Гранулярность: компонент (DTO-фабрика → рендер-тест, ноль
-бэкенда) → композиция (проекции + фикстурные DTO) → экран (e2e Playwright против serve
-на **seed-фикстуре** TSK-166 — состояние МР задаётся журналом+sync-снимком, без GitLab)
-→ продукт (приёмка inbox-eval на реальном MR). Real-inbox e2e как слой запрещён:
-состояние GitLab не управляемо детерминированно.
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [API](../inbox-api/inbox-api.spec.md) only; clipboard is a dashboard-owned browser adapter.
+- **Provides to:** local operator.
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Reuse artifact/chat/selection components and extract useful ActionPanel behavior.
+- Rebuild production bundle before every visual acceptance run.
+- Stack: TypeScript/React; node:test and Playwright. Module Rules Additions: existing visual-proof rules.
+<!--/SECTION:HANDOFF-->

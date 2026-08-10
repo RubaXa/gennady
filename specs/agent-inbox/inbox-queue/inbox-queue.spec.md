@@ -1,147 +1,154 @@
-# Module: inbox-queue (v2 — новый модуль)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-307 (очередь/DAG), D-310 (enqueue/taskId), D-311 (TTL-паркинг), D-330 (реестр типов),
-> D-331 (маршрутизация сессий)
+# Module: inbox-queue
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Исполнительное ядро agent-inbox. **Per-MR очередь задач + DAG** — вся работа любого MR
-(пайплайн, события GitLab, действия оператора) выражена задачами в его очереди.
-Между MR — полный параллелизм; **глобальных мьютексов не существует**, потому что
-общего состояния между executors нет (контрольный инцидент 2026-07-28).
-
-Классы реализации: `TaskRegistry` (§3), `Executor` (§2), `SessionRouter` (§4.2).
+Per-MR execution, hybrid action packages, operator decisions, intent-preserving automation
+and independent reconciled outcomes. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. Сущности и поверхности
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-| Сущность        | Назначение                                                                                                                                   |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TaskInstance`  | `{taskId: '#N' (на MR), type, status: queued/running/waiting_dep/done/failed/cancelled, params, dependsOn[], dedupKey, priority, createdBy}` |
-| `TaskType`      | запись реестра: `parallelWith[], exclusiveWith[], dependsOn[], sessionPolicy, priority` (supersede — только через dedupKey, §4.1)            |
-| `Executor`      | per-MR цикл: выбирает ready-задачи по правилам, исполняет, пишет переходы в журнал                                                           |
-| `SessionRouter` | маршрутизация задачи в сессию (та же / новая / operator)                                                                                     |
-| `SessionPool`   | единый приоритетный пул сессий opencode (лимиты — конфиг)                                                                                    |
+## 2. Module Usage Example
 
-### Internal ports
+```ts
+const packageView = packageBuilder.from(synthesis);
+const decision = await decisions.accept(packageView.withSelection(operatorSelection));
+const outcomes = await coordinator.execute(decision);
+```
 
-| Порт                | Методы                                                                                                                                                                                                          |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TaskQueuePort`     | `enqueue(mr, type, params, dedupKey?) → {taskId, position}` (дедуп: явный ключ или `type + canonical(params)`, атомарно) · `next(mr) → ready задачи` (executor pulls) · `state(mr)` · `supersede(mr, dedupKey)` |
-| `SessionRouterPort` | `route(task, anchor?) → session` (таблица §4.2)                                                                                                                                                                 |
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-## 3. Реестр типов задач
+<!--SECTION:ENTITY_INVENTORY-->
 
-**Грамматика ссылок** (dependsOn/parallelWith/exclusiveWith): `type-name` ·
-`glob (track_*)` · `allOf(glob)` (все задачи группы done; фильтр по маркеру плана: `allOf(track_*: mandatory)` — advisory-задачи слоя 3 не держат гейт) · `producerOf(artifactRef)` ·
-`external(precondition)` (напр. решение оператора). Pipeline-стадии — тоже типы задач
-(первые 5 строк реестра).
+## 3. Entity Inventory (Closed-World)
 
-`glob` вне агрегата означает, что завершена хотя бы одна конкретная совпавшая задача.
-Внутри `allOf(glob)` это барьер materialized fan-out: в очереди должна существовать хотя
-бы одна конкретная совпавшая задача и **каждая** такая задача должна быть `done`. Пустой
-glob не открывает гейт — сначала `PlanTemplate` материализует `track_*`/`lens_*`.
+| Name                      | Type         | Purpose                                                            |
+| ------------------------- | ------------ | ------------------------------------------------------------------ |
+| `ReviewTask`              | Entity       | Typed per-MR unit of work.                                         |
+| `ReviewTaskRegistry`      | Service      | Catalog dependencies, exclusions, dedup and session policy.        |
+| `ReviewActionCatalog`     | Service      | Canonical action kinds, gates, permissions and execution binding.  |
+| `TaskExecutorPort`        | Port         | Execute tasks with per-MR ordering and cross-MR parallelism.       |
+| `LocalTaskExecutor`       | Adapter      | Single-process production executor.                                |
+| `ReviewProposal`          | Entity       | One candidate operator or automatic action.                        |
+| `ReviewDecision`          | Entity       | Operator selection/edit/rejection or justified automatic decision. |
+| `ReviewActionPackage`     | Entity       | Coherent set of independent and alternative actions.               |
+| `ReviewEffect`            | Value Object | Idempotent external mutation intent.                               |
+| `ReviewOutcome`           | Entity       | Applied, failed, no-op or unknown result with evidence.            |
+| `ReviewAutomationPolicy`  | Service      | Resolve fixed allowed threads and restore prior approve.           |
+| `ReviewEffectCoordinator` | Service      | Execute dependency-aware effects and reconcile outcomes.           |
 
-| Тип                                          | parallelWith             | exclusiveWith            | dependsOn                                  | sessionPolicy      | priority |
-| -------------------------------------------- | ------------------------ | ------------------------ | ------------------------------------------ | ------------------ | -------- |
-| `prepare_env`                                | —                        | —                        | —                                          | — (движок)         | 🏗       |
-| `plan`                                       | —                        | —                        | prepare_env                                | — (движок)         | 🏗       |
-| `enrich`                                     | —                        | —                        | plan                                       | task               | 🏗       |
-| `gate_coverage`                              | —                        | —                        | allOf(track*\*, lens*\*)                   | — (движок)         | 🏗       |
-| `gate_verdict`                               | —                        | —                        | synthesize                                 | — (движок)         | 🏗       |
-| `track_*`                                    | track*\*, lens*\*        | —                        | enrich                                     | task               | 🏗       |
-| `lens_*`                                     | track*\*, lens*\*        | —                        | enrich (+ inputs-волны, inbox-pipeline §4) | task               | 🏗       |
-| `synthesize`                                 | —                        | delta_review             | allOf(track*\*, lens*\*)                   | task               | 🏗       |
-| `delta_review`                               | дорожки старого SHA      | synthesize               | —                                          | task               | 🦊       |
-| `verify_fix`                                 | —                        | —                        | —                                          | task               | 🦊       |
-| `thread_triage`                              | —                        | —                        | —                                          | task               | 🦊       |
-| `fact_check(f)`                              | всё, кроме producerOf(f) | —                        | producerOf(f) done                         | **new_fresh**      | 👤       |
-| `deepen(f)`                                  | всё                      | —                        | producerOf(f) done                         | **reuse_producer** | 👤       |
-| `widen_search(p)`                            | всё                      | —                        | —                                          | new_fresh          | 👤       |
-| `mutate_artifact(a)`                         | —                        | producerOf(a), mutate(a) | —                                          | reuse_producer     | 👤       |
-| `chat_question`                              | всё (read-only)          | —                        | —                                          | operator_chat      | 👤       |
-| `effect_*` (post/react/resolve/approve/edit) | —                        | другие effect\_\*        | external(решение оператора)                | — (движок)         | 👤       |
-| `tail_author`                                | —                        | —                        | gate_verdict                               | task               | 🏗       |
-| `tail_reviewer`                              | —                        | —                        | gate_verdict                               | task               | 🏗       |
+<!--/SECTION:ENTITY_INVENTORY-->
 
-## 4. Правила исполнения
+<!--SECTION:ENTITY_SURFACES-->
 
-### 4.1 Очередь
+## 4. Entity Surfaces
 
-- Приоритеты: 👤 пользовательские > 🦊 событийные > 🏗 фоновые пайплайна.
-- Supersede: новая задача с тем же `dedupKey` замещает ожидающую (не исполняющуюся).
-- Новые коммиты **не убивают** идущие задачи: дорожки дорабатывают на старом SHA,
-  дельта-задача закрывает разрыв.
-- Каждый переход статуса = запись в журнал MR (inbox-core) → лента и восстановление
-  бесплатны. Статусы: enqueue с незакрытым dependsOn → `waiting_dep` (→ `queued` при
-  закрытии); supersede/оператор → `cancelled`.
-- Ошибка задачи = статус `failed` + видимое состояние в ленте с retry; retry — по
-  лесенке continue/restart (каноника — inbox-opencode §5), терминал — `escalated`;
-  инстанс/карточка не «забывают» (смерть амнезии, D-309).
-- Задача в статусе `queued` — **видимое состояние ленты**: «⏳ ждёт очередь (#N)»,
-  включая ожидание освобождения пула сессий (контроль голодания инцидента 2026-07-28).
-- Порядок внутри класса приоритета — FIFO по createdAt; `priority` инстанса переопределяет
-  дефолт типа. Пул сессий: без вытеснения идущих сессий; ожидание — в порядке
-  приоритета со старением (aging против голодания 🏗).
-- Восстановление после краха: `running` → `queued` (идемпотентный re-run), кроме
-  `effect_*` — сначала проверка маркера идемпотентности: эффект уже применён → `done`
-  (дублей в GitLab нет).
+### `ReviewTask`, `ReviewTaskRegistry`, `TaskExecutorPort`, `LocalTaskExecutor`
 
-### 4.2 Маршрутизация сессий (D-331)
+- **Type:** Entity / Service / Port / Adapter
+- **Public Operations:** enqueue, supersede, deduplicate, prioritize, execute, recover and report progress.
+- **Lifecycle:** sequential per MR; parallel across MR; durable status through journal.
+- **Errors & Degradation:** failure is task-local and visible; recovery never duplicates an acknowledged task.
+- **Consumers:** pipeline, API and sync triggers.
 
-| Ситуация                            | Сессия                                    |
-| ----------------------------------- | ----------------------------------------- |
-| валидация/gate недочит, повтор узла | та же (continue)                          |
-| `deepen`                            | та же, если жива (иначе новая + артефакт) |
-| `fact_check`, `widen_search`        | новая свежая (adversarial)                |
-| `mutate_artifact`                   | та же (или новая с артефактом)            |
-| `chat_question`                     | operator-сессия MR (inbox-chat)           |
+### `ReviewActionCatalog`
 
-Таск-сессии паркуются с idle-TTL 30–60 мин (D-311); паркинг/резюм — через
-inbox-opencode. Артефакты несут `producedBy{sessionId,taskId,model}` — вопрос
-разрешается в сессию-продюсера.
+- **Type:** Service
+- **Public Operations:** register typed action kind with manual/automatic mode, gates, permission policy, dependencies and effect binding; enumerate package candidates.
+- **Lifecycle:** closed catalog loaded at boot; extensions require spec/task update.
+- **Errors & Degradation:** unknown action kind is rejected before proposal or execution.
+- **Consumers:** package builder, automation policy and effect coordinator.
 
-> **Стыки (каноника — inbox-opencode):** один opencode-сервер на весь agent-inbox
-> (D-311), session registry `sessionId ↔ {taskId, mr, artifacts[], model}`,
-> outcome-классификация + лесенка continue/restart, `telemetry/tool-trace.jsonl`.
+### `ReviewProposal`, `ReviewDecision`, `ReviewActionPackage`
 
-## 5. Хранилище
+- **Type:** Entity
+- **Public Operations:** group actions; select defaults; express alternatives/dependencies; edit, accept or reject; invalidate; propose comment/reply, reaction, resolve/reopen, approve/unapprove, request changes, description edit and thread response alternatives.
+- **Lifecycle:** package is bound to one current change batch and cannot be applied after staleness.
+- **Errors & Degradation:** invalid dependency selection is rejected before effects.
+- **Consumers:** dashboard and effect coordinator.
 
-Очередь не персистится отдельно: состояние = проекция журнала `events.jsonl`
-(inbox-core). После краша executor перечитывает журнал и продолжает с последнего
-непрерывного префикса.
+### `ReviewEffect`, `ReviewOutcome`
 
-## 6. Приёмка
+- **Type:** Value Object / Entity
+- **Public Operations:** derive stable id; track attempts; attach reconciliation evidence.
+- **Lifecycle:** one terminal outcome per effect id, with retry history.
+- **Errors & Degradation:** unknown remains retry/reconcile pending, never success.
+- **Consumers:** VCS, journal and projections.
 
-1. **Контрольный сценарий инцидента:** два MR в работе — LLM-задача одного не
-   останавливает задачи другого (по журналам виден параллельный прогресс).
-2. Дедуп: повторный enqueue с тем же dedupKey возвращает существующий taskId.
-3. Supersede: две enqueue с одним dedupKey **до старта исполнения первой** →
-   исполняется одна (последняя).
-4. Краш-сервера → рестарт → очереди восстановлены из журналов, ни одна карточка не
-   «откатилась»; running-задачи перезапущены, применённые эффекты не продублированы.
-5. Эффекты строго последовательны и идемпотентны (повторный effect не постит дважды).
+### `ReviewAutomationPolicy`, `ReviewEffectCoordinator`
 
-## 7. Non-goals
+- **Type:** Service
+- **Public Operations:** prove automation preconditions; execute selected effects respecting dependencies; continue independent actions.
+- **Lifecycle:** evaluated against the newest state immediately before execution.
+- **Errors & Degradation:** failed gate produces a proposal or no action, never unsafe automation.
+- **Consumers:** scheduler triggers and API.
+<!--/SECTION:ENTITY_SURFACES-->
 
-Планирование и гейты (inbox-pipeline) · жизненный цикл сессий и TTL (inbox-opencode) ·
-журнал (inbox-core) · вычисление внимания/стадии (inbox-vcs).
+<!--SECTION:MODULE_CONTRACTS-->
 
-## Critic Rounds
+## 5. Module Contracts (DbC)
 
-### Round 1 — 2026-07-29 (добивочная волна)
+- Recommended actions are selected by default; operator may edit or deselect before immediate apply.
+- Mutually exclusive choices cannot both execute; dependencies are explicit.
+- A new MR event invalidates every unapplied package for the previous batch.
+- Running work finishes against its bound revision; new events supersede/deduplicate pending delta tasks instead of interrupting the running task.
+- Independent effects continue after sibling failure and receive individual outcomes.
+- Auto-resolve requires verified fix; an operator-authored thread is allowed, while an allowlisted-bot thread additionally requires the operator to be MR author.
+- Auto-approve only restores an approval previously expressed by the operator, after full coverage and no blocking finding.
+- Manual and automatic actions resolve through the same `ReviewActionCatalog` and `ReviewEffectCoordinator`; no second automation executor exists.
+- Runtime backing: local executor and deterministic test executor; verification: contract, unit, integration, e2e.
+<!--/SECTION:MODULE_CONTRACTS-->
 
-- Verdict: CRITICAL (1 CRITICAL, 6 MAJOR, 5 MINOR)
-- Accepted: 11 — CRITICAL: pipeline-узлы не были типами задач (висячий dependsOn `enrich`) + грамматика ссылок не определена → реестр расширен (prepare*env/plan/enrich/gates/lens*\*) + формальный язык ссылок (type-name/glob/allOf/producerOf/external); порты: `next(mr)` добавлен, dedupKey в сигнатуре enqueue, supersede единый механизм (dedupKey); восстановление running-задач (→queued, эффекты по маркеру); retry→лесенка opencode; пул без вытеснения + aging; переходы waiting_dep/cancelled; FIFO внутри класса + priority override; Non-goals; приёмка supersede уточнена
-- Rejected: 0
-- Reconcile: dedupKey-правило → как в inbox-api (type + canonical(params))
-- Changes: §2 порты/сущности; §3 реестр полный (16 типов) + грамматика; §4.1 правила; §6 приёмка; §7 Non-goals
+<!--SECTION:PUBLIC_OPTIONS-->
 
-## Handoff Rules Additions
+## 6. Public Options & Policies
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+- Priority: operator action > human/GitLab trigger > quiet-time background work.
+- Automatic policies are explicit; generic accept-rate promotion is removed from v0.
+- Retry is effect-aware and idempotent.
+- Findings, proposals, decisions, effects and outcomes retain MR, revision/batch, task, session/model, timestamp and provenance.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-queue/
+├── types/
+├── registry/
+├── execution/
+├── packages/
+├── automation/
+└── effects/
+```
+
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- `D-QUEUE-01`: package is the operator decision unit; outcome remains per effect.
+- `D-QUEUE-02`: automation restores proven intent instead of learning broad autonomy in v0.
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md), [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [VCS](../inbox-vcs/inbox-vcs.spec.md).
+- **Provides directly to:** [API](../inbox-api/inbox-api.spec.md), [eval](../inbox-eval/inbox-eval.spec.md). Dashboard consumes queue state transitively through API.
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Extend existing registry/queue/executor; consolidate both current effect executors.
+- Remove legacy role lifecycle only after queue recovery owns the flow.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

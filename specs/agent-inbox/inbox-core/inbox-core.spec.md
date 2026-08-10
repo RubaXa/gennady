@@ -1,154 +1,229 @@
-# Module: inbox-core (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-302 (журнал решений = датасет), D-305 (барьер готовности), D-317 (лента событий:
-> журнал + `lastReadAt` → непрочитанное/📬)
+# Module: inbox-core
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Состояние и истина agent-inbox: **журнал событий (event store)** как единственный
-источник истины, реестр как кэш, конфиг, барьер готовности, dry-run. Очередь, лента,
-доска и датасет решений — проекции журнала.
-
-Классы реализации: `EventJournal` (§2), `DecisionJournal` + `CapabilityModes` (§2.1), `BootReadiness` (§4).
+Каноническая локальная модель MR: нормализованные события, восстанавливаемое состояние,
+participation, lifecycle, накопленная change batch и физически изолированные runtime profiles.
+Модуль не знает GitLab DTO, agent sessions, HTTP или React. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. Журнал событий (`events.jsonl` на MR)
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-```json
-{
-  "ts": "...",
-  "seq": 41,
-  "mr": "mail/messenger!174",
-  "kind": "task_status",
-  "actor": "queue",
-  "payload": { "taskId": "#14", "status": "running" }
-}
+## 2. Module Usage Example
+
+```ts
+await journal.append(mrEvent);
+const state = reviewState.fold(await journal.read(mrEvent.mr));
+if (state.changeBatch.verificationDue) scheduleVerification(state.changeBatch);
 ```
 
-Конверт един: `{ts, seq, mr, kind, actor, payload}` — **все** kind-специфичные поля живут внутри `payload`. Kinds: `task_created|task_status|artifact_produced|gitlab_event|widget_bump|proposal|
-decision|chat_turn|mutation|system`.
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-**Контракт JournalPort (каноника — здесь; ссылка из корня §5.3):**
+<!--SECTION:ENTITY_INVENTORY-->
 
-- `append(entry)`: per-MR **один писатель в момент времени** — in-process очередь
-  сериализует продюсеров (sync/queue/chat/api). Запись — **строчный append** (одна
-  JSON-строка, O_APPEND + fsync); tmp+rename для журнала НЕ используется (остаётся для
-  реестра/конфига — иначе конкурентные append теряют записи). Каждая запись получает
-  монотонный `seq` (per MR).
-- `read()` / `since(cursor)`: порядок = `seq`; `cursor = seq` последней прочитанной;
-  `since(cursor) → {entries, nextCursor}` (основа пагинации ленты).
-- Гарантии: append-only; fsync-запись переживает краш; битый хвост (обрыв строки после
-  краша) отбрасывается при реплее.
-- MR-less события (boot, system, dryrun) — глобальный журнал `agent-inbox/events.jsonl`
-  (тот же контракт, `mr='system'`).
+## 3. Entity Inventory (Closed-World)
 
-**Payloads по kind (`ts, seq, mr, kind` — всегда обязательны):**
+_Это полный список публичных сущностей `inbox-core`. Новая публичная сущность требует обновления spec._
 
-| kind              | продюсер       | payload (обязательное)                                                                                                                            |
-| ----------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| task_created      | queue          | taskId, type, params, dependsOn, dedupKey, priority, createdBy                                                                                    |
-| task_status       | queue          | taskId, status, progress?, error?                                                                                                                 |
-| artifact_produced | pipeline       | taskId, path, producedBy{sessionId, model}                                                                                                        |
-| gitlab_event      | vcs            | event (commits/threads/pipeline/approval), data                                                                                                   |
-| widget_bump       | api            | widgetId, lastActivity                                                                                                                            |
-| proposal          | queue/pipeline | proposalId, capability, payload, producedBy                                                                                                       |
-| decision          | api            | proposalId, verdict, diff?, actor                                                                                                                 |
-| chat_turn         | chat           | turnId, anchor?, role (operator/machine)                                                                                                          |
-| mutation          | chat           | path, revision, snapshotId                                                                                                                        |
-| system            | core           | event (boot/phase/dryrun/effect_applied/error), data; для effect_applied data = `{effectId}` (маркер идемпотентности эффектов, hash(mr+тип+цель)) |
+| Name                   | Type         | Purpose                                                      |
+| ---------------------- | ------------ | ------------------------------------------------------------ |
+| `ReviewEvent`          | Event        | Версионированный факт, изменяющий локальную модель MR.       |
+| `ReviewState`          | Entity       | Восстанавливаемое актуальное состояние одного MR.            |
+| `ReviewParticipation`  | Value Object | Причины участия оператора и responsibility group.            |
+| `ReviewLifecycle`      | Value Object | Tracking, terminal и operator-completed состояние MR.        |
+| `ReviewChangeBatch`    | Entity       | Накопленная unapplied delta и сроки её верификации.          |
+| `ReviewConfig`         | Value Object | Публичные локальные политики runtime.                        |
+| `JournalPort`          | Port         | Append/replay событий с crash recovery.                      |
+| `ArtifactStorePort`    | Port         | Адресуемое хранение evidence и review artifacts.             |
+| `ClockPort`            | Port         | Время и таймеры с controlled test implementation.            |
+| `RuntimeProfilePort`   | Port         | Физически разделённые production/test/mock namespaces.       |
+| `ReviewRuntimeProfile` | Value Object | Допустимая комбинация state namespace и external I/O policy. |
+| `BootReadiness`        | Service      | Наблюдаемый boot/reconcile/restore barrier.                  |
 
-### 2.1 Датасет решений (D-302) — первоклассная сущность
+<!--/SECTION:ENTITY_INVENTORY-->
 
-```json
-{"kind":"proposal","proposalId":"p-881","capability":"post_findings","mr":"...",
- "payload":{"findings":["F-1","F-2"]},"producedBy":{"sessionId":"...","taskId":"#11","model":"..."}}
-{"kind":"decision","proposalId":"p-881","verdict":"accept|edit|reject",
- "diff":"...","ts":"...","actor":"operator"}
+<!--SECTION:ENTITY_SURFACES-->
+
+## 4. Entity Surfaces
+
+### `ReviewEvent`
+
+- **Type:** Event
+- **Public Properties:** version, id, MR reference, kind, actor, occurredAt, payload.
+- **Public Operations:** validate; identify causal batch.
+- **Lifecycle:** immutable after append.
+- **Events Emitted:** N/A.
+- **Errors & Degradation:** unknown version is quarantined and visible.
+- **Consumers:** `ReviewState`, projections, recovery.
+
+### `ReviewState`
+
+- **Type:** Entity
+- **Public Properties:** MR identity, participation, lifecycle, change batch, review/effect summaries.
+- **Public Operations:** fold ordered events; expose deterministic snapshot.
+- **Lifecycle:** one logical instance per tracked MR; recoverable from journal.
+- **Events Emitted:** N/A.
+- **Errors & Degradation:** incomplete external data is marked stale, never invented.
+- **Consumers:** pipeline, queue, API.
+
+### `ReviewParticipation`
+
+- **Type:** Value Object
+- **Public Properties:** author, reviewer, assignee, mentioned, commented, approved; responsibility group.
+- **Public Operations:** merge inclusive signals; derive one of `review` or `owned` display groups.
+- **Lifecycle:** recomputed from VCS facts; historical participation remains tracked.
+- **Events Emitted:** N/A.
+- **Errors & Degradation:** uncertain signals are marked estimated.
+- **Consumers:** discovery, projections.
+
+### `ReviewLifecycle`
+
+- **Type:** Value Object
+- **Public Properties:** open/merged/closed, trackedAt, lastActivityAt, completedAt.
+- **Public Operations:** determine tracking and visibility independently; mark operator completion when terminal; observe activity.
+- **Lifecycle:** completion is explicit and local; every newly observed MR event refreshes `lastActivityAt`, clears `completedAt` and re-evaluates participation, so a previously completed or horizon-hidden MR can return.
+- **Events Emitted:** lifecycle changed, completed.
+- **Errors & Degradation:** completion is rejected for open MR.
+- **Consumers:** sync, dashboard.
+
+#### Visibility truth table
+
+| MR state      | Within 3-month horizon | Completed locally | Dashboard                                                         |
+| ------------- | ---------------------: | ----------------: | ----------------------------------------------------------------- |
+| open          |                    yes |               N/A | visible when participation matches                                |
+| open          |                     no |               N/A | hidden; a new event may restore visibility                        |
+| merged/closed |                    yes |                no | visible with **Complete**                                         |
+| merged/closed |                     no |                no | hidden automatically; history retained                            |
+| merged/closed |                    any |               yes | hidden until a new event clears completion and refreshes activity |
+
+### `ReviewChangeBatch`
+
+- **Type:** Entity
+- **Public Properties:** event range, base/head, accumulated changes, debounce/quiet deadlines, status.
+- **Public Operations:** accumulate event; postpone deadlines; mark verifying/applied/stale.
+- **Lifecycle:** one current batch per MR; any new event invalidates its unapplied package in v0.
+- **Events Emitted:** batch changed, verification due, batch invalidated.
+- **Errors & Degradation:** missing comparison data forces full verification.
+- **Consumers:** pipeline, queue, dashboard.
+
+### `ReviewConfig`
+
+- **Type:** Value Object
+- **Public Properties:** debounce, quiet timeout, activity horizon, bot allowlist, state roots, effect allowlist.
+- **Public Operations:** validate and resolve defaults.
+- **Lifecycle:** loaded at boot; changes create a system event.
+- **Events Emitted:** configuration changed.
+- **Errors & Degradation:** invalid safety settings fail boot; optional values use documented defaults.
+- **Consumers:** composition root and policies.
+
+### `JournalPort`, `ArtifactStorePort`, `ClockPort`, `RuntimeProfilePort`
+
+- **Type:** Port
+- **Public Properties:** implementation identity and health.
+- **Public Operations:** append/replay; put/read/list; now/schedule; open/reset permitted namespace.
+- **Lifecycle:** process-scoped adapters; durable data outlives process where applicable.
+- **Events Emitted:** storage/profile failures as system events.
+- **Errors & Degradation:** never cross profile boundaries; failed durable writes are not acknowledged.
+- **Consumers:** all runtime modules and tests.
+
+### `ReviewRuntimeProfile`
+
+- **Type:** Value Object
+- **Public Properties:** state namespace, run-id, external I/O policy, effect allowlist identity.
+- **Public Operations:** validate an allowed profile combination; resolve physical root.
+- **Lifecycle:** immutable for one process/test run.
+- **Events Emitted:** N/A.
+- **Errors & Degradation:** an invalid or unsafe combination fails before adapters start.
+- **Consumers:** composition root, mocks and eval.
+
+### `BootReadiness`
+
+- **Type:** Service
+- **Public Properties:** phase, progress, readiness, failure.
+- **Public Operations:** advance connect→poll→reconcile→restore→ready; retry recoverable phase.
+- **Lifecycle:** one per process.
+- **Events Emitted:** boot phase changed.
+- **Errors & Degradation:** read-only UI may open explicitly before ready; effects remain disabled.
+- **Consumers:** API and dashboard.
+<!--/SECTION:ENTITY_SURFACES-->
+
+<!--SECTION:MODULE_CONTRACTS-->
+
+## 5. Module Contracts (DbC)
+
+### Canonical-state invariant
+
+- Events are append-only and ordered per MR.
+- Every acknowledged mutation can be reconstructed from journal data.
+- Registry and projections are disposable caches, never canonical truth.
+- Production, test and mock roots cannot resolve to the same physical namespace.
+- Every observed MR event accumulates into the current change batch and postpones its quiet deadline.
+- Any human discussion reply schedules verification through the debounce deadline; manual verification bypasses both timers.
+
+### Storage ports
+
+- **Runtime Backing:** local files in production; in-memory adapters in deterministic tests.
+- **Verification Levels:** contract, unit, integration, e2e.
+- **Preconditions:** validated event/profile/artifact address.
+- **Postconditions:** acknowledged writes survive adapter recovery guarantees.
+- **Invariants:** an adapter cannot read or reset another runtime profile.
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+
+## 6. Public Options & Policies
+
+- Human-reply debounce: default 5 minutes, configurable.
+- MR quiet timeout: default 10 minutes, configurable; every MR event postpones it.
+- Activity horizon: 3 months from last MR activity.
+- Test reset accepts test run-id only; production reset is not a public operation.
+- Allowed combinations are only `production + real-work`, `test + real-readonly`, `test + real-effects`, and `mock + deterministic-mock`; real test profiles never bind production state.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-core/
+├── types/                 # Review* value objects/events
+├── state/                 # fold, lifecycle, change batch
+├── ports/                 # journal/artifact/clock/profile contracts
+├── adapters/              # local and in-memory backing
+└── boot/                  # readiness and config
 ```
 
-- Каждое предложение машины (постинг, реакция, резолв, аппрув, ответ в тред) пишется как
-  `proposal`; решение оператора — как `decision` (accept/edit/reject + diff при edit).
-- Метрики: `accept-rate` и `edit-rate` **per capability**; порог градации (стартовый:
-  accept ≥ 90% на выборке ≥ 20) → capability переходит в auto-mode (с лентой
-  автодействий + undo).
-- Потребители: inbox-eval (метрики схожести), dashboard (индикатор градации),
-  аналитика (какие типы решений машине не удаются).
-- Замкнутый набор capability: `post_findings|post_reply|react|resolve|approve|
-update_description`. `accept-rate` — **чистая функция над журналом, живёт здесь** (inbox-eval её рендерит); выборка — последние 20 решений per capability (rolling); при n < 20 градация запрещена. Текущий режим
-  capability (`proposal|auto`) хранится в реестре-кэше `capabilities{}`, переключается
-  по порогу; queue применяет: `proposal` → виджет решения, `auto` → effect + запись в
-  ленту + undo.
+Existing implementations are moved, not duplicated.
 
-## 3. Реестр — только кэш
+<!--/SECTION:FILE_STRUCTURE-->
 
-`inbox-registry.json` остаётся кэшем (никогда не источник истины). Поля (все —
-пересобираемые из GitLab + журналов):
+<!--SECTION:MODULE_DECISION_LOG-->
 
-| Поле                  | Форма                   | Назначение                                                           |
-| --------------------- | ----------------------- | -------------------------------------------------------------------- |
-| `lastSeenUpdatedAt`   | ISO ts                  | дельта-опрос                                                         |
-| `lastReviewedHeadSha` | sha                     | детект новых коммитов (🔀)                                           |
-| `lastReadAt`          | ISO ts                  | непрочитанное/📬 (D-317): unread = записи журнала после `lastReadAt` |
-| `capabilities`        | `{cap: proposal\|auto}` | режимы градации (§2.1)                                               |
-| `assignedRole`        | `author\|reviewer`      | **только** override для mentioned-only MR (D-304)                    |
+## 8. Module Decision Log
 
-## 4. Барьер готовности (D-305)
+- `D-CORE-01`: journal is canonical; caches are rebuildable.
+- `D-CORE-02`: participation is inclusive, while dashboard placement is singular.
+- `D-CORE-03`: profile isolation is a safety boundary, not a naming convention.
+<!--/SECTION:MODULE_DECISION_LOG-->
 
-Фазы: `connect → poll → reconcile → restore → ready` (+`failed` с причиной и retry).
-Контракт `GET /api/boot` → `{phase, progress: {done, total, label}, ready, error?}`.
-Bootstrap порядок: config → журналы → **api listen** (до фаз — иначе фазы невидимы по
-HTTP) → `connect` (vcs connect) → `poll` (первый опрос) → `reconcile` (сверка
-реестр/диск) → `restore` (восстановление очередей из журналов) → `ready`.
-Worktree — не фаза (лениво, фоном).
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
-## 5. Конфиг и dry-run
+## 9. Inter-Module Dependencies
 
-`agent-inbox/config.json`: `{version: 1, reposBase: path, vcsHost: string}`; при
-отсутствии/битом файле — `{configured: false, missing[]}` (без throw), boot → фаза
-`failed` с причиной. Dry-run: флаг `dryRun` в `agent-inbox/config.json` (или env override). Здесь живут: флаг + запись о подавлении (kind `system`, payload `{event:"dryrun", effectId}`). Сама супрессия — в executor очереди (inbox-queue §4.1); SSE-кадр `dryrun` эмитит inbox-api по записи.
+- **Depends on:** none inside agent-inbox.
+- **Provides to:** every sibling module.
+- **Scope Reference:** root constraints in [agent-inbox](../agent-inbox.spec.md#4-requirements--constraints).
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
-## 6. Хранилище (как было, без изменений адресов)
+<!--SECTION:HANDOFF-->
 
-```
-~/.gennady/
-├── inbox-registry.json              # кэш
-└── agent-inbox/
-    ├── config.json
-    ├── mrs/<group__proj-iid>/
-    │   ├── events.jsonl             # ЖУРНАЛ (истина)
-    │   ├── worktree/
-    │   └── report/ (PLAN/README/review.json/tasks/sessions/)
-    └── telemetry/ (phase-timings, tool-trace)
-```
+## 10. Handoff to task-scaffolding
 
-## 7. Приёмка
-
-1. Краш сервера → рестарт → очереди и лента восстановлены из `events.jsonl`; карточки
-   не деградировали.
-2. Каждое предложение и каждое решение пишутся в журнал (проверка записей proposal/
-   decision на реальном потоке).
-3. `/api/boot` отражает фазы; падение фазы видимо с причиной и retry.
-4. Реестр: удаление файла не ломает доску (пересборка из GitLab + журналов).
-
-## Critic Rounds
-
-### Round 1 — 2026-07-29
-
-- Verdict: NEEDS_WORK (1 CRITICAL, 4 MAJOR)
-- Accepted: 6 — контракт JournalPort (cursor/seq/конкурентные писатели; tmp+rename терял бы записи), payloads по kind, порядок слушателя boot (фазы были невидимы по HTTP), самоссылки «как сейчас» (config/dry-run/append), содержание D-317 (lastReadAt → 📬), снятие ложного владения D-329
-- Rejected: 0
-- Reconcile: JournalPort → каноника здесь, корень §5.3 ссылается (EXTEND); snapshots → REUSE `report/snapshots/`
-- Changes: §2 контракт JournalPort + таблица payloads; §2.1 механика capability (замкнутый набор, хранение режима, кто переключает); §3 поля реестра; §4 порядок bootstrap + progress {done,total,label}; §5 config-схема и dry-run; шапка — D-329 убран
-
-### Round 2 — 2026-07-29
-
-- Stop: лимит оператора (2 раунда); R2-валидация не вернулась (пустой отчёт диспетчей) — правки R1 в силе, статус: недовалидировано
-
-## Handoff Rules Additions
-
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+- Modify existing journal, state, config, registry and boot implementations.
+- Add the four new domain contracts without introducing new runtime services.
+- Remove duplicate legacy VCS types only after consumer migration.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

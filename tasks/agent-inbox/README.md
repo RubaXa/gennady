@@ -1,69 +1,129 @@
 # Tasks: agent-inbox
 
-> v2 DAG (TSK-156…165) под спеки v2 ([корневая](../../specs/agent-inbox/agent-inbox.spec.md), D-301…D-331).
-> v1 DAG (TSK-80…155) удалён решением оператора 2026-07-29 (D-216 в [../README.md](../README.md)).
-
 ## Scope Spec
 
-- [agent-inbox.spec.md](../../specs/agent-inbox/agent-inbox.spec.md) · модульные: inbox-core / inbox-vcs / inbox-queue / inbox-pipeline / inbox-opencode / inbox-chat / inbox-api / inbox-dashboard / inbox-eval
+- [Root](../../specs/agent-inbox/agent-inbox.spec.md)
+- Navigation: [review runtime](../../specs/agent-inbox/review-runtime/index.md), [operator assistant](../../specs/agent-inbox/operator-assistant/index.md), [verification](../../specs/agent-inbox/verification/index.md)
 
 ## Cascade Table
 
-| Tier                                        | coding           | testing                                    | infra |
-| ------------------------------------------- | ---------------- | ------------------------------------------ | ----- |
-| infra-base, vcs, cli, ai-skills (traversed) | typescript-rules | node-test (+testing-common)                | —     |
-| agent-inbox (target, §11)                   | typescript-rules | node-test, playwright-cli → playwright-e2e | —     |
-| module:<name> (Handoff additions)           | typescript-rules | node-test (+playwright для dashboard)      | —     |
+| Tier                                     | coding             | testing                                                   | architecture                       | infra              |
+| ---------------------------------------- | ------------------ | --------------------------------------------------------- | ---------------------------------- | ------------------ |
+| infra-base/vcs/cli/ai-skills (traversed) | typescript-rules   | testing-common, node-test                                 | —                                  | existing toolchain |
+| agent-inbox (target)                     | typescript-rules   | testing-common, node-test, playwright-cli, playwright-e2e | journal-first hexagonal boundaries | —                  |
+| module                                   | None beyond target | dashboard/eval add Playwright                             | None                               | None               |
 
 ### Rule Sources
 
-- Traversed: [scope graph](../../specs/README.md)
-- Target: [agent-inbox.spec.md §11](../../specs/agent-inbox/agent-inbox.spec.md)
-- Module: Handoff Rules Additions каждой модульной спеки
+- [Scope graph](../../specs/README.md)
+- [Agent Inbox rules](../../specs/agent-inbox/agent-inbox.spec.md#45-rules)
+- [Rule registry](../../ai/directives/knowledge.xml)
 
 ## Intra-Scope DAG
 
+Edge = prerequisite → dependent.
+
 ```mermaid
 graph TD
-  TSK-156 --> TSK-157
-  TSK-156 --> TSK-158
-  TSK-156 --> TSK-160
-  TSK-157 --> TSK-159
-  TSK-158 --> TSK-159
-  TSK-160 --> TSK-159
-  TSK-159 --> TSK-161
-  TSK-158 --> TSK-162
-  TSK-159 --> TSK-162
-  TSK-162 --> TSK-163
-  TSK-162 --> TSK-164
-  TSK-158 --> TSK-166
-  TSK-166 --> TSK-164
-  TSK-166 --> TSK-165
-  TSK-161 --> TSK-165
-  TSK-164 --> TSK-165
+  T172[TSK-172 profiles/bootstrap] --> T173[TSK-173 core]
+  T173 --> T174[TSK-174 VCS]
+  T173 --> T175[TSK-175 agent runtime]
+  T173 --> T176[TSK-176 pipeline]
+  T174 --> T176
+  T175 --> T176
+  T173 --> T177[TSK-177 queue/packages]
+  T174 --> T177
+  T176 --> T177
+  T173 --> T178[TSK-178 chat/handoff]
+  T175 --> T178
+  T176 --> T178
+  T177 --> T178
+  T173 --> T179[TSK-179 API]
+  T174 --> T179
+  T176 --> T179
+  T177 --> T179
+  T178 --> T179
+  T173 --> T180[TSK-180 mocks]
+  T174 --> T180
+  T175 --> T180
+  T177 --> T180
+  T179 --> T180
+  T174 --> T181[TSK-181 cutover]
+  T175 --> T181
+  T176 --> T181
+  T177 --> T181
+  T178 --> T181
+  T179 --> T181
+  T180 --> T181
+  T178 --> T182[TSK-182 dashboard]
+  T179 --> T182
+  T180 --> T182
+  T181 --> T182
+  T174 --> T183[TSK-183 eval]
+  T176 --> T183
+  T177 --> T183
+  T179 --> T183
+  T180 --> T183
+  T181 --> T183
+  T182 --> T183
 ```
 
 ## Tracker
 
-| Task-ID                            | Title                                                            | Module          | Dependencies              | Status     |
-| ---------------------------------- | ---------------------------------------------------------------- | --------------- | ------------------------- | ---------- |
-| [TSK-156](agent-inbox.task-156.md) | Bootstrap: журнал событий + layout                               | inbox-core      | None                      | `[x]` DONE |
-| [TSK-157](agent-inbox.task-157.md) | inbox-core: датасет решений + готовность                         | inbox-core      | TSK-156                   | `[x]` DONE |
-| [TSK-158](agent-inbox.task-158.md) | inbox-vcs: sync + внимание + эффекты                             | inbox-vcs       | TSK-156                   | `[x]` DONE |
-| [TSK-159](agent-inbox.task-159.md) | inbox-queue: реестр типов + executors                            | inbox-queue     | TSK-157, TSK-158, TSK-160 | `[x]` DONE |
-| [TSK-160](agent-inbox.task-160.md) | inbox-opencode: TTL-паркинг + пул + промпты                      | inbox-opencode  | TSK-156                   | `[x]` DONE |
-| [TSK-161](agent-inbox.task-161.md) | inbox-pipeline: план + слои + линзы + гейты                      | inbox-pipeline  | TSK-159                   | `[x]` DONE |
-| [TSK-162](agent-inbox.task-162.md) | inbox-api: REST/SSE + DTO-проекции                               | inbox-api       | TSK-158, TSK-159          | `[x]` DONE |
-| [TSK-163](agent-inbox.task-163.md) | inbox-chat: якоря + operator-сессия + мутации                    | inbox-chat      | TSK-162                   | `[x]` DONE |
-| [TSK-164](agent-inbox.task-164.md) | inbox-dashboard: загрузка/доска/лента/чат                        | inbox-dashboard | TSK-162, TSK-166          | `[x]` DONE |
-| [TSK-165](agent-inbox.task-165.md) | inbox-eval: харнесс S1–S8 + метрики                              | inbox-eval      | TSK-161, TSK-164, TSK-166 | `[x]` DONE |
-| [TSK-166](agent-inbox.task-166.md) | test-infra: seed-DSL + контракт-сьют + кассеты                   | test-infra      | TSK-156, TSK-158          | `[x]` DONE |
-| [TSK-167](agent-inbox.task-167.md) | test-suite health: изоляция integration-раннера                  | test-infra      | None                      | `[x]` DONE |
-| [TSK-168](agent-inbox.task-168.md) | test-honesty: раскатка over-skip + shutdown hygiene              | test-infra      | TSK-167                   | `[x]` DONE |
-| [TSK-169](agent-inbox.task-169.md) | inbox-dashboard: UI по Carbon & Steel (design-system compliance) | inbox-dashboard | TSK-164                   | `[x]` DONE |
-| [TSK-170](agent-inbox.task-170.md) | serve: утечка хэндлов, orphan-restart, вынос v1-легаси red       | inbox-api/serve | TSK-167                   | `[x]` DONE |
+| Task-ID                                                | Title                          | Module          | Dependencies        | Status     |
+| ------------------------------------------------------ | ------------------------------ | --------------- | ------------------- | ---------- |
+| [TSK-172](agent-inbox.task-172.md)                     | Runtime profiles/bootstrap     | scope           | None                | `[ ]` TODO |
+| [TSK-173](inbox-core/inbox-core.task-173.md)           | Canonical review state         | inbox-core      | 172                 | `[ ]` TODO |
+| [TSK-174](inbox-vcs/inbox-vcs.task-174.md)             | Unified GitLab boundary        | inbox-vcs       | 173                 | `[ ]` TODO |
+| [TSK-175](inbox-opencode/inbox-opencode.task-175.md)   | Agent runtime contracts        | inbox-opencode  | 173                 | `[ ]` TODO |
+| [TSK-176](inbox-pipeline/inbox-pipeline.task-176.md)   | Full/delta/cross-review        | inbox-pipeline  | 173–175             | `[ ]` TODO |
+| [TSK-177](inbox-queue/inbox-queue.task-177.md)         | Packages and automation        | inbox-queue     | 173,174,176         | `[ ]` TODO |
+| [TSK-178](inbox-chat/inbox-chat.task-178.md)           | Chat and DEV handoff           | inbox-chat      | 173,175–177         | `[ ]` TODO |
+| [TSK-179](inbox-api/inbox-api.task-179.md)             | Journal projections/API        | inbox-api       | 173,174,176–178     | `[ ]` TODO |
+| [TSK-180](inbox-mocks/inbox-mocks.task-180.md)         | Deterministic mock runtime     | inbox-mocks     | 173–175,177,179     | `[ ]` TODO |
+| [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[ ]` TODO |
+| [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[ ]` TODO |
+| [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[ ]` TODO |
 
-## Notes
+## External prerequisites
 
-- Верификация фаз: `npm run type-check` (typescript-rules), `npm test` (node-test), `npm run format:check`; dashboard e2e — `npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts`.
-- Приёмка продуктовая — на реальном MR (inbox-eval, без моков).
+- Existing GitLab token/identity and OpenCode-compatible runtime.
+- Real-effects eval remains disabled until an explicit project/MR allowlist is configured.
+- Browser clipboard permission is observed at runtime and is not a bootstrap blocker.
+
+## Requirement Coverage
+
+| Root requirements                              | Owning tasks                                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| FR-001…005 discovery/lifecycle/placement       | TSK-173, TSK-174, TSK-179, TSK-182                                             |
+| FR-006…009 full and cross-review               | TSK-176                                                                        |
+| FR-010…015 event accumulation/delta            | TSK-173, TSK-174, TSK-176, TSK-177                                             |
+| FR-016…027 packages/effects/automation         | TSK-174, TSK-176, TSK-177, TSK-179, TSK-182                                    |
+| FR-028…032 DEV handoff                         | TSK-178, TSK-179, TSK-182                                                      |
+| FR-033…037 dashboard/workspace/chat            | TSK-179, TSK-182                                                               |
+| FR-038…043 isolated/adaptive tests             | TSK-172, TSK-180, TSK-183                                                      |
+| FR-002 auto-hide/history/reactivation          | TSK-173 lifecycle truth table → TSK-179 API projection → TSK-182 board/history |
+| FR-007 six full-review lenses                  | TSK-176 `every participation gets full review` + `six lenses` mapping          |
+| FR-021 resolve/reopen ownership                | TSK-174 permission truth table; TSK-177 automation truth table                 |
+| FR-023 approval makes open thread non-blocking | TSK-176 approval/thread semantics                                              |
+| FR-026 author-refusal alternatives             | TSK-176 cross-review/refusal; TSK-177 exclusive choices                        |
+| FR-042 adaptive statuses never weaken PASS     | TSK-183 status/report contract and mandatory PASS gate                         |
+| FR-043 effect allowlist cannot broaden         | TSK-172 profile gate; TSK-174 negative gates; TSK-183 real-effects boundary    |
+| NFR-001 local single-process operator          | TSK-172, TSK-181                                                               |
+| NFR-002 real runtime in first useful version   | TSK-174, TSK-175, TSK-181, TSK-182, TSK-183                                    |
+| NFR-003 per-MR independence                    | TSK-177, TSK-181, TSK-183 acceptance 2                                         |
+| NFR-004 crash-safe recovery/no blind repeat    | TSK-173, TSK-174, TSK-177, TSK-179, TSK-181, TSK-183                           |
+| NFR-005 provenance                             | TSK-173, TSK-175, TSK-176, TSK-177, TSK-178, TSK-179                           |
+| NFR-006 lifecycle observability                | TSK-179, TSK-182                                                               |
+| NFR-007 ports only at real boundaries          | TSK-173…180 contract suites; TSK-181 cutover                                   |
+| NFR-008 real-data visual acceptance            | TSK-182, TSK-183 acceptance 7                                                  |
+| NFR-009 Carbon & Steel                         | TSK-182                                                                        |
+
+## Historical baseline
+
+TSK-156…170 remain immutable `[x] DONE` evidence for v2 implementation. They are superseded as execution guidance by TSK-172…183 and are not dependencies of the pivot DAG.
+
+## Decision Log
+
+- **D-219:** New IDs preserve historical audit evidence while regenerating the pivot DAG from current specs.
+- **D-220:** One ticket per module spec; composition cutover is separate because it owns the cross-module migration and legacy deletion.

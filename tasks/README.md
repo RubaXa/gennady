@@ -21,35 +21,42 @@ Per `AX_FILE_HEADER_TASK_TRACEABILITY`:
 
 A task cannot transition to `[x] DONE` until ALL of:
 
-1. Every BDD scenario mapped to test ownership in §4 OR has `Deferred Test Ownership: <task-id>`.
+1. Every BDD scenario mapped to test ownership in §6 OR has `Deferred Test Ownership: <task-id>`.
 2. Verification commands executed; results + exit codes recorded in Execution Log.
 3. Canonical case names match real test cases or ticket updated.
 4. `Deferred Runtime Scope` recorded if applicable.
 5. Every introduced-beyond-Inventory entity logged as `Introduced <Name> because <reason>`.
 
-Task-specific additions live in each ticket's §3.
+Task-specific completion additions live in each ticket's §5.
 
 ### Execution Log Template
 
 Per `AX_EXECUTION_LOG_PLAN_VS_FACT`. Each round = one open-to-DONE cycle; append-only; old rounds NEVER edited.
 
-**Plan format (scaffolding pre-fills per ticket):**
+**Plan format (scaffolding pre-fills per ticket):** every phase has verification facts and a handoff; the round closes only after all phases are done.
 
 ```markdown
 ### Round 1 — <YYYY-MM-DD>, initial
 
-- [ ] `[<ts>]` Task initialized.
-- [ ] `[<ts>]` Implementation file: `<path>`.
-- [ ] `[<ts>]` Test file: `<path>`.
-- [ ] `[<ts>]` Verification: `<command>` → `<pass|fail>` [`exit=<code>`].
-- [ ] `[<ts>]` Scenario coverage: `<scenario>` → `<test-file>::<case>`.
-- [ ] `[<ts>]` Self-audit: walked loaded rule axioms against generated code. Violations: `<list or "none">`.
-- [ ] `[<ts>]` Introduced (if any): `<Entity>` because `<reason>`.
-- [ ] `[<ts>]` Tracker synced: `tasks/<scope>/README.md` + `tasks/README.md`.
-- [ ] `[<ts>]` Status: [x] DONE.
+#### P1
+
+- [ ] `<ts>` ver `<required command>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### P2
+
+- [ ] `<ts>` ver `<required command>` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` DONE
+      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+
+#### Round close
+
+- [ ] `<ts>` DONE
 ```
 
 ⛔ `[x]` line with any unreplaced `<…>` literal = fabricated done.
+`Reopens` in Meta equals round count minus one; rounds and prior handoffs are append-only.
 
 ### Post-task Hook
 
@@ -141,6 +148,47 @@ graph TD
     TSK-166 --> TSK-165
     TSK-161 --> TSK-165
     TSK-164 --> TSK-165
+    TSK-172[Agent Inbox pivot bootstrap] --> TSK-173
+    TSK-173 --> TSK-174
+    TSK-173 --> TSK-175
+    TSK-173 --> TSK-176
+    TSK-174 --> TSK-176
+    TSK-175 --> TSK-176
+    TSK-173 --> TSK-177
+    TSK-174 --> TSK-177
+    TSK-176 --> TSK-177
+    TSK-173 --> TSK-178
+    TSK-175 --> TSK-178
+    TSK-176 --> TSK-178
+    TSK-177 --> TSK-178
+    TSK-173 --> TSK-179
+    TSK-174 --> TSK-179
+    TSK-176 --> TSK-179
+    TSK-177 --> TSK-179
+    TSK-178 --> TSK-179
+    TSK-173 --> TSK-180
+    TSK-174 --> TSK-180
+    TSK-175 --> TSK-180
+    TSK-177 --> TSK-180
+    TSK-179 --> TSK-180
+    TSK-174 --> TSK-181
+    TSK-175 --> TSK-181
+    TSK-176 --> TSK-181
+    TSK-177 --> TSK-181
+    TSK-178 --> TSK-181
+    TSK-179 --> TSK-181
+    TSK-180 --> TSK-181
+    TSK-178 --> TSK-182
+    TSK-179 --> TSK-182
+    TSK-180 --> TSK-182
+    TSK-181 --> TSK-182
+    TSK-174 --> TSK-183
+    TSK-176 --> TSK-183
+    TSK-177 --> TSK-183
+    TSK-179 --> TSK-183
+    TSK-180 --> TSK-183
+    TSK-181 --> TSK-183
+    TSK-182 --> TSK-183
 ```
 
 ## Tracker Index
@@ -154,10 +202,12 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
-| agent-inbox       | product        | [README](agent-inbox/README.md)       | 15    | 15/15 |
+| agent-inbox       | product        | [README](agent-inbox/README.md)       | 27    | 15/27 |
 | mr-stats          | product        | [README](mr-stats/README.md)          | 2     | 2/2   |
 
 ## Decision Log
+
+- **D-219 (2026-08-10, agent-inbox v0 pivot):** TSK-156…170 remain immutable historical DONE evidence. Current root/module specs are scaffolded as TSK-172…183; none of the old role/attention tickets is treated as proof of the new product contracts.
 
 - **D-216 (2026-07-29, agent-inbox v2 полный ребилд):** Спеки agent-inbox переписаны с нуля (v2, D-301…D-331) по итогам дизайн-сессии: инцидент 2026-07-28 (глобальный мьютекс `_advancing`, 15-мин голодание MR) + серия прошлых live-багов показали, что v1-архитектура (RoleScheduler/RoleInstance/два графа/проекция из летучей памяти) несёт ложную модель мира. Старый DAG (`agent-inbox.task-80…155`, ~95 файлов) **удалён по решению оператора** (git-история сохраняет) — extend-dag поверх мёртвой архитектуры был бы отравлением трекера. Новый DAG: TSK-156…165, по одному тикету на модуль-спеку (AX_DAG_AND_TICKET_BOUNDARIES, дефолт), bootstrap TSK-156 — корень.
 - **D-217 (2026-07-29, не-дефолтные scaffold-выборы):** (1) Спеки v2 прошли 3 волны sdd-critic до скаффолда (2 CRITICAL закрыты: gate_verdict, волны линз; JournalPort-гонка) — тикеты стартуют с критикованной базы. (2) Bootstrap Requirements добиты в корневую спеку (§12) и Handoff Rules в модульные — обязательные секции scaffold. (3) BDD-review (STEP_4.6) — пакетно одним изолированным сабагентом на группу тикетов (10 тикетов одного скоупа с общей спек-базой), вместо 10 отдельных диспетчей.

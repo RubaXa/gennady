@@ -1,125 +1,135 @@
-# Module: inbox-eval (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-302 (метрики из датасета решений), §10 корневой спеки (приёмка)
+# Module: inbox-eval
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Харнесс приёмки и измерения: прогон сценариев S1–S8 на **реальном MR** (моки — только
-для UI-разработки, никогда для приёмки/демо — урок D-116) + **метрики схожести решений**
-из датасета журнала — количественный путь к финальной цели (автоном-эмулятор).
-
-Классы реализации: `MetricsCollector` (§3), `EvalHarness` (§2.1), `PortContractSuite` (test-infra, TSK-166).
+Evidence-backed deterministic and real-GitLab validation with explicit observed preconditions,
+legitimate skips and isolated effect safety. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-> История v1-харнесса (обязательна к прочтению исполнителем): [EVAL-BUILD-REFLECTION.md](EVAL-BUILD-REFLECTION.md).
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-## 2. Сценарные прогоны
+## 2. Module Usage Example
 
-| Прогон           | Проверяет                                 | Критерий PASS (измеримый)                                                                                                                    |
-| ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| boot (S1)        | фазы → ready                              | все фазы ≤ 5 мин; после ready ни одна карточка не сменила группу внимания >1 раза                                                            |
-| role_pickup (S2) | роль → очередь; mentioned → «ждут других» | журнал: `task_created` pipeline-задачи; ноль ручных актов                                                                                    |
-| pipeline (S3)    | слои 1–2, coverage, синтез с указателями  | PLAN.md содержит mandatory-дорожки; verdict-гейт в журнале; X-ray синтеза без инлайна результатов                                            |
-| events (S4/S5)   | коммит/тред → задача → виджет             | после пуша: `task_created(verify_fix\|delta_review)` ≤ 3 мин; после треда: `thread_triage` ≤ 3 мин                                           |
-| chat (S6)        | якорь → маршрут → ответ/мутация           | ответ содержит якорь; мутация: revision+1, `mutation` в журнале, undo возвращает снапшот                                                     |
-| effects (S7)     | идемпотентность, права резолва            | повторный effect → ровно 1 маркер аудита; resolve чужого → rejection + причина                                                               |
-| autonomy (S8)    | proposal → decision → градация            | proposal/decision в журнале; при accept ≥ 90% (n≥20) capability=auto в реестре                                                               |
-| parallel         | 2 MR, неблокирование                      | задача MR-B: queued→running ≤ 30 сек при running задаче MR-A (инцидент 2026-07-28). Прогон — на **seed-паре MR** (TSK-166, детерминированно) |
-| crash_recovery   | краш → восстановление                     | set(карточки до) == set(карточки после); очереди целы                                                                                        |
-| coverage_gate    | недочит → гейт → continue                 | гейт fail со списком файлов; `continue` той же сессии закрыл чеклист                                                                         |
-
-### 2.1 Поверхность харнесса
-
-`gennady inbox eval --mr <url> [--runs <list>] [--report <path>]` → пишет отчёт
-(default `~/.gennady/agent-inbox/eval-reports/<ts>.json`); exit code 0 = все прогоны
-PASS. REUSE: развивает существующий run-mode харнесс (`services/agent-inbox/serve/run-mode.ts`, путь `--mrs --once`), не новый вход.
-
-### 2.2 `eval-report.json`
-
-```json
-{
-  "mr": "...",
-  "ts": "...",
-  "runs": [{ "id": "pipeline", "status": "pass|fail", "evidence": ["..."] }],
-  "metrics": {
-    "acceptRate": { "<capability>": { "rate": 0.94, "n": 31 } },
-    "editRate": { "<capability>": { "rate": 0.12, "n": 31 } },
-    "timeToDecisionSec": { "median": 740, "p90": 3600 }
-  },
-  "verdict": "pass|fail"
-}
+```ts
+const probe = await harness.probe({ profile: 'real-readonly', mrs: explicitPool });
+const report = await harness.run(probe.pickRunnableScenarios());
+if (report.verdict !== 'PASS') explain(report);
 ```
 
-Тренд: append-only `eval-reports/trend.jsonl` (строка на прогон).
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-### 2.3 Предусловия стенда
+<!--SECTION:ENTITY_INVENTORY-->
 
-- MR: оператор — author или reviewer; ≥2 файла в диффе; для S5 — неотвеченный тред
-  (или скрипт создаёт через API).
-- Токен: scopes `api` (discussions) + `write` (пуш коммита в ветку MR для S4).
-- Fault-injection: S4 — скрипт пушит коммит; crash_recovery — SIGKILL серверу при
-  running задаче; coverage_gate — чеклист дорожки патчится доп. файлом до запуска.
-- Таймауты: sync ~1/мин → ожидание событий ≤ 3 мин.
+## 3. Entity Inventory (Closed-World)
 
-## 3. Метрики автономии (из датасета D-302)
+| Name                      | Type         | Purpose                                          |
+| ------------------------- | ------------ | ------------------------------------------------ |
+| `ReviewEvalRun`           | Entity       | Isolated execution of selected scenarios.        |
+| `ReviewEvalScenario`      | Entity       | Preconditions, steps and evidence criteria.      |
+| `ReviewPreconditionProbe` | Service      | Observe whether a real MR can exercise a branch. |
+| `ReviewEvalOutcome`       | Value Object | PASS, FAIL, SKIP or INCONCLUSIVE result.         |
+| `ReviewEvalReport`        | Entity       | Evidence, observations and aggregate verdict.    |
+| `ReviewEvalHarness`       | Service      | Compose profiles and execute scenarios.          |
+| `ReviewPortContractKit`   | Service      | Shared adapter conformance suite.                |
+| `RealReadonlyProfile`     | Adapter      | Real GitLab reads with all effects denied.       |
+| `RealEffectsProfile`      | Adapter      | Real GitLab effects restricted by allowlist.     |
 
-| Метрика                      | Источник              | Цель                                                                               |
-| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| accept-rate per capability   | proposal/decision     | ≥ порога D-302 (accept ≥ 90%, n ≥ 20) → градация в auto; отчёт обязан показывать n |
-| edit-rate + edit-diff размер | decision.verdict=edit | informational (не гейт): куда машина недотягивает                                  |
-| time-to-decision оператора   | ts proposal→decision  | informational: экономия времени человека                                           |
-| coverage-факт                | tool-trace × чеклист  | 100% прочтения                                                                     |
+<!--/SECTION:ENTITY_INVENTORY-->
 
-Отчёт: `eval-report.json` + человекочитаемая сводка + тренд по времени (как растёт
-схожесть решений).
+<!--SECTION:ENTITY_SURFACES-->
 
-## 4. Политика моков
+## 4. Entity Surfaces
 
-Моки допустимы только для разработки UI. Любая приёмка, демо и скриншоты — реальный
-GitLab, реальный MR, реальный журнал (урок: demo на моках скрыл реальные баги,
-2026-07-22). Mock-слой описан в отдельной существующей спеке `inbox-mocks`; здесь —
-только политика его использования.
+### Run, scenario, outcome and report
 
-## 4.1 Non-goals
+- **Public Operations:** select pool; probe; execute; attach evidence; aggregate verdict; explain skips/inconclusive state; reopen a saved run-id for diagnosis.
+- **Lifecycle:** unique run-id and isolated state root; report is immutable after close.
+- **Errors & Degradation:** infrastructure ambiguity becomes INCONCLUSIVE, not PASS or product FAIL.
+- **Consumers:** PM, architect and execution agents.
 
-Не CI-интеграция · не нагрузочное тестирование · не автозапуск по расписанию · не
-замена unit/e2e-тестам репозитория.
+### Harness, probes and contract kit
 
-## 5. Приёмка
+- **Public Operations:** inspect live prerequisites; run deterministic/readonly/effects suites; verify adapters uniformly.
+- **Lifecycle:** run-scoped; real state is never reset.
+- **Errors & Degradation:** missing scenario precondition produces justified SKIP; inability to observe it is INCONCLUSIVE.
+- **Consumers:** task acceptance and audits.
 
-§2 — полный регрессионный набор; **релизный гейт**: прогоны pipeline, parallel,
-crash_recovery + метрики (при n ≥ 20 per capability).
+### Real profiles
 
-1. Прогон pipeline на реальном MR: PASS + скриншоты стадий (план, дорожки, синтез,
-   виджеты).
-2. Метрики §3 посчитаны из реального журнала (выборка: неделя И n ≥ 20, что позже).
-3. Parallel-прогон воспроизводит инцидент и доказывает неблокирование.
+- **Public Operations:** bind explicit MR pool and permitted adapter set.
+- **Lifecycle:** created per run and physically isolated from work profile.
+- **Errors & Degradation:** missing allowlist disables effects profile before execution.
+- **Consumers:** harness.
+<!--/SECTION:ENTITY_SURFACES-->
 
-## Critic Rounds
+<!--SECTION:MODULE_CONTRACTS-->
 
-### Round 1 — 2026-07-29
+## 5. Module Contracts (DbC)
 
-- Verdict: NEEDS_WORK (6 MAJOR, 5 MINOR, 1 INFO)
-- Accepted: 9 — прогоны S2/S6/S8 добавлены, §2 vs §5 (полный набор vs релизный гейт), гейты переведены на измеримые критерии PASS, точка входа CLI `gennady inbox eval`, схема eval-report.json + trend.jsonl, предусловия стенда + fault-injection, D-116 раскрыт инлайном, выборка n≥20 вместо «недели», non-goals + владение inbox-mocks
-- Rejected: 0
-- Reconcile: CLI eval → REUSE существующий run-mode харнесс (TSK-119/121), не новый вход
-- Changes: §2 полная таблица + §2.1–2.3; §3 пороги D-302 + n; §4 D-116/mocks/non-goals; §5 релизный гейт
+- All-skipped and no-runnable-scenario reports cannot be green.
+- Every result records observed GitLab/profile preconditions and evidence addresses.
+- Tests adapt by skipping impossible branches, not by weakening their expected result.
+- Real-readonly never writes; real-effects writes only to explicit project/MR allowlist.
+- Acceptance and visual proof use rebuilt production dashboard with real GitLab/state unless mock proof was explicitly requested.
 
-### Round 2 — 2026-07-29
+### Saved run and profile contract
 
-- Stop: лимит оператора (2 раунда); R2-валидация не вернулась (пустой отчёт диспетчей) — правки R1 в силе, статус: недовалидировано
+- **Preconditions:** explicit non-production run-id, allowed profile combination and MR pool where required.
+- **Postconditions:** closed reports are immutable and can be reopened read-only with all evidence addresses.
+- **Invariants:** reopen never resumes effects; real-readonly never writes; real-effects never broadens its allowlist.
+- **Runtime Backing:** deterministic adapters or allowlisted real GitLab according to profile.
+- **Verification Levels:** unit, contract, integration and real-MR e2e.
+<!--/SECTION:MODULE_CONTRACTS-->
 
-## Handoff Rules Additions
+<!--SECTION:PUBLIC_OPTIONS-->
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+## 6. Public Options & Policies
 
-## 4.2 Drift-sentinel
+- Profiles: deterministic mock, real-readonly, real-effects.
+- Profile binding follows core combinations: `mock + deterministic-mock`, `test + real-readonly`, or `test + real-effects`; eval cannot open `production + real-work`.
+- MR pool is explicit input; implicit discovery may suggest candidates but cannot silently broaden effects scope.
+- Report statuses: `PASS`, `FAIL`, `SKIP`, `INCONCLUSIVE`.
+<!--/SECTION:PUBLIC_OPTIONS-->
 
-Прогоны на реальном MR — единственный слой, ловящий расхождение «фейк/кассета vs
-реальность» (TSK-166). Падение прогона при зелёных кассетных тестах = сигнал дрейфа
-внешнего API → кассеты перезаписываются, контракт-сьют обновляется.
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-eval/
+├── scenarios/
+├── probes/
+├── profiles/
+├── contracts/
+├── reports/
+└── harness/
+```
+
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- `D-EVAL-01`: adaptive means evidence-aware status, never adaptive assertion weakening.
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md), [VCS](../inbox-vcs/inbox-vcs.spec.md), [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [queue](../inbox-queue/inbox-queue.spec.md), [opencode](../inbox-opencode/inbox-opencode.spec.md), [chat](../inbox-chat/inbox-chat.spec.md), [API](../inbox-api/inbox-api.spec.md), [dashboard](../inbox-dashboard/inbox-dashboard.spec.md), and [mocks](../inbox-mocks/inbox-mocks.spec.md).
+- **Provides to:** task acceptance and SDD audit.
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Evolve existing harness and reports; preserve reflection lessons.
+- Add precondition probes and profile isolation before real effects scenarios.
+- Stack: TypeScript; node:test and Playwright. Module Rules Additions: existing visual-proof rules.
+<!--/SECTION:HANDOFF-->

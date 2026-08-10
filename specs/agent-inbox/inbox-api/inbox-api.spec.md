@@ -1,104 +1,134 @@
-# Module: inbox-api (v2 — полный рерайт)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-306 (проекции двух осей), D-309 (ошибка = видимое состояние), D-310 (транспорт)
-> · **канонический дом таблиц §5 корневой спеки**
+# Module: inbox-api
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-HTTP-сервер (zero-dep `node:http`) + SSE. Тонкая прослойка: **проекции** журнала и
-VCS-sync в DTO для дашборда. Никакой бизнес-логики; доска и лента никогда не читаются
-из летучей памяти executors — только из журнала + sync-снимка (D-306).
-
-Классы реализации: `BoardProjection`, `FeedProjection` (§1), `EnqueueRouter`, `DecisionRouter` (§2).
+Transport-neutral projections and typed HTTP/SSE boundary for the local dashboard.
+It exposes domain state but owns no review decisions. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. REST
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-| Метод | Путь                          | Ответ                                                                                                                                          |
-| ----- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET   | `/api/boot`                   | `BootDto {phase, progress, ready, error?}`                                                                                                     |
-| GET   | `/api/board`                  | `{groups: Record<AttentionState, MrRef[]>, cards: MrCard[], syncState: ok\|degraded}`                                                          |
-| GET   | `/api/state?mr=<ref>`         | батч: `{card, queue: TaskDto[], widgets: FeedWidget[]}`                                                                                        |
-| GET   | `/api/mr/:ref/feed?cursor=`   | `{widgets: FeedWidget[], nextCursor}`; выдача обновляет `lastReadAt` (read-cursor, inbox-core §3)                                              |
-| POST  | `/api/mr/:ref/task`           | `{type, params, dedupKey?}` → `{taskId, position}` (дедуп: явный dedupKey клиента, иначе серверный `type + canonical(params)`)                 |
-| GET   | `/api/mr/:ref/artifact?path=` | контент артефакта (traversal-guard)                                                                                                            |
-| POST  | `/api/mr/:ref/chat`           | `{text, anchor?}` → `{taskId\|turnId}`                                                                                                         |
-| POST  | `/api/mr/:ref/decision`       | `{proposalId, verdict: accept\|edit\|reject, payload?}` → accept/edit: `{taskId}` (effect в очередь); reject: `204` (запись decision в журнал) |
-| GET   | `/api/mr/:ref/stream`         | SSE (§3)                                                                                                                                       |
-| GET   | `/api/diagnostics?limit=`     | хвост серверного лога                                                                                                                          |
+## 2. Module Usage Example
 
-## 3. SSE-фреймы (один канал на MR для всего)
+```ts
+const board = await queries.board();
+const accepted = await commands.applyPackage(mr, selection);
+events.subscribe(mr, (frame) => reconcile(frame));
+```
 
-Wire-формат: `{event: <frame>, data: {...}}` (JSON на кадр). Роутеры — REUSE идиомы v1 zero-dep `http-server.ts` (chain of routers). Traversal root артефактов — `mrs/<key>/report/`.
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-Топология: `:ref` = encodeURIComponent целиком (`mail%2Fmessenger!174`). Страница MR
-держит один стрим; страница доски поллит `/api/board` 10–15 сек; `board_hint` и
-`dryrun` дублируются во **все активные MR-каналы** (дополнительного глобального стрима
-нет). При деградации sync — `board_hint` + `syncState: degraded` в board/state.
+<!--SECTION:ENTITY_INVENTORY-->
 
-| Фрейм           | Payload                                                |
-| --------------- | ------------------------------------------------------ |
-| `task_update`   | `{taskId, status, progress?}`                          |
-| `widget_update` | `{widgetId, bump?, resolved?, payload}`                |
-| `board_hint`    | `{}` — инвалидация доски; клиент догоняет `/api/board` |
-| `token`         | дельта текста хода чата (для стрим-пузыря)             |
-| `turn_done`     | ход завершён + итоговое сообщение                      |
-| `error`         | ход упал: `{code, message}`                            |
-| `mutation`      | предложение мутации артефакта (превью)                 |
-| `refresh`       | мутация применена/откачена — инвалидация артефакта     |
-| `dryrun`        | подавленные эффекты (broadcast-all)                    |
+## 3. Entity Inventory (Closed-World)
 
-## 4. DTO
+| Name                       | Type    | Purpose                                                                     |
+| -------------------------- | ------- | --------------------------------------------------------------------------- |
+| `ReviewBoardProjection`    | Query   | Two responsibility queues with unique MR cards.                             |
+| `ReviewFeedProjection`     | Query   | Ordered smart-widget feed and unread cursor.                                |
+| `ReviewMrProjection`       | Query   | Complete MR workspace state.                                                |
+| `ReviewPackageProjection`  | Query   | Current and stale selectable actions, invalidation and individual outcomes. |
+| `ReviewTestRunProjection`  | Query   | Adaptive test status and observed preconditions.                            |
+| `ProjectionPort`           | Port    | Build transport-neutral state views from canonical events/state.            |
+| `JournalProjectionAdapter` | Adapter | Production journal-backed projection implementation.                        |
+| `ReviewCommandRouter`      | Service | Validate and dispatch typed operator commands.                              |
+| `ReviewQueryRouter`        | Service | Serve projections without domain mutation.                                  |
+| `ReviewEventStream`        | Service | Per-MR SSE plus reconciliation cursor.                                      |
 
-| DTO          | Поля (ключевые)                                                                                                                                                                                                  |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MrCard`     | ref, title, author, **myRole**, **attention**, counters `{approvals:'n/m', reviewers:[{user,voted}], ci, threads:'open/total', awaitingMe, newCommits, unread}` , **work**: `{state, label, taskId?, startedAt}` |
-| `FeedWidget` | widgetId, type (`findings\|threads\|artifact\|gitlab\|plan\|progress\|action`), lastActivity, resolved, unread, payload*, anchors*                                                                               |
-| `TaskDto`    | taskId, type, status, position, dependsOn, createdBy, startedAt                                                                                                                                                  |
-| `BootDto`    | phase (`connect\|poll\|reconcile\|restore\|ready\|failed`), progress `{done,total,label}`, error?                                                                                                                |
+<!--/SECTION:ENTITY_INVENTORY-->
 
-\* `payload` — per-type схема: findings `{items:[{id,severity,file,line,summary,state}]}`, threads `{items:[{threadId,author,quote,factcheck,reactions[]}]}`,
-artifact `{path,title,attachments[]}`, gitlab `{event,data,taskId?}`, plan `{stage,tracksDone,tracksTotal,queuePosition}`, progress `{events[]}`, action `{effect,result}`.
-`anchors` — мета-якоря по схеме inbox-chat §2.
+<!--SECTION:ENTITY_SURFACES-->
 
-Ошибки домена — structured `{error: {code, message, anchor?}}`; коды — замкнутый набор (`not_found|invalid_input|conflict|degraded|forbidden`); статус-политика: доменные → 4xx+envelope, непредвиденные → 500. UI показывает как состояние виджета, не глотает (D-309).
+## 4. Entity Surfaces
 
-`lastReadAt`: обновляется при каждой выдаче `/feed` до max(ts выданных записей); unread/📬 = записи журнала после `lastReadAt` (inbox-core §3).
+### Projections
 
-`payload` FeedWidget — **discriminated union по `type`** (схемы per-type §4).
+- **Public Operations:** board, feed, MR detail, current/stale package and outcomes, artifacts and test report queries.
+- **Lifecycle:** rebuilt from journal/state; disposable transport models.
+- **Errors & Degradation:** freshness and partial/stale state are explicit.
+- **Consumers:** browser dashboard and eval reporter.
 
-## 5. Раздача статики
+### Projection contract
 
-SPA из `dist/inbox-serve` (сборка `npm run inbox-serve:build`). Сервер не собирает;
-устаревший бандл — операционная дисциплина (урок 2026-07-22/28).
+- **Public Operations:** project board/feed/MR/package/test views from a cursor; rebuild from canonical state.
+- **Lifecycle:** production adapter is journal-backed; deterministic adapter is used in tests.
+- **Errors & Degradation:** partial rebuild exposes cursor/freshness and never invents missing state.
+- **Consumers:** query router and SSE reconciliation.
 
-## 6. Приёмка
+### Command/query routers
 
-1. После `ready` доска никогда не мерцает «пусто → без роли → роли» (контрольный
-   сценарий инцидента).
-2. `POST /task` возвращает taskId синхронно; повтор с тем же dedupKey — тот же taskId.
-3. SSE: `task_update` прилетают без поллинга; разрыв → клиент реконсилирует `/api/state`.
-4. Все DTO соответствуют §4 (контракт-тесты).
+- **Public Operations:** verify now, apply/edit/reject package, retry effect, complete terminal MR, update description, generate handoff, acknowledge clipboard delivery, chat/mutate/undo.
+- **Lifecycle:** request-scoped; accepted command returns task/effect identity immediately.
+- **Errors & Degradation:** malformed/stale command is rejected before mutation.
+- **Consumers:** dashboard.
 
-## Critic Rounds
+### Event stream
 
-### Round 1 — 2026-07-29
+- **Public Operations:** subscribe by MR, stream progress/chat/projection/outcome frames, resume from cursor.
+- **Lifecycle:** reconnectable; polling reconciliation remains available.
+- **Errors & Degradation:** disconnect never implies task failure.
+- **Consumers:** dashboard.
+<!--/SECTION:ENTITY_SURFACES-->
 
-- Verdict: NEEDS_WORK (6 MAJOR)
-- Accepted: 8 — тип элементов groups (Record<Attention, MrRef[]>), источник dedupKey (явный клиентский или серверный type+canonical(params)), ответ POST /decision ({taskId} / 204), топология SSE для board-фреймов, degraded-канал (syncState), кодирование :ref (encodeURIComponent целиком), семантика фреймов раскрыта, payload per-type + anchors → inbox-chat §2
-- Rejected: 0
-- Reconcile: anchors → REUSE схема inbox-chat §2; progress BootDto → {done,total,label} как в inbox-core
-- Changes: §2 board/task/decision; §3 топология + фреймы; §4 DTO payload
+<!--SECTION:MODULE_CONTRACTS-->
 
-### Round 2 — 2026-07-29
+## 5. Module Contracts (DbC)
 
-- Stop: лимит оператора (2 раунда)
+- A board projection contains an MR exactly once.
+- Commands use version/batch identity to reject stale package application.
+- A stale package remains queryable with its bound revision, invalidating event/reason, disabled controls and replacement verification/task reference.
+- Optimistic acceptance is distinct from reconciled GitLab success.
+- The API starts before boot readiness is complete so progress remains observable.
+- Runtime backing: local HTTP and SSE; contract/integration/e2e verification.
+<!--/SECTION:MODULE_CONTRACTS-->
 
-## Handoff Rules Additions
+<!--SECTION:PUBLIC_OPTIONS-->
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+## 6. Public Options & Policies
+
+- Read-only opening before readiness is explicit and effect-disabled.
+- SSE reconnect uses bounded backoff and snapshot reconciliation.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-api/
+├── projections/
+├── dto/
+├── routers/commands/
+├── routers/queries/
+└── transport/http-sse/
+```
+
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- `D-API-01`: BoardProvider is migrated from RoleScheduler to journal-backed projections.
+- `D-API-02`: manual RoleRouter is retired.
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [core](../inbox-core/inbox-core.spec.md), [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [queue](../inbox-queue/inbox-queue.spec.md), [chat](../inbox-chat/inbox-chat.spec.md).
+- **Provides to:** [dashboard](../inbox-dashboard/inbox-dashboard.spec.md), [eval](../inbox-eval/inbox-eval.spec.md).
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Reuse HTTP server, SSE hub and artifact guards.
+- Replace role-based board provider after new projections are verified.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->

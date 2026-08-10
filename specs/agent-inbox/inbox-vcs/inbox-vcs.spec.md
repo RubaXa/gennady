@@ -1,123 +1,209 @@
-# Module: inbox-vcs (v2 — новый модуль)
-
-> Parent scope: [`../agent-inbox.spec.md`](../agent-inbox.spec.md) · владеет решениями:
-> D-304 (роль из GitLab), D-306 (ось внимания — §6.2 корня), D-323 (права резолва),
-> D-324 (фон-верификация) · использует (не владеет) реестр типов inbox-queue §3
+# Module: inbox-vcs
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Слой правды GitLab. Роль, стадия, ось внимания и счётчики карточки вычисляются
-**здесь и всегда из живых данных** — не из ручных актов и не из протухшего кэша.
-Единственный модуль, которому разрешено менять что-либо в GitLab (эффекты).
-
-Классы реализации: `BackgroundVerifier` (§4), `Effects` (§5).
+Единственная граница GitLab: полное чтение участия и MR facts, нормализация событий,
+безопасное выполнение effects и обязательная reconciliation. Parent: [agent-inbox](../agent-inbox.spec.md).
 
 <!--/SECTION:MODULE_VISION-->
 
-## 2. Двухъярусный набор полей
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
 
-| Ярус                                        | Когда                                                             | Поля                                                                                                                                               |
-| ------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🛰 poll (каждый sync, все MR, один GraphQL) | дёшево, пачкой                                                    | iid, title, webUrl, state, updatedAt, author, reviewers[], approvalState (n/m, approvedBy[]), headPipeline.status, sha, userNotesCount, **myRole** |
-| 🔬 detail (активные/видимые MR)             | активные MR — каждый sync (~1/мин); открытый в ленте — немедленно | discussions (треды, resolved, авторы, порядок сообщений, **position {path, line, headSha}**)                                                       |
+## 2. Module Usage Example
 
-`myRole`: author > reviewer > mentioned (приоритет как сейчас в inbox-merge).
-`mentioned` детектируется на detail-ярусе (упоминание @me в description/нотах/тредах —
-GitLab participants/mention notes); до detail-яруса роль mentioned считается
-предположительной.
+```ts
+const snapshot = await vcsRead.readMr(ref);
+await journal.appendAll(normalizer.diff(previous, snapshot));
+const outcome = await vcsEffects.apply(approvedEffect);
+await reconciler.record(outcome);
+```
 
-**AttentionState:** 5 значений + флаг `estimated: boolean` (не 6-е значение). Вход `deriveAttention({myRole, lastReviewedHeadSha, headSha, threads[], approvals{n,m,approvedByMe}, estimated})`. Строки 🔀 и ✅ вычисляются из poll-полей (sha, approvals), не из stage.
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
-**Внимание без detail-яруса (fallback):** для MR ещё без detail внимание вычисляется
-консервативно по poll-полям: sha изменился/нет моего ревью head → ⏳; остальное → 😴 с
-пометкой «оценочно» (карточка показывает, что данные уточняются). Строки оси 💬
-уточняются при первом detail-sync — «на каждом sync» читается как «на каждом
-detail-sync».
+<!--SECTION:ENTITY_INVENTORY-->
 
-## 2.1 Sync-снимок (DTO для inbox-api и seed-фикстур)
+## 3. Entity Inventory (Closed-World)
 
-`SyncSnapshot = {mr, role, attention, stage, approvals{n,m,approvedBy[]}, reviewers[], ci, threads{open,total,awaitingMe}, headSha, lastReviewedHeadSha, updatedAt, estimated}` — снимок последнего sync на MR; источник данных BoardProjection и `seedMr` (TSK-166).
+| Name                  | Type         | Purpose                                                                 |
+| --------------------- | ------------ | ----------------------------------------------------------------------- |
+| `VcsReadPort`         | Port         | Читать discovery, MR, discussions, approvals, commits и description.    |
+| `VcsEffectPort`       | Port         | Выполнять разрешённые GitLab actions.                                   |
+| `GitLabReadAdapter`   | Adapter      | Реальный GitLab read runtime.                                           |
+| `GitLabEffectAdapter` | Adapter      | Реальный GitLab effect runtime.                                         |
+| `ReadonlyEffectGuard` | Adapter      | Запрещать effects в readonly profile.                                   |
+| `VcsSnapshot`         | Value Object | Нормализованный снимок внешнего состояния MR.                           |
+| `VcsEventNormalizer`  | Service      | Превращать изменения снимка в `ReviewEvent`.                            |
+| `VcsSyncCoordinator`  | Service      | Владеть discovery, polling, cursors, retries and verification triggers. |
+| `VcsReconciler`       | Service      | Сверять заявленный effect с наблюдаемым GitLab outcome.                 |
+| `VcsPermissionPolicy` | Service      | Проверять права для resolve/reopen/approve и bot threads.               |
 
-## 3. Ось внимания (детерминированная функция)
+<!--/SECTION:ENTITY_INVENTORY-->
 
-| Условие                                                                | Внимание               |
-| ---------------------------------------------------------------------- | ---------------------- |
-| я ревьюер, текущий head не ревьюил                                     | ⏳ ждёт моё ревью      |
-| в тредах отвечали после меня / мои треды без ответа                    | 💬 ждёт мой ответ      |
-| я автор, неотвеченные/нерезолвнутые треды ревьюеров                    | 💬 ждёт мой ответ/фикс |
-| новые коммиты после моего последнего ревью (sha ≠ lastReviewedHeadSha) | 🔀 ждёт ре-ревью       |
-| всё чисто, не хватает только моего аппрува                             | ✅ ждёт мой аппрув     |
-| остальное                                                              | 😴 ждут других         |
+<!--SECTION:ENTITY_SURFACES-->
 
-Стадия МР (`review_needed/reply_needed/awaiting_reply/idle`) — **внутренний**
-промежуточный словарь inbox-vcs для решений очереди (какой тип задач ставить),
-вычисляется из discussions на каждом detail-sync. Наружу (DTO/доска) отдаётся только
-**AttentionState** — третьего словаря в UI нет (D-306). Маппинг:
-`review_needed→⏳ · reply_needed→💬 · awaiting_reply→😴(ждут других) · idle→😴`.
+## 4. Entity Surfaces
 
-`lastReviewedHeadSha`: пишет inbox-pipeline при прохождении `gate_verdict` (через
-журнал), кэшируется в реестре (inbox-core §3); до первого ревью — отсутствует (строка
-🔀 не применяется, действует ⏳).
+### `VcsReadPort`
 
-## 4. Фон-верификация (D-324)
+- **Type:** Port
+- **Public Operations:** discover participation; read MR detail; compare revisions; refresh selected pool.
+- **Lifecycle:** process-scoped; snapshots are immutable.
+- **Errors & Degradation:** unavailable GitLab returns explicit stale/unavailable state.
+- **Consumers:** sync, pipeline, eval.
 
-Активные MR (есть очередь/работа) опрашиваются ~1/мин (дешёвый poll по sha/updatedAt):
+### `VcsEffectPort`
 
-- sha изменился → `compareSha` → запись `gitlab_event(new_commits)` в журнал.
-- новые discussions → запись `gitlab_event(new_threads)` в журнал.
+- **Type:** Port
+- **Public Operations:** comment/reply, react, resolve/reopen allowed thread, approve/unapprove, request changes, edit description.
+- **Lifecycle:** every request has stable effect id and reconciled outcome.
+- **Errors & Degradation:** ambiguous transport failure remains unknown until reconciliation.
+- **Consumers:** effect coordinator.
 
-BackgroundVerifier **не вызывает очередь** (нет циклической зависимости vcs↔queue): события читает inbox-queue и сама ставит `verify_fix`/`delta_review`/`thread_triage` со supersede по dedupKey.
+### `GitLabReadAdapter`, `GitLabEffectAdapter`, `ReadonlyEffectGuard`
 
-- изменился pipeline → 🦊-событие в ленту (failed → enqueue разбор падения).
+- **Type:** Adapter
+- **Public Operations:** implement their respective ports.
+- **Lifecycle:** selected by runtime profile at composition root.
+- **Errors & Degradation:** API limits and permission failures retain GitLab evidence.
+- **Consumers:** production, real-readonly and real-effects profiles.
 
-## 5. Эффекты (единственная точка записи в GitLab)
+### `VcsSnapshot`
 
-| Эффект                                                 | Правила                                                                                                                                             |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `postNote(mr, body, discussionId?)` / `postDiscussion` | `postDiscussion` = postNote без discussionId (новый тред); идемпотентность по маркеру журнала; только по решению оператора/auto-mode                |
-| `react` (👍)                                           | идемпотентно                                                                                                                                        |
-| `resolve`                                              | **только свои треды и треды бота — и только в своих MR** (D-323); чужие — запрещено детерминированно; гонка (уже резолвнут руками) → no-op + журнал |
-| `approve`                                              | по гейту оператора или auto-mode capability                                                                                                         |
-| `editDescription`                                      | по решению оператора                                                                                                                                |
+- **Type:** Value Object
+- **Public Properties:** identity, state, timestamps, SHA, description, participants, notes, discussions, approvals, pipeline.
+- **Public Operations:** compare identity/revision; expose completeness markers.
+- **Lifecycle:** one immutable observation.
+- **Errors & Degradation:** partial fields carry source and freshness.
+- **Consumers:** normalizer and projections.
 
-Все эффекты — задачи типа `effect_*` в inbox-queue (последовательные, exclusiveWith).
-Маркер идемпотентности пишется в журнал **после** подтверждения GitLab; сбой сети на
-эффекте → задача `failed` + видимая причина (маркер не записан — безопасный retry).
+### `VcsEventNormalizer`
 
-**Failure-матрица steady-state:** rate-limit GraphQL → backoff по Retry-After (sync
-растягивается, не падает) · пагинация discussions → полный обход (MR со 100+ нотами) ·
-частичные данные (`headPipeline=null` → CI «—»; draft → исключён из активных) ·
-GitLab недоступен → syncState: degraded (корень §6.5).
+- **Type:** Service
+- **Public Operations:** calculate all MR changes between observations.
+- **Lifecycle:** stateless.
+- **Errors & Degradation:** uncertain delta emits refresh-required rather than a fabricated fine delta.
+- **Consumers:** core journal.
 
-## 6. Поверхности
+### `VcsSyncCoordinator`
 
-| Порт      | Методы                                                                                                                                                                                                                                                    |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VcsPort` | 12 методов: getCurrentUserLogin (identity), getInbox, getMrDetail, getDiscussions, compareSha, postNote(…, discussionId?), postDiscussion (alias нового треда), react, resolve, approve, editDescription, getHost (SSRF-валидация входящих URL, deeplink) |
+- **Type:** Service
+- **Public Operations:** initial open-MR discovery; periodic/detail refresh; explicit pool refresh; persist cursor; append normalized events in order; request verification trigger.
+- **Lifecycle:** one process-scoped coordinator with per-MR cursors and bounded retry.
+- **Errors & Degradation:** polling failure retains prior snapshot as stale, postpones effects and retries without advancing cursor.
+- **Consumers:** boot readiness, core journal and queue triggers.
 
-## 7. Приёмка
+### `VcsReconciler`
 
-1. На реальном MR роль подхвачена без единого ручного акта; «без роли» — только
-   mentioned-only.
-2. Ось внимания совпадает с фактическим состоянием GitLab на контрольном наборе MR
-   (таблица §3 как тест-кейсы).
-3. Стадия пересчитывается на sync: после ответа в треде стадия меняется без CLI-запусков.
-4. Попытка резолва чужого треда отклоняется детерминированно (аудит + видимая причина).
-5. Фон-верификация: пуш в ветку MR → verify_fix в очереди ≤ 2 мин.
+- **Type:** Service
+- **Public Operations:** classify effect as applied, failed, no-op or unknown; safely retry idempotent effect.
+- **Lifecycle:** invoked after every effect and recovery.
+- **Errors & Degradation:** unknown is never reported as success.
+- **Consumers:** queue and API.
 
-## Critic Rounds
+### `VcsPermissionPolicy`
 
-### Round 1 — 2026-07-29 (добивочная волна)
+- **Type:** Service
+- **Public Operations:** authorize action against operator identity, MR ownership and thread authorship.
+- **Lifecycle:** evaluated immediately before effect.
+- **Errors & Degradation:** missing identity or thread ownership denies mutation.
+- **Consumers:** effect adapter and package builder.
+<!--/SECTION:ENTITY_SURFACES-->
 
-- Verdict: CRITICAL (1 CRITICAL, 7 MAJOR, 2 MINOR)
-- Accepted: 10 — CRITICAL: ленивый detail-ярус против «внимание на каждом sync» → политика detail-fetch (активные каждый sync, открытый немедленно) + fallback-внимание по poll-полям + «на каждом detail-sync»; lastReviewedHeadSha (писатель = pipeline при gate_verdict, кэш = реестр); «стадия» = внутренний словарь + маппинг в AttentionState (третьего словаря в UI нет); postDiscussion = postNote без discussionId; шапка-владение (§6.2, реестр — не владеет); failure-матрица (rate-limit/пагинация/частичные/эффект-fail/гонка резолва); детекция mentioned (detail-ярус); position {path,line,headSha} в detail; getHost — JUSTIFY (SSRF + deeplink)
-- Rejected: 0
-- Reconcile: lastReviewedHeadSha → REUSE поле реестра inbox-core §3
-- Changes: §2 ярусы/fallback/mentioned/position; §3 маппинг стадии + источник SHA; §5 эффекты + failure-матрица; §6 порт; шапка
+<!--SECTION:MODULE_CONTRACTS-->
 
-## Handoff Rules Additions
+## 5. Module Contracts (DbC)
 
-- [typescript-rules](../../../ai/directives/coding/typescript-rules.xml) — impl-фазы (\*.ts)
-- [node-test](../../../ai/directives/testing/node-test.xml) (+ testing-common) — test-фазы
+### Read contract
+
+- **Runtime Backing:** GitLab real runtime; deterministic mock in tests.
+- **Verification Levels:** contract, integration, e2e.
+- Discovery includes author, reviewer, assignee, mention, comment and approval signals.
+- Initial discovery admits open MR only; tracked terminal MR remains eligible for local history.
+- MR with last activity older than three months is excluded from the active dashboard regardless of terminal/completed state; a newly observed event refreshes activity and may restore visibility.
+- Commits, description changes, discussion creation/edit/reply/resolve, approvals, pipeline changes and other observable MR mutations are normalized as events; no supported event may update a snapshot silently.
+- Initial discovery, periodic sync and recovery reconciliation use the same coordinator and cursor ordering contract.
+
+### Effect contract
+
+- **Runtime Backing:** GitLab, readonly guard or mock-effects adapter.
+- Every effect is permission-checked, idempotency-addressed and reconciled.
+- Resolve truth table: an operator-authored thread is allowed; an allowlisted-bot thread is allowed only when the operator is MR author; every other thread is denied.
+- A failed independent effect does not roll back successful siblings.
+
+#### `request_changes`
+
+- **Preconditions:** current GitLab adapter capability probe reports native request-changes support; operator has reviewer permission; effect is bound to current MR revision and contains the blocking review body.
+- **Stable identity:** hash of MR, revision/change batch, action kind and normalized body.
+- **Postconditions:** a fresh GitLab read observes the operator reviewer state as `requested_changes` on the bound revision.
+- **Reconciliation:** transport ambiguity triggers read-before-retry; an already observed state is a no-op success.
+- **Unsupported host:** capability probe prevents creation of the effect. The package marks the native action unavailable with evidence and may offer an explicit alternative group “blocking comment + unapprove”; the adapter never substitutes it silently and therefore emits no `ReviewOutcome` for an uncreated effect.
+- **Runtime Backing:** capability-selected GitLab native review-state endpoint.
+- **Verification Levels:** contract and allowlisted real-adapter integration in TSK-174; shippable-entry real-effects e2e is owned by TSK-183.
+
+#### Resolve/reopen permission truth table
+
+| Thread author          | Operator is MR author | Manual                         | Automatic after verified fix |
+| ---------------------- | --------------------: | ------------------------------ | ---------------------------- |
+| operator               |                   any | allow                          | allow                        |
+| allowlisted review bot |                   yes | allow                          | allow                        |
+| allowlisted review bot |                    no | deny: operator does not own MR | deny                         |
+| other human/bot        |                   any | deny: foreign thread           | deny                         |
+
+`reopen` follows the same ownership permission; automatic reopen is not enabled in v0.
+
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+
+## 6. Public Options & Policies
+
+- GitLab host and operator identity are required boot inputs.
+- Bot thread allowlist is explicit.
+- Real-effects tests require explicit project/MR allowlist; absence disables writes.
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+
+## 7. File Structure
+
+```text
+inbox-vcs/
+├── types/
+├── ports/
+├── adapters/gitlab/
+├── policies/
+├── sync/
+└── reconciliation/
+```
+
+The legacy `VcsInbox*` hierarchy is removed after migration.
+
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+
+## 8. Module Decision Log
+
+- `D-VCS-01`: GitLab is canonical for external state; journal is canonical for local process history.
+- `D-VCS-02`: reads and effects are separate ports because readonly and real-effects profiles vary independently.
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+
+## 9. Inter-Module Dependencies
+
+- **Depends on:** [inbox-core](../inbox-core/inbox-core.spec.md).
+- **Provides directly to:** [pipeline](../inbox-pipeline/inbox-pipeline.spec.md), [queue](../inbox-queue/inbox-queue.spec.md), [eval](../inbox-eval/inbox-eval.spec.md). API observes VCS transitively through pipeline/queue.
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:HANDOFF-->
+
+## 10. Handoff to task-scaffolding
+
+- Consolidate the two existing VCS implementations; do not create a third.
+- Extend sync before migrating BoardProvider and legacy scheduler consumers.
+- Contract tests run against real, readonly and mock implementations.
+- Stack: TypeScript; node:test. Module Rules Additions: None.
+<!--/SECTION:HANDOFF-->
