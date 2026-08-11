@@ -1,12 +1,14 @@
 // @file: SessionRouterPort + SessionRouter — table §4.2 mapping task types to session actions (reuse_producer if alive / new_fresh / operator_chat), engine tasks pass through
 // @consumers: Executor
-// @tasks: TSK-159
+// @tasks: TSK-159, TSK-175
 
 import { logger } from '#logger';
 import type { TaskInstance } from './task-registry.ts';
 import type { TaskRegistry } from './task-registry.ts';
 import { SessionPool } from '../inbox-opencode/session-pool.ts';
 import type { PoolCreateOpts } from '../inbox-opencode/session-pool.ts';
+import type { AgentSessionLifecycle } from '../inbox-opencode/session-lifecycle.ts';
+import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';
 
 /**
  * @purpose Contract surface for routing a task to an opencode session per the routing table.
@@ -75,17 +77,30 @@ export class SessionRouter implements SessionRouterPort {
   protected _producerSessions: Map<string, Map<string, string>>;
   /** @purpose MR → operator chat sessionId cache. */
   protected _operatorSessions: Map<string, string>;
+  /** @purpose Canonical lifecycle route used by production when available. */
+  protected _lifecycle?: AgentSessionLifecycle;
+  /** @purpose Physical profile namespace that constrains reuse. */
+  protected _runtimeNamespace: ReviewStateNamespace;
 
   /**
    * @purpose Create a session router backed by the given session pool.
    * @param pool SessionPool for creating/managing opencode sessions.
    * @param registry TaskRegistry for type lookups.
+   * @param [lifecycle] Canonical semantic lifecycle used by production routing.
+   * @param [runtimeNamespace] Physical state namespace constraining session reuse.
    */
-  constructor(pool: SessionPool, registry: TaskRegistry) {
+  constructor(
+    pool: SessionPool,
+    registry: TaskRegistry,
+    lifecycle?: AgentSessionLifecycle,
+    runtimeNamespace: ReviewStateNamespace = 'production'
+  ) {
     this._pool = pool;
     this._registry = registry;
     this._producerSessions = new Map();
     this._operatorSessions = new Map();
+    this._lifecycle = lifecycle;
+    this._runtimeNamespace = runtimeNamespace;
     logger.debug('[SessionRouter#constructor] [init → ready]');
   }
 
@@ -151,6 +166,13 @@ export class SessionRouter implements SessionRouterPort {
       title: `${mr}::${task.type}`,
       directory: process.cwd(),
       model: (task.params.model as string) || undefined,
+      registration: {
+        taskId: task.taskId,
+        mr,
+        context: 'producer',
+        sha: typeof task.params.sha === 'string' ? task.params.sha : undefined,
+        runtimeNamespace: this._runtimeNamespace,
+      },
     };
     try {
       const sid = await this._pool.create(opts);
@@ -181,6 +203,13 @@ export class SessionRouter implements SessionRouterPort {
       title: `${mr}::${task.type}#${task.taskId}`,
       directory: process.cwd(),
       model: (task.params.model as string) || undefined,
+      registration: {
+        taskId: task.taskId,
+        mr,
+        context: 'independent',
+        sha: typeof task.params.sha === 'string' ? task.params.sha : undefined,
+        runtimeNamespace: this._runtimeNamespace,
+      },
     };
     try {
       const sid = await this._pool.create(opts);
@@ -200,14 +229,21 @@ export class SessionRouter implements SessionRouterPort {
 
   /**
    * @purpose Route to operator_chat — return the per-MR chat session singleton, creating if absent.
-   * @param _task Task instance (unused — operator chat is MR-scoped).
+   * @param task Task instance supplying queue provenance for the operator session.
    * @param mr MR reference.
    * @returns Session identifier of the operator chat.
    * @sideEffect May create a new session via SessionPool.
    */
-  protected async _routeOperatorChat(_task: TaskInstance, mr: string): Promise<string> {
+  protected async _routeOperatorChat(task: TaskInstance, mr: string): Promise<string> {
+    const lifecycleRoute = await this._lifecycle?.route({
+      policy: 'operator',
+      taskId: task.taskId,
+      mr,
+      runtimeNamespace: this._runtimeNamespace,
+    });
+    if (lifecycleRoute?.action === 'continue') return lifecycleRoute.sessionId;
     const existing = this._operatorSessions.get(mr);
-    if (existing) {
+    if (existing && this._pool.isActive(existing)) {
       logger.debug(`[SessionRouter#route_operator] [existing → reused] mr=${mr} sid=${existing}`);
       return existing;
     }
@@ -216,6 +252,12 @@ export class SessionRouter implements SessionRouterPort {
       title: `${mr}::operator_chat`,
       directory: process.cwd(),
       priority: 'operator',
+      registration: {
+        taskId: task.taskId,
+        mr,
+        context: 'operator',
+        runtimeNamespace: this._runtimeNamespace,
+      },
     };
     try {
       const sid = await this._pool.create(opts);

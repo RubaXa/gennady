@@ -1,6 +1,6 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
-// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160
+// @tasks: TSK-113, TSK-121, TSK-124, TSK-141, TSK-142, TSK-143, TSK-160, TSK-175
 
 import { join, dirname } from 'node:path';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
@@ -28,6 +28,7 @@ import type {
 import type { VcsInboxPort, MrContext, Discussion } from '../inbox-core/vcs-inbox.port.ts';
 import type {
   OpenCodePort,
+  AgentRuntimeResult,
   PromptOpts,
   ToolCallStat,
   ToolTraceEntry,
@@ -124,6 +125,20 @@ function _resolveSessionTools(policy: SessionPolicy | undefined): boolean | Tool
     return write === undefined ? { bash, read, grep } : { bash, read, grep, write };
   }
   return policy?.tools === true;
+}
+
+/** @purpose Preserve legacy role classification while runtime execution uses the attributed port. */
+function _toOpenCodeCallResult(result: AgentRuntimeResult): OpenCodeCallResult {
+  if (result.ok) return { ok: true, output: result.output };
+  return {
+    ok: false,
+    error: {
+      class: result.outcome,
+      signal: result.signal,
+      raw: result.raw,
+      retry: result.retry,
+    },
+  };
 }
 
 /**
@@ -708,6 +723,9 @@ export class RoleInstance {
           taskId: `${this.role}:${node.id}`,
           mr: this.mr,
           artifacts: Object.keys(ctx.artifacts),
+          context: 'producer' as const,
+          sha: typeof ctx.artifacts['headSha'] === 'string' ? ctx.artifacts['headSha'] : undefined,
+          runtimeNamespace: this._store.getRuntimeProfile?.()?.stateNamespace ?? 'production',
         },
       };
       if (this._reviewSessionPool) {
@@ -762,9 +780,16 @@ export class RoleInstance {
       }
     );
 
-    const result: OpenCodeCallResult = this._reviewSessionPool
-      ? await this._reviewSessionPool.prompt(this._sessionId, promptOpts)
-      : await this._opencode.prompt(this._sessionId, promptOpts);
+    const runtimeRequest = {
+      sessionId: this._sessionId,
+      taskId: `${this.role}:${node.id}`,
+      model: node.policy?.model ?? 'default',
+      prompt: promptOpts,
+    };
+    const runtimeResult = this._reviewSessionPool
+      ? await this._reviewSessionPool.run(runtimeRequest)
+      : await this._opencode.run(runtimeRequest);
+    const result = _toOpenCodeCallResult(runtimeResult);
     await recordSessionResponse(
       this._store.getStateDir(),
       _xrayRef,
@@ -970,6 +995,9 @@ export class RoleInstance {
         taskId: `${this.role}:${spec.id}`,
         mr: this.mr,
         artifacts: Object.keys(ctx.artifacts),
+        context: 'independent' as const,
+        sha: typeof ctx.artifacts['headSha'] === 'string' ? ctx.artifacts['headSha'] : undefined,
+        runtimeNamespace: this._store.getRuntimeProfile?.()?.stateNamespace ?? 'production',
       },
     };
 
@@ -1023,9 +1051,16 @@ export class RoleInstance {
     let restartCount = 0;
 
     for (;;) {
-      const result = this._reviewSessionPool
-        ? await this._reviewSessionPool.prompt(sid, promptOpts)
-        : await this._opencode.prompt(sid, promptOpts);
+      const runtimeRequest = {
+        sessionId: sid,
+        taskId: `${this.role}:${spec.id}`,
+        model: spec.policy?.model ?? 'default',
+        prompt: promptOpts,
+      };
+      const runtimeResult = this._reviewSessionPool
+        ? await this._reviewSessionPool.run(runtimeRequest)
+        : await this._opencode.run(runtimeRequest);
+      const result = _toOpenCodeCallResult(runtimeResult);
       await recordSessionResponse(
         this._store.getStateDir(),
         _xrayRef,
@@ -1075,10 +1110,17 @@ export class RoleInstance {
         }
         // continueSignal has no SessionPool-level equivalent — it targets an EXISTING session,
         // never creates one, so it does not affect the pool's slot accounting.
-        await this._opencode.continueSignal(sid, {
-          text: remediation.signal ?? 'Retry with the same prompt',
-          model: spec.policy?.model,
-        });
+        const continuation = {
+          sessionId: sid,
+          taskId: `${this.role}:${spec.id}`,
+          model: spec.policy?.model ?? 'default',
+          prompt: {
+            text: remediation.signal ?? 'Retry with the same prompt',
+            model: spec.policy?.model,
+          },
+        };
+        if (this._reviewSessionPool) await this._reviewSessionPool.continue(continuation);
+        else await this._opencode.continue(continuation);
         continue;
       }
 
@@ -1580,10 +1622,14 @@ export class RoleInstance {
           // Continue: send continuation signal to same session
           if (this._sessionId) {
             const signal = remediation.signal ?? 'Retry with the same prompt';
-            await this._opencode.continueSignal(this._sessionId, {
-              text: signal,
-              model: node.policy?.model,
-            });
+            const continuation = {
+              sessionId: this._sessionId,
+              taskId: `${this.role}:${node.id}`,
+              model: node.policy?.model ?? 'default',
+              prompt: { text: signal, model: node.policy?.model },
+            };
+            if (this._reviewSessionPool) await this._reviewSessionPool.continue(continuation);
+            else await this._opencode.continue(continuation);
           }
           await this._appendAudit(
             'continued',

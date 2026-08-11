@@ -1,6 +1,6 @@
 // @file: ChatRouter — thin HTTP↔SSE bridge over inbox-chat's ChatSession (D-111, no business logic here).
 // @consumers: HttpServer
-// @tasks: TSK-129, TSK-162, TSK-163
+// @tasks: TSK-129, TSK-162, TSK-163, TSK-175
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
@@ -252,7 +252,7 @@ export class ChatRouter {
         anchor: body.anchor,
       });
       const task = this._deps.queue.instance(mrRef, queued.taskId);
-      if (task) session.adoptSid(await this._deps.sessionRouter.route(task, mrRef));
+      if (task) session.adoptSid(await this._deps.sessionRouter.route(task, mrRef), task.taskId);
     }
 
     sendJson(res, 202, { ok: true });

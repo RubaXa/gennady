@@ -1,6 +1,6 @@
 // @file: Unit tests for PromptCompiler — pointers not inlined, schema in task not system, Handlebars partials.
 // @consumers: node:test runner
-// @tasks: TSK-160
+// @tasks: TSK-160, TSK-175
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,9 @@ function createCompiler() {
 function makeContext(overrides?: Partial<CompileContext>): CompileContext {
   return {
     taskPointer: 'tasks/my-task.md',
-    artifacts: [],
+    repositoryRoot: '/workspace/gennady',
+    sha: '89c07ef',
+    artifactAddresses: [],
     mr: 'https://gitlab.example.com/foo/bar/-/merge_requests/42',
     ...overrides,
   };
@@ -75,7 +77,7 @@ describe('PromptCompiler', () => {
     it('should list artifact file paths, not their content', () => {
       const compiler = createCompiler();
       const ctx = makeContext({
-        artifacts: ['out/result.json', 'telemetry/tool-trace.jsonl'],
+        artifactAddresses: ['out/result.json', 'telemetry/tool-trace.jsonl'],
       });
 
       const result = compiler.compile(ctx);
@@ -87,7 +89,7 @@ describe('PromptCompiler', () => {
 
     it('should omit artifact section when no artifacts', () => {
       const compiler = createCompiler();
-      const ctx = makeContext({ artifacts: [] });
+      const ctx = makeContext({ artifactAddresses: [] });
 
       const result = compiler.compile(ctx);
 

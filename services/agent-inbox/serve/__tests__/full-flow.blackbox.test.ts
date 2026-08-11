@@ -4,7 +4,7 @@
 //   opencode.real.blackbox.test.ts (each adapter alone, D-212) by proving the SAME network seam
 //   holds when both are wired together through the real reviewer graph, not a hand-built one.
 // @consumers: node:test runner
-// @tasks: TSK-150, TSK-167, TSK-170
+// @tasks: TSK-150, TSK-167, TSK-170, TSK-174
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -158,21 +158,37 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
 
   it('drives a real reviewer MR to a terminal state with both backends faked at the network layer', async () => {
     // #region SETUP_GITLAB_INTERCEPTS — discovery (GraphQL) + per-MR REST (getByIid, /user)
-    const graphqlTracker = mockEnv.interceptOnce('POST', `https://${HOST}/api/graphql`, (req) => {
-      assert.match(req.body ?? '', /reviewRequestedMergeRequests/);
+    const graphqlReply = (req: { body: string | null }) => {
+      const body = req.body ?? '';
+      const sources =
+        body.match(
+          /todos\(|reviewRequestedMergeRequests\(|assignedMergeRequests\(|authoredMergeRequests\(/g
+        ) ?? [];
+      assert.strictEqual(sources.length, 1);
+      const source = sources[0]!.slice(0, -1);
+      assert.match(body, new RegExp(`${source}\\(first: 100`));
       return {
         status: 200,
         body: {
           data: {
             currentUser: {
               todos: { nodes: [] },
-              reviewRequestedMergeRequests: { nodes: [mrNode()] },
+              reviewRequestedMergeRequests: {
+                nodes: source === 'reviewRequestedMergeRequests' ? [mrNode()] : [],
+              },
+              assignedMergeRequests: { nodes: [] },
               authoredMergeRequests: { nodes: [] },
             },
           },
         },
       };
-    });
+    };
+    const graphqlTracker = mockEnv.interceptMultiple('POST', `https://${HOST}/api/graphql`, [
+      graphqlReply,
+      graphqlReply,
+      graphqlReply,
+      graphqlReply,
+    ]);
 
     // `getMrContext` is re-fetched by `RoleInstance#_buildContext` on EVERY `step()` (plus once
     // upfront by `_runOneMr`'s own role check, plus once more by `buildNodeContext`'s initial
@@ -304,7 +320,7 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
     // #endregion ASSERT_TERMINAL_STATE
 
     // #region ASSERT_BOTH_BACKENDS_ACTUALLY_INTERCEPTED — disableNetConnect never threw, per-endpoint proof
-    assert.strictEqual(graphqlTracker.getAttemptCount(), 1);
+    assert.strictEqual(graphqlTracker.getAttemptCount(), 4);
     assert.ok(
       mrContextTracker.getAttemptCount() > 0,
       'MR-context REST endpoint must have been hit'

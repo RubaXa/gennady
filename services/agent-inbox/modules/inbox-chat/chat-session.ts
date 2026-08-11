@@ -1,6 +1,6 @@
 // @file: ChatSession — per-MR opencode session from the shared SessionPool: one turn at a time, stream+Stop, read/local-only tool-scope (D-88, D-103).
 // @consumers: inbox-api ChatRouter (TSK-129)
-// @tasks: TSK-126, TSK-160
+// @tasks: TSK-126, TSK-160, TSK-175
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '#logger';
@@ -57,6 +57,8 @@ export class ChatSession {
   readonly mrRef: string;
   /** @purpose Server-issued session id from SessionPool, or null before the first ask() */
   sid: string | null = null;
+  /** @purpose Queue task provenance for the current operator turn. */
+  protected _taskId: string;
   /** @purpose True while a turn is in flight — gates `ask()` per D-104 */
   busy = false;
   /** @purpose Chips attached to the most recent turn — current chat context */
@@ -66,6 +68,8 @@ export class ChatSession {
   protected _pool: SessionPool;
   /** @purpose Gennady state root (NFC-05) */
   protected _stateDir: string;
+  /** @purpose Validated state/profile boundary used for session namespace attribution. */
+  protected _store: StateStore;
   /** @purpose Per-turn context builder */
   protected _assembler: ContextAssembler;
   /** @purpose Persistent transcript accessor */
@@ -90,10 +94,12 @@ export class ChatSession {
     mrRef: string;
   }) {
     this._pool = deps.pool;
+    this._store = deps.store;
     this._stateDir = deps.store.getStateDir();
     this._assembler = deps.assembler;
     this._transcript = new ChatTranscript(this._stateDir);
     this.mrRef = deps.mrRef;
+    this._taskId = `chat:${this.mrRef}`;
   }
 
   /**
@@ -121,9 +127,11 @@ export class ChatSession {
   /**
    * @purpose Adopt the SID chosen by the shared queue SessionRouter before asking OpenCode.
    * @param sid Operator-chat session selected for this MR, if the task is engine-only.
+   * @param [taskId] Queue task provenance associated with the selected session.
    */
-  adoptSid(sid: string | undefined): void {
+  adoptSid(sid: string | undefined, taskId?: string): void {
     if (sid) this.sid = sid;
+    if (taskId) this._taskId = taskId;
   }
 
   /**
@@ -170,7 +178,12 @@ export class ChatSession {
           // Shared MR parent (worktree + report siblings, TSK-131) — same fix as review-lens
           // sessions: a chat turn's tools must reach both without an external-directory permission.
           directory: mrRoot(this._stateDir, this.mrRef),
-          registration: { taskId: `chat:${this.mrRef}`, mr: this.mrRef },
+          registration: {
+            taskId: this._taskId,
+            mr: this.mrRef,
+            context: 'operator',
+            runtimeNamespace: this._runtimeNamespace(),
+          },
         });
       }
 
@@ -178,21 +191,24 @@ export class ChatSession {
 
       // A chat turn is conversational: the answer is FREE PROSE (streamable), NOT forced JSON.
       // No `format` → opencode returns the raw text; mutations are parsed opportunistically below.
-      const promptResult = await this._pool.prompt(this.sid, {
-        system: context.system,
-        text: opts.text,
+      const promptResult = await this._pool.run({
+        sessionId: this.sid,
+        taskId: this._taskId,
+        model: 'default',
+        prompt: { system: context.system, text: opts.text },
       });
 
       if (!promptResult.ok) {
         logger.warn('[ChatSession#ask] [prompting → session_error]', {
           mrRef: this.mrRef,
-          class: promptResult.error.class,
+          class: promptResult.outcome,
         });
-        return composeChatError(
-          'SESSION_ERROR',
-          promptResult.error.signal ?? `opencode prompt failed (${promptResult.error.class})`,
-          promptResult.error
-        );
+        return composeChatError('SESSION_ERROR', promptResult.signal, {
+          class: promptResult.outcome,
+          signal: promptResult.signal,
+          raw: promptResult.raw,
+          retry: promptResult.retry,
+        });
       }
 
       const rawText =
@@ -273,5 +289,13 @@ export class ChatSession {
     // #endregion END_REPLAY_WITH_STOP_TRUNCATION
 
     return emitted;
+  }
+
+  /**
+   * @purpose Bind operator session identity to the StateStore's validated runtime namespace.
+   * @returns Current validated namespace, or production for legacy explicitly rooted stores.
+   */
+  protected _runtimeNamespace(): 'production' | 'test' | 'mock' {
+    return this._store.getRuntimeProfile()?.stateNamespace ?? 'production';
   }
 }

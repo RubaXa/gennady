@@ -1,9 +1,12 @@
-// @file: SessionLifecycle — park/resume/close, idle-TTL (default 45min), session state machine.
+// @file: AgentSessionLifecycle — semantic routing plus park/resume/close and controlled TTL.
 // @consumers: inbox-opencode (UnifiedPool)
-// @tasks: TSK-160
+// @tasks: TSK-160, TSK-175
 
 import { logger } from '#logger';
-import type { EventJournal } from '../inbox-core/event-journal.ts';
+import type { JournalPort } from '../inbox-core/event-journal.ts';
+import type { ClockPort } from '../inbox-core/ports/clock.port.ts';
+import { SystemClock } from '../inbox-core/adapters/system-clock.ts';
+import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';
 import type { SessionRegistry } from './session-registry.ts';
 import type { OpenCodePort } from './opencode.port.ts';
 
@@ -23,7 +26,34 @@ export type SessionLifecycleConfig = {
    * @returns Completion once shared pool capacity is reconciled.
    */
   onClosed?: (sessionId: string) => void | Promise<void>;
+  /** @purpose Canonical clock boundary shared with deterministic runtime-profile tests. */
+  clock?: ClockPort;
 };
+
+/** @purpose Semantic context request evaluated against the one shared session registry. */
+type AgentSessionRouteBase = {
+  /** @purpose Required context semantics for this task. */
+  /** @purpose Current task identity. */
+  taskId: string;
+  /** @purpose Canonical MR identity isolating operator and producer sessions. */
+  mr: string;
+  /** @purpose Physically isolated runtime namespace required for reuse. */
+  runtimeNamespace: ReviewStateNamespace;
+};
+
+/** @purpose Closed semantic route request; coverage retries must identify their producer. */
+export type AgentSessionRouteRequest =
+  | (AgentSessionRouteBase & {
+      policy: 'coverage_retry';
+      /** @purpose Producer task whose context coverage recovery must continue. */
+      producerTaskId: string;
+    })
+  | (AgentSessionRouteBase & { policy: 'widen' | 'fact_check' | 'operator' });
+
+/** @purpose Session route decision that makes fresh-run requirements explicit. */
+export type AgentSessionRoute =
+  | { action: 'continue'; sessionId: string }
+  | { action: 'fresh'; reason: 'independent_context' | 'missing_context' | 'expired_context' };
 
 const DEFAULT_IDLE_TTL_MS = 45 * 60 * 1000;
 
@@ -34,17 +64,19 @@ const DEFAULT_IDLE_TTL_MS = 45 * 60 * 1000;
  * @invariant reapExpired() closes parked sessions exceeding TTL — call periodically.
  * @invariant resume() within TTL returns true; expired → false and the session is closed.
  */
-export class SessionLifecycle {
+export class AgentSessionLifecycle {
   /** @purpose Session registry for state lookups and mutations. */
   protected _registry: SessionRegistry;
   /** @purpose Event journal for lifecycle event logging. */
-  protected _journal: EventJournal;
+  protected _journal: JournalPort;
   /** @purpose Idle TTL in milliseconds — parked sessions older than this are reaped. */
   protected _ttlMs: number;
   /** @purpose Live adapter bound by bootstrap; absent only in isolated legacy unit tests. */
   protected _opencode: OpenCodePort | undefined;
   /** @purpose Callback into the shared pool so TTL close cannot leave a stale occupied slot. */
   protected _onClosed: ((sessionId: string) => void | Promise<void>) | undefined;
+  /** @purpose Canonical clock used for lifecycle timestamps and deterministic expiry. */
+  protected _clock: ClockPort;
 
   /**
    * @purpose Create a session lifecycle manager bound to a registry and journal.
@@ -55,7 +87,7 @@ export class SessionLifecycle {
    */
   constructor(
     registry: SessionRegistry,
-    journal: EventJournal,
+    journal: JournalPort,
     opencode?: OpenCodePort,
     config?: SessionLifecycleConfig
   ) {
@@ -64,6 +96,7 @@ export class SessionLifecycle {
     this._opencode = opencode;
     this._ttlMs = config?.idleTtlMs ?? DEFAULT_IDLE_TTL_MS;
     this._onClosed = config?.onClosed;
+    this._clock = config?.clock ?? new SystemClock();
     logger.debug('[SessionLifecycle#constructor] [init → ready]', { ttlMs: this._ttlMs });
   }
 
@@ -79,7 +112,7 @@ export class SessionLifecycle {
     }
     entry.state = 'work';
     void this._journal.append({
-      ts: new Date().toISOString(),
+      ts: this._clock.now(),
       mr: entry.mr,
       kind: 'task_status',
       actor: 'inbox-opencode',
@@ -101,9 +134,9 @@ export class SessionLifecycle {
     }
     await this._opencode?.park(sessionId);
     entry.state = 'park';
-    entry.parkedAt = new Date().toISOString();
+    entry.parkedAt = this._clock.now();
     const seq = await this._journal.append({
-      ts: new Date().toISOString(),
+      ts: this._clock.now(),
       mr: entry.mr,
       kind: 'task_status',
       actor: 'inbox-opencode',
@@ -141,7 +174,7 @@ export class SessionLifecycle {
 
     // #region START_CHECK_TTL — expired → close, not expired → resume
     if (entry.parkedAt) {
-      const parkedMs = Date.now() - new Date(entry.parkedAt).getTime();
+      const parkedMs = Date.parse(this._clock.now()) - Date.parse(entry.parkedAt);
       if (parkedMs > this._ttlMs) {
         logger.info('[SessionLifecycle#resume] [park → expired]', {
           sessionId,
@@ -162,7 +195,7 @@ export class SessionLifecycle {
     entry.state = 'work';
     entry.parkedAt = undefined;
     await this._journal.append({
-      ts: new Date().toISOString(),
+      ts: this._clock.now(),
       mr: entry.mr,
       kind: 'task_status',
       actor: 'inbox-opencode',
@@ -187,7 +220,7 @@ export class SessionLifecycle {
     entry.state = 'close';
     await this._opencode?.close(sessionId);
     const seq = await this._journal.append({
-      ts: new Date().toISOString(),
+      ts: this._clock.now(),
       mr: entry.mr,
       kind: 'task_status',
       actor: 'inbox-opencode',
@@ -204,7 +237,7 @@ export class SessionLifecycle {
    */
   async reapExpired(): Promise<string[]> {
     const parked = this._registry.listByState('park');
-    const now = Date.now();
+    const now = Date.parse(this._clock.now());
     const expired: string[] = [];
 
     // #region START_SCAN_EXPIRED — iterate parked sessions, close those exceeding TTL
@@ -236,4 +269,62 @@ export class SessionLifecycle {
   stateOf(sessionId: string): SessionState {
     return this._registry.lookup(sessionId)?.state ?? 'close';
   }
+
+  /**
+   * @purpose Resolve semantic task context through the existing registry and lifecycle only.
+   * @invariant Widen/fact-check never reuse producer context; operator context is isolated per MR.
+   * @param request Required task context and producer identity.
+   * @returns Existing live session or an explicit fresh-run reason.
+   */
+  async route(request: AgentSessionRouteRequest): Promise<AgentSessionRoute> {
+    if (!request.taskId || !request.mr) {
+      throw new Error('[AgentSessionLifecycle#route] taskId and mr must be non-empty');
+    }
+    if (request.policy === 'coverage_retry' && !request.producerTaskId) {
+      throw new Error(
+        '[AgentSessionLifecycle#route] coverage_retry requires a non-empty producerTaskId'
+      );
+    }
+    if (request.policy === 'widen' || request.policy === 'fact_check') {
+      return { action: 'fresh', reason: 'independent_context' };
+    }
+
+    const entry =
+      request.policy === 'operator'
+        ? this._registry
+            .findByMr(request.mr)
+            .find(
+              (candidate) =>
+                candidate.context === 'operator' &&
+                candidate.state !== 'close' &&
+                candidate.runtimeNamespace === request.runtimeNamespace
+            )
+        : request.policy === 'coverage_retry'
+          ? this._registry.findByTaskId(request.producerTaskId)
+          : undefined;
+    if (
+      !entry ||
+      entry.mr !== request.mr ||
+      entry.state === 'close' ||
+      (request.policy === 'coverage_retry' && entry.context !== 'producer') ||
+      entry.runtimeNamespace !== request.runtimeNamespace
+    ) {
+      return { action: 'fresh', reason: 'missing_context' };
+    }
+    if (entry.state !== 'park') return { action: 'continue', sessionId: entry.sessionId };
+
+    const parkedMs = entry.parkedAt
+      ? Date.parse(this._clock.now()) - Date.parse(entry.parkedAt)
+      : Number.POSITIVE_INFINITY;
+    if (parkedMs > this._ttlMs) {
+      await this.close(entry.sessionId);
+      return { action: 'fresh', reason: 'expired_context' };
+    }
+    return (await this.resume(entry.sessionId))
+      ? { action: 'continue', sessionId: entry.sessionId }
+      : { action: 'fresh', reason: 'expired_context' };
+  }
 }
+
+/** @purpose Legacy name for the same AgentSessionLifecycle during consumer migration. */
+export { AgentSessionLifecycle as SessionLifecycle };

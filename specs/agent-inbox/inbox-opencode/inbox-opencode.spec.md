@@ -25,17 +25,19 @@ schemas.assert(task.type, result.output);
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                     | Type         | Purpose                                              |
-| ------------------------ | ------------ | ---------------------------------------------------- |
-| `AgentRuntimePort`       | Port         | Execute and continue structured agent work.          |
-| `OpenCodeAgentAdapter`   | Adapter      | Real OpenCode-compatible implementation.             |
-| `AgentPromptCompiler`    | Service      | Compile pointer-based versioned prompts.             |
-| `AgentSchemaRegistry`    | Service      | Validate task outcomes.                              |
-| `AgentSession`           | Entity       | Task or operator context identity.                   |
-| `AgentSessionPool`       | Service      | Limit and prioritize concurrent sessions.            |
-| `AgentSessionLifecycle`  | Service      | Create, continue, park, restore and expire sessions. |
-| `AgentOutcomeClassifier` | Service      | Classify transport, schema and task outcomes.        |
-| `AgentCoverageTrace`     | Value Object | Observed file/tool activity used by coverage gate.   |
+| Name                     | Type         | Purpose                                                 |
+| ------------------------ | ------------ | ------------------------------------------------------- |
+| `AgentRuntimePort`       | Port         | Execute and continue structured agent work.             |
+| `OpenCodeAgentAdapter`   | Adapter      | Real OpenCode-compatible implementation.                |
+| `AgentPromptCompiler`    | Service      | Compile pointer-based versioned prompts.                |
+| `AgentSchemaRegistry`    | Service      | Validate task outcomes.                                 |
+| `AgentSession`           | Entity       | Task or operator context identity.                      |
+| `AgentSessionPool`       | Service      | Limit and prioritize concurrent sessions.               |
+| `AgentSessionLifecycle`  | Service      | Create, continue, park, restore and expire sessions.    |
+| `SessionRegistry`        | Service      | Reused in-memory identity index for the one lifecycle.  |
+| `AgentOutcomeClassifier` | Service      | Classify transport, schema and task outcomes.           |
+| `AgentCoverageTrace`     | Value Object | Observed file/tool activity used by coverage gate.      |
+| `OpenCodeMock`           | Adapter      | Deterministic adapter satisfying the same runtime port. |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 

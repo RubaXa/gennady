@@ -23,6 +23,8 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 | `VcsClientInbox`              | Port (optional) | Абстракция работы с actionable-инбоксом GitLab                                                                                                        |
 | `VcsGitlabClient`             | Adapter         | GitLab-реализация VcsClient                                                                                                                           |
 | `VcsGitlabClientOptions`      | Value Object    | Опции подключения: baseUrl, token                                                                                                                     |
+| `GitlabMergeRequestApprovals` | Internal Value  | Внутренний результат dedicated approvals endpoint; наружу не экспортируется                                                                           |
+| `GitlabCommitComparison`      | Internal Value  | Внутренний результат repository comparison с явной полнотой; наружу не экспортируется                                                                 |
 | `VcsGitlabMergeRequests`      | Adapter         | GitLab-реализация MR API (включая getChanges)                                                                                                         |
 | `VcsGitlabMergeDiscussions`   | Adapter         | GitLab-реализация Discussions API                                                                                                                     |
 | `VcsGitlabRepositoryFiles`    | Adapter         | GitLab-реализация Repository Files API                                                                                                                |
@@ -80,6 +82,19 @@ VCS-клиент для GitLab и GitHub: абстрактные порты + а
 - **Type:** Port
 - **Purpose:** Абстрактный VCS-клиент — точка входа для merge requests, discussions, repository files.
 - **Public Properties:** `MergeRequests: VcsClientMergeRequests`, `MergeDiscussions?: VcsClientMergeDiscussions`, `RepositoryFiles?: VcsClientRepositoryFiles`, `Inbox?: VcsClientInbox`, `Pipeline?: VcsClientPipeline`
+
+### `VcsGitlabClient`
+
+- **Type:** Adapter
+- **Purpose:** GitLab transport root и provider-specific observation/capability operations.
+- **Public Operations:**
+  - `getCurrentUser() → Promise<VcsUser>` — текущий пользователь.
+  - `getMergeRequestApprovals(project, iid) → Promise<GitlabMergeRequestApprovals>` — dedicated approvals observation.
+  - `compareMergeRequestCommits(project, from, to) → Promise<GitlabCommitComparison>` — полный ordered commit range с completeness evidence.
+  - `supportsRequestChanges() → Promise<boolean>` — read-only capability probe.
+  - `requestChanges(project, iid) → Promise<void>` — native GitLab request-changes mutation.
+  - `getCurrentUserReviewState(project, iid) → Promise<string | null>` — native reviewer state observation.
+- **Internal Values:** `GitlabMergeRequestApprovals`, `GitlabCommitComparison` являются implementation-detail return contracts и не экспортируются из модуля.
 
 ### `VcsClientMergeRequests`
 

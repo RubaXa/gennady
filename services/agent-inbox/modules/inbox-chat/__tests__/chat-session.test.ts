@@ -2,7 +2,7 @@
 //   serialization per sid (D-104), stop()-truncated replay (D-95/CH-11), tool-registry shape
 //   (D-103), and transcript rehydrate across a simulated restart (D-97/SV-13).
 // @consumers: node:test runner
-// @tasks: TSK-126, TSK-167
+// @tasks: TSK-126, TSK-167, TSK-175
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -119,14 +119,17 @@ describe('ChatSession#ask', () => {
     const { session, pool, openCodeMock } = createSessionContext();
     openCodeMock.seed('hi', { text: 'ok' });
     const createSpy = mock.method(pool, 'create');
-    const promptSpy = mock.method(pool, 'prompt');
+    const runSpy = mock.method(pool, 'run');
 
     await session.ask({ text: 'hi', chips: [] });
 
     const createArgs = createSpy.mock.calls[0]?.arguments[0] as Record<string, unknown>;
-    const promptArgs = promptSpy.mock.calls[0]?.arguments[1] as Record<string, unknown>;
+    const runtimeRequest = runSpy.mock.calls[0]?.arguments[0] as Record<string, unknown>;
+    const promptArgs = runtimeRequest['prompt'] as Record<string, unknown>;
     assert.deepStrictEqual(Object.keys(createArgs).sort(), ['directory', 'registration', 'title']);
     assert.deepStrictEqual(Object.keys(promptArgs).sort(), ['system', 'text']);
+    assert.strictEqual(runtimeRequest['taskId'], 'chat:group/proj!42');
+    assert.strictEqual(runtimeRequest['model'], 'default');
   });
 });
 

@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -15,8 +15,10 @@ import { StateStore } from '../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
 import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
 import { VcsGitlabPort } from '../modules/inbox-vcs/vcs-gitlab.port.ts';
-import type { VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
+import type { VcsEffectPort, VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
+import { selectVcsRuntime } from '../modules/inbox-vcs/vcs-runtime.ts';
 import { SyncService } from '../modules/inbox-vcs/sync.ts';
+import { VcsSyncCoordinator } from '../modules/inbox-vcs/sync-coordinator.ts';
 import { BackgroundVerifier } from '../modules/inbox-vcs/background-verify.ts';
 import { EventJournal } from '../modules/inbox-core/event-journal.ts';
 import { ReviewConfig } from '../modules/inbox-core/review-config.ts';
@@ -383,6 +385,8 @@ export type BootstrapResult = {
   opencodePort: number | null;
   /** @purpose Concrete inbox-vcs port in real runtime; absent in mock mode. */
   vcsTruth: VcsPort | null;
+  /** @purpose Profile-selected effect surface; readonly mode receives a deny-before-I/O guard. */
+  vcsEffects: VcsEffectPort | null;
   /** @purpose Real two-tier GitLab sync service; absent in mock mode. */
   syncService: SyncService | null;
   /** @purpose Real background GitLab verifier; absent in mock mode. */
@@ -537,6 +541,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let opencodePidFile: string | null = null;
   let opencodePort: number | null = null;
   let vcsTruth: VcsPort | null = null;
+  let vcsEffects: VcsEffectPort | null = null;
   let syncService: SyncService | null = null;
   let backgroundVerifier: BackgroundVerifier | null = null;
   let vcsJournal: EventJournal | null = null;
@@ -565,26 +570,30 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   } else {
     // #region START_CREATE_VCS
     const token = process.env.GITLAB_PERSONAL_TOKEN;
-    vcs = new VcsInboxReal({
-      host: configVcsHost,
-      token,
-    });
     const baseUrl = `https://${configVcsHost}/api/v4`;
     vcsTruth = new VcsGitlabPort(
       new VcsGitlabClient({ token: token ?? '', baseUrl }),
       configVcsHost ?? ''
     );
+    vcsEffects = selectVcsRuntime(runtimeBinding.profile.externalIoPolicy, vcsTruth).effects;
+    vcs = new VcsInboxReal({
+      host: configVcsHost,
+      token,
+      truth: vcsTruth,
+    });
     const inboxStateDir = join(stateStore.getStateDir(), 'agent-inbox');
     vcsJournal = new EventJournal(join(inboxStateDir, 'events.jsonl'));
     vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
     const reviewConfig = new ReviewConfig({ stateRoots: [runtimeBinding.stateRoot] });
     reviewConfig.verifyStateRoot(runtimeBinding.stateRoot);
+    const canonicalJournal = stateStore.openReviewJournal();
     syncService = new SyncService(vcsTruth, vcsRegistry, vcsJournal, {
       canonicalReview: {
-        journal: stateStore.openReviewJournal(),
+        journal: canonicalJournal,
         config: reviewConfig,
         clock: new SystemClock(),
       },
+      syncCoordinator: new VcsSyncCoordinator(vcsTruth, canonicalJournal),
     });
     backgroundVerifier = new BackgroundVerifier(vcsTruth, vcsJournal);
     // First real poll is deliberate: production truth port goes live; active snapshots pre-register the minute verifier.
@@ -831,6 +840,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
         artifacts: registration.artifacts ?? [],
         model: opts.model,
         state: 'idle',
+        context: registration.context,
+        sha: registration.sha,
+        runtimeNamespace: registration.runtimeNamespace ?? runtimeBinding.profile.stateNamespace,
       });
       sessionLifecycle.startWork(sessionId);
     },
@@ -859,7 +871,12 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   // One boot-owned queue is shared by scheduler, HTTP and its durable Executor lifecycle.
   const pipelineRegistry = new TaskRegistry();
   const pipelineQueue = new InMemoryTaskQueue(pipelineRegistry);
-  const chatSessionRouter = new SessionRouter(chatSessionPool, pipelineRegistry);
+  const chatSessionRouter = new SessionRouter(
+    chatSessionPool,
+    pipelineRegistry,
+    sessionLifecycle,
+    runtimeBinding.profile.stateNamespace
+  );
   const resolveDecisionJournal = (mr: string): DecisionJournal =>
     new DecisionJournal(
       new EventJournal(
@@ -981,6 +998,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       opencodePidFile,
       opencodePort,
       vcsTruth,
+      vcsEffects,
       syncService,
       backgroundVerifier,
       sessionRegistry,
@@ -1053,6 +1071,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     opencodePidFile: opencodePidFile ?? null,
     opencodePort: opencodePort ?? null,
     vcsTruth,
+    vcsEffects,
     syncService,
     backgroundVerifier,
     sessionRegistry,

@@ -1,6 +1,6 @@
 // @file: OpenCodeMock — deterministic adapter simulating ALL outcome classes for dev/e2e testing.
 // @consumers: SessionPool (dev/e2e), inbox-opencode tests, inbox-roles tests
-// @tasks: TSK-111, TSK-160
+// @tasks: TSK-111, TSK-160, TSK-175
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -58,6 +58,8 @@ export class OpenCodeMock extends OpenCodePort {
   protected _sessionModels: Map<string, string>;
   /** @purpose Map of sid → nodeId of the last prompt sent on that session, for toolCalls() correlation */
   protected _sessionLastNode: Map<string, string>;
+  /** @purpose Per-session accumulated factual trace preserved across continuation turns. */
+  protected _sessionTrace: Map<string, ToolTraceEntry[]>;
   /** @purpose Counter for unique session id generation */
   protected _sidCounter: number;
   /** @purpose Parked session identifiers — mock parity with the real lifecycle contract. */
@@ -76,6 +78,7 @@ export class OpenCodeMock extends OpenCodePort {
     this._sessionTools = new Map();
     this._sessionModels = new Map();
     this._sessionLastNode = new Map();
+    this._sessionTrace = new Map();
     this._sidCounter = 0;
     this._parkedSessions = new Set();
   }
@@ -186,12 +189,12 @@ export class OpenCodeMock extends OpenCodePort {
   }
 
   /**
-   * @param _sid Session identifier (unused — the mock has no ordered trace to report).
-   * @returns Empty trace — the mock does not simulate an ordered tool sequence.
+   * @param sid Session identifier.
+   * @returns Seeded factual trace accumulated across run and continuation turns.
    * @see {OpenCodePort#toolCallTrace}
    */
-  async toolCallTrace(_sid: string): Promise<ToolTraceEntry[]> {
-    return [];
+  async toolCallTrace(sid: string): Promise<ToolTraceEntry[]> {
+    return [...(this._sessionTrace.get(sid) ?? [])];
   }
 
   /**
@@ -256,6 +259,7 @@ export class OpenCodeMock extends OpenCodePort {
     }
     this._sessions.delete(sid);
     this._parkedSessions.delete(sid);
+    this._sessionTrace.delete(sid);
     logger.debug(`[OpenCodeMock#close] [any → closed] ${sid}`);
   }
 
@@ -276,6 +280,7 @@ export class OpenCodeMock extends OpenCodePort {
     // #region START_RESOLVE_SEEDED_DATA — check error seeding first, then response seeding, then fallback
     const nodeId = this._resolveNodeId(session, opts);
     this._sessionLastNode.set(sid, nodeId);
+    this._accumulateSeededTrace(sid, nodeId);
     if (opts.model) {
       this._sessionModels.set(sid, opts.model);
     }
@@ -326,6 +331,7 @@ export class OpenCodeMock extends OpenCodePort {
     // continueSignal follows the same seeded-data path as prompt
     const nodeId = this._resolveNodeId(session, opts);
     this._sessionLastNode.set(sid, nodeId);
+    this._accumulateSeededTrace(sid, nodeId);
     const response = this._responses.get(nodeId);
 
     if (response) {
@@ -360,6 +366,27 @@ export class OpenCodeMock extends OpenCodePort {
       return session.title;
     }
     return this._extractNodeId(opts);
+  }
+
+  /**
+   * @purpose Append the current seeded file observations to the existing session trace.
+   * @param sid Session receiving accumulated observations.
+   * @param nodeId Seed identity for the current turn.
+   */
+  protected _accumulateSeededTrace(sid: string, nodeId: string): void {
+    if (!toolsGateActive(this._sessionTools.get(sid))) return;
+    const trace = this._sessionTrace.get(sid) ?? [];
+    const calls = this._toolCalls.get(nodeId) ?? [];
+    trace.push(
+      ...calls.map((call, index) => ({
+        seq: trace.length + index,
+        tool: call.tool,
+        input: call.path,
+        ms: 0,
+        status: 'completed',
+      }))
+    );
+    this._sessionTrace.set(sid, trace);
   }
 
   /**

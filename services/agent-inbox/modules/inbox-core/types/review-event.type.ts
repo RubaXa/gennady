@@ -1,26 +1,34 @@
 // @file: Versioned canonical review event accepted by the inbox-core journal boundary.
 // @consumers: ReviewState, JournalPort, inbox-vcs
-// @tasks: TSK-173
+// @tasks: TSK-173, TSK-174
 
-type ReviewEventKind =
+/** @purpose Closed canonical review-event discriminator vocabulary. */
+export type ReviewEventKind =
   | 'mr_observed'
   | 'commit_pushed'
   | 'description_changed'
   | 'discussion_changed'
   | 'approval_changed'
+  | 'pipeline_changed'
   | 'lifecycle_completed'
   | 'verification_requested'
   | 'verification_started'
   | 'verification_applied'
   | 'verification_failed';
 
-type ReviewEventActor = {
+/** @purpose Actor identity attached to each canonical review fact. */
+export type ReviewEventActor = {
+  /** @purpose Closed actor category. */
   kind: 'human' | 'bot' | 'system';
+  /** @purpose Stable provider or system actor identity. */
   id: string;
 };
 
-type ReviewMrReference = {
+/** @purpose Canonical provider-independent merge-request identity. */
+export type ReviewMrReference = {
+  /** @purpose Canonical project path. */
   project: string;
+  /** @purpose Merge-request internal ID. */
   iid: string;
 };
 
@@ -30,6 +38,7 @@ const EVENT_KINDS = new Set<ReviewEventKind>([
   'description_changed',
   'discussion_changed',
   'approval_changed',
+  'pipeline_changed',
   'lifecycle_completed',
   'verification_requested',
   'verification_started',
@@ -95,6 +104,9 @@ function validatePayload(kind: ReviewEventKind, payload: Record<string, unknown>
       if (typeof payload.approved !== 'boolean') {
         throw new Error('[ReviewEvent.validate] payload.approved must be boolean');
       }
+      return;
+    case 'pipeline_changed':
+      if (payload.status !== null) requireString(payload.status, 'payload.status');
       return;
     case 'verification_requested':
       if (payload.mode !== 'manual' && payload.mode !== 'timer') {
@@ -230,6 +242,7 @@ export class ReviewEvent {
       'description_changed',
       'discussion_changed',
       'approval_changed',
+      'pipeline_changed',
     ].includes(this.kind);
   }
 

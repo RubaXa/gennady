@@ -1,6 +1,6 @@
 // @file: Unit/integration tests for BackgroundVerifier — sha change detection, journal events, pagination, MR tracking.
 // @consumers: node:test runner
-// @tasks: TSK-158
+// @tasks: TSK-158, TSK-174
 
 import { describe, it, mock, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -36,7 +36,11 @@ class StubVcs extends VcsPort {
       pageInfo: { hasNextPage: false, endCursor: null },
     })
   );
-  compareSha = mock.fn(async () => ({ commits: [] }));
+  compareSha = mock.fn(async () => ({
+    commits: [],
+    complete: true,
+    evidence: 'test-complete',
+  }));
   postNote = mock.fn(async () => {});
   postDiscussion = mock.fn(async () => {});
   react = mock.fn(async () => {});

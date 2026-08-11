@@ -26,18 +26,42 @@ await reconciler.record(outcome);
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                  | Type         | Purpose                                                                 |
-| --------------------- | ------------ | ----------------------------------------------------------------------- |
-| `VcsReadPort`         | Port         | Читать discovery, MR, discussions, approvals, commits и description.    |
-| `VcsEffectPort`       | Port         | Выполнять разрешённые GitLab actions.                                   |
-| `GitLabReadAdapter`   | Adapter      | Реальный GitLab read runtime.                                           |
-| `GitLabEffectAdapter` | Adapter      | Реальный GitLab effect runtime.                                         |
-| `ReadonlyEffectGuard` | Adapter      | Запрещать effects в readonly profile.                                   |
-| `VcsSnapshot`         | Value Object | Нормализованный снимок внешнего состояния MR.                           |
-| `VcsEventNormalizer`  | Service      | Превращать изменения снимка в `ReviewEvent`.                            |
-| `VcsSyncCoordinator`  | Service      | Владеть discovery, polling, cursors, retries and verification triggers. |
-| `VcsReconciler`       | Service      | Сверять заявленный effect с наблюдаемым GitLab outcome.                 |
-| `VcsPermissionPolicy` | Service      | Проверять права для resolve/reopen/approve и bot threads.               |
+| Name                       | Type         | Purpose                                                                 |
+| -------------------------- | ------------ | ----------------------------------------------------------------------- |
+| `VcsReadPort`              | Port         | Читать discovery, MR, discussions, approvals, commits и description.    |
+| `VcsEffectPort`            | Port         | Выполнять разрешённые GitLab actions.                                   |
+| `VcsPort`                  | Port         | Существующий совместимый root, объединяющий read/effect surfaces.       |
+| `VcsGitlabPort`            | Adapter      | Единственный реальный GitLab adapter для обоих port surfaces.           |
+| `ReadonlyEffectGuard`      | Adapter      | Запрещать effects в readonly profile.                                   |
+| `ReadonlyVcsEffectError`   | Error        | Типизированный отказ readonly effect boundary.                          |
+| `selectVcsRuntime`         | Composition  | Независимо выбирать read/effect surfaces по runtime profile.            |
+| `VcsRuntimePolicy`         | Value Object | Закрытый профиль runtime backing.                                       |
+| `VcsRuntime`               | Value Object | Выбранная пара read/effect surfaces.                                    |
+| `MrDetail`                 | Value Object | Нормализованная детальная MR observation.                               |
+| `VcsDiscussion`            | Value Object | Нормализованный discussion thread.                                      |
+| `VcsDiscussionNote`        | Value Object | Одна note внутри discussion.                                            |
+| `DiscussionsPageInfo`      | Value Object | Provider pagination state.                                              |
+| `DiscussionsPage`          | Value Object | Одна полная страница discussions.                                       |
+| `CompareResult`            | Value Object | Commit comparison с явной полнотой.                                     |
+| `VcsApprovalsResult`       | Value Object | Dedicated approvals result с явной полнотой.                            |
+| `VcsReviewerState`         | Value Object | Закрытое native review state.                                           |
+| `VcsParticipation`         | Value Object | Inclusive причины участия оператора.                                    |
+| `VcsSnapshotCompleteness`  | Value Object | Field-level completeness observation.                                   |
+| `VcsSnapshot`              | Value Object | Нормализованный снимок внешнего состояния MR.                           |
+| `VcsEffectKind`            | Value Object | Закрытый словарь GitLab effect kinds.                                   |
+| `VcsEffectPermission`      | Value Object | Permission facts перед external I/O.                                    |
+| `VcsEffectRequest`         | Value Object | Idempotency-addressed provider mutation.                                |
+| `VcsCapabilities`          | Value Object | Результат read-only provider capability probe.                          |
+| `VcsEffectOutcome`         | Value Object | Закрытый reconciled effect result.                                      |
+| `validateVcsEffectRequest` | Function     | Closed-world validation до external I/O.                                |
+| `VcsNormalizationResult`   | Value Object | Events и refresh requirement одного diff.                               |
+| `VcsEventNormalizer`       | Service      | Превращать изменения снимка в `ReviewEvent`.                            |
+| `VcsSyncTarget`            | Value Object | MR identity для coordinator refresh.                                    |
+| `VcsSyncResult`            | Value Object | Snapshot/events/effect readiness одного sync.                           |
+| `VcsSyncCoordinator`       | Service      | Владеть discovery, polling, cursors, retries and verification triggers. |
+| `VcsReconciler`            | Service      | Сверять заявленный effect с наблюдаемым GitLab outcome.                 |
+| `VcsPermissionDecision`    | Value Object | Разрешение/отказ permission policy с evidence.                          |
+| `VcsPermissionPolicy`      | Service      | Проверять права для resolve/reopen/approve и bot threads.               |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -61,13 +85,15 @@ await reconciler.record(outcome);
 - **Errors & Degradation:** ambiguous transport failure remains unknown until reconciliation.
 - **Consumers:** effect coordinator.
 
-### `GitLabReadAdapter`, `GitLabEffectAdapter`, `ReadonlyEffectGuard`
+### `VcsPort`, `VcsGitlabPort`, `ReadonlyEffectGuard`, `selectVcsRuntime`
 
 - **Type:** Adapter
-- **Public Operations:** implement their respective ports.
+- **Public Operations:** `VcsGitlabPort` реализует оба surface через существующий `VcsPort`;
+  `ReadonlyEffectGuard` реализует только effect surface и всегда запрещает запись;
+  `selectVcsRuntime` сохраняет реальные reads, но подменяет effects guard-ом для readonly profile.
 - **Lifecycle:** selected by runtime profile at composition root.
 - **Errors & Degradation:** API limits and permission failures retain GitLab evidence.
-- **Consumers:** production, real-readonly and real-effects profiles.
+- **Consumers:** production, real-readonly, real-effects and deterministic test profiles.
 
 ### `VcsSnapshot`
 
@@ -77,6 +103,22 @@ await reconciler.record(outcome);
 - **Lifecycle:** one immutable observation.
 - **Errors & Degradation:** partial fields carry source and freshness.
 - **Consumers:** normalizer and projections.
+
+### Support value objects
+
+- **Read support:** `MrDetail`, `VcsDiscussion`, `VcsDiscussionNote`, `DiscussionsPageInfo`,
+  `DiscussionsPage`, `CompareResult`, `VcsApprovalsResult`, `VcsReviewerState`,
+  `VcsParticipation`, `VcsSnapshotCompleteness`.
+- **Effect support:** `VcsEffectKind`, `VcsEffectPermission`, `VcsEffectRequest`,
+  `VcsCapabilities`, `VcsEffectOutcome`; `validateVcsEffectRequest` rejects unknown kinds and
+  incomplete payloads before I/O.
+- **Coordinator support:** `VcsNormalizationResult`, `VcsSyncTarget`, `VcsSyncResult`,
+  `VcsPermissionDecision`.
+- **Runtime support:** `VcsRuntimePolicy`, `VcsRuntime`; `ReadonlyVcsEffectError` is the typed
+  readonly-boundary failure.
+- **Lifecycle:** immutable per call; no independent persistence.
+- **Errors & Degradation:** completeness and unknown outcome remain explicit rather than aliasing
+  success.
 
 ### `VcsEventNormalizer`
 
@@ -170,12 +212,14 @@ await reconciler.record(outcome);
 
 ```text
 inbox-vcs/
-├── types/
-├── ports/
-├── adapters/gitlab/
-├── policies/
-├── sync/
-└── reconciliation/
+├── vcs-port.ts
+├── vcs-gitlab.port.ts
+├── readonly-effect.guard.ts
+├── vcs-runtime.ts
+├── permission-policy.ts
+├── sync-coordinator.ts
+├── event-normalizer.ts
+└── reconciler.ts
 ```
 
 The legacy `VcsInbox*` hierarchy is removed after migration.
@@ -188,6 +232,9 @@ The legacy `VcsInbox*` hierarchy is removed after migration.
 
 - `D-VCS-01`: GitLab is canonical for external state; journal is canonical for local process history.
 - `D-VCS-02`: reads and effects are separate ports because readonly and real-effects profiles vary independently.
+- `D-VCS-03`: `VcsGitlabPort` is the introduced real adapter name; it implements both independent
+surfaces through the pre-existing `VcsPort` compatibility root. Separate GitLab read/effect
+classes are intentionally not introduced because that would create a third provider hierarchy.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

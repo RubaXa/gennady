@@ -1,12 +1,13 @@
 // @file: inbox command help output
 // @consumers: help command
+// @tasks: TSK-75, TSK-174
 /**
  * @purpose Print CLI help for the inbox command.
  */
 export function printHelp(): void {
   console.info('gennady inbox — List merge requests awaiting your reaction');
   console.info('');
-  console.info('Lists, in one GraphQL request, the MRs that need you: review');
+  console.info('Lists, through independently bounded GraphQL reads, the MRs that need you: review');
   console.info('requested, mentioned, assigned, and your own open MRs.');
   console.info('');
   console.info('Usage:');

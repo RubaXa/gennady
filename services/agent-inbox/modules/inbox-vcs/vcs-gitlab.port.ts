@@ -1,15 +1,19 @@
 // @file: VcsGitlabPort — production adapter from inbox-vcs VcsPort to the concrete GitLab client.
 // @consumers: agent-inbox serve composition root
-// @tasks: TSK-158
+// @tasks: TSK-158, TSK-174
 
 import { VcsGitlabClient } from '../../../vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import { logger } from '#logger';
 import {
   VcsPort,
   type CompareResult,
+  type VcsApprovalsResult,
   type DiscussionsPage,
   type MrDetail,
   type VcsDiscussion,
+  type VcsCapabilities,
+  type VcsReviewerState,
 } from './vcs-port.ts';
 
 /**
@@ -64,9 +68,13 @@ export class VcsGitlabPort extends VcsPort {
       iid,
       webUrl: String(raw.web_url ?? ''),
       title: String(raw.title ?? ''),
+      sourceBranch: String(raw.source_branch ?? ''),
+      targetBranch: String(raw.target_branch ?? ''),
+      createdAt: String(raw.created_at ?? ''),
       description: String(raw.description ?? ''),
       author: (raw.author as { username?: string } | undefined)?.username ?? '',
       reviewers: users(raw.reviewers),
+      assignees: users(raw.assignees),
       approvedBy: users(raw.approved_by ?? raw.approvedBy),
       updatedAt: String(raw.updated_at ?? ''),
       state: String(raw.state ?? ''),
@@ -93,8 +101,9 @@ export class VcsGitlabPort extends VcsPort {
   ): Promise<DiscussionsPage> {
     const page = cursor ? Number(cursor) : 1;
     const raw = await this._client.MergeDiscussions.getList({ project, iid, perPage: 100, page });
+    const operatorLogin = await this.getCurrentUserLogin();
     const discussions = raw.map((entry) =>
-      this._normalizeDiscussion(entry as Record<string, unknown>)
+      this._normalizeDiscussion(entry as Record<string, unknown>, operatorLogin)
     );
     return {
       discussions,
@@ -106,20 +115,62 @@ export class VcsGitlabPort extends VcsPort {
   }
 
   /**
-   * @param _project Project path.
+   * @param project Project path.
    * @param _iid MR IID.
    * @param from Earlier SHA.
    * @param to Current SHA.
-   * @returns A conservative changed-SHA result.
+   * @returns Complete GitLab repository comparison or an honest incomplete result.
    * @see {VcsPort#compareSha}
    */
   async compareSha(
-    _project: string,
+    project: string,
     _iid: string,
     from: string,
     to: string
   ): Promise<CompareResult> {
-    return { commits: from === to ? [] : [to] };
+    // #region START_COMPARE_SHA_THROUGH_GITLAB
+    try {
+      return await this._client.compareMergeRequestCommits(project, from, to);
+    } catch (cause) {
+      const error = new Error(
+        `[VcsGitlabPort#compareSha] Commit comparison failed for ${project}!${_iid}`,
+        { cause }
+      );
+      logger.error('[VcsGitlabPort#compareSha] [reading → failed] Commit comparison failed', {
+        error,
+        project,
+        iid: _iid,
+        from,
+        to,
+      });
+      throw error;
+    }
+    // #endregion END_COMPARE_SHA_THROUGH_GITLAB
+  }
+
+  /**
+   * @param project Canonical project path.
+   * @param iid MR internal ID.
+   * @returns Approvers and explicit endpoint completeness.
+   * @see {VcsPort#getApprovals} in ./vcs-port.ts
+   */
+  override async getApprovals(project: string, iid: string): Promise<VcsApprovalsResult> {
+    // #region START_READ_APPROVALS_THROUGH_GITLAB
+    try {
+      return await this._client.getMergeRequestApprovals(project, iid);
+    } catch (cause) {
+      const error = new Error(
+        `[VcsGitlabPort#getApprovals] Approval observation failed for ${project}!${iid}`,
+        { cause }
+      );
+      logger.error('[VcsGitlabPort#getApprovals] [reading → failed] Approval observation failed', {
+        error,
+        project,
+        iid,
+      });
+      throw error;
+    }
+    // #endregion END_READ_APPROVALS_THROUGH_GITLAB
   }
 
   /**
@@ -176,6 +227,38 @@ export class VcsGitlabPort extends VcsPort {
   }
 
   /**
+   * @param project Canonical project path.
+   * @param iid MR internal ID.
+   * @param discussionId Existing discussion target.
+   * @returns Completion after GitLab accepts the mutation.
+   * @see {VcsEffectPort#reopen} in ./vcs-port.ts
+   */
+  async reopen(project: string, iid: string, discussionId: string): Promise<void> {
+    // #region START_REOPEN_DISCUSSION_THROUGH_GITLAB
+    try {
+      await this._client.MergeDiscussions.resolveDiscussion({
+        project,
+        iid,
+        discussionId,
+        resolved: false,
+      });
+    } catch (cause) {
+      const error = new Error(
+        `[VcsGitlabPort#reopen] Discussion reopen failed for ${project}!${iid}`,
+        { cause }
+      );
+      logger.error('[VcsGitlabPort#reopen] [applying → failed] Discussion reopen failed', {
+        error,
+        project,
+        iid,
+        discussionId,
+      });
+      throw error;
+    }
+    // #endregion END_REOPEN_DISCUSSION_THROUGH_GITLAB
+  }
+
+  /**
    * @param project Project path.
    * @param iid MR IID.
    * @returns Completion after GitLab approves it.
@@ -183,6 +266,128 @@ export class VcsGitlabPort extends VcsPort {
    */
   async approve(project: string, iid: string): Promise<void> {
     await this._client.MergeRequests.approve({ repository: project, iid });
+  }
+
+  /**
+   * @param project Canonical project path.
+   * @param iid MR internal ID.
+   * @returns Completion after GitLab accepts the mutation.
+   * @see {VcsEffectPort#unapprove} in ./vcs-port.ts
+   */
+  async unapprove(project: string, iid: string): Promise<void> {
+    // #region START_UNAPPROVE_THROUGH_GITLAB
+    try {
+      await this._client.MergeRequests.unapprove({ repository: project, iid });
+    } catch (cause) {
+      const error = new Error(`[VcsGitlabPort#unapprove] Unapprove failed for ${project}!${iid}`, {
+        cause,
+      });
+      logger.error('[VcsGitlabPort#unapprove] [applying → failed] Unapprove failed', {
+        error,
+        project,
+        iid,
+      });
+      throw error;
+    }
+    // #endregion END_UNAPPROVE_THROUGH_GITLAB
+  }
+
+  /**
+   * @param project Canonical project path.
+   * @param iid MR internal ID.
+   * @returns Completion after GitLab accepts the mutation.
+   * @see {VcsEffectPort#requestChanges} in ./vcs-port.ts
+   */
+  async requestChanges(project: string, iid: string): Promise<void> {
+    // #region START_APPLY_REQUEST_CHANGES_THROUGH_GITLAB
+    try {
+      await this._client.requestChanges(project, iid);
+    } catch (cause) {
+      const error = new Error(
+        `[VcsGitlabPort#requestChanges] Native request-changes failed for ${project}!${iid}`,
+        { cause }
+      );
+      logger.error(
+        '[VcsGitlabPort#requestChanges] [applying → failed] Native request-changes failed',
+        { error, project, iid }
+      );
+      throw error;
+    }
+    // #endregion END_APPLY_REQUEST_CHANGES_THROUGH_GITLAB
+  }
+
+  /**
+   * @returns Conservative capability result with GraphQL evidence.
+   * @see {VcsReadPort#probeCapabilities} in ./vcs-port.ts
+   */
+  async probeCapabilities(): Promise<VcsCapabilities> {
+    // #region START_DEGRADE_CAPABILITY_PROBE
+    try {
+      const supported = await this._client.supportsRequestChanges();
+      return {
+        requestChanges: supported,
+        evidence: supported
+          ? 'graphql:mergeRequestRequestChanges+UserMergeRequestInteraction.reviewState'
+          : 'graphql-native-request-changes-fields-absent',
+      };
+    } catch (cause) {
+      const error = new Error('[VcsGitlabPort#probeCapabilities] Capability probe unavailable', {
+        cause,
+      });
+      logger.error(
+        '[VcsGitlabPort#probeCapabilities] [probing → unavailable] Capability probe unavailable',
+        { error }
+      );
+      return {
+        requestChanges: false,
+        evidence: 'graphql-capability-probe-failed',
+      };
+    }
+    // #endregion END_DEGRADE_CAPABILITY_PROBE
+  }
+
+  /**
+   * @param project Canonical project path.
+   * @param iid MR internal ID.
+   * @returns Closed native reviewer state.
+   * @see {VcsPort#readReviewerState} in ./vcs-port.ts
+   */
+  async readReviewerState(project: string, iid: string): Promise<VcsReviewerState> {
+    let state: string | null;
+    // #region START_REVIEW_STATE_DEGRADE_UNSUPPORTED_HOST
+    try {
+      const supported = await this._client.supportsRequestChanges();
+      if (!supported) {
+        logger.debug(
+          '[VcsGitlabPort#readReviewerState] [probing → unavailable] Native reviewer state unsupported',
+          { project, iid }
+        );
+        return 'unknown';
+      }
+      state = await this._client.getCurrentUserReviewState(project, iid);
+    } catch (cause) {
+      const error = new Error(
+        `[VcsGitlabPort#readReviewerState] Native reviewer state unavailable for ${project}!${iid}`,
+        { cause }
+      );
+      logger.error(
+        '[VcsGitlabPort#readReviewerState] [reading → unavailable] Native reviewer state unavailable',
+        { error, project, iid }
+      );
+      return 'unknown';
+    }
+    // #endregion END_REVIEW_STATE_DEGRADE_UNSUPPORTED_HOST
+    const normalized = state?.toLowerCase();
+    return [
+      'approved',
+      'requested_changes',
+      'reviewed',
+      'review_started',
+      'unapproved',
+      'unreviewed',
+    ].includes(normalized ?? '')
+      ? (normalized as VcsReviewerState)
+      : 'unknown';
   }
 
   /**
@@ -204,9 +409,10 @@ export class VcsGitlabPort extends VcsPort {
   /**
    * @purpose Normalize GitLab REST discussion JSON at the adapter boundary.
    * @param raw Raw GitLab REST discussion.
+   * @param [operatorLogin] Authenticated login used to retain owned reactions.
    * @returns Closed inbox-vcs discussion.
    */
-  protected _normalizeDiscussion(raw: Record<string, unknown>): VcsDiscussion {
+  protected _normalizeDiscussion(raw: Record<string, unknown>, operatorLogin = ''): VcsDiscussion {
     const notes = Array.isArray(raw.notes) ? raw.notes : [];
     const first = notes[0] as Record<string, unknown> | undefined;
     const position = first?.position as Record<string, unknown> | undefined;
@@ -224,6 +430,17 @@ export class VcsGitlabPort extends VcsPort {
           body: String(entry.body ?? ''),
           createdAt: String(entry.created_at ?? ''),
           system: Boolean(entry.system),
+          updatedAt:
+            typeof entry.updated_at === 'string'
+              ? entry.updated_at
+              : String(entry.created_at ?? ''),
+          reactions: (Array.isArray(entry.award_emoji) ? entry.award_emoji : [])
+            .filter(
+              (award) =>
+                (award as { user?: { username?: string } }).user?.username === operatorLogin
+            )
+            .map((award) => String((award as { name?: string }).name ?? ''))
+            .filter(Boolean),
         };
       }),
       ...(path && typeof line === 'number' && headSha ? { position: { path, line, headSha } } : {}),

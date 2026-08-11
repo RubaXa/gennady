@@ -1,6 +1,6 @@
-// @file: OpenCodeReal — production adapter implementing OpenCodePort via @opencode-ai/sdk.
+// @file: OpenCodeAgentAdapter — production AgentRuntimePort implementation via @opencode-ai/sdk.
 // @consumers: SessionPool (production), DI container, inbox-roles
-// @tasks: TSK-112, TSK-160
+// @tasks: TSK-112, TSK-160, TSK-175
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
 import { Agent as UndiciAgent } from 'undici';
@@ -8,7 +8,7 @@ import type { TextPart } from '@opencode-ai/sdk';
 import { appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { logger } from '#logger';
 import {
-  OpenCodePort,
+  AgentRuntimePort,
   type SessionHandle,
   type CreateSessionOpts,
   type PromptOpts,
@@ -19,7 +19,7 @@ import {
   type ToolGate,
   type OpenCodeMessage,
 } from './opencode.port.ts';
-import { composeOk, composeError, type OpenCodeCallResult, type OutcomeClass } from './errors.ts';
+import { composeOk, composeError, type OpenCodeCallResult } from './errors.ts';
 
 /**
  * @purpose Summarize a tool call's input to one short line — command, path, or pattern — for the
@@ -58,16 +58,16 @@ export type OpenCodeRealOpts = {
 };
 
 /**
- * @purpose Production adapter that delegates all OpenCodePort operations to a real
+ * @purpose Production adapter that delegates all AgentRuntimePort operations to a real
  *          opencode server through @opencode-ai/sdk (HTTP client mode).
- * @implements {OpenCodePort} in ./opencode.port.ts
+ * @implements {AgentRuntimePort} in ./opencode.port.ts
  * @invariant Connects to an existing `opencode serve` instance.
  * @invariant When format is requested: embeds JSON schema in system prompt,
  *           extracts JSON from response text as fallback (SDK v1.x lacks
  *           native json_schema support).
  * @consumer DI container (replaces OpenCodeMock in production)
  */
-export class OpenCodeReal extends OpenCodePort {
+export class OpenCodeAgentAdapter extends AgentRuntimePort {
   /** @purpose Base URL of the opencode server. */
   protected _baseUrl: string;
   /** @purpose Default directory for session binding. */
@@ -144,7 +144,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param opts Session title and directory.
    * @throws Wraps network errors as OpenCodeCallResult-style errors.
    * @returns Session handle with server-assigned id.
-   * @see {OpenCodePort#createSession}
+   * @see {AgentRuntimePort#createSession} in ./opencode.port.ts
    */
   async createSession(opts: CreateSessionOpts): Promise<SessionHandle> {
     const client = this._ensureClient();
@@ -221,7 +221,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param sid Session identifier.
    * @param opts System message, user text, and optional format schema.
    * @returns Discriminated result — ok: true with output or ok: false with error.
-   * @see {OpenCodePort#prompt}
+   * @see {AgentRuntimePort#prompt} in ./opencode.port.ts
    */
   async prompt(sid: string, opts: PromptOpts): Promise<OpenCodeCallResult> {
     return this._sendPrompt(sid, opts);
@@ -232,7 +232,7 @@ export class OpenCodeReal extends OpenCodePort {
   /**
    * @param sid Session identifier.
    * @returns Current lifecycle status mapped from SDK SessionStatus.
-   * @see {OpenCodePort#status}
+   * @see {AgentRuntimePort#status} in ./opencode.port.ts
    */
   async status(sid: string): Promise<SessionStatus> {
     const client = this._ensureClient();
@@ -298,7 +298,7 @@ export class OpenCodeReal extends OpenCodePort {
    *           tool-call parts live on earlier messages, recoverable only via `session.messages`.
    * @param sid Session identifier.
    * @returns Tool calls that touched a file, path relative to the session directory.
-   * @see {OpenCodePort#toolCalls}
+   * @see {AgentRuntimePort#toolCalls} in ./opencode.port.ts
    */
   override async toolCalls(sid: string): Promise<ToolCall[]> {
     const client = this._ensureClient();
@@ -352,7 +352,7 @@ export class OpenCodeReal extends OpenCodePort {
    *   time.start/end contribute to totalMs — running/errored calls count with 0ms.
    * @param sid Session identifier.
    * @returns Per-tool count + totalMs, sorted by totalMs descending; empty on any error.
-   * @see {OpenCodePort#toolCallStats}
+   * @see {AgentRuntimePort#toolCallStats} in ./opencode.port.ts
    */
   override async toolCallStats(sid: string): Promise<ToolCallStat[]> {
     const client = this._ensureClient();
@@ -418,7 +418,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @invariant Preserves message + part order; input summarized per tool and truncated to 300 chars.
    * @param sid Session identifier.
    * @returns Tool calls in session order with input summaries; empty on any error.
-   * @see {OpenCodePort#toolCallTrace}
+   * @see {AgentRuntimePort#toolCallTrace} in ./opencode.port.ts
    */
   override async toolCallTrace(sid: string): Promise<ToolTraceEntry[]> {
     const client = this._ensureClient();
@@ -565,7 +565,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param sid Session identifier.
    * @param opts Remediation prompt.
    * @returns Discriminated result.
-   * @see {OpenCodePort#continueSignal}
+   * @see {AgentRuntimePort#continueSignal} in ./opencode.port.ts
    */
   async continueSignal(sid: string, opts: PromptOpts): Promise<OpenCodeCallResult> {
     return this._sendPrompt(sid, opts);
@@ -577,7 +577,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param sid Session identifier.
    * @returns Promise that resolves when abort completes.
    * @sideEffect Calls POST /session/{id}/abort on the server.
-   * @see {OpenCodePort#abort}
+   * @see {AgentRuntimePort#abort} in ./opencode.port.ts
    */
   async abort(sid: string): Promise<void> {
     const client = this._ensureClient();
@@ -613,7 +613,7 @@ export class OpenCodeReal extends OpenCodePort {
    * @param sid Session identifier.
    * @returns Promise that resolves when close completes.
    * @sideEffect Calls DELETE /session/{id} to release server resources.
-   * @see {OpenCodePort#close}
+   * @see {AgentRuntimePort#close} in ./opencode.port.ts
    */
   async close(sid: string): Promise<void> {
     const client = this._ensureClient();
@@ -859,6 +859,7 @@ export class OpenCodeReal extends OpenCodePort {
               mismatchedFields: schemaErrors,
               expected: opts.format.schema,
               received: parsed as Record<string, unknown>,
+              raw: lastBlock,
             }
           );
         }
@@ -1112,42 +1113,11 @@ export class OpenCodeReal extends OpenCodePort {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Outcome classification & recovery ladder (TSK-160)
-// ═══════════════════════════════════════════════════════════════
+export {
+  classifyOutcome,
+  resolveOutcomeLadder,
+  type LadderAction,
+} from './agent-outcome-classifier.ts';
 
-/** @purpose Recovery action after classifying a prompt outcome. */
-export type LadderAction = 'continue' | 'restart' | 'accept';
-
-/**
- * @purpose Classify a prompt result into an outcome class — used to drive the recovery ladder.
- * @param result The discriminated result from a prompt call.
- * @returns Outcome class — OK when result is ok: true, otherwise the error class.
- */
-export function classifyOutcome(result: OpenCodeCallResult): OutcomeClass {
-  if (result.ok) return 'OK';
-  return result.error.class;
-}
-
-/**
- * @purpose Resolve the recovery ladder action given the number of previous failures and the
- *   current outcome.
- * @invariant First failure (non-OK) → continue. Second failure → restart. Third+ → accept
- *   (avoids infinite loops).
- * @invariant OK outcome always returns 'accept' — no recovery needed.
- * @param previousFailures Number of consecutive failures before this call (0-based).
- * @param currentOutcome Classified outcome of the current prompt result.
- * @returns Recovery action: continue, restart, or accept.
- */
-export function resolveOutcomeLadder(
-  previousFailures: number,
-  currentOutcome: OutcomeClass
-): LadderAction {
-  if (currentOutcome === 'OK') return 'accept';
-
-  const attempt = previousFailures + 1;
-  if (attempt === 1) return 'continue';
-  if (attempt === 2) return 'restart';
-
-  return 'accept';
-}
+/** @purpose Legacy name for the same production adapter during consumer migration. */
+export { OpenCodeAgentAdapter as OpenCodeReal };

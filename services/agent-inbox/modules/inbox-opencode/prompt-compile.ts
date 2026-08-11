@@ -1,6 +1,6 @@
-// @file: PromptCompiler — single-route Handlebars+partials from ai/kit; system=directives, task=pointers (file paths, not inline content), schema in task text.
+// @file: AgentPromptCompiler — versioned pointer-only prompts for the shared runtime boundary.
 // @consumers: inbox-opencode (SessionLifecycle, UnifiedPool)
-// @tasks: TSK-160
+// @tasks: TSK-160, TSK-175
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,11 +8,15 @@ import Handlebars from 'handlebars';
 import { logger } from '#logger';
 
 /** @purpose Context for prompt compilation — task pointer, artifacts, mr, model, and role. */
-export type CompileContext = {
+export type AgentPromptContext = {
   /** @purpose Path to the task file (pointer, not inline content) */
   taskPointer: string;
-  /** @purpose Artifact file paths produced by prior sessions */
-  artifacts: string[];
+  /** @purpose Stable repository root pointer used by the runtime tool boundary. */
+  repositoryRoot: string;
+  /** @purpose Immutable commit identity for every repository read in this turn. */
+  sha: string;
+  /** @purpose Stable artifact addresses produced by prior sessions. */
+  artifactAddresses: string[];
   /** @purpose MR webUrl this prompt operates on */
   mr: string;
   /** @purpose Model identifier for the prompt header */
@@ -20,6 +24,9 @@ export type CompileContext = {
   /** @purpose Role identifier driving directive selection */
   role?: string;
 };
+
+/** @purpose Legacy compile-context name for the same strict pointer contract. */
+export type CompileContext = AgentPromptContext;
 
 /** @purpose Compiled prompt result — system directives and task text. */
 export type CompiledPrompt = {
@@ -42,7 +49,7 @@ const DEFAULT_TEMPLATE_DIR = 'ai/kit';
  * @invariant System = directive partials; task = file pointers (not inline); schema in task text (not system).
  * @invariant Handlebars partials are registered from XML files in the template directory tree.
  */
-export class PromptCompiler {
+export class AgentPromptCompiler {
   /** @purpose Root directory for template and partial resolution. */
   protected _templateDir: string;
   /** @purpose Compiled system template — loaded once on construction. */
@@ -59,7 +66,7 @@ export class PromptCompiler {
     this._systemTemplate = null;
     this._taskTemplate = null;
     this._registerPartials();
-    logger.debug('[PromptCompiler#constructor] [init → ready]', {
+    logger.debug('[AgentPromptCompiler#constructor] [init → ready]', {
       templateDir: this._templateDir,
     });
   }
@@ -69,8 +76,9 @@ export class PromptCompiler {
    * @param context Task pointer, artifacts, mr, model, and role.
    * @returns Compiled system and task texts.
    */
-  compile(context: CompileContext): CompiledPrompt {
-    logger.debug('[PromptCompiler#compile] [idle → compiling]', {
+  compile(context: AgentPromptContext): CompiledPrompt {
+    this._assertPointerContext(context);
+    logger.debug('[AgentPromptCompiler#compile] [idle → compiling]', {
       taskPointer: context.taskPointer,
       mr: context.mr,
     });
@@ -78,7 +86,7 @@ export class PromptCompiler {
     const system = this._compileSystem(context);
     const task = this._compileTask(context);
 
-    logger.debug('[PromptCompiler#compile] [compiling → compiled]', {
+    logger.debug('[AgentPromptCompiler#compile] [compiling → compiled]', {
       systemLength: system.length,
       taskLength: task.length,
     });
@@ -90,7 +98,7 @@ export class PromptCompiler {
    * @param context Compilation context with role and model.
    * @returns Compiled system prompt text.
    */
-  protected _compileSystem(context: CompileContext): string {
+  protected _compileSystem(context: AgentPromptContext): string {
     if (this._systemTemplate) {
       return this._systemTemplate(context);
     }
@@ -113,7 +121,7 @@ export class PromptCompiler {
    * @param context Compilation context with task pointer and artifacts.
    * @returns Compiled task text.
    */
-  protected _compileTask(context: CompileContext): string {
+  protected _compileTask(context: AgentPromptContext): string {
     if (this._taskTemplate) {
       return this._taskTemplate(context);
     }
@@ -125,15 +133,17 @@ export class PromptCompiler {
     lines.push('Read the task file at the path above for full instructions.');
     lines.push('');
 
-    if (context.artifacts.length > 0) {
+    if (context.artifactAddresses.length > 0) {
       lines.push('## Artifacts (pointers, not inline)');
-      for (const artifact of context.artifacts) {
+      for (const artifact of context.artifactAddresses) {
         lines.push(`- ${artifact}`);
       }
       lines.push('');
     }
 
     lines.push(`## Context (pointer)`);
+    lines.push(`- Repository: ${context.repositoryRoot}`);
+    lines.push(`- SHA: ${context.sha}`);
     lines.push(`- MR: ${context.mr}`);
     lines.push('');
 
@@ -145,12 +155,31 @@ export class PromptCompiler {
   }
 
   /**
+   * @purpose Reject mutable, incomplete or line-breaking pointer provenance before compilation.
+   * @param context Pointer provenance to validate before template evaluation.
+   */
+  protected _assertPointerContext(context: AgentPromptContext): void {
+    const pointers = [
+      context.taskPointer,
+      context.repositoryRoot,
+      context.mr,
+      ...context.artifactAddresses,
+    ];
+    if (pointers.some((pointer) => !pointer || /[\r\n]/.test(pointer))) {
+      throw new Error('[AgentPromptCompiler#compile] Pointers must be non-empty single lines');
+    }
+    if (!/^[0-9a-f]{7,64}$/i.test(context.sha)) {
+      throw new Error('[AgentPromptCompiler#compile] SHA must be an immutable hex commit id');
+    }
+  }
+
+  /**
    * @purpose Register Handlebars partials from XML files in the template directory tree.
    * @sideEffect Mutates Handlebars.partials — global registration for template compilation.
    */
   protected _registerPartials(): void {
     if (!existsSync(this._templateDir)) {
-      logger.warn('[PromptCompiler#_registerPartials] [registering → dir_missing]', {
+      logger.warn('[AgentPromptCompiler#_registerPartials] [registering → dir_missing]', {
         templateDir: this._templateDir,
       });
       return;
@@ -158,7 +187,7 @@ export class PromptCompiler {
     // XML files in the kit tree serve as partials — their names become template partial keys.
     // Actual template loading requires file-system traversal; this method seeds the namespace
     // so that templates referencing `{{> directiveName}}` resolve.
-    logger.debug('[PromptCompiler#_registerPartials] [registering → done]', {
+    logger.debug('[AgentPromptCompiler#_registerPartials] [registering → done]', {
       templateDir: this._templateDir,
     });
   }
@@ -171,18 +200,26 @@ export class PromptCompiler {
   protected _loadTemplate(relativePath: string): Handlebars.TemplateDelegate | null {
     const fullPath = join(this._templateDir, relativePath);
     if (!existsSync(fullPath)) {
-      logger.debug('[PromptCompiler#_loadTemplate] [loading → not_found]', { path: fullPath });
+      logger.debug('[AgentPromptCompiler#_loadTemplate] [loading → not_found]', {
+        path: fullPath,
+      });
       return null;
     }
     try {
       const source = readFileSync(fullPath, 'utf8');
       return Handlebars.compile(source);
     } catch (cause) {
-      const error = new Error(`[PromptCompiler#_loadTemplate] Compilation failed: ${fullPath}`, {
-        cause,
-      });
-      logger.error('[PromptCompiler#_loadTemplate] [loading → failed]', { error });
+      const error = new Error(
+        `[AgentPromptCompiler#_loadTemplate] Compilation failed: ${fullPath}`,
+        {
+          cause,
+        }
+      );
+      logger.error('[AgentPromptCompiler#_loadTemplate] [loading → failed]', { error });
       return null;
     }
   }
 }
+
+/** @purpose Legacy name for the same pointer compiler during consumer migration. */
+export { AgentPromptCompiler as PromptCompiler };

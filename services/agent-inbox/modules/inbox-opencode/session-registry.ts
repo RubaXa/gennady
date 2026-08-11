@@ -1,11 +1,12 @@
 // @file: SessionRegistry — sessionId ↔ {taskId, mr, artifacts[], model} in-memory store.
 // @consumers: inbox-opencode (SessionLifecycle, UnifiedPool)
-// @tasks: TSK-160
+// @tasks: TSK-160, TSK-175
 
 import { logger } from '#logger';
+import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';
 
 /** @purpose Session metadata stored in the registry — drives park/resume routing and artifact ownership. */
-export type SessionEntry = {
+export type AgentSession = {
   /** @purpose Unique session identifier from the opencode server */
   sessionId: string;
   /** @purpose Task identifier this session was created for */
@@ -20,7 +21,16 @@ export type SessionEntry = {
   state: 'idle' | 'work' | 'park' | 'close';
   /** @purpose ISO timestamp when the session was parked | @invariant Only set when state='park' */
   parkedAt?: string;
+  /** @purpose Semantic ownership used for producer continuation and per-MR operator isolation. */
+  context?: 'producer' | 'independent' | 'operator';
+  /** @purpose Immutable repository revision this context was opened against. */
+  sha?: string;
+  /** @purpose Runtime-profile namespace preventing production/test/mock context reuse. */
+  runtimeNamespace?: ReviewStateNamespace;
 };
+
+/** @purpose Legacy session-entry name for the same canonical AgentSession entity. */
+export type SessionEntry = AgentSession;
 
 /**
  * @purpose In-memory session registry — keyed by sessionId, with secondary lookup by taskId and mr.

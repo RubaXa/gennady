@@ -1,9 +1,16 @@
 // @file: SessionPool / UnifiedPool — bounded pool of OpenCode sessions with priority queuing (👤>🦊>🏗), no preemption, aging.
 // @consumers: inbox-roles (for role-agent session management)
-// @tasks: TSK-111, TSK-159, TSK-160
+// @tasks: TSK-111, TSK-159, TSK-160, TSK-175
 
 import { logger } from '#logger';
-import type { OpenCodePort, PromptOpts, ToolGate } from './opencode.port.ts';
+import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';
+import type {
+  AgentRuntimeRequest,
+  AgentRuntimeResult,
+  OpenCodePort,
+  PromptOpts,
+  ToolGate,
+} from './opencode.port.ts';
 import type { OpenCodeCallResult } from './errors.ts';
 
 /** @purpose Session priority levels — higher priority sessions are dequeued first. */
@@ -82,6 +89,9 @@ export type PoolCreateOpts = {
     taskId: string;
     mr: string;
     artifacts?: string[];
+    context?: 'producer' | 'independent' | 'operator';
+    sha?: string;
+    runtimeNamespace?: ReviewStateNamespace;
   };
 };
 
@@ -104,7 +114,7 @@ type QueuedCreate = Omit<Required<PoolCreateOpts>, 'registration'> & {
  * @invariant Backward-compatible with SessionPool API — existing callers without priority default to 'background'.
  * @consumer inbox-roles
  */
-export class SessionPool {
+export class AgentSessionPool {
   /** @purpose Pool configuration. */
   protected _config: SessionPoolConfig;
   /** @purpose Fixed-size array of session slots */
@@ -184,6 +194,26 @@ export class SessionPool {
       throw error;
     }
     return this._config.opencode.prompt(sid, opts);
+  }
+
+  /**
+   * @purpose Execute an attributed runtime turn through an active pooled session.
+   * @param request Canonical runtime request with task/model provenance.
+   * @returns Canonical attributed result including strict schema and trace evidence.
+   */
+  async run(request: AgentRuntimeRequest): Promise<AgentRuntimeResult> {
+    this._assertActive(request.sessionId, 'run');
+    return this._config.opencode.run(request);
+  }
+
+  /**
+   * @purpose Continue an attributed producer turn without allocating a second session.
+   * @param request Canonical continuation request.
+   * @returns Canonical attributed continuation result.
+   */
+  async continue(request: AgentRuntimeRequest): Promise<AgentRuntimeResult> {
+    this._assertActive(request.sessionId, 'continue');
+    return this._config.opencode.continue(request);
   }
 
   /**
@@ -419,10 +449,27 @@ export class SessionPool {
     await this._config.onSessionCreated?.(handle.sid, opts);
     return handle;
   }
+
+  /**
+   * @purpose Reject runtime work addressed to a released or foreign session.
+   * @param sid Session identity that must belong to one active pool slot.
+   * @param operation Canonical runtime operation used in diagnostics.
+   */
+  protected _assertActive(sid: string, operation: 'run' | 'continue'): void {
+    if (this.isActive(sid)) return;
+    const error = new Error(
+      `[SessionPool#${operation}] Session ${sid} is not an active pool member`
+    );
+    logger.error(`[SessionPool#${operation}] [active → error] ${sid}`, { error });
+    throw error;
+  }
 }
 
 /**
  * @purpose Unified pool — alias for SessionPool with priority semantics and default max of 3.
  * @invariant Backward-compatible: `new UnifiedPool({ opencode })` defaults to maxSessions=3.
  */
-export const UnifiedPool = SessionPool;
+export const UnifiedPool = AgentSessionPool;
+
+/** @purpose Legacy name for the same shared AgentSessionPool during consumer migration. */
+export { AgentSessionPool as SessionPool };

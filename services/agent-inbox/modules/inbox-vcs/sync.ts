@@ -1,6 +1,6 @@
 // @file: SyncService — two-tier sync orchestrator: poll all MRs, detail for active/visible, derive myRole/attention/stage, produce SyncSnapshot.
 // @consumers: inbox-queue, inbox-api
-// @tasks: TSK-158, TSK-173
+// @tasks: TSK-158, TSK-173, TSK-174
 
 import { logger } from '#logger';
 import { randomUUID } from 'node:crypto';
@@ -18,6 +18,7 @@ import {
   type AttentionThread,
 } from './attention.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
+import type { VcsSyncCoordinator } from './sync-coordinator.ts';
 
 /** @purpose Internal stage mapping: review_needed | reply_needed | awaiting_reply | idle — computed from discussions. */
 export type MrStage = 'review_needed' | 'reply_needed' | 'awaiting_reply' | 'idle';
@@ -36,6 +37,8 @@ export type SyncServiceConfig = {
     config: ReviewConfig;
     clock: ClockPort;
   };
+  /** @purpose TSK-174 unified cursor/event coordinator selected by the production composition root. */
+  syncCoordinator?: VcsSyncCoordinator;
 };
 
 /** @purpose Sync snapshot — DTO for inbox-api, board projection, and seed fixtures. */
@@ -111,6 +114,8 @@ export class SyncService {
   protected _sleep: (delayMs: number) => Promise<void>;
   /** @purpose Optional canonical state runtime enabled by the production composition root. */
   protected _canonicalReview: SyncServiceConfig['canonicalReview'];
+  /** @purpose Optional unified coordinator replacing transitional aggregate-only ingestion. */
+  protected _syncCoordinator: VcsSyncCoordinator | undefined;
   /** @purpose Per-MR cancellation handles for superseded quiet/debounce deadlines. */
   protected _verificationTimers = new Map<string, { cancel(): void }>();
 
@@ -134,12 +139,13 @@ export class SyncService {
     this._sleep =
       config?.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
     this._canonicalReview = config?.canonicalReview;
+    this._syncCoordinator = config?.syncCoordinator;
   }
 
   /**
    * @purpose Run a full two-tier sync: poll all actionable MRs, then detail-sync active ones.
    * @returns Sync snapshots for all MRs — poll-only for inactive, full for active.
-   * @sideEffect Network: poll (1 GraphQL call) + N detail calls for active MRs.
+   * @sideEffect Network: bounded GraphQL source reads + N detail calls for active MRs.
    */
   async twoTierSync(): Promise<SyncSnapshot[]> {
     logger.debug('[SyncService#twoTierSync] [idle → polling]');
@@ -217,7 +223,16 @@ export class SyncService {
     }
     // #endregion END_POLL_TIER
 
-    if (this._canonicalReview) await this._recordCanonicalReviewObservations(snapshots);
+    if (this._canonicalReview) {
+      if (this._syncCoordinator) {
+        await this._syncCoordinator.synchronize(
+          snapshots.map((snapshot) => ({ project: snapshot.mr.project, iid: snapshot.mr.iid }))
+        );
+        await this._recordCanonicalReviewObservations(snapshots, false);
+      } else {
+        await this._recordCanonicalReviewObservations(snapshots);
+      }
+    }
 
     logger.info('[SyncService#twoTierSync] [polling → completed]', {
       total: snapshots.length,
@@ -230,10 +245,14 @@ export class SyncService {
   /**
    * @purpose Durably ingest real sync snapshots into journal-backed ReviewState and re-arm ClockPort timers.
    * @param snapshots Settled real GitLab observations from this sync pass.
+   * @param [appendAggregateObservation] Whether compatibility aggregate events are required.
    * @returns Completion after every observation is durable and its timer is armed.
    * @sideEffect Appends canonical events and schedules timer-driven verification requests.
    */
-  protected async _recordCanonicalReviewObservations(snapshots: SyncSnapshot[]): Promise<void> {
+  protected async _recordCanonicalReviewObservations(
+    snapshots: SyncSnapshot[],
+    appendAggregateObservation = true
+  ): Promise<void> {
     const runtime = this._canonicalReview!;
     // #region START_INGEST_REAL_CANONICAL_REVIEW_STATE
     for (const snapshot of snapshots) {
@@ -279,7 +298,7 @@ export class SyncService {
         !latestObserved ||
         latestObserved.occurredAt !== event.occurredAt ||
         JSON.stringify(latestObserved.payload) !== JSON.stringify(event.payload);
-      if (observationChanged) {
+      if (appendAggregateObservation && observationChanged) {
         await runtime.journal.appendReviewEvent(event);
         events.push(event);
       }

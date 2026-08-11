@@ -1,6 +1,6 @@
 // @file: VcsInboxReal — production VCS integration through existing vcs-client (GitLab/GitHub).
 // @consumers: inbox-api (production), CLI inbox commands
-// @tasks: TSK-110
+// @tasks: TSK-110, TSK-174
 
 import {
   VcsInboxPort,
@@ -13,6 +13,7 @@ import { composeInboxError, type InboxErrorResponse } from './errors.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 import { isValidMrUrl } from './vcs-validators.ts';
 import { logger } from '#logger';
+import type { VcsDiscussion, VcsPort } from '../inbox-vcs/vcs-port.ts';
 
 /**
  * @purpose Options for creating a VcsInboxReal instance.
@@ -27,6 +28,8 @@ export type VcsInboxRealOptions = {
   baseUrl?: string;
   /** @purpose VCS provider — auto-detected from host by default */
   provider?: 'gitlab' | 'github';
+  /** @purpose Canonical TSK-174 provider root shared with sync/effects in production */
+  truth?: VcsPort;
 };
 
 /**
@@ -44,6 +47,8 @@ export class VcsInboxReal extends VcsInboxPort {
   protected _baseUrl: string;
   /** @purpose VCS provider type. */
   protected _provider: 'gitlab' | 'github';
+  /** @purpose Optional canonical provider root eliminating a parallel production client. */
+  protected _truth: VcsPort | undefined;
 
   /**
    * @purpose Create a Real adapter with VCS credentials.
@@ -55,6 +60,7 @@ export class VcsInboxReal extends VcsInboxPort {
     this._host = opts.host ?? '';
     this._token = opts.token ?? process.env.GITLAB_PERSONAL_TOKEN ?? '';
     this._provider = opts.provider ?? (/github/i.test(this._host) ? 'github' : 'gitlab');
+    this._truth = opts.truth;
 
     this._baseUrl = opts.baseUrl ?? '';
     if (!this._baseUrl) {
@@ -71,7 +77,7 @@ export class VcsInboxReal extends VcsInboxPort {
    * @see {VcsInboxPort#getHost}
    */
   getHost(): string {
-    return this._host;
+    return this._truth?.getHost() ?? this._host;
   }
 
   /** @purpose Cached authenticated login — resolved once per adapter lifetime. */
@@ -83,6 +89,10 @@ export class VcsInboxReal extends VcsInboxPort {
    */
   override async getMyLogin(): Promise<string> {
     if (this._myLogin !== null) return this._myLogin;
+    if (this._truth) {
+      this._myLogin = await this._truth.getCurrentUserLogin();
+      return this._myLogin;
+    }
     try {
       const client = await this._resolveInboxClient();
       const me = await client.getCurrentUser();
@@ -98,6 +108,7 @@ export class VcsInboxReal extends VcsInboxPort {
    * @returns InboxErrorResponse or null if credentials are valid.
    */
   protected _verifyCredentials(): InboxErrorResponse | null {
+    if (this._truth) return null;
     if (!this._token) {
       return composeInboxError(
         'AUTH',
@@ -170,6 +181,7 @@ export class VcsInboxReal extends VcsInboxPort {
    * @see {VcsInboxPort#getActionable}
    */
   async getActionable(): Promise<VcsActionableMr[]> {
+    if (this._truth) return this._truth.getInbox();
     const credErr = this._verifyCredentials();
     if (credErr) {
       logger.error('[VcsInboxReal#getActionable] [idle → failed]', { error: credErr });
@@ -211,6 +223,34 @@ export class VcsInboxReal extends VcsInboxPort {
       throw new Error(`[VcsInboxReal] INVALID_URL: ${webUrl}`, { cause: error });
     }
     // #endregion END_VALIDATE_MR_URL
+
+    if (this._truth) {
+      const ref = this._parseTruthReference(webUrl);
+      const [detail, myLogin] = await Promise.all([
+        this._truth.getMrDetail(ref.project, ref.iid),
+        this.getMyLogin(),
+      ]);
+      return {
+        project: ref.project,
+        iid: ref.iid,
+        webUrl: detail.webUrl || webUrl,
+        title: detail.title,
+        sourceBranch: detail.sourceBranch ?? '',
+        targetBranch: detail.targetBranch ?? '',
+        createdAt: detail.createdAt ?? '',
+        updatedAt: detail.updatedAt,
+        author: detail.author,
+        reviewers: detail.reviewers,
+        approvedBy: detail.approvedBy,
+        description: detail.description,
+        myRole:
+          detail.author === myLogin
+            ? 'author'
+            : detail.reviewers.includes(myLogin)
+              ? 'reviewer'
+              : 'mentioned',
+      };
+    }
 
     const credErr = this._verifyCredentials();
     if (credErr) {
@@ -331,6 +371,28 @@ export class VcsInboxReal extends VcsInboxPort {
     }
     // #endregion END_VALIDATE_MR_URL
 
+    if (this._truth) {
+      const ref = this._parseTruthReference(webUrl);
+      const all: VcsDiscussion[] = [];
+      let cursor: string | null = null;
+      while (true) {
+        const page = await this._truth.getDiscussions(ref.project, ref.iid, cursor);
+        all.push(...page.discussions);
+        if (!page.pageInfo.hasNextPage) break;
+        if (!page.pageInfo.endCursor) {
+          throw new Error('[VcsInboxReal#getDiscussions] Canonical pagination is incomplete');
+        }
+        cursor = page.pageInfo.endCursor;
+      }
+      const myLogin = opts?.my ? await this.getMyLogin() : '';
+      return all
+        .filter((discussion) => opts?.all || !discussion.resolved)
+        .filter(
+          (discussion) => !opts?.my || discussion.notes.some((note) => note.author === myLogin)
+        )
+        .map((discussion) => this._adaptTruthDiscussion(discussion));
+    }
+
     const credErr = this._verifyCredentials();
     if (credErr) {
       logger.error('[VcsInboxReal#getDiscussions] [idle → failed]', { error: credErr });
@@ -442,6 +504,44 @@ export class VcsInboxReal extends VcsInboxPort {
     }));
 
     return { id, shortId, author, body, file, line, resolved, notes: normalizedNotes };
+  }
+
+  /**
+   * @purpose Parse one already host-validated GitLab MR URL for canonical truth calls.
+   * @param webUrl Provider MR URL.
+   * @throws {Error} When the URL lacks a GitLab MR path.
+   * @returns Canonical project and IID.
+   */
+  protected _parseTruthReference(webUrl: string): { project: string; iid: string } {
+    const match = new URL(webUrl).pathname.match(/^\/(.+?)\/-\/merge_requests\/(\d+)/);
+    if (!match) throw new Error(`[VcsInboxReal#_parseTruthReference] Invalid MR URL: ${webUrl}`);
+    return { project: match[1], iid: match[2] };
+  }
+
+  /**
+   * @purpose Adapt canonical discussion truth to the temporary legacy consumer DTO.
+   * @param discussion Canonical provider discussion.
+   * @returns Temporary legacy discussion projection.
+   */
+  protected _adaptTruthDiscussion(discussion: VcsDiscussion): Discussion {
+    const first = discussion.notes[0];
+    return {
+      id: discussion.id,
+      shortId: discussion.id.slice(0, 8),
+      author: first?.author ?? 'unknown',
+      body: first?.body ?? '',
+      ...(discussion.position
+        ? { file: discussion.position.path, line: discussion.position.line }
+        : {}),
+      resolved: discussion.resolved,
+      notes: discussion.notes.map((note) => ({
+        id: note.id,
+        author: note.author,
+        username: note.author,
+        body: note.body,
+        createdAt: note.createdAt,
+      })),
+    };
   }
 
   /**

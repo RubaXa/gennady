@@ -74,8 +74,8 @@ graph TD
 | ------------------------------------------------------ | ------------------------------ | --------------- | ------------------- | ---------- |
 | [TSK-172](agent-inbox.task-172.md)                     | Runtime profiles/bootstrap     | scope           | None                | `[x]` DONE |
 | [TSK-173](inbox-core/inbox-core.task-173.md)           | Canonical review state         | inbox-core      | 172                 | `[x]` DONE |
-| [TSK-174](inbox-vcs/inbox-vcs.task-174.md)             | Unified GitLab boundary        | inbox-vcs       | 173                 | `[ ]` TODO |
-| [TSK-175](inbox-opencode/inbox-opencode.task-175.md)   | Agent runtime contracts        | inbox-opencode  | 173                 | `[ ]` TODO |
+| [TSK-174](inbox-vcs/inbox-vcs.task-174.md)             | Unified GitLab boundary        | inbox-vcs       | 173                 | `[x]` DONE |
+| [TSK-175](inbox-opencode/inbox-opencode.task-175.md)   | Agent runtime contracts        | inbox-opencode  | 173                 | `[x]` DONE |
 | [TSK-176](inbox-pipeline/inbox-pipeline.task-176.md)   | Full/delta/cross-review        | inbox-pipeline  | 173–175             | `[ ]` TODO |
 | [TSK-177](inbox-queue/inbox-queue.task-177.md)         | Packages and automation        | inbox-queue     | 173,174,176         | `[ ]` TODO |
 | [TSK-178](inbox-chat/inbox-chat.task-178.md)           | Chat and DEV handoff           | inbox-chat      | 173,175–177         | `[ ]` TODO |

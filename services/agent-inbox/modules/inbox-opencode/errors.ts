@@ -1,6 +1,6 @@
 // @file: OpenCode outcome classes, structured error result, and error factory for the inbox-opencode module.
 // @consumers: inbox-opencode (port, mock, pool), inbox-roles
-// @tasks: TSK-111
+// @tasks: TSK-111, TSK-175
 
 /**
  * @purpose All possible AI-node outcome classes — the recovery ladder in inbox-roles
@@ -25,6 +25,16 @@ export type OpenCodeErrorResult = {
   details?: Record<string, unknown>;
   /** @purpose Raw response text, preserved for debugging and retry context */
   raw?: string;
+  /** @purpose Explicit retry instruction retained across the agent-runtime boundary. */
+  retry?: AgentRetryMetadata;
+};
+
+/** @purpose Observable retry policy for a failed agent-runtime turn. */
+export type AgentRetryMetadata = {
+  /** @purpose Whether the same logical task may be attempted again. */
+  retryable: boolean;
+  /** @purpose Next recovery action selected from the existing outcome ladder. */
+  action: 'continue' | 'fresh_run' | 'operator';
 };
 
 /** @purpose Discriminated union: either a successful structured output or an error. */
@@ -44,9 +54,10 @@ export function composeError(
   signal: string,
   details?: Record<string, unknown>
 ): OpenCodeCallResult & { ok: false } {
+  const raw = typeof details?.raw === 'string' ? details.raw : undefined;
   return {
     ok: false,
-    error: { class: errorClass, signal, details },
+    error: { class: errorClass, signal, details, raw },
   };
 }
 

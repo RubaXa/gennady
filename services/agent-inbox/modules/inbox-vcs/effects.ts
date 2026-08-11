@@ -1,10 +1,18 @@
-// @file: Effects — postNote, react, resolve, approve, editDescription with D-323 rights and idempotency markers.
+// @file: Effects — unified permission-gated, idempotency-addressed, reconciled GitLab mutations.
 // @consumers: inbox-queue (effect_* tasks)
-// @tasks: TSK-158
+// @tasks: TSK-158, TSK-174
 
 import { logger } from '#logger';
-import type { VcsPort } from './vcs-port.ts';
-import type { EventJournal } from '../inbox-core/event-journal.ts';
+import { createHash } from 'node:crypto';
+import {
+  validateVcsEffectRequest,
+  type VcsEffectOutcome,
+  type VcsEffectRequest,
+  type VcsPort,
+} from './vcs-port.ts';
+import type { JournalPort } from '../inbox-core/event-journal.ts';
+import { VcsPermissionPolicy } from './permission-policy.ts';
+import { VcsReconciler } from './reconciler.ts';
 
 /** @purpose Parameters for posting a note to an MR. */
 export type PostNoteParams = {
@@ -50,6 +58,35 @@ export type EditDescriptionParams = {
   mrUrl?: string;
 };
 
+/** @purpose Optional effect-policy dependencies preserving the existing constructor surface. */
+export type EffectsConfig = {
+  /** @purpose Exact review bot usernames eligible for owned-MR thread effects */
+  botAllowlist?: readonly string[];
+};
+
+/**
+ * @purpose Derive stable effect identity from MR, bound revision, action kind, and normalized payload.
+ * @param request Effect request without its claimed identity.
+ * @returns SHA-256 stable effect identity.
+ */
+export function composeVcsEffectId(request: Omit<VcsEffectRequest, 'effectId'>): string {
+  const body = request.body?.trim().replace(/\s+/g, ' ');
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        project: request.project,
+        iid: request.iid,
+        revision: request.revision,
+        kind: request.kind,
+        body,
+        discussionId: request.discussionId,
+        noteId: request.noteId,
+        emoji: request.emoji,
+      })
+    )
+    .digest('hex');
+}
+
 /**
  * @purpose Apply side effects to GitLab: post notes, react, resolve, approve, edit description.
  * @invariant D-323: resolve only own threads or robot threads — and only in own MRs.
@@ -61,16 +98,111 @@ export class Effects {
   /** @purpose VCS port for network calls */
   protected _vcs: VcsPort;
   /** @purpose Event journal for idempotency markers */
-  protected _journal: EventJournal;
+  protected _journal: JournalPort;
+  /** @purpose Complete last-mile permission and capability policy. */
+  protected _permissionPolicy: VcsPermissionPolicy;
+  /** @purpose Fresh-read postcondition classifier and ambiguous transport recovery. */
+  protected _reconciler: VcsReconciler;
 
   /**
    * @purpose Create an Effects instance bound to a VCS port and event journal.
    * @param vcs VCS port for network calls.
    * @param journal Event journal for idempotency markers.
+   * @param [config] Explicit bot ownership allowlist.
    */
-  constructor(vcs: VcsPort, journal: EventJournal) {
+  constructor(vcs: VcsPort, journal: JournalPort, config?: EffectsConfig) {
     this._vcs = vcs;
     this._journal = journal;
+    this._permissionPolicy = new VcsPermissionPolicy(config?.botAllowlist);
+    this._reconciler = new VcsReconciler(vcs);
+  }
+
+  /**
+   * @purpose Execute any closed provider effect through validation, permission, capability, and reconciliation.
+   * @param input Untrusted effect request candidate.
+   * @throws {Error} When the request is unknown, incomplete, or claims a non-canonical identity.
+   * @returns Closed reconciled outcome; denied/unavailable requests perform no mutation.
+   * @sideEffect May probe capability, read provider state, mutate once/twice, and append a marker.
+   */
+  async apply(input: unknown): Promise<VcsEffectOutcome> {
+    const request = validateVcsEffectRequest(input);
+    const expectedEffectId = composeVcsEffectId(request);
+    if (request.effectId !== expectedEffectId) {
+      throw new Error('[Effects#apply] effectId does not match canonical request identity');
+    }
+    if (request.mrUrl) this._validateHost(request.mrUrl, 'apply');
+
+    const preflight = this._permissionPolicy.authorize(request, {
+      requestChanges: true,
+      evidence: 'preflight-without-capability-io',
+    });
+    if (!preflight.allowed) {
+      return {
+        effectId: request.effectId,
+        kind: request.kind,
+        status: preflight.status,
+        evidence: preflight.evidence,
+        readBeforeRetry: false,
+      };
+    }
+    const capabilities =
+      request.kind === 'request_changes'
+        ? await this._vcs.probeCapabilities()
+        : { requestChanges: false, evidence: 'capability-not-required' };
+    const permission = this._permissionPolicy.authorize(request, capabilities);
+    if (!permission.allowed) {
+      return {
+        effectId: request.effectId,
+        kind: request.kind,
+        status: permission.status,
+        evidence: permission.evidence,
+        readBeforeRetry: false,
+      };
+    }
+
+    const outcome = await this._reconciler.applyAndReconcile(request, () =>
+      this._executeValidatedEffect(request)
+    );
+    if (outcome.status === 'applied' || outcome.status === 'no_op') {
+      await this._writeMarker(request.kind, `${request.project}!${request.iid}`, request.effectId);
+    }
+    return outcome;
+  }
+
+  /**
+   * @purpose Route one validated/authorized request across the exhaustive provider mutation matrix.
+   * @param request Validated and authorized effect request.
+   * @returns Completion after the concrete provider accepts the mutation.
+   * @sideEffect Performs exactly one provider mutation.
+   */
+  protected async _executeValidatedEffect(request: VcsEffectRequest): Promise<void> {
+    // #region START_EXECUTE_EFFECT_CLOSED_WORLD
+    switch (request.kind) {
+      case 'comment':
+        return this._vcs.postDiscussion(request.project, request.iid, request.body!);
+      case 'reply':
+        return this._vcs.postNote(
+          request.project,
+          request.iid,
+          request.body!,
+          request.discussionId
+        );
+      case 'react':
+        return this._vcs.react(request.project, request.iid, request.noteId!, request.emoji!);
+      case 'resolve':
+        return this._vcs.resolve(request.project, request.iid, request.discussionId!);
+      case 'reopen':
+        return this._vcs.reopen(request.project, request.iid, request.discussionId!);
+      case 'approve':
+        return this._vcs.approve(request.project, request.iid);
+      case 'unapprove':
+        return this._vcs.unapprove(request.project, request.iid);
+      case 'request_changes':
+        return this._vcs.requestChanges(request.project, request.iid);
+      case 'edit_description':
+        return this._vcs.editDescription(request.project, request.iid, request.body!);
+    }
+    // #endregion END_EXECUTE_EFFECT_CLOSED_WORLD
   }
 
   /**

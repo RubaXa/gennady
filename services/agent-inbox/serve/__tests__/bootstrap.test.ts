@@ -1,6 +1,6 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
 // @consumers: node:test runner
-// @tasks: TSK-115, TSK-160, TSK-167, TSK-170, TSK-172
+// @tasks: TSK-115, TSK-160, TSK-167, TSK-170, TSK-172, TSK-175
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -145,11 +145,19 @@ describe('bootstrap — mock mode', () => {
       title: 'lifecycle-proof',
       directory: process.cwd(),
       registration: {
-        taskId: 'TSK-160-proof',
+        taskId: 'TSK-175-proof',
         mr: 'https://gitlab.test/group/project/-/merge_requests/160',
+        artifacts: ['artifact://review/proof'],
+        context: 'producer',
+        sha: '89c07ef',
+        runtimeNamespace: 'mock',
       },
     });
-    assert.strictEqual(result.sessionRegistry.lookup(sid)?.state, 'work');
+    const entry = result.sessionRegistry.lookup(sid);
+    assert.strictEqual(entry?.state, 'work');
+    assert.strictEqual(entry?.context, 'producer');
+    assert.strictEqual(entry?.sha, '89c07ef');
+    assert.strictEqual(entry?.runtimeNamespace, 'mock');
 
     await result.sessionLifecycle.park(sid);
     assert.strictEqual(await result.sessionLifecycle.resume(sid), true);

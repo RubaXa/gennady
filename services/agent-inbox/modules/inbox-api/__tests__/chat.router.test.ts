@@ -1,7 +1,7 @@
 // @file: Integration tests for ChatRouter — async POST /chat (D-89), TURN_IN_FLIGHT rejection
 //   (D-104), and POST /chat/stop delegation to ChatSession#stop (CH-11).
 // @consumers: node:test runner
-// @tasks: TSK-129, TSK-152, TSK-162, TSK-163
+// @tasks: TSK-129, TSK-152, TSK-162, TSK-163, TSK-175
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,12 +11,11 @@ import { BoardProviderMock } from '../board-provider.mock.ts';
 import { StateStore } from '../../inbox-core/state-store.ts';
 import { SessionPool } from '../../inbox-opencode/session-pool.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
-import type { PromptOpts } from '../../inbox-opencode/opencode.port.ts';
+import type { AgentRuntimeRequest } from '../../inbox-opencode/opencode.port.ts';
 import { makeTestTmpDir, cleanupTestTmp } from '../../inbox-core/test-support/test-tmp.ts';
 import { EventJournal } from '../../inbox-core/event-journal.ts';
 import { InMemoryTaskQueue } from '../../inbox-queue/task-queue.ts';
 import { TaskRegistry } from '../../inbox-queue/task-registry.ts';
-import { composeError } from '../../inbox-opencode/errors.ts';
 
 /** @purpose Helper to POST a JSON body and collect the response. */
 function postJson(
@@ -199,13 +198,23 @@ describe('ChatRouter — POST /chat', () => {
   it('context overflow переиздаёт turn через durable digest без duplicate SSE answer', async () => {
     const mrRef = 'group/proj!overflow';
     ctx.openCodeMock.seed('overflow', { answer: 'recovered answer', mutations: [] });
-    const originalPrompt = ctx.pool.prompt.bind(ctx.pool);
+    const originalRun = ctx.pool.run.bind(ctx.pool);
     let calls = 0;
-    mock.method(ctx.pool, 'prompt', async (sid: string, opts: PromptOpts) => {
+    mock.method(ctx.pool, 'run', async (request: AgentRuntimeRequest) => {
       calls += 1;
-      if (calls === 1)
-        return composeError('SESSION_ERROR', 'context overflow: token limit reached');
-      return originalPrompt(sid, opts);
+      if (calls === 1) {
+        return {
+          sessionId: request.sessionId,
+          taskId: request.taskId,
+          model: request.model,
+          ok: false,
+          outcome: 'SESSION_ERROR' as const,
+          signal: 'context overflow: token limit reached',
+          retry: { retryable: true, action: 'fresh_run' as const },
+          trace: [],
+        };
+      }
+      return originalRun(request);
     });
 
     const streamClient = await connectSseClient(ctx.port, mrRef);

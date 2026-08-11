@@ -1,8 +1,9 @@
-// @file: OpenCodePort — abstraction over an OpenCode AI-node session for structured prompting.
+// @file: AgentRuntimePort with the legacy OpenCode session surface retained in one hierarchy.
 // @consumers: SessionPool, inbox-roles, DI container
-// @tasks: TSK-111, TSK-160
+// @tasks: TSK-111, TSK-160, TSK-175
 
 import type { OpenCodeCallResult } from './errors.ts';
+import { validateAgentSchema } from './schema-registry.ts';
 
 /** @purpose Lifecycle status of an AI-node session. */
 export type SessionStatus = 'idle' | 'running' | 'completed' | 'error' | 'terminated';
@@ -130,6 +131,54 @@ export type OpenCodeMessage = {
   parts: Array<Record<string, unknown>>;
 };
 
+/** @purpose Attributed request for one structured agent-runtime turn. */
+export type AgentRuntimeRequest = {
+  /** @purpose Existing session selected by semantic routing. */
+  sessionId: string;
+  /** @purpose Stable task identity carried into outcome provenance. */
+  taskId: string;
+  /** @purpose Explicit model identity carried into outcome provenance. */
+  model: string;
+  /** @purpose Adapter-neutral prompt payload for this turn. */
+  prompt: PromptOpts;
+};
+
+/** @purpose Provenance attached to every successful or failed runtime result. */
+export type AgentRuntimeAttribution = {
+  /** @purpose Session that produced or failed the turn. */
+  sessionId: string;
+  /** @purpose Logical task that requested the turn. */
+  taskId: string;
+  /** @purpose Model selected for the turn. */
+  model: string;
+};
+
+/** @purpose Exhaustive attributed outcome returned by AgentRuntimePort. */
+export type AgentRuntimeResult =
+  | (AgentRuntimeAttribution & {
+      ok: true;
+      output: Record<string, unknown>;
+      trace: ToolTraceEntry[];
+    })
+  | (AgentRuntimeAttribution & {
+      ok: false;
+      outcome: Exclude<import('./errors.ts').OutcomeClass, 'OK'>;
+      signal: string;
+      raw?: string;
+      retry: import('./errors.ts').AgentRetryMetadata;
+      trace: ToolTraceEntry[];
+    });
+
+/** @purpose Observable live session state and accumulated factual trace. */
+export type AgentRuntimeInspection = AgentRuntimeAttribution & {
+  /** @purpose Current adapter lifecycle state. */
+  status: SessionStatus;
+  /** @purpose Complete conversation history exposed by the adapter. */
+  messages: OpenCodeMessage[];
+  /** @purpose Accumulated factual tool activity; empty means coverage is unproven. */
+  trace: ToolTraceEntry[];
+};
+
 /**
  * @purpose Abstraction over an OpenCode AI-node session for structured prompting.
  * @invariant Preconditions: non-empty system/text; existing directory path.
@@ -138,7 +187,68 @@ export type OpenCodeMessage = {
  * prompt() returns after turn completes; unreachable after close().
  * @consumers SessionPool, inbox-roles
  */
-export abstract class OpenCodePort {
+export abstract class AgentRuntimePort {
+  /**
+   * @purpose Execute one attributed turn in an existing semantically selected session.
+   * @invariant A transport/schema/task failure remains a failed result and never fabricates output.
+   * @param request Session, task, model and prompt identity for the turn.
+   * @returns Attributed success or visible failure with retry metadata and factual trace.
+   */
+  async run(request: AgentRuntimeRequest): Promise<AgentRuntimeResult> {
+    this._assertRuntimeRequest(request);
+    const result = await this.prompt(request.sessionId, {
+      ...request.prompt,
+      model: request.prompt.model ?? request.model,
+    });
+    return this._attributeRuntimeResult(request, result);
+  }
+
+  /**
+   * @purpose Continue the same producer session for correction or coverage recovery.
+   * @invariant Continuation never allocates or substitutes another session.
+   * @param request Existing producer-session turn identity.
+   * @returns Attributed continuation outcome with accumulated trace.
+   */
+  async continue(request: AgentRuntimeRequest): Promise<AgentRuntimeResult> {
+    this._assertRuntimeRequest(request);
+    const result = await this.continueSignal(request.sessionId, {
+      ...request.prompt,
+      model: request.prompt.model ?? request.model,
+    });
+    return this._attributeRuntimeResult(request, result);
+  }
+
+  /**
+   * @purpose Expose the runtime turn as an async stream while preserving one canonical run path.
+   * @param request Attributed turn identity.
+   * @returns Async iterable yielding the terminal attributed result.
+   */
+  async *stream(request: AgentRuntimeRequest): AsyncIterable<AgentRuntimeResult> {
+    yield await this.run(request);
+  }
+
+  /** @purpose Cancel one in-flight session turn through the existing adapter abort surface. */
+  async cancel(sessionId: string): Promise<void> {
+    if (!sessionId) throw new Error('[AgentRuntimePort#cancel] sessionId must be non-empty');
+    await this.abort(sessionId);
+  }
+
+  /**
+   * @purpose Inspect current session outcome context without inferring coverage from absent trace.
+   * @param attribution Session, task and model identity expected by the consumer.
+   * @returns Current lifecycle, messages and factual trace.
+   */
+  async inspect(attribution: AgentRuntimeAttribution): Promise<AgentRuntimeInspection> {
+    if (!attribution.sessionId || !attribution.taskId || !attribution.model) {
+      throw new Error('[AgentRuntimePort#inspect] Attribution fields must be non-empty');
+    }
+    const [status, messages, trace] = await Promise.all([
+      this.status(attribution.sessionId),
+      this.messages(attribution.sessionId),
+      this.toolCallTrace(attribution.sessionId),
+    ]);
+    return { ...attribution, status, messages, trace };
+  }
   /**
    * @purpose Create a new AI-node session bound to a working directory.
    * @param opts Title and directory for the session.
@@ -230,4 +340,60 @@ export abstract class OpenCodePort {
    * @sideEffect Session state transition to 'terminated' if not already; resource release.
    */
   abstract close(sid: string): Promise<void>;
+
+  /** @purpose Reject incomplete provenance before any adapter side effect occurs. */
+  protected _assertRuntimeRequest(request: AgentRuntimeRequest): void {
+    if (!request.sessionId || !request.taskId || !request.model) {
+      throw new Error('[AgentRuntimePort#run] Attribution fields must be non-empty');
+    }
+    if (!request.prompt.system && !request.prompt.text) {
+      throw new Error('[AgentRuntimePort#run] Prompt must contain system or text');
+    }
+  }
+
+  /** @purpose Attach provenance, retry policy and factual trace to one legacy adapter outcome. */
+  protected async _attributeRuntimeResult(
+    request: AgentRuntimeRequest,
+    result: OpenCodeCallResult
+  ): Promise<AgentRuntimeResult> {
+    const trace = await this.toolCallTrace(request.sessionId);
+    const attribution: AgentRuntimeAttribution = {
+      sessionId: request.sessionId,
+      taskId: request.taskId,
+      model: request.model,
+    };
+    if (result.ok && request.prompt.format) {
+      const mismatchedFields = validateAgentSchema(request.prompt.format.schema, result.output);
+      if (mismatchedFields.length > 0) {
+        return {
+          ...attribution,
+          ok: false,
+          outcome: 'SCHEMA_MISMATCH',
+          signal: `Output does not match expected schema: ${mismatchedFields.join('; ')}`,
+          raw: JSON.stringify(result.output),
+          retry: { retryable: true, action: 'continue' },
+          trace,
+        };
+      }
+    }
+    if (result.ok) return { ...attribution, ok: true, output: result.output, trace };
+
+    const outcome = result.error.class === 'OK' ? 'PARSE_ERROR' : result.error.class;
+    const retry =
+      outcome === 'SESSION_ERROR' || outcome === 'TIMEOUT'
+        ? { retryable: true, action: 'fresh_run' as const }
+        : { retryable: true, action: 'continue' as const };
+    return {
+      ...attribution,
+      ok: false,
+      outcome,
+      signal: result.error.signal ?? `Agent runtime returned ${outcome}`,
+      raw: result.error.raw,
+      retry,
+      trace,
+    };
+  }
 }
+
+/** @purpose Legacy name for the same AgentRuntimePort hierarchy during consumer migration. */
+export { AgentRuntimePort as OpenCodePort };
