@@ -3,7 +3,8 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-58
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
+- **Superseded scope note (2026-08-12, reconcile from-code):** Раздел «Purpose» ниже, Target Files и Acceptance Criteria описывают исторический факт — первичный bootstrap `ai/skills/` копированием из `~/.config/opencode/skills/` + `~/.claude/skills/sdd-critic/`. Это событие завершено (Execution Log, Round 1 — DONE) и относится к снапшоту навыков на момент bootstrap'а. Дальнейшая эволюция набора навыков шла НЕ через этот тикет, а напрямую через коммиты (в т.ч. `fa6fc8f` — full cutover на sdd-v2, см. `specs/ai-skills/ai-skills.spec.md` D-005): текущий набор — 9 SDD-навыков + 5 не-SDD, состав и пути отличаются от списка ниже. Meta.Status приведён в соответствие с трекером (`tasks/cli/README.md`: `[x] DONE`, Reopens: 1) — это единственная правка вне Execution Log; секции 2-6 оставлены как исторический артефакт, не как актуальная цель.
 - **Purpose:** Скопировать 13 скилов из `~/.config/opencode/skills/` (12 скилов) + `~/.claude/skills/sdd-critic/` (1 скил) в `ai/skills/` репозитория gennady. Адаптировать пути во всех `.md` и `.prompt.md` файлах: заменить `~/.config/opencode/skills/<skillName>/` и `~/.claude/skills/<skillName>/` на литеральную строку `${SKILL_DIR}/` (эта переменная резолвится рантаймом Claude/OpenCode).
 
 Примеры замен:

@@ -2,7 +2,7 @@
 
 ## 1. Module Vision
 
-Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует SDD-скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
+Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 14 скилов: `sdd` (единая дверь-роутер), `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile`, `sdd-hooks-install` — SDD-воркфлоу; `alt-opinion`, `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` — не-SDD. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
 → Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.7 sync-skills).
 
@@ -279,20 +279,21 @@ shared/common/sync/                    # shared с командой sync
 ├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
 └── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
 
-ai/skills/                            # 13 скилов (физические артефакты в репозитории)
+ai/skills/                            # 14 скилов (физические артефакты в репозитории)
+├── agent-inbox/SKILL.md
 ├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
+├── opencode-get-session/SKILL.md
+├── prd-interview/                     # SKILL.md + PRD_TEMPLATE.md
+├── sdd/SKILL.md                       # единая дверь-роутер
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
-├── sdd-continue/SKILL.md
+├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
-├── sdd-discover/SKILL.md
-├── sdd-execute/                       # SKILL.md + scripts/ (8 файлов)
-├── sdd-execute-batch/SKILL.md
-├── sdd-fix/SKILL.md
-├── sdd-infra/SKILL.md
-├── sdd-module-decomposition/SKILL.md
+├── sdd-execute/                       # SKILL.md + scripts/ (11 файлов)
+├── sdd-hooks-install/SKILL.md
+├── sdd-reconcile/SKILL.md
 ├── sdd-scaffold/SKILL.md
-└── sdd-setup/SKILL.md
+└── workspace-permission-setup/SKILL.md
 ```
 
 **File Mapping:**
@@ -332,7 +333,7 @@ ai/skills/                            # 13 скилов (физические а
 - **Risk accepted:** Две команды с похожим интерфейсом могут запутать пользователя. Смягчается консистентным форматом вывода и именованием. Orphan-удаление деструктивно: пользовательские скилы, не принадлежащие gennady, будут удалены — это задокументированное поведение, dry-run позволяет предпросмотр.
 - **Rejected alternatives:**
   - Флаг `--skills` в `sync` — смешивает две доменные модели
-  - Отдельный npm-пакет `@gennady/skills` — overkill для 13 скилов
+  - Отдельный npm-пакет `@gennady/skills` — overkill для 14 скилов
 
 ### D-M006 — Orphan-удаление: полная синхронизация
 

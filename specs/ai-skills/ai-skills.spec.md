@@ -16,7 +16,7 @@ library
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
-14 навыков: 12 SDD (sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-execute, sdd-execute-batch, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-fix, sdd-infra) + 2 non-SDD (alt-opinion, agent-inbox). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык.
+14 навыков: 9 SDD (`sdd` — единая дверь-роутер, `sdd-scaffold`, `sdd-execute` — включая batch-режим intent'ом внутри навыка, `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — режимы fix и from-code, `sdd-hooks-install`) + 5 non-SDD (`alt-opinion`, `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup`). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. См. D-005 — состав набора менялся после первичного discovery.
 
 <!--/SECTION:VISION-->
 
@@ -32,7 +32,7 @@ library
 1. Extract intent → 2. Load & activate directive → 3. Execute plan
 ```
 
-Потребители: sdd-discover, sdd-setup, sdd-audit, sdd-scaffold, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix.
+Потребители: sdd (единая дверь-роутер), sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review.
 
 ### Orchestrator: [`sdd-skills` → `OrchestratorProtocol`](./sdd-skills/sdd-skills.spec.md#orchestratorprotocol)
 
@@ -40,7 +40,7 @@ library
 Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → Audit (mandatory)
 ```
 
-Потребители: sdd-execute, sdd-execute-batch.
+Потребители: sdd-execute (единственный оркестратор — batch-режим — это LOGIC_SWITCH-ветка intent'а внутри того же навыка, не отдельный навык).
 
 ### CLI-delegation: [`alt-opinion` → `AltOpinionSkill`](./alt-opinion/alt-opinion.spec.md#altopinionskill)
 
@@ -48,46 +48,42 @@ Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → A
 npx gennady alt-opinion --file="<path>"
 ```
 
-Потребители: alt-opinion.
+Потребители: alt-opinion, sdd-check (тонкий репортер над CLI-инструментом `sdd-check` — тот же паттерн prepare → invoke → show).
 
 Навык не содержит логики — только трёхшаговый активатор: извлеки intent, загрузи директиву, активируйся как она, выполни план директивы.
 
-### Паттерн 2: Orchestrator skill
+### Паттерн 2: Orchestrator skill (door)
 
 ````markdown
 ---
 name: sdd-execute
-description: Execute ONE task ticket end-to-end ...
-license: MIT
+description: Execute task tickets end-to-end — a LOGIC-SWITCH on intent picks one ticket or a whole batch ...
 compatibility: opencode
 ---
 
-<SddExecuteOrchestrator role="orchestrator-only">
-You are an ORCHESTRATOR. You PLAN and DISPATCH; you do NOT execute phases yourself.
+<SddDoor door="execute">
+  <Mission>Orchestrate execution of one task ticket: plan phases, dispatch one worker-subagent per
+  phase, close the Round, dispatch audit, retry only failing phases on audit FAIL. I PLAN and
+  DISPATCH — I never write code, run a phase, or run audit myself.</Mission>
 
-<Protocol>
-1. **Resolve task:** ...
-2. **Plan:** Read ONLY ticket sections 1, 2, and 7-current-Round.
-3. **Phase dispatch loop** — sequential, one phase at a time:
-   a. Dispatch PHASE subagent with prompt:
-      ```
-      Step 1 — Read the directive:
-        ai/directives/sdd/phase-execution-protocol.xml
-      Step 2 — Activate. Announce: "🔒 DIRECTIVE ACTIVATED: SddPhaseExecution"
-      Step 3 — Apply to intent. Ticket: <path>, Phase: <P<N>>
-      SDD tooling available at: ~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd
-      ```
-5. **Dispatch AUDIT** with prompt:
+  <ExecutionPlan>
+    <Step id="GATHER">
+      Run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state` AND read in full
+      `~/Developer/gennady/ai/directives/sdd-v2/execute.directive.xml`.
+    </Step>
+    <Step id="PREFLIGHT">
+      Gate on sdd-state: FLOW_VERSION=v1 or READINESS=not-ready → embody the matching
+      `ai/directives/sdd-v2/migration-v1-v2.directive.xml` / `readiness.directive.xml` first.
+    </Step>
+    <Step id="EMBODY">
+      You ARE the execute orchestrator now. Task-ID (or "next" / "batch") from the operator
+      message. Follow the directive's ExecutionPlan; never skip the audit.
+    </Step>
+  </ExecutionPlan>
+</SddDoor>
 ````
 
-Step 1 — Read the directive:
-ai/directives/sdd/audit.directive.xml
-Step 2 — Activate. Announce: "🔒 DIRECTIVE ACTIVATED: SddAudit"
-
-```
-</Protocol>
-</SddExecuteOrchestrator>
-```
+Навык сам не содержит протокола фаз/аудита — это тело `ai/directives/sdd-v2/execute.directive.xml`, которое навык только загружает и активирует.
 
 Оркестратор композирует несколько директив (phase-execution + audit), диспатчит subagent с typed Handoff. Сам код не пишет.
 
@@ -227,13 +223,15 @@ ai/skills/<name>/
 
 | Паттерн | Навык делает | Примеры |
 |---|---|---|
-| **Directive activation** | Извлекает intent → читает директиву → активируется как она → выполняет план | sdd-discover, sdd-audit, sdd-scaffold, sdd-setup, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix |
-| **Orchestrator** | Планирует → диспатчит subagent-фазы с typed Handoff → диспатчит audit. Сам код не пишет | sdd-execute, sdd-execute-batch |
-| **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | alt-opinion |
+| **Directive activation** | Извлекает intent → читает директиву → активируется как она → выполняет план | sdd (единая дверь-роутер), sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review |
+| **Orchestrator** | Планирует → диспатчит subagent-фазы с typed Handoff → диспатчит audit. Сам код не пишет | sdd-execute (batch — ветка intent'а внутри того же навыка) |
+| **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | alt-opinion, sdd-check |
 
-**sdd-check** — read-only verifier: саморефлексия протокольных нарушений + механические проверки через `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd scan`. Код не пишет.
+**sdd-check** — read-only репортер: не загружает директиву, вся логика — в TypeScript-инструменте `shared/sdd/check.ts`, вызываемом через `npx gennady sdd-check --task <path>` / `--all`. Навык только запускает инструмент и релеит находки. Код не пишет, ничего не фиксит.
 
-**Скрипты:** В dev-режиме скрипты доступны по пути `~/Developer/gennady/ai/skills/<skill-name>/scripts/`. При `sync-skills` путь нормализуется в `.claude/skills/<skill-name>/scripts/`. Скрипты есть только у `sdd-execute` (9 файлов), `sdd-check` использует их же.
+**Скрипты:** В dev-режиме скрипты доступны по пути `~/Developer/gennady/ai/skills/<skill-name>/scripts/`. При `sync-skills` путь нормализуется в `.claude/skills/<skill-name>/scripts/`. Скрипты есть только у `sdd-execute` (11 файлов, диспатчер `sdd`).
+
+**sdd-hooks-install** не укладывается ни в один из трёх паттернов: это config-bootstrapper с протоколом целиком внутри `SKILL.md` (правит `.claude/settings.json` и `.gitignore` напрямую, без директивы и без вызова CLI). См. D-005 — принят как единичное исключение, не требует четвёртого паттерна.
 
 ### 5.1 Rejected Alternatives
 
@@ -280,11 +278,22 @@ ai/skills/<name>/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, ai-skills
-- **Why:** Выбрана декомпозиция по execution-паттерну: `skill-contract` (формат и контракты), `sdd-skills` (все 12 SDD), `alt-opinion` (CLI-delegation). Минимально достаточно для разделения контракта и реализации, не overengineered.
-- **Risk accepted:** `sdd-skills` содержит 12 навыков — при росте может потребоваться дальнейшая декомпозиция.
+- **Why:** Выбрана декомпозиция по execution-паттерну: `skill-contract` (формат и контракты), `sdd-skills` (все SDD-навыки, 12 на момент решения — см. D-005), `alt-opinion` (CLI-delegation). Минимально достаточно для разделения контракта и реализации, не overengineered.
+- **Risk accepted:** `sdd-skills` содержит SDD-навыки (12 на момент решения, 9 сейчас — см. D-005) — при росте может потребоваться дальнейшая декомпозиция.
 - **Rejected alternatives:**
   - По фазам SDD (6 модулей) — overengineered: большинство модулей содержат 1-2 навыка
   - Монолитный (1 модуль) — нет разделения контракта и реализации
+
+### D-005 — Набор навыков сведён к router + reconcile (cutover на v2)
+
+- **Status:** active
+- **Recorded:** reconcile from-code, ai-skills, коммит `fa6fc8f` (full cutover на sdd-v2)
+- **Was:** 12 SDD-навыков, каждый — отдельная точка входа (`sdd-discover`, `sdd-continue`, `sdd-infra`, `sdd-module-decomposition`, `sdd-setup`, `sdd-fix`, `sdd-execute-batch` как отдельный оркестратор от `sdd-execute`, плюс `sdd-audit`, `sdd-check`, `sdd-scaffold`, `sdd-critic`, `sdd-execute`). Директивы лежали в `ai/directives/sdd/`.
+- **Now:** 9 SDD-навыков. `sdd` — единая дверь-роутер, поглотившая discover/continue/infra/module-decomposition/setup через LOGIC_SWITCH на state + intent. `sdd-fix` слился в `sdd-reconcile` как режим `mode=fix` (второй режим — `mode=from-code`, для случаев когда код обогнал спеку). `sdd-execute-batch` слился в `sdd-execute` как batch-режим (Task-ID / next / batch / all / queue — тот же LOGIC_SWITCH). Добавился `sdd-code-review` (fresh-eyes багхант на диффе Round'а, отдельно от audit и от лита) и `sdd-hooks-install` (bootstrap хуков прогресса). Директивы переехали в `ai/directives/sdd-v2/`; `ai/directives/sdd/` удалена целиком.
+- **Why:** Один router-вход снижает нагрузку выбора навыка на оператора и агента-хостера; слияние fix/from-code и batch/single в один навык с LOGIC_SWITCH убирает дублирование протокола дистпетчеризации между близкими по сути входами.
+- **Risk accepted:** `sdd-hooks-install` не укладывается в три существующих паттерна активации (`DirectiveActivation` / `OrchestratorDispatching` / `CliDelegation`) — это config-bootstrapper с протоколом целиком внутри `SKILL.md`. Принято как единичное исключение, не как повод вводить четвёртый паттерн на одном навыке.
+- **Rejected alternatives:**
+  - Оставить 12+ навыков и просто патчить пути на `sdd-v2` — не убирает реальное дублирование входов (fix vs from-code, single vs batch — один и тот же протокол диспетчеризации)
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -301,7 +310,7 @@ Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs
 
 ### 8.1 Modules
 - [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
-- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 12 SDD-навыков: полный воркфлоу Specification-Driven Development
+- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 9 SDD-навыков: полный воркфлоу Specification-Driven Development
 - [`alt-opinion`](./alt-opinion/alt-opinion.spec.md) — Мульти-модельный анализ через CLI (CLI-delegation паттерн)
 
 ### 8.2 Inter-Module Dependency Map
@@ -338,7 +347,7 @@ graph TD
 | #     | Requirement                                     | Kind | Owner           | Resolution                            |
 | ----- | ----------------------------------------------- | ---- | --------------- | ------------------------------------- |
 | BR-01 | Создать `specs/ai-skills/ai-skills.spec.md`     | file | this-scope-task | Уже создан в STEP_8                   |
-| BR-02 | Добавить ai-skills в Portal (`specs/README.md`) | file | operator-action | Запустить `sdd-setup` после discovery |
+| BR-02 | Добавить ai-skills в Portal (`specs/README.md`) | file | operator-action | Запустить `/sdd` (router — ветка portal) после discovery |
 
 Все остальные зависимости (13 SKILL.md, директивы, скрипты, CLI) уже существуют в репозитории.
 

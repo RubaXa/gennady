@@ -6,48 +6,46 @@
 
 ## 1. Module Vision
 
-12 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Все навыки — тонкие клиенты над директивами из `ai/directives/sdd/`. Оркестраторы (sdd-execute, sdd-execute-batch) диспатчат subagent'ов с typed Handoff. sdd-check — read-only верификатор целостности артефактов.
+9 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Большинство навыков — тонкие клиенты над директивами из `ai/directives/sdd-v2/`. `sdd-execute` — единственный оркестратор, диспатчит subagent'ов с typed Handoff (включая batch-режим — та же дверь, LOGIC_SWITCH на intent). `sdd-check` — read-only репортер над CLI-инструментом (без директивы).
 
 Навыки в модуле:
 
-- **Discovery & Setup:** sdd-setup, sdd-discover, sdd-infra
-- **Design:** sdd-module-decomposition, sdd-critic
-- **Planning:** sdd-scaffold
-- **Execution:** sdd-execute, sdd-execute-batch
-- **Verification:** sdd-audit, sdd-check
-- **Iteration:** sdd-continue, sdd-fix
+- **Router (единая дверь):** `sdd` — маршрутизирует к portal / scope / infra / interface / module / recover-from-code
+- **Planning:** `sdd-scaffold`
+- **Execution:** `sdd-execute` (single ticket или batch — интент внутри одного навыка)
+- **Verification:** `sdd-audit`, `sdd-check`, `sdd-code-review`
+- **Iteration:** `sdd-critic`, `sdd-reconcile` (режимы fix и from-code)
+- **Setup:** `sdd-hooks-install`
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
 
 ## 2. Module Usage Example
 
-Агент активирует sdd-discover:
+Агент активирует `sdd` (роутер) для greenfield-скоупа:
 
 ```markdown
-1. Extract intent. Operator wants greenfield for scope "my-feature".
+1. GATHER: sdd-state (portal/scopes) + читает ai/directives/sdd-v2/router.directive.xml
 
-2. Load & activate directive.
-   `ai/directives/sdd/discovery.directive.xml`
-   🔒 DIRECTIVE ACTIVATED: SddDiscovery
-   You ARE this directive now.
+2. EMBODY: You ARE the router directive now. Intent — "новый скоуп my-feature".
 
-3. Apply directive. Mode = greenfield. Follow Execution_Plan.
+3. ROUTE: LOGIC_SWITCH(state, intent, scope-type) → READ_AND_USE_DIRECTIVE(scope.directive.xml)
 ```
 
-Агент активирует sdd-execute:
+Агент активирует `sdd-execute` (single ticket или batch — один и тот же навык):
 
 ```
-<SddExecuteOrchestrator>
-1. Resolve task: TSK-01
-2. Plan: P1 (impl) → P2 (test) → audit
-3. Dispatch P1: subagent reads phase-execution-protocol.xml
+<SddDoor door="execute">
+1. GATHER: sdd-state + читает ai/directives/sdd-v2/execute.directive.xml
+2. EMBODY: You ARE the execute orchestrator now. Task-ID = TSK-01 (или "batch").
+3. Plan: P1 (impl) → P2 (test) → audit
+4. Dispatch P1: worker reads phase-execution-protocol.directive.xml
    → DONE, handoff: artifacts=["src/foo.ts"]
-4. Dispatch P2: subagent with handoff from P1
+5. Dispatch P2: worker with handoff from P1
    → DONE
-5. Close round → dispatch audit
+6. Close round → dispatch audit
    → PASS ✅
-</SddExecuteOrchestrator>
+</SddDoor>
 ```
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
@@ -61,13 +59,13 @@ _Это полный список сущностей модуля. Любое в
 | Name                   | Type          | Purpose                                                                                           |
 | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
 | `SddSkill`             | Entity        | Один SDD-навык: SKILL.md + роль в воркфлоу                                                        |
-| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd/*.xml`                                         |
+| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd-v2/*.xml`                                      |
 | `OrchestratorProtocol` | Specification | Протокол оркестратора: plan → dispatch → handoff → audit → retry                                  |
 | `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                                                           |
 | `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                                                        |
 | `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open                                   |
-| `SddScripts`           | Artifact      | Bash-скрипты в `ai/skills/sdd-execute/scripts/`: sdd, verify, extract, scan, check-blockers, lint |
-| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: discover, design, plan, execute, verify, iterate                               |
+| `SddScripts`           | Artifact      | Bash-скрипты в `ai/skills/sdd-execute/scripts/`: sdd, verify, extract, scan, check-blockers, lint — доступны фазовым/аудит-subagent'ам как `<sdd-path>` |
+| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup                                   |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -80,7 +78,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Entity
 - **Purpose:** Один SDD-навык — именованный артефакт в `ai/skills/<name>/`
 - **Public Properties:**
-  - `name: string` — из frontmatter, например `sdd-discover`
+  - `name: string` — из frontmatter, например `sdd-scaffold`
   - `pattern: 'directive' | 'orchestrator' | 'check'` — execution-паттерн
   - `directives: DirectiveReference[]` — связанные директивы
   - `phase: SddWorkflowPhase` — фаза воркфлоу
@@ -92,7 +90,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Value Object
 - **Purpose:** Связь навык → директива
 - **Public Properties:**
-  - `path: string` — относительный путь от корня проекта: `ai/directives/sdd/<name>.xml`
+  - `path: string` — относительный путь от корня проекта: `ai/directives/sdd-v2/<name>.directive.xml`
   - `activationMode: 'self' | 'subagent'` — как навык активирует директиву: сам или через subagent
 - **Lifecycle:** Immutable
 - **Consumers:** `SddSkill`
@@ -100,7 +98,7 @@ _Это полный список сущностей модуля. Любое в
 ### `OrchestratorProtocol`
 
 - **Type:** Specification
-- **Purpose:** Протокол оркестратора для sdd-execute и sdd-execute-batch
+- **Purpose:** Протокол оркестратора для sdd-execute (single ticket и batch — один и тот же навык, LOGIC_SWITCH на intent)
 - **Public Operations:**
   - Resolve task — найти задачу по Task-ID или вычислить pickable
   - Plan — read planning surface (Meta, Phases Overview, Execution Log); detect state
@@ -112,28 +110,28 @@ _Это полный список сущностей модуля. Любое в
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
   - Оркестратор не пишет код
   - Preflight: check-blockers перед стартом
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute
 
 ### `PhaseDispatchPrompt`
 
 - **Type:** Specification
 - **Purpose:** Шаблон prompt'а для диспатча фазового subagent'а
 - **Public Properties:**
-  - Step 1: Read directive (`ai/directives/sdd/phase-execution-protocol.xml`)
+  - Step 1: Read directive (`ai/directives/sdd-v2/phase-execution-protocol.directive.xml`)
   - Step 2: Activate (`🔒 DIRECTIVE ACTIVATED: SddPhaseExecution`)
   - Step 3: Apply to intent (Ticket + Phase + Reason + Inputs)
   - Tooling: `${SKILL_DIR}/scripts/sdd`
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute
 
 ### `AuditDispatchPrompt`
 
 - **Type:** Specification
 - **Purpose:** Шаблон prompt'а для диспатча аудита
 - **Public Properties:**
-  - Step 1: Read directive (`ai/directives/sdd/audit.directive.xml`)
+  - Step 1: Read directive (`ai/directives/sdd-v2/audit.directive.xml`)
   - Step 2: Activate (`🔒 DIRECTIVE ACTIVATED: SddAudit`)
   - Step 3: Apply to intent (Task + Ticket + Round + Artifacts + Mode)
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute
 
 ### `HandoffPayload`
 
@@ -157,7 +155,7 @@ _Это полный список сущностей модуля. Любое в
   - `sdd scan [root]` — снапшот проекта
   - `sdd lint <files>` — DBC AST lint
 - **Location:** `ai/skills/sdd-execute/scripts/`
-- **Consumers:** Phase subagents, audit subagents, sdd-check
+- **Consumers:** Phase subagents, audit subagents (через `<sdd-path>` в диспатч-промпте оркестратора). `sdd-check` (skill) НЕ вызывает эти скрипты — его механическая проверка идёт через `npx gennady sdd-check`, TypeScript-инструмент `shared/sdd/check.ts`, отдельный от `SddScripts`
 - **Invariants:**
   - macOS-совместимый bash (нет GNU-only флагов)
   - Единый permission-паттерн: `Bash(scripts/sdd/sdd *)`
@@ -168,12 +166,12 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Enumeration
 - **Purpose:** Классификация навыка по фазе SDD-воркфлоу
 - **Values:**
-  - `discover` — sdd-setup, sdd-discover, sdd-infra
-  - `design` — sdd-module-decomposition, sdd-critic
+  - `route` — sdd (единая дверь-роутер: portal / scope / infra / interface / module / recover-from-code)
   - `plan` — sdd-scaffold
-  - `execute` — sdd-execute, sdd-execute-batch
-  - `verify` — sdd-audit, sdd-check
-  - `iterate` — sdd-continue, sdd-fix
+  - `execute` — sdd-execute (single ticket и batch)
+  - `verify` — sdd-audit, sdd-check, sdd-code-review
+  - `iterate` — sdd-critic, sdd-reconcile
+  - `setup` — sdd-hooks-install
 - **Consumers:** `SddSkill`
 <!--/SECTION:ENTITY_SURFACES-->
 
@@ -184,7 +182,7 @@ _Это полный список сущностей модуля. Любое в
 ### Specification: `OrchestratorProtocol`
 
 - **Purpose:** Контракт оркестрации выполнения задач
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`
 - **Deferred Runtime Scope:** None
@@ -208,7 +206,7 @@ _Это полный список сущностей модуля. Любое в
 ### Artifact: `SddScripts`
 
 - **Purpose:** Helper-скрипты для SDD-операций
-- **Consumers:** Phase subagents, audit subagents, sdd-check
+- **Consumers:** Phase subagents, audit subagents (не `sdd-check` skill — см. Entity Surfaces)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `integration`
 - **Deferred Runtime Scope:** None
@@ -249,29 +247,28 @@ _Это полный список сущностей модуля. Любое в
 
 ```
 ai/skills/
-├── sdd-setup/SKILL.md
-├── sdd-discover/SKILL.md
-├── sdd-infra/SKILL.md
-├── sdd-module-decomposition/SKILL.md
-├── sdd-critic/SKILL.md
+├── sdd/SKILL.md                    # единая дверь-роутер
 ├── sdd-scaffold/SKILL.md
 ├── sdd-execute/
-│   ├── SKILL.md
+│   ├── SKILL.md                    # single ticket и batch — LOGIC_SWITCH на intent
 │   └── scripts/
 │       ├── sdd                     # диспатчер
 │       ├── verify.sh
 │       ├── extract-section.sh
 │       ├── check-blockers.sh
 │       ├── scan.sh
+│       ├── check.sh
 │       ├── lint-artifacts.sh
 │       ├── classify-scripts.js
 │       ├── classify-scripts.ts
+│       ├── _sdd-lib.sh
 │       └── README.md
-├── sdd-execute-batch/SKILL.md
 ├── sdd-audit/SKILL.md
-├── sdd-check/SKILL.md
-├── sdd-continue/SKILL.md
-└── sdd-fix/SKILL.md
+├── sdd-check/SKILL.md              # без директивы — тонкий репортер над `npx gennady sdd-check`
+├── sdd-code-review/SKILL.md
+├── sdd-critic/SKILL.md
+├── sdd-reconcile/SKILL.md          # режимы fix и from-code
+└── sdd-hooks-install/SKILL.md      # config-bootstrapper, вне 3 паттернов — см. ai-skills.spec.md D-005
 ```
 
 **File Mapping:**
@@ -287,11 +284,11 @@ ai/skills/
 
 ## 8. Module Decision Log
 
-### D-M002 — 12 SDD-навыков в одном модуле
+### D-M002 — SDD-навыки в одном модуле
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, ai-skills, sdd-skills
-- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered для текущих 12 навыков.
+- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered. Решение принято при 12 навыках (сейчас 9 — см. `ai-skills.spec.md` D-005), рационале не изменился.
 - **Risk accepted:** При росте количества навыков модуль может потребовать дальнейшей декомпозиции.
 - **Rejected alternatives:**
   - 5 подмодулей по фазам — overengineered: некоторые содержали бы 1-2 навыка
@@ -328,7 +325,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Все 12 навыков уже существуют в `ai/skills/`. Требуется только релативизация абсолютных путей в телах SKILL.md.
+- **Implementation files to be created:** Все 9 навыков уже существуют в `ai/skills/`. Пути в телах SKILL.md — в dev-форме (`~/Developer/gennady/...`), релативизуются `PathNormalizer` при `sync-skills` (закрыто, см. `skill-contract.spec.md` D-M001/handoff).
 - **Test files to be created:** Интеграционные тесты для скриптов (sdd verify, sdd extract, sdd check-blockers)
 - **Stack dependencies:**
   - Language: TypeScript (для classify-scripts.ts)
@@ -340,8 +337,7 @@ graph TD
 | —    | —        | —      |
 
 - **Open risks & validation needs:**
-  - Абсолютные пути `/Users/k.lebedev/Developer/gennady/` в телах SKILL.md требуют замены на относительные (`ai/directives/...`)
-  - `${SKILL_DIR}` — переменная, предоставляемая агентом-хостером; поведение при отсутствии требует проверки
   - Скрипты завязаны на macOS/bash 3.2+ — не кроссплатформенны
   - classify-scripts.js и classify-scripts.ts — дублирование, требует консолидации
+  - `ai/skills/sdd-execute/scripts/` (extract/lint/verify/check-blockers/scan/check) — живо используются только фазовыми/аудит-subagent'ами через `<sdd-path>` в phase-execution-protocol; сам `check.sh` дублирует по смыслу CLI-команду `gennady sdd-check` — требует отдельной проверки на dead code (вне scope этой сверки)
   <!--/SECTION:HANDOFF-->

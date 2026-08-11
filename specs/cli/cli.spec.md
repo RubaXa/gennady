@@ -270,8 +270,8 @@ Synced: 0 added, 0 updated, 34 skipped (unchanged)
 $ gennady sync
 
 Sync: /Users/user/my-project
-  ~ ai/directives/sdd/discovery.directive.xml
-  ~ ai/directives/sdd/setup.directive.xml
+  ~ ai/directives/sdd-v2/scope.directive.xml
+  ~ ai/directives/sdd-v2/readiness.directive.xml
   = ai/directives/knowledge.xml                                   (unchanged)
   ... (2 updated, 32 unchanged)
 Synced: 0 added, 2 updated, 32 skipped (unchanged)
@@ -283,32 +283,32 @@ $ gennady sync --dry-run
 
 Sync (dry-run): /Users/user/my-project
   + ai/directives/knowledge.xml                                   (would add)
-  ~ ai/directives/sdd/discovery.directive.xml                     (would update)
+  ~ ai/directives/sdd-v2/scope.directive.xml                      (would update)
   = ai/directives/testing/node-test.xml                           (unchanged, skip)
   ... (1 add, 1 update, 32 skip)
 Dry-run: no files written.
 
 # exit 0
 
-# --- фильтр: только sdd ---
-$ gennady sync sdd
+# --- фильтр: только sdd-v2 ---
+$ gennady sync sdd-v2
 
 Sync: /Users/user/my-project
-  = ai/directives/sdd/README.md                                   (unchanged)
-  = ai/directives/sdd/discovery.directive.xml                     (unchanged)
-  ... (8 files)
-Synced: 0 added, 0 updated, 8 skipped (unchanged)
+  = ai/directives/sdd-v2/router.directive.xml                     (unchanged)
+  = ai/directives/sdd-v2/scope.directive.xml                      (unchanged)
+  ... (25 files)
+Synced: 0 added, 0 updated, 25 skipped (unchanged)
 
 # exit 0
 
 # --- фильтр: несколько поддиректорий ---
-$ gennady sync sdd coding testing
+$ gennady sync sdd-v2 coding testing
 
 Sync: /Users/user/my-project
-  = ai/directives/sdd/...                                         (unchanged)
+  = ai/directives/sdd-v2/...                                      (unchanged)
   = ai/directives/coding/...                                      (unchanged)
   = ai/directives/testing/...                                     (unchanged)
-Synced: 0 added, 0 updated, 27 skipped (unchanged)
+Synced: 0 added, 0 updated, 39 skipped (unchanged)
 
 # exit 0
 
@@ -316,7 +316,7 @@ Synced: 0 added, 0 updated, 27 skipped (unchanged)
 $ gennady sync nonexistent/
 
 Error: ai/directives/nonexistent/ not found in package.
-Available: sdd, coding, testing, infra, perf-auditor
+Available: sdd-v2, coding, testing, infra, perf-auditor, agent-inbox, architecture
 
 # exit 1
 
@@ -664,24 +664,33 @@ Error: spec "nonexistent.spec.md" not found. Use orient --specs for available sp
 $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
+  + agent-inbox/
+      SKILL.md
   + alt-opinion/
       opinion.prompt.md
       SKILL.md
       synth.prompt.md
+  + opencode-get-session/
+      SKILL.md
+  + prd-interview/
+      PRD_TEMPLATE.md
+      SKILL.md
+  + sdd/
+      SKILL.md
   + sdd-audit/
       SKILL.md
   + sdd-check/
       SKILL.md
-  + sdd-continue/
+  + sdd-code-review/
       SKILL.md
   + sdd-critic/
-      SKILL.md
-  + sdd-discover/
       SKILL.md
   + sdd-execute/
       SKILL.md
       scripts/README.md
+      scripts/_sdd-lib.sh
       scripts/check-blockers.sh
+      scripts/check.sh
       scripts/classify-scripts.js
       scripts/classify-scripts.ts
       scripts/extract-section.sh
@@ -689,19 +698,15 @@ Sync skills: /Users/user/my-project
       scripts/scan.sh
       scripts/sdd
       scripts/verify.sh
-  + sdd-execute-batch/
+  + sdd-hooks-install/
       SKILL.md
-  + sdd-fix/
-      SKILL.md
-  + sdd-infra/
-      SKILL.md
-  + sdd-module-decomposition/
+  + sdd-reconcile/
       SKILL.md
   + sdd-scaffold/
       SKILL.md
-  + sdd-setup/
+  + workspace-permission-setup/
       SKILL.md
-Synced: 13 added, 0 updated, 0 skipped, 0 deleted
+Synced: 14 added, 0 updated, 0 skipped, 0 deleted
 
 # exit 0
 
@@ -709,10 +714,10 @@ Synced: 13 added, 0 updated, 0 skipped, 0 deleted
 $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
+  = agent-inbox/                                                   (unchanged)
   = alt-opinion/                                                   (unchanged)
-  = sdd-audit/                                                     (unchanged)
-  ... (13 skills unchanged)
-Synced: 0 added, 0 updated, 13 skipped, 0 deleted
+  ... (14 skills unchanged)
+Synced: 0 added, 0 updated, 14 skipped, 0 deleted
 
 # exit 0
 
@@ -722,11 +727,11 @@ $ gennady sync-skills
 Sync skills: /Users/user/my-project
   ~ sdd-execute/
       scripts/verify.sh
-  ~ sdd-fix/
+  ~ sdd-reconcile/
       SKILL.md
-  = alt-opinion/                                                   (unchanged)
-  ... (2 updated, 11 unchanged)
-Synced: 0 added, 2 updated, 11 skipped, 0 deleted
+  = agent-inbox/                                                   (unchanged)
+  ... (2 updated, 12 unchanged)
+Synced: 0 added, 2 updated, 12 skipped, 0 deleted
 
 # exit 0
 
@@ -740,8 +745,8 @@ Sync skills (dry-run): /Users/user/my-project
       scripts/check-blockers.sh                                    (would update)
   - sdd-old-deprecated/                                            (would delete)
       SKILL.md
-  = alt-opinion/                                                   (unchanged, skip)
-  ... (1 add, 1 update, 1 delete, 10 skip)
+  = agent-inbox/                                                   (unchanged, skip)
+  ... (1 add, 1 update, 1 delete, 11 skip)
 Dry-run: no files written.
 
 # exit 0
@@ -751,9 +756,9 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   - sdd-old-deprecated/
-  = alt-opinion/                                                   (unchanged)
-  ... (1 deleted, 12 unchanged)
-Synced: 0 added, 0 updated, 12 skipped, 1 deleted
+  = agent-inbox/                                                   (unchanged)
+  ... (1 deleted, 13 unchanged)
+Synced: 0 added, 0 updated, 13 skipped, 1 deleted
 
 # exit 0
 
@@ -766,9 +771,9 @@ $ gennady sync-skills --dry-run
 Sync skills (dry-run): /Users/user/my-project
   - my-custom-skill/                                               (would delete)
       SKILL.md
+  = agent-inbox/                                                   (unchanged, skip)
   = alt-opinion/                                                   (unchanged, skip)
-  = sdd-audit/                                                     (unchanged, skip)
-  ... (1 delete, 12 skip)
+  ... (1 delete, 13 skip)
 Dry-run: no files written.
 
 # exit 0
@@ -778,9 +783,9 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   - my-custom-skill/
-  = alt-opinion/                                                   (unchanged)
-  ... (1 deleted, 12 unchanged)
-Synced: 0 added, 0 updated, 12 skipped, 1 deleted
+  = agent-inbox/                                                   (unchanged)
+  ... (1 deleted, 13 unchanged)
+Synced: 0 added, 0 updated, 13 skipped, 1 deleted
 
 # exit 0
 
@@ -789,9 +794,9 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   ! my-custom-skill/                                        (delete failed: EACCES)
-  = alt-opinion/                                                   (unchanged)
-  ... (1 delete failed, 12 unchanged)
-Synced: 0 added, 0 updated, 12 skipped, 1 delete failed
+  = agent-inbox/                                                   (unchanged)
+  ... (1 delete failed, 13 unchanged)
+Synced: 0 added, 0 updated, 13 skipped, 1 delete failed
 
 # exit 0 (ошибка удаления — не фатальная)
 
@@ -821,7 +826,7 @@ Synced: 0 added, 0 updated, 2 skipped, 0 deleted
 $ gennady sync-skills nonexistent-skill
 
 Error: ai/skills/nonexistent-skill/ not found in package.
-Available: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute, sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup
+Available: agent-inbox, alt-opinion, opencode-get-session, prd-interview, sdd, sdd-audit, sdd-check, sdd-code-review, sdd-critic, sdd-execute, sdd-hooks-install, sdd-reconcile, sdd-scaffold, workspace-permission-setup
 
 # exit 1
 
@@ -835,7 +840,7 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Легенда вывода: `+` — скил добавлен, `~` — скил обновлён (изменился хотя бы один файл), `-` — скил удалён (orphan: есть в target, нет в source), `=` — пропущен без изменений. Внутри скила с маркером `~` показываются только изменившиеся файлы с отступом. Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. Порядок вывода: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
 
-Источник скилов — `ai/skills/` в npm-пакете gennady. 13 скилов: alt-opinion, sdd-audit, sdd-check, sdd-continue, sdd-critic, sdd-discover, sdd-execute (с scripts/), sdd-execute-batch, sdd-fix, sdd-infra, sdd-module-decomposition, sdd-scaffold, sdd-setup. Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
+Источник скилов — `ai/skills/` в npm-пакете gennady. 14 скилов: `sdd` (единая дверь-роутер) + `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile`, `sdd-hooks-install` (SDD-воркфлоу) + `alt-opinion`, `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` (не-SDD). Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
 
 → Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, Contracts, File Structure).
 
@@ -2033,20 +2038,21 @@ cli/cmd/sync-skills/ # новый модуль
 ├── sync-skills-formatter.test.ts
 └── sync-skills.cmd.test.ts
 
-ai/skills/ # 13 скилов (физические артефакты)
+ai/skills/ # 14 скилов (физические артефакты)
+├── agent-inbox/SKILL.md
 ├── alt-opinion/ # SKILL.md + opinion.prompt.md + synth.prompt.md
+├── opencode-get-session/SKILL.md
+├── prd-interview/ # SKILL.md + PRD_TEMPLATE.md
+├── sdd/SKILL.md # единая дверь-роутер
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
-├── sdd-continue/SKILL.md
+├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
-├── sdd-discover/SKILL.md
-├── sdd-execute/ # SKILL.md + scripts/ (8 файлов)
-├── sdd-execute-batch/SKILL.md
-├── sdd-fix/SKILL.md
-├── sdd-infra/SKILL.md
-├── sdd-module-decomposition/SKILL.md
+├── sdd-execute/ # SKILL.md + scripts/ (11 файлов)
+├── sdd-hooks-install/SKILL.md
+├── sdd-reconcile/SKILL.md
 ├── sdd-scaffold/SKILL.md
-└── sdd-setup/SKILL.md
+└── workspace-permission-setup/SKILL.md
 
 ```
 

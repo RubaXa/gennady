@@ -128,7 +128,7 @@ _Это полный список сущностей модуля. Любое в
   - Extract intent — извлечь намерение оператора из контекста
   - Load & activate — прочитать `ai/directives/.../*.xml`, активироваться как директива
   - Execute plan — следовать Execution_Plan директивы без отклонений
-- **Consumers:** SDD directive-based навыки (sdd-discover, sdd-setup, sdd-audit, sdd-scaffold, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix)
+- **Consumers:** SDD directive-based навыки (sdd — единая дверь-роутер, sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review)
 
 ### `OrchestratorDispatching`
 
@@ -139,7 +139,7 @@ _Это полный список сущностей модуля. Любое в
   - Dispatch phases — последовательно, каждая в свежем контексте, с typed Handoff между фазами
   - Dispatch audit — обязательный финальный шаг после всех фаз
   - Retry on FAIL — максимум 2 попытки аудита, селективный перезапуск фаз
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute (batch — LOGIC_SWITCH-выбранный intent внутри того же навыка, не отдельный навык)
 
 ### `CliDelegation`
 
@@ -193,7 +193,7 @@ _Это полный список сущностей модуля. Любое в
 ### Pattern: `OrchestratorDispatching`
 
 - **Purpose:** Оркестрация subagent-фаз с typed Handoff
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute (batch — LOGIC_SWITCH-выбранный intent внутри того же навыка, не отдельный навык)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`
 - **Deferred Runtime Scope:** None
@@ -305,7 +305,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Контракт уже существует в виде 17 навыков; код не требуется — это спецификация формата.
+- **Implementation files to be created:** Контракт уже существует в виде 14 навыков; код не требуется — это спецификация формата.
 - **Test files to be created:** Валидация frontmatter (unit-тесты в sync-skills скоупе)
 - **Stack dependencies:**
   - Language: TypeScript (для валидации в sync-skills)
