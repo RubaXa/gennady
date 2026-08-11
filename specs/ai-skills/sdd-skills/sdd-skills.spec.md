@@ -56,16 +56,15 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                   | Type          | Purpose                                                                                           |
-| ---------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
-| `SddSkill`             | Entity        | Один SDD-навык: SKILL.md + роль в воркфлоу                                                        |
-| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd-v2/*.xml`                                      |
-| `OrchestratorProtocol` | Specification | Протокол оркестратора: plan → dispatch → handoff → audit → retry                                  |
-| `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                                                           |
-| `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                                                        |
-| `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open                                   |
-| `SddScripts`           | Artifact      | Bash-скрипты в `ai/skills/sdd-execute/scripts/`: sdd, verify, extract, scan, check-blockers, lint — доступны фазовым/аудит-subagent'ам как `<sdd-path>` |
-| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup                                   |
+| Name                   | Type          | Purpose                                                                                                                                                 |
+| ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SddSkill`             | Entity        | Один SDD-навык: SKILL.md + роль в воркфлоу                                                                                                              |
+| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd-v2/*.xml`                                                                                            |
+| `OrchestratorProtocol` | Specification | Протокол оркестратора: plan → dispatch → handoff → audit → retry                                                                                        |
+| `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                                                                                                                 |
+| `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                                                                                                              |
+| `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open                                                                                         |
+| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup                                                                                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -109,7 +108,7 @@ _Это полный список сущностей модуля. Любое в
 - **Invariants:**
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
   - Оркестратор не пишет код
-  - Preflight: check-blockers перед стартом
+  - Preflight: blocker scan (`sdd-check`) перед стартом
 - **Consumers:** sdd-execute
 
 ### `PhaseDispatchPrompt`
@@ -120,7 +119,7 @@ _Это полный список сущностей модуля. Любое в
   - Step 1: Read directive (`ai/directives/sdd-v2/phase-execution-protocol.directive.xml`)
   - Step 2: Activate (`🔒 DIRECTIVE ACTIVATED: SddPhaseExecution`)
   - Step 3: Apply to intent (Ticket + Phase + Reason + Inputs)
-  - Tooling: `${SKILL_DIR}/scripts/sdd`
+  - Tooling: `sdd-extract` / `sdd-verify` / `sdd-log` (gennady CLI, per `AX_TOOL_INVOCATION`)
 - **Consumers:** sdd-execute
 
 ### `AuditDispatchPrompt`
@@ -143,23 +142,6 @@ _Это полный список сущностей модуля. Любое в
   - `open: string[]` — открытые вопросы для следующей фазы
 - **Lifecycle:** Создаётся фазой при DONE, потребляется следующей фазой как Inputs
 - **Consumers:** Phase subagents (через orchestrator)
-
-### `SddScripts`
-
-- **Type:** Artifact
-- **Purpose:** Bash-скрипты для SDD-операций
-- **Public Operations:**
-  - `sdd extract <file> <NAME>` — извлечь SECTION из markdown
-  - `sdd verify <files>` — all gates (typecheck + gennady DBC lint + lint + test + format check); RUN-ALL: failures accumulate; SUPPRESS-ON-SUCCESS: passing gates produce zero output
-  - `sdd check-blockers <ticket>` — сканировать BLOCKER в Execution Log
-  - `sdd scan [root]` — снапшот проекта
-  - `sdd lint <files>` — DBC AST lint
-- **Location:** `ai/skills/sdd-execute/scripts/`
-- **Consumers:** Phase subagents, audit subagents (через `<sdd-path>` в диспатч-промпте оркестратора). `sdd-check` (skill) НЕ вызывает эти скрипты — его механическая проверка идёт через `npx gennady sdd-check`, TypeScript-инструмент `shared/sdd/check.ts`, отдельный от `SddScripts`
-- **Invariants:**
-  - macOS-совместимый bash (нет GNU-only флагов)
-  - Единый permission-паттерн: `Bash(scripts/sdd/sdd *)`
-  - AX_BASH_NO_SILENT_EMPTY
 
 ### `SddWorkflowPhase`
 
@@ -192,7 +174,7 @@ _Это полный список сущностей модуля. Любое в
 - **Preconditions:**
   - `tasks/` директория существует
   - Ticket содержит section 1 (Meta), 2 (Phases Overview), 7 (Execution Log)
-  - `${SKILL_DIR}/scripts/sdd check-blockers` возвращает CLEAN
+  - `sdd-check` blocker scan возвращает CLEAN (`AX_BLOCKER_RESOLUTION_TRAIL`)
 - **Postconditions:**
   - Все pending-фазы выполнены последовательно
   - Execution Log содержит закрытый раунд
@@ -203,26 +185,6 @@ _Это полный список сущностей модуля. Любое в
   - Селективный реран фаз: только те, что в `phases_to_fix`
   - Оркестратор не читает bodies фаз, BDD, Verification, Coverage
 
-### Artifact: `SddScripts`
-
-- **Purpose:** Helper-скрипты для SDD-операций
-- **Consumers:** Phase subagents, audit subagents (не `sdd-check` skill — см. Entity Surfaces)
-- **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `integration`
-- **Deferred Runtime Scope:** None
-
-**Contract (DbC):**
-
-- **Preconditions:**
-  - macOS (bash 3.2+)
-  - `npx tsx` доступен для Node.js скриптов
-- **Postconditions:**
-  - `verify` → RUN-ALL: все гейты выполняются всегда, ошибки накапливаются. SUPPRESS-ON-SUCCESS: успешные гейты не печатают ничего; выводятся только упавшие (command + exit code + captured output). PASS → одна строка `[verify] ALL_GATES_PASS (N/N)`. FAIL → exit 1 с выводом только упавших гейтов.
-  - `check-blockers` → exit 0 если нет неразрешённых BLOCKER
-  - `extract` → содержимое SECTION или ошибка
-- **Invariants:**
-  - Никакой подкоманды не производит пустой вывод (AX_BASH_NO_SILENT_EMPTY)
-  - Все подкоманды доступны через единый диспатчер `sdd`
   <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -234,7 +196,6 @@ _Это полный список сущностей модуля. Любое в
 | Директивы для каждого навыка | `DirectiveReference` в `SddSkill`            | ✅ bound |
 | Протокол оркестратора        | `OrchestratorProtocol`                       | ✅ bound |
 | Prompt-шаблоны               | `PhaseDispatchPrompt`, `AuditDispatchPrompt` | ✅ bound |
-| Скрипты                      | `SddScripts`                                 | ✅ bound |
 | Handoff между фазами         | `HandoffPayload`                             | ✅ bound |
 
 Все опции привязаны. Нет отложенных.
@@ -250,19 +211,7 @@ ai/skills/
 ├── sdd/SKILL.md                    # единая дверь-роутер
 ├── sdd-scaffold/SKILL.md
 ├── sdd-execute/
-│   ├── SKILL.md                    # single ticket и batch — LOGIC_SWITCH на intent
-│   └── scripts/
-│       ├── sdd                     # диспатчер
-│       ├── verify.sh
-│       ├── extract-section.sh
-│       ├── check-blockers.sh
-│       ├── scan.sh
-│       ├── check.sh
-│       ├── lint-artifacts.sh
-│       ├── classify-scripts.js
-│       ├── classify-scripts.ts
-│       ├── _sdd-lib.sh
-│       └── README.md
+│   └── SKILL.md                    # single ticket и batch — LOGIC_SWITCH на intent; tooling = gennady CLI (sdd-extract/sdd-verify/sdd-log/sdd-check), не bash-скрипты
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md              # без директивы — тонкий репортер над `npx gennady sdd-check`
 ├── sdd-code-review/SKILL.md
@@ -275,8 +224,6 @@ ai/skills/
 | Путь | Компонент |
 |---|---|
 | `sdd-{name}/SKILL.md` | `SddSkill` — тело навыка |
-| `sdd-execute/scripts/sdd` | `SddScripts` — диспатчер |
-| `sdd-execute/scripts/*.sh` | `SddScripts` — helper'ы |
 
 <!--/SECTION:FILE_STRUCTURE-->
 
@@ -326,9 +273,8 @@ graph TD
 ## 10. Handoff to Task Scaffolding
 
 - **Implementation files to be created:** Все 9 навыков уже существуют в `ai/skills/`. Пути в телах SKILL.md — в dev-форме (`~/Developer/gennady/...`), релативизуются `PathNormalizer` при `sync-skills` (закрыто, см. `skill-contract.spec.md` D-M001/handoff).
-- **Test files to be created:** Интеграционные тесты для скриптов (sdd verify, sdd extract, sdd check-blockers)
+- **Test files to be created:** None — SDD tooling verification lives in the `cli` scope test suites (`cli/cmd/sdd-check`, `cli/cmd/sdd-verify`, `cli/cmd/sdd-extract`, `shared/sdd/*.test.ts`)
 - **Stack dependencies:**
-  - Language: TypeScript (для classify-scripts.ts)
   - Test framework: node:test
 - **Module Rules Additions:** None
 
@@ -337,7 +283,5 @@ graph TD
 | —    | —        | —      |
 
 - **Open risks & validation needs:**
-  - Скрипты завязаны на macOS/bash 3.2+ — не кроссплатформенны
-  - classify-scripts.js и classify-scripts.ts — дублирование, требует консолидации
-  - `ai/skills/sdd-execute/scripts/` (extract/lint/verify/check-blockers/scan/check) — живо используются только фазовыми/аудит-subagent'ами через `<sdd-path>` в phase-execution-protocol; сам `check.sh` дублирует по смыслу CLI-команду `gennady sdd-check` — требует отдельной проверки на dead code (вне scope этой сверки)
+  - Резолвед: `ai/skills/sdd-execute/scripts/` (sdd, extract-section.sh, verify.sh, check-blockers.sh, scan.sh, check.sh, lint-artifacts.sh, classify-scripts.js/.ts, \_sdd-lib.sh, README.md) удалены как dead code — все 11 файлов были bash/JS реверс-эталонами, вытесненными gennady CLI-командами (`sdd-extract`, `sdd-verify`, `sdd-check`, `gennady lint`); ни один живой skill/directive не резолвит плейсхолдер `<sdd-path>`, которым эти скрипты были доступны фазовым/аудит-subagent'ам. `execute.directive.xml` и `audit.directive.xml` уже давно ссылаются на CLI-команды напрямую.
   <!--/SECTION:HANDOFF-->

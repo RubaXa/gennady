@@ -202,7 +202,7 @@ _Это полный список сущностей модуля. Любое в
 
 - **Preconditions:**
   - Ticket существует и содержит Meta + Phases Overview + Execution Log
-  - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` доступен (в dev-режиме; при sync-skills → `.claude/skills/sdd-execute/scripts/sdd`)
+  - gennady CLI доступен (`sdd-task` / `sdd-extract` / `sdd-verify` / `sdd-log` / `sdd-check`, per `AX_TOOL_INVOCATION`)
 - **Postconditions:**
   - Все pending-фазы выполнены последовательно
   - Аудит запущен после закрытия раунда

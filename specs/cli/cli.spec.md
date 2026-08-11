@@ -687,17 +687,6 @@ Sync skills: /Users/user/my-project
       SKILL.md
   + sdd-execute/
       SKILL.md
-      scripts/README.md
-      scripts/_sdd-lib.sh
-      scripts/check-blockers.sh
-      scripts/check.sh
-      scripts/classify-scripts.js
-      scripts/classify-scripts.ts
-      scripts/extract-section.sh
-      scripts/lint-artifacts.sh
-      scripts/scan.sh
-      scripts/sdd
-      scripts/verify.sh
   + sdd-hooks-install/
       SKILL.md
   + sdd-reconcile/
@@ -726,7 +715,7 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   ~ sdd-execute/
-      scripts/verify.sh
+      SKILL.md
   ~ sdd-reconcile/
       SKILL.md
   = agent-inbox/                                                   (unchanged)
@@ -741,8 +730,8 @@ $ gennady sync-skills --dry-run
 Sync skills (dry-run): /Users/user/my-project
   + sdd-audit/
       SKILL.md                                                      (would add)
-  ~ sdd-execute/
-      scripts/check-blockers.sh                                    (would update)
+  ~ alt-opinion/
+      opinion.prompt.md                                            (would update)
   - sdd-old-deprecated/                                            (would delete)
       SKILL.md
   = agent-inbox/                                                   (unchanged, skip)
@@ -1311,7 +1300,7 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-SS-11               | Несуществующий скил → ошибка с перечислением доступных                                                                                                                                                                                                                   |
 | **Вывод**              |                                                                                                                                                                                                                                                                          |
 | FR-SS-12               | Маркеры: `+` (added), `~` (updated), `-` (deleted/orphan), `=` (unchanged) через shared `SyncFormatter`                                                                                                                                                                  |
-| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ sdd-execute/` → `      scripts/verify.sh`. Для `+` показываются все файлы, для `=`/`-` — только имя скила                                                                                             |
+| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ alt-opinion/` → `      opinion.prompt.md`. Для `+` показываются все файлы, для `=`/`-` — только имя скила                                                                                             |
 | FR-SS-14               | Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`                                                                                                                                                                                                      |
 | FR-SS-15               | `--dry-run` — предпросмотр: маркеры `(would add)` / `(would update)` / `(would delete)` / `(unchanged, skip)`. Итог: `Dry-run: no files written.`                                                                                                                        |
 | **Exit codes**         |                                                                                                                                                                                                                                                                          |
