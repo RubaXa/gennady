@@ -12,7 +12,7 @@
 - **Spec References:**
   - Scope: [`ai-skills` §5 SddScripts](../../../specs/ai-skills/ai-skills.spec.md)
   - Module: [`sdd-skills` §5 SddScripts contract](../../../specs/ai-skills/sdd-skills/sdd-skills.spec.md)
-  - Directive: [`phase-execution-protocol.xml` §AX_PERMITTED_BASH_COMMANDS, §STEP_5_VERIFY](../../../ai/directives/sdd/phase-execution-protocol.xml)
+  - Directive: [`phase-execution-protocol.xml` §AX_PERMITTED_BASH_COMMANDS, §STEP_5_VERIFY](../../../ai/directives/sdd-v2/phase-execution-protocol.directive.xml)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `integration`
 - **Deferred Runtime Scope:** None
@@ -31,7 +31,7 @@
 - **Objective:** Переписать `verify.sh`: заменить fail-fast (`|| exit 1`) на run-all с накоплением ошибок; подавить успешный вывод; обновить help в `sdd` диспатчере.
 - **Rules:**
   - [sdd-skills scope spec](../../../specs/ai-skills/sdd-skills/sdd-skills.spec.md)
-  - [phase-execution-protocol.xml](../../../ai/directives/sdd/phase-execution-protocol.xml)
+  - [phase-execution-protocol.xml](../../../ai/directives/sdd-v2/phase-execution-protocol.directive.xml)
 - **Target Files:**
   - `ai/skills/sdd-execute/scripts/verify.sh`
   - `ai/skills/sdd-execute/scripts/sdd`

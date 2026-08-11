@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file: Extract a named section between <!--SECTION:<NAME>--> / <!--/SECTION:<NAME>--> markers from a markdown file.
-# @consumers: sdd-execute, sdd-execute-batch (L2 orchestrator prompt-building); phase agents (rules extraction)
+# @consumers: sdd-execute (single ticket + batch, L2 orchestrator prompt-building); phase agents (rules extraction)
 # @contract: AX_BASH_NO_SILENT_EMPTY — never produces empty stdout. On miss → emits actionable instruction for the orchestrator + exit ≠ 0.
 #
 # Anchor grammar (canonical, AX_TICKET_ANCHOR_FORMAT):
@@ -137,7 +137,7 @@ Required action (ORCHESTRATOR, not phase agent):
   1. Read the file directly via Read tool.
   2. Verify the section exists by markdown header (e.g. ## 1. Meta, ### P1 — impl).
   3. If section exists in header form but lacks anchors → retrofit anchors per
-      AX_TICKET_ANCHOR_FORMAT in ~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml.
+      AX_TICKET_SECTION_NAMES_NORMATIVE in ~/Developer/gennady/ai/directives/sdd-v2/scaffold.directive.xml.
   4. If section does not exist at all → escalate to operator: ticket needs
      re-scaffolding or section content authoring.
 

@@ -1,6 +1,6 @@
 ---
 name: sdd-hooks-install
-description: Install Claude Code hooks for live SDD subagent progress streaming. Adds PreToolUse / PostToolUse / SubagentStop entries to project's .claude/settings.json (merging with existing config), ensures .claude/sdd-progress.ndjson is gitignored, prints the operator's tail command. Use once per project before running /sdd-execute or /sdd-execute-batch when live progress visibility is wanted. Idempotent — safe to re-run.
+description: Install Claude Code hooks for live SDD subagent progress streaming. Adds PreToolUse / PostToolUse / SubagentStop entries to project's .claude/settings.json (merging with existing config), ensures .claude/sdd-progress.ndjson is gitignored, prints the operator's tail command. Use once per project before running /sdd-execute (single ticket or batch) when live progress visibility is wanted. Idempotent — safe to re-run.
 compatibility: opencode
 ---
 
@@ -74,7 +74,7 @@ You install hooks into the CURRENT project to enable live SDD progress tailing. 
    To watch live progress in a second terminal:
        tail -f .claude/sdd-progress.ndjson | jq -r '"\(.ts) | \(.kind) | \(.tool // .session) | agent=\(.agent // "-")"'
 
-   Now run /sdd-execute <TSK-NN> or /sdd-execute-batch in this terminal.
+   Now run /sdd-execute <TSK-NN> (or /sdd-execute batch for the whole queue) in this terminal.
 
    To uninstall: edit .claude/settings.json and remove the SDD entries.
    ```

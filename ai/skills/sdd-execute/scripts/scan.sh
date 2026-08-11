@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file: Emit comprehensive SDD project snapshot in a single tool call.
-# @consumers: sdd-check, sdd-continue, sdd-execute-batch (preflight + triage).
+# @consumers: sdd-check, sdd (evolve-scope route), sdd-execute (preflight + triage).
 # @contract: AX_BASH_NO_SILENT_EMPTY. One-shot rich-context emitter so agents
 #            avoid running multiple ad-hoc find/grep commands.
 #
@@ -295,7 +295,7 @@ else
     SPECS=$(find -L "$ROOT_ABS/specs" -name '*.spec.md' -type f 2>/dev/null | sort || true)
     if [[ -z "$SPECS" ]]; then
         printf '# (no *.spec.md files under specs/)\n'
-        emit_warn "INFO" "specs/" "no spec files — run /sdd-discover to bootstrap"
+        emit_warn "INFO" "specs/" "no spec files — run /sdd to bootstrap"
     else
         while IFS= read -r sp; do
             [[ -z "$sp" ]] && continue

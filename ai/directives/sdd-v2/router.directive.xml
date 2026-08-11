@@ -14,8 +14,8 @@
     function, fix} — the size axis of the request, from «a product from scratch» down to «a fix =
     investigation on autopilot». SCALE is an attribute of the session, never a route: routing
     stays intent + scope-type, SCALE travels in the session file as the depth parameter
-    (`AX_SCALE_PROPORTIONAL_DEPTH`). The fix scale already owns a dedicated door — `/sdd-fix` →
-    reconcile; a fix-sized request arriving through this router keeps its route by
+    (`AX_SCALE_PROPORTIONAL_DEPTH`). The fix scale already owns a dedicated door — `/sdd-reconcile`
+    (mode=fix); a fix-sized request arriving through this router keeps its route by
     intent + scope-type and simply carries `scale: fix`.
   </Mission>
 

@@ -7,7 +7,7 @@
 
       ## Entry Points
       - [Specs Portal](../specs/README.md) — Scope Graph + all scope specs.
-      - Tickets are executed ONLY via `sdd-execute` SKILL (single ticket) or `sdd-execute-batch` SKILL (queue). The orchestrator dispatches phase-subagents per ticket's Phases Overview, then `sdd-audit` automatically — operator does not invoke audit manually.
+      - Tickets are executed ONLY via `sdd-execute` SKILL — a Task-ID / `next` for one ticket, or `batch` / `all` / `queue` for every pickable ticket. The orchestrator dispatches phase-subagents per ticket's Phases Overview, then `sdd-audit` automatically — operator does not invoke audit manually.
 
       ## Project-Wide Conventions
 
