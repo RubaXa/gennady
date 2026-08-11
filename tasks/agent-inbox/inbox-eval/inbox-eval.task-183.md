@@ -11,12 +11,13 @@
 - **Scope:** agent-inbox
 - **Module:** inbox-eval
 - **Dependencies:** TSK-174, TSK-176, TSK-177, TSK-179, TSK-180, TSK-181, TSK-182
-- **Spec References:** [Eval inventory](../../../specs/agent-inbox/inbox-eval/inbox-eval.spec.md#3-entity-inventory-closed-world), [DbC](../../../specs/agent-inbox/inbox-eval/inbox-eval.spec.md#5-module-contracts-dbc), [Root acceptance](../../../specs/agent-inbox/agent-inbox.spec.md#acceptance-after-downstream-regeneration)
+- **Spec References:** [Eval inventory](../../../specs/agent-inbox/inbox-eval/inbox-eval.spec.md#3-entity-inventory-closed-world), [DbC](../../../specs/agent-inbox/inbox-eval/inbox-eval.spec.md#5-module-contracts-dbc), [Pipeline DbC](../../../specs/agent-inbox/inbox-pipeline/inbox-pipeline.spec.md#5-module-contracts-dbc), [Root acceptance](../../../specs/agent-inbox/agent-inbox.spec.md#acceptance-after-downstream-regeneration)
 - **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `contract`, `integration`, `e2e`
+- **Verification Levels:** `unit`, `contract`, `integration`, `e2e`
 - **Deferred Runtime Scope:** None
-  <!--/SECTION:META-->
-  <!--SECTION:PHASES_OVERVIEW-->
+
+<!--/SECTION:META-->
+<!--SECTION:PHASES_OVERVIEW-->
 
 ## 2. Phases Overview
 
@@ -38,18 +39,20 @@
 - **Target Files:** `services/agent-inbox/modules/inbox-eval/`, `services/agent-inbox/serve/run-mode.ts`
 - **Inputs:** completed product modules
 - **Exit:** every required scenario declares observable preconditions and evidence; all-skipped cannot pass.
-  <!--/SECTION:PHASE_P1-->
-  <!--SECTION:PHASE_P2-->
+
+<!--/SECTION:PHASE_P1-->
+<!--SECTION:PHASE_P2-->
 
 ### P2 — test
 
 - **Objective:** Execute deterministic full matrix, real-readonly adaptive pool and allowlisted real-effects closed-loop acceptance including visual proof.
 - **Rules:** [testing-common](../../../ai/directives/testing/common.xml), [node-test](../../../ai/directives/testing/node-test.xml), [playwright-cli](../../../ai/directives/testing/playwright-cli.xml), [playwright-e2e](../../../ai/directives/testing/playwright-e2e.xml)
-- **Target Files:** `services/agent-inbox/modules/inbox-eval/__tests__/`, `e2e/inbox-serve/`
+- **Target Files:** `services/agent-inbox/modules/inbox-eval/__tests__/`, including `review-eval-report.test.ts`; `e2e/inbox-serve/`, including `agent-inbox.pipeline-control-plane.spec.ts` and `agent-inbox.task-executor.spec.ts`.
 - **Inputs:** P1 handoff
-- **Exit:** reports preserve honest non-green results, but this task cannot be DONE until mandatory root acceptance 1–7 all have PASS evidence.
-  <!--/SECTION:PHASE_P2-->
-  <!--SECTION:BDD-->
+- **Exit:** reports preserve honest non-green results; root acceptance 1–7, all eleven named pipeline-control-plane cases and the named `TaskExecutorPort` case have real shippable-entry artifacts and PASS.
+
+<!--/SECTION:PHASE_P2-->
+<!--SECTION:BDD-->
 
 ## 4. Acceptance Criteria (BDD)
 
@@ -58,6 +61,12 @@
 - **Given** PASS/FAIL/SKIP/INCONCLUSIVE and every allowed profile
 - **When** report types aggregate
 - **Then** invalid combinations fail and all-skipped verdict is non-PASS
+
+**Scenario:** report aggregation preserves non pass outcomes and rejects all skipped green [`unit`]
+
+- **Given** PASS, FAIL, SKIP and INCONCLUSIVE scenario outcomes with their evidence and an all-skipped run
+- **When** `ReviewEvalReport` aggregates the run verdict
+- **Then** FAIL and INCONCLUSIVE cannot be upgraded, evidence-less PASS is rejected and an all-skipped aggregate remains non-PASS
 
 **Scenario:** real readonly adapts honestly [`integration`]
 
@@ -88,38 +97,135 @@
 - **Given** the full profile combination matrix and shared contract kit for every variable port
 - **When** deterministic evaluation runs
 - **Then** every allowed combination and port contract has evidence and every forbidden combination fails before adapters start
-  <!--/SECTION:BDD-->
-  <!--SECTION:VERIFICATION-->
+
+**Scenario:** task executor port e2e preserves lane order parallel progress and crash recovery [`e2e`]
+
+- **Given** rebuilt production bundle, managed `gennady inbox serve`, two explicit MR lanes, mixed priorities, acknowledged work and an ambiguous effect
+- **When** TSK-177 `TaskExecutorPort` executes through the shippable entrypoint and the process restarts
+- **Then** product journal artifacts prove one active task per MR, cross-MR progress, operator→event→background priority, no replay of acknowledged terminal work and reconcile-before-retry for ambiguity
+- **And** the separately named E2E case receives mandatory PASS; a generic queue or pipeline umbrella result cannot substitute it
+
+**Scenario:** receipt store e2e persists append read replay and profile isolation [`e2e`]
+
+- **Given** rebuilt production bundle and managed `gennady inbox serve` in real and isolated test profiles
+- **When** `ReviewRuntimeReceiptStorePort` append/read/idempotent replay run through the shippable entrypoint
+- **Then** product-written receipt artifacts prove monotonic bytes and disjoint profile roots with mandatory PASS
+
+**Scenario:** local receipt adapter e2e proves durable ack and corrupt-tail failure [`e2e`]
+
+- **Given** managed real `gennady inbox serve` and product-owned local receipt files
+- **When** durable append and controlled corrupt-tail restart run through the shippable entrypoint
+- **Then** acknowledgment precedes eligibility, corruption fails closed, and saved artifact evidence receives mandatory PASS
+
+**Scenario:** receipt recorder e2e preserves callback provenance outside artifacts [`e2e`]
+
+- **Given** a real review tool callback under managed `gennady inbox serve`
+- **When** recorder captures source/target/operation/outcome and review artifact is revised
+- **Then** product receipt log remains independently durable and exact with mandatory PASS evidence
+
+**Scenario:** structural validator e2e rejects gaps then passes real evidence [`e2e`]
+
+- **Given** real product artifacts/receipts containing deliberate missing, placeholder and forged evidence variants
+- **When** validator runs through `gennady inbox serve` and then receives valid repair evidence
+- **Then** exact invalid slot IDs precede a fresh PASS, both persisted as product artifacts; any optimistic result fails acceptance
+
+**Scenario:** repair coordinator e2e resumes and exhausts budget honestly [`e2e`]
+
+- **Given** managed shippable process, incomplete real round and default repair budget three
+- **When** process restarts between attempts and invalid evidence reaches attempt four
+- **Then** product journal proves monotonic resume, no complete-slot repeat and terminal BLOCKED with mandatory PASS for the scenario assertions
+
+**Scenario:** freshness gate e2e protects all three purposes [`e2e`]
+
+- **Given** real journal/head/cursor under managed `gennady inbox serve`
+- **When** matching and changed observations hit VERDICT, SYNTHESIS_PUBLICATION and QUEUE_HANDOFF
+- **Then** product journal artifacts prove protected transition or STALE+delta/no-callback for every purpose with mandatory PASS
+
+**Scenario:** orchestrator e2e exposes complete blocked and stale rounds [`e2e`]
+
+- **Given** real allowlisted MR inputs driven through the shippable entrypoint
+- **When** complete, unrecoverable-gap and concurrent-event variants execute
+- **Then** product-written plan/verdict artifacts expose completed, BLOCKED and STALE outcomes respectively with mandatory PASS
+
+**Scenario:** delta verifier e2e proves complete delta and full fallback [`e2e`]
+
+- **Given** real MR baseline, accumulated events and a missing/ambiguous baseline variant
+- **When** manual verification runs through `gennady inbox serve`
+- **Then** product artifacts prove all changed inputs in delta or explicit full-review fallback with mandatory PASS
+
+**Scenario:** real MR cross-review e2e preserves dual provenance [`e2e`]
+
+- **Given** allowlisted real MR with versioned foreign approval and discussion
+- **When** shippable review independently rechecks current code/context
+- **Then** product evidence retains foreign and independent provenance, closes no structural slot by identity and auto-justifies no approve; mandatory PASS is required
+
+**Scenario:** synthesis e2e exists only after fresh PASS [`e2e`]
+
+- **Given** real incomplete/stale variants and one complete fresh round through `gennady inbox serve`
+- **When** synthesis boundary is reached
+- **Then** product artifact is absent for non-PASS variants and exact same-manifest synthesis exists only for fresh PASS; scenario must PASS
+
+**Scenario:** publication handoff e2e is exact after fresh PASS [`e2e`]
+
+- **Given** managed real entrypoint and a fresh-PASS synthesis
+- **When** QUEUE_HANDOFF succeeds and product journal persists publication
+- **Then** exact immutable `ReviewPublicationHandoff` bytes/digest/refs are observable, replay is byte-equivalent and acceptance is mandatory PASS
+
+<!--/SECTION:BDD-->
+<!--SECTION:VERIFICATION-->
 
 ## 5. Verification
 
-| Command                                                          | Required by                    |
-| ---------------------------------------------------------------- | ------------------------------ |
-| `npm run type-check`                                             | typescript-rules               |
-| `npm test -- services/agent-inbox/modules/inbox-eval/__tests__/` | testing-common, node-test      |
-| `npm run inbox-serve:build && npm run test:e2e:prod`             | playwright-cli, playwright-e2e |
+| Command                                                                                                                                                                                                                                                                                                                                    | Required by                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| `npm run type-check`                                                                                                                                                                                                                                                                                                                       | typescript-rules                                          |
+| `npx tsx cli/gennady.ts lint services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve`                                                                                                                                                                                                               | scoped DbC, headers and anchor pairing                    |
+| `! rg --follow --no-heading -n -e "^\s*enum " -e "^\s*namespace " -e "^\s*private " -e "#[a-zA-Z_]+\s*[:=]" -e "\bconsole\." -t ts services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve`                                                                                                         | typescript-rules: forbidden constructs                    |
+| `node --import tsx --test --experimental-test-module-mocks services/agent-inbox/modules/inbox-eval/__tests__/*.test.ts`                                                                                                                                                                                                                    | testing-common, node-test: scoped tests                   |
+| `node --import tsx --test --experimental-test-module-mocks --experimental-test-coverage services/agent-inbox/modules/inbox-eval/__tests__/*.test.ts`                                                                                                                                                                                       | testing-common, node-test: contract coverage              |
+| `! rg --no-heading -n -e "Step \d" -e "\.message.*\.includes\(" -e "let\s+threw\s*=" -t ts services/agent-inbox/modules/inbox-eval/__tests__`                                                                                                                                                                                              | node-test: forbidden test patterns                        |
+| `npm run inbox-serve:build && npm run test:e2e:review-flow`                                                                                                                                                                                                                                                                                | playwright-cli, playwright-e2e: real shippable entrypoint |
+| `npx prettier --check services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md`                                                                                                                                      | changed runtime/tests/e2e/ticket/tracker format           |
+| `for sdd_section in META PHASES_OVERVIEW PHASE_P1 PHASE_P2 BDD VERIFICATION TEST_COVERAGE EXECUTION_LOG; do test "$(rg -c "^<!--SECTION:${sdd_section}-->$" tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md)" = 1 && test "$(rg -c "^<!--/SECTION:${sdd_section}-->$" tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md)" = 1; done` | normative task-anchor check                               |
+| `ai/skills/sdd-execute/scripts/sdd check --task TSK-183`                                                                                                                                                                                                                                                                                   | SDD ticket/tracker/DAG integrity                          |
+| `git diff --check -- services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md`                                                                                                                                       | changed-scope diff integrity                              |
 
-- **Task-specific Completion additions:** all seven mandatory root acceptance clauses are PASS; any FAIL/SKIP/INCONCLUSIVE leaves the task TODO or BLOCKED with evidence.
-  <!--/SECTION:VERIFICATION-->
-  <!--SECTION:TEST_COVERAGE-->
+- **Task-specific Completion additions:** all seven root clauses, eleven named pipeline cases and the separately named `TaskExecutorPort` case are PASS with real entrypoint, product-written artifact and required per-step visual evidence. Any FAIL/SKIP/INCONCLUSIVE, missing artifact/screenshot, red coverage/lint/pattern/anchor/format/SDD/diff gate leaves the task TODO or BLOCKED.
+
+<!--/SECTION:VERIFICATION-->
+<!--SECTION:TEST_COVERAGE-->
 
 ## 6. Test Scenario Coverage
 
-- types → `review-eval.contract.test.ts` :: `eval statuses reports and profiles are exhaustive and all skipped is not pass`
-- readonly → `review-eval.real-readonly.test.ts` :: `real readonly probes explain pass fail skip and inconclusive honestly`
-- saved run → `review-eval.saved-run.test.ts` :: `reopen reproduces declared evidence without mutation or target discovery`
-- effects → `review-eval.real-effects.test.ts` :: `real effects mutate only explicit allowlisted MR and reconcile outcomes`
-- flow → `agent-inbox.closed-loop.spec.ts` :: `operator completes review action handoff verification and lifecycle without GitLab UI`
-- matrix/contracts → `review-eval.contract.test.ts` :: `all profile combinations and variable port contracts are covered deterministically`
-- acceptance 1 / closed loop → `agent-inbox.closed-loop.spec.ts` :: `real allowlisted MR is operated without GitLab UI`
-- acceptance 2 / concurrency and recovery → producer `TSK-181 full-flow.blackbox.test.ts`; aggregator `review-eval.acceptance-report.test.ts` :: `two MR progress independently and recover after termination`
-- acceptance 3 / coverage and safe automation → producers `TSK-176 review-coverage.integration.test.ts` and `TSK-177 review-automation-policy.test.ts`; aggregator `review-eval.acceptance-report.test.ts` :: `coverage blocks approve and verified fixes obey resolve and prior-approve gates`
-- acceptance 4 / partial effects → producers `TSK-177 review-effect-coordinator.integration.test.ts` and `TSK-174 vcs-effects.real-integration.test.ts`; aggregator `review-eval.acceptance-report.test.ts` :: `real hybrid effects record failure independent continuation reconciliation and safe retry`
-- acceptance 5 / handoff and delta → `agent-inbox.closed-loop.spec.ts` :: `full and delta clipboard handoff preserve baselines and manual verification`
-- acceptance 6 / adaptive validation → `review-eval.acceptance-report.test.ts` :: `mock matrix and adaptive real results expose preconditions and never pass all-skipped`
-- acceptance 7 / visual proof → `agent-inbox.closed-loop.spec.ts` :: `each key step stores a screenshot address from rebuilt production dashboard real GitLab and real local state`
-  <!--/SECTION:TEST_COVERAGE-->
-  <!--SECTION:EXECUTION_LOG-->
+- types `[contract-only]` → `review-eval.contract.test.ts` :: `eval statuses reports and profiles are exhaustive and all skipped is not pass`
+- report aggregation `[simulation-backed]` → `review-eval-report.test.ts` :: `report aggregation preserves non pass outcomes and rejects all skipped green`
+- readonly `[runtime-hook-required]` → `review-eval.real-readonly.test.ts` :: `real readonly probes explain pass fail skip and inconclusive honestly`
+- saved run `[runtime-hook-required]` → `review-eval.saved-run.test.ts` :: `reopen reproduces declared evidence without mutation or target discovery`
+- effects `[e2e-required]` → `review-eval.real-effects.test.ts` :: `real effects mutate only explicit allowlisted MR and reconcile outcomes`
+- flow `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `operator completes review action handoff verification and lifecycle without GitLab UI`
+- matrix/contracts `[simulation-backed]` → `review-eval.contract.test.ts` :: `all profile combinations and variable port contracts are covered deterministically`
+- acceptance 1 / closed loop `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `real allowlisted MR is operated without GitLab UI`
+- acceptance 2 / concurrency and recovery `[runtime-hook-required]` → producer `TSK-181 full-flow.blackbox.test.ts`; aggregator `review-eval.acceptance-report.test.ts` :: `two MR progress independently and recover after termination`
+- acceptance 3 / coverage and safe automation `[runtime-hook-required]` → producers `TSK-176 test/agent-inbox/inbox-pipeline/review-orchestrator.integration.test.ts` :: `no incomplete blocked stale or semantically unfinished round publishes downstream` and `TSK-177 test/agent-inbox/inbox-queue/review-automation-policy.test.ts` :: `automation ownership coverage blocking and prior approval truth table denies unsafe branches`; aggregator `review-eval.acceptance-report.test.ts` :: `coverage blocks approve and verified fixes obey resolve and prior-approve gates`
+- acceptance 4 / partial effects `[e2e-required]` → producers `TSK-177 review-effect-coordinator.integration.test.ts` and `TSK-174 vcs-effects.real-integration.test.ts`; aggregator `review-eval.acceptance-report.test.ts` :: `real hybrid effects record failure independent continuation reconciliation and safe retry`
+- acceptance 5 / handoff and delta `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `full and delta clipboard handoff preserve baselines and manual verification`
+- acceptance 6 / adaptive validation `[runtime-hook-required]` → `review-eval.acceptance-report.test.ts` :: `mock matrix and adaptive real results expose preconditions and never pass all-skipped`
+- acceptance 7 / visual proof `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `each key step stores a screenshot address from rebuilt production dashboard real GitLab and real local state`
+- task executor port `[e2e-required]` → producer TSK-177; `agent-inbox.task-executor.spec.ts` :: `task executor port e2e preserves lane order parallel progress and crash recovery`
+- receipt store append/read/replay/profile isolation `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `receipt store e2e persists append read replay and profile isolation`
+- local receipt durable ack/corrupt tail `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `local receipt adapter e2e proves durable ack and corrupt-tail failure`
+- recorder callback/provenance `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `receipt recorder e2e preserves callback provenance outside artifacts`
+- validator reject/PASS `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `structural validator e2e rejects gaps then passes real evidence`
+- repair resume/budget `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `repair coordinator e2e resumes and exhausts budget honestly`
+- three freshness purposes `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `freshness gate e2e protects all three purposes`
+- orchestrator terminal states `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `orchestrator e2e exposes complete blocked and stale rounds`
+- delta/full fallback `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `delta verifier e2e proves complete delta and full fallback`
+- real-MR cross-review `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `real MR cross-review e2e preserves dual provenance`
+- synthesis after PASS `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `synthesis e2e exists only after fresh PASS`
+- exact publication handoff `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `publication handoff e2e is exact after fresh PASS`
+
+<!--/SECTION:TEST_COVERAGE-->
+<!--SECTION:EXECUTION_LOG-->
 
 ## 7. Execution Log
 
@@ -128,13 +234,26 @@
 #### P1
 
 - [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npx tsx cli/gennady.ts lint services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `! rg --follow --no-heading -n -e "^\s*enum " -e "^\s*namespace " -e "^\s*private " -e "#[a-zA-Z_]+\s*[:=]" -e "\bconsole\." -t ts services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npx prettier --check services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `git diff --check -- services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
       **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- services/agent-inbox/modules/inbox-eval/__tests__/` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` ver `npm run inbox-serve:build && npm run test:e2e:prod` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npx tsx cli/gennady.ts lint services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `! rg --follow --no-heading -n -e "^\s*enum " -e "^\s*namespace " -e "^\s*private " -e "#[a-zA-Z_]+\s*[:=]" -e "\bconsole\." -t ts services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `node --import tsx --test --experimental-test-module-mocks services/agent-inbox/modules/inbox-eval/__tests__/*.test.ts` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `node --import tsx --test --experimental-test-module-mocks --experimental-test-coverage services/agent-inbox/modules/inbox-eval/__tests__/*.test.ts` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `! rg --no-heading -n -e "Step \d" -e "\.message.*\.includes\(" -e "let\s+threw\s*=" -t ts services/agent-inbox/modules/inbox-eval/__tests__` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npm run inbox-serve:build && npm run test:e2e:review-flow` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `npx prettier --check services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `for sdd_section in META PHASES_OVERVIEW PHASE_P1 PHASE_P2 BDD VERIFICATION TEST_COVERAGE EXECUTION_LOG; do test "$(rg -c "^<!--SECTION:${sdd_section}-->$" tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md)" = 1 && test "$(rg -c "^<!--/SECTION:${sdd_section}-->$" tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md)" = 1; done` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `ai/skills/sdd-execute/scripts/sdd check --task TSK-183` → `<pass|fail>` exit=`<code>`
+- [ ] `<ts>` ver `git diff --check -- services/agent-inbox/modules/inbox-eval services/agent-inbox/serve/run-mode.ts e2e/inbox-serve tasks/agent-inbox/inbox-eval/inbox-eval.task-183.md tasks/agent-inbox/README.md` → `<pass|fail>` exit=`<code>`
 - [ ] `<ts>` DONE
       **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
 
@@ -146,4 +265,6 @@
 ## 8. Decision Log
 
 - Adaptive means evidence-aware result classification, never weaker assertions.
+- The eleven pipeline runtime hooks deferred by TSK-176 are separate named shippable-entry e2e cases, not one umbrella flow; every case requires product-written artifacts and PASS.
+- The real `TaskExecutorPort` implementation belongs to TSK-177, while this dependent task owns its separately named shippable-entry E2E and product-written acceptance artifacts.
 - BDD critic: merged status matrix, saved-run immutability, allowlist-before-adapter, full profile/port matrix and named acceptance evidence; rejected discovery-driven mutation scope and an all-skipped green verdict.

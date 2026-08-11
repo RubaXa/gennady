@@ -45,26 +45,34 @@ Agent Inbox — локальный однопользовательский ас
 1. Оператор запускает Agent Inbox; [core](./inbox-core/inbox-core.spec.md#2-module-usage-example)
    восстанавливает локальное состояние, а [VCS](./inbox-vcs/inbox-vcs.spec.md#2-module-usage-example)
    синхронизирует реальные MR. После boot видны две очереди: **Ревью** и **Мои / назначенные**.
-2. [Review runtime](./review-runtime/index.md) параллельно собирает фактуру и выполняет
-   полное role-invariant review каждого MR.
-3. Карточка показывает роль, фактическое состояние, текущую работу, новые события и
+2. До запуска агента [review runtime](./review-runtime/index.md) запечатывает immutable
+   Review Input Manifest с полным versioned inventory и change shape, затем атомарно
+   компилирует видимый Review Contract с total input mapping: обязательные секции,
+   сущности, файлы, lenses и типизированные диаграммы для конкретной формы изменений
+   MR.
+3. Агент параллельно собирает фактуру и заполняет адресуемые слоты контракта. Его
+   самоотчёт не считается доказательством: структурный validator сверяет артефакты и
+   реальный tool trace, а для каждого пробела создаёт узкое repair-задание. Synthesis и
+   действия недоступны, пока contract не получил `PASS`; исчерпание лимита явно даёт
+   `BLOCKED` с незакрытыми слотами и причинами.
+4. Карточка показывает роль, фактическое состояние, текущую работу, новые события и
    необходимость решения.
-4. Оператор открывает MR и видит хронологическую ленту smart widgets: описание,
+5. Оператор открывает MR и видит хронологическую ленту smart widgets: описание,
    артефакты, findings, дискуссии, дельту, план и подготовленные действия.
-5. [Queue](./inbox-queue/inbox-queue.spec.md#2-module-usage-example) формирует гибридный
+6. [Queue](./inbox-queue/inbox-queue.spec.md#2-module-usage-example) формирует гибридный
    пакет. Оператор снимает ненужные чекбоксы, выбирает
    вариант во взаимоисключающих группах и нажимает **Применить выбранные**.
-6. Действия немедленно выполняются в GitLab без второго подтверждения; результат и
+7. Действия немедленно выполняются в GitLab без второго подтверждения; результат и
    частичная ошибка видны возле каждого действия.
-7. Для исправлений оператор использует [handoff](./inbox-chat/inbox-chat.spec.md#2-module-usage-example):
+8. Для исправлений оператор использует [handoff](./inbox-chat/inbox-chat.spec.md#2-module-usage-example):
    нажимает **Сгенерировать задание**, копирует краткие
    инструкции со ссылками на артефакты и передаёт их DEV-агенту.
-8. После push оператор нажимает **Верифицировать изменения** либо ждёт фоновой
+9. После push оператор нажимает **Верифицировать изменения** либо ждёт фоновой
    проверки накопленной дельты.
-9. Подтверждённо исправленные разрешённые треды закрываются автоматически; ранее
-   выраженный approve восстанавливается, если review coverage доказан и blocking-
-   проблем нет.
-10. После merge/close оператор при необходимости обновляет описание и нажимает
+10. Подтверждённо исправленные разрешённые треды закрываются автоматически; ранее
+    выраженный approve восстанавливается, если review coverage доказан и blocking-
+    проблем нет.
+11. После merge/close оператор при необходимости обновляет описание и нажимает
     **Завершить**.
 
 Degradation path: если GitLab, agent runtime или локальный effect executor недоступен,
@@ -204,6 +212,80 @@ reconciliation сверяет реальное состояние, после ч
   произвольный рабочий MR никогда не становится effect-target только из-за попадания
   в discovery pool.
 
+#### Deterministic agent control loop
+
+- **FR-044** — До запуска агента компилировать для каждого full/delta/cross-review
+  machine-readable Review Contract с устойчивыми slot ID, потребляя только sealed
+  Review Input Manifest. Compiler атомарно создаёт total mapping каждого manifest
+  input в один или несколько slots либо в детерминированно обоснованный
+  `not-applicable`; неклассифицированный файл получает обязательный
+  `file-fallback:<path>` slot. Mapping gap отклоняет весь contract до запуска агента и
+  не может достичь `PASS`. Контракт фиксирует полный план работы для наблюдаемой формы
+  изменений: цель, архитектуру, спецификации, тесты, security и optimality, а также
+  требуемые сущности, файлы, review lenses, секции артефактов и диаграммы. Каждое
+  измерение получает `required` либо детерминированно обоснованное `not-applicable`;
+  агент не может сам исключить его молчанием.
+- **FR-045** — Считать агента недоверенным исполнителем. Slot получает `complete`
+  только когда детерминированный validator подтвердил непустой неплейсхолдерный
+  артефакт требуемого типа и фактическое чтение/использование обязательных источников
+  по реальному tool trace; текстовый самоотчёт агента не является evidence.
+- **FR-046** — Диаграммные обязанности выводить из change shape как разные
+  типизированные slots: entity/dependency map; `before → after` при изменении
+  поведения или архитектуры; runtime/event flow, когда затронут исполняемый поток.
+  Одна универсальная диаграмма не закрывает несколько обязанностей, кроме явно
+  доказанной validator-ом эквивалентности их структурных контрактов.
+- **FR-047** — Для каждого отсутствующего или невалидного slot создавать адресное
+  repair-задание только с незакрытыми slot ID, ожидаемым типом evidence и ссылками на
+  исходный contract. Цикл `validate → repair → validate` продолжается до полного
+  `PASS` либо до наблюдаемого `BLOCKED` после ограниченного числа попыток; сохраняются
+  причины, попытки, provenance и незакрытые slots.
+- **FR-048** — До `PASS` запрещены synthesis, публикация decision package, approve и
+  любые ручные или автоматические GitLab effects, чьи входы потребляют artifacts,
+  findings или proposals текущего неполного round. Ручной запуск не обходит gate:
+  effect из неполного round остаётся запрещённым. До `PASS` разрешены только явные
+  команды оператора, входы которых доказуемо не используют данные этого round и
+  проходят собственные permission/policy gates. Неполные артефакты и прогресс видимы,
+  но не могут быть выданы за завершённое review.
+- **FR-049** — Перед Review Contract фиксировать immutable Review Input Manifest с
+  ключом `mr + head SHA + event cursor`. Manifest владеет полным immutable versioned
+  inventory всех изменённых файлов, затронутых сущностей, дискуссий и обязательных
+  источников round, а также их детерминированными classifications и change shape.
+  Manifest не владеет slots, mapping или fallback policy. Невозможность построить и
+  запечатать полный inventory переводит round в `BLOCKED` до contract compilation и
+  запуска агента.
+- **FR-050** — Каждый slot Review Contract объявляет output schema, source anchors,
+  cardinality и evidence reuse policy. Entity-slot как минимум требует identity,
+  responsibility/behavior, dependencies, risks и test impact. Одно evidence может
+  закрывать несколько slots только когда это явно разрешено их reuse policy и
+  validator сохранил отдельное соответствие каждому контракту; одинаковый generic
+  текст или механическое дублирование не закрывают несвязанные slots.
+- **FR-051** — Каждый source input в Review Input Manifest хранит immutable canonical
+  identity и точную version/digest либо захваченные immutable bytes. Contract и
+  validator читают и подтверждают именно эту версию; ссылка на mutable path, thread
+  или URL без зафиксированной версии не является evidence.
+- **FR-052** — Перед structural verdict, synthesis/publication и созданием effect
+  intent core выполняет локальную per-MR сериализованную транзакцию: атомарно
+  сравнивает latest observed `head SHA + event cursor` с manifest key и записывает
+  guarded verdict/handoff intent. Эта транзакция не объявляется атомарной с внешним
+  GitLab dispatch. Для каждого effect adapter передаёт provider conditional
+  revision/precondition, когда GitLab поддерживает её для операции. Без такой
+  precondition effect остаётся `unconfirmed`, а обязательный read-after-effect
+  reconciliation классифицирует его `applied | not-applied | ambiguous`; blind retry
+  запрещён. Любое вновь наблюдённое несовпадение с manifest инвалидирует оставшиеся
+  intents, помечает round `STALE` и создаёт новую delta.
+- **FR-053** — Фактические tool operations доказываются только append-only typed
+  runtime receipts, которые создаёт control plane, а не агент, и сохраняет независимо
+  от редактируемых review artifacts. Receipt связывает `contract ID/version`, manifest
+  key, `session/task`, canonical source identity/version/digest, operation, outcome и
+  монотонный sequence. Validator отклоняет agent-authored substitutes, нарушенную
+  последовательность, receipt другого contract/manifest и повторное использование
+  уже потреблённого receipt вне разрешённой reuse policy.
+- **FR-054** — Repair loop использует конфигурируемый `maxRepairAttempts` с начальным
+  значением `3` и монотонный per-round attempt counter. Counter не сбрасывается при
+  crash, retry или resume того же round. После исчерпания budget round получает
+  `BLOCKED`; продолжение требует явного решения оператора создать новый round либо
+  увеличить budget, причём увеличение сохраняет уже накопленный counter и provenance.
+
 ### 4.2 Non-Functional Constraints
 
 - **NFR-001** — Один локальный процесс и один оператор; сложная распределённая
@@ -214,8 +296,9 @@ reconciliation сверяет реальное состояние, после ч
   глобального mutex.
 - **NFR-004** — После crash восстанавливаются очередь, решения, smart-widget feed и
   незавершённые effects без потери и слепого повтора.
-- **NFR-005** — Все findings, artifacts, proposals, decisions, автоматические действия
-  и outcomes имеют `mr`, `sha/cursor`, `task`, `session/model`, время и provenance.
+- **NFR-005** — Все input manifests, contracts, runtime receipts, verdicts, findings,
+  artifacts, proposals, decisions, автоматические действия и outcomes имеют `mr`,
+  `sha/cursor`, `task`, `session/model`, время и provenance.
 - **NFR-006** — Работа, ожидание, деградация и ошибка наблюдаемы в UI в течение всего
   lifecycle.
 - **NFR-007** — Порты создаются только на реальных change/trust boundaries, имеющих
@@ -228,6 +311,19 @@ reconciliation сверяет реальное состояние, после ч
   tonal layering без декоративных теней, базовый radius 8px, высокая информационная
   плотность IDE/cockpit. Основные UX-референсы: две компактные очереди dashboard,
   двухколоночный MR workspace с Agent Terminal, findings/threads/plan widgets.
+- **NFR-010** — Компиляция Review Contract и структурная проверка completeness
+  детерминированы: одинаковые normalized inputs дают одинаковые slots и одинаковый
+  verdict. Наличие, тип, trace coverage и placeholder-нарушения проверяются
+  schema/parser/regex-подобными правилами без LLM-суждения.
+- **NFR-011** — Семантическое качество содержимого проверяется review/cross-review
+  агентами, но их оценка не может удалить обязательный slot или обойти структурный
+  gate; смена модели не изменяет контракт полноты.
+- **NFR-012** — Repair loop идемпотентен и crash-resumable: после рестарта он
+  продолжает от сохранённого contract/version и последнего verdict, не повторяя уже
+  подтверждённые slots и не теряя историю попыток.
+- **NFR-013** — Runtime receipts и их монотонная последовательность durable раньше,
+  чем соответствующий tool outcome может закрыть slot; artifact storage не может
+  перезаписать, удалить или подменить receipt log.
 
 ### 4.3 Out-of-Scope v0
 
@@ -245,6 +341,7 @@ reconciliation сверяет реальное состояние, после ч
 | --------------------------------------------- | --------------------------------- |
 | GitLab discovery, facts and effects           | `real-runtime`                    |
 | Full review and delta verification            | `real-runtime`                    |
+| Review Contract, validation and repair loop   | `real-runtime`                    |
 | Local journal, queues, artifacts and recovery | `real-runtime`                    |
 | Dashboard, MR workspace and clipboard handoff | `real-runtime`                    |
 | Production/test/mock state isolation          | `real-runtime`                    |
@@ -254,7 +351,10 @@ reconciliation сверяет реальное состояние, после ч
 
 Trust boundaries requiring real hooks: GitLab token and permissions, GitLab effect
 reconciliation, agent-runtime tool trace for coverage, filesystem namespace isolation,
-browser clipboard permission.
+browser clipboard permission, целостность версии Review Contract и соответствующего
+ей completeness verdict, control-plane ownership append-only runtime receipts,
+latest-observed freshness transaction, provider conditional preconditions и
+read-after-effect reconciliation.
 
 ### 4.5 Rules
 
@@ -281,37 +381,74 @@ flowchart LR
   VR --> ING[Event ingestion]
   ING --> J[Per-MR JournalPort]
   J --> DOM[Domain state + policies]
-  DOM --> REV[Review orchestrator]
+  DOM --> IM["Sealed versioned input inventory + change shape"]
+  IM --> CC["Atomic total-mapping contract compiler"]
+  CC --> REV[Review orchestrator]
   REV --> AR[AgentRuntimePort]
-  REV --> ART[ArtifactStorePort]
-  DOM --> PKG[Decision packages]
-  PKG --> FX[VcsEffectPort]
-  FX --> GL
+  AR --> ART[ArtifactStorePort]
+  AR --> REC[Control-plane receipt recorder]
+  REC --> RS[RuntimeReceiptStorePort]
+  ART --> VAL[Structural validator]
+  RS --> VAL
+  VAL -->|missing slots| REP[Targeted repair]
+  REP --> AR
+  VAL -->|PASS| SYN[Synthesis]
+  DOM --> FRESH["Core local serialized freshness transaction"]
+  FRESH --> VAL
+  FRESH --> SYN
+  FRESH --> PKG
+  SYN --> PKG[Decision packages]
+  PKG --> CAP{"Provider conditional revision supported?"}
+  CAP -->|yes| FXC["Conditional effect dispatch"]
+  CAP -->|no| FXU["Unconfirmed effect dispatch"]
+  FXC --> GL
+  FXU --> GL
+  GL --> RAE["Mandatory read-after-effect reconciliation"]
+  RAE --> DOM
   J --> PROJ[ProjectionPort]
   PROJ --> UI[Dashboard + MR workspace]
 ```
 
 Stable domain chain:
 
-`event → MR state → review evidence → proposal → operator/automatic decision → effect
-→ reconciled outcome`.
+`event → MR state → immutable input manifest → Review Contract → agent evidence →
+deterministic completeness verdict → synthesis → proposal → operator/automatic
+decision → effect → reconciled outcome`.
+
+Review control plane является обязательной частью цепочки, а не инструкцией в
+prompt. Immutable manifest закрывает versioned inventory, classifications и change
+shape для конкретных `mr + head SHA + event cursor`, но не знает о slots. Contract
+compiler потребляет sealed manifest и одной атомарной операцией создаёт адресуемые
+slots, total input mapping, `not-applicable` decisions и file fallbacks; mapping gap
+отклоняет contract до agent launch. Structural validator принимает только сохранённые
+артефакты и control-plane receipts. Core атомарно сверяет latest observed head/cursor
+с manifest и сохраняет guarded intent только внутри локальной per-MR транзакции.
+Внешний dispatch не входит в эту атомарность: adapter использует provider precondition,
+если она доступна, иначе сохраняет `unconfirmed` и обязательно читает GitLab после
+effect. Reconciliation различает `applied | not-applied | ambiguous` и никогда не
+делает blind retry; новое observed состояние инвалидирует оставшиеся intents и
+создаёт `STALE`/delta. Repair planner возвращает агенту незакрытый остаток. Только
+свежий `PASS` открывает synthesis и зависящие от round effects. `BLOCKED` —
+терминальный наблюдаемый исход конкретного review round, а не скрытый успех или
+бесконечный retry.
 
 Domain entities and events do not expose GitLab DTO, OpenCode session DTO, JSONL rows
 or SSE messages. Versioned event/action contracts form the migration boundary.
 
 Required ports:
 
-| Port                 | Current adapters                                   | Confirmed reason to exist             |
-| -------------------- | -------------------------------------------------- | ------------------------------------- |
-| `VcsReadPort`        | GitLab real, mock                                  | production and deterministic tests    |
-| `VcsEffectPort`      | real, readonly guard, mock-effects                 | real actions and safe test modes      |
-| `AgentRuntimePort`   | OpenCode, test double                              | review execution and repeatable tests |
-| `JournalPort`        | local append-only, in-memory test                  | recovery and isolated test runs       |
-| `ArtifactStorePort`  | local files, in-memory test                        | durable evidence and mock scenarios   |
-| `ClockPort`          | system, controlled test clock                      | debounce/quiet timers without sleeps  |
-| `TaskExecutorPort`   | local per-MR executor, deterministic test executor | parallel runtime and tests            |
-| `ProjectionPort`     | dashboard/feed projections                         | UI transport independent of domain    |
-| `RuntimeProfilePort` | production/test/mock namespaces                    | hard state isolation                  |
+| Port                      | Current adapters                                   | Confirmed reason to exist             |
+| ------------------------- | -------------------------------------------------- | ------------------------------------- |
+| `VcsReadPort`             | GitLab real, mock                                  | production and deterministic tests    |
+| `VcsEffectPort`           | real, readonly guard, mock-effects                 | real actions and safe test modes      |
+| `AgentRuntimePort`        | OpenCode, test double                              | review execution and repeatable tests |
+| `JournalPort`             | local append-only, in-memory test                  | recovery and isolated test runs       |
+| `ArtifactStorePort`       | local files, in-memory test                        | durable evidence and mock scenarios   |
+| `RuntimeReceiptStorePort` | local append-only, in-memory test                  | independent non-agent coverage proof  |
+| `ClockPort`               | system, controlled test clock                      | debounce/quiet timers without sleeps  |
+| `TaskExecutorPort`        | local per-MR executor, deterministic test executor | parallel runtime and tests            |
+| `ProjectionPort`          | dashboard/feed projections                         | UI transport independent of domain    |
+| `RuntimeProfilePort`      | production/test/mock namespaces                    | hard state isolation                  |
 
 Policies and action types are registries inside the domain, not infrastructure ports.
 Dependencies are wired in one composition root. Every adapter implements a shared
@@ -472,6 +609,27 @@ contradicts v0 constraints.
 - **Why:** Project Manager задаёт видение и проблемы, а архитектурная детализация остаётся ответственностью агента; небольшие module specs должны помещаться в контекст и связываться индексами и cross-links.
 - **Risk accepted:** появляются навигационные index-файлы, которые не являются runtime-модулями и не должны дублировать дочерние контракты.
 - **Rejected alternatives:** плоский список всех модулей без смысловых групп; вертикальные use-case модули, смешивающие VCS, runtime, persistence и UI.
+
+### D-342 — Deterministic control plane over untrusted agents
+
+- **Status:** active
+- **Recorded:** session Discovery, agent-inbox, refine
+- **Why:** «Агент на самом деле не проходит все шаги, он их забывает. Самая важная
+  ценность проекта — сверху детерминированными инструментами разметить полный план,
+  проверить целостность и заставить агента доделать пробелы».
+- **Risk accepted:** структурный `PASS` доказывает полноту контракта, но не абсолютную
+  истинность анализа; семантическую ошибку по-прежнему ищет независимый cross-review.
+- **Rejected alternatives:**
+  - доверять prompt и самоотчёту агента;
+  - проверять полноту другим LLM без детерминированного контракта;
+  - разрешать synthesis при частично заполненном плане.
+
+Control plane, а не agent session, владеет immutable manifests, latest-observed
+freshness transitions, guarded intents, effect reconciliation и runtime receipts.
+Поэтому агент не может объявить прочитанным источник другой версии, сфабриковать tool
+trace или применить устаревший результат после нового observed event. Локальная
+атомарность намеренно не распространяется на внешний GitLab dispatch.
+
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -580,12 +738,16 @@ do not own implementation tickets.
 - **Named abstractions:** `ReviewEvent`, `ReviewState`, `ReviewEvidence`,
   `ReviewFinding`, `ReviewArtifact`, `ReviewProposal`, `ReviewDecision`,
   `ReviewEffect`, `ReviewOutcome`, `ReviewActionPackage`, `ReviewHandoff`,
+  `ReviewContract`, `ReviewContractSlot`, `ReviewCompletenessVerdict`,
+  `ReviewInputManifest`, `ReviewInputClassification`, `ReviewContractInputMapping`,
+  `ReviewRuntimeReceipt`, `ReviewFreshnessGate`, `ReviewRepairTask`,
   `RuntimeProfilePort` and ports from §5.
 - **Bootstrap tickets ready for cascade:** state namespaces, VCS gaps, real-effects
   allowlist and contract-test kit.
 - **Open risks:** exact GitLab participation-query completeness; GitLab semantics of
   request-changes; browser clipboard permissions; coverage proof reliability; live
-  event churn during real tests.
+  event churn during real tests; provider-specific support matrix conditional
+  revisions и reconciliation probes для разных GitLab effects.
 
 ### 10.1 Pivot Invalidation List
 
@@ -616,5 +778,42 @@ do not own implementation tickets.
 6. Mock suite covers all branches; adaptive real suite reports observed preconditions,
    legitimate skips and never reports all-skipped as green.
 7. Mandatory visual proof uses rebuilt production dashboard with real GitLab and real
-local state, not mock/demo seeding.
+   local state, not mock/demo seeding.
+8. Для намеренно неполного agent output validator перечисляет точные missing/invalid
+   slot ID, создаёт только адресное repair-задание и не допускает synthesis/effects.
+9. После repair все обязательные сущности, источники, lenses и типизированные
+   диаграммы подтверждены артефактами и tool trace; только тогда round получает `PASS`.
+10. Пустые заголовки, placeholder-текст, один общий граф вместо разных обязательных
+    diagram slots и самоотчёт «всё прочитано» не проходят deterministic gate.
+11. Исчерпание лимита repair-попыток даёт восстанавливаемый `BLOCKED` с provenance,
+    причинами и незакрытыми slot ID, не публикуя пакет и не выполняя GitLab effects.
+12. Намеренно пропущенный changed file, entity, discussion или required source не
+    исчезает из работы: sealed manifest сохраняет его в inventory, а contract compiler
+    атомарно создаёт slot / justified `not-applicable` / file fallback либо отклоняет
+    contract из-за mapping gap; orphan input не достигает агента и synthesis.
+13. Каждый entity-slot отклоняет отчёт без identity, responsibility/behavior,
+    dependencies, risks или test impact; нарушение schema, anchors, cardinality или
+    reuse policy остаётся точным invalid slot для repair.
+14. Один generic-фрагмент, скопированный в несвязанные slots, не закрывает их. Явно
+    разрешённое reuse сохраняет отдельную evidence mapping для каждого slot.
+15. Ручной запуск не обходит completeness gate:
+    - effect, использующий finding/proposal неполного round, остаётся заблокированным;
+    - независимая команда без входов из round проходит только собственные
+      permission/policy gates.
+16. Новое observed значение head SHA или event cursor до локальной freshness
+    транзакции даёт `STALE`, создаёт новую delta и не записывает guarded
+    verdict/handoff intent.
+17. Mutable source без точной version/digest или captured bytes отклоняется; validator
+    подтверждает source anchors только против версий из immutable manifest.
+18. Поддельный, replayed, out-of-order или относящийся к другому contract/manifest
+    runtime receipt не закрывает slot; перезапись review artifact не меняет независимо
+    сохранённый receipt log.
+19. Четвёртый repair при default `maxRepairAttempts=3` не стартует: round получает
+    `BLOCKED`. Crash/retry не обнуляет counter; продолжение возможно только после
+    явного операторского нового round или увеличения budget с сохранением счётчика.
+20. Effect с поддерживаемой provider precondition получает conditional reject при
+    смене revision. Без precondition он остаётся `unconfirmed` до обязательного
+    read-after-effect результата `applied | not-applied | ambiguous`; ambiguous не
+    повторяется вслепую, а новое observed состояние инвалидирует remaining intents.
+
 <!--/SECTION:HANDOFF-->
