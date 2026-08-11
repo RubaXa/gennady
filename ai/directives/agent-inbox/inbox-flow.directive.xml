@@ -206,7 +206,7 @@
     | Tool | Command | When |
     |---|---|---|
     | List | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | start; `--all` removes the filter |
-    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> [--skip-worktree] [--skip-threads]` | ONE call: ref, title, webUrl, …, headChanged, newCommits, lastReviewedHeadSha, `myApprovalReset` (my approval was dropped by a push — see `AX_APPROVAL_RESTORE`), worktree, changeset, stage, threadStats. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
+    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --json-file [--skip-worktree] [--skip-threads]` | ONE call, compact stdout. `--json-file` writes the full context to `<reportsDir>/context.json` and prints a compact summary (`{"file","ref","title","webUrl","myRole","stage","author","headChanged","changeset","reviewPlanRequired"}`) — avoids pipe buffer truncation. Read the file with `Read(offset, limit)` when deeper fields are needed (worktree, newCommits, changeset.files). `--json` (no file, full dump to stdout) is available but deprecated for agent use. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
     | **Review plan** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
     | Working copy | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
     | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
@@ -216,6 +216,29 @@
     | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
     | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
     | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent. Structure — `AX_MR_BODY_STRUCTURE` |
+
+    ### `context.json` (produced by `inbox-context --json-file`)
+
+    Written to `<reportsDir>/context.json`, sibling of `PLAN.md` and `README.md`. Full MR snapshot — read
+    sections on demand with `Read(offset, limit)` to avoid loading 50+ KB into context.
+
+    **Root keys (top → bottom, stable order):**
+
+    | Key | ~Size | When to read |
+    |---|---|---|
+    | `ref`, `title`, `webUrl`, `sourceBranch`, `targetBranch` | tiny | always — compact stdout already has these |
+    | `createdAt`, `updatedAt`, `myLogin`, `myRole`, `author`, `reviewers` | tiny | always |
+    | `description`, `approvedBy` | small | when role/context needed beyond compact stdout |
+    | `headChanged`, `newCommits`, `lastReviewedHeadSha`, `lastApprovedHeadSha`, `myApprovalReset` | small–medium | delta detection, repeat-visit logic |
+    | `reviewPlanRequired` | tiny | compact stdout already has this |
+    | `worktree` (`.path`, `.base`, `.diffRefs`, `.repoLayout`) | medium | file reads, git commands, scaffold |
+    | `changeset` (`.files[]`, `.totals`, `.byCategory`) | large | diff analysis, file map |
+    | `stage`, `openQuestions`, `lastAuthor`, `threadStats` | small | thread-based decisions |
+
+    **Reading strategy:** after `inbox-context --json-file`, read `context.json` in chunks:
+    - Lines 1–50 for header + role metadata
+    - Lines 50–200 for headChanged + newCommits
+    - Lines 200+ for changeset + worktree details (only when needed)
 
     **`vcs-reply` (JSON array).** reply/line/suggestion forms —
     `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Only in
@@ -268,9 +291,10 @@
        tick) → skip Ask, take it, go to step 3. Otherwise: show ≤5 tasks visually with context
        (`ref`/stage/`title`/author/age/`openQuestions`) and `AskUserQuestion` `multiSelect` (≤4 +
        Other; >4 → top-4 by urgency, `[reply]` over `[review]`). One at a time.
-    3. **Context in one call.** `inbox-context --url <webUrl> [--vcs-host=<host>]` → worktree +
-       changeset + stage + threads + drafts + meta. Right after getting the worktree: `ls
-       <worktreePath>` — one permission prompt for the whole dir, then reads inside go without repeats.
+     3. **Context in one call.** `inbox-context --url <webUrl> --json-file [--vcs-host=<host>]` → compact stdout
+        (`file` path + key fields). Read `context.json` with `Read(offset, limit)` for deeper sections
+        (changeset, worktree, newCommits). Right after: `ls <worktreePath>` — one permission prompt for the
+        whole dir, then reads inside go without repeats.
     4. **Analysis.** The single-MR document pipeline (scaffold → enrich Context → dispatch by task
        files → validate → synthesize) — full procedure below, "Review pipeline".
        **Hard gate:** `arch-interrogation` `H_NO_REVIEW_PLAN` — if `reviewPlanRequired == true`, the
@@ -453,7 +477,8 @@
       `role=author` + `headChanged != none` → `update-review` first, then `AuthorMode`. `headChanged ==
       none` → straight to `AuthorMode`.
     - `myRole=reviewer` → standard adversarial review via `arch-interrogation`.
-    1. `inbox-context --url <webUrl> --vcs-host=<host>`. Right after: `ls <path>` (one permission prompt).
+     1. `inbox-context --url <webUrl> --json-file [--vcs-host=<host>]`. Read `context.json` for
+        changeset, worktree, threads. Right after: `ls <path>` (one permission prompt).
     2. `git -C <path> diff --numstat <base>..HEAD` + `--name-status`.
     3. Split files into tracks: **security** (always) / **logic** / **ui** / **tests** / **docs** / **config**.
     4. **Transport (action 0) + change map:** load `visual-vocabulary.directive.xml` NOW (first read of

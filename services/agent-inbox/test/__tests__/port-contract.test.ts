@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { makeTestTmpDir, cleanupTestTmp } from '../../modules/inbox-core/test-support/test-tmp.ts';
 import { readCassette, recordCassette, replayCassette } from '../cassettes.ts';
 import { assertPortContract } from '../port-contract.suite.ts';
-import { setupMockAgent } from '#utils/test/mock-http.ts';
+import { setupMockAgent, type ReplyFn } from '#utils/test/mock-http.ts';
 import { VcsInboxReal } from '../../modules/inbox-core/vcs-inbox.real.ts';
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 
@@ -46,25 +46,43 @@ function realisticGitlabResponse(): { data: unknown } {
   };
 }
 
+// invariant: VcsGitlabInbox.getActionable sends QUERY_COUNT parallel GraphQL POSTs via Promise.all;
+//            one interceptor per call is required for the mock agent to satisfy all requests.
+const QUERY_COUNT = 4;
+
+function makeRecordingReplies(
+  cassetteDir: string,
+  secrets: Record<string, string> = {}
+): ReplyFn[] {
+  return Array.from(
+    { length: QUERY_COUNT },
+    (): ReplyFn => (request) => {
+      recordCassette(
+        cassetteDir,
+        {
+          method: request.method,
+          url: GRAPHQL_URL,
+          body: request.body,
+          response: { status: 200, body: realisticGitlabResponse() },
+        },
+        secrets
+      );
+      return { status: 200, body: realisticGitlabResponse() };
+    }
+  );
+}
+
 describe('TSK-166 port infrastructure', () => {
   it('cassette replays real response shape through real adapter', async () => {
     const cassetteDir = makeTestTmpDir('tsk-166-cassette-');
     directories.push(cassetteDir);
     const recording = setupMockAgent();
     try {
-      recording.interceptOnce('POST', GRAPHQL_URL, (request) => {
-        recordCassette(
-          cassetteDir,
-          {
-            method: request.method,
-            url: GRAPHQL_URL,
-            body: request.body,
-            response: { status: 200, body: realisticGitlabResponse() },
-          },
-          { 'secret-token': '<GITLAB_TOKEN>' }
-        );
-        return { status: 200, body: realisticGitlabResponse() };
-      });
+      recording.interceptMultiple(
+        'POST',
+        GRAPHQL_URL,
+        makeRecordingReplies(cassetteDir, { 'secret-token': '<GITLAB_TOKEN>' })
+      );
       const recordedResult = await new VcsInboxReal({
         host: HOST,
         token: 'secret-token',
@@ -75,7 +93,7 @@ describe('TSK-166 port infrastructure', () => {
     }
 
     const entries = readCassette(cassetteDir, HOST);
-    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries.length, QUERY_COUNT);
     const replay = replayCassette(entries);
     try {
       const result = await new VcsInboxReal({ host: HOST, token: 'secret-token' }).getActionable();
@@ -91,15 +109,7 @@ describe('TSK-166 port infrastructure', () => {
     const recording = setupMockAgent();
     let expected: VcsActionableMr[];
     try {
-      recording.interceptOnce('POST', GRAPHQL_URL, (request) => {
-        recordCassette(cassetteDir, {
-          method: request.method,
-          url: GRAPHQL_URL,
-          body: request.body,
-          response: { status: 200, body: realisticGitlabResponse() },
-        });
-        return { status: 200, body: realisticGitlabResponse() };
-      });
+      recording.interceptMultiple('POST', GRAPHQL_URL, makeRecordingReplies(cassetteDir));
       expected = await new VcsInboxReal({ host: HOST, token: 'test-token' }).getActionable();
     } finally {
       recording.cleanup();

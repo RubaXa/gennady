@@ -4,7 +4,7 @@
 // @tasks: TSK-AI-16, TSK-93, TSK-95, TSK-91, TSK-94
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
@@ -13,6 +13,7 @@ import {
   registryPath,
   mrsRoot,
   mrWorktreeDir,
+  mrReportsDir,
   clonesRoot,
   reposMapPath,
   configPath,
@@ -598,7 +599,29 @@ async function run(): Promise<number> {
       threadStats,
     };
 
-    console.info(JSON.stringify(result, null, 2));
+    if (argv.includes('--json-file')) {
+      const fullRef = `${project}!${iid}`;
+      const reportsDir = mrReportsDir(stateDir, fullRef);
+      mkdirSync(reportsDir, { recursive: true });
+      const filePath = join(reportsDir, 'context.json');
+      writeFileSync(filePath, JSON.stringify(result, null, 2), 'utf-8');
+      console.info(
+        JSON.stringify({
+          file: filePath,
+          ref: result.ref,
+          title: result.title,
+          webUrl: result.webUrl,
+          myRole: result.myRole,
+          stage: result.stage,
+          author: result.author,
+          headChanged: result.headChanged,
+          changeset: (result.changeset as Changeset | null | undefined)?.totals ?? null,
+          reviewPlanRequired: result.reviewPlanRequired,
+        })
+      );
+    } else {
+      console.info(JSON.stringify(result, null, 2));
+    }
     return 0;
   } catch (error) {
     console.error(style.redBright.bold('✖ Ошибка:'), (error as Error).message ?? String(error));
