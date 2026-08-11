@@ -6,26 +6,26 @@
   ```markdown
   # <module> — Tasks
 
-  ## 1. Tracker Index
+  ## Tracker Index
   | Task-ID | Title | Dependencies | Status | Reopens |
   |---------|-------|--------------|--------|---------|
   | <ACRONYM>-<slug> | <title> | <deps or —> | [ ] TODO | — |
 
-  ## 2. Slug Registry
+  ## Slug Registry
   <!-- one slug per line; this IS the uniqueness mechanism — the same slug in two branches collides on merge here, surfacing "same feature" instead of hiding it. Append-only. -->
   - <slug>
 
-  ## 3. Intra-Module DAG
+  ## Intra-Module DAG
   ```mermaid
   graph TD
     A[<slug-a>] --> B[<slug-b>]
   ```
   <!-- edge A → B = "A depends on B". Cross-module / cross-scope edges live one level up, not here. -->
 
-  ## 4. Decision Log (module-task level)
+  ## Decision Log (module-task level)
   <!-- decomposition / planning decisions (ticket merges, deferred coverage, rule-activation overrides), ADR-compact. Local execution-time decisions stay in each ticket's own Decision Log. -->
 
-  ## 5. Conventions
+  ## Conventions
   Project-wide conventions (Execution-Log token vocabulary, Baseline Completion Rule, post-task audit hook, file-header) are declared once in `specs/3-tasks.md` and inherited here — not repeated.
   ```
 </Contract>

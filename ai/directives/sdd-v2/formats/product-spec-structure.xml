@@ -13,7 +13,7 @@
 
   <!--SECTION:OVERVIEW-->
   ## Overview
-  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram right up top so a reader grasps the scope at a glance (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one system-context / high-level view; add more (user flow, data flow) by author judgment. Fenced mermaid OR ASCII. Example:]
+  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram right up top so a reader grasps the scope at a glance (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one system-context / high-level view; add more (user flow, data flow) by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
 
   ```mermaid
   flowchart TD
@@ -71,14 +71,28 @@
 
   <!--SECTION:DECISION_LOG-->
   ## Decision Log
+  [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+  <details>
+  <summary>Полные записи Decision Log</summary>
+
   [D-NNN entries.]
+
+  </details>
   <!--/SECTION:DECISION_LOG-->
 
   <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
   ## Prerequisites
+  [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Таблица предусловий</summary>
+
   | Requirement | Kind | Owner | Resolution |
   |---|---|---|---|
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+  </details>
   <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
   <!--SECTION:HANDOFF-->

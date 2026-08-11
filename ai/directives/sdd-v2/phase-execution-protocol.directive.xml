@@ -1,4 +1,4 @@
-<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated" type="directive" ver="2.0">
+<SddPhaseExecution keywords="phase-execution, single-phase, scope-lock, narrow-recon, verify-gate, live-log, handoff, worker, isolated" type="directive" ver="2.2">
   <Mission>
     Execute ONE phase of ONE task ticket, dispatched by the execute orchestrator. Read only what this
     phase needs; write only this phase's Target Files; run the verification gate; emit a typed Handoff.
@@ -114,6 +114,21 @@
 
     <Axiom id="AX_INTRODUCED_DISCIPLINE">
       Every entity introduced beyond the module Entity Inventory MUST be logged: `<ts> intro <EntityName> ← <reason>`. Includes new classes, exported functions, exported types, value objects with explicit identity, anything crossing a public surface. Without an `intro` line, the entity is closed-world drift and audit blocks the task. Mechanically enforced by `InventorySyncCheck` (`gennady lint --spec=<module-spec>`): an exported entity absent from the inventory surfaces as `ERR_CLI_LINT_INVENTORY_UNDECLARED` — resolve by removing it or by backflowing it into the spec inventory (carrying the `intro` reason).
+    </Axiom>
+
+    <Axiom id="AX_USAGE_WAIVER_DISCIPLINE">
+      `gennady yagni` flags an added/changed symbol with fewer than 2 production-code usages across
+      the whole repo (tests never count; barrel re-exports never count). Every such finding MUST be
+      resolved one of two ways: (a) remove the symbol, or (b) genuinely need it — then add
+      `- **Usage Waiver:** <reason>` to its contract/surface entry (`DBC_PORT_FORMAT` /
+      `DBC_ADAPTER_FORMAT` / `ENTITY_SURFACE_FORMAT`), AND log `<ts> yagni <EntityName> ← <reason>`
+      in this phase's Execution Log block — the label alone is not sufficient, the log line is the
+      evidence audit cross-checks against it (`AX_AUDIT_YAGNI_CROSSCHECK`). Cite a `D-NNN` in the
+      label only when the reason IS a Decision Log entry — a genuine, non-obvious call, not "split
+      for readability"; when cited, the id must resolve to a real Decision Log heading, or
+      `gennady yagni` re-reports the finding as `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`. Public API
+      for a named external consumer uses the `(external: <consumer>)` waiver variant — the rule
+      still applies, the label just becomes mandatory rather than optional.
     </Axiom>
 
     <Axiom id="AX_NO_SILENT_ESCAPE_HATCH">
@@ -326,6 +341,7 @@
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
       <!-- Event lines (optional; appended as events happen, in chronological order): -->
       - [x] `<ts>` intro `<Entity>` ← <reason>
+      - [x] `<ts>` yagni <name> ← <reason>              <!-- AX_USAGE_WAIVER_DISCIPLINE: only when a yagni finding was gated -->
       - [x] `<ts>` decision <key>=<value> ← <reason>
       - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
       - [x] `<ts>` discovery <fact>

@@ -102,8 +102,8 @@
         the effective rule-set per `AX_RULES_CASCADE_RESOLUTION`:
         1. collect the traversed-scopes tier — union of Effective Rules from every scope reachable via
            `depends-on` from the target scope (transitive closure);
-        2. overlay the target-scope tier (scope spec 5 Effective Rules for infra; 4.5 Rules for
-           product/library), then each `module:<name>` tier (module spec 9 Handoff Module Rules
+        2. overlay the target-scope tier (scope spec Effective Rules for infra; Rules for
+           product/library), then each `module:<name>` tier (module spec Handoff Module Rules
            Additions), then task-tier rules the operator supplied — later tier wins on collision;
         3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
            `H_MISSING_RULE_FILE`);
@@ -139,7 +139,7 @@
            + transitive, all explicit;
         5. after all phases: union `<RequiresVerification>` aliases across the ticket's phases, group
            rules by alias, resolve each unique alias from infra-spec Verification Commands (absent →
-           `H_VERIFICATION_COMMAND_MISSING`), and write ticket section 5 Verification table — one row
+           `H_VERIFICATION_COMMAND_MISSING`), and write ticket Verification table — one row
            per unique alias, Required-by = comma-separated declaring rule IDs.
         Draft BDD with the mandatory `contract`-level
         typing scenario per contract (`AX_TICKET_HAS_BDD_AND_TESTS`); pre-fill the Execution Log plan

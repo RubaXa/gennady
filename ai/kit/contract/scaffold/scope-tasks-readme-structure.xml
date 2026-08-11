@@ -22,8 +22,8 @@
 
       ### Rule Sources
       - Traversed scopes: [scope graph](../../specs/README.md)
-      - Target scope: [<scope> spec 5/4.5](../../specs/<scope>/<scope>.spec.md)
-      - Module: each module's 9 Handoff
+      - Target scope: [<scope> spec Architecture / Rules](../../specs/<scope>/<scope>.spec.md)
+      - Module: each module's Handoff
       - Files: `ai/directives/<category>/<rule>.xml`
 
       ## Intra-Scope DAG

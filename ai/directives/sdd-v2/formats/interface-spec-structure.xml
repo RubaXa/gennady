@@ -14,7 +14,7 @@
 
   <!--SECTION:OVERVIEW-->
   ## Overview
-  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — who produces vs consumes this contract, or the version-transition flow; add more by author judgment. Fenced mermaid OR ASCII. Example:]
+  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — who produces vs consumes this contract, or the version-transition flow; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
 
   ```mermaid
   flowchart LR
@@ -44,20 +44,41 @@
 
   <!--SECTION:COMPATIBILITY_MATRIX-->
   ## Compatibility Matrix
+  [One-line human summary — how many consumers, any breaking changes pending. Full matrix folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Матрица совместимости</summary>
+
   | Consumer scope | Min compatible version | Breaking change protocol |
   |---|---|---|
+
+  </details>
   <!--/SECTION:COMPATIBILITY_MATRIX-->
 
   <!--SECTION:DECISION_LOG-->
   ## Decision Log
+  [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+  <details>
+  <summary>Полные записи Decision Log</summary>
+
   [D-NNN entries.]
+
+  </details>
   <!--/SECTION:DECISION_LOG-->
 
   <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
   ## Prerequisites
+  [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Таблица предусловий</summary>
+
   | Requirement | Kind | Owner | Resolution |
   |---|---|---|---|
   <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+  </details>
   <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
   <!--SECTION:HANDOFF-->

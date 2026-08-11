@@ -9,68 +9,93 @@
       <!--/SECTION:SCOPE_TYPE-->
 
       <!--SECTION:VISION-->
-      ## 1. Vision & Primary Goal
+      ## Vision & Primary Goal
       [Что library делает; главная проблема, которую решает.]
       <!--/SECTION:VISION-->
 
+      <!--SECTION:OVERVIEW-->
+      ## Overview
+      [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — how a consumer wires this library in; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
+
+      ```mermaid
+      flowchart LR
+        consumer -->|imports| library
+        library --> capability
+      ```
+      <!--/SECTION:OVERVIEW-->
+
       <!--SECTION:GOLDEN_DX-->
-      ## 2. Approved Golden DX Example
+      ## Target Experience
       [Публичный API DX: init/setup + happy path + error path. Комментарии раскрывают намерение.]
       <!--/SECTION:GOLDEN_DX-->
 
+      <!--SECTION:SCOPE_DEPENDENCIES-->
+      ## Scope Dependencies
+      - **Depends on:** [infra-*, interface scopes]
+      - **Provides to:** [consumer scopes]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
+
       <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
-      ## 3. Requirements & Constraints
+      ## Requirements & Constraints
 
-      ### 3.1 Functional Requirements
+      ### Functional Requirements
 
-      ### 3.2 Non-Functional Constraints
+      ### Non-Functional Constraints
 
-      ### 3.3 Out-of-Scope
+      ### Out-of-Scope
 
-      ### 3.4 Runtime Backing & Deferred Scope
+      ### Runtime & Deferred Scope
       [Per `AX_RUNTIME_BACKING_EXPLICIT`. Backing per major capability + deferred parts.]
 
-      ### 3.5 Rules
+      ### Rules
       | Rule | Category | Source |
       |---|---|---|
       <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
       <!--SECTION:PUBLIC_API_SURFACE-->
-      ## 4. Public API Surface
+      ## Public API Surface
       [Ключевые exported interfaces, types, functions. Intent-level, без impl detail.]
       <!--/SECTION:PUBLIC_API_SURFACE-->
 
       <!--SECTION:ARCHITECTURE-->
-      ## 5. Architecture
+      ## Architecture
       [Выбранный design pattern. Кратко — rejected alternatives.]
       <!--/SECTION:ARCHITECTURE-->
 
       <!--SECTION:DECISION_LOG-->
-      ## 6. Decision Log
+      ## Decision Log
+      [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+      <details>
+      <summary>Полные записи Decision Log</summary>
+
       [D-NNN entries.]
+
+      </details>
       <!--/SECTION:DECISION_LOG-->
 
-      <!--SECTION:SCOPE_DEPENDENCIES-->
-      ## 7. Scope Dependencies
-      - **Depends on:** [infra-*, interface scopes]
-      - **Provides to:** [consumer scopes]
-      <!--/SECTION:SCOPE_DEPENDENCIES-->
-
       <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
-      ## 8. Bootstrap Requirements
+      ## Prerequisites
+      [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Таблица предусловий</summary>
+
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+      </details>
       <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
       <!--SECTION:HANDOFF-->
-      ## 9. Handoff to module-decomposition
+      ## Handoff to Modules
       - **Areas requiring decomposition:** [list]
-      - **Named abstractions:** [from Golden DX]
-      - **Bootstrap tickets ready for cascade:** see 8
+      - **Named abstractions:** [from Target Experience]
+      - **Bootstrap tickets ready for cascade:** see Prerequisites
       - **Open risks:** [validation needs]
 
-      <!-- 9.1 Pivot Invalidation List — only in pivot mode -->
+      <!-- Pivot Invalidation List — only in pivot mode -->
       <!--/SECTION:HANDOFF-->
       ```
     </Contract>

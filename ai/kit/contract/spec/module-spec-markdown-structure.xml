@@ -1,50 +1,99 @@
 <!-- source: sdd/module-decomposition.directive.xml -->
 <Contract id="MODULE_SPEC_MARKDOWN_STRUCTURE">
-      Each `specs/<scope>/<module>/<module>.spec.md`. Every top-level `## N.` section wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` (open before header, close before next same-level header or EOF). Sub-sections and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary; the template below shows idiomatic choices. Grammar source of truth: `~/.claude/skills/sdd-execute/scripts/extract-section.sh`. DbC subsection shape is flexible per `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`.
+      Each `specs/<scope>/<module>/<module>.spec.md`. Every top-level `##` section wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` (open before header, close before next same-level header or EOF). Sub-sections and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary; the template below shows idiomatic choices. Grammar source of truth: `~/.claude/skills/sdd-execute/scripts/extract-section.sh`. DbC subsection shape is flexible per `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`.
+
+      Section order is general → specific (arc42 / C4): orientation (what it is, its shape, how it is used) → context & map (where it sits, what is inside) → contract detail (folded) → physical layout & decisions → handoff & appendix. Heavy reference detail folds under `<details>` per `AX_SPEC_PROGRESSIVE_DISCLOSURE` so the reader sees the shape without wading through every precondition.
 
       ```markdown
       # Module: <ModuleName>
 
       <!--SECTION:MODULE_VISION-->
-      ## 1. Module Vision
+      ## Module Vision
       [What this module owns. Link to parent scope spec → `../../<scope>.spec.md`. Links to parent/child modules if any.]
       <!--/SECTION:MODULE_VISION-->
 
+      <!--SECTION:OVERVIEW-->
+      ## Overview
+      [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram, checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`. One glance beats a paragraph. The floor is one; add more (sequence, data-flow, state) whenever a second view genuinely helps a reader understand this module — that call is the author's. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. The `Inter-Module Dependencies` graph is separate (machine-parsed) and does NOT satisfy this floor. Example — the module's main happy-path flow:]
+
+      ```mermaid
+      flowchart LR
+        caller -->|request| Port
+        Port --> Service
+        Service -->|result| caller
+      ```
+      <!--/SECTION:OVERVIEW-->
+
       <!--SECTION:MODULE_USAGE_EXAMPLE-->
-      ## 2. Module Usage Example
+      ## Module Usage Example
       [MANDATORY. Self-sufficient happy-path snippet — как потребитель использует этот модуль в изоляции. Пишется на таргет-языке проекта — единственное место для кода per `AX_CONTRACTS_TEXTUAL_AGNOSTIC`. Показывает публичную поверхность через реальный сценарий вызова: init / happy path / минимальный error path. Composition с соседними модулями — НЕ здесь, это уровень scope spec (link, не дублировать).]
       <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
+      <!--SECTION:INTER_MODULE_DEPENDENCIES-->
+      ## Inter-Module Dependencies
+      - **Depends on:** <list of modules within this scope with links>
+      - **Scope Reference (cross-scope):** <interface-type scope with link if any>
+      - **Provides to:** <list of modules within this scope>
+
+      ```mermaid
+      graph TD
+        <this-module> --> <sibling-1>
+        <this-module> --> <sibling-2>
+        <this-module> -. Scope Reference .-> <contracts-scope>
+        <consumer> --> <this-module>
+      ```
+      <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
       <!--SECTION:ENTITY_INVENTORY-->
-      ## 3. Entity Inventory (Closed-World)
+      ## Entity Inventory
       [Per `ENTITY_INVENTORY_FORMAT`.]
       <!--/SECTION:ENTITY_INVENTORY-->
 
       <!--SECTION:ENTITY_SURFACES-->
-      ## 4. Entity Surfaces
+      ## Entity Surfaces
+      [One-line human summary — what the surfaces cover; the reader sees this without expanding. Heavy per-entity detail folds per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Полные поверхности сущностей</summary>
+
       [Each entity per `ENTITY_SURFACE_FORMAT`.]
+
+      </details>
       <!--/SECTION:ENTITY_SURFACES-->
 
       <!--SECTION:MODULE_CONTRACTS-->
-      ## 5. Module Contracts (DbC)
+      ## Module Contracts
+      [One-line human summary — which Ports / Adapters / Services this module defines. The contract bodies fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`).]
 
       <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
-           Numbering optional (`### 5.0`, `### 5.1`, …, or unnumbered like `### OperationDef Pattern`). -->
+           Unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`). -->
 
-      ### 5.1 Ports
+      <details>
+      <summary>Контракты DbC</summary>
+
+      ### Ports
       [Per `DBC_PORT_FORMAT`. Omit if this module has no Ports.]
 
-      ### 5.2 Adapters
+      ### Adapters
       [Per `DBC_ADAPTER_FORMAT`. Omit if this module has no Adapters.]
+
+      </details>
       <!--/SECTION:MODULE_CONTRACTS-->
 
       <!--SECTION:PUBLIC_OPTIONS-->
-      ## 6. Public Options & Policies
+      ## Public Options & Policies
+      [One-line human summary — what is configurable. Full enumeration folds (reference detail).]
+
+      <details>
+      <summary>Опции и политики</summary>
+
       [All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
+
+      </details>
       <!--/SECTION:PUBLIC_OPTIONS-->
 
       <!--SECTION:FILE_STRUCTURE-->
-      ## 7. File Structure
+      ## File Structure
       ```
       <module>/
       ├── ports/
@@ -59,28 +108,20 @@
       <!--/SECTION:FILE_STRUCTURE-->
 
       <!--SECTION:MODULE_DECISION_LOG-->
-      ## 8. Module Decision Log
+      ## Module Decision Log
+      [One-line human summary — which decisions are recorded, at a glance. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — a decision log only grows, it is never needed to grasp the module NOW.]
+
+      <details>
+      <summary>Полные записи Decision Log</summary>
+
       [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+
+      </details>
       <!--/SECTION:MODULE_DECISION_LOG-->
 
-      <!--SECTION:INTER_MODULE_DEPENDENCIES-->
-      ## 9. Inter-Module Dependencies
-      - **Depends on:** <list of modules within this scope with links>
-      - **Scope Reference (cross-scope):** <interface-type scope with link if any>
-      - **Provides to:** <list of modules within this scope>
-
-      ```mermaid
-      graph TD
-        <this-module> --> <sibling-1>
-        <this-module> --> <sibling-2>
-        <this-module> -. Scope Reference .-> <contracts-scope>
-        <consumer> --> <this-module>
-      ```
-      <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
-
       <!--SECTION:HANDOFF-->
-      ## 10. Handoff to task-scaffolding
-      - **Implementation files to be created:** <list from 7>
+      ## Handoff to Tasks
+      - **Implementation files to be created:** <list from File Structure>
       - **Test files to be created:** <list>
       - **Stack dependencies:**
         - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
@@ -96,8 +137,15 @@
 
       <!-- Optional appendix — include only when the module has non-trivial post-impl learnings worth preserving. -->
       <!--SECTION:IMPLEMENTATION_INSIGHTS-->
-      ## 11. Implementation Insights
+      ## Implementation Insights
+      [One-line human summary — what a future reader must know. Detail folds (appendix).]
+
+      <details>
+      <summary>Заметки по реализации</summary>
+
       [Library wrap patterns, transaction subtleties, fake-runtime pitfalls, etc. Authored after audit-cycle compaction; immutable contract for future readers.]
+
+      </details>
       <!--/SECTION:IMPLEMENTATION_INSIGHTS-->
       ```
     </Contract>

@@ -47,6 +47,10 @@
 
     {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
 
+    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every infra spec carries at least one diagram in an `Overview` section, high up — the developer workflow or tool pipeline at a glance, one glance beats a paragraph. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views by judgment; that is not a gate.
+    </Axiom>
+
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 

@@ -9,12 +9,29 @@
       <!--/SECTION:SCOPE_TYPE-->
 
       <!--SECTION:VISION-->
-      ## 1. Vision
+      ## Vision
       [Что контракт определяет и для кого.]
       <!--/SECTION:VISION-->
 
+      <!--SECTION:OVERVIEW-->
+      ## Overview
+      [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — who produces vs consumes this contract, or the version-transition flow; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
+
+      ```mermaid
+      flowchart LR
+        producer -->|implements| Contract
+        Contract -->|consumed by| consumer
+      ```
+      <!--/SECTION:OVERVIEW-->
+
+      <!--SECTION:SCOPE_DEPENDENCIES-->
+      ## Scope Dependencies
+      - **Depends on:** [infra scopes if any]
+      - **Provides interface to:** [product/library scopes]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
+
       <!--SECTION:INTERFACE_DECLARATION-->
-      ## 2. Interface Declaration
+      ## Interface Declaration
       - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
       - **Versioning scheme:** semver | date-based (YYYY-MM-DD) | none
       - **Namespace:** <api prefix / package name>
@@ -22,38 +39,53 @@
       <!--/SECTION:INTERFACE_DECLARATION-->
 
       <!--SECTION:VERSIONING_POLICY-->
-      ## 3. Versioning Policy
+      ## Versioning Policy
       [Semver rules / breaking-change protocol / deprecation window.]
       <!--/SECTION:VERSIONING_POLICY-->
 
       <!--SECTION:COMPATIBILITY_MATRIX-->
-      ## 4. Compatibility Matrix
+      ## Compatibility Matrix
+      [One-line human summary — how many consumers, any breaking changes pending. Full matrix folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Матрица совместимости</summary>
+
       | Consumer scope | Min compatible version | Breaking change protocol |
       |---|---|---|
+
+      </details>
       <!--/SECTION:COMPATIBILITY_MATRIX-->
 
       <!--SECTION:DECISION_LOG-->
-      ## 5. Decision Log
+      ## Decision Log
+      [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+      <details>
+      <summary>Полные записи Decision Log</summary>
+
       [D-NNN entries.]
+
+      </details>
       <!--/SECTION:DECISION_LOG-->
 
-      <!--SECTION:SCOPE_DEPENDENCIES-->
-      ## 6. Scope Dependencies
-      - **Depends on:** [infra scopes if any]
-      - **Provides interface to:** [product/library scopes]
-      <!--/SECTION:SCOPE_DEPENDENCIES-->
-
       <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
-      ## 7. Bootstrap Requirements
+      ## Prerequisites
+      [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Таблица предусловий</summary>
+
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+      </details>
       <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
       <!--SECTION:HANDOFF-->
-      ## 8. Handoff
+      ## Handoff
       - **Contract files to scaffold:** [schema files, codegen configs]
-      - **Bootstrap tickets ready for cascade:** see 7
+      - **Bootstrap tickets ready for cascade:** see Prerequisites
       - **Open risks:** [versioning gaps, unconfirmed consumers]
       <!--/SECTION:HANDOFF-->
       ```

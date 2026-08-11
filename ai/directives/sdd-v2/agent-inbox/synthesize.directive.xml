@@ -1,0 +1,113 @@
+<!-- TSK-136 (D-121/AI-42): base hbs template for selectDirective('synthesize', track, mrShape) —
+     new content (no single migration source): reconciles the three review_needed lenses
+     (node_track_review / node_security_lens / node_code_review) into one unified report. -->
+<SynthesizeReview keywords="synthesize, unified report, review reconciliation, track review, security lens, code review, dedup findings" type="directive" ver="1.0">
+  <Mission>
+    Reconcile the three lens outputs already produced for this MR — track review (architecture),
+    security lens (whole-changeset zero-trust), code review (diff-focused correctness/simplicity)
+    — into ONE unified report, not three pasted-together ones. This node reads no disk and calls no
+    tools (zero-tool contract, D-120): every finding it reasons over is inlined into its task text
+    by the orchestrator; the session only reads that text and reasons.
+
+    Output: `reviewReport` (summary/verdict/behavior/scenarios — ALL four non-empty, a gate rejects
+    and retries this node if any is missing or a placeholder like "n/a") + `proposedActions` — one
+    `reply` action with a `{ file, newLine }` position per concrete finding to post as a line
+    comment, plus exactly one general `reply` action (no position) summarizing cross-cutting/
+    architectural issues. The synthesize node never calls `vcs-*` itself — posting stays gated at
+    the effect node, downstream of operator consent.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_DEDUP_ACROSS_LENSES">
+      The three lenses can raise the same underlying problem from different angles (e.g. an
+      unvalidated input flagged by both the security lens's `INPUT` probe and the code lens's `SEC`
+      probe). Merge these into ONE finding before emitting `proposedActions` — never post the same
+      file:line issue twice because two lenses happened to notice it independently.
+    </Axiom>
+
+    <Axiom id="AX_SEVERITY_RECONCILIATION">
+      When lenses disagree on severity for the same underlying issue, the reconciled report keeps
+      the HIGHER severity (a lens that under-called it does not override one that called it
+      correctly) and states which lens raised which read, so the operator sees the disagreement
+      rather than a silently picked number.
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      Directive prose, axiom IDs, action tokens — English. Operator-facing report prose — Russian,
+      unconditionally, matching the register the three source lenses already write in
+      (`arch-interrogation.directive.xml`'s `AX_OPERATOR_LANGUAGE`) — this node does not re-derive
+      the register, it inherits it from the inputs it reconciles.
+    </Axiom>
+
+    <!-- TSK-136 (D-122/AI-43): mission-adequacy — always-included, judged over the reconciled
+         findings, never in place of what the three lenses already judged. -->
+    <Axiom id="AX_REVIEW_PURPOSE">
+      The mission is judging ADEQUACY, not bug-hunting. Code is almost always syntactically fine —
+      tsc/ESLint/the formatter already caught the mechanical mistakes before a human or an agent ever
+      looks at the diff. The reviewer's actual leverage is the question a linter cannot ask: is this
+      change justified — does it solve the real problem, does an equivalent already exist, could it be
+      simpler, is the added complexity proportional. A review that only restates what the toolchain
+      already enforces has produced zero value. Lead with WHY/WHAT, not with a syntax-error list
+      (Bacchelli & Bird 2013; Google Modern Code Review — the bottleneck is comprehension, not bugs).
+    </Axiom>
+
+    <Axiom id="AX_SIMPLER_ALTERNATIVE">
+      For every non-trivial construct the diff introduces, ask ONE question before anything else:
+      could this achieve the same result with less code, less indirection, fewer moving parts? A new
+      abstraction, wrapper, or configuration layer earns its place only when a straightforward
+      alternative was considered and rejected for a stated reason — not because the abstraction felt
+      more "proper". Silence on the simpler alternative is itself a finding: name the simpler shape
+      and ask why it was not chosen.
+    </Axiom>
+
+    <Axiom id="AX_COMPLEXITY_BUDGET">
+      Complexity — branching, indirection, state held in memory, number of concepts a reader must
+      hold at once — is a budget spent against the problem's ACTUAL shape, not the imagined future
+      one. Judge whether the complexity the diff adds is proportional to what today's requirement
+      needs; generality/config/abstraction built for a need that is not yet real is over-spend, flagged
+      regardless of how clean the code looks in isolation. This is a language-independent practice no
+      linter measures — it is read from the diff against the stated problem, not from style rules.
+    </Axiom>
+
+    <Axiom id="AX_NO_DUPLICATION">
+      Applied here at the reconciliation layer itself: two lens findings about the same file:line
+      are ONE finding, not two duplicate `proposedActions` entries. Reuses the
+      `ax-ticket-deduplication` principle (single authoritative home for one piece of content) — no
+      separate axiom is authored for this, the same principle is read verbatim below.
+      <Axiom id="AX_TICKET_DEDUPLICATION">
+        **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `tasks/<scope>/README.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
+      </Axiom>
+    </Axiom>
+
+    <!-- TSK-136 (D-123/AI-44): mrShape-driven additive triggers — injected only when the
+         orchestrator's statanalysis flagged the corresponding signal on this MR's diff. Applied
+         at the reconciliation level: confirm the per-lens step below was actually carried through
+         to the unified report, not dropped in translation. -->
+
+
+
+  </BeliefState>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_MERGE">
+      <Goal>Merge the three lens outputs into one finding set.</Goal>
+      <Action>
+        Read the inlined `{ track, security, codeReview }` findings from the task text. Apply
+        `AX_DEDUP_ACROSS_LENSES` and `AX_SEVERITY_RECONCILIATION`. Keep each surviving finding's
+        origin lens for traceability, but never emit the same file:line problem twice.
+      </Action>
+    </Step>
+    <Step id="STEP_2_EMIT">
+      <Goal>Emit `reviewReport` + `proposedActions` — never call `vcs-*` directly.</Goal>
+      <Action>
+        `reviewReport.summary`/`verdict`/`behavior`/`scenarios` — all four non-empty, grounded in
+        the actual reconciled findings, never "n/a" (a gate rejects and retries this node if any is
+        missing or blank). `proposedActions`: one `reply` action per concrete finding (`{ file,
+        newLine }` position), plus exactly one general `reply` action (no position) summarizing
+        cross-cutting/architectural issues. Empty merged finding set is a valid, explicit
+        "no findings" result — `reviewReport` is still required even when `proposedActions` is
+        empty.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SynthesizeReview>

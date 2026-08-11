@@ -12,8 +12,11 @@
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [D-NNN — only when a Decision Log entry actually backs the reason]
 
       **Side Effects:**
       - <one observable effect per line: external HTTP, IO, observability, mutation of shared state, …>
       ```
+
+      Same `Usage Waiver` rule as `DBC_PORT_FORMAT` — see there for the two forms and the citation requirement.
     </Contract>

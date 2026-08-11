@@ -13,7 +13,7 @@
 
   <!--SECTION:OVERVIEW-->
   ## Overview
-  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram, checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`. One glance beats a paragraph. The floor is one; add more (sequence, data-flow, state) whenever a second view genuinely helps a reader understand this module — that call is the author's. Fenced mermaid OR ASCII. The `Inter-Module Dependencies` graph is separate (machine-parsed) and does NOT satisfy this floor. Example — the module's main happy-path flow:]
+  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram, checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`. One glance beats a paragraph. The floor is one; add more (sequence, data-flow, state) whenever a second view genuinely helps a reader understand this module — that call is the author's. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. The `Inter-Module Dependencies` graph is separate (machine-parsed) and does NOT satisfy this floor. Example — the module's main happy-path flow:]
 
   ```mermaid
   flowchart LR
@@ -108,7 +108,14 @@
 
   <!--SECTION:MODULE_DECISION_LOG-->
   ## Module Decision Log
+  [One-line human summary — which decisions are recorded, at a glance. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — a decision log only grows, it is never needed to grasp the module NOW.]
+
+  <details>
+  <summary>Полные записи Decision Log</summary>
+
   [D-NNN entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+
+  </details>
   <!--/SECTION:MODULE_DECISION_LOG-->
 
   <!--SECTION:HANDOFF-->

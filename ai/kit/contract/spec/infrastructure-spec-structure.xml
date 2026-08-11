@@ -1,6 +1,6 @@
 <!-- source: sdd/discovery.directive.xml -->
 <Contract id="INFRASTRUCTURE_SPEC_STRUCTURE">
-      Every top-level `## N.` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers so any agent can pull a single section via `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>`. Open marker IMMEDIATELY before the header; close marker IMMEDIATELY before the next same-level header (or EOF). Sub-sections (`### N.M`) and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary (the four templates below illustrate idiomatic choices); no name registry is enforced. Grammar source of truth: `extract-section.sh`. The four `SPEC_STRUCTURE` templates emit anchors by default — copy verbatim.
+      Every top-level `##` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers so any agent can pull a single section via `~/.claude/skills/sdd-execute/scripts/sdd extract <file> <NAME>`. Open marker IMMEDIATELY before the header; close marker IMMEDIATELY before the next same-level header (or EOF). Sub-sections (`###`) and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary (the four templates below illustrate idiomatic choices); no name registry is enforced. Grammar source of truth: `extract-section.sh`. The four `SPEC_STRUCTURE` templates emit anchors by default — copy verbatim.
 
       ```markdown
       # <scope-name>: Infrastructure Specification
@@ -11,41 +11,63 @@
       <!--/SECTION:SCOPE_TYPE-->
 
       <!--SECTION:VISION-->
-      ## 1. Vision
+      ## Vision
       [Что включает dev/ops experience.]
       <!--/SECTION:VISION-->
 
-      <!--SECTION:TOOL_STACK-->
-      ## 2. Tool Stack
+      <!--SECTION:OVERVIEW-->
+      ## Overview
+      [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — the developer workflow or the tool pipeline at a glance; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
 
-      ### 2.1 Categories Covered
+      ```
+      edit ──► typecheck ──► lint ──► test ──► pre-commit ──► CI
+      ```
+      <!--/SECTION:OVERVIEW-->
+
+      <!--SECTION:SCOPE_DEPENDENCIES-->
+      ## Scope Dependencies
+      - **Depends on:** None (infrastructure scopes are typically leaves)
+      - **Provides rules to:** [list of product/library scopes that depend on this]
+      <!--/SECTION:SCOPE_DEPENDENCIES-->
+
+      <!--SECTION:TOOL_STACK-->
+      ## Tool Stack
+
+      ### Categories Covered
       [Список категорий + краткое обоснование исключений.]
 
-      ### 2.2 Tool Choices
+      ### Tool Choices
       | Category | Tool | Rationale |
       |---|---|---|
       | <category> | <tool> | D-NNN |
       <!--/SECTION:TOOL_STACK-->
 
       <!--SECTION:WORKFLOW_EXAMPLE-->
-      ## 3. Developer Workflow Example
+      ## Developer Workflow Example
       [Shell-script: setup, daily flow, commit flow, debug flow.]
       <!--/SECTION:WORKFLOW_EXAMPLE-->
 
       <!--SECTION:FILE_STRUCTURE-->
-      ## 4. File Structure
+      ## File Structure
       [ASCII tree + File Mapping.]
       <!--/SECTION:FILE_STRUCTURE-->
 
       <!--SECTION:EFFECTIVE_RULES-->
-      ## 5. Effective Rules (for cascade)
+      ## Effective Rules (for cascade)
+      [One-line human summary — how many rules, which categories. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Таблица правил</summary>
+
       | Rule | Category | Source |
       |---|---|---|
       | <rule-name> | coding | infra (D-NNN) |
+
+      </details>
       <!--/SECTION:EFFECTIVE_RULES-->
 
       <!--SECTION:VERIFICATION_COMMANDS-->
-      ## 6. Verification Commands
+      ## Verification Commands
       **Mandatory for infrastructure scopes.** After tool stack is finalized, record a table:
       | Command Name      | Invocation          |
       | typecheck-command | <actual invocation> |
@@ -59,34 +81,42 @@
       <!--/SECTION:VERIFICATION_COMMANDS-->
 
       <!--SECTION:DECISION_LOG-->
-      ## 7. Decision Log
+      ## Decision Log
+      [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+      <details>
+      <summary>Полные записи Decision Log</summary>
+
       [D-NNN entries.]
+
+      </details>
       <!--/SECTION:DECISION_LOG-->
 
-      <!--SECTION:SCOPE_DEPENDENCIES-->
-      ## 8. Scope Dependencies
-      - **Depends on:** None (infrastructure scopes are typically leaves)
-      - **Provides rules to:** [list of product/library scopes that depend on this]
-      <!--/SECTION:SCOPE_DEPENDENCIES-->
-
       <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
-      ## 9. Bootstrap Requirements
+      ## Prerequisites
+      [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+      <details>
+      <summary>Таблица предусловий</summary>
+
       | Requirement | Kind | Owner | Resolution |
       |---|---|---|---|
       <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
       <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
       <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare it explicitly: "No external bootstrap required." -->
+
+      </details>
       <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
       <!--SECTION:HANDOFF-->
-      ## 10. Handoff
+      ## Handoff
       - **Setup tasks to scaffold:** [list]
-      - **Effective rules ready for cascade:** see 5
-      - **Verification Commands ready for cascade:** see 6
-      - **Bootstrap tickets ready for cascade:** see 9
+      - **Effective rules ready for cascade:** see Effective Rules
+      - **Verification Commands ready for cascade:** see Verification Commands
+      - **Bootstrap tickets ready for cascade:** see Prerequisites
       - **Open risks:** [not-closed items]
 
-      <!-- 10.1 Pivot Invalidation List — only in pivot mode -->
+      <!-- Pivot Invalidation List — only in pivot mode -->
       <!--/SECTION:HANDOFF-->
       ```
     </Contract>

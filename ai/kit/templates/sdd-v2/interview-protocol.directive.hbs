@@ -1,4 +1,4 @@
-<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, sdd-interview-protocol" type="directive" ver="2.0">
+<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, stakes-split, one-question-per-message, ask-tool-binding, sdd-interview-protocol" type="directive" ver="2.1">
   <Mission>
     Run ONE operator interview for an authoring step. Loaded lazily by a branch step (scope
     STEP_2 / STEP_3, infra STEP_2, interface STEP_2, module STEP_2) via `READ_AND_USE_DIRECTIVE`; the calling
@@ -21,6 +21,57 @@
     {{> "axiom/interview/ax-defaults-first"}}
 
     {{> "axiom/interview/ax-amplification-opt-in"}}
+
+    <Axiom id="AX_STAKES_SPLIT">
+      The stakes of a question decide its delivery form — this overrides any round-grouping default:
+      - A **развилка** (architecture, a trust boundary, an irreversible or hard-to-undo choice) → ONE
+        question per message, full form per `QUESTION_MESSAGE_FORMAT`, answered via `AskUserQuestion`
+        before the next question is composed.
+      - A **default confirmation** (naming, a low-risk default, an obvious yes/no) → batched, up to 4
+        per `AskUserQuestion` call, per `BATCH_CONFIRM_FORMAT`.
+      Unsure which it is → treat as развилка. Burying a genuine fork inside a batch is the exact
+      failure this axiom exists to prevent.
+    </Axiom>
+
+    <Axiom id="AX_ONE_QUESTION_SEQUENTIAL">
+      Развилки go strictly one at a time: compose question N+1 only after the answer to question N is
+      in. Each next question MUST account for every prior answer in the interview — a question whose
+      premise an earlier answer already invalidated is a protocol defect, not a style issue. The
+      counter in `## Вопрос <X> из <Y>` is owned here: X is this question's ordinal in the interview;
+      Y is questions already asked plus развилки still open on the coverage map. When thread-pulling
+      opens a new topic, Y grows and the growth shows in the next map line — never silently.
+    </Axiom>
+
+    <Axiom id="AX_ASK_TOOL_BINDING">
+      Every развилка ends in one `AskUserQuestion` call, bound to its chat message:
+      - The chat message carries the full material (`QUESTION_MESSAGE_FORMAT`); the ASK call carries
+        only short option labels + one-line descriptions — never move the argument itself into the ASK.
+      - Options appear in the ASK in the SAME order they were printed in the message.
+      - A recommendation prints first in the message too (letter A) and carries «(рекомендую)» in its
+        ASK label — printed order and recommended-first then agree.
+      - «Other» is supplied by the tool automatically; never add a manual equivalent.
+      - Tool unavailable → drop only the ASK call; the развилка message still follows
+        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to the
+        caller's plain-text `QUESTION_FORMAT` when one applies. Batched default confirmations use one
+        ASK call covering 2–4 questions.
+    </Axiom>
+
+    <Axiom id="AX_VISUAL_WHEN_RELATIONAL">
+      When a question's subject is relational — a flow, a boundary, a structure, a lifecycle, or
+      variants that differ in shape — draw a compact ASCII picture BEFORE the variants, per
+      `formats/diagram-vocabulary.xml` (`AX_DIAGRAM_DISCIPLINE`: ≤7 nodes, one diagram per idea). A
+      question about a single scalar choice stays prose; a diagram of one node is noise, not clarity.
+      The same relation later lands in the spec as mermaid — the module/scope Overview if it is the
+      floor diagram (`AX_OVERVIEW_DIAGRAM_FLOOR`), else inline where the section needs it. The chat
+      ASCII is the operator's preview of the shape they are approving.
+    </Axiom>
+
+    <Axiom id="AX_SCANNABLE_TEXT">
+      The operator surfs a question message, they do not wade through it: bold marks the load-bearing
+      word inside a bullet, not the whole sentence; each block opens with its own emoji anchor;
+      paragraphs stay ≤3 lines; no monolithic prose wall. Emotion is seasoning, not paint — anchors and
+      an occasional marker, never an emoji on every line.
+    </Axiom>
   </BeliefState>
 
   <TopicCatalog>
@@ -86,18 +137,21 @@
       </Action>
     </Step>
     <Step id="STEP_3_ROUNDS">
-      <Goal>Close the map topic by topic.</Goal>
+      <Goal>Close the map, one topic at a time, in the shape its stakes demand.</Goal>
       <Action>
         Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); each round:
-        1. Show the map per `COVERAGE_MAP_FORMAT`, pick 1–2 open topics, mark them `[▶]`.
-        2. Ask the round as ONE grouped call: `AskUserQuestion` / `MultiAsk` with concrete options
-           + «Other» when the tool is available; otherwise `QUESTION_FORMAT` (`Q<N>`).
-        3. Shape each question per `AX_DEFAULTS_FIRST` — a concrete default to confirm or correct;
-           stakes gate the presentation per `AX_DIALOGUE_DISCIPLINE`.
+        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `[▶]`.
+        2. Split by stakes (`AX_STAKES_SPLIT`): a развилка → one message per
+           `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
+           (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
+           per `BATCH_CONFIRM_FORMAT`.
+        3. Shape each question per `AX_DEFAULTS_FIRST` — a concrete default to confirm or correct —
+           and bind its chat message to the `AskUserQuestion` call per `AX_ASK_TOOL_BINDING`.
         4. After each answer, update the map and pull the thread per `AX_COVERAGE_MAP_CLOSURE`
-           (new hole → new / reopened topic).
+           (new hole → new / reopened topic; a развилка whose premise the answer invalidated is
+           recomposed, not asked as planned — `AX_ONE_QUESTION_SEQUENTIAL`).
         5. An amplification topic opens → `READ_AND_USE_DIRECTIVE` its directive from
-           `AmplificationCatalog` and run its questions as this round.
+           `AmplificationCatalog` and run its questions as this round, split by stakes the same way.
         A skip request on a high-stakes topic → `H_HIGH_STAKES_SKIP`.
       </Action>
     </Step>
@@ -118,5 +172,79 @@
     what the interview is doing).
 
     {{> "contract/interview/coverage-map-format"}}
+
+    <Contract id="QUESTION_MESSAGE_FORMAT">
+      The развилка message — one question, full context, live markdown (never fenced). Blocks in
+      order; skip a block only when genuinely empty:
+
+      1. Coverage map line (`COVERAGE_MAP_FORMAT`).
+      2. `## Вопрос <X> из <Y> · <topic, no question mark>` — X/Y per `AX_ONE_QUESTION_SEQUENTIAL`.
+      3. `**Решаем одной строкой:** <the fork, one sentence>`.
+      4. An ASCII diagram — only when the subject is relational (`AX_VISUAL_WHEN_RELATIONAL`).
+      5. `**📌 Что известно**` — 2–5 bullets, load-bearing words bold, specific to THIS question —
+         not a restate of the session (`AX_SCANNABLE_TEXT`).
+      6. `**⚖️ Варианты**` — each variant: `**<Letter>. <name>**` then `✅ <pros, · -separated>` /
+         `⚠️ <cons, · -separated>`. 3+ variants with comparable criteria → a criteria×variant table
+         INSTEAD of the lists (rows = criteria, columns = variants; the killer cell bold).
+      7. `**🎯 Куда клонюсь:** <letter> — <why, one sentence>` — omit on high-stakes questions where
+         pre-anchoring is wrong (`AX_DEFAULTS_FIRST`).
+      8. The `AskUserQuestion` call (`AX_ASK_TOOL_BINDING`) — options in printed order.
+
+      <Example>
+        Покрытие: Цель/не-цель [✔] · Потребители [✔] · **формат спеки [▶]** · Зависимости [ ] · Слабые места [ ]
+
+        ## Вопрос 3 из 6 · Куда переезжает разросшаяся ячейка Entity Inventory
+
+        **Решаем одной строкой:** ячейка таблицы с абзацем на восемь предложений не читается во
+        вьювере — куда девать текст при миграции на v2-формат.
+
+        ```
+        [ячейка: 8 предложений] ──migrate──► ??? ──рендер во вьювере──► [читаемая таблица]
+                                              │
+                                     куда: подсекция? свернуть? урезать?
+        ```
+
+        **📌 Что известно**
+        - Правило F2 запрещает **абзацы и списки внутри ячейки** — только одна короткая строка.
+        - Развёрнутый текст должен **переехать в подсекцию под таблицей**, а не исчезнуть.
+        - `sdd-check` уже умеет **считать длину ячейки** — порог просто пока не задан.
+
+        **⚖️ Варианты**
+
+        **A. Короткая ячейка + подсекция `### <ID> — детали`**
+        ✅ таблица остаётся индексом · ничего не теряется · механически проверяемо
+        ⚠️ спека становится длиннее на число подсекций
+
+        **B. Урезать ячейку до одной фразы, остальное — в Decision Log**
+        ✅ таблица короче любой подсекции
+        ⚠️ решение теряет прямую связь со строкой таблицы — придётся искать отдельно
+
+        **🎯 Куда клонюсь:** A — подсекция держит связь «строка → детали», ничего не отрывается от
+        таблицы.
+
+        (AskUserQuestion: «A. Подсекция под таблицей (рекомендую)» · «B. В Decision Log»)
+      </Example>
+    </Contract>
+
+    <Contract id="BATCH_CONFIRM_FORMAT">
+      Default confirmations — one compact block, then ONE `AskUserQuestion` call with 2–4 questions.
+      Per item: one bold line (the default) + one plain line (the alternative and when it wins). No
+      «Что известно» blocks, no diagrams. An item that provokes discussion is promoted to a развилка
+      in the next message, not resolved inside the batch.
+    </Contract>
+
+    <Contract id="NEXT_STEP_MENU_FORMAT">
+      Rendered by the CALLING step's final step, after its artifact is written and verified. Shape:
+
+      1. One ✅ line — what was produced and what was checked
+         (`✅ Спека <path> записана · язык проверен · <N> диаграмм`).
+      2. `**Что дальше?**` + one `AskUserQuestion` call. Options (2–4) come from the caller's own
+         candidate table; the recommended option first with «(рекомендую)»; CHAINED options are
+         first-class («декомпозиция + критик следом», «scaffold + сразу execute») — one pick launches
+         the whole chain, the agent runs it without stopping between links unless a link fails.
+         Always include «Закончить сессию» last.
+      3. On pick: invoke the corresponding skill(s) / directive flow(s) directly — never answer with
+         «запусти /sdd-X сам».
+    </Contract>
   </ChatOutput>
 </SddInterviewProtocol>

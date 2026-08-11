@@ -32,6 +32,10 @@
 
     {{> "axiom/spec/ax-dx-first"}}
 
+    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every scope spec carries at least one diagram in an `Overview` section, high up so a reader grasps the scope at a glance — one glance beats a paragraph. The floor is one system-context / high-level view (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views (user flow, data flow) wherever a second diagram genuinely helps; that is judgment, not a gate.
+    </Axiom>
+
     {{> "axiom/spec/ax-runtime-backing-explicit"}}
 
     {{> "axiom/spec/ax-product-library-flow"}}

@@ -1,4 +1,8 @@
 <Contract id="ENTITY_INVENTORY_FORMAT">
+  `AX_SPEC_TABLE_IS_INDEX` (v2, `shared/sdd/check.ts`): a table is an index, not text — `Purpose` is
+  one short line (checked: ≤120 chars, one sentence, no `<br>`); anything longer moves to that
+  entity's `### <EntityName>` block in Entity Surfaces, not into this cell.
+
   ```markdown
   ## Entity Inventory
 

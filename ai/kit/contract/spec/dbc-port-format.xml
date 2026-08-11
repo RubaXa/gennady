@@ -13,6 +13,7 @@
       - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
       - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
       - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [D-NNN — only when a Decision Log entry actually backs the reason]
 
       **Contract (DbC):**
       - Preconditions:
@@ -22,4 +23,16 @@
       - Invariants:
         - <what stays true across the entity's lifetime>
       ```
+
+      **Usage Waiver** (`AX_USAGE_WAIVER_DISCIPLINE`, gennady yagni): a `<2` production-code usages
+      entity is a YAGNI finding unless its contract carries this field with a real reason — an empty
+      reason does not gate the finding. Cite a `D-NNN` only when the reason IS a Decision Log entry (a
+      genuine, non-obvious call — not "split for readability"); when cited, it must actually have a
+      heading in some Decision Log, or the citation does not gate the finding. The agent sets the
+      label, never the operator; omit the field entirely when usage already clears the threshold (no
+      placeholder text). Two forms:
+
+      - Internal entity: `- **Usage Waiver:** <reason>` (or `D-NNN — <reason>` when a decision backs it)
+      - Public API for an external consumer (does NOT disable the rule — it still needs the label):
+        `- **Usage Waiver (external: <named consumer>):** <reason>` (same `D-NNN` rule)
     </Contract>

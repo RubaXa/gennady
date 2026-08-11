@@ -47,6 +47,14 @@
 
     {{> "axiom/boundary/ax-entity-surface-completeness"}}
 
+    <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
+      Every spec carries at least one diagram in an `Overview` section — one glance beats a paragraph. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views — sequence, data-flow, state — wherever a second diagram genuinely helps a reader understand; that is judgment, not a gate. The `Inter-Module Dependencies` graph is machine-parsed and does NOT satisfy the floor.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_PROGRESSIVE_DISCLOSURE">
+      A module spec reads top-down: a human-readable summary on top, heavy contract detail folded beneath. Entity Surfaces and Module Contracts wrap their body in `<details><summary>…</summary>` so a reader sees the shape without wading through every precondition. Held by tooling: `sdd-check` fails an unfolded heavy section (`SDD_SECTION_NOT_FOLDED`). This is the spec-artifact analogue of the chat-output `AX_PROGRESSIVE_DISCLOSURE` — summary first, detail on demand.
+    </Axiom>
+
     {{> "axiom/coding/ax-consumer-driven"}}
 
     {{> "axiom/spec/ax-ports-and-abstractions-discipline"}}
@@ -184,7 +192,7 @@
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
         (`AX_REFINE_MODULE_PRESERVES_CONTRACTS`, else `H_REFINE_BREAKING_CHANGE_NO_LOG`). For a breaking
         `refine-module`, derive consumer modules from the reverse edges of the module graph (siblings whose
-        `## 9` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
+        `Inter-Module Dependencies` declares `--> this-module`) and emit a Pivot Invalidation List in the module spec — else
         `H_REFINE_BREAKING_NO_IMPACT_LIST`. When a module needs rules beyond the scope-wide
         baseline, fill Module Rules Additions in the Handoff section per `AX_RULE_ACTIVATION`
         (shortlist + considered-skips, operator locks the list; architecture / infra rules get the

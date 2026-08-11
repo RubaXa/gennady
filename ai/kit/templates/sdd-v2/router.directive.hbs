@@ -1,4 +1,4 @@
-<SddRouter keywords="sdd, router, entry, intent, scale, route, logic-switch, lazy-load, state" type="directive" ver="2.0">
+<SddRouter keywords="sdd, router, entry, intent, scale, route, logic-switch, lazy-load, state" type="directive" ver="2.1">
   <Mission>
     Single entry to SDD spec-authoring. On invocation I (1) obtain project state, (2) classify
     operator intent, (3) route to exactly ONE branch directive via LOGIC_SWITCH, loading it
@@ -31,6 +31,23 @@
     {{> "axiom/process/ax-operator-safeguard"}}
 
     {{> "axiom/process/ax-diverge-before-recommend"}}
+
+    <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
+      Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
+      are read by someone with zero memory of it. Before writing artifact prose, apply the reader
+      test: would an engineer who never saw this session understand it and act on it? Session-plan
+      labels, «оператор попросил» as a justification, «рабочий дифф» meaning this session's working
+      set — forbidden in artifacts; they belong to the session log. Introduce every term inline
+      before using it. The artifact explains the thing; it never reports the work of making it.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_NON_OBVIOUS" cross-cutting="true">
+      A Decision Log entry is insider information for a future agent — the «why THIS way» it could
+      not derive from the task alone: a real alternative rejected, an accepted risk, an operator's
+      explicit exception to a rule, a deliberately non-optimal choice. Obvious rationale («split for
+      readability», «named constant instead of a magic number») is noise that buries the genuine
+      entries — fold it into a one-line reason at the entity (e.g. `Usage Waiver`) or drop it.
+    </Axiom>
 
     {{> "axiom/process/ax-no-process-narration"}}
 
@@ -90,12 +107,19 @@
       <Goal>Classify operator intent, scope-type and SCALE against state; confirm with the operator.</Goal>
       <Action>
         From state + operator message derive intent: project-setup · new-scope · evolve-scope ·
-        module-decomposition · multi-scope. When the intent concerns a scope, also resolve its
-        scope-type — for a new scope from the operator, for an existing one from `sdd-state` (the
-        Scopes table). A change spanning several scopes (cross-platform) is normal
+        module-decomposition · multi-scope · recover-from-code. When the intent concerns a scope, also
+        resolve its scope-type — for a new scope from the operator, for an existing one from
+        `sdd-state` (the Scopes table). A change spanning several scopes (cross-platform) is normal
         (`AX_CROSS_SCOPE_CHANGE`): open a working set of the touched specs in the session and route them
         in Scope-Graph dependency order — the shared / cross-cutting scope first, then its dependents —
         looping the per-scope branches, not a new branch. Ambiguous → ask the operator; classify only when state and message agree.
+
+        `recover-from-code` fires when the operator asks to recover / recreate a spec FROM EXISTING
+        CODE and names a concrete path (a folder or a file) in the message — e.g. «воссоздай спеку для
+        `services/foo` по коду». It requires a LIVE portal (`specs/README.md` present): a path-less
+        request against an absent portal is `project-setup` instead (the whole-project recovery lives
+        inside the `root` branch, not this switch). A path-bearing request against an absent portal is
+        still ambiguous between the two — ask the operator which they mean before routing.
 
         Alongside intent, assess SCALE ∈ {product, library, module, function, fix} from context:
         the intent itself, the portal state (an empty portal leans product; a mature scope leans
@@ -127,6 +151,9 @@
       - WHEN specs/README.md is absent OR intent = project-setup
           (vision / scope graph / register scope / bootstrap infra)
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+      - WHEN intent = recover-from-code (portal present, operator names a folder or file and asks to
+          recover / recreate its spec from the code that already lives there)
+          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/recover-from-code.directive.xml")
       - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type ∈ {product, library}
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
       - WHEN intent ∈ {new-scope, evolve-scope} AND scope-type = infrastructure

@@ -6,6 +6,7 @@
       #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
       <!-- Event lines (optional; appended as events happen, in chronological order): -->
       - [x] `<ts>` intro `<Entity>` ← <reason>
+      - [x] `<ts>` yagni <name> ← <reason>              <!-- AX_USAGE_WAIVER_DISCIPLINE: only when a yagni finding was gated -->
       - [x] `<ts>` decision <key>=<value> ← <reason>
       - [x] `<ts>` tried <approach> → <result-or-why-abandoned>
       - [x] `<ts>` discovery <fact>

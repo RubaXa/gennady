@@ -6,10 +6,10 @@
       ## scope-type
       infrastructure
 
-      ## 1. Vision
+      ## Vision
       <Одно предложение про dev-experience.>
 
-      ## 2. Tool Stack (minimal bootstrap)
+      ## Tool Stack (minimal bootstrap)
       | Category | Tool |
       |---|---|
       | package-management | <tool> |

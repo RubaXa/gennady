@@ -1,0 +1,163 @@
+<SddRecoverFromCode keywords="recover, from-code, restore-spec, path, brownfield, existing-scope, scope-fit, module-split, incremental, lazy, inventory-reverse, sdd-recover-from-code" type="directive" ver="1.0">
+  <Mission>
+    Recover a spec for ONE named path — a folder or a file the operator points at — from the code
+    that already lives there plus whatever sits next to it (README, ADR, old docs, tests). Entered
+    from the router when the portal is LIVE and the operator both asks to recover / recreate a spec
+    from code AND names a concrete path; the router-core beliefs it relies on are declared in
+    `BeliefState deps` (inherited, not repeated).
+
+    Distinct from the two neighboring recovery flows:
+    - `discover-from-code` recovers the WHOLE project's general picture and only enters from `root`
+      when the portal is absent. This flow is the opposite scale: one path, portal already live.
+    - `reconcile` mode=`from-code` formalizes ONE change against a spec that already exists. This
+      flow has no existing spec for the path yet — that is exactly the gap it fills.
+
+    The agent does the reading itself — `bash` / `grep` / `Read` over the path and its neighbors —
+    there is no dedicated recovery tool and none is being added (`AX_NO_NEW_TOOL`). It reuses the
+    existing branches to write anything: `scope` for the scope spec, `module` for module specs,
+    `scaffold` only if the operator wants alignment tasks. This flow owns none of that writing logic.
+
+    Input — a path (folder or file) + the operator's intent to recover its spec. Output — the path
+    lands in a confirmed scope (existing or new) with a confirmed module split, and the module specs
+    for it pass the same closed-world reverse check any hand-written module spec would.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH, AX_READER_WITHOUT_SESSION_CONTEXT, AX_DECISION_LOG_NON_OBVIOUS">
+    <Axiom id="AX_NO_NEW_TOOL">
+      This flow adds no CLI command and no shared-code helper. Surveying a path — what the code does,
+      who imports whom, which docs / tests sit beside it — is done live by the agent through `bash`
+      (`grep`, `find`, `ls`) and `Read`, the same way any engineer would open an unfamiliar folder.
+      Building a dedicated recovery tool here trades a rare, judgment-heavy task for permanent
+      maintenance weight — the operator has weighed that trade and rejected it. The ONLY mechanical
+      gate in this flow is the one that already exists: `gennady lint --spec=<module-spec>
+      --inventory-reverse <module-dir>` (`AX_REVERSE_INVENTORY_GATE`).
+    </Axiom>
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses when presenting the survey and the proposal.
+      - **Facts** — directly read from the path: file layout, import edges, an existing test, a line
+        in a README that states purpose.
+      - **Assumptions** — a reasonable working read of code without a written purpose statement; mark
+        explicitly, invite correction.
+      - **Hypotheses** — guesses about intent that only the operator can confirm (why this exists,
+        who else depends on it).
+
+      Conflating the three lets a guess get written into the spec as if it were read from the code —
+      exactly the drift `--inventory-reverse` (`AX_REVERSE_INVENTORY_GATE`) later catches on the
+      inventory side, but the vision / purpose side has no mechanical check, so hygiene here is the
+      only guard.
+    </Axiom>
+
+    <Axiom id="AX_DOSED_SURVEY">
+      Read the path incrementally, cheapest signal first, and STOP once there is enough to propose a
+      scope fit + a module split — do not walk every file before saying anything. Cheap-to-expensive
+      order: directory listing and file names → package / workspace manifest (if any) → README / ADR
+      / doc files sitting beside the path → import graph of the path's own files (who it imports, who
+      imports it) → test files (what they exercise, which is often the best behavioral evidence) →
+      only then, if still unclear, a fuller read of the source. Present the coarse picture before
+      going deeper; the operator can always ask for more before confirming.
+    </Axiom>
+
+    <Axiom id="AX_REVERSE_INVENTORY_GATE">
+      A recovered module spec's Entity Inventory MUST be checked against the real code with
+      `gennady lint --spec=<module-spec> --inventory-reverse <module-dir>` before the flow closes.
+      This is what separates recovering a spec from paraphrasing the code into prose: an inventory
+      entry with no matching export, or an export with no inventory entry, is a finding to fix before
+      closing — never a note for later.
+    </Axiom>
+  </BeliefState>
+
+  <KernelGrammar>
+    <Definition id="DEF_READ_AND_USE_DIRECTIVE">
+      `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+      of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+      - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+        stateless) and carries only its own deltas; it MUST NOT repeat the core.
+      - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+        context is not polluted by branches that do not apply.
+      - The reference is a file path on purpose — a directive delivered as a file keeps full
+        instruction priority, unlike command stdout.
+    </Definition>
+  </KernelGrammar>
+
+  <ChatProtocol>
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_PATH_NOT_FOUND` | The named path does not exist in the repo — ask the operator for the correct one |
+    | `H_PATH_EMPTY` | The path exists but holds no source (empty dir, docs only) — nothing to recover FROM code |
+    | `H_NO_PORTAL` | `specs/README.md` is absent — this is project-scale recovery, not one-path recovery; redirect to `ai/directives/sdd-v2/root.directive.xml` (which enters `discover-from-code` on an empty portal) |
+    | `H_SCOPE_NOT_CONFIRMED` | Operator rejects or leaves open the proposed scope fit / scope-type / module split — stop; nothing is written |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Validate the path and the portal before spending any read.</Goal>
+      <Action>
+        Confirm the named path exists and contains source (`H_PATH_NOT_FOUND` / `H_PATH_EMPTY`
+        otherwise). Confirm the portal is live (`specs/README.md` present — `H_NO_PORTAL` otherwise,
+        which hands off to project-scale recovery instead). Both gates are cheap and mechanical; clear
+        them before STEP_1.
+      </Action>
+    </Step>
+    <Step id="STEP_1_SURVEY">
+      <Goal>Read the path and its neighbors — dosed, not exhaustive (`AX_DOSED_SURVEY`).</Goal>
+      <Action>
+        Walk the cheap-to-expensive order from `AX_DOSED_SURVEY`: layout → manifest → README / ADR /
+        docs beside the path → import edges in and out → tests → deeper source read only if still
+        unclear. Keep Facts / Assumptions / Hypotheses apart throughout (`AX_EVIDENCE_HYGIENE`). Also
+        read the current portal's Scope Graph + Scopes table (`sdd-state`) — the survey needs the
+        existing scopes to judge fit against.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PROPOSE">
+      <Goal>Propose scope fit, scope-type, and a module split; let the operator steer.</Goal>
+      <Action>
+        Present the survey plain Russian, coarse first (`AX_EVIDENCE_HYGIENE` tri-split, confidence
+        marked per item): what the path does, which existing scope it fits OR that a new scope is
+        needed, the scope-type if new, and a first-cut module split. Where the fit or the split is a
+        genuine fork (new scope vs. folding into an existing one; where the module boundary falls) —
+        run it through `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")`
+        so each fork gets its own question, one at a time, rather than a single multi-part ask.
+        Outright rejection or an unresolved fork → `H_SCOPE_NOT_CONFIRMED`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_3_RECOVER">
+      <Goal>Write the spec by reusing the existing authoring branches — no bespoke writing logic here.</Goal>
+      <Action>
+        On confirmation, hand off to the branches that already know how to write a spec, in dependency
+        order:
+        - `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")` — create the new scope
+          spec, or extend the existing one the path was folded into.
+        - `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` — write the module
+          spec(s) for the confirmed split, entity inventory sourced from what STEP_1 actually read.
+        - Optionally, if the operator wants the code brought in line with anything the recovery
+          surfaced (missing tests, a contract gap): `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")`.
+        This flow contributes none of the spec-writing rules — it only routes the confirmed picture
+        into the branch that owns each artifact.
+      </Action>
+    </Step>
+    <Step id="STEP_4_VERIFY">
+      <Goal>Prove the recovered spec matches the real code, not a paraphrase of it.</Goal>
+      <Action>
+        For every module spec produced: `gennady lint --spec=<module-spec> --inventory-reverse
+        <module-dir>` clean (`AX_REVERSE_INVENTORY_GATE`) — fix the inventory or the spec, not the
+        code, when it disagrees with reality. Then `sdd-check --all .` clean over the whole tree.
+        Return control.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🧭 RFC_R<N> · path=<path> · scope=<scope-or-new> · step=<id>`.
+  </ChatOutput>
+</SddRecoverFromCode>
