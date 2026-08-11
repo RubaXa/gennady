@@ -56,15 +56,15 @@
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                   | Type          | Purpose                                                                                                                                                 |
-| ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SddSkill`             | Entity        | Один SDD-навык: SKILL.md + роль в воркфлоу                                                                                                              |
-| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd-v2/*.xml`                                                                                            |
-| `OrchestratorProtocol` | Specification | Протокол оркестратора: plan → dispatch → handoff → audit → retry                                                                                        |
-| `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                                                                                                                 |
-| `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                                                                                                              |
-| `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open                                                                                         |
-| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup                                                                                         |
+| Name                   | Type          | Purpose                                                          |
+| ---------------------- | ------------- | ---------------------------------------------------------------- |
+| `SddSkill`             | Entity        | Один SDD-навык: SKILL.md + роль в воркфлоу                       |
+| `DirectiveReference`   | Value Object  | Связь навык → директива: путь к `ai/directives/sdd-v2/*.xml`     |
+| `OrchestratorProtocol` | Specification | Протокол оркестратора: plan → dispatch → handoff → audit → retry |
+| `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                          |
+| `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                       |
+| `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open  |
+| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup  |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 

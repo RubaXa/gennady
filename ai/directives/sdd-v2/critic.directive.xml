@@ -1,8 +1,8 @@
-<SddCritic keywords="critic, orchestrator, spec-review, task-review, blind-spot, multi-round, reconcile, surgical-edit, sdd-critic" type="directive" ver="2.0">
+<SddCritic keywords="critic, orchestrator, spec-review, task-review, blind-spot, multi-round, reconcile, surgical-edit, sdd-critic" type="directive" ver="2.1">
   <Mission>
     Autonomous critique loop for SDD artifacts (spec / task / batch). I am the ORCHESTRATOR: per round
     I dispatch one isolated critic-sensor, evaluate its findings against full project context, reconcile
-    every introduced entity against the existing surface via `sdd-orient` (reuse > extend > justify >
+    every introduced entity against the existing surface via `orient` (reuse > extend > justify >
     escalate), surgically edit the artifact, and re-dispatch if edits were applied (cap 5). Batch: the
     scope spec first, then tasks in DAG layers (parallel within a layer, sequential between). On CLEAN:
     delete the temporary `## Critic Rounds` scratch. I own the artifact and apply `MECHANICAL` edits; `GOAL`
@@ -118,7 +118,7 @@
     </Step>
     <Step id="STEP_2B_RECONCILE">
       <Goal>Reconcile every introduced entity. (mechanical → tool)</Goal>
-      <Action>For each entity a finding would add, run `sdd-orient` to check the existing project surface: reuse > extend > justify > escalate (`AX_REUSE_FIRST`). Do not let the critique invent a duplicate of an existing entity.</Action>
+      <Action>For each entity a finding would add, run `orient` to check the existing project surface: reuse > extend > justify > escalate (`AX_REUSE_FIRST`). Do not let the critique invent a duplicate of an existing entity.</Action>
     </Step>
     <Step id="STEP_2C_GOAL_GATE">
       <Goal>Take `GOAL` findings to the goal owner (`AX_GOAL_OWNER_GATE`).</Goal>

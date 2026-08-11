@@ -1,4 +1,4 @@
-<SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.0">
+<SddReconcile keywords="reconcile, fix, sync-from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, back-sync, sdd-reconcile" type="directive" ver="2.1">
   <Mission>
     Restore the spec ⟷ code ⟷ task triangle after it desynced, then verify. A separate door
     (`/sdd-reconcile`). Two auto-detected modes converge on the same tail:
@@ -77,7 +77,7 @@
       <Goal>Map the affected area. (mechanical → tools)</Goal>
       <Action>
         Intent-search the specs for the area in play + read the git diff; map which specs / tasks own it
-        (`sdd-orient` for the entity / contract surface, `sdd-check` for the link / tracker state). This
+        (`orient` for the entity / contract surface, `sdd-check` for the link / tracker state). This
         is the bounded read — not the whole repo.
       </Action>
     </Step>
@@ -86,7 +86,7 @@
       <Action>
         Dispatch the critic on the affected spec, seeded with the problem, to judge: **bug or spec-defect**
         (code violates a right spec, or the spec was wrong); **the class** (where
-        else the same class occurs, via `sdd-orient` over the closed-world); **the blast radius** (what
+        else the same class occurs, via `orient` over the closed-world); **the blast radius** (what
         else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point. The probe verdict feeds STEP_2B.
       </Action>
     </Step>
@@ -122,7 +122,7 @@
         execution) or spec → code (`AX_PIVOT_REQUIRES_SUPERSESSION` + cascade downstream) or both;
         reopen / create the affected tasks (`AX_REOPEN_FORMAT`), including the class siblings; group
         scattered edits sharing one intent into a single task (`AX_GROUPING_REDUCES_NOISE`) — per-finding
-        tasks are noise; reconcile any new entity via `sdd-orient` (`AX_REUSE_FIRST`). Present the plan
+        tasks are noise; reconcile any new entity via `orient` (`AX_REUSE_FIRST`). Present the plan
         (`PLAN_TABLE_FORMAT`).
       </Action>
     </Step>
@@ -147,6 +147,11 @@
     <Step id="STEP_7_VERIFY">
       <Goal>Verify mechanically AND semantically (`AX_VERIFY_AT_END`).</Goal>
       <Action>
+        This full tail applies to the DEFAULT (non-trivial) path only — the trivial fix class already
+        exited at STEP_2B with its own light gate (typecheck + tests of the touched files). Reaching
+        STEP_7 means the path is non-trivial: run this full tail once here, never as an extra "to be
+        safe" pass layered on top of an already-closed trivial path.
+
         `sdd-check` + `sdd-verify --profile full` must pass (else `H_VERIFICATION_FAIL`). Then — because
         per-task audit was skipped in the batch (`AX_DISPATCH_VIA_BATCH`) — restore the safety net ONCE at
         the reconcile level: dispatch a fresh-eyes epic audit

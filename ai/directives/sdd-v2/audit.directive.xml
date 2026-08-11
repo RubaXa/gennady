@@ -1,4 +1,4 @@
-<SddAudit keywords="audit, drift-detection, closed-world, runtime-backing, insight-backflow, findings-routing, semantic, fresh-eyes, sdd-audit, yagni" type="directive" ver="2.3">
+<SddAudit keywords="audit, drift-detection, closed-world, runtime-backing, insight-backflow, findings-routing, semantic, fresh-eyes, sdd-audit, yagni" type="directive" ver="2.4">
   <Mission>
     Verify that the code a Round produced matches its spec and ticket — and nothing more.
     Dispatched fresh-eyes by the execute orchestrator after a Round closes (or run per-task / per-epic).
@@ -248,6 +248,7 @@
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
       | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
+      | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
       The audit agent proposes a concrete edit (diff or instruction). The operator decides and applies. The audit agent does not modify code autonomously (per `AX_NO_AUTO_FIX`).

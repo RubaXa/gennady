@@ -21,7 +21,11 @@ compatibility: opencode
       `~/Developer/gennady/ai/directives/sdd-v2/scaffold.directive.xml`.
     </Step>
     <Step id="PREFLIGHT">
-      Gate on sdd-state before scaffolding: `FLOW_VERSION=v1` → do NOT stop: read & embody `ai/directives/sdd-v2/migration-v1-v2.directive.xml`
+      Size the gate to this request's blast radius first: when the scaffolding target stays inside a single
+      domain's own scope and never touches `tasks/` layout or a missing gate script, record `FLOW_VERSION` /
+      `READINESS` in one line and proceed straight to EMBODY — offer migration / readiness setup to the
+      operator as a separate next step, not inside this run.
+      Otherwise gate on sdd-state before scaffolding: `FLOW_VERSION=v1` → do NOT stop: read & embody `ai/directives/sdd-v2/migration-v1-v2.directive.xml`
       (the live v1→v2 migration; scaffolding assumes v2), then resume once `sdd-state` reports v2. `READINESS=not-ready`
       → do NOT stop: read & embody `ai/directives/sdd-v2/readiness.directive.xml` (the live setup flow — it
       forces the missing scripts, writes TODO stubs where a tool is not yet chosen, and hands proxy-blocked

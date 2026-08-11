@@ -54,7 +54,7 @@ npx gennady alt-opinion --file="<path>"
 
 ### Паттерн 2: Orchestrator skill (door)
 
-````markdown
+```markdown
 ---
 name: sdd-execute
 description: Execute task tickets end-to-end — a LOGIC-SWITCH on intent picks one ticket or a whole batch ...
@@ -81,7 +81,7 @@ compatibility: opencode
     </Step>
   </ExecutionPlan>
 </SddDoor>
-````
+```
 
 Навык сам не содержит протокола фаз/аудита — это тело `ai/directives/sdd-v2/execute.directive.xml`, которое навык только загружает и активирует.
 

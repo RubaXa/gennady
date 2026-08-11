@@ -127,7 +127,9 @@ test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose
   };
   const sw = findSwitch(step0 as TraceNode);
   assert.ok(sw, 'STEP_0 carries a structured switch');
-  assert.equal(sw?.children?.length, 3);
+  // 4 cases: migration (broad blast radius), readiness (broad blast radius),
+  // the narrow-blast-radius carve-out (AX_PREFLIGHT_BLAST_RADIUS_SCOPED), DEFAULT.
+  assert.equal(sw?.children?.length, 4);
   assert.equal(sw?.children?.at(-1)?.label, 'DEFAULT');
   const run = sw?.children?.[0]?.children?.find((c) => c.kind === 'run');
   assert.match(run?.ref ?? '', /migration-v1-v2/);
