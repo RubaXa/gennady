@@ -1,7 +1,7 @@
-// @file: L1 — живой read-only снимок инбокса на реальном GitLab-токене (LIVE-FLOW-EVAL.md §5.A).
-//   Не Playwright, не boot сервера/opencode — только прямые вызовы VcsInboxReal, никаких записей.
-//   Динамический: не завязан на конкретный MR, печатает то, что реально сейчас на токене.
-// @consumers: ручной запуск оператором; будущий L1 Playwright-тест переиспользует эту логику
+// @file: L1 — live read-only inbox snapshot on a real GitLab token (LIVE-FLOW-EVAL.md §5.A).
+//   No Playwright, no server/opencode boot — direct VcsInboxReal calls only, no writes.
+//   Dynamic: not bound to a specific MR; prints current live state for the active token.
+// @consumers: operator manual run; future L1 Playwright test reuses this logic
 // @tasks: agent-inbox live-flow-eval
 
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
@@ -14,12 +14,13 @@ import {
   classifyMrStage,
   type RawNote,
 } from '../../../cli/cmd/inbox/_core/logic/classify-mr-stage.logic.ts';
+import { logger } from '#logger';
 
 /**
- * @purpose Fetch RAW (non-normalized) discussions for one MR — the port's `Discussion` type drops
- *   the `system` flag/`updated_at` that `classifyMrStage` needs to detect "silent commit push after
- *   my last note" (reply_needed). GAP found live: this means stage classification cannot be wired
- *   into serve's normalized `VcsInboxReal.getDiscussions()` path as-is (see LIVE-FLOW-EVAL.md §4).
+ * @purpose Fetch raw discussions for one MR — port drops system flag and
+ *   updated_at; classifyMrStage requires the raw path.
+ * @param webUrl MR web URL to fetch raw discussions for.
+ * @returns Raw note array from the MR's discussions.
  */
 async function getRawNotes(webUrl: string): Promise<RawNote[]> {
   const context = await resolveVcsContext({ url: webUrl });
@@ -46,12 +47,12 @@ async function main() {
   const vcs = new VcsInboxReal({ host, token });
   const myLogin = await vcs.getMyLogin();
 
-  console.log(`[l1] host=${host} myLogin=${myLogin || '(unknown)'}`);
-  console.log('[l1] запрашиваю getActionable()...');
+  logger.info(`[l1] host=${host} myLogin=${myLogin || '(unknown)'}`);
+  logger.info('[l1] запрашиваю getActionable()...');
   const all = await vcs.getActionable();
   const actionable = all.filter((mr) => mr.state === 'opened');
 
-  console.log(
+  logger.info(
     `[l1] getActionable() total=${all.length} (opened=${actionable.length}, ` +
       `остальные state: ${
         all
@@ -65,7 +66,7 @@ async function main() {
   for (const mr of actionable) {
     if (mr.role) byRole[mr.role]?.push(mr);
   }
-  console.log(
+  logger.info(
     `[l1] по ролям: author=${byRole.author.length} reviewer=${byRole.reviewer.length} ` +
       `mentioned=${byRole.mentioned.length} (role=null отброшены: ${
         actionable.filter((mr) => !mr.role).length
@@ -122,7 +123,7 @@ async function main() {
         stage,
       });
     } catch (cause) {
-      console.error(`[l1] getDiscussions FAILED для ${ref}: ${(cause as Error).message}`);
+      logger.error(`[l1] getDiscussions FAILED для ${ref}: ${(cause as Error).message}`);
       stats.push({
         ref,
         role: mr.role,
@@ -134,9 +135,9 @@ async function main() {
     }
   }
 
-  console.log('\n[l1] === Снимок по MR ===');
+  logger.info('\n[l1] === Снимок по MR ===');
   for (const s of stats) {
-    console.log(
+    logger.info(
       `  [${s.role ?? '?'}] [${s.stage}] ${s.ref} — "${s.title}" — открытых тредов: ${s.unresolvedThreads}, ` +
         `непрочитанных мне: ${s.unreadToMe}`
     );
@@ -147,14 +148,14 @@ async function main() {
   const failed = stats.filter((s) => s.unresolvedThreads === -1).length;
   const stageCounts: Record<string, number> = {};
   for (const s of stats) stageCounts[s.stage] = (stageCounts[s.stage] ?? 0) + 1;
-  console.log(
+  logger.info(
     `\n[l1] ИТОГО: actionable=${actionable.length} открытых тредов(sum)=${totalUnresolved} ` +
       `непрочитанных-мне(sum)=${totalUnread} ошибок-getDiscussions=${failed}`
   );
-  console.log(`[l1] по стадиям: ${JSON.stringify(stageCounts)}`);
+  logger.info(`[l1] по стадиям: ${JSON.stringify(stageCounts)}`);
 }
 
 main().catch((err) => {
-  console.error('[l1] FATAL', err);
+  logger.error('[l1] FATAL', err);
   process.exitCode = 1;
 });

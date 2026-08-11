@@ -1,6 +1,6 @@
 // @file: Handoff e2e — clipboard failure preserves baseline until acknowledged success.
 // @consumers: playwright prod config
-// @tasks: TSK-182
+// @tasks: TSK-182, TSK-183
 
 import { expect, test } from '@playwright/test';
 import type {

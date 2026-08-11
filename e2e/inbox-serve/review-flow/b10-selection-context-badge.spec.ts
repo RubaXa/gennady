@@ -1,4 +1,4 @@
-// @file: B10 — selecting text in an artifact → "Спросить про это" pill → attach → the resulting
+// @file: B10 — selecting text in an artifact → "Ask about this" pill → attach → the resulting
 //   context chip badge (SelectionPill.tsx/ChatComposer.tsx) must point at the SAME artifact/line
 //   span the selection came from, both while composing and once the turn is sent (ChatThread.tsx).
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts

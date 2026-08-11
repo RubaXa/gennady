@@ -1,6 +1,6 @@
 // @file: Playwright config for production-build inbox-dashboard e2e tests.
 // @consumers: npm run test:e2e:prod
-// @tasks: TSK-182
+// @tasks: TSK-182, TSK-183
 
 import { defineConfig } from '@playwright/test';
 import { dirname, resolve } from 'node:path';
@@ -20,7 +20,12 @@ const viteConfigPath = resolve(
  */
 export default defineConfig({
   testDir: __dirname,
-  testMatch: ['agent-inbox.closed-loop.spec.ts', 'agent-inbox.handoff.spec.ts'],
+  testMatch: [
+    'agent-inbox.closed-loop.spec.ts',
+    'agent-inbox.handoff.spec.ts',
+    'agent-inbox.pipeline-control-plane.spec.ts',
+    'agent-inbox.task-executor.spec.ts',
+  ],
   outputDir: resolve(__dirname, 'test-results/prod'),
   fullyParallel: false,
   workers: 1,

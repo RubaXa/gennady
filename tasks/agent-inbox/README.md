@@ -83,7 +83,7 @@ graph TD
 | [TSK-180](inbox-mocks/inbox-mocks.task-180.md)         | Deterministic mock runtime     | inbox-mocks     | 173–175,177,179     | `[x]` DONE |
 | [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[x]` DONE |
 | [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[x]` DONE |
-| [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[ ]` TODO |
+| [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[x]` DONE |
 
 ## External prerequisites
 

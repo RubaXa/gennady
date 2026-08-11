@@ -1,8 +1,7 @@
-// @file: L1b — сверка живых actionable MR (GitLab, read-only) с уже материализованными артефактами
-//   в ~/.gennady/agent-inbox/reports/<mr>/. Готовит почву для группы H (recovery/self-correction,
-//   LIVE-FLOW-EVAL.md §3d): показывает РЕАЛЬНОЕ пересечение "что GitLab говорит сейчас" и "что мы
-//   уже разобрали на диске" — без записи, без перепроверки (та будет в UC-73).
-// @consumers: ручной запуск оператором
+// @file: L1b — cross-check live actionable MRs (GitLab, read-only) with materialized artifacts
+//   in ~/.gennady/agent-inbox/reports/<mr>/. Prepares ground for group H (recovery/self-correction,
+//   LIVE-FLOW-EVAL.md §3d): shows the real overlap of "what GitLab says now" and "what is on disk".
+// @consumers: operator manual run
 // @tasks: agent-inbox live-flow-eval
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -11,6 +10,7 @@ import { join } from 'node:path';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
 import { VcsInboxReal } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.real.ts';
 import { mrReportsDir } from '../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { logger } from '#logger';
 
 async function main() {
   const store = new StateStore();
@@ -55,17 +55,17 @@ async function main() {
     }
   }
 
-  console.log(`[l1b] gennadyHome=${gennadyHome}`);
-  console.log(`[l1b] actionable(opened)=${actionable.length}`);
-  console.log(`[l1b] с материализованным review.json: ${withArtifact}`);
-  console.log(
+  logger.info(`[l1b] gennadyHome=${gennadyHome}`);
+  logger.info(`[l1b] actionable(opened)=${actionable.length}`);
+  logger.info(`[l1b] с материализованным review.json: ${withArtifact}`);
+  logger.info(
     `[l1b] БЕЗ артефакта (ревью либо не начато, либо не в дефолтном ~/.gennady): ${withoutArtifact}`
   );
-  console.log('\n[l1b] === MR с уже существующим артефактом ===');
-  for (const r of rows) console.log(r);
+  logger.info('\n[l1b] === MR с уже существующим артефактом ===');
+  for (const r of rows) logger.info(r);
 }
 
 main().catch((err) => {
-  console.error('[l1b] FATAL', err);
+  logger.error('[l1b] FATAL', err);
   process.exitCode = 1;
 });

@@ -1,6 +1,6 @@
 // @file: Closed-loop e2e — operator applies selected package directly to allowlisted GitLab MR.
 // @consumers: playwright prod config
-// @tasks: TSK-182
+// @tasks: TSK-182, TSK-183
 
 import { expect, test } from '@playwright/test';
 import type {

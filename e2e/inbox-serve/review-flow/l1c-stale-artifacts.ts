@@ -1,7 +1,7 @@
-// @file: L1c — почему 26 из 27 материализованных reports/<mr>/ не входят в текущий actionable-набор?
-//   Проверяет live-state (merged/closed/dropped-role) каждого MR с артефактом на диске напрямую
-//   через MergeRequests.getByIid — не полагаясь на getActionable() (тот отдаёт только actionable).
-// @consumers: ручной запуск оператором
+// @file: L1c — why are 26 of 27 materialized reports/<mr>/ not in the current actionable set?
+//   Checks live-state (merged/closed/dropped-role) for each on-disk MR directly via
+//   MergeRequests.getByIid — not relying on getActionable() which returns only actionable MRs.
+// @consumers: operator manual run
 // @tasks: agent-inbox live-flow-eval
 
 import { readdirSync, existsSync, readFileSync } from 'node:fs';
@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
 import { resolveVcsContext } from '../../../cli/cmd/_shared/vcs-context-resolver.ts';
 import { createVcsClient } from '../../../cli/cmd/_shared/create-vcs-client.ts';
+import { logger } from '#logger';
 
 /** @purpose Decode a `mrReportsDir` folder name back to `project!iid` (best-effort, single `-<iid>` suffix). */
 function decodeDirName(name: string): { project: string; iid: string } | null {
@@ -31,12 +32,12 @@ async function main() {
     .filter((d) => d.isDirectory())
     .map((d) => d.name);
 
-  console.log(`[l1c] директорий в reports/: ${dirs.length}`);
+  logger.info(`[l1c] директорий в reports/: ${dirs.length}`);
 
   for (const dirName of dirs) {
     const decoded = decodeDirName(dirName);
     if (!decoded) {
-      console.log(`  [не распознано] ${dirName}`);
+      logger.info(`  [не распознано] ${dirName}`);
       continue;
     }
     const { project, iid } = decoded;
@@ -62,7 +63,7 @@ async function main() {
       })) as Record<string, unknown> | null;
 
       if (!mr) {
-        console.log(
+        logger.info(
           `  [${dirName}] ${project}!${iid} — NOT FOUND (review.json=${hasReview}, rev=${revision})`
         );
         continue;
@@ -72,12 +73,12 @@ async function main() {
       const reviewers = ((mr.reviewers as Array<{ username?: string }> | null) ?? [])
         .map((r) => r.username)
         .join(',');
-      console.log(
+      logger.info(
         `  [${dirName}] ${project}!${iid} — state=${state} author=${author} reviewers=[${reviewers}] ` +
           `review.json=${hasReview} rev=${revision}`
       );
     } catch (cause) {
-      console.log(
+      logger.info(
         `  [${dirName}] ${project}!${iid} — FETCH ERROR: ${(cause as Error).message.slice(0, 100)} ` +
           `(review.json=${hasReview}, rev=${revision})`
       );
@@ -86,6 +87,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[l1c] FATAL', err);
+  logger.error('[l1c] FATAL', err);
   process.exitCode = 1;
 });

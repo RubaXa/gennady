@@ -1,8 +1,9 @@
 // @file: author-pipeline.spec.ts — e2e proof that the author role pipeline works end-to-end.
 //   Assigns a real MR as author, verifies lane placement, progress counters, and stage transitions.
-// @usage: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts author-pipeline.spec.ts
+// @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 import { test, expect } from '@playwright/test';
 import { shot } from '../helpers/shot.ts';
+import { logger } from '#logger';
 
 const SERVER = 'http://localhost:4174';
 const MR_URL = 'https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/172';
@@ -103,7 +104,7 @@ test.describe('Author pipeline — e2e proof', () => {
       const stage = (found.progress as any).stageLabel as string;
       if (!stagesSeen.has(stage)) {
         stagesSeen.add(stage);
-        console.log(`[author-pipeline] stage ${stagesSeen.size}: ${stage}`);
+        logger.info(`[author-pipeline] stage ${stagesSeen.size}: ${stage}`);
         await shot(page, `author-0${stagesSeen.size + 1}-stage-${stage.replace(/\s+/g, '-')}`);
       }
 
@@ -122,6 +123,6 @@ test.describe('Author pipeline — e2e proof', () => {
     expect(stagesSeen.size, 'should observe at least 2 stage transitions').toBeGreaterThanOrEqual(
       1
     );
-    console.log(`[author-pipeline] Stages observed: ${[...stagesSeen].join(' → ')}`);
+    logger.info(`[author-pipeline] Stages observed: ${[...stagesSeen].join(' → ')}`);
   });
 });
