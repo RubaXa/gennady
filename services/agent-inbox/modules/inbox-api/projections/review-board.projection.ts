@@ -10,8 +10,10 @@ export type ReviewQueue = 'mine' | 'assigned';
 /** @purpose Participant role the operator holds on one MR — collected for deduplication. */
 export type ReviewRoleChip = 'author' | 'reviewer' | 'assignee';
 
-/** @purpose Visibility lifecycle state of an MR in the board projection.
- * | @invariant active → shown in mine/assigned; completed/inactive → hidden from queues but history-queryable */
+/**
+ * @purpose Visibility lifecycle state of an MR in the board projection.
+ * | @invariant active → shown in mine/assigned; completed/inactive → hidden from queues but history-queryable
+ */
 export type ReviewMrVisibility = 'active' | 'completed' | 'inactive';
 
 /** @purpose Single deduplicated board card in the two-queue review board. */

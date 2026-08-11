@@ -25,8 +25,8 @@ export class InMemoryArtifactAdapter implements ArtifactStorePort {
   }
 
   /**
-   * @see {ArtifactStorePort#put} in ../../inbox-core/ports/artifact-store.port.ts
    * @throws {Error} When address mr or id is empty.
+   * @see {ArtifactStorePort#put} in ../../inbox-core/ports/artifact-store.port.ts
    */
   async put(address: { mr: string; id: string }, content: Uint8Array): Promise<void> {
     if (!address.mr || !address.id) {
@@ -36,8 +36,8 @@ export class InMemoryArtifactAdapter implements ArtifactStorePort {
   }
 
   /**
-   * @see {ArtifactStorePort#read} in ../../inbox-core/ports/artifact-store.port.ts
    * @throws {Error} When the artifact does not exist — absent artifact fails the scenario.
+   * @see {ArtifactStorePort#read} in ../../inbox-core/ports/artifact-store.port.ts
    */
   async read(address: { mr: string; id: string }): Promise<Uint8Array> {
     const content = this._store.get(`${address.mr}::${address.id}`);

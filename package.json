@@ -58,6 +58,7 @@
     "inbox-serve:build": "vite build --config services/agent-inbox/modules/inbox-dashboard/vite.config.ts",
     "inspector:e2e": "playwright test --config=ai/inspector/playwright.config.ts",
     "test:e2e:review-flow": "playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts",
+    "test:e2e:prod": "playwright test --config=e2e/inbox-serve/playwright.prod.config.ts",
     "build": "vite build",
     "prepublishOnly": "npm run lint && npm run test:e2e && npm run build:publish",
     "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",

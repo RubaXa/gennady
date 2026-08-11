@@ -1,21 +1,17 @@
-// @file: App — v2 inbox dashboard: boot → attention board → MR feed with permanent chat.
+// @file: App — v2 inbox dashboard: boot → two-queue responsibility board → MR workspace.
 // @consumers: dashboard-entry
-// @tasks: TSK-164 TSK-169
+// @tasks: TSK-164, TSK-169, TSK-182
 
 import { useCallback, useEffect, useState } from 'react';
 import { dashboardV2Api } from './dashboard-v2-api.ts';
-import {
-  AttentionBoard,
-  ChatColumn,
-  LoadingScreen,
-  MrFeedScreen,
-  sseBackoffMs,
-  useMrStream,
-} from './dashboard-v2-ui.tsx';
+import { LoadingScreen, sseBackoffMs, useMrStream } from './dashboard-v2-ui.tsx';
+import { ResponsibilityQueue } from './board/ResponsibilityQueue.tsx';
+import { MrWorkspace } from './workspace/MrWorkspace.tsx';
 import type { BoardV2, BootV2, ChatTranscriptTurn, FeedWidget, MrStateV2 } from './v2-types.ts';
 
 /**
- * @purpose Root application component — wraps BoardStore and routes via hash.
+ * @purpose Root application component — boot → two-queue board → MR workspace, hash-routed.
+ * @invariant MrWorkspace mounts once per MR ref; unmount-mount is the only way to reset workspace state.
  */
 export function App() {
   const [hash, setHash] = useState(() => window.location.hash.slice(1) || '/');
@@ -32,31 +28,29 @@ export function App() {
   const [boardLastUpdated, setBoardLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
-    const handler = () => setHash(window.location.hash.slice(1) || '/');
+    const handler = (): void => setHash(window.location.hash.slice(1) || '/');
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
-  const resolveRoute = (): { mrId: string | null } => {
-    const mrMatch = hash.match(/^\/mr\/(.+)$/);
-    return { mrId: mrMatch ? decodeURIComponent(mrMatch[1]!) : null };
-  };
+  const mrMatch = hash.match(/^\/mr\/(.+)$/);
+  const mrId = mrMatch ? decodeURIComponent(mrMatch[1]!) : null;
 
-  const { mrId } = resolveRoute();
-
-  const refreshBoard = useCallback(async () => {
+  const refreshBoard = useCallback(async (): Promise<void> => {
     const next = await dashboardV2Api.board();
     setBoard(next);
     setBoardLastUpdated(Date.now());
   }, []);
-  const refreshState = useCallback(async () => {
+
+  const refreshState = useCallback(async (): Promise<void> => {
     if (!mrId) return;
     setState(await dashboardV2Api.state(mrId));
   }, [mrId]);
 
+  // #region START_BOOT_POLL — invariant: poll continues until ready; openedReadOnly bypasses readiness gate
   useEffect(() => {
     let disposed = false;
-    const pollBoot = async () => {
+    const pollBoot = async (): Promise<void> => {
       try {
         const next = await dashboardV2Api.boot();
         if (disposed) return;
@@ -81,14 +75,14 @@ export function App() {
       window.clearInterval(timer);
     };
   }, [openedReadOnly, refreshBoard]);
+  // #endregion END_BOOT_POLL
 
   useEffect(() => {
     if (!mrId) return;
     void refreshState();
   }, [mrId, refreshState]);
 
-  // Reading the MR feed advances its server-owned cursor. State remains the live batch snapshot,
-  // while this explicit consumer acknowledgement makes /feed's lastReadAt behavior observable.
+  // Reading the MR feed advances its server-owned cursor; explicit call makes lastReadAt observable.
   useEffect(() => {
     if (!mrId) return;
     void dashboardV2Api.feed(mrId).catch(() => undefined);
@@ -96,27 +90,29 @@ export function App() {
 
   const disconnected = useMrStream(
     mrId,
-    useCallback(() => {
+    useCallback((): void => {
       void refreshState();
       void refreshBoard();
     }, [refreshState, refreshBoard]),
-    useCallback((token: string) => setStreamingText((previous) => previous + token), []),
+    useCallback((token: string): void => setStreamingText((prev) => prev + token), []),
     useCallback(
-      (turn: ChatTranscriptTurn) => {
-        setLiveTurns((previous) => [...previous, turn]);
+      (turn: ChatTranscriptTurn): void => {
+        setLiveTurns((prev) => [...prev, turn]);
         setStreamingText('');
         setPendingQuestion(null);
         void refreshState();
       },
       [refreshState]
     ),
-    useCallback((snapshotId: string) => setUndoSnapshotId(snapshotId), [])
+    useCallback((snapshotId: string): void => setUndoSnapshotId(snapshotId), [])
   );
+
+  // #region START_SSE_RECONNECT_BACKOFF — invariant: batch reconciliation with bounded delay on disconnect
   useEffect(() => {
     if (!mrId || !disconnected) return;
     let delay = 3000;
     let cancelled = false;
-    const reconcile = async () => {
+    const reconcile = async (): Promise<void> => {
       try {
         await refreshState();
         delay = sseBackoffMs(delay, true);
@@ -130,11 +126,13 @@ export function App() {
       cancelled = true;
     };
   }, [disconnected, mrId, refreshState]);
+  // #endregion END_SSE_RECONNECT_BACKOFF
 
-  const openMr = (ref: string) => {
+  const openMr = (ref: string): void => {
     window.location.hash = `#/mr/${encodeURIComponent(ref)}`;
   };
-  const runAction = async (type: string) => {
+
+  const runAction = async (type: string): Promise<void> => {
     if (!mrId) return;
     setPending('создаю задачу…');
     try {
@@ -142,9 +140,10 @@ export function App() {
       setPending(result.taskId);
       await refreshState();
     } catch {
-      setPending('❌ ошибка — повторите действие');
+      setPending('✘ ошибка — повторите действие');
     }
   };
+
   const sendChat = async (
     text: string,
     anchor: FeedWidget['anchors'][number] | null
@@ -154,34 +153,50 @@ export function App() {
     setStreamingText('');
     await dashboardV2Api.chat(mrId, text, anchor ?? undefined);
   };
-  const decide = async (proposalId: string, verdict: 'accept' | 'edit' | 'reject') => {
+
+  const decide = async (
+    proposalId: string,
+    verdict: 'accept' | 'edit' | 'reject'
+  ): Promise<void> => {
     if (!mrId) return;
     setPending('создаю effect-задачу…');
     const result = await dashboardV2Api.decision(mrId, proposalId, verdict);
     setPending(result.taskId ?? 'dry-run: решение принято');
     await refreshState();
   };
-  const handleStickyDecision = (action: 'skip' | 'edit' | 'post_all') => {
-    void runAction(`sticky_${action}`);
-  };
-  const undo = async (snapshotId: string) => {
+
+  const undo = async (snapshotId: string): Promise<void> => {
     if (!mrId) return;
     await dashboardV2Api.undo(mrId, snapshotId);
     setUndoSnapshotId(null);
     await refreshState();
   };
 
-  return (
-    <div className="v2-app">
-      {!boot?.ready && !openedReadOnly ? (
-        <LoadingScreen
-          boot={boot}
-          onOpen={() => setOpenedReadOnly(true)}
-          onRetry={() => window.location.reload()}
-        />
-      ) : mrId ? (
-        <MrFeedScreen
-          refName={mrId}
+  const handleComplete = async (ref: string): Promise<void> => {
+    await dashboardV2Api.completeMr(ref);
+    await refreshBoard();
+  };
+
+  const handleUpdateDescription = async (ref: string): Promise<void> => {
+    await dashboardV2Api.updateDescription(ref);
+    await refreshState();
+  };
+
+  if (!boot?.ready && !openedReadOnly) {
+    return (
+      <LoadingScreen
+        boot={boot}
+        onOpen={() => setOpenedReadOnly(true)}
+        onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
+  if (mrId) {
+    return (
+      <div className="v2-app">
+        <MrWorkspace
+          mrRef={mrId}
           state={state}
           onBack={() => {
             window.location.hash = '#/';
@@ -189,27 +204,29 @@ export function App() {
           onAction={(type) => void runAction(type)}
           pending={pending}
           onSelectAnchor={setChatAnchor}
-          onDecision={handleStickyDecision}
+          chatAnchor={chatAnchor}
+          transcript={[...(state?.transcript ?? []), ...liveTurns]}
+          streamingText={streamingText}
+          pendingQuestion={pendingQuestion}
+          undoSnapshotId={undoSnapshotId}
+          disconnected={disconnected}
+          onDecision={decide}
+          onUndo={undo}
+          onChatSubmit={sendChat}
         />
-      ) : (
-        <AttentionBoard
-          cards={board?.cards ?? []}
-          syncState={board?.syncState ?? 'ok'}
-          lastUpdated={boardLastUpdated}
-          onOpen={openMr}
-        />
-      )}
-      <ChatColumn
-        refName={mrId}
-        disconnected={disconnected}
-        anchor={chatAnchor}
-        transcript={[...(state?.transcript ?? []), ...liveTurns]}
-        streamingText={streamingText}
-        pendingQuestion={pendingQuestion}
-        onDecision={decide}
-        onUndo={undo}
-        undoSnapshotId={undoSnapshotId}
-        onSubmit={sendChat}
+      </div>
+    );
+  }
+
+  return (
+    <div className="v2-app">
+      <ResponsibilityQueue
+        cards={board?.cards ?? []}
+        syncState={board?.syncState ?? 'ok'}
+        lastUpdated={boardLastUpdated}
+        onOpen={openMr}
+        onComplete={handleComplete}
+        onUpdateDescription={handleUpdateDescription}
       />
     </div>
   );

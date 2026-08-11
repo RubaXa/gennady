@@ -51,9 +51,9 @@ export class MockAgentAdapter extends AgentRuntimePort {
   }
 
   /**
-   * @see {AgentRuntimePort#createSession} in ../../inbox-opencode/opencode.port.ts
    * @param opts Session title and directory.
    * @returns Session handle with assigned sid and initial idle status.
+   * @see {AgentRuntimePort#createSession} in ../../inbox-opencode/opencode.port.ts
    */
   async createSession(opts: { title: string; directory: string }): Promise<SessionHandle> {
     const sid = `mock-session-${this._nextSid++}`;
@@ -86,11 +86,11 @@ export class MockAgentAdapter extends AgentRuntimePort {
   }
 
   /**
-   * @see {AgentRuntimePort#prompt} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier from createSession.
    * @param opts System message, user text, and optional format.
    * @throws {Error} When the response queue is exhausted — unspecified call.
    * @returns Scripted result popped from the FIFO response queue.
+   * @see {AgentRuntimePort#prompt} in ../../inbox-opencode/opencode.port.ts
    */
   async prompt(sid: string, opts: PromptOpts): Promise<OpenCodeCallResult> {
     const session = this._resolveSession(sid);
@@ -121,64 +121,64 @@ export class MockAgentAdapter extends AgentRuntimePort {
   }
 
   /**
-   * @see {AgentRuntimePort#continueSignal} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier.
    * @param opts Remediation prompt.
    * @returns Scripted result from the same FIFO queue as prompt.
+   * @see {AgentRuntimePort#continueSignal} in ../../inbox-opencode/opencode.port.ts
    */
   async continueSignal(sid: string, opts: PromptOpts): Promise<OpenCodeCallResult> {
     return this.prompt(sid, opts);
   }
 
   /**
-   * @see {AgentRuntimePort#status} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier.
    * @returns Current session lifecycle status.
+   * @see {AgentRuntimePort#status} in ../../inbox-opencode/opencode.port.ts
    */
   async status(sid: string): Promise<SessionStatus> {
     return this._resolveSession(sid).status;
   }
 
   /**
-   * @see {AgentRuntimePort#park} in ../../inbox-opencode/opencode.port.ts
    * @param _sid Session identifier.
    * @returns Resolved immediately — park/resume are no-ops in the mock.
+   * @see {AgentRuntimePort#park} in ../../inbox-opencode/opencode.port.ts
    */
   async park(_sid: string): Promise<void> {
     // no-op for mock — park/resume are lifecycle hints, not required for deterministic scenarios
   }
 
   /**
-   * @see {AgentRuntimePort#resume} in ../../inbox-opencode/opencode.port.ts
    * @param _sid Session identifier.
    * @returns Always true — mock sessions are always resumable.
+   * @see {AgentRuntimePort#resume} in ../../inbox-opencode/opencode.port.ts
    */
   async resume(_sid: string): Promise<boolean> {
     return true;
   }
 
   /**
-   * @see {AgentRuntimePort#messages} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier.
    * @returns All messages appended to this session in call order.
+   * @see {AgentRuntimePort#messages} in ../../inbox-opencode/opencode.port.ts
    */
   async messages(sid: string): Promise<OpenCodeMessage[]> {
     return [...this._resolveSession(sid).messages];
   }
 
   /**
-   * @see {AgentRuntimePort#abort} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier.
    * @returns Resolved after session status is set to terminated.
+   * @see {AgentRuntimePort#abort} in ../../inbox-opencode/opencode.port.ts
    */
   async abort(sid: string): Promise<void> {
     this._resolveSession(sid).status = 'terminated';
   }
 
   /**
-   * @see {AgentRuntimePort#close} in ../../inbox-opencode/opencode.port.ts
    * @param sid Session identifier.
    * @returns Resolved after session status is set to terminated.
+   * @see {AgentRuntimePort#close} in ../../inbox-opencode/opencode.port.ts
    */
   async close(sid: string): Promise<void> {
     this._resolveSession(sid).status = 'terminated';

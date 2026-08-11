@@ -105,27 +105,27 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#getCurrentUserLogin} in ../../inbox-vcs/vcs-port.ts
    * @returns The login pre-configured at construction time.
+   * @see {VcsPort#getCurrentUserLogin} in ../../inbox-vcs/vcs-port.ts
    */
   async getCurrentUserLogin(): Promise<string> {
     return this._login;
   }
 
   /**
-   * @see {VcsPort#getInbox} in ../../inbox-vcs/vcs-port.ts
    * @returns Shallow copy of the seeded actionable MR list.
+   * @see {VcsPort#getInbox} in ../../inbox-vcs/vcs-port.ts
    */
   async getInbox(): Promise<VcsActionableMr[]> {
     return [...this._inbox];
   }
 
   /**
-   * @see {VcsPort#getMrDetail} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @throws {Error} When the MR was not seeded — unseeded read fails the scenario.
    * @returns Seeded MR detail for the given project!iid.
+   * @see {VcsPort#getMrDetail} in ../../inbox-vcs/vcs-port.ts
    */
   async getMrDetail(project: string, iid: string): Promise<MrDetail> {
     const entry = this._entries.get(`${project}!${iid}`);
@@ -138,12 +138,12 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#getDiscussions} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param [cursor] Page cursor; absent or null returns page 0.
    * @throws {Error} When the MR was not seeded.
    * @returns Seeded discussions page or empty closed page for unseeded page index.
+   * @see {VcsPort#getDiscussions} in ../../inbox-vcs/vcs-port.ts
    */
   async getDiscussions(
     project: string,
@@ -166,13 +166,13 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#compareSha} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param from Base SHA to compare from.
    * @param to Head SHA to compare to.
    * @throws {Error} When the MR was not seeded.
    * @returns Seeded compare result or empty result when not scripted.
+   * @see {VcsPort#compareSha} in ../../inbox-vcs/vcs-port.ts
    */
   async compareSha(project: string, iid: string, from: string, to: string): Promise<CompareResult> {
     const entry = this._entries.get(`${project}!${iid}`);
@@ -189,18 +189,18 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#readReviewerState} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @returns Seeded reviewer state or 'unknown' when not scripted.
+   * @see {VcsPort#readReviewerState} in ../../inbox-vcs/vcs-port.ts
    */
   override async readReviewerState(project: string, iid: string): Promise<VcsReviewerState> {
     return this._entries.get(`${project}!${iid}`)?.reviewerState ?? 'unknown';
   }
 
   /**
-   * @see {VcsPort#probeCapabilities} in ../../inbox-vcs/vcs-port.ts
    * @returns Fixed mock capabilities with requestChanges enabled.
+   * @see {VcsPort#probeCapabilities} in ../../inbox-vcs/vcs-port.ts
    */
   override async probeCapabilities(): Promise<VcsCapabilities> {
     return { requestChanges: true, evidence: 'mock-capabilities' };
@@ -238,12 +238,12 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#postNote} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param body Note body text.
    * @param [discussionId] Thread ID for a reply; absent posts a top-level note.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#postNote} in ../../inbox-vcs/vcs-port.ts
    */
   async postNote(project: string, iid: string, body: string, discussionId?: string): Promise<void> {
     const kind: VcsEffectKind = discussionId ? 'reply' : 'comment';
@@ -251,86 +251,86 @@ export class MockVcsAdapter extends VcsPort {
   }
 
   /**
-   * @see {VcsPort#postDiscussion} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param body Discussion body text.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#postDiscussion} in ../../inbox-vcs/vcs-port.ts
    */
   async postDiscussion(project: string, iid: string, body: string): Promise<void> {
     this._applyEffect('comment', project, iid, { body });
   }
 
   /**
-   * @see {VcsPort#react} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param noteId Note to react to.
    * @param emoji Emoji name for the reaction.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#react} in ../../inbox-vcs/vcs-port.ts
    */
   async react(project: string, iid: string, noteId: string, emoji: string): Promise<void> {
     this._applyEffect('react', project, iid, { noteId, emoji });
   }
 
   /**
-   * @see {VcsPort#resolve} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param discussionId Discussion thread to resolve.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#resolve} in ../../inbox-vcs/vcs-port.ts
    */
   async resolve(project: string, iid: string, discussionId: string): Promise<void> {
     this._applyEffect('resolve', project, iid, { discussionId });
   }
 
   /**
-   * @see {VcsPort#reopen} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param discussionId Discussion thread to reopen.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#reopen} in ../../inbox-vcs/vcs-port.ts
    */
   override async reopen(project: string, iid: string, discussionId: string): Promise<void> {
     this._applyEffect('reopen', project, iid, { discussionId });
   }
 
   /**
-   * @see {VcsPort#approve} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#approve} in ../../inbox-vcs/vcs-port.ts
    */
   async approve(project: string, iid: string): Promise<void> {
     this._applyEffect('approve', project, iid);
   }
 
   /**
-   * @see {VcsPort#unapprove} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#unapprove} in ../../inbox-vcs/vcs-port.ts
    */
   override async unapprove(project: string, iid: string): Promise<void> {
     this._applyEffect('unapprove', project, iid);
   }
 
   /**
-   * @see {VcsPort#requestChanges} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#requestChanges} in ../../inbox-vcs/vcs-port.ts
    */
   override async requestChanges(project: string, iid: string): Promise<void> {
     this._applyEffect('request_changes', project, iid);
   }
 
   /**
-   * @see {VcsPort#editDescription} in ../../inbox-vcs/vcs-port.ts
    * @param project Canonical project path.
    * @param iid MR internal identifier.
    * @param description New description text.
    * @returns Resolved after the effect is recorded.
+   * @see {VcsPort#editDescription} in ../../inbox-vcs/vcs-port.ts
    */
   async editDescription(project: string, iid: string, description: string): Promise<void> {
     this._applyEffect('edit_description', project, iid, { description });

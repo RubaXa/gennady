@@ -1,8 +1,8 @@
 // @file: DashboardV2Api — canonical v2 HTTP surface used by the React dashboard.
-// @consumers: DashboardV2Store
-// @tasks: TSK-164
+// @consumers: DashboardV2Store, workspace/MrWorkspace, workspace/ReviewPackageWidget, handoff/ReviewHandoffControl
+// @tasks: TSK-164, TSK-182
 
-import type { BoardV2, BootV2, MrStateV2, FeedWidget } from './v2-types.ts';
+import type { BoardV2, BootV2, MrStateV2, FeedWidget, ReviewPackage } from './v2-types.ts';
 
 type Envelope<T> = T & { ok?: boolean; error?: { code: string; message: string } };
 
@@ -55,4 +55,16 @@ export const dashboardV2Api = {
       method: 'POST',
       body: JSON.stringify({ text, ...(anchor ? { anchor } : {}) }),
     }),
+  package: (ref: string) => request<ReviewPackage>(`/api/mr/${encodeURIComponent(ref)}/package`),
+  applyPackage: (ref: string, packageId: string, selectedActionIds: string[]) =>
+    request<{ outcomes: Record<string, 'success' | 'error'> }>(
+      `/api/mr/${encodeURIComponent(ref)}/package/apply`,
+      { method: 'POST', body: JSON.stringify({ packageId, selectedActionIds }) }
+    ),
+  handoff: (ref: string, mode: 'full' | 'delta') =>
+    request<{ text: string }>(`/api/mr/${encodeURIComponent(ref)}/handoff?mode=${mode}`),
+  completeMr: (ref: string) =>
+    request<void>(`/api/mr/${encodeURIComponent(ref)}/complete`, { method: 'POST' }),
+  updateDescription: (ref: string) =>
+    request<void>(`/api/mr/${encodeURIComponent(ref)}/description/update`, { method: 'POST' }),
 };

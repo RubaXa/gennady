@@ -112,8 +112,8 @@ export class DeterministicTaskExecutor implements TaskExecutorPort {
   }
 
   /**
-   * @see {TaskExecutorPort#complete} in ../../inbox-queue/ports/task-executor.port.ts
    * @throws {Error} When the task ID is not found in the lane.
+   * @see {TaskExecutorPort#complete} in ../../inbox-queue/ports/task-executor.port.ts
    */
   async complete(
     mr: string,

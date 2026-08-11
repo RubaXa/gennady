@@ -1,6 +1,6 @@
 // @file: Dashboard v2 types — browser-side mirror of canonical inbox-api DTOs.
-// @consumers: dashboard-v2-api, dashboard-v2-ui
-// @tasks: TSK-164
+// @consumers: dashboard-v2-api, dashboard-v2-ui, board/ResponsibilityQueue, workspace/MrWorkspace, workspace/ReviewPackageWidget
+// @tasks: TSK-164, TSK-182
 
 /** @purpose Attention lane assigned by the server; the browser never derives it locally. */
 export type Attention = '⏳' | '💬' | '🔀' | '✅' | '😴';
@@ -17,6 +17,8 @@ export type WorkState =
 
 /** @purpose Canonical board card transported by `/api/board` and `/api/state`. */
 export type MrCardV2 = {
+  /** @purpose MR lifecycle for lifecycle-controls visibility | @invariant absent = 'open' */
+  lifecycle?: MrLifecycleState;
   /** @purpose Composite `project!iid` identity for all MR-scoped routes. */
   ref: string;
   /** @purpose Latest synchronized merge-request title. */
@@ -130,3 +132,62 @@ export type MrStateV2 = {
   /** @purpose Journal-backed conversation history, oldest first. */
   transcript?: ChatTranscriptTurn[];
 };
+
+// #region START_RESPONSIBILITY_QUEUE_TYPES — invariant: closed entity inventory per spec §3
+
+/** @purpose MR lifecycle state controlling lifecycle controls visibility on ReviewMrCard. */
+export type MrLifecycleState = 'open' | 'merged' | 'closed';
+
+/** @purpose Queue column assignment for the two-queue responsibility board. */
+export type ReviewQueueColumn = 'review' | 'mine';
+
+/**
+ * @purpose Priority tier derived from attention emoji for intra-queue sort order.
+ * @invariant Maps to spec §5 sort: decision-required → agent-working → external-wait → no-action
+ */
+export type AttentionPriority =
+  | 'decision-required'
+  | 'agent-working'
+  | 'external-wait'
+  | 'no-action';
+
+// #endregion END_RESPONSIBILITY_QUEUE_TYPES
+
+// #region START_PACKAGE_TYPES — invariant: package is server-owned; client never mutates action ids
+
+/** @purpose One action in an operator package with select/apply semantics. */
+export type ReviewPackageAction = {
+  /** @purpose Stable action identity used by apply endpoint. */
+  id: string;
+  /** @purpose Human-readable action label. */
+  label: string;
+  /** @purpose Short explanation of what the action does. */
+  description: string;
+  /** @purpose Whether the action is currently selected (recommended = pre-selected). */
+  selected: boolean;
+  /** @purpose Per-action apply outcome, null before apply. */
+  outcome: 'pending' | 'success' | 'error' | 'skipped' | null;
+  /** @purpose Error message when outcome is 'error'. */
+  errorMessage?: string;
+};
+
+/**
+ * @purpose Versioned operator package with recommended action set and stale indicator.
+ * @invariant packageId + revision form a unique key; stale package remains visible with disabled controls.
+ */
+export type ReviewPackage = {
+  /** @purpose Server-assigned package identity. */
+  packageId: string;
+  /** @purpose Monotonic revision; client re-fetches on invalidation. */
+  revision: number;
+  /** @purpose Ordered actions; recommended ones arrive pre-selected. */
+  actions: ReviewPackageAction[];
+  /** @purpose Whether the package was superseded by a new review result. */
+  stale: boolean;
+  /** @purpose Reason displayed when stale is true. */
+  staleReason?: string;
+  /** @purpose Verification task reference replacing the stale package. */
+  verificationRef?: string;
+};
+
+// #endregion END_PACKAGE_TYPES

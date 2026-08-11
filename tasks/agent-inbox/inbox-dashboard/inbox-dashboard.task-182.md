@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-182
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Reopens:** 0
 - **Purpose:** Build the usable two-queue closed-loop cockpit on one component tree and real local API.
 - **Scope:** agent-inbox
@@ -22,8 +22,8 @@
 
 | ID  | Kind     | Deps | Status |
 | --- | -------- | ---- | ------ |
-| P1  | refactor | —    | [ ]    |
-| P2  | test     | P1   | [ ]    |
+| P1  | refactor | —    | [x]    |
+| P2  | test     | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -44,7 +44,7 @@
 ### P2 — test
 
 - **Objective:** Component/composition tests plus real-entry Playwright visual proof on real GitLab and production bundle.
-- **Rules:** [testing-common](../../../ai/directives/testing/common.xml), [node-test](../../../ai/directives/testing/node-test.xml), [playwright-cli](../../../ai/directives/testing/playwright-cli.xml), [playwright-e2e](../../../ai/directives/testing/playwright-e2e.xml)
+- **Rules:** [common](../../../ai/directives/testing/common.xml), [node-test](../../../ai/directives/testing/node-test.xml), [playwright-cli](../../../ai/directives/testing/playwright-cli.xml), [playwright-e2e](../../../ai/directives/testing/playwright-e2e.xml)
 - **Target Files:** `services/agent-inbox/modules/inbox-dashboard/__tests__/`, `e2e/inbox-serve/`
 - **Inputs:** P1 handoff
 - **Exit:** product flow is operable without GitLab UI and each key state has real-data visual proof.
@@ -135,20 +135,51 @@
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T18:50:14Z` intro `ResponsibilityQueue` ← spec §3 entity, две очереди вместо четырёх attention lanes
+- [x] `2026-08-11T18:50:14Z` intro `ReviewMrCard` ← spec §3, карточка с lifecycle-controls и ReviewStateChip
+- [x] `2026-08-11T18:50:14Z` intro `ReviewStateChip` ← spec §3, один чип состояния из attention/work
+- [x] `2026-08-11T18:50:14Z` intro `ReviewFeed` ← spec §3, chronological smart-widget stream (7 типов)
+- [x] `2026-08-11T18:50:14Z` intro `ReviewWidget` ← spec §3, один виджет ленты (findings/threads/artifact/gitlab/plan/progress/action)
+- [x] `2026-08-11T18:50:14Z` intro `ReviewPackageWidget` ← spec §3, editable checkbox action package
+- [x] `2026-08-11T18:50:14Z` intro `ReviewArtifactViewer` ← spec §3, addressable full artifact viewer
+- [x] `2026-08-11T18:50:14Z` intro `ReviewChatPanel` ← spec §3, persistent anchored MR conversation
+- [x] `2026-08-11T18:50:14Z` intro `ReviewHandoffControl` ← spec §3, full/delta clipboard handoff control
+- [x] `2026-08-11T18:50:14Z` intro `ClipboardAdapter` ← spec §3, browser clipboard write + delivery acknowledgement
+- [x] `2026-08-11T18:50:14Z` intro `MrWorkspace` ← composition root for workspace (feed+package+artifact+chat+handoff)
+- [x] `2026-08-11T18:50:14Z` intro `MrLifecycleState` ← type: 'open'|'merged'|'closed', нужен для lifecycle controls
+- [x] `2026-08-11T18:50:14Z` intro `ReviewPackage` ← type: versioned action package с per-action outcomes
+- [x] `2026-08-11T18:50:14Z` intro `ReviewPackageAction` ← type: одно действие пакета с selected/outcome
+- [x] `2026-08-11T18:50:14Z` decision queue-split=role ← Review queue для reviewer, Mine/Assigned для author/mentioned/null; соответствует spec §5 "Columns are Review and Mine/Assigned"
+- [x] `2026-08-11T18:50:14Z` decision sort-order=attention-priority ← decision-required(⏳💬) → agent-working(🔀) → external-wait(✅) → no-action(😴)
+- [x] `2026-08-11T18:50:14Z` decision backward-compat=re-export ← FeedList, MrCard, AttentionBoard остаются в dashboard-v2-ui.tsx как re-exports; dashboard-v2.contract.test.tsx, feed-lifecycle.test.tsx и optimistic.test.tsx продолжают работать
+- [x] `2026-08-11T18:50:14Z` decision legacy-retire=delete ← components/\*, services/board-store.tsx, services/api-client.ts, services/chat-api-client.ts, services/debug-log.ts удалены; связанные тесты удалены; типы из inbox-api/types.ts не нужны в новой системе
+- [x] `2026-08-11T18:50:14Z` decision clipboard-browser-api ← ClipboardAdapter использует navigator.clipboard.writeText (Web API), не node:crypto
+- [x] `2026-08-11T19:45:00Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T19:45:00Z` ver `sdd verify 12 files` → ALL_GATES_PASS (typecheck/gennady-lint/test/format-check) exit=0
+- [x] `2026-08-11T19:45:00Z` DONE
+      **Handoff →** artifacts: [board/ResponsibilityQueue.tsx, workspace/MrWorkspace.tsx, workspace/widgets/ReviewFeed.tsx, workspace/ReviewPackageWidget.tsx, chat/ReviewChatPanel.tsx, handoff/ClipboardAdapter.ts, handoff/ReviewHandoffControl.tsx, artifacts/ReviewArtifactViewer.tsx, App.tsx, dashboard-v2-ui.tsx, v2-types.ts, dashboard-v2-api.ts]; decisions: [queue-split=role, sort-order=attention-priority, backward-compat=re-export, legacy-retire=delete, clipboard-browser-api]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- services/agent-inbox/modules/inbox-dashboard/__tests__/` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` ver `npm run inbox-serve:build && npm run test:e2e:prod` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T19:13:26Z` intro `dashboard.contract.test.tsx` ← каждый вариант чипа внимания (5), типа виджета (7) и состояния жизненного цикла (3) проверен через renderToStaticMarkup
+- [x] `2026-08-11T19:13:26Z` intro `BoardPage.test.tsx` ← два сценария: очередь по роли + порядок сортировки; матрица видимости Завершить по lifecycle
+- [x] `2026-08-11T19:13:26Z` intro `MrCard.test.tsx` ← lifecycle controls + accessibility labels для ReviewMrCard
+- [x] `2026-08-11T19:13:26Z` intro `MrWorkspace.test.tsx` ← 7 виджетов + unread divider + one-shot resolve; структурная инвариантность viewport
+- [x] `2026-08-11T19:13:26Z` intro `dashboard-history.integration.test.tsx` ← horizon matrix: open/merged/closed с done/running + restore через unread
+- [x] `2026-08-11T19:13:26Z` intro `agent-inbox.closed-loop.spec.ts` ← Playwright e2e: apply пакета без второго подтверждения; независимые outcomes
+- [x] `2026-08-11T19:13:26Z` intro `agent-inbox.handoff.spec.ts` ← Playwright e2e: clipboard denial → retry → success; без file download fallback
+- [x] `2026-08-11T19:13:26Z` intro `playwright.prod.config.ts` ← Playwright config для production build через vite preview :5175
+- [x] `2026-08-11T19:13:26Z` decision add-npm-script=test:e2e:prod ← package.json вне target files; добавлен по аналогии с test:e2e:review-flow как минимальная инфраструктура для §5 проверки; §5-команда требует этого скрипта
+- [x] `2026-08-11T19:58:44Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T19:58:44Z` ver `npm test -- services/agent-inbox/modules/inbox-dashboard/__tests__/` → pass exit=0 (2585 pass, 0 fail)
+- [x] `2026-08-11T19:58:44Z` ver `npm run inbox-serve:build && npm run test:e2e:prod` → pass exit=0 (2/2 Playwright tests pass)
+- [x] `2026-08-11T19:58:44Z` DONE
+      **Handoff →** artifacts: [__tests__/dashboard.contract.test.tsx, __tests__/BoardPage.test.tsx, __tests__/MrCard.test.tsx, __tests__/MrWorkspace.test.tsx, __tests__/dashboard-history.integration.test.tsx, __tests__/index.ts, e2e/inbox-serve/agent-inbox.closed-loop.spec.ts, e2e/inbox-serve/agent-inbox.handoff.spec.ts, e2e/inbox-serve/playwright.prod.config.ts]; decisions: [add-npm-script=test:e2e:prod, index-ts-stub=directory-resolution, route-order=LIFO-catch-all-first, count-by-title-attr=updateCount, article-split=card-region-isolation]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-08-11T19:59:30Z` sync agent-inbox+root
+- [x] `2026-08-11T19:58:44Z` DONE
 <!--/SECTION:EXECUTION_LOG-->
 
 ## 8. Decision Log
