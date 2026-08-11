@@ -1,9 +1,0 @@
-<!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
-<Axiom id="AX_TOKEN_DISCIPLINE">
-      Токены — семантический маппинг, не числовой:
-      - Маппинг по имени токена (height → `--vkui--size_button_small_height--compact`)
-      - diff ≤ 1px → OK (субпиксельный рендеринг)
-      - diff > 1px → OVERRIDE с комментарием `/* override: was Xpx */`
-      - Токен не найден → новый компонентный токен `--paradigm--<component>-*`
-      - Цвета — через VKUI-токены, не хардкод
-    </Axiom>

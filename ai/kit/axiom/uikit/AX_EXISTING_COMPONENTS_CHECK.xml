@@ -1,9 +1,0 @@
-<!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
-<Axiom id="AX_EXISTING_COMPONENTS_CHECK">
-      Перед созданием нового компонента — проверить существующие. Шаг 0:
-      - Есть ли в `specs/<scope>/components/` спека с похожим именем?
-      - Можно ли собрать нужный вариант из existing компонента (композиция)?
-      - Можно ли доработать existing (добавить mode/appearance/size)?
-
-      Если existing подходит — не создаём новый, а запускаем refine existing. Результат фиксируется в Decision Log.
-    </Axiom>

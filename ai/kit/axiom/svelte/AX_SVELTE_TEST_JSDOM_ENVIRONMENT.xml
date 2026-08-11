@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/svelte-testing.xml -->
-<Axiom id="AX_SVELTE_TEST_JSDOM_ENVIRONMENT">
-  The test runner environment is `jsdom` (or the equivalent browser-like environment the project standardised on). Mixing `jsdom` with `node` between files in the same suite is forbidden — one environment per project. The Svelte plugin is registered with Vitest so `.svelte` imports compile correctly during tests.
-</Axiom>

@@ -64,42 +64,42 @@ npx gennady testcov src/module.ts -c 0   # только непокрытые с�
 
 _Это полный список сущностей модуля `testcov`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                 | Type         | Purpose                                                                                                       |
-| -------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
-| `run`                | Command      | Точка входа CLI-команды: парсинг аргументов, роутинг по режимам                                               |
-| `readPkg`            | Utility      | Парсинг `package.json` с обработкой ошибок; возвращает `null` при отсутствии или битом JSON                   |
-| `findCovEntry`       | Utility      | Поиск coverage-записи по абсолютному пути; fallback на basename-совпадение для разных форматов путей          |
-| `getCovRaw`          | Utility      | Получение сырых hit counts для файла через `covRaw[fp] ?? covRawByName[basename(fp)]`                         |
-| `detectRunners`      | Service      | Инспекция devDependencies + scripts → упорядоченный список установленных раннеров (vitest > jest > node:test) |
-| `runDiagnostics`     | Service      | Сбор всех диагностик конфигурации без side-effects; 8 кодов ошибок                                            |
-| `printDiagnostics`   | Utility      | Форматирование диагностик: text → stderr, JSON → stdout                                                       |
-| `collectVitestDiags` | Service      | Валидация vitest-конфига: `MISSING_JSON_REPORTER`, `REPORT_ON_FAILURE_DISABLED`, `MISSING_REPORT_ON_FAILURE`  |
-| `collectJestDiags`   | Service      | Валидация jest-конфига: `MISSING_JSON_REPORTER` через `jest.config.*` или `package.json#jest`                 |
-| `getDirStats`        | Service      | Рекурсивная агрегация Istanbul hit counts по директориям (memoized)                                           |
-| `aggregateLineCoverage` | Utility   | Суммирует `sH`/`sT` по набору корзин (dir stats) → `{hit, total}`; чистая, вынесена в `coverage-threshold.ts`  |
-| `linePct`             | Utility      | Процент покрытия строк из `{hit, total}`; `null` при `total=0`                                                |
-| `meetsMinCoverage`    | Utility      | Порог `--min`: `{hit,total} >= minPct`; `total=0` всегда `false`                                              |
-| `walk`               | Render       | ASCII-дерево директорий; учитывает `--files`, `SKIP_DIRS`, симлинки                                           |
-| `collectFlat`        | Service      | Плоский список директорий/файлов для `--flat` режима                                                          |
-| `printFlat`          | Render       | Вывод плоского списка как text или JSON                                                                       |
-| `getRoots`           | Service      | Авто-обнаружение top-level директорий с исходным кодом                                                        |
-| `buildFileDetail`    | Service      | Построение per-line coverage map из `statementMap`/`branchMap`/`fnMap` + исходный текст                       |
-| `printFileDetail`    | Render       | Аннотированный вывод исходного файла с контекстом вокруг непокрытого кода                                     |
-| `hasCode`            | Utility      | Проверка наличия исходников в директории (до depth 4)                                                         |
-| `isLink`             | Utility      | Проверка на симлинк                                                                                           |
-| `pct`                | Utility      | Вычисление процента покрытия                                                                                  |
-| `icon`               | Utility      | Выбор иконки по проценту покрытия                                                                             |
-| `lineMarker`         | Utility      | Выбор маркера для строки в file-detail режиме                                                                 |
-| `fmtDirStats`        | Utility      | Форматирование статистики директории для вывода                                                               |
-| `Diagnostic`         | Value Object | Структура диагностики: `level`, `code`, `message`, `expect`, `fix`                                            |
-| `DetectedRunner`     | Value Object | Обнаруженный раннер: `name`, `runCmd(resultsFile)` — возвращает shell-команду для запуска тестов с coverage   |
-| `PkgJson`            | Type         | Тип содержимого `package.json`: `devDependencies`, `dependencies`, `scripts`, `jest`                          |
-| `DiagCode`           | Type         | Union-тип 8 диагностических кодов: `NO_PACKAGE_JSON`..`REPORT_ON_FAILURE_DISABLED`                            |
-| `FileCovRaw`         | Value Object | Сырые hit counts для файла: `sT`, `sH`, `bT`, `bH`, `fT`, `fH`                                                |
-| `DirStats`           | Value Object | Агрегированная статистика директории: расширяет `FileCovRaw` полем `cases`                                    |
-| `FlatEntry`          | Value Object | Элемент плоского вывода: `path`, `lines`, `branches`, `functions`, `tests?`                                   |
-| `LineInfo`           | Value Object | Per-line coverage: номер строки, текст, счётчики `sT`/`sH`/`bT`/`bH`/`fT`/`fH`                                |
-| `FileDetail`         | Value Object | Результат анализа файла: путь, массив `LineInfo`, агрегированные totals                                       |
+| Name                    | Type         | Purpose                                                                                                       |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
+| `run`                   | Command      | Точка входа CLI-команды: парсинг аргументов, роутинг по режимам                                               |
+| `readPkg`               | Utility      | Парсинг `package.json` с обработкой ошибок; возвращает `null` при отсутствии или битом JSON                   |
+| `findCovEntry`          | Utility      | Поиск coverage-записи по абсолютному пути; fallback на basename-совпадение для разных форматов путей          |
+| `getCovRaw`             | Utility      | Получение сырых hit counts для файла через `covRaw[fp] ?? covRawByName[basename(fp)]`                         |
+| `detectRunners`         | Service      | Инспекция devDependencies + scripts → упорядоченный список установленных раннеров (vitest > jest > node:test) |
+| `runDiagnostics`        | Service      | Сбор всех диагностик конфигурации без side-effects; 8 кодов ошибок                                            |
+| `printDiagnostics`      | Utility      | Форматирование диагностик: text → stderr, JSON → stdout                                                       |
+| `collectVitestDiags`    | Service      | Валидация vitest-конфига: `MISSING_JSON_REPORTER`, `REPORT_ON_FAILURE_DISABLED`, `MISSING_REPORT_ON_FAILURE`  |
+| `collectJestDiags`      | Service      | Валидация jest-конфига: `MISSING_JSON_REPORTER` через `jest.config.*` или `package.json#jest`                 |
+| `getDirStats`           | Service      | Рекурсивная агрегация Istanbul hit counts по директориям (memoized)                                           |
+| `aggregateLineCoverage` | Utility      | Суммирует `sH`/`sT` по набору корзин (dir stats) → `{hit, total}`; чистая, вынесена в `coverage-threshold.ts` |
+| `linePct`               | Utility      | Процент покрытия строк из `{hit, total}`; `null` при `total=0`                                                |
+| `meetsMinCoverage`      | Utility      | Порог `--min`: `{hit,total} >= minPct`; `total=0` всегда `false`                                              |
+| `walk`                  | Render       | ASCII-дерево директорий; учитывает `--files`, `SKIP_DIRS`, симлинки                                           |
+| `collectFlat`           | Service      | Плоский список директорий/файлов для `--flat` режима                                                          |
+| `printFlat`             | Render       | Вывод плоского списка как text или JSON                                                                       |
+| `getRoots`              | Service      | Авто-обнаружение top-level директорий с исходным кодом                                                        |
+| `buildFileDetail`       | Service      | Построение per-line coverage map из `statementMap`/`branchMap`/`fnMap` + исходный текст                       |
+| `printFileDetail`       | Render       | Аннотированный вывод исходного файла с контекстом вокруг непокрытого кода                                     |
+| `hasCode`               | Utility      | Проверка наличия исходников в директории (до depth 4)                                                         |
+| `isLink`                | Utility      | Проверка на симлинк                                                                                           |
+| `pct`                   | Utility      | Вычисление процента покрытия                                                                                  |
+| `icon`                  | Utility      | Выбор иконки по проценту покрытия                                                                             |
+| `lineMarker`            | Utility      | Выбор маркера для строки в file-detail режиме                                                                 |
+| `fmtDirStats`           | Utility      | Форматирование статистики директории для вывода                                                               |
+| `Diagnostic`            | Value Object | Структура диагностики: `level`, `code`, `message`, `expect`, `fix`                                            |
+| `DetectedRunner`        | Value Object | Обнаруженный раннер: `name`, `runCmd(resultsFile)` — возвращает shell-команду для запуска тестов с coverage   |
+| `PkgJson`               | Type         | Тип содержимого `package.json`: `devDependencies`, `dependencies`, `scripts`, `jest`                          |
+| `DiagCode`              | Type         | Union-тип 8 диагностических кодов: `NO_PACKAGE_JSON`..`REPORT_ON_FAILURE_DISABLED`                            |
+| `FileCovRaw`            | Value Object | Сырые hit counts для файла: `sT`, `sH`, `bT`, `bH`, `fT`, `fH`                                                |
+| `DirStats`              | Value Object | Агрегированная статистика директории: расширяет `FileCovRaw` полем `cases`                                    |
+| `FlatEntry`             | Value Object | Элемент плоского вывода: `path`, `lines`, `branches`, `functions`, `tests?`                                   |
+| `LineInfo`              | Value Object | Per-line coverage: номер строки, текст, счётчики `sT`/`sH`/`bT`/`bH`/`fT`/`fH`                                |
+| `FileDetail`            | Value Object | Результат анализа файла: путь, массив `LineInfo`, агрегированные totals                                       |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -265,18 +265,18 @@ _Это полный список сущностей модуля `testcov`. Л�
 
 ## 6. Public Options & Policies
 
-| Flag              | Type    | Default | Description                                         |
-| ----------------- | ------- | ------- | --------------------------------------------------- |
-| `--files`         | boolean | false   | Показывать файлы в дереве (иначе только директории) |
-| `--run`           | boolean | false   | Авто-запуск тестов с coverage перед показом         |
-| `--check`         | boolean | false   | Только диагностика конфигурации (exit 0/1)          |
+| Flag              | Type    | Default | Description                                              |
+| ----------------- | ------- | ------- | -------------------------------------------------------- |
+| `--files`         | boolean | false   | Показывать файлы в дереве (иначе только директории)      |
+| `--run`           | boolean | false   | Авто-запуск тестов с coverage перед показом              |
+| `--check`         | boolean | false   | Только диагностика конфигурации (exit 0/1)               |
 | `--min=<pct>`     | number  | —       | Гейт покрытия строк: exit 1 если агрегат < pct (D-TC006) |
-| `--json`          | boolean | false   | Машиночитаемый вывод (для `--check` или `--flat`)   |
-| `--flat`          | boolean | false   | Плоский список вместо дерева                        |
-| `--context`, `-c` | number  | 2       | Количество строк контекста вокруг непокрытого кода  |
-| `--color`         | boolean | false   | ANSI-подсветка красным/жёлтым фоном в file-detail   |
-| `--help`, `-h`    | boolean | false   | Показать справку                                    |
-| `<path>`          | string  | —       | Целевая директория или файл                         |
+| `--json`          | boolean | false   | Машиночитаемый вывод (для `--check` или `--flat`)        |
+| `--flat`          | boolean | false   | Плоский список вместо дерева                             |
+| `--context`, `-c` | number  | 2       | Количество строк контекста вокруг непокрытого кода       |
+| `--color`         | boolean | false   | ANSI-подсветка красным/жёлтым фоном в file-detail        |
+| `--help`, `-h`    | boolean | false   | Показать справку                                         |
+| `<path>`          | string  | —       | Целевая директория или файл                              |
 
 **SKIP_DIRS Policy:** Всегда исключаются из tree walk и агрегации: `node_modules`, `.git`, `dist`, `build`, `out`, `coverage`, `.vite`, `.cache`, `.turbo`, `.nx`, `__generated__`, `.next`, `.nuxt`, `.svelte-kit`, `vendor`, `third_party`, `external`, `.storybook`, `.husky`, `.claude`, `.github`, `__tests__`, `__snapshots__`, `__mocks__`, `docs`, `public`, `static`, `assets`, `fixtures`, `__fixtures__`, `tooling-lab`, `draft`, `tasks`, `specs`, `ai`.
 

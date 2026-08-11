@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_DEFAULT_DIRECT_ASSERTION_PROTOCOL">
-Start with the simplest direct assertion on the real contract surface. Introduce an OBSERVE phase with an aggregated `actual` object only when a single rich diff genuinely beats several isolated assertions (composite contract: returned value + emitted log + side-effect summary). Do NOT fragment one coherent shape into many tiny assertions; do NOT force aggregation when orthogonal observations read more clearly standalone. The criterion is **diagnostic clarity of the failure report**.
-
-Concrete assertion API (`strictEqual` / `toBe`, `deepStrictEqual` / `toEqual`, `throws` / `toThrow`, etc.) lives in the runner-specific directive.
-</Axiom>

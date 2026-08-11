@@ -172,13 +172,14 @@ function decisionLive(specsRoot: string, decisionId: string): boolean {
  */
 export async function run(rawArgs: string[]): Promise<YagniReport> {
   const args = parseArgs(rawArgs, {});
-  const positional = (args._ as string[]).filter(
-    (a) => typeof a === 'string' && a !== 'yagni'
-  );
+  const positional = (args._ as string[]).filter((a) => typeof a === 'string' && a !== 'yagni');
   const root = resolve(positional[0] ?? '.');
   const specsRoot = join(root, 'specs');
 
-  const adapters: Adapters = { exact: new TsSymbolIndexAdapter(), approximate: new GrepSymbolIndexAdapter() };
+  const adapters: Adapters = {
+    exact: new TsSymbolIndexAdapter(),
+    approximate: new GrepSymbolIndexAdapter(),
+  };
 
   const changedFiles = getChangedSourceFiles(root);
   const allChanged: ChangedSymbol[] = [];
@@ -206,7 +207,9 @@ export async function run(rawArgs: string[]): Promise<YagniReport> {
   }
 
   const findings = checkYagniUsage(allChanged, usageCounts, waivers, liveDecisions);
-  logger.debug(`[YagniCommand#run] ${findings.length} finding(s) across ${changedFiles.length} file(s)`);
+  logger.debug(
+    `[YagniCommand#run] ${findings.length} finding(s) across ${changedFiles.length} file(s)`
+  );
   return formatYagniReport(findings, changedFiles.length);
 }
 

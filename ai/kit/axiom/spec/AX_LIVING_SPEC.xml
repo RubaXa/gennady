@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_LIVING_SPEC">
-      The scope spec is a living document. In `refine` mode any section may be updated in place. There is no frozen 7 Handoff — the Handoff section evolves as modules are added.
-
-      `pivot` uses Decision Log supersession: the old entry → `status: superseded`, body preserved; the new entry carries `Supersedes: D-NNN` and `Was → Now`. The spec body is rewritten in place; git history is the full predecessor.
-    </Axiom>

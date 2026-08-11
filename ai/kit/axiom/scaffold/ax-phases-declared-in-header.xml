@@ -1,6 +1,6 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_PHASES_DECLARED_IN_HEADER">
-      Every ticket declares its work as an ordered list of phases in `## 2. Phases Overview` (compact table) and `## 3. Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
+      Every ticket declares its work as an ordered list of phases in `Phases Overview` (compact table) and `Phases` (block per phase). Phase kinds are a closed vocabulary: `bootstrap | impl | test | config | doc | refactor`. (`fix` is reserved for re-runs at execution time, not for scaffolding.)
 
       One phase = one focused unit of work for one subagent. Cross-phase dependencies (`Deps:`) are explicit. The orchestrator dispatches phases sequentially; the phase-subagent reads ONLY its phase's block, its phase's Rules, and prior-phase Handoff payloads.
 
@@ -16,5 +16,5 @@
       - Each phase carries its own `Target Files:` bullet list (NO ticket-level `Target Files` outside phases).
       - Each phase carries `Inputs:` (`none` or list of prior phase IDs whose Handoff it consumes) and `Exit:` (one-line verifiable criterion).
 
-      Forbidden: emitting a ticket without `## 2. Phases Overview` and `## 3. Phases`; collapsing impl + test into one phase (they have different rule sets and different verification commands); emitting Target Files at ticket level instead of per-phase.
+      Forbidden: emitting a ticket without `Phases Overview` and `Phases`; collapsing impl + test into one phase (they have different rule sets and different verification commands); emitting Target Files at ticket level instead of per-phase.
     </Axiom>

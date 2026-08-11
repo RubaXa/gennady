@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/storybook-usage.xml -->
-<Axiom id="AX_SB_USE_ONE_STORY_ONE_CONCEPT">
-  Each story exposes ONE concept: one variant, one state, one interaction flow. Combining «logged-in user opens modal AND submits form AND sees error» into a single story collapses three contracts into one diff. When tests fail, the failure cannot be attributed; when the contract shifts, three concepts get tangled in one edit.
-</Axiom>

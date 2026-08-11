@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_LOG_MESSAGE_PURITY">
-Message vs detail separation by type. Primitives (paths, codes, numbers, time) → message; complex objects and errors → second `{ ... }` argument, only when needed. Text backends digest serialized objects poorly; structured backends lose searchability if the object is jammed into a string. The split satisfies both.
-</Axiom>

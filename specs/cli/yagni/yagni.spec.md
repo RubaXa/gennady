@@ -70,29 +70,29 @@ yagni: 1 finding(s) across 3 changed file(s)
 
 _Это полный список сущностей модуля `yagni`. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
 
-| Name                          | Type         | Purpose                                                                                          |
-| ----------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
-| `run`                         | Command      | Точка входа CLI-команды: сбор изменённых символов, подсчёт использований, находки, отчёт          |
-| `changedSymbolsForFile`       | Service      | Символы файла, объявленные сейчас, но не при `HEAD` — «добавлено/изменено по имени»                |
-| `findCandidateFiles`          | Utility      | grep-предфильтр: файлы репо, буквально содержащие имя символа (перед точным подсчётом адаптером)  |
-| `usageCountFor`                | Service      | Сумма использований имени по прод-файлам репо минус собственное объявление                        |
-| `findWaiver`                  | Service      | Поиск `Usage Waiver` для имени по спекам (grep по ``` `<name>` ``` + `parseUsageWaiver`)           |
-| `decisionLive`                | Service      | Есть ли где-то в specs/ заголовок Decision Log для данной `D-NNN` (вызывается только когда метка её цитирует) |
-| `formatYagniReport`           | Utility      | ESLint-совместимое форматирование находок + сводная строка; exit 0/1                              |
-| `YagniReport`                 | Value Object | `{text, exitCode}` — результат одного прогона                                                     |
-| `SymbolIndex`                 | Port         | Языко-независимый порт: перечислить объявленные символы файла; сосчитать ссылки на имя             |
-| `DeclaredSymbol`               | Value Object | `{name, kind, line}` — один объявленный символ                                                     |
-| `ReferenceCount`               | Value Object | `{count, precision}` — результат подсчёта ссылок, `precision: 'exact' \| 'approximate'`            |
-| `TsSymbolIndexAdapter`         | Adapter      | Точная реализация `SymbolIndex` через tree-sitter-typescript (`.ts`/`.tsx`)                        |
-| `GrepSymbolIndexAdapter`       | Adapter      | Приблизительная реализация `SymbolIndex` через regex-поиск — любое расширение                      |
-| `selectSymbolIndex`            | Utility      | Чистый выбор адаптера по расширению файла — сборка адаптеров вне этой функции (composition root)   |
-| `ChangedSymbol`                | Value Object | `{name, kind, file}` — символ диффа, кандидат на проверку                                          |
-| `UsageWaiver`                  | Value Object | `{decision?, reason, external?}` — разобранная метка `Usage Waiver`; `decision` есть только когда метка её цитирует |
-| `YagniFinding`                 | Value Object | `{severity, code, file, symbol, message}` — одна находка YAGNI                                     |
-| `checkYagniUsage`              | Service      | Чистая проверка: символ + счётчик использований + waiver + живые decisions → находки              |
-| `stripBarrelReexports`         | Utility      | Вычищает строки `export {...} from '...'` / `export * from '...'` перед подсчётом                  |
-| `parseUsageWaiver`             | Utility      | Разбор `- **Usage Waiver:** <причина>` (опционально `D-NNN — <причина>`) внутри блока `` ### `<Entity>` `` |
-| `hasDecisionHeading`           | Utility      | Есть ли в тексте заголовок `### D-NNN — ...`                                                        |
+| Name                     | Type         | Purpose                                                                                                             |
+| ------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `run`                    | Command      | Точка входа CLI-команды: сбор изменённых символов, подсчёт использований, находки, отчёт                            |
+| `changedSymbolsForFile`  | Service      | Символы файла, объявленные сейчас, но не при `HEAD` — «добавлено/изменено по имени»                                 |
+| `findCandidateFiles`     | Utility      | grep-предфильтр: файлы репо, буквально содержащие имя символа (перед точным подсчётом адаптером)                    |
+| `usageCountFor`          | Service      | Сумма использований имени по прод-файлам репо минус собственное объявление                                          |
+| `findWaiver`             | Service      | Поиск `Usage Waiver` для имени по спекам (grep по `` `<name>` `` + `parseUsageWaiver`)                              |
+| `decisionLive`           | Service      | Есть ли где-то в specs/ заголовок Decision Log для данной `D-NNN` (вызывается только когда метка её цитирует)       |
+| `formatYagniReport`      | Utility      | ESLint-совместимое форматирование находок + сводная строка; exit 0/1                                                |
+| `YagniReport`            | Value Object | `{text, exitCode}` — результат одного прогона                                                                       |
+| `SymbolIndex`            | Port         | Языко-независимый порт: перечислить объявленные символы файла; сосчитать ссылки на имя                              |
+| `DeclaredSymbol`         | Value Object | `{name, kind, line}` — один объявленный символ                                                                      |
+| `ReferenceCount`         | Value Object | `{count, precision}` — результат подсчёта ссылок, `precision: 'exact' \| 'approximate'`                             |
+| `TsSymbolIndexAdapter`   | Adapter      | Точная реализация `SymbolIndex` через tree-sitter-typescript (`.ts`/`.tsx`)                                         |
+| `GrepSymbolIndexAdapter` | Adapter      | Приблизительная реализация `SymbolIndex` через regex-поиск — любое расширение                                       |
+| `selectSymbolIndex`      | Utility      | Чистый выбор адаптера по расширению файла — сборка адаптеров вне этой функции (composition root)                    |
+| `ChangedSymbol`          | Value Object | `{name, kind, file}` — символ диффа, кандидат на проверку                                                           |
+| `UsageWaiver`            | Value Object | `{decision?, reason, external?}` — разобранная метка `Usage Waiver`; `decision` есть только когда метка её цитирует |
+| `YagniFinding`           | Value Object | `{severity, code, file, symbol, message}` — одна находка YAGNI                                                      |
+| `checkYagniUsage`        | Service      | Чистая проверка: символ + счётчик использований + waiver + живые decisions → находки                                |
+| `stripBarrelReexports`   | Utility      | Вычищает строки `export {...} from '...'` / `export * from '...'` перед подсчётом                                   |
+| `parseUsageWaiver`       | Utility      | Разбор `- **Usage Waiver:** <причина>` (опционально `D-NNN — <причина>`) внутри блока `` ### `<Entity>` ``          |
+| `hasDecisionHeading`     | Utility      | Есть ли в тексте заголовок `### D-NNN — ...`                                                                        |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -217,10 +217,10 @@ _Это полный список сущностей модуля `yagni`. Лю�
 
 ## 7. Public Options & Policies
 
-| Flag / Arg | Type   | Default | Description                                                         |
-| ---------- | ------ | ------- | --------------------------------------------------------------------- |
-| `[root]`   | string | `.`     | Корень репозитория для сканирования (positional, как у `sdd-check`)  |
-| `--help`, `-h` | boolean | false | Показать справку |
+| Flag / Arg     | Type    | Default | Description                                                         |
+| -------------- | ------- | ------- | ------------------------------------------------------------------- |
+| `[root]`       | string  | `.`     | Корень репозитория для сканирования (positional, как у `sdd-check`) |
+| `--help`, `-h` | boolean | false   | Показать справку                                                    |
 
 **Exit code:** `0` — чисто; `1` — есть хотя бы одна находка. Формат строк — `<file>:1:1: error: <ERR_CLI_YAGNI_*>: <message>` (символьная находка, не строковая — `1:1` всегда).
 
@@ -292,46 +292,59 @@ services/symbol-index/
 - **Status:** active
 - **Supersedes:** D-YG003
 - **Recorded:** session ModuleDecomposition, yagni
-- **Why:** Правило строгое для всех сущностей — экспорты, публичные методы, приватные функции, поля, константы (уже так по построению, `checkYagniUsage` не различает видимость). Проверка идёт только по изменённому коду текущего диффа, а дифф — всегда свежая работа; легаси-шума здесь нет по построению, поэтому `flowVersion`-градация (D-YG003) неуместна — в отличие от `BDD_COVERAGE`, где скан шёл по старым тикетам. Метка `Usage Waiver` гасит находку для ЛЮБОЙ сущности независимо от того, публична она или приватна — `findWaiver` ищет по имени в тексте спеки (``` ### `<name>` ```), не по строке Entity Inventory, поэтому приватный хелпер без формальной записи в инвентаре тоже может получить метку.
+- **Why:** Правило строгое для всех сущностей — экспорты, публичные методы, приватные функции, поля, константы (уже так по построению, `checkYagniUsage` не различает видимость). Проверка идёт только по изменённому коду текущего диффа, а дифф — всегда свежая работа; легаси-шума здесь нет по построению, поэтому `flowVersion`-градация (D-YG003) неуместна — в отличие от `BDD_COVERAGE`, где скан шёл по старым тикетам. Метка `Usage Waiver` гасит находку для ЛЮБОЙ сущности независимо от того, публична она или приватна — `findWaiver` ищет по имени в тексте спеки (`` ### `<name>` ``), не по строке Entity Inventory, поэтому приватный хелпер без формальной записи в инвентаре тоже может получить метку.
 - **Risk accepted:** Каждый однократно вызываемый приватный хелпер/константа в composition-root файле теперь требует либо инлайна на место вызова, либо метки `Usage Waiver`. Разбор находок собственного диффа модуля показал: часть хелперов инлайнится без потери читаемости, часть — реальные читаемость-декомпозиции с явной меткой (см. записи ниже). Трение принято сознательно — это и есть цель правила (см. также `AX_USAGE_WAIVER_DISCIPLINE`).
 
 ### `changedSymbolsForFile`
+
 - **Usage Waiver:** Шаг пайплайна `run()`: вычисляет диф-скоуп файла (имена сейчас минус имена на `HEAD`) — выделен для отдельного модульного теста name-диффа без остального пайплайна.
 
 ### `findCandidateFiles`
+
 - **Usage Waiver:** Grep-предфильтр перед точным подсчётом использований — изолирует I/O-границу (`execSyncSafe`) от чистой логики `usageCountFor`.
 
 ### `usageCountFor`
+
 - **Usage Waiver:** Суммирует использования имени по кандидатным файлам и вычитает собственное объявление — изолирует агрегацию от grep-предфильтра и от адаптерного подсчёта.
 
 ### `findWaiver`
+
 - **Usage Waiver:** Ищет метку `Usage Waiver` по specs/ для одного имени — изолирует I/O (grep + чтение файлов) от разбора метки (`parseUsageWaiver`).
 
 ### `decisionLive`
+
 - **Usage Waiver:** Проверяет живость `D-NNN` по specs/ для одного имени — изолирует I/O от разбора заголовка (`hasDecisionHeading`); вызывается только когда метка цитирует decision.
 
 ### `DECLARATION_PATTERNS`
+
 - **Usage Waiver:** Таблица regex-паттернов объявления по языкам (JS/TS, Python, Go, …) для approximate-адаптера — вынесена из тела функции, чтобы список языков был виден и расширяем в одном месте.
 
 ### `lineAt`
+
 - **Usage Waiver:** Переводит смещение в символах в номер строки для approximate-находок — изолирована для отдельного модульного теста подсчёта строк на многострочном тексте.
 
 ### `_nonExportedTopLevel`
+
 - **Usage Waiver:** Обходит top-level узлы AST, не являющиеся export — дополняет `DbcTsAstAdapter` (который видит только экспорты) для полного списка объявленных символов файла.
 
 ### `REFERENCE_NODE_TYPES`
+
 - **Usage Waiver:** Множество типов AST-узлов, которые считаются ссылкой на имя (identifier-подобные, не declaration) — вынесено из тела обхода, чтобы граница exact/approximate была видна явно.
 
 ### `EXACT_EXTENSIONS`
+
 - **Usage Waiver:** Множество расширений с точным (tree-sitter) адаптером — единственная точка правки при добавлении новой установленной грамматики.
 
 ### `ERR_CLI_YAGNI_UNDERUSED`
+
 - **Usage Waiver:** Публичный код ошибки — часть ESLint-совместимого выходного контракта команды, разбирается вызывающими инструментами (`sdd-verify`) по значению строки, не через импорт функции.
 
 ### `ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`
+
 - **Usage Waiver:** Публичный код ошибки — часть выходного контракта команды, тот же паттерн, что у `ERR_CLI_YAGNI_UNDERUSED`.
 
 ### `MIN_USAGE`
+
 - **Usage Waiver:** Именованный порог использований (сейчас `2`) — единственная точка правки, если порог понадобится изменить.
 
 </details>

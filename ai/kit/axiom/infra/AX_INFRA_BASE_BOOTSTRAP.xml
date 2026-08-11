@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/setup.directive.xml -->
-<Axiom id="AX_INFRA_BASE_BOOTSTRAP">
-  If the operator declares basic tooling (package manager, type-checker, linter) in intake, `setup` materializes a minimal `specs/infra-base/infra-base.spec.md` with scope-type=infrastructure: Vision (one sentence) + Tool Stack (table with tool names only, no Decision Log yet). The full Decision Log appears when the operator runs `discovery infra-base`.
-
-  The minimal bootstrap intentionally bypasses the full `discovery` flow — it only locks the tool choice without the Design Variants ritual.
-</Axiom>

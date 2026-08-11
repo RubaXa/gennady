@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/rules/data-structures.xml -->
-<Axiom id="AX_ENGINE_OPTIMIZATIONS">Массивы в JS оптимизированы для индексов. Объекты — для статических (известных заранее) ключей. Использование их не по назначению разрушает JIT-оптимизации (Hidden Classes / Elements Kinds).</Axiom>

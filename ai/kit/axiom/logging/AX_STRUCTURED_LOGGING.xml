@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_STRUCTURED_LOGGING">
-Raw `console.*` is forbidden. Use the shared logger from `#logger`: `logger[level](message, detail?)`. Levels: `debug` / `info` / `warn` / `error`. One or two arguments: first is a string message, second (when needed) is a `detail` object. **NEVER serialize objects into the message string.** Pseudo-loggers (`const logger = console`) forbidden.
-
-The shared logger is the only sink that can be re-targeted (transport, redaction, sampling) without editing call-sites; raw `console` breaks agent-readable structure.
-</Axiom>

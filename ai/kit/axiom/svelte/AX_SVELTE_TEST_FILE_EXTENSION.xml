@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/svelte-testing.xml -->
-<Axiom id="AX_SVELTE_TEST_FILE_EXTENSION">
-  Component test files use the `.svelte.test.ts` extension — the Svelte-aware Vitest convention. Plain `.test.ts` does NOT receive Svelte plugin processing; importing a `.svelte` component from such a file produces opaque compile or runtime errors. Naming is the contract that tells the toolchain «this file must go through the Svelte compiler».
-</Axiom>

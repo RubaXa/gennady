@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_SNAPSHOT_USAGE_GATE">
-Snapshots ONLY for large stable serializable outputs (generated text, HTML, JSON documents, codegen). Do NOT replace scalar or small-object equality with a snapshot — failure shows a diff of snapshot blobs instead of the actual mismatch, and manual review of every scalar change is ceremony with no payoff.
-</Axiom>

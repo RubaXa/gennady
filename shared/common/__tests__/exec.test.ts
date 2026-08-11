@@ -64,10 +64,9 @@ describe('execSyncSafe', () => {
       calls.push(args);
     }) as typeof logger.error;
     try {
-      const out = execSyncSafe(
-        "grep -F 'definitely-not-present-xyz' /dev/null 2>/dev/null",
-        { expectedExitCodes: [1] }
-      );
+      const out = execSyncSafe("grep -F 'definitely-not-present-xyz' /dev/null 2>/dev/null", {
+        expectedExitCodes: [1],
+      });
       assert.strictEqual(out, '');
       assert.strictEqual(calls.length, 0);
     } finally {

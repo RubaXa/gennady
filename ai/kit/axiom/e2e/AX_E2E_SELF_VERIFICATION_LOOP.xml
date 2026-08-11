@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_SELF_VERIFICATION_LOOP">
-      After authoring: `npx playwright test --project=chromium`. Observe output → fix failures (in component or test) → re-run. Loop continues until green. Submitting a red test without an EXPLICIT blocker note in the ticket is forbidden — silent red turns the suite into noise the next agent must reverse-engineer.
-    </Axiom>

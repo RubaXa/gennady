@@ -1,4 +1,4 @@
 <!-- source: ai/directives/sdd/audit.directive.xml -->
 <Axiom id="AX_CLOSED_WORLD_PRIMARY_CHECK">
-      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec 2 Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
+      Closed-world drift is the priority check — the main pain audit prevents. The entity world is closed by exactly two sources: the module spec Entity Inventory, and the `intro <X> ← <Y>` lines phase agents logged in the Execution Log. Drift = (public entities in code) ∖ (inventory ∪ logged-introductions); every element of that set is a `CLOSED_WORLD_DRIFT` finding (`BLOCKER`).
     </Axiom>

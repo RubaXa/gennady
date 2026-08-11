@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_CASE_FLOW">
-Canonical case pattern: `SETUP → TRIGGER → OBSERVE → ASSERT` (`CLEANUP` when needed). Keep only the phases that add clarity. `AAA` is a useful short form — not a law. Forced empty phases are noise; merging obvious phases (`TRIGGER_AND_ASSERT` around `assert.rejects` / `rejects.toThrow`) is allowed and preferred over a fake split.
-
-TRIGGER and ASSERT are mandatory in every non-trivial case (trigger crosses the contract boundary; assert verifies it).
-</Axiom>

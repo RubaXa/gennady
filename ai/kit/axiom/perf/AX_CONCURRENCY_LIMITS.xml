@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/rules/async-latency.xml -->
-<Axiom id="AX_CONCURRENCY_LIMITS">ОС и железо имеют лимиты на открытые сокеты и дескрипторы. Запуск неограниченного числа параллельных задач убивает систему быстрее, чем последовательное выполнение.</Axiom>

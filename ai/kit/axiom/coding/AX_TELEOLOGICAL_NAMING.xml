@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_TELEOLOGICAL_NAMING">
-A name reflects a goal (teleology), not a pattern (topology). Forbidden semantic-noise names: `Manager`, `Handler`, `Data`, `Info`, `Wrapper`, `do...`, `process...`. Pattern names tell the next agent nothing about business goal. `OrderFulfillmentPipeline` carries intent; `OrderManager` does not.
-</Axiom>

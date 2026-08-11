@@ -1,7 +1,0 @@
-<!-- source: ai/directives/sdd/critic-protocol.xml -->
-<Axiom id="AX_SEVERITY">
-      CRITICAL — unusable, downstream agent produces wrong work.
-      MAJOR — gap requiring rework.
-      MINOR — improvement, vague wording.
-      INFO — observation.
-    </Axiom>

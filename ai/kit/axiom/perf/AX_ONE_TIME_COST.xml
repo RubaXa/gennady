@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/rules/data-structures.xml -->
-<Axiom id="AX_ONE_TIME_COST">Конвертация Array в Set стоит O(n) времени и памяти. Это выгодно ТОЛЬКО если далее следуют множественные проверки (в цикле) или массив очень велик.</Axiom>

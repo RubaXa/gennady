@@ -1,9 +1,0 @@
-<!-- source: ai/directives/testing/vitest-rules.xml -->
-<Axiom id="AX_TIME_ENV_GLOBAL_LIFECYCLE">
-  State-mutating Vitest helpers MUST be paired with their teardown:
-  - `vi.useFakeTimers()` ↔ `vi.useRealTimers()` (use `vi.setSystemTime(date)` for clock).
-  - `vi.stubEnv(...)` ↔ `vi.unstubAllEnvs()` (or `unstubEnvs: true`).
-  - `vi.stubGlobal(...)` ↔ `vi.unstubAllGlobals()` (or `unstubGlobals: true`).
-
-  Forbidden: enabling any of these inside a single case without restoring — leaks into every later case in the same file. Classic source of order-dependent flicker that looks random.
-</Axiom>

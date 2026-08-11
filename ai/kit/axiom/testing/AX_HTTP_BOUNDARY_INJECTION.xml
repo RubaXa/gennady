@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/vitest-rules.xml -->
-<Axiom id="AX_HTTP_BOUNDARY_INJECTION">
-  Default way to test HTTP-touching code is to inject the HTTP client (or a typed `request` port) into the SUT and stub it with `vi.fn()`. Direct `globalThis.fetch` replacement, `vi.mock('node:http')`, full module mocks of HTTP libraries are last-resort and gated by `AX_MOCK_REQUIRES_OPERATOR_CONFIRM`.
-
-  If the project already standardizes on a network-mocking harness (e.g., MSW, in-house helper), reuse it consistently — do NOT introduce a parallel mocking path. Choosing a network-mocking library is an architecture decision, not a per-test decision.
-</Axiom>

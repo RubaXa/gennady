@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_ROLE_LOCATORS_ONLY">
-      Locator vocabulary is fixed: `getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, `getByTestId`. CSS selectors (`.class`, `#id`), XPath, and `nth-child` chains are forbidden as primary locators — they bind the test to implementation details with no contract status. `getByTestId` is a last-resort fallback for elements with no semantic role, and it is reserved for stable test IDs the component team owns.
-    </Axiom>

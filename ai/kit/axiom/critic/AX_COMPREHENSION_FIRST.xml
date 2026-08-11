@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic-protocol.xml -->
-<Axiom id="AX_COMPREHENSION_FIRST">Report understanding before problems. Misunderstanding signals ambiguity.</Axiom>

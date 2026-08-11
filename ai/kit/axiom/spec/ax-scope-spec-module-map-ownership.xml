@@ -2,16 +2,16 @@
 <Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP">
   The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
 
-  - **Module Map** (`## 8. Module Map`) — append-only rows per module.
-  - **Golden DX Example** (`## 2.` library / `## 3.` product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `## 2. Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+  - **Module Map** (`Module Map`) — append-only rows per module.
+  - **Golden DX Example** (`Golden DX Example` section — library / product) — composition view. Every `module` flow session (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
 
   **Bidirectional consistency check** before session close — both directions must pass:
-  - (→) every named abstraction in scope-spec Golden DX has a home in some module's `## 3. Entity Inventory`;
-  - (←) every module with public surface (≥1 entry in `## 4. Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `## 8. Module Decision Log`.
+  - (→) every named abstraction in scope-spec Golden DX has a home in some module's `Entity Inventory`;
+  - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Golden DX OR carries `internal-only — not in composition view` in its `Module Decision Log`.
 
   Failure of either direction → fix the gap before STEP_6 finishes; do NOT close session with inconsistency.
 
-  All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `## 9. Inter-Module Dependencies`, never a direct reference to another product scope's modules.
+  All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `Inter-Module Dependencies`, never a direct reference to another product scope's modules.
 
   The `module` flow does NOT write to `specs/README.md` (that is the `root` flow's sole property).
 </Axiom>

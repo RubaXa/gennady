@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_FILE_SIZE_BUDGET">
-      Soft target ≤200 lines per test file; hard ceiling 300 lines (code only). Approaching the budget triggers extraction of shared logic into fixtures or helpers; exceeding it triggers a split by scenario family. Past the ceiling, instruction-following degrades and the file becomes a maintenance liability.
-    </Axiom>

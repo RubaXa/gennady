@@ -1,5 +1,0 @@
-<!-- source: ai/directives/sdd/fix.directive.xml -->
-<Axiom id="AX_VERIFY_AT_END">
-      After all tasks complete, run sdd-check. All checks must PASS.
-      If sdd-check finds issues → classify them as new findings → ask operator → fix cycle repeats.
-    </Axiom>

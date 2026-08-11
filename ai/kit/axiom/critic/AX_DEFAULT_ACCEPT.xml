@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_DEFAULT_ACCEPT">Uncertain → ACCEPT. Cost of rejecting real finding > cost of accepting marginal one.</Axiom>

@@ -39,7 +39,8 @@ export type YagniFinding = {
 /** @purpose Symbol has < 2 production-code usages and no Usage Waiver gates it. */
 export const ERR_CLI_YAGNI_UNDERUSED = 'ERR_CLI_YAGNI_UNDERUSED' as const;
 /** @purpose Symbol has a Usage Waiver, but the cited D-NNN has no Decision Log heading anywhere in the repo. */
-export const ERR_CLI_YAGNI_WAIVER_DECISION_MISSING = 'ERR_CLI_YAGNI_WAIVER_DECISION_MISSING' as const;
+export const ERR_CLI_YAGNI_WAIVER_DECISION_MISSING =
+  'ERR_CLI_YAGNI_WAIVER_DECISION_MISSING' as const;
 
 /** @purpose Minimum production-code usage count before a changed/added symbol is YAGNI-suspect. */
 const MIN_USAGE = 2;
@@ -51,10 +52,7 @@ const MIN_USAGE = 2;
  * @returns `content` with every top-level re-export line blanked out (line count preserved).
  */
 export function stripBarrelReexports(content: string): string {
-  return content.replace(
-    /^[ \t]*export\s*(?:\*|\{[^}]*\})\s*from\s*['"][^'"]+['"];?[ \t]*$/gm,
-    ''
-  );
+  return content.replace(/^[ \t]*export\s*(?:\*|\{[^}]*\})\s*from\s*['"][^'"]+['"];?[ \t]*$/gm, '');
 }
 
 /**

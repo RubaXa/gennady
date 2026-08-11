@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/svelte-testing.xml -->
-<Axiom id="AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED">
-  Within the testing-library query surface, prefer role-based queries (`getByRole`, `getByLabelText`, `getByPlaceholderText`) over text-only queries. Role queries express the user-perceived contract; text queries are fragile to copy changes that have no contract impact.
-</Axiom>

@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
-<Axiom id="AX_ICON_SVG_TIGHT_VIEWBOX">
-SVG icons have their viewBox cropped to the tight bounding box of the path — NOT the 20×20 Figma container. This prevents unwanted whitespace around icons and ensures consistent spacing within the button.
-
-The icon SVG is inlined (not an `<img>` tag) so its fill color can be controlled via CSS. Icon fill inherits from the button's current appearance/mode color.
-</Axiom>

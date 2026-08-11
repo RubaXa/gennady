@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_SNAPSHOT_PARTIAL_BY_DEFAULT">
-      AX snapshots are scoped to a NAMED region by default (`page.getByRole('region', { name: '...' }).ariaSnapshot()`). Full-page snapshots are reserved for tests whose contract IS the full page (e.g. a landing-page structure test). Defaulting to full-page snapshots produces brittle baselines that explode on every unrelated nav/sidebar change.
-    </Axiom>

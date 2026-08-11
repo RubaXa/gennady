@@ -1,8 +1,0 @@
-<!-- source: ai/directives/coding/sveltekit-rules.xml -->
-<Axiom id="AX_SK_SERVER_CLIENT_BOUNDARY">
-The file name decides where the code runs:
-- `+page.server.ts`, `+layout.server.ts`, `hooks.server.ts`, anything under `$lib/server/` — **server-only**. Allowed to read filesystem, talk to databases, use private env.
-- `+page.ts`, `+layout.ts`, `.svelte` (instance script + template) — **universal/client**. MUST be safe to ship to the browser.
-
-Private secrets (`$env/static/private`, `$env/dynamic/private`) MUST NOT be imported from universal/client files. The toolchain refuses such imports at build time — agent's job is to keep the import graph clean from the start, not to rely on the compile error as the only guardrail.
-</Axiom>

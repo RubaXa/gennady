@@ -1,4 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_AGENTS_MD_UPDATED_AS_PART_OF_SETUP">
-  Setup ends with an `AGENTS.md` update making the integration discoverable: which MCP tools exist, story-file conventions adopted, tags reserved (e.g. `ai-generated`), pointer to the runtime usage directive. Skipping the `AGENTS.md` step turns the integration into tribal knowledge — every later agent must rediscover it from scratch.
-</Axiom>

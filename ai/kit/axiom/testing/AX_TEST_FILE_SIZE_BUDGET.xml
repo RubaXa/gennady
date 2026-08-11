@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_TEST_FILE_SIZE_BUDGET">
-**Soft target: ≤300 code-LOC per test file. Hard ceiling: 500.** Split axes in priority order: (1) by SUT method — `[subject].[method].test.ts`, sharing factory via a sibling `[subject].test-context.ts`; (2) by scenario family — `[subject].error-paths.test.ts` separate from happy-paths. After a split each file STILL holds exactly one context shape (`AX_ONE_UNIFIED_CONTEXT_PER_FILE`).
-
-Why: instruction-following degrades with file size. Past 500 LOC the agent loses structure between read/edit cycles → fabricated green tests slip in.
-</Axiom>

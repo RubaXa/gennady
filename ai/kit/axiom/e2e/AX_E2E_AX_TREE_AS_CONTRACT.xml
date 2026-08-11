@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_AX_TREE_AS_CONTRACT">
-      The accessibility-tree snapshot (`ariaSnapshot()` + `toMatchAriaSnapshot()`) IS the structural contract. It encodes roles, accessible names, and hierarchy — the same surface a screen reader perceives. Textual/structural assertions on the DOM (e.g. `toContainText`) are allowed where AX granularity is insufficient (specific dynamic copy), but they supplement the AX snapshot, not replace it.
-    </Axiom>

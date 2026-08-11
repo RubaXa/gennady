@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_EXPLICIT_CLASS_FIELDS">
-Declare class fields explicitly in the class body. Put `readonly` on the field declaration, not on constructor parameters. Separates state declaration (what the class holds) from initialization signature (how the class is constructed), removes parameter-property magic, improves introspectability.
-</Axiom>

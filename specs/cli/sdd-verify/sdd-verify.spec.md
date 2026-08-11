@@ -57,20 +57,20 @@ $ npx gennady sdd-verify
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name            | Type         | Purpose                                                                      |
-| --------------- | ------------ | ---------------------------------------------------------------------------- |
-| `run`           | Command      | Прогон всех GATES по порядку (RUN-ALL), тайминг, вердикт                     |
-| `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output             |
-| `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                        |
+| Name            | Type         | Purpose                                                                              |
+| --------------- | ------------ | ------------------------------------------------------------------------------------ |
+| `run`           | Command      | Прогон всех GATES по порядку (RUN-ALL), тайминг, вердикт                             |
+| `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                     |
+| `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                                |
 | `GATES`         | Value Object | Фикс-последовательность: format · lint (mutates) · typecheck · test:coverage · yagni |
-| `Gate`          | Value Object | name + mutates                                                               |
-| `GateRunResult` | Value Object | exitCode + output                                                            |
-| `GateResult`    | Value Object | name · exitCode · output · durationMs                                        |
-| `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                           |
-| `VerifyOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                     |
-| `Profile`       | Type         | Профиль гейтов: `code` \| `test` \| `full` (D-SV006)                         |
-| `gatesFor`      | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                    |
-| `isProfile`     | Utility      | Type-guard токена профиля из CLI-ввода                                       |
+| `Gate`          | Value Object | name + mutates                                                                       |
+| `GateRunResult` | Value Object | exitCode + output                                                                    |
+| `GateResult`    | Value Object | name · exitCode · output · durationMs                                                |
+| `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                                   |
+| `VerifyOutcome` | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                             |
+| `Profile`       | Type         | Профиль гейтов: `code` \| `test` \| `full` (D-SV006)                                 |
+| `gatesFor`      | Utility      | Гейты профиля в каноническом порядке GATES (подмножество)                            |
+| `isProfile`     | Utility      | Type-guard токена профиля из CLI-ввода                                               |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 

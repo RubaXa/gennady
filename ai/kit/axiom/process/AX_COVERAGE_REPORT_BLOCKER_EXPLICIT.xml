@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_COVERAGE_REPORT_BLOCKER_EXPLICIT">
-Type-check or coverage cannot run because of an environment / project blocker → declare the blocker EXPLICITLY; do not simulate success. A silent skip turns the completion gate into fiction.
-</Axiom>

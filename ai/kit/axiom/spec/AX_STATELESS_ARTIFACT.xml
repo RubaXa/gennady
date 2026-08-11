@@ -1,4 +1,0 @@
-<!-- source: ai/directives/sdd/setup.directive.xml -->
-<Axiom id="AX_STATELESS_ARTIFACT">
-  `specs/README.md` is self-contained. The next session reads only that file, without conversation history.
-</Axiom>

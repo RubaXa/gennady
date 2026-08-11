@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/fix.directive.xml -->
-<Axiom id="AX_OPERATOR_AGREEMENT">
-      Every fix must be operator-approved before execution. The plan is shown as a table.
-      No edits are made before explicit operator "yes" / "go" / "ok".
-      Operator may edit the plan (remove items, change classification, add notes).
-    </Axiom>

@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/sveltekit-rules.xml -->
-<Axiom id="AX_SK_PAGE_OPTIONS_PER_ROUTE">
-Page-level toggles (`export const ssr`, `export const prerender`, `export const csr`, `export const trailingSlash`) live in the route's `+page.ts` / `+page.server.ts` / `+layout.ts`. They are NOT global config in `svelte.config.js`.
-
-Forcing `ssr = false` globally turns a SvelteKit app into a single-page app and discards most of the framework's value; doing it per-route documents the trade-off where it applies.
-</Axiom>

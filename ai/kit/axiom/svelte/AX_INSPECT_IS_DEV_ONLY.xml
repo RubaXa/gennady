@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_INSPECT_IS_DEV_ONLY">
-  `$inspect(value)` is the debugging channel — it logs reactive changes during development and is stripped in production builds. It MUST NOT replace `logger.*` for runtime observability and MUST NOT be committed as the sole report channel for a contract-bearing state transition.
-</Axiom>

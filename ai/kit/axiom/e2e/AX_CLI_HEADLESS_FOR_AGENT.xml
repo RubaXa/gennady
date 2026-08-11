@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-cli.xml -->
-<Axiom id="AX_CLI_HEADLESS_FOR_AGENT">
-      Every CLI exploration session for an agent runs headless. The `--headed` / `--ui` / `--debug` modes are human-only — they assume a sighted operator at the terminal. An agent that opens a headed window has no consumer for the visual output and burns the session waiting for user input that will never arrive.
-    </Axiom>

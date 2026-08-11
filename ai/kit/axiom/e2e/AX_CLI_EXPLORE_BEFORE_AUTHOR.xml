@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/playwright-cli.xml -->
-<Axiom id="AX_CLI_EXPLORE_BEFORE_AUTHOR">
-      Exploration MUST precede authoring. Agent first sees the page through `page.ariaSnapshot()`, then interacts through `page.getByRole(...)`, then captures the post-state. Only after this loop completes does codification into a committed test file begin.
-
-      A locator that has never been resolved against a running page is a guess; committing it bypasses the only ground truth the test has.
-    </Axiom>

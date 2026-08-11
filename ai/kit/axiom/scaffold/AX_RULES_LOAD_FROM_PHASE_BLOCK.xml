@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
-<Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK">
-      Open ONLY rule files listed under this phase's `Rules:` bullet list. Use the absolute-or-cwd-relative path verbatim. Read end-to-end (Mission + Belief_State + Reward_Criteria + Anti_Patterns + Verification_Hooks).
-
-      Rules from sibling phases are NOT this phase's concern. Do not pre-load them. Read failure on a cited rule → `H_RULE_FILE_MISSING`.
-    </Axiom>

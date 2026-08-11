@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_ONE_TEST_ONE_SCENARIO">
-One `it` covers one scenario. Duplicate cases that prove the same behavior create false confidence in coverage and double maintenance cost when the contract changes.
-</Axiom>

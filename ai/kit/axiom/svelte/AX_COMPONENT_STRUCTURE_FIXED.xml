@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_COMPONENT_STRUCTURE_FIXED">
-  A Svelte 5 component file has a fixed structure: an optional `<script module>` for module-scope exports (one max), an optional `<script>` for instance code (one max), the HTML template, and an optional `<style>`. Multiple instance scripts, top-level expressions outside `<script>`, and pre-script template content are forbidden.
-</Axiom>

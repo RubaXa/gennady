@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_SPEC_IS_SOLE_SOURCE">
-      The directive reads specs and never reads code. The only directive permitted to read code is `audit`.
-      - `greenfield` — operator input + rule files only.
-      - `refine` / `pivot` — Portal (for context) + existing scope spec.
-    </Axiom>

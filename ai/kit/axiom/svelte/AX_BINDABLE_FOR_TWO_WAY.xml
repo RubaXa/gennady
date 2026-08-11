@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_BINDABLE_FOR_TWO_WAY">
-  Two-way bindable props are declared via `$bindable(initialValue)` inside the `$props()` destructuring (`let { value = $bindable('') } = $props()`). The parent then writes `bind:value={...}`. Without `$bindable` a prop is one-way and the parent cannot `bind:`.
-</Axiom>

@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/audit.directive.xml -->
-<Axiom id="AX_EXECUTION_LOG_VERIFICATION">
-      Token vocabulary in `scaffold.directive.xml` Execution Log Template. Required per phase block: `ver` (one final result), `DONE`, `**Handoff →**`, `intro <X> ← <reason>` for every entity in code but not in module Inventory (cross-check via git diff), `verified` for `config`-kind, `BLOCKED <cause>` if phase ended blocked.
-
-      Missing required line → `EXECUTION_LOG_INCOMPLETE`. Unreplaced `<…>` placeholder on `[x]` line → `EXECUTION_LOG_INCOMPLETE` (BLOCKER, «fabricated done»). Line with a token outside the vocabulary → `EXECUTION_LOG_INCOMPLETE` (MINOR, «padding»).
-    </Axiom>

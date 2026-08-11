@@ -26,9 +26,9 @@ export class TsSymbolIndexAdapter implements SymbolIndex {
   private _parser: Parser | undefined;
 
   /**
-   * @see {SymbolIndex#declaredSymbols} in ../../symbol-index.types.ts
    * @invariant `line` for exported entities/members falls back to their JSDoc contract's line
    *   (DbcTsAstAdapter has no declaration-node line) — informational only, not used for filtering.
+   * @see {SymbolIndex#declaredSymbols} in ../../symbol-index.types.ts
    */
   async declaredSymbols(filePath: string, content: string): Promise<DeclaredSymbol[]> {
     // Stateless delegate — built locally, not a field: nothing survives across calls worth caching.

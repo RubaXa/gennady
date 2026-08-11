@@ -1,4 +1,4 @@
 <!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
 <Axiom id="AX_CONTEXT_TO_CONTRACT">
-      DbC is derived from context, not only from DX code. Scope spec 4 Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
+      DbC is derived from context, not only from DX code. Scope spec Requirements & Constraints is mandatory source for preconditions, invariants, fallback semantics, trust boundaries. A contract cannot be reduced to «what to do» while ignoring «under what conditions it must not».
     </Axiom>

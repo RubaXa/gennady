@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_PRINCIPLED_DECOMPOSITION">
-Decompose by intent, not by volume. Avoid both monolithic methods AND artificial layering. Extract code only at TRUE intent boundaries that meaningfully improve readability, testability, or isolation. Splitting by line count without intent boundaries creates fictive functions that raise cognitive load without raising verifiability.
-</Axiom>

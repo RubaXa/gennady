@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-e2e.xml -->
-<Axiom id="AX_E2E_HEADLESS_ALWAYS">
-      Test execution is headless. `--headed` is a human-only debugging mode and never appears in committed scripts or CI configuration.
-    </Axiom>

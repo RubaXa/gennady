@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_ERROR_VIA_CLASS">
-`Error` subclasses are declared via `class` only. Do NOT replace with `type` or `interface`. Only `class` correctly works with `instanceof`, the prototype chain, and the `cause` chain at runtime. A `type` alias for Error gives no runtime check.
-</Axiom>

@@ -25,7 +25,9 @@ export function printHelp(): void {
   console.info('  - fabricated DONE: a [x] line with an unreplaced <…> placeholder');
   console.info('  - DONE with an unresolved BLOCKED · DONE with leftover placeholders');
   console.info('  - RULES_CASCADE_CLOSURE: each phase Rules: list is the full <DependsOn> closure');
-  console.info('  - BDD_COVERAGE: Test Scenario Coverage canonical case names exist in the test file');
+  console.info(
+    '  - BDD_COVERAGE: Test Scenario Coverage canonical case names exist in the test file'
+  );
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
   console.info(
     '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'

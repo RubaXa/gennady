@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_LOG_DENSITY">
-Logs at entry points, important branches, external I/O / mutations, catch blocks. Loops logged in aggregate, NOT per iteration. In `catch`: ALWAYS `logger.error` with Trace-Prefix and context, then recover via `throw` or `return fail()` per `AX_CATCH_LOG_RECOVER`. Intent-driven density yields a readable story-line; per-iteration spam drowns real signals.
-</Axiom>

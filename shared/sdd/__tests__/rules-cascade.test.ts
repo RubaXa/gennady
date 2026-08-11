@@ -43,7 +43,10 @@ describe('normalizeRulePath', () => {
 describe('checkRulesCascadeClosure', () => {
   it('замыкание полное → без findings', () => {
     const deps = new Map([
-      ['ai/directives/testing/svelte-testing.xml', ['ai/directives/testing/vitest-rules.xml', 'ai/directives/coding/svelte5-runes.xml']],
+      [
+        'ai/directives/testing/svelte-testing.xml',
+        ['ai/directives/testing/vitest-rules.xml', 'ai/directives/coding/svelte5-runes.xml'],
+      ],
       ['ai/directives/testing/vitest-rules.xml', []],
       ['ai/directives/coding/svelte5-runes.xml', ['ai/directives/coding/typescript-rules.xml']],
       ['ai/directives/coding/typescript-rules.xml', []],
@@ -76,7 +79,10 @@ describe('checkRulesCascadeClosure', () => {
       ['ai/directives/coding/svelte5-runes.xml', ['ai/directives/coding/typescript-rules.xml']],
       ['ai/directives/coding/typescript-rules.xml', []],
     ]);
-    const rules = ['ai/directives/testing/svelte-testing.xml', 'ai/directives/coding/svelte5-runes.xml'];
+    const rules = [
+      'ai/directives/testing/svelte-testing.xml',
+      'ai/directives/coding/svelte5-runes.xml',
+    ];
     const findings = checkRulesCascadeClosure('t.md', 'P2', rules, deps);
     assert.strictEqual(findings.length, 1);
     assert.match(findings[0]?.message ?? '', /typescript-rules\.xml/);

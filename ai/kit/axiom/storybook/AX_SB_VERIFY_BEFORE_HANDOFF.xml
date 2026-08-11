@@ -1,9 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_VERIFY_BEFORE_HANDOFF">
-  Setup is verified end-to-end before being declared complete:
-  1. `storybook dev` boots without errors and serves the preview URL.
-  2. At least one MCP tool call to the registered server succeeds.
-  3. `run-story-tests` (or the project's equivalent) passes on at least one story.
-
-  Any of the three failing → setup is not done; the failure is surfaced to the operator with the exact error rather than masked as «mostly working».
-</Axiom>

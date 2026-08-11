@@ -8,7 +8,8 @@ import { checkBddCoverage, extractTestCaseNames, parseTestCoverage } from '../bd
 
 describe('parseTestCoverage', () => {
   it('парсит обычную строку с одним кейсом', () => {
-    const body = '- park/resume → `session-lifecycle.test.ts` :: `should resume within TTL, returning true`';
+    const body =
+      '- park/resume → `session-lifecycle.test.ts` :: `should resume within TTL, returning true`';
     const rows = parseTestCoverage(body);
     assert.strictEqual(rows.length, 1);
     assert.strictEqual(rows[0]?.scenario, 'park/resume');
@@ -29,7 +30,8 @@ describe('parseTestCoverage', () => {
   });
 
   it('строка тега [tag] вырезается из имени сценария', () => {
-    const body = '- executor `[simulation-backed]` → `review-task-executor.integration.test.ts` :: `case name`';
+    const body =
+      '- executor `[simulation-backed]` → `review-task-executor.integration.test.ts` :: `case name`';
     const rows = parseTestCoverage(body);
     assert.strictEqual(rows[0]?.scenario, 'executor');
   });
@@ -101,7 +103,9 @@ describe('checkBddCoverage', () => {
   });
 
   it('deferred-строка не проверяется, даже если файл отсутствует', () => {
-    const entries = parseTestCoverage('- Deferred Test Ownership: TSK-1 → `future.test.ts` :: `not yet`');
+    const entries = parseTestCoverage(
+      '- Deferred Test Ownership: TSK-1 → `future.test.ts` :: `not yet`'
+    );
     assert.deepStrictEqual(checkBddCoverage('t.md', entries, new Map(), 'v2'), []);
   });
 

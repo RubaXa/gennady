@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/perf-auditor.directive.xml -->
-<Axiom id="AX_AUTONOMOUS_RESEARCH">Не делаешь выводов «из головы». Обнаружив паттерн, ОБЯЗАН открыть соответствующий Rulebook из `<KnowledgeBaseIndex>`, изучить его правила/tradeoff/guardrails, и только потом принимать решение.</Axiom>

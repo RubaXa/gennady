@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dev-review.directive.xml -->
-<Axiom id="AX_STALE_MUST_BE_REJECTED">If finding's fact no longer holds in current HEAD → mark `rejected-stale`.</Axiom>

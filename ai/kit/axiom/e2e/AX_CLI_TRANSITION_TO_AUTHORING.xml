@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-cli.xml -->
-<Axiom id="AX_CLI_TRANSITION_TO_AUTHORING">
-      Exploration is complete only when: AX snapshot of the target region captured; every interactive element located via `getByRole(...)`; observed structure matches intent. At that point the agent transitions to `playwright-e2e.xml` for codification. Committing a test while exploration is still mid-loop produces a test that asserts the wrong contract.
-    </Axiom>

@@ -139,7 +139,9 @@ describe('migration-move', () => {
   });
 
   it('rewriteMovedLinks: относительная ссылка пересчитывается на новый путь, внешние URL и якоря без пути не трогаются', () => {
-    const byOldPath = new Map([['tasks/demo/core/core.task-1.md', 'specs/demo/core/core.task.demo-alpha.md']]);
+    const byOldPath = new Map([
+      ['tasks/demo/core/core.task-1.md', 'specs/demo/core/core.task.demo-alpha.md'],
+    ]);
     const r = rewriteMovedLinks(
       'см. [тикет](core.task-1.md) и [сайт](https://example.com) и [якорь](#section)',
       'tasks/demo/core/core.task-2.md',
@@ -147,7 +149,10 @@ describe('migration-move', () => {
       byOldPath
     );
     assert.strictEqual(r.count, 1);
-    assert.match(r.text, /\[тикет\]\(\.\.\/\.\.\/\.\.\/specs\/demo\/core\/core\.task\.demo-alpha\.md\)/);
+    assert.match(
+      r.text,
+      /\[тикет\]\(\.\.\/\.\.\/\.\.\/specs\/demo\/core\/core\.task\.demo-alpha\.md\)/
+    );
     assert.match(r.text, /\[сайт\]\(https:\/\/example\.com\)/);
     assert.match(r.text, /\[якорь\]\(#section\)/);
   });

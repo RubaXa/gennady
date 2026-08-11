@@ -48,7 +48,11 @@ import {
   classifyConsumerEntry,
   parseConsumersHeader,
 } from '../../../shared/sdd/consumers-resolvable.ts';
-import { checkBddCoverage, extractTestCaseNames, parseTestCoverage } from '../../../shared/sdd/bdd-coverage.ts';
+import {
+  checkBddCoverage,
+  extractTestCaseNames,
+  parseTestCoverage,
+} from '../../../shared/sdd/bdd-coverage.ts';
 import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
 
 const SKIP_DIRS = new Set([
@@ -237,7 +241,10 @@ function checkTicketBddCoverage(file: string, content: string, repoRoot: string)
   for (const e of entries) {
     if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
     const matches = idx.get(e.testFile) ?? [];
-    caseNamesByFile.set(e.testFile, matches.flatMap((m) => getTestCaseNames(m)));
+    caseNamesByFile.set(
+      e.testFile,
+      matches.flatMap((m) => getTestCaseNames(m))
+    );
   }
   return checkBddCoverage(file, entries, caseNamesByFile, ticketFlowVersion(file, repoRoot));
 }

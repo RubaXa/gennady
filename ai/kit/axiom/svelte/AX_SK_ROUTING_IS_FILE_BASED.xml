@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/sveltekit-rules.xml -->
-<Axiom id="AX_SK_ROUTING_IS_FILE_BASED">
-Routes are declared by directory structure under `src/routes/`. A path like `src/routes/user/[id]/+page.svelte` exposes `/user/:id`. Manual route tables, parallel router libraries, or imperative `Router` mounting are forbidden — they fork the source of truth for which URL renders what.
-
-Layout wrappers via `+layout.svelte` / `+layout.server.ts` / `+layout.ts`. Nested layouts compose; siblings do not.
-</Axiom>

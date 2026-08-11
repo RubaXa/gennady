@@ -1,9 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE">
-Measure CONTRACT coverage, not line coverage. Mandatory minimum per public method/function:
-1. ≥1 happy-path scenario.
-2. ≥1 boundary scenario (boundary value, edge of input domain) when contract has boundary semantics.
-3. ≥1 failure-path scenario per declared `@throws` / rejected promise.
-
-Ignored: thin pass-through wrappers without hidden policy, type-only constructs, dead branches excluded by `AX_MINIMAL_ERROR_SURFACE` in coding-rules.
-</Axiom>

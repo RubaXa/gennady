@@ -1,4 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_NO_PARALLEL_TEST_HARNESSES">
-  Story-level tests use ONE harness — the test addon shipped/recommended with Storybook for the project's framework. Introducing a parallel harness (e.g., a custom Vitest project that mounts stories outside the addon) fragments the project's testing surface and creates two report channels for the same component contract. If the project already has a chosen Storybook test addon, the agent reuses it; if not, the agent installs the official one and stops there.
-</Axiom>

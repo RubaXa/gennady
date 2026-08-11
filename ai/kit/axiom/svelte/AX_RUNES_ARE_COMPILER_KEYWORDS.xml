@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_RUNES_ARE_COMPILER_KEYWORDS">
-  Runes are compiler directives prefixed with `$`, not runtime functions. They are never imported from any module, never assigned to variables, never passed as values. Reading `$state` / `$derived` / `$effect` as «function call» mental model leads to React-hook habits (dependency arrays, memoization wrappers) — none of which apply here.
-
-  Agent treating a rune as a value (`const s = $state; s(0)`) produces code that compiles to nothing useful and silently breaks reactivity.
-</Axiom>

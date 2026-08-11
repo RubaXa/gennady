@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_COMMENTS_ADD_NONSYNTACTIC_INTENT">
-All comments are agent-authored machine comments and MUST add intent that an agent cannot safely infer from syntax. A comment SUPPLEMENTS pretrained code understanding instead of fighting it: prefer the smallest local comment that increases recoverable intent / patch safety / invariant preservation. The next reader-agent has no access to the chat in which the code was written — a comment is the only context channel that does not derive from syntax. Excess comments compete with code and drift; insufficient comments force reconstruction from stack traces. Comments do NOT explain syntax to humans; in an AI-to-AI ecosystem, human narrative is noise.
-</Axiom>

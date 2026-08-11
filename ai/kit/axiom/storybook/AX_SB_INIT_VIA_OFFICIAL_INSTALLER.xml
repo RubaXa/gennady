@@ -1,6 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_INIT_VIA_OFFICIAL_INSTALLER">
-  Storybook installation starts with the official initializer (`npx storybook@latest init`). Manually scaffolding `.storybook/main.*`, `.storybook/preview.*`, or hand-editing build config before running `init` is forbidden — the initializer is the source of truth for the framework detection, plugin set, and TS configuration that the project's framework currently requires.
-
-  The init is interactive: when it prompts about framework, builder, or feature opt-ins, the agent answers based on observed project state (existing `vite.config.*`, `package.json` scripts, framework deps), not on assumptions.
-</Axiom>

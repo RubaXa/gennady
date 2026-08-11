@@ -1,6 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_MCP_IS_MANDATORY">
-  For an agent-first project, the MCP integration (test/preview addon exposing tools the agent runner can call) is NOT optional. Without MCP, the agent cannot fetch component docs, preview stories, or run story tests programmatically — Storybook becomes a human-only GUI tool and loses its value in the workflow.
-
-  Setup is incomplete until the MCP addon is installed AND the MCP server is registered with the agent runner AND at least one MCP tool call returns a non-error response.
-</Axiom>

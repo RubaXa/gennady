@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_SNIPPETS_REPLACE_SLOTS">
-  Reusable template fragments use `{#snippet name(params)}...{/snippet}` and are invoked via `{@render name(params)}`. The Svelte 4 `<slot>` mechanism, `$$slots`, and slot props are forbidden in new components — they are removed concepts in the Svelte 5 mental model.
-</Axiom>

@@ -1,4 +1,0 @@
-<!-- source: ai/directives/sdd/audit.directive.xml -->
-<Axiom id="AX_NO_AUTO_FIX">
-      Audit does not modify code or specs autonomously. Any remediation is a proposal per `AX_FINDING_ROUTING`. If operator approves inline changes during the session, audit agent may apply them to spec/ticket files (not code). Creating commits or editing code files independently is forbidden.
-    </Axiom>

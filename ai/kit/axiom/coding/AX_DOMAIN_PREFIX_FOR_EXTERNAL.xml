@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_DOMAIN_PREFIX_FOR_EXTERNAL">
-Domain prefix for types from external systems: `ApiResource`, `VendorOrder`, `ErpCatalogItem`. Internal utilities have no prefix. The prefix protects a trust boundary: `OrderItem` (internal) and `VendorOrderItem` (external) are different entities; conflating is a common source of domain bugs.
-</Axiom>

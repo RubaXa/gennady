@@ -1,9 +1,0 @@
-<!-- source: ai/directives/testing/node-test.xml -->
-<Axiom id="AX_HTTP_MOCK_AGENT_PATTERN">
-      For HTTP-heavy tests where injection is not feasible:
-      - Use `setupMockAgent()` from `utils/test/mock-http.ts`; call `cleanup()` in `afterEach`.
-      - Request-specific intercepts go INSIDE the case `SETUP` phase, not the shared hook.
-      - If the SUT uses `axios`, set `axios.defaults.adapter = 'fetch'` in shared setup so the mock agent sees the requests.
-
-      Default posture (per inherited `AX_MOCK_AS_LAST_RESORT`): inject an HTTP client / `request` port into the SUT and stub it with `mock.fn()`. Mock-agent harness is for code that already exists without an injection seam.
-    </Axiom>

@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dbc-audit.directive.xml -->
-<Axiom id="AX_SEMANTIC_LOCATION_OVER_LINES">Findings use stable semantic locations (declaration name, JSDoc block, anchor, method, branch). Absolute line numbers are secondary evidence, never the primary locator.</Axiom>

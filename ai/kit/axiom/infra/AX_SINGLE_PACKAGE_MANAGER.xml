@@ -1,6 +1,0 @@
-<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
-<Axiom id="AX_SINGLE_PACKAGE_MANAGER">
-  One package manager per project: **npm only**. Forbidden alongside npm: yarn, pnpm, bun. `package-lock.json` is the lock; all other lock files must be absent and gitignored.
-
-  Multiple managers produce conflicting lock files and non-deterministic installs. If `yarn.lock`, `pnpm-lock.yaml`, or `bun.lockb` exist in the repo → remove them; add to `.gitignore`.
-</Axiom>

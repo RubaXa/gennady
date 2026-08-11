@@ -1,9 +1,0 @@
-<!-- source: ai/directives/testing/vitest-rules.xml -->
-<Axiom id="AX_MOCK_REQUIRES_OPERATOR_CONFIRM">
-  Introducing a NEW `vi.mock(...)` or `vi.hoisted(...)` call in a test file is a gated action. Execution-agent MUST stop before introducing such a mock and request explicit operator confirmation in chat, presenting:
-  - module being mocked,
-  - why dependency injection cannot be used here (per inherited `AX_MOCK_AS_LAST_RESORT`),
-  - what observable contract the mock preserves.
-
-  Re-using an existing project-level mock helper does NOT require a new confirmation. `vi.mock` is the single biggest lever for fabricating green tests; confirm-gate makes that fabrication visible.
-</Axiom>

@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_CONFUSION_BUG">Critic confusion ("don't understand X") → artifact underspecified → ALWAYS accept, clarify.</Axiom>

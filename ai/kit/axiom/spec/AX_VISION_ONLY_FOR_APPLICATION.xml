@@ -1,4 +1,0 @@
-<!-- source: ai/directives/sdd/setup.directive.xml -->
-<Axiom id="AX_VISION_ONLY_FOR_APPLICATION">
-  The `## Vision` section in the Portal is present only when the project contains at least one product or library scope. For tooling-only repos (sandboxes, infra repos) the Vision section is omitted.
-</Axiom>

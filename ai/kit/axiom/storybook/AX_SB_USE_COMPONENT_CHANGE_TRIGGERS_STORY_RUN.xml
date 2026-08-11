@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/storybook-usage.xml -->
-<Axiom id="AX_SB_USE_COMPONENT_CHANGE_TRIGGERS_STORY_RUN">
-  A component edit MUST be followed by `run-story-tests` on every story owned by that component. A story failure after a component edit is, by definition, a regression — either the component contract changed (story must be updated and the change documented) or the edit broke the contract unintentionally (component must be fixed). Either path is acceptable; ignoring the failure is not.
-</Axiom>

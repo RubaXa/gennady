@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_COMMENT_DENSITY">
-Comment iff removing it would hide a business rule, invariant, integration constraint, or refactor hazard. Pure data reshaping, obvious getters/setters, trivial guard clauses, straight-line pure computations are NOT commented — silence signals «no hidden policy here». A comment on trivial code falsely tells the agent to look for an invariant that does not exist; a missing comment on non-trivial code forces reverse-engineering.
-</Axiom>

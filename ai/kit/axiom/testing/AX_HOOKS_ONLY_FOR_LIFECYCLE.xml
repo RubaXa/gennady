@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_HOOKS_ONLY_FOR_LIFECYCLE">
-`beforeEach` / `afterEach` are reserved for context that REQUIRES teardown — open resources (timers, sockets, file handles, DB connections), global stubs (env, globals), module mocks, fake timers, fixture filesystems, in-process servers.
-
-A justified hook MUST follow the **single-context shape**: hook builds ONE context object and `afterEach` disposes it. Cases consume properties off that single object — no pile of `let sut, let saveOrder, let publish` in describe scope.
-</Axiom>

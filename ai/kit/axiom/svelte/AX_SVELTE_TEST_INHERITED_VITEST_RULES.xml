@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/svelte-testing.xml -->
-<Axiom id="AX_SVELTE_TEST_INHERITED_VITEST_RULES">
-  All Vitest discipline applies unchanged: single unified context per file, factory-over-hooks for non-lifecycle setup, file-size budget, no `vi.mock` without operator confirm, no auto snapshot updates, explicit imports from `vitest`. This directive only adds Svelte-specific overlays — it does NOT relax inherited rules.
-</Axiom>

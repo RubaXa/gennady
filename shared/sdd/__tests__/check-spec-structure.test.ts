@@ -290,7 +290,8 @@ describe('checkTableCells — table is an index, not text (F2, mechanical)', () 
   });
 
   it('a header with more than 6 columns → SDD_TABLE_TOO_MANY_COLUMNS', () => {
-    const md = '| A | B | C | D | E | F | G |\n| --- | --- | --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 | 6 | 7 |';
+    const md =
+      '| A | B | C | D | E | F | G |\n| --- | --- | --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 | 6 | 7 |';
     const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
     assert.ok(codes.includes('SDD_TABLE_TOO_MANY_COLUMNS'));
   });

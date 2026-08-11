@@ -9,14 +9,20 @@ import { GrepSymbolIndexAdapter } from '../implementations/grep/grep-symbol-inde
 describe('GrepSymbolIndexAdapter#declaredSymbols', () => {
   it('finds a Python def', async () => {
     const adapter = new GrepSymbolIndexAdapter();
-    const symbols = await adapter.declaredSymbols('script.py', 'def handle_request(req):\n    pass\n');
+    const symbols = await adapter.declaredSymbols(
+      'script.py',
+      'def handle_request(req):\n    pass\n'
+    );
     assert.ok(symbols.some((s) => s.name === 'handle_request'));
     assert.strictEqual(symbols[0]?.kind, 'approximate-declaration');
   });
 
   it('finds a Go func', async () => {
     const adapter = new GrepSymbolIndexAdapter();
-    const symbols = await adapter.declaredSymbols('main.go', 'func Serve(addr string) error {\n}\n');
+    const symbols = await adapter.declaredSymbols(
+      'main.go',
+      'func Serve(addr string) error {\n}\n'
+    );
     assert.ok(symbols.some((s) => s.name === 'Serve'));
   });
 

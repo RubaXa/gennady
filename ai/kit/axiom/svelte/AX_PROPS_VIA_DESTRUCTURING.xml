@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_PROPS_VIA_DESTRUCTURING">
-  Component props come from a SINGLE `$props()` destructuring call at the top of the script: `let { foo, bar = defaultValue, onSomething } = $props()`. Defaults inline in the destructuring. Optional callbacks declared as props, not via `createEventDispatcher`.
-
-  Multiple `$props()` calls in one component are forbidden — there is one props surface per component.
-</Axiom>

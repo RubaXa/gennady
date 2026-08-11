@@ -1,9 +1,0 @@
-<!-- source: ai/directives/testing/node-test.xml -->
-<Axiom id="AX_PREFER_NATIVE_MOCK_FN">
-      Use `mock.fn()` from `node:test` for tracking calls and stubbed behavior on injected collaborators. Native API requires no extra dependencies and integrates with the runner (cleanup, assertion helpers).
-
-      Common surface:
-      - `const fn = mock.fn(async () => 'ok')` — create stub with implementation.
-      - `fn.mock.callCount()` / `fn.mock.calls[i].arguments` — interaction assertions.
-      - `mock.module('pkg', { namedExports: {...} })` — module-level mocking (gated by inherited `AX_MOCK_AS_LAST_RESORT` + `AX_NO_FALSIFICATION_VIA_MOCKS`).
-    </Axiom>

@@ -1,9 +1,0 @@
-<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
-<Axiom id="AX_DEPENDENCY_ADDITION_CHECKLIST">
-  Before adding any dependency, verify three things:
-  1. **Node compatibility:** `npm view <pkg> engines` — supports version in `.nvmrc`?
-  2. **Module system compatibility:** package ESM-only / CJS-only / dual? Matches project's `"type"`?
-  3. **Pinning discipline:** dev tool → `--save-exact`; runtime dep → range acceptable.
-
-  Skipping these introduces incompatibilities that surface as cryptic runtime errors, not install errors.
-</Axiom>

@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/vitest-rules.xml -->
-<Axiom id="AX_EXPLICIT_VITEST_IMPORTS">
-  Import every Vitest API explicitly from `vitest` (`describe`, `it`, `expect`, `vi`, `beforeEach`, `afterEach`, `beforeAll`, `afterAll`). Do NOT rely on `globals: true` in `vitest.config`. Explicit imports make the file self-describing for humans, TypeScript, ESLint, and agent grep.
-</Axiom>

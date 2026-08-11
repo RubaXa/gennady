@@ -40,7 +40,11 @@ describe('checkTasksAppendOnly', () => {
   });
 
   it('прежний id пропал → SDD_TASKS_APPEND_ONLY_REGRESSION', () => {
-    const findings = checkTasksAppendOnly('f.ts', '// @tasks: TSK-136', '// @tasks: TSK-116, TSK-136');
+    const findings = checkTasksAppendOnly(
+      'f.ts',
+      '// @tasks: TSK-136',
+      '// @tasks: TSK-116, TSK-136'
+    );
     assert.strictEqual(findings.length, 1);
     assert.strictEqual(findings[0]?.code, 'SDD_TASKS_APPEND_ONLY_REGRESSION');
     assert.strictEqual(findings[0]?.severity, 'error');

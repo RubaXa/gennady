@@ -4,7 +4,7 @@
 
       - Acceptance Criteria = strict BDD (Given/When/Then) translated from DbC pre/post + Requirements & Constraints + Decision Log. Negative scenarios, fallbacks, trust boundaries, platform limits pulled from spec, not inferred from component name.
       - Each scenario gets a verification level marker: `contract` | `unit` | `integration` | `e2e`.
-      - Each scenario maps to `<test-file>::<canonical case name>` in section 6 Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
+      - Each scenario maps to `<test-file>::<canonical case name>` in Test Scenario Coverage, OR explicit `Deferred Test Ownership: <task-id>`.
       - At least one phase of kind `test` MUST exist whose Target Files contains the test file, unless every scenario has `Deferred Test Ownership`.
       - Canonical case names are normative: phase-subagent uses verbatim or updates the ticket before phase DONE.
       - BDD describes behavior, not language-specific syntax.

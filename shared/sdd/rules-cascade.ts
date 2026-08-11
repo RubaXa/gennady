@@ -18,7 +18,11 @@ export type RuleDepsMap = Map<string, string[]>;
  * @param linkTarget The Rules: bullet's link target, as parsed by `parsePhaseDetail` (e.g. `../../ai/directives/coding/typescript-rules.xml`).
  * @returns The repo-root-relative path with `/` separators.
  */
-export function normalizeRulePath(ticketFile: string, repoRoot: string, linkTarget: string): string {
+export function normalizeRulePath(
+  ticketFile: string,
+  repoRoot: string,
+  linkTarget: string
+): string {
   const abs = resolve(dirname(resolve(ticketFile)), linkTarget);
   return relative(resolve(repoRoot), abs).split(sep).join('/');
 }

@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_TRACE_PREFIXED_ERRORS">
-Every error message carries a Trace-Prefix. Format: `[ClassName#methodName]` or `[functionName]`. With cause-chains across several log/error layers, the only reliable way to recover the failure point is an explicit prefix; stack aggregators may truncate.
-</Axiom>

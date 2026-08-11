@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_MANDATORY_TRY_CATCH_IN_BUSINESS_LOGIC">
-Exception handling is mandatory in business logic. Any business method with network/file/process I/O, mutation of external state, or integration with an external system MUST wrap the failure point in `try`/`catch` per `AX_CATCH_LOG_RECOVER`. Missing try/catch on an integration boundary turns any transient failure into an un-traced un-contextualized exception.
-</Axiom>

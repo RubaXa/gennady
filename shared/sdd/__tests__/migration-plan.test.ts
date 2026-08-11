@@ -148,7 +148,10 @@ describe('migration-plan', () => {
     assert.strictEqual(mapHeadingToSection('## 1. Module Vision'), 'MODULE_VISION');
     assert.strictEqual(mapHeadingToSection('## Vision & Primary Goal'), 'VISION');
     assert.strictEqual(mapHeadingToSection('## 2. Decision Log'), 'DECISION_LOG');
-    assert.strictEqual(mapHeadingToSection('## Entity Inventory (Closed-World)'), 'ENTITY_INVENTORY');
+    assert.strictEqual(
+      mapHeadingToSection('## Entity Inventory (Closed-World)'),
+      'ENTITY_INVENTORY'
+    );
     assert.strictEqual(mapHeadingToSection('## Module Contracts (DbC)'), 'MODULE_CONTRACTS');
     assert.strictEqual(mapHeadingToSection('## High-Level Architecture'), 'ARCHITECTURE');
   });

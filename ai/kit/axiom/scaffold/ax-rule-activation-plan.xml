@@ -3,5 +3,5 @@
       **Rules activate per phase, not per ticket.** `ai/directives/knowledge.xml` (`<Rules>` section) is the canonical rule registry. Invariants of a correctly activated phase:
       - A rule is active for a phase exactly when its `<Triggers>` match THAT PHASE's `Target Files` + `kind` AND its `<SkipWhen>` does not apply. Signal-based only — the directive carries zero hardcoded language/tool knowledge.
       - The phase's `Rules:` bullet list is the **explicit, fully-resolved transitive closure** over `<DependsOn>` — one `[<rule-id>](<rule-file-path>)` per rule, direct + transitive; the phase-subagent reads the list as-is and never walks `<DependsOn>` at runtime.
-      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level section 5 Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
+      - Every `<RequiresVerification>` alias declared by an active rule resolves through infra-spec Verification Commands into the ticket-level Verification table; the phase-subagent runs only the rows whose Required-by intersects its phase's `Rules`.
     </Axiom>

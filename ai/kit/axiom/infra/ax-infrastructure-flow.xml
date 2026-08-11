@@ -10,7 +10,7 @@
 
       **Tool interaction check.** After every tool is chosen, verify compatibility (linter vs formatter, test runner vs type-check, CI vs package manager).
 
-      **Effective rules derived from tools.** After tool stack is finalized, look up each chosen tool in `ai/directives/knowledge.xml` `<Rules>` section: find every rule whose `<Triggers>` match the tool name or its config artefacts. Record matched rule `<File>` paths in spec section 5 Effective Rules. Missing-rule handling: governed by `AX_SCOPE_RULES_DECLARATION` (in-session operator pick — skip / research-and-author / defer).
+      **Effective rules derived from tools.** After tool stack is finalized, look up each chosen tool in `ai/directives/knowledge.xml` `<Rules>` section: find every rule whose `<Triggers>` match the tool name or its config artefacts. Record matched rule `<File>` paths in spec Effective Rules. Missing-rule handling: governed by `AX_SCOPE_RULES_DECLARATION` (in-session operator pick — skip / research-and-author / defer).
 
       **Dev workflow example is required.** The spec includes a Developer Workflow Example (shell-script shape) before final approval.
     </Axiom>

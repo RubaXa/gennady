@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/vitest-rules.xml -->
-<Axiom id="AX_PREFER_VI_FN_FOR_INTERACTION">
-  For tracking call interactions on injected collaborators use `vi.fn()` directly. `vi.spyOn(target, 'method')` allowed when the SUT receives a real object (not an injection seam) and a specific method must be observed without replacing the rest. Even then prefer refactoring to an injection seam. `vi.fn()` on an injected port is the cleanest interaction surface.
-</Axiom>

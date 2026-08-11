@@ -1,8 +1,0 @@
-<!-- source: ai/directives/infra/eslint-setup.xml -->
-<Axiom id="AX_LINT_RUN_IS_MECHANICAL">
-      **The lint pipeline is exactly one command:** `eslint --fix .` (or the project wrapper). A clean run = exits with code 0. Because every rule is `'error'`, exit 0 means zero findings.
-
-      For autofix-capable rules `--fix` resolves findings silently. For motivated non-autofix rules a remaining finding is hard failure — the agent MUST resolve it by editing code (with the explanatory comment as guidance), never by adding a disable comment.
-
-      Forbidden as normal workflow: running `eslint` without `--fix` and treating the report as a TODO list. The `--fix` form is the canonical entry point.
-    </Axiom>

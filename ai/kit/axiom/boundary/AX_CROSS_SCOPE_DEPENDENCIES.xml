@@ -1,4 +1,0 @@
-<!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_CROSS_SCOPE_DEPENDENCIES">
-      Scope spec declares `depends-on` edges in Scope Dependencies. These edges feed cascade computation in `task-scaffolding`. Cross-scope contracts are sourced from `contracts`-type scopes — never described inside a product scope spec.
-    </Axiom>

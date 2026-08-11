@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dbc-audit.directive.xml -->
-<Axiom id="AX_LEARNING_CONTEXT">Treat contracts, anchors, intent comments as learning context embedded into code for future agents. Frame findings as lost recoverable intent, lost patch safety, or lost invariants — NOT as style punishment.</Axiom>

@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>

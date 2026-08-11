@@ -41,7 +41,11 @@ export class GrepSymbolIndexAdapter implements SymbolIndex {
         if (name && !seen.has(name)) seen.set(name, lineAt(content, m.index));
       }
     }
-    return [...seen.entries()].map(([name, line]) => ({ name, kind: 'approximate-declaration', line }));
+    return [...seen.entries()].map(([name, line]) => ({
+      name,
+      kind: 'approximate-declaration',
+      line,
+    }));
   }
 
   /** @see {SymbolIndex#countReferences} in ../../symbol-index.types.ts */

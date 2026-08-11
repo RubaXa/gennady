@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_VERIFY_AND_FINALIZE">
-Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
-</Axiom>

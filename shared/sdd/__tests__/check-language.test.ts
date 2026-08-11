@@ -38,17 +38,29 @@ describe('checkSpecLanguage', () => {
     const findings = checkSpecLanguage('s.md', md);
     const codes = findings.map((f) => f.code);
     assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
-    const words = ['фанаут', 'зафейл', 'засабмит', 'линку', 'мёрж', 'джоб', 'тул', 'капот', 'сервис', 'проводе'];
+    const words = [
+      'фанаут',
+      'зафейл',
+      'засабмит',
+      'линку',
+      'мёрж',
+      'джоб',
+      'тул',
+      'капот',
+      'сервис',
+      'проводе',
+    ];
     for (const w of words) {
       assert.ok(
         findings.some((f) => f.message.toLowerCase().includes(w)),
-        `expected a finding mentioning "${w}", got: ${JSON.stringify(findings.map((f) => f.message))}`,
+        `expected a finding mentioning "${w}", got: ${JSON.stringify(findings.map((f) => f.message))}`
       );
     }
   });
 
   it('прижившиеся англицизмы не задеваются', () => {
-    const md = 'Значение резолвится через промис, чанк уходит в фолбэк, событие эмитит и диспатчит стор.';
+    const md =
+      'Значение резолвится через промис, чанк уходит в фолбэк, событие эмитит и диспатчит стор.';
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
 

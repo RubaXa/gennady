@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_FLAT_JSDOC_FOR_PROPERTIES">
-Single-line JSDoc for properties. When defining properties inside `type`, `interface`, or DTOs, generate the JSDoc as a single flat string to preserve vertical density. If multiple tags are required, merge them on the same line using the ` | ` separator. Example: `/** @purpose Smallest id in the range | @invariant >= 0 */`. Multi-line JSDoc blocks are strictly reserved for module roots, classes, and methods.
-
-` | ` separates distinct JSDoc **tags**, not continuation lines of one tag. A multi-sentence `@purpose` is compressed to one sentence — not joined with ` | `. Discard sentences that restate the property name or explain the obvious; keep only the constraint or role that cannot be inferred from the type.
-</Axiom>

@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/svelte-testing.xml -->
-<Axiom id="AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT">
-  After any state mutation (user event, prop change, direct state write, simulated time advance) the test MUST call `flushSync()` from `svelte` before asserting on the DOM. `flushSync` forces pending `$effect` callbacks and DOM updates to run synchronously; without it the assertion runs against an intermediate, often stale, DOM.
-
-  Async helpers like `userEvent` may flush implicitly in some scenarios — relying on that implicit flush is fragile. Explicit `flushSync()` after the mutation is the discipline.
-</Axiom>

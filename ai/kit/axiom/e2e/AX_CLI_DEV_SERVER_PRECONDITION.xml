@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/playwright-cli.xml -->
-<Axiom id="AX_CLI_DEV_SERVER_PRECONDITION">
-      Every CLI command depends on a running application. The agent confirms the dev server is reachable (HTTP 200 at the expected URL, or the project's known boot-complete signal) BEFORE issuing the first Playwright call. Skipping this turns the first `page.goto` failure into a confusing «Playwright is broken» investigation instead of a one-line «start the dev server» fix.
-    </Axiom>

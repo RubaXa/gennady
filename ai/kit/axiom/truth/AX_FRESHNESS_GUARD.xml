@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dbc-audit.directive.xml -->
-<Axiom id="AX_FRESHNESS_GUARD">Audit is invalid if the primary source was not read in the current execution context, OR if findings cite copied rules without source reference. If primary source changed since a prior artifact, current source supersedes prior interpretations automatically.</Axiom>

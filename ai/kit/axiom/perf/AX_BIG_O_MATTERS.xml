@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/rules/data-structures.xml -->
-<Axiom id="AX_BIG_O_MATTERS">Неправильный выбор структуры данных ведет к O(n^2) сложности. На целевом железе (Mid-range CPU) вложенные сканирования массивов недопустимы.</Axiom>

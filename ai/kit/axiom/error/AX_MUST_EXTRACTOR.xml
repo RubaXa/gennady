@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/result-conventions.xml -->
-<Axiom id="AX_MUST_EXTRACTOR">
-      Extract a Result's value with `must`: `must(result)` returns the data or throws the contained error. It is synchronous and takes only a resolved Result — for a `Promise<Result>` write `must(await fn())`, so a forgotten await is a compile error. Combine with try/catch at the boundary.
-    </Axiom>

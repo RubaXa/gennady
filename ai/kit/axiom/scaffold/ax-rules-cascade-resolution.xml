@@ -4,12 +4,12 @@
 
       Tier order (low → high):
       1. **traversed-scopes** — union of Effective Rules from all scopes reachable via `depends-on` from target scope (transitive closure).
-      2. **target-scope** — scope spec 5 Effective Rules (infra) or 4.5 Rules (product/library).
-      3. **module:<name>** — module spec 9 Handoff Module Rules Additions (when modules exist).
+      2. **target-scope** — scope spec Effective Rules (infra) or Rules (product/library).
+      3. **module:<name>** — module spec Handoff Module Rules Additions (when modules exist).
       4. **task** — operator-supplied during ticket generation.
 
       Invariants of the materialized cascade:
       - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`.
-      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's section 3 Phases; a ticket-level rule list is a structure violation.
+      - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's Phases; a ticket-level rule list is a structure violation.
       - Auditor recomputes the effective set per-phase from these sources and compares with each phase block.
     </Axiom>

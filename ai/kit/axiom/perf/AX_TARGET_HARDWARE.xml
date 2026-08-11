@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/perf-auditor.directive.xml -->
-<Axiom id="AX_TARGET_HARDWARE">На 4–8 GB RAM аллокация объектов важнее микро-CPU-оптимизаций. Избегай промежуточных массивов и утечек памяти.</Axiom>

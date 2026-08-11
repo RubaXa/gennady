@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/svelte5-runes.xml -->
-<Axiom id="AX_EFFECT_OWNERSHIP_AND_CLEANUP">
-  `$effect(() => { ... })` runs after DOM updates; return a teardown function from the body when the effect allocates a resource (timer, subscription, listener, observer) — Svelte runs the teardown before the next run and on component destroy.
-
-  For effects outside a component context, use `$effect.root(() => { ... })` and dispose of its returned cleanup function explicitly. Forgetting the teardown function inside an effect that allocates is the classic source of leaked listeners and timers.
-</Axiom>

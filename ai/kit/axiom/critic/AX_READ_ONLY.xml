@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic-protocol.xml -->
-<Axiom id="AX_READ_ONLY">Read artifact + parent spec. Write text output. NEVER edit files — orchestrator applies edits.</Axiom>

@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/sveltekit-rules.xml -->
-<Axiom id="AX_SK_VALIDATION_AT_ACTION_BOUNDARY">
-Form actions validate request input synchronously at the top, return `fail(status, payload)` on rejection. The payload is exposed as `form` on the page (`let { form } = $props()`) and re-renders the form with the offending fields preserved. Throwing arbitrary errors from an action surfaces as a 500 with no recoverable UI state — `fail()` is the contract channel.
-</Axiom>

@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_PREFER_FACTORY_OVER_HOOKS">
-Default preparation = the file's single factory called inside the case. Each case constructs the exact context it needs by `createXxxContext({ ... overrides })` at the top of the case, destructures only the fields it uses, and proceeds. Per-case dependencies become visible at the call site; no scrolling to a hook; no shared mutable `let` populated in `beforeEach`.
-
-`beforeEach` is reserved for setup that REQUIRES teardown (see `AX_HOOKS_ONLY_FOR_LIFECYCLE`).
-</Axiom>

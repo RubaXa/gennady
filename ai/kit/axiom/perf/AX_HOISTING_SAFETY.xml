@@ -1,2 +1,0 @@
-<!-- source: ai/directives/perf-auditor/rules/memory-gc.xml -->
-<Axiom id="AX_HOISTING_SAFETY">Вынос (hoisting) объектов или регулярных выражений из цикла безопасен только в том случае, если их состояние не мутируется и не сохраняется в массив/замыкание на каждой итерации.</Axiom>

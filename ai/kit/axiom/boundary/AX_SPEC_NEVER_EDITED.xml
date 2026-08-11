@@ -1,4 +1,0 @@
-<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
-<Axiom id="AX_SPEC_NEVER_EDITED">
-      Phase agent does NOT modify `specs/**`. Spec wrong / incomplete / stale → record `<ts> insight <observation> → <spec-section>, <what-change>`. Audit picks up these entries and proposes the spec change; operator approves and applies.
-    </Axiom>

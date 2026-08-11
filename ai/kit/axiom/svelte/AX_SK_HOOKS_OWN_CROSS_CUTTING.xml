@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/sveltekit-rules.xml -->
-<Axiom id="AX_SK_HOOKS_OWN_CROSS_CUTTING">
-Cross-cutting server concerns (auth, request enrichment, error reporting) live in `src/hooks.server.ts` via `handle({ event, resolve })`. Auth context is attached to `event.locals` and read downstream by `load` / `actions`. `handleError({ error, event })` is the single point that maps unhandled exceptions to the user-facing shape.
-
-Client-side cross-cutting goes in `src/hooks.client.ts`. Per-route boilerplate (re-checking auth in every `load`) is forbidden — `event.locals` is the contract for «who is the caller».
-</Axiom>

@@ -1,2 +1,0 @@
-<!-- source: ai/directives/sdd/critic.directive.xml -->
-<Axiom id="AX_TASK_PARALLEL">Tasks critiqued in DAG layers. Same layer (no inter-dependencies) → parallel dispatch. Different layers → sequential.</Axiom>

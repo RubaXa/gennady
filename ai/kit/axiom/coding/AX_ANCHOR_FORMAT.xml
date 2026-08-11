@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_ANCHOR_FORMAT">
-Anchors: `// #region START_[CONTEXT]_[INTENT]` / `// #endregion END_[CONTEXT]_[INTENT]`. Uppercase tokens. Parity mandatory: every `START_X` must have `END_X` in the same file. START_/END_ on top of `#region`/`#endregion` is intentional — paired uppercase tokens are attention anchors for sliding-window LLMs and XML-like span delimiters for long-context retrieval.
-
-When a block has a non-obvious invariant or failure boundary, attach payload inside the anchor (outside it is detached from the block it protects): ONE payload kind → inline on the opening line `// #region START_[NAME] — <key>: <value>`; 2+ kinds → separate comment lines immediately after the opening anchor. Greppable: `#(region|endregion)\s+(START|END)_[A-Z0-9_]+`.
-</Axiom>

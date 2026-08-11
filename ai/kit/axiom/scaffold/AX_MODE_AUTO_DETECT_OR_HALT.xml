@@ -1,9 +1,0 @@
-<!-- source: ai/directives/sdd/discovery.directive.xml -->
-<Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
-      | spec exists? | verb | Mode |
-      |---|---|---|
-      | No | — | greenfield |
-      | Yes | refine / extend / add / расширь / добавь / уточни | refine |
-      | Yes | pivot / replace / заменим / поменяем архитектуру | pivot |
-      | Yes | none of the above | HALT `H_AMBIGUOUS_MODE` — ask binary: refine or pivot? |
-    </Axiom>

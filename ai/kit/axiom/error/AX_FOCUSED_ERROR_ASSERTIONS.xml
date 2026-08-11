@@ -1,4 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_FOCUSED_ERROR_ASSERTIONS">
-Error cases use a focused set: domain error class via `instanceof` AND a stable message fragment via regex match. Do NOT strict-equal a dynamic error message (correlation ids, timestamps) — flaky failures with no diagnostic signal.
-</Axiom>

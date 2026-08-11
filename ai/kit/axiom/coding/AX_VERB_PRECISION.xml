@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_VERB_PRECISION">
-Use precise verbs. `retrieve` (not `get`), `verify` (not `check`), `compose` (not `make`). Verbs encode the operation's contract. `get` is ambivalent; `retrieve` implies lookup in an external source with possible failure path.
-</Axiom>

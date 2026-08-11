@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/playwright-cli.xml -->
-<Axiom id="AX_CLI_AX_TREE_AS_PRIMARY_VISION">
-      `page.ariaSnapshot()` is the primary perceptual channel for an agent. It emits a YAML representation of the accessibility tree — the same structure that `getByRole()` queries and `toMatchAriaSnapshot()` asserts. So the AX tree is the lingua franca across explore → interact → assert.
-
-      Pixel-level vision (screenshots, visual diff) is a secondary channel reserved for layout-only concerns. Choosing it as the primary signal binds the test to rendering pipelines that vary across machines.
-    </Axiom>

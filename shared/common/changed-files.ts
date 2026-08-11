@@ -19,9 +19,7 @@ export function getChangedSourceFiles(root: string): string[] {
   );
   return [...all].filter(
     (p) =>
-      /\.(ts|tsx|js)$/.test(p) &&
-      !/\.(test|spec)\.[jt]sx?$/.test(p) &&
-      !p.includes('node_modules/')
+      /\.(ts|tsx|js)$/.test(p) && !/\.(test|spec)\.[jt]sx?$/.test(p) && !p.includes('node_modules/')
   );
 }
 

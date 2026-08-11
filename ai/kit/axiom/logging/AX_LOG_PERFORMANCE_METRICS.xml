@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_LOG_PERFORMANCE_METRICS">
-Timing for long operations only. Measure with `performance.now()`, format as `${time.toFixed(2)}ms`. Timing a trivial operation is noise that dilutes signal; timing an I/O boundary is critical perf-trace.
-</Axiom>

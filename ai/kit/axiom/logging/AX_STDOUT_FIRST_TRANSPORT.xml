@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dev-review.directive.xml -->
-<Axiom id="AX_STDOUT_FIRST_TRANSPORT">Default transport: prompt input → stdout output. Disk artifacts only when necessary.</Axiom>

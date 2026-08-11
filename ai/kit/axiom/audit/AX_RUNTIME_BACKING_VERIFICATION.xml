@@ -1,8 +1,0 @@
-<!-- source: ai/directives/sdd/audit.directive.xml -->
-<Axiom id="AX_RUNTIME_BACKING_VERIFICATION">
-      Runtime Backing and Verification Levels must match reality.
-      - Ticket declared `real-runtime` → look for real runtime hooks (event listeners, lifecycle subscribers, OS bridge calls). Only manual publish / test seams → `RUNTIME_BACKING_VIOLATION`.
-      - `simulation` allowed only with explicit `Deferred Runtime Scope` either in ticket or in updated spec.
-      - `not-implemented` implies real implementation is still ahead (separate task); confirm only contract artifacts exist; no production logic snuck in.
-      - For each declared `Verification Level`, corresponding test artifact must exist. Mismatch → `RUNTIME_BACKING_VIOLATION`.
-    </Axiom>

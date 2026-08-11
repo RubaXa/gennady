@@ -1,6 +1,0 @@
-<!-- source: ai/directives/sdd/audit.directive.xml -->
-<Axiom id="AX_COMPLETENESS_CHECK">
-      Two-sided.
-      - **Forward:** every Port, Adapter, Entity, operation from Entity Surface, Acceptance Scenario has a corresponding artifact in code.
-      - **Backward:** every artifact in code has a corresponding mention in spec/ticket. Prone to false positives (utility helpers, internal abstractions). Apply with judgment — explicit public surface checked strictly; internal helpers informational only.
-    </Axiom>

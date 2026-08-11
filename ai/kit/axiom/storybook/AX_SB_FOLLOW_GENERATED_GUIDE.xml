@@ -1,4 +1,0 @@
-<!-- source: ai/directives/infra/storybook-setup.xml -->
-<Axiom id="AX_SB_FOLLOW_GENERATED_GUIDE">
-  After `init` completes, the generated setup notes (`storybook` CLI output + any `.storybook/` README or onboarding file) are normative. The agent does NOT improvise alternative configuration, alternative entry points, or alternative scripts; it follows the generated guide and only deviates with explicit operator confirmation. Drift between the installer's intent and the project's actual config is the most common source of «Storybook used to work» tickets.
-</Axiom>

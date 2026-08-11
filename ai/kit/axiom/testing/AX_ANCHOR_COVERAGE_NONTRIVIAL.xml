@@ -1,4 +1,0 @@
-<!-- source: ai/directives/coding/typescript-rules.xml -->
-<Axiom id="AX_ANCHOR_COVERAGE_NONTRIVIAL">
-In a complex function wrap EVERY nested control-flow block with independent intent, side effects, or refactor risk: `if`/`else`, `for`/`for...of`, `while`, `switch`, meaningful `case`, `try`, `catch`. Do not skip anchors because the block looks short or locally readable. If another agent may need to isolate, patch, move, or audit the block as a unit, anchors are mandatory. This is patch-grammar, not cosmetic.
-</Axiom>

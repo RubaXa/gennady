@@ -1,6 +1,0 @@
-<!-- source: ai/directives/coding/result-conventions.xml -->
-<Axiom id="AX_NO_RESULT_OBJECT_LITERAL">
-      Manual `{ ok: true, data: x, error: null }` and `{ ok: false, data: null, error: e }` are forbidden. Always use `success(x)` / `fail(e)`.
-      Rationale: bypasses the contract, breaks silently if Result shape evolves.
-      Autofix: ok===true → success(data_value); ok===false → fail(error_value).
-    </Axiom>
