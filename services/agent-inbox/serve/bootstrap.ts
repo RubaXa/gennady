@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175, TSK-181
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -12,8 +12,6 @@ import { Agent as UndiciAgent } from 'undici';
 import { logger } from '#logger';
 import { isOpencodePid, terminateOrphanedOpencode } from './pid-utils.ts';
 import { StateStore } from '../modules/inbox-core/state-store.ts';
-import { VcsInboxMock } from '../modules/inbox-core/vcs-inbox.mock.ts';
-import { VcsInboxReal } from '../modules/inbox-core/vcs-inbox.real.ts';
 import { VcsGitlabPort } from '../modules/inbox-vcs/vcs-gitlab.port.ts';
 import type { VcsEffectPort, VcsPort } from '../modules/inbox-vcs/vcs-port.ts';
 import { selectVcsRuntime } from '../modules/inbox-vcs/vcs-runtime.ts';
@@ -33,7 +31,6 @@ import { TaskRegistry } from '../modules/inbox-queue/task-registry.ts';
 import { SessionRouter } from '../modules/inbox-queue/session-router.ts';
 import { PipelineRuntime } from '../modules/inbox-pipeline/pipeline-runtime.ts';
 import { VcsGitlabClient } from '../../vcs-client/gitlab/vcs-gitlab-client.ts';
-import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../modules/inbox-opencode/opencode.mock.ts';
 import { OpenCodeReal } from '../modules/inbox-opencode/opencode.real.ts';
 import {
@@ -45,16 +42,13 @@ import {
   type OpenCodeMessage,
 } from '../modules/inbox-opencode/opencode.port.ts';
 import { composeError, type OpenCodeCallResult } from '../modules/inbox-opencode/errors.ts';
-import { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
-import { RoleScheduler } from '../modules/inbox-roles/role-scheduler.ts';
 import { SessionPool } from '../modules/inbox-opencode/session-pool.ts';
 import { SessionRegistry } from '../modules/inbox-opencode/session-registry.ts';
 import { SessionLifecycle } from '../modules/inbox-opencode/session-lifecycle.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
-import { BoardProviderReal } from '../modules/inbox-api/board-provider.real.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
-import { setDryRun, isDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
+import { setDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
 import {
   BootstrapSafetyError,
   ReviewRuntimeProfile,
@@ -66,7 +60,6 @@ import {
 import type { ReviewRuntimeProfileSpec } from '../modules/inbox-core/types/review-runtime-profile-spec.type.ts';
 import type { ReviewRuntimeRoots } from '../modules/inbox-core/types/review-runtime-roots.type.ts';
 import type { ReviewRuntimeBinding } from '../modules/inbox-core/types/review-runtime-binding.type.ts';
-import type { buildNodeContext } from '../modules/inbox-roles/context-builder.ts';
 
 // ═══════════════════════════════════════════════════════════════
 // Degraded OpenCode adapter — returns SESSION_ERROR for all prompts.
@@ -125,6 +118,27 @@ class DegradedOpencode extends OpenCodePort {
   async close(_sid: string): Promise<void> {
     /* no-op in degraded mode */
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Lifecycle coordinator shim — backward-compat surface for CLI consumers while the
+// role scheduler is being retired. All review execution goes through PipelineRuntime.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * @purpose No-op lifecycle coordinator shim.
+ * @invariant CLI consumers (serve.cmd.ts) still call tick()/advanceInstances()/stop() through this
+ *   interface; all substantive review execution is owned by PipelineRuntime after TSK-181 migration.
+ */
+class NoOpScheduler {
+  async tick(): Promise<void> {}
+  async advanceInstances(): Promise<void> {}
+  async stop(): Promise<void> {}
+  async assignManual(
+    _mrId: string,
+    _role: string,
+    _rights?: Record<string, unknown>
+  ): Promise<void> {}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -339,16 +353,14 @@ export type BootstrapConfig = {
   runtimeProfile?: ReviewRuntimeProfileSpec;
   /** @purpose Overrides for the three pairwise-disjoint namespace roots. */
   runtimeRoots?: Partial<ReviewRuntimeRoots>;
-  /** @purpose Controlled content-context seam used by integration composition; production uses the live builder. */
-  buildContentContext?: typeof buildNodeContext;
   /** @purpose Reopen an existing test run read-only instead of creating a fresh run. */
   reopenRun?: boolean;
   /**
    * @purpose Suppress the two external-write seams (VCS mutation, operator DM) — journals the
    *   intended write to the dashboard console instead (TSK-131).
    * @invariant When set, mirrored into `INBOX_DRY_RUN` so every code path (including
-   *   scheduler-driven effect nodes) observes the same flag. Undefined leaves the env-derived
-   *   default untouched.
+   *   pipeline effect nodes) observes the same flag. Undefined leaves the env-derived default
+   *   untouched.
    */
   dryRun?: boolean;
   /**
@@ -363,8 +375,12 @@ export type BootstrapConfig = {
 export type BootstrapResult = {
   /** @purpose The HTTP server instance, already listening while bootstrap phases run. */
   server: HttpServer;
-  /** @purpose The role scheduler (timer not yet started). */
-  scheduler: RoleScheduler;
+  /**
+   * @purpose No-op lifecycle coordinator shim — backward-compat surface for CLI consumers.
+   * @invariant Substantive review execution is owned by `pipeline`; this shim satisfies the
+   *   CLI's tick/stop surface until serve.cmd.ts migrates to pipeline-first orchestration.
+   */
+  scheduler: NoOpScheduler;
   /** @purpose The OpenCode adapter (mock, real, or degraded). */
   opencode: OpenCodePort;
   /** @purpose Whether the system is in degraded mode (AI disabled). */
@@ -373,7 +389,7 @@ export type BootstrapResult = {
   opencodeStatus: string;
   /** @purpose Polling interval in ms. */
   pollingInterval: number;
-  /** @purpose List of loaded role names. */
+  /** @purpose Registered role names — empty after journal-first migration; kept for CLI backward compat. */
   roles: string[];
   /** @purpose The port the server will listen on. */
   port: number;
@@ -415,10 +431,10 @@ export { BootstrapSafetyError };
 
 /**
  * @purpose Assemble DI for agent-inbox serve: load config, create adapters,
- * wire engine + scheduler + server, return ready handles.
+ * wire pipeline runtime + server, return ready handles.
  * @param config Bootstrap configuration — mocks, port, optional stateDir.
  * @throws When config is absent or opencode binary is not found in production mode.
- * @returns Bootstrap result with server, scheduler, opencode adapter and status metadata.
+ * @returns Bootstrap result with server, pipeline, opencode adapter and status metadata.
  */
 export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResult> {
   const port = config.port ?? 4174;
@@ -533,7 +549,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   // A failed production config still starts a read-only failed boot surface; external adapters
   // are intentionally not constructed until the operator fixes the configuration.
 
-  let vcs: VcsInboxPort;
   let opencode: OpenCodePort;
   let degraded = false;
   let opencodeStatus: string;
@@ -564,7 +579,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   let initialSyncSnapshots = [] as Awaited<ReturnType<SyncService['twoTierSync']>>;
 
   if (useMocks) {
-    vcs = new VcsInboxMock();
     opencode = new OpenCodeMock();
     opencodeStatus = 'mock (dev/e2e)';
   } else {
@@ -576,11 +590,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       configVcsHost ?? ''
     );
     vcsEffects = selectVcsRuntime(runtimeBinding.profile.externalIoPolicy, vcsTruth).effects;
-    vcs = new VcsInboxReal({
-      host: configVcsHost,
-      token,
-      truth: vcsTruth,
-    });
     const inboxStateDir = join(stateStore.getStateDir(), 'agent-inbox');
     vcsJournal = new EventJournal(join(inboxStateDir, 'events.jsonl'));
     vcsRegistry = new InboxRegistryAccess(stateStore.getStateDir());
@@ -852,23 +861,13 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       return true;
     },
   });
-  // One unified priority pool is deliberately injected into chat and role scheduling. A second
-  // pool would let each path exceed the configured cap and defeat cross-path prioritization.
-  const reviewSessionPool = chatSessionPool;
   const lifecycleReaper = setInterval(() => {
     void sessionLifecycle.reapExpired();
   }, 60_000);
   lifecycleReaper.unref();
 
-  // F6: Roles start inactive by default — no auto-activation (mock mode activates after seeding
-  // below; real mode via operator dashboard action). Real serve also drives the reviewer graph
-  // against a live worktree/changeset (mock mode keeps its zero-network empty-artifacts start);
-  // effect nodes honour the dry-run flag (TSK-131).
-  // #region START_CREATE_ROLES
-  const engine = new RoleEngine();
-  await engine.loadAll();
-
-  // One boot-owned queue is shared by scheduler, HTTP and its durable Executor lifecycle.
+  // #region START_COMPOSE_PIPELINE
+  // One boot-owned queue is shared by pipeline runtime, HTTP and its durable Executor lifecycle.
   const pipelineRegistry = new TaskRegistry();
   const pipelineQueue = new InMemoryTaskQueue(pipelineRegistry);
   const chatSessionRouter = new SessionRouter(
@@ -904,23 +903,8 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       : undefined
   );
   pipeline.start();
+  // #endregion END_COMPOSE_PIPELINE
 
-  const scheduler = new RoleScheduler({
-    engine,
-    store: stateStore,
-    vcs,
-    opencode,
-    pollingInterval,
-    buildLiveContext: !useMocks || config.buildContentContext !== undefined,
-    bootReadiness,
-    buildContentContext: config.buildContentContext,
-    dryRun: isDryRun(),
-    reviewSessionPool,
-    pipeline,
-  });
-  // #endregion END_CREATE_ROLES
-
-  const loadedRoles = engine.list();
   // The readiness owner advances exactly once through the public D-305 sequence. The HTTP
   // router receives this same object, so no local router state can drift from production boot.
   if (bootReadiness.snapshot().phase !== 'failed') {
@@ -946,11 +930,6 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       >;
     };
     const mockSnapshots = await loadMockSnapshots();
-
-    // F6: In mock/dev mode, activate roles after seeding for BDD parity
-    for (const role of loadedRoles) {
-      engine.activate(role.name);
-    }
 
     await server.attachRuntime({
       port,
@@ -980,19 +959,19 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     logger.info('[bootstrap] [idle → assembled]', {
       mocks: useMocks,
       port,
-      roles: loadedRoles.map((r) => r.name),
+      roles: [],
       opencodeStatus,
       degraded,
     });
 
     return {
       server,
-      scheduler,
+      scheduler: new NoOpScheduler(),
       opencode,
       degraded,
       opencodeStatus,
       pollingInterval,
-      roles: loadedRoles.map((r) => r.name),
+      roles: [],
       port,
       opencodeProcess,
       opencodePidFile,
@@ -1012,9 +991,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   }
 
   // #region START_CREATE_SERVER
-  // F1: Real mode — BoardProviderReal backed by RoleScheduler; reports/<mr>/ read from the
-  // same state dir the reviewer graph materializes to disk (TSK-122 gap-3/gap-4).
-  const boardProvider = new BoardProviderReal(scheduler, engine, stateStore.getStateDir());
+  // F1: Real mode — BoardProviderMock as pre-wire default; BoardProjection is installed by
+  // attachRuntime via http-server._wireRuntime() once inboxApi config is provided (TSK-179).
+  const boardProvider = new BoardProviderMock();
   if (!syncService || !vcsJournal || !vcsRegistry) {
     throw new Error('[bootstrap] Production VCS truth dependencies were not assembled');
   }
@@ -1053,19 +1032,19 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
   logger.info('[bootstrap] [idle → assembled]', {
     mocks: useMocks,
     port,
-    roles: loadedRoles.map((r) => r.name),
+    roles: [],
     opencodeStatus,
     degraded,
   });
 
   return {
     server,
-    scheduler,
+    scheduler: new NoOpScheduler(),
     opencode,
     degraded,
     opencodeStatus,
     pollingInterval,
-    roles: loadedRoles.map((r) => r.name),
+    roles: [],
     port,
     opencodeProcess,
     opencodePidFile: opencodePidFile ?? null,
