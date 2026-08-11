@@ -1,12 +1,11 @@
 // @file: HttpServer — node:http server on port 4174 with routing, CORS, static files, graceful shutdown.
 // @consumers: gennady inbox serve (CLI), e2e tests
-// @tasks: TSK-106, TSK-133, TSK-157, TSK-158, TSK-162, TSK-163, TSK-170
+// @tasks: TSK-106, TSK-133, TSK-157, TSK-158, TSK-162, TSK-163, TSK-170, TSK-179
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { logger } from '#logger';
 import { BoardRouter } from './routers/board.router.ts';
 import { MrRouter } from './routers/mr.router.ts';
-import { RoleRouter } from './routers/role.router.ts';
 import { DiagnosticsRouter } from './routers/diagnostics.router.ts';
 import { ArtifactRouter } from './routers/artifact.router.ts';
 import { AuditRouter } from './routers/audit.router.ts';
@@ -128,8 +127,6 @@ export class HttpServer {
   protected _boardRouter: BoardRouter;
   /** @purpose Router for MR API endpoints. */
   protected _mrRouter: MrRouter;
-  /** @purpose Router for role-activation API endpoints. */
-  protected _roleRouter: RoleRouter;
   /** @purpose Router for the server-log diagnostics endpoint (🐞 button). */
   protected _diagnosticsRouter: DiagnosticsRouter;
   /** @purpose Router for artifact browser API endpoints. */
@@ -171,7 +168,6 @@ export class HttpServer {
     this._config = config;
     this._boardRouter = new BoardRouter(config.boardProvider);
     this._mrRouter = new MrRouter(config.boardProvider);
-    this._roleRouter = new RoleRouter(config.boardProvider);
     this._diagnosticsRouter = new DiagnosticsRouter();
     this._artifactRouter = new ArtifactRouter(config.boardProvider);
     this._auditRouter = new AuditRouter(config.boardProvider);
@@ -192,7 +188,6 @@ export class HttpServer {
     this._config = { ...this._config, ...config };
     this._boardRouter = new BoardRouter(config.boardProvider);
     this._mrRouter = new MrRouter(config.boardProvider);
-    this._roleRouter = new RoleRouter(config.boardProvider);
     this._artifactRouter = new ArtifactRouter(config.boardProvider);
     this._auditRouter = new AuditRouter(config.boardProvider);
     this._wireRuntime(this._config);
@@ -451,11 +446,6 @@ export class HttpServer {
 
     if (this._mrRouter.matches(req)) {
       void this._mrRouter.handle(req, res);
-      return;
-    }
-
-    if (this._roleRouter.matches(req)) {
-      void this._roleRouter.handle(req, res);
       return;
     }
 

@@ -79,7 +79,7 @@ graph TD
 | [TSK-176](inbox-pipeline/inbox-pipeline.task-176.md)   | Deterministic review control   | inbox-pipeline  | 173–175             | `[x]` DONE |
 | [TSK-177](inbox-queue/inbox-queue.task-177.md)         | Packages and automation        | inbox-queue     | 173,174,176         | `[x]` DONE |
 | [TSK-178](inbox-chat/inbox-chat.task-178.md)           | Chat and DEV handoff           | inbox-chat      | 173,175–177         | `[x]` DONE |
-| [TSK-179](inbox-api/inbox-api.task-179.md)             | Journal projections/API        | inbox-api       | 173,174,176–178     | `[ ]` TODO |
+| [TSK-179](inbox-api/inbox-api.task-179.md)             | Journal projections/API        | inbox-api       | 173,174,176–178     | `[x]` DONE |
 | [TSK-180](inbox-mocks/inbox-mocks.task-180.md)         | Deterministic mock runtime     | inbox-mocks     | 173–175,177,179     | `[ ]` TODO |
 | [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[ ]` TODO |
 | [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[ ]` TODO |
