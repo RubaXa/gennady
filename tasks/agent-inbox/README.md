@@ -80,7 +80,7 @@ graph TD
 | [TSK-177](inbox-queue/inbox-queue.task-177.md)         | Packages and automation        | inbox-queue     | 173,174,176         | `[x]` DONE |
 | [TSK-178](inbox-chat/inbox-chat.task-178.md)           | Chat and DEV handoff           | inbox-chat      | 173,175–177         | `[x]` DONE |
 | [TSK-179](inbox-api/inbox-api.task-179.md)             | Journal projections/API        | inbox-api       | 173,174,176–178     | `[x]` DONE |
-| [TSK-180](inbox-mocks/inbox-mocks.task-180.md)         | Deterministic mock runtime     | inbox-mocks     | 173–175,177,179     | `[ ]` TODO |
+| [TSK-180](inbox-mocks/inbox-mocks.task-180.md)         | Deterministic mock runtime     | inbox-mocks     | 173–175,177,179     | `[x]` DONE |
 | [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[ ]` TODO |
 | [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[ ]` TODO |
 | [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[ ]` TODO |
