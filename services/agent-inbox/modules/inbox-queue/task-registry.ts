@@ -371,7 +371,8 @@ export class TaskRegistry {
     const resolved =
       this._types.get(name) ??
       (name.startsWith('track_') ? this._types.get('track_*') : undefined) ??
-      (name.startsWith('lens_') ? this._types.get('lens_*') : undefined);
+      (name.startsWith('lens_') ? this._types.get('lens_*') : undefined) ??
+      (name.startsWith('effect_') ? this._types.get('effect_*') : undefined);
     if (!resolved) {
       const error = new Error(`[TaskRegistry#resolveType] Unknown task type: ${name}`);
       logger.error(`[TaskRegistry#resolveType] [lookup → not_found] ${name}`, { error });
