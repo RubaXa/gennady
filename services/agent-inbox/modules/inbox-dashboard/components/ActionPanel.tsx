@@ -1,90 +1,19 @@
 // @file: ActionPanel — final action bundle for an MR: reviewer (post/approve/redispatch/skip) or author (publish/react/copy task/update description/redispatch/skip).
 // @consumers: MrDetailPage
-// @tasks: TSK-107, TSK-146
+// @tasks: TSK-107, TSK-146, TSK-178
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Check, ShieldCheck, RotateCcw, X, ThumbsUp, ClipboardCopy, Pencil } from 'lucide-react';
 import { executeAction, recordFixTaskCopy } from '../services/api-client.ts';
 import { cn } from '../lib/utils.ts';
-import type { MrDetail, FixTaskCopyResult } from '../../inbox-api/types.ts';
+import type { MrDetail } from '../../inbox-api/types.ts';
+import {
+  ReviewHandoffGenerator,
+  type ReviewHandoff,
+} from '../../inbox-chat/review-handoff-generator.ts';
 
 /** @purpose One finding rendered as a checkable, inline-editable posting candidate. */
 type FindingCandidate = MrDetail['findings'][number];
-
-/**
- * @purpose Compose the full first-click micro-directive for the author's downstream agent, given MR identity and findings.
- * @invariant Downstream agent must re-verify each finding against current code — a finding can be wrong or stale.
- * @param mr MR identity (project/iid/title/webUrl) — lets the receiving agent orient without extra lookups.
- * @param findings Findings to include verbatim.
- * @returns Markdown text ready for clipboard.
- */
-function composeFixTask(
-  mr: { project: string; iid: number; title: string; webUrl: string },
-  findings: FindingCandidate[]
-): string {
-  const items = findings.length
-    ? findings.map((f) => `- [${f.severity}] ${f.file}:${f.line} — ${f.message}`).join('\n')
-    : '(нет находок)';
-  return `# Задание на исправление — MR "${mr.title}" (${mr.project}!${mr.iid})
-
-Это результат автоматического код-ревью, не твоя собственная находка «с нуля». MR: ${mr.webUrl}
-Ревью-агент прошёл по диффу и оставил замечания ниже. Он мог ошибиться или устареть (если код
-менялся после ревью) — прежде чем править, открой каждый файл:строку и сверь замечание с текущим
-кодом. Не применяй бездумно, реши по каждому пункту сам.
-
-## Находки
-
-${items}
-
-## Что сделать
-Согласен с замечанием → почини. Не согласен или оно больше не актуально → не молчи, скажи
-оператору почему, коротко, по каждому такому пункту.
-`;
-}
-
-/**
- * @purpose Compose a brief repeat-click message: history plus what changed since the last "Copy fix task" click.
- * @invariant NOT a full micro-directive (see composeFixTask) — added findings shown in full, resolved by location only, unchanged as a count only.
- * @param mr MR identity (project/iid/title) for the heading.
- * @param findings Current findings, used to recover full text for `delta.added` entries (the delta itself carries no message text).
- * @param delta Signature diff against the last "Copy fix task" click.
- * @param priorCopyCount Number of prior clicks — this click is number `priorCopyCount + 1`.
- * @param lastCopiedAt Timestamp of the previous click, verbatim.
- * @returns Markdown text ready for clipboard.
- */
-function composeFixTaskDelta(
-  mr: { project: string; iid: number; title: string },
-  findings: FindingCandidate[],
-  delta: NonNullable<FixTaskCopyResult['delta']>,
-  priorCopyCount: number,
-  lastCopiedAt: string
-): string {
-  const addedItems = delta.added.map((signature) => {
-    const match = findings.find((f) => f.file === signature.file && f.line === signature.line);
-    return `- ${signature.file}:${signature.line} — ${match?.message ?? '(текст недоступен)'}`;
-  });
-  const resolvedItems = delta.resolved.map((signature) => `- ${signature.file}:${signature.line}`);
-
-  const noChange = delta.added.length === 0 && delta.resolved.length === 0;
-  const body = noChange
-    ? 'Ничего нового с прошлого раза.'
-    : `## Новое
-
-${addedItems.length ? addedItems.join('\n') : '(нет)'}
-
-## Устранено
-
-${resolvedItems.length ? resolvedItems.join('\n') : '(нет)'}`;
-
-  return `# Копирование №${priorCopyCount + 1} — MR "${mr.title}" (${mr.project}!${mr.iid})
-
-Предыдущее копирование: ${lastCopiedAt}
-
-${body}
-
-без изменений: ${delta.unchanged.length}
-`;
-}
 
 /**
  * @purpose Final action bundle — candidates as checkboxes with inline editing, plus a role-dependent
@@ -105,6 +34,9 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [postResult, setPostResult] = useState<'success' | 'error' | null>(null);
+  // purpose: stable per-component generator; reused across renders so baseline survives between clicks
+  const generatorRef = useRef<ReviewHandoffGenerator>(null);
+  if (!generatorRef.current) generatorRef.current = new ReviewHandoffGenerator();
 
   const hasBlockingFinding = report.findings.some((f) => f.severity === 'error');
 
@@ -164,20 +96,17 @@ export function ActionPanel(props: { mrId: string; report: MrDetail }) {
   const copyFixTask = async () => {
     setBusy(true);
     setError(null);
+    // Compose candidate before any I/O — generation alone never advances baseline (D-CHAT-01, TSK-178).
+    let handoff: ReviewHandoff | null = null;
     try {
-      const result = await recordFixTaskCopy(mrId);
-      // Server guarantees delta/lastCopiedAt non-null when isFirst is false (D-126, FixTaskCopyResult contract).
-      const text = result.isFirst
-        ? composeFixTask(report.mr, report.findings)
-        : composeFixTaskDelta(
-            report.mr,
-            report.findings,
-            result.delta!,
-            result.priorCopyCount,
-            result.lastCopiedAt!
-          );
-      await navigator.clipboard.writeText(text);
+      handoff = generatorRef.current!.compose(report.mr, report.findings);
+      await navigator.clipboard.writeText(handoff.text);
+      generatorRef.current!.acknowledgeDelivery(handoff.id, 'success');
+      // Server audit recorded after confirmed clipboard delivery (baseline already advanced above).
+      await recordFixTaskCopy(mrId);
     } catch (_cause) {
+      // Failed clipboard or server call: baseline stays at last confirmed snapshot.
+      if (handoff) generatorRef.current!.acknowledgeDelivery(handoff.id, 'failed');
       setError('Не удалось скопировать задание');
     } finally {
       setBusy(false);

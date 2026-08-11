@@ -5,7 +5,7 @@
 ## 1. Meta
 
 - **Task-ID:** TSK-178
-- **Status:** [ ] TODO
+- **Status:** [x] DONE
 - **Reopens:** 0
 - **Purpose:** Preserve anchored MR chat and add acknowledged clipboard handoff with correct full/delta baselines.
 - **Scope:** agent-inbox
@@ -22,8 +22,8 @@
 
 | ID  | Kind     | Deps | Status |
 | --- | -------- | ---- | ------ |
-| P1  | refactor | —    | [ ]    |
-| P2  | test     | P1   | [ ]    |
+| P1  | refactor | —    | [x]    |
+| P2  | test     | P1   | [x]    |
 
 <!--/SECTION:PHASES_OVERVIEW-->
 
@@ -112,19 +112,32 @@
 
 #### P1
 
-- [ ] `<ts>` ver `npm run type-check` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T15:06:12Z` intro `ReviewHandoff` ← тип кандидата (clipboard-ready инструкция); требует spec entity inventory
+- [x] `2026-08-11T15:06:12Z` intro `ReviewHandoffSnapshot` ← тип baseline (last acknowledged delivery)
+- [x] `2026-08-11T15:06:12Z` intro `ReviewHandoffDelivery` ← тип события подтверждения доставки
+- [x] `2026-08-11T15:06:12Z` intro `ReviewHandoffGenerator` ← сервис: compose full/delta + acknowledgeDelivery; baseline только после success receipt
+- [x] `2026-08-11T15:06:12Z` decision compose-before-clipboard=true ← исправляет порядок: сначала compose+clipboard, потом server audit (failed clipboard не advance-ит baseline)
+- [x] `2026-08-11T15:17:23Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T15:17:23Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-chat/review-handoff-generator.ts, services/agent-inbox/modules/inbox-dashboard/components/ActionPanel.tsx]; decisions: [ReviewHandoffGenerator=introduced, delivery-order=compose-then-clipboard-then-ack, ReactLocalComposer=removed]; open: []
 
 #### P2
 
-- [ ] `<ts>` ver `npm test -- <target-tests>` → `<pass|fail>` exit=`<code>`
-- [ ] `<ts>` DONE
-      **Handoff →** artifacts: [...]; decisions: [...]; open: [...]
+- [x] `2026-08-11T15:24:47Z` intro `review-chat.contract.test.ts` ← type exhaustiveness: все export-типы handoff/anchor/mutation проверены с @ts-expect-error на invalid variants
+- [x] `2026-08-11T15:24:47Z` intro `review-handoff.test.ts` ← unit: compose() возвращает полный payload в full и delta режимах
+- [x] `2026-08-11T15:24:47Z` intro `review-handoff.integration.test.ts` ← integration: все non-success receipts и конфликтные пути не advance-ят baseline
+- [x] `2026-08-11T15:24:47Z` intro `review-anchor.test.ts` ← anchor: quote-first resolution переживает reorder ленты
+- [x] `2026-08-11T15:35:00Z` tried `npm test -- services/agent-inbox/modules/inbox-chat/__tests__/` → ERR_MODULE_NOT_FOUND exit=1 (ESM/tsx лоадер не поддерживает директорный импорт; false positive, RUNBOOK §3)
+- [x] `2026-08-11T15:35:00Z` insight §5 test command использует директорный путь → известный false positive с ESM/tsx лоадером; применён glob-эквивалент согласно RUNBOOK §3 → §5 Verification table
+- [x] `2026-08-11T15:37:12Z` ver `npm run type-check` → pass exit=0
+- [x] `2026-08-11T15:40:54Z` ver `npm test -- services/agent-inbox/modules/inbox-chat/__tests__/review-chat.contract.test.ts services/agent-inbox/modules/inbox-chat/__tests__/review-handoff.test.ts services/agent-inbox/modules/inbox-chat/__tests__/review-handoff.integration.test.ts services/agent-inbox/modules/inbox-chat/__tests__/review-anchor.test.ts` → pass exit=0
+- [x] `2026-08-11T15:40:54Z` DONE
+      **Handoff →** artifacts: [services/agent-inbox/modules/inbox-chat/__tests__/review-chat.contract.test.ts, services/agent-inbox/modules/inbox-chat/__tests__/review-handoff.test.ts, services/agent-inbox/modules/inbox-chat/__tests__/review-handoff.integration.test.ts, services/agent-inbox/modules/inbox-chat/__tests__/review-anchor.test.ts]; decisions: [test-command-form=explicit-file-paths (ESM/tsx directory quirk per RUNBOOK §3)]; open: []
 
 #### Round close
 
-- [ ] `<ts>` DONE
+- [x] `2026-08-11T15:42:05Z` sync agent-inbox+root
+- [x] `2026-08-11T15:42:05Z` DONE
 <!--/SECTION:EXECUTION_LOG-->
 
 ## 8. Decision Log
