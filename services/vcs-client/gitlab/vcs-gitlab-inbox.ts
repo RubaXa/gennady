@@ -69,6 +69,28 @@ const ACTIONABLE_QUERIES = [
   }`,
 ] as const;
 
+/**
+ * @purpose Build a single targeted query scoped to one MR IID — eliminates the 4×broad-query
+ *   overhead when the caller knows which MR to look up.
+ * @param iid MR internal ID.
+ * @returns GraphQL query document.
+ */
+function TARGETED_QUERY(iid: string): string {
+  return `{
+    currentUser {
+      authoredMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+      reviewRequestedMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+      assignedMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+    }
+  }`;
+}
+
 /** @purpose GitLab Todo action name → my role on the MR (priority resolved later). */
 const ACTION_ROLE: Record<string, VcsActionableRole> = {
   review_requested: 'reviewer',
@@ -178,13 +200,18 @@ export class VcsGitlabInbox extends VcsClientInbox {
   }
 
   /**
+   * @param [filter] When `iid` is provided, uses a single targeted query instead of 4 broad ones.
    * @returns Deduplicated actionable MRs with one role + state events each; unfiltered.
-   * @sideEffect Network: four bounded POST /api/graphql reads, one per actionable source.
+   * @sideEffect Network: one or four bounded POST /api/graphql reads.
    * @see {VcsClientInbox#getActionable} in services/vcs-client/abstract/vcs-client-inbox.ts
    */
-  async getActionable(): Promise<VcsActionableMr[]> {
+  async getActionable(filter?: { iid?: string }): Promise<VcsActionableMr[]> {
+    const queries = filter?.iid
+      ? [TARGETED_QUERY(filter.iid)]
+      : (ACTIONABLE_QUERIES as unknown as string[]);
+
     const payloads = (await Promise.all(
-      ACTIONABLE_QUERIES.map((query) => this._graphql(query))
+      queries.map((query) => this._graphql(query))
     )) as ActionableData[];
     const users = payloads.flatMap((payload) =>
       payload?.currentUser ? [payload.currentUser] : []

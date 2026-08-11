@@ -32,6 +32,7 @@ import {
   flattenNotes,
   lastNoteAuthor,
 } from '../inbox/_core/logic/classify-mr-stage.logic.ts';
+import type { VcsActionableRole } from '../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';
 import { resolveVcsContext, type VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
 import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import {
@@ -295,7 +296,10 @@ async function run(): Promise<number> {
       target_branch?: string;
       created_at?: string;
       updated_at?: string;
+      description?: string;
       diff_refs?: { base_sha?: string; start_sha?: string; head_sha?: string };
+      author?: { username?: string };
+      reviewers?: Array<{ username?: string }>;
     } | null;
 
     const title = mr?.title ?? '';
@@ -305,6 +309,9 @@ async function run(): Promise<number> {
     const createdAt = mr?.created_at ?? '';
     const updatedAt = mr?.updated_at ?? '';
     const diffRefs = mr?.diff_refs;
+    const mrDescription = mr?.description ?? '';
+    const mrAuthorLogin = mr?.author?.username ?? '';
+    const mrReviewerLogins = mr?.reviewers?.map((r) => r.username ?? '').filter(Boolean) ?? [];
 
     // #region START_WORKTREE
     let worktree: {
@@ -390,19 +397,38 @@ async function run(): Promise<number> {
     // #endregion END_WORKTREE
 
     // #region START_PACKAGE
+    // Role is computed locally from the MR REST response (fast, per-MR).
+    // getActionable() is a heavy 4×GraphQL query — we try it for richer metadata
+    // (approvedBy, more precise role) but fall back to the local computation on timeout.
     const inboxClient = buildInboxClient(vcsSource, cfg.vcsHost);
-    const [items, me] = await Promise.all([
-      inboxClient.Inbox.getActionable(),
-      inboxClient.getCurrentUser(),
-    ]);
-    const mrItem = items.find((m) => m.project === project && m.iid === iid);
-
+    const me = await inboxClient.getCurrentUser();
     const myLogin: string = me.login;
-    const myRole = mrItem?.role ?? null;
-    const author = mrItem?.author ?? '';
-    const reviewers = mrItem?.reviewers ?? [];
-    const description = mrItem?.description ?? '';
-    const approvedBy = mrItem?.approvedBy ?? [];
+
+    const isMrAuthor = mrAuthorLogin === myLogin;
+    const isMrReviewer = mrReviewerLogins.includes(myLogin);
+
+    let myRole: VcsActionableRole | null = null;
+    let author = mrAuthorLogin;
+    let reviewers = mrReviewerLogins;
+    let description = mrDescription;
+    let approvedBy: string[] = [];
+
+    try {
+      const items = await inboxClient.Inbox.getActionable({ iid });
+      const mrItem = items.find((m) => m.project === project && m.iid === iid);
+      if (mrItem) {
+        myRole = mrItem.role;
+        author = mrItem.author || author;
+        reviewers = mrItem.reviewers.length > 0 ? mrItem.reviewers : reviewers;
+        description = mrItem.description || description;
+        approvedBy = mrItem.approvedBy ?? [];
+      } else {
+        myRole = isMrAuthor ? 'author' : isMrReviewer ? 'reviewer' : null;
+      }
+    } catch {
+      myRole = isMrAuthor ? 'author' : isMrReviewer ? 'reviewer' : null;
+    }
+
     let iEverApproved = false;
     // #endregion END_PACKAGE
 
