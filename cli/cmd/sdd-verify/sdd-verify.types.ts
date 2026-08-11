@@ -12,23 +12,25 @@ export type Gate = {
 
 /**
  * @purpose The canonical verification sequence — mutating gates first (they rewrite files), then read-only. Profiles subset this list, preserving order.
- * @invariant Order is normative: format → lint (both autofix) → typecheck → test:coverage. Run sequentially so autofix never races a reader.
+ * @invariant Order is normative: format → lint → typecheck → test:coverage → yagni; sequential so autofix never races a reader.
  */
 export const GATES: readonly Gate[] = [
   { name: 'format', mutates: true },
   { name: 'lint', mutates: true },
   { name: 'typecheck', mutates: false },
   { name: 'test:coverage', mutates: false },
+  { name: 'yagni', mutates: false },
 ];
 
 /** @purpose Gate profile by phase kind — fixed sets chosen by an explicit flag (not detection); `full` is the safe default. */
 export type Profile = 'code' | 'test' | 'full';
 
-// Gate names per profile: code skips tests (may not exist yet), test skips lint, full runs everything.
+// Gate names per profile: code skips tests (may not exist yet) but still runs yagni (a code-diff
+// concern, not a test concern); test skips lint + yagni (no production code changed); full runs everything.
 const PROFILE_GATES: Record<Profile, readonly string[]> = {
-  code: ['format', 'lint', 'typecheck'],
+  code: ['format', 'lint', 'typecheck', 'yagni'],
   test: ['format', 'typecheck', 'test:coverage'],
-  full: ['format', 'lint', 'typecheck', 'test:coverage'],
+  full: ['format', 'lint', 'typecheck', 'test:coverage', 'yagni'],
 };
 
 /**

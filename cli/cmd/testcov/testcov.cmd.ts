@@ -8,6 +8,8 @@
  * npx gennady testcov --run        detect runner → run tests with coverage → show tree
  * npx gennady testcov --check      diagnose config without running tests (exit 0/1)
  * npx gennady testcov --check --json  same, machine-readable JSON
+ * npx gennady testcov --min=80         coverage gate: exit 1 if line coverage < 80%
+ * npx gennady testcov --run --min=80   run tests, then gate on the resulting coverage
  * npx gennady testcov --flat       flat list of dirs
  * npx gennady testcov --flat --files  flat list of source files
  * npx gennady testcov --flat --json   JSON array {path, lines, branches, functions}
@@ -21,6 +23,7 @@ import { existsSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { join, extname, resolve, basename, relative } from 'node:path';
 import type { Dirent } from 'node:fs';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { aggregateLineCoverage, linePct, meetsMinCoverage } from './coverage-threshold.ts';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -39,6 +42,7 @@ const args = parseArgs(process.argv, {
   help: ['help', 'h'],
   context: ['context', 'c'],
   color: ['color'],
+  min: ['min'],
 });
 
 const RUN_TESTS = args.run === true || args.run === 'true';
@@ -49,6 +53,17 @@ const JSON_OUT = args.json === true || args.json === 'true';
 const HELP = args.help === true || args.help === 'true';
 const CONTEXT = typeof args.context === 'string' ? parseInt(args.context, 10) || 2 : 2;
 const COLOR = args.color === true || args.color === 'true';
+// --min=<pct>: coverage-threshold gate. `--min` with no value is a usage error (no implicit default —
+// unlike --context, a silently-assumed threshold would let a bare `--min` pass everything).
+const MIN_COVERAGE = typeof args.min === 'string' ? parseFloat(args.min) : undefined;
+if (args.min === true) {
+  console.error('testcov: --min requires a value, e.g. --min=80');
+  process.exit(4);
+}
+if (MIN_COVERAGE !== undefined && (Number.isNaN(MIN_COVERAGE) || MIN_COVERAGE < 0)) {
+  console.error(`testcov: --min value must be a non-negative number, got "${String(args.min)}"`);
+  process.exit(4);
+}
 
 // Positional arg: skip "testcov" (command name), take first real path
 const positional = (args._ as string[]).filter((a) => a !== 'testcov');
@@ -1093,6 +1108,22 @@ function printFlat(entries: FlatEntry[]): void {
     const tests = e.tests !== undefined ? ` (${e.tests} tests)` : '';
     console.log(`${e.path} ${cov}${tests}`);
   }
+}
+
+// ─── --min mode ───────────────────────────────────────────────────────────────
+// Aggregates getDirStats() over every getRoots() top-level dir — the same project-wide sum the
+// default tree already renders per-root, just totalled instead of printed. Exit-code convention
+// matches --check: 0 = gate passes, 1 = gate fails (no tree/diagnostics printed on this path).
+
+if (MIN_COVERAGE !== undefined) {
+  const totals = aggregateLineCoverage(getRoots().map((top) => getDirStats(join(ROOT, top))));
+  const p = linePct(totals);
+  const pStr = p !== null ? `${p.toFixed(1)}%` : 'n/a (no instrumented statements found)';
+  const ok = meetsMinCoverage(totals, MIN_COVERAGE);
+  console.log(
+    `testcov: line coverage ${pStr} (${totals.hit}/${totals.total} statements) — required ≥${MIN_COVERAGE}% ${ok ? '✅' : '❌'}`
+  );
+  process.exit(ok ? 0 : 1);
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────

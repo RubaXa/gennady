@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSpecStructure } from '../check.ts';
+import { checkSpecStructure, checkTableCells } from '../check.ts';
 
 describe('checkSpecStructure', () => {
   it('balanced anchors → no findings', () => {
@@ -185,3 +185,135 @@ const PRODUCT_ALL = [
   'DECISION_LOG',
   'MODULE_MAP',
 ];
+
+const v2Codes = (md: string): string[] =>
+  checkSpecStructure('s.spec.md', md, 'v2').map((f) => f.code);
+
+const scopeSpecV2 = (sections: string[]): string =>
+  [
+    '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+    ...sections.map(block),
+  ].join('\n\n');
+
+describe('checkSpecStructure — fold requirement now covers scope specs too (F1)', () => {
+  it('a scope spec carrying an unfolded DECISION_LOG under v2 → SDD_SECTION_NOT_FOLDED', () => {
+    const md = scopeSpecV2(['VISION', 'DECISION_LOG']);
+    assert.ok(v2Codes(md).includes('SDD_SECTION_NOT_FOLDED'));
+  });
+
+  it('a scope spec carrying an unfolded BOOTSTRAP_REQUIREMENTS under v2 → SDD_SECTION_NOT_FOLDED', () => {
+    const md = scopeSpecV2(['VISION', 'BOOTSTRAP_REQUIREMENTS']);
+    assert.ok(v2Codes(md).includes('SDD_SECTION_NOT_FOLDED'));
+  });
+
+  it('a scope spec with DECISION_LOG folded under <details> → no SDD_SECTION_NOT_FOLDED', () => {
+    const folded =
+      '<!--SECTION:DECISION_LOG-->\n## Decision Log\n<details><summary>x</summary>\nbody\n</details>\n<!--/SECTION:DECISION_LOG-->';
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      folded,
+    ].join('\n\n');
+    assert.ok(!v2Codes(md).includes('SDD_SECTION_NOT_FOLDED'));
+  });
+
+  it('under v1 (default), an unfolded scope DECISION_LOG is not checked — dormant pre-migration', () => {
+    const md = scopeSpecV2(['VISION', 'DECISION_LOG']);
+    assert.ok(!sectionCodes(md).includes('SDD_SECTION_NOT_FOLDED'));
+  });
+});
+
+describe('checkSpecStructure — per-section hard size cap (F4, v2 only)', () => {
+  const longSection = (name: string, lines: number): string =>
+    `<!--SECTION:${name}-->\n## ${name}\n${Array.from({ length: lines }, (_, i) => `line ${i}`).join('\n')}\n<!--/SECTION:${name}-->`;
+
+  it('a non-folded scope section past 120 lines under v2 → SDD_SECTION_TOO_LONG', () => {
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      longSection('ARCHITECTURE', 130),
+    ].join('\n\n');
+    assert.ok(v2Codes(md).includes('SDD_SECTION_TOO_LONG'));
+  });
+
+  it('a section at 100 lines (below the cap) → no SDD_SECTION_TOO_LONG', () => {
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      longSection('ARCHITECTURE', 100),
+    ].join('\n\n');
+    assert.ok(!v2Codes(md).includes('SDD_SECTION_TOO_LONG'));
+  });
+
+  it('a folded section (DECISION_LOG) past 120 lines is exempt — folding is its containment', () => {
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      longSection('DECISION_LOG', 130),
+    ].join('\n\n');
+    // DECISION_LOG is over the cap AND unfolded — expect SDD_SECTION_NOT_FOLDED but not SDD_SECTION_TOO_LONG.
+    const codes = v2Codes(md);
+    assert.ok(!codes.includes('SDD_SECTION_TOO_LONG'));
+    assert.ok(codes.includes('SDD_SECTION_NOT_FOLDED'));
+  });
+});
+
+describe('checkTableCells — table is an index, not text (F2, mechanical)', () => {
+  it('a short single-sentence cell → no findings', () => {
+    const md = '| Name | Purpose |\n| --- | --- |\n| `Foo` | Handles the happy path |';
+    assert.deepStrictEqual(checkTableCells('s.spec.md', md), []);
+  });
+
+  it('a cell past 120 chars → SDD_TABLE_CELL_TOO_LONG', () => {
+    const long = 'x'.repeat(130);
+    const md = `| Name | Purpose |\n| --- | --- |\n| Foo | ${long} |`;
+    const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
+    assert.ok(codes.includes('SDD_TABLE_CELL_TOO_LONG'));
+  });
+
+  it('a cell with two sentences (short, under the length cap) → SDD_TABLE_CELL_MULTI_SENTENCE', () => {
+    const md = '| Name | Purpose |\n| --- | --- |\n| Foo | Does one thing. Also does another. |';
+    const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
+    assert.ok(codes.includes('SDD_TABLE_CELL_MULTI_SENTENCE'));
+    assert.ok(!codes.includes('SDD_TABLE_CELL_TOO_LONG'));
+  });
+
+  it('a decimal-like period (no capital after) does not trigger a false multi-sentence positive', () => {
+    const md = '| Name | Version |\n| --- | --- |\n| Foo | requires v1.4.0 exactly |';
+    assert.deepStrictEqual(checkTableCells('s.spec.md', md), []);
+  });
+
+  it('a cell with <br> → SDD_TABLE_CELL_HAS_BR', () => {
+    const md = '| Name | Purpose |\n| --- | --- |\n| Foo | first line<br>second line |';
+    const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
+    assert.ok(codes.includes('SDD_TABLE_CELL_HAS_BR'));
+  });
+
+  it('a header with more than 6 columns → SDD_TABLE_TOO_MANY_COLUMNS', () => {
+    const md = '| A | B | C | D | E | F | G |\n| --- | --- | --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 | 6 | 7 |';
+    const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
+    assert.ok(codes.includes('SDD_TABLE_TOO_MANY_COLUMNS'));
+  });
+
+  it('a 5-column table (the observed repo max) → no SDD_TABLE_TOO_MANY_COLUMNS', () => {
+    const md = '| A | B | C | D | E |\n| --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 |';
+    const codes = checkTableCells('s.spec.md', md).map((f) => f.code);
+    assert.ok(!codes.includes('SDD_TABLE_TOO_MANY_COLUMNS'));
+  });
+
+  it('a pipe inside a fenced code block is never treated as a table row', () => {
+    const md = '```mermaid\nflowchart LR\n  a -->|label| b\n```';
+    assert.deepStrictEqual(checkTableCells('s.spec.md', md), []);
+  });
+
+  it('checkSpecStructure wires table-cell checks in only under v2', () => {
+    const badTable = '| Name | Purpose |\n| --- | --- |\n| Foo | ' + 'x'.repeat(130) + ' |';
+    const md = [
+      '<!--SECTION:SCOPE_TYPE-->\n## scope-type\nproduct\n<!--/SECTION:SCOPE_TYPE-->',
+      block('VISION'),
+      badTable,
+    ].join('\n\n');
+    assert.ok(v2Codes(md).includes('SDD_TABLE_CELL_TOO_LONG'));
+    assert.ok(!sectionCodes(md).includes('SDD_TABLE_CELL_TOO_LONG'));
+  });
+});

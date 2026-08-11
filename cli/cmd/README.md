@@ -158,6 +158,16 @@ npx gennady testcov --flat --json
 npx gennady testcov src/core --files
 ```
 
+### 12. YAGNI-проверка диффа
+
+```bash
+# Символы диффа с < 2 использований в прод-коде (тесты не считаются)
+npx gennady yagni
+
+# Против конкретного корня
+npx gennady yagni /path/to/repo
+```
+
 ---
 
 ## Все команды
@@ -192,6 +202,7 @@ npx gennady testcov src/core --files
 | `orient`            | Навигация по file-header и DBC-контрактам                |
 | `agents-rules`      | Инструкция по orient для AI-агентов                      |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)       |
+| `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver  |
 
 ---
 
@@ -220,3 +231,4 @@ cli/cmd/<name>/
 - `specs/cli/agents-rules/agents-rules.spec.md` — agents-rules
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
 - `specs/cli/testcov/testcov.spec.md` — testcov
+- `specs/cli/yagni/yagni.spec.md` — yagni

@@ -14,6 +14,8 @@ import {
   unitFilePath,
   verifyUnitFile,
   verifyMigrationPlan,
+  mapHeadingToSection,
+  UNMAPPED,
 } from '../migration-plan.ts';
 
 let root: string;
@@ -108,13 +110,15 @@ describe('migration-plan', () => {
     }
   });
 
-  it('MAPPED без заполнения карт → findings (цель ?, слаг ?, диаграмма ?)', () => {
+  it('MAPPED без заполнения карт → findings (слаг ?, диаграмма ?) — Module Vision уже предзаполнен правилом', () => {
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');
     assert.ok(core);
     const content = scaffoldUnitFile(core).replace('**Status:** PLANNED', '**Status:** MAPPED');
+    // предзаполненная строка «Module Vision» уже корректна — цель не остаётся `?`
+    assert.ok(content.includes('| `## 1. Module Vision` | keep | MODULE_VISION |'));
     const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
-    assert.ok(codes.includes('MIG_TARGET_UNSET'), `нет MIG_TARGET_UNSET: ${codes.join(',')}`);
+    assert.ok(!codes.includes('MIG_TARGET_UNSET'), codes.join(','));
     assert.ok(codes.includes('MIG_BAD_SLUG'), `нет MIG_BAD_SLUG: ${codes.join(',')}`);
     assert.ok(
       codes.includes('MIG_DIAGRAM_PLAN_EMPTY'),
@@ -122,16 +126,12 @@ describe('migration-plan', () => {
     );
   });
 
-  it('корректно заполненный MAPPED-юнит проходит verify', () => {
+  it('корректно заполненный MAPPED-юнит проходит verify (Module Vision уже предзаполнен правилом)', () => {
     const scan = scanMigrationUnits(root);
     const core = scan.units.find((u) => u.module === 'core');
     assert.ok(core);
     let content = scaffoldUnitFile(core)
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
-      .replace(
-        '| `## 1. Module Vision` | ? | ? | |',
-        '| `## 1. Module Vision` | rename | MODULE_VISION | |'
-      )
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | core-demo-feature | `specs/demo/core/core.task.core-demo-feature.md` |'
@@ -142,6 +142,36 @@ describe('migration-plan', () => {
       );
     const findings = verifyUnitFile('u.md', content, core);
     assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('mapHeadingToSection: заголовки формата *-spec-structure.xml распознаются, номерация и хвостовые пометки не мешают', () => {
+    assert.strictEqual(mapHeadingToSection('## 1. Module Vision'), 'MODULE_VISION');
+    assert.strictEqual(mapHeadingToSection('## Vision & Primary Goal'), 'VISION');
+    assert.strictEqual(mapHeadingToSection('## 2. Decision Log'), 'DECISION_LOG');
+    assert.strictEqual(mapHeadingToSection('## Entity Inventory (Closed-World)'), 'ENTITY_INVENTORY');
+    assert.strictEqual(mapHeadingToSection('## Module Contracts (DbC)'), 'MODULE_CONTRACTS');
+    assert.strictEqual(mapHeadingToSection('## High-Level Architecture'), 'ARCHITECTURE');
+  });
+
+  it('mapHeadingToSection: нераспознанный заголовок → UNMAPPED, не угадывает ближайшее', () => {
+    assert.strictEqual(mapHeadingToSection('## Critic Rounds'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## CLI Interface'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## Emoji Mapping'), UNMAPPED);
+  });
+
+  it('Section Map: нераспознанный заголовок помечен UNMAPPED и валит plan --verify', () => {
+    writeFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.spec.md'),
+      MODULE_SPEC + '\n## 2. Critic Rounds\nтекст',
+      'utf-8'
+    );
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core);
+    assert.ok(content.includes(`| \`## 2. Critic Rounds\` | ? | ${UNMAPPED} |`));
+    const codes = verifyUnitFile(unitFilePath(core), content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_SECTION_UNMAPPED_TARGET'), codes.join(','));
   });
 
   it('дрейф инвентаря: спека изменилась после генерации → MIG_INVENTORY_DRIFT', () => {

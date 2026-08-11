@@ -237,6 +237,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/mr-stats/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'yagni':
+      await import('./cmd/yagni/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -424,6 +428,10 @@ switch (command) {
 
   case 'mr-stats':
     await import('./cmd/mr-stats/index.ts');
+    break;
+
+  case 'yagni':
+    await import('./cmd/yagni/index.ts');
     break;
 
   default:

@@ -30,7 +30,7 @@ describe('GATES', () => {
   it('is the fixed mutating-first exact sequence', () => {
     assert.deepStrictEqual(
       GATES.map((g) => g.name),
-      ['format', 'lint', 'typecheck', 'test:coverage']
+      ['format', 'lint', 'typecheck', 'test:coverage', 'yagni']
     );
     assert.deepStrictEqual(
       GATES.filter((g) => g.mutates).map((g) => g.name),
@@ -50,8 +50,9 @@ describe('verdict', () => {
     const v = verdict(results);
     assert.strictEqual(v.ok, true);
     if (v.ok) {
-      assert.match(v.text, /✅ ALL PASS \(4\/4\)/);
+      assert.match(v.text, /✅ ALL PASS \(5\/5\)/);
       assert.match(v.text, /✅ test:coverage/);
+      assert.match(v.text, /✅ yagni/);
     }
   });
 
@@ -78,7 +79,7 @@ describe('profiles', () => {
   it('gatesFor subsets GATES in canonical order per profile', () => {
     assert.deepStrictEqual(
       gatesFor('code').map((g) => g.name),
-      ['format', 'lint', 'typecheck']
+      ['format', 'lint', 'typecheck', 'yagni']
     );
     assert.deepStrictEqual(
       gatesFor('test').map((g) => g.name),
@@ -86,7 +87,7 @@ describe('profiles', () => {
     );
     assert.deepStrictEqual(
       gatesFor('full').map((g) => g.name),
-      ['format', 'lint', 'typecheck', 'test:coverage']
+      ['format', 'lint', 'typecheck', 'test:coverage', 'yagni']
     );
   });
 
@@ -95,10 +96,15 @@ describe('profiles', () => {
     assert.ok(!isProfile('all') && !isProfile(''));
   });
 
-  it('code profile runs no tests; test profile runs no lint', async () => {
+  it('code profile runs no tests but still runs yagni; test profile runs no lint/yagni', async () => {
     const code = fakeRunner();
     await run(code.runner, 'code');
-    assert.deepStrictEqual(code.calls, ['npm run format', 'npm run lint', 'npm run typecheck']);
+    assert.deepStrictEqual(code.calls, [
+      'npm run format',
+      'npm run lint',
+      'npm run typecheck',
+      'npm run yagni',
+    ]);
 
     const test = fakeRunner();
     await run(test.runner, 'test');
@@ -111,7 +117,7 @@ describe('profiles', () => {
 });
 
 describe('run', () => {
-  it('defaults to the full 4-gate sequence as `npm run <name>`', async () => {
+  it('defaults to the full 5-gate sequence as `npm run <name>`', async () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner);
     assert.strictEqual(o.ok, true);
@@ -120,6 +126,7 @@ describe('run', () => {
       'npm run lint',
       'npm run typecheck',
       'npm run test:coverage',
+      'npm run yagni',
     ]);
   });
 
@@ -127,6 +134,6 @@ describe('run', () => {
     const { runner, calls } = fakeRunner(['format']);
     const o = await run(runner);
     assert.strictEqual(o.ok === false && o.exitCode, 1);
-    assert.strictEqual(calls.length, 4);
+    assert.strictEqual(calls.length, 5);
   });
 });

@@ -43,7 +43,7 @@ export function badInvocation(): CheckResult {
   return {
     text: [
       `[sdd-check] ${ERR_CLI_SDD_CHECK_BAD_INVOCATION}`,
-      '  expected: gennady sdd-check (--task <ticket> | --all [project-root])',
+      '  expected: gennady sdd-check (--task <ticket> | --all [project-root] | --changed [project-root])',
     ].join('\n'),
     exitCode: 4,
   };

@@ -116,3 +116,13 @@ shared/
 - **Recorded:** session Discovery, shared
 - **Why:** Команды `sync` и `sync-skills` разделяют общую логику: сравнение файлов, форматирование вывода, нормализация путей. Вынос в `shared/` предотвращает дублирование.
 - **Rejected alternatives:** Дублирование логики в каждой команде (расходится при изменениях).
+
+### D-007 — `ExecSyncSafeOptions.expectedExitCodes` — тихий execSyncSafe для штатных кодов выхода
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, shared
+- **Why:** `execSyncSafe` логировал `logger.error` со стеком на любой ненулевой код выхода, включая штатные (grep «не найдено» = 1, `git show HEAD:<новый файл>` = 128). Опциональный параметр `expectedExitCodes` подавляет лог именно для этих кодов, не меняя поведение по умолчанию для остальных вызывающих (`git-core`, `resolve-conflicts-context-git-build.logic`).
+- **Risk accepted:** Низкий — параметр опциональный, старое поведение по умолчанию сохранено.
+
+### `ExecSyncSafeOptions`
+- **Usage Waiver:** Тип параметра публичной сигнатуры `execSyncSafe`; каждый вызывающий передаёт объект структурно, имя типа при этом не упоминается — единственное явное упоминание неизбежно.

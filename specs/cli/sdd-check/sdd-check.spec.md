@@ -186,6 +186,36 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 - **Status:** active
 - **Why:** портал `## Scope Graph` (mermaid `X --> Y`) — структурная истина зависимостей; спека scope в `## 7 Scope Dependencies` («Depends on: [...]») — свободная форма (имена + wildcard `prefix-*` + проза). `checkScopeDeps` сверяет **направление граф→спека**: каждое ребро портала `<scope> --> <dep>` должно быть отражено в «Depends on» (точное имя ИЛИ wildcard-префикс); непокрытое → warn. Только это направление: спека-сторона слишком шумна для обратной сверки (wildcard/проза дали бы ложные). Проза в строке безвредна — проверяется лишь покрытие рёбер графа, лишние токены не флагают. Рёбра портала предчитываются один раз в `--all`; scope-имя = stem basename файла. Решает прежнюю отложенность B5 (свободная форма) — wildcard-толерантность + односторонность убирают хрупкость.
 - **Risk accepted:** warn, не error (свободная форма). Обратное направление (спека заявила dep, которого нет в графе) НЕ ловим. Спека без секции `SCOPE_DEPENDENCIES` (модули, легаси) → пропуск.
+
+### `getRuleDeps`
+- **Usage Waiver:** Читает и парсит `<DependsOn>` одного rule-файла, memoized — изолирует I/O-границу от обхода графа (`buildRuleDepsMap`); rule-файлы общие для многих тикетов в `--all`, читаются не более раза.
+
+### `buildRuleDepsMap`
+- **Usage Waiver:** Разворачивает набор seed-правил в полный транзитивный `<DependsOn>`-граф — изолирует обход графа от чтения отдельного файла (`getRuleDeps`).
+
+### `getTestFileIndex`
+- **Usage Waiver:** Строит один раз индекс basename → путь(и) для всех `*.test.*`/`*.spec.*` файлов репо — изолирует обход директорий от поиска тестового файла по имени (используется в BDD_COVERAGE для всех тикетов `--all`).
+
+### `getTestCaseNames`
+- **Usage Waiver:** Читает и извлекает имена `it()`/`test()` одного тестового файла, memoized — изолирует I/O от индекса файлов (`getTestFileIndex`).
+
+### `checkFileConsumersResolvable`
+- **Usage Waiver:** Запускает grep-проверку `@consumers:` для одного файла — изолирует I/O-обёртку (запуск grep, чтение файла) от чистой классификации записей (`checkConsumersResolvable`).
+
+### `findRepoRoot`
+- **Usage Waiver:** Поднимается до ближайшего `package.json` — нужна, потому что сканируемый корень `--all` может быть вложенным поддеревом, а не настоящим корнем репозитория.
+
+### `ticketFlowVersion`
+- **Usage Waiver:** Определяет flowVersion тикета по сегменту `tasks/<scope>/` — в отличие от `specFlowVersion` (сегмент `specs/<scope>/`), у тикета нет `specs`-сегмента для привязки, поэтому нужна отдельная функция с явно переданным `repoRoot`.
+
+### `splitConsumerEntries`
+- **Usage Waiver:** Экспортирована отдельно для изолированного юнит-теста алгоритма depth-tracking comma-split (разбор `@consumers:` с учётом вложенных скобок) без остального парсинга заголовка.
+
+### `checkTableCells`
+- **Usage Waiver:** Экспортирована для прямых юнит-тестов политики таблиц (16 кейсов в `check-spec-structure.test.ts`); в продакшен-коде вызывается один раз из `checkSpecStructure`.
+
+### `SENTENCE_BREAK`
+- **Usage Waiver:** Регексп границы предложения (конец фразы + заглавная буква) для эвристики «многословная ячейка таблицы» в `checkTableCells`; вынесен как модульная константа, чтобы граница была видна отдельно от логики проверки.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

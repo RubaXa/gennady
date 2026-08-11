@@ -522,10 +522,53 @@ export const MODULE_REQUIRED_V2: string[] = [
 ];
 
 /**
- * @purpose v2 heavy sections whose detail must fold under `<details>` (AX_SPEC_PROGRESSIVE_DISCLOSURE).
- * @invariant Checked only when the section is present; presence itself is a separate concern.
+ * @purpose v2 heavy/reference sections whose detail must fold under `<details>` (AX_SPEC_PROGRESSIVE_DISCLOSURE) — the machine part of the two-part spec (module AND scope specs).
+ * @invariant Checked only when present. Module- and scope-only names never collide. `PUBLIC_OPTIONS` is excluded — real specs carry it unfolded, already a short table.
  */
-export const FOLD_REQUIRED_V2: string[] = ['ENTITY_SURFACES', 'MODULE_CONTRACTS'];
+export const FOLD_REQUIRED_V2: string[] = [
+  'ENTITY_SURFACES',
+  'MODULE_CONTRACTS',
+  'MODULE_DECISION_LOG',
+  'DECISION_LOG',
+  'BOOTSTRAP_REQUIREMENTS',
+  'COMPATIBILITY_MATRIX',
+  'EFFECTIVE_RULES',
+];
+
+// Per-section hard line cap (v2 only) — the human-readable half of a spec must stay short; a section
+// that blows past this is reference/machine detail masquerading as prose and must decompose (split
+// into a module/sub-scope) or fold (join FOLD_REQUIRED_V2), not just grow. Sections already in
+// FOLD_REQUIRED_V2 are exempt — folding is their containment mechanism, not a line count.
+// Calibrated against 210 non-folded top-level sections across specs/**/*.spec.md: median 15, P75 22,
+// P90 43, P95 55, P99 110, max 286. 120 sits just above P99 — it catches only the two genuine
+// outliers in the corpus today (REQUIREMENTS_AND_CONSTRAINTS at 286 lines in agent-inbox.spec.md,
+// MODULE_USAGE_EXAMPLE at 140 lines in cli/e2e/e2e.spec.md) without touching the routine tail.
+const SECTION_LINE_HARD_LIMIT_V2 = 120;
+
+// Table-cell policy (AX_SPEC_TABLE_IS_INDEX, v2 only): a table is an index, not text — one short
+// line per cell; expanded content moves to a subsection below the table (as Entity Surfaces already
+// does under Entity Inventory).
+//
+// TABLE_CELL_MAX_CHARS=120 — calibrated against every table cell in specs/**/*.spec.md (n=7078,
+// fence-aware): median 15, P75 42, P90 74, P95 101, P99 201. 120 flags 3.2% of cells (229/7078);
+// manual inspection of the flagged cells showed uniformly genuine paragraph-in-cell prose (e.g.
+// cli/cli.spec.md, mr-stats.spec.md, dbc/lint.spec.md — the same class of pain as messenger's
+// tessell-data FR table), not legitimate long single tokens (paths, commands). Both messenger pain
+// examples sit far above this (tessell-data P90=197, host P90=190) — the threshold catches the
+// examples that motivated this rule without touching this repo's already-short label/purpose cells.
+const TABLE_CELL_MAX_CHARS = 120;
+
+// TABLE_MAX_COLUMNS=6 — every table in specs/**/*.spec.md tops out at 5 columns (77 tables at 2, 137
+// at 3, 26 at 4, 1 at 5); both messenger pain-example specs top out at 4. 6 is a ceiling above every
+// observed table — it never fires on today's repo, only on a genuinely wide table added later.
+const TABLE_MAX_COLUMNS = 6;
+
+// A second sentence inside a cell (terminator + whitespace + capital letter) means the cell stopped
+// being an index entry and became prose. Cheap and imperfect (misses trailing-sentence cells with no
+// second clause; the "т.к."/"e.g." abbreviation case is rare and low-risk) but the false-positive
+// rate on this repo's own tables is 1.4% (85/6092 cells), and every sampled hit was genuine
+// multi-sentence prose, not a decimal/abbreviation/version-number false alarm.
+const SENTENCE_BREAK = /[.!?]\s+[A-ZА-ЯЁ]/;
 
 /** @purpose True when a section body carries at least one fenced code block (a diagram: mermaid or ASCII). | @param body Section markdown. | @returns Whether ≥1 ``` fence pair is present. */
 function hasFencedBlock(body: string): boolean {
@@ -545,6 +588,17 @@ const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
   { re: /дроп(ать|нуть|аем|нем)[а-яё]*/giu, say: 'удалить' },
   { re: /юза(ть|ем|ю|ется)[а-яё]*/giu, say: 'использовать' },
   { re: /(за)?имплементи[а-яё]*/giu, say: 'реализовать' },
+  { re: /фанаут[а-яё]*/giu, say: 'делает fan-out / рассылает' },
+  { re: /зафейли?[а-яё]*/giu, say: 'упасть / завершиться ошибкой' },
+  { re: /засабмити?[а-яё]*/giu, say: 'отправить' },
+  { re: /линку(ет|ют|ем|я)[а-яё]*/giu, say: 'связывает / сопоставляет' },
+  { re: /м[её]рж[а-яё]*/giu, say: 'объединяет' },
+  { re: /джоб[а-яё]*/giu, say: 'задача' },
+  { re: /(?<![а-яё])тул[аеуы](?![а-яё])/giu, say: 'инструмент' },
+  { re: /под\s+капотом/giu, say: 'внутри / как устроено' },
+  { re: /подня[а-яё]*\s+сервис[а-яё]*/giu, say: 'запустить сервис' },
+  { re: /на\s+проводе/giu, say: 'в ответе / запросе сервера' },
+  { re: /разв(о|е)д[а-яё]*\s+провод[а-яё]*/giu, say: 'явно связать зависимости' },
 ];
 
 /**
@@ -725,9 +779,9 @@ export function checkSpecStructure(
       }
     }
 
-    // Progressive disclosure: heavy module sections fold their detail under `<details>` so the
-    // human-readable summary stays on top (AX_SPEC_PROGRESSIVE_DISCLOSURE). Checked when present.
-    if (isModuleSpec) {
+    // Progressive disclosure: heavy sections (module AND scope) fold their detail under `<details>`
+    // so the human-readable summary stays on top (AX_SPEC_PROGRESSIVE_DISCLOSURE). Checked when present.
+    if (isModuleSpec || isScopeSpec) {
       for (const s of FOLD_REQUIRED_V2) {
         const sec = extractSection(content, s);
         if (sec.status === 'ok' && !/<details[\s>]/i.test(sec.content)) {
@@ -740,8 +794,108 @@ export function checkSpecStructure(
         }
       }
     }
+
+    // Per-section size cap: a non-folded section ballooning past the human-readable budget is
+    // reference detail hiding in the top half — decompose (split scope/module) or fold (move it into
+    // FOLD_REQUIRED_V2), not just grow (AX_SPEC_PROGRESSIVE_DISCLOSURE).
+    if (isModuleSpec || isScopeSpec) {
+      for (const name of present) {
+        if (FOLD_REQUIRED_V2.includes(name)) continue;
+        const sec = extractSection(content, name);
+        if (sec.status !== 'ok') continue;
+        const lines = sec.content.split('\n').length;
+        if (lines > SECTION_LINE_HARD_LIMIT_V2) {
+          findings.push({
+            severity: 'error',
+            code: 'SDD_SECTION_TOO_LONG',
+            file,
+            message: `Section ${name} is ${lines} lines (> ${SECTION_LINE_HARD_LIMIT_V2}) — decompose (split into a module/sub-scope) or fold the reference detail into a foldable section (AX_SPEC_PROGRESSIVE_DISCLOSURE).`,
+          });
+        }
+      }
+    }
+
+    // Table-cell policy: a table is an index, not text (AX_SPEC_TABLE_IS_INDEX).
+    findings.push(...checkTableCells(file, content));
   }
 
+  return findings;
+}
+
+/** @purpose True when a markdown table row line (starts/ends with `|`) is the header/data separator (`|---|---|`), not a content row. | @param line Trimmed line. | @returns Whether it is a separator row. */
+function isSeparatorRow(line: string): boolean {
+  return /^\|[\s:|-]+\|$/.test(line);
+}
+
+/** @purpose Split a markdown table row into its trimmed, non-empty cells. | @param line Trimmed `|`-delimited row. | @returns Cell texts. */
+function rowCells(line: string): string[] {
+  return line
+    .slice(1, -1)
+    .split('|')
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0);
+}
+
+/**
+ * @purpose Mechanical table-cell checks — a table is an index, not text (AX_SPEC_TABLE_IS_INDEX, v2 only).
+ * @invariant Pure. Fence-aware — pipes in fenced code are never rows. A row before a separator row is a header; its cell count gates SDD_TABLE_TOO_MANY_COLUMNS.
+ * @param file Spec file path.
+ * @param content Full spec markdown.
+ * @returns Findings (possibly empty); all entries are errors (the caller gates this behind flowVersion='v2').
+ */
+export function checkTableCells(file: string, content: string): Finding[] {
+  const findings: Finding[] = [];
+  const lines = content.split('\n');
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = (lines[i] as string).trim();
+    if (line.startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    if (!line.startsWith('|') || !line.endsWith('|') || isSeparatorRow(line)) continue;
+
+    const nextLine = (lines[i + 1] ?? '').trim();
+    if (isSeparatorRow(nextLine)) {
+      const headerCols = rowCells(line).length;
+      if (headerCols > TABLE_MAX_COLUMNS) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_TABLE_TOO_MANY_COLUMNS',
+          file,
+          message: `Table header has ${headerCols} columns (> ${TABLE_MAX_COLUMNS}) — a table is an index; split it or move detail into a subsection (AX_SPEC_TABLE_IS_INDEX).`,
+        });
+      }
+    }
+
+    for (const cell of rowCells(line)) {
+      if (/<br/i.test(cell)) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_TABLE_CELL_HAS_BR',
+          file,
+          message: `Table cell has a \`<br>\` line break — move the expanded content into a subsection below the table, not a multi-line cell (AX_SPEC_TABLE_IS_INDEX): "${cell.slice(0, 60)}"`,
+        });
+        continue;
+      }
+      if (cell.length > TABLE_CELL_MAX_CHARS) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_TABLE_CELL_TOO_LONG',
+          file,
+          message: `Table cell is ${cell.length} chars (> ${TABLE_CELL_MAX_CHARS}) — a cell is one short line; move the detail into a subsection below the table (AX_SPEC_TABLE_IS_INDEX): "${cell.slice(0, 60)}..."`,
+        });
+      } else if (SENTENCE_BREAK.test(cell)) {
+        findings.push({
+          severity: 'error',
+          code: 'SDD_TABLE_CELL_MULTI_SENTENCE',
+          file,
+          message: `Table cell carries more than one sentence — a cell is one short line, not a paragraph; move the detail into a subsection below the table (AX_SPEC_TABLE_IS_INDEX): "${cell.slice(0, 60)}..."`,
+        });
+      }
+    }
+  }
   return findings;
 }
 

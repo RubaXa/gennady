@@ -29,4 +29,31 @@ describe('checkSpecLanguage', () => {
     const md = 'Status token `[x] DONE`, pipeline in CI (English), `approve()` call.';
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
+
+  it('расширенный список калек (messenger blob 0): гибриды и идиомы ловятся', () => {
+    const md =
+      'Обработчик фанаутит событие подписчикам, если один зафейлится — не засабмитить остальные. ' +
+      'Модуль линкует записи по id, затем мёржит результат. Джоба берёт тулу из соседнего пакета. ' +
+      'Логика спрятана под капотом — сначала нужно поднять сервис, ответ сервера лежит на проводе.';
+    const findings = checkSpecLanguage('s.md', md);
+    const codes = findings.map((f) => f.code);
+    assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
+    const words = ['фанаут', 'зафейл', 'засабмит', 'линку', 'мёрж', 'джоб', 'тул', 'капот', 'сервис', 'проводе'];
+    for (const w of words) {
+      assert.ok(
+        findings.some((f) => f.message.toLowerCase().includes(w)),
+        `expected a finding mentioning "${w}", got: ${JSON.stringify(findings.map((f) => f.message))}`,
+      );
+    }
+  });
+
+  it('прижившиеся англицизмы не задеваются', () => {
+    const md = 'Значение резолвится через промис, чанк уходит в фолбэк, событие эмитит и диспатчит стор.';
+    assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
+  });
+
+  it('«тула»-калька не задевает обычные русские слова со схожей подстрокой', () => {
+    const md = 'Пользователь встал со стула и поставил чашку на стол.';
+    assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
+  });
 });

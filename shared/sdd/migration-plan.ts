@@ -68,6 +68,67 @@ export type UnitStatus = (typeof UNIT_STATUSES)[number];
 /** @purpose Closed vocabulary for Section Map actions — anything else is a verify error. */
 export const SECTION_ACTIONS = ['keep', 'rename', 'merge', 'split', 'create', 'drop'] as const;
 
+/** @purpose Sentinel Section Map target for a source heading no curated rule recognizes — the one thing STEP_3 leaves for the agent. */
+export const UNMAPPED = 'UNMAPPED';
+
+/** @purpose One curated v1-heading → v2-canonical-SECTION correspondence. */
+type HeadingSectionRule = { match: RegExp; section: string };
+
+/**
+ * @purpose Curated v1-heading → v2-canonical-SECTION correspondences, sourced from
+ * `ai/directives/sdd-v2/formats/*-spec-structure.xml` (siblings `anchor-inject.ts#canonicalName`).
+ * @invariant Curated, not guessed: an unmatched heading is left `UNMAPPED`, never a nearest guess.
+ */
+const HEADING_SECTION_RULES: HeadingSectionRule[] = [
+  { match: /^scope-type$/i, section: 'SCOPE_TYPE' },
+  { match: /^vision(\s*&\s*primary goal)?$/i, section: 'VISION' },
+  { match: /^module vision$/i, section: 'MODULE_VISION' },
+  { match: /^overview$/i, section: 'OVERVIEW' },
+  { match: /^project type$/i, section: 'PROJECT_TYPE' },
+  { match: /^(approved\s+)?golden (dx|ux)(\s+example)?(\s*\(.*\))?$/i, section: 'GOLDEN_DX' },
+  { match: /^scope dependencies$/i, section: 'SCOPE_DEPENDENCIES' },
+  { match: /^requirements(\s*&\s*constraints)?$/i, section: 'REQUIREMENTS_AND_CONSTRAINTS' },
+  { match: /^(high-level\s+)?architecture$/i, section: 'ARCHITECTURE' },
+  { match: /^module map(\s*\(.*\))?$/i, section: 'MODULE_MAP' },
+  { match: /^module decision log$/i, section: 'MODULE_DECISION_LOG' },
+  { match: /^decision log$/i, section: 'DECISION_LOG' },
+  { match: /^(prerequisites|bootstrap requirements)$/i, section: 'BOOTSTRAP_REQUIREMENTS' },
+  { match: /^handoff(\s+to\s+.*)?$/i, section: 'HANDOFF' },
+  { match: /^tool stack(\s*\(.*\))?$/i, section: 'TOOL_STACK' },
+  { match: /^developer workflow example$/i, section: 'WORKFLOW_EXAMPLE' },
+  { match: /^file structure$/i, section: 'FILE_STRUCTURE' },
+  { match: /^effective rules(\s*\(.*\))?$/i, section: 'EFFECTIVE_RULES' },
+  { match: /^verification commands$/i, section: 'VERIFICATION_COMMANDS' },
+  { match: /^interface declaration$/i, section: 'INTERFACE_DECLARATION' },
+  { match: /^versioning policy$/i, section: 'VERSIONING_POLICY' },
+  { match: /^compatibility matrix$/i, section: 'COMPATIBILITY_MATRIX' },
+  { match: /^public api surface$/i, section: 'PUBLIC_API_SURFACE' },
+  { match: /^module usage example$/i, section: 'MODULE_USAGE_EXAMPLE' },
+  { match: /^inter-module dependencies$/i, section: 'INTER_MODULE_DEPENDENCIES' },
+  { match: /^entity inventory(\s*\(.*\))?$/i, section: 'ENTITY_INVENTORY' },
+  { match: /^entity surfaces$/i, section: 'ENTITY_SURFACES' },
+  { match: /^module contracts(\s*\(.*\))?$/i, section: 'MODULE_CONTRACTS' },
+  { match: /^public options(\s*&\s*policies)?$/i, section: 'PUBLIC_OPTIONS' },
+];
+
+/**
+ * @purpose Map one v1 `##`/`###` heading (as collected by `level2Headings`, numbering included) to
+ * its v2 canonical SECTION name, or `UNMAPPED` when no curated rule matches.
+ * @invariant Pure text match — never a nearest-guess; unrecognized input is always `UNMAPPED`.
+ * @param heading Raw heading text, e.g. `"## 3. Requirements & Constraints"`.
+ * @returns The canonical SECTION name, or `UNMAPPED`.
+ */
+export function mapHeadingToSection(heading: string): string {
+  const text = heading
+    .replace(/^#{2,3}\s*/, '')
+    .replace(/^\d+(\.\d+)*\.?\s+/, '')
+    .trim();
+  for (const rule of HEADING_SECTION_RULES) {
+    if (rule.match.test(text)) return rule.section;
+  }
+  return UNMAPPED;
+}
+
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
 
 // ─── Scan ─────────────────────────────────────────────────────────────────────
@@ -263,21 +324,33 @@ function renderInventory(unit: SpecUnit): string {
   return lines.join('\n');
 }
 
-/** @purpose Render the agent-filled Section Map scaffold — one row per source heading + one `create` row per target section. */
+/** @purpose Render the Section Map — pre-filled via `mapHeadingToSection`; `UNMAPPED` rows are the agent's only work. */
 function renderSectionMap(unit: SpecUnit): string {
   const lines: string[] = [
     '## Section Map',
     '',
-    '<!-- Заполняет агент, изучив исходник спеки. Каждый заголовок из Inventory — ровно одна строка.',
+    '<!-- Предзаполнено `sdd-migrate plan` по курируемым правилам (mapHeadingToSection). Агент правит',
+    '     только строки с целью UNMAPPED — остальные пересматривает лишь если правило ошиблось.',
     `     Действия: ${SECTION_ACTIONS.join(' | ')}. Каждая обязательная целевая секция должна появиться в колонке «Цель».`,
     '     Полный целевой порядок секций — в format-файле структуры (ai/directives/sdd-v2/formats/*-spec-structure.xml). -->',
     '',
     '| Источник | Действие | Цель (SECTION) | Комментарий |',
     '|---|---|---|---|',
   ];
-  for (const h of unit.headings) lines.push(`| \`${h}\` | ? | ? | |`);
-  for (const s of unit.targetSections)
+  const matchedTargets = new Set<string>();
+  for (const h of unit.headings) {
+    const section = mapHeadingToSection(h);
+    if (section === UNMAPPED) {
+      lines.push(`| \`${h}\` | ? | ${UNMAPPED} | не распознано правилом — решает агент |`);
+    } else {
+      matchedTargets.add(section);
+      lines.push(`| \`${h}\` | keep | ${section} | предзаполнено правилом |`);
+    }
+  }
+  for (const s of unit.targetSections) {
+    if (matchedTargets.has(s)) continue;
     lines.push(`| — | create | ${s} | если не покрыта строками выше — создать |`);
+  }
   return lines.join('\n');
 }
 
@@ -517,6 +590,15 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
           'MIG_SECTION_UNKNOWN',
           `Строка Section Map ссылается на несуществующий заголовок: \`${s}\`.`
         );
+    }
+    for (const r of rows) {
+      const target = unquote(r[2] ?? '');
+      if (target === UNMAPPED) {
+        err(
+          'MIG_SECTION_UNMAPPED_TARGET',
+          `Заголовок «${unquote(r[0] ?? '')}» остался нераспознанным (UNMAPPED) — реши действие и цель вручную.`
+        );
+      }
     }
     for (const r of rows) {
       const action = (r[1] ?? '').trim();

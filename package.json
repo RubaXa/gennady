@@ -66,7 +66,8 @@
     "format:check": "prettier --check .",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "release": "release-it",
-    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/",
+    "yagni": "tsx cli/gennady.ts yagni"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^3.0.41",

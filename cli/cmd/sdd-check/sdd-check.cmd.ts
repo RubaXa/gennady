@@ -5,7 +5,9 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, resolve, dirname, sep } from 'node:path';
 import { logger } from '#logger';
+import { execSyncSafe } from '../../../shared/common/exec.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { getChangedSourceFiles, getHeadContent } from '../../../shared/common/changed-files.ts';
 import {
   checkTicket,
   isTicket,
@@ -32,6 +34,21 @@ import {
 } from '../../../shared/sdd/flow.ts';
 import { checkSpecMermaid } from '../../../shared/sdd/mermaid-check.ts';
 import { parseTrackerRows } from '../../../shared/sdd/tracker.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
+import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import {
+  checkRulesCascadeClosure,
+  normalizeRulePath,
+  parseRuleDependsOn,
+  type RuleDepsMap,
+} from '../../../shared/sdd/rules-cascade.ts';
+import { checkTasksAppendOnly } from '../../../shared/sdd/tasks-append-only.ts';
+import {
+  checkConsumersResolvable,
+  classifyConsumerEntry,
+  parseConsumersHeader,
+} from '../../../shared/sdd/consumers-resolvable.ts';
+import { checkBddCoverage, extractTestCaseNames, parseTestCoverage } from '../../../shared/sdd/bdd-coverage.ts';
 import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
 
 const SKIP_DIRS = new Set([
@@ -96,6 +113,176 @@ function checkRuleLinks(file: string, content: string): Finding[] {
     }
   }
   return findings;
+}
+
+// Cache: rule-file id (repo-root-relative path) → its declared <DependsOn> entries. Rule files are
+// shared across many tickets in a --all run; read each one at most once.
+const ruleDepsCache = new Map<string, string[]>();
+
+/** @purpose Read + parse one rule file's `<DependsOn>` entries, memoized. | @param repoRoot Repository root. | @param ruleId Repo-root-relative rule-file path. | @returns Declared dependency ids; empty when the file is unreadable or has no `<DependsOn>`. */
+function getRuleDeps(repoRoot: string, ruleId: string): string[] {
+  const cached = ruleDepsCache.get(ruleId);
+  if (cached) return cached;
+  let content = '';
+  try {
+    content = readFileSync(resolve(repoRoot, ruleId), 'utf-8');
+  } catch {
+    ruleDepsCache.set(ruleId, []);
+    return [];
+  }
+  const deps = parseRuleDependsOn(content);
+  ruleDepsCache.set(ruleId, deps);
+  return deps;
+}
+
+/** @purpose Expand a seed rule-id set into the full reachable `<DependsOn>` graph, reading each file at most once. | @param repoRoot Repository root. | @param seeds A phase's Rules: ids (normalized). | @returns rule id → its deps, covering every node reachable from `seeds`. */
+function buildRuleDepsMap(repoRoot: string, seeds: string[]): RuleDepsMap {
+  const map: RuleDepsMap = new Map();
+  const stack = [...seeds];
+  while (stack.length) {
+    const id = stack.pop() as string;
+    if (map.has(id)) continue;
+    const deps = getRuleDeps(repoRoot, id);
+    map.set(id, deps);
+    for (const d of deps) if (!map.has(d)) stack.push(d);
+  }
+  return map;
+}
+
+/** @purpose RULES_CASCADE_CLOSURE for one ticket — per phase, verify the Rules: list is already the transitive `<DependsOn>` closure. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors rule-link resolution). | @returns SDD_RULES_CASCADE_UNRESOLVED findings, if any. */
+function checkTicketRulesCascade(file: string, content: string, repoRoot: string): Finding[] {
+  const overviewSec = extractSection(content, 'PHASES_OVERVIEW');
+  if (overviewSec.status !== 'ok') return [];
+  const findings: Finding[] = [];
+  for (const p of parsePhasesOverview(overviewSec.content)) {
+    const phaseSec = extractSection(content, `PHASE_${p.id}`);
+    if (phaseSec.status !== 'ok') continue;
+    const ruleIds = parsePhaseDetail(phaseSec.content)
+      .rules.filter((r) => r.endsWith('.xml'))
+      .map((r) => normalizeRulePath(file, repoRoot, r));
+    if (ruleIds.length === 0) continue;
+    const depsMap = buildRuleDepsMap(repoRoot, ruleIds);
+    findings.push(...checkRulesCascadeClosure(file, p.id, ruleIds, depsMap));
+  }
+  return findings;
+}
+
+// Cache: repoRoot → basename → absolute path(s). Built once per run by a bounded walk (source-only
+// extensions), reused by every ticket's BDD_COVERAGE lookup in a --all run.
+const testFileIndexCache = new Map<string, Map<string, string[]>>();
+// Cache: absolute test-file path → extracted it()/test() case names.
+const testCaseNamesCache = new Map<string, string[]>();
+
+/** @purpose Build (once) a basename → absolute-path(s) index of every `*.test.*`/`*.spec.*` file under `repoRoot`. | @param repoRoot Repository root. | @returns The memoized index. */
+function getTestFileIndex(repoRoot: string): Map<string, string[]> {
+  const cached = testFileIndexCache.get(repoRoot);
+  if (cached) return cached;
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      // Source walk: unlike the markdown walk (SKIP_DIRS), `__tests__` is exactly where test files
+      // live — must not be skipped here.
+      if (
+        entry.name.startsWith('.') ||
+        (SKIP_DIRS.has(entry.name) && entry.name !== '__tests__') ||
+        entry.isSymbolicLink()
+      )
+        continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && /\.(test|spec)\.(ts|tsx|js)$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk(repoRoot);
+  const idx = new Map<string, string[]>();
+  for (const f of files) {
+    const base = f.split(sep).pop() as string;
+    const list = idx.get(base);
+    if (list) list.push(f);
+    else idx.set(base, [f]);
+  }
+  testFileIndexCache.set(repoRoot, idx);
+  return idx;
+}
+
+/** @purpose Read + extract case names of one test file, memoized. | @param absPath Absolute test-file path. | @returns Extracted `it`/`test` case names; empty when unreadable. */
+function getTestCaseNames(absPath: string): string[] {
+  const cached = testCaseNamesCache.get(absPath);
+  if (cached) return cached;
+  let content = '';
+  try {
+    content = readFileSync(absPath, 'utf-8');
+  } catch {
+    // fall through with empty content
+  }
+  const names = extractTestCaseNames(content);
+  testCaseNamesCache.set(absPath, names);
+  return names;
+}
+
+/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED findings (severity by the ticket's own flow version), if any. */
+function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
+  const sec = extractSection(content, 'TEST_COVERAGE');
+  if (sec.status !== 'ok') return [];
+  const entries = parseTestCoverage(sec.content);
+  if (entries.length === 0) return [];
+  const idx = getTestFileIndex(repoRoot);
+  const caseNamesByFile = new Map<string, string[]>();
+  for (const e of entries) {
+    if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
+    const matches = idx.get(e.testFile) ?? [];
+    caseNamesByFile.set(e.testFile, matches.flatMap((m) => getTestCaseNames(m)));
+  }
+  return checkBddCoverage(file, entries, caseNamesByFile, ticketFlowVersion(file, repoRoot));
+}
+
+/**
+ * @purpose CONSUMERS_RESOLVABLE for one file — crude text-search grep per entry, why it's warn-only.
+ * @param relPath File path relative to repoRoot (finding location).
+ * @param content File source.
+ * @param repoRoot Repository root.
+ * @param absPath Absolute path of the file (excluded from its own resolution search).
+ * @returns SDD_CONSUMERS_UNRESOLVED findings, if any.
+ */
+function checkFileConsumersResolvable(
+  relPath: string,
+  content: string,
+  repoRoot: string,
+  absPath: string
+): Finding[] {
+  const entries = parseConsumersHeader(content).map(classifyConsumerEntry);
+  if (entries.length === 0) return [];
+  const resolved = new Set<string>();
+  for (const e of entries) {
+    if (e.external || !e.name) continue;
+    const out = execSyncSafe(
+      `grep -rlF --include='*.ts' --include='*.tsx' --include='*.js' --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git -- ${JSON.stringify(e.name)} ${JSON.stringify(repoRoot)} 2>/dev/null`,
+      { expectedExitCodes: [1] }
+    );
+    const files = out
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (files.some((f) => resolve(f) !== absPath)) resolved.add(e.name);
+  }
+  return checkConsumersResolvable(relPath, entries, resolved);
+}
+
+/** @purpose Walk up from `start` to the nearest `package.json` — the real repo root, since `--all`'s scanned root may be a scoped subtree. | @param start Directory to start from. | @returns Ancestor with `package.json`, or `start`. */
+function findRepoRoot(start: string): string {
+  let dir = start;
+  for (;;) {
+    if (existsSync(join(dir, 'package.json'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return start;
+    dir = parent;
+  }
 }
 
 /** @purpose GitHub-style heading slug: lowercase, drop non-word chars (keep spaces/hyphens), spaces→hyphens. | @param heading Heading text. | @returns Anchor slug. */
@@ -164,6 +351,23 @@ function specFlowVersion(file: string): FlowVersion {
   return detectScopeFlowVersion(repoRoot, parts[si + 1] as string);
 }
 
+/**
+ * @purpose Flow version governing ONE ticket file — per-scope, from its `tasks/<scope>/` segment.
+ * @invariant Unlike `specFlowVersion`, `repoRoot` is caller-supplied (see `findRepoRoot`), not
+ *   re-derived from the ticket's path — a ticket has no `specs` segment to anchor on.
+ * @param file Ticket path (absolute or relative — only the `tasks/<scope>/` segment matters).
+ * @param repoRoot The repository root.
+ * @returns The ticket's scope flow version; falls back to repo-level detection with no `tasks` segment.
+ */
+function ticketFlowVersion(file: string, repoRoot: string): FlowVersion {
+  const parts = resolve(file).split(sep);
+  const ti = parts.lastIndexOf('tasks');
+  if (ti >= 0 && parts.length - ti >= 2) {
+    return detectScopeFlowVersion(repoRoot, parts[ti + 1] as string);
+  }
+  return detectFlowVersion(repoRoot);
+}
+
 /** @purpose Names of top-level `specs/<dir>` directories that contain a `<dir>.spec.md`. | @param specsRoot Absolute path of the specs/ root. | @returns Scope-spec dir names. */
 function scopeSpecDirs(specsRoot: string): string[] {
   let entries;
@@ -188,7 +392,7 @@ function scopeSpecDirs(specsRoot: string): string[] {
  * @returns CheckResult — the ESLint-style report and exit code.
  */
 export async function run(rawArgs: string[]): Promise<CheckResult> {
-  const args = parseArgs(rawArgs, { task: ['task'], all: ['all'] });
+  const args = parseArgs(rawArgs, { task: ['task'], all: ['all'], changed: ['changed'] });
   const positional = (args._ as string[]).filter(
     (a: string) => typeof a === 'string' && a !== 'sdd-check'
   );
@@ -197,8 +401,9 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
   if (typeof args.task === 'string') taskPath = args.task;
   else if (args.task === true) taskPath = positional[0];
   const all = args.all === true || args.all === 'true';
+  const changed = args.changed === true || args.changed === 'true';
 
-  if (!taskPath && !all) return badInvocation();
+  if (!taskPath && !all && !changed) return badInvocation();
 
   const findings: Finding[] = [];
   let fileCount = 0;
@@ -210,23 +415,47 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     } catch {
       return fileError(taskPath);
     }
+    const repoRoot = process.cwd();
     findings.push(...checkTicket(taskPath, content));
     findings.push(...checkRuleLinks(taskPath, content));
     findings.push(...checkSpecRefs(taskPath, content));
     findings.push(...(await checkSpecMermaid(taskPath, content)));
+    findings.push(...checkTicketRulesCascade(taskPath, content, repoRoot));
+    findings.push(...checkTicketBddCoverage(taskPath, content, repoRoot));
     if (specFlowVersion(resolve(taskPath)) === 'v2')
       findings.push(...checkSpecLanguage(taskPath, content));
     fileCount = 1;
+  } else if (changed) {
+    // #region START_CHANGED — invariant: TASKS_APPEND_ONLY + CONSUMERS_RESOLVABLE run over changed source files, not the full spec/ticket tree
+    const root = resolve(positional[0] ?? '.');
+    for (const rel of getChangedSourceFiles(root)) {
+      const abs = join(root, rel);
+      let content: string;
+      try {
+        content = readFileSync(abs, 'utf-8');
+      } catch {
+        continue;
+      }
+      findings.push(...checkTasksAppendOnly(rel, content, getHeadContent(root, rel)));
+      findings.push(...checkFileConsumersResolvable(rel, content, root, resolve(abs)));
+      fileCount++;
+    }
+    // #endregion END_CHANGED
   } else {
     // Strict v2 spec rules (mandatory diagram, module floor, folded detail, language lint) apply
     // per scope: a migrated scope (tasks/<scope>/ removed) is checked strictly while v1 neighbours stay lenient.
-    // #region START_ALL — invariant: scan specs/ when present, else the given root
+    // v1 sibling layout has tickets in tasks/, not specs/ — scan both when present; a scoped root
+    // with neither (`--all specs/<scope>`, `--all tasks`) falls back to scanning `root` itself.
+    // #region START_ALL — invariant: scan specs/ AND tasks/ when both exist at `root`, else `root`
     const root = resolve(positional[0] ?? '.');
+    const repoRoot = findRepoRoot(root);
     const specsRoot = join(root, 'specs');
-    const base = existsSync(specsRoot) ? specsRoot : root;
+    const tasksRoot = join(root, 'tasks');
+    const bases = [specsRoot, tasksRoot].filter((d) => existsSync(d));
+    if (bases.length === 0) bases.push(root);
     const portalFile = join(specsRoot, 'README.md');
     const mdFiles: string[] = [];
-    walkMd(base, mdFiles);
+    for (const b of bases) walkMd(b, mdFiles);
     // Pre-read the portal Scope Graph once — every scope spec is cross-checked against it (B5).
     let portalEdges: GraphEdge[] = [];
     if (existsSync(portalFile)) {
@@ -284,6 +513,8 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         findings.push(...checkTicket(file, content));
         findings.push(...checkRuleLinks(file, content));
         findings.push(...checkSpecRefs(file, content));
+        findings.push(...checkTicketRulesCascade(file, content, repoRoot));
+        findings.push(...checkTicketBddCoverage(file, content, repoRoot));
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
         ticketRefs.push(ticketRef(file, content));
         fileCount++;

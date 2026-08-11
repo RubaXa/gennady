@@ -15,18 +15,29 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
   );
+  console.info(
+    '  npx gennady sdd-check --changed [project-root]  # check @tasks/@consumers headers of changed files'
+  );
   console.info('');
   console.info('Mechanical checks (per ticket):');
   console.info('  - anchor balance · required sections (META, EXECUTION_LOG)');
   console.info('  - Task-ID present · Status parseable');
   console.info('  - fabricated DONE: a [x] line with an unreplaced <…> placeholder');
   console.info('  - DONE with an unresolved BLOCKED · DONE with leftover placeholders');
+  console.info('  - RULES_CASCADE_CLOSURE: each phase Rules: list is the full <DependsOn> closure');
+  console.info('  - BDD_COVERAGE: Test Scenario Coverage canonical case names exist in the test file');
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
+  console.info(
+    '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'
+  );
+  console.info(
+    '             CONSUMERS_RESOLVABLE (@consumers: identifiers resolve elsewhere in the repo, warn-only)'
+  );
   console.info('');
   console.info(
-    '  Deferred to the audit agent (semantic): closed-world symbol-diff, BDD↔test mapping,'
+    '  Deferred to the audit agent (semantic): closed-world symbol-diff, runtime backing,'
   );
-  console.info('  rules-cascade resolution, stale-after-pivot.');
+  console.info('  insight backflow, stale-after-pivot, language quality (comprehension layer).');
   console.info('');
   console.info('Output: ESLint-style `file: severity: code  message` + summary.');
   console.info('Exit codes: 0 clean (warnings allowed)   1 error(s) found   4 bad invocation');

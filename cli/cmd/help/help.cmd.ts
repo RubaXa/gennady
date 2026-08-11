@@ -45,6 +45,9 @@ console.info('  run               Run a task via an AI agent engine (opencode)')
 console.info(
   '  testcov           Visual test coverage tree (vitest/jest/node:test auto-detection)'
 );
+console.info(
+  '  yagni             Flag added/changed symbols with fewer than 2 production-code usages'
+);
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

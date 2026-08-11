@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { planScopeMove, executeScopeMove } from '../migration-move.ts';
+import { planScopeMove, executeScopeMove, rewriteMovedLinks } from '../migration-move.ts';
 import { scanMigrationUnits, scaffoldUnitFile, unitFilePath } from '../migration-plan.ts';
 
 let root: string;
@@ -30,6 +30,8 @@ const TICKET_A = [
   '## 1. Meta',
   '- **Task-ID:** demo-alpha | **Status:** [x] DONE | **Scope:** demo | **Module:** core | **Dependencies:** None',
   '- **Purpose:** первая.',
+  '',
+  'Продолжение: [core.task-2.md](core.task-2.md).',
 ].join('\n');
 
 const TICKET_B = [
@@ -70,6 +72,11 @@ describe('migration-move', () => {
     // v1-имена файлов сохраняют старые номера; Meta уже с новыми ID (ids-режим отработал раньше move)
     writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md'), TICKET_A, 'utf-8');
     writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.task-2.md'), TICKET_B, 'utf-8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'README.md'),
+      '# demo — Tasks\n\n- [core.task-1.md](core/core.task-1.md)\n- [core.task-2.md](core/core.task-2.md)\n',
+      'utf-8'
+    );
   });
   after(() => {
     rmSync(root, { recursive: true, force: true });
@@ -129,6 +136,39 @@ describe('migration-move', () => {
     const scopeIndex = readFileSync(join(root, 'specs', 'demo', 'demo.3-tasks.md'), 'utf-8');
     assert.match(scopeIndex, /\| demo-alpha \| Первая фича \| core \|/);
     assert.match(scopeIndex, /## Cascade Table/);
+  });
+
+  it('rewriteMovedLinks: относительная ссылка пересчитывается на новый путь, внешние URL и якоря без пути не трогаются', () => {
+    const byOldPath = new Map([['tasks/demo/core/core.task-1.md', 'specs/demo/core/core.task.demo-alpha.md']]);
+    const r = rewriteMovedLinks(
+      'см. [тикет](core.task-1.md) и [сайт](https://example.com) и [якорь](#section)',
+      'tasks/demo/core/core.task-2.md',
+      'tasks/demo/core/core.task-2.md',
+      byOldPath
+    );
+    assert.strictEqual(r.count, 1);
+    assert.match(r.text, /\[тикет\]\(\.\.\/\.\.\/\.\.\/specs\/demo\/core\/core\.task\.demo-alpha\.md\)/);
+    assert.match(r.text, /\[сайт\]\(https:\/\/example\.com\)/);
+    assert.match(r.text, /\[якорь\]\(#section\)/);
+  });
+
+  it('--write: ссылка внутри переехавшего тикета и в README пересчитаны на новые пути', () => {
+    fillPlanLayer();
+    const dry = executeScopeMove(root, 'demo', false);
+    assert.ok(dry.ok, JSON.stringify(dry));
+    if (dry.ok) {
+      assert.match(dry.report.join('\n'), /would link\s+tasks\/demo\/core\/core\.task-1\.md/);
+      assert.match(dry.report.join('\n'), /would link\s+tasks\/demo\/README\.md/);
+    }
+
+    const r = executeScopeMove(root, 'demo', true);
+    assert.ok(r.ok, JSON.stringify(r));
+
+    const movedA = readFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md'),
+      'utf-8'
+    );
+    assert.match(movedA, /\[core\.task-2\.md\]\(\.\/core\.task\.demo-beta\.md\)/);
   });
 
   it('чужие тикеты вне плана блокируют удаление tasks/<scope>', () => {

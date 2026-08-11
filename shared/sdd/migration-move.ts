@@ -14,7 +14,7 @@ import {
   readdirSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join, dirname, basename, sep } from 'node:path';
+import { join, dirname, basename, sep, relative, posix } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMeta } from './tracker.ts';
 import { scanMigrationUnits, unitFilePath, type SpecUnit } from './migration-plan.ts';
@@ -254,6 +254,75 @@ export function renderScopeIndex(scope: string, units: UnitTickets[]): string {
   return lines.join('\n');
 }
 
+/** @purpose Zones scanned for markdown links that may point at a moved ticket. */
+const LINK_ZONES = ['specs', 'tasks'];
+
+/** @purpose Split a raw link target into its path and optional `#fragment`. */
+function splitLinkTarget(target: string): { path: string; fragment: string } {
+  const i = target.indexOf('#');
+  return i >= 0
+    ? { path: target.slice(0, i), fragment: target.slice(i) }
+    : { path: target, fragment: '' };
+}
+
+/**
+ * @purpose Repoint markdown links in a file's text off a moved ticket's old path, onto its new one.
+ * @invariant Skips empty targets, external URLs, and links whose resolved path is not in `byOldPath`.
+ * @param text Full file content.
+ * @param oldRefRelPath Path the file's existing links resolve against (where the author stood).
+ * @param newRefRelPath Path to emit new links against — the file's destination, or itself if unmoved.
+ * @param byOldPath Old repo-relative ticket path → new repo-relative ticket path.
+ * @returns Rewritten text + count of links changed.
+ */
+export function rewriteMovedLinks(
+  text: string,
+  oldRefRelPath: string,
+  newRefRelPath: string,
+  byOldPath: Map<string, string>
+): { text: string; count: number } {
+  if (byOldPath.size === 0) return { text, count: 0 };
+  const oldRefDir = posix.dirname(oldRefRelPath);
+  const newRefDir = posix.dirname(newRefRelPath);
+  let count = 0;
+  const rewritten = text.replace(
+    /\]\(([^)\s]+)([^)]*)\)/g,
+    (whole: string, rawTarget: string, rest: string) => {
+      if (rawTarget === '' || /^[a-z][a-z0-9+.-]*:\/\//i.test(rawTarget)) return whole;
+      const { path, fragment } = splitLinkTarget(rawTarget);
+      if (path === '') return whole;
+      const resolved = posix.normalize(posix.join(oldRefDir, path));
+      const newPath = byOldPath.get(resolved);
+      if (!newPath) return whole;
+      count++;
+      let rel = posix.relative(newRefDir, newPath);
+      if (!rel.startsWith('.')) rel = './' + rel;
+      return `](${rel}${fragment}${rest})`;
+    }
+  );
+  return { text: rewritten, count };
+}
+
+/** @purpose Recursively collect `.md` files under the given zone dirs, path-sorted. */
+function collectMdFiles(repoRoot: string, zones: string[]): string[] {
+  const acc: string[] = [];
+  const walk = (dir: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith('.') || e.isSymbolicLink()) continue;
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.isFile() && e.name.endsWith('.md')) acc.push(full);
+    }
+  };
+  for (const z of zones) walk(join(repoRoot, z));
+  return acc.sort();
+}
+
 /** @purpose Move one file, preferring `git mv` (keeps history), falling back to fs rename outside a repo. */
 function moveFile(repoRoot: string, from: string, to: string): void {
   mkdirSync(dirname(join(repoRoot, to)), { recursive: true });
@@ -304,6 +373,29 @@ export function executeScopeMove(
 
   const verb = write ? '' : 'would ';
   const report: string[] = [];
+
+  // #region START_LINK_REWRITE — relative markdown links to a moved ticket, fixed before the git mv
+  // itself (so the rewritten content travels with the file); every .md file in specs/+tasks/ is a
+  // candidate referrer, including the moved tickets' own bodies (resolved against their NEW path).
+  const byOldPath = new Map(plan.moves.map((m) => [m.from, m.to]));
+  if (byOldPath.size > 0) {
+    for (const abs of collectMdFiles(repoRoot, LINK_ZONES)) {
+      const rel = relative(repoRoot, abs);
+      const newRelPath = byOldPath.get(rel) ?? rel;
+      const { text, count } = rewriteMovedLinks(
+        readFileSync(abs, 'utf-8'),
+        rel,
+        newRelPath,
+        byOldPath
+      );
+      if (count > 0) {
+        if (write) writeFileSync(abs, text, 'utf-8');
+        report.push(`  ${verb}link  ${rel} — ${count} ссылк(и) на переезжающие тикеты`);
+      }
+    }
+  }
+  // #endregion END_LINK_REWRITE
+
   for (const m of plan.moves) {
     if (write) moveFile(repoRoot, m.from, m.to);
     report.push(`  ${verb}mv    ${m.from} → ${m.to}`);

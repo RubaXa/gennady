@@ -37,6 +37,7 @@
 | agents-rules      | [cmd/agents-rules/](cmd/agents-rules/)           | Вывод инструкции по orient для AI-агентов                                           |
 | run               | [cmd/run/](cmd/run/)                             | Запуск задания через AI-движок (opencode) — тонкая обёртка над agent-run            |
 | testcov           | [cmd/testcov/](cmd/testcov/)                     | Визуальное дерево покрытия тестами с авто-детекцией раннера (vitest/jest/node:test) |
+| yagni             | [cmd/yagni/](cmd/yagni/)                         | Находки YAGNI: символы диффа с < 2 использований в прод-коде, гейт по Usage Waiver  |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

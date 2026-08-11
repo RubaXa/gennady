@@ -42,6 +42,10 @@ npx gennady testcov --run
 npx gennady testcov --check
 npx gennady testcov --check --json
 
+# Гейт по покрытию (exit 0/1) — агрегирует line coverage по всем getRoots()
+npx gennady testcov --min=80
+npx gennady testcov --run --min=80   # прогнать тесты, затем проверить порог
+
 # Плоский список
 npx gennady testcov --flat
 npx gennady testcov --flat --json
@@ -72,6 +76,9 @@ _Это полный список сущностей модуля `testcov`. Л�
 | `collectVitestDiags` | Service      | Валидация vitest-конфига: `MISSING_JSON_REPORTER`, `REPORT_ON_FAILURE_DISABLED`, `MISSING_REPORT_ON_FAILURE`  |
 | `collectJestDiags`   | Service      | Валидация jest-конфига: `MISSING_JSON_REPORTER` через `jest.config.*` или `package.json#jest`                 |
 | `getDirStats`        | Service      | Рекурсивная агрегация Istanbul hit counts по директориям (memoized)                                           |
+| `aggregateLineCoverage` | Utility   | Суммирует `sH`/`sT` по набору корзин (dir stats) → `{hit, total}`; чистая, вынесена в `coverage-threshold.ts`  |
+| `linePct`             | Utility      | Процент покрытия строк из `{hit, total}`; `null` при `total=0`                                                |
+| `meetsMinCoverage`    | Utility      | Порог `--min`: `{hit,total} >= minPct`; `total=0` всегда `false`                                              |
 | `walk`               | Render       | ASCII-дерево директорий; учитывает `--files`, `SKIP_DIRS`, симлинки                                           |
 | `collectFlat`        | Service      | Плоский список директорий/файлов для `--flat` режима                                                          |
 | `printFlat`          | Render       | Вывод плоского списка как text или JSON                                                                       |
@@ -107,6 +114,7 @@ _Это полный список сущностей модуля `testcov`. Л�
 - **Public Operations:**
   - Парсинг аргументов через `parseArgs` (files, run, check, json, flat, help, context)
   - `--check` → `runDiagnostics()` + `printDiagnostics()`
+  - `--min=<pct>` → `aggregateLineCoverage(getRoots().map(getDirStats))` + `meetsMinCoverage()`; exit 0/1, no tree
   - `--run` → `detectRunners()` + `execSync(runner.runCmd(RESULTS_TMP))`
   - Загрузка `coverage-final.json` + `.tree-results.json`
   - `--flat` → `collectFlat()` + `printFlat()`
@@ -211,7 +219,26 @@ _Это полный список сущностей модуля `testcov`. Л�
   - `⚫` (sT = 0) ≠ `🔴` (sT > 0, sH = 0)
   - Проценты вычисляются из raw counts для безошибочной агрегации
 
-### 5.4 File Detail
+### 5.4 Coverage Gate (`--min`)
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+
+**Contract (DbC):**
+
+- Preconditions:
+  - `coverage/coverage-final.json` существует и содержит валидный Istanbul JSON (та же загрузка, что для дерева)
+  - `--min` передан со значением (`--min=<N>`); без значения → usage error, exit 4
+- Postconditions:
+  - Агрегирует `sH`/`sT` по `getDirStats(dir)` для каждой `dir` из `getRoots()` → project-wide line coverage
+  - `coverage% >= N` → exit 0; иначе exit 1
+  - `total=0` (ничего не инструментировано) → exit 1 при любом `N >= 0` — пустой проект не сертифицируется
+  - Печатает одну строку с процентом, `hit/total` и вердиктом; дерево/диагностика не печатаются
+- Invariants:
+  - `aggregateLineCoverage`/`linePct`/`meetsMinCoverage` — чистые функции (`coverage-threshold.ts`), без I/O; юнит-тестируемы отдельно от загрузки coverage-файла
+  - Порог включает равенство (`>=`), не строго `>`
+
+### 5.5 File Detail
 
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `e2e`
@@ -243,6 +270,7 @@ _Это полный список сущностей модуля `testcov`. Л�
 | `--files`         | boolean | false   | Показывать файлы в дереве (иначе только директории) |
 | `--run`           | boolean | false   | Авто-запуск тестов с coverage перед показом         |
 | `--check`         | boolean | false   | Только диагностика конфигурации (exit 0/1)          |
+| `--min=<pct>`     | number  | —       | Гейт покрытия строк: exit 1 если агрегат < pct (D-TC006) |
 | `--json`          | boolean | false   | Машиночитаемый вывод (для `--check` или `--flat`)   |
 | `--flat`          | boolean | false   | Плоский список вместо дерева                        |
 | `--context`, `-c` | number  | 2       | Количество строк контекста вокруг непокрытого кода  |
@@ -317,6 +345,13 @@ cli/cmd/testcov/
 - **Recorded:** session ModuleDecomposition, testcov
 - **Why:** Ключи в `coverage-final.json` — абсолютные пути, которые могут не совпадать с текущим cwd (контейнеры, CI, разные машины). Двухшаговый resolve (`findCovEntry`: exact path → basename match; `getCovRaw`: `covRaw[fp] ?? covRawByName[basename(fp)]`) гарантирует нахождение coverage-данных даже при несовпадении префиксов путей.
 - **Risk accepted:** Теоретическая коллизия имён (два файла с одинаковыми именами в разных директориях) — на практике крайне редка, и первый найденный по basename считается корректным. Приоритет exact match минимизирует риск.
+
+### D-TC006 — `--min=<pct>` агрегирует `getDirStats` по `getRoots()`, не по `covRaw` напрямую
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, testcov
+- **Why:** Дерево уже считает per-root агрегаты через `getDirStats(getRoots())` (те же `SKIP_DIRS`/`CODE_EXT` фильтры, что видит оператор в выводе). Суммирование по `covRaw` напрямую посчитало бы файлы вне `getRoots()` (например забытые корневые скрипты) — разное число между тем, что видно в дереве, и тем, что гейтится, было бы источником путаницы. Сравнение с порогом — чистая функция (`meetsMinCoverage`), вынесена в `coverage-threshold.ts` для юнит-теста без чтения `coverage-final.json`.
+- **Risk accepted:** Низкий — `getRoots()` уже используется как единственный источник top-level дерева; гейт и просмотр смотрят на одно и то же множество файлов по построению.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

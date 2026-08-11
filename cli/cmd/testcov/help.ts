@@ -16,6 +16,9 @@ export function printHelp(): void {
   console.info('  --files               Show source files in tree (default: dirs only)');
   console.info('  --run                 Detect runner → run tests with coverage → show tree');
   console.info('  --check               Diagnose configuration; exit 0 if OK, 1 on errors');
+  console.info(
+    '  --min=<pct>           Coverage gate: exit 1 if aggregate line coverage < pct (0 on pass)'
+  );
   console.info('  --json                Machine-readable output (for --check or --flat)');
   console.info('  --flat                Flat list instead of tree');
   console.info('  --context, -c <N>     Context lines around uncovered code (default: 2)');
@@ -51,6 +54,7 @@ export function printHelp(): void {
   console.info('  npx gennady testcov');
   console.info('  npx gennady testcov --files');
   console.info('  npx gennady testcov --run');
+  console.info('  npx gennady testcov --run --min=80');
   console.info('  npx gennady testcov --check');
   console.info('  npx gennady testcov --check --json');
   console.info('  npx gennady testcov --flat --json');
