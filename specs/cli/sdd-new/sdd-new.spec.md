@@ -1,6 +1,6 @@
 # Module: `sdd-new`
 
-**Module:** sdd-new · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling, block L1 (без тикета; см. [ai/sdd-v2-plan.md](../../../ai/sdd-v2-plan.md))
+**Module:** sdd-new · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling, block L1 (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
 

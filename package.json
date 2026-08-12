@@ -38,9 +38,6 @@
     "services/agent-run/engines/opencode/readonly.config.json"
   ],
   "scripts": {
-    "slides": "node ai/drafts/slides/360/build-slides.js",
-    "slides:serve": "node ai/drafts/slides/360/build-slides.js --serve",
-    "slides:pdf": "node ai/drafts/slides/360/build-slides.js --pdf",
     "prepare": "[ -d .git ] && git config core.hooksPath scripts/git-hooks || true",
     "type-check": "tsc --noEmit",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",

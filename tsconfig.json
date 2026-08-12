@@ -39,7 +39,6 @@
     "services/**/*",
     "cli/**/*",
     "scripts/**/*",
-    "assistant/**/*",
     "utils/**/*",
     "index.ts",
     "vite.config.ts"

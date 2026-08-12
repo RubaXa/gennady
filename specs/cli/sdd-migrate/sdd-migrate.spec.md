@@ -1,12 +1,12 @@
 # Module: `sdd-migrate`
 
-**Module:** sdd-migrate · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. [ai/sdd-v2-plan.md](../../../ai/sdd-v2-plan.md))
+**Module:** sdd-migrate · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
 
-Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. Текущий режим — **`anchors`**: v1-тикеты идут без `<!--SECTION:-->`-якорей (голые `## N.`), а v2-тулы (`sdd-extract`/`sdd-task`/`sdd-check`) их требуют; `anchors` оборачивает канонические секции маркерами по карте header→name. Dry-run по умолчанию; `--write` применяет. Ядро `shared/sdd/anchor-inject.ts` (`injectAnchors`), идемпотентно. Будущие режимы (по [плану](../../../ai/sdd-v2-plan.md)): `ids` (`TSK-NN`→slug по map, курируемые паттерны) + структурный move `tasks/`→`specs/`.
+Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. Текущий режим — **`anchors`**: v1-тикеты идут без `<!--SECTION:-->`-якорей (голые `## N.`), а v2-тулы (`sdd-extract`/`sdd-task`/`sdd-check`) их требуют; `anchors` оборачивает канонические секции маркерами по карте header→name. Dry-run по умолчанию; `--write` применяет. Ядро `shared/sdd/anchor-inject.ts` (`injectAnchors`), идемпотентно. Будущие режимы (план архивирован): `ids` (`TSK-NN`→slug по map, курируемые паттерны) + структурный move `tasks/`→`specs/`.
 
 **Key properties:**
 
