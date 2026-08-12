@@ -146,3 +146,85 @@ export function parseTrackerRows(content: string): TrackerRow[] {
   }
   return rows;
 }
+
+/**
+ * @purpose True when a TrackerRow's Status cell is a `[x]` checkbox (case-insensitive) — done.
+ * @param status The Status cell text.
+ * @returns Whether the row is done.
+ */
+export function isRowDone(status: string): boolean {
+  return /^\[x\]/i.test(status.trim());
+}
+
+/**
+ * @purpose Locate a Scope/Module rollup table — carries `Index`, `Tasks`, AND `Done` columns.
+ * @param lines The index file split into lines.
+ * @returns Header row index + the three column indices, or null when no such table exists.
+ */
+function findRollupHeader(
+  lines: string[]
+): { headerIdx: number; indexCol: number; tasksCol: number; doneCol: number } | null {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trimStart().startsWith('|')) continue;
+    const cells = contentCells(line).map((c) => c.toLowerCase());
+    const indexCol = cells.indexOf('index');
+    const tasksCol = cells.indexOf('tasks');
+    const doneCol = cells.indexOf('done');
+    if (indexCol !== -1 && tasksCol !== -1 && doneCol !== -1) {
+      return { headerIdx: i, indexCol, tasksCol, doneCol };
+    }
+  }
+  return null;
+}
+
+/** @purpose Extract the link target from a markdown-link cell (`[3-tasks](./x.3-tasks.md)` → `./x.3-tasks.md`), or null if the cell carries no link. */
+function linkTarget(cell: string): string | null {
+  return cell.match(/\[[^\]]*\]\(([^)]+)\)/)?.[1] ?? null;
+}
+
+/**
+ * @purpose Recompute a rollup table's Tasks/Done cells from each row's linked tracker file.
+ * @invariant A non-rollup table, or a row with no link / an unresolvable target, stays byte-identical.
+ * @param content Full markdown of the rollup file (e.g. `specs/3-tasks.md`, or a scope's `*.3-tasks.md`).
+ * @param resolveRows For an Index-cell link target, that tracker's rows, or null if unreadable.
+ * @returns The rewritten content, plus the link target of every row whose cells changed.
+ */
+export function recomputeRollupProgress(
+  content: string,
+  resolveRows: (indexLink: string) => TrackerRow[] | null
+): { text: string; updated: string[] } {
+  const lines = content.split('\n');
+  const header = findRollupHeader(lines);
+  if (!header) return { text: content, updated: [] };
+
+  const updated: string[] = [];
+  for (let i = header.headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trimStart().startsWith('|')) break;
+    if (/^\|?\s*-+\s*\|/.test(line)) continue;
+    const cells = contentCells(line);
+    const link = linkTarget(cells[header.indexCol] ?? '');
+    if (!link) continue;
+    const rows = resolveRows(link);
+    if (!rows) continue;
+
+    const done = rows.filter((r) => isRowDone(r.status)).length;
+    const total = rows.length;
+    const raw = line.split('|');
+    const tasksTarget = header.tasksCol + 1;
+    const doneTarget = header.doneCol + 1;
+    if (raw[tasksTarget] === undefined || raw[doneTarget] === undefined) continue;
+
+    const newTasks = ` ${total} `;
+    const newDone = ` ${done}/${total} `;
+    if (raw[tasksTarget] === newTasks && raw[doneTarget] === newDone) continue;
+
+    raw[tasksTarget] = newTasks;
+    raw[doneTarget] = newDone;
+    lines[i] = raw.join('|');
+    updated.push(link);
+  }
+
+  return { text: lines.join('\n'), updated };
+}

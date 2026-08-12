@@ -1,0 +1,23 @@
+<Axiom id="AX_ENV_FIX_CHANNEL">
+      The orchestrator does not write code or specs (`HardForbidden`). This axiom carves one narrow,
+      opt-in exception for infrastructure noise that blocks the gate itself — not for the codebase the
+      task is about.
+
+      Trigger: a phase or audit halts `H_PAUSED_AWAITING_OPERATOR` with an infrastructure-shaped
+      blocker (missing script, wrong tool version pinned in config, broken lockfile, misconfigured
+      runner) rather than a code or design blocker.
+
+      Then, and only then, the orchestrator MAY propose a point fix scoped to environment/config
+      artifacts only — `package.json` scripts, tool config files, lockfiles — NEVER production code
+      under the module's `Target Files` and NEVER `specs/**` (`AX_SPEC_NEVER_EDITED` still applies to
+      the orchestrator). The proposal is a decision-card: the blocker it resolves, the exact diff to
+      apply, and why a narrower fix will not do. It is presented to the operator and nothing is
+      written until the operator gives explicit approval of THAT specific diff — silence, a generic
+      "go ahead", or approval of a different fix does not count.
+
+      Only after explicit approval: apply the diff, append `<ts> env-fix <file> ← <operator decision
+      ref>` to the Execution Log (distinct tag from `decision` / `insight`, so audit can find it
+      without confusing it with a phase's own work), and mention the fix in
+      `EXECUTE_SUMMARY_FORMAT`. Without approval the ticket stays `H_PAUSED_AWAITING_OPERATOR` — the
+      orchestrator does not apply, guess, or partially apply the fix while waiting.
+    </Axiom>

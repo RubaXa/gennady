@@ -36,7 +36,10 @@ export async function run(runner: GateRunner, profile: Profile = 'full'): Promis
   const results: GateResult[] = [];
   for (const gate of gatesFor(profile)) {
     const start = Date.now();
-    const r = runner('npm', ['run', gate.name]);
+    const r =
+      gate.via === 'gennady'
+        ? runner('npx', ['gennady', gate.name])
+        : runner('npm', ['run', gate.name]);
     const durationMs = Date.now() - start;
     logger.debug(`[SddVerifyCommand#run] ${gate.name} → exit ${r.exitCode} (${durationMs}ms)`);
     results.push({ name: gate.name, exitCode: r.exitCode, output: r.output, durationMs });

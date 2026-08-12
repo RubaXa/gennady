@@ -47,6 +47,8 @@
     {{> "axiom/process/ax-re-dispatch"}}
 
     {{> "axiom/process/ax-verify-and-finalize"}}
+
+    {{> "axiom/process/ax-env-fix-channel"}}
   </BeliefState>
 
   <HaltConditions>
@@ -54,7 +56,7 @@
     |---|---|
     | `H_NO_TASKS` | No task index / no pickable task |
     | `H_AMBIGUOUS_TASK` | "next" / "pick" matches more than one pickable task — shortlist for the operator |
-    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs |
+    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs. An infrastructure-shaped blocker MAY instead be resolved via the narrow `AX_ENV_FIX_CHANNEL` (operator-approved point fix to env/config, never code or specs) |
     | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
     | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
   </HaltConditions>
@@ -161,7 +163,7 @@
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Workers write code, audit reports, and phase blocks; the orchestrator does not.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not write code or specs — the ONE narrow exception is `AX_ENV_FIX_CHANNEL` (env/config only, never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff).
     - Always run audit after all phases DONE, and code-review after the audit passes.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.

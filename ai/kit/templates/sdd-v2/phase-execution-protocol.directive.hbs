@@ -162,9 +162,16 @@
         line (`AX_INTRODUCED_DISCIPLINE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
-        exactly as written. **Error ownership:** this session MUST fix every failure the gate surfaces —
-        edited or not, in scope or not, pre-existing or not. Treat each as an error still to fix. Fix all,
-        re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
+        exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
+        surfaces, locate the file the fix must be written into. That file is inside this phase's Target Files,
+        or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
+        this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside
+        this boundary — `specs/**` (`AX_SPEC_NEVER_EDITED`), a file owned by another phase, a shared config this
+        phase did not create — → the failure is not fixable from here: emit `BLOCKER_FORMAT` with a concrete
+        remediation proposal (which file, what change) and halt `H_BLOCKED`; do not silently label it
+        pre-existing and move on, and do not touch the out-of-zone file to make the gate pass. The test is
+        strictly where the fix must be written, never a judgment call on whose bug it is. Fix every in-zone
+        failure, re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
         breaks the phase contract → `H_BLOCKED` (surfaced as PAUSED awaiting the operator, not as failure —
         `AX_HALT_VS_FAIL_DISTINCTION`; the `🛑 BLOCKED` log line opens the resolution trail the
         orchestrator checks, `AX_BLOCKER_RESOLUTION_TRAIL`); missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST

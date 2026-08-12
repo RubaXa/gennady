@@ -111,6 +111,7 @@
       | `STALE_AFTER_PIVOT` | reopen / refine the affected downstream artifact |
       | `TASK_ID_DRIFT` | code-fix via ticket reopen |
       | `YAGNI_WAIVER_INCOMPLETE` | ticket update (add the missing Execution Log line) OR spec edit (remove the label if it was never actually decided) |
+      | `ENVIRONMENT_GATE_UNAVAILABLE` | operator escalation — NOT a phase fix and NOT something audit or the worker repairs itself; spin out as a separate infra/environment task if the fix is non-trivial |
       | `DEAD_CODE_SUSPECT` (spotted incidentally during a probe) | spin out as a separate task (background task / new ticket) — never fixed inside the current task; keeps the current blast radius bounded |
       | operator-acknowledged risk | Decision Log entry in the scope spec |
 
@@ -149,6 +150,15 @@
         `gennady testcov --run --min=80` (coverage gate — project line coverage ≥ 80% at task completion):
         Always re-derive the gate yourself rather than trust the worker's logged `ver` lines; a gate that fails
         here, a `ver` logged for a command that does not actually pass, or coverage below the gate, is a `BLOCKER`.
+        A gate command that does not execute at all — no runner, missing script, no network, crashes before
+        producing a pass/fail — is a DIFFERENT case from a gate that runs and reports red: it is neither PASS
+        nor a failure to diagnose. Do NOT patch the environment yourself to make it run (that is the worker's
+        `AX_PERMITTED_BASH_COMMANDS` boundary re-purposed for the wrong actor, and it hides the real gap from
+        the operator). Record it as `ENVIRONMENT_GATE_UNAVAILABLE` and let STEP_3 route it. **PASS is never the
+        verdict when any gate is red OR any gate did not execute** — the only outcomes for a task with an
+        unexecuted gate are `FAIL` (with `phases_to_fix` left empty, since no phase can fix an environment
+        problem) or an explicit operator escalation; whole-task verdict computation MUST treat "gate did not
+        run" the same as "gate ran and failed" for this purpose.
         When the audit closes a WHOLE module
         (its last task — every sibling DONE), add the reverse closed-world sweep over the module's code root:
         `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — every entity declared in the

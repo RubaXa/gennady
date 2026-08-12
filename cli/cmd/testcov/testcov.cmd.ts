@@ -80,6 +80,7 @@ if (HELP) {
 type DiagCode =
   | 'NO_PACKAGE_JSON'
   | 'NO_RUNNER'
+  | 'NATIVE_COVERAGE_UNSUPPORTED'
   | 'NO_COVERAGE_FILE'
   | 'COVERAGE_FILE_PARSE_ERROR'
   | 'NO_RUNNER_CONFIG'
@@ -191,6 +192,22 @@ function detectRunners(): DetectedRunner[] {
   return runners;
 }
 
+/**
+ * @purpose Detect a `node --test --experimental-test-coverage` script — node's OWN native coverage,
+ *   legal on its own but NOT the c8-wrapped Istanbul JSON `detectRunners` requires.
+ * @invariant Checked only when `detectRunners()` found nothing — never shadows a real c8-backed
+ *   runner; this is "found something unusable," not a runner pick.
+ * @param pkg Parsed package.json.
+ * @returns `[scriptName, scriptCmd]` of the first matching script, or null.
+ */
+function detectNativeCoverageScript(pkg: PkgJson): [string, string] | null {
+  const scripts = pkg.scripts ?? {};
+  const entry = Object.entries(scripts).find(
+    ([, v]) => /\bnode\s+--test\b/.test(v) && /--experimental-test-coverage\b/.test(v)
+  );
+  return entry ?? null;
+}
+
 // ─── Diagnostics ──────────────────────────────────────────────────────────────
 
 /** @purpose Collects all configuration/environment diagnostics without side effects; used by --check and on any fatal error. */
@@ -214,6 +231,18 @@ function runDiagnostics(): Diagnostic[] {
   // #region START_DIAG_RUNNER — at least one runner must be detected
   const runners = detectRunners();
   if (runners.length === 0) {
+    const native = detectNativeCoverageScript(pkg);
+    if (native) {
+      const [scriptName] = native;
+      diags.push({
+        level: 'error',
+        code: 'NATIVE_COVERAGE_UNSUPPORTED',
+        message: `native node coverage found: "${scriptName}" runs "node --test --experimental-test-coverage" — but testcov's tree/gate pipeline reads c8's Istanbul JSON output, which node's own --experimental-test-coverage does not produce`,
+        expect: 'c8 with a "node --test" npm script (Istanbul-format coverage-final.json)',
+        fix: `native node coverage found; install c8 for testcov integration — npm install -D c8, then wrap the script: npx c8 --reporter=json npm run ${scriptName}`,
+      });
+      return diags;
+    }
     diags.push({
       level: 'error',
       code: 'NO_RUNNER',

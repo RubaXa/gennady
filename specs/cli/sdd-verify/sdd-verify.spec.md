@@ -6,11 +6,11 @@
 
 ## 1. Module Vision
 
-Детерминированный gate верификации фазы. Прогоняет ФИКСИРОВАННЫЙ набор проектных скриптов по точным именам — `format → lint → typecheck → test:coverage → yagni` — мутирующие первыми (autofix переписывает файлы, поэтому не гоняется параллельно с чтением). Вывод краткий: на успехе строка на gate; детали — только у упавших. Реверс-спека — `verify.sh` (идея gate), но без fuzzy-классификатора (D-SV004). `yagni` — та же RUN-ALL-дисциплина, что у остальных gate: YAGNI-находка в диффе фазы блокирует гейт наравне с типами и тестами (D-SV007).
+Детерминированный gate верификации фазы. Прогоняет ФИКСИРОВАННЫЙ набор точных проверок — `format → lint → typecheck → test:coverage → yagni` — мутирующие первыми (autofix переписывает файлы, поэтому не гоняется параллельно с чтением). Первые четыре — проектные npm-скрипты (`npm run <name>`); `yagni` — gennady-нативный гейт, вызывается напрямую (`npx gennady yagni`), НЕ через npm-скрипт проекта (D-SV008) — проект не обязан объявлять скрипт `yagni`, и `sdd-state` readiness (`shared/sdd/readiness.ts`) его не требует. Вывод краткий: на успехе строка на gate; детали — только у упавших. Реверс-спека — `verify.sh` (идея gate), но без fuzzy-классификатора (D-SV004). `yagni` несёт ту же RUN-ALL-дисциплину, что у остальных gate: YAGNI-находка в диффе фазы блокирует гейт наравне с типами и тестами (D-SV007).
 
 **Key properties:**
 
-- Exact gates — ровно `npm run format/lint/typecheck/test:coverage/yagni`; никакого обнаружения/угадывания
+- Exact gates — `npm run format/lint/typecheck/test:coverage` + `npx gennady yagni` (прямой вызов); никакого обнаружения/угадывания
 - Mutating-first, sequential — `format`, `lint` (autofix) идут первыми по очереди; read-only после; autofix не гоняется с чтением
 - RUN-ALL — падение gate не пропускает остальные (агент видит все проблемы)
 - Brief-on-success — `✅ <gate> (<dur>)`; на падении — exit code + захваченный output только упавшего
@@ -63,7 +63,7 @@ $ npx gennady sdd-verify
 | `defaultRunner` | Utility      | Раннер по умолчанию через `spawnSync` (без shell), exit + output                     |
 | `verdict`       | Utility      | Свёртка результатов: кратко на успехе, детали упавших                                |
 | `GATES`         | Value Object | Фикс-последовательность: format · lint (mutates) · typecheck · test:coverage · yagni |
-| `Gate`          | Value Object | name + mutates                                                                       |
+| `Gate`          | Value Object | name + mutates + `via?` (`'npm'` default \| `'gennady'` — прямой вызов, см. D-SV008) |
 | `GateRunResult` | Value Object | exitCode + output                                                                    |
 | `GateResult`    | Value Object | name · exitCode · output · durationMs                                                |
 | `GateRunner`    | Type         | `(command, args) => GateRunResult` — инъектируемый                                   |
@@ -88,7 +88,7 @@ $ npx gennady sdd-verify
 - Preconditions:
   - Required-скрипты существуют (это проверяет `sdd-state` readiness; `sdd-verify` идёт после ready)
 - Postconditions:
-  - Каждый gate запускается ровно один раз как `npm run <name>` в нормативном порядке
+  - Каждый gate запускается ровно один раз, в нормативном порядке: `via: 'npm'` (default) как `npm run <name>`; `via: 'gennady'` (только `yagni`) как `npx gennady <name>` — напрямую, минуя проектный npm-скрипт
   - Мутирующие (`format`, `lint`) — первыми и последовательно; падение одного не прерывает остальные (RUN-ALL)
   - Успех → exit 0 + `✅ <gate> (<dur>)` на gate; падение → exit 1 + output только упавших
 - Invariants:
@@ -166,7 +166,13 @@ cli/cmd/sdd-verify/
 
 - **Status:** active
 - **Why:** YAGNI-проверка (`gennady yagni`, `specs/cli/yagni/yagni.spec.md`) читает готовый диф фазы — запускать её до финальных правок кода (до `typecheck`/`test:coverage`) бессмысленно, поэтому она встаёт последней в `GATES`. Она не мутирует файлы (не autofix), поэтому не конкурирует за порядок с `format`/`lint`. Включена в профили `code` и `full` (код-диф уже есть), исключена из `test` (тестовая фаза не трогает прод-символы).
-- **Risk accepted:** Требует npm-скрипт `yagni` (`tsx cli/gennady.ts yagni`) в `package.json` — уже добавлен вместе с этим решением.
+- **Risk accepted:** Нет — вызов напрямую, не через npm-скрипт (см. D-SV008, суперсидит первоначальный npm-скрипт подход этой записи).
+
+### D-SV008 — `yagni`-гейт вызывается напрямую (`npx gennady yagni`), не через npm-скрипт проекта
+
+- **Status:** active
+- **Why:** D-SV007 изначально требовал npm-скрипт `yagni` в `package.json` проекта — но `shared/sdd/readiness.ts` (REQUIRED_SCRIPTS) сознательно НЕ включает `yagni` в обязательные скрипты (readiness — про базовую v2-готовность проекта, не про полный набор sdd-verify-гейтов). Разошлись источники истины: `sdd-state` мог репортить READY, пока `sdd-verify --profile full`/`code` падал на `npm run yagni` — скрипта не существует (`NO_SCRIPT`/exit ≠ 0), фаза блокировалась не по содержанию, а по отсутствующей npm-обёртке над собственным тулом gennady. Решение системное: `yagni` — гейт САМОГО gennady (как `typecheck`/`format` — проектные, а `yagni` — нет), поэтому `Gate.via: 'gennady'` запускает его `npx gennady yagni` напрямую; readiness ПРАВ, не требуя скрипт — сверка исчезает по построению, не по добавлению `yagni` в REQUIRED_SCRIPTS.
+- **Risk accepted:** `npx gennady yagni` требует, чтобы gennady был установлен для проекта (`gennadyAvailable` в readiness уже это проверяет отдельно от списка скриптов) — не новый риск, он и раньше был предпосылкой (`lint→gennady`).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

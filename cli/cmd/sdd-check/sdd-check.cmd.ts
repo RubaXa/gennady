@@ -59,9 +59,11 @@ import {
 } from '../../../shared/sdd/consumers-resolvable.ts';
 import {
   checkBddCoverage,
+  checkTestFileAmbiguity,
   checkUnparsedCoverageRows,
   extractTestCaseNames,
   parseTestCoverage,
+  resolveTestFileMatches,
 } from '../../../shared/sdd/bdd-coverage.ts';
 import { badInvocation, fileError, formatFindings, type CheckResult } from './sdd-check.types.ts';
 
@@ -181,14 +183,20 @@ function checkTicketRulesCascade(file: string, content: string, repoRoot: string
   return findings;
 }
 
-// Cache: repoRoot → basename → absolute path(s). Built once per run by a bounded walk (source-only
-// extensions), reused by every ticket's BDD_COVERAGE lookup in a --all run.
-const testFileIndexCache = new Map<string, Map<string, string[]>>();
+/**
+ * @purpose All test-file paths under a repo root, forward-slash normalized — what
+ *   `resolveTestFileMatches` matches a declared test-file reference against.
+ */
+type TestFileIndex = string[];
+
+// Cache: repoRoot → every test-file path (forward-slash normalized). Built once per run by a bounded
+// walk (source-only extensions), reused by every ticket's BDD_COVERAGE lookup in a --all run.
+const testFileIndexCache = new Map<string, TestFileIndex>();
 // Cache: absolute test-file path → extracted it()/test() case names.
 const testCaseNamesCache = new Map<string, string[]>();
 
-/** @purpose Build (once) a basename → absolute-path(s) index of every `*.test.*`/`*.spec.*` file under `repoRoot`. | @param repoRoot Repository root. | @returns The memoized index. */
-function getTestFileIndex(repoRoot: string): Map<string, string[]> {
+/** @purpose Build (once) the flat, forward-slash-normalized list of `*.test.*`/`*.spec.*` files under `repoRoot`, for suffix matching. | @param repoRoot Repository root. | @returns The memoized flat list. */
+function getTestFileIndex(repoRoot: string): TestFileIndex {
   const cached = testFileIndexCache.get(repoRoot);
   if (cached) return cached;
   const files: string[] = [];
@@ -214,13 +222,7 @@ function getTestFileIndex(repoRoot: string): Map<string, string[]> {
     }
   };
   walk(repoRoot);
-  const idx = new Map<string, string[]>();
-  for (const f of files) {
-    const base = f.split(sep).pop() as string;
-    const list = idx.get(base);
-    if (list) list.push(f);
-    else idx.set(base, [f]);
-  }
+  const idx = files.map((f) => f.split(sep).join('/'));
   testFileIndexCache.set(repoRoot, idx);
   return idx;
 }
@@ -251,7 +253,8 @@ function checkTicketBddCoverage(file: string, content: string, repoRoot: string)
   const caseNamesByFile = new Map<string, string[]>();
   for (const e of entries) {
     if (e.deferred !== null || caseNamesByFile.has(e.testFile)) continue;
-    const matches = idx.get(e.testFile) ?? [];
+    const matches = resolveTestFileMatches(idx, e.testFile);
+    findings.push(...checkTestFileAmbiguity(file, e.testFile, matches));
     caseNamesByFile.set(
       e.testFile,
       matches.flatMap((m) => getTestCaseNames(m))

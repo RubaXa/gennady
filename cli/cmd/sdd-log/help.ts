@@ -18,6 +18,15 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-log <ticket> close                # append the Round-close block'
   );
+  console.info(
+    '  npx gennady sdd-log <ticket> phase <P-ID> ["— re-run: <reason>"]   # phase heading (#### <P-ID>)'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> handoff "<payload>"  # typed **Handoff →** line, payload verbatim'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> blocker "<reason>" --axiom <AX> --unblock "<action>"   # BLOCKER_FORMAT block'
+  );
   console.info('');
   console.info('Guarantees:');
   console.info(

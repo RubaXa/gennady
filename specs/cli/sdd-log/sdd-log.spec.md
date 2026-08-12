@@ -6,20 +6,21 @@
 
 ## 1. Module Vision
 
-Append-only запись в `EXECUTION_LOG` тикета. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки. Тул владеет механической+safety частью журналирования: ставит реальный timestamp, **структурно гарантирует append-only** (вставка строго перед close-маркером секции — прежние строки физически не трогаются) и **отклоняет фабрикованный DONE** (контент с неподставленным `<…>`-плейсхолдером). Семантику (что логировать) задаёт вызывающий.
+Append-only запись в `EXECUTION_LOG` тикета. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки, а также собственные форматные блоки — фазовый заголовок, `**Handoff →**` и BLOCKER — так, чтобы контракты `PHASE_BLOCK_FORMAT` / `HANDOFF_FORMAT` / `BLOCKER_FORMAT` (`ai/directives/sdd-v2/phase-execution-protocol.directive.xml`) собирались тулом, а не руками через `line` (который до этой итерации калечил `####`/`**…**`/эмодзи, оборачивая всё в `- [x] \`<ts>\` <content>`). Тул владеет механической+safety частью журналирования: ставит реальный timestamp где формат его требует, **структурно гарантирует append-only** (вставка строго перед close-маркером секции — прежние строки физически не трогаются) и **отклоняет фабрикованный DONE** (контент с неподставленным `<…>`-плейсхолдером). Семантику (что логировать) задаёт вызывающий.
 
 **Key properties:**
 
 - Append-only by construction — `findSectionBounds` находит close-маркер, строки вставляются перед ним; редактировать прошлое тул не умеет
 - No fabricated DONE — `<…>`-плейсхолдер в контенте → отказ (exit 2); это audit-BLOCKER в ручном режиме
-- Timestamped — реальное время в каждую строку; дата в заголовок Round; часы инъектируются (детерминизм в тестах)
-- Positional args — режим и контент позиционны (флаг `--line=` ломал бы `exit=0`)
+- Timestamped where the format calls for it — `round`/`line`/`close`/`blocker` ставят реальное время; `phase`/`handoff` — без метки времени (формат этого не требует); часы инъектируются (детерминизм в тестах)
+- Positional args — режим и контент позиционны (флаг `--line=` ломал бы `exit=0`); только `blocker` берёт `--axiom`/`--unblock` как flags (значения без `=`, безопасно)
+- Verbatim pass-through — контент никогда не url-encode'ится/эскейпится; `%`, `**`, `####`, эмодзи проходят байт-в-байт (см. D-SL004)
 
 **Invariants:**
 
-- Ровно один режим: `round` | `line` | `close`
+- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker`
 - Round-номер авто-инкремент по числу `### Round N`
-- exit `0` дописано · `1` файл · `2` нет EXECUTION_LOG / плейсхолдер · `4` плохой вызов
+- exit `0` дописано · `1` файл · `2` нет EXECUTION_LOG / плейсхолдер · `4` плохой вызов / отсутствует `--axiom`/`--unblock` для `blocker`
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -34,6 +35,24 @@ $ npx gennady sdd-log ticket.md round "initial"
 $ npx gennady sdd-log ticket.md line 'ver `npm run check` → pass exit=0'
 [sdd-log] appended to EXECUTION_LOG:
 - [x] `2026-06-21T10:00:00.000Z` ver `npm run check` → pass exit=0
+
+$ npx gennady sdd-log ticket.md phase P1
+[sdd-log] appended to EXECUTION_LOG:
+#### P1
+
+$ npx gennady sdd-log ticket.md phase P1 "— re-run: F-003"
+[sdd-log] appended to EXECUTION_LOG:
+#### P1 — re-run: F-003
+
+$ npx gennady sdd-log ticket.md handoff "artifacts: [a.ts]; decisions: [x=1]; open: []"
+[sdd-log] appended to EXECUTION_LOG:
+**Handoff →** artifacts: [a.ts]; decisions: [x=1]; open: []
+
+$ npx gennady sdd-log ticket.md blocker "network blocked" --axiom AX_BLOCKER_ESCALATION --unblock "grant network access"
+[sdd-log] appended to EXECUTION_LOG:
+- 🛑 `2026-06-21T10:00:00.000Z` BLOCKED: network blocked
+  - 🔗 axiom: AX_BLOCKER_ESCALATION
+  - 💬 unblock: grant network access
 
 $ npx gennady sdd-log ticket.md close
 [sdd-log] appended to EXECUTION_LOG:
@@ -53,18 +72,21 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                                | Type         | Purpose                                                         |
-| ------------------------------------------------------------------- | ------------ | --------------------------------------------------------------- |
-| `run`                                                               | Command      | Точка входа CLI: парс режима, чтение, валидация, append, запись |
-| `findSectionBounds`                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки  |
-| `hasPlaceholder`                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                      |
-| `nextRoundNumber`                                                   | Utility      | Следующий номер Round по существующим `### Round N`             |
-| `buildRoundHeader`                                                  | Utility      | Текст заголовка Round                                           |
-| `buildEventLine`                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                               |
-| `buildCloseBlock`                                                   | Utility      | Блок `#### Round close` + DONE                                  |
-| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` | Utility      | Билдеры диагностик                                              |
-| `PLACEHOLDER_RE`                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                            |
-| `LogOutcome`                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`        |
+| Name                                                                                | Type         | Purpose                                                         |
+| ----------------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------- |
+| `run`                                                                               | Command      | Точка входа CLI: парс режима, чтение, валидация, append, запись |
+| `findSectionBounds`                                                                 | Utility      | (`shared/sdd/section`) индексы маркеров секции — точка вставки  |
+| `hasPlaceholder`                                                                    | Utility      | Детект неподставленного `<…>`-плейсхолдера                      |
+| `nextRoundNumber`                                                                   | Utility      | Следующий номер Round по существующим `### Round N`             |
+| `buildRoundHeader`                                                                  | Utility      | Текст заголовка Round                                           |
+| `buildEventLine`                                                                    | Utility      | Строка `- [x] \`<ts>\` <content>`                               |
+| `buildCloseBlock`                                                                   | Utility      | Блок `#### Round close` + DONE                                  |
+| `buildPhaseHeader`                                                                  | Utility      | `#### <PhaseID>` [+ ` — re-run: <reason>`], verbatim            |
+| `buildHandoffLine`                                                                  | Utility      | `**Handoff →** <payload>`, verbatim, без ts                     |
+| `buildBlockerBlock`                                                                 | Utility      | Полный BLOCKER_FORMAT блок (🛑/🔗/💬)                           |
+| `badInvocation` / `fileError` / `noLogSection` / `placeholderError` / `missingFlag` | Utility      | Билдеры диагностик                                              |
+| `PLACEHOLDER_RE`                                                                    | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                            |
+| `LogOutcome`                                                                        | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`        |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -80,12 +102,14 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 **Contract (DbC):**
 
 - Preconditions:
-  - `<ticket>` + ровно один режим (`round`/`line`/`close`); `round`/`line` требуют контент
+  - `<ticket>` + ровно один режим (`round`/`line`/`close`/`phase`/`handoff`/`blocker`); все режимы кроме `close` требуют контент
+  - `blocker` дополнительно требует `--axiom <AX_NAME>` и `--unblock "<action>"`
   - Тикет содержит ровно одну чистую пару маркеров `EXECUTION_LOG`
 - Postconditions:
   - Новые строки вставлены строго перед `<!--/SECTION:EXECUTION_LOG-->`; прочие байты файла не изменены
-  - `line`/`round` контент с `<…>`-плейсхолдером → отказ, файл не тронут (exit 2)
+  - Контент любого режима с `<…>`-плейсхолдером → отказ, файл не тронут (exit 2)
   - Round-номер = (число существующих Round) + 1
+  - `phase`/`handoff`/`blocker` пишут контент байт-в-байт — без timestamp-обёртки `line`, без url-encoding/эскейпинга
 - Invariants:
   - Append-only гарантируется конструкцией (вставка перед close-маркером)
   - Timestamp детерминирован при инъекции часов
@@ -96,12 +120,15 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 5. Public Options & Policies
 
-| Argument           | Type   | Description                       |
-| ------------------ | ------ | --------------------------------- |
-| `<ticket>`         | string | Путь к тикету                     |
-| `round "<reason>"` | mode   | Открыть Round (авто-номер, дата)  |
-| `line "<content>"` | mode   | Дописать timestamped event-строку |
-| `close`            | mode   | Дописать блок Round-close         |
+| Argument                                               | Type   | Description                                                    |
+| ------------------------------------------------------ | ------ | -------------------------------------------------------------- |
+| `<ticket>`                                             | string | Путь к тикету                                                  |
+| `round "<reason>"`                                     | mode   | Открыть Round (авто-номер, дата)                               |
+| `line "<content>"`                                     | mode   | Дописать timestamped event-строку                              |
+| `close`                                                | mode   | Дописать блок Round-close                                      |
+| `phase <P-ID> ["— re-run: <reason>"]`                  | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT` |
+| `handoff "<payload>"`                                  | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`        |
+| `blocker "<reason>" --axiom <AX> --unblock "<action>"` | mode   | Дописать полный блок per `BLOCKER_FORMAT`                      |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -146,6 +173,13 @@ cli/cmd/sdd-log/
 - **Status:** active
 - **Why:** `[x]`-строка с неподставленным `<…>` — это fabricated done (audit BLOCKER). Тул ловит механически до записи; `<ts>` ставит сам.
 - **Risk accepted:** Реальный `<` с пробелом (редирект `cmd < file`) не матчится (`/<[^>\s]+>/` требует отсутствие пробела) — ложных срабатываний на командах нет.
+
+### D-SL004 — Собственные режимы под форматные контракты, verbatim без escaping
+
+- **Status:** active
+- **Why:** До этой итерации единственный "структурный" режим для фазовых агентов был `line`, который безусловно оборачивает контент в `- [x] <ts> <content>` — заголовок фазы (`#### P1`), `**Handoff →**`-строка и BLOCKER-блок (эмодзи-маркеры) при этом превращались в мусор. Добавлены `phase`/`handoff`/`blocker` — каждый пишет контент строго по своему `OutputContracts`-контракту (`PHASE_BLOCK_FORMAT`/`HANDOFF_FORMAT`/`BLOCKER_FORMAT` в `phase-execution-protocol.directive.xml`), без обёртки `line`.
+- **`%25`-порча:** аудит кода sdd-log/parse-args не нашёл ни одного `encodeURIComponent`/`decodeURIComponent`/percent-escaping в тракте sdd-log — контент проходит `argv → parseArgs → join(' ') → writeFileSync` без трансформаций (проверено юнит-тестом на `%`, `**`, `####`, эмодзи побайтово). Порча `%` в `%25`, если она наблюдалась, возникает до передачи в sdd-log (двойное экранирование на стороне вызывающего — шелл/агент, который строит команду), не в самом тулле.
+- **Risk accepted:** Нет — операторская заметка: контент передавать одним shell-quoted аргументом, не через двойную интерполяцию.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

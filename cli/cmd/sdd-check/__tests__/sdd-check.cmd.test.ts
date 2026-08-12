@@ -200,6 +200,90 @@ describe('SddCheckCommand', () => {
     assert.doesNotMatch(r.text, /SDD_BDD_COVERAGE_ROW_UNPARSED/);
   });
 
+  it('--task matches a declared test-file by full path suffix, not just basename', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
+    const prevCwd = process.cwd();
+    try {
+      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
+      writeFileSync(
+        join(cwd, 'src', 'app', 'x.test.ts'),
+        "it('does the thing', () => {});",
+        'utf-8'
+      );
+      process.chdir(cwd);
+      const t = join(cwd, 'ticket.md');
+      writeFileSync(
+        t,
+        ticketWithCoverage('cli-foo', '- scenario → `src/app/x.test.ts` :: `does the thing`'),
+        'utf-8'
+      );
+      const r = await mod.run(argv(`--task=${t}`));
+      assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('--task matches a declared test-file by bare basename', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
+    const prevCwd = process.cwd();
+    try {
+      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
+      writeFileSync(
+        join(cwd, 'src', 'app', 'x.test.ts'),
+        "it('does the thing', () => {});",
+        'utf-8'
+      );
+      process.chdir(cwd);
+      const t = join(cwd, 'ticket.md');
+      writeFileSync(
+        t,
+        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`'),
+        'utf-8'
+      );
+      const r = await mod.run(argv(`--task=${t}`));
+      assert.doesNotMatch(r.text, /SDD_BDD_SCENARIO_UNTESTED/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('--task warns SDD_BDD_TESTFILE_AMBIGUOUS when a declared basename matches >1 file', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'sdd-check-cwd-'));
+    const prevCwd = process.cwd();
+    try {
+      writeFileSync(join(cwd, 'package.json'), '{}', 'utf-8');
+      mkdirSync(join(cwd, 'src', 'app'), { recursive: true });
+      mkdirSync(join(cwd, 'src', 'other'), { recursive: true });
+      writeFileSync(
+        join(cwd, 'src', 'app', 'x.test.ts'),
+        "it('does the thing', () => {});",
+        'utf-8'
+      );
+      writeFileSync(
+        join(cwd, 'src', 'other', 'x.test.ts'),
+        "it('does the thing', () => {});",
+        'utf-8'
+      );
+      process.chdir(cwd);
+      const t = join(cwd, 'ticket.md');
+      writeFileSync(
+        t,
+        ticketWithCoverage('cli-foo', '- scenario → `x.test.ts` :: `does the thing`'),
+        'utf-8'
+      );
+      const r = await mod.run(argv(`--task=${t}`));
+      assert.match(r.text, /SDD_BDD_TESTFILE_AMBIGUOUS/);
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('--all scans tickets and broken spec links under specs/', async () => {
     const root = join(dir, 'proj');
     const scopeDir = join(root, 'specs', 'cli');

@@ -10,6 +10,8 @@ export const ERR_CLI_SDD_LOG_FILE = 'ERR_CLI_SDD_LOG_FILE' as const;
 export const ERR_CLI_SDD_LOG_NO_LOG_SECTION = 'ERR_CLI_SDD_LOG_NO_LOG_SECTION' as const;
 /** @purpose Content carries an unreplaced `<…>` placeholder — a fabricated / incomplete entry. */
 export const ERR_CLI_SDD_LOG_PLACEHOLDER = 'ERR_CLI_SDD_LOG_PLACEHOLDER' as const;
+/** @purpose `blocker` mode invoked without required `--axiom` and/or `--unblock`. */
+export const ERR_CLI_SDD_LOG_MISSING_FLAG = 'ERR_CLI_SDD_LOG_MISSING_FLAG' as const;
 
 /**
  * @purpose Result of one sdd-log run.
@@ -72,6 +74,64 @@ export function buildCloseBlock(ts: string): string {
 }
 
 /**
+ * @purpose Build a phase-block header per `PHASE_BLOCK_FORMAT` — verbatim, no timestamp/escaping.
+ * @param phaseId The phase id (e.g. `P1`).
+ * @param [suffix] Optional re-run suffix (e.g. `— re-run: F-001`), appended verbatim after a space.
+ * @returns The `#### <PhaseID>` header line, blank-line padded like the other block openers.
+ */
+export function buildPhaseHeader(phaseId: string, suffix?: string): string {
+  const head = suffix ? `${phaseId} ${suffix}` : phaseId;
+  return `\n#### ${head}\n`;
+}
+
+/**
+ * @purpose Build the `**Handoff →**` line per `HANDOFF_FORMAT` — verbatim payload, no timestamp.
+ * @param payload The typed payload (`artifacts: […]; decisions: […]; open: […]`).
+ * @returns The `**Handoff →** <payload>` line, exact bytes.
+ */
+export function buildHandoffLine(payload: string): string {
+  return `**Handoff →** ${payload}`;
+}
+
+/**
+ * @purpose Build a full BLOCKER_FORMAT block — cause + axiom ref + unblock action.
+ * @param reason One-line cause (verbatim).
+ * @param axiom Axiom id cited as the trigger (verbatim, e.g. `AX_BLOCKER_ESCALATION`).
+ * @param unblock Concrete operator action to resolve the blocker (verbatim).
+ * @param ts Timestamp string.
+ * @returns The `- 🛑 …` / `  - 🔗 axiom: …` / `  - 💬 unblock: …` block.
+ */
+export function buildBlockerBlock(
+  reason: string,
+  axiom: string,
+  unblock: string,
+  ts: string
+): string {
+  return [
+    `- 🛑 \`${ts}\` BLOCKED: ${reason}`,
+    `  - 🔗 axiom: ${axiom}`,
+    `  - 💬 unblock: ${unblock}`,
+  ].join('\n');
+}
+
+/**
+ * @purpose Build the missing-flag diagnostic for `blocker` mode.
+ * @param detail What flag was missing.
+ * @returns Outcome with exit 4.
+ */
+export function missingFlag(detail: string): LogOutcome {
+  return {
+    ok: false,
+    code: ERR_CLI_SDD_LOG_MISSING_FLAG,
+    exitCode: 4,
+    message: [
+      `[sdd-log] ${ERR_CLI_SDD_LOG_MISSING_FLAG}: ${detail}`,
+      '  expected: gennady sdd-log <ticket> blocker "<reason>" --axiom <AX_NAME> --unblock "<concrete action>"',
+    ].join('\n'),
+  };
+}
+
+/**
  * @purpose Build the bad-invocation diagnostic.
  * @param detail What was wrong.
  * @returns Outcome with exit 4.
@@ -83,8 +143,10 @@ export function badInvocation(detail: string): LogOutcome {
     exitCode: 4,
     message: [
       `[sdd-log] ${ERR_CLI_SDD_LOG_BAD_INVOCATION}: ${detail}`,
-      '  expected: gennady sdd-log <ticket> (--round "<reason>" | --line "<content>" | --close)',
-      '  exactly one mode; <content> must carry no <…> placeholder.',
+      '  expected: gennady sdd-log <ticket> <mode> [content]',
+      '  modes: round "<reason>" | line "<content>" | close | phase <P-ID> ["— re-run: <reason>"] |',
+      '         handoff "<payload>" | blocker "<reason>" --axiom <AX_NAME> --unblock "<action>"',
+      '  content must carry no <…> placeholder.',
     ].join('\n'),
   };
 }

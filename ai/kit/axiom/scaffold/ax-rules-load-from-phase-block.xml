@@ -2,5 +2,15 @@
 <Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK">
       Open ONLY rule files listed under this phase's `Rules:` bullet list. Use the absolute-or-cwd-relative path verbatim. Read end-to-end (Mission + Belief_State + Reward_Criteria + Anti_Patterns + Verification_Hooks).
 
-      Rules from sibling phases are NOT this phase's concern. Do not pre-load them. Read failure on a cited rule → `H_RULE_FILE_MISSING`.
+      One legal extension: when a cited rule file itself declares a transitive base — an explicit
+      `InheritedBaseline` block, or prose stating "read `<other-file>` first" — that declared base is
+      part of the same rule for scoping purposes and MAY be opened too. It is NOT a discovery: log
+      nothing (no `discovery` line), since the manifest's citation already covers it by way of the
+      rule file's own declaration. This extension is narrow and self-limited by construction — it only
+      ever reaches the base(s) the cited file names, never a sibling phase's rules, never a file the
+      worker decides on its own looks relevant.
+
+      Everything else stays ONLY: rules from sibling phases are NOT this phase's concern, do not
+      pre-load them; a file that looks related but is not cited, and is not a declared base of a cited
+      file, stays unread. Read failure on a cited rule (or its declared base) → `H_RULE_FILE_MISSING`.
     </Axiom>

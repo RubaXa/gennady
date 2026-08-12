@@ -4,7 +4,14 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMeta, updateTrackerStatus } from '../tracker.ts';
+import {
+  isRowDone,
+  parseMeta,
+  parseTrackerRows,
+  recomputeRollupProgress,
+  updateTrackerStatus,
+  type TrackerRow,
+} from '../tracker.ts';
 
 const META = [
   '- **Task-ID:** cli-foo',
@@ -79,5 +86,97 @@ describe('updateTrackerStatus', () => {
     const r = updateTrackerStatus('# m\n\nNo table here.\n', 'cli-foo', '[x] DONE');
     assert.strictEqual(r.ok, false);
     if (!r.ok) assert.strictEqual(r.reason, 'no_table');
+  });
+});
+
+describe('isRowDone', () => {
+  it('true only for a `[x]` (any case) checkbox status', () => {
+    assert.strictEqual(isRowDone('[x] DONE'), true);
+    assert.strictEqual(isRowDone('[X] DONE'), true);
+    assert.strictEqual(isRowDone('  [x] DONE  '), true);
+    assert.strictEqual(isRowDone('[ ] TODO'), false);
+    assert.strictEqual(isRowDone('[~] IN_PROGRESS'), false);
+  });
+});
+
+const ROLLUP = [
+  '## Scope Tracker',
+  '| Scope | Type | Index | Tasks | Done |',
+  '|---|---|---|---|---|',
+  '| infra-base | infrastructure | [3-tasks](./infra-base/infra-base.3-tasks.md) | 6 | 0/6 |',
+  '| backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 0/12 |',
+].join('\n');
+
+describe('recomputeRollupProgress', () => {
+  it('rewrites Tasks/Done from the resolver-supplied rows', () => {
+    const rowsByLink: Record<string, TrackerRow[]> = {
+      './infra-base/infra-base.3-tasks.md': [
+        { taskId: 'a', status: '[x] DONE' },
+        { taskId: 'b', status: '[ ] TODO' },
+      ],
+      './backend/backend.3-tasks.md': [{ taskId: 'c', status: '[x] DONE' }],
+    };
+    const { text, updated } = recomputeRollupProgress(ROLLUP, (link) => rowsByLink[link] ?? null);
+    assert.deepStrictEqual(updated.sort(), [
+      './backend/backend.3-tasks.md',
+      './infra-base/infra-base.3-tasks.md',
+    ]);
+    assert.match(
+      text,
+      /\| infra-base \| infrastructure \| \[3-tasks\]\(\.\/infra-base\/infra-base\.3-tasks\.md\) \| 2 \| 1\/2 \|/
+    );
+    assert.match(
+      text,
+      /\| backend \| product \| \[3-tasks\]\(\.\/backend\/backend\.3-tasks\.md\) \| 1 \| 1\/1 \|/
+    );
+  });
+
+  it('is idempotent — unchanged rows report no updates', () => {
+    const alreadyCurrent = ROLLUP.replace('| 6 | 0/6 |', '| 2 | 1/2 |').replace(
+      '| 12 | 0/12 |',
+      '| 1 | 1/1 |'
+    );
+    const rowsByLink: Record<string, TrackerRow[]> = {
+      './infra-base/infra-base.3-tasks.md': [
+        { taskId: 'a', status: '[x] DONE' },
+        { taskId: 'b', status: '[ ] TODO' },
+      ],
+      './backend/backend.3-tasks.md': [{ taskId: 'c', status: '[x] DONE' }],
+    };
+    const { text, updated } = recomputeRollupProgress(
+      alreadyCurrent,
+      (link) => rowsByLink[link] ?? null
+    );
+    assert.deepStrictEqual(updated, []);
+    assert.strictEqual(text, alreadyCurrent);
+  });
+
+  it('leaves a non-rollup table (no Index/Tasks/Done columns) byte-identical', () => {
+    const { text, updated } = recomputeRollupProgress(MODULE_INDEX, () => []);
+    assert.strictEqual(text, MODULE_INDEX);
+    assert.deepStrictEqual(updated, []);
+  });
+
+  it('skips a row whose Index link the resolver cannot read', () => {
+    const { text, updated } = recomputeRollupProgress(ROLLUP, () => null);
+    assert.strictEqual(text, ROLLUP);
+    assert.deepStrictEqual(updated, []);
+  });
+
+  it('round-trips with parseTrackerRows as the resolver source', () => {
+    const linked = [
+      '| Task-ID | Title | Status |',
+      '|---|---|---|',
+      '| a | A | [x] DONE |',
+      '| b | B | [ ] TODO |',
+      '| c | C | [x] DONE |',
+    ].join('\n');
+    const { text } = recomputeRollupProgress(ROLLUP, (link) =>
+      link.includes('infra-base') ? parseTrackerRows(linked) : []
+    );
+    assert.match(
+      text,
+      /\| infra-base \| infrastructure \| \[3-tasks\]\(\.\/infra-base\/infra-base\.3-tasks\.md\) \| 3 \| 2\/3 \|/
+    );
   });
 });

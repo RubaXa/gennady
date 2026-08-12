@@ -23,9 +23,17 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
 Изолированная песочница — git-репозиторий (`git init`), фикстура коммитится как baseline ДО
 запуска флоу (`git add -A && git commit -m fixture-baseline`) — `AX_GIT_DIFF_SCAN` аудита читает
 `git diff` относительно этого коммита, значит baseline обязателен. Ниже `<GENNADY_WORKTREE>` —
-абсолютный путь к worktree gennady, который выдаёт оркестратор (тот же, что и для
-`npx tsx <worktree>/cli/gennady.ts`); подставить его и в `package.json`, и в ссылки `Rules:` тикета
-— дословно, без переноса в другой чекаут.
+абсолютный путь к worktree gennady, который выдаёт оркестратор (тот же, что и для прямого вызова
+бинарей из его `node_modules/.bin/`); подставить его дословно, без переноса в другой чекаут, во
+все места, где он встречается — `package.json` (`test`/`test:coverage`/`lint`/`yagni`/`format`
+scripts), `tsconfig.json` (`typeRoots`) и ссылки `Rules:` тикета.
+
+**Проверено живьём во времянке** (`node` v22.19.0, `tsx@4.21.0`, `typescript` из
+`<GENNADY_WORKTREE>/node_modules`): `node --import <bin-shim>` (CLI-обёртка тsx, например
+`node_modules/.bin/tsx`) резолвится как ESM-модуль, но процесс не завершается после того, как
+`node:test` допечатал `ok`-строки — зависание без exit (наблюдалось: 120s таймаут, процесс убит
+вручную). Рабочая форма — `--import` на сам ESM-загрузчик пакета,
+`node_modules/tsx/dist/loader.mjs`, — тесты и coverage-прогон завершаются штатно (`exit=0`).
 
 `package.json`:
 
@@ -35,13 +43,21 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
   "version": "0.1.0",
   "scripts": {
     "typecheck": "<GENNADY_WORKTREE>/node_modules/.bin/tsc --noEmit",
-    "test": "node --import <GENNADY_WORKTREE>/node_modules/.bin/tsx --test src/app/greeting/*.test.ts",
-    "test:coverage": "node --import <GENNADY_WORKTREE>/node_modules/.bin/tsx --test --experimental-test-coverage src/app/greeting/*.test.ts",
-    "lint": "npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --all .",
+    "test": "node --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs --test src/app/greeting/*.test.ts",
+    "test:coverage": "node --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs --test --experimental-test-coverage src/app/greeting/*.test.ts",
+    "lint": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts lint .",
+    "yagni": "<GENNADY_WORKTREE>/node_modules/.bin/tsx <GENNADY_WORKTREE>/cli/gennady.ts yagni .",
     "format": "<GENNADY_WORKTREE>/node_modules/.bin/prettier --check ."
   }
 }
 ```
+
+`lint` дословно вызывает `gennady lint .` — не `lint --all .`: у CLI (проверено `gennady lint
+--help` во времянке) нет флага `--all`, `--all` — `ERR_CLI_LINT_UNKNOWN_FLAG`. `lint` вызывается
+через репо-относительный `node_modules/.bin/tsx`, не через `npx tsx` (`npx` резолвит `tsx` из PATH
+или ставит его заново — не гарантирует ту же версию, что закреплена в worktree). `yagni` добавлен
+как npm-скрипт с тем же репо-относительным вызовом — устойчив к тому, вызывает ли audit-роль
+`npm run yagni` или напрямую `gennady yagni` (обе формы бьют в тот же CLI).
 
 `tsconfig.json`:
 
@@ -53,11 +69,23 @@ worker, Executor читает СТРОГО по манифесту фазы (н�
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"],
+    "typeRoots": ["<GENNADY_WORKTREE>/node_modules/@types"],
+    "allowImportingTsExtensions": true
   },
   "include": ["src"]
 }
 ```
+
+Три добавленных поля — все проверены живьём во времянке против фикстурных `.ts`-файлов
+(`greeter.port.ts` / `echo-greeter.adapter.ts` / `echo-greeter.adapter.test.ts` с `import ... from
+'./x.ts'` и `import { test } from 'node:test'`): без `allowImportingTsExtensions` — `TS5097` на
+`.ts`-импортах; без типов для `node:test`/`node:assert` — `TS2307 Cannot find module 'node:test'`
+(проект не тянет `@types/node` автоматически — в фикстуре нет собственного `node_modules`); голое
+`"types": []` глушит и то, что нужно — держит `TS2307`, поэтому решение по факту прогона — `"types":
+["node"]` + `typeRoots`, указывающий на `@types` внутри `<GENNADY_WORKTREE>/node_modules` (фикстура
+своих `@types` не имеет). С этими тремя полями `tsc --noEmit` на файлах P1/P2 — `exit=0`.
 
 `.prettierrc.json`: `{ "semi": true, "singleQuote": true }`
 
@@ -487,7 +515,11 @@ APP-greet-greeting`.
 4. Смена роли на worker перед P1 зафиксирована строкой `note: role=worker P1` (или аналогичной,
    дословно называющей роль и фазу), и загрузка `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`
    отражена строкой `directive: ... loaded` — per Mission phase-execution-protocol: «A worker
-   directive — runs in isolation on a cheaper model».
+   directive — runs in isolation on a cheaper model». Обе строки ОБЯЗАТЕЛЬНЫ и раздельны: `note:
+role=...` без последующей `directive: ... loaded` для той же роли, или наоборот, — сам по себе FAIL
+   этого чекпоинта, независимо от того, читал ли исполнитель директиву по существу (это был
+   повторяющийся провал исполнителя в предыдущих прогонах — Verifier проверяет присутствие СТРОКИ, а
+   не намерение).
 5. Worker P1 читает СТРОГО по манифесту фазы (`AX_READ_PER_MANIFEST`: «read EXACTLY that, nothing
    beyond it») — в трейсе нет чтения секций тикета за пределами Meta/Phases Overview/P1-блока/gates
    до момента, когда P1 обращается к ним по манифесту; нет чтения `PHASE_P2` до его собственного
@@ -520,9 +552,17 @@ test` / `npm run test:coverage` НЕ входят в P1-профиль `code` (�
     Handoff, thread it into the next phase's Inputs» — P2 диспетчится ТОЛЬКО после появления P1
     Handoff в текущем Round (`AX_EXECUTION_ORDER`: «a phase starts only after every phase it depends
     on reaches `[x] DONE`»; `H_INPUT_HANDOFF_MISSING` не сработал), Inputs P2 = P1 Handoff verbatim.
-13. P2 STEP_5_VERIFY использует профиль `test` (STEP_5: «`test` → `test` (format · typecheck ·
-    test:coverage)») — четыре команды §5, покрывающие этот профиль (`npm run typecheck`, `npm run
-test`, `npm run test:coverage`, `npm run format`), логируются `ver`; `AX_BDD_NAME_DISCIPLINE`:
+13. P2 STEP_5_VERIFY: сначала `sdd-verify --profile test` (STEP_5: «`test` → `test` (format ·
+    typecheck · test:coverage)») — это внутренний авто-профиль `sdd-verify`, отдельный от §5 и не
+    логируется построчно как `ver <cmd>`. Затем §5-команды **verbatim**, но НЕ все пять и не «четыре
+    покрывающие профиль» — per `AX_VERIFICATION_BEFORE_HANDOFF`: «Each command from ticket §5
+    Verification whose `Required by` rules overlap with this phase's `Rules`». P2's `Rules:` — только
+    `node-test.xml`. Пересечение с колонкой `Required by` таблицы §5 даёт РОВНО ДВЕ команды: `npm run
+test` и `npm run test:coverage` (обе `Required by: node-test.xml`). `npm run typecheck` и `npm run
+format` — `Required by: typescript-rules.xml`, вне `Rules:` этой фазы — их `ver`-строки принадлежат
+    P1 (чекпоинт 10), не P2; появление здесь `ver npm run typecheck` или `ver npm run format` на роли
+    worker P2 — находка (не покрыто `Rules:` этой фазы, дублирование гейта чужой фазы). `npm run
+lint` также не входит (P2 — `test`-kind, не покрыт ни профилем, ни `Rules:`). `AX_BDD_NAME_DISCIPLINE`:
     канонические имена сценариев из Test Scenario Coverage использованы verbatim как имена test-кейсов
     (`greets a non-empty name`, `rejects an empty name`, `EchoGreeterAdapter satisfies GreeterPort`).
 14. STEP_3_CLOSE_ROUND: `sdd-log` вызван для Round close (`ROUND_CLOSE_FORMAT`), Meta Status →
@@ -533,7 +573,9 @@ test`, `npm run test:coverage`, `npm run format`), логируются `ver`; `
     произошёл БЕЗ вопроса оператору (`AX_AUDIT_HOOK`: «`sdd-execute` orchestrator dispatches
     audit-subagent automatically after the last phase of a Round closes — operator does not invoke
     audit manually») — в трейсе между Round close и появлением `directive: ai/directives/sdd-v2/audit.directive.xml
-loaded` нет ни одной строки `operator:`/`ask:`.
+loaded` нет ни одной строки `operator:`/`ask:`. Обе строки — `note: role=audit-subagent` И `directive:
+    ... loaded` — обязательны и раздельны (см. чекпоинт 4); отсутствие любой из них — FAIL сам по
+    себе, это тот же класс пропуска, что исполнитель ранее допускал на этой роли.
 17. Audit STEP_1_MECHANICAL: `sdd-check --task <ticket-path>` взят «as given», ЗАТЕМ независимый
     повторный прогон гейта — «INDEPENDENTLY re-run the green gate — `sdd-verify --profile full`,
     `gennady lint --spec=<module-spec>` ..., and `gennady testcov --run --min=80`» — все три вызова
@@ -549,7 +591,9 @@ attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_RE
     повторного Round `fix`, нет второго вызова audit R2 в трейсе).
 20. STEP_7B_CODE_REVIEW диспетчится «lazy, after the audit passes» — смена роли
     `note: role=code-review-subagent` появляется ПОСЛЕ строки с вердиктом audit `PASS`, не до неё;
-    загрузка `ai/directives/sdd-v2/code-review.directive.xml` отражена `directive: ... loaded`.
+    загрузка `ai/directives/sdd-v2/code-review.directive.xml` отражена `directive: ... loaded`. Как и
+    на предыдущих сменах роли (чекпоинты 4, 16) — `note: role=...` и `directive: ... loaded` обе
+    обязательны и раздельны; пропуск любой из двух строк — FAIL.
 21. Code-review читает `git diff` Round'а, а не весь тикет с нуля (`STEP_1_READ_DIFF`: «Read the
     Round's git diff ... and the changed files, plus the contract anchors») — в трейсе есть `tool:`
     строка с `git diff` на этой роли (легитимно: `AX_PERMITTED_BASH_COMMANDS` резервирует `git diff`
@@ -565,4 +609,54 @@ attempt"` в STEP_6_BRANCH сработал по ветке «-> STEP_7B_CODE_RE
     вовсе — прогон закрывается единственной строкой `stop: per-map — ...` в самом конце, что
     отдельно подтверждает `AX_HALT_VS_FAIL_DISTINCTION`: «Halt is NOT failure ... A skill or phase
     that stops awaiting operator decision is in a PAUSED state, not a FAILED state» — в этой карте
-    ни PAUSED, ни FAILED не должны возникнуть, раз фикстура собрана без блокеров.
+    ни PAUSED, ни FAILED не должны возникнуть, раз фикстура собрана без блокеров. Эта посылка
+    держится ТОЛЬКО потому, что фикстура сама исполнима: `test`/`test:coverage` через
+    `tsx/dist/loader.mjs` не виснут (раздел Fixture, проверено живьём — `exit=0`), `tsconfig.json`
+    компилирует P1/P2-файлы без `TS2307`/`TS5097` (тот же раздел), `lint`/`yagni` бьют в
+    существующие флаги/подкоманды CLI. Раньше именно поломанная фикстура (зависающий `--import`,
+    несуществующий `--all`, нерезолвящиеся типы `node:test`) была той средой, что провоцировала
+    `H_VERIFICATION_FAIL` → `H_PAUSED_AWAITING_OPERATOR` независимо от качества исполнения. Теперь,
+    когда все гейты фикстуры проходимы, PAUSED в этой карте — не «фикстура виновата», а находка про
+    исполнителя или про сам `execute.directive`/`phase-execution-protocol` — фиксировать её как
+    таковую, не списывать на среду.
+25. Audit НЕ выдаёт `PASS` на красном или неисполнившемся гейте (`STEP_1_MECHANICAL`: «**PASS is
+    never the verdict when any gate is red OR any gate did not execute**» — включая случай
+    `ENVIRONMENT_GATE_UNAVAILABLE`, «neither PASS nor a failure to diagnose», требующий `FAIL` с
+    пустым `phases_to_fix`, а не молчаливого пропуска гейта). В штатном прогоне этой (починенной)
+    фикстуры все три независимых re-run гейта в STEP_1_MECHANICAL (`sdd-verify --profile full`,
+    `gennady lint --spec=...`, `gennady testcov --run --min=80` — чекпоинт 17) реально исполняются и
+    зелены — значит вердикт `PASS` в трейсе стоит НЕ потому, что аудит принял на веру `ver`-строки
+    воркеров (запрещено тем же STEP_1_MECHANICAL: «Always re-derive the gate yourself rather than
+    trust the worker's logged `ver` lines»), а потому что independent re-run сам вернул зелень.
+    Отсутствие хотя бы одного из трёх `tool:`-вызовов re-run перед строкой с вердиктом `PASS` —
+    находка (`AX_MECHANICAL_VIA_SDD_CHECK` нарушен, вердикт не обоснован).
+26. Оркестратор ни в одной роли `orchestrator` не пишет код (`Target Files` любой фазы) и не
+    правит `specs/**` — «The orchestrator does not write code or specs (`HardForbidden`)». Если в
+    трейсе на роли `role=orchestrator` встречается `write:` строка — единственное легитимное
+    исключение — узкий канал `AX_ENV_FIX_CHANNEL` (точечный фикс `package.json`-скрипта / конфига
+    инструмента, никогда production-кода из `Target Files` и никогда `specs/**`), и даже он
+    допустим ТОЛЬКО после явного `operator:`-одобрения конкретного диффа, за которым следует
+    `<ts> env-fix <file> ← <operator decision ref>` строка в Execution Log. В штатном (безошибочном)
+    прогоне этой фикстуры `AX_ENV_FIX_CHANNEL` не должен сработать вовсе (фикстура уже исправна —
+    см. чекпоинт 24) — появление `env-fix` здесь без предшествующего `H_PAUSED_AWAITING_OPERATOR` +
+    `operator:`-одобрения — находка; появление ЛЮБОГО `write:` на роли `orchestrator` без этого
+    канала — находка (`HardForbidden`).
+27. Тела §5-скриптов (`package.json` → `scripts.typecheck`/`test`/`test:coverage`/`lint`/`yagni`/`format`)
+    НЕ правятся ни одной ролью по ходу прогона — «Editing what a §5 script actually runs ... while
+    logging the unchanged §5 command name as `ver` is the same violation ... under the tag
+    `fabricated-verification`» (`AX_VERIFICATION_BEFORE_HANDOFF`). Ни P1, ни P2 не объявляют
+    `package.json` среди своих `Target Files` и не имеют Objective, эквивалентного «переопределить
+    §5-скрипт» — значит единственный легитимный исключающий случай («сам `package.json` — Target
+    File этой фазы, и правка скрипта — заявленный Objective, с обязательной `decision`-строкой») не
+    применим в этой карте. Любой `write: package.json` в трейсе — находка вне зависимости от того,
+    какая роль его сделала.
+28. Handoff-строки (`**Handoff →** ...`) и blocker-строки (`🛑 BLOCKED ...`) пишутся через выделенные
+    режимы `sdd-log` (`sdd-log <ticket> phase ...` / `handoff ...` / `blocker ...` или актуальный
+    эквивалент), а не через универсальный `sdd-log <ticket> line "..."`, если параллельная правка
+    директив к моменту этого прогона уже ввела эти режимы как обязательные для типизированных
+    записей (`AX_HANDOFF_TYPED`, `BLOCKER_FORMAT`). На момент составления этого чекпоинта в
+    `cli/cmd/sdd-log/help.ts` заявлены только `round` / `line` / `close` — если Verifier видит в
+    трейсе `tool: sdd-log <ticket> line "**Handoff →** ..."` (универсальный режим), это ОЖИДАЕМО
+    ровно до тех пор, пока параллельная правка не приземлилась; после приземления — то же самое
+    вызовом `line` вместо `phase`/`handoff`/`blocker` становится находкой (устаревший режим вместо
+    типизированного). <!-- sync with directive wording after batch -->

@@ -118,6 +118,90 @@ describe('SddSyncCommand', () => {
     assert.match(readFileSync(si, 'utf-8'), /\[x\] DONE/);
   });
 
+  it('recomputes the project-index Progress (Tasks/Done) rollup after a Status sync', async () => {
+    // Isolated tmp root (not the shared `dir`) — a bare `3-tasks.md` sitting directly in `dir` would
+    // otherwise be picked up by every other test's walk-up discovery from a ticket placed in `dir`.
+    const root = mkdtempSync(join(tmpdir(), 'sdd-sync-progress-'));
+    try {
+      const scopeDir = join(root, 'scopeP');
+      mkdirSync(scopeDir, { recursive: true });
+      const t = join(scopeDir, 'ticket.md');
+      const mi = join(scopeDir, 'scopeP.3-tasks.md');
+      const projectIndex = join(root, '3-tasks.md');
+
+      writeFileSync(t, TICKET, 'utf-8');
+      writeFileSync(
+        mi,
+        [
+          '## Tracker',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| cli-foo | Foo | — | [ ] TODO | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        projectIndex,
+        [
+          '## Scope Tracker',
+          '| Scope | Type | Index | Tasks | Done |',
+          '|---|---|---|---|---|',
+          '| scopeP | product | [3-tasks](./scopeP/scopeP.3-tasks.md) | 1 | 0/1 |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const outcome = await mod.run(argv(t));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.text, /progress:.*3-tasks\.md/);
+      assert.match(
+        readFileSync(projectIndex, 'utf-8'),
+        /\| scopeP \| product \| \[3-tasks\]\(\.\/scopeP\/scopeP\.3-tasks\.md\) \| 1 \| 1\/1 \|/
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves the Progress rollup untouched when the count already matches (idempotent)', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-sync-progress-'));
+    try {
+      const scopeDir = join(root, 'scopeQ');
+      mkdirSync(scopeDir, { recursive: true });
+      const t = join(scopeDir, 'ticket.md');
+      const mi = join(scopeDir, 'scopeQ.3-tasks.md');
+      const projectIndex = join(root, '3-tasks.md');
+
+      writeFileSync(t, TICKET, 'utf-8');
+      writeFileSync(
+        mi,
+        [
+          '## Tracker',
+          '| Task-ID | Title | Dependencies | Status | Reopens |',
+          '|---------|-------|--------------|--------|---------|',
+          '| cli-foo | Foo | — | [x] DONE | — |',
+        ].join('\n'),
+        'utf-8'
+      );
+      writeFileSync(
+        projectIndex,
+        [
+          '## Scope Tracker',
+          '| Scope | Type | Index | Tasks | Done |',
+          '|---|---|---|---|---|',
+          '| scopeQ | product | [3-tasks](./scopeQ/scopeQ.3-tasks.md) | 1 | 1/1 |',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const outcome = await mod.run(argv(t));
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.doesNotMatch(outcome.text, /progress:/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('exits 4 with no ticket, 1 on missing file, 2 on unparseable Meta', async () => {
     const bad = await mod.run(argv());
     assert.strictEqual(bad.ok === false && bad.exitCode, 4);

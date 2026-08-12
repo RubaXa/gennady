@@ -159,6 +159,30 @@
     <Axiom id="AX_VERIFY_AND_FINALIZE">
       Finalizing a test = re-checking isolation, naming, anchor pairing, snapshot placement, and the diagnostic quality of failures, then running type-check + tests with coverage. Blocker → declared EXPLICITLY.
     </Axiom>
+
+    <Axiom id="AX_ENV_FIX_CHANNEL">
+      The orchestrator does not write code or specs (`HardForbidden`). This axiom carves one narrow,
+      opt-in exception for infrastructure noise that blocks the gate itself — not for the codebase the
+      task is about.
+
+      Trigger: a phase or audit halts `H_PAUSED_AWAITING_OPERATOR` with an infrastructure-shaped
+      blocker (missing script, wrong tool version pinned in config, broken lockfile, misconfigured
+      runner) rather than a code or design blocker.
+
+      Then, and only then, the orchestrator MAY propose a point fix scoped to environment/config
+      artifacts only — `package.json` scripts, tool config files, lockfiles — NEVER production code
+      under the module's `Target Files` and NEVER `specs/**` (`AX_SPEC_NEVER_EDITED` still applies to
+      the orchestrator). The proposal is a decision-card: the blocker it resolves, the exact diff to
+      apply, and why a narrower fix will not do. It is presented to the operator and nothing is
+      written until the operator gives explicit approval of THAT specific diff — silence, a generic
+      "go ahead", or approval of a different fix does not count.
+
+      Only after explicit approval: apply the diff, append `<ts> env-fix <file> ← <operator decision
+      ref>` to the Execution Log (distinct tag from `decision` / `insight`, so audit can find it
+      without confusing it with a phase's own work), and mention the fix in
+      `EXECUTE_SUMMARY_FORMAT`. Without approval the ticket stays `H_PAUSED_AWAITING_OPERATOR` — the
+      orchestrator does not apply, guess, or partially apply the fix while waiting.
+    </Axiom>
   </BeliefState>
 
   <HaltConditions>
@@ -166,7 +190,7 @@
     |---|---|
     | `H_NO_TASKS` | No task index / no pickable task |
     | `H_AMBIGUOUS_TASK` | "next" / "pick" matches more than one pickable task — shortlist for the operator |
-    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs |
+    | `H_PAUSED_AWAITING_OPERATOR` | Unresolved blocker in the log, or a phase returned BLOCKED / FAIL — pause (NOT a failure); operator resolves, then re-runs. An infrastructure-shaped blocker MAY instead be resolved via the narrow `AX_ENV_FIX_CHANNEL` (operator-approved point fix to env/config, never code or specs) |
     | `H_AUDIT_FAIL_AFTER_RETRY` | Audit still FAIL after 2 attempts — manual intervention |
     | `H_CODE_REVIEW_BLOCKER` | Code-review returned a `BLOCKER` bug — pause for the operator (not an auto-retry) |
   </HaltConditions>
@@ -273,7 +297,7 @@
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Workers write code, audit reports, and phase blocks; the orchestrator does not.
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not write code or specs — the ONE narrow exception is `AX_ENV_FIX_CHANNEL` (env/config only, never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff).
     - Always run audit after all phases DONE, and code-review after the audit passes.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.

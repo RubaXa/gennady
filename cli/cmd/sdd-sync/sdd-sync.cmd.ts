@@ -7,7 +7,12 @@ import { dirname, join, resolve, relative } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
-import { parseMeta, updateTrackerStatus } from '../../../shared/sdd/tracker.ts';
+import {
+  parseMeta,
+  parseTrackerRows,
+  recomputeRollupProgress,
+  updateTrackerStatus,
+} from '../../../shared/sdd/tracker.ts';
 import {
   badInvocation,
   fileError,
@@ -27,7 +32,10 @@ function discoverIndexes(ticketPath: string): string[] {
   for (let hops = 0; hops < 8; hops++) {
     try {
       for (const entry of readdirSync(dir)) {
-        if (entry.endsWith('.3-tasks.md')) found.push(join(dir, entry));
+        // `<scope-or-module>.3-tasks.md` (scope/module trackers) AND the bare project-index
+        // `3-tasks.md` (specs/3-tasks.md, no scope prefix) — both are in scope for the rollup
+        // Progress recompute pass, see recomputeProgress().
+        if (entry.endsWith('.3-tasks.md') || entry === '3-tasks.md') found.push(join(dir, entry));
       }
     } catch {
       // unreadable dir — skip this level
@@ -37,6 +45,37 @@ function discoverIndexes(ticketPath: string): string[] {
     dir = parent;
   }
   return found;
+}
+
+/**
+ * @purpose Recompute each index's rollup Progress cells (`Tasks`/`Done`) from its linked trackers'
+ *   fresh-off-disk rows, resolving Index links relative to that index's own directory.
+ * @invariant Skips a non-rollup index and any link that fails to resolve/read — never a failure.
+ * @param indexes Absolute paths of every index in scope for this sync run.
+ * @returns One report line per index whose rollup table changed.
+ */
+function recomputeProgress(indexes: string[]): string[] {
+  const report: string[] = [];
+  for (const idx of indexes) {
+    let content: string;
+    try {
+      content = readFileSync(idx, 'utf-8');
+    } catch {
+      continue;
+    }
+    const { text, updated } = recomputeRollupProgress(content, (link) => {
+      try {
+        return parseTrackerRows(readFileSync(resolve(dirname(idx), link), 'utf-8'));
+      } catch {
+        return null;
+      }
+    });
+    if (updated.length === 0) continue;
+    writeFileSync(idx, text, 'utf-8');
+    const rel = relative(process.cwd(), idx);
+    report.push(`  progress:   ${rel} (${updated.join(', ')})`);
+  }
+  return report;
 }
 
 /**
@@ -100,6 +139,10 @@ export async function run(rawArgs: string[]): Promise<SyncOutcome> {
     }
   }
   // #endregion END_SYNC
+
+  // Progress recompute happens AFTER the Status write above, so it reads the just-updated tracker
+  // rows, not the stale pre-sync state.
+  report.push(...recomputeProgress(indexes));
 
   const header = `[sdd-sync] ${taskId} → ${status}`;
   const body = indexes.length === 0 ? '  (no *.3-tasks.md index files found)' : report.join('\n');

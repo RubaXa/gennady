@@ -84,6 +84,13 @@ describe('checkReadiness', () => {
     assert.ok(r.missing.includes('package.json'));
   });
 
+  it('ready without a `yagni` npm script — sdd-verify runs yagni via `npx gennady yagni` directly, never `npm run yagni`, so no project script is required for readiness/sdd-verify consistency', () => {
+    const r = check(FULL);
+    assert.strictEqual('yagni' in FULL, false);
+    assert.strictEqual(r.ready, true);
+    assert.ok(!r.missing.includes('yagni'));
+  });
+
   it('not ready when gennady is not installed, even with every script wired', () => {
     const r = check(FULL, { gennady: false });
     assert.strictEqual(r.ready, false);

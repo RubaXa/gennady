@@ -103,7 +103,7 @@ describe('profiles', () => {
       'npm run format',
       'npm run lint',
       'npm run typecheck',
-      'npm run yagni',
+      'npx gennady yagni',
     ]);
 
     const test = fakeRunner();
@@ -117,7 +117,7 @@ describe('profiles', () => {
 });
 
 describe('run', () => {
-  it('defaults to the full 5-gate sequence as `npm run <name>`', async () => {
+  it('defaults to the full 5-gate sequence — npm scripts as `npm run <name>`, yagni direct as `npx gennady yagni`', async () => {
     const { runner, calls } = fakeRunner();
     const o = await run(runner);
     assert.strictEqual(o.ok, true);
@@ -126,7 +126,7 @@ describe('run', () => {
       'npm run lint',
       'npm run typecheck',
       'npm run test:coverage',
-      'npm run yagni',
+      'npx gennady yagni',
     ]);
   });
 
@@ -135,5 +135,12 @@ describe('run', () => {
     const o = await run(runner);
     assert.strictEqual(o.ok === false && o.exitCode, 1);
     assert.strictEqual(calls.length, 5);
+  });
+
+  it('yagni gate is never proxied through a project npm script — the project need not declare one', async () => {
+    const { runner, calls } = fakeRunner();
+    await run(runner, 'full');
+    assert.ok(!calls.includes('npm run yagni'));
+    assert.ok(calls.includes('npx gennady yagni'));
   });
 });

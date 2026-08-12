@@ -90,6 +90,43 @@ export function extractTestCaseNames(content: string): string[] {
 }
 
 /**
+ * @purpose Resolve a declared test-file reference (basename or path) by suffix match against disk.
+ * @invariant `f === norm || f.endsWith('/' + norm)`. Pure — `allFiles` must be forward-slash normalized.
+ * @param allFiles Every test-file path on disk, forward-slash normalized.
+ * @param declared The ticket's declared test-file reference — basename or path, either separator style.
+ * @returns Every file matching the suffix rule (0, 1, or many).
+ */
+export function resolveTestFileMatches(allFiles: string[], declared: string): string[] {
+  const norm = declared.replace(/\\/g, '/');
+  const suffix = `/${norm}`;
+  return allFiles.filter((f) => f === norm || f.endsWith(suffix));
+}
+
+/**
+ * @purpose Flag a declared test-file reference resolving to >1 file — case-name lookup can't tell which.
+ * @invariant Pure. Always `warn` — ambiguity is a spec-hygiene issue, not proof of missing coverage.
+ * @param file Ticket path (finding location).
+ * @param testFile The declared test-file reference, as written in the ticket.
+ * @param matches The files `resolveTestFileMatches` found for it.
+ * @returns One `SDD_BDD_TESTFILE_AMBIGUOUS` when `matches.length > 1`, else empty.
+ */
+export function checkTestFileAmbiguity(
+  file: string,
+  testFile: string,
+  matches: string[]
+): Finding[] {
+  if (matches.length <= 1) return [];
+  return [
+    {
+      severity: 'warn',
+      code: 'SDD_BDD_TESTFILE_AMBIGUOUS',
+      file,
+      message: `Declared test-file "${testFile}" matches ${matches.length} files on disk (${matches.join(', ')}) — ambiguous; use a longer path suffix to disambiguate.`,
+    },
+  ];
+}
+
+/**
  * @purpose Check each concrete coverage row's case names against its test file, and flag any row deferred to this ticket's own Task-ID.
  * @invariant Pure. `SDD_BDD_SCENARIO_UNTESTED` severity follows `flowVersion` (`v1` warn, `v2` error); `SDD_BDD_DEFERRED_TO_SELF` is always `error` — a self-deferral hides missing coverage, never a real one.
  * @param file Ticket path (finding location).

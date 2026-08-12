@@ -123,7 +123,17 @@
     <Axiom id="AX_RULES_LOAD_FROM_PHASE_BLOCK">
       Open ONLY rule files listed under this phase's `Rules:` bullet list. Use the absolute-or-cwd-relative path verbatim. Read end-to-end (Mission + Belief_State + Reward_Criteria + Anti_Patterns + Verification_Hooks).
 
-      Rules from sibling phases are NOT this phase's concern. Do not pre-load them. Read failure on a cited rule → `H_RULE_FILE_MISSING`.
+      One legal extension: when a cited rule file itself declares a transitive base — an explicit
+      `InheritedBaseline` block, or prose stating "read `<other-file>` first" — that declared base is
+      part of the same rule for scoping purposes and MAY be opened too. It is NOT a discovery: log
+      nothing (no `discovery` line), since the manifest's citation already covers it by way of the
+      rule file's own declaration. This extension is narrow and self-limited by construction — it only
+      ever reaches the base(s) the cited file names, never a sibling phase's rules, never a file the
+      worker decides on its own looks relevant.
+
+      Everything else stays ONLY: rules from sibling phases are NOT this phase's concern, do not
+      pre-load them; a file that looks related but is not cited, and is not a declared base of a cited
+      file, stays unread. Read failure on a cited rule (or its declared base) → `H_RULE_FILE_MISSING`.
     </Axiom>
 
     <Axiom id="AX_CLOSED_WORLD_INVENTORY">
@@ -179,6 +189,16 @@
       Phase cannot emit Handoff without Verification commands relevant to this phase passing. Each command from ticket §5 Verification whose `Required by` rules overlap with this phase's `Rules` MUST execute **verbatim — exactly as listed in ticket §5**; result + exit code recorded as `<ts> ver <cmd> → pass|fail exit=<N>` where `<cmd>` is the literal string from §5. Any failing command keeps phase `[~] IN_PROGRESS` until resolved or escalated.
 
       **MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Running an "equivalent" command (e.g. `npx vitest run` instead of `npm run check`, or `tsc --noEmit` instead of the ticket's `npm run typecheck`) and then logging the §5 command as `ver` is **fabricated verification** — treated by audit as `EXECUTION_LOG_INCOMPLETE` (BLOCKER severity, tag `fabricated-verification`). The log line `ver <cmd>` MUST be the exact string of the command that was actually executed, never a paraphrase.
+
+      The canon covers the script's BODY, not just its name in §5. Editing what a §5 script actually runs
+      (e.g. rewriting `"typecheck"` in `package.json` so it does less, or points elsewhere) while logging the
+      unchanged §5 command name as `ver` is the same violation under the same tag — the command name stayed
+      canonical on paper while its behavior was substituted underneath it. The one exception: `package.json`
+      (or the script body) is itself among this phase's Target Files AND the change to that script IS the
+      phase's stated Objective (a `bootstrap` / `config` phase whose job is exactly to define or rewire the
+      script) — then the edit is legitimate work, not a gate dodge, and MUST be recorded as its own decision
+      line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate is logged as
+      passing.
 
       Supplemental tools (`sdd-verify`, `tsc --noEmit`, `npx vitest run <file>`) MAY run additionally for narrower diagnostics, but they NEVER replace ticket §5 commands. If a §5 command requires more time/scope than the supplemental tool, run the §5 command anyway — it is the contract.
 
@@ -337,9 +357,16 @@
         line (`AX_INTRODUCED_DISCIPLINE`; the worker leaves the spec to audit, `AX_SPEC_NEVER_EDITED` — the intro
         line flags it for inventory backflow at audit). MUST resolve every out-of-inventory export this way. A cast → remove (proper type / guard) or a documented `@ts-expect-error` (`AX_NO_SILENT_ESCAPE_HATCH` — never a silent suppression).
         Then run each ticket §5 command **verbatim** (the Canonical Gate per `AX_VERIFICATION_BEFORE_HANDOFF`),
-        exactly as written. **Error ownership:** this session MUST fix every failure the gate surfaces —
-        edited or not, in scope or not, pre-existing or not. Treat each as an error still to fix. Fix all,
-        re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
+        exactly as written. **Error ownership scales by write zone, not by age:** for every failure the gate
+        surfaces, locate the file the fix must be written into. That file is inside this phase's Target Files,
+        or is a file this phase itself created → fix it here, now, regardless of whether the failure pre-dates
+        this phase; "pre-existing" is never grounds to skip a fix that lands inside scope. That file sits outside
+        this boundary — `specs/**` (`AX_SPEC_NEVER_EDITED`), a file owned by another phase, a shared config this
+        phase did not create — → the failure is not fixable from here: emit `BLOCKER_FORMAT` with a concrete
+        remediation proposal (which file, what change) and halt `H_BLOCKED`; do not silently label it
+        pre-existing and move on, and do not touch the out-of-zone file to make the gate pass. The test is
+        strictly where the fix must be written, never a judgment call on whose bug it is. Fix every in-zone
+        failure, re-run, then log one `ver <exact-cmd> → pass exit=<N>` per command. A fix that
         breaks the phase contract → `H_BLOCKED` (surfaced as PAUSED awaiting the operator, not as failure —
         `AX_HALT_VS_FAIL_DISTINCTION`; the `🛑 BLOCKED` log line opens the resolution trail the
         orchestrator checks, `AX_BLOCKER_RESOLUTION_TRAIL`); missing tooling → `H_VERIFICATION_FAIL`. A `ver` line MUST

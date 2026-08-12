@@ -17,4 +17,5 @@
       | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
       | `LANGUAGE_QUALITY` | operator-facing prose fails `AX_LANGUAGE_QUALITY_CHECK` — calques (from the `SDD_LANGUAGE_CALQUE` pre-filter) or literary/ornate style the deterministic lint cannot catch |
       | `YAGNI_WAIVER_INCOMPLETE` | a contract `Usage Waiver` label exists for a symbol, but the round's Execution Log has no matching `yagni <name> ← <reason>` line (`AX_AUDIT_YAGNI_CROSSCHECK`) |
+      | `ENVIRONMENT_GATE_UNAVAILABLE` | a required gate command (`sdd-verify`, `gennady lint`, `gennady testcov`, or a ticket §5 command) could not execute at all — missing runner, missing script, no network, crashed before producing a pass/fail — as opposed to executing and reporting a red result |
     </Axiom>
