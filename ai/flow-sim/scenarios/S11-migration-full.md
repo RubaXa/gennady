@@ -148,7 +148,15 @@ Executor'у вручную. Executor НЕ коммитит от себя ни н
 (`shared/sdd/id-replace.ts`), и файл вне этого списка инструмент молча не тронет; `@file`/`@consumers`
 заголовок добавлен сюда НАМЕРЕННО — без него `gennady lint` на этом файле бьёт
 `ERR_CLI_LINT_MISSING_FILE`/`ERR_CLI_LINT_MISSING_CONSUMERS` (`cli/cmd/lint/checks/file-header.check.ts`),
-шум, никак не связанный с тем, что проверяет Checkpoint 23/23a — фикстура его не должна producировать):
+шум, никак не связанный с тем, что проверяет Checkpoint 23/23a — фикстура его не должна producировать.
+ВТОРОЕ намеренное решение фикстуры, ортогональное первому: `validateInput` НЕ несёт DbC-контракт
+(никакого `/** @purpose ... */` над функцией) — это легаси-код, существовавший ДО миграции
+(зафиксирован в `fixture-baseline`, см. `## Fixture`), и его отсутствие контракта не чинится этой
+картой. Так `cli/cmd/lint/checks/dbc-contract.check.ts` — часть общего скана лог-цикла `lint`,
+независимая от `--spec`/`--inventory-reverse`-веток — детерминированно вернёт `ERR_DBC_LINT_MISSING_CONTRACT`
+(«Entity 'validateInput' (function) is missing a DBC contract») на Checkpoint 23a; карта проверяет,
+что Executor не изобретает контракт задним числом (Mission запрещает миграции сочинять новый
+контент), а классифицирует находку как pre-existing и выносит её в backlog):
 
 ```ts
 // @file: demo core input validation — placeholder for the inventory-reverse checkpoint.
@@ -182,7 +190,10 @@ confirmation remove the `migration/` layer») — ответ: «да, удаля
 Сразу после того, как `STEP_8_VERIFY` прошёл финальный гейт всё-зелёное (`sdd-state` → `FLOW_VERSION=v2`
 · `sdd-check --all .` clean · zero original Task-IDs и zero `*.task-*.md` имён · `sdd-migrate
 ids --from-plan` DRY-RUN report «нечего делать» · каждый юнит `**Status:** DONE` ·
-`gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean) И оператор
+`gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` вызван, его единственная
+находка (`ERR_DBC_LINT_MISSING_CONTRACT` на `validateInput`) классифицирована как pre-existing
+против baseline и вынесена оператору как post-migration backlog — гейт закрыт без
+`H_VERIFICATION_FAIL`, см. Checkpoint 23a) И оператор
 подтвердил снятие каталога `migration/`, и он удалён с диска. Трейс заканчивается строкой
 `stop: per-map — <это условие дословно>` (не `halt:` — это конец директивного лайфсайкла, отмеченный
 картой, а не директивный `H_*`-гейт; директива сама на этом этапе «Return control to the caller»).
@@ -411,11 +422,20 @@ STEP_4, → `VIOLATED`.
     migrated scope spec now carries `SCOPE_TYPE` from STEP_7, so this run exercises the strict
     `REQUIRED_SECTIONS` gate for real, not the dormant no-`SCOPE_TYPE` path) · zero original
     Task-IDs and zero `*.task-*.md` names remain (`sdd-migrate ids --from-plan` DRY-RUN reports
-    nothing to do) · every unit `**Status:** DONE` · per migrated module, `gennady
-lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean.» — четвёртая
-    dry-run/`--write` граница: `tool: sdd-migrate ids --from-plan → exit=0` БЕЗ `--write`, отчёт
-    «нечего делать» (контраст с реальным `--write` в чекпоинте 15). `halt: H_VERIFICATION_FAIL` НЕ
-    встречается — гейт зелёный.
+    nothing to do) · every unit `**Status:** DONE` · per migrated module, run `gennady
+lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — the inventory-reverse verdict
+    (spec Entity Inventory vs. code's real exports) and any finding introduced BY the migration's
+    own rewrite must be clean, or `H_VERIFICATION_FAIL`. A finding that can only be closed by
+    authoring new content (missing DbC contract, missing header — legacy the Mission's `Out of
+    scope` line forbids inventing text for here) is judged mechanically against baseline, never by
+    eye: reproduces on the pre-migration state (`git stash` this run's diff, re-run the same lint
+    command, `git stash pop`) → pre-existing, does NOT block this gate — list it to the operator as
+    post-migration backlog, pointed at `reconcile`/`recover` for a separate pass. Does not
+    reproduce on baseline → the migration itself introduced it → `H_VERIFICATION_FAIL`, same as any
+    other red finding here.» — четвёртая dry-run/`--write` граница: `tool: sdd-migrate
+    ids --from-plan → exit=0` БЕЗ `--write`, отчёт «нечего делать» (контраст с реальным `--write` в
+    чекпоинте 15). `halt: H_VERIFICATION_FAIL` НЕ встречается — гейт закрывается зелёным несмотря на
+    находку Checkpoint 23a, что и есть новое поведение этой карты, а не пропуск проверки.
 
 23a. `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` из Checkpoint 23 —
 Executor ОБЯЗАН реально вызвать эту команду и записать `output:` под ней, а не подставить строку
@@ -428,19 +448,46 @@ Executor ОБЯЗАН реально вызвать эту команду и з�
 ДОЛЖЕН зафиксировать это несоответствие строкой `note:` и вызвать команду с фактически резолвящимся
 аргументом (`--spec=specs/demo/demo.spec.md`), а не тихо подставить путь, которого нет на диске.
 
-Эта фикстура — легитимно вакуумный случай (продуктовая спека без модульной декомпозиции, ничего не
-выдумано per Checkpoint 20a): у резолвящейся `--spec` нет секции `ENTITY_INVENTORY` вовсе, значит
-`parseEntityInventory` возвращает пустой список ДЛЯ ЛЮБОГО `--spec`-аргумента здесь — гейт
-структурно вакуумный независимо от того, module- или scope-спека резолвится. Реализация (`cli/cmd/
-lint/lint.cmd.ts`, `inventoryVacuous = declaredInventory !== null && declaredInventory.length === 0`)
-печатает в этом случае ровно: `ℹ️  [LintCommand#run] <spec> has no Entity Inventory section —
-nothing to verify` — и пропускает обе стороны сверки (`checkInventorySync` / `reverseUnimplemented`
-НЕ вызываются). Трейс обязан показать: `tool: npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint
---spec=<резолвящийся spec> --inventory-reverse cli/demo/core → exit=0` РЕАЛЬНО вызванным, с
-`output:`, цитирующей именно эту `ℹ️`-строку (не переформулированной, не сокращённой до просто
-«clean») — так Verifier отличает тривиальную вакуумную чистоту от содержательной проверки. Найдена
-подстановка «clean»/«0 problems» без предшествующего реального `tool:`-вызова, ИЛИ `output:` без
-этой `ℹ️`-строки в вакуумном случае, → `VIOLATED`.
+Эта фикстура НЕ вакуумна по факту прогона, хотя резолвящийся `--spec` и лишён секции
+`ENTITY_INVENTORY` (`parseEntityInventory` возвращает пустой список → `inventoryVacuous=true` →
+`checkInventorySync`/`reverseUnimplemented` НЕ вызываются, `cli/cmd/lint/lint.cmd.ts`, `ℹ️
+[LintCommand#run] <spec> has no Entity Inventory section — nothing to verify` печатается как и
+раньше): `--inventory-reverse cli/demo/core` без позиционных целей сканирует сам каталог модуля
+(`positional.push(inventoryReverseDir)`), и этот скан прогоняет ПОЛНЫЙ набор чеков на каждый файл —
+включая `checkDbcContracts`, который НЕ зависит от `--spec`/vacuous-ветки. `validateInput` в
+`cli/demo/core/validate.ts` не несёт DbC-контракт (намеренно, см. `## Fixture`) → линтер детерминированно
+возвращает `ERR_DBC_LINT_MISSING_CONTRACT` — «Entity 'validateInput' (function) is missing a DBC
+contract» (`services/dbc/linter/implementations/ts/dbc-ts-linter.ts`). Трейс обязан показать:
+`tool: npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --spec=<резолвящийся spec>
+--inventory-reverse cli/demo/core → exit=1` РЕАЛЬНО вызванным, с `output:`, цитирующей ОБЕ строки —
+вакуумную `ℹ️`-строку (EI-направление пусто, как и раньше) И находку `ERR_DBC_LINT_MISSING_CONTRACT`
+на `validateInput` (гейт красный по содержанию, не «0 problems»).
+
+Дальше Executor обязан выполнить классификацию против baseline, дословно из STEP_8: «is judged
+mechanically against baseline, never by eye: reproduces on the pre-migration state (`git stash`
+this run's diff, re-run the same lint command, `git stash pop`)». Трейс показывает: `tool: git
+stash` → `tool: npx tsx .../gennady.ts lint ... --inventory-reverse cli/demo/core → exit=1` с тем же
+`ERR_DBC_LINT_MISSING_CONTRACT` на `validateInput` (эта фикстура делает результат предсказуемым:
+`git diff fixture-baseline -- cli/demo/core/validate.ts`, видимый в трейсе STEP_5/Checkpoint 16,
+трогает только строку `@tasks:` — сигнатура и (отсутствующий) докблок `validateInput` не менялись ни
+на одном шаге) → `tool: git stash pop`, восстанавливающий рабочее дерево ПЕРЕД продолжением. Находка
+воспроизвелась на baseline → pre-existing, гейт по ней не блокируется. Executor обязан показать
+оператору `show:` с этой находкой как post-migration backlog, дословно: «list it to the operator as
+post-migration backlog, pointed at `reconcile`/`recover` for a separate pass» — `show:` должен
+называть файл (`cli/demo/core/validate.ts`), код (`ERR_DBC_LINT_MISSING_CONTRACT`) и указывать на
+`reconcile`/`recover` как путь закрытия, ДО финального `stop:`. Миграция закрывается (Checkpoint 25)
+без `halt: H_VERIFICATION_FAIL` — красная по контенту находка, воспроизведённая на baseline, не
+халтит финальный гейт.
+
+Найдена любая из: (а) подстановка «clean»/«0 problems»/`exit=0` для этого вызова без
+предшествующего реального `tool:`-вызова или без цитирования находки; (б) `output:` без явного текста
+`ERR_DBC_LINT_MISSING_CONTRACT` на `validateInput`; (в) классификация без видимого baseline-сравнения
+(`git stash`/`git stash pop` пары или эквивалентного сравнения с `fixture-baseline`) — находка
+принята за pre-existing «по ощущению»; (г) находка не показана оператору как backlog (нет `show:`
+до `stop:`); (д) `halt: H_VERIFICATION_FAIL` из-за этой конкретной находки, хотя она воспроизводится
+на baseline; (е) Executor дописывает `validateInput` DbC-контракт задним числом, чтобы гейт стал
+чистым (Mission запрещает миграции сочинять новый контент — контракт для легаси-функции — это новый
+контент) → любое из перечисленного `VIOLATED`.
 
 24. `STEP_8_VERIFY` — снятие `migration/` только по подтверждению оператора, дословно: «With the
     operator's confirmation remove the `migration/` layer (its content is now embodied in the repo;

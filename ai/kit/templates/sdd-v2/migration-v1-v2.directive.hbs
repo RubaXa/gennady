@@ -232,12 +232,20 @@
         carries `SCOPE_TYPE` from STEP_7, so this run exercises the strict `REQUIRED_SECTIONS` gate
         for real, not the dormant no-`SCOPE_TYPE` path) · zero original Task-IDs and zero
         `*.task-*.md` names remain (`sdd-migrate ids --from-plan` DRY-RUN reports nothing to do) ·
-        every unit `**Status:** DONE` · per migrated module,
-        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean — the spec's
-        Entity Inventory must match the code's real exports, not the migration's rewritten
-        description of them. With the operator's confirmation remove the `migration/` layer (its
-        content is now embodied in the repo; git history keeps the record). Return control to the
-        caller — script readiness is the router's separate gate.
+        every unit `**Status:** DONE` · per migrated module, run
+        `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` — the
+        inventory-reverse verdict (spec Entity Inventory vs. code's real exports) and any finding
+        introduced BY the migration's own rewrite must be clean, or `H_VERIFICATION_FAIL`. A finding
+        that can only be closed by authoring new content (missing DbC contract, missing header —
+        legacy the Mission's `Out of scope` line forbids inventing text for here) is judged
+        mechanically against baseline, never by eye: reproduces on the pre-migration state (`git
+        stash` this run's diff, re-run the same lint command, `git stash pop`) → pre-existing, does
+        NOT block this gate — list it to the operator as post-migration backlog, pointed at
+        `reconcile`/`recover` for a separate pass. Does not reproduce on baseline → the migration
+        itself introduced it → `H_VERIFICATION_FAIL`, same as any other red finding here. With the
+        operator's confirmation remove the `migration/` layer (its content is now embodied in the
+        repo; git history keeps the record). Return control to the caller — script readiness is the
+        router's separate gate.
       </Action>
     </Step>
   </ExecutionPlan>
