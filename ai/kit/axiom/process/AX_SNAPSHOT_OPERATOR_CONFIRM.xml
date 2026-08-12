@@ -1,6 +1,0 @@
-<!-- source: ai/directives/testing/common.xml -->
-<Axiom id="AX_SNAPSHOT_OPERATOR_CONFIRM">
-**Execution-agent MUST NOT update existing snapshots autonomously.** Forbidden: running snapshot-update flags (`vitest -u`, `--update`); editing snapshot literals to make a test pass; deleting snapshot files.
-
-Allowed: writing the FIRST snapshot for a NEW test (operator reviews in PR/diff). For any change to an existing snapshot the agent stops, presents old vs new content, and waits for explicit operator confirmation. Auto-update is the most direct path an agent has to fabricate a green test.
-</Axiom>

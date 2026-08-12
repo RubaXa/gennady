@@ -1,4 +1,4 @@
-<SddReviewLifecycle keywords="review-lifecycle, master, review-state, compress, publish, MR, external-review, git, gh, sdd-review-lifecycle" type="directive" ver="2.1">
+<SddReviewLifecycle keywords="review-lifecycle, master, review-state, compress, publish, MR, external-review, git, gh, sdd-review-lifecycle" type="directive" ver="2.2">
   <Mission>
     Drive a spec from review-state to merged master through EXTERNAL review. Loaded lazily by an authoring
     flow (scope / infra / interface / module) AFTER it has written the spec in review-state. I do NOT author
@@ -21,16 +21,25 @@
     </Axiom>
 
     <Axiom id="AX_PERMITTED_BASH_COMMANDS">
-      Phase agent may ONLY run these bash commands:
+      This role's bash commands stay within this list:
       - **Must run:** `sdd-verify <target-files>` — MANDATORY. Auto-discovers and runs typecheck, gennady DBC lint, linter, tests, and format check for the project. Runs before §5 commands. **RUN-ALL**: every gate executes regardless of previous failures; failures accumulate. **SUPPRESS-ON-SUCCESS**: passing gates produce zero output; only failed gates dump their command, exit code, and captured output. On all-pass: single summary line. Failing gate → fix and re-run before EMIT_HANDOFF. Log each passing gate on a separate `ver` line.
       - **Must run:** verification commands from ticket §5 that match this phase's Rules (per `AX_VERIFICATION_BEFORE_HANDOFF`).
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
       - **May run:** `gennady lint <file>...` — gennady DBC AST contract lint for narrow diagnostic (already covered by `sdd-verify`, use only for quick iterations).
 
-      **Forbidden:** `git` ANY subcommand (status, branch, log, diff, add, commit); `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+      Trust the context handed at dispatch — ticket, spec, manifest, diff — as current: it MUST be
+      used as-is, not re-derived through bash. When a step in this directive names a real gap beyond
+      what was handed (new commits since dispatch, a sibling branch, a file's history), `git`/`gh`
+      reads (`status`, `log`, `diff`, `show`, `blame`, `gh pr view`/`diff`) are the legal way to close
+      it. Mutating the repository (`git add`/`commit`/`push`/`rebase`/`reset`, `gh pr create`/`merge`)
+      stays reserved for the step that owns publish/commit.
 
-      Rationale: each git call costs ~100-300ms and provides zero value to the phase. Audit handles project-wide checks. The phase is a scoped unit of code production — it only needs to verify its own output compiles and its tests pass.
+      Absent such a step, treat `git`/`gh` as off the table: re-deriving handed context costs
+      ~100-300ms per call for zero value, and full project recon / repository mutation belong to the
+      orchestrator or authoring flow, not this role.
+
+      **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
     </Axiom>
   </BeliefState>
 

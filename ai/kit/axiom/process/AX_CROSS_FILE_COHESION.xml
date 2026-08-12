@@ -1,2 +1,0 @@
-<!-- source: ai/directives/semantic-change-extractor.directive.xml -->
-<Axiom id="AX_CROSS_FILE_COHESION">Changes rarely happen in isolation. Service signature change → controller calling it must change. Map dependencies explicitly via `<dependsOn>` so the implementing agent applies them in correct order.</Axiom>

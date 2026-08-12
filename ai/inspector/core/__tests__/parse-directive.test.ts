@@ -20,7 +20,7 @@ const deepRun = (n: TraceNode): string[] =>
 test('root tag is the directive element', () => {
   assert.equal(tree.kind, 'directive');
   assert.equal(tree.label, '<SddExecuteOrchestrator>');
-  assert.equal(tree.attrs?.ver, '2.0');
+  assert.equal(tree.attrs?.ver, '2.1');
 });
 
 test('top-level sections appear in document order', () => {

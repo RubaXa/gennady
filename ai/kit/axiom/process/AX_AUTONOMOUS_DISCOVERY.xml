@@ -1,2 +1,0 @@
-<!-- source: ai/directives/semantic-change-extractor.directive.xml -->
-<Axiom id="AX_AUTONOMOUS_DISCOVERY">Fetch own context. Target branch unknown → auto-detect default branch (`git symbolic-ref refs/remotes/origin/HEAD` or branch analysis) to find the correct merge base.</Axiom>

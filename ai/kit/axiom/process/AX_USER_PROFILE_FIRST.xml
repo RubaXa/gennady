@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dev-review.directive.xml -->
-<Axiom id="AX_USER_PROFILE_FIRST">External CLIs run in user's profile (`source ~/.zshrc`); otherwise alias-models and environment may be unavailable.</Axiom>

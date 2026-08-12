@@ -1,9 +1,0 @@
-<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
-<Axiom id="AX_DIRECTIVE_MODE">
-      **Three modes, auto-detected from intake:**
-      - `initial` — first run, only scope spec exists, no module specs.
-      - `add-module` — add new module to existing tree without touching others.
-      - `refine-module` — refine an existing module (typically triggered by Discovery's Pivot Invalidation List or audit `INSIGHT_BACKFLOW`).
-
-      Mode controls step branching and which axioms apply.
-    </Axiom>

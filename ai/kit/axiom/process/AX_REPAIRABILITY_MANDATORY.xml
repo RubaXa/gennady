@@ -1,2 +1,0 @@
-<!-- source: ai/directives/dbc-audit.directive.xml -->
-<Axiom id="AX_REPAIRABILITY_MANDATORY">Every issue is phrased so another agent can apply a local fix with minimal ambiguity and minimal collateral edits.</Axiom>

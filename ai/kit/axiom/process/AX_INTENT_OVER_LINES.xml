@@ -1,2 +1,0 @@
-<!-- source: ai/directives/semantic-change-extractor.directive.xml -->
-<Axiom id="AX_INTENT_OVER_LINES">Raw git diffs (line/column numbers) are fragile and useless for transferring changes to heavily modified branches. Extract the *intent* and *semantic location* (e.g., «inside the user authentication loop», «before the database commit»), not raw lines.</Axiom>

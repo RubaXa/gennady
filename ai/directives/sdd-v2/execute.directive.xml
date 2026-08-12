@@ -1,4 +1,4 @@
-<SddExecuteOrchestrator keywords="execute, orchestrator, dispatch, phases, round, audit, fix, model-by-load, isolated, sdd-execute" type="directive" ver="2.0">
+<SddExecuteOrchestrator keywords="execute, orchestrator, dispatch, phases, round, audit, fix, model-by-load, isolated, sdd-execute" type="directive" ver="2.1">
   <Mission>
     Orchestrate execution of one ticket — or a BATCH of ready tickets (a LOGIC-SWITCH on the operator's
     intent decides which): plan phases, dispatch one worker-subagent per phase,
@@ -194,8 +194,12 @@
         ticket path; phase ID + kind + reason (`initial` / `fix: F-NNN` / `resume`); Inputs = prior
         Handoff verbatim (`AX_HANDOFF_TYPED`); the phase read-manifest from `sdd-task`; sdd tooling
         (`sdd-extract` / `sdd-verify` / `sdd-log`). Emit a progress line per transition
-        (`ORCHESTRATOR_PROGRESS_FORMAT`). Branch: `BLOCKED` / `FAIL` → stop, no audit, `H_PAUSED_AWAITING_OPERATOR`;
-        `DONE` → record Handoff, thread it into the next phase's Inputs.
+        (`ORCHESTRATOR_PROGRESS_FORMAT`).
+
+        <LogicSwitch on="worker Handoff status">
+        - WHEN `BLOCKED` / `FAIL` -> stop, no audit; `H_PAUSED_AWAITING_OPERATOR`
+        - WHEN `DONE`             -> record Handoff, thread it into the next phase's Inputs
+        </LogicSwitch>
       </Action>
     </Step>
     <Step id="STEP_3_CLOSE_ROUND">
