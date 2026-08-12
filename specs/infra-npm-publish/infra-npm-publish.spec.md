@@ -60,7 +60,6 @@ npm run release
 │       │   ├── coding/
 │       │   ├── testing/
 │       │   ├── infra/
-│       │   ├── perf-auditor/
 │       │   └── knowledge.xml
 │       ├── agents/
 │       └── flow/

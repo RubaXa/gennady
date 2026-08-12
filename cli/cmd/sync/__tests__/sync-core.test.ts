@@ -140,13 +140,11 @@ describe('scanDirectives', () => {
   it('excludes entries from EXCLUDED_ENTRIES set', () => {
     mkdirSync(join(_sourceDir, 'architecture'), { recursive: true });
     writeFileSync(join(_sourceDir, 'architecture', 'should-not-appear.xml'), '', 'utf-8');
-    writeFileSync(join(_sourceDir, 'dbc-audit.directive.xml'), '', 'utf-8');
     writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
 
     const files = scanDirectives(_sourceDir);
     assert.deepStrictEqual(files, ['knowledge.xml']);
     assert.ok(!files.some((f) => f.includes('architecture')));
-    assert.ok(!files.some((f) => f.includes('dbc-audit')));
   });
 
   it('skips hidden files and dot-prefixed names', () => {

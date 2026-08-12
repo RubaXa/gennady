@@ -12,13 +12,8 @@ import {
 } from '../../../shared/common/sync/sync-core.shared.ts';
 import { normalize, SYNC_PATH_RULES } from '../../../shared/common/sync/path-normalizer.ts';
 
-/** @purpose Entries excluded from sync: empty architecture dir, deprecated/domain-specific directives. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
-export const EXCLUDED_ENTRIES = new Set([
-  'architecture',
-  'dbc-audit.directive.xml',
-  'dev-review.directive.xml',
-  'semantic-change-extractor.directive.xml',
-]);
+/** @purpose Entries excluded from sync: empty architecture dir. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
+export const EXCLUDED_ENTRIES = new Set(['architecture']);
 
 /** @purpose DI port for SyncCore — abstracts filesystem access for testability. @invariant All deps must be provided; no optional fields. */
 export interface SyncCoreDeps {

@@ -5,7 +5,7 @@
 
 ## Basic Rules
 
-- Строго следовать правилам тестирования из `ai/agents/agent-qa-code.rules.xml`.
+- Строго следовать правилам тестирования из `ai/directives/testing/common.xml` и `ai/directives/testing/node-test.xml`.
 - Источником истины является `services/remote-console/spec/remote-console.prd.spec.md`, а не случайное текущее поведение реализации.
 - Один тест покрывает один сценарий или одну ветку поведения.
 - Timer-driven batching, HTTP transport и process shutdown должны тестироваться через controllable doubles или local harness, а не через flaky wall-clock sleeps.

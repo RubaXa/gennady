@@ -316,7 +316,7 @@ Synced: 0 added, 0 updated, 39 skipped (unchanged)
 $ gennady sync nonexistent/
 
 Error: ai/directives/nonexistent/ not found in package.
-Available: sdd-v2, coding, testing, infra, perf-auditor, agent-inbox, architecture
+Available: sdd-v2, coding, testing, infra, agent-inbox, architecture
 
 # exit 1
 
@@ -330,7 +330,7 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Легенда вывода: `+` — добавлен (файла не было), `~` — обновлён (содержимое изменилось), `=` — пропущен (содержимое совпадает). Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`.
 
-Пакет-источник: приоритет — локальная установка (`node_modules/gennady`), fallback — резолв от запущенного процесса. Исключённые из синхронизации (захардкожены в команде): `architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`.
+Пакет-источник: приоритет — локальная установка (`node_modules/gennady`), fallback — резолв от запущенного процесса. Исключённые из синхронизации (захардкожены в команде): `architecture/`.
 
 ### 3.5 orient DX
 
@@ -1198,30 +1198,30 @@ $ gennady vcs-approve                                          # merge conflict
 
 ### 4.1.4 sync Functional Requirements
 
-| ID                     | Требование                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Обнаружение пакета** |                                                                                                                                                              |
-| FR-SYNC-01             | При наличии `<cwd>/node_modules/gennady/ai/directives/` — использовать локальную версию, независимо от способа запуска геннадия                              |
-| FR-SYNC-02             | При отсутствии локальной установки — резолвить путь от запущенного процесса (глобальная / npx) через `import.meta.resolve('gennady')`                        |
-| FR-SYNC-03             | Если пакет не найден — ошибка с сообщением `gennady package not found. Install it locally: npm i -D gennady`                                                 |
-| **Копирование**        |                                                                                                                                                              |
-| FR-SYNC-04             | Рекурсивно копировать `ai/directives/` из пакета-источника в `<cwd>/ai/directives/`                                                                          |
-| FR-SYNC-05             | Целевая директория создаётся рекурсивно (`mkdirSync({ recursive: true })`), если отсутствует                                                                 |
-| FR-SYNC-06             | Существующие файлы перезаписываются молча. Команда идемпотентна                                                                                              |
-| **Исключения**         |                                                                                                                                                              |
-| FR-SYNC-07             | Из синхронизации исключены (захардкожены): `architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml` |
-| **Фильтрация**         |                                                                                                                                                              |
-| FR-SYNC-08             | Без позиционных аргументов — синхронизируется вся `ai/directives/` (кроме исключённых)                                                                       |
-| FR-SYNC-09             | Позиционные аргументы — имена поддиректорий внутри `ai/directives/`. Синхронизируются только указанные поддиректории                                         |
-| FR-SYNC-10             | Если указанная поддиректория не существует в источнике — ошибка с перечислением доступных поддиректорий                                                      |
-| **Сравнение**          |                                                                                                                                                              |
-| FR-SYNC-11             | Файлы сравниваются побайтово (`Buffer.compare`). Изменение даже на 1 байт → `updated`                                                                        |
-| **Вывод**              |                                                                                                                                                              |
-| FR-SYNC-12             | Каждый файл выводится строкой: `  <маркер> <относительный_путь>` с маркером `+` (added), `~` (updated), `=` (unchanged)                                      |
-| FR-SYNC-13             | Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`                                                                                         |
-| FR-SYNC-14             | `--dry-run` — выводит что БЫЛО БЫ скопировано (`(would add)` / `(would update)` / `(unchanged, skip)`), без фактической записи                               |
-| FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                                                |
-| FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                                         |
+| ID                     | Требование                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Обнаружение пакета** |                                                                                                                                       |
+| FR-SYNC-01             | При наличии `<cwd>/node_modules/gennady/ai/directives/` — использовать локальную версию, независимо от способа запуска геннадия       |
+| FR-SYNC-02             | При отсутствии локальной установки — резолвить путь от запущенного процесса (глобальная / npx) через `import.meta.resolve('gennady')` |
+| FR-SYNC-03             | Если пакет не найден — ошибка с сообщением `gennady package not found. Install it locally: npm i -D gennady`                          |
+| **Копирование**        |                                                                                                                                       |
+| FR-SYNC-04             | Рекурсивно копировать `ai/directives/` из пакета-источника в `<cwd>/ai/directives/`                                                   |
+| FR-SYNC-05             | Целевая директория создаётся рекурсивно (`mkdirSync({ recursive: true })`), если отсутствует                                          |
+| FR-SYNC-06             | Существующие файлы перезаписываются молча. Команда идемпотентна                                                                       |
+| **Исключения**         |                                                                                                                                       |
+| FR-SYNC-07             | Из синхронизации исключены (захардкожены): `architecture/`                                                                            |
+| **Фильтрация**         |                                                                                                                                       |
+| FR-SYNC-08             | Без позиционных аргументов — синхронизируется вся `ai/directives/` (кроме исключённых)                                                |
+| FR-SYNC-09             | Позиционные аргументы — имена поддиректорий внутри `ai/directives/`. Синхронизируются только указанные поддиректории                  |
+| FR-SYNC-10             | Если указанная поддиректория не существует в источнике — ошибка с перечислением доступных поддиректорий                               |
+| **Сравнение**          |                                                                                                                                       |
+| FR-SYNC-11             | Файлы сравниваются побайтово (`Buffer.compare`). Изменение даже на 1 байт → `updated`                                                 |
+| **Вывод**              |                                                                                                                                       |
+| FR-SYNC-12             | Каждый файл выводится строкой: `  <маркер> <относительный_путь>` с маркером `+` (added), `~` (updated), `=` (unchanged)               |
+| FR-SYNC-13             | Итоговая строка: `Synced: N added, M updated, K skipped (unchanged)`                                                                  |
+| FR-SYNC-14             | `--dry-run` — выводит что БЫЛО БЫ скопировано (`(would add)` / `(would update)` / `(unchanged, skip)`), без фактической записи        |
+| FR-SYNC-15             | При `--dry-run` итоговая строка: `Dry-run: no files written.`                                                                         |
+| FR-SYNC-16             | Exit code 0 при успехе, 1 при ошибке (пакет не найден, несуществующая поддиректория)                                                  |
 
 ### 4.1.5 orient Functional Requirements
 
@@ -1615,7 +1615,7 @@ $ gennady vcs-approve                                          # merge conflict
 
 - Интерактивный режим подтверждения перезаписи (v1 — молча)
 - Синхронизация других директорий `ai/` (agents, flow) — только `directives`
-- Синхронизация исключённых файлов (`architecture/`, `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml`)
+- Синхронизация исключённых файлов (`architecture/`)
 - `--watch` режим
 - Автоматический `git diff` после синхронизации
 - Сетевые запросы (работает полностью офлайн)
@@ -1931,7 +1931,7 @@ cli/cmd/sync/
    - Иначе — `import.meta.resolve('gennady')` → отрезать `package.json` → путь к пакету.
    - Не найдено → ошибка.
 7. **Сравнение файлов** — `Buffer.compare()` (побайтово). Без хешей, без timestamp.
-8. **Исключения** — константа `EXCLUDED_ENTRIES = new Set(['architecture', 'dbc-audit.directive.xml', 'dev-review.directive.xml', 'semantic-change-extractor.directive.xml'])`.
+8. **Исключения** — константа `EXCLUDED_ENTRIES = new Set(['architecture'])`.
 9. **`index.ts`** — `import { run } from './sync.cmd.ts'; run(process.argv)` (как alt-opinion).
 10. **Guarded self-execution** через `fileURLToPath(import.meta.url)`.
 11. **Регистрация**: `case 'sync': await import('./cmd/sync/index.ts'); break` в `cli/gennady.ts`.

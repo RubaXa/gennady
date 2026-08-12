@@ -283,6 +283,16 @@ shared/common/sync/             # shared с sync-skills (D-M004)
   - Не нормализовать директивы — в директивах есть ссылки на `~/.claude/skills/...` и `npx gennady`; dev-версии этих путей будут битые в продакшене
   - Отдельный `PathNormalizer` для sync — дублирование; shared через `shared/common/sync/`
 
+### D-M006 — EXCLUDED_ENTRIES: dbc-audit/dev-review/semantic-change-extractor исключения снесены вместе с директивами
+
+- **Status:** active
+- **Recorded:** session Cleanup, cli, sync
+- **Why:** DbC-проверки давно живут в `gennady lint`; `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml` устарели и снесены из `ai/directives/` целиком (не только исключены из sync). Хардкод-список исключений в `EXCLUDED_ENTRIES` больше не нужен — исключать нечего, файлов не существует.
+- **Was → Now:** `EXCLUDED_ENTRIES = new Set(['architecture', 'dbc-audit.directive.xml', 'dev-review.directive.xml', 'semantic-change-extractor.directive.xml'])` → `EXCLUDED_ENTRIES = new Set(['architecture'])`.
+- **Risk accepted:** Нет — удалённые директивы не имели живых читателей (проверено: только упоминались в этом списке исключений и в спеках).
+- **Rejected alternatives:**
+  - Оставить пустые записи в `EXCLUDED_ENTRIES` «на будущее» — мёртвый код, список должен отражать текущую реальность файловой системы пакета
+
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** None (не зависит от других модулей cli)
