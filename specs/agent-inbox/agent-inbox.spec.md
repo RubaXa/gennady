@@ -666,12 +666,14 @@ trace или применить устаревший результат посл
   фильтра/размещения), connection-источники сохраняют полную. Замер против
   `gitlab.corp.mail.ru`: **14.9s → 3.4s (4.4×)**. Коммит `2d6b152`. TSK-174 переоткрыт
   (Round 4) с записанным живым наблюдением.
-- **Residual known gaps (этим фиксом не закрыты, вынесены в follow-up):**
-  - `todos(first: 100)` реально упирается в кап (у оператора >100 pending-todo) →
-    review-request'ы за сотней могут молча не попадать в inbox (корректность, не
-    скорость).
-  - ~68 из ~150 выбираемых MR — призрачные pending-todo на уже merged/closed MR,
-    которые GitLab не гасит; нужен периодический `todoMarkDone`-cleanup.
+- **Residual gaps — оба закрыты после follow-up:**
+  - Кап `todos(first: 100)` больше не влияет на корректность: pending-todo **сняты как
+    источник дискавери** (коммит `921d954`) — inbox находит MR по трём реальным связям
+    (reviewer/assignee/author), кап todos ничего не усекает. Дискавери-замер: ~1000
+    призрачных todo больше не выкачиваются, `inbox list` 14.9s→3.4s.
+  - Призрачные pending-todo на merged/closed MR вычищаются командой `gennady inbox
+cleanup` (dry-run по умолчанию, `--apply` мутирует, bounded-concurrency
+    `todoMarkDone`, reconcile-recount). Живой dry-run: 1047 pending → 986 ghost.
 - **Rejected alternatives:** принимать `real-runtime` задачи на mock-тирах; трактовать
   зелёный `sdd verify` как доказательство поведения; чинить complexity-симптом, не
   наблюдая стоимость на живых данных.

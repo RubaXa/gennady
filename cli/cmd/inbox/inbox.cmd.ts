@@ -6,6 +6,7 @@
 import { style } from '../../../shared/common/style.ts';
 import { buildInboxClient } from './_core/logic/build-inbox-context.logic.ts';
 import { buildInboxView, type InboxOptions } from './_core/logic/build-inbox-view.logic.ts';
+import { planTodoCleanup, markTodosDone } from './_core/logic/cleanup-todos.logic.ts';
 import { renderInboxView, renderWorkPacket } from './_core/logic/render-inbox-view.logic.ts';
 import { classifyInbox } from './_core/logic/classify-inbox.logic.ts';
 import {
@@ -140,6 +141,77 @@ async function runPick(ref: string, vcsSource?: string, configVcsHost?: string):
   return 0;
 }
 
+/**
+ * @purpose Clear ghost todos — pending GitLab to-dos on already merged/closed MRs that
+ *   GitLab never auto-clears. Dry-run by default; only `--apply` mutates.
+ * @param vcsSource Explicit GitLab host override, if any.
+ * @param configVcsHost Host from inbox config.
+ * @param opts `apply` performs the mutation; `json` emits a machine-readable summary.
+ * @returns Process exit code (1 only when an apply run had failed mutations).
+ * @sideEffect Network reads (paginated todos); GitLab `todoMarkDone` mutations when `apply`.
+ */
+async function runCleanup(
+  vcsSource: string | undefined,
+  configVcsHost: string | undefined,
+  opts: { apply: boolean; json: boolean }
+): Promise<number> {
+  const client = buildInboxClient(vcsSource, configVcsHost);
+  const plan = planTodoCleanup(await client.Inbox.listPendingTodos());
+
+  if (!opts.apply) {
+    if (opts.json) {
+      console.info(
+        JSON.stringify({
+          mode: 'dry-run',
+          total: plan.total,
+          ghosts: plan.ghosts.length,
+          opened: plan.openedCount,
+        })
+      );
+    } else {
+      console.info(
+        style.bold(
+          `Pending MR todos: ${plan.total} — ${style.yellow(String(plan.ghosts.length))} ghost (merged/closed), ${plan.openedCount} on open MRs`
+        )
+      );
+      console.info(
+        style.gray(
+          `Dry run — nothing changed. Re-run with --apply to mark the ${plan.ghosts.length} ghost todos done.`
+        )
+      );
+    }
+    return 0;
+  }
+
+  const { marked, failed } = await markTodosDone(
+    (todoId) => client.Inbox.markTodoDone({ todoId }),
+    plan.ghosts.map((g) => g.todoId)
+  );
+  // Reconcile: re-count the live pending list so the reported after-count is observed, not assumed.
+  const afterTotal = marked > 0 ? (await client.Inbox.listPendingTodos()).length : plan.total;
+
+  if (opts.json) {
+    console.info(
+      JSON.stringify({
+        mode: 'apply',
+        before: plan.total,
+        ghosts: plan.ghosts.length,
+        marked,
+        failed,
+        after: afterTotal,
+      })
+    );
+  } else {
+    console.info(
+      style.bold(
+        `Marked ${style.green(String(marked))} ghost todos done${failed ? style.red(` (${failed} failed)`) : ''}.`
+      )
+    );
+    console.info(`  pending MR todos: ${plan.total} → ${afterTotal}`);
+  }
+  return failed > 0 ? 1 : 0;
+}
+
 async function run(): Promise<number> {
   try {
     const argv = process.argv.slice(2);
@@ -221,6 +293,13 @@ async function run(): Promise<number> {
 
     const pick = parseValue(argv, '--pick');
     if (pick) return await runPick(pick, vcsSource, cfg.vcsHost);
+
+    if (argv.includes('cleanup') || argv.includes('--cleanup')) {
+      return await runCleanup(vcsSource, cfg.vcsHost, {
+        apply: argv.includes('--apply'),
+        json: argv.includes('--json'),
+      });
+    }
 
     const options = parseOptions(argv);
     const persist = !argv.includes('--no-save');

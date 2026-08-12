@@ -14,7 +14,7 @@
 - **Spec References:** [Inventory](../../../specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md#3-entity-inventory-closed-world), [Contracts](../../../specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md#5-module-contracts-dbc)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`, `integration`, `real-observation` (Round 4)
-- **Deferred Runtime Scope:** todos pagination beyond the 100-cap (silent truncation of review-requests past 100 pending todos) and periodic ghost-todo `todoMarkDone` cleanup — see D-343 residual gaps; owner: follow-up tickets.
+- **Deferred Runtime Scope:** None — the two D-343 residual gaps are closed: todos removed as a discovery source (silent-truncation gone; commit `921d954`), and ghost pending-todos cleared by the `gennady inbox cleanup` command (dry-run/`--apply`).
 
 [sdd-boundary-meta]: #
 

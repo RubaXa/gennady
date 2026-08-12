@@ -117,6 +117,20 @@ const ROLE_PRIORITY: Record<VcsActionableRole, number> = {
   mentioned: 1,
 };
 
+/** @purpose One pending merge-request todo with the ids needed to reconcile or clear it. */
+export type PendingMrTodo = {
+  /** @purpose GitLab todo global id, passed to `todoMarkDone` to clear it */
+  todoId: string;
+  /** @purpose Target MR lifecycle state | @invariant `merged`/`closed` marks a clearable ghost */
+  targetState: VcsActionableMrState;
+  /** @purpose Target MR project full path */
+  project: string;
+  /** @purpose Target MR internal id */
+  iid: string;
+  /** @purpose Target MR web URL (dedup key) */
+  webUrl: string;
+};
+
 /** @purpose A GraphQL `{ nodes: [{ username }] }` user connection. */
 type UserConn = { nodes?: ({ username?: string } | null)[] | null };
 
@@ -317,6 +331,55 @@ export class VcsGitlabInbox extends VcsClientInbox {
       todoIds: entry.todoIds,
       approvalsRequired: entry.base.approvalsRequired,
     }));
+  }
+
+  /**
+   * @purpose List every pending merge-request todo across all pages — for todo maintenance
+   *   (e.g. clearing ghost todos on merged/closed MRs), never for inbox discovery.
+   * @returns Each pending todo's id and its target MR state and ref.
+   * @sideEffect Network: paginated POST /api/graphql reads until the todo list is exhausted.
+   */
+  async listPendingTodos(): Promise<PendingMrTodo[]> {
+    const out: PendingMrTodo[] = [];
+    let after: string | null = null;
+    // Page cap is a runaway backstop only; real todo lists are bounded by the account.
+    for (let page = 0; page < 50; page++) {
+      const cursor = after ? `, after: "${after}"` : '';
+      const query = `{
+        currentUser {
+          todos(first: 100, state: [pending], type: [MERGEREQUEST]${cursor}) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              id
+              target { __typename ... on MergeRequest { iid webUrl state project { fullPath } } }
+            }
+          }
+        }
+      }`;
+      const data = (await this._graphql(query)) as {
+        currentUser?: {
+          todos?: {
+            pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+            nodes?: { id?: string; target?: ({ __typename?: string } & MrNode) | null }[];
+          } | null;
+        } | null;
+      };
+      const conn = data?.currentUser?.todos;
+      for (const node of conn?.nodes ?? []) {
+        const target = node?.target;
+        if (target?.__typename !== 'MergeRequest' || !node?.id || !target.webUrl) continue;
+        out.push({
+          todoId: node.id,
+          targetState: (target.state as VcsActionableMrState) ?? 'opened',
+          project: target.project?.fullPath ?? '',
+          iid: target.iid ?? '',
+          webUrl: target.webUrl,
+        });
+      }
+      if (!conn?.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+      after = conn.pageInfo.endCursor;
+    }
+    return out;
   }
 
   /**
