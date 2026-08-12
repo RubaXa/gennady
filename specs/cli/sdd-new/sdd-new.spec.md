@@ -13,13 +13,14 @@
 - Single source of truth — скелет пишется байт-в-байт из `TEMPLATES[<kind>].skeleton`; тот же реестр гонит derived-списки в `check.ts`
 - Never-overwrite — существующий файл по вычисленному (или явному `--out`) пути никогда не перезаписывается
 - Manifest-on-create — успешный вызов возвращает не только путь, но и таблицу секций (имя · REQUIRED/OPTIONAL · FOLD · что заполнить) — контракт «что агенту делать дальше»
+- `--manifest` — та же таблица секций для `<kind>`, БЕЗ создания файла и БЕЗ требования `--scope`/`--module`/`--id`; способ агенту узнать состав секций до принятия решения создавать артефакт
 - `--out` всегда побеждает конвенцию путей
 
 **Invariants:**
 
 - `<kind>` ∈ `product | library | infrastructure | interface | module | task | module-index | scope-index | portal`
 - `--module` любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`) — каждый сегмент kebab-case (как имя scope); пустой/абсолютный/`..`-сегмент → `BAD_INVOCATION` (exit 4) до вычисления пути
-- exit `0` создано / `--list` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
+- exit `0` создано / `--list` / `--manifest` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -57,6 +58,16 @@ $ npx gennady sdd-new product --scope backend
 [sdd-new] ERR_CLI_SDD_NEW_FILE_EXISTS: specs/backend/backend.spec.md
   sdd-new never overwrites an existing artifact. Edit it directly, or pass --out with a fresh path.
 
+# --- манифест секций без создания файла, --scope/--module не нужны ---
+$ npx gennady sdd-new module --manifest
+[sdd-new] manifest for module:
+
+Section                      Required  Fold  Fill
+----------------------------  --------  ----  ----------------------------------------------
+MODULE_VISION                 REQUIRED  -     What this module owns; link to the parent…
+OVERVIEW                      REQUIRED  -     MANDATORY (AX_SPEC_MANDATORY_DIAGRAM)…
+...
+
 $ npx gennady sdd-new --list
 [sdd-new] known kinds:
   product        specs/<scope>/<scope>.spec.md
@@ -76,17 +87,17 @@ $ npx gennady sdd-new --list
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                           | Type    | Purpose                                                                                                                       |
-| -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `run`                                                          | Command | Точка входа CLI: `--list` или `<kind>` → resolve path → no-overwrite → write → report                                         |
-| `resolvePath`                                                  | Utility | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure); `--module` любой глубины — имя файла = последний сегмент |
-| `validateModulePath`                                           | Utility | `--module` (любой глубины) → причина невалидности или `null` (пустой/абсолютный/`..`/не-kebab-case сегмент)                   |
-| `renderList`                                                   | Utility | `--list` output: every kind + its `pathPattern`                                                                               |
-| `missingOptions`                                               | Utility | Which required options are absent for `<kind>` (empty when `--out` given)                                                     |
-| `renderManifestTable` / `renderCreated`                        | Utility | (`sdd-new.types`) Section manifest table + success report text                                                                |
-| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed` | Utility | Diagnostic builders                                                                                                           |
-| `NewOutcome`                                                   | Type    | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                                                                 |
-| `TEMPLATES` / `ARTIFACT_KINDS`                                 | Value   | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды                                                 |
+| Name                                                             | Type    | Purpose                                                                                                                        |
+| ---------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `run`                                                            | Command | Точка входа CLI: `--list` / `<kind> --manifest` (короткое замыкание) / `<kind>` → resolve path → no-overwrite → write → report |
+| `resolvePath`                                                    | Utility | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure); `--module` любой глубины — имя файла = последний сегмент  |
+| `validateModulePath`                                             | Utility | `--module` (любой глубины) → причина невалидности или `null` (пустой/абсолютный/`..`/не-kebab-case сегмент)                    |
+| `renderList`                                                     | Utility | `--list` output: every kind + its `pathPattern`                                                                                |
+| `missingOptions`                                                 | Utility | Which required options are absent for `<kind>` (empty when `--out` given)                                                      |
+| `renderManifestTable` / `renderCreated` / `renderManifestReport` | Utility | (`sdd-new.types`) Section manifest table + success report text + `--manifest` report text (no path)                            |
+| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed`   | Utility | Diagnostic builders                                                                                                            |
+| `NewOutcome`                                                     | Type    | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                                                                  |
+| `TEMPLATES` / `ARTIFACT_KINDS`                                   | Value   | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды                                                  |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -103,14 +114,16 @@ $ npx gennady sdd-new --list
 
 - Preconditions:
   - `<kind>` — один из `ARTIFACT_KINDS`
-  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание)
+  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание) или `--manifest` (короткое замыкание — опции пути не проверяются вовсе)
   - `--module`, если задан, валиден: каждый `/`-сегмент непустой, не `.`/`..`, kebab-case (как имя scope) — иначе `BAD_INVOCATION` ДО вычисления пути
 - Postconditions:
   - Целевой файл не существовал до вызова → создан с содержимым `TEMPLATES[<kind>].skeleton` байт-в-байт, недостающие родительские директории созданы
   - Целевой файл уже существовал → ничего не записано, exit 1
-  - Успех → stdout содержит путь + таблицу секций (`Section | Required | Fold | Fill`) из `TEMPLATES[<kind>].sections`
+  - Успех (без `--manifest`) → stdout содержит путь + таблицу секций (`Section | Required | Fold | Fill`) из `TEMPLATES[<kind>].sections`
+  - `--manifest` → stdout содержит ТОЛЬКО таблицу секций для `<kind>` (та же `TEMPLATES[<kind>].sections`), никакой файл не создаётся и не проверяется на существование
 - Invariants:
   - `--out`, если задан, всегда переопределяет путь по конвенции
+  - `--manifest` проверяется ПОСЛЕ валидации `<kind>`, но ДО `missingOptions`/`resolvePath`/no-overwrite/записи — неизвестный `<kind>` с `--manifest` всё равно даёт `UNKNOWN_KIND`
   - Скелет никогда не выдумывается по месту — только literal-копия из реестра
 
 <!--/SECTION:MODULE_CONTRACTS-->
@@ -127,6 +140,7 @@ $ npx gennady sdd-new --list
 | `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                                                               |
 | `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                                                     |
 | `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                       |
+| `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются  |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -172,6 +186,16 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 - **Status:** active
 - **Why:** `AX_HIERARCHICAL_SPECS` разрешает произвольную глубину под-модулей (`specs/<scope>/<a>/<b>/<b>.spec.md`), но `resolvePath` подставляла `--module` целиком в оба места пути — `--module foo/bar` давало битый `specs/<s>/foo/bar/foo/bar.spec.md`. Теперь имя файла = последний `/`-сегмент `--module`, директория = `--module` целиком; та же логика для `task`. Индексные kind (`module-index` → `<module>.3-tasks.md`, `scope-index` → `<scope>.3-tasks.md`) добавлены в реестр `shared/sdd/templates.ts` как обычные `ArtifactKind` — их скелеты 1:1 из `ai/kit/contract/scaffold/{module,scope}-tasks-index.xml`, которые теперь тянут скелет через `{{> "sdd-skeleton-<kind>"}}` вместо ручной копии (см. `ai/kit/render.ts`).
 - **Risk accepted:** Валидация сегментов — kebab-case (как у scope), непустой, не `.`/`..`, не абсолютный — только для `--module`; `--scope` валидация не расширена (вне периметра этого изменения).
+
+### D-NW005 — `--manifest`: манифест секций без создания файла
+
+- **Status:** active
+- **Why:** Флоу-симуляция (`ai/flow-sim/`) и агенты-роутеры должны показать оператору состав секций
+  артефакта (например, на `STEP_1_CONFIRM` в `scope.directive`) ДО того, как решение создавать
+  спеку принято — а значит до того, как есть `--scope`/`--module` для вычисления пути. `--manifest`
+  читает `TEMPLATES[<kind>].sections` напрямую, минуя `missingOptions`/`resolvePath`/no-overwrite —
+  та же таблица, что при создании, без побочных эффектов на диске.
+- **Risk accepted:** Нет.
 
 ### D-NW003 — Never-overwrite, не merge
 

@@ -7,6 +7,7 @@ layout → `migration-v1-v2.directive.xml`), и что `migration-v1-v2` STEP_0_
 ## Fixture
 
 `package.json`:
+
 ```json
 {
   "name": "demo-project",
@@ -22,59 +23,71 @@ layout → `migration-v1-v2.directive.xml`), и что `migration-v1-v2` STEP_0_
 ```
 
 `node_modules/.bin/gennady` (пустой файл):
+
 ```
+
 ```
 
 `specs/README.md`:
+
 ```markdown
 # demo-project
 
 ## Vision
+
 Демо-проект для проверки миграции v1 → v2.
 
 ## Scopes
 
-| Scope | Type | Spec | Description |
-|---|---|---|---|
-| [`demo`](./demo/demo.spec.md) | product | ✅ | Демо-скоуп |
+| Scope                         | Type    | Spec | Description |
+| ----------------------------- | ------- | ---- | ----------- |
+| [`demo`](./demo/demo.spec.md) | product | ✅   | Демо-скоуп  |
 ```
 
 `specs/demo/demo.spec.md` (v1-спека — заголовки нумерованы, без `<!--SECTION:-->` якорей):
+
 ```markdown
 # Demo Scope
 
 ## 1. Vision
+
 Демо-скоуп для проверки миграции v1 → v2.
 
 ## 2. Architecture
+
 Один модуль `core` — вся логика внутри него.
 
 ## 3. Decision Log
 
 ### D-001 — Один модуль на старте
+
 - **Status:** active
 - **Why:** пока нет причин делить.
 ```
 
 `tasks/demo/README.md` (v1-трекер):
+
 ```markdown
 # Demo — Tasks
 
-| ID | Module | Title | Status |
-|---|---|---|---|
-| TSK-01 | core | Реализовать ядро | done |
+| ID     | Module | Title            | Status |
+| ------ | ------ | ---------------- | ------ |
+| TSK-01 | core   | Реализовать ядро | done   |
 ```
 
 `tasks/demo/core/core.task-01.md` (v1-тикет старого формата):
+
 ```markdown
 # TSK-01 — Реализовать ядро
 
 ## Meta
+
 - Purpose: базовая логика core-модуля demo
 - Module: core
 - Status: done
 
 ## Description
+
 Инициализация core-модуля: структуры данных и точка входа.
 ```
 
@@ -91,9 +104,10 @@ layout → `migration-v1-v2.directive.xml`), и что `migration-v1-v2` STEP_0_
 
 ## Stop
 
-Сразу после того, как `migration-v1-v2.directive` STEP_0_SCAN отчитался оператору о форме репозитория
+Сразу после того, как `migration-v1-v2.directive` STEP*0_SCAN отчитался оператору о форме репозитория
 (юниты / тикеты / orphan'ы) — ДО STEP_1_LAYER (`sdd-migrate plan --write`). Никакой `--write` вызов
-не должен попасть в трейс.
+не должен попасть в трейс. Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не
+`halt:` — это остановка по карте, не директивный `H*\*`-гейт).
 
 ## Checkpoints
 
@@ -108,6 +122,8 @@ layout → `migration-v1-v2.directive.xml`), и что `migration-v1-v2` STEP_0_
    «`sdd-migrate plan --all .` (DRY-RUN...) and `sdd-migrate anchors --all .` (DRY-RUN...)».
 5. Ни одной строки `write:` в трейсе — `migration/` каталог не создан, `tasks/` не тронут,
    `specs/demo/demo.spec.md` не изменён.
-6. Отчёт оператору по форме STEP_0_SCAN включает как минимум: количество юнитов (одна спека = один
-   юнит → `demo`), количество тикетов (1 — `TSK-01`), наличие/отсутствие orphan-тикетов (нет — тикет
-   привязан к существующему модулю `core`).
+6. Отчёт оператору по форме STEP_0_SCAN зафиксирован строкой `show:` в трейсе, и её содержимое
+   включает как минимум: количество юнитов (одна спека = один юнит → `demo`), количество тикетов
+   (1 — `TSK-01`), наличие/отсутствие orphan-тикетов (нет — тикет привязан к существующему модулю
+   `core`) — без `show:`-строки этот чекпоинт непроверяем (Verifier не видит фактического текста
+   отчёта, только заявление Executor'а).

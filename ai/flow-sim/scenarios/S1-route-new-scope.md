@@ -6,6 +6,7 @@
 ## Fixture
 
 `package.json`:
+
 ```json
 {
   "name": "demo-project",
@@ -21,14 +22,18 @@
 ```
 
 `node_modules/.bin/gennady` (пустой файл — гейт readiness проверяет только наличие):
+
 ```
+
 ```
 
 `specs/README.md`:
-```markdown
+
+````markdown
 # demo-project
 
 ## Vision
+
 Набор личных инструментов продуктивности.
 
 ## Scope Graph
@@ -37,13 +42,15 @@
 graph TD
   backend --> infra-base
 ```
+````
 
 ## Scopes
 
-| Scope | Type | Spec | Description |
-|---|---|---|---|
-| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅ | TS + vitest + gennady lint |
-| [`backend`](./backend/backend.spec.md) | product | ✅ | Backend API |
+| Scope                                           | Type           | Spec | Description                |
+| ----------------------------------------------- | -------------- | ---- | -------------------------- |
+| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅   | TS + vitest + gennady lint |
+| [`backend`](./backend/backend.spec.md)          | product        | ✅   | Backend API                |
+
 ```
 
 Никакого `tasks/` каталога (v2), никакого `specs/.sdd-session.md` (нет сессии в процессе),
@@ -67,7 +74,8 @@ graph TD
 Сразу после того, как `scope.directive` (mode=`greenfield`) показал Approval Check по итогам
 STEP_1_CONFIRM (подтверждён scope-type + список секций) и получил от оператора «да, годится».
 Прогон завершается ДО STEP_2_INTENT_CAPTURE — ничего из содержимого спеки ещё не пишется, интервью
-не запускается.
+не запускается. Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
+остановка по карте, не директивный `H_*`-гейт).
 
 ## Checkpoints
 
@@ -87,5 +95,13 @@ STEP_1_CONFIRM (подтверждён scope-type + список секций) �
 5. Внутри `scope.directive`: `AX_MODE_AUTO_DETECT_OR_HALT` определил mode=`greenfield` (файла
    `specs/notes/notes.spec.md` нет на диске) — не `refine`, не `pivot`.
 6. Прогон остановился на `STEP_1_CONFIRM`: «Confirm the scope-type, outline which sections the spec
-   will carry. Approval Check. STOP.» — ни один файл не создан (`write:` строк в трейсе нет),
-   `sdd-new product --scope notes` НЕ вызван (это STEP_9, недостижим до стопа).
+   will carry. Approval Check. STOP.» — нет ни одной строки `write:` под `specs/notes/` (запись
+   `specs/.sdd-session.md` предписана самим роутером на `STEP_1_CLASSIFY` и легальна — это не
+   создание артефакта scope, это фиксация сессии), `sdd-new product --scope notes` НЕ вызван (это
+   STEP_9, недостижим до стопа).
+7. На `STEP_1_CONFIRM` состав секций показан оператору как `show:`-строка, перечисляющая секции
+   именно из манифеста `sdd-new product --scope notes --manifest` (`SCOPE_TYPE`, `VISION`,
+   `OVERVIEW`, `PROJECT_TYPE`, `GOLDEN_DX`, `SCOPE_DEPENDENCIES`, `REQUIREMENTS_AND_CONSTRAINTS`,
+   `ARCHITECTURE`, `MODULE_MAP`, `DECISION_LOG`, `BOOTSTRAP_REQUIREMENTS`, `HANDOFF`) — включая
+   `OVERVIEW` и `MODULE_MAP` — а не произвольный пересказ секций агентом.
+```

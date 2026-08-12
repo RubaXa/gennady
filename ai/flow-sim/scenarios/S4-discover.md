@@ -9,6 +9,7 @@ STEP_0_INTAKE — что именно `sdd-state --probe` (не какой-то 
 Портала нет (`specs/README.md` отсутствует), `tasks/` нет.
 
 `package.json`:
+
 ```json
 {
   "name": "legacy-app",
@@ -20,6 +21,7 @@ STEP_0_INTAKE — что именно `sdd-state --probe` (не какой-то 
 ```
 
 `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -33,6 +35,7 @@ STEP_0_INTAKE — что именно `sdd-state --probe` (не какой-то 
 ```
 
 `src/index.ts`:
+
 ```typescript
 import { createUser } from './user.ts';
 import { connect } from './db.ts';
@@ -42,6 +45,7 @@ createUser(db, 'demo@example.com');
 ```
 
 `src/user.ts`:
+
 ```typescript
 import type { Db } from './db.ts';
 
@@ -51,6 +55,7 @@ export function createUser(db: Db, email: string): void {
 ```
 
 `src/db.ts`:
+
 ```typescript
 export type Db = { insert: (table: string, row: Record<string, unknown>) => void };
 
@@ -73,10 +78,11 @@ export function connect(): Db {
 
 ## Stop
 
-Сразу после того, как `discover-from-code.directive` STEP_1_PICTURE показал общую картину
+Сразу после того, как `discover-from-code.directive` STEP*1_PICTURE показал общую картину
 (`UNDERSTANDING_BLOCK_FORMAT`: инферированный vision, scope graph, инфра/тулчейн, конвенции) с
 разметкой Facts / Assumptions / Hypotheses — ДО STEP_2_PERSIST_PICTURE (до `sdd-new portal` и любой
-записи на диск).
+записи на диск). Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
+остановка по карте, не директивный `H*\*`-гейт).
 
 ## Checkpoints
 
@@ -101,4 +107,6 @@ export function connect(): Db {
    STEP_2_PERSIST_PICTURE (которая первая пишет — через `sdd-new portal`).
 7. Показанная картина разделяет Facts / Assumptions / Hypotheses (`AX_EVIDENCE_HYGIENE`) и явно
    помечает vision как «зачем и куда — твоё» (per STEP_1_PICTURE: «inferred **vision** ... but marked
-   operator-owned: «зачем и куда — твоё»»).
+   operator-owned: «зачем и куда — твоё»»). Трейс содержит `show:`-строку, перечисляющую блоки
+   `UNDERSTANDING_BLOCK_FORMAT`, фактически показанные (vision / scope graph / инфра-тулчейн /
+   конвенции) — без неё этот чекпоинт непроверяем.

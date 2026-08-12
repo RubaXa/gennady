@@ -13,6 +13,7 @@ export function printHelp(): void {
     '  npx gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>]'
   );
   console.info('  npx gennady sdd-new --list');
+  console.info('  npx gennady sdd-new <kind> --manifest');
   console.info('');
   console.info('Arguments:');
   console.info(
@@ -29,6 +30,10 @@ export function printHelp(): void {
     '  --out <path>      Explicit target path — overrides the computed path convention.'
   );
   console.info('  --list            Print every known kind with its path pattern and exit.');
+  console.info(
+    '  --manifest        Print the section manifest for <kind> and exit — no file is created,'
+  );
+  console.info('                    --scope/--module/--id are not required with this flag.');
   console.info('');
   console.info('Behavior:');
   console.info(
@@ -47,6 +52,9 @@ export function printHelp(): void {
   console.info('Output:');
   console.info('  On success — created-path + section manifest table on stdout, exit 0.');
   console.info(
+    '  With --manifest — the same section manifest table on stdout, exit 0, no file touched.'
+  );
+  console.info(
     '  On failure — an actionable diagnostic on stdout, never empty, with a non-zero exit:'
   );
   console.info('    1 file exists / write failed   4 bad invocation / unknown kind');
@@ -56,4 +64,5 @@ export function printHelp(): void {
   console.info('  npx gennady sdd-new module --scope backend --module auth');
   console.info('  npx gennady sdd-new task --scope backend --module auth --id AUTH-login-flow');
   console.info('  npx gennady sdd-new --list');
+  console.info('  npx gennady sdd-new module --manifest');
 }

@@ -8,6 +8,7 @@ README/ADR → import edges → tests → deeper read) и что запись Н
 ## Fixture
 
 `package.json`:
+
 ```json
 {
   "name": "demo-project",
@@ -23,14 +24,18 @@ README/ADR → import edges → tests → deeper read) и что запись Н
 ```
 
 `node_modules/.bin/gennady` (пустой файл):
+
 ```
+
 ```
 
 `specs/README.md`:
-```markdown
+
+````markdown
 # demo-project
 
 ## Vision
+
 Веб-клиент для чтения документов.
 
 ## Scope Graph
@@ -39,14 +44,16 @@ README/ADR → import edges → tests → deeper read) и что запись Н
 graph TD
   web --> infra-base
 ```
+````
 
 ## Scopes
 
-| Scope | Type | Spec | Description |
-|---|---|---|---|
-| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅ | TS + vitest |
-| [`web`](./web/web.spec.md) | product | ✅ | React SPA — чтение документов |
-```
+| Scope                                           | Type           | Spec | Description                   |
+| ----------------------------------------------- | -------------- | ---- | ----------------------------- |
+| [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅   | TS + vitest                   |
+| [`web`](./web/web.spec.md)                      | product        | ✅   | React SPA — чтение документов |
+
+````
 
 Код без спеки — `src/parser/`, у `web` спека уже есть (`specs/web/web.spec.md`, минимальная —
 достаточно для существования scope, содержимое не важно для этого сценария):
@@ -59,25 +66,31 @@ graph TD
 ## Vision
 React SPA для чтения документов.
 <!--/SECTION:VISION-->
-```
+````
 
 `src/parser/lexer.ts`:
+
 ```typescript
 export type Token = { kind: 'text' | 'heading'; value: string };
 
 export function tokenize(input: string): Token[] {
-  return input.split('\n').map((line) =>
-    line.startsWith('#') ? { kind: 'heading', value: line } : { kind: 'text', value: line }
-  );
+  return input
+    .split('\n')
+    .map((line) =>
+      line.startsWith('#') ? { kind: 'heading', value: line } : { kind: 'text', value: line }
+    );
 }
 ```
 
 `src/parser/render.ts`:
+
 ```typescript
 import type { Token } from './lexer.ts';
 
 export function render(tokens: Token[]): string {
-  return tokens.map((t) => (t.kind === 'heading' ? `<h1>${t.value}</h1>` : `<p>${t.value}</p>`)).join('');
+  return tokens
+    .map((t) => (t.kind === 'heading' ? `<h1>${t.value}</h1>` : `<p>${t.value}</p>`))
+    .join('');
 }
 ```
 
@@ -95,11 +108,18 @@ export function render(tokens: Token[]): string {
 1. На развилку STEP_2_PROPOSE («завести `parser` как отдельный module внутри уже существующего
    `web` scope» ИЛИ «вынести в новый library-scope») — ответ: «заводи как модуль внутри web».
 
+Примечание: развилка тут ровно одна (fit-вопрос module-vs-scope), названная как единственный fork —
+значит `interview-protocol.directive` идёт по «Single-fork fast path»: «When the caller hands the
+protocol exactly one named fork (not a whole authoring step), skip `STEP_1_INIT_MAP` and
+`STEP_2_TRIAGE`; enter `STEP_3_ROUNDS` with a one-item map (the fork)…» — `STEP_2_TRIAGE`
+пропускается, дополнительные триажные вопросы оператору не задаются.
+
 ## Stop
 
-Сразу после того, как оператор ответил на развилку STEP_2_PROPOSE (шаг 1 Operator Script) и агент
+Сразу после того, как оператор ответил на развилку STEP*2_PROPOSE (шаг 1 Operator Script) и агент
 показал итоговую decision-card с зафиксированным scope fit (`web`, module `parser`) — ДО STEP_3_RECOVER
-(до загрузки `scope.directive`/`module.directive` и до любой записи).
+(до загрузки `scope.directive`/`module.directive` и до любой записи). Трейс заканчивается строкой
+`stop: per-map — <это условие дословно>` (не `halt:` — остановка по карте, не директивный `H*\*`-гейт).
 
 ## Checkpoints
 
@@ -115,16 +135,20 @@ export function render(tokens: Token[]): string {
    ... → only then, if still unclear, a fuller read of the source». Для `src/parser` шаги
    README/ADR и tests дают пустой результат (файлов нет) — это ДОЛЖНО быть зафиксировано в трейсе как
    пройденный, а не пропущенный шаг (`note: нет README/ADR рядом с src/parser`, `note: нет тестов для
-   src/parser`), а не молча проигнорировано.
+src/parser`), а не молча проигнорировано.
 4. Facts / Assumptions / Hypotheses разделены при представлении survey и предложения
    (`AX_EVIDENCE_HYGIENE`) — минимум одна `Hypothesis` (назначение `parser` для оператора можно
-   только предположить, не прочитать).
+   только предположить, не прочитать). Трейс содержит `show:`-строку, перечисляющую состав
+   показанного блока (Facts / Assumptions / Hypotheses / предложение развилки) — без неё этот
+   чекпоинт непроверяем.
 5. Развилка (новый scope vs модуль внутри `web`) прошла через
    `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — в трейсе есть
    `directive: ai/directives/sdd-v2/interview-protocol.directive.xml loaded` МЕЖДУ STEP_1_SURVEY и
    финальным подтверждением, согласно: «Where the fit or the split is a genuine fork ... run it
    through READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")».
 6. `H_SCOPE_NOT_CONFIRMED` не сработал (оператор подтвердил, не отверг).
-7. Ни одной строки `write:` в трейсе, и НИ `scope.directive.xml`, НИ `module.directive.xml` не
-   загружены (это STEP_3_RECOVER, недостижим до стопа) — `gennady lint --spec=... --inventory-reverse`
-   (STEP_4) тем более не вызван.
+7. Нет ни одной строки `write:` под `specs/web/`, и никакая спека (module или scope) не создана — НИ
+   `scope.directive.xml`, НИ `module.directive.xml` не загружены (это STEP_3_RECOVER, недостижим до
+   стопа) — `gennady lint --spec=... --inventory-reverse` (STEP_4) тем более не вызван. Запись
+   `specs/.sdd-session.md` (если её предписывает роутер до входа в этот сценарий) — легальна и не
+   нарушает этот чекпоинт: она не создаёт и не изменяет ни один артефакт под `specs/web/`.

@@ -145,3 +145,14 @@ export function renderCreated(
     '\n'
   );
 }
+
+/**
+ * @purpose Render the `--manifest` report: section manifest table for a kind — no file created,
+ * no path resolved, `--scope`/`--module` not required.
+ * @param kind Artifact kind queried.
+ * @param sections Section manifest for this kind.
+ * @returns Report text for stdout.
+ */
+export function renderManifestReport(kind: ArtifactKind, sections: SectionManifestEntry[]): string {
+  return [`[sdd-new] manifest for ${kind}:`, '', renderManifestTable(sections)].join('\n');
+}

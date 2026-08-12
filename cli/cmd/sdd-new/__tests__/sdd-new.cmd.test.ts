@@ -198,6 +198,43 @@ describe('SddNewCommand', () => {
     assert.match(written, /Tracker Index/);
   });
 
+  it('--manifest prints the section manifest for a kind without creating a file or requiring --scope', async () => {
+    const outcome = await mod.run(argv('module', '--manifest'));
+    assert.strictEqual(outcome.ok, true);
+    if (outcome.ok) {
+      assert.match(outcome.text, /manifest for module/);
+      assert.match(outcome.text, /REQUIRED/);
+      assert.match(outcome.text, /Section\s+Required\s+Fold\s+Fill/);
+      assert.strictEqual(outcome.path, '');
+    }
+  });
+
+  it('--manifest works for kinds that would otherwise require --module/--id (task)', async () => {
+    const outcome = await mod.run(argv('task', '--manifest'));
+    assert.strictEqual(outcome.ok, true);
+    if (outcome.ok) {
+      assert.match(outcome.text, /manifest for task/);
+    }
+  });
+
+  it('--manifest with an unknown kind still fails with exit 4 / UNKNOWN_KIND', async () => {
+    const outcome = await mod.run(argv('widget', '--manifest'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.code, /UNKNOWN_KIND/);
+    }
+  });
+
+  it('--manifest with no <kind> still fails with exit 4 / BAD_INVOCATION', async () => {
+    const outcome = await mod.run(argv('--manifest'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.code, /BAD_INVOCATION/);
+    }
+  });
+
   it('creates a scope-index skeleton at the scope-index path', async () => {
     const out = join(tmpDir, 'specs', 'idxs2', 'idxs2.3-tasks.md');
     const outcome = await mod.run(argv('scope-index', '--scope', 'idxs2', '--out', out));

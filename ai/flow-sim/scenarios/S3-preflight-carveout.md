@@ -9,6 +9,7 @@
 Та же v1-фикстура, что в S2 (переиспользуется буквально, без изменений):
 
 `package.json`:
+
 ```json
 {
   "name": "demo-project",
@@ -24,59 +25,71 @@
 ```
 
 `node_modules/.bin/gennady` (пустой файл):
+
 ```
+
 ```
 
 `specs/README.md`:
+
 ```markdown
 # demo-project
 
 ## Vision
+
 Демо-проект для проверки миграции v1 → v2.
 
 ## Scopes
 
-| Scope | Type | Spec | Description |
-|---|---|---|---|
-| [`demo`](./demo/demo.spec.md) | product | ✅ | Демо-скоуп |
+| Scope                         | Type    | Spec | Description |
+| ----------------------------- | ------- | ---- | ----------- |
+| [`demo`](./demo/demo.spec.md) | product | ✅   | Демо-скоуп  |
 ```
 
 `specs/demo/demo.spec.md` (v1-спека):
+
 ```markdown
 # Demo Scope
 
 ## 1. Vision
+
 Демо-скоуп для отслеживания X.
 
 ## 2. Architecture
+
 Один модуль `core` — вся логика внутри него.
 
 ## 3. Decision Log
 
 ### D-001 — Один модуль на старте
+
 - **Status:** active
 - **Why:** пока нет причин делить.
 ```
 
 `tasks/demo/README.md`:
+
 ```markdown
 # Demo — Tasks
 
-| ID | Module | Title | Status |
-|---|---|---|---|
-| TSK-01 | core | Реализовать ядро | done |
+| ID     | Module | Title            | Status |
+| ------ | ------ | ---------------- | ------ |
+| TSK-01 | core   | Реализовать ядро | done   |
 ```
 
 `tasks/demo/core/core.task-01.md`:
+
 ```markdown
 # TSK-01 — Реализовать ядро
 
 ## Meta
+
 - Purpose: базовая логика core-модуля demo
 - Module: core
 - Status: done
 
 ## Description
+
 Инициализация core-модуля: структуры данных и точка входа.
 ```
 
@@ -93,10 +106,16 @@
 
 ## Stop
 
-Сразу после того, как агент в первой decision-card после `STEP_1_CLASSIFY`/`STEP_2_ROUTE` НАЗВАЛ
-маршрут (одна строка про состояние v1 + «идём через `evolve-scope`» → `scope.directive`, mode=`refine`)
-И предложил миграцию как отдельный следующий шаг — ДО того, как оператор ответил на что-либо внутри
-`scope.directive` (до его STEP_1_CONFIRM approval-обмена).
+Сразу после того, как агент предложил миграцию отдельным следующим шагом (а не выполнил её) и готов
+продолжать текущую правку Vision — наблюдаемо по поведению: следующее действие агента — вход в
+контентную работу над `specs/demo/demo.spec.md` (approval-обмен `scope.directive` STEP*1_CONFIRM), а
+не загрузка `migration-v1-v2.directive.xml` — ДО того, как оператор ответил на что-либо внутри
+`scope.directive`. Само сообщение оператору НЕ называет маршрут/mode напрямую («идём через
+evolve-scope», «mode=refine» и т.п.) — это была бы process-narration, запрещённая
+`AX_NO_PROCESS_NARRATION` (сервисная строка/лог — да, реплика оператору — нет); стоп фиксируется по
+наблюдаемому поведению агента (что он предлагает и что не грузит), а не по тому, что он проговорил
+маршрут вслух. Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
+остановка по карте, не директивный `H*\*`-гейт).
 
 ## Checkpoints
 

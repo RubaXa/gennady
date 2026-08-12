@@ -13,6 +13,7 @@ import {
   fileExists,
   writeFailed,
   renderCreated,
+  renderManifestReport,
   type NewOutcome,
 } from './sdd-new.types.ts';
 
@@ -122,6 +123,7 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     id: { aliases: ['id'], takesValue: true },
     out: { aliases: ['out'], takesValue: true },
     list: { aliases: ['list'] },
+    manifest: { aliases: ['manifest'] },
   });
 
   if (args.list) {
@@ -141,6 +143,11 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
     return unknownKind(kindArg);
   }
   const kind = kindArg as ArtifactKind;
+
+  if (args.manifest) {
+    logger.debug(`[SddNewCommand#run] manifest for ${kind}`);
+    return { ok: true, text: renderManifestReport(kind, TEMPLATES[kind].sections), path: '' };
+  }
 
   const opts = {
     scope: typeof args.scope === 'string' ? args.scope : undefined,
