@@ -17,7 +17,7 @@ describe('VcsGithubClient', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('has undefined MergeDiscussions (optional port)', () => {
+  it('has MergeDiscussions port', () => {
     globalThis.fetch = mock.fn(
       async () => new Response('[]', { status: 200 })
     ) as unknown as typeof fetch;
@@ -26,7 +26,7 @@ describe('VcsGithubClient', () => {
       baseUrl: 'https://api.github.com',
       token: 'ghp_xxx',
     });
-    assert.strictEqual(client.MergeDiscussions, undefined);
+    assert.ok(client.MergeDiscussions);
   });
 
   it('has MergeRequests and RepositoryFiles ports', () => {

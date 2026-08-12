@@ -1,4 +1,4 @@
-// @file: GitHub REST API client — HTTP adapter implementing VcsClient contract (minimal, no MergeDiscussions).
+// @file: GitHub REST API client — HTTP adapter implementing VcsClient contract (MergeRequests, MergeDiscussions, RepositoryFiles).
 // @consumers: cli/cat
 // @tasks: TSK-30, TSK-84
 
@@ -20,7 +20,7 @@ export type VcsGithubClientOptions = {
 };
 
 /**
- * @purpose GitHub client for working with REST API (minimal: without MergeDiscussions).
+ * @purpose GitHub client for working with REST API (MergeRequests, MergeDiscussions, RepositoryFiles; Inbox/Pipeline deferred — GitLab-only).
  * @invariant Error Policy: Any non-2xx response is converted to an Error with status details.
  * @consumer cli/cat
  */

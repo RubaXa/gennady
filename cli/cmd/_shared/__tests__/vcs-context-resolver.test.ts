@@ -136,27 +136,27 @@ describe('resolveVcsContext', () => {
     );
   });
 
-  it('non-GitLab host — throws with GitHub deferred', async () => {
-    // contract: provider check via /gitlab/i rejects non-GitLab hosts
-    // invariant: GitHub and other providers are deferred — not silently accepted
+  it('GitHub host — resolves as github provider', async () => {
+    // contract: github.com origin → provider 'github', token from GITHUB_PERSONAL_TOKEN
+    // invariant: GitHub is a supported provider (host detected via /github/i)
 
-    // #region START_NON_GITLAB_SETUP_MOCKS
+    // #region START_GITHUB_SETUP_MOCKS
     const ctx = createVcsResolveContext({
       git: {
         'config remote.origin.url': 'https://github.com/user/repo.git',
+        'rev-parse --abbrev-ref HEAD': 'main',
       },
-      env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      env: { GITHUB_PERSONAL_TOKEN: 'ghp-xxx' },
     });
-    // #endregion END_NON_GITLAB_SETUP_MOCKS
+    // #endregion END_GITHUB_SETUP_MOCKS
 
-    await assert.rejects(
-      () => resolveVcsContext({}, ctx.deps),
-      (error: unknown) => {
-        assert.ok(error instanceof VcsResolveError);
-        assert.match((error as Error).message, /GitHub is deferred/);
-        return true;
-      }
-    );
+    const result = await resolveVcsContext({}, ctx.deps);
+
+    assert.strictEqual(result.provider, 'github');
+    assert.strictEqual(result.host, 'github.com');
+    assert.strictEqual(result.project, 'user/repo');
+    assert.strictEqual(result.branch, 'main');
+    assert.strictEqual(result.token, 'ghp-xxx');
   });
 
   it('no origin remote — throws', async () => {
