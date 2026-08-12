@@ -50,11 +50,26 @@ describe('checkTrackers', () => {
     );
   });
 
-  it('flags status drift between ticket and tracker row', () => {
+  it('flags drift when the ticket is DONE but the tracker row lags at TODO', () => {
     assert.ok(
       codes([ticket('cli-a', '[x] DONE')], [row('cli-a', '[ ] TODO')]).includes(
         'SDD_TRACKER_STATUS_DRIFT'
       )
+    );
+  });
+
+  it('flags drift when the tracker row says DONE but the ticket itself is still TODO — the TSK-58 gap: a tracker can drift ahead of the ticket, not just fall behind it', () => {
+    assert.ok(
+      codes([ticket('cli-a', '[ ] TODO')], [row('cli-a', '[x] DONE')]).includes(
+        'SDD_TRACKER_STATUS_DRIFT'
+      )
+    );
+  });
+
+  it('does not flag a formatting-only difference — tracker cell keeps backticks (`` `[x]` DONE ``), ticket Meta never does', () => {
+    assert.deepStrictEqual(
+      checkTrackers([ticket('cli-a', '[x] DONE')], [row('cli-a', '`[x]` DONE')]),
+      []
     );
   });
 
@@ -64,5 +79,25 @@ describe('checkTrackers', () => {
 
   it('flags a tracker row with no ticket', () => {
     assert.ok(codes([], [row('cli-ghost', '[ ] TODO')]).includes('SDD_TRACKER_ORPHAN_ROW'));
+  });
+
+  it('MISSING_ROW/ORPHAN_ROW warn on a v1 (legacy) scope, error on v2 — mirrors checkBddCoverage grading', () => {
+    const v1Ticket: TicketRef = { ...ticket('cli-a', '[ ] TODO'), flowVersion: 'v1' };
+    const v2Ticket: TicketRef = { ...ticket('cli-b', '[ ] TODO'), flowVersion: 'v2' };
+    const v1Row: TrackerRowRef = { ...row('cli-ghost1', '[ ] TODO'), flowVersion: 'v1' };
+    const v2Row: TrackerRowRef = { ...row('cli-ghost2', '[ ] TODO'), flowVersion: 'v2' };
+
+    const missing = checkTrackers([v1Ticket, v2Ticket], []);
+    assert.strictEqual(missing.find((f) => f.file === 'cli-a.md')?.severity, 'warn');
+    assert.strictEqual(missing.find((f) => f.file === 'cli-b.md')?.severity, 'error');
+
+    const orphan = checkTrackers([], [v1Row, v2Row]);
+    assert.strictEqual(orphan.find((f) => f.message.includes('cli-ghost1'))?.severity, 'warn');
+    assert.strictEqual(orphan.find((f) => f.message.includes('cli-ghost2'))?.severity, 'error');
+  });
+
+  it('MISSING_ROW/ORPHAN_ROW default to warn (v1) when flowVersion is omitted', () => {
+    assert.strictEqual(checkTrackers([ticket('cli-a', '[ ] TODO')], [])[0]?.severity, 'warn');
+    assert.strictEqual(checkTrackers([], [row('cli-ghost', '[ ] TODO')])[0]?.severity, 'warn');
   });
 });

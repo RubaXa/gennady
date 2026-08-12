@@ -375,6 +375,11 @@ function ticketFlowVersion(file: string, repoRoot: string): FlowVersion {
   return detectFlowVersion(repoRoot);
 }
 
+/** @purpose True when content is a Tracker Index (a Task-ID/Status table) — content-based, not filename-based, so a legacy `tasks/<scope>/README.md` tracker is not silently dropped. | @param content File markdown. | @returns Whether it parses as a tracker index. */
+function isTrackerIndex(content: string): boolean {
+  return parseTrackerRows(content).length > 0;
+}
+
 /** @purpose Names of top-level `specs/<dir>` directories that contain a `<dir>.spec.md`. | @param specsRoot Absolute path of the specs/ root. | @returns Scope-spec dir names. */
 function scopeSpecDirs(specsRoot: string): string[] {
   let entries;
@@ -512,9 +517,15 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
           moduleEdgesByScope.set(scope, entry);
         }
         fileCount++;
-      } else if (file.endsWith('.3-tasks.md') || file.endsWith('.2-tasks.md')) {
+      } else if (isTrackerIndex(content)) {
+        const trackerFlow = ticketFlowVersion(file, repoRoot);
         for (const r of parseTrackerRows(content))
-          trackerRowRefs.push({ file, taskId: r.taskId, status: r.status });
+          trackerRowRefs.push({
+            file,
+            taskId: r.taskId,
+            status: r.status,
+            flowVersion: trackerFlow,
+          });
         fileCount++;
       } else if (isTicket(content)) {
         findings.push(...checkTicket(file, content));
@@ -523,7 +534,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         findings.push(...checkTicketRulesCascade(file, content, repoRoot));
         findings.push(...checkTicketBddCoverage(file, content, repoRoot));
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
-        ticketRefs.push(ticketRef(file, content));
+        ticketRefs.push(ticketRef(file, content, ticketFlowVersion(file, repoRoot)));
         fileCount++;
       }
     }

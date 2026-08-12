@@ -310,25 +310,30 @@ export type TicketRef = {
   status: string | null;
   /** @purpose Dependency Task-IDs declared in Meta. */
   dependencies: string[];
+  /** @purpose The ticket's own scope flow version — grades SDD_TRACKER_MISSING_ROW severity. Defaults to `'v1'` (conservative) when the caller omits it. */
+  flowVersion?: FlowVersion;
 };
 
 /** @purpose One Tracker-Index row plus the index file it came from. */
 export type TrackerRowRef = {
-  /** @purpose The `*.3-tasks.md` index file path. */
+  /** @purpose The `*.3-tasks.md` index file path (or a legacy `tasks/<scope>/README.md` carrying an embedded Tracker table). */
   file: string;
   /** @purpose Task-ID from the row. */
   taskId: string;
   /** @purpose Status cell text. */
   status: string;
+  /** @purpose The tracker file's own scope flow version — grades SDD_TRACKER_ORPHAN_ROW severity. Defaults to `'v1'` (conservative) when the caller omits it. */
+  flowVersion?: FlowVersion;
 };
 
 /**
  * @purpose Build the task-graph fields of a ticket from its content.
  * @param file Ticket file path.
  * @param content Full ticket markdown.
+ * @param [flowVersion] The ticket's own scope flow version (caller-supplied; not derivable from content alone).
  * @returns A TicketRef: the Meta Task-ID + dependencies (null / empty when absent).
  */
-export function ticketRef(file: string, content: string): TicketRef {
+export function ticketRef(file: string, content: string, flowVersion?: FlowVersion): TicketRef {
   const metaSec = extractSection(content, 'META');
   const meta = metaSec.status === 'ok' ? parseMetaInfo(metaSec.content) : null;
   return {
@@ -336,6 +341,7 @@ export function ticketRef(file: string, content: string): TicketRef {
     taskId: meta?.taskId ?? null,
     status: meta?.status ?? null,
     dependencies: meta?.dependencies ?? [],
+    flowVersion,
   };
 }
 
@@ -423,14 +429,20 @@ export function checkTaskGraph(tickets: TicketRef[]): Finding[] {
 
 /**
  * @purpose Cross-check tickets against their Tracker-Index rows — status drift, missing rows, orphan rows.
- * @invariant Pure — set/status comparison over the gathered tickets + tracker rows, matched by Task-ID.
- * @param tickets Every ticket's graph fields (Task-ID + Status).
- * @param rows Every Tracker-Index row across the tree.
+ * @invariant Pure — matched by Task-ID. STATUS_DRIFT is always `error`; MISSING_ROW/ORPHAN_ROW grade by
+ *   `flowVersion` (default `'v1'`, like `checkBddCoverage`) — `warn` on legacy, `error` once migrated.
+ * @param tickets Every ticket's graph fields (Task-ID + Status + scope flow version).
+ * @param rows Every Tracker-Index row across the tree (+ its tracker file's scope flow version).
  * @returns Findings (possibly empty); errors fail the gate.
  */
 export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Finding[] {
   const findings: Finding[] = [];
-  const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
+  // parseTrackerRows keeps the Status cell raw (backticks and all — sdd-sync's write-back needs the
+  // byte-identical cell); the ticket Meta Status never carries backticks. Strip them here so a
+  // formatting-only difference (`` `[x]` DONE `` vs `[x] DONE`) doesn't read as drift.
+  const norm = (s: string): string => s.replace(/`/g, '').replace(/\s+/g, ' ').trim();
+  const severityOf = (v: FlowVersion | undefined): 'error' | 'warn' =>
+    v === 'v2' ? 'error' : 'warn';
 
   const ticketIds = new Set(tickets.map((t) => t.taskId).filter((id): id is string => id !== null));
   const rowsById = new Map<string, TrackerRowRef[]>();
@@ -445,7 +457,7 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
     const trackerRows = rowsById.get(t.taskId);
     if (!trackerRows) {
       findings.push({
-        severity: 'error',
+        severity: severityOf(t.flowVersion),
         code: 'SDD_TRACKER_MISSING_ROW',
         file: t.file,
         message: `Ticket ${t.taskId} has no row in any Tracker Index.`,
@@ -469,7 +481,7 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
   for (const r of rows) {
     if (!ticketIds.has(r.taskId)) {
       findings.push({
-        severity: 'error',
+        severity: severityOf(r.flowVersion),
         code: 'SDD_TRACKER_ORPHAN_ROW',
         file: r.file,
         message: `Tracker row ${r.taskId} points to no ticket on disk.`,

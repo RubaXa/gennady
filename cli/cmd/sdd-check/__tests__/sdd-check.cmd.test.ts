@@ -171,6 +171,34 @@ describe('SddCheckCommand', () => {
     assert.strictEqual(r.exitCode, 0);
   });
 
+  it('--all: a legacy tracker embedded in tasks/<scope>/README.md (no *.3-tasks.md file) is still cross-checked — the TSK-58 gap: tracker says DONE, ticket itself is still TODO', async () => {
+    const root = join(dir, 'legacy-tracker-proj');
+    const scopeDir = join(root, 'tasks', 'cli');
+    mkdirSync(scopeDir, { recursive: true });
+    // ticket on disk is still TODO
+    writeFileSync(
+      join(scopeDir, 'cli.task-foo.md'),
+      CLEAN_TICKET.replace('[x] DONE', '[ ] TODO'),
+      'utf-8'
+    );
+    // legacy tracker lives inside README.md, not a *.3-tasks.md index — and it (wrongly) says DONE
+    writeFileSync(
+      join(scopeDir, 'README.md'),
+      [
+        '# cli — Tasks',
+        '## Tracker',
+        '| Task-ID | Title | Dependencies | Status | Reopens |',
+        '|---------|-------|--------------|--------|---------|',
+        '| [cli-foo](cli.task-foo.md) | Foo | — | `[x]` DONE | 1 |',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const r = await mod.run(argv('--all', root));
+    assert.match(r.text, /SDD_TRACKER_STATUS_DRIFT/);
+    assert.match(r.text, /README\.md/);
+  });
+
   it('--all на смешанном репо: строгие v2-проверки бьют только по мигрированному scope', async () => {
     const root = join(dir, 'mixed-proj');
     const MODULE_SPEC = [

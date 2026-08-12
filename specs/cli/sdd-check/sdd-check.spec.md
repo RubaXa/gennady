@@ -17,7 +17,7 @@
 **Invariants:**
 
 - exit `1` ⇔ есть хотя бы одна error-находка; warning-и одни → exit 0
-- `--all` пропускает `*.3-tasks.md` (трекеры — забота `sdd-sync`) и индексы; тикет = файл с META + EXECUTION_LOG
+- `--all` распознаёт Tracker Index по содержимому (таблица Task-ID/Status), не по имени файла — покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; сверяет со статусом тикета (см. постусловия, tracker↔ticket); тикет = файл с META + EXECUTION_LOG
 - exit `4` без `--task`/`--all`
 <!--/SECTION:MODULE_VISION-->
 
@@ -75,7 +75,7 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
   - Ровно один режим: `--task <ticket>` или `--all [root]`
 - Postconditions:
   - Пер-тикет проверки: баланс якорей · обязательные секции (META, EXECUTION_LOG) · наличие Task-ID · парсимость Status · фабрикованный DONE (`[x]` + `<…>`) · DONE при активном BLOCKED · DONE с остаточными плейсхолдерами · граф фаз (deps резолв + ацикличность) · фазы ↔ `PHASE_Pn`-секции · DONE ⇒ все фазы `[x]` · **rule-ссылки фаз резолвятся** (`](…\.xml)` в тикете → файл на диске, `SDD_BROKEN_RULE_LINK`) · **spec-ссылки резолвятся** (`](…spec.md#entity)` в тикете → файл (`SDD_BROKEN_SPEC_REF`, error) + якорь-сущность как heading-slug/SECTION (`SDD_BROKEN_SPEC_ANCHOR`, warn) — чтобы `sdd-extract` воркера не упал)
-  - `--all` также: битые `](…spec.md)` ссылки + баланс якорей `.spec.md`; обязательные секции по scope-type; целостность портала (`specs/README.md`): ацикличность графа · граф↔таблица scope'ов · висячие связи · сироты · DONE-scope без файла спеки; **task-DAG** (коллизии Task-ID · deps резолвятся · ацикличность); **tracker↔ticket** (дрифт статуса · тикет без строки · строка без тикета); **module-graph** (`SDD_MODULE_DAG_CYCLE` — цикл в графе зависимостей модулей scope, рёбра из `## 9` Inter-Module Dependencies, объединённые по scope); **module-bloat** (**warn**, advisory, exit 0, `AX_HIERARCHICAL_SPECS`): `SDD_MODULE_OVERSIZED` — инвентарь > порога сущностей (P90=20) → декомпозиция на под-модули; `SDD_MODULE_SPEC_VERBOSE` — спека длиннее порога строк при связном инвентаре → компрессия спеки; **scope-bloat** (**warn**, `AX_SCOPE_STAYS_THIN`): `SDD_SCOPE_BLOATED` — scope-спека несёт модульную деталь (`ENTITY_INVENTORY`/`MODULE_CONTRACTS`); **scope-deps↔портал** (**warn**, B5, `AX_SCOPE_GRAPH_DISCIPLINE`): `SDD_SCOPE_DEP_UNDECLARED` — ребро портала `X --> Y` не отражено в `## 7 Scope Dependencies` спеки X
+  - `--all` также: битые `](…spec.md)` ссылки + баланс якорей `.spec.md`; обязательные секции по scope-type; целостность портала (`specs/README.md`): ацикличность графа · граф↔таблица scope'ов · висячие связи · сироты · DONE-scope без файла спеки; **task-DAG** (коллизии Task-ID · deps резолвятся · ацикличность); **tracker↔ticket** (Tracker Index распознаётся по содержимому — таблица Task-ID/Status, — не по имени файла, покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; статус сравнивается без учёта backtick-обёртки ячейки; `SDD_TRACKER_STATUS_DRIFT` — дрифт статуса в любую сторону (тикет обгоняет трекер ИЛИ трекер обгоняет тикет) — всегда error; `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — по образцу `SDD_BDD_SCENARIO_UNTESTED`: warn на v1 (легаси-scope терпит вычищенные из трекера superseded-тикеты), error на v2); **module-graph** (`SDD_MODULE_DAG_CYCLE` — цикл в графе зависимостей модулей scope, рёбра из `## 9` Inter-Module Dependencies, объединённые по scope); **module-bloat** (**warn**, advisory, exit 0, `AX_HIERARCHICAL_SPECS`): `SDD_MODULE_OVERSIZED` — инвентарь > порога сущностей (P90=20) → декомпозиция на под-модули; `SDD_MODULE_SPEC_VERBOSE` — спека длиннее порога строк при связном инвентаре → компрессия спеки; **scope-bloat** (**warn**, `AX_SCOPE_STAYS_THIN`): `SDD_SCOPE_BLOATED` — scope-спека несёт модульную деталь (`ENTITY_INVENTORY`/`MODULE_CONTRACTS`); **scope-deps↔портал** (**warn**, B5, `AX_SCOPE_GRAPH_DISCIPLINE`): `SDD_SCOPE_DEP_UNDECLARED` — ребро портала `X --> Y` не отражено в `## 7 Scope Dependencies` спеки X
   - exit 1 при ≥1 error; иначе 0
 - Invariants:
   - `checkTicket` чист (без I/O); кросс-файловое — в команде
@@ -141,9 +141,9 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 
 ### D-CK003 — `*.3-tasks.md` пропускаются
 
-- **Status:** active
+- **Status:** superseded by D-CK012
 - **Why:** Целостность трекеров (статус строки = статус тикета) — забота `sdd-sync` (он пишет + verify). Дублировать проверку в check — расхождение источников истины.
-- **Risk accepted:** Рассинхрон трекера, не пойманный sdd-sync, здесь не всплывёт; покрывается тем, что статусы пишет только sdd-sync.
+- **Superseded because:** На практике `sdd-sync` пишет статус, но не verify'ит существующий рассинхрон — трекер может обогнать тикет (строка `DONE`, Meta тикета всё ещё `TODO`) незамеченно. Реальный кейс: `tasks/cli/README.md` заявлял TSK-58 `DONE`, сам тикет стоял `TODO` — `sdd-check --all` это не поймал (см. D-CK012). Дублирование источников истины — не аргумент против механической сверки; `checkTrackers` уже существовал (сверка добавлена позже без обновления этой записи) и был просто не подключён.
 
 ### D-CK005 — Мягкие сигналы раздувания модуля (два кода, warn)
 
@@ -180,6 +180,13 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 - **Status:** active
 - **Why:** `AX_SCOPE_STAYS_THIN` — scope остаётся тонким индексом, а `ENTITY_INVENTORY`/`MODULE_CONTRACTS` (инвентарь сущностей, DbC) живут ТОЛЬКО в модулях. Проверка **категориальная**, не размытый порог: scope-спека, несущая эти секции, → `SDD_SCOPE_BLOATED` (warn). Классификатор уточнён: модуль = по маркеру `MODULE_VISION` (а не по `ENTITY_INVENTORY`, иначе раздутый scope маскировался под модуль); scope = есть `SCOPE_TYPE`, нет `MODULE_VISION`. Формат v2 (`product/library/...-spec-structure`) фиксирует: scope несёт `SCOPE_TYPE…MODULE_MAP…HANDOFF`, но НЕ инвентарь/контракты — отсюда правило. Спроектировано от формата kit, не от легаси-спек репо.
 - **Risk accepted:** модульная спека с унаследованным `SCOPE_TYPE` родителя + `ENTITY_INVENTORY` не ловится как bloat (правильно — у неё есть `MODULE_VISION`). Легаси-спеки без SECTION-маркеров проверка не трогает (не мигрируем).
+
+### D-CK012 — Tracker Index: распознавание по содержимому + severity-градация по `flowVersion`
+
+- **Status:** active
+- **Supersedes:** D-CK003
+- **Why:** `--all` классифицировал Tracker Index по имени файла (`*.3-tasks.md`/`*.2-tasks.md`) — ни один файл в репозитории так не называется, весь трекер-трафик живёт в `tasks/<scope>/README.md`; `checkTrackers` существовал, но получал пустой массив строк, поэтому не срабатывал ни в одну сторону. Реальный пропуск: `tasks/cli/README.md` строка TSK-58 `DONE`, тикет `orient.task-55.md` (`TSK-55`) — `TODO`; трекер обогнал тикет незамеченно. Классификация переведена на содержимое (`isTrackerIndex` — таблица Task-ID/Status), покрывает и легаси README, и будущий `*.3-tasks.md`. Отдельно найден и починен формат-баг: `parseTrackerRows` оставляет Status-ячейку сырой (с backtick — `sdd-sync` пишет обратно байт-в-байт), а Meta тикета — без backtick; `checkTrackers`' `norm()` их не срезал → лавина ложного `SDD_TRACKER_STATUS_DRIFT` (34 находки на реальном дереве, из них 32 — чисто формат). После обеих правок реальный дрифт — 2 находки (TSK-55 — подтверждённый живой баг; TSK-88 — побочный эффект существующей коллизии Task-ID между scope, уже отдельно `SDD_TASK_ID_COLLISION`).
+- **Risk accepted:** Включение классификации вскрыло другой существующий разрыв: v1-тикеты без `<!--SECTION:-->`-разметки (`isTicket` их не узнаёт) дают `SDD_TRACKER_ORPHAN_ROW`/`SDD_TRACKER_MISSING_ROW` шумом на легаси-дереве (55 + 15 находок) — включая намеренно вычищенные из трекера superseded-тикеты (`agent-inbox` TSK-156…170). Смягчено по образцу `SDD_BDD_SCENARIO_UNTESTED`: `SDD_TRACKER_STATUS_DRIFT` — всегда error (редкий, всегда genuine после того как обе стороны разрешились); `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — `warn` на v1 (default), `error` на v2 (`TicketRef.flowVersion`/`TrackerRowRef.flowVersion`, из `ticketFlowVersion`). Сам разрыв `isTicket` на legacy-разметке — не тронут, отдельная задача.
 
 ### D-CK011 — B5: scope-deps ↔ портал-граф (`SDD_SCOPE_DEP_UNDECLARED`)
 
@@ -226,6 +233,10 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 ### `SENTENCE_BREAK`
 
 - **Usage Waiver:** Регексп границы предложения (конец фразы + заглавная буква) для эвристики «многословная ячейка таблицы» в `checkTableCells`; вынесен как модульная константа, чтобы граница была видна отдельно от логики проверки.
+
+### `isTrackerIndex`
+
+- **Usage Waiver:** Классификация Tracker Index по содержимому (Task-ID/Status таблица), а не по имени файла — вынесена отдельной функцией с собственным JSDoc, чтобы ветка `--all` не несла многострочный комментарий (лимит `RegionCommentCheck`); единственный вызов внутри цикла обхода.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
