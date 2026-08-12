@@ -165,10 +165,13 @@
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
       - WHEN intent = module-decomposition (scope spec approved, product / library)
           -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+      - WHEN intent = multi-scope (one change spans several scopes)
+          -> decompose the request against the Scope Graph in dependency order per `AX_CROSS_SCOPE_CHANGE`
+             (the shared / cross-cutting scope first, then its dependents); for EACH scope in that order run
+             its own ordinary route (branches 3–6 of this same LOGIC_SWITCH) to completion, one scope at a
+             time, with a brief check-in with the operator between scopes
       - DEFAULT
           -> ask the operator which intent applies (message in Russian); route only on a confirmed intent
     ```
-    > The multi-scope route arrives in its own slice (UC5). Each is one more
-    > `WHEN … -> READ_AND_USE_DIRECTIVE(...)` line here.
   </LogicSwitch>
 </SddRouter>
