@@ -61,7 +61,7 @@
     | `H_NO_INPUT` | Neither findings / bug nor a code change to reconcile |
     | `H_AMBIGUOUS_MODE` | Cannot tell fix from from-code — ask the operator |
     | `H_OPERATOR_REJECT` | Operator rejected the reconcile plan |
-    | `H_TRIVIALITY_UNCONFIRMED` | Fix looks trivial but the probe leaves doubt — ask the operator: short-circuit or full path |
+    | `H_TRIVIALITY_UNCONFIRMED` | Fix looks trivial but the probe leaves doubt, OR no critic was dispatched (a self-probe does not confirm triviality) — ask the operator: short-circuit or full path |
     | `H_VERIFICATION_FAIL` | Gates still fail after the reconcile |
   </HaltConditions>
 
@@ -87,7 +87,10 @@
         Dispatch the critic on the affected spec, seeded with the problem, to judge: **bug or spec-defect**
         (code violates a right spec, or the spec was wrong); **the class** (where
         else the same class occurs, via `orient` over the closed-world); **the blast radius** (what
-        else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point. The probe verdict feeds STEP_2B.
+        else the diff touches). MUST cover the full problem class and blast radius — the reported symptom is only the entry point. The critic MUST be an actually dispatched subagent — an
+        orchestrator self-probe never satisfies this step and never confirms triviality, no matter how
+        small the fix looks (mirrors `AX_FIX_CLASSIFICATION`: triviality is confirmed by the probe, never
+        by self-assessment). No dispatched verdict → `H_TRIVIALITY_UNCONFIRMED`. The probe verdict feeds STEP_2B.
       </Action>
     </Step>
     <Step id="STEP_2B_CLASSIFY">
@@ -108,8 +111,11 @@
           pair every code-fix phase with a `test` phase (regression); multiple findings of one task go
           into a single reopen Round.
 
-        <LogicSwitch on="fix class — confirmed by the STEP_2 probe, never by self-assessment">
-        - WHEN the class is trivial: a single site, blast radius confirmed empty by the probe, contracts / specs untouched -> patch the code, back-sync the spec (`sdd-sync`), run the light gate (typecheck + tests of the touched files), present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, epic audit + code-review) stays skipped.
+        <LogicSwitch on="fix class — confirmed by the dispatched critic's verdict from STEP_2, never by self-assessment (self-probe is void)">
+        - WHEN the class is trivial: a single site, blast radius confirmed empty by the dispatched critic's verdict, contracts / specs untouched -> patch the code TOGETHER WITH a regression test covering the fixed case in the same run (a task-reopen always pairs code-fix with a `test` phase — the trivial branch is not exempt from that pairing just because it skips the Round), back-sync the spec (`sdd-sync`), run the light gate (typecheck + tests of the touched files, including the new regression test).
+          - WHEN the light gate is green -> present `FIX_SUMMARY_FORMAT`. DONE — the full tail (STEP_3–7, epic audit + code-review) stays skipped.
+          - WHEN the light gate is red AND the failure reproduces on the pre-change baseline AND lies outside the blast radius confirmed by the critic -> record it in `FIX_SUMMARY_FORMAT` as pre-existing (not caused by this patch), propose a separate task to the operator for it, and do NOT head the summary with "✅ complete" — the gate is still red. DONE.
+          - OTHERWISE (the failure is caused by or overlaps the patch/blast radius) -> `H_VERIFICATION_FAIL`.
         - WHEN triviality is plausible but the probe leaves doubt -> `H_TRIVIALITY_UNCONFIRMED`
         - DEFAULT -> STEP_3_PLAN, the full path
         </LogicSwitch>
@@ -122,7 +128,10 @@
         execution) or spec → code (`AX_PIVOT_REQUIRES_SUPERSESSION` + cascade downstream) or both;
         reopen / create the affected tasks (`AX_REOPEN_FORMAT`), including the class siblings; group
         scattered edits sharing one intent into a single task (`AX_GROUPING_REDUCES_NOISE`) — per-finding
-        tasks are noise; reconcile any new entity via `orient` (`AX_REUSE_FIRST`). Present the plan
+        tasks are noise; reconcile any new entity via `orient` (`AX_REUSE_FIRST`), filling the
+        "Reuse rationale" slot for anything that lands on JUSTIFY. If STEP_2B found a file with a
+        missing header, the plan MUST carry an explicit line to add it — the fix IS adding the header;
+        this is not deferred to `sdd-sync`, which does not write headers. Present the plan
         (`PLAN_TABLE_FORMAT`).
       </Action>
     </Step>

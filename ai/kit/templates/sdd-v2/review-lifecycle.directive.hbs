@@ -26,7 +26,7 @@
     <Step id="STEP_1_INTERNAL_CRITIC">
       <Goal>Internal review until CLEAN — necessary, not sufficient.</Goal>
       <Action>
-        Dispatch the critic (isolated) on the review-state spec — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")`
+        Dispatch the critic (isolated), on a worker-tier model (`AX_CRITIC_MODEL_TIER`), on the review-state spec — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")`
         (product / design lenses: completeness · implementation-autonomy · understanding · product-value). Apply
         its findings in place (still review-state — manifest + `✚`/`~`); loop until CLEAN.
       </Action>

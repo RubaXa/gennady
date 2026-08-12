@@ -1,0 +1,10 @@
+<!-- source: SDD v2 — S8/S9/S10/S11 flow-sim, operator decision on critic model tier -->
+<Axiom id="AX_CRITIC_MODEL_TIER">
+  The dispatched critic runs on a model no stronger than the artifact's author — default the
+  worker tier (Sonnet-class), never a step up "to be thorough". The consumers of a spec are workers
+  on cheap models; a spec that only a stronger model can parse is not fit for execution
+  (`AX_READER_WITHOUT_SESSION_CONTEXT` carried from prose into tooling). The `understanding` and
+  `implementation-autonomy` lenses ARE the weak model's strength — it surfaces exactly what a
+  worker would trip on. Semantic depth beyond that is not the critic's job; it stays with external
+  review.
+</Axiom>

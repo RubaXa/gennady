@@ -14,7 +14,9 @@
 
     **Glossary.** Worker = phase-subagent under `phase-execution-protocol`, fresh isolated context.
     **Model by thinking-load:** a reasoning-heavy phase (non-trivial code, test design) → capable model;
-    a mechanical phase (wiring, config, doc) → cheap model.
+    a mechanical phase (wiring, config, doc) → cheap model. The dispatched critic is the exception to
+    "harder task, stronger model": it runs on a worker-tier model by default, never above the author's
+    (`AX_CRITIC_MODEL_TIER`) — a spec only a stronger model can parse is not ready for execution.
   </Mission>
 
   <BeliefState>

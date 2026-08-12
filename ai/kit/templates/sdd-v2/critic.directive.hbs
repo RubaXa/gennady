@@ -21,6 +21,8 @@
 
     {{> "axiom/boundary/ax-isolation-signal"}}
 
+    {{> "axiom/critic/ax-critic-model-tier"}}
+
     {{> "axiom/truth/ax-reuse-first"}}
 
     {{> "axiom/process/ax-surgical"}}
@@ -63,7 +65,7 @@
     </Step>
     <Step id="STEP_1_DISPATCH">
       <Goal>Dispatch the isolated sensor.</Goal>
-      <Action>One fresh subagent: read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
+      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
     </Step>
     <Step id="STEP_2_EVALUATE">
       <Goal>Weigh findings against full project context.</Goal>

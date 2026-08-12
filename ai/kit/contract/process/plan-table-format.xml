@@ -1,4 +1,7 @@
 <!-- source: sdd/fix.directive.xml -->
 <Contract id="PLAN_TABLE_FORMAT">
-      Shown to operator at STEP_3. Compact table per category. Operator may edit.
-    </Contract>
+      Shown to operator at STEP_3. Compact table per category. Operator may edit. Carries a
+      "Reuse rationale" column/slot — filled per `AX_REUSE_FIRST` whenever an item introduces a new
+      entity/type/method/contract: the JUSTIFY-level one-line rationale for why the existing surface
+      was insufficient (reuse/extend items leave it empty — nothing to justify).
+</Contract>

@@ -74,6 +74,16 @@
 
     <Axiom id="AX_ISOLATION_SIGNAL">Critic receives ONLY artifact + parent spec. Confusion = underspecification. Fix the artifact.</Axiom>
 
+    <Axiom id="AX_CRITIC_MODEL_TIER">
+      The dispatched critic runs on a model no stronger than the artifact's author — default the
+      worker tier (Sonnet-class), never a step up "to be thorough". The consumers of a spec are workers
+      on cheap models; a spec that only a stronger model can parse is not fit for execution
+      (`AX_READER_WITHOUT_SESSION_CONTEXT` carried from prose into tooling). The `understanding` and
+      `implementation-autonomy` lenses ARE the weak model's strength — it surfaces exactly what a
+      worker would trip on. Semantic depth beyond that is not the critic's job; it stays with external
+      review.
+    </Axiom>
+
     <Axiom id="AX_REUSE_FIRST">Orchestrator holds full project context — the ONLY actor able to detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting it: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (record one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not to wave through. Bias toward consolidation — do not let the system grow a duplicate entity each round.</Axiom>
 
     <Axiom id="AX_SURGICAL">Close the gap only. No restructure, rewrite, restyle. Structural overhaul → suggest re-scaffold, stop.</Axiom>
@@ -125,7 +135,7 @@
     </Step>
     <Step id="STEP_1_DISPATCH">
       <Goal>Dispatch the isolated sensor.</Goal>
-      <Action>One fresh subagent: read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
+      <Action>One fresh subagent, on a worker-tier model — never stronger than the author's model (`AX_CRITIC_MODEL_TIER`): read `ai/directives/sdd-v2/critic-protocol.directive.xml` + the artifact + parent spec only (`AX_ISOLATION_SIGNAL`). Emit a round progress line (`ORCHESTRATOR_PROGRESS_FORMAT`).</Action>
     </Step>
     <Step id="STEP_2_EVALUATE">
       <Goal>Weigh findings against full project context.</Goal>

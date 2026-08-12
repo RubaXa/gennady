@@ -36,10 +36,12 @@
     </Axiom>
 
     <Axiom id="AX_TOOL_INVOCATION">
-      The SDD mechanical tools are `gennady` CLI commands. Invoke them as
-      `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
-      repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
-      synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
+      (including any of its worktrees), invoke them repo-relative from the working tree's own root —
+      `npx tsx <repo-root>/cli/gennady.ts <cmd> <args>` — never a hardcoded path to a different checkout;
+      this is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
+      synced into a project. In every OTHER project, invoke the published package: `npx gennady <cmd>
+      <args>`. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
       `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `orient`, `lint`, `yagni`, `testcov`. The
       `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
       tools — never prefix those with the CLI runner.
@@ -238,10 +240,14 @@
     <Step id="STEP_1_LAYER">
       <Goal>Materialize the migration plan as an on-disk layer — the source of truth every later step consumes.</Goal>
       <Action>
-        Run `sdd-migrate plan --all . --write`. This scaffolds `migration/` mirroring `specs/`:
-        one `*.migration.md` per spec (generated Inventory — facts a rescan can re-derive; a
-        Section Map pre-filled by curated heading rules, `UNMAPPED` rows left for the agent;
-        agent-filled Ticket Map / Diagram Plan; a per-unit step checklist) plus
+        Run `sdd-migrate plan --all . --write`. This scaffolds `migration/` mirroring `specs/`: one
+        `<spec-base>.migration.md` per spec — named from the spec's own filename with `.migration`
+        inserted before the extension (`demo.spec.md` → `demo.spec.migration.md`) — carrying: a
+        generated Inventory (facts a rescan can re-derive); a Section Map pre-filled by curated
+        heading rules, `UNMAPPED` rows left for the agent; a Ticket Map pre-filled tolerantly from
+        each ticket's v1 Meta (a New-ID guess when the v1 Meta already carries ACR/slug-shaped
+        fields — a best-effort seed, not an authoritative fill, the agent still reviews and corrects
+        it in STEP_3) with the Diagram Plan left fully to the agent; a per-unit step checklist — plus
         `migration/README.md` (the global G1–G8 order and the unit table). Explain to the operator,
         in plain Russian: the plan is files, not chat — it survives session breaks, it is verified
         mechanically (`plan --verify`), and its units are self-sufficient job cards that can be
@@ -266,11 +272,13 @@
         (parallelizable — a unit file is the worker's whole context): resolve every `UNMAPPED` row
         (keep / rename / merge / split / drop + the real target SECTION, from the scope-type's
         `*-spec-structure.xml`), spot-check the pre-filled rows against the source (a curated rule can
-        be wrong on an atypical heading — fix it, do not defer to STEP_7), fill the **Ticket Map**
-        (`<ACR>-<slug>` from `Meta.Purpose`, kebab-case, unique repo-wide — the same slug twice means
-        «one feature»; destination computed from the ID), and the **Diagram Plan** (which diagram
-        carries the mandatory Overview and from what content it is built; extra diagrams by
-        judgment). Set the unit `**Status:** MAPPED`.
+        be wrong on an atypical heading — fix it, do not defer to STEP_7), review and correct the
+        **Ticket Map**'s tolerant v1-Meta pre-fill for every row (a row with no usable v1 Meta stays
+        empty for the agent to fill from scratch): New ID `<ACR>-<slug>` — `ACR` UPPERCASE, `slug`
+        kebab-case from `Meta.Purpose`, unique repo-wide (`NEW_ID_REGEX` gates the grammar — the same
+        slug twice means «one feature»; destination computed from the ID) — and the **Diagram Plan**
+        (which diagram carries the mandatory Overview and from what content it is built; extra
+        diagrams by judgment). Set the unit `**Status:** MAPPED`.
         Gate: `sdd-migrate plan --verify` — inventory unchanged, maps complete, zero `UNMAPPED`
         targets remaining, action vocabulary respected, slug grammar valid, zero cross-unit slug
         collisions. Fix and re-verify until clean.
@@ -301,7 +309,10 @@
       <Goal>Relocate tickets co-located and build the indexes — one scope at a time.</Goal>
       <Action>
         Per scope: `sdd-migrate move --scope <scope> --write` — relocates every ticket to its
-        Ticket-Map destination (`git mv`, history kept), rewrites every relative markdown link that
+        Ticket-Map destination (`git mv`, history kept): module co-location when the unit has a
+        module (`specs/<scope>/<module>/...`); a flat, scope-level destination is legal for a scope
+        with no modules — the Ticket Map's destination decides, not a hardcoded module assumption.
+        It rewrites every relative markdown link that
         pointed at a moved ticket (inside the moved tickets themselves and inside every other file in
         the same zones that referenced them by path). Backstop: `sdd-check` resolves ticket→spec
         references (`SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR`) and spec→spec links under
@@ -310,8 +321,9 @@
         recognize, or a referencing file outside the zones, stays a manual follow-up. It also
         scaffolds `<module>.3-tasks.md` +
         `<scope>.3-tasks.md` from ticket Meta (`MODULE_TASKS_INDEX_STRUCTURE` /
-        `SCOPE_TASKS_INDEX_STRUCTURE`; the Cascade Table slot stays for the agent), and removes the
-        emptied `tasks/<scope>/`. Together (index present + tasks dir gone) that mechanically flips
+        `SCOPE_TASKS_INDEX_STRUCTURE`; the Cascade Table slot stays for the agent), and automatically
+        removes the now-emptied `tasks/<scope>/` — no separate cleanup step. Together (index present
+        + tasks dir gone) that mechanically flips
         the scope to v2 — `sdd-check` detects flow per scope, so the migrated scope is now checked
         strictly while unmigrated neighbours stay lenient. A blocked move (unfilled map, stray
         ticket) stops that scope, not the run.
@@ -324,10 +336,16 @@
         already done): execute the unit's S4–S6 checklist. Restructure the spec per its Section Map:
         target section order from the scope-type's `*-spec-structure.xml` (general → specific,
         arc42/C4), headings without numbers, heavy sections folded under `<details>`, the Overview
-        section carrying its diagram per the Diagram Plan. Collapse converged decisions via
+        section carrying its diagram per the Diagram Plan. Restructuring reorders and clarifies what
+        the source ALREADY says — per the Mission's out-of-scope line, migration only transforms what
+        already exists: do not author a new section (Golden DX, FR, or any other) the source spec
+        never had; a section the target structure calls for but the source lacks stays absent, marked
+        for `evolve`/`sdd-continue` to fill later, never silently invented here. Collapse converged
+        decisions via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/compression.directive.xml")` (superseded marked
         per `AX_PIVOT_REQUIRES_SUPERSESSION`, never silently dropped; merges propagated to code
-        references). Rewrite operator prose to flat engineering Russian in the same pass, per
+        references) — a Decision Log entry's TEXT is changed only through supersession, never edited
+        in place. Rewrite operator prose to flat engineering Russian in the same pass, per
         `AX_MIGRATION_COMPREHENSION_PASS` — decode every empty label and code-only term from the
         actual code, replace every metaphor with the literal mechanism, never guess (code / IDs /
         status tokens / BDD keywords / paths stay English).
@@ -364,12 +382,17 @@
     `UTF-8` / `UTF-16` and similar are NOT IDs — never replaced.
 
     **Tooling state — all four mechanical modes are real tools:** `sdd-migrate plan` (generate /
-    `--verify` the migration layer — the Section Map arrives pre-filled by `mapHeadingToSection`,
-    `--verify` fails on any leftover `UNMAPPED` target) · `sdd-migrate anchors` (section markers) ·
-    `sdd-migrate ids` (word-boundary ID replacement, `--from-plan`, self-gating on zero leftovers) ·
-    `sdd-migrate move` (per-scope relocation + index scaffolding + relative markdown-link rewriting
-    inside every moved ticket and every referencing file in the same zones + `tasks/<scope>/`
-    removal). What stays semantic — closing `UNMAPPED` rows (STEP_3) and the
+    `--verify` the migration layer — the Section Map arrives pre-filled by `mapHeadingToSection`; the
+    Ticket Map's New-ID arrives pre-filled tolerantly from each ticket's v1 Meta where it already
+    carries ACR/slug-shaped fields — a best-effort seed the agent still reviews, never authoritative;
+    `--verify` fails on any leftover `UNMAPPED` target or a New ID that fails `NEW_ID_REGEX`, which
+    requires `<ACR>` UPPERCASE) · `sdd-migrate anchors` (section markers) · `sdd-migrate ids`
+    (word-boundary ID replacement, `--from-plan`, self-gating on zero leftovers) · `sdd-migrate move`
+    (per-scope relocation to the Ticket Map's destination — module co-location when the unit has a
+    module, a flat scope-level destination legal for a scope without modules — + index scaffolding +
+    relative markdown-link rewriting inside every moved ticket and every referencing file in the same
+    zones + automatic removal of the now-emptied `tasks/<scope>/`). What stays semantic — closing
+    `UNMAPPED` rows and correcting the Ticket Map pre-fill (STEP_3) and the
     restructure/compression/comprehension pass (STEP_7) — is agent work executed against a verified
     plan and gated by strict per-scope `sdd-check` plus, at the final gate, `gennady lint
     --inventory-reverse` per migrated module (STEP_8).
