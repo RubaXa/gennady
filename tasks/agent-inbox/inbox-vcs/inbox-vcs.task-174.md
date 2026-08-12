@@ -6,15 +6,15 @@
 
 - **Task-ID:** TSK-174
 - **Status:** [x] DONE
-- **Reopens:** 2
+- **Reopens:** 3
 - **Purpose:** Consolidate GitLab truth into one read/effect boundary with inclusive discovery, complete event ingestion and safe reconciliation.
 - **Scope:** agent-inbox
 - **Module:** inbox-vcs
 - **Dependencies:** TSK-173
 - **Spec References:** [Inventory](../../../specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md#3-entity-inventory-closed-world), [Contracts](../../../specs/agent-inbox/inbox-vcs/inbox-vcs.spec.md#5-module-contracts-dbc)
 - **Runtime Backing:** `real-runtime`
-- **Verification Levels:** `contract`, `integration`
-- **Deferred Runtime Scope:** None
+- **Verification Levels:** `contract`, `integration`, `real-observation` (Round 4)
+- **Deferred Runtime Scope:** todos pagination beyond the 100-cap (silent truncation of review-requests past 100 pending todos) and periodic ghost-todo `todoMarkDone` cleanup — see D-343 residual gaps; owner: follow-up tickets.
 
 [sdd-boundary-meta]: #
 
@@ -240,6 +240,14 @@
 - [x] `2026-08-11T08:17:15Z` P2 DONE — targeted boundary proof passes `5/5`; canonical contract/integration suite passes `13/13`; `npm run type-check` passes; GitLab mutations=`0`.
 - [x] `2026-08-11T08:19:00Z` ver targeted `gennady lint` → pass exit=`0`; scoped Prettier → pass exit=`0`; all eight `sdd-extract` sections → pass exit=`0`; `sdd-check --task` → clean exit=`0`; `git diff --check` → pass exit=`0`.
 - [x] `2026-08-11T08:19:00Z` DONE — recovery audit F-01 remediated without discovery, legacy entrypoint, effect semantics or TSK-175 changes; fresh isolated audit required.
+
+### Round 4 — 2026-08-12, late-detected real-runtime regression (D-343)
+
+- [x] `2026-08-12` finding — `getActionable` accepted on green mock/contract tiers with `Deferred Runtime Scope: None`, but its `real-runtime` discovery capability was never observed for latency. The one live legacy run (Recovery block) `timed out before output` and the timeout was dismissed as a flake — `exit=0` of a fresh retry was recorded instead. Root cause: paper-fix for the GraphQL complexity error (split into 4 queries + `first: 100` on nested `reviewers`/`approvedBy`) made GitLab resolve the full nested projection across ~100 pending todos (~68 merged/closed ghosts), compounding superlinearly.
+- [x] `2026-08-12` real observation `getActionable` wall-clock vs live `gitlab.corp.mail.ru` (@k.lebedev) → OLD (all-full 4 queries) median **14925ms**; per-source A/B isolated the cost to the full nested set on the capped todos source.
+- [x] `2026-08-12` fix — todos targets use a light projection (filter/placement fields only); connection sources keep the full projection; merge order flipped so connections populate full fields before a light todo touches an MR. Commit `2d6b152`.
+- [x] `2026-08-12` real observation after fix → NEW median **3383ms** (14.9s → 3.4s, 4.4×, −11.5s); `npm run type-check` pass; targeted `gennady lint` clean; affected suites `vcs-gitlab-inbox` + `port-contract` + consumer tests pass `38/38`.
+- [x] `2026-08-12` DONE — regression closed with recorded live latency; `Deferred Runtime Scope` corrected from the false `None` to name the residual todos-cap and ghost-cleanup gaps (D-343).
 <!--/SECTION:EXECUTION_LOG-->
 
 ## 8. Decision Log

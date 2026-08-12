@@ -356,6 +356,19 @@ browser clipboard permission, целостность версии Review Contrac
 latest-observed freshness transaction, provider conditional preconditions и
 read-after-effect reconciliation.
 
+**Real-runtime acceptance obligation.** Задача, чья `Runtime Backing` для способности
+из таблицы выше — `real-runtime`, **не может** достичь `[x] DONE` на одних mock/
+contract/mocked-HTTP тирах. Она обязана либо (a) записать в Execution Log хотя бы одно
+**наблюдение против живого boundary** — реальный вызов с зафиксированным фактом
+(latency, форма ответа или поведение), — либо (b) назвать недостающую real-проверку в
+`Deferred Runtime Scope` вместе с задачей-владельцем. `Deferred Runtime Scope: None`
+допустим **только** когда реальное наблюдение действительно записано. Зелёные mock/
+contract тиры доказывают структуру, но никогда — что реальный рантайм работает.
+Таймаут, аномальная latency или неожиданная форма ответа на живом вызове — это
+**finding для расследования, а не флейк для ретрая**: пересобрать «чистый» прогон и
+записать `exit=0`, не объяснив аномалию, значит скрыть регрессию.
+(Основание инцидента: D-343.)
+
 ### 4.5 Rules
 
 | Rule                                | Category | Source                                                                                 |
@@ -629,6 +642,39 @@ freshness transitions, guarded intents, effect reconciliation и runtime receipt
 Поэтому агент не может объявить прочитанным источник другой версии, сфабриковать tool
 trace или применить устаревший результат после нового observed event. Локальная
 атомарность намеренно не распространяется на внешний GitLab dispatch.
+
+### D-343 — Real-runtime способности требуют наблюдённого живого результата, не зелёных моков
+
+- **Status:** active
+- **Recorded:** session live-debug, agent-inbox
+- **Why:** `getActionable` (GitLab discovery, объявлен `real-runtime` в §4.4) был
+  переписан в TSK-174. GraphQL complexity-ошибку «починили» бумажно (split на 4
+  запроса + `first: 100` на вложенных `reviewers`/`approvedBy`), из-за чего
+  `inbox list` деградировал до ~15s. Живой прогон в TSK-174 **был** — и первый вызов
+  «timed out before output», но таймаут списали на флейк и записали `exit=0` свежего
+  ретрая как доказательство, а `Deferred Runtime Scope: None`. Latency никто не
+  измерил. То есть сигнал деградации (тот самый таймаут) наблюдали и отбросили;
+  функционал приняли, не понимая источник стоимости. Всплыло лишь когда оператор
+  заметил медленную команду.
+- **Decision:** введена Real-runtime acceptance obligation (§4.4) — задача с
+  `real-runtime` backing обязана записать хотя бы одно наблюдение против живого
+  boundary (факт: latency/shape/behaviour) ИЛИ явно перечислить недостающую
+  real-проверку в `Deferred Runtime Scope` с задачей-владельцем; `None` при
+  ненаблюдённом рантайме запрещён. `sdd verify` (typecheck/lint/mock-test) впредь не
+  считается доказательством работы `real-runtime` способности.
+- **Fix (live-verified):** todos-таргеты переведены на лёгкую проекцию (поля для
+  фильтра/размещения), connection-источники сохраняют полную. Замер против
+  `gitlab.corp.mail.ru`: **14.9s → 3.4s (4.4×)**. Коммит `2d6b152`. TSK-174 переоткрыт
+  (Round 4) с записанным живым наблюдением.
+- **Residual known gaps (этим фиксом не закрыты, вынесены в follow-up):**
+  - `todos(first: 100)` реально упирается в кап (у оператора >100 pending-todo) →
+    review-request'ы за сотней могут молча не попадать в inbox (корректность, не
+    скорость).
+  - ~68 из ~150 выбираемых MR — призрачные pending-todo на уже merged/closed MR,
+    которые GitLab не гасит; нужен периодический `todoMarkDone`-cleanup.
+- **Rejected alternatives:** принимать `real-runtime` задачи на mock-тирах; трактовать
+  зелёный `sdd verify` как доказательство поведения; чинить complexity-симптом, не
+  наблюдая стоимость на живых данных.
 
 <!--/SECTION:DECISION_LOG-->
 
