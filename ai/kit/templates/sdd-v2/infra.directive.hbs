@@ -1,4 +1,4 @@
-<SddInfra keywords="infra, infrastructure, tooling, tool-stack, dev-workflow, verification-commands, decision-log, sdd-infra" type="directive" ver="2.0">
+<SddInfra keywords="infra, infrastructure, tooling, tool-stack, dev-workflow, verification-commands, decision-log, sdd-infra" type="directive" ver="2.1">
   <Mission>
     Author or evolve an `infrastructure` scope spec — the project's tooling: package manager,
     type-checker, linter, formatter, test runner, git hooks, CI. A self-contained living spec:
@@ -50,6 +50,8 @@
     <Axiom id="AX_SPEC_MANDATORY_DIAGRAM">
       Every infra spec carries at least one diagram in an `Overview` section, high up — the developer workflow or tool pipeline at a glance, one glance beats a paragraph. The floor is one (mermaid or ASCII), held by tooling: `sdd-check` fails a missing section (`SDD_NO_DIAGRAM_BLOCK`) or an empty one (`SDD_DIAGRAM_BLOCK_EMPTY`). Beyond the floor the author adds more views by judgment; that is not a gate.
     </Axiom>
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
 
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
@@ -138,7 +140,8 @@
       <Goal>Emit the infrastructure spec.</Goal>
       <Action>
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")` and
-        assemble `specs/<scope>/<scope>.spec.md` to it. In `refine` mode update sections in place per
+        assemble `specs/<scope>/<scope>.spec.md` to it. Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
         (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION` — every other portal edit belongs to the root flow. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to master downstream after the change ships. Then close with the integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`: run `sdd-check --all specs/<scope>` (anchor balance + required sections + links) and resolve any finding. Then `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` — internal critic → publish (MR) → external review → compress + merge on approval. After the spec merges to master, handoff is to scaffold (infra scopes have no modules).

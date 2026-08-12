@@ -48,6 +48,9 @@
       precision between agents; that register MUST NOT leak into the Russian — translate it down to
       plain spoken language.
 
+      Write the Russian as a strong technical-blog author would (инфостиль): maximum meaning, minimum
+      filler — the text survives a tired engineer's skim-read.
+
       Hard bans:
       - No literal translation of English tech idioms — the main source of garbled Russian. There is
         always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
@@ -60,12 +63,24 @@
       - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
         English word dropped mid-sentence («basically», «particularly»).
       - No ornamental adjectives, no aphorisms.
+      - Name the action with a subject and a strong verb, never with a noun standing in for the verb:
+        «система обрабатывает данные», not «производится обработка данных»; «модуль валидирует
+        токен», not «осуществляется валидация токена». Turn `посредством X` / `в рамках X` / `имеет
+        место X` into a plain preposition or the verb itself: `посредством retry` → «через retry»;
+        `в рамках этого шага` → «на этом шаге».
 
       Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
       `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
 
       Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
       like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+
+      - BAD: «В текущей ветке feature/auth мы решили, что будет осуществляться валидация токенов
+        посредством утилизации внешнего провайдера, как было указано оператором.»
+      - GOOD: «Модуль валидирует токены через внешнего провайдера.»
+      - Fixes: drops the session leak («текущая ветка feature/auth», «как было указано оператором» —
+        per `AX_READER_WITHOUT_SESSION_CONTEXT`); replaces the bureaucratic noun-verb («осуществляется
+        валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
     </Axiom>
 
     <Axiom id="AX_READ_PER_MANIFEST">

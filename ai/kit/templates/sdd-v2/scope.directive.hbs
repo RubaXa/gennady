@@ -1,4 +1,4 @@
-<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.0">
+<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
   <Mission>
     Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
     Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
@@ -59,6 +59,8 @@
     {{> "axiom/spec/ax-scope-stays-thin"}}
 
     {{> "axiom/spec/ax-handoff-to-module-decomposition"}}
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
 
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
@@ -182,7 +184,8 @@
         (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library) — and assemble
         `specs/<scope>/<scope>.spec.md` to it; Bootstrap Requirements is part of every spec. Keep the
         spec inside its bounded role per `AX_SCOPE_STAYS_THIN` — entity / contract / file-level detail
-        belongs to module specs. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`
+        belongs to module specs. Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`
         mode also `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` (Pivot
         Invalidation List + rework entries) per `AX_PIVOT_REQUIRES_SUPERSESSION`; in `rewrite` mode write
         fresh — no supersession, no invalidation list. For a brand-new scope, append the

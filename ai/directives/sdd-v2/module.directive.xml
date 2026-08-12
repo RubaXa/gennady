@@ -1,4 +1,4 @@
-<SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.0">
+<SddModule keywords="module-decomposition, module-map, entity-inventory, dbc-contracts, ports-adapters, closed-world, file-structure, modes, add-module, refine-module, sdd-module" type="directive" ver="2.1">
   <Mission>
     Turn an approved `product` / `library` scope spec into a hierarchy of module specs: a
     closed-world entity inventory, an explicit public surface per entity, strict DbC contracts
@@ -224,6 +224,15 @@
       - Modules layer rules ADD-only (cannot remove scope-wide). Categories: `coding` | `testing` | `architecture` | `quality`. No additions → block is explicitly `None`, not omitted. Cascade union (traversed-scopes ∪ target-scope ∪ module ∪ task) is computed by Scaffolder per-task.
     </Axiom>
 
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
+
     <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
       A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
     </Axiom>
@@ -340,7 +349,8 @@
         baseline, fill Module Rules Additions in the Handoff section per `AX_RULE_ACTIVATION`
         (shortlist + considered-skips, operator locks the list; architecture / infra rules get the
         per-axiom walk-through); every referenced rule file must resolve, else
-        `H_MISSING_RULE_FILE`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
+        `H_MISSING_RULE_FILE`. Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write in review-state per `AX_SPEC_LIFECYCLE` — prepend a
         `CHANGE_MANIFEST` (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/change-manifest.xml")`) and
         mark changed lines `✚`/`~` (greenfield → manifest only, no per-line marks); compress folds it to
         master downstream after the change ships. Then run

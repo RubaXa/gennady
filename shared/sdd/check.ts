@@ -642,14 +642,24 @@ function hasFencedBlock(body: string): boolean {
   return (body.match(/^```/gm) ?? []).length >= 2;
 }
 
-// Curated Cyrillic-anglicism list (AX_OPERATOR_DIALOGUE_STYLE): each entry is a transliterated
-// English term a spec must not carry, plus the plain Russian to use instead. Deliberately short —
-// only unambiguous calques, so the deterministic pre-filter never cries wolf; judgement calls stay
-// with the audit's semantic language check.
+// Curated Cyrillic-anglicism list (AX_OPERATOR_DIALOGUE_STYLE): each entry is a hybrid
+// English-root verb (or a translated idiom) a spec must not carry, plus the plain Russian to use
+// instead. Deliberately short — only unambiguous calques, so the deterministic pre-filter never
+// cries wolf; judgement calls stay with the audit's semantic language check.
+//
+// Boundary (revised): an established loanword-noun that engineers actually say aloud to each
+// other — «пайплайн», «джоба» — is not a calque, it is just vocabulary; flagging it invites the
+// false positives the module's own docstring warns against, so it stays OFF this list. A
+// suржик hybrid — an English root wearing a Russian verb ending («чекать», «фиксить»,
+// «имплементить», «фанаутить», «зафейлить», «засабмитить», «мёржит», «дропать», «линкует») reads
+// as broken, not as vocabulary, and stays banned. «тула» (tool + «-а») is the same hybrid pattern
+// as a noun, not an established borrowing the way «джоба» is — stays banned. «аппрув» /
+// «реифицир-» stay banned: the regex also catches their verb-hybrid forms («аппрувить»,
+// «реифицировать»), and `AX_OPERATOR_DIALOGUE_STYLE` itself uses both as its canonical
+// anglicism-to-avoid examples.
 const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
   { re: /аппрув[а-яё]*/giu, say: 'подтверждение' },
   { re: /реифицир[а-яё]*/giu, say: 'вынести в данные' },
-  { re: /пайплайн[а-яё]*/giu, say: 'конвейер / цепочка шагов' },
   { re: /чек(ать|нуть|аем|ается)[а-яё]*/giu, say: 'проверить' },
   { re: /(по)?фиксить|фиксим|фиксят/giu, say: 'починить' },
   { re: /дроп(ать|нуть|аем|нем)[а-яё]*/giu, say: 'удалить' },
@@ -660,7 +670,6 @@ const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
   { re: /засабмити?[а-яё]*/giu, say: 'отправить' },
   { re: /линку(ет|ют|ем|я)[а-яё]*/giu, say: 'связывает / сопоставляет' },
   { re: /м[её]рж[а-яё]*/giu, say: 'объединяет' },
-  { re: /джоб[а-яё]*/giu, say: 'задача' },
   { re: /(?<![а-яё])тул[аеуы](?![а-яё])/giu, say: 'инструмент' },
   { re: /под\s+капотом/giu, say: 'внутри / как устроено' },
   { re: /подня[а-яё]*\s+сервис[а-яё]*/giu, say: 'запустить сервис' },
@@ -668,13 +677,34 @@ const CALQUE_PATTERNS: { re: RegExp; say: string }[] = [
   { re: /разв(о|е)д[а-яё]*\s+провод[а-яё]*/giu, say: 'явно связать зависимости' },
 ];
 
+// Chancellery (канцелярит) markers — the AX_OPERATOR_DIALOGUE_STYLE ban on a noun standing in for
+// a verb («осуществляется», «производится») and on the bookish connector prose that replaces a
+// plain preposition («посредством», «имеет место быть»). Deliberately conservative: each one is
+// unambiguous in operator-facing prose (unlike «является» / «в рамках», which are too frequent in
+// legitimate use to flag). Reuses SDD_LANGUAGE_CALQUE — same class of finding, dead/bureaucratic
+// register the reader has to decode instead of reading straight — rather than adding a second code
+// for what is the same lint at the call site (sdd-check, the audit) and the same fix (flatten to a
+// plain subject + verb).
+const CHANCELLERY_PATTERNS: { re: RegExp; say: string }[] = [
+  {
+    re: /осуществля[а-яё]*/giu,
+    say: 'подставить подлежащее и обычный глагол, напр. «модуль делает X»',
+  },
+  { re: /посредством/giu, say: 'через' },
+  {
+    re: /(?<![а-яё])производ(ится|ятся|илось)/giu,
+    say: 'подставить обычный глагол, напр. «модуль строит X»',
+  },
+  { re: /имеет\s+место\s+быть/giu, say: 'есть / происходит' },
+];
+
 /**
  * @purpose Deterministic language lint for operator-facing prose — flag transliterated anglicisms
- * the language policy bans (flat engineering Russian, no calques).
+ * and chancellery phrasing the language policy bans (flat engineering Russian, no bureaucratic register).
  * @invariant Warn-only pre-filter for unambiguous words; document-level judgment stays the audit's job. One finding per word per file.
  * @param file Artifact path.
  * @param content Full artifact markdown.
- * @returns SDD_LANGUAGE_CALQUE warnings, one per distinct calque found.
+ * @returns SDD_LANGUAGE_CALQUE warnings, one per distinct calque or chancellery marker found.
  */
 export function checkSpecLanguage(file: string, content: string): Finding[] {
   const findings: Finding[] = [];
@@ -686,6 +716,16 @@ export function checkSpecLanguage(file: string, content: string): Finding[] {
       code: 'SDD_LANGUAGE_CALQUE',
       file,
       message: `«${matches[0]}»${matches.length > 1 ? ` (×${matches.length})` : ''} — англицизм-калька; по-русски: ${say} (AX_OPERATOR_DIALOGUE_STYLE).`,
+    });
+  }
+  for (const { re, say } of CHANCELLERY_PATTERNS) {
+    const matches = [...content.matchAll(re)].map((m) => m[0]);
+    if (matches.length === 0) continue;
+    findings.push({
+      severity: 'warn',
+      code: 'SDD_LANGUAGE_CALQUE',
+      file,
+      message: `«${matches[0]}»${matches.length > 1 ? ` (×${matches.length})` : ''} — канцелярит; по-русски: ${say} (AX_OPERATOR_DIALOGUE_STYLE).`,
     });
   }
   return findings;

@@ -1,0 +1,9 @@
+<!-- source: SDD v2 — recall-the-rules pass before writing operator-facing artifacts -->
+<Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+  Before writing any operator-facing artifact, recall the language rules —
+  `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+  and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+  and hold the text about to be written to them. This is the author's own pass, done in the moment
+  of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+  and unchanged — this pass does not replace it.
+</Axiom>

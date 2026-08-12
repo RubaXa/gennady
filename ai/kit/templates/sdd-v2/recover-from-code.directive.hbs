@@ -1,4 +1,4 @@
-<SddRecoverFromCode keywords="recover, from-code, restore-spec, path, brownfield, existing-scope, scope-fit, module-split, incremental, lazy, inventory-reverse, sdd-recover-from-code" type="directive" ver="1.0">
+<SddRecoverFromCode keywords="recover, from-code, restore-spec, path, brownfield, existing-scope, scope-fit, module-split, incremental, lazy, inventory-reverse, sdd-recover-from-code" type="directive" ver="1.1">
   <Mission>
     Recover a spec for ONE named path — a folder or a file the operator points at — from the code
     that already lives there plus whatever sits next to it (README, ADR, old docs, tests). Entered
@@ -65,6 +65,8 @@
       entry with no matching export, or an export with no inventory entry, is a finding to fix before
       closing — never a note for later.
     </Axiom>
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
   </BeliefState>
 
   <KernelGrammar>
@@ -119,8 +121,10 @@
     <Step id="STEP_3_RECOVER">
       <Goal>Write the spec by reusing the existing authoring branches — no bespoke writing logic here.</Goal>
       <Action>
-        On confirmation, hand off to the branches that already know how to write a spec, in dependency
-        order:
+        Before handing off, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` on any prose
+        this flow writes itself (the survey, the proposal); each branch called below carries its own
+        copy of the same gate for the artifact it writes. On confirmation, hand off to the branches
+        that already know how to write a spec, in dependency order:
         - `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")` — create the new scope
           spec, or extend the existing one the path was folded into.
         - `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` — write the module

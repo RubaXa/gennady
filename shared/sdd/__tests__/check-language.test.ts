@@ -13,16 +13,21 @@ describe('checkSpecLanguage', () => {
   });
 
   it('калька ловится: warn с подсказкой, одно finding на слово', () => {
-    const md = 'Нужен аппрув оператора. После аппрува можно фиксить и дропнуть старый пайплайн.';
+    const md = 'Нужен аппрув оператора. После аппрува можно фиксить и дропнуть старый модуль.';
     const findings = checkSpecLanguage('s.md', md);
     const codes = findings.map((f) => f.code);
     assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
-    assert.strictEqual(findings.length, 4); // аппрув(×2 → одно) + фиксить + дропнуть + пайплайн
+    assert.strictEqual(findings.length, 3); // аппрув(×2 → одно) + фиксить + дропнуть
     assert.ok(findings.every((f) => f.severity === 'warn'));
     const first = findings.find((f) => f.message.includes('аппрув'));
     assert.ok(first);
     assert.match(first.message, /×2/);
     assert.match(first.message, /подтверждение/);
+  });
+
+  it('устоявшиеся заимствования-существительные («пайплайн», «джоба») не задеваются', () => {
+    const md = 'CI-пайплайн запускает джобу, которая собирает артефакт.';
+    assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
 
   it('английские токены/код не задевает', () => {
@@ -44,7 +49,6 @@ describe('checkSpecLanguage', () => {
       'засабмит',
       'линку',
       'мёрж',
-      'джоб',
       'тул',
       'капот',
       'сервис',
@@ -56,6 +60,8 @@ describe('checkSpecLanguage', () => {
         `expected a finding mentioning "${w}", got: ${JSON.stringify(findings.map((f) => f.message))}`
       );
     }
+    // «джоба» перестала быть калькой — устоявшееся заимствование, engineers say it aloud.
+    assert.ok(!findings.some((f) => f.message.toLowerCase().includes('джоб')));
   });
 
   it('прижившиеся англицизмы не задеваются', () => {
@@ -66,6 +72,33 @@ describe('checkSpecLanguage', () => {
 
   it('«тула»-калька не задевает обычные русские слова со схожей подстрокой', () => {
     const md = 'Пользователь встал со стула и поставил чашку на стол.';
+    assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
+  });
+
+  it('канцелярит ловится: осуществляется / посредством / производится / имеет место быть', () => {
+    const md =
+      'Валидация токена осуществляется посредством внешнего провайдера. ' +
+      'Сборка артефакта производится в фоне. Иногда имеет место быть повторный запуск.';
+    const findings = checkSpecLanguage('s.md', md);
+    const codes = findings.map((f) => f.code);
+    assert.ok(codes.every((c) => c === 'SDD_LANGUAGE_CALQUE'));
+    assert.ok(findings.every((f) => f.message.includes('канцелярит')));
+    const words = ['осуществля', 'посредством', 'производ', 'имеет'];
+    for (const w of words) {
+      assert.ok(
+        findings.some((f) => f.message.toLowerCase().includes(w)),
+        `expected a finding mentioning "${w}", got: ${JSON.stringify(findings.map((f) => f.message))}`
+      );
+    }
+  });
+
+  it('«является» и «в рамках» не задеваются — слишком частотны в легитимных употреблениях', () => {
+    const md = 'Порт является абстракцией. Решение принято в рамках текущей архитектуры.';
+    assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
+  });
+
+  it('«производится»-калька не задевает «воспроизводится» (баг воспроизводится стабильно)', () => {
+    const md = 'Баг воспроизводится стабильно на втором запуске.';
     assert.deepStrictEqual(checkSpecLanguage('s.md', md), []);
   });
 });

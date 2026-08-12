@@ -1,4 +1,4 @@
-<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.0">
+<SddScope keywords="scope, discovery, vision, golden-dx, design-variants, decision-log, scope-rules, living-spec, product, library, runtime-backing, sdd-scope-discovery" type="directive" ver="2.1">
   <Mission>
     Author or evolve a `product` / `library` scope spec — a self-contained living spec: Vision,
     Golden DX, Requirements Gate, Architecture (Design Variants for product), Decision Log, Scope
@@ -173,6 +173,15 @@
       For product / library scope: the spec carries Handoff with primary input for the `module` flow, named abstractions, open risks.
     </Axiom>
 
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
+
     <Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
       A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
     </Axiom>
@@ -297,7 +306,8 @@
         (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library) — and assemble
         `specs/<scope>/<scope>.spec.md` to it; Bootstrap Requirements is part of every spec. Keep the
         spec inside its bounded role per `AX_SCOPE_STAYS_THIN` — entity / contract / file-level detail
-        belongs to module specs. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`
+        belongs to module specs. Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`
         mode also `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` (Pivot
         Invalidation List + rework entries) per `AX_PIVOT_REQUIRES_SUPERSESSION`; in `rewrite` mode write
         fresh — no supersession, no invalidation list. For a brand-new scope, append the
