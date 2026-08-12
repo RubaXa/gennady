@@ -59,12 +59,12 @@ function resolveReadonlyConfigPath(): string {
   const markerIndex = READONLY_CONFIG_URL.href.indexOf(base64Marker);
   if (READONLY_CONFIG_URL.protocol !== 'data:' || markerIndex === -1) {
     throw new Error(
-      `[resolveReadonlyConfigPath] unsupported readonly.config.json URL scheme: ${READONLY_CONFIG_URL.protocol}`,
+      `[resolveReadonlyConfigPath] unsupported readonly.config.json URL scheme: ${READONLY_CONFIG_URL.protocol}`
     );
   }
   const content = Buffer.from(
     READONLY_CONFIG_URL.href.slice(markerIndex + base64Marker.length),
-    'base64',
+    'base64'
   ).toString('utf-8');
   const path = join(mkdtempSync(join(tmpdir(), 'gennady-opencode-')), 'readonly.config.json');
   writeFileSync(path, content);
