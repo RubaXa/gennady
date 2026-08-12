@@ -14,74 +14,62 @@ import type {
 type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
 
 /**
- * @purpose Shared MR projection selected independently by every actionable source query.
- * @invariant `type: [MERGEREQUEST]` and `state: [pending]` are list enums on
- *   the todos connection (verified against the live instance).
+ * @purpose Shared MR projection selected by every actionable source query.
+ * @invariant `conflicts` and `headPipeline.status` back the derived blocking state
+ *   events (unmergeable / ci_failed) now that pending todos are not a discovery source.
  */
 const MR_FIELDS = `iid title webUrl updatedAt draft state
-  description diffHeadSha approvalsRequired
+  description diffHeadSha approvalsRequired conflicts
   author { username }
   reviewers(first: 100) { nodes { username } }
   approvedBy(first: 100) { nodes { username } }
   headPipeline { status }
   project { fullPath }`;
 
-// Light projection for todo targets: only the fields the inbox filter and placement
-// need. Heavy display/detail fields (reviewers, description, headPipeline, diffHeadSha,
-// approvalsRequired) are omitted — resolving them across ~100 pending todos, mostly
-// merged/closed ghosts, is what made getActionable slow (≈14s→≈3.4s measured live).
-// Reviewer/assignee/author MRs still carry full fields from the connection sources.
 /**
- * @purpose Light MR projection for todo targets — filter and placement fields only.
+ * @purpose Light projection for todo targets — only the ids the opt-in todo path needs.
  * @invariant Retains `state` so merged/closed ghost todos stay droppable downstream.
  */
 const TODO_MR_FIELDS = `iid title webUrl updatedAt draft state
   author { username }
-  approvedBy(first: 20) { nodes { username } }
   project { fullPath }`;
 
+// Discovery reads the three real relationships to an MR — explicit reviewer, assignee,
+// author. Pending todos are deliberately NOT a discovery source: on a live account they
+// returned ~1000 rows, ~94% pointing at already merged/closed MRs (ghosts GitLab never
+// clears), which both truncated real items past the 100-cap and dominated latency.
 /**
- * @purpose Complexity-bounded source queries executed separately for GitLab instances with a low query budget.
- * @invariant Every document contains exactly one root connection below `currentUser`.
- * @invariant All root connections are explicitly bounded; result normalization remains cross-source deduplicated.
+ * @purpose Bounded discovery query per real MR relationship (reviewer, assignee, author).
+ * @param [updatedAfter] ISO recency cutoff — idle-old MRs the view hides are not fetched.
+ * @returns One GraphQL document per connection source.
  */
-const ACTIONABLE_QUERIES = [
-  `{
-    currentUser {
-      todos(first: 100, state: [pending], type: [MERGEREQUEST]) {
-        nodes {
-          id
-          action
-          target {
-            __typename
-            ... on MergeRequest { ${TODO_MR_FIELDS} }
-          }
+function CONNECTION_QUERIES(updatedAfter?: string): string[] {
+  const bound = updatedAfter ? `, updatedAfter: "${updatedAfter}"` : '';
+  return [
+    `{ currentUser { reviewRequestedMergeRequests(first: 100, state: opened${bound}) { nodes { ${MR_FIELDS} } } } }`,
+    `{ currentUser { assignedMergeRequests(first: 100, state: opened${bound}) { nodes { ${MR_FIELDS} } } } }`,
+    `{ currentUser { authoredMergeRequests(first: 100, state: opened${bound}) { nodes { ${MR_FIELDS} } } } }`,
+  ];
+}
+
+/**
+ * @purpose Opt-in pending-todo source — used ONLY for todo management (e.g. marking
+ *   todos done), never for inbox discovery. Light projection; caller pays the cost.
+ */
+const TODOS_QUERY = `{
+  currentUser {
+    todos(first: 100, state: [pending], type: [MERGEREQUEST]) {
+      nodes {
+        id
+        action
+        target {
+          __typename
+          ... on MergeRequest { ${TODO_MR_FIELDS} }
         }
       }
     }
-  }`,
-  `{
-    currentUser {
-      reviewRequestedMergeRequests(first: 100, state: opened) {
-        nodes { ${MR_FIELDS} }
-      }
-    }
-  }`,
-  `{
-    currentUser {
-      assignedMergeRequests(first: 100, state: opened) {
-        nodes { ${MR_FIELDS} }
-      }
-    }
-  }`,
-  `{
-    currentUser {
-      authoredMergeRequests(first: 100, state: opened) {
-        nodes { ${MR_FIELDS} }
-      }
-    }
-  }`,
-] as const;
+  }
+}`;
 
 /**
  * @purpose Build a single targeted query scoped to one MR IID — eliminates the 4×broad-query
@@ -147,6 +135,7 @@ type MrNode = {
   description?: string;
   diffHeadSha?: string;
   approvalsRequired?: number;
+  conflicts?: boolean;
   author?: { username?: string } | null;
   reviewers?: UserConn | null;
   approvedBy?: UserConn | null;
@@ -213,16 +202,26 @@ export class VcsGitlabInbox extends VcsClientInbox {
     this._graphql = graphql;
   }
 
+  // `iid` → one targeted query; `updatedAfter` → ISO recency bound on discovery sources;
+  // `includeTodos` → also read pending todos (todo management only, not for discovery).
   /**
-   * @param [filter] When `iid` is provided, uses a single targeted query instead of 4 broad ones.
+   * @param [filter] Scope: `iid`, `updatedAfter`, `includeTodos` (see note above).
    * @returns Deduplicated actionable MRs with one role + state events each; unfiltered.
-   * @sideEffect Network: one or four bounded POST /api/graphql reads.
+   * @sideEffect Network: bounded POST /api/graphql reads (three discovery sources,
+   *   plus one todos read when `includeTodos`, or one targeted read when `iid`).
    * @see {VcsClientInbox#getActionable} in services/vcs-client/abstract/vcs-client-inbox.ts
    */
-  async getActionable(filter?: { iid?: string }): Promise<VcsActionableMr[]> {
+  async getActionable(filter?: {
+    iid?: string;
+    updatedAfter?: string;
+    includeTodos?: boolean;
+  }): Promise<VcsActionableMr[]> {
     const queries = filter?.iid
       ? [TARGETED_QUERY(filter.iid)]
-      : (ACTIONABLE_QUERIES as unknown as string[]);
+      : [
+          ...CONNECTION_QUERIES(filter?.updatedAfter),
+          ...(filter?.includeTodos ? [TODOS_QUERY] : []),
+        ];
 
     const payloads = (await Promise.all(
       queries.map((query) => this._graphql(query))
@@ -246,9 +245,8 @@ export class VcsGitlabInbox extends VcsClientInbox {
             title: node.title ?? '',
             updatedAt: node.updatedAt ?? '',
             draft: node.draft ?? false,
-            // `state` is queried on the todos target so merged/closed MRs (whose
-            // pending todo GitLab never auto-clears) can be filtered downstream.
-            // The connection-based sources are already `state: opened`.
+            // Connection sources are already `state: opened`; the opt-in todo target
+            // still carries `state` so any merged/closed ghost stays droppable downstream.
             state: (node.state as VcsActionableMrState) ?? 'opened',
             // Context for cards/header; raw fact — "did I approve" is the caller's check.
             description: node.description ?? '',
@@ -264,6 +262,11 @@ export class VcsGitlabInbox extends VcsClientInbox {
           directlyAddressed: false,
           todoIds: [],
         };
+        // Blocking state events are derived from MR facts, not pending todos: a failed
+        // head pipeline → ci_failed, merge conflicts → unmergeable. (Connection sources
+        // carry these fields; the light opt-in todo target does not, and adds its own.)
+        if (node.headPipeline?.status === 'FAILED') entry.events.add('ci_failed');
+        if (node.conflicts === true) entry.events.add('unmergeable');
         merged.set(node.webUrl, entry);
       }
       return entry;

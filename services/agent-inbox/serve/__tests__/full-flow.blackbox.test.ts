@@ -162,17 +162,17 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
       const body = req.body ?? '';
       const sources =
         body.match(
-          /todos\(|reviewRequestedMergeRequests\(|assignedMergeRequests\(|authoredMergeRequests\(/g
+          /reviewRequestedMergeRequests\(|assignedMergeRequests\(|authoredMergeRequests\(/g
         ) ?? [];
       assert.strictEqual(sources.length, 1);
       const source = sources[0]!.slice(0, -1);
       assert.match(body, new RegExp(`${source}\\(first: 100`));
+      assert.doesNotMatch(body, /todos\(/); // discovery does not read pending todos
       return {
         status: 200,
         body: {
           data: {
             currentUser: {
-              todos: { nodes: [] },
               reviewRequestedMergeRequests: {
                 nodes: source === 'reviewRequestedMergeRequests' ? [mrNode()] : [],
               },
@@ -184,7 +184,6 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
       };
     };
     const graphqlTracker = mockEnv.interceptMultiple('POST', `https://${HOST}/api/graphql`, [
-      graphqlReply,
       graphqlReply,
       graphqlReply,
       graphqlReply,
@@ -320,7 +319,7 @@ describe('full-flow (real VcsInboxReal + real OpenCodeReal, network faked at und
     // #endregion ASSERT_TERMINAL_STATE
 
     // #region ASSERT_BOTH_BACKENDS_ACTUALLY_INTERCEPTED — disableNetConnect never threw, per-endpoint proof
-    assert.strictEqual(graphqlTracker.getAttemptCount(), 4);
+    assert.strictEqual(graphqlTracker.getAttemptCount(), 3);
     assert.ok(
       mrContextTracker.getAttemptCount() > 0,
       'MR-context REST endpoint must have been hit'

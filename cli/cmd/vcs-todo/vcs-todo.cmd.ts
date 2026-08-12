@@ -143,7 +143,8 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
 
     try {
       logger.debug(`[vcs-todo] [idle → fetching] ${opts.doneRef}`);
-      const items = await vcs.Inbox!.getActionable();
+      // Todo management needs the pending-todo ids, which inbox discovery no longer reads.
+      const items = await vcs.Inbox!.getActionable({ includeTodos: true });
       const mr = items.find((m) => m.project === project && m.iid === iid);
 
       if (!mr || mr.todoIds.length === 0) {

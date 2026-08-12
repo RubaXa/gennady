@@ -186,11 +186,12 @@ describe('VcsGitlabInbox', () => {
       queries.some((q) => /approvalsRequired/.test(q)),
       'a connection source query must request approvalsRequired'
     );
-    // The todos source uses the light projection: heavy detail/display fields are
-    // omitted so resolving ~100 pending todos (mostly merged/closed ghosts) stays cheap.
-    const todosQuery = queries.find((q) => /todos\(/.test(q));
-    assert.ok(todosQuery, 'a todos source query must be issued');
-    assert.doesNotMatch(todosQuery, /approvalsRequired|reviewers\(|headPipeline|diffHeadSha/);
+    // Discovery does NOT read pending todos — they are opt-in (todo management only),
+    // so a default getActionable() issues no todos query.
+    assert.ok(
+      !queries.some((q) => /todos\(/.test(q)),
+      'default discovery must not query pending todos'
+    );
     // #endregion END_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
   });
 });

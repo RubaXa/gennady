@@ -226,7 +226,14 @@ async function run(): Promise<number> {
     const persist = !argv.includes('--no-save');
 
     const client = buildInboxClient(vcsSource, cfg.vcsHost);
-    const items = await client.Inbox.getActionable();
+    // Bound discovery by MR recency (like the staleness view): fetch only what could be
+    // shown. Under --all/--include-stale the view keeps stale MRs, so fetch unbounded.
+    // Floor the window at 90d so it always covers the (default 14d) staleness cutoff.
+    const updatedAfter =
+      options.all || options.includeStale
+        ? undefined
+        : new Date(Date.now() - Math.max(options.staleDays, 90) * 86_400_000).toISOString();
+    const items = await client.Inbox.getActionable({ updatedAfter });
 
     const now = new Date().toISOString();
     const regPath = registryPath(stateDir);

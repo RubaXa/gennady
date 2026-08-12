@@ -13,12 +13,19 @@ import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
  */
 export abstract class VcsClientInbox {
   /**
-   * @purpose Fetch all merge requests awaiting the user's reaction in one round-trip.
-   * @param [filter] Optional scope — when `iid` is provided, queries are targeted to a single MR.
+   * @purpose Fetch merge requests awaiting the user's reaction from the three real
+   *   relationships (explicit reviewer, assignee, author); pending todos are not a
+   *   discovery source.
+   * @param [filter] Optional scope: `iid` targets one MR; `updatedAfter` is an ISO
+   *   recency bound; `includeTodos` also reads pending todos (todo management only).
    * @returns Deduplicated actionable MRs with merged reasons; unfiltered (drafts included).
-   * @sideEffect Network: POST /api/graphql (currentUser todos + MR connections)
+   * @sideEffect Network: POST /api/graphql (currentUser MR connections; todos only when requested)
    */
-  abstract getActionable(filter?: { iid?: string }): Promise<VcsActionableMr[]>;
+  abstract getActionable(filter?: {
+    iid?: string;
+    updatedAfter?: string;
+    includeTodos?: boolean;
+  }): Promise<VcsActionableMr[]>;
 
   /**
    * @purpose Mark a single todo as done.
