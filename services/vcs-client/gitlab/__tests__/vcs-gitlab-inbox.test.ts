@@ -180,8 +180,17 @@ describe('VcsGitlabInbox', () => {
 
     // #region START_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
     assert.strictEqual(result[0].approvalsRequired, 2);
-    const [query] = graphqlFn.mock.calls[0].arguments as [string];
-    assert.match(query, /approvalsRequired/);
+    const queries = graphqlFn.mock.calls.map((c) => (c.arguments as [string])[0]);
+    // Connection sources (reviewer/assignee/author) carry the full MR projection.
+    assert.ok(
+      queries.some((q) => /approvalsRequired/.test(q)),
+      'a connection source query must request approvalsRequired'
+    );
+    // The todos source uses the light projection: heavy detail/display fields are
+    // omitted so resolving ~100 pending todos (mostly merged/closed ghosts) stays cheap.
+    const todosQuery = queries.find((q) => /todos\(/.test(q));
+    assert.ok(todosQuery, 'a todos source query must be issued');
+    assert.doesNotMatch(todosQuery, /approvalsRequired|reviewers\(|headPipeline|diffHeadSha/);
     // #endregion END_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
   });
 });

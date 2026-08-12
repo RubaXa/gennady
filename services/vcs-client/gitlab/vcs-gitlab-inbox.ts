@@ -26,6 +26,20 @@ const MR_FIELDS = `iid title webUrl updatedAt draft state
   headPipeline { status }
   project { fullPath }`;
 
+// Light projection for todo targets: only the fields the inbox filter and placement
+// need. Heavy display/detail fields (reviewers, description, headPipeline, diffHeadSha,
+// approvalsRequired) are omitted — resolving them across ~100 pending todos, mostly
+// merged/closed ghosts, is what made getActionable slow (≈14s→≈3.4s measured live).
+// Reviewer/assignee/author MRs still carry full fields from the connection sources.
+/**
+ * @purpose Light MR projection for todo targets — filter and placement fields only.
+ * @invariant Retains `state` so merged/closed ghost todos stay droppable downstream.
+ */
+const TODO_MR_FIELDS = `iid title webUrl updatedAt draft state
+  author { username }
+  approvedBy(first: 20) { nodes { username } }
+  project { fullPath }`;
+
 /**
  * @purpose Complexity-bounded source queries executed separately for GitLab instances with a low query budget.
  * @invariant Every document contains exactly one root connection below `currentUser`.
@@ -40,7 +54,7 @@ const ACTIONABLE_QUERIES = [
           action
           target {
             __typename
-            ... on MergeRequest { ${MR_FIELDS} }
+            ... on MergeRequest { ${TODO_MR_FIELDS} }
           }
         }
       }
@@ -259,6 +273,24 @@ export class VcsGitlabInbox extends VcsClientInbox {
       if (!entry.role || ROLE_PRIORITY[role] > ROLE_PRIORITY[entry.role]) entry.role = role;
     };
 
+    // Pass 1: connection sources first — they carry the full MR projection, so an MR
+    // seen here keeps its complete fields even when a light todo also points at it.
+    for (const user of users) {
+      for (const mr of user.reviewRequestedMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'reviewer');
+      }
+      for (const mr of user.assignedMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'mentioned');
+      }
+      for (const mr of user.authoredMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'author');
+      }
+    }
+    // Pass 2: todos last — a MR already merged from a connection keeps its full fields;
+    // todos only contribute mention-role, state events and todoIds from a light target.
     for (const user of users) {
       for (const todo of user.todos?.nodes ?? []) {
         if (todo?.target?.__typename !== 'MergeRequest') continue;
@@ -271,18 +303,6 @@ export class VcsGitlabInbox extends VcsClientInbox {
         const event = ACTION_EVENT[action];
         if (event) entry.events.add(event);
         if (action === 'directly_addressed') entry.directlyAddressed = true;
-      }
-      for (const mr of user.reviewRequestedMergeRequests?.nodes ?? []) {
-        const entry = ensure(mr);
-        if (entry) upgradeRole(entry, 'reviewer');
-      }
-      for (const mr of user.assignedMergeRequests?.nodes ?? []) {
-        const entry = ensure(mr);
-        if (entry) upgradeRole(entry, 'mentioned');
-      }
-      for (const mr of user.authoredMergeRequests?.nodes ?? []) {
-        const entry = ensure(mr);
-        if (entry) upgradeRole(entry, 'author');
       }
     }
 
