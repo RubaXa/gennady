@@ -11,6 +11,8 @@ import { getChangedSourceFiles, getHeadContent } from '../../../shared/common/ch
 import {
   checkTicket,
   isTicket,
+  isLegacyTicket,
+  checkLegacyTicket,
   checkPortal,
   checkTaskGraph,
   checkTrackers,
@@ -21,6 +23,7 @@ import {
   checkScopeDeps,
   moduleGraphEdges,
   ticketRef,
+  legacyTicketRef,
   type Finding,
   type TicketRef,
   type TrackerRowRef,
@@ -535,6 +538,10 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         findings.push(...checkTicketBddCoverage(file, content, repoRoot));
         if (specFlowVersion(file) === 'v2') findings.push(...checkSpecLanguage(file, content));
         ticketRefs.push(ticketRef(file, content, ticketFlowVersion(file, repoRoot)));
+        fileCount++;
+      } else if (isLegacyTicket(content)) {
+        findings.push(...checkLegacyTicket(file));
+        ticketRefs.push(legacyTicketRef(file, content, ticketFlowVersion(file, repoRoot)));
         fileCount++;
       }
     }

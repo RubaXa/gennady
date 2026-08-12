@@ -17,7 +17,7 @@
 **Invariants:**
 
 - exit `1` ⇔ есть хотя бы одна error-находка; warning-и одни → exit 0
-- `--all` распознаёт Tracker Index по содержимому (таблица Task-ID/Status), не по имени файла — покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; сверяет со статусом тикета (см. постусловия, tracker↔ticket); тикет = файл с META + EXECUTION_LOG
+- `--all` распознаёт Tracker Index по содержимому (таблица Task-ID/Status), не по имени файла — покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; сверяет со статусом тикета (см. постусловия, tracker↔ticket); тикет (v2) = файл с META + EXECUTION_LOG маркерами; легаси-тикет (v1) = те же заголовки как голый markdown (`## N. Meta`/`## N. Execution Log`), Task-ID/Status читаются, но полная структурная проверка недоступна без якорей (см. D-CK012)
 - exit `4` без `--task`/`--all`
 <!--/SECTION:MODULE_VISION-->
 
@@ -44,19 +44,23 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                          | Type         | Purpose                                                                          |
-| ----------------------------- | ------------ | -------------------------------------------------------------------------------- |
-| `run`                         | Command      | Точка входа CLI: `--task`/`--all`, обход, агрегация, формат                      |
-| `walkMd`                      | Utility      | Рекурсивный сбор `.md` под директорией (skip system/build, симлинки)             |
-| `checkSpecLinks`              | Utility      | Резолв `](…spec.md)` ссылок спеки на диске                                       |
-| `parseGraphEdges`             | Utility      | (`shared/sdd/portal`) рёбра Mermaid-графа портала → `{from,to}[]`                |
-| `checkPortal`                 | Utility      | (`shared/sdd/check`) чистые проверки портала (граф/таблица/сироты) → `Finding[]` |
-| `checkTicket`                 | Utility      | (`shared/sdd/check`) чистые пер-тикет проверки → `Finding[]`                     |
-| `isTicket`                    | Utility      | (`shared/sdd/check`) распознавание тикета по META + EXECUTION_LOG                |
-| `formatFindings`              | Utility      | ESLint-style рендер + вывод exit-кода                                            |
-| `badInvocation` / `fileError` | Utility      | Билдеры результатов-ошибок                                                       |
-| `Finding`                     | Value Object | `{severity, code, file, message}` (`shared/sdd/check`)                           |
-| `CheckResult`                 | Value Object | `{text, exitCode}`                                                               |
+| Name                          | Type         | Purpose                                                                                                           |
+| ----------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `run`                         | Command      | Точка входа CLI: `--task`/`--all`, обход, агрегация, формат                                                       |
+| `walkMd`                      | Utility      | Рекурсивный сбор `.md` под директорией (skip system/build, симлинки)                                              |
+| `checkSpecLinks`              | Utility      | Резолв `](…spec.md)` ссылок спеки на диске                                                                        |
+| `parseGraphEdges`             | Utility      | (`shared/sdd/portal`) рёбра Mermaid-графа портала → `{from,to}[]`                                                 |
+| `checkPortal`                 | Utility      | (`shared/sdd/check`) чистые проверки портала (граф/таблица/сироты) → `Finding[]`                                  |
+| `checkTicket`                 | Utility      | (`shared/sdd/check`) чистые пер-тикет проверки → `Finding[]`                                                      |
+| `isTicket`                    | Utility      | (`shared/sdd/check`) распознавание тикета (v2) по META + EXECUTION_LOG маркерам                                   |
+| `isLegacyTicket`              | Utility      | (`shared/sdd/check`) распознавание легаси-тикета (v1) по голым заголовкам Meta/Execution Log (`legacyHeaderBody`) |
+| `legacyTicketRef`             | Utility      | (`shared/sdd/check`) Task-ID/Status/deps легаси-тикета → `TicketRef`                                              |
+| `checkLegacyTicket`           | Utility      | (`shared/sdd/check`) один warn `SDD_LEGACY_TICKET_UNANCHORED` вместо лавины формат-находок                        |
+| `legacyHeaderBody`            | Utility      | (`shared/sdd/anchor-inject`) тело канонического v1-заголовка (без якорей)                                         |
+| `formatFindings`              | Utility      | ESLint-style рендер + вывод exit-кода                                                                             |
+| `badInvocation` / `fileError` | Utility      | Билдеры результатов-ошибок                                                                                        |
+| `Finding`                     | Value Object | `{severity, code, file, message}` (`shared/sdd/check`)                                                            |
+| `CheckResult`                 | Value Object | `{text, exitCode}`                                                                                                |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -75,7 +79,7 @@ specs/cli/core/core.task-foo.md: warn: SDD_DONE_WITH_PLACEHOLDERS  Status is DON
   - Ровно один режим: `--task <ticket>` или `--all [root]`
 - Postconditions:
   - Пер-тикет проверки: баланс якорей · обязательные секции (META, EXECUTION_LOG) · наличие Task-ID · парсимость Status · фабрикованный DONE (`[x]` + `<…>`) · DONE при активном BLOCKED · DONE с остаточными плейсхолдерами · граф фаз (deps резолв + ацикличность) · фазы ↔ `PHASE_Pn`-секции · DONE ⇒ все фазы `[x]` · **rule-ссылки фаз резолвятся** (`](…\.xml)` в тикете → файл на диске, `SDD_BROKEN_RULE_LINK`) · **spec-ссылки резолвятся** (`](…spec.md#entity)` в тикете → файл (`SDD_BROKEN_SPEC_REF`, error) + якорь-сущность как heading-slug/SECTION (`SDD_BROKEN_SPEC_ANCHOR`, warn) — чтобы `sdd-extract` воркера не упал)
-  - `--all` также: битые `](…spec.md)` ссылки + баланс якорей `.spec.md`; обязательные секции по scope-type; целостность портала (`specs/README.md`): ацикличность графа · граф↔таблица scope'ов · висячие связи · сироты · DONE-scope без файла спеки; **task-DAG** (коллизии Task-ID · deps резолвятся · ацикличность); **tracker↔ticket** (Tracker Index распознаётся по содержимому — таблица Task-ID/Status, — не по имени файла, покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; статус сравнивается без учёта backtick-обёртки ячейки; `SDD_TRACKER_STATUS_DRIFT` — дрифт статуса в любую сторону (тикет обгоняет трекер ИЛИ трекер обгоняет тикет) — всегда error; `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — по образцу `SDD_BDD_SCENARIO_UNTESTED`: warn на v1 (легаси-scope терпит вычищенные из трекера superseded-тикеты), error на v2); **module-graph** (`SDD_MODULE_DAG_CYCLE` — цикл в графе зависимостей модулей scope, рёбра из `## 9` Inter-Module Dependencies, объединённые по scope); **module-bloat** (**warn**, advisory, exit 0, `AX_HIERARCHICAL_SPECS`): `SDD_MODULE_OVERSIZED` — инвентарь > порога сущностей (P90=20) → декомпозиция на под-модули; `SDD_MODULE_SPEC_VERBOSE` — спека длиннее порога строк при связном инвентаре → компрессия спеки; **scope-bloat** (**warn**, `AX_SCOPE_STAYS_THIN`): `SDD_SCOPE_BLOATED` — scope-спека несёт модульную деталь (`ENTITY_INVENTORY`/`MODULE_CONTRACTS`); **scope-deps↔портал** (**warn**, B5, `AX_SCOPE_GRAPH_DISCIPLINE`): `SDD_SCOPE_DEP_UNDECLARED` — ребро портала `X --> Y` не отражено в `## 7 Scope Dependencies` спеки X
+  - `--all` также: битые `](…spec.md)` ссылки + баланс якорей `.spec.md`; обязательные секции по scope-type; целостность портала (`specs/README.md`): ацикличность графа · граф↔таблица scope'ов · висячие связи · сироты · DONE-scope без файла спеки; **task-DAG** (коллизии Task-ID · deps резолвятся · ацикличность, покрывает и v2-, и легаси-тикеты — см. ниже); **легаси-тикет** (v1, голые заголовки `## N. Meta`/`## N. Execution Log`, без `<!--SECTION-->` — `isLegacyTicket`): полный `checkTicket` (маркер-зависимый) не гонится — вместо лавины `SDD_MISSING_META`/`SDD_MISSING_EXECUTION_LOG` один advisory `SDD_LEGACY_TICKET_UNANCHORED`; Task-ID/Status/Dependencies читаются из голового Meta-заголовка (`legacyHeaderBody`, `legacyTicketRef`) и участвуют в task-DAG и tracker↔ticket на равных с v2-тикетами (см. D-CK012); **tracker↔ticket** (Tracker Index распознаётся по содержимому — таблица Task-ID/Status, — не по имени файла, покрывает и `*.3-tasks.md`, и легаси `tasks/<scope>/README.md`; статус сравнивается без учёта backtick-обёртки ячейки; `SDD_TRACKER_STATUS_DRIFT` — дрифт статуса в любую сторону (тикет обгоняет трекер ИЛИ трекер обгоняет тикет) — всегда error; `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — по образцу `SDD_BDD_SCENARIO_UNTESTED`: warn на v1 (легаси-scope терпит вычищенные из трекера superseded-тикеты), error на v2); **module-graph** (`SDD_MODULE_DAG_CYCLE` — цикл в графе зависимостей модулей scope, рёбра из `## 9` Inter-Module Dependencies, объединённые по scope); **module-bloat** (**warn**, advisory, exit 0, `AX_HIERARCHICAL_SPECS`): `SDD_MODULE_OVERSIZED` — инвентарь > порога сущностей (P90=20) → декомпозиция на под-модули; `SDD_MODULE_SPEC_VERBOSE` — спека длиннее порога строк при связном инвентаре → компрессия спеки; **scope-bloat** (**warn**, `AX_SCOPE_STAYS_THIN`): `SDD_SCOPE_BLOATED` — scope-спека несёт модульную деталь (`ENTITY_INVENTORY`/`MODULE_CONTRACTS`); **scope-deps↔портал** (**warn**, B5, `AX_SCOPE_GRAPH_DISCIPLINE`): `SDD_SCOPE_DEP_UNDECLARED` — ребро портала `X --> Y` не отражено в `## 7 Scope Dependencies` спеки X
   - exit 1 при ≥1 error; иначе 0
 - Invariants:
   - `checkTicket` чист (без I/O); кросс-файловое — в команде
@@ -109,7 +113,8 @@ cli/cmd/sdd-check/
 ├── help.ts              # Help text output
 └── __tests__/sdd-check.cmd.test.ts
 
-shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __tests__/check.test.ts
+shared/sdd/check.ts      # checkTicket/isTicket (v2) + isLegacyTicket/legacyTicketRef/checkLegacyTicket (v1) + __tests__/check.test.ts, check-legacy-ticket.test.ts
+shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/span logic) + __tests__/anchor-inject.test.ts
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
@@ -187,6 +192,7 @@ shared/sdd/check.ts      # checkTicket / isTicket (pure mechanical checks) + __t
 - **Supersedes:** D-CK003
 - **Why:** `--all` классифицировал Tracker Index по имени файла (`*.3-tasks.md`/`*.2-tasks.md`) — ни один файл в репозитории так не называется, весь трекер-трафик живёт в `tasks/<scope>/README.md`; `checkTrackers` существовал, но получал пустой массив строк, поэтому не срабатывал ни в одну сторону. Реальный пропуск: `tasks/cli/README.md` строка TSK-58 `DONE`, тикет `orient.task-55.md` (`TSK-55`) — `TODO`; трекер обогнал тикет незамеченно. Классификация переведена на содержимое (`isTrackerIndex` — таблица Task-ID/Status), покрывает и легаси README, и будущий `*.3-tasks.md`. Отдельно найден и починен формат-баг: `parseTrackerRows` оставляет Status-ячейку сырой (с backtick — `sdd-sync` пишет обратно байт-в-байт), а Meta тикета — без backtick; `checkTrackers`' `norm()` их не срезал → лавина ложного `SDD_TRACKER_STATUS_DRIFT` (34 находки на реальном дереве, из них 32 — чисто формат). После обеих правок реальный дрифт — 2 находки (TSK-55 — подтверждённый живой баг; TSK-88 — побочный эффект существующей коллизии Task-ID между scope, уже отдельно `SDD_TASK_ID_COLLISION`).
 - **Risk accepted:** Включение классификации вскрыло другой существующий разрыв: v1-тикеты без `<!--SECTION:-->`-разметки (`isTicket` их не узнаёт) дают `SDD_TRACKER_ORPHAN_ROW`/`SDD_TRACKER_MISSING_ROW` шумом на легаси-дереве (55 + 15 находок) — включая намеренно вычищенные из трекера superseded-тикеты (`agent-inbox` TSK-156…170). Смягчено по образцу `SDD_BDD_SCENARIO_UNTESTED`: `SDD_TRACKER_STATUS_DRIFT` — всегда error (редкий, всегда genuine после того как обе стороны разрешились); `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — `warn` на v1 (default), `error` на v2 (`TicketRef.flowVersion`/`TrackerRowRef.flowVersion`, из `ticketFlowVersion`). Сам разрыв `isTicket` на legacy-разметке — не тронут, отдельная задача.
+- **Update (isLegacyTicket закрыл разрыв):** легаси-тикеты (v1, голые заголовки `## N. Meta`/`## N. Execution Log`) теперь распознаются отдельно (`isLegacyTicket`) и участвуют в task-DAG/tracker↔ticket через `legacyTicketRef` (Task-ID/Status/Dependencies из `legacyHeaderBody`, без полного `checkTicket` — см. Module Contracts). Было (обход слепой к легаси, 125 файлов) → стало (76 легаси-тикетов видимы, 201 файл): `SDD_TRACKER_ORPHAN_ROW` 55 → 2 (обе находки — реальный дрифт: трекер-строка без тикета на диске); `SDD_TRACKER_MISSING_ROW` 15 → 37 (рост, не шум — легаси-тикеты, которых раньше не было в `ticketRefs`, теперь честно сверяются с трекером; большая часть — намеренно вычищенные из трекера superseded-тикеты, `agent-inbox` TSK-156…170, задокументированные в `tasks/agent-inbox/README.md`). Т.к. `MISSING_ROW` остаётся массовым и содержит легитимные (задокументированные) исключения, а не только настоящий дрифт, безусловный `error` для него НЕ введён — flowVersion-градация (D-CK012) остаётся. `ORPHAN_ROW` теперь единичный и настоящий на всём дереве, но severity-функция общая для обоих кодов (`severityOf`) — раздельная градация — YAGNI, пока `ORPHAN_ROW` не даёт собственного мотивированного кейса.
 
 ### D-CK011 — B5: scope-deps ↔ портал-граф (`SDD_SCOPE_DEP_UNDECLARED`)
 

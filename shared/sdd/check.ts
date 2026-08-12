@@ -4,6 +4,7 @@
 
 import { extractSection } from './section.ts';
 import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
+import { legacyHeaderBody } from './anchor-inject.ts';
 import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
@@ -35,6 +36,19 @@ const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
 export function isTicket(content: string): boolean {
   return (
     content.includes('<!--SECTION:META-->') && content.includes('<!--SECTION:EXECUTION_LOG-->')
+  );
+}
+
+/**
+ * @purpose True when a file looks like a pre-migration (v1) ticket — plain-markdown Meta + Execution Log headers, no `<!--SECTION-->` markers.
+ * @invariant Callers must check `isTicket` first — an anchored ticket keeps its old plain headers too, so the two are not mutually exclusive alone.
+ * @param content Full file markdown.
+ * @returns True when both canonical headers resolve via `legacyHeaderBody`.
+ */
+export function isLegacyTicket(content: string): boolean {
+  return (
+    legacyHeaderBody(content, 'META') !== null &&
+    legacyHeaderBody(content, 'EXECUTION_LOG') !== null
   );
 }
 
@@ -343,6 +357,47 @@ export function ticketRef(file: string, content: string, flowVersion?: FlowVersi
     dependencies: meta?.dependencies ?? [],
     flowVersion,
   };
+}
+
+/**
+ * @purpose Build a legacy ticket's task-graph fields — same shape as `ticketRef`, sourced from its plain-markdown Meta header instead of a SECTION marker.
+ * @invariant This is what lights up the tracker cross-check and task DAG for legacy tickets.
+ * @param file Ticket file path.
+ * @param content Full ticket markdown (v1, plain headers).
+ * @param [flowVersion] The ticket's own scope flow version.
+ * @returns A TicketRef; null/empty fields when the Meta header is absent or unparseable.
+ */
+export function legacyTicketRef(
+  file: string,
+  content: string,
+  flowVersion?: FlowVersion
+): TicketRef {
+  const metaBody = legacyHeaderBody(content, 'META');
+  const meta = metaBody !== null ? parseMetaInfo(metaBody) : null;
+  return {
+    file,
+    taskId: meta?.taskId ?? null,
+    status: meta?.status ?? null,
+    dependencies: meta?.dependencies ?? [],
+    flowVersion,
+  };
+}
+
+/**
+ * @purpose Single advisory finding for a legacy ticket, in place of `checkTicket` (marker-dependent, would just drown the file in format-mismatch noise).
+ * @param file Ticket file path.
+ * @returns One SDD_LEGACY_TICKET_UNANCHORED warn.
+ */
+export function checkLegacyTicket(file: string): Finding[] {
+  return [
+    {
+      severity: 'warn',
+      code: 'SDD_LEGACY_TICKET_UNANCHORED',
+      file,
+      message:
+        'Legacy ticket format (plain headers, no <!--SECTION--> markers) — only Task-ID/Status are checked here. Run `gennady sdd-migrate anchors` to enable the full structural check.',
+    },
+  ];
 }
 
 /** @purpose True when a Status token marks completion. | @param status Meta Status token (e.g. `[x] DONE`). | @returns True for a DONE status. */

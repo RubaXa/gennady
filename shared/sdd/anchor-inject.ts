@@ -27,6 +27,42 @@ function canonicalName(level: number, text: string): string | null {
   return null;
 }
 
+/** @purpose One `## `/`### ` header line with its canonical section name (null when not a section). */
+type Header = { idx: number; level: number; name: string | null };
+
+/** @purpose Collect every `## `/`### ` header with its canonical name. | @param lines File split by `\n`. | @returns Headers in document order. */
+function collectHeaders(lines: string[]): Header[] {
+  const headers: Header[] = [];
+  lines.forEach((line, i) => {
+    const m = /^(#{2,3})\s+(.+?)\s*$/.exec(line);
+    if (m && m[1] && m[2])
+      headers.push({ idx: i, level: m[1].length, name: canonicalName(m[1].length, m[2]) });
+  });
+  return headers;
+}
+
+/**
+ * @purpose Body of one canonical v1 header — text from just after it to the next header of level ≤ its own (or EOF).
+ * @invariant Reuses `injectAnchors`' header/span logic — a legacy body is exactly what it would wrap in markers.
+ * @param content Full markdown (v1, plain headers).
+ * @param name Canonical section name (e.g. `META`, `EXECUTION_LOG`).
+ * @returns The header's body text, or null when no header maps to `name`.
+ */
+export function legacyHeaderBody(content: string, name: string): string | null {
+  const lines = content.split('\n');
+  const headers = collectHeaders(lines);
+  const h = headers.find((x) => x.name === name);
+  if (!h) return null;
+  let end = lines.length;
+  for (const next of headers) {
+    if (next.idx > h.idx && next.level <= h.level) {
+      end = next.idx;
+      break;
+    }
+  }
+  return lines.slice(h.idx + 1, end).join('\n');
+}
+
 /**
  * @purpose Wrap each canonical section of a v1 ticket in `<!--SECTION:NAME-->` / `<!--/SECTION:NAME-->` markers.
  * @invariant A section spans from its header to the next header of level ≤ its own (or EOF); sections never nest.
@@ -36,15 +72,7 @@ function canonicalName(level: number, text: string): string | null {
  */
 export function injectAnchors(content: string): { text: string; injected: string[] } {
   const lines = content.split('\n');
-
-  // #region START_HEADERS — collect every ## / ### header with its canonical name
-  const headers: { idx: number; level: number; name: string | null }[] = [];
-  lines.forEach((line, i) => {
-    const m = /^(#{2,3})\s+(.+?)\s*$/.exec(line);
-    if (m && m[1] && m[2])
-      headers.push({ idx: i, level: m[1].length, name: canonicalName(m[1].length, m[2]) });
-  });
-  // #endregion END_HEADERS
+  const headers = collectHeaders(lines); // every ## / ### header with its canonical name
 
   // #region START_SPANS — for each canonical header, span ends at the next header of level ≤ its own
   const openAt = new Map<number, string>();
