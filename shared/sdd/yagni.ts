@@ -55,22 +55,57 @@ export function stripBarrelReexports(content: string): string {
   return content.replace(/^[ \t]*export\s*(?:\*|\{[^}]*\})\s*from\s*['"][^'"]+['"];?[ \t]*$/gm, '');
 }
 
+/** @purpose The only spec sections a Usage Waiver may legally live in — contract/surface bodies, never Decision Log / Execution Log / free-form prose. */
+const WAIVER_SECTIONS = ['MODULE_CONTRACTS', 'ENTITY_SURFACES', 'PUBLIC_API_SURFACE'];
+
 /**
- * @purpose Parse a `Usage Waiver` line (or its `(external: <consumer>)` variant) inside one
- *   entity's heading block. Reason mandatory; `D-NNN` citation optional.
+ * @purpose Byte spans of the given `<!--SECTION:X--> ... <!--/SECTION:X-->` blocks in `content`.
+ * @param content Full markdown content.
+ * @param names Section names to collect spans for.
+ * @returns One `[start, end)` span per matching section block found, unsorted.
+ */
+function sectionSpans(content: string, names: readonly string[]): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  for (const name of names) {
+    const re = new RegExp(
+      '<!--SECTION:' + name + '-->([\\s\\S]*?)<!--/SECTION:' + name + '-->',
+      'g'
+    );
+    for (const m of content.matchAll(re)) {
+      spans.push([m.index, m.index + m[0].length]);
+    }
+  }
+  return spans;
+}
+
+/**
+ * @purpose Parse a `Usage Waiver` line inside one entity's heading, gated to a contract/surface
+ *   section (`WAIVER_SECTIONS`) — never a Decision Log entry.
  * @param specContent Full markdown content of one spec/contract file.
  * @param entityName The entity heading to look inside — bare-name (``### `<entityName>` ``, any
  *   level) or DbC port/adapter/service (``#### Port: `<entityName>` ``, optionally numbered).
- * @returns The parsed waiver, or null when the entity has no heading or no Usage Waiver line, or the reason is empty.
+ * @returns The parsed waiver, or null when the entity has no in-scope heading or no Usage Waiver line, or the reason is empty.
  */
 export function parseUsageWaiver(specContent: string, entityName: string): UsageWaiver | null {
-  const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const headingRe = new RegExp('^(#{2,6})[ \\t]+.*`' + escaped + '`.*$', 'm');
-  const headingMatch = headingRe.exec(specContent);
-  if (!headingMatch) return null;
+  const hasAnySection = /<!--SECTION:[A-Z_]+-->/.test(specContent);
+  const legalSpans = hasAnySection ? sectionSpans(specContent, WAIVER_SECTIONS) : null;
+  const inLegalScope = (index: number): boolean =>
+    !legalSpans || legalSpans.some(([start, end]) => index >= start && index < end);
 
-  const level = (headingMatch[1] as string).length;
-  const afterHeading = specContent.slice(headingMatch.index + headingMatch[0].length);
+  const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingRe = new RegExp('^(#{2,6})[ \\t]+.*`' + escaped + '`.*$', 'gm');
+  let headingMatch: RegExpExecArray | null;
+  let chosen: RegExpExecArray | null = null;
+  while ((headingMatch = headingRe.exec(specContent))) {
+    if (inLegalScope(headingMatch.index)) {
+      chosen = headingMatch;
+      break;
+    }
+  }
+  if (!chosen) return null;
+
+  const level = (chosen[1] as string).length;
+  const afterHeading = specContent.slice(chosen.index + chosen[0].length);
   const nextHeadingRe = new RegExp('^#{1,' + level + '}[ \\t]', 'm');
   const nextHeadingMatch = nextHeadingRe.exec(afterHeading);
   const block = afterHeading.slice(0, nextHeadingMatch ? nextHeadingMatch.index : undefined);

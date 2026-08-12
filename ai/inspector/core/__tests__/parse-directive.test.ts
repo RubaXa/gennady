@@ -114,6 +114,25 @@ test('each routing branch descends via a run node to its directive', () => {
   assert.equal(run?.ref, 'ai/directives/sdd-v2/root.directive.xml');
 });
 
+test('STEP_6_BRANCH LogicSwitch yields 5 branches — mechanical-fix path precedes the operator risk-ask', () => {
+  const ep = section('<ExecutionPlan>');
+  const step6 = ep?.children?.find((c) => c.attrs?.id === 'STEP_6_BRANCH');
+  const findSwitch = (n: TraceNode): TraceNode | null => {
+    if (n.kind === 'switch') return n;
+    for (const c of n.children ?? []) {
+      const r = findSwitch(c);
+      if (r) return r;
+    }
+    return null;
+  };
+  const sw = findSwitch(step6 as TraceNode);
+  assert.ok(sw, 'STEP_6_BRANCH carries a structured switch');
+  const branches = sw?.children ?? [];
+  assert.equal(branches.length, 5);
+  assert.match(branches[1]?.detail ?? '', /concrete mechanical remediation/);
+  assert.match(branches[2]?.detail ?? '', /NO concrete mechanical remediation/);
+});
+
 test('a preflight step embeds a structured <LogicSwitch> (WHEN gates), not prose', () => {
   const ep = router.children?.find((c) => c.label === '<ExecutionPlan>');
   const step0 = ep?.children?.[0];

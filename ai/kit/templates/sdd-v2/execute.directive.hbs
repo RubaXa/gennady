@@ -130,7 +130,8 @@
       <Action>
         <LogicSwitch on="audit verdict + attempt">
         - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS`                          -> STEP_7B_CODE_REVIEW (a `PASS_WITH_ACKNOWLEDGED_RISKS` here always already carries a Decision Log entry — audit only confirms a PRIOR acceptance, per `audit.directive`; it never asks live)
-        - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 -> ask the operator, per finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
+        - WHEN `FAIL` + attempt 1 + every open finding carries a concrete mechanical remediation the orchestrator can apply (via Path B — ticket / Decision Log / waiver-label edits — or via `phases_to_fix` → apply/re-run per STEP_7_RESOLVE, whichever the finding calls for) -> STEP_7_RESOLVE, apply every finding's fix directly (no operator stop — a finding with a concrete mechanical fix is not a risk decision), then re-dispatch audit (R2)
+        - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 + at least one open finding has NO concrete mechanical remediation (it can only be accepted as-is — an open gate-risk, an environment limitation) -> ask the operator, per such finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
         - WHEN `FAIL` (open `BLOCKER`, or a declined risk) + attempt 1          -> STEP_7_RESOLVE (one retry)
         - WHEN `FAIL` + attempt 2                                              -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
         </LogicSwitch>
@@ -146,7 +147,11 @@
         the orchestrator's own artifact-edit channel (the orchestrator owns trackers and may make these
         administrative edits, `AX_OWNER`; distinct from and narrower than `AX_ENV_FIX_CHANNEL`, which
         covers env/config, not artifacts — see `HardForbidden`), no new Round, then re-dispatch audit
-        (R2). Either way return to STEP_6.
+        (R2). Either way return to STEP_6. An R2 verdict that skipped a full gate re-run is invalid —
+        before accepting R2's verdict at STEP_6, the orchestrator MUST confirm the R2 summary carries
+        every gate line (`sdd-check --task`, `sdd-check --changed`, `sdd-verify --profile full`,
+        `gennady lint --spec`, `gennady testcov`), and if any is missing, return the audit dispatch for
+        rework rather than act on it.
       </Action>
     </Step>
     <Step id="STEP_7B_CODE_REVIEW">

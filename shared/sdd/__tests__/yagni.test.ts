@@ -132,6 +132,60 @@ describe('parseUsageWaiver', () => {
     ].join('\n');
     assert.strictEqual(parseUsageWaiver(dbc, 'SymbolIndex'), null);
   });
+
+  it('gates on a waiver inside SECTION:MODULE_CONTRACTS', () => {
+    const spec = [
+      '<!--SECTION:MODULE_CONTRACTS-->',
+      '### `greet`',
+      '- **Usage Waiver:** D-001 — kept for the planned CLI surface',
+      '<!--/SECTION:MODULE_CONTRACTS-->',
+    ].join('\n');
+    assert.deepStrictEqual(parseUsageWaiver(spec, 'greet'), {
+      decision: 'D-001',
+      reason: 'kept for the planned CLI surface',
+    });
+  });
+
+  it('does NOT gate on the same heading text sitting inside SECTION:DECISION_LOG', () => {
+    const spec = [
+      '<!--SECTION:DECISION_LOG-->',
+      '### D-001 — `greet`',
+      '- **Usage Waiver:** D-001 — kept for the planned CLI surface',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+    assert.strictEqual(parseUsageWaiver(spec, 'greet'), null);
+  });
+
+  it('skips a Decision-Log-section heading and gates on a later, legally-scoped one', () => {
+    const spec = [
+      '<!--SECTION:DECISION_LOG-->',
+      '### D-001 — `greet`',
+      '- **Usage Waiver:** decoy — must not be picked up',
+      '<!--/SECTION:DECISION_LOG-->',
+      '<!--SECTION:ENTITY_SURFACES-->',
+      '### `greet`',
+      '- **Usage Waiver:** D-001 — the real waiver, in scope',
+      '<!--/SECTION:ENTITY_SURFACES-->',
+    ].join('\n');
+    assert.deepStrictEqual(parseUsageWaiver(spec, 'greet'), {
+      decision: 'D-001',
+      reason: 'the real waiver, in scope',
+    });
+  });
+
+  it('gates on a waiver inside SECTION:PUBLIC_API_SURFACE', () => {
+    const spec = [
+      '<!--SECTION:PUBLIC_API_SURFACE-->',
+      '### `publicFn`',
+      '- **Usage Waiver (external: acme-cli):** D-050 — public API for the acme-cli integration',
+      '<!--/SECTION:PUBLIC_API_SURFACE-->',
+    ].join('\n');
+    assert.deepStrictEqual(parseUsageWaiver(spec, 'publicFn'), {
+      decision: 'D-050',
+      reason: 'public API for the acme-cli integration',
+      external: 'acme-cli',
+    });
+  });
 });
 
 describe('hasDecisionHeading', () => {
