@@ -243,4 +243,22 @@ describe('SddNewCommand', () => {
     const written = readFileSync(out, 'utf-8');
     assert.match(written, /Cascade Table/);
   });
+
+  it('resolves project-index: specs/3-tasks.md, no --scope required', () => {
+    const path = mod.resolvePath('project-index', {});
+    assert.strictEqual(path, 'specs/3-tasks.md');
+  });
+
+  it('creates a project-index skeleton via --out without --scope (like portal)', async () => {
+    const out = join(tmpDir, 'specs', '3-tasks.md');
+    const outcome = await mod.run(argv('project-index', '--out', out));
+    assert.strictEqual(outcome.ok, true);
+    assert.ok(existsSync(out));
+    const written = readFileSync(out, 'utf-8');
+    assert.match(written, /Scope Tracker/);
+    assert.match(written, /Cross-Scope DAG/);
+    if (outcome.ok) {
+      assert.match(outcome.text, /created project-index skeleton/);
+    }
+  });
 });

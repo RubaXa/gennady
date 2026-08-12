@@ -30,6 +30,7 @@ const KNOWN_KINDS = [
   'task',
   'module-index',
   'scope-index',
+  'project-index',
   'portal',
 ];
 

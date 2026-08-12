@@ -5,33 +5,6 @@
   DAG, and a scope status rollup. No Cascade Table here (that is per-scope).
 
   ```markdown
-  # Project Tasks
-
-  ## Entry Points
-  - [Specs Portal](./README.md) — Scope Graph + all scope specs.
-  - Tickets execute ONLY via the `/sdd-execute` flow (one ticket) or its batch form; the orchestrator dispatches phase-workers then audit — the operator does not invoke audit by hand.
-
-  ## Project-Wide Conventions (declared once, inherited)
-  - **File-header:** owned by the coding rule (`@file` / `@consumers` / `@tasks`), enforced by `sdd-verify`.
-  - **Baseline Completion Rule:** a Round cannot go `[x] DONE` until — every phase `[x]`; every BDD scenario mapped to a test or `Deferred Test Ownership`; verification commands run with exit recorded; every entity beyond the Inventory logged `intro …`; a Handoff line closes each phase.
-  - **Execution-Log token vocabulary:** `intro <Entity> ← <reason>` · `decision <key>=<value> ← <reason>` · `tried <approach> → <result>` · `discovery <fact>` · `insight <observation> → <spec-section>` · `verified <tool>@<version> <summary>` · `ver <cmd> → pass|fail exit=<N>` · `BLOCKED <cause>` · `DONE`. A `[x]` line with an unreplaced `<…>` placeholder is fabricated (BLOCKER).
-  - **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.
-
-  ## Cross-Scope DAG
-  Cross-scope edges + integration tickets only; intra-scope edges live in each scope index. Order follows the Portal Scope Graph.
-  ```mermaid
-  graph TD
-    backend --> infra-base
-    web --> backend
-  ```
-
-  ## Scope Tracker
-  | Scope | Type | Index | Tasks | Done |
-  |---|---|---|---|---|
-  | infra-base | infrastructure | [3-tasks](./infra-base/infra-base.3-tasks.md) | 6 | 0/6 |
-  | backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 0/12 |
-
-  ## Decision Log (project task level)
-  [D-NNN when the operator made non-default cross-scope choices.]
+  {{> "sdd-skeleton-project-index"}}
   ```
 </Contract>

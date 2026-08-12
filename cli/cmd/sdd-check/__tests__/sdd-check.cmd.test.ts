@@ -132,6 +132,74 @@ describe('SddCheckCommand', () => {
     assert.match((await mod.run(argv(`--task=${bad}`))).text, /SDD_BROKEN_SPEC_ANCHOR/);
   });
 
+  const ticketWithCoverage = (taskId: string, coverageBody: string): string =>
+    [
+      '<!--SECTION:META-->',
+      `- **Task-ID:** ${taskId}`,
+      '- **Status:** [ ] TODO',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:TEST_COVERAGE-->',
+      '## Test Scenario Coverage',
+      coverageBody,
+      '<!--/SECTION:TEST_COVERAGE-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '- pending',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+
+  it('--task flags a scenario deferred to its own Task-ID (SDD_BDD_DEFERRED_TO_SELF)', async () => {
+    const t = join(dir, 'deferred-to-self.md');
+    writeFileSync(
+      t,
+      ticketWithCoverage(
+        'cli-foo',
+        '- Deferred Test Ownership: cli-foo scenario → `f.test.ts` :: `case`'
+      ),
+      'utf-8'
+    );
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.match(r.text, /SDD_BDD_DEFERRED_TO_SELF/);
+  });
+
+  it('--task does not flag a scenario deferred to a different Task-ID', async () => {
+    const t = join(dir, 'deferred-to-other.md');
+    writeFileSync(
+      t,
+      ticketWithCoverage(
+        'cli-foo',
+        '- Deferred Test Ownership: cli-bar scenario → `f.test.ts` :: `case`'
+      ),
+      'utf-8'
+    );
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.doesNotMatch(r.text, /SDD_BDD_DEFERRED_TO_SELF/);
+  });
+
+  it('--task flags a Test Scenario Coverage row that fails to parse (SDD_BDD_COVERAGE_ROW_UNPARSED)', async () => {
+    const t = join(dir, 'unparsed-row.md');
+    writeFileSync(
+      t,
+      ticketWithCoverage('cli-foo', '- All scenarios → Deferred Test Ownership: TSK-34'),
+      'utf-8'
+    );
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.match(r.text, /SDD_BDD_COVERAGE_ROW_UNPARSED/);
+  });
+
+  it('--task does not flag a well-formed Test Scenario Coverage row', async () => {
+    const t = join(dir, 'parsed-row.md');
+    writeFileSync(
+      t,
+      ticketWithCoverage(
+        'cli-foo',
+        '- Deferred Test Ownership: cli-bar scenario → `f.test.ts` :: `case`'
+      ),
+      'utf-8'
+    );
+    const r = await mod.run(argv(`--task=${t}`));
+    assert.doesNotMatch(r.text, /SDD_BDD_COVERAGE_ROW_UNPARSED/);
+  });
+
   it('--all scans tickets and broken spec links under specs/', async () => {
     const root = join(dir, 'proj');
     const scopeDir = join(root, 'specs', 'cli');

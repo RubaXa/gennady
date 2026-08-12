@@ -30,6 +30,12 @@ export type Finding = {
 // comment/marker (`<!--…-->`) or closing tag (`</…>`), which start with `!` or `/`.
 const PLACEHOLDER = /<[A-Za-z…][^>\s]*>/;
 
+// Inline-code span (`` `…` ``) — stripped before testing for a literal `[x]` checkbox so a prose
+// hint like "A `` `[x]` `` line…" (TASK_SKELETON's own Execution Log note) never reads as a checked
+// line. The placeholder test still runs against the original line — a real checked line's own
+// placeholder (e.g. `` `<ts>` ``) is conventionally backticked too, and must still be caught.
+const CODE_SPAN = /`[^`]*`/g;
+
 /**
  * @purpose True when a file looks like a ticket (carries both META and EXECUTION_LOG sections).
  * @param content Full file markdown.
@@ -158,7 +164,8 @@ export function checkTicket(file: string, content: string): Finding[] {
   if (logSec.status === 'ok') {
     const logLines = logSec.content.split('\n');
     for (const line of logLines) {
-      if (/\[x\]/.test(line) && PLACEHOLDER.test(line)) {
+      const withoutCodeSpans = line.replace(CODE_SPAN, '');
+      if (/\[x\]/.test(withoutCodeSpans) && PLACEHOLDER.test(line)) {
         err(
           'SDD_FABRICATED_DONE',
           `Checked [x] line with an unreplaced placeholder: "${line.trim()}"`

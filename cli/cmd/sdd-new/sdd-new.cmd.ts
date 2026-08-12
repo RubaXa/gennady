@@ -64,6 +64,8 @@ export function resolvePath(
       return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.3-tasks.md`;
     case 'scope-index':
       return `specs/${opts.scope}/${opts.scope}.3-tasks.md`;
+    case 'project-index':
+      return 'specs/3-tasks.md';
     case 'portal':
       return 'specs/README.md';
   }
@@ -80,7 +82,7 @@ function missingOptions(
 ): string[] {
   if (opts.out) return [];
   const missing: string[] = [];
-  if (kind !== 'portal' && !opts.scope) missing.push('--scope');
+  if (kind !== 'portal' && kind !== 'project-index' && !opts.scope) missing.push('--scope');
   if ((kind === 'module' || kind === 'task' || kind === 'module-index') && !opts.module)
     missing.push('--module');
   if (kind === 'task' && !opts.id) missing.push('--id');

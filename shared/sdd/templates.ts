@@ -14,6 +14,7 @@ export type ArtifactKind =
   | 'task'
   | 'module-index'
   | 'scope-index'
+  | 'project-index'
   | 'portal';
 
 /**
@@ -1293,6 +1294,78 @@ const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
 ];
 // #endregion END_SCOPE_INDEX
 
+// #region START_PROJECT_INDEX — specs/3-tasks.md (no SECTION anchors)
+// Skeleton copied 1:1 from the canonical contract's fenced body (ai/kit/contract/scaffold/project-tasks-index.xml,
+// reconciled with ai/directives/sdd-v2/formats/project-tasks-index.xml — both identical at time of writing).
+const PROJECT_INDEX_SKELETON = `# Project Tasks
+
+## Entry Points
+- [Specs Portal](./README.md) — Scope Graph + all scope specs.
+- Tickets execute ONLY via the \`/sdd-execute\` flow (one ticket) or its batch form; the orchestrator dispatches phase-workers then audit — the operator does not invoke audit by hand.
+
+## Project-Wide Conventions (declared once, inherited)
+- **File-header:** owned by the coding rule (\`@file\` / \`@consumers\` / \`@tasks\`), enforced by \`sdd-verify\`.
+- **Baseline Completion Rule:** a Round cannot go \`[x] DONE\` until — every phase \`[x]\`; every BDD scenario mapped to a test or \`Deferred Test Ownership\`; verification commands run with exit recorded; every entity beyond the Inventory logged \`intro …\`; a Handoff line closes each phase.
+- **Execution-Log token vocabulary:** \`intro <Entity> ← <reason>\` · \`decision <key>=<value> ← <reason>\` · \`tried <approach> → <result>\` · \`discovery <fact>\` · \`insight <observation> → <spec-section>\` · \`verified <tool>@<version> <summary>\` · \`ver <cmd> → pass|fail exit=<N>\` · \`BLOCKED <cause>\` · \`DONE\`. A \`[x]\` line with an unreplaced \`<…>\` placeholder is fabricated (BLOCKER).
+- **Post-task hook:** after a Round closes the orchestrator runs audit; until PASS the round is closed-but-unverified and dependents are blocked.
+
+## Cross-Scope DAG
+Cross-scope edges + integration tickets only; intra-scope edges live in each scope index. Order follows the Portal Scope Graph.
+\`\`\`mermaid
+graph TD
+  backend --> infra-base
+  web --> backend
+\`\`\`
+
+## Scope Tracker
+| Scope | Type | Index | Tasks | Done |
+|---|---|---|---|---|
+| infra-base | infrastructure | [3-tasks](./infra-base/infra-base.3-tasks.md) | 6 | 0/6 |
+| backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 0/12 |
+
+## Decision Log (project task level)
+[D-NNN when the operator made non-default cross-scope choices.]
+`;
+
+const PROJECT_INDEX_SECTIONS: SectionManifestEntry[] = [
+  {
+    name: 'ENTRY_POINTS',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Link to the Specs Portal, plus the reminder that tickets execute only via /sdd-execute (single or batch).',
+  },
+  {
+    name: 'PROJECT_WIDE_CONVENTIONS',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'File-header rule, Baseline Completion Rule, Execution-Log token vocabulary, and post-task audit hook — declared once here, inherited by every scope/module/ticket.',
+  },
+  {
+    name: 'CROSS_SCOPE_DAG',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Mermaid graph of cross-scope depends-on edges + integration tickets only; intra-scope edges live in each scope index.',
+  },
+  {
+    name: 'SCOPE_TRACKER',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Scope/Type/Index/Tasks/Done rollup table — one row per scope, linking to its 3-tasks.md.',
+  },
+  {
+    name: 'DECISION_LOG',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Cross-scope decomposition/planning decisions, D-NNN, ADR-compact.',
+  },
+];
+// #endregion END_PROJECT_INDEX
+
 // #region START_PORTAL — specs/README.md (no SECTION anchors)
 const PORTAL_SKELETON = `# <project-name>
 
@@ -1398,6 +1471,12 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     skeleton: SCOPE_INDEX_SKELETON,
     sections: SCOPE_INDEX_SECTIONS,
     pathPattern: 'specs/<scope>/<scope>.3-tasks.md',
+  },
+  'project-index': {
+    kind: 'project-index',
+    skeleton: PROJECT_INDEX_SKELETON,
+    sections: PROJECT_INDEX_SECTIONS,
+    pathPattern: 'specs/3-tasks.md',
   },
   portal: {
     kind: 'portal',

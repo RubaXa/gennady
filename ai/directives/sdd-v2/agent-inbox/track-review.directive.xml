@@ -197,7 +197,7 @@
       home for one piece of content, whether that content is spec prose or a code symbol) — no
       separate axiom is authored for this, the same principle is read verbatim below.
       <Axiom id="AX_TICKET_DEDUPLICATION">
-        **Project-wide content lives ONCE in `tasks/README.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `tasks/<scope>/README.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
+        **Project-wide content lives ONCE in `specs/3-tasks.md`.** Declared there: file-header convention, baseline Completion Rule, Execution Log template, post-task audit hint. Per-scope Cascade Table lives in `specs/<scope>/<scope>.3-tasks.md`. Per ticket: only task-specific Meta, BDD, Test Scenario Coverage, Completion additions (if any), Execution Log instance (initially empty plan).
       </Axiom>
     </Axiom>
 

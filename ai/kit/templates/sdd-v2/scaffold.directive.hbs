@@ -78,7 +78,7 @@
     | `H_MISSING_RULE_FILE` | A rule reference or `<DependsOn>` entry does not resolve to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`) |
     | `H_RULES_CYCLE` | `<DependsOn>` closure cycles during per-phase rule activation (STEP_3) |
     | `H_VERIFICATION_COMMAND_MISSING` | A `<RequiresVerification>` alias is absent from infra-spec Verification Commands (alias, ticket ID) |
-    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | An in-scope spec lacks a Bootstrap Requirements section (did not pass the scope flow) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | The target scope being scaffolded (the intake target) lacks a Bootstrap Requirements section — checked ONLY for that scope, not for every ✅ scope in the Portal (did not pass the scope flow) |
     | `H_ID_COLLISION` | A generated Task-ID / slug collides with an existing one |
     | `H_TYPING_SCENARIO_MISSING` | A DbC contract in Spec References has no `contract`-level typing scenario mapped to a test |
     | `H_OPERATOR_REJECT` | Operator rejected the breakdown or the test plan |
@@ -90,8 +90,16 @@
       <Action>
         Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
         module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`). Detect the graph
-        (`AX_SCOPE_GRAPH_DETECTION`) and mode
-        (`AX_DIRECTIVE_MODE`, auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`); `extend-dag` reads existing tickets and preserves their IDs
+        (`AX_SCOPE_GRAPH_DETECTION`) and mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
+        — **detection table (directive-specific):**
+
+        | Mode | Detection |
+        |---|---|
+        | `initial` | No `*.3-tasks.md` exists yet anywhere under the target scope (module / scope index absent) |
+        | `extend-dag` | A `*.3-tasks.md` index already exists for the target scope and intake adds tickets to it |
+        | — ambiguous | Index(es) exist but intake states neither add-tickets nor any mode verb → `H_AMBIGUOUS_MODE` |
+
+        `extend-dag` reads existing tickets and preserves their IDs
         (`AX_EXTEND_DAG_PRESERVES_EXISTING_IDS`).
       </Action>
     </Step>
@@ -107,15 +115,18 @@
            Additions), then task-tier rules the operator supplied — later tier wins on collision;
         3. resolve every rule ref to an existing file (`AX_RULES_RESOLUTION_HARD_FAIL`, else
            `H_MISSING_RULE_FILE`);
-        4. build the per-scope Cascade Table (Scope × Categories) destined for `tasks/<scope>/README.md`.
+        4. build the per-scope Cascade Table (Scope × Categories) destined for
+           `specs/<scope>/<scope>.3-tasks.md`.
         No operator stop — mechanical.
       </Action>
     </Step>
     <Step id="STEP_2_DAG">
       <Goal>Build the acyclic task DAG. — GATE 1: operator approves the BREAKDOWN.</Goal>
       <Action>
-        Bootstrap Requirements per spec → Phase-0 bootstrap tickets (`AX_BOOTSTRAP_TICKET_DERIVATION`);
-        missing section → `H_BOOTSTRAP_REQUIREMENTS_MISSING`. Form tickets per
+        Bootstrap Requirements of the target scope's spec → Phase-0 bootstrap tickets
+        (`AX_BOOTSTRAP_TICKET_DERIVATION`); missing section on the target scope →
+        `H_BOOTSTRAP_REQUIREMENTS_MISSING` (checked only for the scope in intake, not for other
+        ✅ scopes reachable via the graph). Form tickets per
         `AX_DAG_AND_TICKET_BOUNDARIES` (one per coherent spec unit; subdivide only for parallelism or
         context overflow); cross-scope placement per `AX_CROSS_SCOPE_TASK_PLACEMENT`; assign slugs
         (`AX_TASK_ID_UNIQUENESS`). Acyclic. **Present the DAG (the breakdown) as a decision card and
@@ -176,8 +187,11 @@
         Registry, intra-module DAG, shared content per `AX_TICKET_DEDUPLICATION`). Roll up the scope
         tracker the same way — `sdd-new scope-index --scope <scope>` when `<scope>.3-tasks.md` is
         missing, then fill per
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")` — and
-        the project index (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`).
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")` — and roll up
+        the project index the same way — `sdd-new project-index` when `specs/3-tasks.md` is missing,
+        then fill per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`; never a
+        manual `Write` of `specs/3-tasks.md` from scratch.
         Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
         phase graph; exec-log) and resolve or consciously defer every finding per
         `AX_CLOSE_WITH_INTEGRITY_CHECK` — the scaffold mutation is done only once the task graph passes.

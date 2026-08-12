@@ -40,7 +40,11 @@ import {
 import { checkSpecMermaid } from '../../../shared/sdd/mermaid-check.ts';
 import { parseTrackerRows } from '../../../shared/sdd/tracker.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
-import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import {
+  parseMetaInfo,
+  parsePhaseDetail,
+  parsePhasesOverview,
+} from '../../../shared/sdd/ticket.ts';
 import {
   checkRulesCascadeClosure,
   normalizeRulePath,
@@ -55,6 +59,7 @@ import {
 } from '../../../shared/sdd/consumers-resolvable.ts';
 import {
   checkBddCoverage,
+  checkUnparsedCoverageRows,
   extractTestCaseNames,
   parseTestCoverage,
 } from '../../../shared/sdd/bdd-coverage.ts';
@@ -235,12 +240,13 @@ function getTestCaseNames(absPath: string): string[] {
   return names;
 }
 
-/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED findings (severity by the ticket's own flow version), if any. */
+/** @purpose BDD_COVERAGE for one ticket — canonical case names in Test Scenario Coverage vs real it()/test() names, self-deferral, and unparsed rows. | @param file Ticket path. | @param content Ticket markdown. | @param repoRoot Repository root (anchors the test-file basename search + flow-version detection). | @returns SDD_BDD_SCENARIO_UNTESTED (severity by the ticket's own flow version), SDD_BDD_DEFERRED_TO_SELF, and SDD_BDD_COVERAGE_ROW_UNPARSED findings, if any. */
 function checkTicketBddCoverage(file: string, content: string, repoRoot: string): Finding[] {
   const sec = extractSection(content, 'TEST_COVERAGE');
   if (sec.status !== 'ok') return [];
+  const findings = checkUnparsedCoverageRows(file, sec.content);
   const entries = parseTestCoverage(sec.content);
-  if (entries.length === 0) return [];
+  if (entries.length === 0) return findings;
   const idx = getTestFileIndex(repoRoot);
   const caseNamesByFile = new Map<string, string[]>();
   for (const e of entries) {
@@ -251,7 +257,18 @@ function checkTicketBddCoverage(file: string, content: string, repoRoot: string)
       matches.flatMap((m) => getTestCaseNames(m))
     );
   }
-  return checkBddCoverage(file, entries, caseNamesByFile, ticketFlowVersion(file, repoRoot));
+  const metaSec = extractSection(content, 'META');
+  const selfTaskId = metaSec.status === 'ok' ? parseMetaInfo(metaSec.content).taskId : null;
+  findings.push(
+    ...checkBddCoverage(
+      file,
+      entries,
+      caseNamesByFile,
+      ticketFlowVersion(file, repoRoot),
+      selfTaskId
+    )
+  );
+  return findings;
 }
 
 /**

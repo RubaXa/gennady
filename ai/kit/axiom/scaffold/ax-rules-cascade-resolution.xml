@@ -9,7 +9,7 @@
       4. **task** — operator-supplied during ticket generation.
 
       Invariants of the materialized cascade:
-      - **Cascade Table** (Scope × Categories) lives in `tasks/<scope>/README.md` per scope, NOT in `tasks/README.md`.
+      - **Cascade Table** (Scope × Categories) lives in `specs/<scope>/<scope>.3-tasks.md` per scope, NOT in `specs/3-tasks.md`.
       - Rules are declared **per phase only** — a `Rules:` bullet list inside each phase block of the ticket's Phases; a ticket-level rule list is a structure violation.
       - Auditor recomputes the effective set per-phase from these sources and compares with each phase block.
     </Axiom>

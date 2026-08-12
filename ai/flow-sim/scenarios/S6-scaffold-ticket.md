@@ -231,8 +231,11 @@ core/
 
 ## Stop
 
-Сразу после финального `sdd-check --all .` в STEP_5_FINALIZE (exit=0, без новых error-находок) —
-после этого директива только отдаёт управление `execute` (изолированно, дешёвой моделью) и это уже
+Сразу после финального `sdd-check --all .` в STEP_5_FINALIZE — когда каждая находка из вывода либо
+resolved, либо consciously deferred с записью в Decision Log тикета (`AX_CLOSE_WITH_INTEGRITY_CHECK`),
+и нет находок сверх baseline фикстуры (2 находки, см. Fixture) и неизбежных
+`SDD_BDD_SCENARIO_UNTESTED` (сценарии, чьи тесты появятся только когда `execute` пройдёт фазу `test`)
+— после этого директива только отдаёт управление `execute` (изолированно, дешёвой моделью) и это уже
 не часть сценария. Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
 остановка по карте, не директивный `H_*`-гейт).
 
@@ -260,8 +263,21 @@ core/
 8. GATE 2 — тест-план показан как decision card (каждый сценарий с тегом `[NOTES-REQ-N]` или похожим,
    привязан к Vision), с `show:`-строкой в трейсе, перечисляющей показанные сценарии/теги, и получено
    согласие ДО STEP_5_FINALIZE.
-9. Индексы созданы командами `sdd-new module-index --scope notes --module core` и `sdd-new
-   scope-index --scope notes` (обе — `tool:` строки), не ручным `write:` с нуля.
-10. Финальный `sdd-check --all .` — есть `tool:` строка с `exit=0`; никаких новых error-находок
-    (`H_MISSING_RULE_FILE` / `H_ID_COLLISION` / `H_RULES_CYCLE` не сработали).
+9. Индексы созданы командами `sdd-new module-index --scope notes --module core`, `sdd-new
+   scope-index --scope notes` и `sdd-new project-index` (kind `project-index` — три `tool:` строки),
+   не ручным `write:` с нуля — включая `specs/3-tasks.md` (project index), который тоже
+   материализуется через `sdd-new`, никогда через ручной `Write` с нуля.
+10. Финальный `sdd-check --all .` в STEP_5_FINALIZE — есть `tool:` строка с exit-кодом. Каждая
+    находка из вывода либо resolved (устранена до этого прогона), либо consciously deferred с
+    отдельной строкой в Decision Log тикета именующей находку и владельца отложенного решения
+    (`AX_CLOSE_WITH_INTEGRITY_CHECK`); сверх baseline фикстуры (2 находки) новых error-находок нет —
+    `H_MISSING_RULE_FILE` / `H_ID_COLLISION` / `H_RULES_CYCLE` не сработали.
+    `SDD_BDD_SCENARIO_UNTESTED` на typing-сценарии (`NoteStorePort`) и на unit-сценариях остаётся
+    как есть, не deferred: оба класса сценариев мапятся в Test Scenario Coverage на реальный файл
+    теста фазы `test` (`adapters/local-note-store.adapter.test.ts`) — untested до `execute` — это
+    ожидаемое состояние на этапе scaffold, структурно неизбежное (тест пишет фаза `test` в execute),
+    а не отложенная находка. Ни один сценарий не использует `Deferred Test Ownership` вообще — оба
+    класса имеют прямой маппинг на test-файл — поэтому отложить находку «на себя» здесь невозможно:
+    карта не ожидает `SDD_BDD_DEFERRED_TO_SELF` (deferred-owner == сам тикет — error по параллельному
+    `sdd-check`), так как в этом сценарии нечего отложить «на себя» — деферится нечему.
 ```

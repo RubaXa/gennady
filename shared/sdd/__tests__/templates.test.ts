@@ -28,6 +28,7 @@ describe('templates registry', () => {
         'task',
         'module-index',
         'scope-index',
+        'project-index',
         'portal',
       ])
     );
@@ -63,6 +64,16 @@ describe('templates registry', () => {
   it('task skeleton is anchored, and portal skeleton carries no SECTION anchors', () => {
     assert.ok(TEMPLATES.task.skeleton.includes('<!--SECTION:META-->'));
     assert.ok(!/<!--SECTION:/.test(TEMPLATES.portal.skeleton));
+  });
+
+  it('project-index skeleton carries no SECTION anchors and matches specs/3-tasks.md', () => {
+    assert.ok(!/<!--SECTION:/.test(TEMPLATES['project-index'].skeleton));
+    assert.strictEqual(TEMPLATES['project-index'].pathPattern, 'specs/3-tasks.md');
+    assert.match(TEMPLATES['project-index'].skeleton, /## Entry Points/);
+    assert.match(TEMPLATES['project-index'].skeleton, /## Project-Wide Conventions/);
+    assert.match(TEMPLATES['project-index'].skeleton, /## Cross-Scope DAG/);
+    assert.match(TEMPLATES['project-index'].skeleton, /## Scope Tracker/);
+    assert.match(TEMPLATES['project-index'].skeleton, /## Decision Log/);
   });
 });
 

@@ -43,6 +43,23 @@ describe('checkTicket', () => {
     assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
   });
 
+  it('flags a fabricated DONE — real [x] checkbox with a placeholder outside backticks', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] finished <task-name> outside backticks'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('does NOT flag the TASK_SKELETON Execution Log hint — its `[x]` and placeholder are both inline code', () => {
+    const c = CLEAN.replace(
+      '<!--SECTION:EXECUTION_LOG-->',
+      '<!--SECTION:EXECUTION_LOG-->\n' +
+        '*(A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)*'
+    );
+    assert.ok(!codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
   it('flags an unbalanced anchor', () => {
     const c = CLEAN.replace('<!--/SECTION:META-->', '');
     assert.ok(codes(c).includes('SDD_ANCHOR_UNBALANCED'));

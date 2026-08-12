@@ -142,9 +142,9 @@
 
       | Tier | Source |
       |---|---|
-      | traversed-scopes | Cascade Table in `tasks/<scope>/README.md` traversed-scope rows |
-      | target-scope | `tasks/<scope>/README.md` target-scope row + scope spec Architecture/Rules |
-      | module | `tasks/<scope>/README.md` module row + module spec Module Rules Additions |
+      | traversed-scopes | Cascade Table in `specs/<scope>/<scope>.3-tasks.md` traversed-scope rows |
+      | target-scope | `specs/<scope>/<scope>.3-tasks.md` target-scope row + scope spec Architecture/Rules |
+      | module | `specs/<scope>/<scope>.3-tasks.md` module row + module spec Module Rules Additions |
       | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
 
       The transitive `<DependsOn>` closure of the *declared* list is `sdd-check`'s RULES_CASCADE_CLOSURE (`SDD_RULES_CASCADE_UNRESOLVED`, per `AX_MECHANICAL_VIA_SDD_CHECK`) — take that finding as given, do NOT open rule files and walk `<DependsOn>` by hand.

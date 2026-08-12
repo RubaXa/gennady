@@ -18,8 +18,9 @@
 
 **Invariants:**
 
-- `<kind>` ∈ `product | library | infrastructure | interface | module | task | module-index | scope-index | portal`
+- `<kind>` ∈ `product | library | infrastructure | interface | module | task | module-index | scope-index | project-index | portal`
 - `--module` любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`) — каждый сегмент kebab-case (как имя scope); пустой/абсолютный/`..`-сегмент → `BAD_INVOCATION` (exit 4) до вычисления пути
+- `project-index` не требует `--scope` (как `portal`) — путь фиксирован: `specs/3-tasks.md`
 - exit `0` создано / `--list` / `--manifest` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
 <!--/SECTION:MODULE_VISION-->
 
@@ -53,6 +54,10 @@ $ npx gennady sdd-new module-index --scope backend --module auth
 $ npx gennady sdd-new scope-index --scope backend
 [sdd-new] created scope-index skeleton: specs/backend/backend.3-tasks.md
 
+# --- project-index — как portal, --scope не нужен ---
+$ npx gennady sdd-new project-index
+[sdd-new] created project-index skeleton: specs/3-tasks.md
+
 # --- уже существует: exit 1, файл не тронут ---
 $ npx gennady sdd-new product --scope backend
 [sdd-new] ERR_CLI_SDD_NEW_FILE_EXISTS: specs/backend/backend.spec.md
@@ -78,6 +83,7 @@ $ npx gennady sdd-new --list
   task           specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md
   module-index   specs/<scope>/<module...>/<module>.3-tasks.md
   scope-index    specs/<scope>/<scope>.3-tasks.md
+  project-index  specs/3-tasks.md
   portal         specs/README.md
 ```
 
@@ -114,7 +120,7 @@ $ npx gennady sdd-new --list
 
 - Preconditions:
   - `<kind>` — один из `ARTIFACT_KINDS`
-  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание) или `--manifest` (короткое замыкание — опции пути не проверяются вовсе)
+  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`/`project-index`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание) или `--manifest` (короткое замыкание — опции пути не проверяются вовсе)
   - `--module`, если задан, валиден: каждый `/`-сегмент непустой, не `.`/`..`, kebab-case (как имя scope) — иначе `BAD_INVOCATION` ДО вычисления пути
 - Postconditions:
   - Целевой файл не существовал до вызова → создан с содержимым `TEMPLATES[<kind>].skeleton` байт-в-байт, недостающие родительские директории созданы
@@ -132,15 +138,15 @@ $ npx gennady sdd-new --list
 
 ## 5. Public Options & Policies
 
-| Argument          | Type    | Description                                                                                                       |
-| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
-| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| portal`    |
-| `--scope <s>`     | string  | Имя scope. Обязателен для всех kind кроме `portal` (если не задан `--out`)                                        |
-| `--module <m>`    | string  | Имя module, любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`). Обязателен для `module`/`task`/`module-index` |
-| `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                                                               |
-| `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                                                     |
-| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                       |
-| `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются  |
+| Argument          | Type    | Description                                                                                                                     |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| project-index \| portal` |
+| `--scope <s>`     | string  | Имя scope. Обязателен для всех kind кроме `portal`/`project-index` (если не задан `--out`)                                      |
+| `--module <m>`    | string  | Имя module, любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`). Обязателен для `module`/`task`/`module-index`               |
+| `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                                                                             |
+| `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                                                                   |
+| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                                     |
+| `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются                |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -196,6 +202,12 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
   читает `TEMPLATES[<kind>].sections` напрямую, минуя `missingOptions`/`resolvePath`/no-overwrite —
   та же таблица, что при создании, без побочных эффектов на диске.
 - **Risk accepted:** Нет.
+
+### D-NW006 — `project-index` kind: `specs/3-tasks.md`
+
+- **Status:** active
+- **Why:** `sdd-scaffold` STEP_5 материализует `specs/3-tasks.md` (проектный task-index — общие конвенции + cross-scope DAG + scope-rollup) по формат-директиве `PROJECT_TASKS_INDEX_STRUCTURE` (`ai/directives/sdd-v2/formats/project-tasks-index.xml`), но до этого решения реестр не знал такого kind — путь собирался вручную. `project-index` добавлен в `shared/sdd/templates.ts` как обычный `ArtifactKind`: скелет — 1:1 копия тела markdown-фенса формат-директивы (источник истины при расхождении с `ai/kit/contract/scaffold/project-tasks-index.xml`, который тянет тот же текст через партиал `{{> "sdd-skeleton-project-index"}}`); опций не требует, как `portal`.
+- **Risk accepted:** Нет — секции без SECTION-анкоров (как `portal`/`scope-index`/`module-index`), мех. гейт `check.ts` их не проверяет.
 
 ### D-NW003 — Never-overwrite, не merge
 
