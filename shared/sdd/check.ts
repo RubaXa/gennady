@@ -2,6 +2,7 @@
 // @consumers: sdd-check.cmd
 // @tasks: N/A
 
+import { dirname, basename, join, resolve } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
@@ -1053,6 +1054,112 @@ export function checkModuleGraph(scope: string, scopeFile: string, edges: GraphE
         },
       ]
     : [];
+}
+
+/** @purpose Classify spec content as module vs scope, mirroring checkSpecStructure's own classification (MODULE_VISION present ⇒ module; SCOPE_TYPE present and MODULE_VISION absent ⇒ scope). | @param content Full spec markdown. | @returns 'module' \| 'scope' \| 'other'. */
+function classifySpecKind(content: string): 'module' | 'scope' | 'other' {
+  const isModuleSpec = /<!--SECTION:MODULE_VISION-->/.test(content);
+  const isScopeSpec = /<!--SECTION:SCOPE_TYPE-->/.test(content) && !isModuleSpec;
+  if (isModuleSpec) return 'module';
+  if (isScopeSpec) return 'scope';
+  return 'other';
+}
+
+/**
+ * @purpose One `.spec.md` file's graph-relevant fields, gathered by the command from the project tree.
+ * @invariant `file` paths across one `checkSpecHierarchy` call must share the same root form
+ *   (all-absolute or all-relative) — the ancestor walk compares them structurally.
+ */
+export type SpecEntry = {
+  /** @purpose Spec file path (module or scope spec). */
+  file: string;
+  /** @purpose Full spec markdown. */
+  content: string;
+  /** @purpose This spec's own scope flow version — grades hierarchy-check severity, like checkBddCoverage. */
+  flowVersion?: FlowVersion;
+};
+
+/**
+ * @purpose Find the nearest ancestor spec above a module's own directory — the parent that indexes it.
+ * @invariant A directory with no `<dir-name>.spec.md` is a legal namespace dir (AX_HIERARCHICAL_SPECS),
+ *   skipped transparently; the walk climbs until a spec-bearing directory or the root.
+ * @param file The module spec file's path.
+ * @param specFiles Every spec file path known to this run (module + scope).
+ * @returns The nearest ancestor spec's path, or null when none is found.
+ */
+function nearestAncestorSpec(file: string, specFiles: Set<string>): string | null {
+  let dir = dirname(dirname(file)); // parent of the module's own directory
+  let prev = '';
+  while (dir !== prev) {
+    const candidate = join(dir, `${basename(dir)}.spec.md`);
+    if (candidate !== file && specFiles.has(candidate)) return candidate;
+    prev = dir;
+    dir = dirname(dir);
+  }
+  return null;
+}
+
+/** @purpose True when `content` (read from directory `fromDir`) carries a markdown link resolving to `target`. | @param content Source spec markdown. | @param fromDir Directory the link is resolved relative to (dirname of the source file). | @param target Absolute-comparable target path. | @returns Whether any `](…spec.md)` link resolves to `target`. */
+function linksTo(content: string, fromDir: string, target: string): boolean {
+  for (const m of content.matchAll(/\]\(([^)`#]+\.spec\.md)(?:#[^)]*)?\)/g)) {
+    const linkTarget = m[1];
+    if (linkTarget && resolve(fromDir, linkTarget) === resolve(target)) return true;
+  }
+  return false;
+}
+
+/**
+ * @purpose Spec-hierarchy verification (AX_HIERARCHICAL_SPECS / AX_SCOPE_STAYS_THIN): every module
+ *   spec is linked from its nearest ancestor index; a parent with children became a thin index.
+ * @invariant Pure — no I/O; the command supplies every spec from the walk. Severity per entry
+ *   graded by its own `flowVersion` (default `'v1'`), like `checkBddCoverage`.
+ * @param specs Every module + scope spec in the tree, from the project walk.
+ * @returns SDD_MODULE_NOT_IN_INDEX / SDD_PARENT_MODULE_NOT_INDEX findings (possibly empty).
+ */
+export function checkSpecHierarchy(specs: SpecEntry[]): Finding[] {
+  const findings: Finding[] = [];
+  const byFile = new Map(specs.map((s) => [s.file, s]));
+  const specFiles = new Set(specs.map((s) => s.file));
+  const moduleSpecs = specs.filter((s) => classifySpecKind(s.content) === 'module');
+
+  const parentOf = new Map<string, string>();
+  for (const m of moduleSpecs) {
+    const parent = nearestAncestorSpec(m.file, specFiles);
+    if (parent) parentOf.set(m.file, parent);
+  }
+
+  for (const m of moduleSpecs) {
+    const parent = parentOf.get(m.file);
+    if (!parent) continue;
+    const parentEntry = byFile.get(parent);
+    if (!parentEntry) continue;
+    if (!linksTo(parentEntry.content, dirname(parent), m.file)) {
+      findings.push({
+        severity: m.flowVersion === 'v2' ? 'error' : 'warn',
+        code: 'SDD_MODULE_NOT_IN_INDEX',
+        file: parent,
+        message: `Module spec ${m.file} is not linked from its parent index ${parent} — every module must appear in the parent's Module Map / links (AX_HIERARCHICAL_SPECS).`,
+      });
+    }
+  }
+
+  const parentsWithChildren = new Set(parentOf.values());
+  for (const parentFile of parentsWithChildren) {
+    const parentEntry = byFile.get(parentFile);
+    if (!parentEntry || classifySpecKind(parentEntry.content) !== 'module') continue;
+    for (const sec of ['ENTITY_INVENTORY', 'MODULE_CONTRACTS'] as const) {
+      if (new RegExp(`<!--SECTION:${sec}-->`).test(parentEntry.content)) {
+        findings.push({
+          severity: parentEntry.flowVersion === 'v2' ? 'error' : 'warn',
+          code: 'SDD_PARENT_MODULE_NOT_INDEX',
+          file: parentFile,
+          message: `Module spec has child module specs beneath it but still carries module-level section ${sec} — a parent module must become a thin index over its children (AX_SCOPE_STAYS_THIN).`,
+        });
+      }
+    }
+  }
+
+  return findings;
 }
 
 // An orphaned change-mark: a line beginning with ✚ (new) + space. Only ✚ is matched — it is unambiguous;

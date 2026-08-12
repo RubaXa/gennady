@@ -26,10 +26,22 @@ export function renderList(): string {
 }
 
 /**
+ * @purpose Last path segment of a (possibly nested) --module value — the module's own name, used as
+ * directory leaf and file basename.
+ * @invariant Callers validate the module path first (validateModulePath) — this does no checking of its own.
+ * @param module Raw --module value, e.g. `foo/bar/qux`.
+ * @returns The final segment, e.g. `qux`.
+ */
+function moduleName(module: string): string {
+  const segments = module.split('/').filter((s) => s.length > 0);
+  return segments[segments.length - 1] ?? module;
+}
+
+/**
  * @purpose Compute the target path for a kind from --scope/--module/--id, honoring an explicit --out.
- * @invariant Pure — no I/O. Callers validate required options are present before calling.
+ * @invariant Pure — no I/O. Callers validate required options are present AND well-formed (validateModulePath) before calling.
  * @param kind Artifact kind.
- * @param opts scope/module/id/out as parsed from argv.
+ * @param opts scope/module/id/out as parsed from argv. `--module` may be any depth (`foo/bar/qux`) per AX_HIERARCHICAL_SPECS.
  * @returns The resolved relative path.
  */
 export function resolvePath(
@@ -44,9 +56,13 @@ export function resolvePath(
     case 'interface':
       return `specs/${opts.scope}/${opts.scope}.spec.md`;
     case 'module':
-      return `specs/${opts.scope}/${opts.module}/${opts.module}.spec.md`;
+      return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.spec.md`;
     case 'task':
-      return `specs/${opts.scope}/${opts.module}/${opts.module}.task.${opts.id}.md`;
+      return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.task.${opts.id}.md`;
+    case 'module-index':
+      return `specs/${opts.scope}/${opts.module}/${moduleName(opts.module as string)}.3-tasks.md`;
+    case 'scope-index':
+      return `specs/${opts.scope}/${opts.scope}.3-tasks.md`;
     case 'portal':
       return 'specs/README.md';
   }
@@ -64,9 +80,34 @@ function missingOptions(
   if (opts.out) return [];
   const missing: string[] = [];
   if (kind !== 'portal' && !opts.scope) missing.push('--scope');
-  if ((kind === 'module' || kind === 'task') && !opts.module) missing.push('--module');
+  if ((kind === 'module' || kind === 'task' || kind === 'module-index') && !opts.module)
+    missing.push('--module');
   if (kind === 'task' && !opts.id) missing.push('--id');
   return missing;
+}
+
+// One kebab-case segment: lowercase letters/digits, hyphen-separated words — the same grammar a
+// `--scope` name follows. `--module` may nest to any depth (AX_HIERARCHICAL_SPECS); every segment
+// must satisfy this on its own.
+const SEGMENT_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * @purpose Validate a (possibly nested) --module path: no empty/absolute/`..` segments, each segment kebab-case.
+ * @invariant Pure. Called before `resolvePath` so a malformed --module never reaches path computation.
+ * @param module Raw --module value.
+ * @returns null when valid, else a human-readable reason.
+ */
+export function validateModulePath(module: string): string | null {
+  if (module.startsWith('/')) return `--module must be a relative path, got "${module}"`;
+  const segments = module.split('/');
+  for (const seg of segments) {
+    if (seg.length === 0) return `--module has an empty path segment: "${module}"`;
+    if (seg === '.' || seg === '..')
+      return `--module must not contain "." or ".." segments: "${module}"`;
+    if (!SEGMENT_RE.test(seg))
+      return `--module segment "${seg}" is not kebab-case (lowercase, hyphen-separated): "${module}"`;
+  }
+  return null;
 }
 
 /**
@@ -111,6 +152,14 @@ export async function run(rawArgs: string[]): Promise<NewOutcome> {
   const missing = missingOptions(kind, opts);
   if (missing.length > 0) {
     return badInvocation(`${kind} requires ${missing.join(', ')}`);
+  }
+
+  if (opts.module) {
+    const reason = validateModulePath(opts.module);
+    if (reason) {
+      logger.warn(`[SddNewCommand#run] bad --module: ${reason}`);
+      return badInvocation(reason);
+    }
   }
 
   const path = resolvePath(kind, opts);

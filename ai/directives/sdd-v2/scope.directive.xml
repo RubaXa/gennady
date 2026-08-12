@@ -167,6 +167,8 @@
       Growth is the decomposition signal, not a license to expand. When scope-level design reaches entity / contract / file granularity, that detail moves into a module — it does NOT accumulate in the scope spec. A scope converges to a thin index; it does not grow without bound.
 
       First decomposition is a migration: the `initial` module session moves entity-level detail out of the scope spec into the new module specs, leaving the scope spec in the index representation. The same rule recurses — a module that reaches sub-module granularity sheds detail into sub-modules and stays an index over them.
+
+      Held by tooling: `sdd-check` flags a bloated scope index (`SDD_SCOPE_BLOATED`) and, recursing the same rule to a module with child modules beneath it, a parent module that has not become a thin index (`SDD_PARENT_MODULE_NOT_INDEX`).
     </Axiom>
 
     <Axiom id="AX_HANDOFF_TO_MODULE_DECOMPOSITION">

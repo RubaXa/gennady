@@ -136,4 +136,74 @@ describe('SddNewCommand', () => {
     const path = mod.resolvePath('product', { scope: 's', out: 'custom/path.md' });
     assert.strictEqual(path, 'custom/path.md');
   });
+
+  it('resolves a nested --module: dir is the full path, filename is the last segment', () => {
+    const path = mod.resolvePath('module', { scope: 's', module: 'foo/bar/qux' });
+    assert.strictEqual(path, 'specs/s/foo/bar/qux/qux.spec.md');
+  });
+
+  it('resolves a nested task path the same way', () => {
+    const path = mod.resolvePath('task', { scope: 's', module: 'foo/bar', id: 'ACR-slug' });
+    assert.strictEqual(path, 'specs/s/foo/bar/bar.task.ACR-slug.md');
+  });
+
+  it('resolves module-index at any nesting depth: <module>.3-tasks.md', () => {
+    const path = mod.resolvePath('module-index', { scope: 's', module: 'foo/bar' });
+    assert.strictEqual(path, 'specs/s/foo/bar/bar.3-tasks.md');
+  });
+
+  it('resolves scope-index: specs/<scope>/<scope>.3-tasks.md', () => {
+    const path = mod.resolvePath('scope-index', { scope: 's' });
+    assert.strictEqual(path, 'specs/s/s.3-tasks.md');
+  });
+
+  it('validateModulePath accepts a well-formed nested module', () => {
+    assert.strictEqual(mod.validateModulePath('foo/bar/qux'), null);
+    assert.strictEqual(mod.validateModulePath('auth'), null);
+  });
+
+  it('validateModulePath rejects an empty segment (double slash)', () => {
+    assert.match(mod.validateModulePath('foo//bar') ?? '', /empty/);
+  });
+
+  it('validateModulePath rejects an absolute path', () => {
+    assert.match(mod.validateModulePath('/foo/bar') ?? '', /relative/);
+  });
+
+  it('validateModulePath rejects ".." segments', () => {
+    assert.match(mod.validateModulePath('foo/../bar') ?? '', /\.\./);
+  });
+
+  it('validateModulePath rejects a non-kebab-case segment', () => {
+    assert.match(mod.validateModulePath('foo/Bar_Baz') ?? '', /kebab-case/);
+  });
+
+  it('rejects a malformed --module with exit 4 / BAD_INVOCATION before touching the filesystem', async () => {
+    const outcome = await mod.run(argv('module', '--scope', 's', '--module', 'foo//bar'));
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 4);
+      assert.match(outcome.code, /BAD_INVOCATION/);
+    }
+  });
+
+  it('creates a module-index skeleton at the module-index path', async () => {
+    const out = join(tmpDir, 'specs', 'idxs', 'auth', 'auth.3-tasks.md');
+    const outcome = await mod.run(
+      argv('module-index', '--scope', 'idxs', '--module', 'auth', '--out', out)
+    );
+    assert.strictEqual(outcome.ok, true);
+    assert.ok(existsSync(out));
+    const written = readFileSync(out, 'utf-8');
+    assert.match(written, /Tracker Index/);
+  });
+
+  it('creates a scope-index skeleton at the scope-index path', async () => {
+    const out = join(tmpDir, 'specs', 'idxs2', 'idxs2.3-tasks.md');
+    const outcome = await mod.run(argv('scope-index', '--scope', 'idxs2', '--out', out));
+    assert.strictEqual(outcome.ok, true);
+    assert.ok(existsSync(out));
+    const written = readFileSync(out, 'utf-8');
+    assert.match(written, /Cascade Table/);
+  });
 });

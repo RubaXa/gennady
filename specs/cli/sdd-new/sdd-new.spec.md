@@ -17,8 +17,9 @@
 
 **Invariants:**
 
-- `<kind>` ∈ `product | library | infrastructure | interface | module | task | portal`
-- exit `0` создано / `--list` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>`
+- `<kind>` ∈ `product | library | infrastructure | interface | module | task | module-index | scope-index | portal`
+- `--module` любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`) — каждый сегмент kebab-case (как имя scope); пустой/абсолютный/`..`-сегмент → `BAD_INVOCATION` (exit 4) до вычисления пути
+- exit `0` создано / `--list` · `1` файл существует / ошибка записи · `4` плохой вызов / неизвестный `<kind>` / невалидный `--module`
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -41,6 +42,16 @@ $ npx gennady sdd-new module --scope backend --module auth
 $ npx gennady sdd-new task --scope backend --module auth --id AUTH-login-flow
 [sdd-new] created task skeleton: specs/backend/auth/auth.task.AUTH-login-flow.md
 
+# --- вложенный модуль (AX_HIERARCHICAL_SPECS) — имя модуля = последний сегмент ---
+$ npx gennady sdd-new module --scope backend --module auth/tokens
+[sdd-new] created module skeleton: specs/backend/auth/tokens/tokens.spec.md
+
+$ npx gennady sdd-new module-index --scope backend --module auth
+[sdd-new] created module-index skeleton: specs/backend/auth/auth.3-tasks.md
+
+$ npx gennady sdd-new scope-index --scope backend
+[sdd-new] created scope-index skeleton: specs/backend/backend.3-tasks.md
+
 # --- уже существует: exit 1, файл не тронут ---
 $ npx gennady sdd-new product --scope backend
 [sdd-new] ERR_CLI_SDD_NEW_FILE_EXISTS: specs/backend/backend.spec.md
@@ -54,6 +65,8 @@ $ npx gennady sdd-new --list
   interface      specs/<scope>/<scope>.spec.md
   module         specs/<scope>/<module>/<module>.spec.md
   task           specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md
+  module-index   specs/<scope>/<module...>/<module>.3-tasks.md
+  scope-index    specs/<scope>/<scope>.3-tasks.md
   portal         specs/README.md
 ```
 
@@ -63,16 +76,17 @@ $ npx gennady sdd-new --list
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                                                           | Type    | Purpose                                                                               |
-| -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------- |
-| `run`                                                          | Command | Точка входа CLI: `--list` или `<kind>` → resolve path → no-overwrite → write → report |
-| `resolvePath`                                                  | Utility | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure)                   |
-| `renderList`                                                   | Utility | `--list` output: every kind + its `pathPattern`                                       |
-| `missingOptions`                                               | Utility | Which required options are absent for `<kind>` (empty when `--out` given)             |
-| `renderManifestTable` / `renderCreated`                        | Utility | (`sdd-new.types`) Section manifest table + success report text                        |
-| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed` | Utility | Diagnostic builders                                                                   |
-| `NewOutcome`                                                   | Type    | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                         |
-| `TEMPLATES` / `ARTIFACT_KINDS`                                 | Value   | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды         |
+| Name                                                           | Type    | Purpose                                                                                                                       |
+| -------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `run`                                                          | Command | Точка входа CLI: `--list` или `<kind>` → resolve path → no-overwrite → write → report                                         |
+| `resolvePath`                                                  | Utility | `<kind>` + `--scope`/`--module`/`--id`/`--out` → target path (pure); `--module` любой глубины — имя файла = последний сегмент |
+| `validateModulePath`                                           | Utility | `--module` (любой глубины) → причина невалидности или `null` (пустой/абсолютный/`..`/не-kebab-case сегмент)                   |
+| `renderList`                                                   | Utility | `--list` output: every kind + its `pathPattern`                                                                               |
+| `missingOptions`                                               | Utility | Which required options are absent for `<kind>` (empty when `--out` given)                                                     |
+| `renderManifestTable` / `renderCreated`                        | Utility | (`sdd-new.types`) Section manifest table + success report text                                                                |
+| `badInvocation` / `unknownKind` / `fileExists` / `writeFailed` | Utility | Diagnostic builders                                                                                                           |
+| `NewOutcome`                                                   | Type    | `{ok:true,text,path}` либо `{ok:false,code,exitCode,message}`                                                                 |
+| `TEMPLATES` / `ARTIFACT_KINDS`                                 | Value   | (`shared/sdd/templates`) Реестр скелетов + манифестов, единый источник правды                                                 |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -89,7 +103,8 @@ $ npx gennady sdd-new --list
 
 - Preconditions:
   - `<kind>` — один из `ARTIFACT_KINDS`
-  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`; `--module` для `module`/`task`; `--id` для `task` — если только не задан `--out` (короткое замыкание)
+  - Требуемые опции присутствуют: `--scope` для всех kind кроме `portal`; `--module` для `module`/`task`/`module-index`; `--id` для `task` — если только не задан `--out` (короткое замыкание)
+  - `--module`, если задан, валиден: каждый `/`-сегмент непустой, не `.`/`..`, kebab-case (как имя scope) — иначе `BAD_INVOCATION` ДО вычисления пути
 - Postconditions:
   - Целевой файл не существовал до вызова → создан с содержимым `TEMPLATES[<kind>].skeleton` байт-в-байт, недостающие родительские директории созданы
   - Целевой файл уже существовал → ничего не записано, exit 1
@@ -104,14 +119,14 @@ $ npx gennady sdd-new --list
 
 ## 5. Public Options & Policies
 
-| Argument          | Type    | Description                                                                     |
-| ----------------- | ------- | ------------------------------------------------------------------------------- |
-| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| portal` |
-| `--scope <s>`     | string  | Имя scope. Обязателен для всех kind кроме `portal` (если не задан `--out`)      |
-| `--module <m>`    | string  | Имя module. Обязателен для `module` и `task`                                    |
-| `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                             |
-| `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                   |
-| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                     |
+| Argument          | Type    | Description                                                                                                       |
+| ----------------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| portal`    |
+| `--scope <s>`     | string  | Имя scope. Обязателен для всех kind кроме `portal` (если не задан `--out`)                                        |
+| `--module <m>`    | string  | Имя module, любой глубины (`foo/bar/qux`, `AX_HIERARCHICAL_SPECS`). Обязателен для `module`/`task`/`module-index` |
+| `--id <ACR-slug>` | string  | Task-ID slug. Обязателен для `task`                                                                               |
+| `--out <path>`    | string  | Явный целевой путь — переопределяет конвенцию                                                                     |
+| `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                       |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -151,6 +166,12 @@ shared/sdd/templates.ts   # ArtifactKind registry: skeleton + section manifest +
 - **Status:** active
 - **Why:** Часть секций контракт называет MANDATORY (например `OVERVIEW` — diagram, `AX_SPEC_MANDATORY_DIAGRAM`), но текущий механический гейт `REQUIRED_SECTIONS` их не перечисляет — они проверяются отдельным кодом (`SDD_NO_DIAGRAM_BLOCK`). Разделение `required` (семантика контракта) и `loadBearing` (что сегодня реально гейтит `check.ts`) позволяет derived-спискам совпасть с текущими значениями без искажения смысла `required`.
 - **Risk accepted:** Нет — расширение строгости (перевод `required`-но-не-`loadBearing` секций в мех. гейт) сознательно вынесено за пределы этого блока.
+
+### D-NW004 — Вложенные `--module` + `module-index`/`scope-index` kinds
+
+- **Status:** active
+- **Why:** `AX_HIERARCHICAL_SPECS` разрешает произвольную глубину под-модулей (`specs/<scope>/<a>/<b>/<b>.spec.md`), но `resolvePath` подставляла `--module` целиком в оба места пути — `--module foo/bar` давало битый `specs/<s>/foo/bar/foo/bar.spec.md`. Теперь имя файла = последний `/`-сегмент `--module`, директория = `--module` целиком; та же логика для `task`. Индексные kind (`module-index` → `<module>.3-tasks.md`, `scope-index` → `<scope>.3-tasks.md`) добавлены в реестр `shared/sdd/templates.ts` как обычные `ArtifactKind` — их скелеты 1:1 из `ai/kit/contract/scaffold/{module,scope}-tasks-index.xml`, которые теперь тянут скелет через `{{> "sdd-skeleton-<kind>"}}` вместо ручной копии (см. `ai/kit/render.ts`).
+- **Risk accepted:** Валидация сегментов — kebab-case (как у scope), непустой, не `.`/`..`, не абсолютный — только для `--module`; `--scope` валидация не расширена (вне периметра этого изменения).
 
 ### D-NW003 — Never-overwrite, не merge
 

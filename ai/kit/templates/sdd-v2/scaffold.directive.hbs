@@ -169,10 +169,14 @@
     <Step id="STEP_5_FINALIZE">
       <Goal>Write the index hierarchy; hand off. (auto)</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-tasks-index.xml")` and write each
-        `<module>.3-tasks.md` (Tracker, Slug Registry, intra-module DAG, shared content per
-        `AX_TICKET_DEDUPLICATION`). Roll up the scope tracker
-        (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")`) and
+        For each `<module>.3-tasks.md` that does not exist yet, run `sdd-new module-index --scope
+        <scope> --module <module>` to lay down the skeleton (nested `--module foo/bar` per
+        `AX_HIERARCHICAL_SPECS`); an existing file is filled in place, never re-scaffolded. Fill per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/module-tasks-index.xml")` (Tracker, Slug
+        Registry, intra-module DAG, shared content per `AX_TICKET_DEDUPLICATION`). Roll up the scope
+        tracker the same way — `sdd-new scope-index --scope <scope>` when `<scope>.3-tasks.md` is
+        missing, then fill per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/scope-tasks-index.xml")` — and
         the project index (`READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/project-tasks-index.xml")`).
         Then run `sdd-check --all .` (task-DAG: id-collisions · deps resolve · acyclic; tracker↔ticket sync;
         phase graph; exec-log) and resolve or consciously defer every finding per

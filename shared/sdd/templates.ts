@@ -12,6 +12,8 @@ export type ArtifactKind =
   | 'interface'
   | 'module'
   | 'task'
+  | 'module-index'
+  | 'scope-index'
   | 'portal';
 
 /**
@@ -1158,6 +1160,139 @@ const TASK_SECTIONS: SectionManifestEntry[] = [
 ];
 // #endregion END_TASK
 
+// #region START_MODULE_INDEX — specs/<scope>/<module...>/<module>.3-tasks.md (no SECTION anchors)
+const MODULE_INDEX_SKELETON = `# <module> — Tasks
+
+## Tracker Index
+| Task-ID | Title | Dependencies | Status | Reopens |
+|---------|-------|--------------|--------|---------|
+| <ACRONYM>-<slug> | <title> | <deps or —> | [ ] TODO | — |
+
+## Slug Registry
+<!-- one slug per line; this IS the uniqueness mechanism — the same slug in two branches collides on merge here, surfacing "same feature" instead of hiding it. Append-only. -->
+- <slug>
+
+## Intra-Module DAG
+\`\`\`mermaid
+graph TD
+  A[<slug-a>] --> B[<slug-b>]
+\`\`\`
+<!-- edge A → B = "A depends on B". Cross-module / cross-scope edges live one level up, not here. -->
+
+## Decision Log (module-task level)
+<!-- decomposition / planning decisions (ticket merges, deferred coverage, rule-activation overrides), ADR-compact. Local execution-time decisions stay in each ticket's own Decision Log. -->
+
+## Conventions
+Project-wide conventions (Execution-Log token vocabulary, Baseline Completion Rule, post-task audit hook, file-header) are declared once in \`specs/3-tasks.md\` and inherited here — not repeated.
+`;
+
+const MODULE_INDEX_SECTIONS: SectionManifestEntry[] = [
+  {
+    name: 'TRACKER_INDEX',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Task-ID/Title/Dependencies/Status/Reopens table — one row per ticket in this module.',
+  },
+  {
+    name: 'SLUG_REGISTRY',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Append-only list of every slug used in this module — the merge-collision uniqueness mechanism.',
+  },
+  {
+    name: 'INTRA_MODULE_DAG',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Mermaid graph of intra-module ticket dependencies (edge A --> B = "A depends on B").',
+  },
+  {
+    name: 'DECISION_LOG',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Decomposition/planning decisions (ticket merges, deferred coverage, rule-activation overrides), ADR-compact.',
+  },
+  {
+    name: 'CONVENTIONS',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Pointer to specs/3-tasks.md — project-wide conventions are declared once there, inherited here.',
+  },
+];
+// #endregion END_MODULE_INDEX
+
+// #region START_SCOPE_INDEX — specs/<scope>/<scope>.3-tasks.md (no SECTION anchors)
+const SCOPE_INDEX_SKELETON = `# Tasks: <scope>
+
+## Scope Spec
+- [Scope spec](./<scope>.spec.md)
+
+## Cascade Table
+Effective rules for this scope, from the Scope Graph (depends-on transitive closure). Tier order (low → high on collision): traversed-scopes → target-scope → module → phase.
+| Tier | coding | testing | architecture | infra |
+|------|--------|---------|--------------|-------|
+| infra-base (traversed) | typescript-rules | vitest-rules | | eslint-setup |
+| <scope> (target) | | | ports-adapters | |
+| module:<m> | | node-test | | |
+
+## Inter-Module DAG
+\`\`\`mermaid
+graph TD
+  A[<module-a>] --> B[<module-b>]
+\`\`\`
+
+## Tracker
+| Task-ID | Title | Module | Dependencies | Status | Reopens |
+|---------|-------|--------|--------------|--------|---------|
+| <ACR>-<slug> | <title> | <module> | <deps> | [ ] TODO | — |
+
+## Decision Log (scope task level)
+[D-NNN for scope-level decomposition / planning choices.]
+`;
+
+const SCOPE_INDEX_SECTIONS: SectionManifestEntry[] = [
+  {
+    name: 'SCOPE_SPEC_LINK',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Link to the co-located scope spec (./<scope>.spec.md).',
+  },
+  {
+    name: 'CASCADE_TABLE',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Effective rules for this scope from the Scope Graph depends-on transitive closure, by tier (traversed-scopes → target-scope → module → phase).',
+  },
+  {
+    name: 'INTER_MODULE_DAG',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Mermaid graph of inter-module dependencies within this scope.',
+  },
+  {
+    name: 'TRACKER',
+    required: true,
+    loadBearing: false,
+    fold: false,
+    fill: 'Task-ID/Title/Module/Dependencies/Status/Reopens rollup table — module tickets plus any scope-level tickets (infra/interface scopes with no modules).',
+  },
+  {
+    name: 'DECISION_LOG',
+    required: false,
+    loadBearing: false,
+    fold: false,
+    fill: 'Scope-level decomposition/planning decisions, D-NNN, ADR-compact.',
+  },
+];
+// #endregion END_SCOPE_INDEX
+
 // #region START_PORTAL — specs/README.md (no SECTION anchors)
 const PORTAL_SKELETON = `# <project-name>
 
@@ -1251,6 +1386,18 @@ export const TEMPLATES: Record<ArtifactKind, ArtifactTemplate> = {
     skeleton: TASK_SKELETON,
     sections: TASK_SECTIONS,
     pathPattern: 'specs/<scope>/<module>/<module>.task.<ACR>-<slug>.md',
+  },
+  'module-index': {
+    kind: 'module-index',
+    skeleton: MODULE_INDEX_SKELETON,
+    sections: MODULE_INDEX_SECTIONS,
+    pathPattern: 'specs/<scope>/<module...>/<module>.3-tasks.md',
+  },
+  'scope-index': {
+    kind: 'scope-index',
+    skeleton: SCOPE_INDEX_SKELETON,
+    sections: SCOPE_INDEX_SECTIONS,
+    pathPattern: 'specs/<scope>/<scope>.3-tasks.md',
   },
   portal: {
     kind: 'portal',

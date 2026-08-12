@@ -19,6 +19,8 @@ const FORMAT_HBS: Record<ArtifactKind, string> = {
   interface: 'interface-spec-structure.hbs',
   module: 'module-spec-structure.hbs',
   task: 'task-ticket-structure.hbs',
+  'module-index': 'module-tasks-index.hbs',
+  'scope-index': 'scope-tasks-index.hbs',
   portal: 'portal-structure.hbs',
 };
 

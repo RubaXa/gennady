@@ -28,6 +28,8 @@ const KNOWN_KINDS = [
   'interface',
   'module',
   'task',
+  'module-index',
+  'scope-index',
   'portal',
 ];
 
@@ -43,7 +45,7 @@ export function badInvocation(detail: string): NewOutcome {
     exitCode: 4,
     message: [
       `[sdd-new] ${ERR_CLI_SDD_NEW_BAD_INVOCATION}: ${detail}`,
-      '  expected: gennady sdd-new <kind> --scope <s> [--module <m>] [--id <ACR-slug>] [--out <path>]',
+      '  expected: gennady sdd-new <kind> --scope <s> [--module <m[/sub/sub]>] [--id <ACR-slug>] [--out <path>]',
       '  or:       gennady sdd-new --list',
       `  <kind> ∈ ${KNOWN_KINDS.join(' | ')}`,
     ].join('\n'),

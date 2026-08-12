@@ -3,4 +3,6 @@
       Hierarchy, not flat list. Sub-modules → nested structure: `specs/<scope>/<module>/<sub-module>/<sub-module>.spec.md`. Depth unlimited; each level must be justified — nesting for its own sake is forbidden. All specs are cross-linked.
 
       Growth is the decomposition trigger: a module that outgrows its cohesion splits into sub-modules and becomes a thin index over them, as a scope indexes its modules (`AX_SCOPE_STAYS_THIN`). The size limit is held by tooling, not prose — `sdd-check` flags an over-budget module spec and the `module` flow offers the operator decomposition (split the world) or compression (tighten the spec).
+
+      Held by tooling: `sdd-check` flags a decomposed module missing from its parent's links (`SDD_MODULE_NOT_IN_INDEX`).
     </Axiom>

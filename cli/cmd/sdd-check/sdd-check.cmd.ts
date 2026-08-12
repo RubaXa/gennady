@@ -21,12 +21,14 @@ import {
   checkReviewState,
   checkModuleGraph,
   checkScopeDeps,
+  checkSpecHierarchy,
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
   type Finding,
   type TicketRef,
   type TrackerRowRef,
+  type SpecEntry,
 } from '../../../shared/sdd/check.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
@@ -482,6 +484,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     }
     const ticketRefs: TicketRef[] = [];
     const trackerRowRefs: TrackerRowRef[] = [];
+    const specEntries: SpecEntry[] = [];
     const moduleEdgesByScope = new Map<string, { edges: GraphEdge[]; scopeFile: string }>();
     // Every ```mermaid block is validated through the real parser after the walk (collected here, parsed once mermaid+jsdom load lazily).
     const mermaidTargets: { file: string; content: string }[] = [];
@@ -509,6 +512,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
         if (specFlow === 'v2') findings.push(...checkSpecLanguage(file, content));
         findings.push(...checkReviewState(file, content));
         findings.push(...checkScopeDeps(file, content, portalEdges));
+        specEntries.push({ file, content, flowVersion: specFlow });
         // Module spec path .../specs/<scope>/<module>/.../<mod>.spec.md; group inter-module edges by scope for a per-scope cycle check (base-independent).
         const parts = file.split(sep);
         const si = parts.lastIndexOf('specs');
@@ -547,6 +551,7 @@ export async function run(rawArgs: string[]): Promise<CheckResult> {
     }
     findings.push(...checkTaskGraph(ticketRefs));
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
+    findings.push(...checkSpecHierarchy(specEntries));
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
     }

@@ -19,7 +19,17 @@ describe('templates registry', () => {
   it('carries every artifact kind', () => {
     assert.deepStrictEqual(
       new Set(ARTIFACT_KINDS),
-      new Set(['product', 'library', 'infrastructure', 'interface', 'module', 'task', 'portal'])
+      new Set([
+        'product',
+        'library',
+        'infrastructure',
+        'interface',
+        'module',
+        'task',
+        'module-index',
+        'scope-index',
+        'portal',
+      ])
     );
   });
 
