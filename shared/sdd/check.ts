@@ -8,6 +8,7 @@ import { legacyHeaderBody } from './anchor-inject.ts';
 import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
+import { SCOPE_KINDS, loadBearingSections, foldSections } from './templates.ts';
 
 /**
  * @purpose One audit finding.
@@ -163,11 +164,18 @@ export function checkTicket(file: string, content: string): Finding[] {
         );
       }
     }
-    if (isDone && hasActiveBlocker(logSec.content)) {
-      err(
-        'SDD_DONE_WITH_ACTIVE_BLOCKER',
-        'Status is DONE but the Execution Log ends with an unresolved BLOCKED.'
-      );
+    if (hasActiveBlocker(logSec.content)) {
+      if (isDone) {
+        err(
+          'SDD_DONE_WITH_ACTIVE_BLOCKER',
+          'Status is DONE but the Execution Log ends with an unresolved BLOCKED.'
+        );
+      } else {
+        warn(
+          'SDD_BLOCKER_OPEN',
+          'Execution Log ends with an unresolved 🛑 BLOCKED — no later ✅ RESOLVED. Resolve or explicitly reopen before the orchestrator relies on this ticket.'
+        );
+      }
     }
   }
   // #endregion END_EXEC_LOG
@@ -549,58 +557,28 @@ export function checkTrackers(tickets: TicketRef[], rows: TrackerRowRef[]): Find
 
 /**
  * @purpose Minimal required section-anchor skeleton per scope-type — the load-bearing sections only.
- * @invariant Keyed by the `scope-type` value; a spec may carry MORE sections (the format grows) but never fewer.
+ * @invariant Keyed by `scope-type`; a spec may carry MORE sections but never fewer. Derived from
+ * `shared/sdd/templates.ts`'s `loadBearing:true` sections per kind — see templates.ts docs.
  */
-export const REQUIRED_SECTIONS: Record<string, string[]> = {
-  product: [
-    'VISION',
-    'GOLDEN_DX',
-    'REQUIREMENTS_AND_CONSTRAINTS',
-    'ARCHITECTURE',
-    'DECISION_LOG',
-    'MODULE_MAP',
-  ],
-  library: [
-    'VISION',
-    'GOLDEN_DX',
-    'REQUIREMENTS_AND_CONSTRAINTS',
-    'PUBLIC_API_SURFACE',
-    'DECISION_LOG',
-  ],
-  infrastructure: ['VISION', 'TOOL_STACK', 'VERIFICATION_COMMANDS', 'DECISION_LOG'],
-  interface: [
-    'VISION',
-    'INTERFACE_DECLARATION',
-    'VERSIONING_POLICY',
-    'COMPATIBILITY_MATRIX',
-    'DECISION_LOG',
-  ],
-};
+export const REQUIRED_SECTIONS: Record<string, string[]> = Object.fromEntries(
+  SCOPE_KINDS.map((k) => [k, loadBearingSections(k)])
+);
 
 /**
  * @purpose v2 module-spec load-bearing sections (AX_MODULE_SPEC_FLOOR).
- * @invariant Applies only under flowVersion='v2'. Diagram presence is a separate check (SDD_NO_DIAGRAM_BLOCK), kept out to avoid a duplicate finding.
+ * @invariant v2-only; diagram presence is checked separately (SDD_NO_DIAGRAM_BLOCK). Derived from
+ * `shared/sdd/templates.ts` (module kind, `loadBearing:true` sections).
  */
-export const MODULE_REQUIRED_V2: string[] = [
-  'MODULE_VISION',
-  'MODULE_USAGE_EXAMPLE',
-  'ENTITY_INVENTORY',
-  'MODULE_CONTRACTS',
-];
+export const MODULE_REQUIRED_V2: string[] = loadBearingSections('module');
 
 /**
  * @purpose v2 heavy/reference sections whose detail must fold under `<details>` (AX_SPEC_PROGRESSIVE_DISCLOSURE) — the machine part of the two-part spec (module AND scope specs).
- * @invariant Checked only when present. Module- and scope-only names never collide. `PUBLIC_OPTIONS` is excluded — real specs carry it unfolded, already a short table.
+ * @invariant Checked only when present; `PUBLIC_OPTIONS` excluded (real specs carry it unfolded). Derived
+ * from `shared/sdd/templates.ts` — union of `fold:true` sections across scope-type kinds plus module.
  */
-export const FOLD_REQUIRED_V2: string[] = [
-  'ENTITY_SURFACES',
-  'MODULE_CONTRACTS',
-  'MODULE_DECISION_LOG',
-  'DECISION_LOG',
-  'BOOTSTRAP_REQUIREMENTS',
-  'COMPATIBILITY_MATRIX',
-  'EFFECTIVE_RULES',
-];
+export const FOLD_REQUIRED_V2: string[] = Array.from(
+  new Set([...SCOPE_KINDS, 'module' as const].flatMap((k) => foldSections(k)))
+);
 
 // Per-section hard line cap (v2 only) — the human-readable half of a spec must stay short; a section
 // that blows past this is reference/machine detail masquerading as prose and must decompose (split

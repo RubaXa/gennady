@@ -72,6 +72,23 @@ describe('checkTicket', () => {
     assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
   });
 
+  it('warns (not errors) on an open blocker while Status is not DONE', () => {
+    const c = CLEAN.replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS').replace(
+      '#### P1',
+      '#### P1\n- 🛑 BLOCKED waiting on operator'
+    );
+    const findings = checkTicket('t.md', c);
+    const blocker = findings.find((f) => f.code === 'SDD_BLOCKER_OPEN');
+    assert.ok(blocker, 'expected an SDD_BLOCKER_OPEN finding');
+    assert.strictEqual(blocker?.severity, 'warn');
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
+  it('does not warn when a non-DONE ticket has no open blocker', () => {
+    const c = CLEAN.replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS');
+    assert.ok(!codes(c).includes('SDD_BLOCKER_OPEN'));
+  });
+
   it('warns on DONE with leftover placeholders', () => {
     const c = CLEAN.replace('- **Task-ID:** cli-foo', '- **Task-ID:** cli-foo\n- **Note:** <TBD>');
     assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));

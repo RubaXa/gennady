@@ -213,6 +213,11 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/sdd-extract/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+
+    case 'sdd-new':
+      await import('./cmd/sdd-new/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'sdd-verify':
       await import('./cmd/sdd-verify/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -404,6 +409,10 @@ switch (command) {
 
   case 'sdd-extract':
     await import('./cmd/sdd-extract/index.ts');
+    break;
+
+  case 'sdd-new':
+    await import('./cmd/sdd-new/index.ts');
     break;
 
   case 'sdd-verify':
