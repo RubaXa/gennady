@@ -41,6 +41,6 @@
 
 ## 7. Execution Log
 
-| Round | Date | Status | Notes |
-|-------|------|--------|-------|
-| R1 | 2025-06-29 | PASS | All 3 commands registered in gennady.ts switch, AGENTS.md table, cmd/README.md. |
+| Round | Date       | Status | Notes                                                                           |
+| ----- | ---------- | ------ | ------------------------------------------------------------------------------- |
+| R1    | 2025-06-29 | PASS   | All 3 commands registered in gennady.ts switch, AGENTS.md table, cmd/README.md. |

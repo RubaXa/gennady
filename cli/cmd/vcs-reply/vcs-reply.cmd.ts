@@ -216,9 +216,9 @@ export async function main(opts: MainOpts = {}): Promise<{
   const host: string =
     vcsContext?.host ??
     opts.host ??
-    ((parseArgs(process.argv, { 'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true } })[
-      'vcs-host'
-    ] as string) ||
+    ((parseArgs(process.argv, {
+      'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
+    })['vcs-host'] as string) ||
       undefined) ??
     '';
   const token = opts.token ?? vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
