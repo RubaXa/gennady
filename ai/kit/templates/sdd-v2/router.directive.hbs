@@ -130,8 +130,10 @@
         assessment binds only after operator confirmation — defaults-first: present the proposed
         SCALE together with the classified intent as a pre-filled default the operator confirms or
         corrects, in the SAME exchange that resolves any intent ambiguity — one stop for both,
-        never a second one. Use the AskUserQuestion tool when available; otherwise
-        `QUESTION_FORMAT`. Message in Russian.
+        never a second one. This exchange is mandatory even when the intent is unambiguous from
+        state and the scale does not change the route — it is a named hard stop
+        (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
+        when available; otherwise `QUESTION_FORMAT`. Message in Russian.
 
         On confirmation write `intent:` and `scale:` into the session file (`SESSION_FILE_FORMAT`).
       </Action>

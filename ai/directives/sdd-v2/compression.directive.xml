@@ -47,6 +47,8 @@
 
       The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
 
+      Named hard stops — Approval Checks and the SCALE confirmation exchange — are exempt from the proceed rule; they always stop, however high the confidence.
+
       Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
     </Axiom>
 

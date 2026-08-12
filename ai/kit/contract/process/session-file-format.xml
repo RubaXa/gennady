@@ -7,7 +7,10 @@
 
   The `scale:` field carries the operator-confirmed SCALE (`AX_SCALE_PROPORTIONAL_DEPTH`) — the
   router writes it once at classification; every branch reads it as its depth parameter (interview
-  depth, number of design alternatives, weight of the verification tail).
+  depth, number of design alternatives, weight of the verification tail). For `intent: project-setup`
+  with no scope yet in play, the router still records `intent:` and the chosen branch at
+  classification; `scale:` appears once a scope exists to size (root's own STEP_1/STEP_2 approval
+  checks bind before any scope-level SCALE is meaningful).
 
   ```markdown
   # SDD session — <YYYY-MM-DD>

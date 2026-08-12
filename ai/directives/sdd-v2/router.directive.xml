@@ -40,8 +40,9 @@
       `npx tsx ~/Developer/gennady/cli/gennady.ts <cmd> <args>` — this runs from source in the gennady
       repo, and is rewritten to `npx gennady <cmd> <args>` by the path-normalizer when the directives are
       synced into a project. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
-      `sdd-sync`, `sdd-check`, `sdd-new`, `orient`. The `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`,
-      `/sdd-critic`, `/sdd-scaffold`) are not CLI tools — never prefix those with the CLI runner.
+      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `orient`, `lint`, `yagni`, `testcov`. The
+      `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
+      tools — never prefix those with the CLI runner.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
@@ -92,6 +93,8 @@
       - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
 
       The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Named hard stops — Approval Checks and the SCALE confirmation exchange — are exempt from the proceed rule; they always stop, however high the confidence.
 
       Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
     </Axiom>
@@ -225,7 +228,10 @@
 
       The `scale:` field carries the operator-confirmed SCALE (`AX_SCALE_PROPORTIONAL_DEPTH`) — the
       router writes it once at classification; every branch reads it as its depth parameter (interview
-      depth, number of design alternatives, weight of the verification tail).
+      depth, number of design alternatives, weight of the verification tail). For `intent: project-setup`
+      with no scope yet in play, the router still records `intent:` and the chosen branch at
+      classification; `scale:` appears once a scope exists to size (root's own STEP_1/STEP_2 approval
+      checks bind before any scope-level SCALE is meaningful).
 
       ```markdown
       # SDD session — <YYYY-MM-DD>
@@ -327,8 +333,10 @@
         assessment binds only after operator confirmation — defaults-first: present the proposed
         SCALE together with the classified intent as a pre-filled default the operator confirms or
         corrects, in the SAME exchange that resolves any intent ambiguity — one stop for both,
-        never a second one. Use the AskUserQuestion tool when available; otherwise
-        `QUESTION_FORMAT`. Message in Russian.
+        never a second one. This exchange is mandatory even when the intent is unambiguous from
+        state and the scale does not change the route — it is a named hard stop
+        (`AX_DIALOGUE_DISCIPLINE`), never skipped on high confidence. Use the AskUserQuestion tool
+        when available; otherwise `QUESTION_FORMAT`. Message in Russian.
 
         On confirmation write `intent:` and `scale:` into the session file (`SESSION_FILE_FORMAT`).
       </Action>

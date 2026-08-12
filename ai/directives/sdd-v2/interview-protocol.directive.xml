@@ -13,6 +13,10 @@
     Input — scope-type, calling-step focus, intake gathered so far. Output — a closed coverage
     map + the captured answers and decisions, returned to the calling step. This directive writes
     no artifact; control returns to the caller at CLOSE.
+
+    **Single-fork fast path.** When the caller hands the protocol exactly one named fork (not a
+    whole authoring step), skip `STEP_1_INIT_MAP` and `STEP_2_TRIAGE`; enter `STEP_3_ROUNDS` with a
+    one-item map (the fork), close it per `AX_STAKES_SPLIT` / `AX_ASK_TOOL_BINDING`, return.
   </Mission>
 
   <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION">
