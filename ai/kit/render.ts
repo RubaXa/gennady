@@ -5,6 +5,7 @@
 import Handlebars from 'handlebars';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { ARTIFACT_KINDS, TEMPLATES as SDD_TEMPLATES } from '../../shared/sdd/templates.ts';
 
 export const KIT = import.meta.dirname; // ai/kit
 export const TEMPLATES = join(KIT, 'templates');
@@ -53,15 +54,25 @@ export function formatDirective(out: string): string {
   return out.endsWith('\n') ? out : out + '\n';
 }
 
+/** Partial-name prefix under which each artifact kind's literal skeleton (shared/sdd/templates.ts) is registered. */
+export const SKELETON_PARTIAL_PREFIX = 'sdd-skeleton-';
+
 /**
  * Build an isolated Handlebars instance with every kit brick registered as a partial.
  * `extraPartials` (name → raw brick text) lets tests register fixtures through the same pipeline.
+ *
+ * Also registers one `sdd-skeleton-<kind>` partial per `shared/sdd/templates.ts` ArtifactKind, so
+ * contract bricks can pull the literal skeleton in via `{{> "sdd-skeleton-<kind>"}}` instead of
+ * duplicating it — `shared/sdd/templates.ts` stays the single source of truth for skeleton markdown.
  */
 export function createRenderer(extraPartials: Record<string, string> = {}) {
   const hb = Handlebars.create();
   for (const f of walk(KIT, (p) => p.endsWith('.xml') && !p.startsWith(TEMPLATES + '/'))) {
     const name = relative(KIT, f).replace(/\.xml$/, '');
     hb.registerPartial(name, normalizeBrick(readFileSync(f, 'utf8')));
+  }
+  for (const kind of ARTIFACT_KINDS) {
+    hb.registerPartial(`${SKELETON_PARTIAL_PREFIX}${kind}`, SDD_TEMPLATES[kind].skeleton);
   }
   for (const [name, raw] of Object.entries(extraPartials)) {
     hb.registerPartial(name, normalizeBrick(raw));

@@ -96,6 +96,9 @@
     <Step id="STEP_4_PORTAL_WRITE">
       <Goal>Write / update `specs/README.md`.</Goal>
       <Action>
+        When `specs/README.md` does not exist yet, create its skeleton via `sdd-new portal` first —
+        it never overwrites and prints the section manifest (which sections are REQUIRED and what to
+        fill); when it already exists, edit it in place, skip `sdd-new`. Content guidance per
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` and assemble the
         Portal to that format. Scope status (✅ / 🚧) comes from `sdd-state` (presence of
         `specs/<scope>/<scope>.spec.md`), not a manual stat — rows per `AX_SCOPE_TABLE_FORMAT`.

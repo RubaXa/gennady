@@ -176,8 +176,12 @@
     <Step id="STEP_6_FINAL_SPEC">
       <Goal>Emit the interface spec.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")` and
-        assemble `specs/<scope>/<scope>.spec.md` to it. Before writing, run the self-check pass per
+        In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
+        create its skeleton via `sdd-new interface --scope <scope>` — it never overwrites and prints
+        the section manifest (which sections are REQUIRED and what to fill); in `refine`/`pivot` mode
+        the file already exists, edit it in place, skip `sdd-new`. Content guidance per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
+        Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per
         `AX_LIVING_SPEC`. In `pivot` mode also
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`

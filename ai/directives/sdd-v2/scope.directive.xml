@@ -302,9 +302,14 @@
     <Step id="STEP_9_FINAL_SPEC">
       <Goal>Emit the scope spec.</Goal>
       <Action>
-        `READ_AND_USE_DIRECTIVE` the matching format — `ai/directives/sdd-v2/formats/product-spec-structure.xml`
-        (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library) — and assemble
-        `specs/<scope>/<scope>.spec.md` to it; Bootstrap Requirements is part of every spec. Keep the
+        In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet, create
+        its skeleton via `sdd-new product --scope <scope>` (or `sdd-new library --scope <scope>`) —
+        the command never overwrites and prints the section manifest (which sections are REQUIRED and
+        what to fill); in `refine`/`pivot` mode the file already exists, edit it in place, skip
+        `sdd-new`. Content guidance per `READ_AND_USE_DIRECTIVE` the matching format —
+        `ai/directives/sdd-v2/formats/product-spec-structure.xml`
+        (product) or `ai/directives/sdd-v2/formats/library-spec-structure.xml` (library); Bootstrap
+        Requirements is part of every spec. Keep the
         spec inside its bounded role per `AX_SCOPE_STAYS_THIN` — entity / contract / file-level detail
         belongs to module specs. Before writing, run the self-check pass per
         `AX_ARTIFACT_STYLE_SELF_CHECK`. In `refine` mode update sections in place per `AX_LIVING_SPEC`. In `pivot`

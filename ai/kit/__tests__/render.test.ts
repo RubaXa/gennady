@@ -84,8 +84,14 @@ describe('corpus — every real kit brick round-trips at an arbitrary depth', ()
     for (const f of bricks) {
       const name = relative(KIT, f).replace(/\.xml$/, '');
       const canonical = normalizeBrick(readFileSync(f, 'utf8'));
+      // A few bricks (contract/**) nest `{{> "sdd-skeleton-*"}}` partials inline, so comparing raw
+      // literal text would spuriously fail on those. Render canonical the same way real bricks are
+      // rendered — as a registered partial invoked via a standalone `{{> "tmp"}}` — so any nested
+      // partials expand identically on both sides of the comparison.
+      const { render: renderTmp } = createRenderer({ tmp: canonical });
+      const canonicalRendered = stripTrailingNewlines(renderTmp('{{> "tmp"}}\n'));
       const out = stripTrailingNewlines(render(`${UNIT}{{> "${name}"}}\n`));
-      if (out !== stripTrailingNewlines(shiftToDepth(canonical, 1))) fails.push(name);
+      if (out !== stripTrailingNewlines(shiftToDepth(canonicalRendered, 1))) fails.push(name);
     }
     assert.equal(fails.length, 0, `bricks with broken indent: ${fails.slice(0, 20).join(', ')}`);
     assert.ok(bricks.length > 100, `expected a real corpus, got ${bricks.length} bricks`);

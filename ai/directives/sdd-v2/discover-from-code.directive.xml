@@ -98,8 +98,10 @@
     <Step id="STEP_2_PERSIST_PICTURE">
       <Goal>Persist the picture — the primary, self-sufficient outcome.</Goal>
       <Action>
-        Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Assemble the
-        portal (Vision + Scope Graph + Scopes table) directly via
+        Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. `specs/README.md`
+        does not exist yet on this path — create its skeleton via `sdd-new portal` first (never
+        overwrites, prints the section manifest). Assemble the
+        portal (Vision + Scope Graph + Scopes table) to it via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/portal-structure.xml")` — do NOT re-enter
         `root` (it routed here — re-entry would loop). Recover the infra scope from the configs via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`. The repo now has a portal —
