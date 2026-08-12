@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { injectAnchors } from '../anchor-inject.ts';
+import { injectAnchors, scaffoldExecutionLog } from '../anchor-inject.ts';
 import { extractSection } from '../section.ts';
 
 const V1 = [
@@ -78,5 +78,46 @@ describe('injectAnchors', () => {
     const twice = injectAnchors(once);
     assert.deepStrictEqual(twice.injected, []);
     assert.strictEqual(twice.text, once);
+  });
+});
+
+const V1_META_ONLY = ['# Task: TSK-2 — No Log', '## 1. Meta', '- **Task-ID:** TSK-2'].join('\n');
+
+describe('scaffoldExecutionLog', () => {
+  it('scaffolds a section for a v1 ticket with a Meta header/anchor but no Execution Log at all', () => {
+    const { text: anchored } = injectAnchors(V1_META_ONLY);
+    const { text, scaffolded } = scaffoldExecutionLog(anchored, '2026-08-12');
+    assert.strictEqual(scaffolded, true);
+    assert.match(text, /<!--SECTION:EXECUTION_LOG-->/);
+    assert.match(text, /<!--\/SECTION:EXECUTION_LOG-->/);
+    assert.match(text, /## Execution Log/);
+    assert.match(text, /2026-08-12 migrated from v1 — no rounds\/phases recorded in v1 format/);
+
+    const log = extractSection(text, 'EXECUTION_LOG');
+    assert.strictEqual(log.status, 'ok');
+  });
+
+  it('does nothing when there is no Meta header/anchor at all', () => {
+    const noMeta = '# Just a doc\nSome text, no ticket structure.';
+    const { text, scaffolded } = scaffoldExecutionLog(noMeta, '2026-08-12');
+    assert.strictEqual(scaffolded, false);
+    assert.strictEqual(text, noMeta);
+  });
+
+  it('does nothing when an Execution Log section already exists (real content preserved)', () => {
+    const { text: anchored } = injectAnchors(V1);
+    const { text, scaffolded } = scaffoldExecutionLog(anchored, '2026-08-12');
+    assert.strictEqual(scaffolded, false);
+    assert.strictEqual(text, anchored);
+  });
+
+  it('is idempotent — scaffolding twice does not duplicate the section', () => {
+    const { text: anchored } = injectAnchors(V1_META_ONLY);
+    const once = scaffoldExecutionLog(anchored, '2026-08-12').text;
+    const twice = scaffoldExecutionLog(once, '2026-08-12');
+    assert.strictEqual(twice.scaffolded, false);
+    assert.strictEqual(twice.text, once);
+    const occurrences = once.split('<!--SECTION:EXECUTION_LOG-->').length - 1;
+    assert.strictEqual(occurrences, 1);
   });
 });

@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSy
 import { join, resolve, relative, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { injectAnchors } from '../../../shared/sdd/anchor-inject.ts';
+import { injectAnchors, scaffoldExecutionLog } from '../../../shared/sdd/anchor-inject.ts';
 import {
   scanMigrationUnits,
   scaffoldUnitFile,
@@ -265,7 +265,8 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
     targets = [resolve(file)];
   }
 
-  // #region START_APPLY — dry-run reports; --write mutates; injection is idempotent
+  // #region START_APPLY — dry-run reports; --write mutates; injection + Execution Log scaffold are both idempotent
+  const migrationDate = new Date().toISOString().slice(0, 10);
   const report: string[] = [];
   let changed = 0;
   for (const t of targets) {
@@ -277,17 +278,20 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
       report.push(`  ERR   ${rel} — cannot read`);
       continue;
     }
-    const { text, injected } = injectAnchors(content);
-    if (injected.length === 0) {
+    const { text: anchored, injected } = injectAnchors(content);
+    const { text, scaffolded } = scaffoldExecutionLog(anchored, migrationDate);
+    if (injected.length === 0 && !scaffolded) {
       report.push(`  skip  ${rel} — already anchored / no canonical sections`);
       continue;
     }
+    const parts = [...injected];
+    if (scaffolded) parts.push('EXECUTION_LOG (scaffolded — v1 ticket had none)');
     if (write) {
       writeFileSync(t, text, 'utf-8');
       changed++;
-      report.push(`  +     ${rel} — ${injected.join(', ')}`);
+      report.push(`  +     ${rel} — ${parts.join(', ')}`);
     } else {
-      report.push(`  would ${rel} — ${injected.join(', ')}`);
+      report.push(`  would ${rel} — ${parts.join(', ')}`);
     }
   }
   // #endregion END_APPLY

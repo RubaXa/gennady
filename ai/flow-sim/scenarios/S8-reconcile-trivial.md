@@ -29,7 +29,7 @@
   "version": "0.1.0",
   "scripts": {
     "typecheck": "<GENNADY_WORKTREE>/node_modules/.bin/tsc --noEmit",
-    "test": "node --import <GENNADY_WORKTREE>/node_modules/.bin/tsx --test src/app/quota/*.test.ts",
+    "test": "node --import <GENNADY_WORKTREE>/node_modules/tsx/dist/loader.mjs --test src/app/quota/*.test.ts",
     "lint": "npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --all ."
   }
 }
@@ -657,13 +657,13 @@ limit` на `used <= limit` (единственная содержательна
    несвязанного кода, чтобы гейт стал зелёным. <!-- sync with directive wording after batch --> НЕТ
    строки `tool: npx tsx ... sdd-verify --profile full` — тот вызов принадлежит `STEP_7_VERIFY`
    («`sdd-check` + `sdd-verify --profile full` must pass»), недостижимому на этой ветке.
-9. `FIX_SUMMARY_FORMAT` показан оператору — трейс содержит `show:`-строку, перечисляющую секции
-   формата (`Direct fixes`, `Spec updates`, `Tasks reopened`, `sdd-check`) ПЛЮС строку лёгкого гейта
-   (per Checkpoint 8 — `typecheck: pass`, `test: pass (N/N)`, включая новый граничный сценарий), с
-   «Direct fixes: 1 applied» (правка `simple-quota.adapter.ts` + регрессионный тест из Checkpoint 6a
-   как один сгруппированный direct-fix), «Spec updates: 0», «Tasks reopened: 0» — без этой строки
-   Checkpoint непроверяем (per `PROTOCOL.md`: «show: — ОБЯЗАТЕЛЬНА для каждого содержательного
-   сообщения оператору»).
+9. `FIX_SUMMARY_FORMAT` показан оператору — трейс содержит `show:`-строку с
+   «Trivial fixes: 1 applied» (правка `simple-quota.adapter.ts` + регрессионный тест из Checkpoint 6a
+   одной сгруппированной записью — слот тривиальной ветки контракта) и строкой лёгкого гейта
+   (`🔍 light gate: typecheck ✅ · tests ✅ (N/N)`, включая новый граничный сценарий); секции с нулевым
+   счётом опущены. Каждый изменённый на диске файл фигурирует ровно в одной секции — сводка с
+   нулевыми счётчиками при непустом диффе = VIOLATED. Без `show:`-строки Checkpoint непроверяем
+   (per `PROTOCOL.md`).
 10. Ни `STEP_3_PLAN`, ни `STEP_4_AGREE` не достигнуты — нет `step: STEP_3_PLAN`, нет
     `PLAN_TABLE_FORMAT`-показа, нет вопроса `QUESTION_FORMAT` по `AX_OPERATOR_AGREEMENT`: «Every fix
     must be operator-approved before execution... No edits are made before explicit operator "yes" /

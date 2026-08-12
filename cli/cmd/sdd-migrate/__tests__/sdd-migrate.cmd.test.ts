@@ -25,6 +25,14 @@ const V1 = [
   '- [x] DONE',
 ].join('\n');
 
+// A real v1 ticket that never had an `## Execution Log` header at all — the anchors-scaffold case.
+const V1_NO_EXEC_LOG = [
+  '# Task: TSK-2 — No Log',
+  '## 1. Meta',
+  '- **Task-ID:** TSK-2',
+  '- **Status:** [x] DONE',
+].join('\n');
+
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-migrate', ...rest];
 }
@@ -92,6 +100,48 @@ describe('SddMigrateCommand', () => {
     const o = await mod.run(argv('frobnicate', ticket));
     assert.strictEqual(o.ok, false);
     if (!o.ok) assert.strictEqual(o.exitCode, 4);
+  });
+
+  it('--write scaffolds a missing Execution Log for a v1 ticket that never had one', async () => {
+    const noLogTicket = join(dir, 'noexeclog.task-2.md');
+    writeFileSync(noLogTicket, V1_NO_EXEC_LOG, 'utf-8');
+
+    const o = await mod.run(argv('anchors', noLogTicket, '--write'));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.match(o.text, /EXECUTION_LOG \(scaffolded/);
+
+    const body = readFileSync(noLogTicket, 'utf-8');
+    assert.match(body, /<!--SECTION:META-->/);
+    assert.match(body, /<!--SECTION:EXECUTION_LOG-->/);
+    assert.match(body, /## Execution Log/);
+    assert.match(body, /migrated from v1 — no rounds\/phases recorded in v1 format/);
+  });
+
+  it('scaffolded Execution Log is idempotent — a second --write does not duplicate it', async () => {
+    const noLogTicket = join(dir, 'noexeclog2.task-2.md');
+    writeFileSync(noLogTicket, V1_NO_EXEC_LOG, 'utf-8');
+
+    await mod.run(argv('anchors', noLogTicket, '--write'));
+    const firstBody = readFileSync(noLogTicket, 'utf-8');
+
+    const o = await mod.run(argv('anchors', noLogTicket, '--write'));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.match(o.text, /skip .* already anchored/);
+
+    const secondBody = readFileSync(noLogTicket, 'utf-8');
+    assert.strictEqual(secondBody, firstBody);
+    const occurrences = secondBody.split('<!--SECTION:EXECUTION_LOG-->').length - 1;
+    assert.strictEqual(occurrences, 1);
+  });
+
+  it('a ticket that already has an Execution Log header is not touched by the scaffold', async () => {
+    // `ticket` fixture (V1) already carries a real Execution Log header.
+    const o = await mod.run(argv('anchors', ticket, '--write'));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) assert.doesNotMatch(o.text, /scaffolded/);
+
+    const body = readFileSync(ticket, 'utf-8');
+    assert.doesNotMatch(body, /migrated from v1 — no rounds\/phases recorded/);
   });
 
   describe('plan mode', () => {

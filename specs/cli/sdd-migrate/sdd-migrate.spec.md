@@ -41,13 +41,14 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name             | Type    | Purpose                                                             |
-| ---------------- | ------- | ------------------------------------------------------------------- |
-| `run`            | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all` |
-| `findV1Tickets`  | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                             |
-| `injectAnchors`  | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами  |
-| `badInvocation`  | Utility | Билдер диагностики (exit 4)                                         |
-| `MigrateOutcome` | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`            |
+| Name                   | Type    | Purpose                                                                                                      |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `run`                  | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                          |
+| `findV1Tickets`        | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                      |
+| `injectAnchors`        | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                           |
+| `scaffoldExecutionLog` | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще |
+| `badInvocation`        | Utility | Билдер диагностики (exit 4)                                                                                  |
+| `MigrateOutcome`       | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -168,6 +169,10 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 ### D-MG009 — Новый Task-ID: ACR верхним регистром
 
 - **Status:** active · **Was:** `NEW_ID_REGEX` требовал lowercase-ACR (`^[a-z]...`), что противоречило конвенции репо (`AX_TASK_RESOLUTION`, `sdd-new --id`) — `<ACR>-<slug>` с ACR в верхнем регистре. **Now:** `^[A-Z][A-Z0-9]*(-[a-z0-9]+)+$`. **Risk:** нет (только строгость грамматики меняется — существующие корректные ID репо уже были в верхнем регистре).
+
+### D-MG010 — `anchors --write` скаффолдит недостающий Execution Log для v1-тикетов
+
+- **Status:** active · **Was:** `isTicket()` (`shared/sdd/check.ts`) требует и META, и EXECUTION*LOG; `injectAnchors` только оборачивает *существующие\_ заголовки маркерами. Реальный v1-тикет с Meta-заголовком, но без `## Execution Log` вообще (не голый заголовок — секции физически нет), после `anchors --write` остаётся без EXECUTION_LOG-якоря — механически невидим для `isTicket()` → `SDD_TRACKER_ORPHAN_ROW`, STEP_7 гейт красный навсегда, обычный прогон `anchors` его не лечит. **Now:** новая чистая функция `scaffoldExecutionLog` (`shared/sdd/anchor-inject.ts`) — когда текст несёт Meta-заголовок/якорь, но не несёт `<!--SECTION:EXECUTION_LOG-->`, дописывает в конец файла заголовок `## Execution Log`, обёрнутый якорями, с одной честной строкой `- <дата миграции> migrated from v1 — no rounds/phases recorded in v1 format`. `sdd-migrate anchors --write` вызывает её сразу после `injectAnchors`; отчёт помечает такие тикеты `EXECUTION_LOG (scaffolded — v1 ticket had none)`. Идемпотентно — второй прогон видит существующий якорь и не трогает файл (`skip`). **Risk:** нет — тикеты, у которых Execution Log уже был (голый заголовок или уже заякоренный), не затрагиваются; скаффолд активен только при Meta-сигнатуре без единого EXECUTION_LOG-якоря.
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

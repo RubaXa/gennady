@@ -258,7 +258,13 @@
       <Goal>Make v1 tickets visible to the v2 tools.</Goal>
       <Action>
         Run `sdd-migrate anchors --all . --write` (deterministic — wraps canonical sections in
-        `<!--SECTION:-->` markers; idempotent, skips already-anchored). Verify with `sdd-check` (anchor
+        `<!--SECTION:-->` markers; idempotent, skips already-anchored). A v1 ticket missing a
+        mandatory v2 section (`EXECUTION_LOG`) gets it scaffolded with an honest placeholder —
+        `migrated from v1 — no rounds/phases recorded in v1 format` — never a fabricated Round; the tool never invents
+        content for a section it scaffolds, only marks the gap truthfully. Once anchored, the agent
+        brings each ticket's Meta to v2 form — `**Task-ID:**` / `**Status:**` / `**Purpose:**`,
+        replacing v1's own field labels — reading every value from the ticket's real v1 content;
+        never a guessed or invented status, round, or phase. Verify with `sdd-check` (anchor
         balance clean).
       </Action>
     </Step>
@@ -289,9 +295,13 @@
       <Action>
         Present the verified layer, in plain Russian, facts separate from proposals
         (`AX_EVIDENCE_HYGIENE`): units and their section/ticket maps, the derived ID map, which
-        decisions will merge (STEP_7), what gets simplified beyond a 1:1 copy, and the files+code the
-        ID replacement will touch (from `sdd-migrate ids --from-plan` DRY-RUN counts). The operator
-        confirms or edits (a scope to skip, a naming preference, a decision to keep) —
+        decisions will merge (STEP_7), what gets simplified beyond a 1:1 copy, the files+code the
+        ID replacement will touch (from `sdd-migrate ids --from-plan` DRY-RUN counts), and — for
+        every unit that lacks a `SCOPE_TYPE` anchor — the proposed scope-type token (`product` |
+        `library` | `infrastructure` | `interface`, read from the scope's own row in
+        `specs/README.md`, never guessed). The operator
+        confirms or edits (a scope to skip, a naming preference, a decision to keep, a scope-type
+        correction) —
         `AX_OPERATOR_AGREEMENT`; `H_OPERATOR_REJECTS_PLAN` on decline. On go-ahead set units
         `**Status:** APPROVED`. STOP.
       </Action>
@@ -340,7 +350,12 @@
         the source ALREADY says — per the Mission's out-of-scope line, migration only transforms what
         already exists: do not author a new section (Golden DX, FR, or any other) the source spec
         never had; a section the target structure calls for but the source lacks stays absent, marked
-        for `evolve`/`sdd-continue` to fill later, never silently invented here. Collapse converged
+        for `evolve`/`sdd-continue` to fill later, never silently invented here. The `SCOPE_TYPE`
+        anchor is the one exception, not a violation of it: structural v2 metadata, not content —
+        write it (or correct it) with the value the operator confirmed in STEP_4, for every scope
+        spec that lacks it; a scope spec without `SCOPE_TYPE` cannot be gated by
+        `REQUIRED_SECTIONS` at all, so leaving it unwritten would silently exempt the migrated spec
+        from the very check the restructure is supposed to make possible. Collapse converged
         decisions via
         `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/compression.directive.xml")` (superseded marked
         per `AX_PIVOT_REQUIRES_SUPERSESSION`, never silently dropped; merges propagated to code
@@ -358,7 +373,9 @@
       <Goal>Prove the migration is complete; retire the working layer.</Goal>
       <Action>
         Final gate, all green or `H_VERIFICATION_FAIL`:
-        `sdd-state` → `FLOW_VERSION=v2` · `sdd-check --all .` clean · zero original Task-IDs and zero
+        `sdd-state` → `FLOW_VERSION=v2` · `sdd-check --all .` clean (every migrated scope spec now
+        carries `SCOPE_TYPE` from STEP_7, so this run exercises the strict `REQUIRED_SECTIONS` gate
+        for real, not the dormant no-`SCOPE_TYPE` path) · zero original Task-IDs and zero
         `*.task-*.md` names remain (`sdd-migrate ids --from-plan` DRY-RUN reports nothing to do) ·
         every unit `**Status:** DONE` · per migrated module,
         `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean — the spec's

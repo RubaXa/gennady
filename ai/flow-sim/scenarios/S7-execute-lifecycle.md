@@ -89,12 +89,15 @@ scripts), `tsconfig.json` (`typeRoots`) и ссылки `Rules:` тикета.
 
 `.prettierrc.json`: `{ "semi": true, "singleQuote": true }`
 
-`node_modules/.bin/gennady` (пустой файл — то же соглашение, что в S1/S6: `sdd-state`-гейт
-readiness проверяет только наличие; сам `lint` реально бьёт в `<GENNADY_WORKTREE>/cli/gennady.ts`
-через `npx tsx`, не в этот стаб):
+`node_modules/.bin/gennady` — рабочий шим, НЕ пустой файл (пустой стаб был дефектом предыдущих
+прогонов S1/S6/S7: `sdd-verify --profile code` теперь зовёт `npx gennady yagni .`, которое резолвит
+именно этот бинарь — пустой невыполняемый файл давал `exit=126`; проверено живьём — с шимом ниже
+`npx gennady yagni .` из фикстуры даёт `exit=0`). Файл создаётся исполняемым (`chmod +x
+node_modules/.bin/gennady` — отдельный шаг рецепта сразу после записи файла):
 
-```
-
+```sh
+#!/bin/sh
+exec "<GENNADY_WORKTREE>/node_modules/.bin/tsx" "<GENNADY_WORKTREE>/cli/gennady.ts" "$@"
 ```
 
 `specs/README.md`:
@@ -112,7 +115,6 @@ readiness проверяет только наличие; сам `lint` реал
 graph TD
   app --> infra-base
 ```
-````
 
 ## Scopes
 
@@ -120,24 +122,29 @@ graph TD
 | ----------------------------------------------- | -------------- | ---- | ----------------------------- |
 | [`infra-base`](./infra-base/infra-base.spec.md) | infrastructure | ✅   | TS + node:test + gennady lint |
 | [`app`](./app/app.spec.md)                      | product        | ✅   | Сервис приветствий            |
-
 ````
 
 `specs/app/app.spec.md`:
-```markdown
+
+````markdown
 # Scope: app
 
 <!--SECTION:VISION-->
+
 ## Vision
+
 Приветствие пользователя по имени.
+
 <!--/SECTION:VISION-->
 
 <!--SECTION:OVERVIEW-->
+
 ## Overview
+
 ```mermaid
 flowchart LR
   caller -->|greet name| core
-````
+```
 
 <!--/SECTION:OVERVIEW-->
 
@@ -166,23 +173,25 @@ flowchart LR
 Единственный модуль — `greeting`. См. `specs/app/greeting/greeting.spec.md`.
 
 <!--/SECTION:HANDOFF-->
-
 ````
 
 `specs/app/app.3-tasks.md`:
+
 ```markdown
 # app — Tasks
 
 ## Cascade Table
-| Tier | Source |
-|---|---|
+
+| Tier         | Source                                       |
+| ------------ | -------------------------------------------- |
 | target-scope | specs/app/app.spec.md — Rules (нет активных) |
 
 ## Tracker Index
-| Task-ID | Title | Dependencies | Status | Reopens |
-|---|---|---|---|---|
-| APP-greet-greeting | Приветствие по имени | — | [ ] TODO | — |
-````
+
+| Task-ID            | Title                | Dependencies | Status   | Reopens |
+| ------------------ | -------------------- | ------------ | -------- | ------- |
+| APP-greet-greeting | Приветствие по имени | —            | [ ] TODO | —       |
+```
 
 `specs/app/greeting/greeting.spec.md`:
 
@@ -206,7 +215,6 @@ flowchart LR
   caller -->|greet name| GreeterPort
   GreeterPort --> EchoGreeterAdapter
 ```
-````
 
 <!--/SECTION:OVERVIEW-->
 
@@ -227,6 +235,7 @@ greeter.greet('Alice'); // 'Привет, Alice!'
 
 - **Depends on:** нет (единственный модуль)
 - **Provides to:** нет
+
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
 <!--SECTION:ENTITY_INVENTORY-->
@@ -274,6 +283,7 @@ _Это полный список сущностей модуля. Любое в
 **Side Effects:**
 
 - нет — чистая функция
+
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:FILE_STRUCTURE-->
@@ -299,27 +309,31 @@ src/app/greeting/
   - Language: `typescript`
   - Test framework: `node:test`
 - **Module Rules Additions:** None
-<!--/SECTION:HANDOFF-->
 
+<!--/SECTION:HANDOFF-->
 ````
 
 `specs/app/greeting/greeting.3-tasks.md`:
-```markdown
+
+````markdown
 # greeting — Tasks
 
 ## Tracker Index
-| Task-ID | Title | Dependencies | Status | Reopens |
-|---------|-------|--------------|--------|---------|
-| APP-greet-greeting | Приветствие по имени | — | [ ] TODO | — |
+
+| Task-ID            | Title                | Dependencies | Status   | Reopens |
+| ------------------ | -------------------- | ------------ | -------- | ------- |
+| APP-greet-greeting | Приветствие по имени | —            | [ ] TODO | —       |
 
 ## Slug Registry
+
 - greet-greeting
 
 ## Intra-Module DAG
+
 ```mermaid
 graph TD
   A[greet-greeting]
-````
+```
 
 ## Decision Log (module-task level)
 
@@ -328,27 +342,43 @@ graph TD
 ## Conventions
 
 Project-wide conventions declared once in `specs/3-tasks.md`.
-
 ````
 
 `specs/3-tasks.md`:
+
 ```markdown
 # Project — Tasks
 
 ## Scopes
-| Scope | Type | Tasks | Progress |
-|---|---|---|---|
-| app | product | [3-tasks](./app/app.3-tasks.md) | 0/1 |
+
+| Scope | Type    | Tasks                           | Progress |
+| ----- | ------- | ------------------------------- | -------- |
+| app   | product | [3-tasks](./app/app.3-tasks.md) | 0/1      |
 
 ## Conventions
+
 Execution-Log token vocabulary: `intro` / `yagni` / `decision` / `tried` / `discovery` / `insight` /
 `verified` / `ver` / `DONE`. Baseline Completion Rule: `sdd-verify --profile <kind>` + ticket §5
 commands green. Post-task audit hook: mandatory (`AX_AUDIT_HOOK`). File header: `@file` / `@consumers`
 / `@tasks`.
-````
+```
 
 Готовый тикет — `specs/app/greeting/greeting.task.APP-greet-greeting.md` (Status `[ ] TODO`,
-Execution Log пуст — ни одна фаза ещё не запускалась, ни один файл `src/` ещё не существует):
+Execution Log пуст — ни одна фаза ещё не запускалась, ни один Target File фаз P1/P2 ещё не
+существует — `src/app/greeting/` пуст). Единственный файл, уже существующий под `src/` на baseline —
+ambient-плейсхолдер `src/scaffold.d.ts` (не Target File никакой фазы, не сущность Entity Inventory):
+
+```typescript
+// @file: src/scaffold.d.ts
+// @consumers: none — ambient placeholder, keeps `tsc --noEmit` from TS18003 while src/ has no Target Files yet
+```
+
+Без него `tsc --noEmit` (через `"include": ["src"]` при пустом `src/`) падает `TS18003: No inputs
+were found` — проверено живьём (`exit=2`) на этой самой фикстуре до того, как файл был добавлен;
+`sdd-verify --profile code` соответственно уходил в 1 FAILED (`typecheck`) на нетронутом baseline.
+Файл коммитится как часть baseline вместе со всем остальным.
+
+`specs/app/greeting/greeting.task.APP-greet-greeting.md`:
 
 ```markdown
 # Task: APP-greet-greeting — Приветствие по имени
@@ -369,6 +399,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`, `unit`
 - **Deferred Runtime Scope:** None
+
 <!--/SECTION:META-->
 
 <!--SECTION:PHASES_OVERVIEW-->
@@ -396,6 +427,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
   - src/app/greeting/echo-greeter.adapter.ts
 - **Inputs:** none
 - **Exit:** `tsc --noEmit` проходит; `EchoGreeterAdapter` присваивается типу `GreeterPort`.
+
 <!--/SECTION:PHASE_P1-->
 
 <!--SECTION:PHASE_P2-->
@@ -409,6 +441,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
   - src/app/greeting/echo-greeter.adapter.test.ts
 - **Inputs:** P1 handoff
 - **Exit:** `node --test` — все 3 сценария зелёные.
+
 <!--/SECTION:PHASE_P2-->
 
 <!--SECTION:BDD-->
@@ -434,6 +467,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
 - **Given** экспортированный экземпляр `EchoGreeterAdapter`
 - **When** он присвоен переменной типа `GreeterPort`
 - **Then** TypeScript принимает присвоение на этапе компиляции
+
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
@@ -449,6 +483,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
 | `npm run format`        | ai/directives/coding/typescript-rules.xml |
 
 - **Task-specific Completion additions:** none beyond project baseline.
+
 <!--/SECTION:VERIFICATION-->
 
 <!--SECTION:TEST_COVERAGE-->
@@ -458,6 +493,7 @@ Execution Log пуст — ни одна фаза ещё не запускала
 - Scenario greets a non-empty name → `src/app/greeting/echo-greeter.adapter.test.ts` :: `greets a non-empty name`
 - Scenario rejects an empty name → `src/app/greeting/echo-greeter.adapter.test.ts` :: `rejects an empty name`
 - Scenario EchoGreeterAdapter satisfies GreeterPort → `src/app/greeting/echo-greeter.adapter.test.ts` :: `EchoGreeterAdapter satisfies GreeterPort`
+
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

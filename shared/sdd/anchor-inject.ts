@@ -111,3 +111,33 @@ export function injectAnchors(content: string): { text: string; injected: string
 
   return { text: out.join('\n'), injected };
 }
+
+/**
+ * @purpose Scaffold a minimal `## Execution Log` section onto a v1 ticket (Meta header/anchor present)
+ * that never had one, so `isTicket` stops missing it.
+ * @invariant Idempotent — a text that already carries the EXECUTION_LOG open marker is left untouched.
+ * @invariant Only fires when a Meta header/anchor is present; files with no Meta signature are not touched.
+ * @param content Ticket markdown, typically already run through `injectAnchors`.
+ * @param dateStr Migration date stamp for the scaffolded note line (caller-supplied — this stays pure).
+ * @returns The (possibly appended) text and whether a section was scaffolded.
+ */
+export function scaffoldExecutionLog(
+  content: string,
+  dateStr: string
+): { text: string; scaffolded: boolean } {
+  const hasMeta =
+    content.includes('<!--SECTION:META-->') || legacyHeaderBody(content, 'META') !== null;
+  const hasExecLog = content.includes('<!--SECTION:EXECUTION_LOG-->');
+  if (!hasMeta || hasExecLog) return { text: content, scaffolded: false };
+
+  const block = [
+    '',
+    '## Execution Log',
+    '<!--SECTION:EXECUTION_LOG-->',
+    `- ${dateStr} migrated from v1 — no rounds/phases recorded in v1 format`,
+    '<!--/SECTION:EXECUTION_LOG-->',
+  ].join('\n');
+
+  const trimmed = content.endsWith('\n') ? content.slice(0, -1) : content;
+  return { text: `${trimmed}\n${block}\n`, scaffolded: true };
+}

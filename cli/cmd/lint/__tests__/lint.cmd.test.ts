@@ -299,4 +299,72 @@ describe('LintCommand', () => {
       'Built is exported — must not be flagged unimplemented'
     );
   });
+
+  it('--spec on a spec with no Entity Inventory section is vacuously clean (direct mode)', async () => {
+    const specPath = writeFixture(
+      'no-inventory.spec.md',
+      ['# module: demo', '', 'No ENTITY_INVENTORY section in this spec at all.'].join('\n')
+    );
+    const filePath = writeFixture(
+      'any-export.ts',
+      [
+        '// @file: File with exports but no inventory to check against.',
+        '// @consumers: TestRunner',
+        '',
+        '/** @purpose Some export. */',
+        'export const Anything = 1;',
+        '',
+        '/** @purpose Another export. */',
+        'export const Something = 2;',
+      ].join('\n')
+    );
+
+    const report = await mod.run(['node', 'gennady', 'lint', `--spec=${specPath}`, filePath]);
+
+    assert.strictEqual(report.exitCode, 0);
+    assert.ok(
+      !report.errors.some((e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNDECLARED'),
+      'no Entity Inventory section means nothing to verify — must not flag every export'
+    );
+  });
+
+  it('--spec --inventory-reverse on a spec with an empty Entity Inventory table is vacuously clean', async () => {
+    const revDir = join(tmpDir, 'vacuous-rev-mod');
+    mkdirSync(revDir, { recursive: true });
+    const specPath = join(revDir, 'mod.spec.md');
+    writeFileSync(
+      specPath,
+      [
+        '# module: demo',
+        '<!--SECTION:ENTITY_INVENTORY-->',
+        '| Name | Type | Purpose |',
+        '|---|---|---|',
+        '<!--/SECTION:ENTITY_INVENTORY-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(revDir, 'code.ts'),
+      [
+        '// @file: Reverse sweep vacuous test file.',
+        '// @consumers: TestRunner',
+        '',
+        '/** @purpose Some export. */',
+        'export const Anything = 1;',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const report = await mod.run([
+      'node',
+      'gennady',
+      'lint',
+      `--spec=${specPath}`,
+      '--inventory-reverse',
+      revDir,
+    ]);
+
+    assert.strictEqual(report.exitCode, 0, JSON.stringify(report.errors));
+    assert.strictEqual(report.errors.length, 0, JSON.stringify(report.errors));
+  });
 });

@@ -131,6 +131,15 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       logger.warn(`[LintCommand#run] --spec unreadable: ${specPath}`);
     }
   }
+  // Vacuous truth: no Entity Inventory section (or an empty table) means there is nothing
+  // declared to reconcile against — checking every export against an empty set would flag
+  // all of them as undeclared, which is not the intent. Skip both directions and say so once.
+  const inventoryVacuous = declaredInventory !== null && declaredInventory.length === 0;
+  if (inventoryVacuous) {
+    console.log(
+      `ℹ️  [LintCommand#run] ${specPath} has no Entity Inventory section — nothing to verify`
+    );
+  }
   // #endregion END_INVENTORY_SPEC
 
   // --inventory-reverse with no explicit targets sweeps the module dir itself
@@ -268,7 +277,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...dbcResult.errors);
     totalAutoFixed += dbcResult.autoFixed;
 
-    if (declaredInventory !== null) {
+    if (declaredInventory !== null && !inventoryVacuous) {
       allErrors.push(...(await checkInventorySync(content, filePath, declaredInventory)));
       if (inventoryReverseDir) {
         for (const name of await collectExports(content, filePath)) implementedUnion.add(name);
@@ -284,8 +293,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   }
   // #endregion END_LINT_LOOP
 
-  // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir
-  if (inventoryReverseDir && declaredInventory !== null && specPath) {
+  // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir; vacuous inventory skips the sweep
+  if (inventoryReverseDir && declaredInventory !== null && specPath && !inventoryVacuous) {
     allErrors.push(...reverseUnimplemented(declaredInventory, implementedUnion, specPath));
   }
   // #endregion END_INVENTORY_REVERSE

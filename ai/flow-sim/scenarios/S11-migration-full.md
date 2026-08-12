@@ -145,9 +145,14 @@ Executor'у вручную. Executor НЕ коммитит от себя ни н
 заменить `TSK-01` в этом заголовке кода на новый slug-ID — не только в тикетах; путь взят внутри
 `cli/`, а не гипотетического `src/`, — `sdd-migrate ids` бьёт по фиксированному списку зон
 `ID_REPLACE_ZONES = ['specs', 'tasks', 'cli', 'shared', 'services', 'ai', 'e2e']`
-(`shared/sdd/id-replace.ts`), и файл вне этого списка инструмент молча не тронет):
+(`shared/sdd/id-replace.ts`), и файл вне этого списка инструмент молча не тронет; `@file`/`@consumers`
+заголовок добавлен сюда НАМЕРЕННО — без него `gennady lint` на этом файле бьёт
+`ERR_CLI_LINT_MISSING_FILE`/`ERR_CLI_LINT_MISSING_CONSUMERS` (`cli/cmd/lint/checks/file-header.check.ts`),
+шум, никак не связанный с тем, что проверяет Checkpoint 23/23a — фикстура его не должна producировать):
 
 ```ts
+// @file: demo core input validation — placeholder for the inventory-reverse checkpoint.
+// @consumers: N/A
 // @tasks: TSK-01
 
 export function validateInput(input: unknown): boolean {
@@ -166,7 +171,9 @@ router-preflight маршрут, что в S2 (`FLOW_VERSION=v1` + запрос 
 ## Operator Script
 
 1. На `STEP_4_ACK` (Approval Check по всему verified layer — units, Section/Ticket Map, derived ID
-   map, что смёржится в STEP_7, что коснётся кода) — ответ: «да, go, накатывай».
+   map, что смёржится в STEP_7, что коснётся кода, И предложенный scope-type для `demo` —
+   `product`, взятый из строки `demo` в `specs/README.md` Scopes-таблицы, где `Type` уже
+   `product`) — ответ: «да, go, накатывай, scope-type product подтверждаю».
 2. На вопрос оператору о снятии слоя `migration/` в конце `STEP_8_VERIFY» («With the operator's
 confirmation remove the `migration/` layer») — ответ: «да, удаляй migration/».
 
@@ -231,6 +238,24 @@ anchors --all . --write` (deterministic — wraps canonical sections in `<!--SEC
    `write:`-строка на `specs/demo/demo.spec.md` здесь была бы находкой (Executor якорит спеку раньше
    срока), а не ожидаемым поведением.
 
+9a. `STEP_2_ANCHORS` — оба v1-тикета не несли `## Execution Log` вовсе (фикстура: только `## Meta` +
+`## Description`), поэтому тот же `--write` обязан скаффолдить недостающую секцию с честной
+пометкой, дословно из Action: «A v1 ticket missing a mandatory v2 section (`EXECUTION_LOG`) gets
+it scaffolded with an honest placeholder — `migrated from v1 — no rounds/phases recorded in v1
+    format` — never a fabricated Round.» `write:`-diff обоих `core.task-0N.md` показывает новую
+секцию `<!--SECTION:EXECUTION_LOG--> ... <!--/SECTION:EXECUTION_LOG-->` с ровно этой строкой (дата
+подстановкой, не выдуманной) — никакого `### Round 1` / `#### P1` не появляется: в v1-источнике
+раундов и фаз не было, придумывать их запрещено тем же предложением Action. Сразу за скаффолдом —
+дословно: «Once anchored, the agent brings each ticket's Meta to v2 form — `**Task-ID:**` /
+`**Status:**` / `**Purpose:**`, replacing v1's own field labels — reading every value from the
+ticket's real v1 content.» `write:` того же тикета меняет `- Purpose: ...` / `- Module: ...` / `-
+    Status: done` (v1, plain dash-bullets) на `**Task-ID:** TSK-01` / `**Status:** [x] DONE` /
+`**Purpose:** базовая логика core-модуля demo` — значения читаются из реального v1-контента
+(`done` → `[x] DONE`, `in-progress` → `[~] IN_PROGRESS`), ни один статус не «улучшен» и не
+выдуман. Найдена строка `### Round N` / `#### P<N>` с содержательным текстом (не плейсхолдером) в
+скаффолде этого шага, либо Meta-поле со значением, не выводимым из показанного v1-текста
+тикета, → `VIOLATED`.
+
 10. `STEP_3_FILL_MAPS` — Section Map демо-спеки пришла пред-заполненной по трём заголовкам (`1.
 Vision` → `VISION`, `2. Architecture` → `ARCHITECTURE`, `3. Decision Log` → `DECISION_LOG`), а
     `4. Notes` осталась целью `UNMAPPED` и стала единственной строкой, которую правит агент —
@@ -271,8 +296,17 @@ Vision` → `VISION`, `2. Architecture` → `ARCHITECTURE`, `3. Decision Log` �
     simplified beyond a 1:1 copy, and the files+code the ID replacement will touch (from
     `sdd-migrate ids --from-plan` DRY-RUN counts).»
 
-14. `STEP_4_ACK` — hard stop, явное «да»/«go»/«ok» оператора, взятое из первого пункта Operator
-    Script, ДО любого `write:` вне `migration/` — дословно `AX_OPERATOR_AGREEMENT`: «Every fix must
+13a. `STEP_4_ACK` — в тот же `show:` добавлен предложенный scope-type для `demo` (у v1-спеки нет
+`SCOPE_TYPE`-якоря вовсе), дословно из Action: «for every unit that lacks a `SCOPE_TYPE` anchor —
+the proposed scope-type token (`product` | `library` | `infrastructure` | `interface`, read from
+the scope's own row in `specs/README.md`, never guessed).» Источник значения — строка `demo` в
+`specs/README.md` Scopes-таблице (`Type` = `product`), не догадка агента; трейс показывает `show:`
+с этим значением ДО `ask:`. Значение, не совпадающее с `specs/README.md`, либо взятое без
+цитирования источника → `VIOLATED`.
+
+14. `STEP_4_ACK` — hard stop, явное «да»/«go»/«ok» оператора (включая подтверждение scope-type,
+    чекпоинт 13a), взятое из первого пункта Operator Script, ДО любого `write:` вне `migration/` —
+    дословно `AX_OPERATOR_AGREEMENT`: «Every fix must
     be operator-approved before execution. The plan is shown as a table. No edits are made before
     explicit operator "yes" / "go" / "ok".» И из Action: «The operator confirms or edits ... —
     `AX_OPERATOR_AGREEMENT`; `H_OPERATOR_REJECTS_PLAN` on decline. On go-ahead set units `**Status:**
@@ -337,6 +371,15 @@ source lacks stays absent». `product-spec-structure.xml` предписывае
 `write:`-diff показывает содержательный текст под секцией, для которой в v1-источнике нет
 буквального материала.
 
+20b. `STEP_7_RESTRUCTURE` пишет `SCOPE_TYPE` как структурные метаданные, а не как «сочинённую»
+секцию — дословно: «The `SCOPE_TYPE` anchor is the one exception, not a violation of it: structural
+v2 metadata, not content — write it (or correct it) with the value the operator confirmed in
+STEP_4.» `write: specs/demo/demo.spec.md` (тот же перестроенный diff, что в Checkpoint 20) несёт
+`<!--SECTION:SCOPE_TYPE-->product<!--/SECTION:SCOPE_TYPE-->` — значение `product`, слово-в-слово то,
+что оператор подтвердил на `ask:`/`operator:` из Checkpoint 13a, не новая догадка на этом шаге.
+Отсутствие `SCOPE_TYPE`-якоря в перестроенной спеке, либо значение, отличное от подтверждённого на
+STEP_4, → `VIOLATED`.
+
 21. `STEP_7_RESTRUCTURE` — comprehension-pass в тот же проход, «plain Russian», дословно: «Rewrite
     operator prose to flat engineering Russian in the same pass, per `AX_MIGRATION_COMPREHENSION_PASS`
     — decode every empty label and code-only term from the actual code, replace every metaphor with
@@ -357,10 +400,16 @@ source lacks stays absent». `product-spec-structure.xml` предписывае
 22. `STEP_7_RESTRUCTURE` — гейт per scope, дословно: «Gate per scope: `sdd-check --all specs/<scope>`
     — strict v2 structure, folds, real mermaid parse, and the language lint
     (`SDD_LANGUAGE_CALQUE`) that gates the comprehension pass above mechanically — clean. Set the
-    unit `**Status:** DONE`.» `tool: sdd-check --all specs/demo → exit=0`.
+    unit `**Status:** DONE`.» `tool: sdd-check --all specs/demo → exit=0` — этот прогон уже видит
+    `SCOPE_TYPE` (Checkpoint 20b), поэтому `checkSpecStructure` реально проходит строгую
+    `REQUIRED_SECTIONS`-ветку для `product` (`shared/sdd/check.ts`, `extractSection(content,
+'SCOPE_TYPE')` → `ok`) — не путь «нет `SCOPE_TYPE` → ветка спит» (дормантный путь легален ТОЛЬКО
+    до этого шага, когда якоря у спеки ещё не было).
 
 23. `STEP_8_VERIFY` — финальный гейт, дословно целиком: «Final gate, all green or
-    `H_VERIFICATION_FAIL`: `sdd-state` → `FLOW_VERSION=v2` · `sdd-check --all .` clean · zero original
+    `H_VERIFICATION_FAIL`: `sdd-state` → `FLOW_VERSION=v2` · `sdd-check --all .` clean (every
+    migrated scope spec now carries `SCOPE_TYPE` from STEP_7, so this run exercises the strict
+    `REQUIRED_SECTIONS` gate for real, not the dormant no-`SCOPE_TYPE` path) · zero original
     Task-IDs and zero `*.task-*.md` names remain (`sdd-migrate ids --from-plan` DRY-RUN reports
     nothing to do) · every unit `**Status:** DONE` · per migrated module, `gennady
 lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean.» — четвёртая
@@ -370,24 +419,28 @@ lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean.» — ч
 
 23a. `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` из Checkpoint 23 —
 Executor ОБЯЗАН реально вызвать эту команду и записать `output:` под ней, а не подставить строку
-без вызова (не no-op в трейсе): `tool: npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint
-    --spec=specs/demo/core/core.spec.md --inventory-reverse cli/demo/core → exit=0` с `output:`,
-цитирующей реальный отчёт инструмента (число найденных проблем, 0 или конкретный список). В этой
-фикстуре `<module-spec>` — модульная спека `core`, которая на этом шаге, по построению карты
-(Checkpoint 11 — модульная co-location тикетов; `STEP_6_MOVE` создаёт `specs/demo/core/
-    core.3-tasks.md`, Checkpoint 18), физически существует по пути `specs/demo/core/core.spec.md`
-ТОЛЬКО если `STEP_7_RESTRUCTURE` (Checkpoint 20) действительно материализовал модульный
-под-спек с секцией Entity Inventory для `core` — если конструкция этой фикстуры этого не
-гарантирует (у v1-источника нет отдельного module-спека, только один общий
-`specs/demo/demo.spec.md`), Executor ДОЛЖЕН зафиксировать это несоответствие строкой `note:` и
-вызвать команду с фактически резолвящимся аргументом (`--spec=specs/demo/demo.spec.md`), а не
-тихо подставить путь, которого нет на диске. Проверка: команда либо (a) находит реальную Entity
-Inventory секцию и реально проверяет её против `cli/demo/core/validate.ts` (осмысленный
-non-vacuous гейт), либо (b), если у спеки нет секции Entity Inventory вовсе (продуктовая спека
-без модульной декомпозиции — легитимно per Checkpoint 20a, ничего не выдумано), `output:` явно
-называет этот факт («0 задекларированных сущностей — reverse sweep тривиально чист»), чтобы
-Verifier не спутал тривиальную чистоту с содержательной проверкой. Найдена подстановка «clean»
-без предшествующего реального `tool:`-вызова с этими флагами → `VIOLATED`.
+без вызова (не no-op в трейсе). В этой фикстуре `<module-spec>` — модульная спека `core`, которая на
+этом шаге, по построению карты (Checkpoint 11 — модульная co-location тикетов; `STEP_6_MOVE` создаёт
+`specs/demo/core/core.3-tasks.md`, Checkpoint 18), физически существует по пути
+`specs/demo/core/core.spec.md` ТОЛЬКО если `STEP_7_RESTRUCTURE` (Checkpoint 20) действительно
+материализовал модульный под-спек для `core` — если конструкция этой фикстуры этого не гарантирует
+(у v1-источника нет отдельного module-спека, только один общий `specs/demo/demo.spec.md`), Executor
+ДОЛЖЕН зафиксировать это несоответствие строкой `note:` и вызвать команду с фактически резолвящимся
+аргументом (`--spec=specs/demo/demo.spec.md`), а не тихо подставить путь, которого нет на диске.
+
+Эта фикстура — легитимно вакуумный случай (продуктовая спека без модульной декомпозиции, ничего не
+выдумано per Checkpoint 20a): у резолвящейся `--spec` нет секции `ENTITY_INVENTORY` вовсе, значит
+`parseEntityInventory` возвращает пустой список ДЛЯ ЛЮБОГО `--spec`-аргумента здесь — гейт
+структурно вакуумный независимо от того, module- или scope-спека резолвится. Реализация (`cli/cmd/
+lint/lint.cmd.ts`, `inventoryVacuous = declaredInventory !== null && declaredInventory.length === 0`)
+печатает в этом случае ровно: `ℹ️  [LintCommand#run] <spec> has no Entity Inventory section —
+nothing to verify` — и пропускает обе стороны сверки (`checkInventorySync` / `reverseUnimplemented`
+НЕ вызываются). Трейс обязан показать: `tool: npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint
+--spec=<резолвящийся spec> --inventory-reverse cli/demo/core → exit=0` РЕАЛЬНО вызванным, с
+`output:`, цитирующей именно эту `ℹ️`-строку (не переформулированной, не сокращённой до просто
+«clean») — так Verifier отличает тривиальную вакуумную чистоту от содержательной проверки. Найдена
+подстановка «clean»/«0 problems» без предшествующего реального `tool:`-вызова, ИЛИ `output:` без
+этой `ℹ️`-строки в вакуумном случае, → `VIOLATED`.
 
 24. `STEP_8_VERIFY` — снятие `migration/` только по подтверждению оператора, дословно: «With the
     operator's confirmation remove the `migration/` layer (its content is now embodied in the repo;
