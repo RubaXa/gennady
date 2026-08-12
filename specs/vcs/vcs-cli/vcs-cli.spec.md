@@ -130,18 +130,18 @@ gennady vcs-worktree --cleanup-all
 
 ## 4. Functional Requirements
 
-| ID    | Требование                                                                                |
-| ----- | ----------------------------------------------------------------------------------------- |
-| FR-01 | Все VCS CLI-команды используют `resolveVcsContext` для авто-детекта контекста             |
-| FR-02 | `VcsClient` создаётся инлайн: `new VcsGitlabClient({ baseUrl, token })`                   |
-| FR-03 | Парсинг аргументов через `parseArgs` из `shared/common/parse-args.ts`                     |
-| FR-04 | Все мутирующие команды поддерживают `--dry-run`/`--dry`                                   |
-| FR-05 | Все команды зарегистрированы в `cli/gennady.ts` через `switch(command)`                   |
-| FR-06 | Каждая команда имеет `help.ts` с `printHelp()` и `index.ts` с entry point                 |
-| FR-07 | Exit code: `0` — успех (включая идемпотентные кейсы), `1` — ошибка                        |
-| FR-08 | Токен: `GITLAB_PERSONAL_TOKEN` из env; fallback — ошибка с Usage                          |
+| ID    | Требование                                                                              |
+| ----- | --------------------------------------------------------------------------------------- |
+| FR-01 | Все VCS CLI-команды используют `resolveVcsContext` для авто-детекта контекста           |
+| FR-02 | `VcsClient` создаётся инлайн: `new VcsGitlabClient({ baseUrl, token })`                 |
+| FR-03 | Парсинг аргументов через `parseArgs` из `shared/common/parse-args.ts`                   |
+| FR-04 | Все мутирующие команды поддерживают `--dry-run`/`--dry`                                 |
+| FR-05 | Все команды зарегистрированы в `cli/gennady.ts` через `switch(command)`                 |
+| FR-06 | Каждая команда имеет `help.ts` с `printHelp()` и `index.ts` с entry point               |
+| FR-07 | Exit code: `0` — успех (включая идемпотентные кейсы), `1` — ошибка                      |
+| FR-08 | Токен: `GITLAB_PERSONAL_TOKEN` из env; fallback — ошибка с Usage                        |
 | FR-09 | `--vcs-host`/`--host` позволяет указать self-hosted GitLab (переопределяет авто-детект) |
-| FR-10 | Логирование через `#logger` (алиас на `service/logger/logger.ts`)                         |
+| FR-10 | Логирование через `#logger` (алиас на `service/logger/logger.ts`)                       |
 
 ## 5. Non-Functional Constraints
 
