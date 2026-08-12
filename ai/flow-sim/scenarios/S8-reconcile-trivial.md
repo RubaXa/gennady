@@ -35,7 +35,12 @@
 }
 ```
 
-`tsconfig.json`:
+`tsconfig.json` (`allowImportingTsExtensions` — фикстура импортирует `.ts` без транспиляции;
+`types: []` — не опираться на `@types/node`, фикстура не проходила `npm install`; `exclude` —
+`node:test`/`node:assert` в тест-файлах типизирует ЛИШЬ окружение прогона тестов через
+`node --import tsx`, а не `tsc`; без `exclude` тест-файл валит typecheck `TS2307` на `node:test`
+и `TS5097` на `.ts`-импорт. Форма проверена живым прогоном `npm run typecheck` в
+scratch-времянке — `exit=0`):
 
 ```json
 {
@@ -45,9 +50,12 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["**/*.test.ts"]
 }
 ```
 
@@ -535,6 +543,14 @@ test('SimpleQuotaAdapter satisfies QuotaPort', () => {
 });
 ```
 
+**Baseline-гейт.** Этот набор файлов (specs + tasks + код) при коммите как `fixture-baseline`
+проходит `npx tsx <GENNADY_WORKTREE>/cli/gennady.ts sdd-check --all .` ЧИСТО — никаких находок сверх
+самого бага (бага `sdd-check` не видит: контракт `QuotaPort` синтаксически на месте, тест зелёный,
+граница просто не покрыта). Если у Executor `sdd-check --all .` на baseline даёт находки — это
+дефект фикстуры, а не ожидаемое поведение; при правке фикстуры дальше держать этот инвариант (или,
+если находка неизбежна по конструкции фикстуры, явно перечислить её здесь, а не оставлять
+подразумеваемой).
+
 ## Entry
 
 Скилл: `/sdd-reconcile`. Первая реплика оператора (per `AX_OPERATOR_LANGUAGE` — operator-facing
@@ -591,6 +607,15 @@ H_AMBIGUOUS_MODE`.
    пока пуст — правка ещё не сделана, контракт/спека не подлежат изменению). Это ровно то, что
    требует `AX_PROBLEM_PROBES_SPEC`: «Any reported problem, bug, or freeform change is first a
    question about the spec, not a line to patch.» — патч не начат до вердикта пробника.
+   3a. Пробник — это вердикт ДИСПАТЧЕННОГО критика, а не самооценка Executor'а: Action `STEP_2_PROBE`
+   говорит буквально «Dispatch the critic», не «judge yourself». В трейсе Checkpoint 3 обязана
+   присутствовать явная смена роли (`note:`/`show:`, называющая роль критика, например
+   `role=critic-sensor`, аналогично конвенции S9) и/или отдельный вызов диспатча, ДО строки с
+   вердиктом — вердикт «bug / единичный сайт / blast radius пуст» не может появиться в трейсе как
+   прямое утверждение Executor'а без предшествующего диспатча. Self-probe (Executor вынес вердикт
+   пробника от своего имени, без диспатча критика) → `VIOLATED`, независимо от того, что сам вердикт
+   по содержанию совпал с ожидаемым — Verifier проверяет ПРОЦЕСС получения вердикта, не только его
+   результат.
 4. `STEP_2B_CLASSIFY` построил ownership map ПЕРЕД классификацией — per `AX_TASK_RESOLUTION`: «Every
    fix routes through the task that owns the affected file — ownership is resolved from the
    artifacts, before classification. `@tasks: <ACR>-<slug>[, ...]` in a file header names the owning
@@ -609,20 +634,35 @@ self-assessment"` — дословно первая ветка: «WHEN the class
 limit` на `used <= limit` (единственная содержательная правка, per «patch the code» из ветки
    Checkpoint 5); никакого `write:` под `quota.port.ts` (контракт не меняется — «contracts / specs
    untouched» подтверждено).
+   6a. Патч сопровождён регрессионным тестом на границу — есть `write:`-строка на
+   `src/app/quota/simple-quota.adapter.test.ts`, добавляющая сценарий на `used === limit` (например
+   `isWithinLimit(10, 10) → true`), а не только правка адаптера. Патч без покрывающего границу теста
+   оставляет тот же класс бага незамеченным следующим Round'ом (та же причина, по которой baseline
+   этой фикстуры прошёл Round 1 незамеченным — Fixture, «граничный случай ... не покрыт
+   существующими тестами») — Checkpoint нарушен, если `write:` под тестовым файлом отсутствует, даже
+   если сам светофор (Checkpoint 8) зелёный.
 7. `sdd-sync` вызван как часть действия этой же ветки («back-sync the spec (`sdd-sync`)») — в трейсе
    `tool: sdd-sync APP-check-quota` (или эквивалент без аргумента, если инструмент вызывается по
    области), но НЕТ строки `step: STEP_6_SYNC` — переход на отдельный шаг `STEP_6_SYNC` директивой
    не предписан внутри этой ветки (`STEP_6_SYNC` — шаг ПОЛНОГО хвоста, недостижимый здесь).
 8. Лёгкий гейт — ТОЛЬКО typecheck и тесты затронутых файлов, дословно «run the light gate
-   (typecheck + tests of the touched files)»: в трейсе `tool: npm run typecheck → exit=0` и `tool:
-npm run test → exit=0` (тест-скрипт фикстуры скоуплен на `src/app/quota/*.test.ts`), оба теперь
-   зелёные включая обновлённый граничный случай. НЕТ строки `tool: npx tsx ... sdd-verify
---profile full` — тот вызов принадлежит `STEP_7_VERIFY` («`sdd-check` + `sdd-verify --profile
-full` must pass»), недостижимому на этой ветке.
+   (typecheck + tests of the touched files)»: в трейсе `tool: npm run typecheck → exit=0` с
+   `output:`-строкой, подтверждающей чистый вывод, и `tool: npm run test → exit=0` с `output:`,
+   показывающей все сценарии зелёными включая новый граничный (Checkpoint 6a), — тест-скрипт
+   фикстуры скоуплен на `src/app/quota/*.test.ts`. Достижимый результат — ОДНО из двух: (a) light
+   gate зелёный целиком (ожидаемый исход на этой фикстуре — tsconfig/test-скрипт живьём проверены,
+   см. `## Fixture`); ИЛИ (b), только если сама директива к моменту прогона правлена под этот случай:
+   красный гейт → запись pre-existing failure в `FIX_SUMMARY_FORMAT` + предложение оператору отдельной
+   задачи на починку гейта, а не тихое замалчивание красного результата или самовольная правка
+   несвязанного кода, чтобы гейт стал зелёным. <!-- sync with directive wording after batch --> НЕТ
+   строки `tool: npx tsx ... sdd-verify --profile full` — тот вызов принадлежит `STEP_7_VERIFY`
+   («`sdd-check` + `sdd-verify --profile full` must pass»), недостижимому на этой ветке.
 9. `FIX_SUMMARY_FORMAT` показан оператору — трейс содержит `show:`-строку, перечисляющую секции
-   формата (`Direct fixes`, `Spec updates`, `Tasks reopened`, `sdd-check`), с «Direct fixes: 1
-   applied» (правка `simple-quota.adapter.ts`), «Spec updates: 0», «Tasks reopened: 0» — без этой
-   строки Checkpoint непроверяем (per `PROTOCOL.md`: «show: — ОБЯЗАТЕЛЬНА для каждого содержательного
+   формата (`Direct fixes`, `Spec updates`, `Tasks reopened`, `sdd-check`) ПЛЮС строку лёгкого гейта
+   (per Checkpoint 8 — `typecheck: pass`, `test: pass (N/N)`, включая новый граничный сценарий), с
+   «Direct fixes: 1 applied» (правка `simple-quota.adapter.ts` + регрессионный тест из Checkpoint 6a
+   как один сгруппированный direct-fix), «Spec updates: 0», «Tasks reopened: 0» — без этой строки
+   Checkpoint непроверяем (per `PROTOCOL.md`: «show: — ОБЯЗАТЕЛЬНА для каждого содержательного
    сообщения оператору»).
 10. Ни `STEP_3_PLAN`, ни `STEP_4_AGREE` не достигнуты — нет `step: STEP_3_PLAN`, нет
     `PLAN_TABLE_FORMAT`-показа, нет вопроса `QUESTION_FORMAT` по `AX_OPERATOR_AGREEMENT`: «Every fix

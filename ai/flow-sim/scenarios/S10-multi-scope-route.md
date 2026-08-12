@@ -7,7 +7,14 @@ v2-репозитории с READINESS=ready и живым порталом, г�
 
 ## Fixture
 
-`package.json`:
+Ниже `<GENNADY_WORKTREE>` — абсолютный путь к worktree gennady, который выдаёт оркестратор. Все
+`tool:`-вызовы gennady-команд в Checkpoints (`sdd-state`, `orient`, `sdd-check`, …) — сокращение для
+`npx tsx <GENNADY_WORKTREE>/cli/gennady.ts <cmd> <args>`, НЕ `gennady <cmd>` напрямую и НЕ чужой
+чекаут `~/Developer/gennady` (per `PROTOCOL.md`, «Правила исполнителя»).
+
+`package.json` (`typecheck`/`test`/`test:coverage`/`format` — инструментарий demo-фикстуры, не
+вызываются ни в одном Checkpoint этой карты; `lint` — реальная gennady-команда, поэтому
+репо-относительно):
 
 ```json
 {
@@ -17,7 +24,7 @@ v2-репозитории с READINESS=ready и живым порталом, г�
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "gennady lint --all .",
+    "lint": "npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --all .",
     "format": "prettier --check ."
   }
 }
@@ -87,6 +94,38 @@ graph TD
 
 Никакого `tasks/` каталога (v2), никакого `specs/.sdd-session.md` (нет сессии в процессе),
 никакого `specs/notes/` или прочих незарегистрированных scope.
+
+Реестр правил — четыре директории-болванки, по одному минимальному файлу в каждой (per
+`AX_SCOPE_RULES_DECLARATION`-категории `coding`/`testing`/`architecture`/`infra`:
+`ai/directives/<category>/<rule>.xml`),
+чтобы ЛЮБОЕ чтение реестра правил в этом прогоне (даже если по тексту карты оно не должно быть
+достигнуто до `## Stop`) находило файл внутри песочницы фикстуры, а не утекало в
+`ai/directives/coding/` etc. реального `<worktree>` (запрещено `PROTOCOL.md`: «Реестр правил и любые
+файлы проекта читать ТОЛЬКО внутри песочницы фикстуры»):
+
+`ai/directives/coding/typescript-rules.xml`:
+
+```xml
+<Rule id="TS_BASE" type="coding"><Text>Строгий TypeScript, без `any`.</Text></Rule>
+```
+
+`ai/directives/testing/vitest-rules.xml`:
+
+```xml
+<Rule id="VITEST_BASE" type="testing"><Text>Тесты — `vitest run`, coverage — `vitest run --coverage`.</Text></Rule>
+```
+
+`ai/directives/architecture/module-rules.xml`:
+
+```xml
+<Rule id="MODULE_BASE" type="architecture"><Text>Модуль = Port + Adapter, без прямых импортов между модулями.</Text></Rule>
+```
+
+`ai/directives/infra/lint-rules.xml`:
+
+```xml
+<Rule id="LINT_BASE" type="infra"><Text>`gennady lint --all .` — без предупреждений.</Text></Rule>
+```
 
 ## Entry
 

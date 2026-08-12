@@ -16,7 +16,23 @@ dry-run; `STEP_1_LAYER` — первый `--write`; `STEP_4_ACK` цитируе�
 Mission директивы прямо требует «under git (baseline first — every step is revertible)» — без
 коммита-баз этот инвариант не проверить, а `git mv` без репозитория не работает.
 
-`package.json`:
+**Легальные коммиты внутри прогона.** Кроме `fixture-baseline` (ДО флоу), директива сама коммитит
+через `STEP_6_MOVE` (`git mv` внутри `sdd-migrate move --scope demo --write`) — это ЕДИНСТВЕННЫЙ
+дополнительный коммит/индекс-эффект, легальный внутри этого прогона, и он принадлежит инструменту, не
+Executor'у вручную. Executor НЕ коммитит от себя ни на одном шаге (ни после `STEP_1_LAYER`, ни после
+`STEP_5_IDS`, ни после `STEP_7_RESTRUCTURE`) — рабочее дерево между `git mv` и финальным `## Stop`
+остаётся uncommitted, `git diff`/`git status` читаются как «что сделал флоу с момента baseline» одним
+непрерывным диффом (кроме самого `git mv`, зафиксированного инструментом). Ручной промежуточный
+коммит, слитый по нескольким шагам, — находка («Импровизации», `PROTOCOL.md`), а если он слил move
+(`git mv`) с restructure — `VIOLATED` по данному правилу (см. `PROTOCOL.md`, «Правила исполнителя»).
+
+`package.json` (`typecheck`/`test`/`test:coverage`/`format` — инструментарий demo-фикстуры, ни один
+из них не вызывается ни в одном Checkpoint этой карты, оставлены как есть, дословно фикстуре не важен
+их путь; `lint` — реальная gennady-команда, поэтому репо-относительно, как везде в этой карте: все
+`tool:`-вызовы `sdd-migrate`/`sdd-check`/`sdd-state`/`sdd-sync`/`lint` ниже — это сокращение для
+`npx tsx <GENNADY_WORKTREE>/cli/gennady.ts <cmd> <args>`, НЕ `gennady <cmd>` напрямую и НЕ чужой
+чекаут `~/Developer/gennady`; `<GENNADY_WORKTREE>` — абсолютный путь к worktree gennady, который
+выдаёт оркестратор):
 
 ```json
 {
@@ -26,13 +42,14 @@ Mission директивы прямо требует «under git (baseline first
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "gennady lint --all .",
+    "lint": "npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint --all .",
     "format": "prettier --check ."
   }
 }
 ```
 
-`node_modules/.bin/gennady` (пустой файл):
+`node_modules/.bin/gennady` (пустой файл — гейт readiness проверяет только наличие; сам `gennady`
+вызывается через `npx tsx <GENNADY_WORKTREE>/cli/gennady.ts`, не через этот стаб):
 
 ```
 
@@ -192,7 +209,7 @@ sdd-migrate plan --all . --write`, дословно из Action: «Run `sdd-migr
    Inventory — facts a rescan can re-derive; a Section Map pre-filled by curated heading rules,
    `UNMAPPED` rows left for the agent; agent-filled Ticket Map / Diagram Plan; a per-unit step
    checklist) plus `migration/README.md` (the global G1–G8 order and the unit table).» `write:
-migration/demo/demo.migration.md`, `write: migration/README.md`.
+migration/demo/demo.spec.migration.md`, `write: migration/README.md`.
 
 7. `STEP_1_LAYER` — обоснование «файлы, не чат» показано оператору (по-русски, `AX_OPERATOR_LANGUAGE`)
    и зафиксировано `show:`/`note:`, отражающим ровно эту причину — дословно источник: «Explain to the
@@ -206,8 +223,13 @@ migration/demo/demo.migration.md`, `write: migration/README.md`.
 9. `STEP_2_ANCHORS` — `tool: sdd-migrate anchors --all . --write`, дословно: «Run `sdd-migrate
 anchors --all . --write` (deterministic — wraps canonical sections in `<!--SECTION:-->` markers;
    idempotent, skips already-anchored). Verify with `sdd-check` (anchor balance clean).» — в трейсе
-   `tool: sdd-check ...` сразу после, `write:` затрагивает `specs/demo/demo.spec.md` и оба
-   `core.task-0N.md` (канонические секции обёрнуты якорями).
+   `tool: sdd-check ...` сразу после, `write:` затрагивает ТОЛЬКО оба `core.task-0N.md` (тикеты) —
+   ни одной `write:`-строки на `specs/demo/demo.spec.md` НЕТ на этом шаге. `sdd-migrate anchors`
+   якорит тикеты (`tasks/**/*.task-*.md`), не спеки — это подтверждает уже сам `STEP_0_SCAN`
+   (Checkpoint 3): «`sdd-migrate anchors --all .` (DRY-RUN — which **tickets** would be anchored)»,
+   без слова «specs». Якоря спеки — результат `STEP_7_RESTRUCTURE` (Checkpoint 20), не этого шага;
+   `write:`-строка на `specs/demo/demo.spec.md` здесь была бы находкой (Executor якорит спеку раньше
+   срока), а не ожидаемым поведением.
 
 10. `STEP_3_FILL_MAPS` — Section Map демо-спеки пришла пред-заполненной по трём заголовкам (`1.
 Vision` → `VISION`, `2. Architecture` → `ARCHITECTURE`, `3. Decision Log` → `DECISION_LOG`), а
@@ -219,8 +241,22 @@ Vision` → `VISION`, `2. Architecture` → `ARCHITECTURE`, `3. Decision Log` �
 11. `STEP_3_FILL_MAPS` — заполнен Ticket Map по правилу из Meta.Purpose: `TSK-01` →
     `DEMO-core-init`, `TSK-02` → `DEMO-validate-input` — дословно: «fill the **Ticket Map**
     (`<ACR>-<slug>` from `Meta.Purpose`, kebab-case, unique repo-wide — the same slug twice means
-    «one feature»; destination computed from the ID).» `write: migration/demo/demo.migration.md`
-    обновлён (Status → `MAPPED`).
+    «one feature»; destination computed from the ID).» `write: migration/demo/demo.spec.migration.md`
+    обновлён (Status → `MAPPED`). Форма ID — `<ACR>-<slug>` с ВЕРХНИМ ACR (`DEMO-...`), дословно по
+    `STEP_3_FILL_MAPS`: «New ID `<ACR>-<slug>` — `ACR` UPPERCASE, `slug` kebab-case». <!-- sync with
+    directive wording after batch --> Известная зависимость этой карты: на момент правки этой карты
+    `NEW_ID_REGEX` в `shared/sdd/migration-plan.ts` (`/^[a-z][a-z0-9]*(-[a-z0-9]+)+$/`) принимает
+    ТОЛЬКО lowercase, что противоречит и этому тексту директивы, и собственному сообщению об ошибке
+    инструмента («ACR — верхний регистр»); карта фиксирует ЦЕЛЕВУЮ, директивно-верную форму
+    (`DEMO-core-init`), предполагая, что регэксп починен под директиву (а не наоборот) — если живой
+    прогон карты бьётся о `MIG_BAD_SLUG` на этом шаге из-за регистра, это находка про рассинхрон
+    код/директива, а не про Executor'а. Ticket Map также назначает destination
+    `specs/demo/core/core.task.<newId>.md` (модульная co-location, per Meta `Module: core` обоих
+    тикетов) — деталь-РЕШЕНИЕ ЭТОЙ карты, не единственно легальная форма: `verifyUnitFile` проверяет
+    destination по ФОРМЕ (`specs/<scope>/**/*.task.<newId>.md`), не по точному пересчёту — плоское
+    назначение `specs/demo/demo.task.<newId>.md` было бы равно легальным. Карта фиксирует модульную
+    co-location, потому что оба тикета уже несут `Module: core` в v1 Meta — согласованно с их
+    реальным домом в коде (`cli/demo/core/`).
 
 12. `STEP_3_FILL_MAPS` — гейт: `tool: sdd-migrate plan --verify → exit=0`, дословно: «Gate:
     `sdd-migrate plan --verify` — inventory unchanged, maps complete, zero `UNMAPPED` targets
@@ -267,7 +303,14 @@ ids --from-plan --write` (the map is derived from the approved Ticket Maps). The
     `<module>.3-tasks.md` + `<scope>.3-tasks.md` from ticket Meta (`MODULE_TASKS_INDEX_STRUCTURE` /
     `SCOPE_TASKS_INDEX_STRUCTURE`; the Cascade Table slot stays for the agent), and removes the
     emptied `tasks/<scope>/`.» `write: specs/demo/core/core.3-tasks.md`, `write:
-specs/demo/demo.3-tasks.md`; `tasks/demo/` больше не существует на диске (пусто → удалён).
+specs/demo/demo.3-tasks.md`; `tasks/demo/` больше не существует на диске (пусто → удалён) —
+    ЭТО СНЯТИЕ АВТОМАТИЧЕСКОЕ, часть эффекта одного и того же `tool: sdd-migrate move --scope demo
+    --write` (Checkpoint 17) — дословно «no separate cleanup step». В трейсе НЕ должно быть отдельной
+    строки `tool: rm -rf tasks/demo` / `rmdir tasks/demo` / любого ручного удаления Executor'ом —
+    если такая строка есть, это `VIOLATED`: Executor подстраховался вручную там, где директива прямо
+    называет автоматику инструмента, и ручное удаление ДО завершения `move` рискует стереть
+    неперенесённые тикеты, если `move` для scope блокирован (см. Action: «A blocked move ... stops
+    that scope, not the run»).
 
 19. `STEP_6_MOVE` — мгновенный флип flow-версии именно этого scope, дословно из `ReferenceData`:
     «Together (index present + tasks dir gone) that mechanically flips the scope to v2 —
@@ -279,7 +322,20 @@ specs/demo/demo.3-tasks.md`; `tasks/demo/` больше не существуе�
     the per-unit semantic work.» `write: specs/demo/demo.spec.md` перестроен: «target section order
     from the scope-type's `*-spec-structure.xml` (general → specific, arc42/C4), headings without
     numbers, heavy sections folded under `<details>`, the Overview section carrying its diagram per
-    the Diagram Plan.»
+    the Diagram Plan.» Здесь же (не на `STEP_2_ANCHORS`) перестроенный `specs/demo/demo.spec.md`
+    впервые несёт `<!--SECTION:-->`-якоря на своих канонических секциях — восполняет то, что
+    Checkpoint 9 явно исключил из `STEP_2_ANCHORS`.
+
+20a. `STEP_7_RESTRUCTURE` ничего не сочинил сверх исходника — дословно из Mission (out-of-scope
+строка): «migration only transforms what already exists: do not author a new section (Golden DX,
+FR, or any other) the source spec never had; a section the target structure calls for but the
+source lacks stays absent». `product-spec-structure.xml` предписывает секции вроде `GOLDEN_DX`,
+`PROJECT_TYPE`, `SCOPE_DEPENDENCIES`, `BOOTSTRAP_REQUIREMENTS`, `HANDOFF` — ни у одной из них нет
+материала в v1-источнике (Vision/Architecture/Decision Log/Notes, ничего больше) → перестроенный
+`specs/demo/demo.spec.md` НЕ содержит текста под этими заголовками (секция может остаться
+структурно предусмотренной, но пустой/absent — не заполненной выдумкой). Checkpoint нарушен, если
+`write:`-diff показывает содержательный текст под секцией, для которой в v1-источнике нет
+буквального материала.
 
 21. `STEP_7_RESTRUCTURE` — comprehension-pass в тот же проход, «plain Russian», дословно: «Rewrite
     operator prose to flat engineering Russian in the same pass, per `AX_MIGRATION_COMPREHENSION_PASS`
@@ -287,6 +343,16 @@ specs/demo/demo.3-tasks.md`; `tasks/demo/` больше не существуе�
     the literal mechanism, never guess (code / IDs / status tokens / BDD keywords / paths stay
     English).» — итоговый текст «4. Notes» (разрешённый в чекпоинте 10) отражён в перестроенной
     секции без метафор и без англицизмов не по делу.
+
+21a. Правка Decision Log только через supersession, никогда in-place — дословно из `STEP_7_RESTRUCTURE`:
+«a Decision Log entry's TEXT is changed only through supersession, never edited in place», per
+`AX_PIVOT_REQUIRES_SUPERSESSION`. Эта фикстура несёт ровно один активный decision (`D-001 — Один
+    модуль на старте`, Status `active`) — легитимная compression-обработка на этом шаге НЕ трогает
+его текст напрямую: если `D-001` остаётся тем же decision (сжатие/сворачивание формата секции —
+легально), `write:`-diff может менять ОБЁРТКУ (fold под `<details>`), но не переписывать `Why`/
+`Status` в том же `D-001` без нового `D-NNN` с `Supersedes: D-001` и `Was → Now`. Правка текста
+`D-001` без появления нового ID + `Supersedes` → `VIOLATED` — независимо от того, что новый текст
+может быть содержательно лучше.
 
 22. `STEP_7_RESTRUCTURE` — гейт per scope, дословно: «Gate per scope: `sdd-check --all specs/<scope>`
     — strict v2 structure, folds, real mermaid parse, and the language lint
@@ -302,11 +368,32 @@ lint --spec=<module-spec> --inventory-reverse <module-code-dir>` clean.» — ч
     «нечего делать» (контраст с реальным `--write` в чекпоинте 15). `halt: H_VERIFICATION_FAIL` НЕ
     встречается — гейт зелёный.
 
+23a. `gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir>` из Checkpoint 23 —
+Executor ОБЯЗАН реально вызвать эту команду и записать `output:` под ней, а не подставить строку
+без вызова (не no-op в трейсе): `tool: npx tsx <GENNADY_WORKTREE>/cli/gennady.ts lint
+    --spec=specs/demo/core/core.spec.md --inventory-reverse cli/demo/core → exit=0` с `output:`,
+цитирующей реальный отчёт инструмента (число найденных проблем, 0 или конкретный список). В этой
+фикстуре `<module-spec>` — модульная спека `core`, которая на этом шаге, по построению карты
+(Checkpoint 11 — модульная co-location тикетов; `STEP_6_MOVE` создаёт `specs/demo/core/
+    core.3-tasks.md`, Checkpoint 18), физически существует по пути `specs/demo/core/core.spec.md`
+ТОЛЬКО если `STEP_7_RESTRUCTURE` (Checkpoint 20) действительно материализовал модульный
+под-спек с секцией Entity Inventory для `core` — если конструкция этой фикстуры этого не
+гарантирует (у v1-источника нет отдельного module-спека, только один общий
+`specs/demo/demo.spec.md`), Executor ДОЛЖЕН зафиксировать это несоответствие строкой `note:` и
+вызвать команду с фактически резолвящимся аргументом (`--spec=specs/demo/demo.spec.md`), а не
+тихо подставить путь, которого нет на диске. Проверка: команда либо (a) находит реальную Entity
+Inventory секцию и реально проверяет её против `cli/demo/core/validate.ts` (осмысленный
+non-vacuous гейт), либо (b), если у спеки нет секции Entity Inventory вовсе (продуктовая спека
+без модульной декомпозиции — легитимно per Checkpoint 20a, ничего не выдумано), `output:` явно
+называет этот факт («0 задекларированных сущностей — reverse sweep тривиально чист»), чтобы
+Verifier не спутал тривиальную чистоту с содержательной проверкой. Найдена подстановка «clean»
+без предшествующего реального `tool:`-вызова с этими флагами → `VIOLATED`.
+
 24. `STEP_8_VERIFY` — снятие `migration/` только по подтверждению оператора, дословно: «With the
     operator's confirmation remove the `migration/` layer (its content is now embodied in the repo;
     git history keeps the record).» — `ask:`/`operator:` пара берёт второй (последний) пункт
     Operator Script, и только ПОСЛЕ ответа появляется `write:` (удаление) на `migration/README.md` и
-    `migration/demo/demo.migration.md`.
+    `migration/demo/demo.spec.migration.md`.
 
 25. Финальная строка перед стопом — дословно: «Return control to the caller — script readiness is
     the router's separate gate.» — трейс заканчивается `stop: per-map — <условие Stop дословно>`, ни

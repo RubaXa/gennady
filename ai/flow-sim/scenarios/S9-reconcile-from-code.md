@@ -596,12 +596,27 @@ Entity Inventory `specs/remind/scheduler/scheduler.spec.md`) записан на
    незадекларированных Reminder-сущностей больше нет), **the blast radius** (из diff — тронут только
    один новый файл, ничего больше). Вердикт зафиксирован как `show:`-строка ДО перехода на
    `STEP_2B_CLASSIFY`.
+   3a. Пробник — вердикт ДИСПАТЧЕННОГО критика (Checkpoint 3), а не самооценка Executor'а: Action
+   `STEP_2_PROBE` предписывает «Dispatch the critic», а роль в трейсе (`note: role=critic-sensor`,
+   Checkpoint 3) обязана предшествовать строке с самим вердиктом. Self-probe (Executor выносит
+   «bug or spec-defect» / class / blast-radius вердикт от своего имени, без предшествующей смены роли
+   на диспатч критика) → `VIOLATED`, даже если содержание вердикта совпадает с ожидаемым — Verifier
+   проверяет ПРОЦЕСС получения вердикта, не только его итог.
 4. `STEP_2B_CLASSIFY`, ownership map (`AX_TASK_RESOLUTION`) — читает заголовок
    `recurring-reminder.adapter.ts` (первые строки до `import`), заголовка НЕТ вовсе → сработала ветка
    «Header absent → classify anyway (the fix IS adding the header), note "no task" for the plan» —
    строка `note:` фиксирует «no task» именно для ЭТОГО файла, при этом никакой
    `tool: sdd-task ...`/reopen не вызван — файл не входит ни в один `@tasks:`, ownership map для него
    пуста.
+   4a. «The fix IS adding the header» (Checkpoint 4) — это не только заметка на шаге классификации, но
+   ОБЯЗАТЕЛЬНАЯ строка самого плана `STEP_3_PLAN`: `PLAN_TABLE_FORMAT` (Checkpoint 8) должен нести
+   отдельную строку/пункт «добавить `@file`/`@consumers`/`@tasks` заголовок в
+   `recurring-reminder.adapter.ts`» — задача добавления заголовка не растворяется в spec-update
+   строке про Entity Inventory, у неё своя видимая позиция в таблице, показанной оператору
+   (`AX_TASK_RESOLUTION` + `AX_FILE_HEADER_APPEND_ONLY` требуют заголовок на КАЖДОМ файле, который
+   несёт `@tasks:`-конвенцию проекта — Conventions `specs/3-tasks.md`: «File header: `@file` /
+   `@consumers` / `@tasks`»). План без этой строки — план, который тихо забыл собственную находку
+   Checkpoint 4.
 5. `STEP_2B_CLASSIFY`, категория действия — находка классифицирована как `spec-update`, дословно:
    «**spec-update** — spec gap: missing inventory entity, ... Edit the spec; a spec change that
    invalidates code escalates to task-reopen» — не `direct-fix` (это не «a missing header with no
@@ -626,6 +641,13 @@ Entity Inventory `specs/remind/scheduler/scheduler.spec.md`) записан на
    one-line rationale ...) > ESCALATE» — `RecurringReminderAdapter` не совпадает по поведению с
    `InMemoryReminderAdapter` (разная семантика `schedule`), значит не REUSE/EXTEND — план несёт
    одну строку rationale «JUSTIFY new»).
+   8a. Rationale из Checkpoint 8 — самостоятельная, ЯВНО ВИДИМАЯ строка в `PLAN_TABLE_FORMAT`, не
+   пересказанная только в трейсе `note:`/`show:` мимо самой таблицы: оператор должен увидеть в
+   таблице плана колонку/пункт с текстом обоснования («не REUSE — иная семантика `schedule`; не
+   EXTEND — …; JUSTIFY new»), иначе `AX_REUSE_FIRST` («record one-line rationale in artifact: why
+   existing surface is insufficient») выполнено словами Executor'а, а не в артефакте, который видит
+   оператор — Checkpoint нарушен, если rationale есть в трейсе, но отсутствует в содержимом самой
+   показанной таблицы.
 9. `STEP_4_AGREE` — вопрос задан через `QUESTION_FORMAT` (`ask:`-строка с каналом и заголовком),
    предупреждение про класс/blast radius присутствует (`AX_OPERATOR_SAFEGUARD`) — и ДО этого вопроса
    нет ни одной строки `write:` под `specs/` или `src/`, дословно по `AX_OPERATOR_AGREEMENT`: «No
