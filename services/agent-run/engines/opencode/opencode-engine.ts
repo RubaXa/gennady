@@ -3,6 +3,9 @@
 // @tasks: TSK-63, TSK-64
 
 import { execFile, spawn } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { logger } from '#logger';
@@ -33,10 +36,41 @@ const STRIPPED_ENV_VARS = [
 const READONLY_AGENT = 'readonly';
 
 /**
- * @purpose Absolute path to bundled static opencode config defining readonly agent (denies edit/write/patch; bash stays allowed). Merged via `OPENCODE_CONFIG` env var.
- * @invariant Static file shipped with the package next to this module (no runtime generation, no AI).
+ * @purpose URL of bundled static opencode config defining readonly agent (denies edit/write/patch; bash stays allowed). Merged via `OPENCODE_CONFIG` env var.
+ * @invariant Static content authored in readonly.config.json (no runtime generation, no AI); Vite lib-mode inlines it as a `data:` URL in the published bundle.
  */
-const READONLY_CONFIG_PATH = fileURLToPath(new URL('./readonly.config.json', import.meta.url));
+const READONLY_CONFIG_URL = new URL('./readonly.config.json', import.meta.url);
+
+let readonlyConfigPathCache: string | undefined;
+
+/**
+ * @purpose Resolve READONLY_CONFIG_URL to a real filesystem path consumable via `OPENCODE_CONFIG`.
+ * @returns Absolute path: the source file itself under `file:`; a temp-dir copy of the decoded payload under `data:` (bundled build).
+ * @invariant Lazy + memoized — no filesystem writes at module load; at most one temp file per process.
+ * @throws {Error} When the URL scheme is neither `file:` nor base64 `data:`.
+ */
+function resolveReadonlyConfigPath(): string {
+  if (readonlyConfigPathCache !== undefined) return readonlyConfigPathCache;
+  if (READONLY_CONFIG_URL.protocol === 'file:') {
+    readonlyConfigPathCache = fileURLToPath(READONLY_CONFIG_URL);
+    return readonlyConfigPathCache;
+  }
+  const base64Marker = ';base64,';
+  const markerIndex = READONLY_CONFIG_URL.href.indexOf(base64Marker);
+  if (READONLY_CONFIG_URL.protocol !== 'data:' || markerIndex === -1) {
+    throw new Error(
+      `[resolveReadonlyConfigPath] unsupported readonly.config.json URL scheme: ${READONLY_CONFIG_URL.protocol}`,
+    );
+  }
+  const content = Buffer.from(
+    READONLY_CONFIG_URL.href.slice(markerIndex + base64Marker.length),
+    'base64',
+  ).toString('utf-8');
+  const path = join(mkdtempSync(join(tmpdir(), 'gennady-opencode-')), 'readonly.config.json');
+  writeFileSync(path, content);
+  readonlyConfigPathCache = path;
+  return readonlyConfigPathCache;
+}
 
 /** @purpose Grace period in ms between SIGTERM and SIGKILL on timeout. */
 const SIGKILL_GRACE_MS = 5_000;
@@ -62,7 +96,7 @@ export function composeCleanEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   }
   // invariant: point opencode at the bundled readonly-agent config; merges with the user's
   // global config (providers/credentials preserved), adds the `readonly` agent.
-  env.OPENCODE_CONFIG = READONLY_CONFIG_PATH;
+  env.OPENCODE_CONFIG = resolveReadonlyConfigPath();
   // invariant: per-run in-memory session DB — no shared opencode.db state, no lock contention with
   // the desktop app or concurrent runs; each invocation is independent.
   env.OPENCODE_DB = ':memory:';
