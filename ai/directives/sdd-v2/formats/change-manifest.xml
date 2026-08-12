@@ -1,5 +1,5 @@
 <Contract id="CHANGE_MANIFEST_FORMAT">
-  Temporary review-state section at the TOP of the spec (right after the intro block), removed whole by compress. Marker carries NO colon so `extract-section.sh` extracts it.
+  Temporary review-state section at the TOP of the spec (right after the intro block), removed whole by compress. Marker carries NO colon so the `sdd-extract` CLI extracts it.
 
   ```markdown
   <!--SECTION:CHANGE_MANIFEST-->

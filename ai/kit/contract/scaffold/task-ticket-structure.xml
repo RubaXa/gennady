@@ -1,7 +1,7 @@
 <!-- source: sdd/scaffold + draft sdd-authoring-task (reconciled to v2) -->
 <Contract id="TASK_TICKET_STRUCTURE">
   Sections are wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers
-  (grammar: `extract-section.sh`). Anchor names are normative per
+  (grammar: the `sdd-extract` CLI, name grammar `^[A-Z][A-Z0-9_]*$`). Anchor names are normative per
   `AX_TICKET_SECTION_NAMES_NORMATIVE` — orchestrator (`sdd-execute`) and auditor extract by exact
   string (`extract <ticket> PHASE_P<N>`, `META`, `EXECUTION_LOG`, …). Each `### P<N>` phase block
   under `Phases` gets its own anchor (`PHASE_P1`, `PHASE_P2`, …); the `Phases` container
