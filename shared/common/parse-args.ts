@@ -2,13 +2,22 @@
 // @consumers: cat.cmd, commit.cmd, lint.cmd, parse-review-command-args.logic, remote-console.cmd, resolve-conflicts-command-args-parse.logic, review.cmd, vcs-reply, vcs-reply.cmd
 // @tasks: N/A, TSK-80
 
+/** @purpose Options controlling parseArgs behavior beyond the schema itself. */
+export type ParseArgsOptions = {
+  /** @purpose When true, a `-`-prefixed arg matching no schema alias throws instead of being silently dropped. */
+  strict?: boolean;
+};
+
 /**
  * @purpose Parse command-line arguments by options schema and aliases.
+ * @invariant `strict: true` throws on any unmatched `-`-prefixed arg — catches typo'd flags that would
+ *   otherwise be silently dropped or misread as a positional.
  * @consumer CLI (gennady, cmd/*)
  */
 export const parseArgs = <T extends Record<string, unknown>>(
   argv: string[],
-  schema: T = {} as T
+  schema: T = {} as T,
+  options: ParseArgsOptions = {}
 ): Record<keyof T | '_', unknown> & { _: string[] } => {
   const params: Record<string, unknown> & { _: string[] } = { _: [] };
   const argsList = argv.slice(2);
@@ -18,12 +27,14 @@ export const parseArgs = <T extends Record<string, unknown>>(
     if (arg.startsWith('-')) {
       const cleanArg = arg.replace(/^-+/, '');
       const [key, value] = cleanArg.split('=');
+      let matched = false;
 
       for (const [optionKey, schemaEntry] of Object.entries(schema)) {
         const aliases: string[] = Array.isArray(schemaEntry)
           ? (schemaEntry as string[])
           : ((schemaEntry as { aliases: string[] }).aliases ?? [optionKey]);
         if (aliases && key && aliases.includes(key)) {
+          matched = true;
           const takesValue =
             typeof schemaEntry === 'object' && !Array.isArray(schemaEntry)
               ? (schemaEntry as { takesValue?: boolean }).takesValue === true
@@ -50,6 +61,10 @@ export const parseArgs = <T extends Record<string, unknown>>(
           }
           break;
         }
+      }
+
+      if (!matched && options.strict) {
+        throw new Error(`Unknown flag: -${cleanArg}`);
       }
     } else {
       params._.push(arg);

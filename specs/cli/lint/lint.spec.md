@@ -26,6 +26,7 @@ _Это полный список сущностей модуля. Любое в
 | `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.                                                                                                                                                                                                                                                            |
 | `WordCountCheck`       | Service      | Проверка длины описаний JSDoc-тегов и file-header строк: считает слова (split по пробелам) в `@param`, `@returns`, `@purpose`, `@implements`, `@invariant`, `@sideEffect`, `@consumer`, `@see` и `// @file:`, `// @consumers:`. Описание = текст от тега до следующего тега или `*/`. Превышение порога → `ERR_CLI_LINT_TAG_TOO_MANY_WORDS`. Порог по умолчанию: 25 слов, настраивается через `--max-words <n>`.                                                                                                                                                                                |
 | `RegionCommentCheck`   | Service      | Проверка количества комментариев в теле региона и длины START-аннотации. Считает любые `//` и `/*` строки внутри региона (исключая маркеры `#region`/`#endregion`). Аннотация на START-строке проверяется на лимит слов (по умолчанию 30, не настраивается). Комментарии в теле — абсолютный лимит (по умолчанию 3), настраивается через `--max-region-comments <n>`. Нарушения → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`, `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`. Вложенные регионы: комментарии внутренних регионов засчитываются внешним. Дополняет `AnchorThinCheck`, не заменяет. |
+| `InventorySyncCheck`   | Service      | Активируется только с `--spec=<module-spec>`. Прямое направление: экспорт файла отсутствует в Entity Inventory спеки → `ERR_CLI_LINT_INVENTORY_UNDECLARED` (по каждому файлу). Обратное направление (только с `--inventory-reverse <dir>`): после полного обхода `<dir>` каждая сущность инвентаря обязана быть экспортирована хоть одним файлом → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (ошибка на файле спеки). |
 
 ## 3. Entity Surfaces
 
@@ -180,6 +181,11 @@ ERR_CLI_LINT_ANCHOR_TOO_THIN        = 'ERR_CLI_LINT_ANCHOR_TOO_THIN'
 ERR_CLI_LINT_TAG_TOO_MANY_WORDS      = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS'
 ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS = 'ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS'
 ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG = 'ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG'
+ERR_CLI_LINT_INVENTORY_UNDECLARED  = 'ERR_CLI_LINT_INVENTORY_UNDECLARED'
+ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED = 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED'
+ERR_CLI_LINT_UNKNOWN_FLAG          = 'ERR_CLI_LINT_UNKNOWN_FLAG'
+ERR_CLI_LINT_SPEC_NOT_FOUND        = 'ERR_CLI_LINT_SPEC_NOT_FOUND'
+ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC'
 ```
 
 ## 4. Module Contracts (DbC)
@@ -504,6 +510,8 @@ ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG = 'ERR_CLI_LINT_REGION_START_ANNOT
 | `--exclude`             | `LintCommand.run()` → file filtering        | active (v1)   |
 | `--max-words`           | `LintCommand.run()` → `WordCountCheck`      | active (v1)   |
 | `--max-region-comments` | `LintCommand.run()` → `RegionCommentCheck`  | active (v1)   |
+| `--spec`                | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
+| `--inventory-reverse`   | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
 | `--changed`             | —                                           | deferred (v2) |
 
 **`--max-invariants` contract:**
@@ -545,6 +553,20 @@ ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG = 'ERR_CLI_LINT_REGION_START_ANNOT
 - Назначение: максимальное количество комментариев (`//` или `/*`) в теле одного `#region` блока
 - Передаётся в `RegionCommentCheck.check(content, filePath, maxComments)`
 - START-аннотация проверяется отдельно с фиксированным лимитом 30 слов (не настраивается через CLI)
+
+**`--spec` contract:**
+
+- Тип: `string` — путь к module-спеке (`*.spec.md`) с секцией `ENTITY_INVENTORY`
+- Назначение: активирует `InventorySyncCheck` в прямом направлении — declared-инвентарь читается через `parseEntityInventory` один раз, затем на каждом линтуемом файле проверяются экспорты
+- Недоступный `--spec` путь → `ERR_CLI_LINT_SPEC_NOT_FOUND`; остальные чеки продолжают выполняться
+- Каждый экспорт, отсутствующий в инвентаре → `ERR_CLI_LINT_INVENTORY_UNDECLARED`
+
+**`--inventory-reverse` contract:**
+
+- Тип: `string` — директория модуля для полного обратного обхода
+- Требует `--spec`; без него — `ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC`, чек не выполняется
+- Без явных позиционных целей директория из `--inventory-reverse` используется и как цель обхода (обычные чеки + прямой инвентарь), и как корень обратного обхода
+- После обхода: инвентарные сущности, не экспортированные ни одним просканированным файлом → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (ошибка на файле спеки)
 
 ### Supported Extensions
 
@@ -922,6 +944,8 @@ cli/cmd/lint/
 - D-010 (module) — Anchor consecutive START: `AnchorCheck` детектит два `#region START` подряд на одном уровне brace depth без промежуточного `#endregion END`. Ошибка на втором START → `ERR_CLI_LINT_ANCHOR_CONSECUTIVE_START`. Агент должен либо объединить регионы, либо закрыть первый.
 - D-011 (module) — Exclude glob filtering: `--exclude` опция с glob-паттернами для исключения файлов из линтинга. Дефолтные паттерны: `node_modules`, `__tests__`, `fixtures`, `dist`, `coverage`, `build`, `out`. Можно указать несколько пользовательских паттернов, они добавляются поверх дефолтных.
 - D-012 (module) — Anchor thinness: `AnchorThinCheck` проверяет, что регион содержит ≥ 2 meaningful строк кода. Регион с 0–1 строками кода — ошибка `ERR_CLI_LINT_ANCHOR_TOO_THIN`. Если регион оборачивает только комментарий (аннотацию на строке START или body-комментарии) — сообщение предлагает оставить комментарий и убрать обёртку. Порог 2 — осознанный минимум: одна строка кода не оправдывает накладных расходов региона (2 строки маркеров + контекст).
+- D-013 (module) — `InventorySyncCheck` ожил за `--spec`/`--inventory-reverse`. **Was:** `checks/inventory-sync.check.ts` существовал, но `--spec`/`--inventory-reverse` не были зарегистрированы в `parseArgs` — оба флага молча падали в позиционные аргументы, чек никогда не запускался (мёртвый код, при этом директивы `audit`/`recover-from-code`/`migration` требуют его как гейт). **Now:** оба флага зарегистрированы; прямая сверка (`--spec`) запускается на каждом линтуемом файле; обратная сверка (`--inventory-reverse`, требует `--spec`) — после полного обхода директории. **Risk:** нет (чек — чистая добавка, старое поведение без флагов не меняется).
+- D-014 (module) — `parseArgs` строгий режим для `lint`. **Was:** неизвестный флаг (например опечатка) молча падал: либо терялся полностью, либо его значение становилось позиционной целью — источник ложно-зелёных прогонов. **Now:** `lint` вызывает `parseArgs(..., { strict: true })` (опция добавлена в `shared/common/parse-args.ts`, остальные команды не переведены — не разъезжаются); неизвестный флаг → `ERR_CLI_LINT_UNKNOWN_FLAG`. **Risk:** нет для `lint`; для остальных команд поведение не меняется (strict — opt-in).
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies

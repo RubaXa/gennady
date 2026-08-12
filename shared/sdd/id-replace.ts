@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 import { extractSection } from './section.ts';
-import { scanMigrationUnits, unitFilePath } from './migration-plan.ts';
+import { scanMigrationUnits, unitFilePath, tableRows } from './migration-plan.ts';
 
 /** @purpose One approved rename: exact old ID → exact new ID. */
 export type IdRename = {
@@ -84,36 +84,48 @@ export function parseIdMap(
   return errors.length > 0 ? { ok: false, errors } : { ok: true, map };
 }
 
+/** @purpose Strip backticks and surrounding whitespace from a Ticket Map cell. */
+function planCell(cell: string | undefined): string {
+  return (cell ?? '').replace(/`/g, '').trim();
+}
+
 /**
  * @purpose Derive the id-map from the migration layer's Ticket Maps — the plan is the source of truth.
  * @invariant Rows whose new ID is still `?` are skipped (plan --verify gates completeness, not this).
+ * @invariant A non-placeholder, ID-grammar-invalid old/new (e.g. an unreadable old ID printed as `—`)
+ *   is reported, never silently dropped.
  * @param repoRoot Absolute repo root carrying a generated `migration/` layer.
- * @returns TSV text (`<old>\t<new>` per line, path-sorted, deduplicated).
+ * @returns `ok` with TSV text (`<old>\t<new>` per line, path-sorted, deduplicated), or the invalid rows found.
  */
-export function idMapFromPlan(repoRoot: string): string {
+export function idMapFromPlan(
+  repoRoot: string
+): { ok: true; tsv: string } | { ok: false; errors: string[] } {
   const scan = scanMigrationUnits(repoRoot);
   const rows: string[] = [];
   const seen = new Set<string>();
+  const errors: string[] = [];
   for (const unit of scan.units) {
+    const planPath = unitFilePath(unit);
     let content: string;
     try {
-      content = readFileSync(join(repoRoot, unitFilePath(unit)), 'utf-8');
+      content = readFileSync(join(repoRoot, planPath), 'utf-8');
     } catch {
       continue;
     }
     const sec = extractSection(content, 'TICKET_MAP');
     if (sec.status !== 'ok') continue;
-    for (const line of sec.content.split('\n')) {
-      if (!line.trimStart().startsWith('|')) continue;
-      const cells = line
-        .trim()
-        .replace(/^\|/, '')
-        .replace(/\|$/, '')
-        .split('|')
-        .map((c) => c.replace(/`/g, '').trim());
-      const old = cells[1] ?? '';
-      const next = cells[2] ?? '';
-      if (!ID_REGEX.test(old) || !ID_REGEX.test(next)) continue;
+    for (const cells of tableRows(sec.content)) {
+      const src = planCell(cells[0]);
+      if (src === '(нет тикетов)') continue;
+      const old = planCell(cells[1]);
+      const next = planCell(cells[2]);
+      if (old === '?' || next === '?') continue; // pending — plan --verify gates completeness
+      if (!ID_REGEX.test(old) || !ID_REGEX.test(next)) {
+        errors.push(
+          `${planPath}: строка Ticket Map тикета \`${src}\` невалидна — old=«${old}» new=«${next}» вне грамматики ID (не «?», значит не заглушка).`
+        );
+        continue;
+      }
       const key = `${old}\t${next}`;
       if (!seen.has(key)) {
         seen.add(key);
@@ -121,7 +133,8 @@ export function idMapFromPlan(repoRoot: string): string {
       }
     }
   }
-  return rows.sort().join('\n') + (rows.length > 0 ? '\n' : '');
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, tsv: rows.sort().join('\n') + (rows.length > 0 ? '\n' : '') };
 }
 
 /** @purpose Escape a literal for use inside a RegExp. */

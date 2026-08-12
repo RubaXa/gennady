@@ -1,4 +1,4 @@
-// @file: LintCommand — CLI entry point for gennady lint: parseArgs, git scan, single read, 8 checks, ESLint output.
+// @file: LintCommand — CLI entry point for gennady lint: parseArgs (strict), git scan, single read, checks incl. optional --spec/--inventory-reverse inventory sync, ESLint output.
 // @consumers: gennady.ts
 // @tasks: TSK-16, TSK-49, TSK-60
 
@@ -17,6 +17,12 @@ import { check as checkAnchorClassBody } from './checks/anchor-class-body.check.
 import { check as checkAnchorThin } from './checks/anchor-thin.check.ts';
 import { check as checkWordCount } from './checks/word-count.check.ts';
 import { check as checkRegionComment } from './checks/region-comment.check.ts';
+import {
+  check as checkInventorySync,
+  collectExports,
+  reverseUnimplemented,
+} from './checks/inventory-sync.check.ts';
+import { parseEntityInventory } from '../../../shared/sdd/inventory.ts';
 import { LintReport } from './lint.types.ts';
 import {
   ERR_CLI_LINT_STAGED_CONFLICT,
@@ -24,6 +30,9 @@ import {
   ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
   ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS,
   ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG,
+  ERR_CLI_LINT_UNKNOWN_FLAG,
+  ERR_CLI_LINT_SPEC_NOT_FOUND,
+  ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC,
 } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 import {
@@ -34,21 +43,43 @@ import {
 import { globToRegex } from './checks/utils/glob-match.ts';
 
 /**
- * @purpose Execute the gennady lint command — collect files, run 8 checks, output ESLint-format report.
+ * @purpose Execute the gennady lint command — collect files, run configured checks, output ESLint-format report.
  * @implements {LintCommand} in specs/cli/lint/lint.spec.md
  * @param rawArgs Raw command-line arguments (process.argv).
  * @returns LintReport with aggregated errors and exit code.
  */
 export async function run(rawArgs: string[]): Promise<LintReport> {
-  const args = parseArgs(rawArgs, {
-    autofix: ['autofix'],
-    staged: ['staged'],
-    verbose: ['verbose', 'v'],
-    maxInvariants: { aliases: ['max-invariants'], takesValue: true },
-    exclude: { aliases: ['exclude'], takesValue: true },
-    maxWords: { aliases: ['max-words'], takesValue: true },
-    maxRegionComments: { aliases: ['max-region-comments'], takesValue: true },
-  });
+  let args: Record<string, unknown> & { _: string[] };
+  try {
+    args = parseArgs(
+      rawArgs,
+      {
+        autofix: ['autofix'],
+        staged: ['staged'],
+        verbose: ['verbose', 'v'],
+        maxInvariants: { aliases: ['max-invariants'], takesValue: true },
+        exclude: { aliases: ['exclude'], takesValue: true },
+        maxWords: { aliases: ['max-words'], takesValue: true },
+        maxRegionComments: { aliases: ['max-region-comments'], takesValue: true },
+        spec: { aliases: ['spec'], takesValue: true },
+        inventoryReverse: { aliases: ['inventory-reverse'], takesValue: true },
+      },
+      { strict: true }
+    );
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    logger.warn(`[LintCommand#run] [idle → failed] ${message}`);
+    return new LintReport([
+      {
+        file: '',
+        line: 0,
+        col: 0,
+        severity: 'error',
+        code: ERR_CLI_LINT_UNKNOWN_FLAG,
+        message,
+      },
+    ]);
+  }
 
   const positional = (args._ as string[]).filter(
     (f: string) => typeof f === 'string' && f !== 'lint'
@@ -62,6 +93,50 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const maxWords = typeof args.maxWords === 'string' ? parseInt(args.maxWords, 10) : 25;
   const maxRegionComments =
     typeof args.maxRegionComments === 'string' ? parseInt(args.maxRegionComments, 10) : 3;
+  const specPath = typeof args.spec === 'string' ? args.spec : null;
+  const inventoryReverseDir =
+    typeof args.inventoryReverse === 'string' ? args.inventoryReverse : null;
+
+  if (inventoryReverseDir && !specPath) {
+    const error: LintError = {
+      file: '',
+      line: 0,
+      col: 0,
+      severity: 'error',
+      code: ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC,
+      message:
+        '--inventory-reverse requires --spec=<module-spec> — the reverse sweep checks that spec’s Entity Inventory against the code.',
+    };
+    logger.warn('[LintCommand#run] --inventory-reverse given without --spec');
+    return new LintReport([error]);
+  }
+
+  // #region START_INVENTORY_SPEC — invariant: --spec loads the declared inventory once; unreadable spec → error, checks skipped
+  let declaredInventory: string[] | null = null;
+  const specLoadErrors: LintError[] = [];
+  if (specPath) {
+    try {
+      const declared = parseEntityInventory(readFileSync(resolve(specPath), 'utf-8'));
+      declaredInventory = declared;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      specLoadErrors.push({
+        file: specPath,
+        line: 0,
+        col: 0,
+        severity: 'error',
+        code: ERR_CLI_LINT_SPEC_NOT_FOUND,
+        message: `Cannot read --spec target: ${message}`,
+      });
+      logger.warn(`[LintCommand#run] --spec unreadable: ${specPath}`);
+    }
+  }
+  // #endregion END_INVENTORY_SPEC
+
+  // --inventory-reverse with no explicit targets sweeps the module dir itself
+  if (inventoryReverseDir && positional.length === 0 && !staged) {
+    positional.push(inventoryReverseDir);
+  }
 
   // Default exclude patterns — always active
   const DEFAULT_EXCLUDES = [
@@ -148,13 +223,14 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 
   if (files.length === 0) {
     logger.debug('[LintCommand#run] [collecting → done] no files to lint');
-    return new LintReport(resolutionErrors);
+    return new LintReport([...resolutionErrors, ...specLoadErrors]);
   }
 
   logger.debug(`[LintCommand#run] [collecting → linting] ${files.length} file(s)`);
 
-  const allErrors: LintError[] = [...resolutionErrors];
+  const allErrors: LintError[] = [...resolutionErrors, ...specLoadErrors];
   let totalAutoFixed = 0;
+  const implementedUnion = new Set<string>();
 
   // #region START_RESOLVE_REFERENCES — invariant: load taskRefMap once, collect task IDs from headers
   const projectRoot = resolve('.');
@@ -192,6 +268,13 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...dbcResult.errors);
     totalAutoFixed += dbcResult.autoFixed;
 
+    if (declaredInventory !== null) {
+      allErrors.push(...(await checkInventorySync(content, filePath, declaredInventory)));
+      if (inventoryReverseDir) {
+        for (const name of await collectExports(content, filePath)) implementedUnion.add(name);
+      }
+    }
+
     if (allErrors.length > errorCountBefore) {
       const taskIds = extractTaskIdsFromHeader(content);
       for (const tid of taskIds) {
@@ -200,6 +283,12 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     }
   }
   // #endregion END_LINT_LOOP
+
+  // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir
+  if (inventoryReverseDir && declaredInventory !== null && specPath) {
+    allErrors.push(...reverseUnimplemented(declaredInventory, implementedUnion, specPath));
+  }
+  // #endregion END_INVENTORY_REVERSE
 
   // #region START_RESOLVE_REFS_OUTPUT — invariant: resolve references from collected task IDs
   const { taskPaths, specPaths } = resolveReferencesForTasks([...foundTaskIds], taskRefMap);

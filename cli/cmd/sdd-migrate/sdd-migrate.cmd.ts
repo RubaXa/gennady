@@ -114,12 +114,26 @@ function runIds(
   root: string,
   opts: { mapFile: string | null; fromPlan: boolean; write: boolean }
 ): MigrateOutcome {
-  const tsv = opts.fromPlan
-    ? idMapFromPlan(root)
-    : opts.mapFile
-      ? readFileSync(resolve(opts.mapFile), 'utf-8')
-      : null;
-  if (tsv === null) return badInvocation('ids needs --map <tsv> or --from-plan');
+  let tsv: string;
+  if (opts.fromPlan) {
+    const derived = idMapFromPlan(root);
+    if (!derived.ok) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_MIGRATE_IDS_FROM_PLAN',
+        exitCode: 1,
+        message: [
+          '[sdd-migrate ids] --from-plan — невалидные строки Ticket Map:',
+          ...derived.errors.map((e) => `  ${e}`),
+        ].join('\n'),
+      };
+    }
+    tsv = derived.tsv;
+  } else if (opts.mapFile) {
+    tsv = readFileSync(resolve(opts.mapFile), 'utf-8');
+  } else {
+    return badInvocation('ids needs --map <tsv> or --from-plan');
+  }
 
   const parsed = parseIdMap(tsv);
   if (!parsed.ok) {

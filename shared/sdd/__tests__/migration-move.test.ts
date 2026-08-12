@@ -123,6 +123,8 @@ describe('migration-move', () => {
     assert.ok(existsSync(join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md')));
     assert.ok(existsSync(join(root, 'specs', 'demo', 'core', 'core.task.demo-beta.md')));
     assert.ok(!existsSync(join(root, 'tasks', 'demo')));
+    // last scope migrated → the now-empty tasks/ root itself must be removed (flips FLOW_VERSION to v2)
+    assert.ok(!existsSync(join(root, 'tasks')));
 
     const moduleIndex = readFileSync(
       join(root, 'specs', 'demo', 'core', 'core.3-tasks.md'),
@@ -174,6 +176,59 @@ describe('migration-move', () => {
       'utf-8'
     );
     assert.match(movedA, /\[core\.task-2\.md\]\(\.\/core\.task\.demo-beta\.md\)/);
+  });
+
+  it('другой scope ещё в tasks/ — корневой tasks/ не удаляется', () => {
+    fillPlanLayer();
+    mkdirSync(join(root, 'tasks', 'other'), { recursive: true });
+    writeFileSync(
+      join(root, 'tasks', 'other', 'other.task-1.md'),
+      '# Task: TSK-50\n## 1. Meta\n- **Task-ID:** TSK-50 | **Status:** [ ] TODO | **Scope:** other\n- **Purpose:** другое.',
+      'utf-8'
+    );
+    const r = executeScopeMove(root, 'demo', true);
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.ok(!existsSync(join(root, 'tasks', 'demo')));
+    assert.ok(
+      existsSync(join(root, 'tasks')),
+      'tasks/ root must stay — другой scope не мигрирован'
+    );
+    assert.ok(existsSync(join(root, 'tasks', 'other')));
+  });
+
+  it('тикет с назначением флэт (specs/<scope>/) — без отдельного модульного индекса, только scope-индекс', () => {
+    const scan = scanMigrationUnits(root);
+    for (const unit of scan.units) {
+      let content = scaffoldUnitFile(unit);
+      if (unit.module === 'core') {
+        content = content
+          .replace(
+            '| `tasks/demo/core/core.task-1.md` | demo-alpha | ? | ? |',
+            // flat destination — scope root, not a module subdir (legal per AX_HIERARCHICAL_SPECS)
+            '| `tasks/demo/core/core.task-1.md` | demo-alpha | demo-alpha | `specs/demo/demo.task.demo-alpha.md` |'
+          )
+          .replace(
+            '| `tasks/demo/core/core.task-2.md` | demo-beta | ? | ? |',
+            '| `tasks/demo/core/core.task-2.md` | demo-beta | demo-beta | `specs/demo/core/core.task.demo-beta.md` |'
+          );
+      }
+      const p = join(root, unitFilePath(unit));
+      mkdirSync(join(p, '..'), { recursive: true });
+      writeFileSync(p, content, 'utf-8');
+    }
+    const r = executeScopeMove(root, 'demo', true);
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.ok(existsSync(join(root, 'specs', 'demo', 'demo.task.demo-alpha.md')));
+    assert.ok(existsSync(join(root, 'specs', 'demo', 'core', 'core.task.demo-beta.md')));
+    // module index still exists (demo-beta lives there) but demo-alpha (flat) does not get its own
+    // row — it may still appear as a cross-module Dependencies reference on demo-beta's row.
+    const moduleIndex = readFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.3-tasks.md'),
+      'utf-8'
+    );
+    assert.doesNotMatch(moduleIndex, /^\| demo-alpha \|/m);
+    const scopeIndex = readFileSync(join(root, 'specs', 'demo', 'demo.3-tasks.md'), 'utf-8');
+    assert.match(scopeIndex, /\| demo-alpha \| Первая фича \| — \|/);
   });
 
   it('чужие тикеты вне плана блокируют удаление tasks/<scope>', () => {

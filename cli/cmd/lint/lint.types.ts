@@ -165,3 +165,13 @@ export const ERR_CLI_LINT_INVENTORY_UNDECLARED = 'ERR_CLI_LINT_INVENTORY_UNDECLA
 
 /** @purpose An inventory entity declared in the spec is exported by no scanned file — planned-but-unbuilt. */
 export const ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED = 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' as const;
+
+/** @purpose A `-`-prefixed CLI arg matches no registered flag — typo or unsupported option. */
+export const ERR_CLI_LINT_UNKNOWN_FLAG = 'ERR_CLI_LINT_UNKNOWN_FLAG' as const;
+
+/** @purpose `--spec` points at a module spec file that cannot be read. */
+export const ERR_CLI_LINT_SPEC_NOT_FOUND = 'ERR_CLI_LINT_SPEC_NOT_FOUND' as const;
+
+/** @purpose `--inventory-reverse` was given without the required `--spec`. */
+export const ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC =
+  'ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC' as const;

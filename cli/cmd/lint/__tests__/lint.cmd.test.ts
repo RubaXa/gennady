@@ -198,4 +198,105 @@ describe('LintCommand', () => {
     }
     // #endregion END_CONSISTENT_ASSERT_RESULT
   });
+
+  it('should reject an unregistered flag instead of silently dropping it', async () => {
+    const report = await mod.run(['node', 'gennady', 'lint', '--bogus-flag']);
+
+    assert.strictEqual(report.exitCode, 1);
+    assert.strictEqual(report.errors.length, 1);
+    assert.strictEqual(report.errors[0]?.code, 'ERR_CLI_LINT_UNKNOWN_FLAG');
+  });
+
+  it('--inventory-reverse without --spec is rejected', async () => {
+    const report = await mod.run(['node', 'gennady', 'lint', '--inventory-reverse', tmpDir]);
+
+    assert.strictEqual(report.exitCode, 1);
+    assert.strictEqual(report.errors[0]?.code, 'ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC');
+  });
+
+  it('--spec flags an export missing from the module Entity Inventory', async () => {
+    const specPath = writeFixture(
+      'mod.spec.md',
+      [
+        '# module: demo',
+        '<!--SECTION:ENTITY_INVENTORY-->',
+        '| Name | Type | Purpose |',
+        '|---|---|---|',
+        '| `Declared` | Service | it is declared |',
+        '<!--/SECTION:ENTITY_INVENTORY-->',
+      ].join('\n')
+    );
+    const filePath = writeFixture(
+      'undeclared.ts',
+      [
+        '// @file: Undeclared export test file.',
+        '// @consumers: TestRunner',
+        '',
+        '/** @purpose Declared entity. */',
+        'export const Declared = 1;',
+        '',
+        '/** @purpose Undeclared entity — not in the inventory above. */',
+        'export const Rogue = 2;',
+      ].join('\n')
+    );
+
+    const report = await mod.run(['node', 'gennady', 'lint', `--spec=${specPath}`, filePath]);
+
+    assert.ok(
+      report.errors.some((e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNDECLARED'),
+      JSON.stringify(report.errors)
+    );
+  });
+
+  it('--spec --inventory-reverse flags an inventory entity exported by no scanned file', async () => {
+    const revDir = join(tmpDir, 'rev-mod');
+    mkdirSync(revDir, { recursive: true });
+    const specPath = join(revDir, 'mod.spec.md');
+    writeFileSync(
+      specPath,
+      [
+        '# module: demo',
+        '<!--SECTION:ENTITY_INVENTORY-->',
+        '| Name | Type | Purpose |',
+        '|---|---|---|',
+        '| `Built` | Service | it exists |',
+        '| `Ghost` | Service | it never got built |',
+        '<!--/SECTION:ENTITY_INVENTORY-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(revDir, 'code.ts'),
+      [
+        '// @file: Reverse sweep test file.',
+        '// @consumers: TestRunner',
+        '',
+        '/** @purpose Built entity. */',
+        'export const Built = 1;',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const report = await mod.run([
+      'node',
+      'gennady',
+      'lint',
+      `--spec=${specPath}`,
+      '--inventory-reverse',
+      revDir,
+    ]);
+
+    assert.ok(
+      report.errors.some(
+        (e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' && e.message.includes('Ghost')
+      ),
+      JSON.stringify(report.errors)
+    );
+    assert.ok(
+      !report.errors.some(
+        (e) => e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' && e.message.includes('Built')
+      ),
+      'Built is exported — must not be flagged unimplemented'
+    );
+  });
 });

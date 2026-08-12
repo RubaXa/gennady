@@ -23,12 +23,14 @@ export type TrackerUpdate =
 
 /**
  * @purpose Extract Task-ID and Status from a ticket Meta section body.
+ * @invariant Tolerant of both v2 bold (`**Task-ID:**`) and unmarked v1 (`- Task-ID:`) Meta lines — a
+ *   v1 ticket must never silently parse as null.
  * @param metaBody The text between the META markers.
  * @returns TicketMeta with each field parsed or null.
  */
 export function parseMeta(metaBody: string): TicketMeta {
-  const idMatch = metaBody.match(/\*\*Task-ID:\*\*\s*`?([A-Za-z0-9][A-Za-z0-9_-]*)`?/);
-  const statusMatch = metaBody.match(/\*\*Status:\*\*\s*(\[.\]\s*[A-Z_]+)/);
+  const idMatch = metaBody.match(/\*{0,2}Task-ID:\*{0,2}\s*`?([A-Za-z0-9][A-Za-z0-9_-]*)`?/);
+  const statusMatch = metaBody.match(/\*{0,2}Status:\*{0,2}\s*(\[.\]\s*[A-Z_]+)/);
   return {
     taskId: idMatch?.[1] ?? null,
     status: statusMatch?.[1] ?? null,

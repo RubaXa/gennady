@@ -197,9 +197,9 @@ function readTicket(
       ? metaSec.content
       : (/##[^\n]*\bMeta\b[^\n]*\n([\s\S]*?)(?=\n## |$)/.exec(content)?.[1] ?? '');
   const meta = parseMeta(metaBody);
-  const purpose = /\*\*Purpose:\*\*\s*([^\n]+)/.exec(metaBody)?.[1]?.trim() ?? null;
-  const scope = /\*\*Scope:\*\*\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
-  const module = /\*\*Module:\*\*\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
+  const purpose = /\*{0,2}Purpose:\*{0,2}\s*([^\n]+)/.exec(metaBody)?.[1]?.trim() ?? null;
+  const scope = /\*{0,2}Scope:\*{0,2}\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
+  const module = /\*{0,2}Module:\*{0,2}\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
   return {
     ticket: {
       file: relative(repoRoot, file),
@@ -506,8 +506,12 @@ function rowCells(line: string): string[] {
     .map((c) => c.trim());
 }
 
-/** @purpose Data rows of the first table inside a section body (header + separator skipped). */
-function tableRows(sectionBody: string): string[][] {
+/**
+ * @purpose Data rows of the first table inside a section body (header + separator skipped).
+ * @param sectionBody Section text carrying one markdown table.
+ * @returns Trimmed content cells per data row, in document order.
+ */
+export function tableRows(sectionBody: string): string[][] {
   const rows: string[][] = [];
   let headerSeen = false;
   for (const line of sectionBody.split('\n')) {
@@ -527,8 +531,13 @@ function unquote(cell: string): string {
   return cell.replace(/^`|`$/g, '').trim();
 }
 
-/** @purpose New-ID grammar: `<acr>-<slug>` kebab-case, ≥ 2 words. */
-const NEW_ID_REGEX = /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/;
+/** @purpose New-ID grammar: `<ACR>-<slug>` — uppercase acronym, kebab-case lowercase slug, ≥ 2 words. */
+const NEW_ID_REGEX = /^[A-Z][A-Z0-9]*(-[a-z0-9]+)+$/;
+
+/** @purpose Escape a literal for use inside a RegExp. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * @purpose Verify one unit file against a fresh scan — inventory drift, map coverage, ID grammar.
@@ -641,12 +650,20 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
     }
     for (const r of rows) {
       const src = unquote(r[0] ?? '');
-      if (!fresh.tickets.some((t) => t.file === src)) {
+      const matchedTicket = fresh.tickets.find((t) => t.file === src);
+      if (!matchedTicket) {
         err(
           'MIG_TICKET_UNKNOWN',
           `Строка Ticket Map ссылается на несуществующий тикет: \`${src}\`.`
         );
         continue;
+      }
+      const oldId = unquote(r[1] ?? '');
+      if (oldId === '' || oldId === '—') {
+        err(
+          'MIG_TICKET_ID_UNREADABLE',
+          `Старый Task-ID не прочитан из тикета \`${src}\` (parseMeta вернул null — проверь формат строки Task-ID в Meta) — заменять нечего, sdd-migrate ids промолчит.`
+        );
       }
       const newId = unquote(r[2] ?? '');
       const dest = unquote(r[3] ?? '');
@@ -654,15 +671,19 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
         if (!NEW_ID_REGEX.test(newId)) {
           err(
             'MIG_BAD_SLUG',
-            `Новый ID «${newId}» не соответствует грамматике \`<acr>-<slug>\` (kebab-case, ≥ 2 слова) — тикет \`${src}\`.`
+            `Новый ID «${newId}» не соответствует грамматике \`<ACR>-<slug>\` (ACR — верхний регистр, slug — kebab-case, ≥ 2 слова) — тикет \`${src}\`.`
           );
         } else {
-          const specBase = basename(fresh.specFile).replace(/\.(1-spec|spec)\.md$/, '');
-          const expected = join(dirname(fresh.specFile), `${specBase}.task.${newId}.md`);
-          if (dest !== expected)
+          // The Ticket Map destination is agent-authoritative (AX_HIERARCHICAL_SPECS: a ticket may
+          // land flat at the scope root, or nested under any module dir the agent chose) — verify
+          // is a FORM check, not an exact-path recompute: `specs/<scope>/**/*.task.<newId>.md`.
+          const destForm = new RegExp(
+            `^specs/${escapeRegExp(fresh.scope)}/.*\\.task\\.${escapeRegExp(newId)}\\.md$`
+          );
+          if (!destForm.test(dest.split(sep).join('/')))
             err(
               'MIG_BAD_DESTINATION',
-              `Назначение «${dest}» не совпадает с вычисленным «${expected}» — тикет \`${src}\`.`
+              `Назначение «${dest}» не подходит форме \`specs/${fresh.scope}/**/*.task.${newId}.md\` — тикет \`${src}\`.`
             );
         }
       }

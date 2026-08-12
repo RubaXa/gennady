@@ -134,7 +134,7 @@ describe('migration-plan', () => {
       .replace('**Status:** PLANNED', '**Status:** MAPPED')
       .replace(
         '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
-        '| `tasks/demo/core/core.task-7.md` | TSK-7 | core-demo-feature | `specs/demo/core/core.task.core-demo-feature.md` |'
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
       )
       .replace(
         '- Overview-диаграмма: ?',
@@ -224,12 +224,61 @@ describe('migration-plan', () => {
     for (const unit of scan2.units) {
       const filled = scaffoldUnitFile(unit).replace(
         /\| (TSK-[0-9]+) \| \? \| \? \|/g,
-        '| $1 | demo-same-slug | ? |'
+        '| $1 | DEMO-same-slug | ? |'
       );
       writeFileSync(join(root, unitFilePath(unit)), filled, 'utf-8');
     }
     const codes = verifyMigrationPlan(root).map((f) => f.code);
     assert.ok(codes.includes('MIG_SLUG_COLLISION'), codes.join(','));
+  });
+
+  it('старый Task-ID не прочитан (—) в Ticket Map → MIG_TICKET_ID_UNREADABLE', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core).replace(
+      '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+      '| `tasks/demo/core/core.task-7.md` | — | ? | ? |'
+    );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_TICKET_ID_UNREADABLE'), codes.join(','));
+  });
+
+  it('назначение — форма specs/<scope>/**/*.task.<id>.md, не точный пересчёт: любая глубина модуля легальна', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    let content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        // destination nested one level deeper than the spec's own dir — still a legal co-located form
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/sub/core.task.CORE-demo-feature.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const findings = verifyUnitFile('u.md', content, core);
+    assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('назначение вне specs/<scope>/ → MIG_BAD_DESTINATION', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/other/core.task.CORE-demo-feature.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_BAD_DESTINATION'), codes.join(','));
   });
 
   it('тикет scope без спеки → orphan + MIG_TICKET_ORPHAN', () => {

@@ -36,6 +36,13 @@ describe('parseMeta', () => {
   it('returns nulls when absent', () => {
     assert.deepStrictEqual(parseMeta('- **Owner:** module'), { taskId: null, status: null });
   });
+
+  it('is tolerant of v1 unmarked Meta lines (no bold)', () => {
+    const v1Meta = ['- Task-ID: TSK-31', '- Status: [x] DONE', '- Purpose: делать демо.'].join(
+      '\n'
+    );
+    assert.deepStrictEqual(parseMeta(v1Meta), { taskId: 'TSK-31', status: '[x] DONE' });
+  });
 });
 
 describe('updateTrackerStatus', () => {

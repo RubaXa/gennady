@@ -118,7 +118,40 @@ describe('id-replace', () => {
       const p = join(root, unitFilePath(unit));
       mkdirSync(join(p, '..'), { recursive: true });
       writeFileSync(p, filled, 'utf-8');
-      assert.strictEqual(idMapFromPlan(root), 'TSK-3\tdemo-feature\n');
+      const result = idMapFromPlan(root);
+      assert.ok(result.ok, JSON.stringify(result));
+      if (result.ok) assert.strictEqual(result.tsv, 'TSK-3\tdemo-feature\n');
+    });
+
+    it('строка с невалидным (не «?») old/new — сообщение об ошибке, не молчаливый skip', () => {
+      mkdirSync(join(root, 'specs', 'demo'), { recursive: true });
+      mkdirSync(join(root, 'tasks', 'demo'), { recursive: true });
+      writeFileSync(
+        join(root, 'specs', 'demo', 'demo.spec.md'),
+        '# demo\n<!--SECTION:SCOPE_TYPE-->\n## scope-type\nlibrary\n<!--/SECTION:SCOPE_TYPE-->\n## 1. Vision\nx',
+        'utf-8'
+      );
+      writeFileSync(
+        join(root, 'tasks', 'demo', 'demo.task-3.md'),
+        '# Task: TSK-3\n## 1. Meta\n- Task-ID: TSK-3\n- Status: [ ] TODO\n- Scope: demo\n- Purpose: демо.',
+        'utf-8'
+      );
+      const scan = scanMigrationUnits(root);
+      const unit = scan.units[0];
+      assert.ok(unit);
+      // the ticket's Task-ID was NOT readable by parseMeta (simulated by keeping the placeholder
+      // `—` old-ID column while filling the new-ID/dest — an invalid, non-`?` row) — must be
+      // reported, never silently dropped.
+      const filled = scaffoldUnitFile(unit).replace(
+        '| `tasks/demo/demo.task-3.md` | TSK-3 | ? | ? |',
+        '| `tasks/demo/demo.task-3.md` | — | demo-feature | `specs/demo/demo.task.demo-feature.md` |'
+      );
+      const p = join(root, unitFilePath(unit));
+      mkdirSync(join(p, '..'), { recursive: true });
+      writeFileSync(p, filled, 'utf-8');
+      const result = idMapFromPlan(root);
+      assert.ok(!result.ok, JSON.stringify(result));
+      if (!result.ok) assert.match(result.errors.join('\n'), /невалидна/);
     });
   });
 });

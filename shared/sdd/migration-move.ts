@@ -30,7 +30,14 @@ export type MoveAction = {
 };
 
 /** @purpose One migrated ticket's index facts, read from its Meta after the ID replacement. */
-type IndexTicket = { newId: string; title: string; status: string; deps: string[] };
+type IndexTicket = {
+  newId: string;
+  title: string;
+  status: string;
+  deps: string[];
+  /** @purpose Repo-relative dir of the ticket's Ticket-Map destination — authoritative, drives index placement. */
+  destDir: string;
+};
 
 /** @purpose Per-module index input — the unit, its destination dir, and its tickets. */
 type UnitTickets = { unit: SpecUnit; tickets: IndexTicket[] };
@@ -130,6 +137,7 @@ export function planScopeMove(repoRoot: string, scope: string): ScopeMovePlan {
         title: ticketTitle(content),
         status: meta.status ?? '[ ] TODO',
         deps: depIds(metaBody),
+        destDir: dirname(row.dest),
       });
     }
     units.push({ unit, tickets: indexTickets });
@@ -199,8 +207,19 @@ export function renderModuleIndex(moduleName: string, tickets: IndexTicket[]): s
  * @returns Full index markdown.
  */
 export function renderScopeIndex(scope: string, units: UnitTickets[]): string {
+  // Ownership is driven by each ticket's ACTUAL destDir (Ticket Map is authoritative), not by the
+  // spec unit it happened to be attached to during scanning — a ticket can land flat at scope root
+  // (destDir === specs/<scope>) even when its owning spec is a module.
+  const scopeRootDir = join('specs', scope);
+  const moduleOf = (destDir: string): string =>
+    destDir === scopeRootDir ? scope : basename(destDir);
   const ownerOf = new Map<string, string>();
-  for (const u of units) for (const t of u.tickets) ownerOf.set(t.newId, u.unit.module ?? scope);
+  const allTickets: IndexTicket[] = [];
+  for (const u of units)
+    for (const t of u.tickets) {
+      ownerOf.set(t.newId, moduleOf(t.destDir));
+      allTickets.push(t);
+    }
 
   const lines: string[] = [
     `# Tasks: ${scope}`,
@@ -216,21 +235,20 @@ export function renderScopeIndex(scope: string, units: UnitTickets[]): string {
     'graph TD',
   ];
   const edgeSeen = new Set<string>();
-  for (const u of units) {
-    const from = u.unit.module ?? scope;
-    for (const t of u.tickets)
-      for (const d of t.deps) {
-        const to = ownerOf.get(d);
-        if (to && to !== from) {
-          const key = `${from}-->${to}`;
-          if (!edgeSeen.has(key)) {
-            edgeSeen.add(key);
-            lines.push(
-              `  ${from.replace(/[^A-Za-z0-9]/g, '_')}[${from}] --> ${to.replace(/[^A-Za-z0-9]/g, '_')}[${to}]`
-            );
-          }
+  for (const t of allTickets) {
+    const from = moduleOf(t.destDir);
+    for (const d of t.deps) {
+      const to = ownerOf.get(d);
+      if (to && to !== from) {
+        const key = `${from}-->${to}`;
+        if (!edgeSeen.has(key)) {
+          edgeSeen.add(key);
+          lines.push(
+            `  ${from.replace(/[^A-Za-z0-9]/g, '_')}[${from}] --> ${to.replace(/[^A-Za-z0-9]/g, '_')}[${to}]`
+          );
         }
       }
+    }
   }
   if (edgeSeen.size === 0) lines.push('  %% кросс-модульных зависимостей нет');
   lines.push(
@@ -240,11 +258,12 @@ export function renderScopeIndex(scope: string, units: UnitTickets[]): string {
     '| Task-ID | Title | Module | Dependencies | Status | Reopens |',
     '|---------|-------|--------|--------------|--------|---------|'
   );
-  for (const u of units)
-    for (const t of u.tickets)
-      lines.push(
-        `| ${t.newId} | ${t.title} | ${u.unit.module ?? '—'} | ${t.deps.length > 0 ? t.deps.join(', ') : '—'} | ${t.status} | — |`
-      );
+  for (const t of allTickets) {
+    const owner = moduleOf(t.destDir);
+    lines.push(
+      `| ${t.newId} | ${t.title} | ${owner === scope ? '—' : owner} | ${t.deps.length > 0 ? t.deps.join(', ') : '—'} | ${t.status} | — |`
+    );
+  }
   lines.push(
     '',
     '## Decision Log (scope task level)',
@@ -401,20 +420,28 @@ export function executeScopeMove(
     report.push(`  ${verb}mv    ${m.from} → ${m.to}`);
   }
 
+  // #region START_MODULE_INDEXES — invariant: grouped by ACTUAL destDir (Ticket Map is authoritative);
+  // a ticket placed flat at specs/<scope>/ (no module subdir) is a legal outcome and gets no module
+  // index of its own — it is covered by the scope index only.
+  const scopeRootDir = join('specs', scope);
+  const byDestDir = new Map<string, IndexTicket[]>();
   for (const u of plan.units) {
-    if (u.unit.module === null || u.tickets.length === 0) continue;
-    const indexPath = join(
-      dirname(u.unit.specFile),
-      `${basename(dirname(u.unit.specFile))}.3-tasks.md`
-    );
-    if (write)
-      writeFileSync(
-        join(repoRoot, indexPath),
-        renderModuleIndex(u.unit.module, u.tickets),
-        'utf-8'
-      );
-    report.push(`  ${verb}index ${indexPath} — ${u.tickets.length} тикет(ов)`);
+    for (const t of u.tickets) {
+      const arr = byDestDir.get(t.destDir) ?? [];
+      arr.push(t);
+      byDestDir.set(t.destDir, arr);
+    }
   }
+  for (const destDir of [...byDestDir.keys()].sort()) {
+    if (destDir === scopeRootDir) continue;
+    const tickets = byDestDir.get(destDir) as IndexTicket[];
+    const moduleName = basename(destDir);
+    const indexPath = join(destDir, `${moduleName}.3-tasks.md`);
+    if (write)
+      writeFileSync(join(repoRoot, indexPath), renderModuleIndex(moduleName, tickets), 'utf-8');
+    report.push(`  ${verb}index ${indexPath} — ${tickets.length} тикет(ов)`);
+  }
+  // #endregion END_MODULE_INDEXES
   const scopeIndexPath = join('specs', scope, `${scope}.3-tasks.md`);
   if (write)
     writeFileSync(join(repoRoot, scopeIndexPath), renderScopeIndex(scope, plan.units), 'utf-8');
@@ -433,5 +460,25 @@ export function executeScopeMove(
       report.push(`  would rm -r tasks/${scope}/ (если не останется тикетов)`);
     }
   }
+
+  // #region START_ROOT_TASKS_CLEANUP — invariant: detectFlowVersion flips v1→v2 only when tasks/ itself is gone
+  const rootTasksDir = join(repoRoot, 'tasks');
+  if (existsSync(rootTasksDir)) {
+    const remaining = readdirSync(rootTasksDir, { withFileTypes: true }).filter(
+      (e) => e.name !== 'README.md'
+    );
+    if (remaining.length === 0) {
+      if (write) {
+        rmSync(rootTasksDir, { recursive: true, force: true });
+        report.push(
+          '  rm -r tasks/ — последний scope мигрирован, репо переключён на v2 (FLOW_VERSION)'
+        );
+      } else {
+        report.push('  would rm -r tasks/ (последний scope — репо переключится на v2)');
+      }
+    }
+  }
+  // #endregion END_ROOT_TASKS_CLEANUP
+
   return { ok: true, report };
 }

@@ -148,6 +148,26 @@ shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
 ### `collectMdFiles`
 
 - **Usage Waiver:** обход markdown-файлов зоны отделён от логики переписывания — граница ввода-вывода.
+
+### D-MG005 — `parseMeta` терпим к v1 Meta без bold
+
+- **Status:** active · **Was:** `parseMeta` требовал `**Task-ID:**` / `**Status:**` буквально — v1-тикеты со строками `- Task-ID:` / `- Status:` (без `**`) давали `taskId: null`, и `plan`/`ids --from-plan` молча теряли карту (ложно-зелёный гейт). **Now:** `parseMeta` (и однотипные разборы `Purpose:`/`Scope:`/`Module:` в `migration-plan.ts`) принимают `\*{0,2}` — с bold и без. **Risk:** нет (bold-форма — строгое подмножество нового паттерна).
+
+### D-MG006 — Ticket Map проверяет колонку старого Task-ID; `idMapFromPlan` не глушит невалидные строки
+
+- **Status:** active · **Why:** непрочитанный старый ID печатался как `—` в плане и никто это не проверял; `ids --from-plan --write` тихо получал пустую карту и гейт «нечего делать» отчитывался зелёным. **Now:** `verifyUnitFile` добавляет `MIG_TICKET_ID_UNREADABLE`, если старый Task-ID пуст/`—`; `idMapFromPlan` возвращает `{ok:false, errors}` на строке, где old/new не `?`, но и не проходит грамматику ID — `sdd-migrate ids --from-plan` падает с явным списком, не молчит. **Risk:** нет.
+
+### D-MG007 — `move`: пустой корневой `tasks/` удаляется вместе с последним scope
+
+- **Status:** active · **Was:** `executeScopeMove` удалял только `tasks/<scope>/`; `detectFlowVersion` (`shared/sdd/flow.ts`) детектит v1 по самому наличию `tasks/` — после последнего scope пустой `tasks/` (иногда с одиноким `README.md`) держал репо в v1 навечно. **Now:** после удаления `tasks/<scope>/`, если в `tasks/` не осталось ничего кроме (опционально) `README.md` — удаляется весь `tasks/`. **Risk:** нет (условие строго «ничего значимого не осталось»).
+
+### D-MG008 — Ticket Map destination — форма, не точный пересчёт; модульный индекс — по факту назначения
+
+- **Status:** active · **Was:** `verifyUnitFile` требовал байт-в-байт `dirname(specFile)/<specBase>.task.<id>.md`, запрещая любую вложенность иную, чем у спеки; `executeScopeMove` группировал тикеты по `SpecUnit.module` (из пути спеки), а не по фактическому назначению из Ticket Map — тикет, направленный агентом в другую директорию, не попадал в правильный индекс. **Now:** verify — форма `specs/<scope>/**/*.task.<newId>.md` (`MIG_BAD_DESTINATION` при несовпадении); `executeScopeMove`/`renderScopeIndex` группируют по `dirname(dest)` каждого тикета — назначение из Ticket Map авторитетно. Флэт-назначение прямо в `specs/<scope>/` — легальный вариант без отдельного модульного индекса. **Risk:** нет.
+
+### D-MG009 — Новый Task-ID: ACR верхним регистром
+
+- **Status:** active · **Was:** `NEW_ID_REGEX` требовал lowercase-ACR (`^[a-z]...`), что противоречило конвенции репо (`AX_TASK_RESOLUTION`, `sdd-new --id`) — `<ACR>-<slug>` с ACR в верхнем регистре. **Now:** `^[A-Z][A-Z0-9]*(-[a-z0-9]+)+$`. **Risk:** нет (только строгость грамматики меняется — существующие корректные ID репо уже были в верхнем регистре).
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
