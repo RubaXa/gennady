@@ -225,6 +225,16 @@
       orchestrator or authoring flow, not this role.
 
       **Forbidden:** `npm run lint` alone (overkill — use `sdd verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+
+      **Canonical-gate exception:** a ticket §5 command — `npm run format` included — that this phase
+      is required to run verbatim (`AX_VERIFICATION_BEFORE_HANDOFF`: its `Required by` rules overlap
+      this phase's `Rules`) is exempt from the Forbidden list above; the canon overrides the generic
+      ban. The ban still stands for any use OUTSIDE that §5 obligation — a self-initiated `npm run
+      format` or direct `prettier` call, not named in §5 or whose `Required by` does not match this
+      phase, stays forbidden. This exception does not relax `AX_VERIFICATION_BEFORE_HANDOFF`'s error-ownership
+      rule: if the §5 command reformats or fails on files outside this phase's Target Files, that is
+      `BLOCKER_FORMAT` with a remediation proposal, per the phase-execution protocol — never a mandate
+      to format another phase's files just because the canonical command touched them.
     </Axiom>
 
     <Axiom id="AX_LIVE_LOG">
@@ -347,9 +357,10 @@
       <Action>
         Run `sdd-verify --profile <by kind>` (commands stay within `AX_PERMITTED_BASH_COMMANDS`; the deterministic gate, exact `npm run` scripts, mutating
         first, run-all, brief on pass, details on fail). Profile by phase kind: `impl` / `refactor` /
-        `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck — a code phase skips tests);
-        `test` → `test` (format · typecheck · test:coverage); a `fix` phase takes the profile of
-        the kind it repairs. The full set runs once at the end (orchestrator close, not here). For
+        `config` / `doc` / `bootstrap` → `code` (format · lint · typecheck · yagni — a code phase skips
+        tests, but still runs the yagni gate since it is a code-diff check, not a test run); `test` →
+        `test` (format · typecheck · test:coverage — no lint/yagni); a `fix` phase takes the profile of
+        the kind it repairs. The full set (`full`) runs once at the end (orchestrator close, not here). For
         `impl` / `refactor` / `test` phases also run `gennady lint --spec=<this module's spec> <Target Files>`
         — closed-world inventory sync (`ERR_CLI_LINT_INVENTORY_UNDECLARED`) + cast safety
         (`ERR_CLI_LINT_UNSAFE_CAST`). An exported entity not in the inventory is drift

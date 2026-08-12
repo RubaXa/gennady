@@ -163,6 +163,25 @@ describe('recomputeRollupProgress', () => {
     assert.deepStrictEqual(updated, []);
   });
 
+  it('recognizes a `Progress` header as the ratio column, same as `Done`', () => {
+    const progressRollup = [
+      '## Scope Tracker',
+      '| Scope | Type | Index | Tasks | Progress |',
+      '|---|---|---|---|---|',
+      '| app | product | [3-tasks](./app/app.3-tasks.md) | 0 | 0/0 |',
+    ].join('\n');
+    const rows: TrackerRow[] = [
+      { taskId: 'a', status: '[x] DONE' },
+      { taskId: 'b', status: '[ ] TODO' },
+    ];
+    const { text, updated } = recomputeRollupProgress(progressRollup, () => rows);
+    assert.deepStrictEqual(updated, ['./app/app.3-tasks.md']);
+    assert.match(
+      text,
+      /\| app \| product \| \[3-tasks\]\(\.\/app\/app\.3-tasks\.md\) \| 2 \| 1\/2 \|/
+    );
+  });
+
   it('round-trips with parseTrackerRows as the resolver source', () => {
     const linked = [
       '| Task-ID | Title | Status |',

@@ -140,6 +140,10 @@
     <Step id="STEP_1_MECHANICAL">
       <Goal>Get the mechanical findings from the tool. Take them as given.</Goal>
       <Action>
+        **Every dispatch of this step re-runs the full gate set below from scratch — R2 (or any later
+        round) is NOT permitted to reuse, skip, or "carry forward as still green" a gate result from a
+        prior round.** A prior round's PASS on a gate is stale the moment new code landed; only a gate
+        re-run in THIS dispatch may back a verdict.
         Run `sdd-check --task <ticket-path>` (and `--all` for an epic, per `AX_AUDIT_MODES`) plus
         `sdd-check --changed` per `AX_MECHANICAL_VIA_SDD_CHECK` — together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
@@ -203,8 +207,28 @@
         / decision-log); route only, MUST leave the fix to its owner (`AX_NO_AUTO_FIX`). Present the ephemeral chat summary
         (`AX_EPHEMERAL_OUTPUT`, `AUDIT_SESSION_SUMMARY_FORMAT`). If the round triggers a reopen, append an
         Audit Rounds section to the ticket (`AX_REOPEN_ROUNDS_IN_TICKET`) —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format. Return the
-        verdict (PASS / PASS_WITH_ACKNOWLEDGED_RISKS / FAIL + `phases_to_fix`) to the orchestrator.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/audit-round.xml")` for the format.
+
+        **`PASS_WITH_ACKNOWLEDGED_RISKS` (`status=PASS_RISK`) is never this subagent's own
+        judgment call — it is a fact-check against a PRIOR operator acceptance, never a live request
+        for one** (this isolated subagent has no channel to ask the operator anything). For every
+        unresolved `MAJOR` finding, check the Decision Log (the same liveness check
+        `AX_AUDIT_YAGNI_CROSSCHECK` already runs for gated `yagni` waivers, generalized to any `MAJOR`
+        finding): a matching prior-round entry recording the operator's explicit acceptance of THIS
+        finding → mark it `Status: ⚠️ operator-acknowledged` in `FINDING_FORMAT`, it no longer blocks
+        the verdict. No matching entry → it stays `Status: 📂 open` and blocks the verdict exactly like
+        any other unresolved `MAJOR`. Compute and return:
+        - `PASS` — zero unresolved `BLOCKER` findings AND zero `📂 open` `MAJOR` findings (regardless
+          of `⚠️ operator-acknowledged` ones).
+        - `status=PASS_RISK` (`PASS_WITH_ACKNOWLEDGED_RISKS`) — same as `PASS` above, but at least one
+          `⚠️ operator-acknowledged` `MAJOR` finding backed the pass (only reachable this way — never
+          on a first-look finding with no Decision Log entry yet).
+        - `FAIL` + `phases_to_fix` — one or more unresolved `BLOCKER` findings (`phases_to_fix` lists
+          the owning phases, non-empty), OR one or more `📂 open` `MAJOR` findings with no matching
+          Decision Log acceptance yet (`phases_to_fix` left empty when the fix is administrative,
+          per Path B, `STEP_7_RESOLVE`) — the orchestrator is the one with a channel to ask the
+          operator; once accepted and logged, R2 re-runs this step and finds the Decision Log entry.
+        Return this verdict to the orchestrator.
       </Action>
     </Step>
   </ExecutionPlan>

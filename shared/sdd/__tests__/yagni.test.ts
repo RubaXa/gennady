@@ -93,6 +93,45 @@ describe('parseUsageWaiver', () => {
     const empty = '### `zeta`\n- **Usage Waiver:** ';
     assert.strictEqual(parseUsageWaiver(empty, 'zeta'), null);
   });
+
+  it('parses a Usage Waiver under the DbC `#### Port: `Name`` heading convention', () => {
+    const dbc = [
+      '#### Port: `SymbolIndex`',
+      '- **Purpose:** thing',
+      '- **Usage Waiver:** D-042 — single real-runtime adapter today, port kept for the grep fallback',
+      '',
+      '#### Adapter: `TsSymbolIndexAdapter`',
+      '- **Implements:** `SymbolIndex`',
+    ].join('\n');
+    assert.deepStrictEqual(parseUsageWaiver(dbc, 'SymbolIndex'), {
+      decision: 'D-042',
+      reason: 'single real-runtime adapter today, port kept for the grep fallback',
+    });
+  });
+
+  it('parses a Usage Waiver under the numbered `### N.N Adapter: `Name`` heading convention', () => {
+    const dbc = [
+      '### 6.2 Adapter: `GrepSymbolIndexAdapter`',
+      '- **Implements:** `SymbolIndex`',
+      '- **Usage Waiver:** approximate fallback for extensions without a grammar, kept for coverage',
+      '',
+      '### 6.3 Adapter: `Other`',
+    ].join('\n');
+    assert.deepStrictEqual(parseUsageWaiver(dbc, 'GrepSymbolIndexAdapter'), {
+      reason: 'approximate fallback for extensions without a grammar, kept for coverage',
+    });
+  });
+
+  it('stops the DbC block at the next heading of the same or shallower level, not a deeper one', () => {
+    const dbc = [
+      '#### Service: `SymbolIndex`',
+      '##### Side Effects',
+      '- none',
+      '#### Service: `Other`',
+      '- **Usage Waiver:** belongs to Other, not SymbolIndex',
+    ].join('\n');
+    assert.strictEqual(parseUsageWaiver(dbc, 'SymbolIndex'), null);
+  });
 });
 
 describe('hasDecisionHeading', () => {

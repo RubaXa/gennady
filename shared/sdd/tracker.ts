@@ -157,7 +157,8 @@ export function isRowDone(status: string): boolean {
 }
 
 /**
- * @purpose Locate a Scope/Module rollup table — carries `Index`, `Tasks`, AND `Done` columns.
+ * @purpose Locate a Scope/Module rollup table — carries `Index`, `Tasks`, AND a ratio column
+ *   (`Done` or `Progress`, e.g. `0/6`; both header spellings are accepted).
  * @param lines The index file split into lines.
  * @returns Header row index + the three column indices, or null when no such table exists.
  */
@@ -170,7 +171,8 @@ function findRollupHeader(
     const cells = contentCells(line).map((c) => c.toLowerCase());
     const indexCol = cells.indexOf('index');
     const tasksCol = cells.indexOf('tasks');
-    const doneCol = cells.indexOf('done');
+    const doneCol =
+      cells.indexOf('done') !== -1 ? cells.indexOf('done') : cells.indexOf('progress');
     if (indexCol !== -1 && tasksCol !== -1 && doneCol !== -1) {
       return { headerIdx: i, indexCol, tasksCol, doneCol };
     }

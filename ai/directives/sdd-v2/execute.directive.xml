@@ -263,9 +263,10 @@
       <Goal>Branch on the audit verdict.</Goal>
       <Action>
         <LogicSwitch on="audit verdict + attempt">
-        - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` -> STEP_7B_CODE_REVIEW
-        - WHEN `FAIL` + attempt 1                      -> STEP_7_RESOLVE (one retry)
-        - WHEN `FAIL` + attempt 2                      -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
+        - WHEN `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS`                          -> STEP_7B_CODE_REVIEW (a `PASS_WITH_ACKNOWLEDGED_RISKS` here always already carries a Decision Log entry — audit only confirms a PRIOR acceptance, per `audit.directive`; it never asks live)
+        - WHEN `FAIL` + only open `MAJOR` findings (no open `BLOCKER`) + attempt 1 -> ask the operator, per finding: accept this risk? ALL accepted -> STEP_7_RESOLVE Path B (append a Decision Log entry per accepted finding — the acceptance record the next audit dispatch will find — no new Round), then re-dispatch audit (R2, which now returns `PASS_WITH_ACKNOWLEDGED_RISKS`); ANY declined -> STEP_7_RESOLVE as an ordinary `FAIL` (Path A/B per the finding's fix, not an acceptance)
+        - WHEN `FAIL` (open `BLOCKER`, or a declined risk) + attempt 1          -> STEP_7_RESOLVE (one retry)
+        - WHEN `FAIL` + attempt 2                                              -> H_AUDIT_FAIL_AFTER_RETRY, then STEP_8 (`AX_RE_DISPATCH` caps at 2)
         </LogicSwitch>
       </Action>
     </Step>
@@ -273,10 +274,13 @@
       <Goal>Resolve audit findings (one retry).</Goal>
       <Action>
         Path A — `phases_to_fix` non-empty: open a new Round; re-run ONLY those phases as `fix`
-        (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec / decision-log
-        only: apply them directly (the orchestrator owns trackers and may make administrative edits,
-        `AX_OWNER`), no
-        new Round, then re-dispatch audit (R2). Either way return to STEP_6.
+        (sequential), then STEP_3 → STEP_5 (audit R2). Path B — findings are ticket / spec /
+        decision-log only (administrative artifact edits: tracker fields, Decision Log entries, a
+        contract Usage Waiver label in the spec — never production code): apply them directly under
+        the orchestrator's own artifact-edit channel (the orchestrator owns trackers and may make these
+        administrative edits, `AX_OWNER`; distinct from and narrower than `AX_ENV_FIX_CHANNEL`, which
+        covers env/config, not artifacts — see `HardForbidden`), no new Round, then re-dispatch audit
+        (R2). Either way return to STEP_6.
       </Action>
     </Step>
     <Step id="STEP_7B_CODE_REVIEW">
@@ -297,7 +301,7 @@
 
   <HardForbidden>
     - Workers read phase bodies / BDD / Verification / specs / rule files / code, each bounded by their manifest; the orchestrator does not.
-    - Workers write code, audit reports, and phase blocks; the orchestrator does not write code or specs — the ONE narrow exception is `AX_ENV_FIX_CHANNEL` (env/config only, never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff).
+    - Workers write code, audit reports, and phase blocks; the orchestrator does not write production code, ever. It has exactly TWO narrow, non-overlapping write channels: (a) `AX_ENV_FIX_CHANNEL` — env/config artifacts only (`package.json` scripts, tool config, lockfiles), never `Target Files` code or `specs/**`, never without prior explicit operator approval of the exact diff; (b) STEP_7_RESOLVE Path B — administrative edits to ticket / Decision Log / spec waiver-labels, applying an audit finding directly per `AX_OWNER`. Neither channel extends to production code under a module's `Target Files`.
     - Always run audit after all phases DONE, and code-review after the audit passes.
     - Thread only typed Handoff payloads between subagents; keep their contexts separate.
     - Cap audit attempts at 2; re-run only phases in `phases_to_fix`; drive a retry from audit FAIL only (a phase BLOCKED pauses, it does not reopen); run phases of the same task sequentially, one at a time.

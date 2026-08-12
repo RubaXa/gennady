@@ -57,16 +57,23 @@ export function stripBarrelReexports(content: string): string {
 
 /**
  * @purpose Parse a `Usage Waiver` line (or its `(external: <consumer>)` variant) inside one
- *   entity's ``### `<entityName>` `` block. Reason mandatory; `D-NNN` citation optional.
+ *   entity's heading block. Reason mandatory; `D-NNN` citation optional.
  * @param specContent Full markdown content of one spec/contract file.
- * @param entityName The entity heading to look inside (``### `<entityName>` ``).
+ * @param entityName The entity heading to look inside — bare-name (``### `<entityName>` ``, any
+ *   level) or DbC port/adapter/service (``#### Port: `<entityName>` ``, optionally numbered).
  * @returns The parsed waiver, or null when the entity has no heading or no Usage Waiver line, or the reason is empty.
  */
 export function parseUsageWaiver(specContent: string, entityName: string): UsageWaiver | null {
   const escaped = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const blockRe = new RegExp('###\\s*`' + escaped + '`[\\s\\S]*?(?=\\n##|\\n###|$)');
-  const block = blockRe.exec(specContent)?.[0];
-  if (!block) return null;
+  const headingRe = new RegExp('^(#{2,6})[ \\t]+.*`' + escaped + '`.*$', 'm');
+  const headingMatch = headingRe.exec(specContent);
+  if (!headingMatch) return null;
+
+  const level = (headingMatch[1] as string).length;
+  const afterHeading = specContent.slice(headingMatch.index + headingMatch[0].length);
+  const nextHeadingRe = new RegExp('^#{1,' + level + '}[ \\t]', 'm');
+  const nextHeadingMatch = nextHeadingRe.exec(afterHeading);
+  const block = afterHeading.slice(0, nextHeadingMatch ? nextHeadingMatch.index : undefined);
   const m =
     /-\s*\*\*Usage Waiver(?:\s*\(external:\s*([^)]+)\))?:\*\*\s*(?:(D-[A-Za-z0-9]+)\s*[—-]\s*)?(.+)/.exec(
       block
