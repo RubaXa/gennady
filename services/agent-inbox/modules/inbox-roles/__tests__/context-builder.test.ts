@@ -2,14 +2,15 @@
 //   a recomputed merge-base), degrade-open when diff_refs/worktree are unavailable, and
 //   stage/lastReviewedHeadSha passthrough from the registry into NodeContext.artifacts.
 // @consumers: node:test runner
-// @tasks: TSK-121
+// @tasks: TSK-121, TSK-190
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildNodeContext, type DiffRefs } from '../context-builder.ts';
+import { buildNodeContext, ensureReviewBaseCommit, type DiffRefs } from '../context-builder.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import type {
   InboxRegistry,
@@ -60,6 +61,42 @@ beforeEach(() => {
 });
 
 describe('buildNodeContext — base from diff_refs.base_sha', () => {
+  it('fetches an exact missing base commit into the managed clone before diff', async () => {
+    const source = join(stateDir, 'source');
+    const remote = join(stateDir, 'remote.git');
+    const managedClone = join(stateDir, 'managed-clone');
+    mkdirSync(source, { recursive: true });
+    execFileSync('git', ['init', '--bare', remote]);
+    execFileSync('git', ['init'], { cwd: source });
+    execFileSync('git', ['config', 'user.email', 'tsk190@example.test'], { cwd: source });
+    execFileSync('git', ['config', 'user.name', 'TSK-190'], { cwd: source });
+    writeFileSync(join(source, 'runtime.ts'), 'export const base = true;\n');
+    execFileSync('git', ['add', 'runtime.ts'], { cwd: source });
+    execFileSync('git', ['commit', '-m', 'base'], { cwd: source });
+    const baseSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: source,
+      encoding: 'utf8',
+    }).trim();
+    writeFileSync(join(source, 'runtime.ts'), 'export const head = true;\n');
+    execFileSync('git', ['commit', '-am', 'head'], { cwd: source });
+    execFileSync('git', ['remote', 'add', 'origin', remote], { cwd: source });
+    execFileSync('git', ['push', 'origin', 'HEAD:main'], { cwd: source });
+    execFileSync('git', [
+      'clone',
+      '--depth=1',
+      '--branch',
+      'main',
+      `file://${remote}`,
+      managedClone,
+    ]);
+
+    assert.throws(() =>
+      execFileSync('git', ['cat-file', '-e', `${baseSha}^{commit}`], { cwd: managedClone })
+    );
+    await ensureReviewBaseCommit(managedClone, baseSha);
+    execFileSync('git', ['cat-file', '-e', `${baseSha}^{commit}`], { cwd: managedClone });
+  });
+
   it('GIVEN diff_refs.baseSha=deadbeef WHEN buildNodeContext THEN ctx.base === deadbeef verbatim (не merge-base)', async () => {
     const store = new FakeStateStore(stateDir);
     const diffRefs: DiffRefs = { baseSha: 'deadbeef', startSha: 'cafe', headSha: 'feedface' };

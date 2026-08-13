@@ -10,7 +10,7 @@
 - **Purpose:** Make the production board converge on real GitLab state and expose every dashboard command through typed API/SSE adapters.
 - **Scope:** agent-inbox
 - **Module:** inbox-api
-- **Dependencies:** TSK-174, TSK-184
+- **Dependencies:** TSK-174, TSK-190
 - **Spec References:** [API spec](../../../specs/agent-inbox/inbox-api/inbox-api.spec.md), [Root lifecycle](../../../specs/agent-inbox/agent-inbox.spec.md)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`, `integration`, `e2e`

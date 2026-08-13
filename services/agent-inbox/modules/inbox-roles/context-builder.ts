@@ -1,7 +1,7 @@
 // @file: buildNodeContext — assembles a live NodeContext for one MR (worktree, changeset,
 //   base, stage/headChanged) from real VCS + registry state, for RoleScheduler assignment.
 // @consumers: RoleScheduler
-// @tasks: TSK-121, TSK-122
+// @tasks: TSK-121, TSK-122, TSK-184, TSK-190
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -51,6 +51,8 @@ export type ContextBuilderDeps = {
    * @returns diff_refs or undefined when unavailable
    */
   fetchDiffRefs: (mrUrl: string) => Promise<DiffRefs | undefined>;
+  /** @purpose Keep clone discovery and all fetch writes inside the selected runtime state root. */
+  managedCloneOnly?: boolean;
 };
 
 /**
@@ -71,6 +73,28 @@ async function git(args: string[], cwd: string): Promise<string> {
     maxBuffer: 64 * 1024 * 1024,
   });
   return stdout.trim();
+}
+
+/**
+ * @purpose Ensure the provider-pinned diff base commit exists in the managed clone before local comparison.
+ * @invariant The only fetch target is the exact provider SHA and the command is bounded to 30 seconds.
+ * @param clonePath Managed clone under the selected runtime state root.
+ * @param baseSha Provider-supplied immutable diff base SHA.
+ * @returns Completion after local object verification.
+ * @sideEffect Network/filesystem: may fetch one exact commit into the managed clone.
+ */
+export async function ensureReviewBaseCommit(clonePath: string, baseSha: string): Promise<void> {
+  try {
+    await git(['cat-file', '-e', `${baseSha}^{commit}`], clonePath);
+    return;
+  } catch {
+    await execFileAsync(
+      'git',
+      ['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'fetch', '--depth=1', 'origin', baseSha],
+      { encoding: 'utf8', timeout: 30_000, maxBuffer: 64 * 1024 * 1024 }
+    );
+    await git(['cat-file', '-e', `${baseSha}^{commit}`], clonePath);
+  }
 }
 
 /**
@@ -126,7 +150,8 @@ export async function fetchDiffRefsLive(mrUrl: string): Promise<DiffRefs | undef
 async function _prepareWorktreeAndChangeset(
   mrUrl: string,
   base: string | undefined,
-  stateDir: string
+  stateDir: string,
+  managedCloneOnly = false
 ): Promise<{ worktreePath?: string; headSha?: string; changesetFiles?: ChangesetFile[] }> {
   try {
     const context = await resolveVcsContext({ url: mrUrl });
@@ -137,12 +162,15 @@ async function _prepareWorktreeAndChangeset(
     } catch {
       /* corrupt/absent config — fall back to default reposBase */
     }
-    const reposBase = config?.reposBase ?? join(homedir(), 'Developer');
+    const managedClonesRoot = clonesRoot(stateDir);
+    const reposBase = managedCloneOnly
+      ? managedClonesRoot
+      : (config?.reposBase ?? join(homedir(), 'Developer'));
 
     const clonePath = await ensureClone(context.project, context.host, context.token, {
       reposBase,
       reposMapPath: reposMapPath(stateDir),
-      clonesRoot: clonesRoot(stateDir),
+      clonesRoot: managedClonesRoot,
     });
 
     const worktreePath = mrWorktreeDir(stateDir, `${context.project}!${context.iid}`);
@@ -151,6 +179,8 @@ async function _prepareWorktreeAndChangeset(
     if (!base) {
       return { worktreePath: prepared.worktreePath, headSha: prepared.headSha };
     }
+
+    await ensureReviewBaseCommit(clonePath, base);
 
     // #region START_COMPUTE_CHANGESET — invariant: diff is always base..HEAD where base is the
     // injected diff_refs.base_sha; this function never derives base itself (see AX in buildNodeContext)
@@ -242,7 +272,8 @@ export async function buildNodeContext(
   const { worktreePath, headSha, changesetFiles } = await _prepareWorktreeAndChangeset(
     mrUrl,
     base,
-    stateDir
+    stateDir,
+    deps.managedCloneOnly
   );
   const headChanged = worktreePath
     ? await _classifyHeadChanged(worktreePath, lastReviewedHeadSha, headSha)

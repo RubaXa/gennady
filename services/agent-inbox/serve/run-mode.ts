@@ -1,45 +1,84 @@
-// @file: run-mode — one-shot serve pass: feeds a fixed MR list through the real role graph
-//   (live NodeContext, dry-run effects) and returns a per-MR result. Closes the serve-mode gap for
-//   TSK-121/EV-10: prep branches on real signals, effect nodes call the real EffectExecutor, and an
-//   optional seed restores prior review state before the pass runs.
+// @file: run-mode — bounded one-shot acceptance through the boot-owned PipelineRuntime.
 // @consumers: cli/cmd/inbox/serve.cmd.ts (--mrs run-mode entry point), inbox-eval eval-driver.ts
-// @tasks: TSK-121, TSK-122
+// @tasks: TSK-121, TSK-122, TSK-184, TSK-190
 
 import { logger } from '#logger';
-import { RoleInstance, type RoleInstanceCheckpoint } from '../modules/inbox-roles/role-instance.ts';
-import type { RoleEngine } from '../modules/inbox-roles/role-engine.ts';
-import type { InstanceState } from '../modules/inbox-roles/errors.ts';
-import type { RoleArtifacts } from '../modules/inbox-roles/role-node.ts';
-import {
-  buildNodeContext,
-  fetchDiffRefsLive,
-  type ContextBuilderDeps,
-} from '../modules/inbox-roles/context-builder.ts';
 import type { VcsInboxPort } from '../modules/inbox-core/vcs-inbox.port.ts';
 import type { StateStore } from '../modules/inbox-core/state-store.ts';
+import { EventJournal } from '../modules/inbox-core/event-journal.ts';
+import { PipelineRuntime } from '../modules/inbox-pipeline/pipeline-runtime.ts';
+import { InMemoryTaskQueue } from '../modules/inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../modules/inbox-queue/task-registry.ts';
 import type { OpenCodePort } from '../modules/inbox-opencode/opencode.port.ts';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { fetchDiffRefsLive, type DiffRefs } from '../modules/inbox-roles/context-builder.ts';
+import { buildNodeContext } from '../modules/inbox-roles/context-builder.ts';
+import { buildTrackContext } from '../modules/inbox-core/context-builder.ts';
+import type { ReviewManifestCapture } from '../modules/inbox-pipeline/planning/review-input-manifest-builder.ts';
+import type { ReviewChangeShapeCode } from '../modules/inbox-pipeline/types/review-input-classification.type.ts';
+import { readFile, stat } from 'node:fs/promises';
 import { applySeedState, type SeedState } from './state-seed.ts';
 import { resolveVcsContext } from '../../../cli/cmd/_shared/vcs-context-resolver.ts';
-
-/** @purpose Bound guarding the drive-to-terminal loop per MR | @invariant One-shot mode has no external tick timer to hand control back to — the loop must self-limit against a stuck gate-fail/session-retry cycle. */
-const MAX_STEPS_PER_MR = 50;
 
 /**
  * @purpose Services `runMrsOnce` drives the graph with — real adapters in production,
  *   mocks (VcsInboxMock/OpenCodeMock) in eval/test runs.
  */
 export type RunModeDeps = {
-  /** @purpose Role engine, already loaded (loadAll()) — provides the graph per resolved role */
-  engine: RoleEngine;
-  /** @purpose State store bound to the target state directory (registry + audit) */
-  store: StateStore;
-  /** @purpose VCS adapter — read-only lookups plus the EffectExecutor's mutation path */
+  /** @purpose The exact boot-owned production acceptance owner. */
+  pipeline: PipelineRuntime;
+  /** @purpose Optional state store used only for backward-compatible seed restoration. */
+  store?: StateStore;
+  /** @purpose VCS read adapter used to resolve the role-invariant pipeline tail. */
   vcs: VcsInboxPort;
-  /** @purpose OpenCode adapter for session nodes */
-  opencode: OpenCodePort;
-  /** @purpose Diff-refs resolver override — injectable for tests; defaults to `fetchDiffRefsLive` */
-  fetchDiffRefs?: ContextBuilderDeps['fetchDiffRefs'];
+  /**
+   * @purpose Exact provider diff refs; absence fails closed before queue handoff.
+   * @param mrUrl Provider MR URL to resolve.
+   * @returns Exact provider refs or undefined when unavailable.
+   */
+  fetchDiffRefs?: (mrUrl: string) => Promise<DiffRefs | undefined>;
+  /**
+   * @purpose Optional exact inventory provider; production falls back to live worktree capture.
+   * @param mrUrl Canonical MR URL whose inventory must be captured.
+   * @param headSha Exact immutable MR head expected by the capture.
+   * @returns Exhaustive versioned manifest capture or a rejected promise when unavailable.
+   */
+  captureReviewInput?: (mrUrl: string, headSha: string) => Promise<ReviewManifestCapture>;
 };
+
+/**
+ * @purpose Compose the durable pipeline acceptance owner shared by one-shot and eval consumers.
+ * @param store State root owning queue, control and artifact persistence.
+ * @param opencode Worker adapter used by non-control legacy tasks.
+ * @param [runtimeNamespace] Profile namespace isolating trusted receipts.
+ * @param [controlPlaneModel] Operator-selected OpenCode model for control-plane turns.
+ * @returns One durable acceptance runtime.
+ */
+export function composeRunModePipeline(
+  store: StateStore,
+  opencode: OpenCodePort,
+  runtimeNamespace = 'one-shot',
+  controlPlaneModel?: string
+): PipelineRuntime {
+  const stateDir = store.getStateDir();
+  const registry = new TaskRegistry();
+  return new PipelineRuntime(
+    new InMemoryTaskQueue(registry),
+    registry,
+    new EventJournal(join(stateDir, 'agent-inbox', 'events.jsonl')),
+    undefined,
+    stateDir,
+    opencode,
+    undefined,
+    {
+      journal: new EventJournal(join(stateDir, 'agent-inbox', 'control-plane-events.jsonl')),
+      receiptRoot: join(stateDir, 'agent-inbox', 'control-plane-receipts'),
+      runtimeNamespace,
+      model: controlPlaneModel,
+    }
+  );
+}
 
 /** @purpose Inputs for one `runMrsOnce` pass. */
 export type RunMrsOnceOpts = {
@@ -47,7 +86,7 @@ export type RunMrsOnceOpts = {
   mrs: string[];
   /** @purpose Optional prior-review state applied to the registry before assignment */
   seedState?: SeedState;
-  /** @purpose Forwarded to every RoleInstance's effect nodes | @default true — a run-mode pass never posts unless the caller opts out explicitly */
+  /** @purpose Retained CLI compatibility flag; one-shot pipeline acceptance never dispatches effects. */
   dryRun?: boolean;
   /** @purpose Injected services */
   deps: RunModeDeps;
@@ -58,14 +97,16 @@ export type MrRunResult = {
   /** @purpose MR web URL this result belongs to */
   mr: string;
   /** @purpose Terminal instance state, or 'unresolved_role' when the MR carries no myRole */
-  state: InstanceState | 'unresolved_role';
-  /** @purpose Role the graph ran under, or null when unresolved */
+  state: 'completed' | 'failed' | 'blocked' | 'unresolved_role';
+  /** @purpose Role selecting the pipeline tail, or null when unresolved */
   role: string | null;
-  /** @purpose Dashboard-shaped snapshot from `RoleInstance.getBoardView()`, or null when unresolved */
+  /** @purpose Durable queue completion snapshot, or null when unresolved. */
   board: Record<string, unknown> | null;
-  /** @purpose Accumulated artifacts at the terminal node, or null when unresolved */
-  artifacts: RoleArtifacts | null;
-  /** @purpose Failure message when state === 'error' */
+  /** @purpose Canonical artifacts read from the pipeline-owned report surface. */
+  artifacts: Record<string, unknown> | null;
+  /** @purpose Runtime identity matching the production composition trace. */
+  runtimeIdentity: string;
+  /** @purpose Failure message when completion is failed or blocked. */
   error?: string;
 };
 
@@ -108,26 +149,23 @@ export async function resolveRunModeVcsHost(
 }
 
 /**
- * @purpose Feed a fixed MR list through the real role graph, driving each RoleInstance to a
- *   terminal state; VCS untouched unless `dryRun` is disabled.
- * @invariant No RoleScheduler polling/tick — a direct, bounded, one-shot drive per MR from the
- *   operator's exact list, not `vcs.getActionable()`.
+ * @purpose Submit a fixed MR list to the boot-owned pipeline and read each durable terminal result.
+ * @invariant Submission, bounded drain and artifact readback use one PipelineRuntime identity.
  * @param opts MR list, optional seed, dry-run flag, and injected services.
  * @returns Per-MR results in input order.
- * @sideEffect Filesystem: registry seed/save, per-MR workspace/worktree prep. Network: MR/diff_refs
- *   lookups; VCS mutation only when `dryRun` is false and a pass reaches an answered `node_effect`.
+ * @sideEffect Filesystem: optional registry seed plus pipeline queue/journal/artifact writes.
  */
 export async function runMrsOnce(opts: RunMrsOnceOpts): Promise<RunMrsOnceResult> {
   const dryRun = opts.dryRun ?? true;
   logger.info('[runMrsOnce] [idle → starting]', { mrCount: opts.mrs.length, dryRun });
 
-  if (opts.seedState) {
+  if (opts.seedState && opts.deps.store) {
     applySeedState(opts.deps.store, opts.seedState);
   }
 
   const results: MrRunResult[] = [];
   for (const mrUrl of opts.mrs) {
-    results.push(await _runOneMr(mrUrl, dryRun, opts.deps));
+    results.push(await _runOneMr(mrUrl, opts.deps));
   }
 
   logger.info('[runMrsOnce] [starting → done]', { mrCount: results.length });
@@ -135,103 +173,281 @@ export async function runMrsOnce(opts: RunMrsOnceOpts): Promise<RunMrsOnceResult
 }
 
 /**
- * @purpose Resolve one MR's role + live context, drive its RoleInstance to a terminal state.
+ * @purpose Resolve one MR's role, submit its pipeline DAG, and read its durable terminal state.
  * @param mrUrl MR web URL to process.
- * @param dryRun Forwarded to the RoleInstance's effect nodes.
  * @param deps Injected services.
  * @throws Never — all failures are caught and surfaced as a 'error'-state MrRunResult.
  * @returns This MR's result.
  * @sideEffect See `runMrsOnce`.
  */
-async function _runOneMr(mrUrl: string, dryRun: boolean, deps: RunModeDeps): Promise<MrRunResult> {
+async function _runOneMr(mrUrl: string, deps: RunModeDeps): Promise<MrRunResult> {
   try {
     const mrContext = await deps.vcs.getMrContext(mrUrl);
     const role = mrContext.myRole;
 
-    // #region START_RESOLVE_ROLE — invariant: no role (or role has no registered graph) means there
-    // is no graph to run for this MR; surfaced as a distinct terminal state, not a thrown error
+    // #region START_RESOLVE_ROLE — permission role selects only the tail; review depth is invariant
     if (!role) {
       logger.warn('[runMrsOnce#_runOneMr] [resolving → no_role]', { mr: mrUrl });
-      return { mr: mrUrl, state: 'unresolved_role', role: null, board: null, artifacts: null };
-    }
-
-    const definition = deps.engine.retrieve(role);
-    if (!definition) {
-      logger.warn('[runMrsOnce#_runOneMr] [resolving → role_not_registered]', {
+      return {
         mr: mrUrl,
-        role,
-      });
-      return { mr: mrUrl, state: 'unresolved_role', role, board: null, artifacts: null };
+        state: 'unresolved_role',
+        role: null,
+        board: null,
+        artifacts: null,
+        runtimeIdentity: deps.pipeline.identity,
+      };
     }
+    const pipelineRole = _resolvePipelineRole(role);
     // #endregion END_RESOLVE_ROLE
-
-    const nodeContext = await buildNodeContext(mrUrl, {
-      vcs: deps.vcs,
-      store: deps.store,
-      fetchDiffRefs: deps.fetchDiffRefs ?? fetchDiffRefsLive,
+    const diffRefs = await (deps.fetchDiffRefs ?? fetchDiffRefsLive)(mrUrl);
+    if (!diffRefs?.headSha) {
+      throw new Error('[runMrsOnce#_runOneMr] Exact MR head SHA is unavailable');
+    }
+    const contextDigest = createHash('sha256').update(JSON.stringify(mrContext)).digest('hex');
+    const eventCursor = mrContext.updatedAt || mrContext.createdAt || `capture:${contextDigest}`;
+    const capture = deps.captureReviewInput
+      ? await deps.captureReviewInput(mrUrl, diffRefs.headSha)
+      : await _captureLiveReviewInput(mrUrl, diffRefs.headSha, deps);
+    _assertExhaustiveRunModeCapture(capture);
+    const taskIds = await deps.pipeline.startReview(mrUrl, {
+      role: pipelineRole,
+      tracks: [],
+      controlPlaneInput: {
+        intent: {
+          kind: 'full',
+          manifestKey: { mr: mrUrl, headSHA: diffRefs.headSha, eventCursor },
+          trigger: 'one-shot',
+          requester: 'operator',
+        },
+        capture,
+      },
     });
-
-    const checkpoint: RoleInstanceCheckpoint = {
-      currentNode: definition.graph.nodes[0]?.id ?? '',
-      continueCount: 0,
-      restartCount: 0,
-      artifacts: nodeContext.artifacts,
-    };
-
-    const instance = new RoleInstance({
-      id: `${role}:${mrUrl}`,
-      role,
-      mr: mrUrl,
-      graph: definition.graph,
-      opencode: deps.opencode,
-      vcs: deps.vcs,
-      store: deps.store,
-      dryRun,
-      checkpoint,
-    });
-
-    await _driveToTerminal(instance);
-
+    const completion = await deps.pipeline.awaitCompletion(mrUrl, taskIds);
+    const readback = await deps.pipeline.readReviewArtifacts(mrUrl);
     return {
       mr: mrUrl,
-      state: instance.state,
+      state: completion.state,
       role,
-      board: instance.getBoardView(),
-      artifacts: instance.getCheckpoint().artifacts,
+      board: { tasks: completion.tasks },
+      artifacts: { ...readback.artifacts },
+      runtimeIdentity: completion.runtimeIdentity,
+      error: completion.error,
     };
   } catch (cause) {
     const error = new Error(`[runMrsOnce#_runOneMr] MR processing failed: ${mrUrl}`, { cause });
     logger.error('[runMrsOnce#_runOneMr] [processing → failed]', { mr: mrUrl, error });
     return {
       mr: mrUrl,
-      state: 'error',
+      state: 'failed',
       role: null,
       board: null,
       artifacts: null,
+      runtimeIdentity: deps.pipeline.identity,
       error: (cause as Error).message,
     };
   }
 }
 
-/**
- * @purpose Step a RoleInstance until it reaches a terminal state or the step bound is exhausted.
- * @param instance RoleInstance to drive.
- * @returns Promise that resolves once the instance is terminal (or the bound is hit).
- * @sideEffect Whatever `RoleInstance#step()` does per node (LLM calls, effect dispatch).
- */
-async function _driveToTerminal(instance: RoleInstance): Promise<void> {
-  let steps = 0;
-
-  // #region START_DRIVE_GRAPH_TO_TERMINAL — invariant: bounded against a stuck retry/gate-fail
-  // cycle since one-shot mode has no tick timer to yield control back to between attempts
-  while (
-    instance.state !== 'done' &&
-    instance.state !== 'error' &&
-    instance.state !== 'awaiting_operator' &&
-    steps < MAX_STEPS_PER_MR
-  ) {
-    await instance.step();
-    steps++;
+/** @purpose Capture exhaustive versioned review inventory from the real MR worktree and discussions. */
+async function _captureLiveReviewInput(
+  mrUrl: string,
+  expectedHeadSha: string,
+  deps: RunModeDeps
+): Promise<ReviewManifestCapture> {
+  if (!deps.store) {
+    throw new Error(
+      '[runMrsOnce#_captureLiveReviewInput] State store is required for live capture'
+    );
   }
-  // #endregion END_DRIVE_GRAPH_TO_TERMINAL
+  const context = await buildNodeContext(mrUrl, {
+    vcs: deps.vcs,
+    store: deps.store,
+    fetchDiffRefs: deps.fetchDiffRefs ?? fetchDiffRefsLive,
+    managedCloneOnly: true,
+  });
+  const worktreePath =
+    typeof context.artifacts.worktreePath === 'string' ? context.artifacts.worktreePath : '';
+  const base = context.base;
+  const changeset = context.changeset;
+  const headSha = typeof context.artifacts.headSha === 'string' ? context.artifacts.headSha : '';
+  if (!worktreePath || !base || !changeset || headSha !== expectedHeadSha) {
+    throw new Error(
+      '[runMrsOnce#_captureLiveReviewInput] Complete immutable worktree inventory is unavailable'
+    );
+  }
+  const [analysis, discussions] = await Promise.all([
+    buildTrackContext('all', changeset, base, worktreePath),
+    deps.vcs.getDiscussions(mrUrl, { all: true }),
+  ]);
+  const inputs: ReviewManifestCapture['inputs'][number][] = [];
+  const classifications: ReviewManifestCapture['classifications'][number][] = [];
+  const add = (
+    inputId: string,
+    kind: 'file' | 'entity' | 'discussion' | 'source',
+    canonicalIdentity: string,
+    bytes: string,
+    code: ReviewChangeShapeCode,
+    changeShape: ReviewChangeShapeCode[]
+  ): void => {
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    inputs.push({
+      inputId,
+      kind,
+      canonicalIdentity,
+      version: headSha,
+      digest,
+      capturedBytes: bytes,
+    });
+    classifications.push({
+      inputId,
+      code,
+      changeShape,
+      rationaleDigest: createHash('sha256')
+        .update(JSON.stringify({ canonicalIdentity, code, changeShape }))
+        .digest('hex'),
+      classifierVersion: 'review-classifier-v0',
+    });
+  };
+  const goalBytes = JSON.stringify({
+    title: context.mr.title,
+    description: context.mr.description,
+  });
+  add('source:goal', 'source', `${mrUrl}#goal`, goalBytes, 'GOAL_CHANGED', ['GOAL_CHANGED']);
+  const paths = changeset.files.map((file) => file.path.toLowerCase());
+  const dimensionCodes: ReadonlyArray<readonly [string, ReviewChangeShapeCode, boolean]> = [
+    [
+      'architecture',
+      'ARCHITECTURE_CHANGED',
+      paths.some((path) => /(?:architecture|bootstrap|runtime|adapter|port|service)/.test(path)),
+    ],
+    [
+      'specification',
+      'SPECIFICATION_TOUCHED',
+      paths.some((path) => /(?:^|\/)(?:specs?|docs?)(?:\/|\.|$)/.test(path)),
+    ],
+    ['tests', 'TEST_SURFACE_CHANGED', paths.some((path) => /(?:test|spec)\.[^.]+$/.test(path))],
+    [
+      'security',
+      'SECURITY_SURFACE_CHANGED',
+      analysis.mrShape.securityHits || analysis.mrShape.depManifest,
+    ],
+    [
+      'optimality',
+      'OPTIMALITY_RELEVANT',
+      analysis.mrShape.nestedLoops || analysis.mrShape.filterMapChain,
+    ],
+    ['review-lens', 'BEHAVIOR_CHANGED', true],
+  ];
+  for (const [dimension, code, changed] of dimensionCodes) {
+    add(
+      `source:${dimension}`,
+      'source',
+      `${mrUrl}#${dimension}`,
+      JSON.stringify({
+        dimension,
+        changed,
+        anchors: changeset.files.map((file) => `${file.path}@${headSha}:${file.status}`),
+        entities: analysis.injectedEntities,
+        shape: analysis.mrShape,
+        diffContext: analysis.markdown,
+      }),
+      code,
+      changed ? [code] : []
+    );
+  }
+  for (const file of changeset.files) {
+    const bytes = await captureWorktreeEntryBytes(
+      worktreePath,
+      file.path,
+      file.status,
+      analysis.markdown
+    );
+    add(`file:${file.path}`, 'file', file.path, bytes, 'BEHAVIOR_CHANGED', [
+      'BEHAVIOR_CHANGED',
+      'ENTITY_SET_CHANGED',
+    ]);
+  }
+  for (const entity of analysis.injectedEntities) {
+    const anchor = `${entity.file}${entity.line ? `:${entity.line}` : ''}${entity.symbol ? `#${entity.symbol}` : ''}`;
+    add(`entity:${anchor}`, 'entity', anchor, JSON.stringify(entity), 'ENTITY_SET_CHANGED', [
+      'ENTITY_SET_CHANGED',
+    ]);
+  }
+  for (const discussion of discussions) {
+    add(
+      `discussion:${discussion.id}`,
+      'discussion',
+      `${mrUrl}#discussion-${discussion.id}`,
+      JSON.stringify(discussion),
+      'DISCUSSION_CHANGED',
+      ['DISCUSSION_CHANGED']
+    );
+  }
+  add(
+    'source:discussions',
+    'source',
+    `${mrUrl}#discussions`,
+    JSON.stringify(discussions.map((discussion) => discussion.id)),
+    'DISCUSSION_CHANGED',
+    discussions.length ? ['DISCUSSION_CHANGED'] : []
+  );
+  return {
+    inputs,
+    classifications,
+    provenance: [`vcs:${mrUrl}@${headSha}`, `base:${base}`, 'live-worktree-and-discussions'],
+  };
+}
+
+/**
+ * @purpose Capture one changed worktree entry without treating gitlinks or directories as files.
+ * @param worktreePath Immutable MR worktree root.
+ * @param relativePath Repo-relative changed entry path.
+ * @param status Git change status.
+ * @param deletedFallback Exact diff-derived bytes retained for absent entries.
+ * @returns Exact file bytes or a typed non-file observation.
+ */
+export async function captureWorktreeEntryBytes(
+  worktreePath: string,
+  relativePath: string,
+  status: string,
+  deletedFallback: string
+): Promise<string> {
+  if (status.startsWith('D')) return deletedFallback;
+  const path = join(worktreePath, relativePath);
+  const entry = await stat(path);
+  if (entry.isFile()) return readFile(path, 'utf8');
+  if (entry.isDirectory()) return JSON.stringify({ kind: 'git-directory', path: relativePath });
+  return JSON.stringify({ kind: 'git-non-file', path: relativePath });
+}
+
+/** @purpose Reject partial one-shot inventories before manifest sealing can hide omitted surfaces. */
+function _assertExhaustiveRunModeCapture(capture: ReviewManifestCapture): void {
+  const ids = new Set(capture.inputs.map((input) => input.inputId));
+  const requiredSources = [
+    'source:goal',
+    'source:architecture',
+    'source:specification',
+    'source:tests',
+    'source:security',
+    'source:optimality',
+    'source:review-lens',
+    'source:discussions',
+  ];
+  const missing = requiredSources.filter((inputId) => !ids.has(inputId));
+  if (
+    missing.length ||
+    !capture.inputs.some((input) => input.kind === 'file') ||
+    !capture.inputs.some((input) => input.kind === 'entity')
+  ) {
+    throw new Error(
+      `[runMrsOnce#_assertExhaustiveRunModeCapture] BLOCKED incomplete inventory: ${missing.join(',') || 'file/entity inventory missing'}`
+    );
+  }
+}
+
+/** @purpose Apply the explicit permission-role policy without changing review depth. */
+function _resolvePipelineRole(role: string): 'author' | 'reviewer' {
+  if (role === 'author') return 'author';
+  if (role === 'reviewer' || role === 'mentioned') return 'reviewer';
+  throw new Error(`[runMrsOnce#_resolvePipelineRole] Unsupported MR role: ${role}`);
 }

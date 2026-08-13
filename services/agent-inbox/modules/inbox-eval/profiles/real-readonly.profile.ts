@@ -3,12 +3,16 @@
 // @tasks: TSK-183
 
 import { logger } from '#logger';
-import { RoleEngine } from '../../inbox-roles/role-engine.ts';
 import { VcsInboxReal } from '../../inbox-core/vcs-inbox.real.ts';
 import type { VcsInboxPort } from '../../inbox-core/vcs-inbox.port.ts';
 import { OpenCodeReal } from '../../inbox-opencode/opencode.real.ts';
 import { StateStore } from '../../inbox-core/state-store.ts';
-import { resolveRunModeVcsHost, type RunModeDeps } from '../../../serve/run-mode.ts';
+import { fetchDiffRefsLive } from '../../inbox-roles/context-builder.ts';
+import {
+  composeRunModePipeline,
+  resolveRunModeVcsHost,
+  type RunModeDeps,
+} from '../../../serve/run-mode.ts';
 
 /** @purpose Caller-supplied options for composing a real-readonly profile. */
 export type RealReadonlyProfileOptions = {
@@ -60,30 +64,21 @@ export class RealReadonlyProfile {
     });
 
     const store = new StateStore(this._options.stateDir);
-    const engine = new RoleEngine();
-
-    // #region START_LOAD_ENGINE_AND_VCS — invariant: engine must finish loadAll before adapters start
-    try {
-      await engine.loadAll();
-    } catch (cause) {
-      const error = new Error('[RealReadonlyProfile#composeDeps] Engine load failed', { cause });
-      logger.error('[RealReadonlyProfile#composeDeps] [composing → failed]', { error });
-      throw error;
-    }
-
+    // #region START_COMPOSE_VCS — resolve the read-only provider before pipeline ownership
     const vcsHost = await resolveRunModeVcsHost(Array.from(this._options.mrs), store);
     const vcs = new VcsInboxReal({
       host: vcsHost,
       token: process.env.GITLAB_PERSONAL_TOKEN,
     });
-    // #endregion END_LOAD_ENGINE_AND_VCS
+    // #endregion END_COMPOSE_VCS
 
     const opencode = new OpenCodeReal({
       directory: store.getStateDir(),
       baseUrl: this._options.openCodeBaseUrl ?? 'http://localhost:4096',
     });
 
-    const runModeDeps: RunModeDeps = { engine, store, vcs, opencode };
+    const pipeline = composeRunModePipeline(store, opencode, 'test');
+    const runModeDeps: RunModeDeps = { pipeline, store, vcs, fetchDiffRefs: fetchDiffRefsLive };
 
     logger.info('[RealReadonlyProfile#composeDeps] [composing → done]', {
       vcsHost: vcsHost ?? 'unresolved',

@@ -71,8 +71,9 @@ graph TD
   T178 --> T184
   T179 --> T184
   T181 --> T184
+  T184 --> T190[TSK-190 trusted control-plane observation]
   T174 --> T185[TSK-185 real API and board recovery]
-  T184 --> T185
+  T190 --> T185
   T184 --> T186[TSK-186 production eval and real walking skeleton]
   T185 --> T186
   T185 --> T187[TSK-187 Carbon and Steel UI recovery]
@@ -96,8 +97,9 @@ graph TD
 | [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[x]` DONE |
 | [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[x]` DONE |
 | [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[x]` DONE |
-| [TSK-184](agent-inbox.task-184.md)                     | Production control recovery    | scope           | 176–179,181         | `[ ]` TODO |
-| [TSK-185](inbox-api/inbox-api.task-185.md)             | Real API and board recovery    | inbox-api       | 174,184             | `[ ]` TODO |
+| [TSK-184](agent-inbox.task-184.md)                     | Production control recovery    | scope           | 176–179,181         | `[x]` DONE |
+| [TSK-190](agent-inbox.task-190.md)                     | Trusted observation boundary   | scope/pipeline  | 184                 | `[ ]` TODO |
+| [TSK-185](inbox-api/inbox-api.task-185.md)             | Real API and board recovery    | inbox-api       | 174,190             | `[ ]` TODO |
 | [TSK-186](inbox-eval/inbox-eval.task-186.md)           | Real walking skeleton          | inbox-eval      | 184,185             | `[ ]` TODO |
 | [TSK-187](inbox-dashboard/inbox-dashboard.task-187.md) | Cockpit layout recovery        | inbox-dashboard | 185                 | `[ ]` TODO |
 | [TSK-188](inbox-eval/inbox-eval.task-188.md)           | Final real acceptance          | inbox-eval      | 186,187             | `[ ]` TODO |
@@ -110,45 +112,46 @@ graph TD
 
 ## Requirement Coverage
 
-| Root requirements                              | Owning tasks                                                                    |
-| ---------------------------------------------- | ------------------------------------------------------------------------------- |
-| FR-001…005 discovery/lifecycle/placement       | TSK-173, TSK-174, TSK-179, TSK-182                                              |
-| FR-006…009 full and cross-review               | TSK-176 contracts; TSK-183 named real-MR cross-review e2e                       |
-| FR-010…015 event accumulation/delta            | TSK-173, TSK-174, TSK-176, TSK-177                                              |
-| FR-016…027 packages/effects/automation         | TSK-174, TSK-176, TSK-177, TSK-179, TSK-182                                     |
-| FR-028…032 DEV handoff                         | TSK-178, TSK-179, TSK-182                                                       |
-| FR-033…037 dashboard/workspace/chat            | TSK-179, TSK-182                                                                |
-| FR-038…043 isolated/adaptive tests             | TSK-172, TSK-180, TSK-183                                                       |
-| FR-002 auto-hide/history/reactivation          | TSK-173 lifecycle truth table → TSK-179 API projection → TSK-182 board/history  |
-| FR-007 six full-review lenses                  | TSK-176 `every participation gets full review` + `six lenses` mapping           |
-| FR-021 resolve/reopen ownership                | TSK-174 permission truth table; TSK-177 automation truth table                  |
-| FR-023 approval makes open thread non-blocking | TSK-176 approval/thread semantics                                               |
-| FR-026 author-refusal alternatives             | TSK-176 cross-review/refusal; TSK-177 exclusive choices                         |
-| FR-042 adaptive statuses never weaken PASS     | TSK-183 status/report contract and mandatory PASS gate                          |
-| FR-043 effect allowlist cannot broaden         | TSK-172 profile gate; TSK-174 negative gates; TSK-183 real-effects boundary     |
-| FR-044…051 manifest/contract/slots/repair      | TSK-176 runtime/contracts; TSK-183 eleven named shippable-entry pipeline cases  |
-| FR-048 completeness versus independent command | TSK-176 classifies refs; TSK-177 proves own gates/reroute/zero-effect branches  |
-| FR-052 local freshness/effect boundary         | TSK-176 guards verdict/publication/handoff; TSK-177/174 dispatch reconciliation |
-| FR-053 trusted runtime receipts                | TSK-175 observed operations; TSK-176 durable receipt and consumption trust gate |
-| FR-054 monotonic repair budget                 | TSK-176 default-three persisted attempts and explicit operator continuation     |
-| NFR-001 local single-process operator          | TSK-172, TSK-181                                                                |
-| NFR-002 real runtime in first useful version   | TSK-174, TSK-175, TSK-181, TSK-182, TSK-183                                     |
-| NFR-003 per-MR independence                    | TSK-177, TSK-181, TSK-183 acceptance 2                                          |
-| NFR-004 crash-safe recovery/no blind repeat    | TSK-173, TSK-174, TSK-177, TSK-179, TSK-181, TSK-183                            |
-| NFR-005 provenance                             | TSK-173, TSK-175, TSK-176, TSK-177, TSK-178, TSK-179                            |
-| NFR-006 lifecycle observability                | TSK-179, TSK-182                                                                |
-| NFR-007 ports only at real boundaries          | TSK-173…180 contract suites; TSK-181 cutover                                    |
-| NFR-008 real-data visual acceptance            | TSK-182, TSK-183 acceptance 7                                                   |
-| NFR-009 Carbon & Steel                         | TSK-182                                                                         |
-| NFR-010 deterministic structural completeness  | TSK-176 matrix; TSK-183 named validator/orchestrator e2e                        |
-| NFR-011 semantic quality cannot weaken slots   | TSK-176 boundary; TSK-183 named cross-review/synthesis e2e                      |
-| NFR-012 crash-resumable targeted repair        | TSK-176 state; TSK-183 named repair resume/budget e2e                           |
-| NFR-013 receipts durable before eligibility    | TSK-176 contracts; TSK-183 named store/adapter/recorder e2e                     |
-| Recovery: real production composition          | TSK-184                                                                         |
-| Recovery: real API/board/legacy compatibility  | TSK-185                                                                         |
-| Recovery: same-runtime eval/walking skeleton   | TSK-186                                                                         |
-| Recovery: usable Carbon & Steel cockpit        | TSK-187                                                                         |
-| Recovery: no-false-green product acceptance    | TSK-188                                                                         |
+| Root requirements                              | Owning tasks                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- |
+| FR-001…005 discovery/lifecycle/placement       | TSK-173, TSK-174, TSK-179, TSK-182                                                |
+| FR-006…009 full and cross-review               | TSK-176 contracts; TSK-183 named real-MR cross-review e2e                         |
+| FR-010…015 event accumulation/delta            | TSK-173, TSK-174, TSK-176, TSK-177                                                |
+| FR-016…027 packages/effects/automation         | TSK-174, TSK-176, TSK-177, TSK-179, TSK-182                                       |
+| FR-028…032 DEV handoff                         | TSK-178, TSK-179, TSK-182                                                         |
+| FR-033…037 dashboard/workspace/chat            | TSK-179, TSK-182                                                                  |
+| FR-038…043 isolated/adaptive tests             | TSK-172, TSK-180, TSK-183                                                         |
+| FR-002 auto-hide/history/reactivation          | TSK-173 lifecycle truth table → TSK-179 API projection → TSK-182 board/history    |
+| FR-007 six full-review lenses                  | TSK-176 `every participation gets full review` + `six lenses` mapping             |
+| FR-021 resolve/reopen ownership                | TSK-174 permission truth table; TSK-177 automation truth table                    |
+| FR-023 approval makes open thread non-blocking | TSK-176 approval/thread semantics                                                 |
+| FR-026 author-refusal alternatives             | TSK-176 cross-review/refusal; TSK-177 exclusive choices                           |
+| FR-042 adaptive statuses never weaken PASS     | TSK-183 status/report contract and mandatory PASS gate                            |
+| FR-043 effect allowlist cannot broaden         | TSK-172 profile gate; TSK-174 negative gates; TSK-183 real-effects boundary       |
+| FR-044…051 manifest/contract/slots/repair      | TSK-176 runtime/contracts; TSK-183 eleven named shippable-entry pipeline cases    |
+| FR-048 completeness versus independent command | TSK-176 classifies refs; TSK-177 proves own gates/reroute/zero-effect branches    |
+| FR-052 local freshness/effect boundary         | TSK-176 contracts; TSK-190 atomic observed update/compare/transition recovery     |
+| FR-053 trusted runtime receipts                | TSK-175 observed operations; TSK-176 contracts; TSK-190 callback-owned live proof |
+| FR-054 monotonic repair budget                 | TSK-176 default-three persisted attempts and explicit operator continuation       |
+| NFR-001 local single-process operator          | TSK-172, TSK-181                                                                  |
+| NFR-002 real runtime in first useful version   | TSK-174, TSK-175, TSK-181, TSK-182, TSK-183                                       |
+| NFR-003 per-MR independence                    | TSK-177, TSK-181, TSK-183 acceptance 2                                            |
+| NFR-004 crash-safe recovery/no blind repeat    | TSK-173, TSK-174, TSK-177, TSK-179, TSK-181, TSK-183                              |
+| NFR-005 provenance                             | TSK-173, TSK-175, TSK-176, TSK-177, TSK-178, TSK-179                              |
+| NFR-006 lifecycle observability                | TSK-179, TSK-182                                                                  |
+| NFR-007 ports only at real boundaries          | TSK-173…180 contract suites; TSK-181 cutover                                      |
+| NFR-008 real-data visual acceptance            | TSK-182, TSK-183 acceptance 7                                                     |
+| NFR-009 Carbon & Steel                         | TSK-182                                                                           |
+| NFR-010 deterministic structural completeness  | TSK-176 matrix; TSK-183 named validator/orchestrator e2e                          |
+| NFR-011 semantic quality cannot weaken slots   | TSK-176 boundary; TSK-183 named cross-review/synthesis e2e                        |
+| NFR-012 crash-resumable targeted repair        | TSK-176 state; TSK-183 named repair resume/budget e2e                             |
+| NFR-013 receipts durable before eligibility    | TSK-176 contracts; TSK-183 named e2e; TSK-190 callback/durable-append recovery    |
+| Recovery: real production composition          | TSK-184                                                                           |
+| Recovery: trusted callback/freshness boundary  | TSK-190                                                                           |
+| Recovery: real API/board/legacy compatibility  | TSK-185                                                                           |
+| Recovery: same-runtime eval/walking skeleton   | TSK-186                                                                           |
+| Recovery: usable Carbon & Steel cockpit        | TSK-187                                                                           |
+| Recovery: no-false-green product acceptance    | TSK-188                                                                           |
 
 ## Historical baseline
 
@@ -165,3 +168,4 @@ TSK-183 owns eleven separate named shippable-entry pipeline cases backreferenced
 - **D-221:** Cross-ticket proof flows only forward: TSK-176 pipeline shape → TSK-177 queue acceptance/gates → TSK-183 named real-entrypoint acceptance; no dependency inversion.
 - **D-222:** TSK-181…183 remain immutable historical execution evidence but are not accepted as proof of product readiness; audit found the new control plane unwired, missing API commands, a non-converging real board, mocked/fixme E2E and broken UI composition.
 - **D-223:** Recovery proceeds through TSK-184…188. A mandatory `skip`, `fixme`, `INCONCLUSIVE`, HTTP interception, demo seed or missing real screenshot is non-PASS; external effect proof requires an exact operator allowlist.
+- **D-224:** TSK-189 remains reserved by the recovery plan; TSK-190 narrowly repairs TSK-184 audit F01–F06 before TSK-185. It authorizes no product behavior change, GitLab mutation/effect or rewrite of TSK-184 history.

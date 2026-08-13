@@ -1,6 +1,6 @@
 // @file: Bootstrap — DI composition for agent-inbox serve: creates all services, wires them together.
 // @consumers: gennady inbox serve CLI, e2e tests
-// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175, TSK-181
+// @tasks: TSK-115, TSK-117, TSK-122, TSK-123, TSK-157, TSK-158, TSK-160, TSK-161, TSK-163, TSK-170, TSK-172, TSK-173, TSK-174, TSK-175, TSK-181, TSK-184, TSK-190
 
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
 import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
@@ -244,6 +244,10 @@ async function spawnOpencode(
   // Auth on it — while our SDK client never sends credentials (observed: 401 empty body
   // on POST /session, surfacing only as a generic 'Session creation failed').
   const childEnv = { ...process.env };
+  const opencodeRuntimeRoot = join(cwd, 'agent-inbox', 'opencode-runtime');
+  await mkdir(opencodeRuntimeRoot, { recursive: true });
+  childEnv.XDG_DATA_HOME = join(opencodeRuntimeRoot, 'data');
+  childEnv.XDG_CACHE_HOME = join(opencodeRuntimeRoot, 'cache');
   let strippedServerAuth = false;
   for (const key of ['OPENCODE_SERVER_USERNAME', 'OPENCODE_SERVER_PASSWORD'] as const) {
     if (childEnv[key] !== undefined) {
@@ -337,6 +341,75 @@ async function spawnOpencode(
   return null;
 }
 
+/** @purpose Managed OpenCode connection owned by one bounded one-shot runtime. */
+export type ManagedRunModeOpenCode = {
+  /** @purpose OpenCode client port used to drive agent sessions */
+  opencode: OpenCodePort;
+  /** @purpose Spawned child process, or null when attached to an operator-run instance */
+  process: ChildProcess | null;
+  /** @purpose PID file path for a spawned child, or null when attached */
+  pidFile: string | null;
+  /** @purpose Resolved TCP port the OpenCode instance listens on */
+  port: number;
+};
+
+/**
+ * @purpose Connect to a healthy operator-selected OpenCode or spawn one managed child for one-shot acceptance.
+ * @invariant A direct adapter is never returned before an HTTP health check succeeds.
+ * @param stateDir Isolated runtime state root used as the child working directory.
+ * @param [explicitPort] Operator-selected already-running OpenCode port.
+ * @throws {Error} When the selected endpoint is unreachable or a managed child cannot become healthy.
+ * @returns Health-checked adapter and lifecycle handles for caller-owned cleanup.
+ * @sideEffect Process/filesystem: may spawn OpenCode and write one PID file under stateDir.
+ */
+export async function ensureRunModeOpenCode(
+  stateDir: string,
+  explicitPort?: number
+): Promise<ManagedRunModeOpenCode> {
+  const dispatcher = new UndiciAgent({ headersTimeout: 0, bodyTimeout: 0 });
+  if (explicitPort !== undefined) {
+    if (!(await retryOpencodeConnect(explicitPort, 3, 1000))) {
+      throw new Error(
+        `[ensureRunModeOpenCode] OpenCode on explicit port ${explicitPort} is unreachable`
+      );
+    }
+    return {
+      opencode: new OpenCodeReal({
+        directory: stateDir,
+        baseUrl: `http://localhost:${explicitPort}`,
+        dispatcher,
+      }),
+      process: null,
+      pidFile: null,
+      port: explicitPort,
+    };
+  }
+
+  if (!checkOpencodePath()) {
+    throw new Error('[ensureRunModeOpenCode] opencode binary is unavailable');
+  }
+  await mkdir(stateDir, { recursive: true });
+  const port = await findFreePort();
+  const process = await spawnOpencode(stateDir, port);
+  if (!process?.pid) {
+    throw new Error('[ensureRunModeOpenCode] Managed OpenCode failed to become healthy');
+  }
+  const agentInboxDir = join(stateDir, 'agent-inbox');
+  await mkdir(agentInboxDir, { recursive: true });
+  const pidFile = join(agentInboxDir, `opencode-run-mode-${port}.pid`);
+  await writeFile(pidFile, JSON.stringify({ pid: process.pid, port }) + '\n', 'utf8');
+  return {
+    opencode: new OpenCodeReal({
+      directory: stateDir,
+      baseUrl: `http://localhost:${port}`,
+      dispatcher,
+    }),
+    process,
+    pidFile,
+    port,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Bootstrap config & result types
 // ═══════════════════════════════════════════════════════════════
@@ -417,6 +490,10 @@ export type BootstrapResult = {
   lifecycleReaper: NodeJS.Timeout;
   /** @purpose Shared queue-backed pipeline lifecycle, reachable from the booted runtime. */
   pipeline: PipelineRuntime;
+  /** @purpose Typed trace of the exact control-plane instances owned by pipeline. */
+  controlPlaneTrace: NonNullable<
+    ReturnType<PipelineRuntime['retrieveControlPlaneConstructionTrace']>
+  >;
   /** @purpose Shared readiness lifecycle serving GET /api/boot. */
   bootReadiness: BootReadiness;
   /** @purpose Validated physical runtime binding shared by all stateful adapters. */
@@ -811,6 +888,9 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
 
   const lifecycleJournal =
     vcsJournal ?? new EventJournal(join(stateStore.getStateDir(), 'agent-inbox', 'events.jsonl'));
+  const controlPlaneJournal = new EventJournal(
+    join(stateStore.getStateDir(), 'agent-inbox', 'control-plane-events.jsonl')
+  );
   // D-302: an MR write belongs in that MR's canonical decision/event journal. emitDryRun awaits
   // this recorder before broadcasting, so SSE can never outrun the durable source of truth.
   setDryRunRecorder(async (entry) => {
@@ -900,8 +980,17 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
             proposalId: proposal.proposalId,
           });
         }
-      : undefined
+      : undefined,
+    {
+      journal: controlPlaneJournal,
+      receiptRoot: join(stateStore.getStateDir(), 'agent-inbox', 'control-plane-receipts'),
+      runtimeNamespace: runtimeBinding.profile.stateNamespace,
+      vcs: vcsTruth ?? undefined,
+    }
   );
+  const controlPlaneTrace = pipeline.retrieveControlPlaneConstructionTrace();
+  if (!controlPlaneTrace)
+    throw new Error('[bootstrap] Pipeline control-plane construction trace is unavailable');
   pipeline.start();
   // #endregion END_COMPOSE_PIPELINE
 
@@ -985,6 +1074,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       sessionPool: chatSessionPool,
       lifecycleReaper,
       pipeline,
+      controlPlaneTrace,
       bootReadiness,
       runtimeBinding,
     };
@@ -1058,6 +1148,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     sessionPool: chatSessionPool,
     lifecycleReaper,
     pipeline,
+    controlPlaneTrace,
     bootReadiness,
     runtimeBinding,
   };

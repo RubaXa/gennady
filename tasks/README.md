@@ -194,8 +194,9 @@ graph TD
     TSK-178 --> TSK-184
     TSK-179 --> TSK-184
     TSK-181 --> TSK-184
+    TSK-184 --> TSK-190[TSK-190: trusted observation boundary]
     TSK-174 --> TSK-185[TSK-185: real API and board]
-    TSK-184 --> TSK-185
+    TSK-190 --> TSK-185
     TSK-184 --> TSK-186[TSK-186: real walking skeleton]
     TSK-185 --> TSK-186
     TSK-185 --> TSK-187[TSK-187: cockpit recovery]
@@ -214,7 +215,7 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
-| agent-inbox       | product        | [README](agent-inbox/README.md)       | 32    | 27/32 |
+| agent-inbox       | product        | [README](agent-inbox/README.md)       | 34    | 27/34 |
 | mr-stats          | product        | [README](mr-stats/README.md)          | 2     | 2/2   |
 
 ## Decision Log

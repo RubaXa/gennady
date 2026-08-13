@@ -40,7 +40,14 @@ function doneResult(mr: string, opts: { baseSha?: string; replyBody?: string } =
   if (opts.replyBody !== undefined) {
     artifacts['synthesize'] = { proposedActions: [{ type: 'reply', body: opts.replyBody }] };
   }
-  return { mr, state: 'done', role: 'reviewer', board: {}, artifacts };
+  return {
+    mr,
+    state: 'completed',
+    role: 'reviewer',
+    board: {},
+    artifacts,
+    runtimeIdentity: 'pipeline-runtime:mock:test',
+  };
 }
 
 /**
@@ -127,11 +134,12 @@ describe('runEval — red per computable gate', () => {
     // passing G1 nor silently report PASS over an incomplete stage.
     const erroredResult: MrRunResult = {
       mr: MR_A,
-      state: 'error',
+      state: 'failed',
       role: null,
       board: null,
       artifacts: null,
       error: 'diff_refs unresolved',
+      runtimeIdentity: 'pipeline-runtime:mock:test',
     };
     const input: RunEvalInput = { mrs: [MR_A], dryRun: true };
     const { report } = await runEval(input, baseDeps(mockRunMrsOnce([erroredResult])));

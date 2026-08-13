@@ -3,7 +3,7 @@
 // @tasks: TSK-183
 
 import { logger } from '#logger';
-import type { RunModeDeps } from '../../../serve/run-mode.ts';
+import { composeRunModePipeline, type RunModeDeps } from '../../../serve/run-mode.ts';
 import type {
   ReviewEvalProfile,
   ReviewEvalScenario,
@@ -32,8 +32,9 @@ import {
 } from '../profiles/real-effects.profile.ts';
 import { VcsInboxMock } from '../../inbox-core/vcs-inbox.mock.ts';
 import { OpenCodeMock } from '../../inbox-opencode/opencode.mock.ts';
-import { RoleEngine } from '../../inbox-roles/role-engine.ts';
 import { StateStore } from '../../inbox-core/state-store.ts';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /** @purpose Caller-supplied options for constructing a `ReviewEvalHarness`. */
 export type ReviewEvalHarnessOptions = {
@@ -57,7 +58,10 @@ export type ReviewEvalHarnessOptions = {
   stateDir?: string;
   /** @purpose Override for the run state root (where reports are written) */
   runRoot?: string;
-  /** @purpose Clock override for deterministic timestamp injection | @returns Current timestamp as an ISO string */
+  /**
+   * @purpose Clock override for deterministic timestamp injection
+   * @returns Current timestamp as an ISO string
+   */
   now?: () => string;
   /**
    * @purpose Direct `RunModeDeps` override for tests — skips all profile-based wiring.
@@ -300,12 +304,18 @@ export async function composeMockHarness(
     return new ReviewEvalHarness({ ...options, profile: 'mock', runModeDeps: mockRunModeDeps });
   }
 
-  const engine = new RoleEngine();
-  await engine.loadAll();
-  const store = new StateStore(options.stateDir);
+  const store = new StateStore(
+    options.stateDir ?? join(tmpdir(), 'gennady-mock-harness', options.runId)
+  );
   const vcs = new VcsInboxMock();
   const opencode = new OpenCodeMock();
-  const runModeDeps: RunModeDeps = { engine, store, vcs, opencode };
+  const pipeline = composeRunModePipeline(store, opencode, 'mock');
+  const runModeDeps: RunModeDeps = {
+    pipeline,
+    store,
+    vcs,
+    fetchDiffRefs: async () => ({ headSha: 'mock-harness-head' }),
+  };
 
   return new ReviewEvalHarness({ ...options, profile: 'mock', runModeDeps });
 }

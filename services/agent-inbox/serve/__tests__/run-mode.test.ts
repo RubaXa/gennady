@@ -1,548 +1,334 @@
-// @file: Integration tests for run-mode's runMrsOnce — a fixed MR list driven through the real
-//   role graph (RoleInstance/RoleEngine/EffectExecutor), network-free via VcsInboxMock/OpenCodeMock
-//   and an injected fetchDiffRefs stub. Covers: review_needed reaches ask-terminal with staged
-//   proposedActions (real reviewer graph); effect dry-run posts nothing and a second pass is
-//   idempotent (0 new effect_applied) via a minimal prep→effect graph; real-disk materialization
-//   (PLAN.md/README.md with a deterministic changeset-derived mermaid block) round-tripped through
-//   BoardProviderReal.listArtifacts/readArtifact (TSK-122 P3 real-proof integration test).
-// @consumers: node:test runner
-// @tasks: TSK-121, TSK-122, TSK-113, TSK-167, TSK-170
+// @file: Shippable one-shot acceptance tests through PipelineRuntime.
+// @consumers: TSK-184 verification, TSK-190 live read-only capture verification
+// @tasks: TSK-184, TSK-190
 
-import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  existsSync,
-  readFileSync,
-  readdirSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { describe, it } from 'node:test';
 import { join } from 'node:path';
-import { runMrsOnce, type RunModeDeps } from '../run-mode.ts';
-import { RoleEngine } from '../../modules/inbox-roles/role-engine.ts';
-import { RoleInstance } from '../../modules/inbox-roles/role-instance.ts';
-import { ReviewerRole } from '../../modules/inbox-roles/reviewer.role.ts';
-import type { RoleGraph, ChangesetFile } from '../../modules/inbox-roles/role-node.ts';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { EventJournal } from '../../modules/inbox-core/event-journal.ts';
+import { cleanupTestTmp, makeTestTmpDir } from '../../modules/inbox-core/test-support/test-tmp.ts';
 import { StateStore } from '../../modules/inbox-core/state-store.ts';
 import { VcsInboxMock } from '../../modules/inbox-core/vcs-inbox.mock.ts';
-import type { MrContext } from '../../modules/inbox-core/vcs-inbox.port.ts';
+import { PipelineRuntime } from '../../modules/inbox-pipeline/pipeline-runtime.ts';
+import { InMemoryTaskQueue } from '../../modules/inbox-queue/task-queue.ts';
+import { TaskRegistry } from '../../modules/inbox-queue/task-registry.ts';
 import { OpenCodeMock } from '../../modules/inbox-opencode/opencode.mock.ts';
-import { BoardProviderReal } from '../../modules/inbox-api/board-provider.real.ts';
-import type { RoleScheduler } from '../../modules/inbox-roles/role-scheduler.ts';
-import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { captureWorktreeEntryBytes, runMrsOnce } from '../run-mode.ts';
 
-/**
- * @purpose Fresh StateStore rooted at a temp dir, with `agent-inbox/` pre-created so
- *   `appendAudit` can write immediately — never touches the real `~/.gennady` registry.
- *   Also seeds `repos.json` pointing at the (non-git) temp dir itself so context-builder's
- *   `ensureClone` short-circuits on the reposMap hit instead of attempting a real network clone —
- *   the subsequent `git worktree prune` on a non-repo then fails fast, locally, keeping this suite
- *   network-free per the P4 job's constraint.
- */
-function makeStateStore(): StateStore {
-  const stateDir = mkdtempSync(join(tmpdir(), 'gennady-run-mode-'));
-  mkdirSync(join(stateDir, 'agent-inbox'), { recursive: true });
-  writeFileSync(
-    join(stateDir, 'repos.json'),
-    JSON.stringify({ 'group/project': stateDir }),
-    'utf8'
+const MR = 'https://gitlab.example.com/group/project/-/merge_requests/184';
+
+function createContext(role: string | null = 'reviewer') {
+  const root = makeTestTmpDir('run-mode-pipeline-');
+  const registry = new TaskRegistry();
+  const queue = new InMemoryTaskQueue(registry);
+  const opencode = new OpenCodeMock();
+  const fields = Object.fromEntries(
+    [
+      'objective',
+      'acceptance',
+      'outOfScope',
+      'sourceAnchors',
+      'components',
+      'dependencies',
+      'invariants',
+      'decisions',
+      'requirementIds',
+      'behavior',
+      'observedDrift',
+      'changedBehavior',
+      'positiveScenarios',
+      'negativeScenarios',
+      'coverageGaps',
+      'trustBoundaries',
+      'assets',
+      'threats',
+      'mitigations',
+      'resources',
+      'bottlenecks',
+      'alternatives',
+      'identity',
+      'purpose',
+      'observedChanges',
+      'risks',
+      'testImpact',
+      'responsibility',
+      'threadVersion',
+      'claims',
+      'codeContext',
+      'independentAssessment',
+      'recommendationInput',
+      'lensId',
+      'lensVersion',
+      'observations',
+      'evidenceRefs',
+      'conclusion',
+      'sectionId',
+      'schema',
+      'fragments',
+      'anchors',
+      'diagramType',
+      'typedNodes',
+      'dependencyEdges',
+      'beforeState',
+      'afterState',
+      'changedRelations',
+      'orderedActors',
+      'orderedEvents',
+      'branches',
+      'terminalOutcomes',
+    ].map((field) => [field, `worker:${field}`])
   );
-  return new StateStore(stateDir);
+  for (const inputId of [
+    'source:goal',
+    'source:architecture',
+    'source:specification',
+    'source:tests',
+    'source:security',
+    'source:optimality',
+    'source:review-lens',
+    'source:discussions',
+    'file:runtime.ts',
+    'entity:Runtime',
+  ]) {
+    const inputDigest = createHash('sha256').update(inputId).digest('hex');
+    const operationTitle = `pipeline_control_slot_${inputDigest}`;
+    opencode.seed(operationTitle, {
+      sourceId: 'forged-agent-source',
+      content: 'Agent-authored evidence grounded in the persisted source.',
+      fields,
+    });
+    opencode.seedToolCalls(operationTitle, [`control-plane/sources/${inputDigest}.txt`]);
+  }
+  for (const task of ['pipeline_track_control', 'pipeline_lens_control']) {
+    opencode.seed(task, { findings: [] });
+    opencode.seedToolCalls(task, []);
+  }
+  const pipeline = new PipelineRuntime(
+    queue,
+    registry,
+    new EventJournal(join(root, 'task-events.jsonl')),
+    async () => undefined,
+    root,
+    opencode,
+    undefined,
+    {
+      journal: new EventJournal(join(root, 'control-events.jsonl')),
+      receiptRoot: join(root, 'receipts'),
+      runtimeNamespace: 'mock',
+    }
+  );
+  const vcs = new VcsInboxMock();
+  vcs.seed([], {
+    [MR]: {
+      project: 'group/project',
+      iid: '184',
+      webUrl: MR,
+      title: 'Pipeline cutover',
+      sourceBranch: 'feature',
+      targetBranch: 'main',
+      createdAt: '2026-08-13T10:00:00Z',
+      updatedAt: '2026-08-13T11:00:00Z',
+      author: 'other',
+      reviewers: ['operator'],
+      approvedBy: [],
+      description: 'Migrate acceptance to PipelineRuntime',
+      myRole: role,
+    },
+  });
+  return { root, queue, pipeline, vcs, store: new StateStore(root) };
 }
 
-/**
- * Stand in for what the enrich session does with its write tool: the flow is
- * scaffold (mechanical) → enrich (LLM session, full toolset) → gate(enriched) → lenses.
- * OpenCodeMock cannot write files, so the fixture lays down the same on-disk result the real
- * session produces — PLAN.md plus a task file carrying `status: enriched` and a filled
- * `## Контекст`. `gate_enrich` stays REAL: it validates these actual files, not a stub.
- */
-function seedEnrichedTaskFiles(store: StateStore, ref: string, headSha = 'head1111'): void {
-  const dir = mrReportsDir(store.getStateDir(), ref);
-  const tasksDir = join(dir, 'tasks');
-  mkdirSync(tasksDir, { recursive: true });
-
-  // Keep the scaffolder's own headSha when it already produced a PLAN.md — the validator rejects a
-  // task file whose headSha does not match the plan's.
-  const planPath = join(dir, 'PLAN.md');
-  const planSha = existsSync(planPath)
-    ? (/^headSha:\s*(\S+)/m.exec(readFileSync(planPath, 'utf8'))?.[1] ?? headSha)
-    : headSha;
-  if (!existsSync(planPath)) {
-    writeFileSync(planPath, `---\nref: ${ref}\nheadSha: ${planSha}\n---\n\n# План ревью\n`, 'utf8');
-  }
-
-  const body = (track: string): string =>
-    `---\ntrack: ${track}\nstatus: enriched\nheadSha: ${planSha}\n---\n\n` +
-    `## Область\n\n- services/agent-inbox/foo.ts\n\n` +
-    `## Контекст\n\nЦель MR — добавить проверку граничного случая. Смотреть точку входа и её вызовы.\n\n` +
-    `## Находки\n\n<!-- FILL -->\n\n## Кандидаты\n\n<!-- FILL -->\n\n## Вердикт\n\n<!-- FILL -->\n`;
-
-  // Enrich EVERY blank the scaffolder produced (one per track) — leaving one unenriched keeps
-  // gate_enrich red, exactly as it would in production.
-  const existing = readdirSync(tasksDir).filter((f) => f.endsWith('.task.md'));
-  const targets = existing.length > 0 ? existing : ['logic.task.md'];
-  for (const name of targets) {
-    writeFileSync(join(tasksDir, name), body(name.replace(/\.task\.md$/, '')), 'utf8');
-  }
-}
-
-function mrContext(webUrl: string, myRole: string | null): MrContext {
+function captureReviewInput() {
+  const sources = [
+    ['source:goal', 'GOAL_CHANGED'],
+    ['source:architecture', 'ARCHITECTURE_CHANGED'],
+    ['source:specification', 'SPECIFICATION_TOUCHED'],
+    ['source:tests', 'TEST_SURFACE_CHANGED'],
+    ['source:security', 'SECURITY_SURFACE_CHANGED'],
+    ['source:optimality', 'OPTIMALITY_RELEVANT'],
+    ['source:review-lens', 'BEHAVIOR_CHANGED'],
+    ['source:discussions', 'DISCUSSION_CHANGED'],
+  ] as const;
+  const inventory = [
+    ...sources.map(([inputId]) => ({
+      inputId,
+      kind: 'source' as const,
+      canonicalIdentity: `${MR}#${inputId.slice('source:'.length)}`,
+    })),
+    { inputId: 'file:runtime.ts', kind: 'file' as const, canonicalIdentity: 'runtime.ts' },
+    { inputId: 'entity:Runtime', kind: 'entity' as const, canonicalIdentity: 'runtime.ts#Runtime' },
+  ];
   return {
-    project: 'group/project',
-    iid: '1',
-    webUrl,
-    title: 'Test MR',
-    sourceBranch: 'feature',
-    targetBranch: 'main',
-    createdAt: '',
-    updatedAt: '',
-    author: 'other',
-    reviewers: [],
-    approvedBy: [],
-    description: '',
-    myRole,
+    inputs: inventory.map((input) => {
+      const capturedBytes = `Exact captured bytes for ${input.canonicalIdentity}`;
+      return {
+        ...input,
+        version: 'head-184',
+        digest: createHash('sha256').update(capturedBytes).digest('hex'),
+        capturedBytes,
+      };
+    }),
+    classifications: inventory.map((input) => {
+      const sourceCode = sources.find(([inputId]) => inputId === input.inputId)?.[1];
+      const code =
+        sourceCode ?? (input.kind === 'entity' ? 'ENTITY_SET_CHANGED' : 'BEHAVIOR_CHANGED');
+      return {
+        inputId: input.inputId,
+        code,
+        changeShape: [code],
+        rationaleDigest: `classification:${input.inputId}`,
+        classifierVersion: 'review-classifier-v0',
+      };
+    }),
+    provenance: ['test-exact-capture'],
   };
 }
 
-describe('runMrsOnce — real reviewer graph reaches ask-terminal (review_needed)', () => {
-  it('GIVEN список MR + свежий seed WHEN run-mode THEN MR доходит до node_ask (awaiting_operator), proposedActions застейджены', async () => {
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/1';
-
-    const engine = new RoleEngine();
-    await engine.loadAll();
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
-
-    // D-118..D-123 (TSK-113 P5 fix round 2): lens/synthesize nodes return their result as a
-    // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
-    // response object directly.
-    const opencode = new OpenCodeMock();
-    opencode.seed('node_enrich', { ok: true });
-    opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: [] });
-    opencode.seed('node_security_lens', { findings: [] });
-    opencode.seed('node_code_review', { findings: [] });
-    opencode.seed('node_contract_review', { findings: [] });
-    opencode.seed('node_synthesize', {
-      reviewReport: {
-        summary: 'Изменения затрагивают обработку ошибок в клиенте.',
-        verdict: 'changes_requested',
-        behavior: 'Клиент теперь возвращает явную ошибку вместо тихого игнорирования.',
-        scenarios: 'Запрос падает с сетевой ошибкой; повторный запрос после восстановления сети.',
-      },
-      proposedActions: [
-        { type: 'reply', body: 'Fix this', position: { file: 'a.ts', newLine: 10 } },
-        { type: 'reply', body: 'General note' },
-      ],
-    });
-
-    const store = makeStateStore();
-    seedEnrichedTaskFiles(store, 'group/project!1');
-    const deps: RunModeDeps = {
-      engine,
-      store,
-      vcs,
-      opencode,
-      fetchDiffRefs: async () => undefined,
-    };
-
-    const result = await runMrsOnce({ mrs: [MR], dryRun: true, deps });
-
-    assert.strictEqual(result.results.length, 1);
-    const mrResult = result.results[0];
-    assert.strictEqual(mrResult.state, 'awaiting_operator');
-    assert.strictEqual(mrResult.role, 'reviewer');
-    assert.ok(mrResult.board, 'board snapshot should be present');
-    assert.strictEqual((mrResult.board as Record<string, unknown>).currentNode, 'node_ask');
-
-    const synth = mrResult.artifacts?.node_synthesize as Record<string, unknown>;
-    assert.ok(
-      Array.isArray(synth?.proposedActions),
-      'node_synthesize should stage proposedActions'
-    );
-    assert.strictEqual((synth.proposedActions as unknown[]).length, 2);
-  });
-});
-
-describe('runMrsOnce — review_needed clean verdict auto-approves (SV-23/D-134)', () => {
-  /**
-   * @purpose Deterministic fixture emulation of the whole clean-review flow (no live LLM/GitLab):
-   *   3 empty lenses → synthesis with a full, findings-free reviewReport → node_ask sees an empty
-   *   SV-24 trigger list → autonomous approve → done. Locks in checkpoint 11 (auto-approve), which
-   *   until now was only ever verified live.
-   */
-  function seedCleanLenses(opencode: OpenCodeMock): void {
-    opencode.seed('node_enrich', { ok: true });
-    opencode.seed('node_track_review', { findings: [] });
-    opencode.seed('node_security_lens', { findings: [] });
-    opencode.seed('node_code_review', { findings: [] });
-    opencode.seed('node_contract_review', { findings: [] });
-    opencode.seed('node_synthesize', {
-      reviewReport: {
-        summary: 'No issues across the three lenses.',
-        verdict: 'approve',
-        behavior: 'Adds a null-check on the client cache path; no external behavior change.',
-        scenarios: 'Opening a chat while offline; reconnect after a dropped socket.',
-      },
-      proposedActions: [],
-    });
-  }
-
-  it('GIVEN clean synthesis (0 findings) WHEN node_ask reached THEN autonomous approve → done', async () => {
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/3';
-
-    const engine = new RoleEngine();
-    await engine.loadAll();
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
-
-    const opencode = new OpenCodeMock();
-    seedCleanLenses(opencode);
-
-    const store = makeStateStore();
-    seedEnrichedTaskFiles(store, 'group/project!1');
-    const result = await runMrsOnce({
-      mrs: [MR],
-      dryRun: true,
-      deps: { engine, store, vcs, opencode, fetchDiffRefs: async () => undefined },
-    });
-
-    const mrResult = result.results[0];
-    assert.strictEqual(
-      mrResult.state,
-      'done',
-      'a clean verdict must NOT stop at awaiting_operator'
-    );
-    assert.strictEqual((mrResult.board as Record<string, unknown>).currentNode, 'done');
-
-    // The autonomous approve went through EffectExecutor (dry-run) and left its audit marker.
-    const audit = await store.queryAudit(MR);
-    const approve = audit.find(
-      (e) => e.event === 'effect_applied' && String(e.detail).includes('node_ask|approve:false')
-    );
-    assert.ok(approve, 'expected an effect_applied approve marker from the autonomous approve');
+describe('runMrsOnce pipeline acceptance', () => {
+  it('captures changed directories and files as typed read-only inventory', async () => {
+    const root = makeTestTmpDir('run-mode-entry-capture-');
+    try {
+      await mkdir(join(root, 'vendor/submodule'), { recursive: true });
+      await writeFile(join(root, 'runtime.ts'), 'export const runtime = true;\n', 'utf8');
+      assert.strictEqual(
+        await captureWorktreeEntryBytes(root, 'runtime.ts', 'M', 'diff'),
+        'export const runtime = true;\n'
+      );
+      assert.strictEqual(
+        await captureWorktreeEntryBytes(root, 'vendor/submodule', 'M', 'diff'),
+        JSON.stringify({ kind: 'git-directory', path: 'vendor/submodule' })
+      );
+      assert.strictEqual(
+        await captureWorktreeEntryBytes(root, 'deleted.ts', 'D', 'deleted diff'),
+        'deleted diff'
+      );
+    } finally {
+      cleanupTestTmp(root);
+    }
   });
 
-  it('GIVEN a later lens carries an error-severity finding WHEN node_ask reached THEN escalates, NOT auto-approve (SV-24 error_severity)', async () => {
-    // Blind-spot guard: node_ask's escalation gate reads findings via _extractFindings, which must
-    // consider ALL lens artifacts — a clean first lens must not mask an error found by a later one.
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/4';
-
-    const engine = new RoleEngine();
-    await engine.loadAll();
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
-
-    const opencode = new OpenCodeMock();
-    opencode.seed('node_enrich', { ok: true });
-    opencode.seed('node_track_review', { findings: [] }); // first lens: clean
-    opencode.seed('node_security_lens', { findings: [] });
-    opencode.seed('node_code_review', {
-      findings: [{ severity: 'error', file: 'db.ts', line: 42, message: 'SQL injection' }],
-    });
-    opencode.seed('node_contract_review', { findings: [] });
-    opencode.seed('node_synthesize', {
-      reviewReport: {
-        summary: 'One blocking issue in the code-review lens.',
-        verdict: 'changes_requested',
-        behavior: 'Query built by string concat — untrusted input reaches the DB driver.',
-        scenarios: 'Any request that flows user input into the affected query.',
-      },
-      proposedActions: [],
-    });
-
-    const store = makeStateStore();
-    seedEnrichedTaskFiles(store, 'group/project!1');
-    const result = await runMrsOnce({
-      mrs: [MR],
-      dryRun: true,
-      deps: { engine, store, vcs, opencode, fetchDiffRefs: async () => undefined },
-    });
-
-    const mrResult = result.results[0];
-    assert.strictEqual(
-      mrResult.state,
-      'awaiting_operator',
-      'an error-severity finding in ANY lens must escalate, never auto-approve'
-    );
-  });
-});
-
-describe('runMrsOnce — effect dry-run + идемпотентность', () => {
-  /** @purpose Minimal graph reaching node_effect without an operator answer — proves the
-   *   dry-run/idempotency contract end-to-end through runMrsOnce, independent of the real
-   *   reviewer graph's ask-gated effect node. */
-  function makeEffectGraph(): RoleGraph {
-    return {
-      nodes: [
-        {
-          kind: 'prep',
-          id: 'node_prep',
-          async run() {
-            return {
-              branch: 'go',
-              // Nested under a node-keyed artifact (mirrors node_thread_triage's shape) — RoleInstance
-              // #_collectProposedActions scans artifact *values* for a `.proposedActions` field, not
-              // a top-level `artifacts.proposedActions` key.
-              artifacts: {
-                node_prep: { proposedActions: [{ type: 'react', commentId: 'c1', emoji: '👍' }] },
-              },
-            };
-          },
+  it('submits, drains and reads through the same runtime identity', async () => {
+    const context = createContext();
+    try {
+      const result = await runMrsOnce({
+        mrs: [MR],
+        deps: {
+          pipeline: context.pipeline,
+          store: context.store,
+          vcs: context.vcs,
+          fetchDiffRefs: async () => ({ headSha: 'head-184' }),
+          captureReviewInput: async () => captureReviewInput(),
         },
+      });
+      assert.strictEqual(result.results[0]?.state, 'completed', JSON.stringify(result.results[0]));
+      assert.strictEqual(result.results[0]?.runtimeIdentity, context.pipeline.identity);
+      assert.ok(context.queue.state(MR).length > 0);
+      const controlEvents = new EventJournal(join(context.root, 'control-events.jsonl')).read();
+      assert.deepStrictEqual(
+        controlEvents
+          .filter(
+            (entry) =>
+              entry.payload?.event === 'freshness_guard_transaction' &&
+              entry.payload?.comparison === 'MATCH'
+          )
+          .map((entry) => entry.payload?.purpose),
+        ['VERDICT', 'SYNTHESIS_PUBLICATION', 'QUEUE_HANDOFF']
+      );
+    } finally {
+      cleanupTestTmp(context.root);
+    }
+  });
+
+  it('cannot publish or enqueue without actual agent evidence and tool receipts', async () => {
+    const context = createContext();
+    try {
+      const registry = new TaskRegistry();
+      const runtime = new PipelineRuntime(
+        new InMemoryTaskQueue(registry),
+        registry,
+        new EventJournal(join(context.root, 'no-agent-task-events.jsonl')),
+        async () => undefined,
+        context.root,
+        undefined,
+        undefined,
         {
-          kind: 'effect',
-          id: 'node_effect',
-          async run() {
-            /* staged action applied by RoleInstance/EffectExecutor */
-          },
+          journal: new EventJournal(join(context.root, 'no-agent-control-events.jsonl')),
+          receiptRoot: join(context.root, 'no-agent-receipts'),
+          runtimeNamespace: 'no-agent',
+        }
+      );
+      const result = await runMrsOnce({
+        mrs: [MR],
+        deps: {
+          pipeline: runtime,
+          vcs: context.vcs,
+          fetchDiffRefs: async () => ({ headSha: 'head-184' }),
+          captureReviewInput: async () => captureReviewInput(),
         },
-      ],
-      edges: [
-        { from: 'node_prep', to: 'node_effect', on: 'go' },
-        { from: 'node_effect', to: 'done', on: 'ok' },
-      ],
-    };
-  }
-
-  it('GIVEN effect-узел + dry-run WHEN execute THEN EffectExecutor вызван, 0 реальных постингов, повтор → 0 новых', async () => {
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/2';
-
-    const engine = new RoleEngine();
-    engine.register({
-      name: 'test-effect',
-      description: 'minimal graph reaching node_effect without an ask gate',
-      graph: makeEffectGraph(),
-    });
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, 'test-effect') });
-
-    const opencode = new OpenCodeMock();
-    const store = makeStateStore();
-    const deps: RunModeDeps = {
-      engine,
-      store,
-      vcs,
-      opencode,
-      fetchDiffRefs: async () => undefined,
-    };
-
-    // First pass — dry-run (default): EffectExecutor runs, reconcile/dedup + effect_applied marker
-    // fire, but the real vcs-* call (_apply) is withheld.
-    const first = await runMrsOnce({ mrs: [MR], deps });
-    const firstResult = first.results[0];
-    assert.strictEqual(firstResult.state, 'done');
-
-    const effectResult = firstResult.artifacts?.node_effect_result as {
-      outcomes: Array<{ status: string }>;
-    };
-    assert.strictEqual(effectResult.outcomes.length, 1);
-    assert.strictEqual(effectResult.outcomes[0].status, 'applied');
-
-    const auditAfterFirst = await store.queryAudit(MR);
-    const appliedCountAfterFirst = auditAfterFirst.filter(
-      (e) => e.event === 'effect_applied'
-    ).length;
-    assert.ok(
-      appliedCountAfterFirst > 0,
-      'at least one effect_applied marker after the first pass'
-    );
-
-    // Second pass over the same MR/store — RoleInstance's own effect_applied guard (generic
-    // `node:<id>` marker, appended before EffectExecutor even runs) sees the prior pass and skips
-    // node.run()/EffectExecutor entirely (0 new applied, G10 sense) — regardless of exactly how
-    // many markers the first pass produced (RoleInstance's own + EffectExecutor's finer one).
-    const second = await runMrsOnce({ mrs: [MR], deps });
-    const secondResult = second.results[0];
-    assert.strictEqual(secondResult.state, 'done');
-    assert.strictEqual(
-      secondResult.artifacts?.node_effect_result,
-      undefined,
-      'second pass never re-enters EffectExecutor — effect already applied'
-    );
-
-    const auditAfterSecond = await store.queryAudit(MR);
-    const appliedCountAfterSecond = auditAfterSecond.filter(
-      (e) => e.event === 'effect_applied'
-    ).length;
-    assert.strictEqual(
-      appliedCountAfterSecond,
-      appliedCountAfterFirst,
-      '0 new effect_applied entries on the second pass'
-    );
+      });
+      assert.strictEqual(result.results[0]?.state, 'failed');
+      assert.match(result.results[0]?.error ?? '', /Actual agent runtime evidence is required/);
+    } finally {
+      cleanupTestTmp(context.root);
+    }
   });
-});
 
-describe('runMrsOnce — per-MR result shape for an unresolved role', () => {
-  it('GIVEN MR без myRole WHEN run-mode THEN результат unresolved_role, граф не запускается', async () => {
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/3';
-
-    const engine = new RoleEngine();
-    await engine.loadAll();
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, null) });
-
-    const store = makeStateStore();
-    const deps: RunModeDeps = {
-      engine,
-      store,
-      vcs,
-      opencode: new OpenCodeMock(),
-      fetchDiffRefs: async () => undefined,
-    };
-
-    const result = await runMrsOnce({ mrs: [MR], deps });
-    const mrResult = result.results[0];
-
-    assert.strictEqual(mrResult.state, 'unresolved_role');
-    assert.strictEqual(mrResult.board, null);
-    assert.strictEqual(mrResult.artifacts, null);
+  it('blocks an incomplete manifest inventory before queue materialization', async () => {
+    const context = createContext();
+    try {
+      const result = await runMrsOnce({
+        mrs: [MR],
+        deps: {
+          pipeline: context.pipeline,
+          vcs: context.vcs,
+          fetchDiffRefs: async () => ({ headSha: 'head-184' }),
+          captureReviewInput: async () => ({ inputs: [], classifications: [], provenance: [] }),
+        },
+      });
+      assert.strictEqual(result.results[0]?.state, 'failed');
+      assert.match(result.results[0]?.error ?? '', /BLOCKED incomplete inventory/);
+      assert.strictEqual(context.queue.state(MR).length, 0);
+    } finally {
+      cleanupTestTmp(context.root);
+    }
   });
-});
 
-describe('reviewer graph → real disk materialization → BoardProviderReal round-trip (TSK-122 P3 real-proof)', () => {
-  /**
-   * @purpose Prove the P1 (materializeReviewScaffold/materializeSynthesisReadme) + P2
-   *   (BoardProviderReal.listArtifacts/readArtifact) gaps actually close end-to-end: the REAL
-   *   `ReviewerRole.graph` (not a hand-built test graph) drives `node_prepare` →
-   *   `node_track_review`/`node_security_lens`/`node_code_review` → `gate_review_filled` →
-   *   `node_synthesize` → `gate_review_synthesis` → `node_ask`, actually writing PLAN.md and a
-   *   README.md carrying a real `\`\`\`mermaid` block derived from the changeset files — then reads
-   *   those SAME files back off disk through `BoardProviderReal`, the exact reader the live
-   *   dashboard uses (TSK-122 gap-3/gap-4).
-   * @invariant Only OpenCode is mocked (network-free, per this suite's own contract); the disk
-   *   writes and BoardProviderReal reads are 100% real code paths — not a hand-seeded fixture (that
-   *   coverage already exists in board-provider.real.test.ts's "artifact backing" describe block;
-   *   this test closes the gap that suite leaves open — nothing upstream of BoardProviderReal had
-   *   ever exercised the real writer).
-   * @invariant `changesetFiles`/`baseSha`/`headSha` are seeded directly via `RoleInstanceCheckpoint`
-   *   (bypassing `_prepareWorktreeAndChangeset`'s real `git worktree`/`git diff` calls) — this suite
-   *   stays network- and git-free by design (see `makeStateStore`'s own doc comment); the real git
-   *   fetch path was separately probed live during this phase (see ticket TSK-122 P3 Execution Log)
-   *   against `vk-workspace/superapp!571` and confirmed to fetch a real changeset successfully.
-   */
-  it('GIVEN real reviewer graph + mocked OpenCode WHEN review_needed reaches gate_review_synthesis THEN PLAN.md/README.md(mermaid) are written to reports/<mr>/ and BoardProviderReal reads them back', async () => {
-    const MR = 'https://gitlab.example.com/group/project/-/merge_requests/42';
+  it('fails closed before queue handoff when exact head SHA is unavailable', async () => {
+    const context = createContext();
+    try {
+      const result = await runMrsOnce({
+        mrs: [MR],
+        deps: {
+          pipeline: context.pipeline,
+          vcs: context.vcs,
+          fetchDiffRefs: async () => undefined,
+        },
+      });
+      assert.strictEqual(result.results[0]?.state, 'failed');
+      assert.strictEqual(context.queue.state(MR).length, 0);
+    } finally {
+      cleanupTestTmp(context.root);
+    }
+  });
 
-    const engine = new RoleEngine();
-    engine.register(ReviewerRole);
-
-    const vcs = new VcsInboxMock();
-    vcs.seed([], { [MR]: mrContext(MR, 'reviewer') });
-
-    // D-118..D-123 (TSK-113 P5 fix round 2): lens/synthesize nodes return their result as a
-    // structured response (`resultSchema`) — no write tool, no disk artifact — seed the plain
-    // response object directly.
-    const opencode = new OpenCodeMock();
-    opencode.seed('node_enrich', { ok: true });
-    opencode.seed('node_track_review', { findings: [{ id: 1 }], tracksCovered: ['logic'] });
-    opencode.seed('node_security_lens', { findings: [] });
-    opencode.seed('node_code_review', { findings: [] });
-    opencode.seed('node_contract_review', { findings: [] });
-    opencode.seed('node_synthesize', {
-      reviewReport: {
-        summary: 'Изменения в логике и тестах',
-        verdict: 'changes_requested',
-        behavior: 'Добавлена ветка обработки граничного случая в основной логике.',
-        scenarios: 'Вызов с пустым входом; вызов с максимально допустимым значением.',
-      },
-      recommendations: [{ message: 'Добавить тест на граничный случай' }],
-    });
-
-    const store = makeStateStore();
-
-    const changesetFiles: ChangesetFile[] = [
-      { path: 'services/agent-inbox/foo.ts', status: 'M', plus: 40, minus: 10 },
-      { path: 'services/agent-inbox/__tests__/foo.test.ts', status: 'A', plus: 60, minus: 0 },
-      { path: 'docs/foo.md', status: 'M', plus: 5, minus: 1 },
-    ];
-
-    const instance = new RoleInstance({
-      id: 'reviewer:test:materialize-round-trip',
-      role: 'reviewer',
-      mr: MR,
-      graph: ReviewerRole.graph,
-      opencode,
-      vcs,
-      store,
-      checkpoint: {
-        currentNode: 'node_prepare',
-        continueCount: 0,
-        restartCount: 0,
-        artifacts: { changesetFiles, baseSha: 'base0000', headSha: 'head1111' },
-      },
-    });
-
-    await instance.step(); // node_prepare (review_needed default branch) — materializeReviewScaffold
-    assert.strictEqual(instance.currentNode, 'node_enrich');
-
-    // The enrich session (full toolset) rewrites the scaffolded blanks with real context; the mock
-    // cannot write files, so lay down the same on-disk result before stepping it — gate_enrich below
-    // then validates the REAL files, exactly as in production.
-    seedEnrichedTaskFiles(store, 'group/project!1');
-    await instance.step(); // node_enrich → ok
-    assert.strictEqual(instance.currentNode, 'gate_enrich');
-    await instance.step(); // gate_enrich → pass (task files carry status: enriched + Контекст)
-    assert.strictEqual(instance.currentNode, 'node_review_fanout');
-    // TSK-perf: track/security/code-review run concurrently inside one ParallelNode (see
-    // reviewer.role.ts's node_review_fanout) — one step() resolves all three lenses together
-    // (pre-existing graph shape, discovered stale here TSK-113 P5; fixture predates the fan-out).
-    await instance.step(); // node_review_fanout → ok
-    assert.strictEqual(instance.currentNode, 'gate_review_filled');
-    await instance.step(); // gate_review_filled → pass
-    assert.strictEqual(instance.currentNode, 'node_synthesize');
-    await instance.step(); // node_synthesize → ok
-    assert.strictEqual(instance.currentNode, 'gate_review_synthesis');
-    await instance.step(); // gate_review_synthesis → pass — materializeSynthesisReadme fires here
-    assert.strictEqual(instance.currentNode, 'node_ask');
-
-    // NB: mrContext() (this file's shared helper) hardcodes iid: '1' regardless of the MR URL's own
-    // /42/ path segment — the ref below matches that helper's project!iid, not the URL.
-    const ref = 'group/project!1';
-    const reportsDir = mrReportsDir(store.getStateDir(), ref);
-
-    // #region ASSERT_REAL_DISK_WRITES — the P1 gap (materialization) closed
-    assert.ok(
-      existsSync(join(reportsDir, 'PLAN.md')),
-      'PLAN.md written by materializeReviewScaffold'
-    );
-    assert.ok(
-      existsSync(join(reportsDir, 'README.md')),
-      'README.md written by materializeSynthesisReadme'
-    );
-    // #endregion ASSERT_REAL_DISK_WRITES
-
-    // #region ASSERT_BOARD_PROVIDER_REAL_ROUND_TRIP — the P2 gap (BoardProviderReal reads) closed
-    const provider = new BoardProviderReal(
-      {} as unknown as RoleScheduler,
-      {} as unknown as RoleEngine,
-      store.getStateDir()
-    );
-
-    const artifacts = provider.listArtifacts(ref);
-    assert.ok(artifacts.some((a) => a.path === 'PLAN.md'));
-    assert.ok(artifacts.some((a) => a.path === 'README.md'));
-
-    const readme = provider.readArtifact(ref, 'README.md');
-    assert.ok(readme, 'BoardProviderReal.readArtifact must find the real materialized README.md');
-    assert.equal(readme!.kind, 'md');
-    // Real mermaid — not a placeholder, not "FILL: orchestrator" — derived from the seeded
-    // changesetFiles' top-level directories via reviewer.role.ts's `_buildMinimalChangeGraph`
-    // fallback (node_synthesize's canned reviewReport carries no architectureDiagram of its own).
-    assert.ok(readme!.content.includes('```mermaid'));
-    assert.ok(readme!.content.includes('graph TD'));
-    assert.ok(readme!.content.includes('services') || readme!.content.includes('docs'));
-    assert.ok(
-      !readme!.content.includes('FILL: orchestrator'),
-      'must be the synthesis render, not the unfilled scaffold template'
-    );
-    // #endregion ASSERT_BOARD_PROVIDER_REAL_ROUND_TRIP
+  it('applies explicit role policy and rejects unknown roles without queue work', async () => {
+    const context = createContext('custom-role');
+    try {
+      const result = await runMrsOnce({
+        mrs: [MR],
+        deps: {
+          pipeline: context.pipeline,
+          vcs: context.vcs,
+          fetchDiffRefs: async () => ({ headSha: 'head-184' }),
+        },
+      });
+      assert.strictEqual(result.results[0]?.state, 'failed');
+      assert.match(result.results[0]?.error ?? '', /Unsupported MR role/);
+      assert.strictEqual(context.queue.state(MR).length, 0);
+    } finally {
+      cleanupTestTmp(context.root);
+    }
   });
 });

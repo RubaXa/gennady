@@ -2,28 +2,35 @@
 // @file: CLI command: inbox serve — start the agent-inbox HTTP server + AI engine, or (with
 //   --mrs) run a one-shot dry-run pass over a fixed MR list through the real role graph.
 // @consumers: gennady.ts (served via `gennady inbox serve`)
-// @tasks: TSK-115, TSK-121, TSK-122
+// @tasks: TSK-115, TSK-121, TSK-122, TSK-184, TSK-190
 
 import { style } from '../../../shared/common/style.ts';
 import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { bootstrap } from '../../../services/agent-inbox/serve/bootstrap.ts';
+import {
+  bootstrap,
+  ensureRunModeOpenCode,
+  type ManagedRunModeOpenCode,
+} from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { gracefulShutdown } from '../../../services/agent-inbox/serve/shutdown.ts';
 import {
   isOpencodePid,
   terminateOrphanedOpencode,
 } from '../../../services/agent-inbox/serve/pid-utils.ts';
-import { runMrsOnce, resolveRunModeVcsHost } from '../../../services/agent-inbox/serve/run-mode.ts';
+import {
+  composeRunModePipeline,
+  runMrsOnce,
+  resolveRunModeVcsHost,
+} from '../../../services/agent-inbox/serve/run-mode.ts';
 import { loadSeedState, type SeedState } from '../../../services/agent-inbox/serve/state-seed.ts';
 import { StateStore } from '../../../services/agent-inbox/modules/inbox-core/state-store.ts';
-import { RoleEngine } from '../../../services/agent-inbox/modules/inbox-roles/role-engine.ts';
 import { VcsInboxMock } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.mock.ts';
 import { VcsInboxReal } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.real.ts';
 import type { VcsInboxPort } from '../../../services/agent-inbox/modules/inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.mock.ts';
-import { OpenCodeReal } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.real.ts';
 import type { OpenCodePort } from '../../../services/agent-inbox/modules/inbox-opencode/opencode.port.ts';
+import { fetchDiffRefsLive } from '../../../services/agent-inbox/modules/inbox-roles/context-builder.ts';
 
 /**
  * @purpose Parse command-line flags for `gennady inbox serve`.
@@ -72,7 +79,8 @@ function parseValue(argv: string[], flag: string): string | undefined {
   );
   if (inline) return inline.slice(flag.length + 1);
   const idx = argv.indexOf(flag);
-  return idx !== -1 ? argv[idx + 1] : undefined;
+  const next = idx !== -1 ? argv[idx + 1] : undefined;
+  return next && !next.startsWith('--') ? next : undefined;
 }
 
 /**
@@ -164,7 +172,11 @@ async function resolveSeedState(value: string): Promise<SeedState> {
  * @returns Process exit code.
  * @sideEffect Prints the per-MR JSON result to stdout; network/filesystem per `runMrsOnce`.
  */
-async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): Promise<number> {
+async function runRunModeCli(
+  argv: string[],
+  mrsValue: string | undefined,
+  mocks: boolean
+): Promise<number> {
   try {
     if (!argv.includes('--once')) {
       console.error(
@@ -174,7 +186,7 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
       return 1;
     }
 
-    const mrs = resolveMrsList(mrsValue);
+    let mrs = mrsValue ? resolveMrsList(mrsValue) : [];
     const seedValue = parseValue(argv, '--seed');
     const seedState = seedValue ? await resolveSeedState(seedValue) : undefined;
     const dryRun = parseValue(argv, '--dry-run') !== 'false';
@@ -183,15 +195,21 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
     console.info('');
 
     const store = new StateStore();
-    const engine = new RoleEngine();
-    await engine.loadAll();
-
     // gap-1 (TSK-122): derive host from the MR list (or fall back to config) — a bare
     // VcsInboxReal({ token }) with no host always threw CONFIG: No VCS host configured.
-    const vcsHost = mocks ? undefined : await resolveRunModeVcsHost(mrs, store);
+    const explicitVcsHost = parseValue(argv, '--vcs-host');
+    const vcsHost = mocks
+      ? undefined
+      : (explicitVcsHost ?? (await resolveRunModeVcsHost(mrs, store)));
     const vcs: VcsInboxPort = mocks
       ? new VcsInboxMock()
       : new VcsInboxReal({ host: vcsHost, token: process.env.GITLAB_PERSONAL_TOKEN });
+    if (mrs.length === 0) {
+      mrs = (await vcs.getActionable()).map((mr) => mr.webUrl);
+      if (mrs.length === 0) {
+        throw new Error('[runRunModeCli] No real read-only MR input is actionable');
+      }
+    }
     // gap (found live 2026-07-23, debugging an already-running `gennady inbox serve`): the
     // opencode port is chosen dynamically at boot (bootstrap.ts) and recorded in opencode.pid —
     // hardcoding 4096 here made run-mode unable to attach to that already-running instance for
@@ -199,26 +217,58 @@ async function runRunModeCli(argv: string[], mrsValue: string, mocks: boolean): 
     // (e.g. a fresh opencode serve spawned separately with the default port).
     const opencodePortArg = parseValue(argv, '--opencode-port');
     const opencodePort = opencodePortArg ? Number(opencodePortArg) : undefined;
-    const opencodeBaseUrl = mocks
-      ? undefined
-      : await resolveRunModeOpencodeBaseUrl(store.getStateDir(), opencodePort);
-    const opencode: OpenCodePort = mocks
-      ? new OpenCodeMock()
-      : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: opencodeBaseUrl });
+    let managedOpenCode: ManagedRunModeOpenCode | undefined;
+    let opencode: OpenCodePort;
+    if (mocks) {
+      opencode = new OpenCodeMock();
+    } else {
+      const discoveredBaseUrl = await resolveRunModeOpencodeBaseUrl(
+        store.getStateDir(),
+        opencodePort
+      );
+      const discoveredPort = Number(new URL(discoveredBaseUrl).port);
+      managedOpenCode = await ensureRunModeOpenCode(
+        store.getStateDir(),
+        opencodePort ?? (discoveredPort === 4096 ? undefined : discoveredPort)
+      );
+      opencode = managedOpenCode.opencode;
+    }
 
-    // invariant: --mocks must stay network-free; the live default (fetchDiffRefsLive) would
-    // still hit the real GitLab API otherwise
-    const fetchDiffRefs = mocks ? async () => undefined : undefined;
+    const controlPlaneModel = parseValue(argv, '--opencode-model');
+    const pipeline = composeRunModePipeline(
+      store,
+      opencode,
+      mocks ? 'mock' : 'production',
+      controlPlaneModel
+    );
 
-    const result = await runMrsOnce({
-      mrs,
-      seedState,
-      dryRun,
-      deps: { engine, store, vcs, opencode, fetchDiffRefs },
-    });
+    try {
+      const result = await runMrsOnce({
+        mrs,
+        seedState,
+        dryRun,
+        deps: {
+          pipeline,
+          store,
+          vcs,
+          fetchDiffRefs: mocks ? async () => ({ headSha: 'mock-fixture-head' }) : fetchDiffRefsLive,
+        },
+      });
 
-    console.info(JSON.stringify(result, null, 2));
-    return 0;
+      console.info(JSON.stringify(result, null, 2));
+      return result.results.every((item) => item.state === 'completed') ? 0 : 1;
+    } finally {
+      pipeline.stop();
+      if (managedOpenCode?.process?.pid) {
+        await terminateOrphanedOpencode(
+          managedOpenCode.process.pid,
+          'bounded one-shot acceptance completed'
+        );
+        if (managedOpenCode.pidFile && existsSync(managedOpenCode.pidFile)) {
+          unlinkSync(managedOpenCode.pidFile);
+        }
+      }
+    }
   } catch (error) {
     console.error(style.redBright.bold('✖ Ошибка:'), (error as Error).message);
     return 1;
@@ -232,8 +282,9 @@ async function run(): Promise<number> {
 
     // #region START_RUN_MODE_DISPATCH — invariant: --mrs bypasses the HTTP server entirely, it is
     // a one-shot batch pass (TSK-121), never the interactive foreground server below
+    const hasMrs = argv.includes('--mrs') || argv.some((arg) => arg.startsWith('--mrs='));
     const mrsValue = parseValue(argv, '--mrs');
-    if (mrsValue) {
+    if (hasMrs) {
       return await runRunModeCli(argv, mrsValue, mocks);
     }
     // #endregion END_RUN_MODE_DISPATCH

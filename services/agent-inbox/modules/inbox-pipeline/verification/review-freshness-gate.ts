@@ -1,6 +1,6 @@
 // @file: Per-MR serialized local freshness guard for verdict, synthesis and queue handoff.
 // @consumers: ReviewStructuralValidator, ReviewSynthesis, ReviewPublicationHandoff
-// @tasks: TSK-176
+// @tasks: TSK-176, TSK-184, TSK-190
 
 import type {
   ReviewCapabilitySnapshot,
@@ -28,33 +28,20 @@ export type ReviewGuardedTransition = {
 /** @purpose Journal seam that owns observed state and protected local transitions. */
 export type ReviewFreshnessJournal = {
   /**
-   * @purpose Retrieve the latest core-owned observed revision.
-   * @param mr Canonical merge request identity.
-   * @returns Exact head and event revision when locally known.
-   */
-  retrieveObservedRevision(mr: string): string | undefined;
-  /**
-   * @purpose Persist one successful protected local transition.
+   * @purpose Atomically persist the observed revision, comparison result and optional protected transition.
+   * @invariant One append is the complete durable state change for this guard attempt.
    * @param purpose Closed protected transition purpose.
-   * @param key Exact accepted manifest key.
-   * @param transition Successful protected transition context.
+   * @param key Exact expected manifest key.
+   * @param observedRevision Latest revision observed inside the per-MR transaction.
+   * @param [transition] Protected transition only when the observation matches the manifest.
+   * @returns Promise resolved after the complete guard transaction is durably recorded.
    */
-  recordTransition(
+  recordGuardTransaction(
     purpose: ReviewFreshnessPurpose,
     key: ReviewManifestKey,
-    transition: ReviewGuardedTransition
-  ): void;
-  /**
-   * @purpose Persist stale state and delta request without invoking callback.
-   * @param purpose Closed protected transition purpose.
-   * @param key Stale expected manifest key.
-   * @param observedRevision Newer locally observed revision.
-   */
-  recordStale(
-    purpose: ReviewFreshnessPurpose,
-    key: ReviewManifestKey,
-    observedRevision: string
-  ): void;
+    observedRevision: string,
+    transition?: ReviewGuardedTransition
+  ): Promise<void>;
 };
 
 /** @purpose Fresh callback result, persisted stale result or fail-closed local ambiguity. */
@@ -95,21 +82,23 @@ export class ReviewFreshnessGate {
    * @purpose Guard one protected local transition without spanning an external GitLab effect.
    * @param purpose Closed protected transition purpose.
    * @param key Exact expected manifest key.
+   * @param observeRevision Control-plane observation performed inside the per-MR transaction.
    * @param callback Idempotent local transition callback.
    * @returns Fresh callback value, persisted stale result or fail-closed ambiguity.
    */
   guard<T>(
     purpose: ReviewFreshnessPurpose,
     key: ReviewManifestKey,
+    observeRevision: () => Promise<string | undefined> | string | undefined,
     callback: (transition: ReviewGuardedTransition) => Promise<T> | T
   ): Promise<ReviewFreshnessResult<T>> {
     const previous = this._locks.get(key.mr) ?? Promise.resolve();
     const current = previous.then(async () => {
-      const observed = this._journal.retrieveObservedRevision(key.mr);
+      const observed = await observeRevision();
       if (!observed) return { status: 'BLOCKED', reason: 'observed revision unavailable' } as const;
       const expected = `${key.headSHA}:${key.eventCursor}`;
       if (observed !== expected) {
-        this._journal.recordStale(purpose, key, observed);
+        await this._journal.recordGuardTransaction(purpose, key, observed);
         return {
           status: 'STALE',
           expectedRevision: expected,
@@ -123,8 +112,8 @@ export class ReviewFreshnessGate {
         observedRevision: observed,
         ...capability,
       };
+      await this._journal.recordGuardTransaction(purpose, key, observed, transition);
       const value = await callback(transition);
-      this._journal.recordTransition(purpose, key, transition);
       return { status: 'FRESH', value, transition } as const;
     });
     this._locks.set(key.mr, current);
