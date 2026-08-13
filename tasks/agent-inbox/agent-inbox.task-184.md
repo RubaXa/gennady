@@ -41,6 +41,8 @@
   - `services/agent-inbox/serve/bootstrap.ts`
   - `services/agent-inbox/serve/run-mode.ts`
   - `services/agent-inbox/modules/inbox-pipeline/review/review-orchestrator.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/coverage/review-structural-validator.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/coverage/review-repair-coordinator.ts`
   - `services/agent-inbox/modules/inbox-pipeline/verification/review-freshness-gate.ts`
   - `services/agent-inbox/modules/inbox-queue/effects/review-effect-coordinator.ts`
   - `services/agent-inbox/modules/inbox-queue/task-registry.ts`
