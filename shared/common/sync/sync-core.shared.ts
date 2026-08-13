@@ -2,12 +2,33 @@
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
 // @tasks: TSK-56
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * @purpose Locate a subdirectory inside the installed gennady npm package.
+ * @purpose Detect the gennady self-repo (package.json name "gennady") and resolve subdir locally, bypassing node_modules.
+ * @param projectRoot Candidate project root directory.
+ * @param subdir Subdirectory path relative to the repo root (e.g., 'ai/skills').
+ * @returns Absolute path or null when projectRoot is not the gennady repo or subdir is absent.
+ */
+function resolveSelfRepoDir(projectRoot: string, subdir: string): string | null {
+  try {
+    const pkgJsonPath = join(projectRoot, 'package.json');
+    if (!existsSync(pkgJsonPath)) return null;
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as { name?: string };
+    if (pkg.name !== 'gennady') return null;
+
+    const dirPath = join(projectRoot, subdir);
+    return existsSync(dirPath) ? dirPath : null;
+  } catch {
+    // unreadable/invalid package.json — not the self-repo
+    return null;
+  }
+}
+
+/**
+ * @purpose Locate a subdirectory inside the installed gennady npm package, or the gennady repo itself.
  * @param projectRoot Project root directory (contains node_modules/).
  * @param subdir Subdirectory path inside the gennady package (e.g., 'ai/directives').
  * @returns Absolute path or null if the package or subdirectory is not found.
@@ -29,6 +50,10 @@ export function resolvePackageDir(projectRoot: string, subdir: string): string |
   } catch {
     // import.meta.resolve may fail
   }
+
+  // gennady's own repo (dev/CI running against itself) has no node_modules/gennady to find
+  const selfRepoDir = resolveSelfRepoDir(projectRoot, subdir);
+  if (selfRepoDir) return selfRepoDir;
 
   return null;
 }

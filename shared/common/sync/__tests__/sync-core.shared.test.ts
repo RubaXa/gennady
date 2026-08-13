@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -119,6 +119,39 @@ describe('resolvePackageDir', () => {
     } finally {
       urlCjs.fileURLToPath = original;
     }
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_7: self-repo fallback resolves local subdir
+  it('resolves subdir from self-repo when package.json name is gennady', () => {
+    // contract: no node_modules/gennady needed when projectRoot IS the gennady repo
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
+    const expectedPath = join(tmpDir, 'ai', 'skills');
+    mkdirSync(expectedPath, { recursive: true });
+
+    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    assert.strictEqual(result, expectedPath);
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_8: self-repo fallback does not apply to other packages
+  it('returns null for a foreign project with no node_modules/gennady, even with ai/skills present', () => {
+    // contract: self-repo fallback only fires when package.json name is exactly "gennady"
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'some-other-project' }));
+    mkdirSync(join(tmpDir, 'ai', 'skills'), { recursive: true });
+
+    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    assert.strictEqual(result, null);
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_9: self-repo package.json present but subdir missing
+  it('returns null when self-repo package.json matches but subdir is absent', () => {
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
+    // no ai/skills created
+
+    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    assert.strictEqual(result, null);
   });
   // #endregion
 });
