@@ -16,9 +16,12 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state`
+      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
       (flow version · readiness · scopes) AND read in full
-      `~/Developer/gennady/ai/directives/sdd-v2/execute.directive.xml`.
+      `ai/directives/sdd-v2/execute.directive.xml`.
+      Resolve every `ai/directives/sdd-v2/<file>` below deterministically, project root first: if
+      missing, `node_modules/gennady/ai/directives/sdd-v2/<file>`; if neither exists, stop and tell
+      the operator to run `npx gennady sync` — never search for it.
     </Step>
     <Step id="PREFLIGHT">
       Size the gate to this request's blast radius first: when the requested execution stays inside a single task's own scope and never touches `tasks/` layout or a missing gate script, record `FLOW_VERSION` / `READINESS` in one line and proceed straight to EMBODY — offer migration / readiness setup to the operator as a separate next step, not inside this run.

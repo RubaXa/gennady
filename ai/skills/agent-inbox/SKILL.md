@@ -31,7 +31,7 @@ compatibility: opencode
       single-MR review pipeline, and finalization. You EMBODY this directive.
     </Step>
     <Step id="PREFLIGHT">
-      Run `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`. Response has
+      Run `npx gennady inbox --json`. Response has
       `"configured": false` → do NOT exit: run the setup flow from inbox-flow (two `AskUserQuestion`
       — `reposBase`, then `vcsHost` → `inbox config --set` → retry). `"configured": true` → EMBODY.
       Not inside a repo → pass `--vcs-host=<host>` on every call. Token: `GITLAB_PERSONAL_TOKEN` or

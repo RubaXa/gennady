@@ -16,9 +16,12 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state`
+      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
       (flow version · readiness · portal · scopes) AND read in full
-      `~/Developer/gennady/ai/directives/sdd-v2/scaffold.directive.xml`.
+      `ai/directives/sdd-v2/scaffold.directive.xml`.
+      Resolve every `ai/directives/sdd-v2/<file>` below deterministically, project root first: if
+      missing, `node_modules/gennady/ai/directives/sdd-v2/<file>`; if neither exists, stop and tell
+      the operator to run `npx gennady sync` — never search for it.
     </Step>
     <Step id="PREFLIGHT">
       Size the gate to this request's blast radius first: when the scaffolding target stays inside a single

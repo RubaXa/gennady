@@ -14,8 +14,8 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="RUN">
-      If the operator named a Task-ID / ticket path → `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-check --task <path>`.
-      Otherwise (whole project) → `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-check --all`.
+      If the operator named a Task-ID / ticket path → `npx gennady sdd-check --task <path>`.
+      Otherwise (whole project) → `npx gennady sdd-check --all`.
     </Step>
     <Step id="REPORT">
       Relay the findings verbatim grouped by file (`file: severity: code  message`) plus the one-line summary,

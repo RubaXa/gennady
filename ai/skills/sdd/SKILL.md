@@ -16,10 +16,12 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      One parallel batch (do NOT serialize): run `npx tsx ~/Developer/gennady/cli/gennady.ts sdd-state`
+      One parallel batch (do NOT serialize): run `npx gennady sdd-state`
       — one call returns portal presence, the Scopes table (id / type / status), declared gate scripts,
-      and the in-progress session set — AND read in full
-      `~/Developer/gennady/ai/directives/sdd-v2/router.directive.xml`.
+      and the in-progress session set — AND read in full `ai/directives/sdd-v2/router.directive.xml`.
+      Resolve deterministically, project root first: `ai/directives/sdd-v2/router.directive.xml`; if
+      missing, `node_modules/gennady/ai/directives/sdd-v2/router.directive.xml`; if neither exists,
+      stop and tell the operator to run `npx gennady sync` — never search for it.
     </Step>
     <Step id="EMBODY">You ARE the router directive now. Intent — from the operator message; state — from sdd-state.</Step>
     <Step id="ROUTE">
