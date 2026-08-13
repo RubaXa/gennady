@@ -162,3 +162,135 @@ describe('SddStateCommand', () => {
     assert.strictEqual(bad4.ok === false && bad4.exitCode, 4);
   });
 });
+
+describe('SddStateCommand — readiness ladder card', () => {
+  let mod2: SddStateModule;
+  let empty: string;
+  let portalOnly: string;
+  let scopesNoInfra: string;
+  let allClosed: string;
+
+  before(async () => {
+    origExit = process.exit;
+    origArgv = process.argv;
+    process.exit = ((_code?: number) => undefined) as typeof process.exit;
+    process.argv = ['node', 'gennady', 'sdd-state'];
+
+    empty = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-empty-'));
+
+    portalOnly = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-portal-'));
+    mkdirSync(join(portalOnly, 'specs'), { recursive: true });
+    writeFileSync(join(portalOnly, 'specs', 'README.md'), '# Acme\n\n## Scopes\n', 'utf-8');
+
+    scopesNoInfra = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-scopes-'));
+    mkdirSync(join(scopesNoInfra, 'specs', 'backend', 'api'), { recursive: true });
+    writeFileSync(
+      join(scopesNoInfra, 'specs', 'README.md'),
+      [
+        '# Acme',
+        '## Scopes',
+        '| Scope | Type | Status | Description |',
+        '|---|---|---|---|',
+        '| [`backend`](./backend/backend.spec.md) | product | ✅ | REST API |',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(scopesNoInfra, 'specs', 'backend', 'api', 'api.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\nvision\n<!--/SECTION:MODULE_VISION-->\n',
+      'utf-8'
+    );
+
+    allClosed = mkdtempSync(join(tmpdir(), 'sdd-state-ladder-closed-'));
+    mkdirSync(join(allClosed, 'specs', 'backend', 'api'), { recursive: true });
+    mkdirSync(join(allClosed, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(
+      join(allClosed, 'specs', 'README.md'),
+      [
+        '# Acme',
+        '## Scopes',
+        '| Scope | Type | Status | Description |',
+        '|---|---|---|---|',
+        '| [`backend`](./backend/backend.spec.md) | product | ✅ | REST API |',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(
+      join(allClosed, 'specs', 'backend', 'api', 'api.spec.md'),
+      '<!--SECTION:MODULE_VISION-->\nvision\n<!--/SECTION:MODULE_VISION-->\n',
+      'utf-8'
+    );
+    writeFileSync(
+      join(allClosed, 'specs', '3-tasks.md'),
+      [
+        '## Scope Tracker',
+        '| Scope | Type | Index | Tasks | Done |',
+        '|---|---|---|---|---|',
+        '| backend | product | [3-tasks](./backend/backend.3-tasks.md) | 4 | 4/4 |',
+      ].join('\n'),
+      'utf-8'
+    );
+    writeFileSync(join(allClosed, 'package.json'), READY_PKG, 'utf-8');
+    writeFileSync(join(allClosed, 'node_modules', '.bin', 'gennady'), '#!/bin/sh\n', 'utf-8');
+
+    mod2 = await import('../sdd-state.cmd.ts');
+  });
+
+  after(() => {
+    process.exit = origExit;
+    process.argv = origArgv;
+    rmSync(empty, { recursive: true, force: true });
+    rmSync(portalOnly, { recursive: true, force: true });
+    rmSync(scopesNoInfra, { recursive: true, force: true });
+    rmSync(allClosed, { recursive: true, force: true });
+  });
+
+  it('empty repo: card names it «пустой репозиторий», every rung ⬜, next step is /sdd', async () => {
+    const o = await mod2.run(argv(empty));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /🏗 SDD · «пустой репозиторий»/);
+      assert.match(o.text, /⬜ 1\. Портал/);
+      assert.match(o.text, /⬜ 2\. Скоупы/);
+      assert.match(o.text, /⬜ 3\. Модули/);
+      assert.match(o.text, /⬜ 4\. Инфраструктура/);
+      assert.match(o.text, /⬜ 5\. Задачи/);
+      assert.match(o.text, /👉 Следующий шаг: создать проект — \/sdd/);
+    }
+  });
+
+  it('portal only, no scopes: rung 1 closed, name from the portal H1, next step is a scope spec', async () => {
+    const o = await mod2.run(argv(portalOnly));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /🏗 SDD · Acme/);
+      assert.match(o.text, /✅ 1\. Портал/);
+      assert.match(o.text, /⬜ 2\. Скоупы\s+нет ни одной/);
+      assert.match(o.text, /👉 Следующий шаг: написать и approve скоуп-спеку — \/sdd/);
+    }
+  });
+
+  it('portal + approved scope + module spec, no infra: next step is infra before scaffold', async () => {
+    const o = await mod2.run(argv(scopesNoInfra));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /✅ 2\. Скоупы\s+approved: 1 из 1/);
+      assert.match(o.text, /✅ 3\. Модули\s+модульных спек: 1/);
+      assert.match(o.text, /⬜ 4\. Инфраструктура\s+не настроена/);
+      assert.match(o.text, /👉 Следующий шаг: настроить инфраструктуру \(гейты\) перед scaffold/);
+    }
+  });
+
+  it('everything closed: all five rungs ✅, tasks totals from the project rollup', async () => {
+    const o = await mod2.run(argv(allClosed));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /✅ 1\. Портал/);
+      assert.match(o.text, /✅ 2\. Скоупы/);
+      assert.match(o.text, /✅ 3\. Модули/);
+      assert.match(o.text, /✅ 4\. Инфраструктура/);
+      assert.match(o.text, /✅ 5\. Задачи\s+тикетов: 4 · done: 4/);
+      assert.match(o.text, /👉 Следующий шаг: всё закрыто — следующий цикл \/sdd-execute/);
+    }
+  });
+});

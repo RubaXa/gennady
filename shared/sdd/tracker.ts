@@ -230,3 +230,30 @@ export function recomputeRollupProgress(
 
   return { text: lines.join('\n'), updated };
 }
+
+/**
+ * @purpose Sum a rollup table's existing Tasks/Done cells as literal numbers — read-only, no recompute.
+ * @param content Full markdown of the rollup file (e.g. `specs/3-tasks.md`).
+ * @returns Summed `{totalTasks, totalDone}` across every row, or null when no rollup table exists.
+ */
+export function sumRollupProgress(
+  content: string
+): { totalTasks: number; totalDone: number } | null {
+  const lines = content.split('\n');
+  const header = findRollupHeader(lines);
+  if (!header) return null;
+
+  let totalTasks = 0;
+  let totalDone = 0;
+  for (let i = header.headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trimStart().startsWith('|')) break;
+    if (/^\|?\s*-+\s*\|/.test(line)) continue;
+    const cells = contentCells(line);
+    const tasks = Number.parseInt(cellText(cells[header.tasksCol] ?? ''), 10);
+    const doneMatch = cellText(cells[header.doneCol] ?? '').match(/^(\d+)/);
+    if (Number.isFinite(tasks)) totalTasks += tasks;
+    if (doneMatch?.[1]) totalDone += Number.parseInt(doneMatch[1], 10);
+  }
+  return { totalTasks, totalDone };
+}

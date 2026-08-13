@@ -10,6 +10,9 @@ import { checkReadiness } from '../../../shared/sdd/readiness.ts';
 import { parseScopes, type Scope } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
+import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
+import { sumRollupProgress } from '../../../shared/sdd/tracker.ts';
+import { renderLadder } from '../../../shared/sdd/ladder.ts';
 import {
   badInvocation,
   badRoot,
@@ -18,6 +21,16 @@ import {
   type StateOutcome,
   type StateSnapshot,
 } from './sdd-state.types.ts';
+
+/**
+ * @purpose Parse the project name from the portal's first `# ` heading.
+ * @param portalContent Full markdown of specs/README.md.
+ * @returns The heading text, or null when the portal has no top-level heading.
+ */
+function parseProjectName(portalContent: string): string | null {
+  const m = portalContent.match(/^#\s+(.+)$/m);
+  return m?.[1]?.trim() || null;
+}
 
 /**
  * @purpose Detect whether the gennady CLI is installed for the project.
@@ -59,10 +72,12 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   const portalPath = 'specs/README.md';
   let portalPresent = false;
   let scopes: Scope[] = [];
+  let projectName: string | null = null;
   try {
     const content = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
     portalPresent = true;
     scopes = parseScopes(content);
+    projectName = parseProjectName(content);
   } catch {
     portalPresent = false;
   }
@@ -112,7 +127,41 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     sessionContent,
     probe,
   };
-  return { ok: true, text: formatSnapshot(snapshot) };
+
+  // #region START_LADDER — the readiness-ladder card the router shows verbatim; appended, never replaces [SUMMARY]
+  const moduleSpecCount = countModuleSpecs(join(root, 'specs'));
+
+  let tasksTotal: number | null = null;
+  let tasksDone: number | null = null;
+  try {
+    const rollup = sumRollupProgress(readFileSync(join(root, 'specs', '3-tasks.md'), 'utf-8'));
+    if (rollup) {
+      tasksTotal = rollup.totalTasks;
+      tasksDone = rollup.totalDone;
+    }
+  } catch {
+    tasksTotal = null;
+    tasksDone = null;
+  }
+
+  const ladder = renderLadder({
+    projectName,
+    portalPresent,
+    scopesTotal: scopes.length,
+    scopesApproved: scopes.filter((s) => s.status === 'done').length,
+    moduleSpecCount,
+    packageJsonPresent,
+    gates: {
+      typecheck: scripts['typecheck'] !== undefined,
+      test: scripts['test'] !== undefined,
+      lint: scripts['lint'] !== undefined,
+    },
+    tasksTotal,
+    tasksDone,
+  });
+  // #endregion END_LADDER
+
+  return { ok: true, text: `${formatSnapshot(snapshot)}\n\n${ladder}` };
 }
 
 // Self-executing for CLI: gennady sdd-state [project-root]

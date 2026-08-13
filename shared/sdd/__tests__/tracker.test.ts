@@ -9,6 +9,7 @@ import {
   parseMeta,
   parseTrackerRows,
   recomputeRollupProgress,
+  sumRollupProgress,
   updateTrackerStatus,
   type TrackerRow,
 } from '../tracker.ts';
@@ -197,5 +198,25 @@ describe('recomputeRollupProgress', () => {
       text,
       /\| infra-base \| infrastructure \| \[3-tasks\]\(\.\/infra-base\/infra-base\.3-tasks\.md\) \| 3 \| 2\/3 \|/
     );
+  });
+});
+
+describe('sumRollupProgress', () => {
+  it('sums Tasks/Done across every rollup row, read-only', () => {
+    assert.deepStrictEqual(sumRollupProgress(ROLLUP), { totalTasks: 18, totalDone: 0 });
+  });
+
+  it('sums a mix of done/not-done rows correctly', () => {
+    const mixed = [
+      '| Scope | Type | Index | Tasks | Done |',
+      '|---|---|---|---|---|',
+      '| infra-base | infrastructure | [3-tasks](./infra-base/infra-base.3-tasks.md) | 6 | 6/6 |',
+      '| backend | product | [3-tasks](./backend/backend.3-tasks.md) | 12 | 4/12 |',
+    ].join('\n');
+    assert.deepStrictEqual(sumRollupProgress(mixed), { totalTasks: 18, totalDone: 10 });
+  });
+
+  it('returns null when the content carries no rollup table', () => {
+    assert.strictEqual(sumRollupProgress('# no tables here\n'), null);
   });
 });
