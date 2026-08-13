@@ -60,6 +60,7 @@
     "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
     "publish-next": "node --import tsx scripts/publish-next.ts",
     "publish-draft": "node --import tsx scripts/publish-draft.ts",
+    "pack-draft": "node --import tsx scripts/pack-draft.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
