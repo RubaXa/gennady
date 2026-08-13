@@ -16,7 +16,7 @@ library
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
-14 навыков: 9 SDD (`sdd` — единая дверь-роутер, `sdd-scaffold`, `sdd-execute` — включая batch-режим intent'ом внутри навыка, `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — режимы fix и from-code, `sdd-hooks-install`) + 5 non-SDD (`alt-opinion`, `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup`). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. См. D-005 — состав набора менялся после первичного discovery.
+13 навыков: 9 SDD (`sdd` — единая дверь-роутер, `sdd-scaffold`, `sdd-execute` — включая batch-режим intent'ом внутри навыка, `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — режимы fix и from-code, `sdd-hooks-install`) + 4 non-SDD (`agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup`). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. См. D-005/D-006 — состав набора менялся после первичного discovery (`alt-opinion` удалён — см. D-006).
 
 <!--/SECTION:VISION-->
 
@@ -42,13 +42,13 @@ Plan (read ticket surface) → Dispatch phases (sequential, typed Handoff) → A
 
 Потребители: sdd-execute (единственный оркестратор — batch-режим — это LOGIC_SWITCH-ветка intent'а внутри того же навыка, не отдельный навык).
 
-### CLI-delegation: [`alt-opinion` → `AltOpinionSkill`](./alt-opinion/alt-opinion.spec.md#altopinionskill)
+### CLI-delegation: `sdd-check` (тонкий репортер над CLI-инструментом)
 
 ```bash
-npx gennady alt-opinion --file="<path>"
+npx gennady sdd-check --task <path>
 ```
 
-Потребители: alt-opinion, sdd-check (тонкий репортер над CLI-инструментом `sdd-check` — тот же паттерн prepare → invoke → show).
+Потребители: sdd-check (тонкий репортер над CLI-инструментом `sdd-check` — паттерн prepare → invoke → show).
 
 Навык не содержит логики — только трёхшаговый активатор: извлеки intent, загрузи директиву, активируйся как она, выполни план директивы.
 
@@ -91,13 +91,13 @@ compatibility: opencode
 
 ````markdown
 ---
-name: alt-opinion
-description: Multi-model alternative opinion via CLI (gennady alt-opinion) ...
+name: sdd-check
+description: Verify SDD workflow integrity — run the mechanical checks over one ticket or the whole project ...
 license: MIT
 compatibility: opencode
 ---
 
-Делегирует CLI `gennady alt-opinion`. Не изобретает пайплайн — использует готовый.
+Делегирует CLI `gennady sdd-check`. Не изобретает логику проверки — использует готовый инструмент.
 
 ### Шаг 1: Подготовь артефакт
 
@@ -106,7 +106,7 @@ compatibility: opencode
 ### Шаг 2: Запусти CLI
 
 ```bash
-npx tsx ~/Developer/gennady/cli/gennady.ts alt-opinion --file="<path>"
+npx tsx ~/Developer/gennady/cli/gennady.ts sdd-check --task <path>
 ```
 ````
 
@@ -225,7 +225,7 @@ ai/skills/<name>/
 |---|---|---|
 | **Directive activation** | Извлекает intent → читает директиву → активируется как она → выполняет план | sdd (единая дверь-роутер), sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review |
 | **Orchestrator** | Планирует → диспатчит subagent-фазы с typed Handoff → диспатчит audit. Сам код не пишет | sdd-execute (batch — ветка intent'а внутри того же навыка) |
-| **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | alt-opinion, sdd-check |
+| **CLI delegation** | Подготавливает артефакт → вызывает `npx gennady <cmd>` → показывает результат | sdd-check |
 
 **sdd-check** — read-only репортер: не загружает директиву, вся логика — в TypeScript-инструменте `shared/sdd/check.ts`, вызываемом через `npx gennady sdd-check --task <path>` / `--all`. Навык только запускает инструмент и релеит находки. Код не пишет, ничего не фиксит.
 
@@ -294,12 +294,21 @@ ai/skills/<name>/
 - **Risk accepted:** `sdd-hooks-install` не укладывается в три существующих паттерна активации (`DirectiveActivation` / `OrchestratorDispatching` / `CliDelegation`) — это config-bootstrapper с протоколом целиком внутри `SKILL.md`. Принято как единичное исключение, не как повод вводить четвёртый паттерн на одном навыке.
 - **Rejected alternatives:**
   - Оставить 12+ навыков и просто патчить пути на `sdd-v2` — не убирает реальное дублирование входов (fix vs from-code, single vs batch — один и тот же протокол диспетчеризации)
+
+### D-006 — Скилл `alt-opinion` удалён
+
+- **Status:** active
+- **Recorded:** operator request, полное удаление скилла-обёртки `alt-opinion`
+- **Was:** 14 навыков, включая `alt-opinion` (CLI-delegation модуль, обёртка над `npx gennady alt-opinion`).
+- **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) НЕ затронута — она вне скоупа этой спеки (принадлежит скоупу `cli`) и продолжает существовать как самостоятельная команда.
+- **Why:** Скилл-обёртка признана избыточной по решению оператора; CLI-команда остаётся доступной напрямую через `npx gennady alt-opinion` без навыка-посредника.
+- **Risk accepted:** Отсутствует — паттерн CLI-delegation остаётся представлен `sdd-check`, четвёртый паттерн не требуется.
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
 ## 7. Scope Dependencies
 
-- **Depends on:** `infra-base` (Node.js 22+, TypeScript, node:test, Vite), `cli` (sync-skills для деплоя, gennady CLI для alt-opinion)
+- **Depends on:** `infra-base` (Node.js 22+, TypeScript, node:test, Vite), `cli` (sync-skills для деплоя, gennady CLI для sdd-check)
 - **Provides to:** Все скоупы, использующие SDD-воркфлоу (cli, vcs, dbc, agent-mon, agent-mon-cli)
 <!--/SECTION:SCOPE_DEPENDENCIES-->
 
@@ -311,18 +320,16 @@ Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs
 ### 8.1 Modules
 - [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
 - [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 9 SDD-навыков: полный воркфлоу Specification-Driven Development
-- [`alt-opinion`](./alt-opinion/alt-opinion.spec.md) — Мульти-модельный анализ через CLI (CLI-delegation паттерн)
+
+`alt-opinion` (CLI-delegation модуль) удалён — см. D-006.
 
 ### 8.2 Inter-Module Dependency Map
 
 ```mermaid
 graph TD
     sdd-skills --> skill-contract
-    alt-opinion --> skill-contract
     sdd-skills -. Runtime .-> cli
-    alt-opinion -. Runtime .-> cli
     sdd-skills -. Runtime .-> infra-base
-    alt-opinion -. Runtime .-> infra-base
 ```
 
 ### 8.3 Stack Dependencies
@@ -349,7 +356,7 @@ graph TD
 | BR-01 | Создать `specs/ai-skills/ai-skills.spec.md`     | file | this-scope-task | Уже создан в STEP_8                   |
 | BR-02 | Добавить ai-skills в Portal (`specs/README.md`) | file | operator-action | Запустить `/sdd` (router — ветка portal) после discovery |
 
-Все остальные зависимости (13 SKILL.md, директивы, скрипты, CLI) уже существуют в репозитории.
+Все остальные зависимости (12 SKILL.md, директивы, скрипты, CLI) уже существуют в репозитории.
 
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
@@ -360,7 +367,6 @@ graph TD
 - **Primary input:** `specs/ai-skills/ai-skills.spec.md`
 - **Areas requiring decomposition:**
   - SDD-навыки (12) — группа directive-based + orchestrator
-  - alt-opinion — CLI-delegation паттерн
   - Общий контракт: формат SKILL.md, frontmatter-схема, структура директорий
 - **Named abstractions:**
   - `SKILL.md` — артефакт навыка (frontmatter + body)

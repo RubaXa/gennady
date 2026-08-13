@@ -1,6 +1,6 @@
 # ai/skills — AI-навыки для агентов
 
-14 навыков (9 SDD + alt-opinion + agent-inbox + opencode-get-session + prd-interview + workspace-permission-setup) для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды.
+13 навыков (9 SDD + agent-inbox + opencode-get-session + prd-interview + workspace-permission-setup) для Specification-Driven Development и настройки автономной среды.
 
 > `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
 
@@ -86,14 +86,6 @@ Fresh-eyes: читает таск + спеку + git diff, механическ�
 
 Тот же роутер: scope-type=infrastructure/interface форсируется из intake, дальше — bootstrap tooling'а (package manager, type-checker, linter, formatter, test runner, git hooks, CI) или контрактов интерфейса.
 
-### 9. Получить мульти-модельное мнение
-
-```
-@alt-opinion оцени спеку cli/cli.spec.md
-```
-
-Запускает 2+ модели параллельно, синтезирует через третью. Без аргументов — автоаудит текущего контекста сессии.
-
 ---
 
 ## Execution-паттерны
@@ -102,7 +94,6 @@ Fresh-eyes: читает таск + спеку + git diff, механическ�
 | ------- | ----------- | ------ |
 | **Directive activation** | Извлечь intent → загрузить v2-директиву → активироваться как она → выполнить план | sdd, sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile |
 | **Orchestrator** | Прочитать таск(и) → dispatch фаз (typed Handoff) → dispatch audit + code-review. Сам код не пишет | sdd-execute |
-| **CLI delegation** | Подготовить артефакт → вызвать `npx gennady alt-opinion` → показать результат | alt-opinion |
 | **Read-only verifier** | Саморефлексия + механические проверки через `sdd scan`. Код не пишет | sdd-check |
 
 ---
@@ -140,4 +131,3 @@ npx gennady sync-skills sdd-execute
 - `specs/ai-skills/ai-skills.spec.md` — общая спека библиотеки
 - `specs/ai-skills/skill-contract/skill-contract.spec.md` — контракт навыка
 - `specs/ai-skills/sdd-skills/sdd-skills.spec.md` — SDD-навыки
-- `specs/ai-skills/alt-opinion/alt-opinion.spec.md` — alt-opinion

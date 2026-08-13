@@ -666,10 +666,6 @@ $ gennady sync-skills
 Sync skills: /Users/user/my-project
   + agent-inbox/
       SKILL.md
-  + alt-opinion/
-      opinion.prompt.md
-      SKILL.md
-      synth.prompt.md
   + opencode-get-session/
       SKILL.md
   + prd-interview/
@@ -695,7 +691,7 @@ Sync skills: /Users/user/my-project
       SKILL.md
   + workspace-permission-setup/
       SKILL.md
-Synced: 14 added, 0 updated, 0 skipped, 0 deleted
+Synced: 13 added, 0 updated, 0 skipped, 0 deleted
 
 # exit 0
 
@@ -704,9 +700,8 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   = agent-inbox/                                                   (unchanged)
-  = alt-opinion/                                                   (unchanged)
-  ... (14 skills unchanged)
-Synced: 0 added, 0 updated, 14 skipped, 0 deleted
+  ... (13 skills unchanged)
+Synced: 0 added, 0 updated, 13 skipped, 0 deleted
 
 # exit 0
 
@@ -719,8 +714,8 @@ Sync skills: /Users/user/my-project
   ~ sdd-reconcile/
       SKILL.md
   = agent-inbox/                                                   (unchanged)
-  ... (2 updated, 12 unchanged)
-Synced: 0 added, 2 updated, 12 skipped, 0 deleted
+  ... (2 updated, 11 unchanged)
+Synced: 0 added, 2 updated, 11 skipped, 0 deleted
 
 # exit 0
 
@@ -730,12 +725,12 @@ $ gennady sync-skills --dry-run
 Sync skills (dry-run): /Users/user/my-project
   + sdd-audit/
       SKILL.md                                                      (would add)
-  ~ alt-opinion/
-      opinion.prompt.md                                            (would update)
+  ~ sdd-reconcile/
+      SKILL.md                                                      (would update)
   - sdd-old-deprecated/                                            (would delete)
       SKILL.md
   = agent-inbox/                                                   (unchanged, skip)
-  ... (1 add, 1 update, 1 delete, 11 skip)
+  ... (1 add, 1 update, 1 delete, 10 skip)
 Dry-run: no files written.
 
 # exit 0
@@ -746,8 +741,8 @@ $ gennady sync-skills
 Sync skills: /Users/user/my-project
   - sdd-old-deprecated/
   = agent-inbox/                                                   (unchanged)
-  ... (1 deleted, 13 unchanged)
-Synced: 0 added, 0 updated, 13 skipped, 1 deleted
+  ... (1 deleted, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 deleted
 
 # exit 0
 
@@ -761,8 +756,7 @@ Sync skills (dry-run): /Users/user/my-project
   - my-custom-skill/                                               (would delete)
       SKILL.md
   = agent-inbox/                                                   (unchanged, skip)
-  = alt-opinion/                                                   (unchanged, skip)
-  ... (1 delete, 13 skip)
+  ... (1 delete, 12 skip)
 Dry-run: no files written.
 
 # exit 0
@@ -773,8 +767,8 @@ $ gennady sync-skills
 Sync skills: /Users/user/my-project
   - my-custom-skill/
   = agent-inbox/                                                   (unchanged)
-  ... (1 deleted, 13 unchanged)
-Synced: 0 added, 0 updated, 13 skipped, 1 deleted
+  ... (1 deleted, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 deleted
 
 # exit 0
 
@@ -784,8 +778,8 @@ $ gennady sync-skills
 Sync skills: /Users/user/my-project
   ! my-custom-skill/                                        (delete failed: EACCES)
   = agent-inbox/                                                   (unchanged)
-  ... (1 delete failed, 13 unchanged)
-Synced: 0 added, 0 updated, 13 skipped, 1 delete failed
+  ... (1 delete failed, 12 unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 1 delete failed
 
 # exit 0 (ошибка удаления — не фатальная)
 
@@ -802,10 +796,10 @@ Synced: 0 added, 0 updated, 1 skipped, 0 deleted
 # exit 0
 
 # --- фильтр: только указанные скилы ---
-$ gennady sync-skills sdd-execute alt-opinion
+$ gennady sync-skills sdd-execute agent-inbox
 
 Sync skills: /Users/user/my-project
-  = alt-opinion/                                                   (unchanged)
+  = agent-inbox/                                                   (unchanged)
   = sdd-execute/                                                   (unchanged)
 Synced: 0 added, 0 updated, 2 skipped, 0 deleted
 
@@ -815,7 +809,7 @@ Synced: 0 added, 0 updated, 2 skipped, 0 deleted
 $ gennady sync-skills nonexistent-skill
 
 Error: ai/skills/nonexistent-skill/ not found in package.
-Available: agent-inbox, alt-opinion, opencode-get-session, prd-interview, sdd, sdd-audit, sdd-check, sdd-code-review, sdd-critic, sdd-execute, sdd-hooks-install, sdd-reconcile, sdd-scaffold, workspace-permission-setup
+Available: agent-inbox, opencode-get-session, prd-interview, sdd, sdd-audit, sdd-check, sdd-code-review, sdd-critic, sdd-execute, sdd-hooks-install, sdd-reconcile, sdd-scaffold, workspace-permission-setup
 
 # exit 1
 
@@ -829,7 +823,7 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Легенда вывода: `+` — скил добавлен, `~` — скил обновлён (изменился хотя бы один файл), `-` — скил удалён (orphan: есть в target, нет в source), `=` — пропущен без изменений. Внутри скила с маркером `~` показываются только изменившиеся файлы с отступом. Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. Порядок вывода: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
 
-Источник скилов — `ai/skills/` в npm-пакете gennady. 14 скилов: `sdd` (единая дверь-роутер) + `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile`, `sdd-hooks-install` (SDD-воркфлоу) + `alt-opinion`, `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` (не-SDD). Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
+Источник скилов — `ai/skills/` в npm-пакете gennady. 13 скилов: `sdd` (единая дверь-роутер) + `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile`, `sdd-hooks-install` (SDD-воркфлоу) + `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` (не-SDD). Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
 
 → Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, Contracts, File Structure).
 
@@ -1296,11 +1290,11 @@ $ gennady vcs-approve                                          # merge conflict
 | FR-SS-08               | При сравнении исключаются: скрытые файлы (`.`-префикс), `.DS_Store`                                                                                                                                                                                                      |
 | **Фильтрация**         |                                                                                                                                                                                                                                                                          |
 | FR-SS-09               | Без позиционных аргументов — синхронизируются все скилы из `ai/skills/`                                                                                                                                                                                                  |
-| FR-SS-10               | Позиционные аргументы — имена скилов (например, `gennady sync-skills sdd-execute alt-opinion`). Синхронизируются только указанные                                                                                                                                        |
+| FR-SS-10               | Позиционные аргументы — имена скилов (например, `gennady sync-skills sdd-execute agent-inbox`). Синхронизируются только указанные                                                                                                                                        |
 | FR-SS-11               | Несуществующий скил → ошибка с перечислением доступных                                                                                                                                                                                                                   |
 | **Вывод**              |                                                                                                                                                                                                                                                                          |
 | FR-SS-12               | Маркеры: `+` (added), `~` (updated), `-` (deleted/orphan), `=` (unchanged) через shared `SyncFormatter`                                                                                                                                                                  |
-| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ alt-opinion/` → `      opinion.prompt.md`. Для `+` показываются все файлы, для `=`/`-` — только имя скила                                                                                             |
+| FR-SS-13               | Вложенные файлы скила с маркером `~` показываются с отступом: `  ~ prd-interview/` → `      PRD_TEMPLATE.md`. Для `+` показываются все файлы, для `=`/`-` — только имя скила                                                                                             |
 | FR-SS-14               | Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`                                                                                                                                                                                                      |
 | FR-SS-15               | `--dry-run` — предпросмотр: маркеры `(would add)` / `(would update)` / `(would delete)` / `(unchanged, skip)`. Итог: `Dry-run: no files written.`                                                                                                                        |
 | **Exit codes**         |                                                                                                                                                                                                                                                                          |

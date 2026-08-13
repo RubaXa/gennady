@@ -149,7 +149,7 @@ _Это полный список сущностей модуля. Любое в
   - Prepare artifact — сформировать входной файл/аргументы
   - Invoke CLI — один bash-вызов `npx gennady <cmd>`
   - Show result — вернуть вывод CLI пользователю
-- **Consumers:** alt-opinion
+- **Consumers:** sdd-check
 
 ### `SkillScripts`
 
@@ -215,7 +215,7 @@ _Это полный список сущностей модуля. Любое в
 ### Pattern: `CliDelegation`
 
 - **Purpose:** Делегирование CLI-команде
-- **Consumers:** alt-opinion
+- **Consumers:** sdd-check
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`
 - **Deferred Runtime Scope:** None
@@ -291,12 +291,11 @@ ai/skills/<name>/
 ## 9. Inter-Module Dependencies
 
 - **Depends on:** None (контракт — корень зависимостей)
-- **Provides to:** `sdd-skills`, `alt-opinion`
+- **Provides to:** `sdd-skills`
 
 ```mermaid
 graph TD
     sdd-skills --> skill-contract
-    alt-opinion --> skill-contract
 ```
 
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
