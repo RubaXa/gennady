@@ -57,10 +57,14 @@ describe('run integration', () => {
   let _sourceDir: string;
   const _originalCwd = process.cwd.bind(process);
 
+  let _directivesDir: string;
+
   beforeEach(() => {
     _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-cmd-test-'));
     _sourceDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'skills');
+    _directivesDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'directives');
     mkdirSync(_sourceDir, { recursive: true });
+    mkdirSync(_directivesDir, { recursive: true });
     (process as any).cwd = () => _tmpDir;
   });
 
@@ -85,7 +89,8 @@ describe('run integration', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       ...overrides,
@@ -116,6 +121,37 @@ describe('run integration', () => {
     const targetDir = join(_tmpDir, '.claude', 'skills');
     assert.ok(existsSync(join(targetDir, 'sdd-audit', 'SKILL.md')));
     assert.ok(existsSync(join(targetDir, 'sdd-check', 'SKILL.md')));
+  });
+
+  it('syncs directives before skills — both blocks present, directives block first', () => {
+    createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# Audit Skill');
+
+    const stdout = captureStream();
+    const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills'], deps);
+
+    assert.equal(exitCode, 0);
+
+    const output = stdout._chunks.join('');
+    assert.ok(output.includes('Sync (v'), 'directives block header present');
+    assert.ok(output.includes('Sync skills (v'), 'skills block header present');
+    assert.ok(
+      output.indexOf('Sync (v') < output.indexOf('Sync skills (v'),
+      'directives block precedes skills block'
+    );
+    assert.ok(
+      output.indexOf('discovery.directive.xml') < output.indexOf('Sync skills (v'),
+      'directive file listed before skills block'
+    );
+
+    const targetDirectiveFile = join(_tmpDir, 'ai', 'directives', 'sdd', 'discovery.directive.xml');
+    assert.ok(existsSync(targetDirectiveFile), 'directive file written to ai/directives/');
+    assert.ok(
+      existsSync(join(_tmpDir, '.claude', 'skills', 'sdd-audit', 'SKILL.md')),
+      'skill file written to .claude/skills/'
+    );
   });
 
   it('reports unchanged on repeat run', () => {
@@ -167,10 +203,14 @@ describe('run --dry-run', () => {
   let _sourceDir: string;
   const _originalCwd = process.cwd.bind(process);
 
+  let _directivesDir: string;
+
   beforeEach(() => {
     _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-cmd-test-'));
     _sourceDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'skills');
+    _directivesDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'directives');
     mkdirSync(_sourceDir, { recursive: true });
+    mkdirSync(_directivesDir, { recursive: true });
     (process as any).cwd = () => _tmpDir;
   });
 
@@ -195,7 +235,8 @@ describe('run --dry-run', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       ...overrides,
@@ -237,6 +278,29 @@ describe('run --dry-run', () => {
 
     assert.ok(existsSync(join(_tmpDir, '.claude', 'skills', 'sdd-old')));
   });
+
+  it('dry-run previews directives block too, without writing directive files', () => {
+    createFile(_directivesDir, 'sdd/discovery.directive.xml', '<directive/>');
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# New');
+
+    const stdout = captureStream();
+    const deps = makeDeps({ stdout: stdout as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills', '--dry-run'], deps);
+
+    assert.equal(exitCode, 0);
+
+    const output = stdout._chunks.join('');
+    assert.ok(output.includes('Sync (v'), 'directives block header present in dry-run');
+    assert.ok(output.includes('discovery.directive.xml'), 'directive file previewed');
+    assert.ok(
+      output.indexOf('Sync (v') < output.indexOf('Sync skills (v'),
+      'directives block precedes skills block in dry-run'
+    );
+
+    const targetDirectiveFile = join(_tmpDir, 'ai', 'directives', 'sdd', 'discovery.directive.xml');
+    assert.ok(!existsSync(targetDirectiveFile), 'directive file not written in dry-run');
+  });
 });
 
 // #endregion
@@ -247,10 +311,14 @@ describe('run filter', () => {
   let _sourceDir: string;
   const _originalCwd = process.cwd.bind(process);
 
+  let _directivesDir: string;
+
   beforeEach(() => {
     _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-cmd-test-'));
     _sourceDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'skills');
+    _directivesDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'directives');
     mkdirSync(_sourceDir, { recursive: true });
+    mkdirSync(_directivesDir, { recursive: true });
     (process as any).cwd = () => _tmpDir;
   });
 
@@ -275,7 +343,8 @@ describe('run filter', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       ...overrides,
@@ -328,10 +397,14 @@ describe('run error paths', () => {
   let _sourceDir: string;
   const _originalCwd = process.cwd.bind(process);
 
+  let _directivesDir: string;
+
   beforeEach(() => {
     _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-cmd-test-'));
     _sourceDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'skills');
+    _directivesDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'directives');
     mkdirSync(_sourceDir, { recursive: true });
+    mkdirSync(_directivesDir, { recursive: true });
     (process as any).cwd = () => _tmpDir;
   });
 
@@ -356,7 +429,8 @@ describe('run error paths', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       ...overrides,
@@ -443,10 +517,14 @@ describe('run parseArgs', () => {
   let _sourceDir: string;
   const _originalCwd = process.cwd.bind(process);
 
+  let _directivesDir: string;
+
   beforeEach(() => {
     _tmpDir = mkdtempSync(join(tmpdir(), 'sync-skills-cmd-test-'));
     _sourceDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'skills');
+    _directivesDir = join(_tmpDir, 'node_modules', 'gennady', 'ai', 'directives');
     mkdirSync(_sourceDir, { recursive: true });
+    mkdirSync(_directivesDir, { recursive: true });
     (process as any).cwd = () => _tmpDir;
   });
 
@@ -475,7 +553,8 @@ describe('run parseArgs', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       stdout: stdout as unknown as NodeJS.WriteStream,
@@ -509,7 +588,8 @@ describe('run parseArgs', () => {
           return [];
         }
       },
-      resolvePackageDir: () => _sourceDir,
+      resolvePackageDir: (_root: string, subdir: string) =>
+        subdir === 'ai/directives' ? _directivesDir : _sourceDir,
       unlink: unlinkSync,
       rmdir: (p: string, opts?: { recursive: boolean }) => rmdirSync(p, opts),
       stdout: stdout as unknown as NodeJS.WriteStream,

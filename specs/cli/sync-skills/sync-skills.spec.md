@@ -348,6 +348,7 @@ ai/skills/                            # 12 скилов (физические а
 
 - **Depends on:** `shared/common/sync/` (resolvePackageDir, compareBytes, SyncFormatter, SyncCmdDeps)
 - **Depends on (refactoring):** `cli/cmd/sync/` — извлечение shared core. Sync-форматтер переносится в shared
+- **Depends on (D-M008):** `cli/cmd/sync/sync-core.ts` (`collectAndCompare`) и `cli/cmd/sync/sync.types.ts` (`SyncOptions`, `ERR_SYNC_SOURCE_NOT_FOUND`) — `sync-skills.cmd.ts` вызывает directives-sync программно перед skills-sync. Однонаправленная зависимость: `sync` не знает о `sync-skills`
 - **Scope Reference (cross-scope):** [`infra-base`](../../infra-base/infra-base.spec.md) — Node.js 22+, TypeScript, node:test, Vite
 - **Scope Reference (cross-scope):** [`infra-npm-publish`](../../infra-npm-publish/infra-npm-publish.spec.md) — `ai/skills/` попадает в npm-пакет через существующий glob `"ai/**/*"` (D-005). Обновлений не требуется
 - **Provides to:** `cli/gennady.ts` (регистрация `case 'sync-skills'`)
@@ -357,6 +358,7 @@ graph TD
     gennady.ts --> sync-skills
     sync-skills --> shared[shared/common/sync/]
     sync --> shared
+    sync-skills -. D-M008: directives first .-> sync[cli/cmd/sync/sync-core.ts]
     sync-skills -. Runtime .-> npm-package[gennady npm package]
     sync-skills -. Bootstrap prereq .-> infra-npm-publish
 ```
@@ -439,6 +441,17 @@ graph TD
 - **Root cause:** The original `sync` module's `sync-core.ts` has this pattern (`mkdirSync(join(p, '..'), { recursive: true })`), but the new `syncFile` didn't inherit it.
 - **Fix:** Added `mkdir` parameter to `syncFile` signature; caller passes `deps.mkdir`. Parent directory created before every `writeFile`.
 - **Lesson:** Any file-writing function in a sync context must ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path.
+
+### D-M008 — sync-skills всегда синхронизирует directives первым (in-process, до skills)
+
+- **Status:** active
+- **Recorded:** session Reconcile, cli, sync-skills
+- **Why:** `sync-skills` и `sync` были независимы: оператор мог синхронизировать двери (`.claude/skills/`), оставив `ai/directives/` устаревшими или отсутствующими — скилл ссылается на директивы, которых нет. Инвариант: запуск `gennady sync-skills` СНАЧАЛА выполняет полную синхронизацию `ai/directives/` тем же механизмом, что `gennady sync` (`collectAndCompare` из `cli/cmd/sync/sync-core.ts`, вызванный программно — не спавном дочернего процесса), и только потом — скилы. `--dry-run` распространяется на оба блока. Позиционные args (фильтр по именам скилов) относятся только к скилловой части — директивы всегда синхронизируются целиком (без `subdirs`), поскольку скилы могут ссылаться на любую директиву. Вывод содержит два явных блока: сначала отчёт `sync` (`Sync (vX): <dir>` + строки + summary), затем отчёт `sync-skills` (`Sync skills (vX): <dir>` + строки + summary). Если резолв пакета или директория директив не найдены — команда завершается с exit 1 до того, как коснётся скилов.
+- **Risk accepted:** `sync-skills.cmd.ts` теперь импортирует `collectAndCompare`/`SyncOptions`/`ERR_SYNC_SOURCE_NOT_FOUND` из `cli/cmd/sync/sync-core.ts` и `sync.types.ts` — кросс-модульная зависимость `sync-skills → sync` (ранее оба зависели только от `shared/common/sync/`). Смягчается тем, что `sync-core.ts` уже стабилен (shared core вынесен в D-M004) и не содержит доменной логики скилов.
+- **Rejected alternatives:**
+  - Спавн дочернего процесса `npx gennady sync` из `sync-skills` — лишний процесс, ломает DI-тестируемость (`SyncCmdDeps`), плюс portable-door requirement (npx может не резолвить локальный пакет в тестовом окружении)
+  - Флаг `--with-directives` (opt-in) — не решает проблему: оператор всё равно может забыть про флаг; директива-дрифт должен быть невозможен, а не опционален
+  - Обратное направление (`sync` тоже тянет skills) — явно исключено: директивы самодостаточны, `sync` не должен неявно трогать `.claude/skills/`
 
 ### D-M007 — PathNormalizer: замена dev-путей на продуктовые при синхронизации
 

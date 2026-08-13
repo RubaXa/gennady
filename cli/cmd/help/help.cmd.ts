@@ -31,7 +31,9 @@ console.info('  alt-opinion       Get alternative opinions from AI models with o
 console.info(
   '  sync              Synchronize ai/directives/ from npm package into current project'
 );
-console.info('  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/');
+console.info(
+  '  sync-skills       Synchronize ai/directives/ (in full), then SDD skills from ai/skills/ to .claude/skills/'
+);
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
 );

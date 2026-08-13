@@ -16,7 +16,12 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { resolvePackageDir } from '../../../shared/common/sync/sync-core.shared.ts';
+import { formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
+import { collectAndCompare } from '../sync/sync-core.ts';
+import type { SyncCoreDeps } from '../sync/sync-core.ts';
+import { ERR_SYNC_SOURCE_NOT_FOUND } from '../sync/sync.types.ts';
+import type { SyncOptions } from '../sync/sync.types.ts';
 import { collectAndCompareSkills } from './sync-skills-core.ts';
 import { format } from './sync-skills-formatter.ts';
 import { ERR_SKILLS_SKILL_NOT_FOUND, ERR_SKILLS_SOURCE_NOT_FOUND } from './sync-skills.types.ts';
@@ -51,6 +56,65 @@ function formatAndWrite(
 // #endregion END_FORMAT_AND_WRITE
 
 /**
+ * @purpose Sync ai/directives/ before skills, in-process, so skills never reference stale/absent directives.
+ * @param deps Injectable filesystem dependencies (subset shared with sync-skills).
+ * @param cwd Current working directory.
+ * @param dryRun Preview without writing.
+ * @param stdout Standard output stream.
+ * @param stderr Standard error stream.
+ * @returns Exit code on failure (1), or null on success (proceed to skills sync).
+ */
+function syncDirectivesFirst(
+  deps: SyncCmdDeps,
+  cwd: string,
+  dryRun: boolean,
+  stdout: NodeJS.WriteStream,
+  stderr: NodeJS.WriteStream
+): number | null {
+  const _resolvePackageDir = deps.resolvePackageDir ?? resolvePackageDir;
+  const packageDir = _resolvePackageDir(cwd, 'ai/directives');
+  if (!packageDir) {
+    stderr.write('Error: gennady package not found. Install it locally: npm i -D gennady\n');
+    return 1;
+  }
+
+  const version = getPackageVersion(packageDir);
+  const targetDir = join(cwd, 'ai', 'directives');
+
+  const opts: SyncOptions = {
+    sourceDir: packageDir,
+    targetDir,
+    dryRun,
+  };
+
+  const coreDeps: SyncCoreDeps = {
+    readFile: deps.readFile!,
+    writeFile: deps.writeFile!,
+    mkdir: deps.mkdir! as (p: string, opts?: { recursive: boolean }) => void,
+    stat: (p: string) => deps.stat!(p),
+    readdir: deps.readdir!,
+    cwd,
+  };
+
+  try {
+    const result = collectAndCompare(coreDeps, opts);
+    stdout.write(`Sync (v${version})${dryRun ? ' (dry-run)' : ''}: ${cwd}\n`);
+    for (const line of formatSyncOutput(result.entries, { dryRun })) {
+      stdout.write(line + '\n');
+    }
+    stdout.write('\n');
+    return null;
+  } catch (err) {
+    const error = err as Error & { code?: string };
+    if (error.code === ERR_SYNC_SOURCE_NOT_FOUND) {
+      stderr.write(`Error: ${error.message}\n`);
+      return 1;
+    }
+    throw error;
+  }
+}
+
+/**
  * @purpose CLI entry point for sync-skills. Parses args, resolves package source directory, compares source with target, outputs result.
  * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
@@ -82,6 +146,22 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   // #endregion END_PARSE
 
   const cwd = process.cwd();
+
+  const directivesExitCode = syncDirectivesFirst(
+    {
+      readFile: _readFile,
+      writeFile: _writeFile,
+      mkdir: _mkdir,
+      stat: _stat,
+      readdir: _readdir,
+      resolvePackageDir: _resolvePackageDir,
+    },
+    cwd,
+    dryRun,
+    _stdout,
+    _stderr
+  );
+  if (directivesExitCode !== null) return directivesExitCode;
 
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
   const packageDir = _resolvePackageDir(cwd, 'ai/skills');
