@@ -112,7 +112,11 @@ async function _setupE2e(deps: SetupE2eDeps): Promise<E2eContext> {
   // #region START_PACK — invariant: npm pack creates gennady-X.Y.Z.tgz identical to published artifact
   let tgzName: string;
   try {
-    tgzName = deps.execSync('npm pack', { cwd: PROJECT_ROOT, encoding: 'utf-8' }).trim();
+    const packOutput = deps.execSync('npm pack --json', {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf-8',
+    });
+    tgzName = (JSON.parse(packOutput) as Array<{ filename: string }>)[0].filename;
   } catch (cause) {
     const err = cause as { stderr?: string };
     logger.error('[setupE2e] [pack → failed]', { error: cause });

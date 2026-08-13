@@ -3,6 +3,7 @@
 // @tasks: TSK-63, TSK-64
 
 import { execFile, spawn } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { logger } from '#logger';
@@ -34,9 +35,12 @@ const READONLY_AGENT = 'readonly';
 
 /**
  * @purpose Absolute path to bundled static opencode config defining readonly agent (denies edit/write/patch; bash stays allowed). Merged via `OPENCODE_CONFIG` env var.
- * @invariant Static file shipped with the package next to this module (no runtime generation, no AI).
+ * @invariant Static file shipped with the package; resolved via `import.meta.url` so Vite cannot inline it as a `data:` URL.
  */
-const READONLY_CONFIG_PATH = fileURLToPath(new URL('./readonly.config.json', import.meta.url));
+const READONLY_CONFIG_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  'readonly.config.json'
+);
 
 /** @purpose Grace period in ms between SIGTERM and SIGKILL on timeout. */
 const SIGKILL_GRACE_MS = 5_000;

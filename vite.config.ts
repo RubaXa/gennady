@@ -58,7 +58,19 @@ export default defineConfig({
       fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
     },
     rollupOptions: {
-      external: [...nodeBuiltins, 'node:sqlite', 'tree-sitter', 'tree-sitter-typescript'],
+      // mermaid + jsdom are browser-oriented libs with mixed CJS/ESM internals (jsdom uses
+      // require(__dirname) to resolve its default stylesheet asset). Bundling them produces a
+      // chunk with both require() and top-level await, which Node refuses to load ("Cannot
+      // determine intended module format"). Externalizing keeps them as real node_modules
+      // deps, loaded lazily (see shared/mermaid/mermaid.ts) only when a diagram is validated.
+      external: [
+        ...nodeBuiltins,
+        'node:sqlite',
+        'tree-sitter',
+        'tree-sitter-typescript',
+        'mermaid',
+        'jsdom',
+      ],
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
         entryFileNames: (chunkInfo) =>

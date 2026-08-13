@@ -127,7 +127,7 @@ describe('cleanup', () => {
 describe('setup error paths', () => {
   function createExecSyncMock(failOn: 'none' | 'pack' | 'install') {
     return mock.fn((cmd: string, opts?: { encoding?: string }) => {
-      if (failOn === 'pack' && cmd === 'npm pack') {
+      if (failOn === 'pack' && cmd.startsWith('npm pack')) {
         const err = Object.assign(new Error('pack error'), { stderr: 'pack: ENOENT' });
         throw err;
       }
@@ -135,7 +135,7 @@ describe('setup error paths', () => {
         const err = Object.assign(new Error('install error'), { stderr: 'install: ENOENT' });
         throw err;
       }
-      if (cmd === 'npm pack') return 'gennady-1.0.0.tgz';
+      if (cmd.startsWith('npm pack')) return '[{"filename":"gennady-1.0.0.tgz"}]';
       return Buffer.from('ok');
     });
   }

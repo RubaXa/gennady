@@ -53,7 +53,7 @@ export function registerSyncTests(): void {
 
       it('should filter by subdirectory', async () => {
         const { spawn } = getContext();
-        const result = await spawn(['sync', 'sdd']);
+        const result = await spawn(['sync', 'sdd-v2']);
         assert.strictEqual(result.exitCode, 0);
       });
 
@@ -66,7 +66,7 @@ export function registerSyncTests(): void {
       it('should not contain dev-machine paths in synced directives', async () => {
         const { spawn, cwd } = getContext();
         await spawn(['sync']);
-        const auditPath = join(cwd, 'ai', 'directives', 'sdd', 'audit.directive.xml');
+        const auditPath = join(cwd, 'ai', 'directives', 'sdd-v2', 'audit.directive.xml');
         assert.ok(existsSync(auditPath), 'audit.directive.xml should exist after sync');
         const content = readFileSync(auditPath, 'utf-8');
         assert.ok(!content.includes('~/Developer/gennady'), 'should not contain dev-machine paths');
