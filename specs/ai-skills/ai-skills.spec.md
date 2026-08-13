@@ -16,7 +16,7 @@ library
 
 Навыки разрабатываются в `ai/skills/`, деплоятся в проекты через `npx gennady sync-skills` в `.claude/skills/`. Директивы — в `ai/directives/`, переиспользуются между навыками.
 
-13 навыков: 9 SDD (`sdd` — единая дверь-роутер, `sdd-scaffold`, `sdd-execute` — включая batch-режим intent'ом внутри навыка, `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — режимы fix и from-code, `sdd-hooks-install`) + 4 non-SDD (`agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup`). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. См. D-005/D-006 — состав набора менялся после первичного discovery (`alt-opinion` удалён — см. D-006).
+12 навыков: 8 SDD (`sdd` — единая дверь-роутер, `sdd-scaffold`, `sdd-execute` — включая batch-режим intent'ом внутри навыка, `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — режимы fix и from-code) + 4 non-SDD (`agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup`). `agent-inbox` — продуктовый навык-оркестратор над командами `inbox`/`vcs-worktree`/`vcs-reply`; принадлежит scope [`agent-inbox`](../agent-inbox/agent-inbox.spec.md), здесь учтён как навык. См. D-005/D-006/D-007 — состав набора менялся после первичного discovery (`alt-opinion` удалён — см. D-006; `sdd-hooks-install` удалён — см. D-007).
 
 <!--/SECTION:VISION-->
 
@@ -231,8 +231,6 @@ ai/skills/<name>/
 
 **Скрипты:** В dev-режиме скрипты доступны по пути `~/Developer/gennady/ai/skills/<skill-name>/scripts/`. При `sync-skills` путь нормализуется в `.claude/skills/<skill-name>/scripts/`. Скрипты есть только у `sdd-execute` (11 файлов, диспатчер `sdd`).
 
-**sdd-hooks-install** не укладывается ни в один из трёх паттернов: это config-bootstrapper с протоколом целиком внутри `SKILL.md` (правит `.claude/settings.json` и `.gitignore` напрямую, без директивы и без вызова CLI). См. D-005 — принят как единичное исключение, не требует четвёртого паттерна.
-
 ### 5.1 Rejected Alternatives
 
 | Решение | Почему отклонено |
@@ -303,6 +301,15 @@ ai/skills/<name>/
 - **Now:** 13 навыков. `ai/skills/alt-opinion/` и деплой-копия `.claude/skills/alt-opinion/` удалены; модульная спека `specs/ai-skills/alt-opinion/` удалена. CLI-команда `gennady alt-opinion` (`cli/cmd/alt-opinion/`) НЕ затронута — она вне скоупа этой спеки (принадлежит скоупу `cli`) и продолжает существовать как самостоятельная команда.
 - **Why:** Скилл-обёртка признана избыточной по решению оператора; CLI-команда остаётся доступной напрямую через `npx gennady alt-opinion` без навыка-посредника.
 - **Risk accepted:** Отсутствует — паттерн CLI-delegation остаётся представлен `sdd-check`, четвёртый паттерн не требуется.
+
+### D-007 — Скилл `sdd-hooks-install` удалён
+
+- **Status:** active
+- **Recorded:** operator request, полное удаление скилла-bootstrap'а `sdd-hooks-install`
+- **Was:** 13 навыков, включая `sdd-hooks-install` (config-bootstrapper, единичное исключение из трёх execution-паттернов — см. историческую формулировку в D-005: правил `.claude/settings.json` / `.gitignore` проекта-потребителя, чтобы включить live-стриминг прогресса sdd-execute через `.claude/sdd-progress.ndjson`).
+- **Now:** 12 навыков. `ai/skills/sdd-hooks-install/` и деплой-копия `.claude/skills/sdd-hooks-install/` удалены. Модульная спека `sdd-skills` (`specs/ai-skills/sdd-skills/sdd-skills.spec.md`) и упоминания в `specs/cli/cli.spec.md`, `specs/cli/sync-skills/sync-skills.spec.md` очищены от ссылок на навык. Три execution-паттерна (Directive activation / Orchestrator / CLI delegation) снова покрывают весь набор навыков без исключений.
+- **Why:** Скилл-bootstrapper признан ненужным по решению оператора — механизм live-прогресса (хуки, `.claude/sdd-progress.ndjson`) как таковой не переносился этой правкой, удалён только сам навык-инсталлятор.
+- **Risk accepted:** Отсутствует — единичное исключение из паттернов активации (см. D-005) снято вместе с навыком; четвёртый паттерн больше не нужен ни по какой причине.
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -319,7 +326,7 @@ Spec hierarchy is materialized at `specs/ai-skills/`. Module specs are at `specs
 
 ### 8.1 Modules
 - [`skill-contract`](./skill-contract/skill-contract.spec.md) — Контракт навыка: frontmatter, naming, паттерны активации, файловая структура
-- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 9 SDD-навыков: полный воркфлоу Specification-Driven Development
+- [`sdd-skills`](./sdd-skills/sdd-skills.spec.md) — 8 SDD-навыков: полный воркфлоу Specification-Driven Development
 
 `alt-opinion` (CLI-delegation модуль) удалён — см. D-006.
 

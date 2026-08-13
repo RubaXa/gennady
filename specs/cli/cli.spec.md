@@ -683,15 +683,13 @@ Sync skills: /Users/user/my-project
       SKILL.md
   + sdd-execute/
       SKILL.md
-  + sdd-hooks-install/
-      SKILL.md
   + sdd-reconcile/
       SKILL.md
   + sdd-scaffold/
       SKILL.md
   + workspace-permission-setup/
       SKILL.md
-Synced: 13 added, 0 updated, 0 skipped, 0 deleted
+Synced: 12 added, 0 updated, 0 skipped, 0 deleted
 
 # exit 0
 
@@ -700,8 +698,8 @@ $ gennady sync-skills
 
 Sync skills: /Users/user/my-project
   = agent-inbox/                                                   (unchanged)
-  ... (13 skills unchanged)
-Synced: 0 added, 0 updated, 13 skipped, 0 deleted
+  ... (12 skills unchanged)
+Synced: 0 added, 0 updated, 12 skipped, 0 deleted
 
 # exit 0
 
@@ -714,7 +712,7 @@ Sync skills: /Users/user/my-project
   ~ sdd-reconcile/
       SKILL.md
   = agent-inbox/                                                   (unchanged)
-  ... (2 updated, 11 unchanged)
+  ... (2 updated, 10 unchanged)
 Synced: 0 added, 2 updated, 11 skipped, 0 deleted
 
 # exit 0
@@ -809,7 +807,7 @@ Synced: 0 added, 0 updated, 2 skipped, 0 deleted
 $ gennady sync-skills nonexistent-skill
 
 Error: ai/skills/nonexistent-skill/ not found in package.
-Available: agent-inbox, opencode-get-session, prd-interview, sdd, sdd-audit, sdd-check, sdd-code-review, sdd-critic, sdd-execute, sdd-hooks-install, sdd-reconcile, sdd-scaffold, workspace-permission-setup
+Available: agent-inbox, opencode-get-session, prd-interview, sdd, sdd-audit, sdd-check, sdd-code-review, sdd-critic, sdd-execute, sdd-reconcile, sdd-scaffold, workspace-permission-setup
 
 # exit 1
 
@@ -823,7 +821,7 @@ Error: gennady package not found. Install it locally: npm i -D gennady
 
 Легенда вывода: `+` — скил добавлен, `~` — скил обновлён (изменился хотя бы один файл), `-` — скил удалён (orphan: есть в target, нет в source), `=` — пропущен без изменений. Внутри скила с маркером `~` показываются только изменившиеся файлы с отступом. Файлы сравниваются побайтово (`Buffer.compare`). Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. Порядок вывода: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
 
-Источник скилов — `ai/skills/` в npm-пакете gennady. 13 скилов: `sdd` (единая дверь-роутер) + `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile`, `sdd-hooks-install` (SDD-воркфлоу) + `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` (не-SDD). Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
+Источник скилов — `ai/skills/` в npm-пакете gennady. 12 скилов: `sdd` (единая дверь-роутер) + `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` (SDD-воркфлоу) + `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` (не-SDD). Все скилы платформо-независимы — работают в Claude Code и OpenCode. Скрытые файлы (`.`-префикс) и `.DS_Store` исключаются при синхронизации.
 
 → Module spec: [`sync-skills/sync-skills.spec.md`](sync-skills/sync-skills.spec.md) (Entity Inventory, Contracts, File Structure).
 
@@ -2032,7 +2030,6 @@ ai/skills/ # 14 скилов (физические артефакты)
 ├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
 ├── sdd-execute/ # SKILL.md + scripts/ (11 файлов)
-├── sdd-hooks-install/SKILL.md
 ├── sdd-reconcile/SKILL.md
 ├── sdd-scaffold/SKILL.md
 └── workspace-permission-setup/SKILL.md

@@ -1,8 +1,8 @@
 # ai/skills — AI-навыки для агентов
 
-13 навыков (9 SDD + agent-inbox + opencode-get-session + prd-interview + workspace-permission-setup) для Specification-Driven Development и настройки автономной среды.
+12 навыков (8 SDD + agent-inbox + opencode-get-session + prd-interview + workspace-permission-setup) для Specification-Driven Development и настройки автономной среды.
 
-> `sdd-hooks-install` (хуки live-прогресса для `sdd-execute`) и `workspace-permission-setup` мигрированы в хранилище из `~/.claude/skills` — теперь под git и деплоятся через `sync-skills`.
+> `workspace-permission-setup` мигрирован в хранилище из `~/.claude/skills` — теперь под git и деплоится через `sync-skills`.
 
 ---
 

@@ -6,7 +6,7 @@
 
 ## 1. Module Vision
 
-9 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Большинство навыков — тонкие клиенты над директивами из `ai/directives/sdd-v2/`. `sdd-execute` — единственный оркестратор, диспатчит subagent'ов с typed Handoff (включая batch-режим — та же дверь, LOGIC_SWITCH на intent). `sdd-check` — read-only репортер над CLI-инструментом (без директивы).
+8 SDD-навыков: полный воркфлоу Specification-Driven Development — от создания спеки до верификации. Большинство навыков — тонкие клиенты над директивами из `ai/directives/sdd-v2/`. `sdd-execute` — единственный оркестратор, диспатчит subagent'ов с typed Handoff (включая batch-режим — та же дверь, LOGIC_SWITCH на intent). `sdd-check` — read-only репортер над CLI-инструментом (без директивы).
 
 Навыки в модуле:
 
@@ -15,7 +15,9 @@
 - **Execution:** `sdd-execute` (single ticket или batch — интент внутри одного навыка)
 - **Verification:** `sdd-audit`, `sdd-check`, `sdd-code-review`
 - **Iteration:** `sdd-critic`, `sdd-reconcile` (режимы fix и from-code)
-- **Setup:** `sdd-hooks-install`
+
+`sdd-hooks-install` (bootstrap хуков live-прогресса) удалён по решению оператора — см. `ai-skills.spec.md` D-007.
+
 <!--/SECTION:MODULE_VISION-->
 
 <!--SECTION:MODULE_USAGE_EXAMPLE-->
@@ -64,7 +66,7 @@ _Это полный список сущностей модуля. Любое в
 | `PhaseDispatchPrompt`  | Specification | Prompt для диспатча фазового subagent'а                          |
 | `AuditDispatchPrompt`  | Specification | Prompt для диспатча аудита                                       |
 | `HandoffPayload`       | Value Object  | Типизированный payload между фазами: artifacts, decisions, open  |
-| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate, setup  |
+| `SddWorkflowPhase`     | Enumeration   | Фаза SDD-воркфлоу: route, plan, execute, verify, iterate         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -153,7 +155,6 @@ _Это полный список сущностей модуля. Любое в
   - `execute` — sdd-execute (single ticket и batch)
   - `verify` — sdd-audit, sdd-check, sdd-code-review
   - `iterate` — sdd-critic, sdd-reconcile
-  - `setup` — sdd-hooks-install
 - **Consumers:** `SddSkill`
 <!--/SECTION:ENTITY_SURFACES-->
 
@@ -216,8 +217,7 @@ ai/skills/
 ├── sdd-check/SKILL.md              # без директивы — тонкий репортер над `npx gennady sdd-check`
 ├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
-├── sdd-reconcile/SKILL.md          # режимы fix и from-code
-└── sdd-hooks-install/SKILL.md      # config-bootstrapper, вне 3 паттернов — см. ai-skills.spec.md D-005
+└── sdd-reconcile/SKILL.md          # режимы fix и from-code
 ```
 
 **File Mapping:**
@@ -235,7 +235,7 @@ ai/skills/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, ai-skills, sdd-skills
-- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered. Решение принято при 12 навыках (сейчас 9 — см. `ai-skills.spec.md` D-005), рационале не изменился.
+- **Why:** Все SDD-навыки объединены в один модуль по общему execution-паттерну (активация директив) и общей SDD-воркфлоу-семантике. Разделение на подмодули по фазам — overengineered. Решение принято при 12 навыках (сейчас 8 — см. `ai-skills.spec.md` D-005/D-007), рационале не изменился.
 - **Risk accepted:** При росте количества навыков модуль может потребовать дальнейшей декомпозиции.
 - **Rejected alternatives:**
   - 5 подмодулей по фазам — overengineered: некоторые содержали бы 1-2 навыка
@@ -272,7 +272,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Все 9 навыков уже существуют в `ai/skills/`. Пути в телах SKILL.md — в dev-форме (`~/Developer/gennady/...`), релативизуются `PathNormalizer` при `sync-skills` (закрыто, см. `skill-contract.spec.md` D-M001/handoff).
+- **Implementation files to be created:** Все 8 навыков уже существуют в `ai/skills/`. Пути в телах SKILL.md — в dev-форме (`~/Developer/gennady/...`), релативизуются `PathNormalizer` при `sync-skills` (закрыто, см. `skill-contract.spec.md` D-M001/handoff).
 - **Test files to be created:** None — SDD tooling verification lives in the `cli` scope test suites (`cli/cmd/sdd-check`, `cli/cmd/sdd-verify`, `cli/cmd/sdd-extract`, `shared/sdd/*.test.ts`)
 - **Stack dependencies:**
   - Test framework: node:test
