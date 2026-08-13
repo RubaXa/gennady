@@ -40,6 +40,7 @@
 - **Target Files:**
   - `services/agent-inbox/serve/bootstrap.ts`
   - `services/agent-inbox/serve/run-mode.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/pipeline-runtime.ts`
   - `services/agent-inbox/modules/inbox-pipeline/review/review-orchestrator.ts`
   - `services/agent-inbox/modules/inbox-pipeline/coverage/review-structural-validator.ts`
   - `services/agent-inbox/modules/inbox-pipeline/coverage/review-repair-coordinator.ts`
@@ -60,6 +61,9 @@
 - **Objective:** Prove production construction, persisted task recovery and fail-closed publication.
 - **Target Files:**
   - `services/agent-inbox/serve/__tests__/bootstrap.control-plane.integration.test.ts`
+  - `services/agent-inbox/modules/inbox-pipeline/__tests__/pipeline-runtime.control-plane.integration.test.ts`
+  - `test/agent-inbox/inbox-pipeline/review-repair-coordinator.integration.test.ts`
+  - `test/agent-inbox/inbox-pipeline/review-freshness-gate.integration.test.ts`
   - `services/agent-inbox/__tests__/full-flow.blackbox.test.ts`
 - **Inputs:** P1 handoff.
 - **Exit:** tests invoke the shippable composition root, not direct class fixtures.
@@ -80,6 +84,7 @@
 - **Given** the real serve profile
 - **When** bootstrap becomes ready
 - **Then** manifest→contract→receipts→validation→repair→freshness→synthesis→queue is observable from one runtime and no legacy role engine executes review acceptance
+- **And** the existing `PipelineRuntime` drives those boundaries; constructing a disconnected parallel runtime does not satisfy the scenario
 
 **Scenario:** incomplete work cannot publish [`contract`]
 
@@ -116,6 +121,7 @@
 - typed composition → `bootstrap.control-plane.integration.test.ts` :: `production adapters satisfy declared control-plane contracts and have one reachable instance`
 - fail closed → `bootstrap.control-plane.integration.test.ts` :: `non pass review creates no publication package handoff or effect`
 - restart → `full-flow.blackbox.test.ts` :: `production restart resumes durable task and receipt consumption without duplicate write`
+- durable repair/freshness → `pipeline-runtime.control-plane.integration.test.ts` :: `existing runtime persists observed revision repair state and protected transitions before dispatch and restores them on restart`
 
 <!--/SECTION:TEST_COVERAGE-->
 <!--SECTION:EXECUTION_LOG-->
@@ -148,6 +154,8 @@
 - Accepted: production `effect_*` task resolution is repaired instead of hidden by the historical test-only registry.
 - Accepted BDD review: missing, forged, stale, repair-exhausted, crash-after-ack and duplicate-runtime cases remain distinct because they guard different trust boundaries.
 - Accepted BDD review: the public runtime construction trace and behavior test, not source grep, prove the legacy path unreachable.
+- Accepted BDD review: repair/freshness storage uses a separate profile-rooted `JournalPort`; generic control records never enter canonical `review-events.jsonl`.
 - Rejected: direct construction of pipeline classes as evidence that production bootstrap uses them.
 - Rejected: broad legacy deletion outside a proven consumer migration.
 - Rejected: provider mutation in this ticket; exact-allowlist effect proof belongs to a later runtime task.
+- Rejected: a new parallel `ReviewControlPlaneRuntime`; the pipeline spec explicitly requires modifying the existing `PipelineRuntime`.
