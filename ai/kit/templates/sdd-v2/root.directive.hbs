@@ -33,6 +33,10 @@
     {{> "axiom/process/ax-close-with-integrity-check"}}
   </BeliefState>
 
+  <ChatProtocol>
+    {{> "contract/process/question-format"}}
+  </ChatProtocol>
+
   <HaltConditions>
     | 🛑 ID | Trigger |
     |---|---|
@@ -49,9 +53,13 @@
         State from the router (`sdd-state`) already reports whether `specs/README.md` exists.
         - Absent → no portal yet: run `sdd-state --probe` to learn whether the repo is greenfield or
           already holds code (`AX_TOOL_INVOCATION`; probe only now that it is needed — not at flow start).
-          - `CODE=absent` (empty / only package.json) → **greenfield init**. Ask (Russian): «Как называется
-            проект? Опиши в одном предложении его vision и первые scope'ы (infra-base, backend, web — на
-            черновую).»
+          - `CODE=absent` (empty / only package.json) → **greenfield init**. The operator already saw the
+            state card and, for empty intake, confirmed «Создать проект» at the router's entry Ask
+            (`AX_DIALOGUE_DISCIPLINE`) — the interview opens HERE, never before that card and never as
+            prose dumped into the reply. Ask through the SAME channel: the `AskUserQuestion` tool when
+            available (open answer via its free-text slot), otherwise `QUESTION_FORMAT` (Russian) — one
+            structured question: «Как называется проект? Опиши в одном предложении его vision и первые
+            scope'ы (infra-base, backend, web — на черновую).»
           - `CODE=present` → **from-code recovery** — do NOT invent a vision over existing code:
             `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")`.
         - Present → empty intake → `H_NO_INTENT`; otherwise classify the change:

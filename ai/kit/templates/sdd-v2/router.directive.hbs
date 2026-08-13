@@ -82,16 +82,24 @@
     | 🛑 ID | Trigger |
     |---|---|
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
+    | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
   </HaltConditions>
 
   <ExecutionPlan>
     <Step id="STEP_0_STATE">
-      <Goal>Obtain project state and clear the preflight gates before any routing.</Goal>
+      <Goal>Obtain project state, show it to the operator, then clear the preflight gates before any routing.</Goal>
       <Action>
         Call `sdd-state` (deterministic) — one call returns everything routing needs: `FLOW_VERSION`,
         `READINESS` (exact required scripts: typecheck / test / test:coverage / lint+gennady / format),
         portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
         and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
+
+        Show the operator the state card exactly as `sdd-state` printed it — flow version, readiness,
+        portal presence, the Scopes table, the session set — verbatim, in its own message, BEFORE any
+        classification of intent begins. Never paraphrase it, never fold it silently into the agent's own
+        reasoning, never skip it because the state looks empty — an absent portal still gets the card;
+        «нет ни одной спеки» IS the picture. This print is a required observable action, not a narration
+        aside (`AX_NO_PROCESS_NARRATION` bans commentary about the work being done, not this display).
 
         Then clear each preflight gate inline via the switch below, sized to the task's blast radius
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). After any embedded flow (migration / readiness) returns,
@@ -123,6 +131,19 @@
         request against an absent portal is `project-setup` instead (the whole-project recovery lives
         inside the `root` branch, not this switch). A path-bearing request against an absent portal is
         still ambiguous between the two — ask the operator which they mean before routing.
+
+        WHEN `specs/README.md` is absent AND the operator's message carries no substantive project
+        content (bare `/sdd`, a greeting, no vision / scope-type stated) — empty intake against an empty
+        portal — do NOT silently classify `project-setup` by elimination; the operator just saw the state
+        card and is still «в непонятной ситуации» without a concrete next step. Run `sdd-state --probe`
+        (`CODE` presence only) and STOP: ask via the `AskUserQuestion` tool when available, otherwise
+        `QUESTION_FORMAT` (message in Russian) — «Создать проект» (рекомендую) · «Воссоздать спеки из
+        существующего кода» (offered ONLY when `CODE=present`) · «Я не в том репозитории» → halt
+        (`H_WRONG_REPO`), no directive loads. Either non-halt answer locks `intent: project-setup` for
+        STEP_2_ROUTE's existing case below — this is a confirmation of intent, not a new route. WHEN the
+        message already carries substantive project content (e.g. «новый проект X про Y») this Ask is
+        skipped entirely — classify `project-setup` directly and fold its confirmation into the ordinary
+        SCALE exchange below; one stop, not two.
 
         Alongside intent, assess SCALE ∈ {product, library, module, function, fix} from context:
         the intent itself, the portal state (an empty portal leans product; a mature scope leans
