@@ -12,6 +12,7 @@ import {
   foldSections,
 } from '../templates.ts';
 import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2 } from '../check.ts';
+import { extractMermaidBlocks, validateMermaid } from '../../mermaid/mermaid.ts';
 
 const sortedSet = (xs: string[]): string[] => Array.from(new Set(xs)).sort();
 
@@ -147,4 +148,17 @@ describe('derived lists match check.ts (block L1 parity requirement)', () => {
   it('PUBLIC_OPTIONS is deliberately excluded from fold requirements', () => {
     assert.ok(!foldSections('module').includes('PUBLIC_OPTIONS'));
   });
+});
+
+describe('every mermaid block in every skeleton parses (real mermaid grammar)', () => {
+  for (const kind of ARTIFACT_KINDS) {
+    const blocks = extractMermaidBlocks(TEMPLATES[kind].skeleton);
+    if (blocks.length === 0) continue;
+    blocks.forEach((body, i) => {
+      it(`${kind} mermaid block #${i} parses`, async () => {
+        const err = await validateMermaid(body);
+        assert.strictEqual(err, null, `${kind} block #${i} failed to parse: ${err}`);
+      });
+    });
+  }
 });

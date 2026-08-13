@@ -796,10 +796,10 @@ flowchart LR
 
 \`\`\`mermaid
 graph TD
-  <this-module> --> <sibling-1>
-  <this-module> --> <sibling-2>
-  <this-module> -. Scope Reference .-> <contracts-scope>
-  <consumer> --> <this-module>
+  this-module["<this-module>"] --> sibling-1["<sibling-1>"]
+  this-module["<this-module>"] --> sibling-2["<sibling-2>"]
+  this-module["<this-module>"] -. Scope Reference .-> contracts-scope["<contracts-scope>"]
+  consumer["<consumer>"] --> this-module["<this-module>"]
 \`\`\`
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
 
