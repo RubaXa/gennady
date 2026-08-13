@@ -47,6 +47,7 @@ import { SessionRegistry } from '../modules/inbox-opencode/session-registry.ts';
 import { SessionLifecycle } from '../modules/inbox-opencode/session-lifecycle.ts';
 import { HttpServer } from '../modules/inbox-api/http-server.ts';
 import { BoardProviderMock } from '../modules/inbox-api/board-provider.mock.ts';
+import { BoardProviderDisk, scanDiskCardSeeds } from '../modules/inbox-api/board-provider.disk.ts';
 import { seedDevData } from '../modules/inbox-serve/dev-seed.ts';
 import { setDryRun, setDryRunRecorder } from '../modules/inbox-core/dry-run.ts';
 import {
@@ -1080,15 +1081,18 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
     };
   }
 
+  // F1: Real mode — BoardProviderDisk backs getReport/artifacts straight off `report/` on disk, no
+  // scheduler/GitLab dependency needed to open an already-reviewed MR. BoardProjection (installed by
+  // attachRuntime via http-server._wireRuntime() once inboxApi is provided, TSK-179) merges the same
+  // disk-reviewed MRs into the board listing via `diskCards`, visible with no live sync (TSK-190).
   // #region START_CREATE_SERVER
-  // F1: Real mode — BoardProviderMock as pre-wire default; BoardProjection is installed by
-  // attachRuntime via http-server._wireRuntime() once inboxApi config is provided (TSK-179).
-  const boardProvider = new BoardProviderMock();
+  const boardProvider = new BoardProviderDisk({ stateDir: stateStore.getStateDir() });
   if (!syncService || !vcsJournal || !vcsRegistry) {
     throw new Error('[bootstrap] Production VCS truth dependencies were not assembled');
   }
   // `let` captures lose CFA narrowing inside closures — rebind after the guard above.
   const syncServiceForBoard = syncService;
+  const stateDirForDiskCards = stateStore.getStateDir();
   await server.attachRuntime({
     port,
     boardProvider,
@@ -1113,6 +1117,7 @@ export async function bootstrap(config: BootstrapConfig): Promise<BootstrapResul
       registry: vcsRegistry,
       snapshots: initialSyncSnapshots,
       loadSnapshots: () => runSyncShared(syncServiceForBoard),
+      diskCards: () => scanDiskCardSeeds(stateDirForDiskCards),
     },
     bootReadiness,
   });

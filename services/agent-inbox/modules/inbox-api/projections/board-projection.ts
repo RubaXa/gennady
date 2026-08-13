@@ -10,6 +10,7 @@ import type { EventJournal } from '../../inbox-core/event-journal.ts';
 import type { InboxRegistryAccess } from '../../inbox-core/inbox-registry.ts';
 import type { MrCard, MrRef, MrWork, MrWorkState } from '../dto/mr-card.type.ts';
 import type { SseHub } from '../sse-hub.ts';
+import type { DiskCardSeed } from '../board-provider.disk.ts';
 
 /** @purpose Result shape returned by BoardProjection#project — consumed by GET /api/board. */
 export type BoardProjectionResult = {
@@ -41,6 +42,8 @@ export class BoardProjection {
   protected _refreshing: Promise<void> | null;
   /** @purpose Completion time of the last successful truth load; null = never loaded. */
   protected _lastRefreshedAt: number | null;
+  /** @purpose Optional disk-scan source of reviewed-MR seeds merged in for refs the live sync hasn't reported (TSK-190). */
+  protected _diskSource: (() => DiskCardSeed[]) | null;
 
   /**
    * @purpose Create a BoardProjection backed by snapshots, journal, registry, and optional SSE hub.
@@ -49,13 +52,15 @@ export class BoardProjection {
    * @param registry Registry access for per-MR lastReadAt timestamps.
    * @param [hub] Optional SseHub for broadcasting board_hint when sync degrades.
    * @param [loadSnapshots] Authoritative VCS snapshot loader for live board requests.
+   * @param [diskSource] Optional reviewed-MR disk seeds, merged into `cards` for unreported refs (TSK-190).
    */
   constructor(
     snapshots: SyncSnapshot[],
     journal: EventJournal,
     registry: InboxRegistryAccess,
     hub?: SseHub,
-    loadSnapshots?: () => Promise<SyncSnapshot[]>
+    loadSnapshots?: () => Promise<SyncSnapshot[]>,
+    diskSource?: () => DiskCardSeed[]
   ) {
     this._snapshots = snapshots;
     this._journal = journal;
@@ -63,6 +68,7 @@ export class BoardProjection {
     this._hub = hub ?? null;
     this._loadSnapshots = loadSnapshots ?? null;
     this._refreshing = null;
+    this._diskSource = diskSource ?? null;
     // Constructor-seeded snapshots count as warm truth — only an empty cache starts cold
     // ('syncing'), e.g. the real-mode slow bootstrap path.
     this._lastRefreshedAt = snapshots.length > 0 ? Date.now() : null;
@@ -152,8 +158,25 @@ export class BoardProjection {
       snapshotCount: this._snapshots.length,
     });
 
-    // #region START_BUILD_CARDS — map each sync snapshot to MrCard, then group by attention
+    // #region START_BUILD_CARDS — map each sync snapshot to MrCard, then merge in disk-sourced reviewed MRs, then group by attention
     const cards = this._snapshots.map((snap) => this._toCard(snap));
+    const seenRefs = new Set(cards.map((card) => card.ref));
+    let diskCardsAdded = 0;
+    if (this._diskSource) {
+      try {
+        for (const seed of this._diskSource()) {
+          if (seenRefs.has(seed.ref)) continue;
+          cards.push(this._toDiskCard(seed));
+          seenRefs.add(seed.ref);
+          diskCardsAdded += 1;
+        }
+      } catch (cause) {
+        logger.warn('[BoardProjection#project] [disk-source → degraded]', {
+          error: String(cause),
+        });
+      }
+    }
+
     const groups: Record<AttentionState, MrRef[]> = {
       '⏳': [],
       '💬': [],
@@ -169,9 +192,10 @@ export class BoardProjection {
 
     // #region START_DETECT_DEGRADED — degraded only when an ACTIVE MR's detail fetch failed (snapshot.degraded); poll-only inactive MRs are normal operation. Broadcast board_hint to all connected dashboards
     const anyDegraded = this._snapshots.some((s) => s.degraded === true);
-    // Cold load in flight → 'syncing' so the SPA can show progress instead of an empty board.
+    // Cold load in flight → 'syncing' so the SPA can show progress instead of an empty board —
+    // UNLESS disk cards already have real content to show, in which case there's nothing to wait on.
     const syncState =
-      this._lastRefreshedAt === null && this._refreshing !== null
+      this._lastRefreshedAt === null && this._refreshing !== null && diskCardsAdded === 0
         ? 'syncing'
         : anyDegraded
           ? 'degraded'
@@ -245,6 +269,34 @@ export class BoardProjection {
         unread,
       },
       work: this._workFor(mrKey),
+    };
+  }
+
+  /**
+   * @purpose Convert one disk-scan seed into an MrCard DTO — attention fixed `'✅'`, counters
+   *   zeroed (disk carries no live approvals/CI/threads); `work` comes from the journal.
+   * @param seed Disk-sourced MR facts from `scanDiskCardSeeds`.
+   * @returns Populated MrCard merged alongside live sync-derived cards.
+   */
+  protected _toDiskCard(seed: DiskCardSeed): MrCard {
+    return {
+      ref: seed.ref,
+      title: seed.title,
+      description: seed.description,
+      webUrl: seed.webUrl,
+      author: seed.author,
+      myRole: null,
+      attention: '✅',
+      counters: {
+        approvals: '0/0',
+        reviewers: [],
+        ci: null,
+        threads: '0/0',
+        awaitingMe: 0,
+        newCommits: 0,
+        unread: 0,
+      },
+      work: this._workFor(seed.ref),
     };
   }
 

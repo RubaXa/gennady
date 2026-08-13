@@ -19,6 +19,7 @@ import { DecisionRouter } from './routers/decision.router.ts';
 import { StreamRouter } from './routers/stream.router.ts';
 import { SseHub } from './sse-hub.ts';
 import { BoardProjection } from './projections/board-projection.ts';
+import type { DiskCardSeed } from './board-provider.disk.ts';
 import { FeedProjection } from './projections/feed-projection.ts';
 import { setDryRunBroadcaster } from '../inbox-core/dry-run.ts';
 import { StaticFiles } from './static-files.ts';
@@ -111,6 +112,12 @@ export type HttpServerInboxApiConfig = {
    * @returns Completion.
    */
   onDecision?: (mr: string, journal: DecisionJournal) => Promise<void>;
+  /**
+   * @purpose Disk-scan of already-reviewed MRs, merged into the board projection for refs the live
+   *   VCS sync hasn't (yet) reported — real-mode-only viewer path (TSK-190).
+   * @returns Disk-sourced card seeds for every reviewed MR on disk.
+   */
+  diskCards?: () => DiskCardSeed[];
 };
 
 /**
@@ -292,7 +299,8 @@ export class HttpServer {
         config.inboxApi.journal,
         config.inboxApi.registry,
         hub,
-        config.inboxApi.loadSnapshots
+        config.inboxApi.loadSnapshots,
+        config.inboxApi.diskCards
       );
       const feedProjection = new FeedProjection(config.inboxApi.journal, config.inboxApi.registry);
 

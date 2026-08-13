@@ -5,20 +5,20 @@
 import { useEffect, useState } from 'react';
 import type { FeedWidget } from '../v2-types.ts';
 
-/** @purpose Artifact list entry from the server. */
+/** @purpose Artifact list entry from the server — matches ArtifactRef in inbox-api/types.ts. */
 type ArtifactRef = {
-  /** @purpose Unique artifact path key. */
+  /** @purpose Display name (e.g. REPORT.md), also the unique key within one MR's artifact list. */
+  name: string;
+  /** @purpose Unique artifact path key, passed back verbatim as the `path` query param. */
   path: string;
   /** @purpose Human-readable artifact kind. */
   kind: string;
-  /** @purpose Display label for the artifact. */
-  label: string;
 };
 
-/** @purpose Loaded artifact content. */
+/** @purpose Loaded artifact content — matches ArtifactContent in inbox-api/types.ts. */
 type ArtifactContent = {
   /** @purpose Artifact text body. */
-  text: string;
+  content: string;
   /** @purpose Render hint for code highlighting or plain text. */
   kind: string;
 };
@@ -92,7 +92,7 @@ export function ReviewArtifactViewer(props: {
               onClick={() => setSelectedPath(artifact.path)}
               aria-pressed={selectedPath === artifact.path}
             >
-              {artifact.label}
+              {artifact.name}
               <span className="v2-artifact-kind">{artifact.kind}</span>
             </button>
           ))}
@@ -110,7 +110,7 @@ export function ReviewArtifactViewer(props: {
             </p>
           ) : content ? (
             <pre className={`v2-artifact-body v2-artifact-kind-${content.kind}`}>
-              {content.text}
+              {content.content}
             </pre>
           ) : (
             <p className="v2-muted">Загружаю…</p>
