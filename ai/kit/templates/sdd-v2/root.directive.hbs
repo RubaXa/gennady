@@ -54,9 +54,12 @@
         - Absent → no portal yet: run `sdd-state --probe` to learn whether the repo is greenfield or
           already holds code (`AX_TOOL_INVOCATION`; probe only now that it is needed — not at flow start).
           - `CODE=absent` (empty / only package.json) → **greenfield init**. The operator already saw the
-            state card and, for empty intake, confirmed «Создать проект» at the router's entry Ask
-            (`AX_DIALOGUE_DISCIPLINE`) — the interview opens HERE, never before that card and never as
-            prose dumped into the reply. Ask through the SAME channel: the `AskUserQuestion` tool when
+            `sdd-state` card, shown verbatim as its own fenced unit by the router's SHOW-gate, and, for
+            empty intake, confirmed «Создать проект» at the router's entry Ask (`AX_DIALOGUE_DISCIPLINE`)
+            — the interview opens HERE, never before that card and never as prose dumped into the reply.
+            An interview question that precedes the card, or that re-summarizes it instead of the router
+            having shown it, violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`) — a
+            summary of the card is not the card. Ask through the SAME channel: the `AskUserQuestion` tool when
             available (open answer via its free-text slot), otherwise `QUESTION_FORMAT` (Russian) — one
             structured question: «Как называется проект? Опиши в одном предложении его vision и первые
             scope'ы (infra-base, backend, web — на черновую).»

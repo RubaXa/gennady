@@ -83,6 +83,7 @@
     |---|---|
     | `H_AMBIGUOUS_INTENT` | Operator intent cannot be classified against state — ask, never guess |
     | `H_WRONG_REPO` | Operator answered the empty-intake entry Ask with «я не в том репозитории» — stop here, no directive loads |
+    | `H_ASK_WITHOUT_CARD` | An `AskUserQuestion` / `QUESTION_FORMAT` question fired without the `sdd-state` card having been shown verbatim as its own visible unit first — operator may answer `STOP` and demand the card |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -94,12 +95,30 @@
         portal presence (`specs/README.md`), the Scopes table (id + scope-type + status + description),
         and the in-progress session set (`SESSION_FILE_FORMAT`, `specs/.sdd-session.md`).
 
-        Show the operator the state card exactly as `sdd-state` printed it — flow version, readiness,
-        portal presence, the Scopes table, the session set — verbatim, in its own message, BEFORE any
-        classification of intent begins. Never paraphrase it, never fold it silently into the agent's own
-        reasoning, never skip it because the state looks empty — an absent portal still gets the card;
-        «нет ни одной спеки» IS the picture. This print is a required observable action, not a narration
-        aside (`AX_NO_PROCESS_NARRATION` bans commentary about the work being done, not this display).
+        **SHOW-gate (mechanical, not prose — the reader must be able to check it by eye, not by
+        trusting the agent's account of it).** Copy the card — the block from `🏗 SDD ·` through the
+        `👉 Следующий шаг:` line, inclusive — byte-for-byte into a fenced code block, as its OWN
+        message, BEFORE any classification of intent begins. When the channel genuinely cannot carry
+        a bare separate message, the fenced card MAY open the same message that carries the next Ask,
+        but it must still stand as its own visible fenced block, never folded into the Ask's own
+        text. This is required every time, including when the state looks empty — an absent portal
+        still gets the card; «нет ни одной спеки» IS the picture. Never paraphrase it, never
+        summarize it, never fold it silently into the agent's own reasoning, never skip it.
+        `AX_NO_PROCESS_NARRATION` bans commentary about the work being done — it does not ban this
+        display, which is a required observable artifact, not narration.
+
+        **AskUserQuestion is void without the shown card.** Any `AskUserQuestion` call (or
+        `QUESTION_FORMAT` question) fired anywhere downstream of STEP_0 — including STEP_1_CLASSIFY's
+        empty-intake Ask below — is INVALID unless the fenced card above already appeared, verbatim,
+        as its own visible unit earlier in this turn. Collapsing the card's content into the
+        question's title or description (e.g. «Репозиторий пустой: портал отсутствует, скоупов нет,
+        кода нет. С чего начнём?») is not the card — it is a **summary, and a summary is not the
+        card**: the same forbidden substitution as an orchestrator's self-probe standing in for a
+        dispatched critic (mirrors `AX_FIX_CLASSIFICATION`'s self-probe-is-void pattern). An Ask
+        posed without the card having been shown is `H_ASK_WITHOUT_CARD` — the operator receiving
+        such an Ask is entitled to answer `STOP` and demand the card before answering anything else.
+        Once the card has been shown, the Ask's own title MAY be short — brevity there is legal
+        precisely because the card already carried the full picture.
 
         Then clear each preflight gate inline via the switch below, sized to the task's blast radius
         (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`). After any embedded flow (migration / readiness) returns,
@@ -135,9 +154,12 @@
         WHEN `specs/README.md` is absent AND the operator's message carries no substantive project
         content (bare `/sdd`, a greeting, no vision / scope-type stated) — empty intake against an empty
         portal — do NOT silently classify `project-setup` by elimination; the operator just saw the state
-        card and is still «в непонятной ситуации» without a concrete next step. Run `sdd-state --probe`
-        (`CODE` presence only) and STOP: ask via the `AskUserQuestion` tool when available, otherwise
-        `QUESTION_FORMAT` (message in Russian) — «Создать проект» (рекомендую) · «Воссоздать спеки из
+        card (SHOW-gate, STEP_0) and is still «в непонятной ситуации» without a concrete next step. Run
+        `sdd-state --probe` (`CODE` presence only) and STOP: ask via the `AskUserQuestion` tool when
+        available, otherwise `QUESTION_FORMAT` (message in Russian) — this Ask is itself subject to the
+        SHOW-gate: the card must already stand shown as its own fenced unit, and this Ask's title MUST
+        NOT re-summarize it (`H_ASK_WITHOUT_CARD` — a title like «Репозиторий пустой: портал
+        отсутствует...» is the forbidden summary-as-card, not a legal short title) — «Создать проект» (рекомендую) · «Воссоздать спеки из
         существующего кода» (offered ONLY when `CODE=present`) · «Я не в том репозитории» → halt
         (`H_WRONG_REPO`), no directive loads. Either non-halt answer locks `intent: project-setup` for
         STEP_2_ROUTE's existing case below — this is a confirmation of intent, not a new route. WHEN the
