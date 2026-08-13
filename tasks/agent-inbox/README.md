@@ -66,6 +66,18 @@ graph TD
   T180 --> T183
   T181 --> T183
   T182 --> T183
+  T176 --> T184[TSK-184 production control plane recovery]
+  T177 --> T184
+  T178 --> T184
+  T179 --> T184
+  T181 --> T184
+  T174 --> T185[TSK-185 real API and board recovery]
+  T184 --> T185
+  T184 --> T186[TSK-186 production eval and real walking skeleton]
+  T185 --> T186
+  T185 --> T187[TSK-187 Carbon and Steel UI recovery]
+  T186 --> T188[TSK-188 final real acceptance]
+  T187 --> T188
 ```
 
 ## Tracker
@@ -84,6 +96,11 @@ graph TD
 | [TSK-181](agent-inbox.task-181.md)                     | Runtime cutover/legacy removal | scope           | 174–180             | `[x]` DONE |
 | [TSK-182](inbox-dashboard/inbox-dashboard.task-182.md) | Carbon & Steel cockpit         | inbox-dashboard | 178–181             | `[x]` DONE |
 | [TSK-183](inbox-eval/inbox-eval.task-183.md)           | Adaptive product acceptance    | inbox-eval      | 174,176,177,179–182 | `[x]` DONE |
+| [TSK-184](agent-inbox.task-184.md)                     | Production control recovery    | scope           | 176–179,181         | `[ ]` TODO |
+| [TSK-185](inbox-api/inbox-api.task-185.md)             | Real API and board recovery    | inbox-api       | 174,184             | `[ ]` TODO |
+| [TSK-186](inbox-eval/inbox-eval.task-186.md)           | Real walking skeleton          | inbox-eval      | 184,185             | `[ ]` TODO |
+| [TSK-187](inbox-dashboard/inbox-dashboard.task-187.md) | Cockpit layout recovery        | inbox-dashboard | 185                 | `[ ]` TODO |
+| [TSK-188](inbox-eval/inbox-eval.task-188.md)           | Final real acceptance          | inbox-eval      | 186,187             | `[ ]` TODO |
 
 ## External prerequisites
 
@@ -127,6 +144,11 @@ graph TD
 | NFR-011 semantic quality cannot weaken slots   | TSK-176 boundary; TSK-183 named cross-review/synthesis e2e                      |
 | NFR-012 crash-resumable targeted repair        | TSK-176 state; TSK-183 named repair resume/budget e2e                           |
 | NFR-013 receipts durable before eligibility    | TSK-176 contracts; TSK-183 named store/adapter/recorder e2e                     |
+| Recovery: real production composition          | TSK-184                                                                         |
+| Recovery: real API/board/legacy compatibility  | TSK-185                                                                         |
+| Recovery: same-runtime eval/walking skeleton   | TSK-186                                                                         |
+| Recovery: usable Carbon & Steel cockpit        | TSK-187                                                                         |
+| Recovery: no-false-green product acceptance    | TSK-188                                                                         |
 
 ## Historical baseline
 
@@ -141,3 +163,5 @@ TSK-183 owns eleven separate named shippable-entry pipeline cases backreferenced
 - **D-219:** New IDs preserve historical audit evidence while regenerating the pivot DAG from current specs.
 - **D-220:** One ticket per module spec; composition cutover is separate because it owns the cross-module migration and legacy deletion.
 - **D-221:** Cross-ticket proof flows only forward: TSK-176 pipeline shape → TSK-177 queue acceptance/gates → TSK-183 named real-entrypoint acceptance; no dependency inversion.
+- **D-222:** TSK-181…183 remain immutable historical execution evidence but are not accepted as proof of product readiness; audit found the new control plane unwired, missing API commands, a non-converging real board, mocked/fixme E2E and broken UI composition.
+- **D-223:** Recovery proceeds through TSK-184…188. A mandatory `skip`, `fixme`, `INCONCLUSIVE`, HTTP interception, demo seed or missing real screenshot is non-PASS; external effect proof requires an exact operator allowlist.

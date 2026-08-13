@@ -189,6 +189,18 @@ graph TD
     TSK-180 --> TSK-183
     TSK-181 --> TSK-183
     TSK-182 --> TSK-183
+    TSK-176 --> TSK-184[TSK-184: production control recovery]
+    TSK-177 --> TSK-184
+    TSK-178 --> TSK-184
+    TSK-179 --> TSK-184
+    TSK-181 --> TSK-184
+    TSK-174 --> TSK-185[TSK-185: real API and board]
+    TSK-184 --> TSK-185
+    TSK-184 --> TSK-186[TSK-186: real walking skeleton]
+    TSK-185 --> TSK-186
+    TSK-185 --> TSK-187[TSK-187: cockpit recovery]
+    TSK-186 --> TSK-188[TSK-188: final real acceptance]
+    TSK-187 --> TSK-188
 ```
 
 ## Tracker Index
@@ -202,7 +214,7 @@ graph TD
 | agent-mon-cli     | product        | [README](agent-mon-cli/README.md)     | 4     | 0/4   |
 | infra-npm-publish | infrastructure | [README](infra-npm-publish/README.md) | 3     | 3/3   |
 | agent-run         | library        | [README](agent-run/README.md)         | 3     | 3/3   |
-| agent-inbox       | product        | [README](agent-inbox/README.md)       | 27    | 27/27 |
+| agent-inbox       | product        | [README](agent-inbox/README.md)       | 32    | 27/32 |
 | mr-stats          | product        | [README](mr-stats/README.md)          | 2     | 2/2   |
 
 ## Decision Log
