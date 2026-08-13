@@ -6,7 +6,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import { checkReadiness } from '../../../shared/sdd/readiness.ts';
+import { checkReadiness, isRealScript } from '../../../shared/sdd/readiness.ts';
 import { parseScopes, type Scope } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
@@ -152,9 +152,9 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     moduleSpecCount,
     packageJsonPresent,
     gates: {
-      typecheck: scripts['typecheck'] !== undefined,
-      test: scripts['test'] !== undefined,
-      lint: scripts['lint'] !== undefined,
+      typecheck: isRealScript(scripts['typecheck']),
+      test: isRealScript(scripts['test']),
+      lint: isRealScript(scripts['lint']),
     },
     tasksTotal,
     tasksDone,

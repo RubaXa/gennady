@@ -75,6 +75,16 @@ function lintReachesGennady(scripts: Record<string, string>): boolean {
 }
 
 /**
+ * @purpose True when a script body is real — present, non-empty, and not the npm-init placeholder.
+ * @param body The script body from package.json `scripts`, or undefined when absent.
+ * @returns False for absent/empty bodies and for the `npm init -y` "no test specified" stub.
+ */
+export function isRealScript(body: string | undefined): boolean {
+  if (body === undefined || body.trim() === '') return false;
+  return !body.includes('no test specified');
+}
+
+/**
  * @purpose Check the gathered tooling facts against the exact v2 readiness requirements.
  * @invariant Exact-name script match only; `lint` must reach gennady; gennady must be installed; package.json must exist.
  * @param input The gathered facts: package.json presence, the `scripts` map, and gennady install state.
@@ -85,7 +95,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
 
   const required: RequiredScript[] = REQUIRED_SCRIPTS.map((name) => ({
     name,
-    present: scripts[name] !== undefined,
+    present: isRealScript(scripts[name]),
   }));
 
   const lintHasGennady = lintReachesGennady(scripts);

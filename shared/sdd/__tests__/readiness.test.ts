@@ -43,6 +43,18 @@ describe('checkReadiness', () => {
     assert.strictEqual(r.gennadyAvailable, true);
   });
 
+  it('npm-init placeholder test script counts as absent, not present', () => {
+    const r = check({ ...FULL, test: 'echo "Error: no test specified" && exit 1' });
+    assert.strictEqual(r.ready, false);
+    assert.ok(r.missing.includes('test'));
+  });
+
+  it('empty-body script counts as absent', () => {
+    const r = check({ ...FULL, test: '   ' });
+    assert.strictEqual(r.ready, false);
+    assert.ok(r.missing.includes('test'));
+  });
+
   it('not ready when test:coverage is missing', () => {
     const r = check({ typecheck: 'x', test: 'x', lint: 'gennady lint', format: 'x' });
     assert.strictEqual(r.ready, false);
