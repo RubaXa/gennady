@@ -245,7 +245,7 @@
       # Post live — the operator's checkbox approval in the skill's action menu IS the
       # confirmation, so we post directly. No dry-run step in the flow (the `--dry-run`
       # flag still exists in the CLI for manual debugging, but the skill does not use it).
-      npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url=&lt;webUrl&gt; &lt; comments.json
+      npx gennady vcs-reply --url=&lt;webUrl&gt; &lt; comments.json
     </Command>
     <Requirement>GITLAB_PERSONAL_TOKEN environment variable.</Requirement>
     <Requirement>host from --vcs-host; project and iid from the MR ref (group/project!iid).</Requirement>

@@ -12,5 +12,12 @@ compatibility: opencode
    the operator to run `npx gennady sync` — never search for it.
    Announce: `🔒 DIRECTIVE ACTIVATED: SddAudit`
    You ARE this directive now.
+   No `sdd-state`/PREFLIGHT gate here by design: audit runs against a ticket that is already
+   scaffolded and (usually) already executed — v1/readiness/portal state is moot for a task that
+   exists. This door is the odd one out in the family on purpose, not by omission.
 
-3. **Apply directive to intent.** Mode auto-detected per `AX_AUDIT_MODES` (per-task | epic-level). Per `STEP_1_MECHANICAL`, first run the mechanical tool — `npx gennady sdd-check --task <ticket-path>` (or `--all` for an epic) — and take its findings as given. Then re-derive the gate independently: `npx gennady sdd-verify --profile full`, `npx gennady lint --spec=<module-spec>` on changed files, and `npx gennady testcov --run --min=80`. Feed all output into the directive's finding pipeline. Then follow Execution_Plan end-to-end (STEP_2_SEMANTIC, STEP_3_ROUTE). Do not deviate.
+3. **Apply directive to intent.** Mode auto-detected per `AX_AUDIT_MODES` (per-task | epic-level).
+   The mechanical gates — which tool commands run, in what order, what counts as a BLOCKER — live
+   entirely in `STEP_1_MECHANICAL` of the directive; do not restate or re-derive that list here, it
+   drifts from the source of truth the moment it's duplicated. Follow the Execution_Plan end-to-end
+   (STEP_1_MECHANICAL, STEP_2_SEMANTIC, STEP_3_ROUTE). Do not deviate.

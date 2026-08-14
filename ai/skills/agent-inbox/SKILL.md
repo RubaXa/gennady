@@ -26,16 +26,15 @@ compatibility: opencode
 
   <ExecutionPlan>
     <Step id="GATHER">
-      Read in full `ai/directives/agent-inbox/inbox-flow.directive.xml` — the whole working process:
-      session invariants, intents, inbox presentation, hard rules, VCS tools, action map, the
-      single-MR review pipeline, and finalization. You EMBODY this directive.
-    </Step>
-    <Step id="PREFLIGHT">
-      Run `npx gennady inbox --json`. Response has
-      `"configured": false` → do NOT exit: run the setup flow from inbox-flow (two `AskUserQuestion`
-      — `reposBase`, then `vcsHost` → `inbox config --set` → retry). `"configured": true` → EMBODY.
-      Not inside a repo → pass `--vcs-host=<host>` on every call. Token: `GITLAB_PERSONAL_TOKEN` or
-      `GITHUB_PERSONAL_TOKEN`/`GITHUB_TOKEN`, by provider (auto-detected from host).
+      One parallel batch (do NOT serialize): read in full
+      `ai/directives/agent-inbox/inbox-flow.directive.xml` — the whole working process: session
+      invariants, intents, inbox presentation, hard rules, VCS tools, action map, the single-MR
+      review pipeline, and finalization — AND run `npx gennady inbox --json`.
+      You EMBODY the directive. Response has `"configured": false` → do NOT exit: run the setup flow
+      from inbox-flow (two `AskUserQuestion` — `reposBase`, then `vcsHost` → `inbox config --set` →
+      retry). `"configured": true` → EMBODY. Not inside a repo → pass `--vcs-host=<host>` on every
+      call. Token: `GITLAB_PERSONAL_TOKEN` or `GITHUB_PERSONAL_TOKEN`/`GITHUB_TOKEN`, by provider
+      (auto-detected from host).
     </Step>
     <Step id="EMBODY">
       Detect the intent from the operator message and follow inbox-flow: `list` (default —

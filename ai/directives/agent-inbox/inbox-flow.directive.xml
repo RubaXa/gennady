@@ -148,11 +148,11 @@
     - **(default / `list` / "разбери входящие")** — interactive review: actionable list → propose ≤5
       tasks as checkboxes → walk them one by one. I steer, you drive.
     - `tick` (=`once`/`sync`) — ONE silent pass for the scheduler:
-      `npx tsx ~/Developer/gennady/cli/gennady.ts inbox`, show the delta, stop. No Ask, no posting.
+      `npx gennady inbox`, show the delta, stop. No Ask, no posting.
     - `loop` — the scheduler repeats `tick`; frequency is set externally (`/loop 10m` for the session;
       launchd `StartInterval`/cron in the background). The skill does not set frequency; `tick` is
       idempotent via the registry `~/.gennady/inbox-registry.json` (shows only the delta).
-    - `reset` — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --reset` (wipes local state only:
+    - `reset` — `npx gennady inbox --reset` (wipes local state only:
       registry + worktrees). Does NOT touch server-side drafts — those are removed only by an explicit
       `vcs-draft-note --delete-all` on operator request (AI-08).
 
@@ -161,7 +161,7 @@
   </Intents>
 
   <InboxPresentation>
-    Data — `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json [--vcs-host=<host>]`: per MR
+    Data — `npx gennady inbox --json [--vcs-host=<host>]`: per MR
     `ref`/`webUrl`/`title`/`description`/`author`/`reviewers`/`role`/`stage`/`delta`/`age`/
     `openQuestions`/`lastAuthor`/`events`; at the top `total`/`hidden`/`delta`.
 
@@ -205,17 +205,17 @@
   <VcsTools>
     | Tool | Command | When |
     |---|---|---|
-    | List | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox [--json] [--all] [--reset]` | start; `--all` removes the filter |
-    | **MR context** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-context --url <webUrl> --json-file [--skip-worktree] [--skip-threads]` | ONE call, compact stdout. `--json-file` writes the full context to `<reportsDir>/context.json` and prints a compact summary (`{"file","ref","title","webUrl","myRole","stage","author","headChanged","changeset","reviewPlanRequired"}`) — avoids pipe buffer truncation. Read the file with `Read(offset, limit)` when deeper fields are needed (worktree, newCommits, changeset.files). `--json` (no file, full dump to stdout) is available but deprecated for agent use. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
-    | **Review plan** | `npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
-    | Working copy | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
-    | Threads | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
-    | CI | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+failed logs; `--status failed` default; jobs — restart/cancel; `--raw` — raw log |
-    | Posting | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
-    | React | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
-    | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
-    | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
-    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent. Structure — `AX_MR_BODY_STRUCTURE` |
+    | List | `npx gennady inbox [--json] [--all] [--reset]` | start; `--all` removes the filter |
+    | **MR context** | `npx gennady inbox-context --url <webUrl> --json-file [--skip-worktree] [--skip-threads]` | ONE call, compact stdout. `--json-file` writes the full context to `<reportsDir>/context.json` and prints a compact summary (`{"file","ref","title","webUrl","myRole","stage","author","headChanged","changeset","reviewPlanRequired"}`) — avoids pipe buffer truncation. Read the file with `Read(offset, limit)` when deeper fields are needed (worktree, newCommits, changeset.files). `--json` (no file, full dump to stdout) is available but deprecated for agent use. `reviewPlanRequired: true` → `inbox-review-plan` needed. |
+    | **Review plan** | `npx gennady inbox-review-plan --path <worktree.path> --base <sha> [--scaffold --ref <ref>] [--validate <dir> [--stage enriched\|filled]]` | Whenever `reviewPlanRequired == true`. No flags — `ReviewPlan { mode, tracks[] }` (dispatch plan). `--scaffold` materializes task files → orchestrator enriches Context → subagents fill → `--validate` (document pipeline; details below, "Review pipeline"). The agent does not think, it executes. |
+    | Working copy | `npx gennady vcs-worktree --url <webUrl>` · `--cleanup <path>` (manual, not in flow) | read-only code + `diff_refs`. Reused across sessions, auto-GC by TTL (7 days from last `inbox-context`). The agent NEVER removes a worktree explicitly. |
+    | Threads | `npx gennady vcs-discussions --url <webUrl> --all` · `--draft` | what was already written / my drafts |
+    | CI | `npx gennady vcs-pipeline --url <webUrl> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+failed logs; `--status failed` default; jobs — restart/cancel; `--raw` — raw log |
+    | Posting | `npx gennady vcs-reply --url <webUrl>` (JSON array on stdin) | replies/comments/threads/resolve/edit/suggestion |
+    | React | `npx gennady vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
+    | Drafts | `npx gennady vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
+    | Approve | `npx gennady vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
+    | MR body | `npx gennady vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent. Structure — `AX_MR_BODY_STRUCTURE` |
 
     ### `context.json` (produced by `inbox-context --json-file`)
 
@@ -270,12 +270,12 @@
   </ActionMap>
 
   <TickProcedure>
-    `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json` → present per InboxPresentation (delta →
+    `npx gennady inbox --json` → present per InboxPresentation (delta →
     widget; empty → the `😴` line). No Ask, no posting — exactly what `loop` repeats.
   </TickProcedure>
 
   <InteractiveProcedure>
-    0. **Pre-flight: config.** `npx tsx ~/Developer/gennady/cli/gennady.ts inbox --json`. If the
+    0. **Pre-flight: config.** `npx gennady inbox --json`. If the
        response has `"configured": false`:
        - Do NOT print text and do NOT exit. Ask the operator via two SEPARATE `AskUserQuestion` (strictly
          sequential — first, wait, then the second):
