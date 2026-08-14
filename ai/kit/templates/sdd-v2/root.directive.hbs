@@ -60,10 +60,13 @@
             — the interview opens HERE, never before that card and never as prose dumped into the reply.
             An interview question that precedes the card, or that re-summarizes it instead of the router
             having shown it, violates the same gate the router enforces (`H_ASK_WITHOUT_CARD`) — a
-            summary of the card is not the card. Ask through the SAME channel: the `AskUserQuestion` tool when
-            available (open answer via its free-text slot), otherwise `QUESTION_FORMAT` (Russian) — one
-            structured question: «Как называется проект? Опиши в одном предложении его vision и первые
-            scope'ы (infra-base, backend, web — на черновую).»
+            summary of the card is not the card. The project name is NOT asked here: default it silently
+            to the repository folder's own name, kebab-case as-is, no invented embellishment — it then
+            appears in every later show, and the operator may correct it inline in any free-text answer
+            to STEP_1 or STEP_2 without a dedicated name question ever existing. One decision per question
+            (`AX_OPERATOR_SAFEGUARD`): naming is resolved silently here precisely so STEP_1 can ask vision
+            alone and STEP_2 can ask scopes alone — never bundle name + vision + scopes into one opening
+            question again.
           - `CODE=present` → **from-code recovery** — do NOT invent a vision over existing code:
             `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")`.
         - Present → empty intake → `H_NO_INTENT`; otherwise classify the change:
@@ -74,14 +77,33 @@
     <Step id="STEP_1_VISION">
       <Goal>Lock the project-level Vision.</Goal>
       <Action>
-        No product / library scope → skip Vision (`AX_VISION_ONLY_FOR_APPLICATION`). Else propose
-        a one-sentence Vision: what we build and which problem it solves. Approval Check. STOP.
+        No product / library scope → skip Vision (`AX_VISION_ONLY_FOR_APPLICATION`). Else, on greenfield
+        init (no Vision recorded yet), ask ONE open question through `AskUserQuestion` when available,
+        otherwise `QUESTION_FORMAT`: «Что строим? Опиши vision одним предложением.» with an escape option
+        «Пока не знаю — предложи сам». Vision is the one field of genuine human intent in this step — the
+        agent never fabricates it unasked, because a wrong guess here is an expensive semantic error to
+        unwind later. If the operator picks the escape option, draft a vision candidate from whatever
+        context already exists (project name, intake, README) and present it back for confirm-or-edit — a
+        drafted vision is never treated as locked without that confirmation. On an idempotent update (a
+        Vision already exists), propose an intake-derived revision instead of asking from scratch.
+        Approval Check. STOP.
       </Action>
     </Step>
     <Step id="STEP_2_SCOPE_GRAPH">
-      <Goal>Place each scope by its relationships first, then its edges.</Goal>
+      <Goal>Select which scopes exist, then place each by its relationships before its edges.</Goal>
       <Action>
-        For each scope the relationship question comes FIRST (`AX_OPERATOR_SAFEGUARD`): who will depend
+        On greenfield init (graph still empty), propose scope candidates in ONE multiSelect
+        `AskUserQuestion` call (`multiSelect: true`) derived from the just-locked Vision — never asked as
+        free text first: the product-scope (name derived from Vision, kebab-case), then `infra-base`
+        tagged «(Recommended)» with description «гейты: type-check/test/lint — обязательна перед
+        scaffold/execute», then `interface` / `library` candidates only when the Vision actually implies
+        them. The operator clicks checkboxes rather than composing scope names from scratch; the tool's
+        own free-text slot already covers a custom answer, so do not duplicate it as an extra bullet.
+        Checking a box only registers that scope in the Scopes table — deep design of any one scope
+        (its own vision, architecture, requirements, modules) stays out of this step and happens in its
+        own later `scope` session, per the Mission's own boundary.
+        For each scope now in play (freshly checked here, or already present on a later update), the
+        relationship question comes FIRST (`AX_OPERATOR_SAFEGUARD`): who will depend
         on it, what it depends on, and whether it is cross-cutting (used by ≥2 scopes). Probe narrow
         framing — «авторизация только для web? а API / будущие клиенты?». The answer drives three things:
         the «scope vs module» test (a thing used inside one scope may be a module, not a scope →
