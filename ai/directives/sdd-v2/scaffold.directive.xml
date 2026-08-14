@@ -125,12 +125,15 @@
     </Axiom>
 
     <Axiom id="AX_SCOPE_GRAPH_DETECTION">
-      Detection is driven by `specs/README.md` Scope Graph (Mermaid `graph TD`) and Scopes table. Portal absent → no specs → HALT.
+      Scope names, types, and statuses are read from the `sdd-state` snapshot already in context
+      (its `[SCOPES]` section) — the calling door already ran it; do not re-derive them by
+      re-reading `specs/README.md`. Portal absent → no specs → HALT.
 
-      From Portal extract:
-      - All scope names and their scope-types (from Scopes table).
-      - Dependency edges A→B (from Mermaid graph or Scopes table `depends-on`).
-      - For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
+      `specs/README.md` itself is read for the one thing that snapshot does not carry: the
+      dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
+      `depends-on` column).
+
+      For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
 
       Cascade computation requires full scope graph traversal:
       - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).
@@ -313,9 +316,13 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
-        Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
-        module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`). Detect the graph
-        (`AX_SCOPE_GRAPH_DETECTION`) and mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
+        Scope names, types, and statuses come from the current portal's Scope Graph + Scopes table
+        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the door that dispatched
+        this flow already called it; a fresh `sdd-state` call here is a wasted turn. Read
+        `specs/README.md` itself ONLY for the one thing that snapshot does not carry: the
+        dependency edges A→B of the Mermaid Scope Graph (absent portal → `H_NO_SPECS`). Read each
+        ✅ scope spec and its module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`).
+        Detect mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
         — **detection table (directive-specific):**
 
         | Mode | Detection |

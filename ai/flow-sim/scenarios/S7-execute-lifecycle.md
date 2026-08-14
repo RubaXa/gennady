@@ -577,10 +577,13 @@ APP-greet-greeting`.
     ticket path -> run that ticket (STEP_1–8)» — оператор назвал конкретный Task-ID, значит НЕ
     ветка `next`/`pick`, НЕ `batch`/`all`/`queue`.
 3.  STEP_1_PLAN: единственное чтение тикета — `sdd-task APP-greet-greeting` («one tool call, no
-    broad ticket read»), возвращающее Meta + Phases Overview + per-phase read-manifests + gates;
-    preflight blocker scan через `sdd-check` (`AX_BLOCKER_RESOLUTION_TRAIL`); Round открыт через
-    `sdd-log` — есть `tool:`-строка с этой командой ДО диспетча P1. Состояние по Phases Overview —
-    все `[ ]` → «fresh (all phases by `Deps`)», не resume/audit-only/pause.
+    broad ticket read»), возвращающее Meta + Phases Overview + per-phase read-manifests + gates +
+    `[BLOCKERS]`; preflight blocker scan читается прямо из секции `[BLOCKERS]` этого же вызова
+    (`blockers: none` → clear, `AX_BLOCKER_RESOLUTION_TRAIL`) — БЕЗ отдельного вызова
+    `sdd-check --task` на этом шаге (явно запрещён директивой как потраченный ход); Round открыт
+    через `sdd-log` — есть ровно ОДНА `tool:`-строка с `sdd-task APP-greet-greeting` ДО диспетча P1,
+    и НЕТ отдельной `tool: sdd-check --task ...` строки между ней и диспетчем P1. Состояние по
+    Phases Overview — все `[ ]` → «fresh (all phases by `Deps`)», не resume/audit-only/pause.
 4.  Смена роли на worker перед P1 зафиксирована строкой `note: role=worker P1` (или аналогичной,
     дословно называющей роль и фазу), и загрузка `ai/directives/sdd-v2/phase-execution-protocol.directive.xml`
     отражена строкой `directive: ... loaded` — per Mission phase-execution-protocol: «A worker

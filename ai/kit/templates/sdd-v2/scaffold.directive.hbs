@@ -88,9 +88,13 @@
     <Step id="STEP_0_INTAKE">
       <Goal>Read the Portal; detect scopes, graph, mode. (auto)</Goal>
       <Action>
-        Read `specs/README.md` Scope Graph (absent → `H_NO_SPECS`); read each ✅ scope spec and its
-        module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`). Detect the graph
-        (`AX_SCOPE_GRAPH_DETECTION`) and mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
+        Scope names, types, and statuses come from the current portal's Scope Graph + Scopes table
+        (`sdd-state`, per `AX_SCOPE_GRAPH_DETECTION`) already in context — the door that dispatched
+        this flow already called it; a fresh `sdd-state` call here is a wasted turn. Read
+        `specs/README.md` itself ONLY for the one thing that snapshot does not carry: the
+        dependency edges A→B of the Mermaid Scope Graph (absent portal → `H_NO_SPECS`). Read each
+        ✅ scope spec and its module specs — specs only, never code (`AX_SPEC_IS_SOLE_SOURCE`).
+        Detect mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`
         — **detection table (directive-specific):**
 
         | Mode | Detection |

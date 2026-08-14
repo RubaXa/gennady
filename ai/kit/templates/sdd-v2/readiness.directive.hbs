@@ -94,10 +94,15 @@
     <Step id="STEP_4_VERIFY_AND_CONTINUE">
       <Goal>Confirm ready, then return control.</Goal>
       <Action>
-        Re-run `sdd-state`. `READINESS=ready` → setup is done; return control to the caller (the
-        router's classify/route step, or the door's own flow). Still `not-ready` → state the remaining
-        gap and resume at `STEP_1` for the leftover items only — a fresh assessment, never a blind
-        re-run of a command that already failed.
+        WHEN `STEP_3_REPORT_FAILURES` ran (some command failed and the operator stepped in by hand) →
+        re-run `sdd-state` now — the operator's own actions changed state since STEP_2's snapshot, so
+        it is stale. WHEN `STEP_3` was skipped (STEP_2 applied cleanly, nothing failed) → reuse
+        STEP_2's own closing `sdd-state` re-run directly; it is already the fresh post-apply
+        snapshot, and a second call here would just re-confirm it — a wasted turn. Either way:
+        `READINESS=ready` → setup is done; return control to the caller (the router's classify/route
+        step, or the door's own flow). Still `not-ready` → state the remaining gap and resume at
+        `STEP_1` for the leftover items only — a fresh assessment, never a blind re-run of a command
+        that already failed.
       </Action>
     </Step>
   </ExecutionPlan>

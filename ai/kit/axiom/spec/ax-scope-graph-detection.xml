@@ -1,11 +1,14 @@
 <!-- source: ai/directives/sdd/scaffold.directive.xml -->
 <Axiom id="AX_SCOPE_GRAPH_DETECTION">
-      Detection is driven by `specs/README.md` Scope Graph (Mermaid `graph TD`) and Scopes table. Portal absent → no specs → HALT.
+      Scope names, types, and statuses are read from the `sdd-state` snapshot already in context
+      (its `[SCOPES]` section) — the calling door already ran it; do not re-derive them by
+      re-reading `specs/README.md`. Portal absent → no specs → HALT.
 
-      From Portal extract:
-      - All scope names and their scope-types (from Scopes table).
-      - Dependency edges A→B (from Mermaid graph or Scopes table `depends-on`).
-      - For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
+      `specs/README.md` itself is read for the one thing that snapshot does not carry: the
+      dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
+      `depends-on` column).
+
+      For each scope with ✅ status, read its spec file at `specs/<scope>/<scope>.spec.md`.
 
       Cascade computation requires full scope graph traversal:
       - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).

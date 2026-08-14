@@ -86,11 +86,16 @@
     <Step id="STEP_1_PLAN">
       <Goal>Get the plan; detect state; open the Round. (one tool call, no broad ticket read)</Goal>
       <Action>
-        `sdd-task <id>` returns Meta + Phases Overview + per-phase read-manifests + gates — the only
-        ticket read I do. Preflight blocker scan (`sdd-check`, per `AX_BLOCKER_RESOLUTION_TRAIL`):
-        unresolved → `H_PAUSED_AWAITING_OPERATOR`. State from Phases Overview: all `[ ]` → fresh (all
-        phases by `Deps`); mixed → resume (remaining); all `[x]` + no audit → audit only; any `[!]` →
-        pause. Open a new Round in the log via `sdd-log`.
+        `sdd-task <id>` returns Meta + Phases Overview + per-phase read-manifests + gates + a
+        `[BLOCKERS]` section — the only ticket read I do. Preflight blocker scan reads that
+        `[BLOCKERS]` section directly (`AX_BLOCKER_RESOLUTION_TRAIL`): `blockers: none` → clear to
+        dispatch; `blockers: ACTIVE <n>` (each active blocker listed with its log text) →
+        `H_PAUSED_AWAITING_OPERATOR`. A separate `sdd-check --task` call at this step is a wasted
+        turn — `sdd-task` already carries the same lifecycle verdict (the execute-family mirror of
+        the router's one-`sdd-state`-call rule); `sdd-check --task` remains the tool for a
+        point-recheck under audit, not for this step. State from Phases Overview: all `[ ]` → fresh
+        (all phases by `Deps`); mixed → resume (remaining); all `[x]` + no audit → audit only; any
+        `[!]` → pause. Open a new Round in the log via `sdd-log`.
       </Action>
     </Step>
     <Step id="STEP_2_DISPATCH">
