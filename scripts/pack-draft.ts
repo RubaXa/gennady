@@ -96,18 +96,19 @@ function localDraftBuilds(base: string): number[] {
   return builds;
 }
 
-/** @purpose Registry build numbers when reachable; local tarball numbers otherwise — pack-draft must work offline. */
+/** @purpose Union of registry and local tgz build numbers — numbering stays monotonic even when only one source knows the latest build. */
 function knownDraftBuilds(base: string): number[] {
+  const local = localDraftBuilds(base);
   try {
-    return publishedDraftBuilds(base);
+    return [...publishedDraftBuilds(base), ...local];
   } catch (error) {
     logger.warn(
-      `[main] [resolving → resolving] Registry unreachable, falling back to local tgz numbering`,
+      `[main] [resolving → resolving] Registry unreachable, using local tgz numbering only`,
       {
         errorMessage: getErrorMessage(error),
       }
     );
-    return localDraftBuilds(base);
+    return local;
   }
 }
 
