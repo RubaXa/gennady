@@ -112,3 +112,86 @@ export function parseGraphEdges(portalContent: string): GraphEdge[] {
   }
   return edges;
 }
+
+/**
+ * @purpose Extract every depends-on edge from the portal's Mermaid Scope Graph, solid or dotted.
+ * @invariant Reads bare `A --> B` and dotted `A -. label .-> B` arrows; both feed [GRAPH] rendering,
+ *   unlike parseGraphEdges which drops dotted refs.
+ * @param portalContent Full markdown of specs/README.md.
+ * @returns One edge per arrow (solid or dotted), in document order; empty when no graph is present.
+ */
+export function parseScopeGraphEdges(portalContent: string): GraphEdge[] {
+  const edges: GraphEdge[] = [];
+  const solid = /([A-Za-z0-9_-]+)(?:\[[^\]]*\])?\s*-->(?:\s*\|[^|]*\|)?\s*([A-Za-z0-9_-]+)/;
+  const dotted = /([A-Za-z0-9_-]+)(?:\[[^\]]*\])?\s*-\.[^.]*\.->\s*([A-Za-z0-9_-]+)/;
+  for (const raw of portalContent.split('\n')) {
+    const line = raw.trim();
+    if (line.includes('-->')) {
+      const m = solid.exec(line);
+      if (m?.[1] && m[2]) edges.push({ from: m[1], to: m[2] });
+      continue;
+    }
+    if (line.includes('.->')) {
+      const m = dotted.exec(line);
+      if (m?.[1] && m[2]) edges.push({ from: m[1], to: m[2] });
+    }
+  }
+  return edges;
+}
+
+/**
+ * @purpose Render the Scope Graph as aligned ASCII dependency chains — consumer scopes on top, one line per root-to-leaf path.
+ * @invariant Deterministic: adjacency/roots sort by name, independent of source order; an edge-less
+ *   scope gets its own single-name line; empty when there are no edges.
+ * @param scopes Scopes parsed from the portal table (supplies scope names with no graph edges).
+ * @param edges Scope-Graph edges parsed via parseScopeGraphEdges.
+ * @returns One line per dependency chain, then one line per edge-less scope; empty when `edges` is empty.
+ */
+export function renderScopeGraph(scopes: Scope[], edges: GraphEdge[]): string[] {
+  if (edges.length === 0) return [];
+
+  // #region START_ADJACENCY — sorted adjacency makes traversal order independent of edge/table order
+  const outMap = new Map<string, string[]>();
+  const hasIncoming = new Set<string>();
+  const edgeNodes = new Set<string>();
+  for (const e of edges) {
+    if (!outMap.has(e.from)) outMap.set(e.from, []);
+    outMap.get(e.from)?.push(e.to);
+    hasIncoming.add(e.to);
+    edgeNodes.add(e.from);
+    edgeNodes.add(e.to);
+  }
+  for (const list of outMap.values()) list.sort();
+  // #endregion END_ADJACENCY
+
+  // #region START_PATHS — DFS every root (no incoming edge, has an outgoing edge) to each leaf
+  const roots = [...edgeNodes]
+    .filter((n) => (outMap.get(n)?.length ?? 0) > 0 && !hasIncoming.has(n))
+    .sort();
+
+  const paths: string[][] = [];
+  function dfs(node: string, path: string[]): void {
+    const next = outMap.get(node) ?? [];
+    if (next.length === 0) {
+      paths.push([...path, node]);
+      return;
+    }
+    for (const n of next) {
+      // cycle guard: a repeated node closes the chain instead of looping forever
+      if (path.includes(n) || node === n) {
+        paths.push([...path, node, n]);
+        continue;
+      }
+      dfs(n, [...path, node]);
+    }
+  }
+  for (const r of roots) dfs(r, []);
+  // #endregion END_PATHS
+
+  const lines = paths.map((p) => p.join(' ──► '));
+
+  const isolated = scopes.map((s) => s.name).filter((n) => !edgeNodes.has(n));
+  lines.push(...isolated.sort());
+
+  return lines;
+}

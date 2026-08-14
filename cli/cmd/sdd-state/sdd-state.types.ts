@@ -3,7 +3,8 @@
 // @tasks: N/A
 
 import type { ReadinessResult } from '../../../shared/sdd/readiness.ts';
-import type { Scope } from '../../../shared/sdd/portal.ts';
+import type { GraphEdge, Scope } from '../../../shared/sdd/portal.ts';
+import { renderScopeGraph } from '../../../shared/sdd/portal.ts';
 import type { RepoProbe } from '../../../shared/sdd/probe.ts';
 
 /** @purpose More than one positional argument was passed. */
@@ -29,6 +30,8 @@ export type StateSnapshot = {
   portalPath: string;
   /** @purpose Scopes parsed from the portal table; empty when the portal is absent. */
   scopes: Scope[];
+  /** @purpose Scope-Graph edges (solid + dotted) parsed from the portal Mermaid graph; empty when absent. */
+  graphEdges: GraphEdge[];
   /** @purpose Exact-match readiness of the required npm scripts. */
   readiness: ReadinessResult;
   /** @purpose Raw content of the session scratch (specs/.sdd-session.md), or null when no active session. */
@@ -48,7 +51,7 @@ export type StateOutcome =
 /**
  * @purpose Render a StateSnapshot into the bracketed, machine-readable form the router consumes.
  * @param s The assembled snapshot.
- * @returns A multi-section string: header + `[READINESS]` + `[SCOPES]` + `[SESSION]` + `[SUMMARY]`.
+ * @returns A multi-section string: header + `[READINESS]` + `[SCOPES]` + `[GRAPH]` (when a scope graph exists) + `[SESSION]` + `[SUMMARY]`.
  */
 export function formatSnapshot(s: StateSnapshot): string {
   const lines: string[] = [
@@ -82,6 +85,13 @@ export function formatSnapshot(s: StateSnapshot): string {
       );
     }
   }
+
+  // #region START_GRAPH — omitted entirely when there is no portal or no scope graph to show
+  const graphLines = renderScopeGraph(s.scopes, s.graphEdges);
+  if (graphLines.length > 0) {
+    lines.push('', '[GRAPH]', ...graphLines);
+  }
+  // #endregion END_GRAPH
 
   lines.push('', '[SESSION]', '# specs/.sdd-session.md');
   lines.push(s.sessionContent ? s.sessionContent : '# (no active session)');

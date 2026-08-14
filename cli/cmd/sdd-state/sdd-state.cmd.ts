@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { checkReadiness, isRealScript } from '../../../shared/sdd/readiness.ts';
-import { parseScopes, type Scope } from '../../../shared/sdd/portal.ts';
+import { parseScopes, parseScopeGraphEdges, type GraphEdge, type Scope } from '../../../shared/sdd/portal.ts';
 import { probeRepo } from '../../../shared/sdd/probe.ts';
 import { detectFlowVersion } from '../../../shared/sdd/flow.ts';
 import { countModuleSpecs } from '../../../shared/sdd/module-specs.ts';
@@ -94,11 +94,13 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
   const portalPath = 'specs/README.md';
   let portalPresent = false;
   let scopes: Scope[] = [];
+  let graphEdges: GraphEdge[] = [];
   let projectName: string | null = null;
   try {
     const content = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
     portalPresent = true;
     scopes = parseScopes(content);
+    graphEdges = parseScopeGraphEdges(content);
     projectName = parseProjectName(content);
   } catch {
     portalPresent = false;
@@ -147,6 +149,7 @@ export async function run(rawArgs: string[]): Promise<StateOutcome> {
     portalPresent,
     portalPath,
     scopes,
+    graphEdges,
     readiness,
     sessionContent,
     probe,

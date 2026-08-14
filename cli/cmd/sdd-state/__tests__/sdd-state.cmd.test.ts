@@ -17,6 +17,7 @@ let ready: string;
 let noPortal: string;
 let v1Repo: string;
 let bare: string;
+let withGraph: string;
 
 const PORTAL = [
   '# proj',
@@ -80,6 +81,21 @@ describe('SddStateCommand', () => {
     mkdirSync(join(v1Repo, 'tasks'), { recursive: true });
     writeFileSync(join(v1Repo, 'package.json'), READY_PKG, 'utf-8');
 
+    withGraph = mkdtempSync(join(tmpdir(), 'sdd-state-graph-'));
+    mkdirSync(join(withGraph, 'specs'), { recursive: true });
+    writeFileSync(
+      join(withGraph, 'specs', 'README.md'),
+      [
+        PORTAL,
+        '',
+        '```mermaid',
+        'graph TD',
+        '  web --> infra-base',
+        '```',
+      ].join('\n'),
+      'utf-8'
+    );
+
     mod = await import('../sdd-state.cmd.ts');
   });
 
@@ -90,6 +106,7 @@ describe('SddStateCommand', () => {
     rmSync(noPortal, { recursive: true, force: true });
     rmSync(v1Repo, { recursive: true, force: true });
     rmSync(bare, { recursive: true, force: true });
+    rmSync(withGraph, { recursive: true, force: true });
   });
 
   it('reports v2 flow, ready, scopes with description, and the session', async () => {
@@ -107,6 +124,19 @@ describe('SddStateCommand', () => {
       assert.match(o.text, /web\tproduct\twip\tReact SPA/);
       assert.match(o.text, /intent: evolve-scope/);
       assert.match(o.text, /readiness=ready/);
+      assert.doesNotMatch(o.text, /\[GRAPH\]/);
+    }
+  });
+
+  it('renders [GRAPH] between [SCOPES] and [SESSION] when the portal has a scope graph', async () => {
+    const o = await mod.run(argv(withGraph));
+    assert.strictEqual(o.ok, true);
+    if (o.ok) {
+      assert.match(o.text, /\[GRAPH\]\nweb ──► infra-base/);
+      const scopesIdx = o.text.indexOf('[SCOPES]');
+      const graphIdx = o.text.indexOf('[GRAPH]');
+      const sessionIdx = o.text.indexOf('[SESSION]');
+      assert.ok(scopesIdx < graphIdx && graphIdx < sessionIdx);
     }
   });
 
